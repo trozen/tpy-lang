@@ -97,10 +97,26 @@ class EnumInfo:
     underlying_type: "TpyType"
     is_int_enum: bool
     module_name: str | None = None
+    is_native: bool = False
+    native_name: str | None = None  # canonical ::-prefixed C++ qname for @native enums
+    # Per-member C++ enumerator-name override (Python name -> C++ name).
+    # Empty for tpy-defined enums; populated for @native enums where
+    # `MEMBER = native_member("cpp_name")` was used. Members without an
+    # entry use their Python name as the C++ name.
+    cpp_member_names: tuple[tuple[str, str], ...] = ()
+    # True for @native enums whose values were spelled as explicit integer
+    # literals (the user asserts they know the C++ values). Codegen emits
+    # per-member static_assert pinning each TPy-declared value to the C++
+    # side. False for auto()/native_member() (no assertion; C++ is the truth).
+    has_explicit_values: bool = False
 
     @property
     def member_value_map(self) -> dict[str, int]:
         return dict(self.member_values)
+
+    @property
+    def cpp_member_name_map(self) -> dict[str, str]:
+        return dict(self.cpp_member_names)
 
 
 @dataclass

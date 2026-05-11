@@ -17,6 +17,7 @@ enum class SmallEnum : int8_t {
 
 template<>
 struct tpy::EnumUtil<::tpyapp::main::SmallEnum> {
+    static constexpr std::string_view type_name = "SmallEnum";
     static std::string_view name(::tpyapp::main::SmallEnum e);
     static const std::array<::tpyapp::main::SmallEnum, 3> members;
     static ::tpyapp::main::SmallEnum from_value(int8_t v);

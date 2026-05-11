@@ -1,0 +1,1 @@
+main.py:10: error: @native enum 'Inner' cannot be nested inside a class; declare it at module top level with the fully-qualified C++ name, e.g. `@native("ns::Container::Inner") class Inner(Enum): ...`. TPy structure does not need to mirror C++ structure -- the @native qname encodes the C++ nesting.

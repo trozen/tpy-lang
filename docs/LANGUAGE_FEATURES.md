@@ -108,11 +108,11 @@ str         → std::string
 print(...)  → std::cout << ...
 list[T]     → std::vector<T>
 
-# tpy.backend.trading - custom for HFT
-Span[T]     → firm::span<T>
-str         → firm::fixed_string<256>
+# tpy.backend.custom - example overrides for a user-defined backend
+Span[T]     → mylib::span<T>
+str         → mylib::fixed_string<256>
 print(...)  → LOG_INFO(...)
-list[T]     → firm::static_vector<T, N>
+list[T]     → mylib::static_vector<T, N>
 
 # tpy.backend.embedded - custom for embedded
 print(...)  → uart_printf(...)
@@ -1685,6 +1685,7 @@ s: UninitHeapStorage[Int32] = UninitHeapStorage(1)  # T inferred as Int32
 - **Working**: Generic inheritance with forwarded type params (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[Int32])`)
 - **Working**: Enums -> `enum class` (base `Enum` with integer members, `auto()`, `.name`, `.value`, `==`/`!=`/`is`/`not`, truthiness, record field, `list[Enum]`, `Optional[Enum]`, cross-module import, iteration `for c in Color`, value lookup `Color(0)`, name lookup `Color["Red"]`, `try_parse(Color, "Red")` via `from tpy import try_parse`, `IntEnum` with arithmetic/ordering/int comparison, configurable underlying type via mixin `(Int8, Enum)`). Both `from enum import Enum, auto` and `import enum` (qualified `enum.Enum`, `enum.auto()`) are supported.
+- **Working**: `@native` enums -> bind to existing C++ `enum class` via `@native("ns::E")`. Two value-declaration modes: `auto()` / `native_member("cpp_name")` leave the value implicit (C++ is the source of truth; `e.value` reads `static_cast<underlying>(e)`); explicit integer literals are verified against the C++ side via a per-member `static_assert` at compile time. `native_member("cpp_name")` also aliases a TPy-side member name to a C++-side enumerator (for Python keywords like `None` or naming-convention mismatches). No `enum class` declaration is generated and no `operator<<` is emitted (print/repr route through `EnumUtil` via runtime templates). See `docs/NATIVE_INTEROP.md#enums`.
 
 ### Protocols (Partial)
 

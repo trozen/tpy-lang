@@ -6,7 +6,7 @@ Main orchestrator for generating C++ code from TurboPython AST.
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import TextIO, TYPE_CHECKING
+from typing import Callable, TextIO, TYPE_CHECKING
 import io
 import sys as _sys
 
@@ -157,6 +157,18 @@ class CodeGenerator:
             record_info = self.analyzer.registry.get_record(record.name)
             if record_info and record_info.is_native and record_info.native_name:
                 register_native_cpp_name(record.name, record_info.native_name)
+        # @native enums: register their canonical C++ qname so type-position
+        # renderings (`Optional[E]`, `list[E]`, function signatures) resolve
+        # to `ns::E` instead of `tpyapp::<module>::E`.
+        for enum in module.enums:
+            if not enum.is_native:
+                continue
+            enum_type = self.analyzer.registry.get_enum(enum.name)
+            if enum_type is None:
+                continue
+            einfo = enum_info_of(enum_type)
+            if einfo is not None and einfo.native_name:
+                register_native_cpp_name(enum.name, einfo.native_name)
         # Register nested type names: "Outer.Inner" -> "Outer::Inner" for C++ qualified access.
         # Use _native_cpp_names directly to avoid ensure_qualified adding "::" prefix
         # (these are module-local types, not cross-module references).
@@ -210,7 +222,14 @@ class CodeGenerator:
                 local_name, current_module)
             if qual is None:
                 continue
-            qualified = qualified_cpp_name(*qual)
+            # @native imported enums: use their canonical C++ qname, not
+            # the module-qualified spelling.
+            enum_type = self.analyzer.registry.get_enum(local_name)
+            einfo = enum_info_of(enum_type) if enum_type is not None else None
+            if einfo is not None and einfo.is_native and einfo.native_name:
+                qualified = einfo.native_name
+            else:
+                qualified = qualified_cpp_name(*qual)
             register_native_cpp_name(local_name, qualified)
             # For aliased imports, also map the canonical name so references
             # that go through NominalType.name resolve too.
@@ -661,13 +680,21 @@ class CodeGenerator:
         global_decls: list, final_decls: list, seen_globals: dict, deps: _ProtocolDeps
     ) -> None:
         """Generate remaining forward decls, global externs, record definitions, functions, and re-exports."""
-        # Enum class declarations (before records, since records may have enum fields)
+        # Enum class declarations (before records, since records may have enum fields).
+        # @native enums skip the declaration entirely -- the user's
+        # `# tpy: include(...)` directive provides the C++ enum class.
         for enum in module.enums:
+            if enum.is_native:
+                continue
             self._gen_enum_decl(hpp, enum)
 
         # Dynamic protocol adapter specs and EnumUtil specs must be at global scope.
         # Only emit EnumUtil for top-level enums here; nested enums need
         # their parent struct defined first (emitted after record definitions).
+        # @native enums still get EnumUtil (reflection across the binding
+        # boundary) but no operator<< -- that's emitted by the user if
+        # needed, and TPy's print/repr paths route through __repr__ via
+        # the runtime template gated on EnumUtil presence.
         dynamic_protocols = [p for p in module.protocols if p.is_dynamic]
         top_enums = module.enums
         if dynamic_protocols or top_enums:
@@ -677,6 +704,8 @@ class CodeGenerator:
             self._gen_enum_util_decls_for(hpp, top_enums)
             hpp.write(f"namespace {ns} {{\n\n")
             for enum in top_enums:
+                if enum.is_native:
+                    continue
                 self._gen_enum_operator_ostream(hpp, enum)
 
         # Forward declare recursive union wrapper structs (before records,
@@ -815,6 +844,12 @@ class CodeGenerator:
             self._gen_enum_util_decls_for(hpp, nested_enums)
             hpp.write(f"namespace {ns} {{\n\n")
             for enum in nested_enums:
+                # Parser currently rejects nested @native enums, but guard
+                # defensively so a future relaxation can't silently emit
+                # operator<< for a native enum (would conflict with any
+                # user-provided one in their C++ namespace).
+                if enum.is_native:
+                    continue
                 self._gen_enum_operator_ostream(hpp, enum)
 
 
@@ -1009,11 +1044,17 @@ class CodeGenerator:
                 hpp.write("\n")
 
         # Re-exported enums (skip nested enums for the same reason as
-        # nested records above).
+        # nested records above). @native enums are also skipped -- they
+        # have no `tpyapp::<mod>::E` declaration to `using` (we skipped
+        # `_gen_enum_decl`); consumers reference them via _native_cpp_names.
         if self.ctx.reexported_enums:
             any_written = False
             for local_name, (source_module, original_name) in sorted(self.ctx.reexported_enums.items()):
                 if "." in local_name or "." in original_name:
+                    continue
+                enum_type = self.analyzer.registry.get_enum(original_name)
+                einfo = enum_info_of(enum_type) if enum_type is not None else None
+                if einfo is not None and einfo.is_native:
                     continue
                 qualified = qualified_cpp_name(source_module, original_name)
                 if local_name == original_name:
@@ -1099,16 +1140,19 @@ class CodeGenerator:
 
     def _gen_enum_util_decls_for(self, out: TextIO, enums: list) -> None:
         """Generate ::tpy::EnumUtil<E> specialization declarations for given enums."""
-        ns = module_to_cpp_namespace(self.ctx.module_name)
+        from .context import enum_cpp_name
+        cur_module = self.ctx.module_name
         for enum in enums:
             enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
             if not enum_type:
                 continue
             underlying = enum_info_of(enum_type).underlying_type.to_cpp()
-            qualified = qualified_cpp_name(self.ctx.module_name, enum.name)
+            qualified = enum_cpp_name(enum_type, cur_module, absolute=True)
+            short_name = bare_name(enum.name)
             member_count = len(enum.members)
             out.write(f"template<>\n")
             out.write(f"struct tpy::EnumUtil<{qualified}> {{\n")
+            out.write(f"    static constexpr std::string_view type_name = \"{short_name}\";\n")
             out.write(f"    static std::string_view name({qualified} e);\n")
             out.write(f"    static const std::array<{qualified}, {member_count}> members;\n")
             out.write(f"    static {qualified} from_value({underlying} v);\n")
@@ -1127,21 +1171,50 @@ class CodeGenerator:
 
     def _gen_enum_source_defs(self, out: TextIO, module: TpyModule) -> None:
         """Generate ::tpy::EnumUtil<E> member definitions in namespace tpy."""
-        ns = module_to_cpp_namespace(self.ctx.module_name)
+        from .context import enum_cpp_name
+        cur_module = self.ctx.module_name
         out.write("namespace tpy {\n\n")
         for enum in module.all_enums():
             enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
             if not enum_type:
                 continue
-            underlying = enum_info_of(enum_type).underlying_type.to_cpp()
-            qualified = qualified_cpp_name(self.ctx.module_name, enum.name)
+            einfo = enum_info_of(enum_type)
+            underlying = einfo.underlying_type.to_cpp()
+            qualified = enum_cpp_name(enum_type, cur_module, absolute=True)
+            short_name = bare_name(enum.name)
             member_count = len(enum.members)
+            # cpp_of(python_name) -> C++ enumerator name (Python name if no
+            # native_member() override). Used at every site that emits a
+            # `qualified::<member>` C++ symbol reference. Sites that emit
+            # the Python-side string (name() return value, try_parse key)
+            # keep the Python name. Built once per enum to avoid O(N**2)
+            # over the per-member emission loops.
+            _cpp_map = einfo.cpp_member_name_map
+            def cpp_of(n: str, _m: dict[str, str] = _cpp_map) -> str:
+                return _m.get(n, n)
+
+            # @native enum + explicit values: pin each declared value to the
+            # C++ side at compile time. Lives in the .cpp (not the .hpp) so it
+            # doesn't bloat every translation unit that includes the header --
+            # the assertion still fires at the same point, when this .cpp
+            # compiles. auto()/native_member() opt out -- the user did not
+            # declare a value.
+            if enum.is_native and enum.has_explicit_values:
+                for member_name, value, _ in enum.members:
+                    out.write(
+                        f"static_assert(static_cast<{underlying}>({qualified}::{cpp_of(member_name)}) == {value}, "
+                        f"\"TPy-declared value for {short_name}.{member_name} does not match C++ side\");\n"
+                    )
+                out.write("\n")
 
             # name()
             out.write(f"std::string_view EnumUtil<{qualified}>::name({qualified} __e) {{\n")
             out.write(f"    switch (__e) {{\n")
             for member_name, _, _ in enum.members:
-                out.write(f"        case {qualified}::{member_name}: return \"{member_name}\";\n")
+                out.write(
+                    f"        case {qualified}::{cpp_of(member_name)}: "
+                    f"return \"{member_name}\";\n"
+                )
             # Internal invariant: TPy enum values are always one of the declared
             # cases, so the default is unreachable from well-typed code. Stays
             # panic (not raise<ValueError>) -- the from_value path below already
@@ -1154,26 +1227,39 @@ class CodeGenerator:
             out.write(f"const std::array<{qualified}, {member_count}>\n")
             out.write(f"EnumUtil<{qualified}>::members = {{\n")
             for member_name, _, _ in enum.members:
-                out.write(f"    {qualified}::{member_name},\n")
+                out.write(f"    {qualified}::{cpp_of(member_name)},\n")
             out.write(f"}};\n\n")
 
-            # from_value()
+            # from_value(). For @native enums the C++ side is the source
+            # of truth for member values, so cases key off the C++
+            # enumerator's actual value (not the TPy-declared int, which
+            # may be `auto()`-assigned and meaningless for the binding).
             out.write(f"{qualified} EnumUtil<{qualified}>::from_value({underlying} __v) {{\n")
             out.write(f"    switch (__v) {{\n")
             for member_name, value, _ in enum.members:
-                out.write(f"        case {value}: return {qualified}::{member_name};\n")
+                if enum.is_native:
+                    out.write(
+                        f"        case static_cast<{underlying}>({qualified}::{cpp_of(member_name)}): "
+                        f"return {qualified}::{cpp_of(member_name)};\n"
+                    )
+                else:
+                    out.write(f"        case {value}: return {qualified}::{member_name};\n")
             out.write(f"        default: raise<ValueError>(\"{{}} is not a valid {enum.name}\", __v);\n")
             out.write(f"    }}\n")
             out.write(f"}}\n\n")
 
-            # try_parse()
+            # try_parse(): keys are Python-side names (user-facing), returns
+            # are C++ enumerators (which may differ for @native enums).
             out.write(f"std::optional<{qualified}> EnumUtil<{qualified}>::try_parse(std::string_view __name) {{\n")
             member_names = [name for name, _, _ in enum.members]
             if len(member_names) >= STRING_SWITCH_THRESHOLD:
-                self._gen_enum_try_parse_switch(out, qualified, member_names)
+                self._gen_enum_try_parse_switch(out, qualified, member_names, cpp_of)
             else:
                 for member_name in member_names:
-                    out.write(f"    if (__name == \"{member_name}\") return {qualified}::{member_name};\n")
+                    out.write(
+                        f"    if (__name == \"{member_name}\") "
+                        f"return {qualified}::{cpp_of(member_name)};\n"
+                    )
             out.write(f"    return std::nullopt;\n")
             out.write(f"}}\n\n")
 
@@ -1190,8 +1276,15 @@ class CodeGenerator:
     def _gen_enum_try_parse_switch(
         out: TextIO, qualified: str,
         member_names: list[str],
+        cpp_of: Callable[[str], str],
     ) -> None:
-        """Generate switch-based try_parse for enum with many members."""
+        """Generate switch-based try_parse for enum with many members.
+
+        `cpp_of` maps Python-side member names to C++ enumerator names
+        (identity for tpy-defined enums; honors native_member() overrides
+        for @native enums). Members are keyed by Python name (user-facing
+        string), returned as their C++ enumerator.
+        """
         kind, param, _buckets = find_best_discriminator(member_names)
 
         # Build bucket -> [member_name] mapping
@@ -1218,7 +1311,10 @@ class CodeGenerator:
             else:
                 out.write(f"{case_indent}case {disc_value}: {{\n")
             for name in names:
-                out.write(f"{body_indent}if (__name == \"{name}\") return {qualified}::{name};\n")
+                out.write(
+                    f"{body_indent}if (__name == \"{name}\") "
+                    f"return {qualified}::{cpp_of(name)};\n"
+                )
             out.write(f"{body_indent}break;\n")
             out.write(f"{case_indent}}}\n")
 
@@ -1408,6 +1504,11 @@ class CodeGenerator:
             cpp_name = record.name.replace(".", "::")
             out_buf.write(f"struct {cpp_name};\n")
         for enum in module.all_enums():
+            # @native enums: skip the forward decl. The user's
+            # `# tpy: include(...)` provides the type; re-declaring with
+            # the TPy-recorded underlying type would risk ODR mismatch.
+            if enum.is_native:
+                continue
             cpp_name = enum.name.replace(".", "::")
             # `enum class Name : underlying;` -- the underlying type
             # in the forward declaration MUST agree with the

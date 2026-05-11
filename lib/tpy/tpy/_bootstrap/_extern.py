@@ -54,3 +54,11 @@ def native_global(name: str = "", binding: str = "", array: bool = False): ...
 # string and drops the expression (no initializer is emitted for native fields).
 @builtin_function("tpy.extern.native_field")
 def native_field(name: str): ...
+
+# Per-member C++ rename on @native enums. Used in the value slot of an enum
+# member; the compiler extracts the rename string and treats the value as
+# unspecified (the C++ side is the source of truth for the actual value).
+# Useful when the C++ enumerator name clashes with a Python keyword
+# (`None`, `True`, `False`) or follows a different naming convention.
+@builtin_function("tpy.extern.native_member")
+def native_member(name: str): ...

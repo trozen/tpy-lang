@@ -17,6 +17,7 @@ enum class Signal : int32_t {
 
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Signal> {
+    static constexpr std::string_view type_name = "Signal";
     static std::string_view name(::tpyapp::main::Signal e);
     static const std::array<::tpyapp::main::Signal, 3> members;
     static ::tpyapp::main::Signal from_value(int32_t v);

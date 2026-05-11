@@ -18,6 +18,7 @@ enum class Direction : int32_t {
 
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Direction> {
+    static constexpr std::string_view type_name = "Direction";
     static std::string_view name(::tpyapp::main::Direction e);
     static const std::array<::tpyapp::main::Direction, 4> members;
     static ::tpyapp::main::Direction from_value(int32_t v);

@@ -1345,6 +1345,19 @@ class TpyEnum:
     members: list[tuple[str, int, SourceLocation | None]]  # auto() already resolved to int by parser
     is_int_enum: bool = False
     underlying_type_name: str | None = None  # e.g. "int", "Int8", "UInt32"
+    is_native: bool = False
+    native_name: str | None = None  # raw @native arg; sema normalizes to canonical ::-prefixed form
+    # Per-member C++ rename map (Python name -> C++ enumerator name). Used
+    # for @native enums where the C++ side has a name TPy can't spell
+    # (Python keywords like `None`) or uses a different convention.
+    # Members without an entry use the Python name as the C++ name.
+    cpp_member_names: dict[str, str] = field(default_factory=dict)
+    # True when the user spelled at least one explicit integer literal as a
+    # member value. For @native enums this triggers per-member static_assert
+    # emission so the TPy-declared value is verified against the C++ side at
+    # compile time. False when all members used auto() / native_member()
+    # (the user opted out of declaring values; C++ is the truth).
+    has_explicit_values: bool = False
     loc: SourceLocation | None = None
 
 

@@ -1,0 +1,4 @@
+Direction.UP
+rising
+falling
+1

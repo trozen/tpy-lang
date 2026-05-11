@@ -24,7 +24,7 @@ from .context import escape_cpp_string, CodeGenError, expand_cpp_template, quali
 from ..type_def_registry import (
     is_dict_view, is_set, is_dict, is_array, is_span, is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_float32_type, is_float64_type,
-    is_bytearray_type, int_traits_of,
+    is_bytearray_type, int_traits_of, is_enum_type, enum_info_of,
 )
 
 if TYPE_CHECKING:
@@ -396,6 +396,13 @@ class BuiltinGenerator:
             elif isinstance(arg_type, TypeParamRef):
                 # Generic type parameter -- use ValuePrinter for runtime dispatch
                 parts.append(f'::tpy::ValuePrinter({self._gen_expr_deref(arg)})')
+            elif is_enum_type(arg_type) and (einfo := enum_info_of(arg_type)) is not None and einfo.is_native:
+                # @native enums: no operator<< is emitted (would conflict
+                # with user-provided one). Route through __repr__ which
+                # the runtime template resolves via EnumUtil. Tpy-defined
+                # enums keep the raw-emit path below (their operator<< is
+                # still emitted; preserves existing behavior).
+                parts.append(f'::tpy::__repr__({self._gen_expr_deref(arg)})')
             else:
                 # FixedInt, Char, Bool, literals, etc. - direct output
                 expr_code = self._gen_expr_deref(arg)

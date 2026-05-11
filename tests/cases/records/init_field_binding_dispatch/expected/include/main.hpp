@@ -18,6 +18,7 @@ enum class E : int32_t {
 
 template<>
 struct tpy::EnumUtil<::tpyapp::main::E> {
+    static constexpr std::string_view type_name = "E";
     static std::string_view name(::tpyapp::main::E e);
     static const std::array<::tpyapp::main::E, 2> members;
     static ::tpyapp::main::E from_value(int32_t v);
@@ -121,6 +122,7 @@ inline std::ostream& operator<<(std::ostream& os, const FromNested& obj) {
 
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Outer::Kind> {
+    static constexpr std::string_view type_name = "Kind";
     static std::string_view name(::tpyapp::main::Outer::Kind e);
     static const std::array<::tpyapp::main::Outer::Kind, 2> members;
     static ::tpyapp::main::Outer::Kind from_value(int32_t v);

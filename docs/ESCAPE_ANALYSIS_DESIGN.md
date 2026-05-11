@@ -83,7 +83,7 @@ Integer range tracking (11) can proceed in parallel with borrow checking (6).
 
 ## Context
 
-TPy targets a 100k+ LOC multi-threaded HFT codebase. This sets the bar higher than a
+TPy targets a 100k+ LOC multi-threaded latency-sensitive codebase. This sets the bar higher than a
 typical POC:
 
 - **Memory safety is non-negotiable.** A dangling pointer in a trading algorithm is a
@@ -903,7 +903,7 @@ while i < len(arr):
 ```
 
 These are the two most common patterns in hot loops. The `range(len(arr))` pattern
-is especially common in HFT code.
+is especially common in latency-sensitive code.
 
 **Codegen**: When bounds-safe, emit direct `arr[i]` in C++ (bypassing `normalize_index`).
 
@@ -1043,7 +1043,7 @@ consumed and any borrows through `x` are invalidated. The borrow checker and
 **Q: Should borrow violations be errors or warnings?**
 
 Default profile: warnings (migration-friendly). `@safe` / `@noalloc`: errors. This
-avoids breaking existing code while enabling strict mode for production HFT paths.
+avoids breaking existing code while enabling strict mode for production hot paths.
 Over time, the default could tighten as the ecosystem matures.
 
 **Q: How deep should nested borrow tracking go?**

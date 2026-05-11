@@ -21,6 +21,7 @@ enum class Role : int32_t {
 
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Role> {
+    static constexpr std::string_view type_name = "Role";
     static std::string_view name(::tpyapp::main::Role e);
     static const std::array<::tpyapp::main::Role, 3> members;
     static ::tpyapp::main::Role from_value(int32_t v);

@@ -53,6 +53,7 @@ Container::Kind get_kind();
 
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Container::Kind> {
+    static constexpr std::string_view type_name = "Kind";
     static std::string_view name(::tpyapp::main::Container::Kind e);
     static const std::array<::tpyapp::main::Container::Kind, 2> members;
     static ::tpyapp::main::Container::Kind from_value(int32_t v);

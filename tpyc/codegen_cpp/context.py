@@ -239,6 +239,40 @@ def qualify_native_name(name: str) -> str:
     return f"::{name}"
 
 
+def enum_cpp_name(enum_type: TpyType, current_module: str, *,
+                  absolute: bool = False, einfo=None) -> str:
+    """Authoritative C++ spelling for an enum type.
+
+    Resolution order:
+    - @native qname (canonical, sema-normalized to ::-prefixed form);
+    - cross-module imported qualification (driven by EnumInfo.module_name);
+    - local / nested form.
+
+    `absolute=False` (default): bare short / nested form for local
+    enums, which works inside the declaring module's user namespace.
+    `absolute=True`: fully-qualify local enums as
+    `::tpyapp::<module>::E` for sites that emit at global scope
+    (EnumUtil specializations, std::ostream operators outside the
+    user namespace block).
+
+    `einfo` lets callers hoist a previously-resolved EnumInfo so this
+    helper doesn't repeat the lookup (hot in member-access codegen).
+    """
+    if einfo is None:
+        from ..type_def_registry import enum_info_of
+        einfo = enum_info_of(enum_type)
+    if einfo is not None and einfo.is_native and einfo.native_name:
+        return einfo.native_name
+    if (einfo is not None and einfo.module_name is not None
+            and einfo.module_name != current_module):
+        return qualified_cpp_name(einfo.module_name, enum_type.name)
+    if absolute:
+        return qualified_cpp_name(current_module, enum_type.name)
+    if "." in enum_type.name:
+        return enum_type.name.replace(".", "::")
+    return enum_type.name
+
+
 def loop_var_binding(
     elem_type: TpyType, cpp_var: str, deref_expr: str,
     const_loop_var: bool, hoisted: bool = False,

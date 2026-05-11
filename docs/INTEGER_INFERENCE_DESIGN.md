@@ -37,7 +37,7 @@ for i in range(n):   # currently BigInt path
 This is safe, but expensive for common cases such as loop bounds, counters,
 and small configuration constants.
 
-For performance-oriented codebases (for example HFT-like workloads), users want
+For performance-oriented codebases (for example latency-sensitive workloads), users want
 predictable fixed-width integer behavior everywhere unless they explicitly opt
 into `BigInt`.
 

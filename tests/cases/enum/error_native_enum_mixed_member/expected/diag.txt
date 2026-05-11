@@ -1,0 +1,1 @@
+main.py:11: error: Mixed native_member() and explicit values are not yet supported; use all native_member() or all explicit values

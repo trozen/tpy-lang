@@ -1462,12 +1462,26 @@ class Parser:
             elif isinstance(item, ast.ClassDef):
                 if is_typed_dict:
                     raise ParseError(f"Nested classes are not allowed in TypedDict '{node.name}'", item)
-                if linkage != RecordLinkage.DEFAULT:
-                    raise ParseError(f"Nested classes are not allowed in @{linkage.value} classes", item)
+                # Parse first so we can give an enum-specific diagnostic when the
+                # nested entity is a @native enum (pointing the user at the
+                # top-level qualified-name binding pattern). The broad-linkage
+                # rejection below catches any other nested class.
                 nested = self._parse_class(item)
                 if isinstance(nested, TpyProtocol):
                     raise ParseError("Protocols cannot be nested inside classes", item)
-                elif isinstance(nested, TpyEnum):
+                if isinstance(nested, TpyEnum) and nested.is_native:
+                    raise ParseError(
+                        f"@native enum '{nested.name}' cannot be nested inside "
+                        f"a class; declare it at module top level with the "
+                        f"fully-qualified C++ name, e.g. "
+                        f"`@native(\"ns::Container::{nested.name}\") "
+                        f"class {nested.name}(Enum): ...`. TPy structure does "
+                        f"not need to mirror C++ structure -- the @native "
+                        f"qname encodes the C++ nesting.",
+                        item)
+                if linkage != RecordLinkage.DEFAULT:
+                    raise ParseError(f"Nested classes are not allowed in @{linkage.value} classes", item)
+                if isinstance(nested, TpyEnum):
                     if type_params:
                         raise ParseError(
                             f"Nested enums are not supported inside generic classes "
@@ -1768,11 +1782,29 @@ class Parser:
         underlying_type_name: str | None = None,
     ) -> TpyEnum:
         """Parse an enum class definition."""
-        if node.decorator_list:
-            raise ParseError(f"Decorators are not supported on enum '{node.name}'", node)
+        is_native = False
+        native_name: str | None = None
+        for dec in node.decorator_list:
+            qname, arg = self._require_decorator(dec, f"enum '{node.name}'")
+            if qname != qnames.NATIVE:
+                raise ParseError(
+                    f"Decorators are not supported on enum '{node.name}' "
+                    f"(only @native is allowed)", dec)
+            pos, kw = self._validate_decorator_args(qname, arg, dec)
+            if kw:
+                raise ParseError(
+                    f"@native keyword arguments are not allowed on enum "
+                    f"'{node.name}'", dec)
+            is_native = True
+            native_name = pos  # may be None for bare @native; sema normalizes
 
         members: list[tuple[str, int, SourceLocation | None]] = []
+        cpp_member_names: dict[str, str] = {}
         has_auto = False
+        # Tracks which "implicit value" form the user actually wrote so the
+        # mixed-with-explicit diagnostic doesn't claim `auto()` when the user
+        # only ever wrote `native_member()` (or vice versa).
+        auto_form: str | None = None
         has_explicit = False
         auto_value = 1  # auto() starts at 1, matching CPython
 
@@ -1796,9 +1828,15 @@ class Parser:
             member_name = stmt.targets[0].id
             value_node = stmt.value
 
-            # Check for auto() call
+            # Check for auto() or native_member("...") call. For @native enums,
+            # auto() is the idiomatic spelling -- the C++ side is the source of
+            # truth for member values, and TPy-side ints are placeholders.
+            # native_member("cpp_name") aliases a TPy-side name to a C++-side
+            # enumerator name (for Python keywords like `None` or
+            # naming-convention mismatches).
             if isinstance(value_node, ast.Call):
-                if self._resolve_parser_keyword(value_node.func) == ("enum", "auto"):
+                resolved = self._resolve_parser_keyword(value_node.func)
+                if resolved == ("enum", "auto"):
                     if has_explicit:
                         raise ParseError(
                             "Mixed auto() and explicit values are not yet supported; "
@@ -1806,18 +1844,47 @@ class Parser:
                             stmt,
                         )
                     has_auto = True
+                    auto_form = "auto()"
+                    members.append((member_name, auto_value, self._loc(stmt)))
+                    auto_value += 1
+                    continue
+                if resolved == ("tpy.extern", "native_member"):
+                    if not is_native:
+                        raise ParseError(
+                            "native_member() is only allowed on @native enum members",
+                            stmt,
+                        )
+                    if (len(value_node.args) != 1 or value_node.keywords
+                            or not isinstance(value_node.args[0], ast.Constant)
+                            or not isinstance(value_node.args[0].value, str)):
+                        raise ParseError(
+                            "native_member() takes exactly 1 positional string argument",
+                            stmt,
+                        )
+                    if has_explicit:
+                        raise ParseError(
+                            "Mixed native_member() and explicit values are not "
+                            "supported; use all native_member()/auto() or all "
+                            "explicit values",
+                            stmt,
+                        )
+                    has_auto = True
+                    if auto_form is None:
+                        auto_form = "native_member()"
+                    cpp_member_names[member_name] = value_node.args[0].value
                     members.append((member_name, auto_value, self._loc(stmt)))
                     auto_value += 1
                     continue
                 raise ParseError(
-                    "Enum member value must be an integer literal or auto()", stmt)
+                    "Enum member value must be an integer literal, auto(), "
+                    "or native_member(\"...\") (@native only)", stmt)
 
             # Integer literal (positive)
             if isinstance(value_node, ast.Constant) and isinstance(value_node.value, int) and not isinstance(value_node.value, bool):
                 if has_auto:
                     raise ParseError(
-                        "Mixed auto() and explicit values are not yet supported; "
-                        "use all auto() or all explicit values",
+                        f"Mixed {auto_form} and explicit values are not yet supported; "
+                        f"use all {auto_form} or all explicit values",
                         stmt,
                     )
                 has_explicit = True
@@ -1828,8 +1895,8 @@ class Parser:
                     and isinstance(value_node.operand.value, int)):
                 if has_auto:
                     raise ParseError(
-                        "Mixed auto() and explicit values are not yet supported; "
-                        "use all auto() or all explicit values",
+                        f"Mixed {auto_form} and explicit values are not yet supported; "
+                        f"use all {auto_form} or all explicit values",
                         stmt,
                     )
                 has_explicit = True
@@ -1844,6 +1911,9 @@ class Parser:
         return TpyEnum(
             name=node.name, members=members,
             is_int_enum=is_int_enum, underlying_type_name=underlying_type_name,
+            is_native=is_native, native_name=native_name,
+            cpp_member_names=cpp_member_names,
+            has_explicit_values=has_explicit,
             loc=self._loc(node),
         )
 

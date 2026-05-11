@@ -315,6 +315,17 @@ class TypeRegistrar:
             self.ctx.module_attributes, enum.name,
             SymbolKind.ENUM, enum_type,
         )
+        # @native: normalize native_name to canonical global-scope form
+        # (always ::-prefixed). Bare @native -> "::<short>"; explicit
+        # @native("ns::E") -> "::ns::E"; already-prefixed left alone.
+        native_name: str | None = None
+        if enum.is_native:
+            raw = enum.native_name or enum.name
+            native_name = raw if raw.startswith("::") else f"::{raw}"
+
+        cpp_member_names = tuple(
+            (k, v) for k, v in enum.cpp_member_names.items()
+        )
         attach_dynamic_type_def(
             qname,
             TypeCategory.ENUM,
@@ -324,6 +335,10 @@ class TypeRegistrar:
                 underlying_type=underlying,
                 is_int_enum=enum.is_int_enum,
                 module_name=module_name,
+                is_native=enum.is_native,
+                native_name=native_name,
+                cpp_member_names=cpp_member_names,
+                has_explicit_values=enum.has_explicit_values,
             ),
             is_value_type=True,
         )

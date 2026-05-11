@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "bigint.hpp"
+#include "enum.hpp"
 #include "format.hpp"
 #include "container_ops.hpp"
 #include "next_iter.hpp"
@@ -314,10 +315,21 @@ auto __str__(const T& x) {
     return std::format("{}", x);
 }
 
+// Enum str: same shape as enum __repr__ above. Python prints str(e) and
+// repr(e) identically for enums ("TypeName.MEMBER"), so delegate.
+template<typename T>
+    requires std::is_enum_v<T>
+          && requires(T x) { ::tpy::EnumUtil<T>::name(x); }
+inline std::string __str__(T x) {
+    return ::tpy::detail::enum_repr_string(x);
+}
+
 // Fallback for types with operator<< but no __str__/__repr__/formattable.
+// Excludes enums for the same reason as the __repr__ fallback above.
 template<typename T>
     requires (!requires(const T& t) { t.__str__(); })
           && (!requires(const T& t) { t.__repr__(); })
+          && (!std::is_enum_v<T>)
           && (!std::formattable<T, char>)
           && requires(std::ostream& os, const T& t) { os << t; }
 std::string __str__(const T& x) {
@@ -429,13 +441,31 @@ auto __repr__(const T& x) {
     return std::format("{}", x);
 }
 
+// Enum repr: any enum type with an EnumUtil specialization renders as
+// "TypeName.MEMBER". The operator<<-fallback below explicitly excludes
+// enums via `!std::is_enum_v<T>`, so this template is the only candidate
+// for enum types (partitioning, not partial ordering -- the constraint
+// sets are disjoint, not subsumption-related). For @native enums there
+// is no operator<< at all, so this is the only repr path; for tpy-defined
+// enums it produces the same "TypeName.MEMBER" output that the operator<<
+// body would have generated.
+template<typename T>
+    requires std::is_enum_v<T>
+          && requires(T x) { ::tpy::EnumUtil<T>::name(x); }
+inline std::string __repr__(T x) {
+    return ::tpy::detail::enum_repr_string(x);
+}
+
 // Fallback for types with operator<< but no __repr__/formattable.
 // Excludes TPy records (`__tpy_class_name__`-tagged) so the default-repr
 // template above wins unambiguously -- otherwise both templates match
-// for records without __repr__.
+// for records without __repr__. Also excludes enums so the
+// EnumUtil-driven template above wins for enum types (constraint sets
+// don't subsume, so we disambiguate by partitioning).
 template<typename T>
     requires (!requires(const T& t) { t.__repr__(); })
           && (!requires { T::__tpy_class_name__; })
+          && (!std::is_enum_v<T>)
           && (!std::formattable<T, char>)
           && requires(std::ostream& os, const T& t) { os << t; }
 std::string __repr__(const T& x) {

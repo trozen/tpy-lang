@@ -41,6 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Message& obj) {
 
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Message::Kind> {
+    static constexpr std::string_view type_name = "Kind";
     static std::string_view name(::tpyapp::main::Message::Kind e);
     static const std::array<::tpyapp::main::Message::Kind, 3> members;
     static ::tpyapp::main::Message::Kind from_value(int32_t v);

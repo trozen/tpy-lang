@@ -74,7 +74,7 @@ from ..parse import (
 from ..prescan import match_is_none
 from ..namespace import BindingKind
 from ..sema.numeric_lattice import fixed_int_range_contains
-from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, view_key_target
+from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, enum_cpp_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, view_key_target
 from .functions import literal_mangled_name
 from .. import qnames
 
@@ -3446,25 +3446,28 @@ class ExpressionGenerator:
                         return var_info.cpp_expr
 
                 # Enum type-level member access: Color.Red -> Color::Red
+                # (or ns::E::Red for @native enums; resolved via enum_cpp_name).
+                # For @native enums with native_member() overrides, the
+                # member's C++ enumerator name comes from EnumInfo's rename
+                # map (Python name otherwise).
                 if binding and binding.kind == BindingKind.ENUM:
-                    enum_name = expr.obj.name
-                    # Cross-module enum: qualify to declaring module.
-                    enum_qual = self.ctx.analyzer.registry.imported_enum_qualification(
-                        enum_name, self.ctx.analyzer.ctx.module_name)
-                    if enum_qual is not None:
-                        enum_name = qualified_cpp_name(*enum_qual)
-                    return f"{enum_name}::{cpp_field}"
+                    cur_module = self.ctx.analyzer.ctx.module_name
+                    einfo = enum_info_of(binding.enum_type)
+                    member_cpp = (
+                        einfo.cpp_member_name_map.get(expr.field, expr.field)
+                        if einfo is not None else expr.field
+                    )
+                    return f"{enum_cpp_name(binding.enum_type, cur_module, einfo=einfo)}::{member_cpp}"
 
                 # Nested type access on a record: Container.Kind -> Container::Kind
                 if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):
                     dotted = f"{expr.obj.name}.{expr.field}"
-                    if (self.ctx.analyzer.registry.get_enum(dotted) is not None
-                            or self.ctx.analyzer.registry.get_record(dotted) is not None):
+                    nested_enum = self.ctx.analyzer.registry.get_enum(dotted)
+                    if nested_enum is not None:
+                        cur_module = self.ctx.analyzer.ctx.module_name
+                        return enum_cpp_name(nested_enum, cur_module)
+                    if self.ctx.analyzer.registry.get_record(dotted) is not None:
                         # Cross-module: qualify to declaring module.
-                        enum_qual = self.ctx.analyzer.registry.imported_enum_qualification(
-                            dotted, self.ctx.analyzer.ctx.module_name)
-                        if enum_qual is not None:
-                            return qualified_cpp_name(*enum_qual)
                         rec_qual = self.ctx.analyzer.registry.imported_record_qualification(
                             dotted, self.ctx.analyzer.ctx.module_name)
                         if rec_qual is not None:
@@ -3476,7 +3479,14 @@ class ExpressionGenerator:
             expr_type = self.ctx.get_expr_type(expr)
             if is_enum_type(expr_type) and "." in expr_type.name:
                 # Enum member access: Container.Kind.LIST -> Container::Kind::LIST
-                return f"{expr_type.to_cpp()}::{cpp_field}"
+                # (routes through enum_cpp_name to honor @native rename).
+                cur_module = self.ctx.analyzer.ctx.module_name
+                einfo = enum_info_of(expr_type)
+                member_cpp = (
+                    einfo.cpp_member_name_map.get(expr.field, expr.field)
+                    if einfo is not None else expr.field
+                )
+                return f"{enum_cpp_name(expr_type, cur_module, einfo=einfo)}::{member_cpp}"
 
         obj = self.gen_expr(expr.obj)
         # Assignment narrowing: inline std::get<T> for member access only

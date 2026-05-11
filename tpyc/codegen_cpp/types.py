@@ -18,7 +18,7 @@ from ..typesys import (
 )
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral, TpyIfExpr
 from ..sema.context import PENDING_CONTAINER_TYPES
-from .context import qualified_cpp_name
+from .context import qualified_cpp_name, enum_cpp_name
 from ..type_def_registry import (
     is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_float64_type, is_float32_type,
@@ -337,13 +337,18 @@ class TypeResolver:
                     )
                     return f"{qualified}<{args}>"
                 return qualified
-        # Cross-module enum: qualify to the declaring module (canonical identity).
+        # Enum type-position spelling. Routes through enum_cpp_name so
+        # @native enums render as their user-supplied qname rather than
+        # tpyapp::<module>::E. For local non-native enums this falls
+        # through to the local-name return below.
         if is_enum_type(typ):
-            qual = self.ctx.analyzer.registry.imported_enum_qualification(
-                typ.name, self.ctx.analyzer.ctx.module_name)
-            if qual is not None:
-                source_module, original_name = qual
-                return qualified_cpp_name(source_module, original_name)
+            cur_module = self.ctx.analyzer.ctx.module_name
+            spelled = enum_cpp_name(typ, cur_module)
+            # Only return early if the helper produced something other
+            # than the bare local name (otherwise let the normal type
+            # rendering path continue, which uses _native_cpp_names).
+            if spelled != typ.name:
+                return spelled
         # Tuple types: qualify element types for imported members
         if isinstance(typ, TupleType):
             args = ", ".join(self.type_to_cpp(t) for t in typ.element_types)

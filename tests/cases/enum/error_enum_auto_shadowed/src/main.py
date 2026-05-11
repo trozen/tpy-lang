@@ -5,4 +5,4 @@ def auto() -> int:
     return 99
 
 class T(Enum):
-    A = auto()  # tpyc: error(/integer literal or auto/)
+    A = auto()  # tpyc: error(/integer literal, auto/)

@@ -26,6 +26,8 @@ from tpy.extern import native, export
 | `@native` class -- import C++ class (fields, stub methods) | **Done** |
 | `@native("factory", function=True)` on `__init__` -- factory-style constructor | **Done** |
 | `native_field("cpp_name")` -- per-field C++ rename on `@native` classes | **Done** |
+| `@native` enum -- import C++ `enum class` | **Done** |
+| `native_member("cpp_name")` -- per-member C++ rename on `@native` enums | **Done** |
 | `@export(binding="C")` -- export TPy function | **Done** |
 | `native_global()` -- import C/C++ global variable | **Done** |
 | `# tpy: native_module` | **Done** |
@@ -43,7 +45,6 @@ from tpy.extern import native, export
 | `@export(binding="C")` class -- export C struct | Planned |
 | C header generation (`--emit-c-header`) | Planned |
 | Callback function pointers | Open |
-| Native enums / constants | Open |
 | Auto-bindgen from C headers | Open |
 | Variadic C functions | Open |
 
@@ -181,6 +182,49 @@ extern "C" int32_t shared_data[];
 ```
 
 References to imported globals emit the C/C++ name directly: `print(frame_count)` -> `std::cout << DG_FrameCount`.
+
+### Enums
+
+```python
+# tpy: include("native_types.hpp")
+from enum import Enum, auto
+from tpy.extern import native, native_member
+
+
+@native("cfg::Mode")
+class Mode(Enum):
+    NONE_MODE = native_member("None")  # C++ side has `None` (Python keyword)
+    AUTO = native_member("Auto")
+    MANUAL = native_member("Manual")
+
+
+@native("ns::E")
+class E(Enum):
+    A = auto()                          # C++ name = TPy name (`A`)
+    B = auto()
+
+
+@native("ns::Tag")
+class Tag(Enum):
+    Alpha = 100                         # explicit values are verified
+    Beta = 200                          # against the C++ side via
+    Gamma = 300                         # per-member static_assert
+```
+
+`@native` enums bind to an existing C++ `enum class`; no enum declaration is generated and no `operator<<` is emitted (avoids conflict with user-provided one). The user's `# tpy: include(...)` directive must make the C++ enum type visible.
+
+**Two value-declaration modes.** The TPy-declared value is either *implicit* (via `auto()` or `native_member()`) -- in which case the C++ side is the source of truth and `e.value` reads `static_cast<underlying>(e)` directly -- or *explicit*, in which case codegen emits a per-member `static_assert` pinning the TPy-declared value to the C++ side. A mismatch fails at C++ compile time with a clear "does not match" message rather than silently miscompiling. Use explicit values when you want to document the binding's expected values in TPy source; use `auto()` when you don't want to mirror them.
+
+**`native_member("cpp_name")` aliases the TPy-side member name** when the C++ enumerator is a Python keyword (`None`, `True`, `False`), a TPy keyword, or follows a different naming convention. Member access (`Mode.NONE_MODE`) emits the C++ enumerator (`::cfg::Mode::None`); reflection (`m.name`, `Mode["NONE_MODE"]`) keeps the TPy-side name. Only valid inside `@native` enum bodies; takes a single positional string literal.
+
+**Iteration via reflection.** `match`, `e.name`, `e.value`, `Mode(v)`, and `Mode["MEMBER"]` all work across the binding boundary via `tpy::EnumUtil<E>` generated alongside each `@native` enum.
+
+**Restrictions.**
+- Only `@native` is allowed on enum classes; other decorators and any `@native` kwargs (`binding=`, `function=`, `cpp_return_type=`) are rejected.
+- `auto()` is idiomatic; `native_member("cpp_name")` is also implicit. Explicit integer values are accepted and are verified against the C++ side via a per-member `static_assert` in the generated `.cpp`. Mixing `auto()`/`native_member()` with explicit integers in the same body is rejected.
+- Nested `@native` enums (inside a class body) are not supported. Declare them at module top level using the fully-qualified C++ name (e.g. `@native("ns::Container::Kind") class Kind(Enum): ...`) -- the qname encodes the C++ nesting, so TPy structure does not need to mirror C++ structure.
+- `IntEnum` with an explicit mixin (`class E(Int8, Enum):`) selects the underlying integer type; it must match the C++ side's underlying type.
+- Multiple TPy modules binding to the same C++ enum produce duplicate `EnumUtil<E>` definitions at link time (same constraint as duplicate `@native` records). Declare each binding in one TPy module and import from there.
 
 ### Generic classes
 

@@ -1,0 +1,7 @@
+Mode.NONE_MODE
+Mode.AUTO
+Mode.MANUAL
+off
+auto
+MANUAL
+2

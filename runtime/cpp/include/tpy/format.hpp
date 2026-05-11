@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "core.hpp"
+#include "enum.hpp"
 
 namespace tpy {
 
@@ -680,7 +681,16 @@ template<typename Formatter, typename T>
 inline std::ostream& operator<<(std::ostream& os, const print_optional_val<Formatter, T>& po) {
     if (po.opt.has_value()) {
         if constexpr (std::is_same_v<Formatter, void>) {
-            os << *po.opt;
+            if constexpr (std::is_enum_v<T>
+                          && requires(T x) { ::tpy::EnumUtil<T>::name(x); }) {
+                // Enum: route through the shared EnumUtil formatter.
+                // Avoids requiring an operator<< for the enum (which
+                // @native enums don't emit -- would conflict with any
+                // user-provided one).
+                ::tpy::detail::write_enum_repr(os, *po.opt);
+            } else {
+                os << *po.opt;
+            }
         } else {
             os << Formatter(*po.opt);
         }

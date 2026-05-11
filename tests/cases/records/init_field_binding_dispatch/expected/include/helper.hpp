@@ -16,6 +16,7 @@ enum class Color : int32_t {
 
 template<>
 struct tpy::EnumUtil<::tpyapp::helper::Color> {
+    static constexpr std::string_view type_name = "Color";
     static std::string_view name(::tpyapp::helper::Color e);
     static const std::array<::tpyapp::helper::Color, 2> members;
     static ::tpyapp::helper::Color from_value(int32_t v);

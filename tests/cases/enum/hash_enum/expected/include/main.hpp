@@ -22,6 +22,7 @@ enum class Priority : int32_t {
 
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Color> {
+    static constexpr std::string_view type_name = "Color";
     static std::string_view name(::tpyapp::main::Color e);
     static const std::array<::tpyapp::main::Color, 3> members;
     static ::tpyapp::main::Color from_value(int32_t v);
@@ -31,6 +32,7 @@ struct tpy::EnumUtil<::tpyapp::main::Color> {
 
 template<>
 struct tpy::EnumUtil<::tpyapp::main::Priority> {
+    static constexpr std::string_view type_name = "Priority";
     static std::string_view name(::tpyapp::main::Priority e);
     static const std::array<::tpyapp::main::Priority, 2> members;
     static ::tpyapp::main::Priority from_value(int32_t v);
