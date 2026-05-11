@@ -1,0 +1,1 @@
+Internal `tpy._core` import is a TPy compiler-only path; CPython only sees the user-facing `tpy` package.

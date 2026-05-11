@@ -1487,11 +1487,6 @@ class CodeGenContext:
                 return True
             if self.analyzer.registry.get_function(expr.func_name) is not None:
                 return not self._call_returns_cpp_ref(expr.resolved_function_info)
-            # copy() -> rvalue
-            if expr.func_name in self.analyzer.imported_names:
-                module_name, func_name = self.analyzer.imported_names[expr.func_name]
-                if module_name == "tpy" and func_name == "copy":
-                    return True
             return True  # Default: treat unknown calls as rvalue
         return True  # Default: rvalue
 

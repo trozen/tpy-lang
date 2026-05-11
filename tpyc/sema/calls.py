@@ -1554,7 +1554,6 @@ class CallAnalyzer:
                 f"try_parse() second argument must be a string, got '{arg_type}'",
                 expr,
             )
-        expr.enum_try_parse = enum_type
         expr.resolved_function_info = FunctionInfo(
             name="try_parse",
             params=[],

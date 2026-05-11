@@ -448,11 +448,12 @@ Task` keeps working). `CancelledError` stays in
 `tpy._builtins._exceptions` alongside the rest of the exception
 family. `Future[T]` and `InvalidStateError` are conceptually
 async-runtime primitives but stay in `lib/tpy/asyncio/__init__.py`
-for v1: they call `tpy.copy` whose codegen ordering is incompatible
-with sub-modules of `tpy` (sub-module compiles before `tpy.copy`'s
-overload table is ready). Asyncio re-exports them as `asyncio.Future`
-/ `asyncio.InvalidStateError`. The compile-order gap is tracked
-below; future move once that lands.
+for v1 by convention; asyncio re-exports them as `asyncio.Future` /
+`asyncio.InvalidStateError`. (The earlier blocker -- sub-modules of
+`tpy/` couldn't call `tpy.copy` -- has been fixed by routing the
+relevant `@builtin_function` codegen via the resolved function's
+qname rather than the user-facing import path, so the placement is
+no longer load-bearing.)
 
 ### Phase 1 -- Compiler bindings (prerequisite)
 
@@ -554,15 +555,6 @@ binding work:
 - **`thread_local` storage in TPy**. Would let the executor's
   `current_executor` move out of C++ entirely. Low priority since the
   v1 executor is single-threaded.
-- **Sub-module-of-`tpy` use of `tpy.copy` (and other
-  `@builtin_function`s)**. A class defined in `lib/tpy/tpy/coro/`
-  that calls `copy(value)` errors with "No matching overload for
-  copy" -- the sub-module is compiled before `tpy.copy`'s overload
-  table is registered. Workaround used today: the type stays in a
-  module outside `lib/tpy/tpy/` (e.g. `lib/tpy/asyncio/` for
-  `Future[T]` / `InvalidStateError`). Fix: order the builtin
-  registration before sub-module compilation, or expose copy-like
-  builtins via a path that's resolvable from sub-modules.
 - **`tpy.coro.poll_once`** -- shipped. Real TPy body
   `def poll_once[T](aw: Awaitable[T]) -> Poll[T]: return aw.poll(Waker())`
   in `lib/tpy/tpy/coro/__init__.py`, plus a CPython stub at

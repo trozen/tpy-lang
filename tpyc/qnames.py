@@ -90,6 +90,12 @@ AWAITABLE = "tpy.coro.Awaitable"
 ASYNCIO_RUN = "asyncio.run"
 ASYNCIO_CREATE_TASK = "asyncio.create_task"
 
+# -- tpy @builtin_function names with bespoke codegen emission --
+COPY = "tpy.copy"
+COPY_ITER = "tpy.copy_iter"
+OWN_ITER = "tpy.own_iter"
+TRY_PARSE = "tpy.try_parse"
+
 # -- tpy protocols --
 NATIVE_ITERABLE = "tpy.NativeIterable"
 NATIVE_RANGE_CONSTRUCTIBLE = "tpy.NativeRangeConstructible"

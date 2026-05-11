@@ -76,6 +76,7 @@ from ..namespace import BindingKind
 from ..sema.numeric_lattice import fixed_int_range_contains
 from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, view_key_target
 from .functions import literal_mangled_name
+from .. import qnames
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -640,6 +641,28 @@ class ExpressionGenerator:
         """Generate an OwnIter wrapping for consuming iteration."""
         arg_expr = self.gen_expr(arg)
         return f"::tpy::own_iter(std::move({arg_expr}))"
+
+    def _maybe_gen_special_builtin_call(self, expr: TpyCall | TpyMethodCall) -> str | None:
+        """Emit C++ for the four @builtin_function calls with bespoke shapes,
+        keyed on the resolved function's qualified_name so import path doesn't
+        matter. Returns None if expr doesn't resolve to one of them.
+        """
+        fi = expr.resolved_function_info
+        if fi is None:
+            return None
+        qname = fi.qualified_name
+        if qname == qnames.COPY:
+            return self._gen_copy_expr(expr.args[0])
+        if qname == qnames.COPY_ITER:
+            return self._gen_copy_iter_expr(expr.args[0])
+        if qname == qnames.OWN_ITER:
+            return self._gen_own_iter_expr(expr.args[0])
+        if qname == qnames.TRY_PARSE:
+            enum_type = fi.return_type.inner
+            cpp_type = enum_type.to_cpp()
+            arg = self.gen_expr(expr.args[1])
+            return f"::tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
+        return None
 
     def _maybe_move(self, expr: TpyExpr, gen_code: str) -> str:
         """Wrap in std::move() if expr is a last-use of a movable local."""
@@ -2296,12 +2319,8 @@ class ExpressionGenerator:
             if is_big_int_type(arg_type):
                 arg = f"({arg}).to_fixed_check<{underlying_cpp}>()"
             return f"::tpy::EnumUtil<{cpp_type}>::from_value({arg})"
-        # Enum try_parse: try_parse(Color, "Red") -> ::tpy::EnumUtil<Color>::try_parse("Red")
-        if expr.enum_try_parse is not None:
-            enum_type = expr.enum_try_parse
-            cpp_type = enum_type.to_cpp()
-            arg = self.gen_expr(expr.args[1])
-            return f"::tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
+        if (special := self._maybe_gen_special_builtin_call(expr)) is not None:
+            return special
         # Type constructor with resolved @cpp_template (e.g. Int32(42), str(x))
         # Sema resolves {cpp} and class-level type params, so the template only
         # has positional {0}, {1} placeholders.  Generic constructors (call_type
@@ -2331,15 +2350,6 @@ class ExpressionGenerator:
                            self.ctx.analyzer.registry.get_record(expr.func_name) is not None)
             if not is_shadowed:
                 module_name, func_name = self.ctx.analyzer.imported_names[expr.func_name]
-                # copy(x) from tpy - produce an explicit copy (rvalue) of x
-                if module_name == "tpy" and func_name == "copy":
-                    return self._gen_copy_expr(expr.args[0])
-                # copy_iter(x) - wrap iterable in CopyIter for element-by-element copy
-                if module_name == "tpy" and func_name == "copy_iter":
-                    return self._gen_copy_iter_expr(expr.args[0])
-                # own_iter(x) - move container into OwnIter for consuming iteration
-                if module_name == "tpy" and func_name == "own_iter":
-                    return self._gen_own_iter_expr(expr.args[0])
                 # Check for module function
                 module_info = self.ctx.analyzer.registry.get_module(module_name)
                 if module_info and func_name in module_info.functions:
@@ -2875,22 +2885,8 @@ class ExpressionGenerator:
         # Handle builtin module function/type calls (e.g., time.time() or t.Int32() with import tpy as t)
         if expr.builtin_module_call is not None:
             module_name = expr.builtin_module_call
-            # try_parse(Color, "Red") from tpy
-            if module_name == "tpy" and expr.method == "try_parse":
-                fi = expr.resolved_function_info
-                enum_type = fi.return_type.inner
-                cpp_type = enum_type.to_cpp()
-                arg = self.gen_expr(expr.args[1])
-                return f"::tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
-            # copy() from tpy -- produce an explicit copy (rvalue)
-            if module_name == "tpy" and expr.method == "copy":
-                return self._gen_copy_expr(expr.args[0])
-            # copy_iter() - wrap iterable in CopyIter
-            if module_name == "tpy" and expr.method == "copy_iter":
-                return self._gen_copy_iter_expr(expr.args[0])
-            # own_iter() - move container into OwnIter
-            if module_name == "tpy" and expr.method == "own_iter":
-                return self._gen_own_iter_expr(expr.args[0])
+            if (special := self._maybe_gen_special_builtin_call(expr)) is not None:
+                return special
             # Special-handling functions with cpp_template resolved by sema
             fi = expr.resolved_function_info
             if fi and fi.special_handling and fi.cpp_template:

@@ -327,7 +327,6 @@ class TpyCall(TpyExpr):
     resolved_import: tuple[str, str] | None = None  # Set by parser: (module, name) for resolved imports
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved function overloads
     enum_from_value: NominalType | None = None  # Set by sema for enum value lookup: Color(0)
-    enum_try_parse: NominalType | None = None   # Set by sema for tpy.try_parse(Color, "Red")
     isinstance_var: str | None = None        # Set by sema: variable name being isinstance-checked
     isinstance_type: TpyType | None = None   # Set by sema: resolved type being checked for
     isinstance_is_protocol: bool = False     # Set by sema: protocol isinstance (if constexpr)
