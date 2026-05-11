@@ -1,0 +1,4 @@
+E.A
+True
+Color.RED
+Kind.P

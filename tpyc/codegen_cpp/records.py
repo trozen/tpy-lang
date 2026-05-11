@@ -232,13 +232,20 @@ class RecordGenerator:
             has_params = bool(record.init_method.params)
             saved_func_params = self.ctx.current_func_params
             saved_in_method = self.ctx.in_method
+            saved_ns = self.ctx.current_ns
             self.ctx.current_func_params = {
                 pname: ptype for pname, ptype in record.init_method.params}
             self.ctx.in_method = True
+            # Field-init RHS expressions live lexically in the constructor
+            # body, so binding-based dispatch in expression codegen needs the
+            # constructor's namespace. The non-init body gets the same
+            # namespace handed to gen_body further down.
+            self.ctx.current_ns = self._build_init_local_ns(record)
             base_inits = self._extract_base_inits(record.init_method, record)
             inits, hoisted_ids = self._extract_field_inits(record.init_method, record)
             self.ctx.current_func_params = saved_func_params
             self.ctx.in_method = saved_in_method
+            self.ctx.current_ns = saved_ns
             non_init_stmts = self._get_non_init_stmts(record.init_method, record, hoisted_ids)
 
             self.ctx.emit_preceding_comments(out, record.init_method.loc, indent=INDENT)
@@ -313,10 +320,7 @@ class RecordGenerator:
                 out.write(", ".join(all_inits))
             if non_init_stmts:
                 out.write(" {\n")
-                local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-                local_ns.bind_variable("self", NominalType(record.name))
-                for pname, ptype in record.init_method.params:
-                    local_ns.bind_variable(pname, ptype)
+                local_ns = self._build_init_local_ns(record)
                 self.functions.gen_body(out, non_init_stmts, record.init_method.params,
                                          record.init_method.return_type, record.init_method,
                                          local_ns, indent_level=2, is_method=True,
@@ -863,6 +867,19 @@ class RecordGenerator:
         # Friend declaration for cross-instantiation member access
         friend_tparams = ", ".join("typename" for _ in record_info.type_params)
         out.write(f"{INDENT}template<{friend_tparams}> friend struct {cpp_name};\n")
+
+    def _build_init_local_ns(self, record: TpyRecord) -> Namespace:
+        """Constructor-body namespace: `self` + every __init__ param.
+
+        Used both for MIL hoist (so binding-based dispatch resolves the same
+        way it does for the body) and as gen_body's starting namespace for
+        the non-init body.
+        """
+        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
+        local_ns.bind_variable("self", NominalType(record.name))
+        for pname, ptype in record.init_method.params:
+            local_ns.bind_variable(pname, ptype)
+        return local_ns
 
     def _extract_base_inits(self, init_method: TpyFunction, record: TpyRecord) -> list[str]:
         """Extract base-init calls (super().__init__() and BaseN.__init__(self, ...))

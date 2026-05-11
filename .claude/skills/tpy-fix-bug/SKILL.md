@@ -11,6 +11,43 @@ routinely leave the underlying invariant violation in place and produce
 new symptoms in adjacent features. Default to careful analysis before any
 code change.
 
+## Arguments
+
+Free-text identifier of the bug to address. Accepted forms:
+
+- `upstream #N` -- upstream issue number tagged in a BUGS.md entry
+  (e.g. `upstream #11`).
+- `BUGS.md:LINE` -- line reference into BUGS.md (e.g. `BUGS.md:110`).
+- A short BUGS.md substring -- a distinctive phrase from the entry's
+  first line (e.g. `enum.Enum @native`, `Ptr[T] | None`).
+- `file:line` -- the crash / failure site
+  (e.g. `tpyc/codegen_cpp/expressions.py:3462`).
+- A reproducer path -- `/tmp/agents/.../repro.py` or similar.
+- Free text describing the bug -- when none of the above fit (e.g. a
+  fresh user report not yet in BUGS.md).
+
+Also accepted: positional references that resolve against the immediate
+prior conversation turn (e.g. `the first one`, `the HIGH small one`).
+Only resolve these against the *current* turn's listing -- do not guess
+from older context.
+
+**Before Phase 0**, resolve the argument to a specific bug:
+
+1. If the argument names a BUGS.md entry (any of the first three forms,
+   or a positional reference into a list you just produced), Read the
+   relevant lines and quote the entry's first line back to the user in
+   one sentence. Then proceed.
+2. If the argument is a `file:line`, reproducer path, or free-text
+   description with no clear BUGS.md match, restate what you understand
+   the bug to be in one sentence and proceed. If BUGS.md likely already
+   tracks it, grep for the symptom first and reference the entry.
+3. If no argument is given, the bug must be unambiguous from the prior
+   conversation. If it is not, ask the user to identify it before
+   starting Phase 0.
+
+Do not skip the restatement -- it is the cheap round-trip that catches
+"wrong bug" before the analysis is wasted.
+
 ## Phase 0: Impact assessment
 
 Before anything else, classify the bug and state the classification:
@@ -154,3 +191,38 @@ Sometimes the architectural fix is invasive in awkward ways. That is
 itself a signal: the feature may not fit the existing design well. Flag
 this as a design-level question -- do not reflexively force-fit with a
 patch.
+
+## Throughout: track new issues uncovered
+
+Bug-fix work routinely surfaces adjacent defects -- a related symptom
+the chosen fix doesn't cover, an unrelated crash in the same code path,
+a sema rule that turns out to be wrong, a stale comment that misled
+your analysis. Record each one rather than silently leaving it.
+
+Sources to watch:
+
+- **Phase 1 reproduction:** alternate reproducers that fail in
+  *different* ways (different error, different phase, different code
+  path) -- usually a separate bug, not the same one.
+- **Phase 2 trace:** invariant violations in adjacent code that aren't
+  on the path to the reported symptom but would crash on the next
+  user input that touches them.
+- **Phase 4 cross-feature survey:** symptoms of the same root cause
+  that the chosen fix legitimately won't cover (e.g. when the user
+  picks the patch path, or when the architectural fix is scoped to
+  one binding kind out of several).
+- **Implementation:** new failures the fix exposes -- existing tests
+  that start failing for a *different* reason than what the fix
+  addresses, or fresh crashes the unblocked code path now reaches.
+
+For each new issue:
+
+1. Check `BUGS.md`; if not already tracked, add a new entry there
+   (defects belong in `BUGS.md`, not `TODO.md` -- see CLAUDE.md).
+2. If the issue blocks the current fix from being correct, surface it
+   to the user immediately -- do not paper over it.
+3. If the issue is independent, note it in the final report so the
+   user can decide whether to address it now or later.
+
+Do not file follow-ups only in your end-of-turn summary -- that's
+invisible after the conversation ends.
