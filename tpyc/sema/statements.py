@@ -62,7 +62,6 @@ if TYPE_CHECKING:
 from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _borrow_storage_root
 from .expressions import _collect_body_name_refs, _collect_body_local_defs
 from .local_deduction import collect_pending_source_types
-from .operators import OperatorResolver
 from tpyc import modules as builtin_modules
 from tpyc import qnames
 from ..type_def_registry import (
@@ -4093,10 +4092,11 @@ class StatementAnalyzer:
                     stmt,
                 )
             # Try in-place method first (e.g. __iadd__, __ior__), then binary operator
-            operators = OperatorResolver(self.ctx)
+            operators = self.expr.operators
             protocol_checker = self.protocols.type_conforms_to_protocol if self.protocols else None
             if result := operators.resolve_aug_inplace(
-                target_type, stmt.op, value_type, protocol_checker=protocol_checker,
+                target_type, stmt.op, value_type,
+                protocol_checker=protocol_checker, loc_node=stmt,
             ):
                 stmt.resolved_inplace = result
                 if result.method.params:
@@ -4112,7 +4112,7 @@ class StatementAnalyzer:
                     value_type, expected_param, f"'{stmt.op}=' operand",
                     loc=stmt.loc, source_expr=stmt.value,
                 )
-            if result := operators.resolve_binop(target_type, stmt.op, value_type):
+            if result := operators.resolve_binop(target_type, stmt.op, value_type, loc_node=stmt):
                 stmt.resolved_binop = result
                 return
             raise self.ctx.error(
@@ -4139,8 +4139,8 @@ class StatementAnalyzer:
         if isinstance(stmt.target, TpyName):
             self.ctx.func.value_ranges.pop(stmt.target.name, None)
         # Resolve the binary operation for codegen
-        operators = OperatorResolver(self.ctx)
-        if result := operators.resolve_binop(target_type, stmt.op, resolve_value_type):
+        operators = self.expr.operators
+        if result := operators.resolve_binop(target_type, stmt.op, resolve_value_type, loc_node=stmt):
             stmt.resolved_binop = result
             if is_numeric_target:
                 self._apply_aug_assign_writeback(stmt.target, target_type, result.method.return_type, stmt.op, stmt)

@@ -168,7 +168,6 @@ class SemanticAnalyzer:
 
         # Layer 1: No dependencies on other analyzers
         self.type_ops = TypeOperations(self.ctx)
-        self.operators = OperatorResolver(self.ctx)
         self.compat = TypeCompatibility(self.ctx)
         self.iterable = IterableHelper(self.ctx)
         self.deduction = LocalTypeDeduction(self.ctx, self.compat)
@@ -176,6 +175,7 @@ class SemanticAnalyzer:
         # Layer 2: Depends on type_ops
         self.protocols = ProtocolChecker(self.ctx, self.type_ops)
         self.registrar = TypeRegistrar(self.ctx, self.type_ops, self.protocols)
+        self.operators = OperatorResolver(self.ctx, self.type_ops, self.protocols)
 
         # Wire up compatibility's deferred dependencies
         self.compat.type_ops = self.type_ops

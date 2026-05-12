@@ -12,13 +12,18 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType, TypeParamRef,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
     INT32, FLOAT, PendingListType, make_list, OwnType, unwrap_ref_type,
+    unwrap_readonly,
 )
 from .overloads import type_matches_numeric, type_matches_strict
 from tpyc import modules as builtin_modules
 
 if TYPE_CHECKING:
     from .context import SemanticContext
+    from .protocols import ProtocolChecker as ProtocolCheckerObj
+    from .type_ops import TypeOperations
     ProtocolChecker = Callable[[TpyType, TpyType], bool]
+
+from .bound_check import raise_if_class_param_bound_violated
 
 
 # C++ templates for user-defined dunder methods (used for unified operator resolution)
@@ -76,8 +81,40 @@ def _substitute_type_params(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
 class OperatorResolver:
     """Resolves binary and unary operators using the type registry."""
 
-    def __init__(self, ctx: SemanticContext):
+    def __init__(
+        self, ctx: SemanticContext,
+        type_ops: 'TypeOperations', protocols: 'ProtocolCheckerObj',
+    ):
         self.ctx = ctx
+        self.type_ops = type_ops
+        # Used to enforce class-shadowed method type-param bounds at dispatch.
+        self.protocols = protocols
+
+    def _check_class_bounds(
+        self, method: FunctionInfo, receiver_type: TpyType,
+        class_subst: dict[str, 'TpyType | int'], loc_node,
+    ) -> None:
+        """Raise if the receiver doesn't satisfy a class-shadowed method bound.
+
+        Operator dispatch bypasses `_analyze_generic_method_call` (which runs
+        the same check), so every resolve_* path must invoke this so the
+        sema-level error matches what codegen's `requires` clause catches at
+        C++ instantiation time.
+        """
+        # Cheap method-level guard first: short-circuits the common case
+        # (every operator dispatch where the matched method has no bounds).
+        if not method.type_param_bounds:
+            return
+        # readonly[Box[T]] conforms to any protocol Box[T] does -- mirror that
+        # unwrap here so the bound check operates on the inner record.
+        record = self.ctx.registry.get_record_for_type(unwrap_readonly(receiver_type))
+        if record is None or not record.type_params:
+            return
+        raise_if_class_param_bound_violated(
+            method, record.type_params, class_subst,
+            self.protocols.type_conforms_to_protocol,
+            self.ctx.error, loc_node,
+        )
 
     def _resolve_pending_types(self, tpy_type: TpyType) -> TpyType:
         """Resolve pending/structural types (PendingListType, TypeParamRef, LiteralType).
@@ -113,7 +150,12 @@ class OperatorResolver:
         When the receiver has IntLiteralType element(s), adapts to the arg's
         concrete element type if available, otherwise resolves to default int.
         """
-        subst = builtin_modules.extract_type_params(receiver_type)
+        # Drop int-kind type args (e.g. N in Array[T, N]) --
+        # _substitute_type_params only acts on TypeParamRef -> TpyType.
+        subst: dict[str, TpyType] = {
+            k: v for k, v in self.type_ops.build_type_substitution(receiver_type).items()
+            if isinstance(v, TpyType)
+        }
         if not subst:
             return {}
         arg_params = builtin_modules.extract_type_params(arg_effective)
@@ -145,10 +187,14 @@ class OperatorResolver:
 
     def _make_resolved(
         self, method: FunctionInfo, type_subst: dict[str, TpyType],
-        receiver_type: TpyType, left_wrapper: str = "{expr}",
+        receiver_type: TpyType, loc_node, left_wrapper: str = "{expr}",
         right_wrapper: str = "{expr}", is_reverse: bool = False,
     ) -> ResolvedBinop:
         """Create ResolvedBinop with type params substituted in method signature."""
+        # Bound check before substitution rewrites `method` (bounds are on the
+        # original FunctionInfo and indexed by class-shadow names). Raises on
+        # violation -- the resolver never returns a result carrying one.
+        self._check_class_bounds(method, receiver_type, type_subst, loc_node)
         if type_subst:
             new_params = [
                 dc_replace(p, type=_substitute_type_params(p.type, type_subst))
@@ -184,7 +230,10 @@ class OperatorResolver:
             receiver_type=receiver_type,
         )
 
-    def resolve_binop(self, left_type: TpyType, op: str, right_type: TpyType) -> ResolvedBinop | None:
+    def resolve_binop(
+        self, left_type: TpyType, op: str, right_type: TpyType,
+        loc_node=None,
+    ) -> ResolvedBinop | None:
         """Resolve binary operator using registry.
 
         Handles both builtin types and user-defined types with dunder methods.
@@ -225,7 +274,7 @@ class OperatorResolver:
         if left_record:
             overloads = left_record.get_method_overloads(method_name)
             if method := self._find_matching_overload(overloads, right_arg, left_subst):
-                return self._make_resolved(method, left_subst, left_effective)
+                return self._make_resolved(method, left_subst, left_effective, loc_node)
 
         # 2. Try promoting left to right's type via __int__
         if left_record and right_record:
@@ -238,7 +287,7 @@ class OperatorResolver:
                     right_overloads = right_record.get_method_overloads(method_name)
                     if method := self._find_matching_overload(right_overloads, right_arg, right_subst):
                         return self._make_resolved(
-                            method, right_subst, right_effective,
+                            method, right_subst, right_effective, loc_node,
                             left_wrapper=int_method.cpp_template or "{expr}",
                         )
 
@@ -247,7 +296,7 @@ class OperatorResolver:
             overloads = right_record.get_method_overloads(rmethod_name)
             if method := self._find_matching_overload(overloads, left_arg, right_subst):
                 return self._make_resolved(
-                    method, right_subst, right_effective, is_reverse=True,
+                    method, right_subst, right_effective, loc_node, is_reverse=True,
                 )
 
         # 4. Try promoting right to left's type via __int__, then use left's operator
@@ -261,7 +310,7 @@ class OperatorResolver:
                     left_overloads = left_record.get_method_overloads(method_name)
                     if method := self._find_matching_overload(left_overloads, promoted_type, left_subst):
                         return self._make_resolved(
-                            method, left_subst, left_effective,
+                            method, left_subst, left_effective, loc_node,
                             right_wrapper=int_method.cpp_template or "{expr}",
                         )
 
@@ -270,6 +319,7 @@ class OperatorResolver:
     def resolve_aug_inplace(
         self, target_type: TpyType, op: str, value_type: TpyType,
         protocol_checker: ProtocolChecker | None = None,
+        loc_node=None,
     ) -> ResolvedBinop | None:
         """Resolve in-place augmented assignment operator (e.g. __iadd__, __ior__).
 
@@ -293,12 +343,12 @@ class OperatorResolver:
         # Try builtin methods with cpp_template first
         builtin_overloads = [m for m in overloads if m.cpp_template]
         if method := self._find_matching_overload(builtin_overloads, value_arg, type_subst, protocol_checker):
-            return self._make_resolved(method, type_subst, target_effective)
+            return self._make_resolved(method, type_subst, target_effective, loc_node)
 
         # Then try user-defined methods (no cpp_template)
         user_overloads = [m for m in overloads if not m.cpp_template]
         if method := self._find_matching_overload(user_overloads, value_arg, type_subst, protocol_checker):
-            return self._make_resolved(method, type_subst, target_effective)
+            return self._make_resolved(method, type_subst, target_effective, loc_node)
 
         return None
 
@@ -331,7 +381,9 @@ class OperatorResolver:
             param_type = _substitute_type_params(param_type, type_subst)
         return param_type
 
-    def resolve_unaryop(self, operand_type: TpyType, op: str) -> ResolvedUnaryop | None:
+    def resolve_unaryop(
+        self, operand_type: TpyType, op: str, loc_node=None,
+    ) -> ResolvedUnaryop | None:
         """Resolve unary operator using registry."""
         method_name = builtin_modules.UNARYOP_TO_METHOD.get(op)
         if not method_name:
@@ -342,6 +394,9 @@ class OperatorResolver:
         if record:
             overloads = record.get_method_overloads(method_name)
             if overloads and len(overloads[0].params) == 0:
-                return ResolvedUnaryop(method=overloads[0])
+                method = overloads[0]
+                class_subst = self._build_type_subst(effective_type, effective_type)
+                self._check_class_bounds(method, effective_type, class_subst, loc_node)
+                return ResolvedUnaryop(method=method)
 
         return None

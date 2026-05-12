@@ -27,6 +27,7 @@ from ..prescan import _expr_to_narrowing_key
 from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
 from ..type_def_registry import is_list, is_fstr_type
 from .overloads import resolve_overload, OverloadAmbiguityError
+from .bound_check import raise_if_class_param_bound_violated
 from .calls import (
     arity_error_msg, resolve_kwargs, validate_generic_defaults,
     validate_type_param_bounds,
@@ -1732,15 +1733,11 @@ class MethodAnalyzer:
                     f"Method '{method_info.name}' has bound on class type parameter '{tp}', "
                     f"but the class is not instantiated with a concrete type for '{tp}'",
                     expr)
-            if tp in method_info.type_param_bounds:
-                bound = method_info.type_param_bounds[tp]
-                concrete_type = class_subst[tp]
-                if isinstance(concrete_type, TpyType) and not self.protocols.type_conforms_to_protocol(
-                        concrete_type, bound):
-                    raise self.ctx.error(
-                        f"Method '{method_info.name}' requires type parameter '{tp}' to satisfy "
-                        f"'{bound}', but '{concrete_type}' does not conform",
-                        expr)
+        raise_if_class_param_bound_violated(
+            method_info, record_info.type_params, class_subst,
+            self.protocols.type_conforms_to_protocol,
+            self.ctx.error, expr,
+        )
 
         if not new_params:
             # All method type params are constrained class params -- no inference needed.

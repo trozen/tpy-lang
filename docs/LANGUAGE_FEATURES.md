@@ -2529,6 +2529,8 @@ class ArrayList[T, N: int]:
         self._size += 1
 ```
 
+A per-method bound on a shadowed class type param is interpreted as **"this method is only callable when the class type satisfies the bound"** -- i.e. `ArrayList[NotDefault]` cannot call `append_default`. Sema enforces the rule at every dispatch site (direct method calls, operators including comparisons/arithmetic/augmented assignment/unary, `in`/`not in`, `hash()`, and any protocol-conformance check), producing a diagnostic like `Method 'append_default' requires type parameter 'T' to satisfy 'Default', but 'NotDefault' does not conform`. The C++ output also carries the same rule as a `requires` clause, but users always see the TPy diagnostic before any C++ error.
+
 **`T()` deprecation warning:** Using `T()` for default construction of type parameters emits a warning recommending `make_default()` instead, since `T()` is not supported in CPython.
 
 #### Working: `NativeIterable[T]` (C++ range-for optimization marker)
@@ -3589,7 +3591,7 @@ Without the tag, calling such a generic with only an empty container produces a 
 - **Working**: Generic classes (Python 3.12+ syntax)
 - **Working**: `@staticmethod` → static methods (including on generic classes with type inference)
 - **Working**: Method-level type parameters (`def transform[U](self, val: U) -> U`), including on `@staticmethod`
-- **Working**: Per-method type parameter bounds (`def is_sorted[T: Comparable](self) -> bool`)
+- **Working**: Per-method type parameter bounds (`def is_sorted[T: Comparable](self) -> bool`). Bounds on a method type param that shadows a class type param are enforced as a sema diagnostic at every dispatch site (operators, `in`, `hash()`, protocol conformance, ...), matching the C++ `requires` clause codegen emits.
 - **Working**: Single class inheritance (`class Child(Parent)`)
 - **Working**: Generic inheritance (`class Child[T](Parent[T])`)
 - **Working**: Explicit protocol implementation (`class MyList(Sequence[T])`)

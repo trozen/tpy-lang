@@ -1,0 +1,1 @@
+main.py:26: error: Method '__neg__' requires type parameter 'T' to satisfy 'Comparable', but 'NotComparable' does not conform

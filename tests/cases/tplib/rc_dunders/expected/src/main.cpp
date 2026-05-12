@@ -14,22 +14,22 @@ void main() {
     ::tpystd::tplib::rc::Rc<int32_t> c = ::tpystd::tplib::rc::make_rc<int32_t>(20);
     // # Content equality (not identity): a and b are distinct cells but equal content.
     // print(a == b)             # True
-    std::cout << ::tpy::print_bool((a == b)) << "\n";
+    std::cout << ::tpy::print_bool(((a) == (b))) << "\n";
     // print(a == c)             # False
-    std::cout << ::tpy::print_bool((a == c)) << "\n";
+    std::cout << ::tpy::print_bool(((a) == (c))) << "\n";
     // print(a != c)             # True
     std::cout << ::tpy::print_bool((a != c)) << "\n";
     // # Ordering.
     // print(a < c)              # True
-    std::cout << ::tpy::print_bool((a < c)) << "\n";
+    std::cout << ::tpy::print_bool(((a) < (c))) << "\n";
     // print(c < a)              # False
-    std::cout << ::tpy::print_bool((c < a)) << "\n";
+    std::cout << ::tpy::print_bool(((c) < (a))) << "\n";
     // print(a <= b)             # True
-    std::cout << ::tpy::print_bool((a <= b)) << "\n";
+    std::cout << ::tpy::print_bool(((a) <= (b))) << "\n";
     // print(a >= b)             # True
-    std::cout << ::tpy::print_bool((a >= b)) << "\n";
+    std::cout << ::tpy::print_bool(((a) >= (b))) << "\n";
     // print(c > a)              # True
-    std::cout << ::tpy::print_bool((c > a)) << "\n";
+    std::cout << ::tpy::print_bool(((c) > (a))) << "\n";
     // # Hash equality follows content equality.
     // print(hash(a) == hash(b)) # True
     std::cout << ::tpy::print_bool((::tpy::__hash__(a) == ::tpy::__hash__(b))) << "\n";

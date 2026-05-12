@@ -13,9 +13,9 @@ void test_eq() {
     // c = Box(Int32(2))
     ::tpystd::tplib::box::Box<int32_t> c = ::tpystd::tplib::box::Box<int32_t>(2);
     // print(a == b)
-    std::cout << ::tpy::print_bool((a == b)) << "\n";
+    std::cout << ::tpy::print_bool(((a) == (b))) << "\n";
     // print(a == c)
-    std::cout << ::tpy::print_bool((a == c)) << "\n";
+    std::cout << ::tpy::print_bool(((a) == (c))) << "\n";
     // print(a != b)
     std::cout << ::tpy::print_bool((a != b)) << "\n";
     // print(a != c)
@@ -31,21 +31,21 @@ void test_comparisons() {
     // c = Box(Int32(1))
     ::tpystd::tplib::box::Box<int32_t> c = ::tpystd::tplib::box::Box<int32_t>(1);
     // print(a < b)
-    std::cout << ::tpy::print_bool((a < b)) << "\n";
+    std::cout << ::tpy::print_bool(((a) < (b))) << "\n";
     // print(b < a)
-    std::cout << ::tpy::print_bool((b < a)) << "\n";
+    std::cout << ::tpy::print_bool(((b) < (a))) << "\n";
     // print(a <= c)
-    std::cout << ::tpy::print_bool((a <= c)) << "\n";
+    std::cout << ::tpy::print_bool(((a) <= (c))) << "\n";
     // print(a <= b)
-    std::cout << ::tpy::print_bool((a <= b)) << "\n";
+    std::cout << ::tpy::print_bool(((a) <= (b))) << "\n";
     // print(b > a)
-    std::cout << ::tpy::print_bool((b > a)) << "\n";
+    std::cout << ::tpy::print_bool(((b) > (a))) << "\n";
     // print(a > b)
-    std::cout << ::tpy::print_bool((a > b)) << "\n";
+    std::cout << ::tpy::print_bool(((a) > (b))) << "\n";
     // print(a >= c)
-    std::cout << ::tpy::print_bool((a >= c)) << "\n";
+    std::cout << ::tpy::print_bool(((a) >= (c))) << "\n";
     // print(b >= a)
-    std::cout << ::tpy::print_bool((b >= a)) << "\n";
+    std::cout << ::tpy::print_bool(((b) >= (a))) << "\n";
 }
 
 // def test_hash() -> None:

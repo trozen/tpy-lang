@@ -1,0 +1,1 @@
+main.py:31: error: Method '__iadd__' requires type parameter 'T' to satisfy 'Equatable', but 'NotEquatable' does not conform

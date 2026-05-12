@@ -32,6 +32,7 @@ from ..type_def_registry import (
     is_enum_type, protocol_info_of,
 )
 from ..typesys import is_numeric_type
+from .bound_check import find_method_class_param_bound_violation
 
 
 def _build_parent_protocol_subst(
@@ -601,8 +602,19 @@ class ProtocolChecker:
                     if not self._protocol_type_matches(actual_ptype, expected_ptype):
                         params_match = False
                         break
-                if params_match:
-                    return True
+                if not params_match:
+                    continue
+                # Class-shadowed method type-param bounds: `def m[T: Bound](...)`
+                # on `class C[T]` is "callable only when class T satisfies Bound",
+                # so Box[NotHashable] should NOT conform to Hashable just because
+                # Box has __hash__. type_subst has its TypeParamRef chains already
+                # resolved above, so multi-level inheritance sees the concrete T.
+                if type_subst and find_method_class_param_bound_violation(
+                    method, record_info.type_params, type_subst,
+                    self.type_conforms_to_protocol,
+                ) is not None:
+                    continue
+                return True
             return False
 
     def type_has_field_with_type(self, actual: TpyType, field_name: str, expected_type: TpyType) -> bool:

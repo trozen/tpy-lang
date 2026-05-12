@@ -59,6 +59,7 @@ from .numeric_lattice import widen_numeric_types
 from .list_literals import IterableHelper
 from .local_deduction import collect_pending_source_types
 from .operators import DUNDER_CPP_TEMPLATES, _substitute_type_params
+from .bound_check import raise_if_class_param_bound_violated
 from .overloads import resolve_overload
 
 if TYPE_CHECKING:
@@ -943,12 +944,12 @@ class ExpressionAnalyzer:
             # Validate that user record types support the comparison
             self._validate_comparison(expr, left_effective, right_effective)
             # Resolve comparison method (__eq__, __lt__, etc.) for codegen.
-            if result := self.operators.resolve_binop(left_effective, expr.op, right_effective):
+            if result := self.operators.resolve_binop(left_effective, expr.op, right_effective, loc_node=expr):
                 expr.resolved_binop = result
             elif expr.op == "!=":
                 # No __ne__: fall back to negated __eq__ when the method
                 # can't use raw C++ != (e.g. native freestanding function).
-                if result := self.operators.resolve_binop(left_effective, "==", right_effective):
+                if result := self.operators.resolve_binop(left_effective, "==", right_effective, loc_node=expr):
                     if result.method.native_function:
                         expr.resolved_binop = result
             return BOOL
@@ -976,7 +977,12 @@ class ExpressionAnalyzer:
             if right_record:
                 contains_overloads = right_record.get_method_overloads("__contains__")
                 if contains_overloads:
-                    type_subst = builtin_modules.extract_type_params(right_type)
+                    # Drop int-kind type args (e.g. N in Array[T, N]) --
+                    # _substitute_type_params only acts on TypeParamRef -> TpyType.
+                    type_subst = {
+                        k: v for k, v in self.type_ops.build_type_substitution(right_type).items()
+                        if isinstance(v, TpyType)
+                    }
                     # Substitute type params for generic containers
                     subst_overloads = contains_overloads
                     if type_subst:
@@ -1003,7 +1009,13 @@ class ExpressionAnalyzer:
                     if matched is not None:
                         # Map back to the original (un-substituted) method for codegen
                         idx = subst_overloads.index(matched)
-                        expr.resolved_contains = contains_overloads[idx]
+                        original_method = contains_overloads[idx]
+                        raise_if_class_param_bound_violated(
+                            original_method, right_record.type_params, type_subst,
+                            self.protocols.type_conforms_to_protocol,
+                            self.ctx.error, expr,
+                        )
+                        expr.resolved_contains = original_method
                         return BOOL
                     # No __contains__ overload matched. Defer to
                     # check_type_compatible: it raises for genuine mismatches
@@ -1112,7 +1124,7 @@ class ExpressionAnalyzer:
             # Keep Python-style true division semantics for all-literal integer
             # expressions regardless of default-int setting.
             if expr.op == "div":
-                if result := self.operators.resolve_binop(BIGINT, expr.op, BIGINT):
+                if result := self.operators.resolve_binop(BIGINT, expr.op, BIGINT, loc_node=expr):
                     expr.resolved_binop = result
                     return result.method.return_type
                 return FLOAT
@@ -1123,7 +1135,7 @@ class ExpressionAnalyzer:
                 else self.ctx.default_int_type
             )
             # Still resolve for codegen (bitwise ops need cpp template).
-            if result := self.operators.resolve_binop(resolved_int, expr.op, resolved_int):
+            if result := self.operators.resolve_binop(resolved_int, expr.op, resolved_int, loc_node=expr):
                 expr.resolved_binop = result
             return IntLiteralType(literal_result)
 
@@ -1141,7 +1153,7 @@ class ExpressionAnalyzer:
                     return return_type
 
         # Arithmetic/bitwise operators - use registry
-        if result := self.operators.resolve_binop(left_effective, expr.op, right_effective):
+        if result := self.operators.resolve_binop(left_effective, expr.op, right_effective, loc_node=expr):
             expr.resolved_binop = result
             # Check if divisor is provably non-zero for div/mod elision
             if expr.op in ("//", "%"):
@@ -1165,6 +1177,11 @@ class ExpressionAnalyzer:
                         if type_subst:
                             param_type = self.type_ops.substitute_types(param_type, type_subst)
                         if param_type == right_effective:
+                            raise_if_class_param_bound_violated(
+                                method, record.type_params, type_subst,
+                                self.protocols.type_conforms_to_protocol,
+                                self.ctx.error, expr,
+                            )
                             ret_type = method.return_type
                             if type_subst:
                                 ret_type = self.type_ops.substitute_types(ret_type, type_subst)
@@ -1328,7 +1345,7 @@ class ExpressionAnalyzer:
         # Float types support unary negation and plus
         if is_any_float_type(effective_type):
             if expr.op in ("-", "+"):
-                if result := self.operators.resolve_unaryop(effective_type, expr.op):
+                if result := self.operators.resolve_unaryop(effective_type, expr.op, loc_node=expr):
                     expr.resolved_unaryop = result
                 return effective_type
 
@@ -1340,23 +1357,23 @@ class ExpressionAnalyzer:
         if isinstance(effective_type, IntLiteralType):
             if expr.op == "-":
                 # Still resolve for codegen (needs cpp template)
-                if result := self.operators.resolve_unaryop(effective_type, expr.op):
+                if result := self.operators.resolve_unaryop(effective_type, expr.op, loc_node=expr):
                     expr.resolved_unaryop = result
                 neg = -effective_type.value if effective_type.value is not None else None
                 return IntLiteralType(neg)
             if expr.op == "+":
-                if result := self.operators.resolve_unaryop(effective_type, expr.op):
+                if result := self.operators.resolve_unaryop(effective_type, expr.op, loc_node=expr):
                     expr.resolved_unaryop = result
                 return effective_type
             if expr.op == "~":
                 # Bitwise not on literal - treat as Int32
                 # Still resolve for codegen
-                if result := self.operators.resolve_unaryop(effective_type, expr.op):
+                if result := self.operators.resolve_unaryop(effective_type, expr.op, loc_node=expr):
                     expr.resolved_unaryop = result
                 return INT32
 
         # Use registry for unary operators
-        if result := self.operators.resolve_unaryop(effective_type, expr.op):
+        if result := self.operators.resolve_unaryop(effective_type, expr.op, loc_node=expr):
             expr.resolved_unaryop = result
             return result.method.return_type
 
