@@ -956,20 +956,38 @@ class StatementGenerator:
                     rebind_decl = f"{indent}{static_kw}{slot_opt_cpp} {slot};\n"
             return f"{rebind_decl}{indent}{const_pfx}{cpp_type}* {name} = nullptr;\n"
 
-        init_type = self.ctx.get_expr_type(init)
-        # Own[OptionalType[T_ref]] rvalue (function return) into a pointer-form
-        # Optional local: the function returns std::optional<T> (storage form)
-        # but the local is T*. Materialize a slot to hold the optional, then
-        # lift to a pointer that aliases the slot's storage. Parallel to the
-        # to_ptr_variant rvalue path for non-value Unions. Rebinds
-        # (`x = make(...)`) reassign the slot and re-lift via rebind_slots[name].
-        if self.ctx.callee_returns_own_ptr_optional(init):
+        # OPTIONAL_STORAGE source: an `Own[Opt[T_ref]]` storage-form
+        # `optional<T>` value consumed as `T*`. Two source shapes share
+        # the same `optional_to_ptr` lift but live at different lifetime
+        # tiers:
+        #   * rvalue call (callee returns `Own[Opt[T_ref]]`) -- the
+        #     returned `optional<P>` has no other home, materialize a
+        #     slot and lift the slot. Rebinds reuse `rebind_slots[name]`.
+        #   * lvalue name (`Own[Opt[T_ref]]` param in `optional_locals`)
+        #     -- the param itself is the storage; pure lift, no slot.
+        # Dispatched structurally on AST shape so the param-source case
+        # cannot route through the slot path (which would emit a
+        # redundant `std::optional<P> __slot = x;` materialization that
+        # regressed `cases/auto_move/scalar_own_optional` on a prior
+        # attempt that gated both tiers on a single polymorphic predicate).
+        # `callee_returns_own_ptr_optional` is already AST-aware (returns
+        # False for non-call nodes), so no outer isinstance pre-guard.
+        is_call_src = self.ctx.callee_returns_own_ptr_optional(init)
+        is_name_src = (isinstance(init, TpyName)
+                       and self.ctx.needs_optional_to_ptr_lift(init.name))
+        if is_call_src or is_name_src:
             init_expr = self.expressions.gen_expr(init, target_type)
-            static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
-            slot = self.ctx.slots.next_slot()
-            self.ctx.rebind_slots[name] = slot
-            return (f"{indent}{static_kw}std::optional<{cpp_type}> {slot} = {init_expr};\n"
-                    f"{indent}{const_pfx}{cpp_type}* {name} = ::tpy::optional_to_ptr({slot});\n")
+            if is_call_src:
+                static_kw = "static " if self.ctx.current_ns is self.ctx.analyzer.global_ns else ""
+                slot = self.ctx.slots.next_slot()
+                self.ctx.rebind_slots[name] = slot
+                slot_type = self._slot_decl_type(cpp_type, is_opt_field=True)
+                deref = self._ptr_from_local_slot(slot, is_opt_field=True)
+                return (f"{indent}{static_kw}{slot_type} {slot} = {init_expr};\n"
+                        f"{indent}{const_pfx}{cpp_type}* {name} = {deref};\n")
+            return f"{indent}{const_pfx}{cpp_type}* {name} = ::tpy::optional_to_ptr({init_expr});\n"
+
+        init_type = self.ctx.get_expr_type(init)
         is_opt_field = (isinstance(init_type, OptionalType)
                         and init_type.uses_pointer_repr()
                         and isinstance(init, TpyFieldAccess))
@@ -992,11 +1010,6 @@ class StatementGenerator:
                             and init.name in self.ctx.const_storage_form_optional_locals)):
                     const_pfx = "const "
                     self.ctx.const_indirect_locals.add(name)
-                init_expr = self.expressions.gen_expr(init, target_type)
-                return f"{indent}{const_pfx}{cpp_type}* {name} = ::tpy::optional_to_ptr({init_expr});\n"
-            if isinstance(init, TpyName) and self.ctx.needs_optional_to_ptr_lift(init.name):
-                # OPTIONAL_STORAGE source name (Own[Opt[P_ref]] param): C++
-                # shape is std::optional<P>, declaration target is P*.
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return f"{indent}{const_pfx}{cpp_type}* {name} = ::tpy::optional_to_ptr({init_expr});\n"
             if not (isinstance(init, TpyFieldAccess) and self.ctx.is_rvalue_source(init)):
@@ -1105,16 +1118,25 @@ class StatementGenerator:
                 return f"{indent}(*{cpp_name}) = std::monostate{{}};\n"
             return f"{indent}{cpp_name} = nullptr;\n"
 
-        # Own[OptionalType[P_ref]] function-return rebind: source is the
-        # storage-form optional<P>, slot was declared as std::optional<P>
-        # at init time. Reassign via slot + optional_to_ptr lift; same shape
-        # as the init path in _gen_pointer_local_init.
-        if self.ctx.callee_returns_own_ptr_optional(init):
+        # OPTIONAL_STORAGE source: see the parallel handler in
+        # _gen_pointer_local_init for the design rationale. rvalue call
+        # reuses the slot declared at init site; lvalue name lifts
+        # directly. Structural AST-shape dispatch keeps the param-source
+        # case off the slot path. If the call-source path finds no slot
+        # (defensive -- the init-site path always declares one), falls
+        # through to the generic rvalue path below.
+        is_call_src = self.ctx.callee_returns_own_ptr_optional(init)
+        is_name_src = (isinstance(init, TpyName)
+                       and self.ctx.needs_optional_to_ptr_lift(init.name))
+        if is_call_src:
             rebind_slot = self.ctx.rebind_slots.get(name)
             if rebind_slot is not None:
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return (f"{indent}{rebind_slot} = {init_expr};\n"
                         f"{indent}{cpp_name} = ::tpy::optional_to_ptr({rebind_slot});\n")
+        elif is_name_src:
+            init_expr = self.expressions.gen_expr(init, target_type)
+            return f"{indent}{cpp_name} = ::tpy::optional_to_ptr({init_expr});\n"
 
         init_type = self.ctx.get_expr_type(init)
         # Optional non-value field on lvalue -> optional_to_ptr directly
@@ -1134,15 +1156,6 @@ class StatementGenerator:
             if isinstance(init, TpyFieldAccess):
                 # rvalue field: fall through to rvalue path
                 pass
-            elif isinstance(init, TpyName) and self.ctx.needs_optional_to_ptr_lift(init.name):
-                # OPTIONAL_STORAGE source name (Own[Opt[P_ref]] param):
-                # C++ shape is std::optional<P>, rebind target wants P*.
-                # Same lift as the storage-form lvalue path above; not
-                # gated on is_storage_form_optional_source because that
-                # predicate excludes optional_locals (they need different
-                # downstream handling at the field-access dispatch).
-                init_expr = self.expressions.gen_expr(init, target_type)
-                return f"{indent}{cpp_name} = ::tpy::optional_to_ptr({init_expr});\n"
             else:
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return f"{indent}{cpp_name} = {init_expr};\n"
