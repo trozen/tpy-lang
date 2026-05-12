@@ -942,11 +942,10 @@ class MethodAnalyzer:
         if binding and binding.kind == BindingKind.RECORD:
             record_info = self.ctx.registry.get_record(expr.obj.name)
         elif binding and binding.kind == BindingKind.IMPORTED_NAME:
-            # Builtin types imported from modules (e.g. from tpy import UInt8)
             import_info = self.ctx.imported_names.get(expr.obj.name)
             if import_info:
-                qname = f"{import_info[0]}.{import_info[1]}"
-                record_info = self.ctx.registry.get_builtin_record(qname)
+                record_info = self.ctx.registry.find_record_by_qname(
+                    f"{import_info[0]}.{import_info[1]}")
 
         if record_info is None:
             return None

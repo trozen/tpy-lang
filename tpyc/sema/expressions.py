@@ -1587,9 +1587,8 @@ class ExpressionAnalyzer:
         elif binding.kind == BindingKind.IMPORTED_NAME:
             import_info = self.ctx.imported_names.get(expr.obj.name)
             if import_info:
-                src_mod, src_name = import_info
-                record_info = (self.ctx.registry.get_builtin_record(f"{src_mod}.{src_name}")
-                               or self.ctx.registry.find_module_record(src_mod, src_name))
+                record_info = self.ctx.registry.find_record_by_qname(
+                    f"{import_info[0]}.{import_info[1]}")
         if record_info is None:
             return None
         # Phase 9: bare-class access on a generic class can't render the
@@ -1636,10 +1635,8 @@ class ExpressionAnalyzer:
         elif binding.kind == BindingKind.IMPORTED_NAME:
             import_info = self.ctx.imported_names.get(expr.obj.name)
             if import_info:
-                qname = f"{import_info[0]}.{import_info[1]}"
-                record_info = self.ctx.registry.get_builtin_record(qname)
-                if record_info is None:
-                    record_info = self.ctx.registry.get_record(qname)
+                record_info = self.ctx.registry.find_record_by_qname(
+                    f"{import_info[0]}.{import_info[1]}")
         if record_info is None:
             return None
 

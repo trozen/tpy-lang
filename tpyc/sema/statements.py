@@ -627,11 +627,8 @@ class StatementAnalyzer:
             import_info = self.ctx.imported_names.get(expr.name)
             if import_info is None:
                 return False
-            src_mod, src_name = import_info
-            return bool(
-                self.ctx.registry.get_builtin_record(f"{src_mod}.{src_name}")
-                or self.ctx.registry.find_module_record(src_mod, src_name)
-            )
+            return bool(self.ctx.registry.find_record_by_qname(
+                f"{import_info[0]}.{import_info[1]}"))
         return False
 
     def _check_class_constant_write(self, target: TpyExpr, stmt: TpyStmt) -> None:

@@ -4666,10 +4666,10 @@ print(MAX)  # 100
 ```
 
 **Supported import styles:**
-- `from mod import func, Record, Protocol` - import specific items
+- `from mod import func, Record, Protocol` - import specific items. `from mod import Cls` makes `Cls(...)` and `Cls.staticmethod(...)` (incl. inherited via MRO and method-level type args) work; also `Cls.field` for class constants and `Cls.Inner` for nested types
 - `from mod import *` - star import; respects `__all__` if defined (see the dedicated star-import bullet above for `__all__` literal forms and known limitations)
-- `import mod` then `mod.func()` / `mod.CONST` / `mod.Record` - module-qualified access (calls, variables, types)
-- `from mod import X as Y` - import with alias
+- `import mod` then `mod.func()` / `mod.CONST` / `mod.Record` - module-qualified access (calls, variables, types). Three-level chains through a module-namespace variable (`mod.Cls.staticmethod(...)`, `mod.Cls.CONST`) are **not yet supported** -- see BUGS.md; workaround is `from mod import Cls`
+- `from mod import X as Y` - import with alias; `Y(...)` and `Y.staticmethod(...)` route to the same record as the un-aliased form
 - `from pkg import submod` - bind submodule as namespace (`submod.fn()`, `submod.Type` annotations)
 - `import pkg.sub` - dotted import; both `pkg.sub.fn()` and `pkg.sub.CONST` work
 
