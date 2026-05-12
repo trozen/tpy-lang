@@ -19,10 +19,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterable, NamedTuple, TYPE_CHECKING
 
-from .parse import Parser, ParseError, TpyModule, TpyImport, TpyVarDecl, RelativeImportKey, SourceLocation, scan_star_exports
-from .parse.imports import (
-    StarImportResolver, NonLiteralAllError, _PRIVATE_MODULE_PUBLIC_NAMES,
-)
+from .parse import Parser, ParseError, TpyModule, TpyImport, TpyVarDecl, RelativeImportKey, SourceLocation
+from .parse.imports import _IMPLICIT_MODULES, _PRIVATE_MODULE_PUBLIC_NAMES, route_stdlib_name
 from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from .sema.reach_analysis import compute_reached_symbols
@@ -1118,9 +1116,7 @@ class Compiler:
                 # are available when parsing the entry module.
                 self._discover_implicit_stdlib()
 
-            resolver_fn = self._make_star_import_resolver() if self.resolver else None
-            parser = Parser(decorator_schemas=self._decorator_schemas,
-                            star_import_resolver=resolver_fn)
+            parser = Parser(decorator_schemas=self._decorator_schemas)
             ast = parser.parse(source, module_name=entry_name, is_entry_point=True)
             self._decorator_schemas.update(parser._decorator_schemas)
             self.modules[entry_name] = CompiledModule(
@@ -1159,6 +1155,7 @@ class Compiler:
             self._pre_populate_reexport_bindings()
             for name in self.compile_order:
                 compiled = self.modules[name]
+                self._expand_star_imports_for_module(compiled)
                 self._resolve_types_for_module(compiled)
                 self._finalize_declarations(compiled)
             self._check_workspace_completeness_cycles()
@@ -1212,6 +1209,7 @@ class Compiler:
         self._pre_populate_reexport_bindings()
         for module_name in self.compile_order:
             compiled = self.modules[module_name]
+            self._expand_star_imports_for_module(compiled)
             self._resolve_types_for_module(compiled)
             self._finalize_declarations(compiled)
         # Completeness-graph reject gate.
@@ -1261,29 +1259,6 @@ class Compiler:
             return True
         except ValueError:
             return False
-
-    def _make_star_import_resolver(self) -> StarImportResolver:
-        """Create a callback for resolving star import exports via ModuleResolver."""
-        cache: dict[str, frozenset[str]] = {}
-
-        def resolver(module_name: str) -> frozenset[str] | None:
-            if not self.resolver:
-                return None
-            resolved = self.resolver.resolve(module_name)
-            if resolved is None:
-                return None
-            key = str(resolved.path)
-            if key not in cache:
-                source = resolved.path.read_text()
-                try:
-                    cache[key] = scan_star_exports(source)
-                except NonLiteralAllError:
-                    raise ParseError(
-                        f"'from {module_name} import *': __all__ in '{module_name}' "
-                        f"is not a compile-time literal")
-            return cache[key]
-
-        return resolver
 
     def _discover_implicit_stdlib(self) -> None:
         """Discover implicit stdlib modules that builtins depend on."""
@@ -1355,8 +1330,7 @@ class Compiler:
             return
 
         # Parse the module
-        parser = Parser(decorator_schemas=self._decorator_schemas,
-                        star_import_resolver=self._make_star_import_resolver())
+        parser = Parser(decorator_schemas=self._decorator_schemas)
         try:
             ast = parser.parse(source, module_name=module_name,
                                is_package_init=is_package_init,
@@ -3039,13 +3013,17 @@ class Compiler:
         bindings, the consumer hits "X not found in module Y".
 
         Iterates to a fixpoint so SCC-internal chains converge.
+
+        Star-import placeholders (`from M import *` leaves
+        `ast.imports[M]` empty at parse time) are filled later by
+        `_expand_star_imports_for_module`, called per consumer in
+        topological order before its `_finalize_declarations`. By that
+        point the source module's `module_attributes` has its full
+        decl set including variables, which only land in the table
+        when their type is resolved during the source's own
+        `register_globals` -- earlier than this pass can see them.
         """
         from .symbol_binding import install_binding
-        # Precompute the per-module work list once -- (own_table, src_table,
-        # name pairs) for each `from src_module import ...` whose
-        # src_module is a known compiled module. External modules
-        # (tpy/builtins/typing) are filtered out here; bind_imports
-        # handles them via its own machinery.
         work: list[tuple[dict, dict, set[tuple[str, str]], str]] = []
         for compiled in self.modules.values():
             ast = compiled.ast
@@ -3060,8 +3038,6 @@ class Compiler:
                 work.append((compiled.module_attributes,
                              src_compiled.module_attributes, names, src_module))
         progress = True
-        # Fixpoint bound: SCC-internal chains converge in O(longest-chain)
-        # iterations, and pathological cases stop at len(modules) + 2.
         max_iters = len(self.modules) + 2
         while progress and max_iters > 0:
             progress = False
@@ -3080,6 +3056,139 @@ class Compiler:
                         canonical_name=src_bd.canonical_name,
                     )
                     progress = True
+
+    def _expand_star_imports_for_module(self, compiled: 'CompiledModule') -> None:
+        """Expand each `from M import *` placeholder in `compiled.ast`
+        by iterating `M`'s per-module attribute table. Filters via
+        `_star_exportable` (the `__all__` literal on `M.ast.module_all`
+        when set, plus the leading-underscore rule).
+
+        Runs once per consumer in topological compile order, before
+        the consumer's `_resolve_types_for_module`. Topological order
+        means every non-cycle-peer source `M` has already completed
+        `_finalize_declarations`, so `M.module_attributes` is fully
+        populated -- including variables, which `register_globals`
+        installs only after type resolution. Cycle peers share the
+        same limitation as the existing variable / type-alias
+        re-export gaps (see BUGS.md).
+
+        Populates both `compiled.ast.imports[M]` (consumed by sema's
+        `bind_imports`) and the parser's `_name_index` (consumed by
+        the upcoming `resolve_refs` pass for type annotations that
+        reference star-imported names)."""
+        ast = compiled.ast
+        if ast is None or not ast.star_imports:
+            return
+        for src_module in ast.star_imports:
+            # Implicit-stdlib stars (`from tpy/builtins/typing import *`)
+            # are expanded at parse time by `ImportProcessor`, so
+            # `ast.imports[src_module]` is already populated and the
+            # `_name_index` is already routed. Skipping avoids a no-op
+            # rescan of `tpy.module_attributes` for every consumer.
+            if src_module in _IMPLICIT_MODULES:
+                continue
+            self._expand_one_star_import(compiled, src_module)
+
+    @staticmethod
+    def _star_exportable(name: str, module_all: 'frozenset[str] | None',
+                         binding=None) -> bool:
+        """`from M import *` filter: True if `name` should land in the
+        consumer's namespace. Mirrors CPython: explicit `__all__` wins;
+        otherwise the leading-underscore rule applies. Parser keywords
+        (the few bootstrap decorator stubs in tpy.extern) never escape
+        a star import even when their `__all__` would include them;
+        the `binding` parameter is omitted at pass-2 callsites where
+        the kind isn't known."""
+        if binding is not None and binding.kind == SymbolKind.PARSER_KEYWORD:
+            return False
+        if module_all is not None:
+            return name in module_all
+        return not name.startswith("_")
+
+    def _expand_one_star_import(
+        self, compiled: 'CompiledModule', src_module: str,
+    ) -> None:
+        """Fill the `from src_module import *` placeholder in
+        `compiled.ast.imports[src_module]`.
+
+        Two passes are needed:
+          1. `module_attributes` covers locally-defined records /
+             functions / enums / protocols / variables (post-pre-pop
+             and post-sema).
+          2. `ast.imports` covers parser-keyword / builtin re-exports
+             (like `from tpy import Int32`) that have no .py-level
+             Info payload and so don't end up in `module_attributes`.
+
+        Both passes target the same `imports[src_module]` bucket, so
+        a single `seen_locals` set deduplicates across them. No-op
+        when `src_module` is not in `ast.imports` (e.g. stdlib star
+        whose names the parser still expands inline, or an external
+        module without a CompiledModule)."""
+        ast = compiled.ast
+        if ast is None or src_module not in ast.imports:
+            return
+        src_bucket = ast.imports[src_module]
+        if not isinstance(src_bucket, set):
+            return
+        src_compiled = self.modules.get(src_module)
+        if src_compiled is None or src_compiled.ast is None:
+            return
+        src_module_all = src_compiled.ast.module_all
+        seen_locals = {local for (_, local) in src_bucket}
+        for name, cell in src_compiled.module_attributes.items():
+            if name in seen_locals:
+                continue
+            binding = cell.binding
+            if not self._star_exportable(name, src_module_all, binding):
+                continue
+            self._record_star_imported_name(
+                compiled, src_module, name, name, binding)
+            seen_locals.add(name)
+        for other_src, names in src_compiled.ast.imports.items():
+            if not isinstance(names, set):
+                continue
+            for orig, local in names:
+                if local in seen_locals:
+                    continue
+                if not self._star_exportable(local, src_module_all):
+                    continue
+                self._record_star_imported_name(
+                    compiled, other_src, orig, local, binding=None)
+                seen_locals.add(local)
+
+    def _record_star_imported_name(
+        self, compiled: 'CompiledModule', src_module: str,
+        original_name: str, local_name: str,
+        binding,
+    ) -> None:
+        """Register one star-imported name in the consumer's parsed
+        import dict and parser name_index.
+
+        The (name, name) entry always lands in `ast.imports[src_module]`
+        so sema's `bind_imports` processes the name through its
+        existing star branch (`_register_user_module_import` followed
+        by `_bind_star_reexport` on miss). The parser-side
+        `_name_index` is rerouted to the ultimate definer when known
+        (pass 1 binding) or the public stdlib module (pass 2 builtin
+        names) so cross-module canonicalization lands at e.g.
+        `tpy.Int32` rather than the private `tpy._core._types.Int32`.
+        """
+        ast = compiled.ast
+        if ast is None:
+            return
+        bucket = ast.imports.setdefault(src_module, set())
+        if isinstance(bucket, set):
+            bucket.add((original_name, local_name))
+        if ast.resolver is None:
+            return
+        if binding is not None and binding.defining_module is not None:
+            index_module, index_orig = (
+                binding.defining_module, binding.canonical_name)
+        elif binding is None and (stdlib := route_stdlib_name(original_name)):
+            index_module, index_orig = stdlib
+        else:
+            index_module, index_orig = src_module, original_name
+        ast.resolver.index_imported_name(local_name, index_module, index_orig)
 
     def _flatten_var_reexport(self, source_module: str,
                                original_name: str) -> tuple[str, str]:

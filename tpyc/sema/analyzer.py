@@ -408,26 +408,30 @@ class SemanticAnalyzer:
                 # Stored as (original_name, local_name) tuples to support aliases
                 is_star = import_module_name in module.star_imports
                 for original_name, local_name in names:
-                    if is_star and import_module_name in module.user_module_imports:
-                        # Star imports: register first, skip binding if the
-                        # name isn't in the module's actual exports (it may be
-                        # a re-imported name visible in source but not in ModuleInfo).
-                        if not self._register_user_module_import(
-                                import_module_name, original_name, local_name,
-                                from_star_import=True):
-                            # Name not in this module's exports -- try to
-                            # re-resolve it from other known modules so that
-                            # re-imported names (e.g. Int32 via utils) still
-                            # work when there is no explicit tpy import.
-                            if local_name not in self.ctx.imported_names:
-                                self._bind_star_reexport(original_name, local_name)
-                            continue
-
+                    is_user_module = import_module_name in module.user_module_imports
+                    # Generic IMPORTED_NAME goes in first so the
+                    # kind-specific binding installed by
+                    # `_register_user_module_import` (bind_variable /
+                    # bind_enum / ...) lands on top for callers that
+                    # consult the namespace by kind.
                     self.ctx.imported_names[local_name] = (import_module_name, original_name)
                     self.ctx.global_ns.bind_imported_name(local_name, import_module_name, original_name)
 
-                    # For explicit user module imports, register after binding
-                    if not is_star and import_module_name in module.user_module_imports:
+                    if is_star and is_user_module:
+                        if not self._register_user_module_import(
+                                import_module_name, original_name, local_name,
+                                from_star_import=True):
+                            # Re-resolve a name absent from this source's
+                            # exports against any module that does export
+                            # it (typical case: `Int32` star-imported via
+                            # `from utils import *` where utils itself
+                            # re-imports it from tpy). `_bind_star_reexport`
+                            # rewrites `imported_names` and the namespace
+                            # binding to point at the actual definer.
+                            self._bind_star_reexport(original_name, local_name)
+                        continue
+
+                    if is_user_module:
                         self._register_user_module_import(import_module_name, original_name, local_name)
                     # Register tpy type aliases from .py stubs (no-op for non-alias names)
                     elif import_module_name == "tpy":
@@ -2427,6 +2431,25 @@ class SemanticAnalyzer:
             install_binding(
                 self.ctx.module_attributes, local_name,
                 SymbolKind.ENUM, info,
+                defining_module=ult_mod, canonical_name=ult_name,
+            )
+            return True
+        if kind in (SymbolKind.OPAQUE, SymbolKind.PARSER_KEYWORD):
+            # Parser keywords / builtin types have no analyzer registry
+            # registration (the parser resolves them via TypeDef /
+            # decorator schemas) and no `global_ns` counterpart (use
+            # sites for these names go through the parser's
+            # `_name_index` route, not the namespace lookup). We only
+            # propagate the per-module attribute binding so consumers'
+            # `from M import X` (explicit or star) and the cycle
+            # re-export pre-pop both find the chain entry. The lack of
+            # a `global_ns.bind_imported_name` here is intentional --
+            # adding it would shadow the parser-keyword fallback path
+            # in `_analyze_name` and break the bootstrap that lets
+            # `@builtin_decorator` resolve before sema runs.
+            install_binding(
+                self.ctx.module_attributes, local_name,
+                kind, info,
                 defining_module=ult_mod, canonical_name=ult_name,
             )
             return True

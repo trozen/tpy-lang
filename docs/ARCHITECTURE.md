@@ -113,9 +113,11 @@ consumer codegen and `using` emissions land at the definer's
 namespace directly. The per-module attribute table
 (`CompiledModule.module_attributes`) stores the same flattened
 bindings under one entry per local name; codegen, parser
-canonicalization, macro chain resolution, and the cycle re-export
-pre-pop all read it via `lookup_qualified` / `walk_attribute_chain`
-helpers in `tpyc/symbol_binding.py`.
+canonicalization, macro chain resolution, the cycle re-export
+pre-pop, and compile-time star-import expansion
+(`_expand_star_imports_for_module`) all read it via
+`lookup_qualified` / `walk_attribute_chain` helpers in
+`tpyc/symbol_binding.py`.
 
 Only types backed by a real `TypeDef` entry (records, enums,
 protocols, type-factory-backed generics) are canonicalized. Type

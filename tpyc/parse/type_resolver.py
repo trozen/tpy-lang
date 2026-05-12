@@ -125,6 +125,20 @@ class TypeResolver:
             for canonical, alias in self._parser._module_aliases.items()
         }
 
+    def index_imported_name(
+        self, local_name: str, source_module: str, original_name: str,
+    ) -> None:
+        """Add a `(source_module, original_name)` entry to the parser's
+        name index for `local_name` if not already present.
+
+        Called by `Compiler._expand_star_imports_for_module` after
+        compile-time star-import expansion so the parser-level
+        `resolve_refs` pass sees star-imported names when resolving
+        type annotations.
+        """
+        self._parser._imports.index_imported_name(
+            local_name, source_module, original_name)
+
     # ------------------------------------------------------------------
     # Public entry point
     # ------------------------------------------------------------------

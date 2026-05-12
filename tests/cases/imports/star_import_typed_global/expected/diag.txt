@@ -1,0 +1,2 @@
+lib.py:3: warning: ALL_CAPS variable 'PUBLIC_VAL' without Final annotation; use Final[Int32] if this is a constant
+lib.py:4: warning: ALL_CAPS variable 'HIDDEN_VAL' without Final annotation; use Final[Int32] if this is a constant

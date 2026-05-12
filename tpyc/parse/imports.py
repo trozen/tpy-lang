@@ -14,11 +14,6 @@ from .nodes import (
 )
 from ..module_names import public_module_name
 
-# Callback type for resolving star import exports.
-# Takes a module name, returns the set of exported names, or None if not found.
-StarImportResolver = Callable[[str], 'frozenset[str] | None']
-
-
 # Implicit stdlib modules -- always compiled by the compiler, so imports from
 # these modules don't need TpyImport nodes for __tpy_init() ordering.
 _IMPLICIT_MODULES = frozenset({"typing", "tpy", "builtins"})
@@ -33,8 +28,46 @@ _PRIVATE_MODULE_PUBLIC_NAMES: dict[str, str] = {
 
 
 class NonLiteralAllError(Exception):
-    """Raised when __all__ is defined but not evaluable at compile time."""
-    pass
+    """Raised when __all__ is defined but not evaluable at compile time.
+
+    Carries the offending value's AST node so the caller can surface a
+    line/column in the user-facing diagnostic.
+    """
+    def __init__(self, message: str, node: 'ast.AST | None' = None):
+        super().__init__(message)
+        self.node = node
+
+
+def read_module_all(tree: ast.Module) -> frozenset[str] | None:
+    """Capture the module's own `__all__` from its top-level scope.
+
+    Returns the literal frozenset when `__all__` is defined as a
+    compile-time literal (list / tuple / set). Returns `None` when
+    `__all__` is not defined. Raises `NonLiteralAllError` when
+    `__all__` is defined but is not a literal.
+
+    Mirrors the `__all__` branch of `scan_star_exports`; lives next to
+    it so the parser can capture this without re-walking the source.
+    Consumed by `Compiler._expand_star_imports_for_module` to filter
+    `from M import *` against the source's per-attribute table.
+    """
+    all_value = None
+    for node in ast.iter_child_nodes(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name) and target.id == "__all__":
+                    all_value = node.value
+        elif (isinstance(node, ast.AnnAssign)
+              and isinstance(node.target, ast.Name)
+              and node.target.id == "__all__" and node.value):
+            all_value = node.value
+    if all_value is None:
+        return None
+    try:
+        return frozenset(ast.literal_eval(all_value))
+    except (ValueError, TypeError):
+        raise NonLiteralAllError(
+            "__all__ is not a compile-time literal", all_value)
 
 
 def scan_star_exports(source: str) -> frozenset[str]:
@@ -48,23 +81,9 @@ def scan_star_exports(source: str) -> frozenset[str]:
     does not start with ``_`` -- matching CPython semantics.
     """
     tree = ast.parse(source)
-    # Check for __all__ first (last assignment wins, matching CPython)
-    all_value = None
-    for node in ast.iter_child_nodes(tree):
-        if isinstance(node, ast.Assign):
-            for target in node.targets:
-                if isinstance(target, ast.Name) and target.id == "__all__":
-                    all_value = node.value
-        elif (isinstance(node, ast.AnnAssign)
-              and isinstance(node.target, ast.Name)
-              and node.target.id == "__all__" and node.value):
-            all_value = node.value
-    if all_value is not None:
-        try:
-            return frozenset(ast.literal_eval(all_value))
-        except (ValueError, TypeError):
-            raise NonLiteralAllError(
-                "__all__ is not a compile-time literal")
+    explicit_all = read_module_all(tree)
+    if explicit_all is not None:
+        return explicit_all
 
     # No __all__ -- collect all public top-level names (matching CPython)
     names: set[str] = set()
@@ -126,6 +145,23 @@ def get_typing_exports() -> frozenset[str]:
     return _get_module_all("typing.py")
 
 
+def route_stdlib_name(name: str) -> 'tuple[str, str] | None':
+    """Return `(stdlib_module, name)` if `name` is exported by one of
+    the implicit stdlib modules (`tpy` / `builtins` / `typing`), else
+    `None`. Lets cross-module re-exports of stdlib names canonicalize
+    against the public stdlib module rather than the source module
+    (so e.g. `Int32` re-exported through `utils` still resolves at
+    `tpy.Int32`, not `utils.Int32`).
+    """
+    if name in get_tpy_exports():
+        return ("tpy", name)
+    if name in get_builtins_exports():
+        return ("builtins", name)
+    if name in get_typing_exports():
+        return ("typing", name)
+    return None
+
+
 def is_parser_keyword(module_name: str, name: str) -> bool:
     """Check if a specific name from a module is a parser keyword.
 
@@ -147,12 +183,10 @@ class ImportProcessor:
     """
 
     def __init__(self, warn_fn, module_name: str | None = None,
-                 is_package_init: bool = False,
-                 star_import_resolver: StarImportResolver | None = None):
+                 is_package_init: bool = False):
         self._warn = warn_fn
         self._module_name = module_name
         self._is_package_init = is_package_init
-        self._star_import_resolver = star_import_resolver
         self.tpy_import_aliases: dict[str, str] = {}
         self.tpy_star_import: bool = False
         # Set of module names that had 'from X import *'
@@ -252,26 +286,36 @@ class ImportProcessor:
         Int32 should always resolve as a tpy type, even when re-exported
         through a user module).
         """
-        if name in get_tpy_exports():
-            self._name_index[name] = ("tpy", name)
-        elif name in get_builtins_exports():
-            self._name_index[name] = ("builtins", name)
-        elif name in get_typing_exports():
-            self._name_index[name] = ("typing", name)
+        stdlib = route_stdlib_name(name)
+        if stdlib is not None:
+            self._name_index[name] = stdlib
         else:
             self._index_import(module_name, name, name)
 
-    def _resolve_star_import(self, module_name: str) -> frozenset[str] | None:
-        """Resolve star import exports for a module.
+    def index_imported_name(
+        self, local_name: str, source_module: str, original_name: str,
+    ) -> None:
+        """Add a `(source_module, original_name)` entry for `local_name`
+        if not already present. Lets external callers (compile-time
+        star-import expansion in particular) extend the name index
+        without touching `_name_index` directly."""
+        if local_name not in self._name_index:
+            self._name_index[local_name] = (source_module, original_name)
 
-        Tries the compiler-provided callback first, then falls back to
-        hardcoded stdlib paths for standalone parser usage (tests, REPL).
+    def _resolve_star_import(self, module_name: str) -> frozenset[str] | None:
+        """Resolve star import exports for an implicit-stdlib module
+        (`tpy` / `builtins` / `typing`).
+
+        Reads the module's `__all__` straight from the corresponding
+        `lib/tpy/.../__init__.py`. Non-stdlib star imports never reach
+        this method -- they are deferred to compile time via
+        `Compiler._expand_star_imports_for_module`.
         """
-        if self._star_import_resolver:
-            result = self._star_import_resolver(module_name)
-            if result is not None:
-                return result
-        # Fallback for standalone parser (no compiler context)
+        assert module_name in _IMPLICIT_MODULES, (
+            f"_resolve_star_import called for non-implicit module "
+            f"{module_name!r}; user-module star imports are expanded "
+            f"at compile time, not parse time."
+        )
         if module_name == "tpy":
             return get_tpy_exports()
         if module_name == "builtins":
@@ -334,23 +378,18 @@ class ImportProcessor:
             imports[placeholder] = set()
             for alias in node.names:
                 if alias.name == "*":
-                    # Resolve relative -> absolute, then resolve exports
-                    absolute_name = self._resolve_relative_to_absolute(level, module_name)
-                    if absolute_name:
-                        star_exports = self._resolve_star_import(absolute_name)
-                        if star_exports is not None:
-                            imports[placeholder] = {(name, name) for name in star_exports}
-                            for name in star_exports:
-                                if name not in self._name_index:
-                                    self._index_star_import(placeholder, name)
-                            self.star_imports.add(placeholder)
-                            top_level_stmts.append(TpyImport(
-                                module_name=placeholder, level=level,
-                                relative_name=module_name,
-                                loc=SourceLocation(node.lineno, node.col_offset)))
-                            return
-                    raise ParseError(
-                        "'from ... import *': could not resolve module exports", node)
+                    # Star imports of (resolved-to-)user modules are
+                    # expanded at compile time against the source's
+                    # per-module attribute table -- see
+                    # `Compiler._expand_star_imports_and_propagate_reexports`.
+                    # The parser leaves the imports[placeholder] set
+                    # empty as a deferred-expansion marker.
+                    self.star_imports.add(placeholder)
+                    top_level_stmts.append(TpyImport(
+                        module_name=placeholder, level=level,
+                        relative_name=module_name,
+                        loc=SourceLocation(node.lineno, node.col_offset)))
+                    return
                 local_name = alias.asname or alias.name
                 imports[placeholder].add((alias.name, local_name))
                 self._index_import(placeholder, alias.name, local_name)
@@ -371,7 +410,13 @@ class ImportProcessor:
         if module_name == "__future__":
             return
 
-        # tpy has special star-import and alias tracking
+        # tpy has special star-import and alias tracking. Cannot collapse
+        # into the generic `_IMPLICIT_MODULES` branch below because (a) the
+        # `tpy_star_import` flag drives sema's `register_tpy_star_import`
+        # (which registers all tpy type aliases), and (b) the name_index
+        # entries route directly to `("tpy", name)` rather than the
+        # `_index_star_import` stdlib-routing dispatch the generic branch
+        # uses for re-exports of stdlib names.
         if module_name == "tpy":
             if any(alias.name == "*" for alias in node.names):
                 exports = self._resolve_star_import("tpy")
@@ -395,16 +440,25 @@ class ImportProcessor:
                     self.tpy_import_aliases[local_name] = original_name
             return
 
-        # Handle star imports for non-tpy modules
+        # Handle star imports for non-tpy modules. `from tpy import *`
+        # is handled above; `builtins` / `typing` keep parser-time
+        # resolution because the standalone parser (no compiler
+        # context) still needs to see those names. Every other star
+        # import (user modules, relative resolved to a non-implicit
+        # name) is expanded at compile time against the source
+        # module's per-attribute table.
         if any(alias.name == "*" for alias in node.names):
-            star_exports = self._resolve_star_import(module_name)
-            if star_exports is None:
-                raise ParseError(
-                    f"'from {module_name} import *': could not resolve module exports", node)
-            imports[module_name] = {(name, name) for name in star_exports}
-            for name in star_exports:
-                if name not in self._name_index:
-                    self._index_star_import(module_name, name)
+            if module_name in _IMPLICIT_MODULES:
+                star_exports = self._resolve_star_import(module_name)
+                if star_exports is None:
+                    raise ParseError(
+                        f"'from {module_name} import *': could not resolve module exports", node)
+                imports[module_name] = {(name, name) for name in star_exports}
+                for name in star_exports:
+                    if name not in self._name_index:
+                        self._index_star_import(module_name, name)
+            else:
+                imports[module_name] = set()
             self.star_imports.add(module_name)
             user_module_imports[module_name] = node.lineno
             if module_name not in _IMPLICIT_MODULES:

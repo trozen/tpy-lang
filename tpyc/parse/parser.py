@@ -51,8 +51,9 @@ from .nodes import (
     ModuleDirectives,
 )
 from .imports import (
-    ImportProcessor, StarImportResolver, _PRIVATE_MODULE_PUBLIC_NAMES, _IMPLICIT_MODULES,
-    get_builtins_exports, get_typing_exports, get_tpy_exports,
+    ImportProcessor, _PRIVATE_MODULE_PUBLIC_NAMES, _IMPLICIT_MODULES,
+    get_builtins_exports, get_typing_exports, get_tpy_exports, read_module_all,
+    NonLiteralAllError,
 )
 from .. import qnames
 
@@ -441,8 +442,7 @@ class Parser:
         "with", "async", "await",
     }
 
-    def __init__(self, decorator_schemas: dict[str, '_DecoratorArgSchema'] | None = None,
-                 star_import_resolver: StarImportResolver | None = None):
+    def __init__(self, decorator_schemas: dict[str, '_DecoratorArgSchema'] | None = None):
         self.registry = TypeRegistry()
         self.source_lines: list[str] = []
         self._type_param_scope: dict[str, TypeParamKind] | None = None
@@ -456,7 +456,6 @@ class Parser:
         # Schemas derived from @builtin_decorator stubs (populated by compiler
         # from previously-parsed modules, or from same-file definitions)
         self._decorator_schemas: dict[str, _DecoratorArgSchema] = dict(decorator_schemas) if decorator_schemas else {}
-        self._star_import_resolver = star_import_resolver
         # Top-level class names pre-scanned from the module body, used to
         # resolve forward references in type annotations.
         self._module_class_names: frozenset[str] = frozenset()
@@ -673,8 +672,7 @@ class Parser:
         self._warnings = []
         self._is_entry_point = is_entry_point
         self._imports = ImportProcessor(self._warn, module_name=module_name,
-                                        is_package_init=is_package_init,
-                                        star_import_resolver=self._star_import_resolver)
+                                        is_package_init=is_package_init)
         self._module_aliases = {}
         self._bare_module_imports = set()
         self._reverse_module_aliases = {}
@@ -683,7 +681,15 @@ class Parser:
         # _parse_module registers records/protocols/enums.
         directives, directive_warnings = _scan_directives(self.source_lines)
         self._directives = directives
+        try:
+            module_all = read_module_all(tree)
+        except NonLiteralAllError as exc:
+            raise ParseError(
+                "__all__ is not a compile-time literal (must be a "
+                "list / tuple / set of string literals)",
+                exc.node)
         module = self._parse_module(tree)
+        module.module_all = module_all
         module.directives = directives
         module.parse_warnings.extend(directive_warnings)
         # Attach the ref resolver so sema can resolve TypeRefNodes emitted

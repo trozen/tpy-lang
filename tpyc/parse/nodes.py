@@ -1400,6 +1400,10 @@ class TpyModule:
     tpy_star_import: bool = False
     # Set of module names that had 'from X import *'
     star_imports: set[str] = field(default_factory=set)
+    # Module's own `__all__` literal, captured at parse time. `None` when
+    # the module does not define `__all__`; consumers treat that as "no
+    # filter applied beyond the leading-underscore rule".
+    module_all: frozenset[str] | None = None
     # Modules to resolve as files: {module_name: line_number}
     user_module_imports: dict[str, int] = field(default_factory=dict)
     # Module aliases from "from . import submod" -> {canonical_name: local_name}

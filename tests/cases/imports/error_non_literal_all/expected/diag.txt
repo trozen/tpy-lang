@@ -1,0 +1,1 @@
+main.py:7: error: __all__ is not a compile-time literal (must be a list / tuple / set of string literals)

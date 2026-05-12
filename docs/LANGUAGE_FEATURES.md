@@ -4617,9 +4617,11 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
 - **Working**: `tplib.json` -- JSON parsing/serialization library: `JsonReader` (pull parser), `JsonWriter` (serializer), `@model` class macro for pydantic-style typed JSON with `from_json`/`to_json`/`try_from_json`. File I/O via `save_json(path, indent=0)`, `load_json(path)` (panics on error), and `try_load_json(path)` (propagates `JsonError`). Supports `str`, `bool`, `int`/`Int32`/`Int64`/`BigInt`, `float`/`Float32`, enums, `Optional[T]`, `list[T]`, `dict[str, V]`, `tuple[T, ...]`, nested `@model` records, model inheritance (single + multi-level, with defaults and optionals), field renaming via `field(alias="jsonKey")`, and user-defined types implementing `__json_encode__`/`__json_decode__`. Pretty printing via `JsonWriter(indent=2)` or `obj.to_json(indent=2)`. `JsonError` carries `message` and `pos` fields with a `describe(data)` helper for human-readable error context.
 - **Working**: `bisect` module -- array bisection algorithms (via `from bisect import bisect_left`)
 - **Working**: `from module import *` -- star imports from user modules, `tpy`, `builtins`, and `typing`
-  - Respects `__all__` if defined (must be a compile-time literal)
-  - Without `__all__`, exports all public top-level names (functions, classes, assignments, imports) not starting with `_`
-  - Relative star imports: `from .sibling import *`
+  - Respects `__all__` if defined; must be a compile-time literal (list / tuple of string literals; set literals work in TPy but break under CPython, whose star-import machinery does `__all__[i]` and rejects sets -- prefer list / tuple for dual-target code). A non-literal `__all__` is a parse-time error in the module that defines it, regardless of whether any consumer uses `from M import *`.
+  - The empty form `__all__ = []` (the Python idiom for "export nothing") currently requires an annotation -- write `__all__: list[str] = []` -- because the generic variable-type-inference path runs before the `__all__` literal is recognized (tracked in BUGS.md).
+  - Names listed in `__all__` that the module does not actually define are silently dropped; CPython raises `AttributeError` at star-import time for the same input (tracked in BUGS.md).
+  - Without `__all__`, exports all public top-level names (functions, classes, records, variables, type aliases, imports) not starting with `_`
+  - Relative star imports: `from .sibling import *`. The dot-only `from . import *` (package-level star) is not supported and currently silently no-ops; tracked in BUGS.md.
 
 ### User-Defined Modules (Working)
 
@@ -4655,7 +4657,7 @@ print(MAX)  # 100
 
 **Supported import styles:**
 - `from mod import func, Record, Protocol` - import specific items
-- `from mod import *` - star import (respects `__all__` if defined)
+- `from mod import *` - star import; respects `__all__` if defined (see the dedicated star-import bullet above for `__all__` literal forms, the `__all__ = []` annotation requirement, and known limitations)
 - `import mod` then `mod.func()` / `mod.CONST` / `mod.Record` - module-qualified access (calls, variables, types)
 - `from mod import X as Y` - import with alias
 - `from pkg import submod` - bind submodule as namespace (`submod.fn()`, `submod.Type` annotations)

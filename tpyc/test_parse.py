@@ -1,8 +1,11 @@
 """Tests for parser utilities."""
 
+import ast
 import pytest
 from .parse import RelativeImportKey, Parser, ParseError
-from .parse.imports import get_tpy_exports, scan_star_exports, NonLiteralAllError
+from .parse.imports import (
+    get_tpy_exports, scan_star_exports, NonLiteralAllError, read_module_all,
+)
 
 
 class TestRelativeImportKey:
@@ -199,31 +202,82 @@ class TestScanStarExports:
         assert scan_star_exports(source) == frozenset({"public"})
 
 
+class TestReadModuleAll:
+    """Tests for read_module_all()."""
+
+    def _parse(self, source: str) -> ast.Module:
+        return ast.parse(source)
+
+    def test_no_all_returns_none(self):
+        assert read_module_all(self._parse("x = 1\ndef foo(): pass\n")) is None
+
+    def test_empty_module_returns_none(self):
+        assert read_module_all(self._parse("")) is None
+
+    def test_literal_list(self):
+        assert read_module_all(
+            self._parse('__all__ = ["foo", "bar"]\n')
+        ) == frozenset({"foo", "bar"})
+
+    def test_literal_tuple(self):
+        assert read_module_all(
+            self._parse('__all__ = ("foo",)\n')
+        ) == frozenset({"foo"})
+
+    def test_literal_set(self):
+        assert read_module_all(
+            self._parse('__all__ = {"foo", "bar"}\n')
+        ) == frozenset({"foo", "bar"})
+
+    def test_annotated_all(self):
+        assert read_module_all(
+            self._parse('__all__: list[str] = ["foo"]\n')
+        ) == frozenset({"foo"})
+
+    def test_last_assignment_wins(self):
+        assert read_module_all(
+            self._parse('__all__ = ["a"]\n__all__ = ["b"]\n')
+        ) == frozenset({"b"})
+
+    def test_non_literal_raises(self):
+        with pytest.raises(NonLiteralAllError):
+            read_module_all(self._parse('__all__ = _base + ["x"]\n'))
+
+    def test_annotated_then_plain(self):
+        # Mix of AnnAssign followed by plain Assign -- last wins.
+        source = '__all__: list[str] = ["a"]\n__all__ = ["b"]\n'
+        assert read_module_all(self._parse(source)) == frozenset({"b"})
+
+    def test_conditional_all_ignored(self):
+        # read_module_all walks only top-level children, so `__all__`
+        # nested inside an `if` / `try` / function body is invisible.
+        # Pins this boundary; CPython evaluates it at import time.
+        source = 'if True:\n    __all__ = ["x"]\n'
+        assert read_module_all(self._parse(source)) is None
+
+
 class TestUserModuleStarImport:
-    """Tests for star import from user modules via resolver callback."""
+    """Star imports from user modules are deferred: parser records a
+    placeholder, Compiler._expand_star_imports_for_module fills the
+    actual name set against the source module's per-attribute table at
+    compile time. The unit tests below pin the parser side of that
+    contract -- end-to-end expansion is covered by the
+    `tests/cases/imports/star_import_*` snippets."""
 
-    def test_star_import_with_resolver(self):
-        source = "def add(): pass\nclass Point: pass\n"
-        resolver = lambda name: scan_star_exports(source) if name == "mymod" else None
-        p = Parser(star_import_resolver=resolver)
-        module = p.parse("from mymod import *\ndef f() -> None:\n    pass\n")
-        assert "mymod" in module.star_imports
-        names = module.imports.get("mymod")
-        assert names is not None
-        exported = {local for _, local in names}
-        assert "add" in exported
-        assert "Point" in exported
-
-    def test_star_import_unknown_module_errors(self):
-        resolver = lambda name: None
-        p = Parser(star_import_resolver=resolver)
-        with pytest.raises(ParseError, match="could not resolve"):
-            p.parse("from unknown import *\n")
-
-    def test_star_import_no_resolver_non_stdlib_errors(self):
+    def test_user_star_import_records_placeholder(self):
         p = Parser()
-        with pytest.raises(ParseError, match="could not resolve"):
-            p.parse("from mymod import *\n")
+        module = p.parse("from mymod import *\ndef f() -> None:\n    pass\n")
+        # Parser leaves a placeholder set; expansion happens at compile time.
+        assert "mymod" in module.star_imports
+        assert module.imports.get("mymod") == set()
+
+    def test_user_star_import_unknown_module_defers_to_compile(self):
+        # Parser no longer errors on unknown user modules in star imports
+        # (Compiler._process_user_import handles the not-found check
+        # downstream). The parser path is purely syntactic.
+        p = Parser()
+        module = p.parse("from unknown import *\n")
+        assert "unknown" in module.star_imports
 
     def test_tpy_star_import_still_tracked(self):
         p = Parser()

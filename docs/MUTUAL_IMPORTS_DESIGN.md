@@ -1333,10 +1333,24 @@ The work landed across 8 commits, one per phase of the plan:
 7. **Phase 7 -- `__all__` refines `binding.can_star_import`.**
    Adds `TpyModule.module_all` (the parsed literal, or None)
    and uses it to refine the binding flag after extraction.
-   No reader consults `can_star_import` yet -- the parser-side
-   star filter still uses `scan_star_exports` directly -- but
-   the table is now the source of truth for any future
-   consumer.
+
+   *(Original Phase 7 also noted that no reader consulted
+   `can_star_import` yet -- the parser-side star filter still
+   used `scan_star_exports` directly -- but the table was
+   then the source of truth for any future consumer.
+   Superseded by the migration update below.)*
+
+   **Update (star-import filter migration, May 2026):** the
+   parser-side `scan_star_exports` call for user modules and
+   non-implicit stdlib has been replaced by a compile-time
+   expansion via `Compiler._expand_star_imports_for_module`,
+   which walks the source module's `module_attributes` plus
+   its parsed `ast.imports` and applies `__all__` via
+   `TpyModule.module_all`. Implicit stdlib stars (`from tpy
+   import *`, `from builtins import *`, `from typing import *`)
+   still resolve at parse time so the standalone parser (no
+   compiler context, e.g. REPL / unit-test fixtures) keeps
+   working.
 
 8. **Phase 8 -- new tests.** Seven cases under
    `tests/cases/imports/`: `mutual_flat_reexport`,
@@ -1468,8 +1482,18 @@ The work landed across 8 commits, one per phase of the plan:
   Pre-existing bug, surfaced by trying to write
   `star_import_all_filter` against a typed global: `from lib
   import *` where `lib` defines `X: Int32 = ...` produces "X
-  is not a variable" at consumer use sites. Test rewritten to
-  use class re-exports instead. Filed for separate fix.
+  is not a variable" at consumer use sites. Resolved by the
+  star-import filter migration (May 2026) -- the sema bind-
+  order fix and compile-time expansion together cover
+  variables, enums, re-exported builtin types, and type
+  aliases (the topological compile-time expansion sees the
+  source module's resolved alias table). Regression guards
+  live in `star_import_typed_global`,
+  `error_star_import_hidden_global`, `star_import_enum`,
+  `star_import_type_alias`, and `star_import_multi_hop`. The
+  cycle-peer variant of the type-alias re-export gap remains
+  -- pre-pop runs before alias resolution -- and is tracked
+  in BUGS.md alongside the analogous cycle-peer variable gap.
 - **`functools.total_ordering`.** Mentioned as the headline
   Phase 6 use case. The macro re-export mechanism is in place;
   implementing `total_ordering` in `lib/tpy/functools.py` is

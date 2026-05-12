@@ -1,0 +1,1 @@
+main.py:6: error: Module 'nonexistent_module' not found
