@@ -493,12 +493,12 @@ class LocalCppForm(Enum):
     """Coarse C++ representation of a local/param name.
 
     The codegen tracks several parallel `set[str]` fields (`pointer_locals`,
-    `optional_locals`, `ptr_variant_locals`, `storage_form_tuple_locals`)
-    plus a `current_func_params` lookup for `Own[Union]` params. Every
-    boundary-handling site (call arg, return, var-decl init, rebind,
-    tuple-unpack, etc.) needs to ask "what shape is this name?" and route
-    to the right lift / wrap helper. `local_cpp_form` is the single
-    classifier those sites consult.
+    `optional_locals`, `ptr_variant_locals`, `storage_form_tuple_locals`,
+    `storage_form_optional_locals`) plus a `current_func_params` lookup
+    for `Own[Union]` params. Every boundary-handling site (call arg,
+    return, var-decl init, rebind, tuple-unpack, etc.) needs to ask
+    "what shape is this name?" and route to the right lift / wrap
+    helper. `local_cpp_form` is the single classifier those sites consult.
 
     Variants:
       * `POINTER` -- `T*` / `const T*`. Pointer-form Optional or hoisted
@@ -507,6 +507,14 @@ class LocalCppForm(Enum):
       * `OPTIONAL_STORAGE` -- `std::optional<T>` storage form. `Own[Opt[T_ref]]`
         params (also in `pointer_locals` for arrow field access). Lifts via
         `tpy::optional_to_ptr` when consumed as a `T*` slot.
+      * `STORAGE_OPTIONAL` -- `std::optional<T>` storage form, but from
+        an iteration source (for-loop var iterating `list[P|None]` /
+        `dict[K, P|None]`, comprehension/genexpr unpack var bound from
+        a storage-form-tuple slot). Same lift as `OPTIONAL_STORAGE`
+        (`tpy::optional_to_ptr`); separate variant because these names
+        are NOT in `pointer_locals` (their access doesn't route through
+        `->`) and may be in `const_storage_form_optional_locals` for
+        const-source iteration.
       * `VALUE_VARIANT` -- `std::variant<A, B>` storage form. `Own[Union nonvalue]`
         params at the ABI. Lifts via `tpy::to_ptr_variant` when consumed
         as a pointer-variant slot.
@@ -522,6 +530,7 @@ class LocalCppForm(Enum):
     """
     POINTER = auto()
     OPTIONAL_STORAGE = auto()
+    STORAGE_OPTIONAL = auto()
     VALUE_VARIANT = auto()
     PTR_VARIANT = auto()
     STORAGE_TUPLE = auto()
@@ -1346,10 +1355,13 @@ class CodeGenContext:
             storage-form container (`pairs[i]` where
             `pairs: list[P|None]`, `d[k]` where `d: dict[K, P|None]`).
             `__getitem__` returns `std::optional<P>` (storage form).
-          * TpyName in `storage_form_optional_locals` -- a for-loop
-            variable iterating such a container, or a comprehension/
-            genexpr unpack variable bound from a storage-form-tuple
-            slot whose element type is pointer-repr Optional.
+          * TpyName whose `local_cpp_form` is `STORAGE_OPTIONAL` -- a
+            for-loop variable iterating such a container, or a
+            comprehension/genexpr unpack variable bound from a
+            storage-form-tuple slot whose element type is pointer-repr
+            Optional. Routed through the classifier rather than direct
+            set lookup so all name-keyed shape dispatch goes through one
+            place; the backing set is `storage_form_optional_locals`.
           * TpyName referring to a generator-promoted Optional[T] local
             (state-machine field declared as
             `std::optional<std::optional<T>>`; gen_expr's TpyName handler
@@ -1384,7 +1396,7 @@ class CodeGenContext:
                 return False
             return True
         if isinstance(expr, TpyName):
-            if expr.name in self.storage_form_optional_locals:
+            if self.local_cpp_form(expr.name) is LocalCppForm.STORAGE_OPTIONAL:
                 return True
             if (self.in_generator_body
                     and expr.name in self.generator_optional_fields):
@@ -1468,15 +1480,24 @@ class CodeGenContext:
         Priority order matters: `optional_locals` is a subset of
         `pointer_locals` (Own[Opt[T_ref]] params live in both for arrow
         access vs. lift dispatch), so OPTIONAL_STORAGE must take
-        precedence over POINTER. VALUE_VARIANT (Own[Union] param) is
-        looked up via `current_func_params`, not a set; it precedes
-        PTR_VARIANT because a single name cannot match both.
+        precedence over POINTER. STORAGE_OPTIONAL tracks iteration-source
+        loop/unpack vars (populated only by
+        `register_loop_var_storage_form`); its population is
+        producer-disjoint from `optional_locals` today, so the priority
+        slot is conventional, not load-bearing -- a same-name shadow
+        between a param and a loop var would still resolve consistently
+        because both forms lift the same way via `optional_to_ptr`.
+        VALUE_VARIANT (Own[Union] param) is looked up via
+        `current_func_params`, not a set; it precedes PTR_VARIANT
+        because a single name cannot match both.
 
         For arrow-vs-deref field access use `is_pointer_local(expr)`
         instead -- it covers both POINTER and OPTIONAL_STORAGE.
         """
         if name in self.optional_locals:
             return LocalCppForm.OPTIONAL_STORAGE
+        if name in self.storage_form_optional_locals:
+            return LocalCppForm.STORAGE_OPTIONAL
         if self.is_own_ptr_variant_param(name):
             return LocalCppForm.VALUE_VARIANT
         if name in self.ptr_variant_locals:
@@ -1504,6 +1525,45 @@ class CodeGenContext:
             return (iterable.name in self.const_indirect_locals
                     or iterable.name in self.const_ref_params)
         return False
+
+    def register_loop_var_storage_form(self, name: str, elem_type: 'TpyType | None',
+                                        iterable: 'TpyExpr',
+                                        detect_const_source: bool = True) -> None:
+        """Register a loop / unpack variable into the storage-form tracking
+        sets based on its sema element type.
+
+        Shared by the three producer-side sites: `_gen_loop_body` (regular
+        for-loop), `_gen_generator_loop_body` (generator-body for-loop), and
+        `_enter_comp_scope` (comprehension/genexpr scope). The sites differ
+        only in whether they detect a const-bound iteration source:
+          - regular for-loop + comp/genexpr: default
+            `detect_const_source=True` runs `iteration_yields_const`
+            against `iterable`; the const-variant set gets populated
+            when the source is const-bound.
+          - generator-body for-loop: pass `detect_const_source=False`
+            (no const-source channel in generator bodies today; tracked
+            separately).
+
+        Peels `ReadonlyType` from `elem_type` -- const-source iteration
+        yields `ReadonlyType(OptionalType(P))` / `ReadonlyType(TupleType(...))`
+        at the sema level, but the C++ shape is the same storage form;
+        const-ness rides on `iteration_yields_const`.
+        """
+        if elem_type is None:
+            return
+        elem_peeled = unwrap_readonly(elem_type)
+        is_const_source = (detect_const_source
+                           and self.iteration_yields_const(iterable))
+        if (isinstance(elem_peeled, TupleType)
+                and elem_peeled.has_pointer_repr_optional_element()):
+            self.storage_form_tuple_locals.add(name)
+            if is_const_source:
+                self.const_storage_form_tuple_locals.add(name)
+        if (isinstance(elem_peeled, OptionalType)
+                and elem_peeled.uses_pointer_repr()):
+            self.storage_form_optional_locals.add(name)
+            if is_const_source:
+                self.const_storage_form_optional_locals.add(name)
 
     def needs_optional_to_ptr_lift(self, name: str) -> bool:
         """True when `name` is in `OPTIONAL_STORAGE` form -- an

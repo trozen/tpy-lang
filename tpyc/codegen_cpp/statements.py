@@ -3316,13 +3316,9 @@ class StatementGenerator:
         if stmt.elem_type:
             elem_type = unwrap_ref_type(stmt.elem_type)
             self.ctx.var_types[stmt.var] = elem_type
-            elem_type_peeled = unwrap_readonly(elem_type)
-            if (isinstance(elem_type_peeled, TupleType)
-                    and elem_type_peeled.has_pointer_repr_optional_element()):
-                self.ctx.storage_form_tuple_locals.add(stmt.var)
-            if (isinstance(elem_type_peeled, OptionalType)
-                    and elem_type_peeled.uses_pointer_repr()):
-                self.ctx.storage_form_optional_locals.add(stmt.var)
+            # Generator bodies don't have a const-source channel today.
+            self.ctx.register_loop_var_storage_form(
+                stmt.var, elem_type, stmt.iterable, detect_const_source=False)
 
         old_ns = self.ctx.current_ns
         if self.ctx.current_ns and stmt.elem_type:
@@ -3967,22 +3963,7 @@ class StatementGenerator:
         self.ctx.declared_vars.add(stmt.var)
         if elem_type:
             self.ctx.var_types[stmt.var] = elem_type
-        # Peel ReadonlyType for the storage-form classification: iterating a
-        # const-bound container (readonly self.field, const param) yields
-        # `ReadonlyType(OptionalType(P))` / `ReadonlyType(TupleType(...))` at
-        # the elem_type level, but the C++ shape is the same storage form;
-        # const-ness rides on `iteration_yields_const`.
-        elem_type_peeled = unwrap_readonly(elem_type) if elem_type else None
-        if (isinstance(elem_type_peeled, TupleType)
-                and elem_type_peeled.has_pointer_repr_optional_element()):
-            self.ctx.storage_form_tuple_locals.add(stmt.var)
-            if self.ctx.iteration_yields_const(stmt.iterable):
-                self.ctx.const_storage_form_tuple_locals.add(stmt.var)
-        if (isinstance(elem_type_peeled, OptionalType)
-                and elem_type_peeled.uses_pointer_repr()):
-            self.ctx.storage_form_optional_locals.add(stmt.var)
-            if self.ctx.iteration_yields_const(stmt.iterable):
-                self.ctx.const_storage_form_optional_locals.add(stmt.var)
+        self.ctx.register_loop_var_storage_form(stmt.var, elem_type, stmt.iterable)
         # Consuming loop: the loop variable is bound via auto&& into owned
         # storage (OwnIter), so it can be std::move'd at last use.
         # Also applies when sema resolved the element type as Own[T] (e.g.

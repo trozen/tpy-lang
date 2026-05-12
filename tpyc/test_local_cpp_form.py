@@ -26,6 +26,7 @@ def _make_ctx(**overrides) -> SimpleNamespace:
         optional_locals=set(),
         ptr_variant_locals=set(),
         storage_form_tuple_locals=set(),
+        storage_form_optional_locals=set(),
         current_func_params={},
     )
     for k, v in overrides.items():
@@ -64,6 +65,25 @@ class TestLocalCppFormClassification:
     def test_storage_tuple(self):
         ctx = _make_ctx(storage_form_tuple_locals={"t"})
         assert _form(ctx, "t") is LocalCppForm.STORAGE_TUPLE
+
+    def test_storage_optional(self):
+        # Loop var iterating `list[P|None]` / `dict[K, P|None]`, or
+        # comp/genexpr unpack var bound from a storage-form tuple slot.
+        ctx = _make_ctx(storage_form_optional_locals={"it"})
+        assert _form(ctx, "it") is LocalCppForm.STORAGE_OPTIONAL
+
+    def test_optional_storage_priority_over_storage_optional(self):
+        # The two sets are producer-disjoint today, but a same-name
+        # shadow (Own[Opt[T_ref]] param + a loop var that reuses the
+        # name) could put both populations on one name. Both lift via
+        # `optional_to_ptr`; the classifier resolves to OPTIONAL_STORAGE
+        # so the existing OPTIONAL_STORAGE consumer paths fire.
+        ctx = _make_ctx(
+            pointer_locals={"p"},
+            optional_locals={"p"},
+            storage_form_optional_locals={"p"},
+        )
+        assert _form(ctx, "p") is LocalCppForm.OPTIONAL_STORAGE
 
     def test_optional_storage_in_both_sets(self):
         # Own[Opt[T_ref]] params land in BOTH pointer_locals and

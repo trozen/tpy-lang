@@ -4395,46 +4395,40 @@ class ExpressionGenerator:
             elem = builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.analyzer.registry)
             if elem is not None:
                 self.ctx.var_types[gen.var] = elem
-                # Peel ReadonlyType so const-source iteration (readonly
-                # self.field, const param) still hits the storage-form
-                # classification; const-ness is tracked separately via
-                # iteration_yields_const.
-                elem_peeled = unwrap_readonly(elem)
                 # Must register at comp-scope entry: the element-expression
                 # codegen runs before the body, so the predicate must already
                 # see the loop var when the consumer dispatches.
-                if isinstance(elem_peeled, OptionalType) and elem_peeled.uses_pointer_repr():
-                    self.ctx.storage_form_optional_locals.add(gen.var)
-                    if self.ctx.iteration_yields_const(gen.iterable):
-                        self.ctx.const_storage_form_optional_locals.add(gen.var)
-                # Also register unpack var types (e.g. dict comprehension
-                # `for k, v in d.items()` where v is Optional[T]).
+                self.ctx.register_loop_var_storage_form(gen.var, elem, gen.iterable)
+                # Also register unpack var types + per-slot storage-form
+                # classification (e.g. comprehension over
+                # `list[tuple[P|None, Int32]]`).
+                elem_peeled = unwrap_readonly(elem)
                 if gen.unpack_vars and isinstance(elem_peeled, TupleType):
                     is_storage_tuple = elem_peeled.has_pointer_repr_optional_element()
-                    is_const_source = (is_storage_tuple
-                                       and self.ctx.iteration_yields_const(gen.iterable))
                     for i, uvar in enumerate(gen.unpack_vars):
                         if uvar is None or i >= len(elem_peeled.element_types):
                             continue
                         utype = elem_peeled.element_types[i]
                         self.ctx.var_types[uvar] = utype
-                        utype_peeled = unwrap_readonly(utype)
-                        if (is_storage_tuple
-                                and isinstance(utype_peeled, OptionalType)
-                                and utype_peeled.uses_pointer_repr()):
-                            self.ctx.storage_form_optional_locals.add(uvar)
-                            if is_const_source:
-                                self.ctx.const_storage_form_optional_locals.add(uvar)
+                        if is_storage_tuple:
+                            self.ctx.register_loop_var_storage_form(
+                                uvar, utype, gen.iterable)
         return names
 
     def _exit_comp_scope(self, names: set[str]) -> None:
         # Safe as set-difference because sema rejects nested comprehensions,
         # so no name can appear in two active comp scopes simultaneously.
+        # Discards mirror the four storage-form sets that
+        # `register_loop_var_storage_form` may populate at comp-scope entry,
+        # symmetric with the regular for-loop's exit cleanup in
+        # `_gen_loop_body`.
         self.ctx.comp_local_names -= names
         for n in names:
             self.ctx.var_types.pop(n, None)
             self.ctx.storage_form_optional_locals.discard(n)
             self.ctx.const_storage_form_optional_locals.discard(n)
+            self.ctx.storage_form_tuple_locals.discard(n)
+            self.ctx.const_storage_form_tuple_locals.discard(n)
 
     def _comp_is_lvalue(self, expr: TpyExpr) -> bool:
         """Check if an iterable expression is a C++ lvalue."""
