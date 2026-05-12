@@ -25,6 +25,7 @@ from tpy.extern import native, export
 | `@native(cpp_return_type=T)` -- declare wider C++ return for narrowing cast | **Done** |
 | `@native` class -- import C++ class (fields, stub methods) | **Done** |
 | `@native("factory", function=True)` on `__init__` -- factory-style constructor | **Done** |
+| `@native("MyArena", indirecting=True)` -- attest heap indirection for cycle detection | **Done** |
 | `native_field("cpp_name")` -- per-field C++ rename on `@native` classes | **Done** |
 | `@native` enum -- import C++ `enum class` | **Done** |
 | `native_member("cpp_name")` -- per-member C++ rename on `@native` enums | **Done** |
@@ -234,6 +235,20 @@ class StdVector(Generic[T]):
     def push_back(self, val: T) -> None: ...
     def size(self) -> Int32: ...
 ```
+
+### Declaring heap indirection: `indirecting=True`
+
+Cycle detection in recursive type aliases (`type Tree = Lit | Box[Tree]`) needs to know whether a wrapper type contains its element by value (would form an infinite-size cycle) or via pointer indirection (breaks the cycle). For TPy records the compiler infers this structurally by walking the record's fields -- a `_ptr: Ptr[T]` field is recognized as indirecting without any annotation. For `@native` records whose internal storage is opaque to TPy (no fields declared, or fields that hide the indirection in a C++ template), declare the kwarg:
+
+```python
+@native("my::Arena", indirecting=True)
+class Arena[T]:  # C++ stores T behind a unique_ptr / arena handle
+    ...
+```
+
+With this, `type Tree = Leaf | Arena[Tree]` compiles. Without it, the compiler treats `Arena[T]` as a by-value container and rejects the alias.
+
+Used in the stdlib by `list`/`dict`/`set` (see `lib/tpy/tpy/_builtins/_{list,dict,set}.py`). Don't reach for it on records whose TPy field declarations already expose a `Ptr`-typed (or other indirecting) field -- the structural walk handles those.
 
 ### Narrowing C++ returns: `cpp_return_type=T`
 

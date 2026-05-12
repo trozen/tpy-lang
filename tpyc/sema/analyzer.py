@@ -14,7 +14,7 @@ from ..typesys import (
     FunctionInfo, ParamInfo, is_any_str_type, BIGINT, FLOAT,
     make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType,
     is_integer_type, is_void_like_type,
-    _contains_self_reference, validate_recursive_union_paths,
+    _contains_self_reference,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_docstring, is_super_del_call, is_base_init_call, ParseError
@@ -545,6 +545,14 @@ class SemanticAnalyzer:
         # Done after inheritance validation so parent types are resolved.
         # Definition order handles transitive propagation naturally.
         self._propagate_nocopy(module)
+
+        # Validate that every recursive path in a recursive union alias goes
+        # through an indirecting container. Runs here -- after record/protocol
+        # registration -- so the field-walk in `validate_recursive_union_paths`
+        # can resolve same-module RecordInfo / TypeDef entries for user
+        # indirecting records (otherwise we'd false-positive on `class
+        # MyBox[T]: _ptr: Ptr[T]; type Bad = Lit | MyBox[Bad]`).
+        self._validate_recursive_union_paths(module)
 
         # Detect mutual recursion cycles and tag recursive union aliases
         self._detect_recursive_unions(module)
@@ -1525,6 +1533,26 @@ class SemanticAnalyzer:
 
         # Store the group mapping for codegen
         self.overload_groups[id(impl)] = stubs
+
+    def _validate_recursive_union_paths(self, module: TpyModule) -> None:
+        """For every alias tagged as recursive in `resolve_refs`, verify that
+        every self-reference goes through an indirecting container. Runs
+        post-registration so the field walk in `validate_recursive_union_paths`
+        can see same-module RecordInfo / TypeDef entries.
+        """
+        if not module.recursive_union_names:
+            return
+        from ..cycle_detection import validate_recursive_union_paths
+        for alias_name in module.recursive_union_names:
+            entry = module.type_aliases.get(alias_name)
+            if entry is None:
+                continue
+            alias_type, alias_loc = entry
+            if not isinstance(alias_type, UnionType):
+                continue
+            err = validate_recursive_union_paths(alias_name, alias_type.members)
+            if err is not None:
+                raise SemanticError(err, loc=alias_loc)
 
     def _detect_recursive_unions(self, module: TpyModule) -> None:
         """Detect type cycles and tag union aliases as recursive.

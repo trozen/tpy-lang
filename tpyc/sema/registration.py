@@ -1413,6 +1413,7 @@ class TypeRegistrar:
             ),
             is_native=is_native,
             is_native_c=is_native_c,
+            is_indirecting=record.is_indirecting,
             is_nocopy=record.is_nocopy,
             match_args=(
                 record._macro_cls_info.get_match_args()

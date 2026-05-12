@@ -2319,47 +2319,9 @@ def _contains_self_reference(typ: 'TpyType', name: str) -> bool:
     return any(_contains_self_reference(inner, name) for inner in typ.inner_types())
 
 
-def validate_recursive_union_paths(
-    alias_name: str, members: tuple['TpyType', ...],
-) -> str | None:
-    """Validate that all self-references go through indirecting containers.
-
-    Returns an error message if validation fails, None if OK.
-    Indirecting types: list, dict, set, Optional, Ptr, Own, Box.
-    Fixed-size types (tuple, Array) do NOT provide indirection.
-    """
-
-    def _check(typ: 'TpyType', inside_indirection: bool) -> str | None:
-        if isinstance(typ, NominalType) and typ.name == alias_name and not typ.is_protocol:
-            if not inside_indirection:
-                return (
-                    f"direct recursion in type alias '{alias_name}' -- "
-                    f"every recursive path must go through a container "
-                    f"(list, dict, set, Optional, Box, Ptr)"
-                )
-            return None
-
-        # These types are defined later in this file, so use lazy string checks
-        # for types that are NominalType subclasses. The isinstance checks work
-        # because Python resolves the class at call time, not definition time.
-        type_name = type(typ).__name__
-        is_indirecting = type_name in ('OptionalType', 'PtrType')
-        # set / dict / Box are plain NominalTypes, detected by name
-        if isinstance(typ, NominalType) and typ.name in ("Box", "set", "dict", "list"):
-            is_indirecting = True
-
-        new_indirection = inside_indirection or is_indirecting
-        for inner in typ.inner_types():
-            err = _check(inner, new_indirection)
-            if err is not None:
-                return err
-        return None
-
-    for m in members:
-        err = _check(m, False)
-        if err is not None:
-            return err
-    return None
+# validate_recursive_union_paths now lives in tpyc.cycle_detection so it can
+# share _is_indirecting_type / _substitute_type_params with the wider cycle
+# walker without an inverted typesys -> cycle_detection lazy-import.
 
 
 @dataclass(frozen=True)
@@ -3292,6 +3254,7 @@ class RecordInfo:
     native_name: Optional[str] = None  # C++ name for @native/@native_c records (e.g., "SDL_Rect")
     is_native: bool = False       # True for @native or @native_c records
     is_native_c: bool = False     # True for @native_c specifically
+    is_indirecting: bool = False  # True for @native(indirecting=True) records that own heap storage of T (cycle-breaking)
     is_nocopy: bool = False       # True for @nocopy records (copy deleted, move-only)
     match_args: tuple[str, ...] | None = None  # Positional match arg names (set by macro, mirrors __match_args__)
     is_frozen: bool = False       # True for @dataclass(frozen=True) (field mutation rejected)

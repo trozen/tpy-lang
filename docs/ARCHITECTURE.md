@@ -161,10 +161,18 @@ only in `.name` / `.qualified_name()`.
 
 `tpyc/type_def_registry.py` holds a single `TypeDef` per qname with
 all behavior (`cpp_formatter`, `is_send`/`is_sync`, `element_of`,
-`subscript_borrows`, `is_value_type`, `needs_explicit_element_target`,
-`param_kinds`, `type_factory`, category payloads `int_traits`,
-`float_traits`, `enum: EnumInfo`, `record: RecordInfo`,
-`protocol: ProtocolInfo`). Dispatch is qname-based:
+`subscript_borrows`, `is_value_type`, `is_indirecting`,
+`needs_explicit_element_target`, `param_kinds`, `type_factory`,
+category payloads `int_traits`, `float_traits`, `enum: EnumInfo`,
+`record: RecordInfo`, `protocol: ProtocolInfo`). The `is_indirecting`
+flag is set from `@native(..., indirecting=True)` on the stub class --
+it flows parser -> `TpyRecord` -> `RecordInfo` -> `TypeDef` during
+`attach_dynamic_type_def`. Cycle detection consults it to decide
+whether a native wrapper type breaks recursive size cycles; structural
+TPy records (with a `Ptr[T]` field) are recognized separately by
+walking `RecordInfo.fields` under type-param substitution in
+`tpyc/cycle_detection.py` and do not need the flag. Dispatch is
+qname-based:
 
 ```python
 type_def_of(t).subscript_borrows

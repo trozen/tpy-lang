@@ -8,7 +8,7 @@ from .._bootstrap._extern import native, cpp_template, native_preserves_refs, bu
 
 
 @builtin_type("builtins.list")
-@native("std::vector")
+@native("std::vector", indirecting=True)
 class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spannable[T]):
     @pure
     @readonly

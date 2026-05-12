@@ -27,7 +27,7 @@ from ..typesys import (
     TpyType, NominalType, UnionType, VOID, TypeParamKind,
     BIGINT, FLOAT, STR,
 )
-from ..typesys import _contains_self_reference, validate_recursive_union_paths
+from ..typesys import _contains_self_reference
 from .nodes import (
     TpyModule, TpyVarDecl, TpyCall, TpyMethodCall, TpyNestedDef,
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef,
@@ -308,10 +308,11 @@ def resolve_refs(module: TpyModule) -> None:
                 alias_type = resolver.resolve(alias_ref, None, pending_alias=alias_name)
             else:
                 alias_type = alias_ref
+            # Tag self-referential union aliases as recursive; the indirection
+            # check itself runs later in sema (`_validate_recursive_union_paths`)
+            # so it can see same-module RecordInfo / TypeDef entries that
+            # `register_records_and_protocols` hasn't attached yet.
             if isinstance(alias_type, UnionType) and _contains_self_reference(alias_type, alias_name):
-                err = validate_recursive_union_paths(alias_name, alias_type.members)
-                if err is not None:
-                    raise SemanticError(err, loc=alias_loc)
                 module.recursive_union_names.add(alias_name)
             resolver.registry.register_type_alias(alias_name, alias_type)
             resolved_aliases[alias_name] = (alias_type, alias_loc)

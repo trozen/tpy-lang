@@ -7,7 +7,7 @@ from .._bootstrap._extern import native, cpp_template, builtin_type
 
 
 @builtin_type("builtins.set")
-@native("tpy::ordered_set")
+@native("tpy::ordered_set", indirecting=True)
 class set[T](Iterable[T], NativeIterable[T]):
     @pure
     @readonly

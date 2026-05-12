@@ -1293,6 +1293,13 @@ class TpyRecord:
     is_typed_dict: bool = False
     is_total_false: bool = False  # TypedDict(total=False): all fields Optional
     builtin_type_key: str | None = None
+    # @native(indirecting=True): record owns indirect (heap-backed) storage
+    # of its type parameter that the compiler cannot introspect (e.g. list/
+    # dict/set, or a user @native record wrapping a C++ unique_ptr).
+    # Consulted by cycle detection so the type breaks recursive size cycles.
+    # User TPy records with a Ptr[T] field do NOT set this -- the field walk
+    # infers indirection structurally.
+    is_indirecting: bool = False
     pending_macros: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     # Callbacks registered via `ClassInfo.defer_until_macros_complete()`.
     # Run after the eager macro pass so a macro can inspect the final

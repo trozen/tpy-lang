@@ -175,6 +175,13 @@ class TypeDef:
     param_needs_copy_for_reassign: bool = False
     # Compile-time-only types (FStr) have no runtime C++ representation.
     is_compile_time_only: bool = False
+    # Native heap-owning container of T whose layout the compiler cannot
+    # introspect (list, dict, set, plus user @native records that opt in via
+    # @native(indirecting=True)). Consulted by cycle detection to break
+    # recursive size cycles. User TPy records with Ptr[T] / list[T] / ...
+    # fields do not set this -- their indirection is inferred structurally
+    # from the field walk.
+    is_indirecting: bool = False
     # Category-specific trait payloads.
     int_traits: Optional[IntTraits] = None
     float_traits: Optional[FloatTraits] = None
@@ -258,17 +265,28 @@ def attach_dynamic_type_def(
     Returns the TypeDef for convenience.
     """
     td = _type_defs.get(qname)
+    # `record` is typed Optional[RecordInfo] for production callers, but a
+    # handful of registry unit tests pass an opaque sentinel (`object()`) to
+    # exercise dict-level behavior without constructing a full RecordInfo --
+    # tolerate that by treating a missing attribute as "not indirecting".
+    record_is_indirecting = bool(getattr(record, "is_indirecting", False))
     if td is None:
         td = TypeDef(
             qname=qname, category=category,
             record=record, protocol=protocol, enum=enum,
             is_value_type=(is_value_type if is_value_type is not None else False),
+            is_indirecting=record_is_indirecting,
         )
         _type_defs[qname] = td
         _dynamic_created_qnames.add(qname)
     else:
         if record is not None:
             td.record = record
+            # Stub-declared indirection (@native(..., indirecting=True))
+            # latches onto the existing static TypeDef so the cycle walker can
+            # consult one uniform flag for builtins and user @native records.
+            if record_is_indirecting:
+                td.is_indirecting = True
         if protocol is not None:
             td.protocol = protocol
         if enum is not None:
@@ -289,6 +307,11 @@ def clear_dynamic_type_defs() -> None:
             td.record = None
             td.protocol = None
             td.enum = None
+            # Matches record/protocol/enum: the static `_populate` entries
+            # never opt in to indirection, so resetting to False here mirrors
+            # the static default. Re-attachment via the next compilation's
+            # stub will re-set it.
+            td.is_indirecting = False
     _dynamic_attached_qnames.clear()
 
 

@@ -4,7 +4,13 @@ Type dependency cycle detection.
 Detects mutual recursion between records and type aliases by building
 a directed type-reference graph and finding cycles via DFS. Validates
 that every cycle is broken by at least one indirecting container
-(Box, list, dict, set, Optional, Ptr, Own).
+(Optional, Ptr, plus types whose TypeDef carries is_indirecting=True --
+list, dict, set, plus user @native records that opt in).
+
+User TPy records (e.g. tplib.Box) provide indirection structurally: the
+walker expands a non-indirecting nominal's fields after type-parameter
+substitution, so a `_ptr: Ptr[T]` field signals indirection without the
+compiler hard-coding the record's name.
 """
 
 from __future__ import annotations
@@ -13,29 +19,70 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .typesys import TpyType, UnionType
+    from .typesys import NominalType, RecordInfo, TpyType, UnionType
 
 
 # ---- Indirection helpers ------------------------------------------------
 
 def _is_indirecting_type(typ: TpyType) -> bool:
-    """Check if a type provides pointer indirection (heap-allocated, incomplete OK)."""
-    from .typesys import NominalType
-    from .type_def_registry import is_set, is_dict
-    type_name = type(typ).__name__
-    if type_name in ('OptionalType', 'PtrType'):
+    """True if the type provides pointer indirection that breaks a recursive
+    size cycle. Two sources:
+    - OptionalType / PtrType structural wrappers (isinstance dispatch).
+    - TypeDef.is_indirecting (declared via `@native(..., indirecting=True)`;
+      covers list/dict/set + user opt-ins).
+    """
+    from .typesys import OptionalType, PtrType
+    from .type_def_registry import type_def_of
+    if isinstance(typ, (OptionalType, PtrType)):
         return True
-    if is_set(typ) or is_dict(typ):
-        return True
-    if isinstance(typ, NominalType) and typ.name in ("Box", "list"):
-        return True
-    return False
+    td = type_def_of(typ)
+    return td is not None and td.is_indirecting
+
+
+def _substitute_type_params(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
+    """Replace TypeParamRef nodes in `typ` with values from `subst`.
+
+    Lightweight local helper: cycle detection only needs structural
+    substitution to walk a record's fields under concrete type args.
+    INT-kind TypeParamRefs and container sizes (Array's int slot) are
+    passed through unchanged -- only TPy-type references matter for cycle
+    structure. The sema layer has a more capable substitute_type_params
+    in type_ops.py for general-purpose substitution; we keep this private
+    copy because cycle detection runs before sema and shouldn't reach up.
+    """
+    from .typesys import TypeParamRef, NominalType
+    if isinstance(typ, TypeParamRef):
+        return subst.get(typ.name, typ)
+    # NominalType.type_args can hold raw ints (Array[T, N]); map_inner_types
+    # only walks TpyType entries, so mixed args need direct handling to
+    # preserve the int slots.
+    if type(typ) is NominalType and typ.type_args:
+        new_args: list = []
+        changed = False
+        for arg in typ.type_args:
+            if isinstance(arg, TypeParamRef) and arg.name in subst:
+                new_args.append(subst[arg.name])
+                changed = True
+            elif hasattr(arg, "map_inner_types"):
+                new = _substitute_type_params(arg, subst)
+                new_args.append(new)
+                if new is not arg:
+                    changed = True
+            else:
+                new_args.append(arg)
+        if changed:
+            return NominalType(
+                typ.name, tuple(new_args), typ.is_protocol,
+                typ._module_qname, typ.is_dynamic_protocol,
+            )
+        return typ
+    return typ.map_inner_types(lambda t: _substitute_type_params(t, subst))
 
 
 def _collect_type_refs(
     typ: TpyType,
     target_names: frozenset[str],
-    expanded_aliases: dict[frozenset[str], str] | None = None,
+    expanded_aliases: dict[frozenset[TpyType], str] | None = None,
 ) -> list[tuple[str, bool]]:
     """Walk a type tree and collect references to any of `target_names`.
 
@@ -46,7 +93,7 @@ def _collect_type_refs(
     Returns list of (referenced_name, has_indirection) pairs.
     """
     results: list[tuple[str, bool]] = []
-    _walk(typ, target_names, False, results, expanded_aliases)
+    _walk(typ, target_names, False, results, expanded_aliases, set())
     return results
 
 
@@ -55,24 +102,74 @@ def _walk(
     target_names: frozenset[str],
     inside_indirection: bool,
     out: list[tuple[str, bool]],
-    expanded_aliases: dict[frozenset, str] | None = None,
+    expanded_aliases: dict[frozenset[TpyType], str] | None,
+    expanding: set[str],
 ) -> None:
     from .typesys import NominalType, UnionType
+    from .type_def_registry import record_info_of
     if isinstance(typ, NominalType) and typ.name in target_names and not typ.is_protocol:
         out.append((typ.name, inside_indirection))
         return
-    # Detect expanded union alias: Box[UnionType(Lit, BinOp)] -> ref to "Expr"
-    # The parser expands type aliases, so Box[Expr] becomes Box[UnionType(...)].
-    # Match the expanded UnionType back to its alias by comparing member sets.
+    # The parser expands `Box[Expr]` into `Box[UnionType(Lit, BinOp)]`, so a
+    # union encountered here may be an already-expanded alias body; match it
+    # back by its member set.
     if expanded_aliases and isinstance(typ, UnionType):
-        key = frozenset(typ.members)
-        alias_name = expanded_aliases.get(key)
+        alias_name = expanded_aliases.get(frozenset(typ.members))
         if alias_name is not None:
             out.append((alias_name, inside_indirection))
             return
-    new_indirection = inside_indirection or _is_indirecting_type(typ)
+    if _is_indirecting_type(typ):
+        for inner in typ.inner_types():
+            _walk(inner, target_names, True, out, expanded_aliases, expanding)
+        return
+    if isinstance(typ, NominalType) and not typ.is_protocol:
+        info = record_info_of(typ)
+        if info is not None and info.fields:
+            _walk_record_fields(typ, info, target_names, inside_indirection,
+                                out, expanded_aliases, expanding)
+            return
+    # Fallback for parser placeholders without a RecordInfo, primitives, and
+    # any structural type not covered above.
     for inner in typ.inner_types():
-        _walk(inner, target_names, new_indirection, out, expanded_aliases)
+        _walk(inner, target_names, inside_indirection, out,
+              expanded_aliases, expanding)
+
+
+def _walk_record_fields(
+    typ: 'NominalType',
+    info: 'RecordInfo',
+    target_names: frozenset[str],
+    inside_indirection: bool,
+    out: list[tuple[str, bool]],
+    expanded_aliases: dict[frozenset[TpyType], str] | None,
+    expanding: set[str],
+) -> None:
+    """Walk a non-indirecting record's fields under type-parameter substitution.
+
+    Lets `Box[Foo]` reveal indirection through its `_ptr: Ptr[T]` field
+    without hard-coding the record's name. Recursion guard keys on the
+    qualified name (falling back to bare name for unregistered placeholders),
+    so structurally self-referential records like `class Wrapper[T]: inner:
+    Wrapper[T]` terminate.
+    """
+    guard_key = info.qualified_name() or info.name
+    if guard_key in expanding:
+        return
+    subst: dict[str, TpyType] = {}
+    if info.type_params and typ.type_args:
+        for param_name, arg in zip(info.type_params, typ.type_args):
+            # Array[T, N]'s int slot lands here as a raw int; skip it.
+            if hasattr(arg, "map_inner_types"):
+                subst[param_name] = arg
+    expanding.add(guard_key)
+    try:
+        for fld in info.fields:
+            field_type = (_substitute_type_params(fld.type, subst)
+                          if subst else fld.type)
+            _walk(field_type, target_names, inside_indirection,
+                  out, expanded_aliases, expanding)
+    finally:
+        expanding.discard(guard_key)
 
 
 # ---- Graph + cycle detection -------------------------------------------
@@ -84,6 +181,37 @@ class _Edge:
     target: str
     has_indirection: bool
     field_name: str | None = None
+
+
+def validate_recursive_union_paths(
+    alias_name: str, members: tuple[TpyType, ...],
+) -> str | None:
+    """Validate that all self-references in a recursive union alias go
+    through an indirecting container.
+
+    Returns an error message if a non-indirected self-reference exists,
+    or None when the alias is well-formed. Indirection sources are the
+    same as the wider cycle walker (`_is_indirecting_type` + the
+    structural field walk via `_walk` over non-indirecting nominals).
+
+    Called from sema's `_validate_recursive_union_paths` after record /
+    protocol registration so the field walk can see same-module RecordInfo /
+    TypeDef entries for user indirecting records.
+    """
+    target = frozenset([alias_name])
+    error_msg = (
+        f"direct recursion in type alias '{alias_name}' -- "
+        f"every recursive path must go through an indirecting "
+        f"container (list, dict, set, Optional, Ptr, or a "
+        f"record providing pointer indirection)"
+    )
+    for member in members:
+        results: list[tuple[str, bool]] = []
+        _walk(member, target, False, results, None, set())
+        for _ref_name, has_indirection in results:
+            if not has_indirection:
+                return error_msg
+    return None
 
 
 @dataclass
@@ -131,7 +259,7 @@ def detect_type_cycles(
     # Build expanded_aliases map: frozenset of member types -> alias name.
     # The parser expands `Box[Expr]` to `Box[UnionType(Lit, BinOp)]`, so we
     # need to match expanded UnionType instances back to their alias.
-    expanded_aliases: dict[frozenset, str] = {}
+    expanded_aliases: dict[frozenset[TpyType], str] = {}
     for alias_name, members in union_aliases.items():
         expanded_aliases[frozenset(members)] = alias_name
 

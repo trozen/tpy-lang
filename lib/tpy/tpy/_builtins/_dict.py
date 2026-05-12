@@ -64,7 +64,7 @@ class dict_items[K, V](Iterable[tuple[K, V]], NativeIterable[tuple[K, V]]):
 
 
 @builtin_type("builtins.dict")
-@native("tpy::ordered_map")
+@native("tpy::ordered_map", indirecting=True)
 class dict[K, V](Iterable[K], NativeIterable[K]):
     @pure
     @readonly

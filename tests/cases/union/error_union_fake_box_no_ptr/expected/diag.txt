@@ -1,0 +1,1 @@
+main.py:23: error: direct recursion in type alias 'Expr' -- every recursive path must go through an indirecting container (list, dict, set, Optional, Ptr, or a record providing pointer indirection)

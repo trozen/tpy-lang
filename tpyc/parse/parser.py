@@ -863,6 +863,7 @@ class Parser:
                         fields=result.fields,
                         has_init=result.init_method is not None,
                         builtin_type_key=result.builtin_type_key,
+                        is_indirecting=result.is_indirecting,
                         module=self._public_module(),
                     ))
                     # Prefix nested type names with parent chain and register
@@ -1325,6 +1326,7 @@ class Parser:
         native_name: str | None = None
         is_nocopy = False
         builtin_type_key: str | None = None
+        is_indirecting = False
         pending_macros: list[tuple[str, dict[str, Any]]] = []
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"class '{node.name}'")
@@ -1344,11 +1346,13 @@ class Parser:
                         f"Class '{node.name}' cannot have both @{linkage.value} and @{new_linkage.value}", node)
                 linkage = new_linkage
                 native_name = pos
+                if kw.get("indirecting"):
+                    is_indirecting = True
             elif qname == qnames.NOCOPY:
                 self._validate_decorator_args(qname, arg, dec)
                 is_nocopy = True
             elif qname == qnames.BUILTIN_TYPE:
-                pos, kw = self._validate_decorator_args(qname, arg, dec)
+                pos, _ = self._validate_decorator_args(qname, arg, dec)
                 builtin_type_key = pos
             else:
                 # Treat as a macro decorator -- extract kwargs and store for later
@@ -1552,7 +1556,7 @@ class Parser:
         # Restore scopes
         self._type_param_scope = old_scope
         self._nested_type_scope = old_nested_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, is_indirecting=is_indirecting, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,
