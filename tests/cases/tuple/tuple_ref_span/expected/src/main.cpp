@@ -13,6 +13,8 @@ std::tuple<Point&, int32_t> get_first(std::span<Point> s) {
 // def main() -> None:
 void main() {
     // arr: Array[Point, 3] = [Point(Int32(1), Int32(2)),
+    // Point(Int32(3), Int32(4)),
+    // Point(Int32(5), Int32(6))]
     std::array<Point, 3> arr = {Point(1, 2), Point(3, 4), Point(5, 6)};
     // t = get_first(arr)
     auto t = get_first(::tpy::as_mut_span(arr));

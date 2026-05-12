@@ -7,6 +7,8 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // args = parser.parse_args(
+    // ["--include", "core", "--include", "extra",
+    // "--paths", "a", "b", "c"])
     std::vector<std::string> __tmp_1 = {"--include", "core", "--include", "extra", "--paths", "a", "b", "c"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
     // # Iterate elements rather than ``print(include)``: ``args.include``
@@ -49,12 +51,16 @@ void main() {
 }
 
 // args = parser.parse_args(
+// ["--include", "core", "--include", "extra",
+// "--paths", "a", "b", "c"])
 void __tpy_builder_argparse_help_1() {
     std::cout << "usage: prog [-h] [--include INCLUDE] [--paths PATHS [PATHS ...]]\n\noptions:\n  -h, --help                 show this help message and exit\n  --include INCLUDE\n  --paths PATHS [PATHS ...]" << "\n";
     ::tpy::sys_exit(0);
 }
 
 // args = parser.parse_args(
+// ["--include", "core", "--include", "extra",
+// "--paths", "a", "b", "c"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
     std::optional<std::vector<Tag>> __slot_1;
     std::vector<Tag>* include = nullptr;

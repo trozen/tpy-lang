@@ -110,6 +110,10 @@ void main() {
     std::cout << std::format("dotall-no={}", ::tpy::bool_to_str((!::tpystd::re::compile("a.c").search("a\nc").has_value()))) << "\n";
     // # ---------- VERBOSE: whitespace + # comments stripped from pattern ----------
     // p_v: Pattern = compile(r"""
+    // \d+    # one or more digits
+    // \s+    # whitespace
+    // \w+    # word characters
+    // """, VERBOSE)
     ::tpystd::re::Pattern p_v = ::tpystd::re::compile("\n        \\d+    # one or more digits\n        \\s+    # whitespace\n        \\w+    # word characters\n    ", ::tpystd::re::VERBOSE);
     // m_v = p_v.search("123 abc")
     std::optional<::tpystd::re::Match> m_v = p_v.search("123 abc");
@@ -184,6 +188,10 @@ void __tpy_init() {
     // # PCRE2-specific behaviors (sub with $1 backref, groups() returning list
     // # vs tuple) are isolated in re_pcre2_specific/.
     // from re import (
+    // compile, search, match, fullmatch, sub, split, findall, Pattern, Match,
+    // IGNORECASE, MULTILINE, DOTALL, VERBOSE, ASCII,
+    // error,
+    // )
     ::tpystd::re::__tpy_init();
     // main()
     main();

@@ -17,12 +17,16 @@ void __tpy_builder_argparse_help_1();
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv);
 
 // args = parser.parse_args(
+// ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
+// )
 struct __tpy_builder_argparse_args_1 {
     std::optional<std::vector<std::string>> tag;
     std::optional<std::vector<::tpy::BigInt>> num;
     std::string mode;
 
     // args = parser.parse_args(
+    // ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
+    // )
     __tpy_builder_argparse_args_1() = default;
     explicit __tpy_builder_argparse_args_1(std::optional<std::vector<std::string>>&& tag, std::optional<std::vector<::tpy::BigInt>>&& num, std::string_view mode) : tag(std::move(tag)), num(std::move(num)), mode(mode) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";

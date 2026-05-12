@@ -10,6 +10,11 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // pairs = [
+    // (3, "c"),
+    // (1, "a"),
+    // (2, "b"),
+    // (1, "b"),
+    // ]
     std::vector<std::tuple<int32_t, std::string>> pairs = {std::tuple<int32_t, std::string>{3, "c"}, std::tuple<int32_t, std::string>{1, "a"}, std::tuple<int32_t, std::string>{2, "b"}, std::tuple<int32_t, std::string>{1, "b"}};
     // for p, s in sorted(pairs):
     auto __obj_0 = ::tpy::builtin_sorted<std::tuple<int32_t, std::string>>(pairs);

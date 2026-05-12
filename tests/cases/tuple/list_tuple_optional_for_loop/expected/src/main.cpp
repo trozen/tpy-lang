@@ -22,6 +22,9 @@ int32_t f(const std::tuple<const T*, const T*>& t) {
 // def main() -> None:
 void main() {
     // items: list[tuple[T | None, T | None]] = [
+    // (T(Int32(1)), T(Int32(2))),
+    // (None, T(Int32(3))),
+    // ]
     std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T, T>{T(1), T(2)})), ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T*, T>{nullptr, T(3)}))};
     // for it in items:
     auto& __obj_0 = items;

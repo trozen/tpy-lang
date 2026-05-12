@@ -1130,15 +1130,49 @@ class CodeGenContext:
             out.write(f"{indent}// {source}\n")
 
     def emit_source_comment(self, out: TextIO, loc: SourceLocation | None, indent: str = "") -> None:
-        """Emit the original Python source line as a comment if enabled."""
+        """Emit the original Python source line(s) as a comment if enabled.
+
+        Walks subsequent lines until the logical line ends -- detected as the
+        first `NEWLINE` token at bracket-depth zero. Lets multi-line
+        signatures (`def f(\\n  a: T,\\n) -> T:`) and other paren-continued
+        expressions render their full source instead of just the opening line.
+        """
         if not self.options.emit_source_comments:
             return
         if loc is None:
             return
-        line_idx = loc.line - 1  # Convert 1-indexed to 0-indexed
-        if 0 <= line_idx < len(self.source_lines):
-            source_line = self.source_lines[line_idx].rstrip()
-            self._write_source_comment(out, loc.line, source_line, indent)
+        start_idx = loc.line - 1
+        if not (0 <= start_idx < len(self.source_lines)):
+            return
+        end_idx = start_idx
+        # Tokenize from this line forward to find the logical-line boundary.
+        # 32-line cap is a safety bound; real signatures fit easily. Track
+        # paren depth via OP tokens so the boundary is the first NEWLINE/NL
+        # at depth 0 -- `NEWLINE` ends a statement; `NL` at depth 0 ends a
+        # comment-only or blank line (and we shouldn't pull the next stmt's
+        # source into this comment block).
+        snippet = "".join(
+            line if line.endswith("\n") else line + "\n"
+            for line in self.source_lines[start_idx:start_idx + 32]
+        )
+        try:
+            import io
+            import tokenize
+            depth = 0
+            for tok in tokenize.generate_tokens(io.StringIO(snippet).readline):
+                if tok.type == tokenize.OP:
+                    if tok.string in "([{":
+                        depth += 1
+                    elif tok.string in ")]}":
+                        depth -= 1
+                elif tok.type in (tokenize.NEWLINE, tokenize.NL) and depth <= 0:
+                    end_idx = start_idx + tok.start[0] - 1
+                    break
+        except (tokenize.TokenizeError, IndentationError):
+            pass  # Fall back: just the start line.
+        end_idx = min(end_idx, len(self.source_lines) - 1)
+        for i in range(start_idx, end_idx + 1):
+            self._write_source_comment(out, i + 1, self.source_lines[i].rstrip(), indent)
 
     def emit_else_comment(self, out: TextIO, orelse: list, indent: str = "") -> None:
         """Emit the 'else:' source line as a comment.

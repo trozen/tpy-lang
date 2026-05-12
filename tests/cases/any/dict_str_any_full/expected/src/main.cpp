@@ -7,6 +7,11 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // cfg: dict[str, Any] = {
+    // "host": "localhost",
+    // "port": 8080,
+    // "debug": True,
+    // "timeout": 1.5,
+    // }
     ::tpy::ordered_map<std::string, ::tpy::Any> cfg = ::tpy::ordered_map<std::string, ::tpy::Any>({{"host", ::tpy::make_any(std::string("localhost"))}, {"port", ::tpy::make_any(::tpy::BigInt(8080))}, {"debug", ::tpy::make_any(true)}, {"timeout", ::tpy::make_any(static_cast<double>(1.5))}});
     // # isinstance narrowing: borrow into the Any cell, outer survives.
     // debug = cfg["debug"]

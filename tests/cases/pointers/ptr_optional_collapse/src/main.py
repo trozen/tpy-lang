@@ -98,10 +98,7 @@ def test_ptr_value_into_optional_return() -> None:
     found = find(items, 2)
     if found is not None:
         print(found.val)
-    # NB: bind to a local before `is None` -- inline `find(...) is None`
-    # hits a pre-existing codegen issue at the call-then-is-None site.
-    not_found = find(items, 99)
-    print(not_found is None)
+    print(find(items, 99) is None)
 
 
 def test_readonly_variant() -> None:

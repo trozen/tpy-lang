@@ -47,6 +47,8 @@ void main() {
     // bs_str = str(bs)
     std::string bs_str = ::tpy::list_to_str(bs);
     // print((bs_str.startswith("[<StrOnly object at 0x")
+    // or bs_str.startswith("[<__main__.StrOnly object at 0x"))
+    // and bs_str.endswith(">]"))
     std::cout << ::tpy::print_bool(((::tpy::str_startswith(bs_str, "[<StrOnly object at 0x") || ::tpy::str_startswith(bs_str, "[<__main__.StrOnly object at 0x")) && ::tpy::str_endswith(bs_str, ">]"))) << "\n";
     // print([r])
     std::cout << ::tpy::ListPrinter(std::array<ReprOnly, 1>{r}) << "\n";

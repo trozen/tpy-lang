@@ -27,6 +27,7 @@ void main() {
     // assert micro >= 0
     if (!((micro >= 0))) ::tpy::raise_assertion_error();
     // assert (level == "alpha" or level == "beta" or level == "candidate"
+    // or level == "final" or level == "dev")
     if (!((((((level == "alpha") || (level == "beta")) || (level == "candidate")) || (level == "final")) || (level == "dev")))) ::tpy::raise_assertion_error();
     // assert serial >= 0
     if (!((serial >= 0))) ::tpy::raise_assertion_error();

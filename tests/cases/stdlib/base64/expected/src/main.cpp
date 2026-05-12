@@ -180,6 +180,13 @@ void __tpy_init() {
     // # base64: encode/decode for b64 (standard + urlsafe), b16, b32, covering
     // # all padding remainders and the urlsafe alphabet divergence from standard.
     // from base64 import (
+    // b64encode, b64decode,
+    // standard_b64encode, standard_b64decode,
+    // urlsafe_b64encode, urlsafe_b64decode,
+    // b16encode, b16decode,
+    // b32encode, b32decode,
+    // encodebytes, decodebytes,
+    // )
     ::tpystd::base64::__tpy_init();
     // main()
     main();

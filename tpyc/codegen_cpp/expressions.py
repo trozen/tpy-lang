@@ -1467,8 +1467,14 @@ class ExpressionGenerator:
                         return f"({val}.has_value())"
                     cpp_op = "==" if expr.op == "is" else "!="
                     return f"({val} {cpp_op} nullptr)"
-                # Everything else (value-type optionals, field accesses) uses .has_value()
+                # Pointer-repr Optional sources rendered as borrow-form `T*`
+                # (function/method call returns, etc.) use nullptr comparison;
+                # storage-form sources (field/subscript) use .has_value().
                 val = self.gen_expr(opt_expr)
+                if (opt_type.uses_pointer_repr()
+                        and not self.ctx.is_storage_form_optional_source(opt_expr)):
+                    cpp_op = "==" if expr.op == "is" else "!="
+                    return f"({val} {cpp_op} nullptr)"
                 if expr.op == "is":
                     return f"(!{val}.has_value())"
                 else:

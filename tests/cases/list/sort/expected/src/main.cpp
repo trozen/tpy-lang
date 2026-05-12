@@ -54,6 +54,12 @@ void test_user_type_sort() {
 // def test_stable_sort() -> None:
 void test_stable_sort() {
     // a: list[Pair] = [
+    // Pair(2, 1),
+    // Pair(1, 1),
+    // Pair(2, 2),
+    // Pair(1, 2),
+    // Pair(2, 3),
+    // ]
     std::vector<Pair> a = {Pair(2, 1), Pair(1, 1), Pair(2, 2), Pair(1, 2), Pair(2, 3)};
     // a.sort()
     std::stable_sort(a.begin(), a.end());

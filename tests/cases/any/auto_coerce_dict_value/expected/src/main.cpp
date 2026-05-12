@@ -7,6 +7,9 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // cfg: dict[str, Any] = {
+    // "host": "localhost",
+    // "port": 8080,
+    // }
     ::tpy::ordered_map<std::string, ::tpy::Any> cfg = ::tpy::ordered_map<std::string, ::tpy::Any>({{"host", ::tpy::make_any(std::string("localhost"))}, {"port", ::tpy::make_any(::tpy::BigInt(8080))}});
     // host: str = cfg["host"]
     std::string host = ::tpy::any_cast_or_panic<std::string>(::tpy::__getitem__(cfg, "host"));

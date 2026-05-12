@@ -119,6 +119,9 @@ void __tpy_init() {
     initialized = true;
 
     // from tpy.unsafe import (
+    // unsafe_alloc, unsafe_alloc_n, unsafe_free, unsafe_init, unsafe_drop,
+    // unsafe_ptr_add, unsafe_load,
+    // )
     // test_single()
     test_single();
     // test_mutate()

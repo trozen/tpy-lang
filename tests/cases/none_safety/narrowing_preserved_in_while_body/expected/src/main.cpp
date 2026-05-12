@@ -48,6 +48,8 @@ int32_t multiple_optionals(std::optional<int32_t> a, std::optional<int32_t> b, i
 }
 
 // def outer_if_inner_while_narrowing(
+// x: Int32 | None, items: list[Int32 | None]
+// ) -> Int32:
 int32_t outer_if_inner_while_narrowing(std::optional<int32_t> x, const std::vector<std::optional<int32_t>>& items) {
     // total: Int32 = 0
     int32_t total = 0;

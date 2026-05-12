@@ -7,6 +7,8 @@ namespace tpyapp::main {
 // # Demonstrative: `Ptr[T] | None` is redundant; the warning fires at the
 // # spelling site (param + return); the type collapses to `Ptr[T]`.
 // def passthrough(
+// n: Ptr[Node] | None,            # tpyc: warning(/`Ptr\[Node\] \| None` is redundant/)
+// ) -> Ptr[Node] | None:              # tpyc: warning(/`Ptr\[Node\] \| None` is redundant/)
 Node* passthrough(Node* n) {
     // return n
     return n;
@@ -14,6 +16,8 @@ Node* passthrough(Node* n) {
 
 // # Readonly inner variant also collapses + warns.
 // def passthrough_ro(
+// n: Ptr[readonly[Node]] | None,  # tpyc: warning(/`Ptr\[readonly\[Node\]\] \| None` is redundant/)
+// ) -> Ptr[readonly[Node]] | None:    # tpyc: warning(/`Ptr\[readonly\[Node\]\] \| None` is redundant/)
 const Node* passthrough_ro(const Node* n) {
     // return n
     return n;
@@ -142,12 +146,8 @@ void test_ptr_value_into_optional_return() {
         // print(found.val)
         std::cout << found->val << "\n";
     }
-    // # NB: bind to a local before `is None` -- inline `find(...) is None`
-    // # hits a pre-existing codegen issue at the call-then-is-None site.
-    // not_found = find(items, 99)
-    Node* not_found = find(items, ::tpy::BigInt(99));
-    // print(not_found is None)
-    std::cout << ::tpy::print_bool((not_found == nullptr)) << "\n";
+    // print(find(items, 99) is None)
+    std::cout << ::tpy::print_bool((find(items, ::tpy::BigInt(99)) == nullptr)) << "\n";
 }
 
 // def test_readonly_variant() -> None:

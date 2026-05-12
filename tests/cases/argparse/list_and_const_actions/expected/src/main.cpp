@@ -7,6 +7,8 @@ namespace tpyapp::main {
 // def main() -> Int32:
 int32_t main() {
     // args = parser.parse_args(
+    // ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
+    // )
     std::vector<std::string> __tmp_1 = {"--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"};
     __tpy_builder_argparse_args_1 args = __tpy_builder_argparse_parse_1(__tmp_1);
     // assert args.tag is not None
@@ -28,12 +30,16 @@ int32_t main() {
 }
 
 // args = parser.parse_args(
+// ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
+// )
 void __tpy_builder_argparse_help_1() {
     std::cout << "usage: prog [-h] [--tag TAG] [--num NUM] [--mode]\n\noptions:\n  -h, --help  show this help message and exit\n  --tag TAG\n  --num NUM\n  --mode" << "\n";
     ::tpy::sys_exit(0);
 }
 
 // args = parser.parse_args(
+// ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
+// )
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
     std::optional<std::vector<std::string>> __slot_1;
     std::vector<std::string>* tag = nullptr;

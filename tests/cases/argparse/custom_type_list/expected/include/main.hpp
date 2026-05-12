@@ -41,11 +41,15 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
 }
 
 // args = parser.parse_args(
+// ["--include", "core", "--include", "extra",
+// "--paths", "a", "b", "c"])
 struct __tpy_builder_argparse_args_1 {
     std::optional<std::vector<Tag>> include;
     std::optional<std::vector<Tag>> paths;
 
     // args = parser.parse_args(
+    // ["--include", "core", "--include", "extra",
+    // "--paths", "a", "b", "c"])
     __tpy_builder_argparse_args_1() = default;
     explicit __tpy_builder_argparse_args_1(std::optional<std::vector<Tag>>&& include, std::optional<std::vector<Tag>>&& paths) : include(std::move(include)), paths(std::move(paths)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.__tpy_builder_argparse_args_1";

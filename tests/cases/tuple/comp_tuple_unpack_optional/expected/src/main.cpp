@@ -18,6 +18,10 @@ int32_t borrow(const P* p) {
 // def main() -> None:
 void main() {
     // items: list[tuple[P | None, Int32]] = [
+    // (P(Int32(1)), Int32(10)),
+    // (None, Int32(20)),
+    // (P(Int32(3)), Int32(30)),
+    // ]
     std::vector<std::tuple<std::optional<P>, int32_t>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<P>, int32_t>>(::tpy::tuple_value_to_borrow<std::tuple<P*, int32_t>>(std::tuple<P, int32_t>{P(1), 10})), ::tpy::tuple_to_storage<std::tuple<std::optional<P>, int32_t>>(std::tuple<P*, int32_t>{nullptr, 20}), ::tpy::tuple_to_storage<std::tuple<std::optional<P>, int32_t>>(::tpy::tuple_value_to_borrow<std::tuple<P*, int32_t>>(std::tuple<P, int32_t>{P(3), 30}))};
     // # Comprehension unpack: `p` passed to borrow-param
     // results = [borrow(p) for p, n in items]

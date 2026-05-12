@@ -11,6 +11,8 @@ void main() {
     // print(d)
     std::cout << ::tpy::DictPrinter(d) << "\n";
     // nested: dict[str, dict[str, dict[str, Int32]]] = {
+    // "outer": {"mid": {"inner": 42}}
+    // }
     ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>> nested = ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>>({{"outer", ::tpy::ordered_map<std::string, ::tpy::ordered_map<std::string, int32_t>>({{"mid", ::tpy::ordered_map<std::string, int32_t>({{"inner", 42}})}})}});
     // print(nested)
     std::cout << ::tpy::DictPrinter(nested) << "\n";

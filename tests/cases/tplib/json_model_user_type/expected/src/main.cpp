@@ -25,6 +25,9 @@ void test_roundtrip() {
 // def test_nested() -> None:
 void test_nested() {
     // sc = Schedule(
+    // [Event("a", Seconds(10)), Event("b", Seconds(20))],
+    // Seconds(60),
+    // )
     Schedule sc = Schedule({Event("a", Seconds(10)), Event("b", Seconds(20))}, Seconds(60));
     // s = sc.to_json()
     std::string s = sc.to_json();
@@ -43,6 +46,10 @@ void test_nested() {
 // def test_optional() -> None:
 void test_optional() {
     // sc = Schedule(
+    // [Event("x", Seconds(1))],
+    // Seconds(30),
+    // Seconds(99),
+    // )
     Schedule sc = Schedule({Event("x", Seconds(1))}, Seconds(30), Seconds(99));
     // s = sc.to_json()
     std::string s = sc.to_json();

@@ -168,6 +168,10 @@ void main() {
     std::cout << union_field_param(c2) << "\n";
     // # Case 4
     // items: list[Tagged] = [
+    // Tagged("s", "hi"),
+    // Tagged("n", Int32(5)),
+    // Tagged("?", "x"),
+    // ]
     std::variant<int32_t, std::string> __tmp_5 = "hi";
     std::variant<int32_t, std::string> __tmp_6 = 5;
     std::variant<int32_t, std::string> __tmp_7 = "x";

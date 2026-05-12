@@ -42,6 +42,7 @@ void main() {
     // random.seed(Int32(99))
     ::tpystd::random::seed(99);
     // deck: list[Int32] = [Int32(0), Int32(1), Int32(2), Int32(3), Int32(4),
+    // Int32(5), Int32(6), Int32(7), Int32(8), Int32(9)]
     std::vector<int32_t> deck = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     // random.shuffle(deck)
     ::tpystd::random::shuffle<int32_t>(deck);

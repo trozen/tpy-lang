@@ -7,6 +7,10 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // cfg: dict[str, Any] = {
+    // "name": "tpy",
+    // "version": 1,
+    // "debug": True,
+    // }
     ::tpy::ordered_map<std::string, ::tpy::Any> cfg = ::tpy::ordered_map<std::string, ::tpy::Any>({{"name", ::tpy::make_any(std::string("tpy"))}, {"version", ::tpy::make_any(::tpy::BigInt(1))}, {"debug", ::tpy::make_any(true)}});
     // print(cfg)
     std::cout << ::tpy::DictPrinter(cfg) << "\n";
