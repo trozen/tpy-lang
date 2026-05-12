@@ -2,7 +2,7 @@
 # payload has been destroyed; the Weak handle's cell-memory access stays
 # valid (cell is freed only when the last Weak drops).
 from tpy import Int32, Own
-from tplib import Rc, Weak, make_rc
+from tplib.rc import Rc, Weak, make_rc
 
 
 class Cell:

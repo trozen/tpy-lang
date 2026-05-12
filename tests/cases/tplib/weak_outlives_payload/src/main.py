@@ -2,7 +2,7 @@
 # last Rc drops; cell-backing memory stays alive until the last Weak drops,
 # so every surviving Weak.upgrade() reports None correctly.
 from tpy import Int32, Own
-from tplib import Rc, Weak, make_rc
+from tplib.rc import Rc, Weak, make_rc
 
 
 class Cell:

@@ -2,7 +2,7 @@
 # inside records (mirrors rc_in_field for the Rc side).
 from __future__ import annotations
 from tpy import Int32, Own
-from tplib import Rc, Weak, make_rc
+from tplib.rc import Rc, Weak, make_rc
 
 
 class Observer:

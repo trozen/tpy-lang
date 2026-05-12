@@ -45,8 +45,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc, Weak, make_rc
+    // from tplib.rc import Rc, Weak, make_rc
     ::tpystd::tplib::__tpy_init();
+    ::tpystd::tplib::rc::__tpy_init();
     // main()
     main();
 }

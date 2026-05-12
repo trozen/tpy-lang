@@ -2,7 +2,7 @@
 # upgrade() succeeds and returns a new Rc[T] sharing the same allocation;
 # mutation through the upgraded Rc is visible to the original.
 from tpy import Int32
-from tplib import Rc, Weak, make_rc
+from tplib.rc import Rc, Weak, make_rc
 
 
 class Cell:

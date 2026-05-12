@@ -3,7 +3,7 @@
 # upgrade succeeds while the corresponding Rc is alive and returns None
 # after the target's last strong reference is dropped.
 from tpy import Int32, Own
-from tplib import Rc, Weak, make_rc
+from tplib.rc import Rc, Weak, make_rc
 
 
 class Node:

@@ -19,6 +19,10 @@
 # returns Optional so callers handle the "payload already dropped" case.
 #
 # No atomic refcount (single-threaded only); atomic Arc[T] is a v3+ item.
+# `Weak` is intentionally NOT re-exported from `tplib` -- import as
+# `from tplib.rc import Weak`. Reserves the bare `Weak` name for an
+# eventual `tplib.arc.Weak` (different type; atomic refcount). Mirrors
+# `std::rc::Weak` vs `std::sync::Weak` in Rust.
 #
 # Rc-specific API notes (see BUGS.md for the underlying compiler gaps):
 # - TODO: construction goes through `make_rc(value)`, not `Rc.new(value)` --

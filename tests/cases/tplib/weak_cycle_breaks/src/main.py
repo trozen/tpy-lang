@@ -3,7 +3,7 @@
 # back-edge lets the chain drop cleanly when the root Rc is released.
 from __future__ import annotations
 from tpy import Int32
-from tplib import Rc, Weak, make_rc
+from tplib.rc import Rc, Weak, make_rc
 
 
 class Node:
