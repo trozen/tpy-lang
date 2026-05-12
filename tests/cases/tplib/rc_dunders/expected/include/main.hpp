@@ -13,8 +13,6 @@ inline constexpr std::string_view __name__ = "__main__";
 
 void main();
 
-using ::tpystd::tplib::rc::make_rc;
-
 using ::tpystd::tplib::rc::Rc;
 
 void __tpy_init();

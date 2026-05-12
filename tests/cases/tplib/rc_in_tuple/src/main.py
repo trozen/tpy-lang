@@ -4,7 +4,7 @@
 # clones; tuple lifetime is shorter than the underlying allocation
 # (refcount keeps it alive).
 from tpy import Int32
-from tplib import Rc, make_rc
+from tplib import Rc
 
 
 class Node:
@@ -20,8 +20,8 @@ def both(t: tuple[Rc[Node], Rc[Node]]) -> Int32:
 
 
 def main() -> None:
-    a = make_rc(Node(Int32(10)))
-    b = make_rc(Node(Int32(20)))
+    a = Rc.new(Node(Int32(10)))
+    b = Rc.new(Node(Int32(20)))
 
     pair: tuple[Rc[Node], Rc[Node]] = (a.clone(), b.clone())
 

@@ -1,0 +1,1 @@
+main.py:20: error: Method '__eq__' requires type parameter 'T' to satisfy 'Equatable', but 'NotEq' does not conform

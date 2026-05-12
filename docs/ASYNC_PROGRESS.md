@@ -553,7 +553,7 @@ binding work:
 - **Shared-ownership smart pointer in TPy** -- `Rc[T]` shipped as a
   pure-TPy class in `lib/tpy/tplib/rc.py` (uses `tpy.unsafe` for the
   heap block). Non-atomic single-threaded refcount; `@nocopy` with
-  explicit `.clone()`. Construct via `make_rc(value)`. Unblocks the
+  explicit `.clone()`. Construct via `Rc.new(value)`. Unblocks the
   `TaskState[T]` TPy port. Atomic `Arc[T]` for multi-threaded use is a
   v3+ item.
 - **`thread_local` storage in TPy**. Would let the executor's

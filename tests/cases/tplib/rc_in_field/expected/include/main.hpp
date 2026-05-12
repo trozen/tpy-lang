@@ -63,8 +63,6 @@ inline void Counter::bump() {
     // self.value += Int32(1)
     this->value = ::tpy::add_check<int32_t>(this->value, 1);
 }
-using ::tpystd::tplib::rc::make_rc;
-
 using ::tpystd::tplib::rc::Rc;
 
 void __tpy_init();

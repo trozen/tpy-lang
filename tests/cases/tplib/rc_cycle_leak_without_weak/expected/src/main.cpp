@@ -7,10 +7,10 @@ namespace tpyapp::main {
 // def acyclic() -> None:
 void acyclic() {
     // # a -> b, no back-edge. Both drop when a goes out of scope.
-    // a = make_rc(Node("A"))
-    ::tpystd::tplib::rc::Rc<Node> a = ::tpystd::tplib::rc::make_rc<Node>(Node("A"));
-    // b = make_rc(Node("B"))
-    ::tpystd::tplib::rc::Rc<Node> b = ::tpystd::tplib::rc::make_rc<Node>(Node("B"));
+    // a = Rc.new(Node("A"))
+    ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_(Node("A"));
+    // b = Rc.new(Node("B"))
+    ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_(Node("B"));
     // a.get().next = b.clone()
     a.get().next = b.clone();
     // # Dropping `b` first (still held by a.next via the clone) keeps B alive
@@ -21,10 +21,10 @@ void acyclic() {
 void cyclic() {
     // # a -> b -> a. Refcount on each cell stays >= 1 after handles go out
     // # of scope; __del__ never fires for either node.
-    // a = make_rc(Node("X"))
-    ::tpystd::tplib::rc::Rc<Node> a = ::tpystd::tplib::rc::make_rc<Node>(Node("X"));
-    // b = make_rc(Node("Y"))
-    ::tpystd::tplib::rc::Rc<Node> b = ::tpystd::tplib::rc::make_rc<Node>(Node("Y"));
+    // a = Rc.new(Node("X"))
+    ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_(Node("X"));
+    // b = Rc.new(Node("Y"))
+    ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_(Node("Y"));
     // a.get().next = b.clone()
     a.get().next = b.clone();
     // b.get().next = a.clone()
@@ -50,7 +50,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc, make_rc
+    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
     // main()
     main();

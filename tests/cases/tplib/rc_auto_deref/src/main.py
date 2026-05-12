@@ -2,7 +2,7 @@
 # explicit .get() in TPy. CPython doesn't simulate the Deref protocol, so
 # this test is TPy-only (see no_cpython.txt).
 from tpy import Int32
-from tplib import Rc, make_rc
+from tplib import Rc
 
 
 class State:
@@ -16,7 +16,7 @@ class State:
 
 
 def main() -> None:
-    r = make_rc(State(Int32(10)))
+    r = Rc.new(State(Int32(10)))
     print(r.x)            # auto-deref: 10
     print(r.doubled())    # auto-deref method: 20
 

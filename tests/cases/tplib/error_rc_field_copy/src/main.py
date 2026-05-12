@@ -3,7 +3,7 @@
 # ownership via Own[Rc[T]] (typically by passing .clone() at the call
 # site).
 from tpy import Int32
-from tplib import Rc, make_rc
+from tplib import Rc
 
 
 class Counter:
@@ -21,7 +21,7 @@ class Holder:
 
 
 def main() -> None:
-    h = Holder(make_rc(Counter()))
+    h = Holder(Rc.new(Counter()))
     print(h.shared.get().value)
 
 

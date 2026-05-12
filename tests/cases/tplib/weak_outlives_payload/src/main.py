@@ -2,7 +2,7 @@
 # last Rc drops; cell-backing memory stays alive until the last Weak drops,
 # so every surviving Weak.upgrade() reports None correctly.
 from tpy import Int32, Own
-from tplib.rc import Rc, Weak, make_rc
+from tplib.rc import Rc, Weak
 
 
 class Cell:
@@ -18,7 +18,7 @@ class Cell:
 def make_weaks() -> Own[tuple[Weak[Cell], Weak[Cell], Weak[Cell]]]:
     # Build three Weaks; the strong Rc dies at this function's return so the
     # payload destructs before the weaks are returned to the caller.
-    rc = make_rc(Cell(Int32(42)))
+    rc = Rc.new(Cell(Int32(42)))
     w1 = rc.downgrade()
     w2 = w1.clone()
     w3 = w2.clone()

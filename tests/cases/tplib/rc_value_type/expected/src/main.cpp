@@ -6,8 +6,8 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // r1 = make_rc(Int32(7))
-    ::tpystd::tplib::rc::Rc<int32_t> r1 = ::tpystd::tplib::rc::make_rc<int32_t>(7);
+    // r1 = Rc.new(Int32(7))
+    ::tpystd::tplib::rc::Rc<int32_t> r1 = Rc<int32_t>::new_(7);
     // r2 = r1.clone()
     ::tpystd::tplib::rc::Rc<int32_t> r2 = r1.clone();
     // print(r1.get(), r2.get())  # 7 7
@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc, make_rc
+    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
     // main()
     main();

@@ -13,10 +13,10 @@ int32_t both(const std::tuple<::tpystd::tplib::rc::Rc<Node>&, ::tpystd::tplib::r
 
 // def main() -> None:
 void main() {
-    // a = make_rc(Node(Int32(10)))
-    ::tpystd::tplib::rc::Rc<Node> a = ::tpystd::tplib::rc::make_rc<Node>(Node(10));
-    // b = make_rc(Node(Int32(20)))
-    ::tpystd::tplib::rc::Rc<Node> b = ::tpystd::tplib::rc::make_rc<Node>(Node(20));
+    // a = Rc.new(Node(Int32(10)))
+    ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_(Node(10));
+    // b = Rc.new(Node(Int32(20)))
+    ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_(Node(20));
     // pair: tuple[Rc[Node], Rc[Node]] = (a.clone(), b.clone())
     auto pair = std::tuple<::tpystd::tplib::rc::Rc<Node>, ::tpystd::tplib::rc::Rc<Node>>{a.clone(), b.clone()};
     // print(both(pair))  # 30
@@ -38,7 +38,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc, make_rc
+    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
     // main()
     main();

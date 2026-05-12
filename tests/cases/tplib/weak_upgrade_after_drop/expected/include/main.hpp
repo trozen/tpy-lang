@@ -52,8 +52,6 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
     return os;
 }
 
-using ::tpystd::tplib::rc::make_rc;
-
 using ::tpystd::tplib::rc::Rc;
 using ::tpystd::tplib::rc::Weak;
 

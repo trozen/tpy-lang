@@ -31,8 +31,6 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     return os;
 }
 
-using ::tpystd::tplib::rc::make_rc;
-
 using ::tpystd::tplib::rc::Rc;
 
 void __tpy_init();

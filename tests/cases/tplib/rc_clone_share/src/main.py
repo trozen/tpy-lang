@@ -1,7 +1,7 @@
 # Rc[T].clone() shares the underlying allocation: mutation through one
 # clone is observable through the other.
 from tpy import Int32
-from tplib import Rc, make_rc
+from tplib import Rc
 
 
 class State:
@@ -12,7 +12,7 @@ class State:
 
 
 def main() -> None:
-    r1 = make_rc(State(Int32(1)))
+    r1 = Rc.new(State(Int32(1)))
     r2 = r1.clone()
     print(r1.get().x, r2.get().x)  # 1 1
 

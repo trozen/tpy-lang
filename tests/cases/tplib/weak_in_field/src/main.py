@@ -2,7 +2,7 @@
 # inside records (mirrors rc_in_field for the Rc side).
 from __future__ import annotations
 from tpy import Int32, Own
-from tplib.rc import Rc, Weak, make_rc
+from tplib.rc import Rc, Weak
 
 
 class Observer:
@@ -27,12 +27,12 @@ class Counter:
 
 def make_observer_with_dead_target() -> Own[Observer]:
     # Local rc dies at function return; obs.target outlives it as a Weak.
-    rc = make_rc(Counter(Int32(99)))
+    rc = Rc.new(Counter(Int32(99)))
     return Observer(rc.downgrade())
 
 
 def main() -> None:
-    c = make_rc(Counter(Int32(10)))
+    c = Rc.new(Counter(Int32(10)))
     obs = Observer(c.downgrade())
 
     print(obs.read())  # 10

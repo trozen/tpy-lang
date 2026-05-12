@@ -6,10 +6,10 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // root = make_rc(Node("root"))
-    ::tpystd::tplib::rc::Rc<Node> root = ::tpystd::tplib::rc::make_rc<Node>(Node("root"));
-    // child = make_rc(Node("child"))
-    ::tpystd::tplib::rc::Rc<Node> child = ::tpystd::tplib::rc::make_rc<Node>(Node("child"));
+    // root = Rc.new(Node("root"))
+    ::tpystd::tplib::rc::Rc<Node> root = Rc<Node>::new_(Node("root"));
+    // child = Rc.new(Node("child"))
+    ::tpystd::tplib::rc::Rc<Node> child = Rc<Node>::new_(Node("child"));
     // # Wire the cycle: root owns child strongly; child holds a Weak back to root.
     // root.get().children.append(child.clone())
     root.get().children.push_back(child.clone());
@@ -35,7 +35,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tplib.rc import Rc, Weak, make_rc
+    // from tplib.rc import Rc, Weak
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
     // main()

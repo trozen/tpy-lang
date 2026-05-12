@@ -3,11 +3,11 @@
 # field to be mutable (not exposed in this test since Int32 has no
 # mutating method).
 from tpy import Int32
-from tplib import Rc, make_rc
+from tplib import Rc
 
 
 def main() -> None:
-    r1 = make_rc(Int32(7))
+    r1 = Rc.new(Int32(7))
     r2 = r1.clone()
     print(r1.get(), r2.get())  # 7 7
 

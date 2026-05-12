@@ -2,13 +2,13 @@
 # Mirrors Box's dunder coverage; verifies the Equatable/Comparable/Hashable
 # bounds dispatch correctly through Rc to the underlying T.
 from tpy import Int32
-from tplib import Rc, make_rc
+from tplib import Rc
 
 
 def main() -> None:
-    a = make_rc(Int32(10))
-    b = make_rc(Int32(10))   # same content, different cell
-    c = make_rc(Int32(20))
+    a = Rc.new(Int32(10))
+    b = Rc.new(Int32(10))   # same content, different cell
+    c = Rc.new(Int32(20))
 
     # Content equality (not identity): a and b are distinct cells but equal content.
     print(a == b)             # True

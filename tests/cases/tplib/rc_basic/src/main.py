@@ -1,6 +1,6 @@
 # Basic Rc[T] construction, field access via get(), and method calls.
 from tpy import Int32
-from tplib import Rc, make_rc
+from tplib import Rc
 
 
 class State:
@@ -14,7 +14,7 @@ class State:
 
 
 def main() -> None:
-    r = make_rc(State(Int32(42)))
+    r = Rc.new(State(Int32(42)))
     print(r.get().x)
     print(r.get().doubled())
     r.get().x = Int32(7)

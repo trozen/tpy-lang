@@ -4,7 +4,7 @@
 # Documents that Weak is the recommended fix, not an optional polish.
 from __future__ import annotations
 from tpy import Int32
-from tplib import Rc, make_rc
+from tplib import Rc
 
 
 class Node:
@@ -22,8 +22,8 @@ class Node:
 
 def acyclic() -> None:
     # a -> b, no back-edge. Both drop when a goes out of scope.
-    a = make_rc(Node("A"))
-    b = make_rc(Node("B"))
+    a = Rc.new(Node("A"))
+    b = Rc.new(Node("B"))
     a.get().next = b.clone()
     # Dropping `b` first (still held by a.next via the clone) keeps B alive
     # until A drops at scope end.
@@ -32,8 +32,8 @@ def acyclic() -> None:
 def cyclic() -> None:
     # a -> b -> a. Refcount on each cell stays >= 1 after handles go out
     # of scope; __del__ never fires for either node.
-    a = make_rc(Node("X"))
-    b = make_rc(Node("Y"))
+    a = Rc.new(Node("X"))
+    b = Rc.new(Node("Y"))
     a.get().next = b.clone()
     b.get().next = a.clone()
 

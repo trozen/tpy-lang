@@ -2,7 +2,7 @@
 # payload has been destroyed; the Weak handle's cell-memory access stays
 # valid (cell is freed only when the last Weak drops).
 from tpy import Int32, Own
-from tplib.rc import Rc, Weak, make_rc
+from tplib.rc import Rc, Weak
 
 
 class Cell:
@@ -16,7 +16,7 @@ class Cell:
 
 
 def make_weak_after_rc_dies() -> Own[Weak[Cell]]:
-    rc = make_rc(Cell(Int32(7)))
+    rc = Rc.new(Cell(Int32(7)))
     w = rc.downgrade()
     # rc drops at function return -- payload destructed, but `w` keeps the
     # cell memory alive (strong=0, weak=1).

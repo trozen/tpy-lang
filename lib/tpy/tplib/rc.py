@@ -1,7 +1,7 @@
 # Rc[T] / Weak[T] -- non-atomic, single-threaded shared-ownership smart
 # pointer with a non-owning companion.
 #
-# RcCell layout: `{strong, weak, storage}` where storage is inline
+# _RcCell layout: `{strong, weak, storage}` where storage is inline
 # UninitArrayStorage[T, 1]. Payload destruction (storage.drop0()) happens when
 # `strong` reaches zero; cell deallocation (unsafe_free) happens when `weak`
 # reaches zero. The classic std::shared_ptr trick: all live strong handles
@@ -25,22 +25,20 @@
 # `std::rc::Weak` vs `std::sync::Weak` in Rust.
 #
 # Rc-specific API notes (see BUGS.md for the underlying compiler gaps):
-# - TODO: construction goes through `make_rc(value)`, not `Rc.new(value)` --
-#   cross-module imported-class staticmethod access is broken in sema.
 # - TODO: no `Rc(other)` sharing constructor -- clone() handles the share
 #   internally because @nocopy + sibling-borrow into __init__ isn't supported.
 # - TODO: `Rc[readonly[T]]` cannot be cloned -- clone() mutates refcount and
 #   can't be @readonly, so a readonly Rc handle has no way to share. Same
 #   issue applies to `Weak[readonly[T]].upgrade()`.
 # - TODO: `Rc` is not `Covariant[T]` -- shared-mutable Rc isn't safely
-#   covariant, and the codegen would break on the RcCell wrapping layer.
+#   covariant, and the codegen would break on the _RcCell wrapping layer.
 from __future__ import annotations
 from tpy import Own, Ptr, UInt32, UInt64, Deref, Equatable, Comparable, Hashable, nocopy, auto_readonly
 from tpy.mem import UninitArrayStorage
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
 
 
-class RcCell[T]:
+class _RcCell[T]:
     strong: UInt32
     weak: UInt32
     storage: UninitArrayStorage[T, 1]
@@ -48,7 +46,7 @@ class RcCell[T]:
     def __init__(self) -> None:
         # strong=1 for the constructing Rc; weak=1 for the collective weak
         # owned by all strong handles. Storage stays empty here; payload
-        # init0 is deferred to `make_rc` (see the rationale at the call site).
+        # init0 is deferred to `Rc.new` (see the rationale at the call site).
         self.strong = 1
         self.weak = 1
         self.storage = UninitArrayStorage[T, 1]()
@@ -56,12 +54,12 @@ class RcCell[T]:
 
 @nocopy
 class Rc[T](Deref[T]):
-    _cell: Ptr[RcCell[T]]
+    _cell: Ptr[_RcCell[T]]
 
     # TODO: package-private once TPy gains a private-method mechanism. Only
-    # `make_rc`, `clone`, and `Weak.upgrade` should call this; user code
+    # `Rc.new`, `clone`, and `Weak.upgrade` should call this; user code
     # reaching for `Rc(cell)` directly is bypassing the refcount discipline.
-    def __init__(self, cell: Ptr[RcCell[T]]) -> None:
+    def __init__(self, cell: Ptr[_RcCell[T]]) -> None:
         self._cell = cell
 
     def __del__(self) -> None:
@@ -93,6 +91,17 @@ class Rc[T](Deref[T]):
     @auto_readonly
     def get(self) -> auto_readonly[T]:
         return self._cell.storage.load0()
+
+    @staticmethod
+    def new(value: Own[T]) -> Own[Rc[T]]:
+        cell = unsafe_alloc[_RcCell[T]]()
+        unsafe_init(cell, _RcCell[T]())
+        # Init the payload after unsafe_init so the move from the temporary
+        # _RcCell() doesn't memcpy a live T through UninitArrayStorage's
+        # memcpy-based move ctor (would corrupt non-trivially-copyable T like
+        # std::string with its small-string self-pointer).
+        cell.storage.init0(value)
+        return Rc[T](cell)
 
     def clone(self) -> Own[Rc[T]]:
         # Hoist read/write into one each so codegen emits a single
@@ -137,11 +146,11 @@ class Rc[T](Deref[T]):
 
 @nocopy
 class Weak[T]:
-    _cell: Ptr[RcCell[T]]
+    _cell: Ptr[_RcCell[T]]
 
     # TODO: package-private (same caveat as Rc.__init__). Constructed only
     # by Rc.downgrade() and Weak.clone().
-    def __init__(self, cell: Ptr[RcCell[T]]) -> None:
+    def __init__(self, cell: Ptr[_RcCell[T]]) -> None:
         self._cell = cell
 
     def __del__(self) -> None:
@@ -167,18 +176,3 @@ class Weak[T]:
         new_weak = self._cell.weak + 1
         self._cell.weak = new_weak
         return Weak[T](self._cell)
-
-
-# TODO: rename to `Rc.new(value)` once cross-module imported-class staticmethod
-# resolution is fixed in sema (see BUGS.md). User-facing API will be a single
-# `from tplib import Rc` then `Rc.new(value)` -- no separate factory import.
-def make_rc[T](value: Own[T]) -> Own[Rc[T]]:
-    cell = unsafe_alloc[RcCell[T]]()
-    unsafe_init(cell, RcCell[T]())
-    # Now that the cell sits at its final heap address, place the value
-    # directly into its inline storage. Doing this after `unsafe_init` is
-    # required for non-trivially-copyable T: UninitArrayStorage's move ctor
-    # uses memcpy, which would corrupt a T that holds self-referential
-    # pointers (e.g. std::string's small-string buffer).
-    cell.storage.init0(value)
-    return Rc[T](cell)

@@ -4,7 +4,7 @@
 # weak.clone() at the call site). Mirrors error_rc_field_copy for the
 # non-owning companion.
 from tpy import Int32
-from tplib.rc import Rc, Weak, make_rc
+from tplib.rc import Rc, Weak
 
 
 class Counter:
@@ -22,7 +22,7 @@ class Observer:
 
 
 def main() -> None:
-    rc = make_rc(Counter())
+    rc = Rc.new(Counter())
     obs = Observer(rc.downgrade())
     print(obs.target.upgrade() is None)
 

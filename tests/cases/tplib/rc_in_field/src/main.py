@@ -1,7 +1,7 @@
 # Rc[T] as a field of a record. Mutation via clone is visible through
 # the record's clone too.
 from tpy import Int32, Own
-from tplib import Rc, make_rc
+from tplib import Rc
 
 
 class Counter:
@@ -24,7 +24,7 @@ class Holder:
 
 
 def main() -> None:
-    counter = make_rc(Counter())
+    counter = Rc.new(Counter())
     h1 = Holder("first", counter.clone())
     h2 = Holder("second", counter.clone())
 

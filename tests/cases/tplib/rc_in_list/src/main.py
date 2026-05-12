@@ -1,7 +1,7 @@
 # list[Rc[T]] -- storing Rc clones in a container. Mutation through
 # one alias is visible through other clones of the same allocation.
 from tpy import Int32
-from tplib import Rc, make_rc
+from tplib import Rc
 
 
 class Node:
@@ -12,9 +12,9 @@ class Node:
 
 
 def main() -> None:
-    a = make_rc(Node(Int32(1)))
-    b = make_rc(Node(Int32(2)))
-    c = make_rc(Node(Int32(3)))
+    a = Rc.new(Node(Int32(1)))
+    b = Rc.new(Node(Int32(2)))
+    c = Rc.new(Node(Int32(3)))
 
     a_alias = a.clone()
 

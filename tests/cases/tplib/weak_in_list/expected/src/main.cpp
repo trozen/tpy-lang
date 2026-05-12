@@ -32,12 +32,12 @@ std::vector<int32_t> observed_values(std::vector<::tpystd::tplib::rc::Weak<Node>
 
 // def main() -> None:
 void main() {
-    // a = make_rc(Node(Int32(10)))
-    ::tpystd::tplib::rc::Rc<Node> a = ::tpystd::tplib::rc::make_rc<Node>(Node(10));
-    // b = make_rc(Node(Int32(20)))
-    ::tpystd::tplib::rc::Rc<Node> b = ::tpystd::tplib::rc::make_rc<Node>(Node(20));
-    // c = make_rc(Node(Int32(30)))
-    ::tpystd::tplib::rc::Rc<Node> c = ::tpystd::tplib::rc::make_rc<Node>(Node(30));
+    // a = Rc.new(Node(Int32(10)))
+    ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_(Node(10));
+    // b = Rc.new(Node(Int32(20)))
+    ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_(Node(20));
+    // c = Rc.new(Node(Int32(30)))
+    ::tpystd::tplib::rc::Rc<Node> c = Rc<Node>::new_(Node(30));
     // observers: list[Weak[Node]] = [a.downgrade(), b.downgrade(), c.downgrade()]
     std::vector<::tpystd::tplib::rc::Weak<Node>> observers = ::tpy::make_vector<::tpystd::tplib::rc::Weak<Node>>(a.downgrade(), b.downgrade(), c.downgrade());
     // # All three targets alive: every Weak upgrades.
@@ -66,7 +66,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tplib.rc import Rc, Weak, make_rc
+    // from tplib.rc import Rc, Weak
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
     // main()

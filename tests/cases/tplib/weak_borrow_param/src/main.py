@@ -3,7 +3,7 @@
 # inspects a Weak without taking ownership. Verifies the borrow-form
 # codegen path (passing Weak by reference, not by move).
 from tpy import Int32
-from tplib.rc import Rc, Weak, make_rc
+from tplib.rc import Rc, Weak
 
 
 class Cell:
@@ -21,7 +21,7 @@ def read_via_weak(w: Weak[Cell]) -> Int32:
 
 
 def main() -> None:
-    rc = make_rc(Cell(Int32(7)))
+    rc = Rc.new(Cell(Int32(7)))
     w = rc.downgrade()
 
     print(read_via_weak(w))  # 7 (w borrowed; caller retains ownership)

@@ -5,6 +5,6 @@ from tplib.box import Box
 # that the future Arc[T] companion (`tplib.arc.Weak`) can take the same
 # bare-`Weak` name without collision -- mirrors std::rc::Weak vs
 # std::sync::Weak in Rust. Users import it as `from tplib.rc import Weak`.
-from tplib.rc import Rc, make_rc
+from tplib.rc import Rc
 from tplib.array_list import ArrayList
 from tplib.fix_str import FixStr

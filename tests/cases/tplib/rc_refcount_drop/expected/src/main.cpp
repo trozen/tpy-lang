@@ -12,8 +12,8 @@ void use(::tpystd::tplib::rc::Rc<State>& r) {
 
 // def single_owner() -> None:
 void single_owner() {
-    // r = make_rc(State("solo"))
-    ::tpystd::tplib::rc::Rc<State> r = ::tpystd::tplib::rc::make_rc<State>(State("solo"));
+    // r = Rc.new(State("solo"))
+    ::tpystd::tplib::rc::Rc<State> r = Rc<State>::new_(State("solo"));
     // use(r)
     use(r);
     // # State("solo") destructs when r goes out of scope.
@@ -21,8 +21,8 @@ void single_owner() {
 
 // def shared_via_clone() -> None:
 void shared_via_clone() {
-    // r1 = make_rc(State("shared"))
-    ::tpystd::tplib::rc::Rc<State> r1 = ::tpystd::tplib::rc::make_rc<State>(State("shared"));
+    // r1 = Rc.new(State("shared"))
+    ::tpystd::tplib::rc::Rc<State> r1 = Rc<State>::new_(State("shared"));
     // r2 = r1.clone()
     ::tpystd::tplib::rc::Rc<State> r2 = r1.clone();
     // use(r1)
@@ -51,7 +51,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tplib import Rc, make_rc
+    // from tplib import Rc
     ::tpystd::tplib::__tpy_init();
     // main()
     main();

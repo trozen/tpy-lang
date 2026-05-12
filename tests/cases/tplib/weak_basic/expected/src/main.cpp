@@ -6,8 +6,8 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // rc = make_rc(Cell(Int32(10)))
-    ::tpystd::tplib::rc::Rc<Cell> rc = ::tpystd::tplib::rc::make_rc<Cell>(Cell(10));
+    // rc = Rc.new(Cell(Int32(10)))
+    ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_(Cell(10));
     // w = rc.downgrade()
     ::tpystd::tplib::rc::Weak<Cell> w = rc.downgrade();
     // print(rc.get().val)  # 10
@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tplib.rc import Rc, Weak, make_rc
+    // from tplib.rc import Rc, Weak
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
     // main()

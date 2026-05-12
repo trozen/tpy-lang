@@ -40,8 +40,6 @@ inline int32_t State::doubled() const {
     // return self.x * 2
     return (::tpy::mul_check<int32_t>(this->x, 2));
 }
-using ::tpystd::tplib::rc::make_rc;
-
 using ::tpystd::tplib::rc::Rc;
 
 void __tpy_init();

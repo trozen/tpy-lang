@@ -8,8 +8,8 @@ namespace tpyapp::main {
 std::tuple<::tpystd::tplib::rc::Weak<Cell>, ::tpystd::tplib::rc::Weak<Cell>, ::tpystd::tplib::rc::Weak<Cell>> make_weaks() {
     // # Build three Weaks; the strong Rc dies at this function's return so the
     // # payload destructs before the weaks are returned to the caller.
-    // rc = make_rc(Cell(Int32(42)))
-    ::tpystd::tplib::rc::Rc<Cell> rc = ::tpystd::tplib::rc::make_rc<Cell>(Cell(42));
+    // rc = Rc.new(Cell(Int32(42)))
+    ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_(Cell(42));
     // w1 = rc.downgrade()
     ::tpystd::tplib::rc::Weak<Cell> w1 = rc.downgrade();
     // w2 = w1.clone()
@@ -45,7 +45,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tplib.rc import Rc, Weak, make_rc
+    // from tplib.rc import Rc, Weak
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
     // main()

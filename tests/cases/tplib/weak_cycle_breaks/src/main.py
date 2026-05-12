@@ -3,7 +3,7 @@
 # back-edge lets the chain drop cleanly when the root Rc is released.
 from __future__ import annotations
 from tpy import Int32
-from tplib.rc import Rc, Weak, make_rc
+from tplib.rc import Rc, Weak
 
 
 class Node:
@@ -23,8 +23,8 @@ class Node:
 
 
 def main() -> None:
-    root = make_rc(Node("root"))
-    child = make_rc(Node("child"))
+    root = Rc.new(Node("root"))
+    child = Rc.new(Node("child"))
 
     # Wire the cycle: root owns child strongly; child holds a Weak back to root.
     root.get().children.append(child.clone())

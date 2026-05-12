@@ -3,7 +3,7 @@
 # upgrade succeeds while the corresponding Rc is alive and returns None
 # after the target's last strong reference is dropped.
 from tpy import Int32, Own
-from tplib.rc import Rc, Weak, make_rc
+from tplib.rc import Rc, Weak
 
 
 class Node:
@@ -25,9 +25,9 @@ def observed_values(observers: list[Weak[Node]]) -> Own[list[Int32]]:
 
 
 def main() -> None:
-    a = make_rc(Node(Int32(10)))
-    b = make_rc(Node(Int32(20)))
-    c = make_rc(Node(Int32(30)))
+    a = Rc.new(Node(Int32(10)))
+    b = Rc.new(Node(Int32(20)))
+    c = Rc.new(Node(Int32(30)))
 
     observers: list[Weak[Node]] = [a.downgrade(), b.downgrade(), c.downgrade()]
 

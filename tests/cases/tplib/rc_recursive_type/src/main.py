@@ -3,7 +3,7 @@
 # (Node would have infinite size in C++).
 from __future__ import annotations
 from tpy import Int32
-from tplib import Rc, make_rc
+from tplib import Rc
 
 
 class Node:
@@ -16,9 +16,9 @@ class Node:
 
 
 def main() -> None:
-    a = make_rc(Node(Int32(1)))
-    b = make_rc(Node(Int32(2)))
-    c = make_rc(Node(Int32(3)))
+    a = Rc.new(Node(Int32(1)))
+    b = Rc.new(Node(Int32(2)))
+    c = Rc.new(Node(Int32(3)))
 
     a.get().next = b.clone()
     b.get().next = c.clone()

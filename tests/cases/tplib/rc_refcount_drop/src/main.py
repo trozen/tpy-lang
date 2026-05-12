@@ -1,7 +1,7 @@
 # Rc[T] drops the shared payload exactly once when the last clone goes
 # out of scope. Verified via __del__ side effect.
 from tpy import Int32
-from tplib import Rc, make_rc
+from tplib import Rc
 
 
 class State:
@@ -20,13 +20,13 @@ def use(r: Rc[State]) -> None:
 
 
 def single_owner() -> None:
-    r = make_rc(State("solo"))
+    r = Rc.new(State("solo"))
     use(r)
     # State("solo") destructs when r goes out of scope.
 
 
 def shared_via_clone() -> None:
-    r1 = make_rc(State("shared"))
+    r1 = Rc.new(State("shared"))
     r2 = r1.clone()
     use(r1)
     use(r2)

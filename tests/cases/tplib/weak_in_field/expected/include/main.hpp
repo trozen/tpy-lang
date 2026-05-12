@@ -70,8 +70,6 @@ inline int32_t Observer::read() {
     // return upgraded.get().value
     return (*upgraded).get().value;
 }
-using ::tpystd::tplib::rc::make_rc;
-
 using ::tpystd::tplib::rc::Rc;
 using ::tpystd::tplib::rc::Weak;
 
