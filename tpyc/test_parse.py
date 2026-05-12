@@ -215,29 +215,44 @@ class TestReadModuleAll:
         assert read_module_all(self._parse("")) is None
 
     def test_literal_list(self):
-        assert read_module_all(
-            self._parse('__all__ = ["foo", "bar"]\n')
-        ) == frozenset({"foo", "bar"})
+        result = read_module_all(self._parse('__all__ = ["foo", "bar"]\n'))
+        assert result is not None
+        assert result[0] == frozenset({"foo", "bar"})
+        assert result[1].line == 1
+
+    def test_empty_literal_list(self):
+        # `__all__ = []` is the Python idiom for "export nothing"; the
+        # empty frozenset must come through cleanly here so the
+        # downstream variable-deduction shortcut in
+        # `sema/local_deduction.py` (which infers `list[str]` for this
+        # exact shape) has the right metadata to work with.
+        result = read_module_all(self._parse('__all__ = []\n'))
+        assert result is not None
+        assert result[0] == frozenset()
+        assert result[1].line == 1
 
     def test_literal_tuple(self):
-        assert read_module_all(
-            self._parse('__all__ = ("foo",)\n')
-        ) == frozenset({"foo"})
+        result = read_module_all(self._parse('__all__ = ("foo",)\n'))
+        assert result is not None
+        assert result[0] == frozenset({"foo"})
 
     def test_literal_set(self):
-        assert read_module_all(
-            self._parse('__all__ = {"foo", "bar"}\n')
-        ) == frozenset({"foo", "bar"})
+        result = read_module_all(self._parse('__all__ = {"foo", "bar"}\n'))
+        assert result is not None
+        assert result[0] == frozenset({"foo", "bar"})
 
     def test_annotated_all(self):
-        assert read_module_all(
-            self._parse('__all__: list[str] = ["foo"]\n')
-        ) == frozenset({"foo"})
+        result = read_module_all(self._parse('__all__: list[str] = ["foo"]\n'))
+        assert result is not None
+        assert result[0] == frozenset({"foo"})
 
     def test_last_assignment_wins(self):
-        assert read_module_all(
-            self._parse('__all__ = ["a"]\n__all__ = ["b"]\n')
-        ) == frozenset({"b"})
+        result = read_module_all(
+            self._parse('__all__ = ["a"]\n__all__ = ["b"]\n'))
+        assert result is not None
+        assert result[0] == frozenset({"b"})
+        # Line should be the line of the *winning* assignment's RHS.
+        assert result[1].line == 2
 
     def test_non_literal_raises(self):
         with pytest.raises(NonLiteralAllError):
@@ -246,7 +261,9 @@ class TestReadModuleAll:
     def test_annotated_then_plain(self):
         # Mix of AnnAssign followed by plain Assign -- last wins.
         source = '__all__: list[str] = ["a"]\n__all__ = ["b"]\n'
-        assert read_module_all(self._parse(source)) == frozenset({"b"})
+        result = read_module_all(self._parse(source))
+        assert result is not None
+        assert result[0] == frozenset({"b"})
 
     def test_conditional_all_ignored(self):
         # read_module_all walks only top-level children, so `__all__`

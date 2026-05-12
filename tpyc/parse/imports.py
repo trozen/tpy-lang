@@ -38,13 +38,15 @@ class NonLiteralAllError(Exception):
         self.node = node
 
 
-def read_module_all(tree: ast.Module) -> frozenset[str] | None:
+def read_module_all(tree: ast.Module) -> 'tuple[frozenset[str], SourceLocation] | None':
     """Capture the module's own `__all__` from its top-level scope.
 
-    Returns the literal frozenset when `__all__` is defined as a
-    compile-time literal (list / tuple / set). Returns `None` when
-    `__all__` is not defined. Raises `NonLiteralAllError` when
-    `__all__` is defined but is not a literal.
+    Returns `(literal frozenset, loc)` when `__all__` is defined as a
+    compile-time literal (list / tuple / set); `loc` points at the
+    literal's RHS so callers can emit diagnostics that pin the
+    `__all__` declaration. Returns `None` when `__all__` is not
+    defined. Raises `NonLiteralAllError` when `__all__` is defined but
+    is not a literal.
 
     Mirrors the `__all__` branch of `scan_star_exports`; lives next to
     it so the parser can capture this without re-walking the source.
@@ -64,10 +66,11 @@ def read_module_all(tree: ast.Module) -> frozenset[str] | None:
     if all_value is None:
         return None
     try:
-        return frozenset(ast.literal_eval(all_value))
+        names = frozenset(ast.literal_eval(all_value))
     except (ValueError, TypeError):
         raise NonLiteralAllError(
             "__all__ is not a compile-time literal", all_value)
+    return names, SourceLocation(all_value.lineno, all_value.col_offset)
 
 
 def scan_star_exports(source: str) -> frozenset[str]:
@@ -83,7 +86,7 @@ def scan_star_exports(source: str) -> frozenset[str]:
     tree = ast.parse(source)
     explicit_all = read_module_all(tree)
     if explicit_all is not None:
-        return explicit_all
+        return explicit_all[0]
 
     # No __all__ -- collect all public top-level names (matching CPython)
     names: set[str] = set()

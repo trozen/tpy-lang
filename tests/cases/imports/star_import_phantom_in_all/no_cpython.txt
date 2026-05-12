@@ -1,1 +1,1 @@
-CPython raises AttributeError at star-import time for the phantom name in __all__; TPy currently silently drops it (BUGS.md gap that this case pins).
+CPython raises AttributeError at star-import time for the phantom name in __all__; TPy emits a compile-time warning on the defining module and proceeds. Different signal, same intent.

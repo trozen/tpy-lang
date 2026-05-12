@@ -682,14 +682,15 @@ class Parser:
         directives, directive_warnings = _scan_directives(self.source_lines)
         self._directives = directives
         try:
-            module_all = read_module_all(tree)
+            module_all_result = read_module_all(tree)
         except NonLiteralAllError as exc:
             raise ParseError(
                 "__all__ is not a compile-time literal (must be a "
                 "list / tuple / set of string literals)",
                 exc.node)
         module = self._parse_module(tree)
-        module.module_all = module_all
+        if module_all_result is not None:
+            module.module_all, module.module_all_loc = module_all_result
         module.directives = directives
         module.parse_warnings.extend(directive_warnings)
         # Attach the ref resolver so sema can resolve TypeRefNodes emitted

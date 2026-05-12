@@ -1,1 +1,0 @@
-main.py:9: error: Cannot infer element type for list '__all__'; add a type annotation (e.g., __all__: list[T] = []) or use the list so the type can be inferred

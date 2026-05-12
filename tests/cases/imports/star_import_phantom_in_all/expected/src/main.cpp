@@ -9,17 +9,16 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Pins the BUGS.md gap: `__all__` listing a name the source module
-    // # does not actually define is currently a silent drop. CPython raises
-    // # `AttributeError: module 'lib' has no attribute 'phantom_name'` at
-    // # star-import time. TPy compiles cleanly, real_fn works, phantom_name
-    // # is just absent from scope -- the diagnostic is missing.
+    // # `__all__` listing a name the source module does not actually define
+    // # is a typo trap: CPython raises `AttributeError: module 'lib' has no
+    // # attribute 'phantom_name'` at star-import time. TPy emits a warning
+    // # on the defining module (lib.py) -- catches the typo even if nobody
+    // # star-imports lib. Compilation continues, real_fn works, the phantom
+    // # name is simply absent from scope.
     // #
-    // # When this is fixed (warning or error at the source module's
-    // # __all__), the diag snapshot will change. Bump the snapshot together
-    // # with the fix and retire the BUGS.md entry. Skipping CPython because
-    // # CPython's import-time AttributeError is the behavior divergence we
-    // # are tracking.
+    // # Skipping CPython because the runtime mechanism differs (CPython
+    // # aborts main at `from lib import *`; TPy warns at lib's compile step
+    // # and proceeds).
     // from lib import *
     ::tpyapp::lib::__tpy_init();
     // real_fn()

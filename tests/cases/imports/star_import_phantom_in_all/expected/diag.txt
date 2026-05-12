@@ -1,0 +1,1 @@
+lib.py:1: warning: __all__ lists 'phantom_name' which is not defined in this module

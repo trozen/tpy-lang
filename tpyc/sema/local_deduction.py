@@ -39,12 +39,13 @@ from ..typesys import (
     TpyType,
     TupleType,
     FLOAT,
+    STR,
     UnknownElementType,
     resolve_int_literals,
     unwrap_qualifiers,
     unwrap_ref_type,
 )
-from .context import PENDING_CONTAINER_TYPES
+from .context import PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT
 from ..diagnostics import SemanticError
 from .numeric_lattice import (
     fixed_int_range_contains, merge_literal_seed_target,
@@ -596,6 +597,15 @@ class LocalTypeDeduction:
                     source_elem = self._resolve_alias_element_type(info)
                     if source_elem is not None:
                         elem_type = source_elem
+                    elif (info.variable_name == "__all__"
+                          and self.ctx.func.current_function
+                              is MODULE_INIT_CONTEXT):
+                        # `__all__ = []` is the Python idiom for "export
+                        # nothing". The literal is compile-time metadata
+                        # consumed by star-import expansion; the bare
+                        # empty form is too common for users to be forced
+                        # to write `__all__: list[str] = []`.
+                        elem_type = STR
                     else:
                         var_desc = f"list '{info.variable_name}'" if info.variable_name else "empty list literal"
                         raise self.ctx.error(

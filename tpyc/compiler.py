@@ -1158,6 +1158,11 @@ class Compiler:
                 self._expand_star_imports_for_module(compiled)
                 self._resolve_types_for_module(compiled)
                 self._finalize_declarations(compiled)
+            # Phantom-name check runs as a separate post-loop pass so SCC
+            # cycle peers' module_attributes is fully populated before any
+            # peer's __all__ is diffed against its surface.
+            for name in self.compile_order:
+                self._check_module_all_completeness(self.modules[name])
             self._check_workspace_completeness_cycles()
             for name in self.compile_order:
                 self._analyze_bodies(self.modules[name])
@@ -1212,6 +1217,11 @@ class Compiler:
             self._expand_star_imports_for_module(compiled)
             self._resolve_types_for_module(compiled)
             self._finalize_declarations(compiled)
+        # Phantom-name check runs as a separate post-loop pass so SCC
+        # cycle peers' module_attributes is fully populated before any
+        # peer's __all__ is diffed against its surface.
+        for module_name in self.compile_order:
+            self._check_module_all_completeness(self.modules[module_name])
         # Completeness-graph reject gate.
         # Run after all decls are finalized so RecordInfo.fields / .parents
         # are populated. Scans cycle members for by-value cross-cycle
@@ -3189,6 +3199,58 @@ class Compiler:
         else:
             index_module, index_orig = src_module, original_name
         ast.resolver.index_imported_name(local_name, index_module, index_orig)
+
+    def _check_module_all_completeness(self, compiled: 'CompiledModule') -> None:
+        """Warn for names listed in `__all__` that the module does not
+        actually export.
+
+        CPython raises `AttributeError: module 'M' has no attribute 'X'`
+        at star-import time for the same input; TPy's star expansion
+        silently drops phantom names, which is a typo trap. A warning
+        (rather than error) matches the project's tone for stylistic
+        gaps and avoids breaking users with pre-existing typos.
+
+        Runs after `_finalize_declarations` so `module_attributes`
+        carries every local def (records / functions / enums /
+        protocols / variables / type aliases). The check fires
+        unconditionally on every module that defines `__all__`,
+        whether or not anyone star-imports it -- parallels the
+        parse-time check for non-literal `__all__`.
+        """
+        ast = compiled.ast
+        if ast is None or ast.module_all is None or compiled.analyzer is None:
+            return
+        # Implicit stdlib modules (tpy / builtins / typing) legitimately
+        # list parser-keyword and primitive names in `__all__` that have
+        # no `def` / `class` / import surface (e.g. `None`, `tuple`,
+        # `auto_own`). Those names route through the parser's keyword
+        # table, not `module_attributes`, so the surface check would
+        # produce false positives. The check is meant to catch user
+        # typos, not police stdlib bootstrap.
+        if compiled.name in _IMPLICIT_MODULES:
+            return
+        surface: set[str] = set(compiled.module_attributes)
+        surface.update(ast.module_aliases.values())
+        # `import X` (bare module imports) brings `X` into the module's
+        # namespace as a submodule binding; not in `module_attributes`
+        # or `module_aliases`. Without this union, a module that re-
+        # exports a bare-imported submodule via `__all__ = ["X"]`
+        # would get a false phantom warning.
+        surface.update(ast.bare_module_imports)
+        for names in ast.imports.values():
+            if isinstance(names, set):
+                for _, local in names:
+                    surface.add(local)
+        phantoms = sorted(ast.module_all - surface)
+        # Emit on the source module's analyzer so the diagnostic carries
+        # the source filename in formatted output, matching where the
+        # `__all__` literal physically lives. Using compiler-level
+        # diagnostics would attribute the warning to the entry point.
+        for name in phantoms:
+            compiled.analyzer.ctx.warning_from_loc(
+                f"__all__ lists '{name}' which is not defined in this module",
+                ast.module_all_loc,
+            )
 
     def _flatten_var_reexport(self, source_module: str,
                                original_name: str) -> tuple[str, str]:

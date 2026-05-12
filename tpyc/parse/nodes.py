@@ -1404,6 +1404,11 @@ class TpyModule:
     # the module does not define `__all__`; consumers treat that as "no
     # filter applied beyond the leading-underscore rule".
     module_all: frozenset[str] | None = None
+    # Source location of the `__all__` literal (the assignment's RHS), used
+    # for diagnostics that point at the `__all__` declaration -- e.g. the
+    # phantom-name warning when `__all__` lists a name the module does not
+    # actually export. None whenever `module_all` is None.
+    module_all_loc: SourceLocation | None = None
     # Modules to resolve as files: {module_name: line_number}
     user_module_imports: dict[str, int] = field(default_factory=dict)
     # Module aliases from "from . import submod" -> {canonical_name: local_name}
