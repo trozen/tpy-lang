@@ -889,7 +889,7 @@ Restrictions:
 - **Working**: `Ptr[T]` -> `T*`
 - **Working**: `Ptr[readonly[T]]` -> `const T*`
 - **Working**: `Own[T]` -> `T` (ownership transfer for return values)
-- **Working**: `Rc[T]` -- pure-TPy non-atomic single-threaded shared-ownership smart pointer (`tplib/rc.py`). Heap-allocates an `RcCell[T]` (refcount + value) via `tpy.unsafe`; clones alias the same allocation. `@nocopy` at the TPy level: deliberate sharing is always explicit via `.clone()`. Implements `Deref[T]` for transparent field/method access in TPy (`r.x`, `r.method()`); under CPython use `r.get().x` explicitly because the auto-deref protocol isn't simulated -- tests relying on `r.x` syntax need `no_cpython.txt`. Not `Covariant[T]`: shared-mutable Rc isn't safely covariant (a writer through a Parent view could install a non-Child into the shared slot) and the wrapping through `RcCell` breaks pointer covariance anyway. Mutation through any clone is visible to all other clones; for shared-immutable use `Rc[readonly[T]]`. No `Weak[T]` / no atomic refcount today (single-threaded only -- atomic `Arc[T]` is a v3+ item). User-facing construction goes through the module-level `make_rc(value)` factory (two TPy bugs filed in `BUGS.md` block the more idiomatic `Rc.new(value)` / `Rc(value)` shapes). Import: `from tplib import Rc, make_rc`.
+- **Working**: `Rc[T]` -- pure-TPy non-atomic single-threaded shared-ownership smart pointer (`tplib/rc.py`). Heap-allocates an `RcCell[T]` (refcount + value) via `tpy.unsafe`; clones alias the same allocation. `@nocopy` at the TPy level: deliberate sharing is always explicit via `.clone()`. Implements `Deref[T]` for transparent field/method access in TPy (`r.x`, `r.method()`); under CPython use `r.get().x` explicitly because the auto-deref protocol isn't simulated -- tests relying on `r.x` syntax need `no_cpython.txt`. Not `Covariant[T]`: shared-mutable Rc isn't safely covariant (a writer through a Parent view could install a non-Child into the shared slot) and the wrapping through `RcCell` breaks pointer covariance anyway. Mutation through any clone is visible to all other clones; for shared-immutable use `Rc[readonly[T]]`. Dunder surface mirrors `Box[T]`: `__str__`, `__repr__`, plus `__eq__` (content equality, delegates to `T.__eq__`, gated on `T: Equatable`), `__lt__`/`__le__`/`__gt__`/`__ge__` (gated on `T: Comparable`), and `__hash__` (gated on `T: Hashable`). No `Weak[T]` / no atomic refcount today (single-threaded only -- atomic `Arc[T]` is a v3+ item). User-facing construction goes through the module-level `make_rc(value)` factory (two TPy bugs filed in `BUGS.md` block the more idiomatic `Rc.new(value)` / `Rc(value)` shapes). Import: `from tplib import Rc, make_rc`.
 - **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`, `unsafe_str_view`, `unsafe_alloc`, `unsafe_alloc_n`, `unsafe_free`, `unsafe_init`, `unsafe_drop`, `unsafe_move_out`)
 - **Working**: `tpy.mem` -- uninitialized storage primitives (`UninitArrayStorage[T, N]`, `UninitHeapStorage[T]`)
 - **Working (internal)**: `Ref[T]` -- internal type for explicit reference semantics. Flows through the type system uniformly: auto-inserted on function params/returns, preserved on non-reassigned locals, returned by field access and subscript. Detects implicit copies when storing borrowed references into fields/containers (complemented by `needs_copy_warning` for owned lvalue copies). Also drives lambda trailing return types (`-> T&`) and `val_or_ref<T>` template args for iterator combinators. Not user-facing -- users see `T` in annotations, the compiler infers reference vs owned.
@@ -967,7 +967,7 @@ Types that implement `__deref__() -> T` conform to the `Deref[T]` protocol and s
 `Ptr[T]` and `Ptr[readonly[T]]` conform to `Deref[T]`. User-defined types can also implement `__deref__`:
 
 ```python
-from tpy import Int32, copy, auto_readonly
+from tpy import Int32, copy
 
 class Point:
     x: Int32
@@ -982,7 +982,6 @@ class Ref:
     _target: Point
     def __init__(self, target: Point) -> None:
         self._target = copy(target)
-    @auto_readonly
     def __deref__(self) -> Point:
         return self._target
 
@@ -990,7 +989,10 @@ def main() -> None:
     r: Ref = Ref(Point(10, 20))
     print(r.x)     # auto-deref: r.__deref__().x -> 10
     print(r.sum())  # auto-deref: r.__deref__().sum() -> 30
+    r.x = Int32(99)  # mutation through __deref__ works -- dual overloads are implicit
 ```
+
+The plain `def __deref__` above implicitly gets mutable + const overloads because the return type is a reference type. Explicit `@auto_readonly` is no longer needed for `__deref__`, `__getitem__`, and `__span__` with reference-typed returns -- the compiler synthesizes the pair via `IMPLICIT_AUTO_READONLY_METHODS`. Write `@readonly` to opt back into a single const overload.
 
 Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref__() -> Point`, then `box.x` resolves through both (max depth: 8). Auto-deref also works through `Optional` receivers (`Ref | None`).
 
@@ -2825,14 +2827,21 @@ to all reference types (`Span`, `Ptr`, `SpanIter`, user-defined generics) -- no 
 When `__span__` returns `Span[readonly[T]]`, only a single const overload is generated (no
 `@auto_readonly` needed). The same pattern applies to `__iter__()`.
 
-**Required decorator**: `@auto_readonly` must be applied explicitly to methods that need
-dual C++ overloads. The canonical span-backed type pattern:
+**Implicit dual overloads for `__deref__`, `__getitem__`, `__span__`**: when one of these
+three dunders has a reference-typed return, the compiler synthesizes the dual mutable/const
+overload pair automatically (`IMPLICIT_AUTO_READONLY_METHODS`). Plain `def __span__(self) -> Span[T]:`
+without any decorator produces both halves. Value-typed returns stay single-overload.
+Use `@readonly` to opt back into a strict const-only contract.
+
+Explicit `@auto_readonly` is still required for other methods that want dual overloads (e.g.,
+`__iter__`, plain `get()` accessors, or user-defined non-dunder accessors):
+
 ```python
 from tpy import Span, SpanIter, auto_readonly
 
 class MyType:
-    @auto_readonly
-    def __span__(self) -> Span[auto_readonly[T]]: ...
+    # No decorator needed -- __span__ in IMPLICIT_AUTO_READONLY_METHODS.
+    def __span__(self) -> Span[T]: ...
 
     @auto_readonly
     def __iter__(self) -> SpanIter[auto_readonly[T]]:

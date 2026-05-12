@@ -1,0 +1,1 @@
+__deref__ auto-deref isn't a CPython concept; CPython requires explicit method calls. TPy-only behavior.

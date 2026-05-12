@@ -39,6 +39,7 @@ from ..parse import TpyFunction, TpyRecord
 from ..typesys import (
     AutoOwnType,
     AutoReadonlyType,
+    IMPLICIT_AUTO_READONLY_METHODS,
     OwnType,
     ReadonlyType,
     SelfType,
@@ -90,6 +91,7 @@ def _expand_one(method: TpyFunction) -> list[TpyFunction]:
 
     _derive_self_flags(method)
     _validate_self_annotation(method)
+    _apply_implicit_auto_readonly(method)
     _apply_auto_readonly_decorator_wrapping(method)
     _detect_per_param_auto_readonly(method)
     _check_auto_readonly_generic_method(method)
@@ -189,6 +191,42 @@ def _validate_self_annotation(method: TpyFunction) -> None:
                 loc=method.loc,
             )
         return
+
+
+def _apply_implicit_auto_readonly(method: TpyFunction) -> None:
+    """Reference-returning dunders (`__deref__`, `__getitem__`, `__span__`)
+    with a *reference-typed* return implicitly get dual mutable/const
+    overloads. Wrapping the return type with `AutoReadonlyType` reuses the
+    existing decorator path: the cloner produces the mutable + const pair.
+
+    Value-typed returns (Int32, etc.) skip this -- they stay on the
+    IMPLICIT_READONLY_METHODS path (single const overload is correct because
+    there's no aliasing to mutate). Without this dual-overload synthesis, a
+    class with `def __deref__(self) -> SomeRecord:` would be const-only,
+    and mutation through the wrapper would silently miscompile at C++
+    ("assignment of member in read-only object"). Explicit `@readonly` opts
+    back out.
+    """
+    if method.name not in IMPLICIT_AUTO_READONLY_METHODS:
+        return
+    # Idempotency: a mutable clone of a prior auto_readonly expansion already
+    # has the return type stripped to T; a second pass would re-wrap and
+    # re-clone, multiplying the overload count.
+    if method.is_auto_readonly_mutable_clone:
+        return
+    if method.is_readonly or method.readonly_opt_out:
+        return
+    if method.has_auto_readonly_decorator or method.auto_readonly:
+        return
+    rtype = method.return_type
+    if rtype is None or isinstance(rtype, (AutoReadonlyType, ReadonlyType)):
+        return
+    # Value-typed returns don't carry aliasing risk; let the IMPLICIT_READONLY
+    # path handle them (single const overload).
+    if rtype.is_value_type():
+        return
+    method.return_type = AutoReadonlyType(rtype)
+    method.has_auto_readonly_decorator = True
 
 
 def _apply_auto_readonly_decorator_wrapping(method: TpyFunction) -> None:

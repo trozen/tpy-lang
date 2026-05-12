@@ -12,6 +12,7 @@ struct Ref;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+int32_t read_only(const Ref& r);
 void main();
 
 // class Point:
@@ -24,9 +25,6 @@ struct Point {
     // def __init__(self, x: Int32, y: Int32) -> None:
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
-
-    // def sum(self) -> Int32:
-    int32_t sum() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -44,11 +42,15 @@ struct Ref {
     Ref() = default;
     explicit Ref(const Point& target) : _target(target) {}
 
-    // @auto_readonly
+    // # Plain `def __deref__` -- no @auto_readonly or @readonly. Implicit path
+    // # should produce dual mutable/const overloads because the return type is
+    // # a reference type (Point).
     // def __deref__(self) -> Point:
     Point& __deref__();
 
-    // @auto_readonly
+    // # Plain `def __deref__` -- no @auto_readonly or @readonly. Implicit path
+    // # should produce dual mutable/const overloads because the return type is
+    // # a reference type (Point).
     // def __deref__(self) -> Point:
     const Point& __deref__() const;
 
@@ -68,20 +70,18 @@ inline std::ostream& operator<<(std::ostream& os, const Ref& obj) {
 }
 
 
-// def sum(self) -> Int32:
-inline int32_t Point::sum() const {
-    // return self.x + self.y
-    return (::tpy::add_check<int32_t>(this->x, this->y));
-}
-
-// @auto_readonly
+// # Plain `def __deref__` -- no @auto_readonly or @readonly. Implicit path
+// # should produce dual mutable/const overloads because the return type is
+// # a reference type (Point).
 // def __deref__(self) -> Point:
 inline Point& Ref::__deref__() {
     // return self._target
     return this->_target;
 }
 
-// @auto_readonly
+// # Plain `def __deref__` -- no @auto_readonly or @readonly. Implicit path
+// # should produce dual mutable/const overloads because the return type is
+// # a reference type (Point).
 // def __deref__(self) -> Point:
 inline const Point& Ref::__deref__() const {
     // return self._target

@@ -3562,6 +3562,14 @@ class ResolvedUnaryop:
     method: FunctionInfo
 
 
+# Dunders implicitly marked is_readonly=True for the *single-overload* case.
+# IMPLICIT_AUTO_READONLY_METHODS members appear here too, by design: when
+# their return type is value-typed they take the single-overload path (no
+# cloning, marked is_readonly=True via this set); when reference-typed they
+# go through the dual-overload synthesis in method_expansion and the
+# `mutable_clone_ids` check at registration.py keeps this set from
+# clobbering the mutable clone. Keep the two sets in sync if either is
+# updated.
 IMPLICIT_READONLY_METHODS = frozenset({
     "__bool__", "__len__", "__getitem__", "__contains__", "__str__", "__repr__", "__hash__", "__eq__", "__ne__",
     "__lt__", "__le__", "__gt__", "__ge__",
@@ -3570,6 +3578,24 @@ IMPLICIT_READONLY_METHODS = frozenset({
     "__radd__", "__rsub__", "__rmul__", "__rtruediv__", "__rfloordiv__", "__rmod__", "__rpow__",
     "__neg__", "__pos__", "__invert__",
     "__copy__", "__deref__", "__span__",
+})
+
+# Reference-returning dunders that, when their return type is a reference
+# type, need dual mutable/const overloads rather than a single const overload.
+# method_expansion treats these as if the user wrote `@auto_readonly` and
+# wraps the return with `AutoReadonlyType`, so the cloner produces both
+# variants. Value-typed returns stay on the IMPLICIT_READONLY_METHODS path
+# (single const overload is correct -- there's no aliasing to mutate).
+#
+# Without this, a class with `def __deref__(self) -> SomeRecord:` would be
+# const-only and mutation through the wrapper (`box.x = v`) silently
+# miscompiles as "assignment of member in read-only object". Users wanting a
+# strict const-only contract can still write `@readonly` explicitly to opt
+# out of the implicit dual-overload behavior.
+#
+# Strict subset of IMPLICIT_READONLY_METHODS; see the comment on that set.
+IMPLICIT_AUTO_READONLY_METHODS = frozenset({
+    "__deref__", "__getitem__", "__span__",
 })
 
 # Methods that mutate self but should take const params (params are read-only).

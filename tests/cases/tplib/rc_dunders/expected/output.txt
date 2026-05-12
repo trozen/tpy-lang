@@ -1,0 +1,11 @@
+True
+False
+True
+True
+False
+True
+True
+True
+True
+Rc(10)
+Rc(20)

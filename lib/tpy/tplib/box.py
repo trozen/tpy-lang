@@ -20,8 +20,10 @@ class Box[T](Deref[T], Covariant[T]):
         unsafe_drop(self._ptr)
         unsafe_free(self._ptr)
 
-    @auto_readonly
-    def __deref__(self) -> auto_readonly[T]:
+    # __deref__ implicitly gets dual mutable/const overloads via
+    # IMPLICIT_AUTO_READONLY_METHODS in typesys; no explicit @auto_readonly
+    # needed.
+    def __deref__(self) -> T:
         return self.get()
 
     @auto_readonly

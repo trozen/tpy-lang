@@ -60,6 +60,10 @@ struct Box {
     auto operator*() -> decltype(__deref__()) {
         return __deref__();
     }
+
+    auto operator*() const -> decltype(__deref__()) {
+        return __deref__();
+    }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 

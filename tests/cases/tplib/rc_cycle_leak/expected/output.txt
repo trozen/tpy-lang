@@ -1,0 +1,9 @@
+--- acyclic ---
+init A
+init B
+del A
+del B
+--- cyclic (will leak) ---
+init X
+init Y
+--- done ---

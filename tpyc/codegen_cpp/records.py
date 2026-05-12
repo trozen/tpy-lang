@@ -1355,14 +1355,27 @@ class RecordGenerator:
         Enables C++ interop: *box instead of box.__deref__().
         Only for user-defined types -- Ptr[T] and Ptr[readonly[T]] map to raw T*
         which already support *ptr natively.
+
+        Mirrors the __getitem__ dual-overload pattern: a __deref__ clone pair
+        (mutable + const) gets both operator*() and operator*() const so const
+        receivers can dereference. A single __deref__ keeps the original
+        single overload.
         """
-        deref_method = None
-        for method in record.methods:
-            if method.name == "__deref__":
-                deref_method = method
-                break
-        if deref_method is None:
+        deref_impls = [m for m in record.methods if m.name == "__deref__"]
+        if not deref_impls:
             return
+
+        if len(deref_impls) == 2:
+            const_impl = next((m for m in deref_impls if m.is_readonly), None)
+            mutable_impl = next((m for m in deref_impls if not m.is_readonly), None)
+            if const_impl and mutable_impl:
+                out.write(f"\n{INDENT}auto operator*() -> decltype(__deref__()) {{\n")
+                out.write(f"{INDENT}{INDENT}return __deref__();\n")
+                out.write(f"{INDENT}}}\n")
+                out.write(f"\n{INDENT}auto operator*() const -> decltype(__deref__()) {{\n")
+                out.write(f"{INDENT}{INDENT}return __deref__();\n")
+                out.write(f"{INDENT}}}\n")
+                return
 
         out.write(f"\n{INDENT}auto operator*() -> decltype(__deref__()) {{\n")
         out.write(f"{INDENT}{INDENT}return __deref__();\n")
