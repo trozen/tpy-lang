@@ -1,0 +1,1 @@
+CPython doesn't simulate the Deref protocol, so `box.x` auto-deref is TPy-only.

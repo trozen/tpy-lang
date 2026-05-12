@@ -277,6 +277,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `Ptr[T]` | `T*` |
 | `Ptr[readonly[T]]` | `const T*` |
 | `Own[T]` | `T` (by value, for returns/params) |
+| `Rc[T]` | TPy class wrapping `Ptr[RcCell[T]]` (refcount + value heap block); `@nocopy`, explicit `.clone()` to share. Construct via `make_rc(value)`. |
 | `bytes` | `std::vector<uint8_t>` |
 | `bytearray` | `std::vector<uint8_t>` (mutable) |
 | `BytesView` | `std::span<const uint8_t>` |
@@ -888,6 +889,7 @@ Restrictions:
 - **Working**: `Ptr[T]` -> `T*`
 - **Working**: `Ptr[readonly[T]]` -> `const T*`
 - **Working**: `Own[T]` -> `T` (ownership transfer for return values)
+- **Working**: `Rc[T]` -- pure-TPy non-atomic single-threaded shared-ownership smart pointer (`tplib/rc.py`). Heap-allocates an `RcCell[T]` (refcount + value) via `tpy.unsafe`; clones alias the same allocation. `@nocopy` at the TPy level: deliberate sharing is always explicit via `.clone()`. Implements `Deref[T]` for transparent field/method access in TPy (`r.x`, `r.method()`); under CPython use `r.get().x` explicitly because the auto-deref protocol isn't simulated -- tests relying on `r.x` syntax need `no_cpython.txt`. Not `Covariant[T]`: shared-mutable Rc isn't safely covariant (a writer through a Parent view could install a non-Child into the shared slot) and the wrapping through `RcCell` breaks pointer covariance anyway. Mutation through any clone is visible to all other clones; for shared-immutable use `Rc[readonly[T]]`. No `Weak[T]` / no atomic refcount today (single-threaded only -- atomic `Arc[T]` is a v3+ item). User-facing construction goes through the module-level `make_rc(value)` factory (two TPy bugs filed in `BUGS.md` block the more idiomatic `Rc.new(value)` / `Rc(value)` shapes). Import: `from tplib import Rc, make_rc`.
 - **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`, `unsafe_str_view`, `unsafe_alloc`, `unsafe_alloc_n`, `unsafe_free`, `unsafe_init`, `unsafe_drop`, `unsafe_move_out`)
 - **Working**: `tpy.mem` -- uninitialized storage primitives (`UninitArrayStorage[T, N]`, `UninitHeapStorage[T]`)
 - **Working (internal)**: `Ref[T]` -- internal type for explicit reference semantics. Flows through the type system uniformly: auto-inserted on function params/returns, preserved on non-reassigned locals, returned by field access and subscript. Detects implicit copies when storing borrowed references into fields/containers (complemented by `needs_copy_warning` for owned lvalue copies). Also drives lambda trailing return types (`-> T&`) and `val_or_ref<T>` template args for iterator combinators. Not user-facing -- users see `T` in annotations, the compiler infers reference vs owned.

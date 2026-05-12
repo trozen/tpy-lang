@@ -532,10 +532,10 @@ binding work:
   now exist (see `docs/DYNAMIC_PROTOCOL_DESIGN.md` step 12), so this
   C++ scaffolding can be replaced with a `@dynamic Awaitable[T]` +
   `Adapter[Awaitable[T], CoroT]` pair from TPy. Port not yet wired.
-- `TaskState<T>` -- could move with a `SharedTaskState[T]` `@native`
-  wrapper around `shared_ptr<TaskState<T>>`, but TPy currently models
-  only unique ownership (`Box[T]`); shared-ownership exposure is a
-  prerequisite. Currently low ROI -- TaskState's logic is small.
+- `TaskState<T>` -- `Rc[T]` is now available (`tplib.Rc`,
+  `::tpy::Rc<T>` runtime template), so `TaskState[T]` can be ported.
+  Port not yet wired -- TaskState's logic is small and the C++ shape
+  already works.
 - `Poll<T>` storage -- stays C++ (primitive with void / reference /
   move-only / non-default-constructible specializations).
 - The main-coro spawn closure in `async_run` -- captures
@@ -550,9 +550,12 @@ binding work:
   per-T-instantiation vtable; each `Adapter[Awaitable[Int32]]` is a
   distinct runtime type. Now usable to replace `AsyncFrameBase` /
   `AsyncFrameImpl`; port not yet wired.
-- **Shared-ownership smart pointer in TPy**. `Rc[T]` / `Arc[T]`
-  (refcounted) or just `SharedBox[T]` -- currently only `Box[T]` for
-  unique ownership. Would let `TaskState` move to TPy.
+- **Shared-ownership smart pointer in TPy** -- `Rc[T]` shipped as a
+  pure-TPy class in `lib/tpy/tplib/rc.py` (uses `tpy.unsafe` for the
+  heap block). Non-atomic single-threaded refcount; `@nocopy` with
+  explicit `.clone()`. Construct via `make_rc(value)`. Unblocks the
+  `TaskState[T]` TPy port. Atomic `Arc[T]` for multi-threaded use is a
+  v3+ item.
 - **`thread_local` storage in TPy**. Would let the executor's
   `current_executor` move out of C++ entirely. Low priority since the
   v1 executor is single-threaded.

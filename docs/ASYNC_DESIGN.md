@@ -42,7 +42,7 @@ Phased; each phase is independently shippable. Detailed plan + per-phase scope +
 | Feature | What it unblocks |
 |---------|------------------|
 | Generic `@dynamic` protocols (`@dynamic class Awaitable[T]`) | Largest single unblocker. Obsoletes `AsyncFrameBase<T>` / `AsyncFrameImpl<T, CoroT>` in favor of `Adapter[Awaitable[T]]`. |
-| Shared-ownership smart pointer (`Rc[T]` / `Arc[T]` / `SharedBox[T]`) | Lets `TaskState<T>` move to TPy. Currently only `Box[T]` (unique). |
+| Shared-ownership smart pointer (`Rc[T]`) -- **shipped** | `Rc[T]` (pure-TPy, non-atomic, single-threaded) lives in `tplib`. Construct via `make_rc(value)`. Unblocks the `TaskState[T]` TPy port. Atomic `Arc[T]` is still v3+. |
 | `thread_local` storage in TPy | Lets `current_executor` move out of C++ entirely. Low priority -- v1 executor is single-threaded anyway. |
 
 ### v1.5 -- composability surface

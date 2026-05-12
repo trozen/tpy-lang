@@ -1,0 +1,10 @@
+--- single owner ---
+init solo
+use sees solo
+del solo
+--- shared via clone ---
+init shared
+use sees shared
+use sees shared
+del shared
+--- done ---

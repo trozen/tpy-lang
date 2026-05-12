@@ -7,10 +7,10 @@ that every cycle is broken by at least one indirecting container
 (Optional, Ptr, plus types whose TypeDef carries is_indirecting=True --
 list, dict, set, plus user @native records that opt in).
 
-User TPy records (e.g. tplib.Box) provide indirection structurally: the
-walker expands a non-indirecting nominal's fields after type-parameter
-substitution, so a `_ptr: Ptr[T]` field signals indirection without the
-compiler hard-coding the record's name.
+User TPy records (e.g. tplib.Box, tplib.Rc) provide indirection
+structurally: the walker expands a non-indirecting nominal's fields
+after type-parameter substitution, so a `_ptr: Ptr[T]` field signals
+indirection without the compiler hard-coding the record's name.
 """
 
 from __future__ import annotations

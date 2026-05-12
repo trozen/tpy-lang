@@ -1,0 +1,1 @@
+Tests deterministic destructor ordering (refcount hits zero -> __del__ fires exactly once). CPython uses non-deterministic garbage collection so __del__ timing diverges from RAII.
