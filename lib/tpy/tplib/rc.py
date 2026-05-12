@@ -1,21 +1,24 @@
-# Rc[T] -- non-atomic, single-threaded shared-ownership smart pointer.
+# Rc[T] / Weak[T] -- non-atomic, single-threaded shared-ownership smart
+# pointer with a non-owning companion.
 #
-# Heap-allocates an RcCell (refcount + value) on construction; clone() bumps
-# the refcount and returns a new Rc sharing the same cell; __del__
-# decrements and frees on zero. @nocopy at the TPy level: deliberate sharing
-# always goes through explicit clone(). Free mutation through any clone --
-# aliased clones share the underlying T (matches shared_ptr / Python
-# semantics). For shared-immutable use Rc[readonly[T]]. No atomic refcount
-# (single-threaded only); atomic Arc[T] is a v3+ item.
+# RcCell layout: `{strong, weak, storage}` where storage is inline
+# UninitArrayStorage[T, 1]. Payload destruction (storage.drop0()) happens when
+# `strong` reaches zero; cell deallocation (unsafe_free) happens when `weak`
+# reaches zero. The classic std::shared_ptr trick: all live strong handles
+# collectively own one weak reference, so initial state is strong=1, weak=1,
+# and dropping the last strong decrements weak once after destructing the
+# payload. This decouples "the value is gone" from "the cell memory is gone"
+# -- the latter must outlive the former whenever Weak handles exist, so
+# Weak.upgrade() can safely check `strong > 0` against still-valid memory.
 #
-# Missing companion:
-# - TODO: `Weak[T]` to break reference cycles. Today an Rc[Node] cycle leaks
-#   (every cell in the cycle holds a strong reference to the next, so refcount
-#   never reaches zero; tests/cases/tplib/rc_cycle_leak demonstrates). Weak
-#   would store a non-owning handle to the RcCell that doesn't keep the value
-#   alive but can be upgraded to Option[Rc[T]] when the cell is still live.
-#   Requires extending RcCell with a weak_count alongside refcount, deferring
-#   cell free until both reach zero.
+# @nocopy at the TPy level: deliberate sharing is always explicit via
+# Rc.clone(), Rc.downgrade(), Weak.clone(), Weak.upgrade(). Free mutation
+# through any Rc clone -- aliased clones share the underlying T (matches
+# shared_ptr / Python semantics). For shared-immutable use Rc[readonly[T]].
+# Weak does not implement Deref -- access must go through upgrade(), which
+# returns Optional so callers handle the "payload already dropped" case.
+#
+# No atomic refcount (single-threaded only); atomic Arc[T] is a v3+ item.
 #
 # Rc-specific API notes (see BUGS.md for the underlying compiler gaps):
 # - TODO: construction goes through `make_rc(value)`, not `Rc.new(value)` --
@@ -23,21 +26,28 @@
 # - TODO: no `Rc(other)` sharing constructor -- clone() handles the share
 #   internally because @nocopy + sibling-borrow into __init__ isn't supported.
 # - TODO: `Rc[readonly[T]]` cannot be cloned -- clone() mutates refcount and
-#   can't be @readonly, so a readonly Rc handle has no way to share.
+#   can't be @readonly, so a readonly Rc handle has no way to share. Same
+#   issue applies to `Weak[readonly[T]].upgrade()`.
 # - TODO: `Rc` is not `Covariant[T]` -- shared-mutable Rc isn't safely
 #   covariant, and the codegen would break on the RcCell wrapping layer.
 from __future__ import annotations
 from tpy import Own, Ptr, UInt32, UInt64, Deref, Equatable, Comparable, Hashable, nocopy, auto_readonly
+from tpy.mem import UninitArrayStorage
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
 
 
 class RcCell[T]:
-    refcount: UInt32
-    value: T
+    strong: UInt32
+    weak: UInt32
+    storage: UninitArrayStorage[T, 1]
 
-    def __init__(self, value: Own[T]) -> None:
-        self.refcount = 1
-        self.value = value
+    def __init__(self) -> None:
+        # strong=1 for the constructing Rc; weak=1 for the collective weak
+        # owned by all strong handles. Storage stays empty here; payload
+        # init0 is deferred to `make_rc` (see the rationale at the call site).
+        self.strong = 1
+        self.weak = 1
+        self.storage = UninitArrayStorage[T, 1]()
 
 
 @nocopy
@@ -45,35 +55,53 @@ class Rc[T](Deref[T]):
     _cell: Ptr[RcCell[T]]
 
     # TODO: package-private once TPy gains a private-method mechanism. Only
-    # `make_rc` and `clone` should call this; user code reaching for `Rc(cell)`
-    # directly is bypassing the refcount discipline.
+    # `make_rc`, `clone`, and `Weak.upgrade` should call this; user code
+    # reaching for `Rc(cell)` directly is bypassing the refcount discipline.
     def __init__(self, cell: Ptr[RcCell[T]]) -> None:
         self._cell = cell
 
     def __del__(self) -> None:
-        # Hoist the decremented refcount into a local to avoid re-reading
-        # cell->refcount for the zero-check.
-        new_count = self._cell.refcount - 1
-        self._cell.refcount = new_count
-        if new_count == 0:
-            unsafe_drop(self._cell)
-            unsafe_free(self._cell)
+        new_strong = self._cell.strong - 1
+        self._cell.strong = new_strong
+        if new_strong == 0:
+            # Last strong handle: destruct the payload. Then drop the
+            # collective weak reference -- if no Weak handles exist either,
+            # free the cell.
+            #
+            # Invariant: during drop0() the collective weak (this Rc's
+            # contribution) is still in `weak`, so any nested Weak.__del__
+            # triggered by the payload's destructor (e.g. a self-Weak field
+            # inside T) decrements `weak` to >= 1 but never to 0. The cell
+            # cannot be freed until we return here and decrement the
+            # collective ourselves. This rules out a UAF where the payload
+            # destructor's transitive Weak drops would free the cell out
+            # from under us.
+            self._cell.storage.drop0()
+            new_weak = self._cell.weak - 1
+            self._cell.weak = new_weak
+            if new_weak == 0:
+                unsafe_drop(self._cell)
+                unsafe_free(self._cell)
 
-    # __deref__ implicitly gets dual mutable/const overloads via
-    # IMPLICIT_AUTO_READONLY_METHODS in typesys; no explicit @auto_readonly
-    # needed. get() is the regular-method form of the same access (Box-parity)
-    # and keeps an explicit @auto_readonly because regular method names aren't
-    # in the implicit set.
     def __deref__(self) -> T:
         return self.get()
 
     @auto_readonly
     def get(self) -> auto_readonly[T]:
-        return self._cell.value
+        return self._cell.storage.load0()
 
     def clone(self) -> Own[Rc[T]]:
-        self._cell.refcount += 1
+        # Hoist read/write into one each so codegen emits a single
+        # `deref_check(self._cell)` per refcount op (matches __del__ idiom;
+        # the `+= 1` shorthand expands to read+write with two deref_checks).
+        new_strong = self._cell.strong + 1
+        self._cell.strong = new_strong
         return Rc[T](self._cell)
+
+    def downgrade(self) -> Own[Weak[T]]:
+        new_weak = self._cell.weak + 1
+        self._cell.weak = new_weak
+        return Weak[T](self._cell)
 
     # Content equality and ordering: delegate to T. Matches Box and Rust's
     # `Rc<T>::eq` (content, not identity). Identity comparison stays
@@ -103,10 +131,50 @@ class Rc[T](Deref[T]):
         return hash(self.get())
 
 
+@nocopy
+class Weak[T]:
+    _cell: Ptr[RcCell[T]]
+
+    # TODO: package-private (same caveat as Rc.__init__). Constructed only
+    # by Rc.downgrade() and Weak.clone().
+    def __init__(self, cell: Ptr[RcCell[T]]) -> None:
+        self._cell = cell
+
+    def __del__(self) -> None:
+        new_weak = self._cell.weak - 1
+        self._cell.weak = new_weak
+        if new_weak == 0:
+            # Payload was destructed when strong reached zero; cell is now
+            # safe to free.
+            unsafe_drop(self._cell)
+            unsafe_free(self._cell)
+
+    def upgrade(self) -> Own[Rc[T]] | None:
+        # Single read into a local: the check and the increment share it
+        # (single-threaded, so no compare-exchange needed; for Arc[T] this
+        # shape will need to become a CAS loop).
+        strong = self._cell.strong
+        if strong == 0:
+            return None
+        self._cell.strong = strong + 1
+        return Rc[T](self._cell)
+
+    def clone(self) -> Own[Weak[T]]:
+        new_weak = self._cell.weak + 1
+        self._cell.weak = new_weak
+        return Weak[T](self._cell)
+
+
 # TODO: rename to `Rc.new(value)` once cross-module imported-class staticmethod
 # resolution is fixed in sema (see BUGS.md). User-facing API will be a single
 # `from tplib import Rc` then `Rc.new(value)` -- no separate factory import.
 def make_rc[T](value: Own[T]) -> Own[Rc[T]]:
     cell = unsafe_alloc[RcCell[T]]()
-    unsafe_init(cell, RcCell(value))
+    unsafe_init(cell, RcCell[T]())
+    # Now that the cell sits at its final heap address, place the value
+    # directly into its inline storage. Doing this after `unsafe_init` is
+    # required for non-trivially-copyable T: UninitArrayStorage's move ctor
+    # uses memcpy, which would corrupt a T that holds self-referential
+    # pointers (e.g. std::string's small-string buffer).
+    cell.storage.init0(value)
     return Rc[T](cell)

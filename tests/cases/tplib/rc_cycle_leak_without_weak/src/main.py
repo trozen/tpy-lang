@@ -1,9 +1,7 @@
-# Rc[T] cycles leak. Without a `Weak[T]` companion, a -> b -> a keeps
-# both allocations alive after the user's handles go out of scope, so
-# __del__ never fires. This test documents the limitation: a non-cyclic
-# pair drops both nodes (2 destructor calls); the cyclic pair drops
-# zero. When Weak[T] eventually ships, this test should be revised to
-# show that a `Weak`-broken cycle drops correctly.
+# All-strong Rc[T] cycles leak. Pair test with `weak_cycle_breaks`: that
+# case uses a Weak back-edge and drops both nodes; this one wires both
+# edges as strong and demonstrates __del__ never fires for either node.
+# Documents that Weak is the recommended fix, not an optional polish.
 from __future__ import annotations
 from tpy import Int32
 from tplib import Rc, make_rc

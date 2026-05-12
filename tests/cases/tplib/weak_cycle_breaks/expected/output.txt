@@ -1,0 +1,6 @@
+init root
+init child
+found parent: root
+del root
+del child
+done

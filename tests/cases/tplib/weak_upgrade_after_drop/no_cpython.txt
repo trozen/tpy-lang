@@ -1,0 +1,1 @@
+Tests deterministic RAII drop ordering -- Rc payload destructs when strong=0 mid-function. CPython's non-deterministic GC reorders __del__ vs the upgrade() call.

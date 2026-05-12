@@ -1,0 +1,6 @@
+alive before drop: 42
+payload destruct
+--- after strong death ---
+w1: True
+w2: True
+w3: True

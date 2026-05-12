@@ -224,6 +224,7 @@ Full TurboPython -> C++ type mapping lives in `docs/LANGUAGE_FEATURES.md`. Types
 | `Ptr[T]` / `Ptr[readonly[T]]` | `T*` / `const T*` |
 | `Own[T]` | `T` by value (for returns/params); ownership transfer, not heap allocation |
 | `Rc[T]` | Pure-TPy non-atomic shared-ownership wrapper (`tplib/rc.py`); `@nocopy`, explicit `.clone()` to share. Construct via `make_rc(value)`. |
+| `Weak[T]` | Non-owning companion to `Rc[T]`; shares the cell but doesn't keep payload alive. `@nocopy`. Mint via `rc.downgrade()`; recover a strong handle (or `None`) via `weak.upgrade()`. |
 | `BytesView` | `std::span<const uint8_t>` |
 | `A \| B` (value types) | `std::variant<A, B>` |
 | `A \| B` (non-value, params/returns/locals) | `std::variant<A*, B*>` (pointer variant) |
