@@ -254,7 +254,7 @@ class Point:
 
 This is a separate feature from the core constructor design and will be implemented later. For now, classes without `__init__` require `@dataclass` for constructor synthesis.
 
-Note: classes with only field annotations and no `__init__` cannot be constructed with positional arguments -- the compiler rejects `Point(1, 2)` with an error suggesting `@dataclass` or explicit `__init__`. Zero-argument construction `Point()` still works (C++ default construction).
+Note: classes with only field annotations and no `__init__` cannot be constructed with positional arguments -- the compiler rejects `Point(1, 2)` with an error suggesting `@dataclass` or explicit `__init__`. Zero-argument construction `Point()` works iff every field type (and parent class) is itself default-constructible; otherwise sema rejects with `'Point()' cannot be constructed without arguments: field '...' has no default value`, rather than letting C++ emit a confusing "implicitly deleted" error.
 
 ---
 
@@ -302,6 +302,6 @@ Note: classes with only field annotations and no `__init__` cannot be constructe
 
 3. ~~**Inherited fields in `__init__`**~~: Resolved -- `self.inherited_field = value` in `__init__` is accepted as part of the init section (same as own fields), so it goes into the C++ member initializer list. Both `super().__init__(args)` and direct assignment of inherited fields are valid patterns.
 
-4. **`= default` for records with required `__init__` params**: Currently, a record like `class Handle: id: Int32; def __init__(self, id: Int32)` gets `Handle() = default;` emitted because `id: Int32` is C++-default-constructible. This violates the Python-level contract (you cannot create a `Handle` without providing `id`) and creates an object with uninitialized `id`. The alternative is `Handle() = delete;` to enforce the contract, but that breaks `Optional[Handle]` and containers. For now this is a known semantic gap -- the sema split-point error ("has no default constructor") enforces the invariant at the Python level even though the C++ `= default` technically exists.
+4. **`= default` for records with required `__init__` params**: A record like `class Handle: id: Int32; def __init__(self, id: Int32)` gets `Handle() = default;` emitted because `id: Int32` is C++-default-constructible. This is intentional: sema rejects user-level `Handle()` (the `__init__` requires `id`), but the C++ default ctor must exist so internal codegen paths (`std::array<Handle, N>` slots, parent-record `= default;`, `std::variant` default alternative) compile. For aggregate records (no `__init__`) whose fields aren't all default-constructible, sema instead rejects zero-arg `Point()` with a clean diagnostic (see `tpyc/sema/calls.py::_validate_aggregate_zero_arg`) -- the cascading C++ "implicitly deleted" error is no longer reachable from user code.
 
 5. ~~**Auto-declare + control flow**~~: Resolved -- auto-declare only from top-level statements. Assignments inside control flow require an explicit annotation, otherwise error.

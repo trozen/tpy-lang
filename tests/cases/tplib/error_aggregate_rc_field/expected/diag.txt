@@ -1,0 +1,1 @@
+main.py:18: error: 'Holder()' cannot be constructed without arguments: field 'shared' of type 'Rc[Counter]' has no default value

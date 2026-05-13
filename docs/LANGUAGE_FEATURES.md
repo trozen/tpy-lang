@@ -2498,9 +2498,10 @@ The `Default` marker protocol declares that a type supports zero-argument defaul
 - All primitives: fixed-width integers, `float`, `bool`, `str`, `String`, `StrView`, `Char`, `int`
 - `list[T]`, `dict[K, V]`, `Span[T]` (empty container is default)
 - `Optional[T]` (`None` is default)
+- `Ptr[T]` (default-constructs to `nullptr`)
 - `Array[T, N]` if element `T` satisfies `Default`
 - `tuple[T1, T2, ...]` if all element types satisfy `Default`
-- User records whose `__init__` has no required parameters (all params have defaults or no `__init__`)
+- User records whose `__init__` has no required parameters; aggregates (no `__init__`) only when every parent and field type also satisfies `Default`. `@nocopy + __del__` records are never `Default` (no safe default state).
 
 **`make_default()`** is a portable function for default-constructing generic types:
 
@@ -4849,6 +4850,7 @@ TurboPython has two library search roots that provide reusable modules:
 | Module | Description |
 |--------|-------------|
 | `tplib.Box[T]` | Heap-allocated owning container (similar to Rust's `Box<T>`) |
+| `tplib.Rc[T]` (and `make_rc`) | Pure-TPy non-atomic shared-ownership smart pointer; `@nocopy` with explicit `.clone()` to share |
 | `tplib.ArrayList[T, N]` | Fixed-capacity list with stack-allocated uninitialized storage; full list API (`append`, `pop`, `insert`, `index`, `count`, `remove`, `reverse`, `sort`, `swap`, `truncate`, `extend`, `clear`, `__contains__`, `__eq__`, `__repr__`) |
 | `tplib.FixStr[N]` | Fixed-capacity string with stack-allocated storage; `__str__() -> StrView` for zero-copy printing |
 | `tplib.json` | JSON library: `JsonReader` (pull parser), `JsonWriter` (serializer), `@model` macro for typed JSON deserialization/serialization. User types can implement `__json_encode__`/`__json_decode__` to work as `@model` fields. |

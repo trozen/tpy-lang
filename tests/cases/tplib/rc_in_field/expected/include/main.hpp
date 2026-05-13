@@ -42,7 +42,6 @@ struct Holder {
     ::tpystd::tplib::rc::Rc<Counter> shared;
 
     // def __init__(self, name: str, shared: Own[Rc[Counter]]) -> None:
-    Holder() = default;
     explicit Holder(std::string_view name, ::tpystd::tplib::rc::Rc<Counter>&& shared) : name(name), shared(std::move(shared)) {}
     // non-copyable (field 'shared')
     Holder(const Holder&) = delete;

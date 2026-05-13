@@ -13,7 +13,7 @@ import re
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
-    ListRepeatType, GenExprType, make_list, TupleType, OptionalType, IntLiteralType, FloatLiteralType, AnyType, PendingListType, UnknownElementType, BIGINT, FLOAT,
+    ListRepeatType, GenExprType, make_list, TupleType, OptionalType, PtrType, IntLiteralType, FloatLiteralType, AnyType, PendingListType, UnknownElementType, BIGINT, FLOAT,
     impl_proto_matches_name, get_protocol_qname,
 )
 from ..coercions import is_protocol_safe_coercion, is_protocol_type_arg_widening
@@ -431,6 +431,9 @@ class ProtocolChecker:
         # Optional[T] is default-constructible (std::nullopt)
         if isinstance(actual, OptionalType):
             return True
+        # Ptr[T] is a raw pointer (T*); default-constructible to nullptr.
+        if isinstance(actual, PtrType):
+            return True
         # Array[T, N] is default-constructible if element T is
         if is_array(actual):
             elem = actual.get_element_type()
@@ -450,10 +453,27 @@ class ProtocolChecker:
         # may not have flowed through resolve_type) by looking up the registry
         # directly and filtering out @builtin_type stubs.
         if isinstance(actual, NominalType) and not actual.is_protocol:
-            record = self.ctx.registry.get_record(actual.name)
+            # Type-aware lookup: qname-first so cross-module parents (e.g. an
+            # imported `Child(Parent)` whose parent lives in another file)
+            # resolve correctly, with short-name fallback already built-in.
+            record = self.ctx.registry.get_record_for_type(actual)
             if record is None or record.builtin_type_key:
                 return False
+            # @nocopy + __del__ records have no safe default state; codegen
+            # suppresses their default ctor, so they must not be reported as
+            # default-constructible here either (applies to both non-generic
+            # records and generic instantiations like Rc[T] / Weak[T]).
+            if record.is_nocopy and record.has_del:
+                return False
             if not record.has_init:
+                # Aggregate records have an implicit field-wise C++ ctor;
+                # default-constructible iff every field type and parent is.
+                for p in record.parents:
+                    if not self._is_default_constructible(p):
+                        return False
+                for fld in record.fields:
+                    if not self._is_default_constructible(fld.type):
+                        return False
                 return True
             required = sum(1 for _, _, default in record.init_params if default is None)
             return required == 0

@@ -23,7 +23,7 @@ from ..typesys import (
     CallableType, is_fn_type, unwrap_ref_type,
     is_integer_type, is_any_int_type,
     is_callable_type, is_float_type, is_readonly_span, unwrap_qualifiers,
-    param_has_mutable_borrow_surface)
+    param_has_mutable_borrow_surface, contains_type_param)
 from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
@@ -4415,6 +4415,8 @@ class CallAnalyzer:
                 raise self.ctx.error(
                     f"'{record.name}' has no __init__ and cannot be constructed with arguments",
                     expr)
+            elif not record.has_init:
+                self._validate_aggregate_zero_arg(record, expr, type_subst)
             self._set_record_constructor_info(expr, record, expr.call_type, type_subst)
             return expr.call_type
         # Generic record without explicit type args - try type inference
@@ -4560,10 +4562,37 @@ class CallAnalyzer:
                 f"'{record.name}' has no __init__; "
                 f"use @dataclass or define __init__ to accept constructor arguments",
                 expr)
+        elif not record.has_init:
+            self._validate_aggregate_zero_arg(record, expr, type_subst=None)
         # Use expr.func (local name) not record.name (original) for alias support
         result_type = NominalType(expr.func_name, _module_qname=record.qualified_name())
         self._set_record_constructor_info(expr, record, result_type)
         return result_type
+
+    def _validate_aggregate_zero_arg(
+        self, record: RecordInfo, expr: TpyCall,
+        type_subst: dict[str, TpyType] | None,
+    ) -> None:
+        """Reject zero-arg `Record()` for an aggregate (no __init__) when any
+        own field or parent isn't default-constructible.
+
+        Mirrors `protocols.py::_is_default_constructible` so drift here would
+        re-introduce the confusing C++ "implicitly deleted" error chain this
+        helper exists to prevent.
+        """
+        def check(typ: TpyType, label: str) -> None:
+            resolved = self.type_ops.substitute_type_params(typ, type_subst) if type_subst else typ
+            if contains_type_param(resolved):
+                return
+            if not self.protocols._is_default_constructible(resolved):
+                raise self.ctx.error(
+                    f"'{record.name}()' cannot be constructed without arguments: "
+                    f"{label} of type '{resolved}' has no default value",
+                    expr)
+        for parent in record.parents:
+            check(parent, f"parent '{parent}'")
+        for fld in record.fields:
+            check(fld.type, f"field '{fld.name}'")
 
     def _can_defer_generic_inference(self, record: RecordInfo, expr: TpyCall) -> bool:
         """Check whether a generic constructor can use deferred type inference."""

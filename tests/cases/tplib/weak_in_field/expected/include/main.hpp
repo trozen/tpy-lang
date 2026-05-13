@@ -23,7 +23,6 @@ struct Observer {
     ::tpystd::tplib::rc::Weak<Counter> target;
 
     // def __init__(self, target: Own[Weak[Counter]]) -> None:
-    Observer() = default;
     explicit Observer(::tpystd::tplib::rc::Weak<Counter>&& target) : target(std::move(target)) {}
     // non-copyable (field 'target')
     Observer(const Observer&) = delete;

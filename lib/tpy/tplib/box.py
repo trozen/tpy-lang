@@ -1,9 +1,4 @@
 # Box[T] -- heap-allocated owning container.
-#
-# TODO (see BUGS.md): records containing a `Box[T]` field get an emitted
-# `T() = default` ctor that's implicitly deleted at instantiation (Box has
-# no default ctor), producing a confusing C++ error if user code
-# default-constructs the record.
 from __future__ import annotations
 from typing import Self
 from tpy import Own, Ptr, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, readonly, auto_readonly

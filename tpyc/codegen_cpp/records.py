@@ -41,6 +41,24 @@ if TYPE_CHECKING:
     from .protocols import ProtocolGenerator
 
 
+def _split_readonly_clone_pair(methods: list) -> tuple | None:
+    """Return (const_clone, mutable_clone) when `methods` is exactly an
+    @auto_readonly clone pair, otherwise None.
+
+    `methods` may be any list of TpyFunction-like objects with `is_readonly`
+    (e.g. the impls of a single dunder name, or a group of @overload stubs
+    sharing a parameter type). Used by operator[] and operator*() emission
+    to decide between dual-overload and single-overload paths.
+    """
+    if len(methods) != 2:
+        return None
+    const = next((m for m in methods if m.is_readonly), None)
+    mutable = next((m for m in methods if not m.is_readonly), None)
+    if const is None or mutable is None:
+        return None
+    return const, mutable
+
+
 class RecordGenerator:
     """Generates C++ structs from TurboPython records."""
 
@@ -198,7 +216,15 @@ class RecordGenerator:
             cpp_type = self.types.type_to_cpp(fld.type)
             default = ""
             if fld.default_value is not None:
-                default = f" = {fld.default_value}"
+                val = fld.default_value
+                # Parser renders None -> "std::nullopt" without type context;
+                # raw-pointer fields need "nullptr" instead. Can't reuse
+                # `default_to_cpp` here -- it returns borrow-form defaults
+                # which would also (wrongly) flip Optional-of-record fields
+                # from std::nullopt to nullptr.
+                if val == "std::nullopt" and isinstance(fld.type, PtrType):
+                    val = "nullptr"
+                default = f" = {val}"
             elif fld.is_factory_default:
                 default = f" = {factory_default_to_cpp(fld.type)}"
             out.write(f"{INDENT}{cpp_type} {escape_cpp_name(fld.name)}{default};\n")
@@ -1153,13 +1179,20 @@ class RecordGenerator:
             return True
         if not isinstance(typ, NominalType) or not typ.is_user_record:
             return protocols._is_default_constructible(typ)
-        # Generic instantiation (e.g. Pair[Int32]): the base template class always
-        # emits = default (see _all_fields_default_constructible), so any instantiation
-        # is C++-default-constructible. Non-generic instantiations fall through below.
+        # Generic instantiation (e.g. Pair[Int32]): the base template class
+        # usually emits = default, so any instantiation is C++-default-constructible.
+        # Exception: @nocopy + __del__ templates suppress their default ctor (see
+        # _all_fields_default_constructible / the parameterized-ctor emission guard).
+        # Treating such instantiations as default-constructible at the field level
+        # makes enclosing records emit a Foo() = default; that C++ then implicitly
+        # deletes -- producing a confusing per-layer error chain (e.g. Outer ->
+        # Holder -> Rc<T>) instead of a clean diagnostic.
         if typ.type_args:
             base_rec = self.ctx.analyzer.ctx.registry.get_record(typ.name)
             if base_rec is not None and base_rec.type_params:
-                return True  # generic class always emits = default
+                if base_rec.is_nocopy and base_rec.has_del:
+                    return False
+                return True  # generic class emits = default
             return protocols._is_default_constructible(typ)
         record_info = self.ctx.analyzer.ctx.registry.get_record(typ.name)
         if record_info is None:
@@ -1221,19 +1254,15 @@ class RecordGenerator:
         overload_stubs = self.ctx.analyzer.overload_groups.get(id(getitem_impls[0]))
         if overload_stubs:
             self._gen_overload_subscript_operators(out, overload_stubs)
-        elif len(getitem_impls) == 2:
-            # auto_readonly clone pair: generate const first, then mutable.
-            # The const clone generates only the const operator (not the dual non-const),
-            # and the mutable clone generates only the mutable operator.
-            const_impl = next((m for m in getitem_impls if m.is_readonly), None)
-            mutable_impl = next((m for m in getitem_impls if not m.is_readonly), None)
-            if const_impl and mutable_impl:
-                self._gen_const_subscript_operator(out, const_impl)
-                self._gen_mutable_subscript_operator(out, mutable_impl)
-            else:
-                self._gen_single_subscript_operator(out, getitem_impls[0])
-        else:
-            self._gen_single_subscript_operator(out, getitem_impls[0])
+            return
+        # auto_readonly clone pair: const operator first, then mutable.
+        pair = _split_readonly_clone_pair(getitem_impls)
+        if pair is not None:
+            const_impl, mutable_impl = pair
+            self._gen_const_subscript_operator(out, const_impl)
+            self._gen_mutable_subscript_operator(out, mutable_impl)
+            return
+        self._gen_single_subscript_operator(out, getitem_impls[0])
 
     def _gen_overload_subscript_operators(self, out: TextIO, stubs: list) -> None:
         """Generate operator[] for @overload __getitem__, handling auto_readonly clone pairs.
@@ -1253,19 +1282,18 @@ class RecordGenerator:
                 self._gen_single_subscript_operator(out, stub)
 
         for param_type_str, group in by_param.items():
-            if len(group) == 2:
-                const_stub = next((m for m in group if m.is_readonly), None)
-                mutable_stub = next((m for m in group if not m.is_readonly), None)
-                if const_stub and mutable_stub:
-                    # Clone pair: const operator first, then mutable
-                    self._gen_const_subscript_operator(out, const_stub)
-                    # Mutable only if return could be a reference
-                    needs_dual = (not mutable_stub.return_type.is_value_type()
-                                  or isinstance(mutable_stub.return_type, TypeParamRef))
-                    if needs_dual:
-                        self._gen_mutable_subscript_operator(out, mutable_stub)
-                    continue
-            # Single stub (no clone pair): use standard logic
+            pair = _split_readonly_clone_pair(group)
+            if pair is not None:
+                const_stub, mutable_stub = pair
+                # Clone pair: const operator first, then mutable.
+                self._gen_const_subscript_operator(out, const_stub)
+                # Mutable only if return could be a reference.
+                needs_dual = (not mutable_stub.return_type.is_value_type()
+                              or isinstance(mutable_stub.return_type, TypeParamRef))
+                if needs_dual:
+                    self._gen_mutable_subscript_operator(out, mutable_stub)
+                continue
+            # No clone pair: emit each stub via the standard logic.
             for stub in group:
                 self._gen_single_subscript_operator(out, stub)
 
@@ -1356,28 +1384,24 @@ class RecordGenerator:
         Only for user-defined types -- Ptr[T] and Ptr[readonly[T]] map to raw T*
         which already support *ptr natively.
 
-        Mirrors the __getitem__ dual-overload pattern: a __deref__ clone pair
-        (mutable + const) gets both operator*() and operator*() const so const
-        receivers can dereference. A single __deref__ keeps the original
-        single overload.
+        Mirrors the __getitem__ dual-overload pattern: an @auto_readonly
+        __deref__ clone pair (mutable + const) gets both operator*() and
+        operator*() const so const receivers can dereference. A single
+        __deref__ keeps the single overload.
         """
         deref_impls = [m for m in record.methods if m.name == "__deref__"]
         if not deref_impls:
             return
 
-        if len(deref_impls) == 2:
-            const_impl = next((m for m in deref_impls if m.is_readonly), None)
-            mutable_impl = next((m for m in deref_impls if not m.is_readonly), None)
-            if const_impl and mutable_impl:
-                out.write(f"\n{INDENT}auto operator*() -> decltype(__deref__()) {{\n")
-                out.write(f"{INDENT}{INDENT}return __deref__();\n")
-                out.write(f"{INDENT}}}\n")
-                out.write(f"\n{INDENT}auto operator*() const -> decltype(__deref__()) {{\n")
-                out.write(f"{INDENT}{INDENT}return __deref__();\n")
-                out.write(f"{INDENT}}}\n")
-                return
+        if _split_readonly_clone_pair(deref_impls) is not None:
+            self._emit_operator_star(out)
+            self._emit_operator_star(out, qual=" const")
+            return
 
-        out.write(f"\n{INDENT}auto operator*() -> decltype(__deref__()) {{\n")
+        self._emit_operator_star(out)
+
+    def _emit_operator_star(self, out: TextIO, qual: str = "") -> None:
+        out.write(f"\n{INDENT}auto operator*(){qual} -> decltype(__deref__()) {{\n")
         out.write(f"{INDENT}{INDENT}return __deref__();\n")
         out.write(f"{INDENT}}}\n")
 
