@@ -10,6 +10,7 @@ milestones extend this set without changing existing shapes.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 from typing import Union
 
@@ -33,6 +34,79 @@ class Loc:
     source_language: str
 
 
+# --- Operator kinds -------------------------------------------------------
+
+
+class BinOpKind(Enum):
+    """Binary operators recognised by the IR.
+
+    Names match `docs/FRONTEND_PLUGIN_DESIGN.md`. M2 only exercises the
+    arithmetic set; comparison and logical operators land with control
+    flow (M3) and onward, but are listed here so the enum is stable.
+    """
+    ADD = "ADD"
+    SUB = "SUB"
+    MUL = "MUL"
+    TRUE_DIV = "TRUE_DIV"
+    FLOOR_DIV = "FLOOR_DIV"
+    MOD = "MOD"
+    POW = "POW"
+    BIT_OR = "BIT_OR"
+    BIT_XOR = "BIT_XOR"
+    BIT_AND = "BIT_AND"
+    LSHIFT = "LSHIFT"
+    RSHIFT = "RSHIFT"
+    LOGICAL_AND = "LOGICAL_AND"
+    LOGICAL_OR = "LOGICAL_OR"
+
+
+class UnaryOpKind(Enum):
+    POS = "POS"
+    NEG = "NEG"
+    NOT = "NOT"
+    INVERT = "INVERT"
+
+
+# --- Type IR --------------------------------------------------------------
+
+
+@dataclass
+class TypeTypeArg:
+    """A type-valued generic argument, e.g. `list[T]`'s `T`."""
+    kind: str = field(default="TypeTypeArg", init=False)
+    value: "TypeExpr" = None  # type: ignore[assignment]
+
+
+@dataclass
+class IntTypeArg:
+    """An integer-valued generic argument, e.g. `Array[T, N]`'s `N`."""
+    kind: str = field(default="IntTypeArg", init=False)
+    value: int = 0
+
+
+TypeArg = Union[TypeTypeArg, IntTypeArg]
+
+
+@dataclass
+class NamedType:
+    """A type referenced by name, with optional generic args.
+
+    Mirrors the design's `NamedType("Int32")` shape. Wrapper types
+    (Optional, Pointer, Readonly, Own, Union, Callable, Literal) land
+    as separate IR nodes in their respective milestones; M2 only needs
+    `NamedType`.
+    """
+    kind: str = field(default="NamedType", init=False)
+    name: str = ""
+    args: tuple[TypeArg, ...] = ()
+    loc: Loc | None = None
+
+
+# Plugin authors compose types out of the nodes above. M2 only emits
+# `NamedType`; later milestones widen the union.
+TypeExpr = NamedType
+
+
 # --- Expressions ----------------------------------------------------------
 
 
@@ -41,6 +115,14 @@ class StrLit:
     """String literal expression."""
     kind: str = field(default="StrLit", init=False)
     value: str = ""
+    loc: Loc | None = None
+
+
+@dataclass
+class IntLit:
+    """Integer literal expression."""
+    kind: str = field(default="IntLit", init=False)
+    value: int = 0
     loc: Loc | None = None
 
 
@@ -66,7 +148,26 @@ class Call:
     loc: Loc | None = None
 
 
-Expr = Union[StrLit, Name, Call]
+@dataclass
+class BinOp:
+    """Binary operation."""
+    kind: str = field(default="BinOp", init=False)
+    op: BinOpKind = BinOpKind.ADD
+    lhs: "Expr" = None  # type: ignore[assignment]
+    rhs: "Expr" = None  # type: ignore[assignment]
+    loc: Loc | None = None
+
+
+@dataclass
+class UnaryOp:
+    """Unary operation."""
+    kind: str = field(default="UnaryOp", init=False)
+    op: UnaryOpKind = UnaryOpKind.POS
+    operand: "Expr" = None  # type: ignore[assignment]
+    loc: Loc | None = None
+
+
+Expr = Union[StrLit, IntLit, Name, Call, BinOp, UnaryOp]
 
 
 # --- Statements -----------------------------------------------------------
@@ -80,7 +181,36 @@ class ExprStmt:
     loc: Loc | None = None
 
 
-Stmt = ExprStmt  # M1: ExprStmt is the only Stmt; expand as milestones land.
+@dataclass
+class VarDecl:
+    """Local or module-level variable declaration.
+
+    `mutable=False` marks a constant -- lowering folds those onto TPy's
+    `Final[...]` machinery (future milestones; M2 always emits
+    `mutable=True`).
+    """
+    kind: str = field(default="VarDecl", init=False)
+    name: str = ""
+    type: TypeExpr | None = None
+    init: Expr | None = None
+    mutable: bool = True
+    loc: Loc | None = None
+
+
+@dataclass
+class Assign:
+    """Assignment statement.
+
+    `targets` mirrors Python's chained-assignment shape (`a = b = ...`).
+    M2 only emits single-target assigns; chaining lands later.
+    """
+    kind: str = field(default="Assign", init=False)
+    targets: tuple[Expr, ...] = ()
+    value: Expr = None  # type: ignore[assignment]
+    loc: Loc | None = None
+
+
+Stmt = Union[ExprStmt, VarDecl, Assign]
 
 
 # --- Imports --------------------------------------------------------------

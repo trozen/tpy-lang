@@ -23,59 +23,69 @@ from ..frontend_diagnostics import FrontendDiagnostic, FrontendDiagnosticCategor
 from ..parse.nodes import (
     ModuleDirectives,
     SourceLocation,
+    TpyAssign,
+    TpyBinOp,
     TpyCall,
     TpyExprStmt,
     TpyImport,
+    TpyIntLiteral,
     TpyModule,
     TpyName,
     TpyStrLiteral,
+    TpyTypeRef,
+    TpyUnaryOp,
+    TpyVarDecl,
 )
 from .nodes import (
     API_VERSION,
+    Assign,
+    BinOp,
+    BinOpKind,
     Call,
     ExprStmt,
     FrontendModule,
     FromImport,
     Import,
+    IntLit,
+    IntTypeArg,
     Loc,
     Name,
+    NamedType,
     StrLit,
+    TypeArg,
+    TypeExpr,
+    TypeTypeArg,
+    UnaryOp,
+    UnaryOpKind,
+    VarDecl,
 )
 
 
-class _NullResolver:
-    """Stub TypeResolver for plugin-lowered modules with no symbolic types.
+# Map IR operator enums onto the string opcodes TPy's parser AST uses
+# (see `tpyc/parse/parser.py` -- `_BINOP_TO_STR` / `_UNARYOP_TO_STR`).
+_BINOP_OP_STR: dict[BinOpKind, str] = {
+    BinOpKind.ADD: "+",
+    BinOpKind.SUB: "-",
+    BinOpKind.MUL: "*",
+    BinOpKind.TRUE_DIV: "div",
+    BinOpKind.FLOOR_DIV: "//",
+    BinOpKind.MOD: "%",
+    BinOpKind.POW: "**",
+    BinOpKind.BIT_OR: "|",
+    BinOpKind.BIT_XOR: "^",
+    BinOpKind.BIT_AND: "&",
+    BinOpKind.LSHIFT: "<<",
+    BinOpKind.RSHIFT: ">>",
+    BinOpKind.LOGICAL_AND: "&&",
+    BinOpKind.LOGICAL_OR: "||",
+}
 
-    `resolve_refs` raises unconditionally when `module.resolver is None`,
-    even if a module has nothing to resolve. The stub satisfies the
-    null-check and raises a clear error if a future plugin emits a
-    TypeRefNode without arranging proper type lowering. M1's hello-world
-    has no types so `.resolve()` is never reached.
-    """
-
-    def __init__(self) -> None:
-        # `resolve_refs` and `_populate_submodule_registry` touch a few
-        # registry attributes (`.modules`, `register_type_alias`,
-        # `get_record`, `register_record`) on the resolver's registry.
-        # A real -- but empty -- `TypeRegistry` satisfies all of them
-        # cheaply and avoids modeling the surface twice.
-        from ..typesys import TypeRegistry
-        self.registry = TypeRegistry()
-
-    def resolve(self, *args, **kwargs):
-        raise NotImplementedError(
-            "frontend-plugin lowering has no type resolver attached -- "
-            "M1 does not lower symbolic types"
-        )
-
-    def refresh_module_aliases(self) -> None:
-        pass
-
-    def canonicalize_import_table(self, lookup) -> None:
-        pass
-
-    def index_imported_name(self, *args, **kwargs) -> None:
-        pass
+_UNARYOP_OP_STR: dict[UnaryOpKind, str] = {
+    UnaryOpKind.POS: "+",
+    UnaryOpKind.NEG: "-",
+    UnaryOpKind.NOT: "!",
+    UnaryOpKind.INVERT: "~",
+}
 
 
 @dataclass
@@ -135,6 +145,8 @@ def lower_module(
 
     # Imports: build the four dicts the parser/sema expect and emit
     # corresponding TpyImport statements at the head of top_level_stmts.
+    # `module_aliases` follows the parser convention -- canonical name
+    # keys the local alias -- not the reverse map used at lookup time.
     module_imports: dict[str, set[tuple[str, str]] | None] = {}
     user_module_imports: dict[str, int] = {}
     bare_module_imports: set[str] = set()
@@ -200,6 +212,22 @@ def lower_module(
     if has_ir_error or plugin_had_error:
         return LoweredFrontend(module=None, diagnostics=diags)
 
+    # Build a real `TypeResolver` over a parser-shaped adapter. This is
+    # the same `TypeResolver` the .py parser uses; the adapter just
+    # exposes the parser-internal attributes/methods the resolver reads.
+    # Lowering is responsible for populating the adapter's import
+    # name-index from the IR's `FromImport` nodes so that
+    # `_resolve_type_name` can route a bare type like `"Int32"` to its
+    # origin module before sema looks up the primitive.
+    from .resolver_adapter import make_plugin_resolver
+    resolver = make_plugin_resolver(
+        module_name=fm.qname,
+        imports=dict(module_imports),
+        name_index=tuple(
+            (local, mod, original)
+            for local, (mod, original) in name_to_origin.items()
+        ),
+    )
     module = TpyModule(
         records=[],
         functions=[],
@@ -212,11 +240,7 @@ def lower_module(
         module_aliases=module_aliases,
         bare_module_imports=bare_module_imports,
         directives=directives,
-        # No real TypeResolver -- the IR carries no symbolic types in
-        # M1. `_NullResolver` satisfies `resolve_refs`'s null-check and
-        # raises clearly if a future plugin emits a TypeRefNode without
-        # also arranging proper type lowering.
-        resolver=_NullResolver(),
+        resolver=resolver,
     )
     return LoweredFrontend(module=module, diagnostics=diags)
 
@@ -228,13 +252,35 @@ def _lower_stmt(
     fm: FrontendModule,
     diags: list[FrontendDiagnostic],
 ):
+    loc = _to_source_loc(stmt.loc) if getattr(stmt, "loc", None) else None
     if isinstance(stmt, ExprStmt):
         expr = _lower_expr(stmt.value, name_to_origin, plugin_name, fm, diags)
         if expr is None:
             return None
         out = TpyExprStmt(expr=expr)
-        out.loc = _to_source_loc(stmt.loc)
+        out.loc = loc
         return out
+    if isinstance(stmt, VarDecl):
+        type_ref = (_lower_type(stmt.type, plugin_name, fm, diags)
+                    if stmt.type is not None else None)
+        init = (_lower_expr(stmt.init, name_to_origin, plugin_name, fm, diags)
+                if stmt.init is not None else None)
+        if stmt.init is not None and init is None:
+            return None
+        return TpyVarDecl(name=stmt.name, type=type_ref, init=init, loc=loc)
+    if isinstance(stmt, Assign):
+        if len(stmt.targets) != 1:
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                "Assign requires exactly one target in M2 "
+                "(chained assignment lands later)",
+            ))
+            return None
+        target = _lower_expr(stmt.targets[0], name_to_origin, plugin_name, fm, diags)
+        value = _lower_expr(stmt.value, name_to_origin, plugin_name, fm, diags)
+        if target is None or value is None:
+            return None
+        return TpyAssign(target=target, value=value, loc=loc)
     diags.append(_ir_invalid(
         plugin_name, fm,
         f"unsupported top-level stmt kind: {type(stmt).__name__}",
@@ -249,13 +295,47 @@ def _lower_expr(
     fm: FrontendModule,
     diags: list[FrontendDiagnostic],
 ):
+    loc = _to_source_loc(expr.loc) if getattr(expr, "loc", None) else None
     if isinstance(expr, StrLit):
         out = TpyStrLiteral(value=expr.value)
-        out.loc = _to_source_loc(expr.loc)
+        out.loc = loc
+        return out
+    if isinstance(expr, IntLit):
+        out = TpyIntLiteral(value=expr.value)
+        out.loc = loc
         return out
     if isinstance(expr, Name):
         out = TpyName(name=expr.ident)
-        out.loc = _to_source_loc(expr.loc)
+        out.loc = loc
+        return out
+    if isinstance(expr, BinOp):
+        op_str = _BINOP_OP_STR.get(expr.op)
+        if op_str is None:
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                f"unsupported BinOpKind: {expr.op}",
+            ))
+            return None
+        lhs = _lower_expr(expr.lhs, name_to_origin, plugin_name, fm, diags)
+        rhs = _lower_expr(expr.rhs, name_to_origin, plugin_name, fm, diags)
+        if lhs is None or rhs is None:
+            return None
+        out = TpyBinOp(left=lhs, op=op_str, right=rhs)
+        out.loc = loc
+        return out
+    if isinstance(expr, UnaryOp):
+        op_str = _UNARYOP_OP_STR.get(expr.op)
+        if op_str is None:
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                f"unsupported UnaryOpKind: {expr.op}",
+            ))
+            return None
+        operand = _lower_expr(expr.operand, name_to_origin, plugin_name, fm, diags)
+        if operand is None:
+            return None
+        out = TpyUnaryOp(op=op_str, operand=operand)
+        out.loc = loc
         return out
     if isinstance(expr, Call):
         callee = _lower_expr(expr.callee, name_to_origin, plugin_name, fm, diags)
@@ -268,7 +348,7 @@ def _lower_expr(
                 return None
             args.append(la)
         out = TpyCall(func=callee, args=args)
-        out.loc = _to_source_loc(expr.loc)
+        out.loc = loc
         # If the callee is a bare Name that we imported via FromImport,
         # tag the call so sema knows which module exports it (parallel
         # to what Parser._resolve_call_import does for .py sources).
@@ -280,6 +360,42 @@ def _lower_expr(
     diags.append(_ir_invalid(
         plugin_name, fm,
         f"unsupported expr kind: {type(expr).__name__}",
+    ))
+    return None
+
+
+def _lower_type(
+    t: TypeExpr,
+    plugin_name: str,
+    fm: FrontendModule,
+    diags: list[FrontendDiagnostic],
+) -> TpyTypeRef | None:
+    """Lower a symbolic IR type to a parser `TpyTypeRef`.
+
+    M2 only carries `NamedType` (possibly with generic args); wrapper
+    types (Optional/Ptr/Own/...) land milestone-by-milestone.
+    """
+    if isinstance(t, NamedType):
+        args: list = []
+        for a in t.args:
+            if isinstance(a, IntTypeArg):
+                args.append(a.value)
+            elif isinstance(a, TypeTypeArg):
+                lowered = _lower_type(a.value, plugin_name, fm, diags)
+                if lowered is None:
+                    return None
+                args.append(lowered)
+            else:
+                diags.append(_ir_invalid(
+                    plugin_name, fm,
+                    f"unsupported TypeArg kind: {type(a).__name__}",
+                ))
+                return None
+        return TpyTypeRef(name=t.name, args=tuple(args),
+                          loc=_to_source_loc(t.loc))
+    diags.append(_ir_invalid(
+        plugin_name, fm,
+        f"unsupported TypeExpr kind: {type(t).__name__}",
     ))
     return None
 

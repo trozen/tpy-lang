@@ -1,12 +1,13 @@
-"""Hand-written Pascal lexer (M1 subset).
+"""Hand-written Pascal lexer.
 
-Tokens M1 needs:
-  - keywords: program, begin, end
+Token surface grows milestone-by-milestone. Current set:
+  - keywords: program, begin, end, var, integer, div, mod
   - identifiers (case-insensitive, lowered to canonical form)
   - string literals: 'text', '' for embedded apostrophe
-  - punctuation: ; . ( ) ,
+  - integer literals (decimal)
+  - punctuation: ; . , : := ( ) + - * /
   - both comment styles: { ... } and (* ... *)
-  - directives `{$...}` lexed as comment in v1 (ignored)
+  - directives `{$...}` lexed as comment (ignored)
 
 EOF token terminates the stream.
 """
@@ -22,15 +23,29 @@ class TokKind(Enum):
     IDENT = "IDENT"
     KEYWORD = "KEYWORD"
     STR_LIT = "STR_LIT"
+    INT_LIT = "INT_LIT"
     SEMI = "SEMI"
     DOT = "DOT"
+    COLON = "COLON"
+    ASSIGN = "ASSIGN"        # :=
     LPAREN = "LPAREN"
     RPAREN = "RPAREN"
     COMMA = "COMMA"
+    PLUS = "PLUS"
+    MINUS = "MINUS"
+    STAR = "STAR"
+    SLASH = "SLASH"
     EOF = "EOF"
 
 
-KEYWORDS = frozenset({"program", "begin", "end"})
+# `integer` is a type name we treat as a keyword so the parser can
+# distinguish it from user identifiers; `div` / `mod` are integer
+# operators with keyword spelling rather than punctuation.
+KEYWORDS = frozenset({
+    "program", "begin", "end",
+    "var", "integer",
+    "div", "mod",
+})
 
 
 @dataclass
@@ -117,6 +132,46 @@ def tokenize(source: str, path: Path) -> list[Token]:
             sl, sc = line, col
             adv()
             tokens.append(Token(TokKind.COMMA, ",", sl, sc, line, col - 1))
+            continue
+        # `:` or `:=` -- `:=` is Pascal's assignment, `:` is the type
+        # separator in var / function-param declarations.
+        if ch == ":":
+            sl, sc = line, col
+            adv()
+            if i < n and source[i] == "=":
+                adv()
+                tokens.append(Token(TokKind.ASSIGN, ":=", sl, sc, line, col - 1))
+            else:
+                tokens.append(Token(TokKind.COLON, ":", sl, sc, line, col - 1))
+            continue
+        if ch == "+":
+            sl, sc = line, col
+            adv()
+            tokens.append(Token(TokKind.PLUS, "+", sl, sc, line, col - 1))
+            continue
+        if ch == "-":
+            sl, sc = line, col
+            adv()
+            tokens.append(Token(TokKind.MINUS, "-", sl, sc, line, col - 1))
+            continue
+        if ch == "*":
+            sl, sc = line, col
+            adv()
+            tokens.append(Token(TokKind.STAR, "*", sl, sc, line, col - 1))
+            continue
+        if ch == "/":
+            sl, sc = line, col
+            adv()
+            tokens.append(Token(TokKind.SLASH, "/", sl, sc, line, col - 1))
+            continue
+        # Integer literal (decimal). Hex / octal land later milestones.
+        if ch.isdigit():
+            sl, sc = line, col
+            start = i
+            while i < n and source[i].isdigit():
+                adv()
+            tokens.append(Token(TokKind.INT_LIT, source[start:i],
+                                sl, sc, line, col - 1))
             continue
         # String literal: 'text' with '' for embedded apostrophe
         if ch == "'":
