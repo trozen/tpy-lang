@@ -2,7 +2,14 @@
 
 Grammar handled so far (subset of Turbo Pascal):
 
-    Program       ::= 'program' Ident ';' VarBlock? CompoundStmt '.'
+    Program       ::= 'program' Ident ';' Decls CompoundStmt '.'
+    Decls         ::= (VarBlock | ProcDecl | FuncDecl)*
+    ProcDecl      ::= 'procedure' Ident ParamList? ';' RoutineBody ';'
+    FuncDecl      ::= 'function' Ident ParamList? ':' TypeName ';'
+                      RoutineBody ';'
+    RoutineBody   ::= VarBlock? CompoundStmt
+    ParamList     ::= '(' ParamGroup (';' ParamGroup)* ')'
+    ParamGroup    ::= 'var'? IdentList ':' TypeName
     VarBlock      ::= 'var' (VarDecl ';')+
     VarDecl       ::= IdentList ':' TypeName
     IdentList     ::= Ident (',' Ident)*
@@ -95,9 +102,28 @@ class _Parser:
         start = self._eat(TokKind.KEYWORD, "program")
         name_tok = self._eat(TokKind.IDENT)
         self._eat(TokKind.SEMI)
-        var_block = None
-        if self.cur.kind == TokKind.KEYWORD and self.cur.text == "var":
-            var_block = self.parse_var_block()
+        # Pascal allows var-blocks and procedure/function decls in any
+        # order before the main block. M4 accepts interleaving but
+        # collapses multiple var-blocks: standard Pascal has at most
+        # one module-level var-block; emitting an error on duplicates
+        # surfaces a likely typo without complicating the AST.
+        var_block: pa.VarBlock | None = None
+        subroutines: list = []
+        while True:
+            if self.cur.kind == TokKind.KEYWORD and self.cur.text == "var":
+                if var_block is not None:
+                    t = self.cur
+                    raise ParseError(
+                        "duplicate module-level 'var' section",
+                        t.line, t.col,
+                    )
+                var_block = self.parse_var_block()
+                continue
+            if self.cur.kind == TokKind.KEYWORD and self.cur.text in (
+                    "procedure", "function"):
+                subroutines.append(self.parse_subroutine())
+                continue
+            break
         block = self.parse_block()
         dot = self._eat(TokKind.DOT)
         if self.cur.kind != TokKind.EOF:
@@ -108,10 +134,89 @@ class _Parser:
         return pa.Program(
             name=name_tok.text,
             var_block=var_block,
+            subroutines=subroutines,
             block=block,
             loc=self._loc(start, dot),
             file=self.path,
         )
+
+    # ------------------------------------------------------------------
+    # Procedure / function declarations
+
+    def parse_subroutine(self) -> pa.SubroutineDecl:
+        kw_tok = self._eat(TokKind.KEYWORD)
+        assert kw_tok.text in ("procedure", "function")
+        is_function = kw_tok.text == "function"
+        name_tok = self._eat(TokKind.IDENT)
+        params: list = []
+        if self.cur.kind == TokKind.LPAREN:
+            params = self.parse_param_list()
+        return_type: str | None = None
+        if is_function:
+            self._eat(TokKind.COLON)
+            ret_tok = self._eat(TokKind.KEYWORD)
+            if ret_tok.text not in ("integer", "boolean"):
+                raise ParseError(
+                    f"unsupported function return type {ret_tok.text!r}",
+                    ret_tok.line, ret_tok.col,
+                )
+            return_type = ret_tok.text
+        self._eat(TokKind.SEMI)
+        # Routine body: optional local var-block, then a compound stmt.
+        local_var_block = None
+        if self.cur.kind == TokKind.KEYWORD and self.cur.text == "var":
+            local_var_block = self.parse_var_block()
+        body = self.parse_compound_stmt()
+        self._eat(TokKind.SEMI)
+        return pa.SubroutineDecl(
+            name=name_tok.text,
+            params=params,
+            return_type=return_type,
+            var_block=local_var_block,
+            body=body,
+            loc=self._loc(kw_tok, self.tokens[self.i - 1]),
+        )
+
+    def parse_param_list(self) -> list:
+        """Parse a parenthesised list of parameter groups.
+
+        Pascal allows `(var a, b: integer; c: integer)` -- groups
+        share a `var` modifier (or its absence) and a type. The parser
+        flattens these into one `Param` per name.
+        """
+        self._eat(TokKind.LPAREN)
+        params: list = []
+        if self.cur.kind != TokKind.RPAREN:
+            params.extend(self._parse_param_group())
+            while self.cur.kind == TokKind.SEMI:
+                self.i += 1
+                params.extend(self._parse_param_group())
+        self._eat(TokKind.RPAREN)
+        return params
+
+    def _parse_param_group(self) -> list:
+        is_var = False
+        if self.cur.kind == TokKind.KEYWORD and self.cur.text == "var":
+            is_var = True
+            self.i += 1
+        first = self.cur
+        names: list[str] = [self._eat(TokKind.IDENT).text]
+        while self.cur.kind == TokKind.COMMA:
+            self.i += 1
+            names.append(self._eat(TokKind.IDENT).text)
+        self._eat(TokKind.COLON)
+        type_tok = self._eat(TokKind.KEYWORD)
+        if type_tok.text not in ("integer", "boolean"):
+            raise ParseError(
+                f"unsupported parameter type {type_tok.text!r}",
+                type_tok.line, type_tok.col,
+            )
+        loc = self._loc(first, type_tok)
+        return [
+            pa.Param(name=n, type_name=type_tok.text,
+                     is_var=is_var, loc=loc)
+            for n in names
+        ]
 
     def parse_var_block(self) -> pa.VarBlock:
         start = self._eat(TokKind.KEYWORD, "var")
@@ -462,7 +567,22 @@ class _Parser:
                               loc=self._loc(t, t))
         if t.kind == TokKind.IDENT:
             self.i += 1
-            return pa.Ident(name=t.text, loc=self._loc(t, t))
+            ident = pa.Ident(name=t.text, loc=self._loc(t, t))
+            if self.cur.kind == TokKind.LPAREN:
+                # Function-call form in expression position. M4 has no
+                # arrays so `name(args)` unambiguously parses as a
+                # call; arrays land in M5 and bring `name[i]` instead.
+                self.i += 1
+                args: list = []
+                if self.cur.kind != TokKind.RPAREN:
+                    args.append(self.parse_expression())
+                    while self.cur.kind == TokKind.COMMA:
+                        self.i += 1
+                        args.append(self.parse_expression())
+                rparen = self._eat(TokKind.RPAREN)
+                return pa.CallExpr(callee=ident, args=args,
+                                   loc=self._loc(t, rparen))
+            return ident
         if t.kind == TokKind.LPAREN:
             self.i += 1
             inner = self.parse_expression()

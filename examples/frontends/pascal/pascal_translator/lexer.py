@@ -60,6 +60,7 @@ KEYWORDS = frozenset({
     "for", "to", "downto",
     "repeat", "until",
     "case", "of",
+    "procedure", "function",
 })
 
 

@@ -1,20 +1,28 @@
 """Pascal AST -> Frontend IR translator.
 
-Walks the Pascal AST and emits a `FrontendModule`. Hoists Pascal's
-`var` section into per-name IR `VarDecl`s preceding the program body,
-maps `integer` to `NamedType("Int32")`, and routes `writeln(...)` to
-the runtime overload appropriate for the argument's static type.
+Walks the Pascal AST and emits a `FrontendModule`. Responsibilities:
 
-Imports are emitted in two buckets:
-  - The Pascal-runtime entry per call (e.g. `pascal.runtime.io.writeln`
-    for `writeln(StrView)`, `pascal.runtime.io.writeln_int` for
-    `writeln(Int32)`).
-  - `from tpy import Int32` whenever the IR needs to name `Int32`.
+- Hoist module-level `var` section into per-name IR `VarDecl`s.
+- Map Pascal type spellings (`integer`, `boolean`) onto TPy builtins
+  (`Int32`, `bool`) and emit corresponding `from tpy import T` imports.
+- Translate each procedure / function into an IR `Function`. For
+  `function name ...: T;` Pascal's "return by assigning the function
+  name" convention is rewritten via a synthetic `__result` local + a
+  trailing `Return(__result)`.
+- Translate Pascal `var` (by-reference) parameters via
+  `PointerType(NamedType(T))`. Inside the routine body, reads of a
+  var-param `p` become `deref(p)` and writes `p := v` become
+  `unsafe_store(p, 0, v)`. At call sites, var-param arguments are
+  wrapped in `take_ptr(...)`.
+- Route `writeln(...)` to the per-type runtime overload
+  (`writeln_int` for integers, `writeln` for strings).
 """
 
 from __future__ import annotations
 
+from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Callable
 
 from tpyc.diagnostics import Diagnostic, DiagnosticLevel
 from tpyc.frontend_ir import (
@@ -30,6 +38,7 @@ from tpyc.frontend_ir import (
     FrontendDirectives,
     FrontendModule,
     FromImport,
+    Function,
     If,
     ImportName,
     IntLit,
@@ -40,8 +49,11 @@ from tpyc.frontend_ir import (
     MatchWildcard,
     Name,
     NamedType,
+    Param,
+    PointerType,
     RangeDir,
     RepeatUntil,
+    Return,
     StrLit,
     UnaryOp,
     UnaryOpKind,
@@ -78,10 +90,8 @@ _BIN_OP: dict[str, BinOpKind] = {
     "div": BinOpKind.FLOOR_DIV,
     "/": BinOpKind.TRUE_DIV,
     "mod": BinOpKind.MOD,
-    # Pascal word-spelled logical operators. Bitwise/logical
-    # distinction in Pascal depends on operand types; M3 treats `and`
-    # and `or` as logical because operands are boolean expressions
-    # produced by comparisons.
+    # Pascal word-spelled logical operators. M3 treats `and` / `or` as
+    # logical because operands are boolean expressions from comparisons.
     "and": BinOpKind.LOGICAL_AND,
     "or": BinOpKind.LOGICAL_OR,
     "xor": BinOpKind.BIT_XOR,
@@ -105,47 +115,78 @@ _CMP_OP: dict[str, CmpOpKind] = {
 }
 
 
+# Name of the synthetic local that carries a function's return value.
+# Pascal's `function_name := expr` writes get rewritten to assign to
+# this name instead; the function body ends with `Return(_RESULT_NAME)`.
+# Underscored to keep it well outside any plausible Pascal identifier.
+_RESULT_NAME = "__pascal_result"
+
+
+@dataclass
+class _Sig:
+    """Subroutine signature info needed at call sites."""
+    name: str
+    param_names: list[str]
+    param_var_flags: list[bool]   # True iff the corresponding param is `var`
+    return_type: str | None       # Pascal spelling, or None for a procedure
+
+
+@dataclass
+class _Ctx:
+    """Shared translator state."""
+    diagnostics: list[Diagnostic] = field(default_factory=list)
+    needed_imports: dict[str, set[str]] = field(default_factory=dict)
+    type_env: dict[str, str] = field(default_factory=dict)
+    signatures: dict[str, _Sig] = field(default_factory=dict)
+    # Per-routine state (saved / restored when entering / leaving each
+    # subroutine; left at the defaults at module-body level).
+    current_func: str | None = None
+    current_func_return_type: str | None = None
+    current_var_params: set[str] = field(default_factory=set)
+
+    def add_import(self, module: str, name: str) -> None:
+        self.needed_imports.setdefault(module, set()).add(name)
+
+
 def translate(program: pa.Program,
               module_name: str) -> tuple[FrontendModule, list[Diagnostic]]:
-    diagnostics: list[Diagnostic] = []
-    needed_imports: dict[str, set[str]] = {}
+    ctx = _Ctx()
+
+    # Pre-scan subroutines so callers can see their signatures even
+    # when emitted before the callee in source order.
+    for sub in program.subroutines:
+        ctx.signatures[sub.name] = _Sig(
+            name=sub.name,
+            param_names=[p.name for p in sub.params],
+            param_var_flags=[p.is_var for p in sub.params],
+            return_type=sub.return_type,
+        )
+
     top_level_stmts: list = []
-    # Static type environment built as we walk vars / assignments. Pascal
-    # is statically typed and M2 has a single type (Int32), but the env
-    # is the right place to grow as more types arrive.
-    type_env: dict[str, str] = {}
+    functions: list = []
 
-    def add_import(module: str, name: str) -> None:
-        needed_imports.setdefault(module, set()).add(name)
-
-    def lower_type(type_name: str, loc: pa.Loc) -> NamedType | None:
-        tpy_name = _TYPE_MAP.get(type_name)
-        if tpy_name is None:
-            diagnostics.append(_diag(
-                f"unsupported type {type_name!r}", loc))
-            return None
-        if tpy_name not in _BUILTIN_TYPES_NO_IMPORT:
-            add_import("tpy", tpy_name)
-        return NamedType(name=tpy_name, args=(), loc=_to_ir_loc(loc))
-
-    # ----- var section -> per-name VarDecl IR nodes ---------------------
+    # Module-level var section -> per-name IR VarDecls.
     if program.var_block is not None:
         for decl in program.var_block.decls:
-            ir_type = lower_type(decl.type_name, decl.loc)
+            ir_type = _lower_named_type(decl.type_name, decl.loc, ctx)
             for name in decl.names:
-                type_env[name] = decl.type_name
+                ctx.type_env[name] = decl.type_name
                 top_level_stmts.append(VarDecl(
                     name=name, type=ir_type, init=None, mutable=True,
                     loc=_to_ir_loc(decl.loc),
                 ))
 
-    # ----- program body --------------------------------------------------
+    # Module-level body.
     for stmt in program.block.statements:
-        lowered = _lower_stmt(
-            stmt, type_env, add_import, diagnostics,
-        )
+        lowered = _lower_stmt(stmt, ctx)
         if lowered is not None:
             top_level_stmts.append(lowered)
+
+    # Subroutines.
+    for sub in program.subroutines:
+        fn = _lower_subroutine(sub, ctx)
+        if fn is not None:
+            functions.append(fn)
 
     imports = tuple(
         FromImport(
@@ -155,7 +196,7 @@ def translate(program: pa.Program,
                 key=lambda im: im.local,
             )),
         )
-        for mod, names in sorted(needed_imports.items())
+        for mod, names in sorted(ctx.needed_imports.items())
     )
 
     fm = FrontendModule(
@@ -163,54 +204,149 @@ def translate(program: pa.Program,
         source_language="pascal",
         source_lines=program.source_lines,
         imports=imports,
+        functions=tuple(functions),
         top_level_stmts=tuple(top_level_stmts),
         directives=FrontendDirectives(),
     )
-    return fm, diagnostics
+    return fm, ctx.diagnostics
 
 
-def _lower_stmt(stmt, type_env, add_import, diagnostics):
-    if isinstance(stmt, pa.AssignStmt):
-        target = Name(ident=stmt.target.name, loc=_to_ir_loc(stmt.target.loc))
-        value = _lower_expr(stmt.value, type_env, add_import, diagnostics)
-        if value is None:
+# ---------------------------------------------------------------------------
+# Subroutines
+
+def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
+    saved_func = ctx.current_func
+    saved_return = ctx.current_func_return_type
+    saved_var_params = ctx.current_var_params
+    # Each subroutine starts with a fresh per-routine env layered over
+    # the module env. M4 routines don't see module vars (Pascal does,
+    # but supporting that requires more sema-side scope work).
+    saved_type_env = ctx.type_env
+    ctx.type_env = dict(ctx.type_env)
+    ctx.current_func = sub.name
+    ctx.current_func_return_type = sub.return_type
+    ctx.current_var_params = {p.name for p in sub.params if p.is_var}
+
+    # Params.
+    ir_params: list = []
+    for p in sub.params:
+        base_type = _lower_named_type(p.type_name, p.loc, ctx)
+        if base_type is None:
+            ctx.current_func = saved_func
+            ctx.current_func_return_type = saved_return
+            ctx.current_var_params = saved_var_params
+            ctx.type_env = saved_type_env
             return None
-        return Assign(targets=(target,), value=value,
-                      loc=_to_ir_loc(stmt.loc))
+        param_type = (PointerType(inner=base_type, loc=_to_ir_loc(p.loc))
+                      if p.is_var else base_type)
+        ir_params.append(Param(
+            name=p.name, type=param_type, default=None,
+            loc=_to_ir_loc(p.loc),
+        ))
+        # The type env records the Pascal type (without the `Ptr`
+        # wrapper) so writeln dispatch and other type-driven decisions
+        # see the value type, not the pointer.
+        ctx.type_env[p.name] = p.type_name
+
+    # `var` params require take_ptr / deref / unsafe_store visibility
+    # in the lowered module.
+    if ctx.current_var_params:
+        ctx.add_import("tpy", "take_ptr")
+        ctx.add_import("tpy", "deref")
+        ctx.add_import("tpy.unsafe", "unsafe_store")
+
+    # Local var-block. Locals get a zero-style default init so TPy's
+    # definitely-assigned analysis admits Pascal's common
+    # write-then-read flow without forcing the user to spell out a
+    # value at declaration. (Turbo Pascal de facto zero-inits locals;
+    # the explicit init keeps the surface program portable.)
+    body_stmts: list = []
+    if sub.var_block is not None:
+        for decl in sub.var_block.decls:
+            ir_type = _lower_named_type(decl.type_name, decl.loc, ctx)
+            for name in decl.names:
+                ctx.type_env[name] = decl.type_name
+                body_stmts.append(VarDecl(
+                    name=name, type=ir_type,
+                    init=_default_init_for(decl.type_name, decl.loc),
+                    mutable=True, loc=_to_ir_loc(decl.loc),
+                ))
+
+    # Functions get a synthetic `__pascal_result` local that holds the
+    # return value across multiple `function_name := expr` assignments.
+    # A zero-style default initializer keeps TPy's "no uninitialized
+    # reads" rule satisfied for routines that conditionally assign the
+    # result (e.g. assigning only inside an if-branch); the explicit
+    # init is harmless when every path eventually writes.
+    if sub.return_type is not None:
+        result_type = _lower_named_type(sub.return_type, sub.loc, ctx)
+        body_stmts.append(VarDecl(
+            name=_RESULT_NAME, type=result_type,
+            init=_default_init_for(sub.return_type, sub.loc),
+            mutable=True, loc=_to_ir_loc(sub.loc),
+        ))
+        ctx.type_env[_RESULT_NAME] = sub.return_type
+
+    # Body statements.
+    for stmt in sub.body.statements:
+        lowered = _lower_stmt(stmt, ctx)
+        if lowered is not None:
+            body_stmts.append(lowered)
+
+    # Trailing return for functions.
+    return_ir_type = None
+    if sub.return_type is not None:
+        return_ir_type = _lower_named_type(sub.return_type, sub.loc, ctx)
+        body_stmts.append(Return(
+            value=Name(ident=_RESULT_NAME, loc=_to_ir_loc(sub.loc)),
+            loc=_to_ir_loc(sub.loc),
+        ))
+
+    ctx.current_func = saved_func
+    ctx.current_func_return_type = saved_return
+    ctx.current_var_params = saved_var_params
+    ctx.type_env = saved_type_env
+    return Function(
+        name=sub.name,
+        params=tuple(ir_params),
+        return_type=return_ir_type,
+        body=tuple(body_stmts),
+        loc=_to_ir_loc(sub.loc),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Statements
+
+def _lower_stmt(stmt, ctx: _Ctx):
+    if isinstance(stmt, pa.AssignStmt):
+        return _lower_assign_stmt(stmt, ctx)
     if isinstance(stmt, pa.CallStmt):
-        return _lower_call_stmt(stmt, type_env, add_import, diagnostics)
+        return _lower_call_stmt(stmt, ctx)
     if isinstance(stmt, pa.CompoundStmt):
-        # A compound statement in a control-flow position isn't its own
-        # IR node -- it just contributes its inner statements to the
-        # enclosing then/else/body block. The caller hoists by treating
-        # a CompoundStmt's children as the block payload.
-        return _lower_compound_as_marker(stmt, type_env, add_import, diagnostics)
+        return _lower_compound_as_marker(stmt, ctx)
     if isinstance(stmt, pa.IfStmt):
-        cond = _lower_expr(stmt.cond, type_env, add_import, diagnostics)
+        cond = _lower_expr(stmt.cond, ctx)
         if cond is None:
             return None
-        then_body = _lower_branch(stmt.then_branch, type_env,
-                                  add_import, diagnostics)
-        else_body = (_lower_branch(stmt.else_branch, type_env,
-                                   add_import, diagnostics)
+        then_body = _lower_branch(stmt.then_branch, ctx)
+        else_body = (_lower_branch(stmt.else_branch, ctx)
                      if stmt.else_branch is not None else ())
         return If(cond=cond, then_body=then_body, else_body=else_body,
                   loc=_to_ir_loc(stmt.loc))
     if isinstance(stmt, pa.WhileStmt):
-        cond = _lower_expr(stmt.cond, type_env, add_import, diagnostics)
+        cond = _lower_expr(stmt.cond, ctx)
         if cond is None:
             return None
-        body = _lower_branch(stmt.body, type_env, add_import, diagnostics)
+        body = _lower_branch(stmt.body, ctx)
         return While(cond=cond, body=body, loc=_to_ir_loc(stmt.loc))
     if isinstance(stmt, pa.ForStmt):
-        start = _lower_expr(stmt.start, type_env, add_import, diagnostics)
-        end = _lower_expr(stmt.end, type_env, add_import, diagnostics)
+        start = _lower_expr(stmt.start, ctx)
+        end = _lower_expr(stmt.end, ctx)
         if start is None or end is None:
             return None
-        # The loop variable is treated as integer in M3 (Pascal `for`
-        # only iterates ordinals; integer covers the M3 surface).
-        type_env[stmt.var] = "integer"
-        body = _lower_branch(stmt.body, type_env, add_import, diagnostics)
+        ctx.type_env[stmt.var] = "integer"
+        body = _lower_branch(stmt.body, ctx)
         direction = (RangeDir.ASC if stmt.direction == "to"
                      else RangeDir.DESC)
         return ForRange(
@@ -219,42 +355,60 @@ def _lower_stmt(stmt, type_env, add_import, diagnostics):
             loc=_to_ir_loc(stmt.loc),
         )
     if isinstance(stmt, pa.RepeatStmt):
-        cond = _lower_expr(stmt.cond, type_env, add_import, diagnostics)
+        cond = _lower_expr(stmt.cond, ctx)
         if cond is None:
             return None
-        body = _lower_block_stmts(stmt.statements, type_env,
-                                  add_import, diagnostics)
+        body = _lower_block_stmts(stmt.statements, ctx)
         return RepeatUntil(body=body, cond=cond, loc=_to_ir_loc(stmt.loc))
     if isinstance(stmt, pa.CaseStmt):
-        return _lower_case_stmt(stmt, type_env, add_import, diagnostics)
-    diagnostics.append(_diag(
+        return _lower_case_stmt(stmt, ctx)
+    ctx.diagnostics.append(_diag(
         f"unsupported statement {type(stmt).__name__}",
         getattr(stmt, "loc", _zero_loc()),
     ))
     return None
 
 
-def _lower_compound_as_marker(stmt: pa.CompoundStmt, type_env,
-                              add_import, diagnostics):
-    """A bare CompoundStmt at the program-body level is unusual but
-    legal; lowering produces a no-op marker (IR has no compound-stmt
-    node). The compound's inner statements are returned as a flat list
-    via `_lower_branch`/`_lower_block_stmts` when used as a control-flow
-    branch; if encountered as a top-level program statement, we emit
-    each child directly via the caller -- but `_lower_stmt` returns a
-    single IR node, so this path inlines the children into the outer
-    block via a marker.
-    """
-    # Inline the compound's contents by returning the first lowered
-    # statement and pushing the rest onto a stash. M3's only realistic
-    # paths use compounds as branches, where `_lower_branch` handles
-    # them properly; this fallback exists for completeness.
+def _lower_assign_stmt(stmt: pa.AssignStmt, ctx: _Ctx):
+    target_name = stmt.target.name
+    # Pascal "function_name := expr" sets the return value of the
+    # current function; rewrite to assign to the synthetic result var.
+    if (ctx.current_func is not None
+            and target_name == ctx.current_func
+            and ctx.current_func_return_type is not None):
+        target_name = _RESULT_NAME
+    value = _lower_expr(stmt.value, ctx)
+    if value is None:
+        return None
+    # Writes to a `var` parameter route through `unsafe_store`.
+    if target_name in ctx.current_var_params:
+        ctx.add_import("tpy.unsafe", "unsafe_store")
+        ir_call = Call(
+            callee=Name(ident="unsafe_store",
+                        loc=_to_ir_loc(stmt.target.loc)),
+            args=(
+                Name(ident=target_name, loc=_to_ir_loc(stmt.target.loc)),
+                IntLit(value=0, loc=_to_ir_loc(stmt.target.loc)),
+                value,
+            ),
+            loc=_to_ir_loc(stmt.loc),
+        )
+        return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
+    target = Name(ident=target_name, loc=_to_ir_loc(stmt.target.loc))
+    return Assign(targets=(target,), value=value, loc=_to_ir_loc(stmt.loc))
+
+
+def _lower_compound_as_marker(stmt: pa.CompoundStmt, ctx: _Ctx):
+    """A bare compound statement at the program-body level becomes a
+    no-op marker (the IR has no compound-stmt node). When a compound
+    is used as a control-flow branch, `_lower_branch` flattens it
+    directly into the surrounding body; this fallback only handles
+    the degenerate top-level case."""
     if not stmt.statements:
         return None
     if len(stmt.statements) == 1:
-        return _lower_stmt(stmt.statements[0], type_env,
-                           add_import, diagnostics)
-    diagnostics.append(_diag(
+        return _lower_stmt(stmt.statements[0], ctx)
+    ctx.diagnostics.append(_diag(
         "compound statement at program-body level with multiple "
         "inner statements is not supported (use them directly in the "
         "outer `begin ... end`)",
@@ -263,40 +417,31 @@ def _lower_compound_as_marker(stmt: pa.CompoundStmt, type_env,
     return None
 
 
-def _lower_branch(stmt, type_env, add_import, diagnostics) -> tuple:
-    """Lower a single statement that appears as a control-flow branch
-    (e.g. then/else body, while body, for body) into a flat tuple of
-    IR statements. Pascal's grammar makes branches single statements;
-    `begin ... end` is the multi-statement form. This helper handles
-    both: a compound is unwrapped, anything else is wrapped in a
-    one-element tuple.
-    """
+def _lower_branch(stmt, ctx: _Ctx) -> tuple:
     if isinstance(stmt, pa.CompoundStmt):
-        return tuple(_lower_block_stmts(stmt.statements, type_env,
-                                        add_import, diagnostics))
-    lowered = _lower_stmt(stmt, type_env, add_import, diagnostics)
+        return _lower_block_stmts(stmt.statements, ctx)
+    lowered = _lower_stmt(stmt, ctx)
     return (lowered,) if lowered is not None else ()
 
 
-def _lower_block_stmts(stmts, type_env, add_import, diagnostics) -> tuple:
-    """Lower a flat list of Pascal AST statements into IR statements."""
+def _lower_block_stmts(stmts, ctx: _Ctx) -> tuple:
     out: list = []
     for s in stmts:
-        lowered = _lower_stmt(s, type_env, add_import, diagnostics)
+        lowered = _lower_stmt(s, ctx)
         if lowered is not None:
             out.append(lowered)
     return tuple(out)
 
 
-def _lower_case_stmt(stmt: pa.CaseStmt, type_env, add_import, diagnostics):
-    subject = _lower_expr(stmt.subject, type_env, add_import, diagnostics)
+def _lower_case_stmt(stmt: pa.CaseStmt, ctx: _Ctx):
+    subject = _lower_expr(stmt.subject, ctx)
     if subject is None:
         return None
     cases: list = []
     for arm in stmt.arms:
-        body = _lower_branch(arm.body, type_env, add_import, diagnostics)
+        body = _lower_branch(arm.body, ctx)
         for v in arm.values:
-            ir_v = _lower_expr(v, type_env, add_import, diagnostics)
+            ir_v = _lower_expr(v, ctx)
             if ir_v is None:
                 return None
             cases.append(MatchCase(
@@ -304,8 +449,7 @@ def _lower_case_stmt(stmt: pa.CaseStmt, type_env, add_import, diagnostics):
                 body=body, loc=_to_ir_loc(arm.loc),
             ))
     if stmt.else_branch is not None:
-        else_body = _lower_branch(stmt.else_branch, type_env,
-                                  add_import, diagnostics)
+        else_body = _lower_branch(stmt.else_branch, ctx)
         cases.append(MatchCase(
             pattern=MatchWildcard(loc=_to_ir_loc(stmt.loc)),
             body=else_body, loc=_to_ir_loc(stmt.loc),
@@ -314,32 +458,50 @@ def _lower_case_stmt(stmt: pa.CaseStmt, type_env, add_import, diagnostics):
                  loc=_to_ir_loc(stmt.loc))
 
 
-def _lower_call_stmt(stmt: pa.CallStmt, type_env, add_import, diagnostics):
-    callee_name = stmt.callee.name
-    if callee_name not in ("write", "writeln"):
-        diagnostics.append(_diag(
-            f"unknown procedure {callee_name!r}", stmt.callee.loc))
+# ---------------------------------------------------------------------------
+# Calls
+
+def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
+    name = stmt.callee.name
+    if name in ("write", "writeln"):
+        return _lower_writeln_stmt(stmt, ctx)
+    sig = ctx.signatures.get(name)
+    if sig is None:
+        ctx.diagnostics.append(_diag(
+            f"unknown procedure {name!r}", stmt.callee.loc))
         return None
+    # User procedure call. Build the argument list with take_ptr
+    # wrapping for `var` parameters; the lowering rule for these is
+    # documented above.
+    ir_args = _build_user_call_args(stmt.callee.name, stmt.args, sig, ctx)
+    if ir_args is None:
+        return None
+    ir_call = Call(
+        callee=Name(ident=name, loc=_to_ir_loc(stmt.callee.loc)),
+        args=ir_args,
+        loc=_to_ir_loc(stmt.loc),
+    )
+    return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
+
+
+def _lower_writeln_stmt(stmt: pa.CallStmt, ctx: _Ctx):
+    callee_name = stmt.callee.name
     if len(stmt.args) != 1:
-        diagnostics.append(_diag(
-            f"{callee_name!r} takes exactly one argument in M2",
+        ctx.diagnostics.append(_diag(
+            f"{callee_name!r} takes exactly one argument",
             stmt.loc,
         ))
         return None
     arg = stmt.args[0]
-    ir_arg = _lower_expr(arg, type_env, add_import, diagnostics)
+    ir_arg = _lower_expr(arg, ctx)
     if ir_arg is None:
         return None
-    # Pick the runtime overload based on the static type of the arg.
-    # M2 has two: writeln(StrView) and writeln_int(Int32). Future
-    # milestones add float / bool / char overloads.
-    arg_type = _static_type_of(arg, type_env)
+    arg_type = _static_type_of(arg, ctx)
     if arg_type == "integer":
         runtime_name = f"{callee_name}_int"
     else:
-        # StrView path (string literal or future string variable).
         runtime_name = callee_name
-    add_import("pascal.runtime.io", runtime_name)
+    ctx.add_import("pascal.runtime.io", runtime_name)
     ir_call = Call(
         callee=Name(ident=runtime_name, loc=_to_ir_loc(stmt.callee.loc)),
         args=(ir_arg,),
@@ -348,7 +510,47 @@ def _lower_call_stmt(stmt: pa.CallStmt, type_env, add_import, diagnostics):
     return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
 
 
-def _lower_expr(expr, type_env, add_import, diagnostics):
+def _build_user_call_args(callee_name: str, args: list, sig: _Sig,
+                          ctx: _Ctx) -> tuple | None:
+    if len(args) != len(sig.param_names):
+        ctx.diagnostics.append(_diag(
+            f"{callee_name!r} expects {len(sig.param_names)} arguments, "
+            f"got {len(args)}",
+            getattr(args[0], "loc", _zero_loc()) if args else _zero_loc(),
+        ))
+        return None
+    out: list = []
+    for a, is_var in zip(args, sig.param_var_flags):
+        if is_var:
+            # Pascal requires var-arguments to be variable references
+            # (identifiers in the M4 subset). take_ptr's lvalue rule
+            # rejects anything else; surface a clear translator error
+            # rather than letting the C++ compiler complain.
+            if not isinstance(a, pa.Ident):
+                ctx.diagnostics.append(_diag(
+                    "argument to a `var` parameter must be a variable",
+                    getattr(a, "loc", _zero_loc()),
+                ))
+                return None
+            ctx.add_import("tpy", "take_ptr")
+            inner = Name(ident=a.name, loc=_to_ir_loc(a.loc))
+            out.append(Call(
+                callee=Name(ident="take_ptr", loc=_to_ir_loc(a.loc)),
+                args=(inner,),
+                loc=_to_ir_loc(a.loc),
+            ))
+        else:
+            ir_a = _lower_expr(a, ctx)
+            if ir_a is None:
+                return None
+            out.append(ir_a)
+    return tuple(out)
+
+
+# ---------------------------------------------------------------------------
+# Expressions
+
+def _lower_expr(expr, ctx: _Ctx):
     if isinstance(expr, pa.IntLit):
         return IntLit(value=expr.value, loc=_to_ir_loc(expr.loc))
     if isinstance(expr, pa.StrLit):
@@ -356,14 +558,22 @@ def _lower_expr(expr, type_env, add_import, diagnostics):
     if isinstance(expr, pa.BoolLit):
         return BoolLit(value=expr.value, loc=_to_ir_loc(expr.loc))
     if isinstance(expr, pa.Ident):
+        # Reads of a `var` parameter route through `deref(p)`.
+        if expr.name in ctx.current_var_params:
+            ctx.add_import("tpy", "deref")
+            return Call(
+                callee=Name(ident="deref", loc=_to_ir_loc(expr.loc)),
+                args=(Name(ident=expr.name, loc=_to_ir_loc(expr.loc)),),
+                loc=_to_ir_loc(expr.loc),
+            )
         return Name(ident=expr.name, loc=_to_ir_loc(expr.loc))
+    if isinstance(expr, pa.CallExpr):
+        return _lower_call_expr(expr, ctx)
     if isinstance(expr, pa.BinOp):
-        # Comparison ops emit a Compare IR node (per the design doc).
-        # Everything else stays a BinOp.
         cmp_op = _CMP_OP.get(expr.op)
         if cmp_op is not None:
-            lhs = _lower_expr(expr.lhs, type_env, add_import, diagnostics)
-            rhs = _lower_expr(expr.rhs, type_env, add_import, diagnostics)
+            lhs = _lower_expr(expr.lhs, ctx)
+            rhs = _lower_expr(expr.rhs, ctx)
             if lhs is None or rhs is None:
                 return None
             return Compare(
@@ -372,49 +582,107 @@ def _lower_expr(expr, type_env, add_import, diagnostics):
             )
         op = _BIN_OP.get(expr.op)
         if op is None:
-            diagnostics.append(_diag(
+            ctx.diagnostics.append(_diag(
                 f"unsupported binary operator {expr.op!r}", expr.loc))
             return None
-        lhs = _lower_expr(expr.lhs, type_env, add_import, diagnostics)
-        rhs = _lower_expr(expr.rhs, type_env, add_import, diagnostics)
+        lhs = _lower_expr(expr.lhs, ctx)
+        rhs = _lower_expr(expr.rhs, ctx)
         if lhs is None or rhs is None:
             return None
         return BinOp(op=op, lhs=lhs, rhs=rhs, loc=_to_ir_loc(expr.loc))
     if isinstance(expr, pa.UnaryOp):
         op = _UNARY_OP.get(expr.op)
         if op is None:
-            diagnostics.append(_diag(
+            ctx.diagnostics.append(_diag(
                 f"unsupported unary operator {expr.op!r}", expr.loc))
             return None
-        operand = _lower_expr(expr.operand, type_env, add_import, diagnostics)
+        operand = _lower_expr(expr.operand, ctx)
         if operand is None:
             return None
         return UnaryOp(op=op, operand=operand, loc=_to_ir_loc(expr.loc))
-    diagnostics.append(_diag(
+    ctx.diagnostics.append(_diag(
         f"unsupported expression {type(expr).__name__}",
         getattr(expr, "loc", _zero_loc()),
     ))
     return None
 
 
-def _static_type_of(expr, type_env: dict[str, str]) -> str | None:
-    """Best-effort static type for the writeln-overload dispatch.
+def _lower_call_expr(expr: pa.CallExpr, ctx: _Ctx):
+    name = expr.callee.name
+    sig = ctx.signatures.get(name)
+    if sig is None:
+        ctx.diagnostics.append(_diag(
+            f"unknown function {name!r} in expression position",
+            expr.callee.loc,
+        ))
+        return None
+    if sig.return_type is None:
+        ctx.diagnostics.append(_diag(
+            f"procedure {name!r} has no return value; cannot be used "
+            f"in an expression",
+            expr.callee.loc,
+        ))
+        return None
+    ir_args = _build_user_call_args(name, expr.args, sig, ctx)
+    if ir_args is None:
+        return None
+    return Call(
+        callee=Name(ident=name, loc=_to_ir_loc(expr.callee.loc)),
+        args=ir_args,
+        loc=_to_ir_loc(expr.loc),
+    )
 
-    M2 only needs to distinguish integers from strings, so the analysis
-    is intentionally shallow. Pascal's real semantics flow types
-    through arithmetic; for now we treat any arithmetic node + any
-    integer-typed variable as `integer`.
-    """
+
+def _static_type_of(expr, ctx: _Ctx) -> str | None:
+    """Best-effort static type for writeln-overload dispatch."""
     if isinstance(expr, pa.IntLit):
         return "integer"
     if isinstance(expr, pa.StrLit):
         return "string"
+    if isinstance(expr, pa.BoolLit):
+        return "boolean"
     if isinstance(expr, pa.Ident):
-        return type_env.get(expr.name)
+        return ctx.type_env.get(expr.name)
+    if isinstance(expr, pa.CallExpr):
+        sig = ctx.signatures.get(expr.callee.name)
+        return sig.return_type if sig is not None else None
     if isinstance(expr, (pa.BinOp, pa.UnaryOp)):
         return "integer"
     return None
 
+
+# ---------------------------------------------------------------------------
+# Type lowering
+
+def _default_init_for(type_name: str, loc: pa.Loc):
+    """Zero-style default value for a Pascal type spelling. Used for
+    the synthetic `__pascal_result` local so TPy's flow-sensitive
+    init analysis accepts conditional assignments."""
+    ir_loc = _to_ir_loc(loc)
+    if type_name == "integer":
+        return IntLit(value=0, loc=ir_loc)
+    if type_name == "boolean":
+        return BoolLit(value=False, loc=ir_loc)
+    # Fallback: no init. The compiler will raise a clear error if a
+    # path reads the synthetic var before writing it, which is the
+    # right behavior for unsupported return types.
+    return None
+
+
+def _lower_named_type(type_name: str, loc: pa.Loc,
+                      ctx: _Ctx) -> NamedType | None:
+    tpy_name = _TYPE_MAP.get(type_name)
+    if tpy_name is None:
+        ctx.diagnostics.append(_diag(
+            f"unsupported type {type_name!r}", loc))
+        return None
+    if tpy_name not in _BUILTIN_TYPES_NO_IMPORT:
+        ctx.add_import("tpy", tpy_name)
+    return NamedType(name=tpy_name, args=(), loc=_to_ir_loc(loc))
+
+
+# ---------------------------------------------------------------------------
+# Loc / diag plumbing
 
 def _to_ir_loc(loc: pa.Loc) -> IRLoc:
     return IRLoc(

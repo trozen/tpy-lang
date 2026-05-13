@@ -46,6 +46,20 @@ class Ident:
 
 
 @dataclass
+class CallExpr:
+    """Function call in expression position: `factorial(n - 1)`. The
+    statement-position counterpart is `CallStmt`; the two are kept
+    separate because Pascal's syntax for the two contexts isn't fully
+    overlapping (statement-position calls aren't expressions in some
+    older dialects). The translator routes both forms through the same
+    lowering helper.
+    """
+    callee: Ident
+    args: list       # list[Expr]
+    loc: Loc
+
+
+@dataclass
 class BinOp:
     op: str          # '+', '-', '*', '/', 'div', 'mod'
     lhs: object      # Expr
@@ -173,9 +187,41 @@ class Block:
 
 
 @dataclass
+class Param:
+    """One parameter in a procedure/function signature.
+
+    `is_var=True` marks a Pascal `var` (by-reference) parameter; the
+    translator lowers it to a `PointerType` IR param and rewrites uses
+    inside the body.
+    """
+    name: str       # canonical lowercase
+    type_name: str
+    is_var: bool
+    loc: Loc
+
+
+@dataclass
+class SubroutineDecl:
+    """A procedure or function declaration.
+
+    `return_type` is None for procedures and the type name (currently
+    'integer' or 'boolean') for functions. `var_block` holds the
+    routine's local var section (Pascal's `var name: T;` block between
+    the header and the body).
+    """
+    name: str
+    params: list   # list[Param]
+    return_type: str | None
+    var_block: object  # VarBlock | None
+    body: object    # CompoundStmt
+    loc: Loc
+
+
+@dataclass
 class Program:
     name: str
     var_block: object       # VarBlock | None
+    subroutines: list       # list[SubroutineDecl]
     block: Block
     loc: Loc
     file: Path

@@ -112,9 +112,8 @@ class NamedType:
     """A type referenced by name, with optional generic args.
 
     Mirrors the design's `NamedType("Int32")` shape. Wrapper types
-    (Optional, Pointer, Readonly, Own, Union, Callable, Literal) land
-    as separate IR nodes in their respective milestones; M2 only needs
-    `NamedType`.
+    (Optional, Readonly, Own, Union, Callable, Literal) land as
+    separate IR nodes in their respective milestones.
     """
     kind: str = field(default="NamedType", init=False)
     name: str = ""
@@ -122,9 +121,25 @@ class NamedType:
     loc: Loc | None = None
 
 
-# Plugin authors compose types out of the nodes above. M2 only emits
-# `NamedType`; later milestones widen the union.
-TypeExpr = NamedType
+@dataclass
+class PointerType:
+    """`Ptr[T]` -- a pointer to a pointee type.
+
+    Used to model Pascal's `var` (by-reference) parameters: the
+    translator emits `PointerType(NamedType("Int32"))` for a `var x:
+    integer` parameter, wraps caller args in `take_ptr(...)`, and
+    rewrites in-body uses to `deref(...)` reads and `unsafe_store(...)`
+    writes. Records and other non-value types pass through TPy's own
+    reference conventions and do not need `PointerType`.
+    """
+    kind: str = field(default="PointerType", init=False)
+    inner: "TypeExpr" = None  # type: ignore[assignment]
+    loc: Loc | None = None
+
+
+# Plugin authors compose types out of the nodes above. Later milestones
+# widen this union with OptionalType / OwnType / ReadonlyType / etc.
+TypeExpr = Union[NamedType, PointerType]
 
 
 # --- Expressions ----------------------------------------------------------
@@ -348,6 +363,14 @@ class MatchCase:
 
 
 @dataclass
+class Return:
+    """Return statement. `value=None` for procedure-style returns."""
+    kind: str = field(default="Return", init=False)
+    value: Expr | None = None
+    loc: Loc | None = None
+
+
+@dataclass
 class Match:
     """`match subject: case ...` -- the single switch construct.
 
@@ -362,7 +385,41 @@ class Match:
 
 
 Stmt = Union[ExprStmt, VarDecl, Assign, If, While, RepeatUntil,
-             ForRange, ForEach, Match]
+             ForRange, ForEach, Match, Return]
+
+
+# --- Function declarations -----------------------------------------------
+
+
+@dataclass
+class Param:
+    """A function parameter. M4 only emits unsubscripted, default-less
+    params; defaults / *args / **kwargs are reserved for future
+    milestones."""
+    name: str = ""
+    type: TypeExpr = None  # type: ignore[assignment]
+    default: Expr | None = None
+    loc: Loc | None = None
+
+
+@dataclass
+class Function:
+    """Top-level function declaration.
+
+    `is_method=False` for M4 -- methods on records land with M5. The
+    field is kept on the node so lowering can route correctly once
+    records exist. `type_params` and `decorators` are reserved for
+    future milestones.
+    """
+    kind: str = field(default="Function", init=False)
+    name: str = ""
+    type_params: tuple = ()
+    params: tuple[Param, ...] = ()
+    return_type: TypeExpr | None = None
+    body: tuple[Stmt, ...] = ()
+    decorators: tuple = ()
+    is_method: bool = False
+    loc: Loc | None = None
 
 
 # --- Imports --------------------------------------------------------------
@@ -438,6 +495,6 @@ class FrontendModule:
     constants: tuple = ()
     enums: tuple = ()
     records: tuple = ()
-    functions: tuple = ()
+    functions: tuple["Function", ...] = ()
     top_level_stmts: tuple[Stmt, ...] = ()
     directives: FrontendDirectives = field(default_factory=FrontendDirectives)

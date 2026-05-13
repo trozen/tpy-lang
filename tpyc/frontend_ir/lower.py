@@ -30,6 +30,7 @@ from ..parse.nodes import (
     TpyCall,
     TpyExprStmt,
     TpyForEach,
+    TpyFunction,
     TpyIf,
     TpyImport,
     TpyIntLiteral,
@@ -38,6 +39,7 @@ from ..parse.nodes import (
     TpyMatchCase,
     TpyModule,
     TpyName,
+    TpyReturn,
     TpyStrLiteral,
     TpyTypeRef,
     TpyUnaryOp,
@@ -59,6 +61,7 @@ from .nodes import (
     ForRange,
     FrontendModule,
     FromImport,
+    Function,
     If,
     Import,
     IntLit,
@@ -70,8 +73,11 @@ from .nodes import (
     MatchWildcard,
     Name,
     NamedType,
+    Param,
+    PointerType,
     RangeDir,
     RepeatUntil,
+    Return,
     StrLit,
     TypeArg,
     TypeExpr,
@@ -227,6 +233,15 @@ def lower_module(
                 f"unknown import node kind: {type(imp).__name__}",
             ))
 
+    # Functions: lower each to a TpyFunction. Function bodies do not
+    # share the module-level statement list, so lowering them before
+    # walking top_level_stmts keeps things tidy.
+    tpy_functions: list[TpyFunction] = []
+    for fn in fm.functions:
+        lowered_fn = _lower_function(fn, name_to_origin, plugin_name, fm, diags)
+        if lowered_fn is not None:
+            tpy_functions.append(lowered_fn)
+
     # Statements
     top_level_stmts = list(leading_imports)
     for stmt in fm.top_level_stmts:
@@ -268,7 +283,7 @@ def lower_module(
     )
     module = TpyModule(
         records=[],
-        functions=[],
+        functions=tpy_functions,
         protocols=[],
         enums=[],
         top_level_stmts=top_level_stmts,
@@ -389,6 +404,14 @@ def _lower_stmt(
         body = _lower_stmt_list(
             stmt.body, name_to_origin, plugin_name, fm, diags)
         return TpyForEach(var=stmt.var, iterable=it, body=body, loc=loc)
+    if isinstance(stmt, Return):
+        value = None
+        if stmt.value is not None:
+            value = _lower_expr(stmt.value, name_to_origin,
+                                plugin_name, fm, diags)
+            if value is None:
+                return None
+        return TpyReturn(value=value, loc=loc)
     if isinstance(stmt, Match):
         subject = _lower_expr(stmt.subject, name_to_origin, plugin_name, fm, diags)
         if subject is None:
@@ -426,6 +449,44 @@ def _lower_stmt_list(stmts, name_to_origin, plugin_name, fm, diags):
         if lowered is not None:
             out.append(lowered)
     return out
+
+
+def _lower_function(
+    fn: Function,
+    name_to_origin: dict[str, tuple[str, str]],
+    plugin_name: str,
+    fm: FrontendModule,
+    diags: list[FrontendDiagnostic],
+) -> TpyFunction | None:
+    """Lower a frontend `Function` to a `TpyFunction`. Plugins emit
+    functions whose params already carry resolved types (NamedType /
+    PointerType); the body uses the M4 expression / statement set.
+    """
+    params: list = []
+    for p in fn.params:
+        t = _lower_type(p.type, plugin_name, fm, diags)
+        if t is None:
+            return None
+        if p.default is not None:
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                "parameter defaults are not lowered in M4",
+            ))
+            return None
+        params.append((p.name, t))
+    return_type = None
+    if fn.return_type is not None:
+        return_type = _lower_type(fn.return_type, plugin_name, fm, diags)
+        if return_type is None:
+            return None
+    body = _lower_stmt_list(
+        fn.body, name_to_origin, plugin_name, fm, diags)
+    return TpyFunction(
+        name=fn.name,
+        params=params,
+        return_type=return_type,
+        body=body,
+    )
 
 
 def _lower_pattern(p, name_to_origin, plugin_name, fm, diags):
@@ -576,8 +637,10 @@ def _lower_type(
 ) -> TpyTypeRef | None:
     """Lower a symbolic IR type to a parser `TpyTypeRef`.
 
-    M2 only carries `NamedType` (possibly with generic args); wrapper
-    types (Optional/Ptr/Own/...) land milestone-by-milestone.
+    M2: `NamedType` (with generic args). M4: `PointerType` for Pascal
+    `var` parameters; lowers to `Ptr[T]` via the canonical resolver
+    wrapper name. Other wrappers (Optional/Own/Readonly/...) land
+    milestone-by-milestone.
     """
     if isinstance(t, NamedType):
         args: list = []
@@ -596,6 +659,18 @@ def _lower_type(
                 ))
                 return None
         return TpyTypeRef(name=t.name, args=tuple(args),
+                          loc=_to_source_loc(t.loc))
+    if isinstance(t, PointerType):
+        inner = _lower_type(t.inner, plugin_name, fm, diags)
+        if inner is None:
+            return None
+        # `tpy:Ptr` is the canonical-name spelling TypeResolver
+        # recognises for the Ptr wrapper (see type_resolver.py's
+        # structural-wrapper table). The walker that parses the
+        # surface form `Ptr[T]` produces this name only when the
+        # source identifier truly resolved to `tpy.Ptr`; for plugin
+        # lowering we know the binding by construction.
+        return TpyTypeRef(name="tpy:Ptr", args=(inner,),
                           loc=_to_source_loc(t.loc))
     diags.append(_ir_invalid(
         plugin_name, fm,
