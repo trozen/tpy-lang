@@ -67,6 +67,26 @@ class UnaryOpKind(Enum):
     INVERT = "INVERT"
 
 
+class CmpOpKind(Enum):
+    """Comparison operators recognised by the IR."""
+    EQ = "EQ"
+    NE = "NE"
+    LT = "LT"
+    LE = "LE"
+    GT = "GT"
+    GE = "GE"
+    IS = "IS"
+    IS_NOT = "IS_NOT"
+    IN = "IN"
+    NOT_IN = "NOT_IN"
+
+
+class RangeDir(Enum):
+    """Direction of a `ForRange` loop. Mirrors Pascal's to/downto."""
+    ASC = "ASC"
+    DESC = "DESC"
+
+
 # --- Type IR --------------------------------------------------------------
 
 
@@ -119,6 +139,14 @@ class StrLit:
 
 
 @dataclass
+class BoolLit:
+    """Boolean literal expression."""
+    kind: str = field(default="BoolLit", init=False)
+    value: bool = False
+    loc: Loc | None = None
+
+
+@dataclass
 class IntLit:
     """Integer literal expression."""
     kind: str = field(default="IntLit", init=False)
@@ -167,7 +195,23 @@ class UnaryOp:
     loc: Loc | None = None
 
 
-Expr = Union[StrLit, IntLit, Name, Call, BinOp, UnaryOp]
+@dataclass
+class Compare:
+    """Comparison expression.
+
+    Supports Python-style chained form (`a < b < c`) via `ops` /
+    `comparators` of length > 1. Plugins from source languages without
+    comparison chaining (Pascal, most ALGOL-derived languages) always
+    emit length-1 op/comparator tuples.
+    """
+    kind: str = field(default="Compare", init=False)
+    lhs: "Expr" = None  # type: ignore[assignment]
+    ops: tuple[CmpOpKind, ...] = ()
+    comparators: tuple["Expr", ...] = ()
+    loc: Loc | None = None
+
+
+Expr = Union[StrLit, BoolLit, IntLit, Name, Call, BinOp, UnaryOp, Compare]
 
 
 # --- Statements -----------------------------------------------------------
@@ -210,7 +254,115 @@ class Assign:
     loc: Loc | None = None
 
 
-Stmt = Union[ExprStmt, VarDecl, Assign]
+@dataclass
+class If:
+    """`if cond then-body else else-body`. `else_body` is `()` when
+    there is no else clause."""
+    kind: str = field(default="If", init=False)
+    cond: Expr = None  # type: ignore[assignment]
+    then_body: tuple["Stmt", ...] = ()
+    else_body: tuple["Stmt", ...] = ()
+    loc: Loc | None = None
+
+
+@dataclass
+class While:
+    """`while cond: body`."""
+    kind: str = field(default="While", init=False)
+    cond: Expr = None  # type: ignore[assignment]
+    body: tuple["Stmt", ...] = ()
+    loc: Loc | None = None
+
+
+@dataclass
+class RepeatUntil:
+    """`repeat body until cond`. Body runs once unconditionally; then
+    cond is evaluated and the loop continues while cond is *false*."""
+    kind: str = field(default="RepeatUntil", init=False)
+    body: tuple["Stmt", ...] = ()
+    cond: Expr = None  # type: ignore[assignment]
+    loc: Loc | None = None
+
+
+@dataclass
+class ForRange:
+    """Numeric for loop with explicit endpoints.
+
+    Mirrors Pascal `for i := lo to hi do` / `for i := hi downto lo do`.
+    `inclusive` is True when both endpoints are visited (the Pascal
+    convention); future plugins targeting C-style half-open ranges can
+    set it False without breaking lowering.
+    """
+    kind: str = field(default="ForRange", init=False)
+    var: str = ""
+    start: Expr = None  # type: ignore[assignment]
+    end: Expr = None  # type: ignore[assignment]
+    direction: RangeDir = RangeDir.ASC
+    inclusive: bool = True
+    body: tuple["Stmt", ...] = ()
+    loc: Loc | None = None
+
+
+@dataclass
+class ForEach:
+    """For-each loop over an iterable. Plugins that lower their language's
+    sequence iteration to TPy's for-in idiom use this directly; M3 only
+    emits `ForRange` (Pascal has no for-in), but `ForEach` lands here
+    so the IR is complete for later milestones (arrays/lists in M5+).
+    """
+    kind: str = field(default="ForEach", init=False)
+    var: str = ""
+    iter: Expr = None  # type: ignore[assignment]
+    body: tuple["Stmt", ...] = ()
+    loc: Loc | None = None
+
+
+# --- Match patterns ------------------------------------------------------
+
+
+@dataclass
+class MatchValue:
+    """Literal value pattern: `case 42:` / `case "x":`."""
+    kind: str = field(default="MatchValue", init=False)
+    value: Expr = None  # type: ignore[assignment]
+    loc: Loc | None = None
+
+
+@dataclass
+class MatchWildcard:
+    """Wildcard / `else` pattern: matches anything."""
+    kind: str = field(default="MatchWildcard", init=False)
+    loc: Loc | None = None
+
+
+MatchPattern = Union[MatchValue, MatchWildcard]
+
+
+@dataclass
+class MatchCase:
+    """A single case arm in a `Match`."""
+    pattern: MatchPattern = None  # type: ignore[assignment]
+    guard: Expr | None = None
+    body: tuple["Stmt", ...] = ()
+    loc: Loc | None = None
+
+
+@dataclass
+class Match:
+    """`match subject: case ...` -- the single switch construct.
+
+    Pascal `case x of v1: stmt; v2: stmt; else stmt end` lowers here
+    with one `MatchCase(MatchValue)` per arm plus an optional
+    `MatchCase(MatchWildcard)` for the `else` branch.
+    """
+    kind: str = field(default="Match", init=False)
+    subject: Expr = None  # type: ignore[assignment]
+    cases: tuple[MatchCase, ...] = ()
+    loc: Loc | None = None
+
+
+Stmt = Union[ExprStmt, VarDecl, Assign, If, While, RepeatUntil,
+             ForRange, ForEach, Match]
 
 
 # --- Imports --------------------------------------------------------------

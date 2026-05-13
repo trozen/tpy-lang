@@ -34,6 +34,12 @@ class IntLit:
 
 
 @dataclass
+class BoolLit:
+    value: bool
+    loc: Loc
+
+
+@dataclass
 class Ident:
     name: str        # canonical lowercase form
     loc: Loc
@@ -90,6 +96,73 @@ class AssignStmt:
 class CallStmt:
     callee: Ident
     args: list       # list[Expr]
+    loc: Loc
+
+
+@dataclass
+class CompoundStmt:
+    """`begin ... end` as a statement (Pascal block inside if/while/for)."""
+    statements: list  # list[Stmt]
+    loc: Loc
+
+
+@dataclass
+class IfStmt:
+    cond: object     # Expr
+    then_branch: object  # Stmt
+    else_branch: object | None  # Stmt | None
+    loc: Loc
+
+
+@dataclass
+class WhileStmt:
+    cond: object     # Expr
+    body: object     # Stmt
+    loc: Loc
+
+
+@dataclass
+class ForStmt:
+    """`for i := start <to|downto> end do body`.
+
+    `direction` is `"to"` or `"downto"`. Endpoints are inclusive
+    (Pascal convention).
+    """
+    var: str
+    start: object    # Expr
+    end: object      # Expr
+    direction: str
+    body: object     # Stmt
+    loc: Loc
+
+
+@dataclass
+class RepeatStmt:
+    """`repeat stmts until cond`. Statements run unconditionally once;
+    loop exits when `cond` becomes true."""
+    statements: list  # list[Stmt]
+    cond: object      # Expr
+    loc: Loc
+
+
+@dataclass
+class CaseArm:
+    """One arm in a `case` statement: `value [, value ...] : stmt`.
+
+    M3 supports literal-value arms only (integers and strings). Range
+    patterns (`1..5: ...`) are deferred to a later milestone.
+    """
+    values: list     # list[Expr] -- one arm may list multiple values
+    body: object     # Stmt
+    loc: Loc
+
+
+@dataclass
+class CaseStmt:
+    """`case subject of arms... [else stmt] end`."""
+    subject: object  # Expr
+    arms: list       # list[CaseArm]
+    else_branch: object | None  # Stmt | None
     loc: Loc
 
 

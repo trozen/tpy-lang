@@ -25,32 +25,53 @@ from ..parse.nodes import (
     SourceLocation,
     TpyAssign,
     TpyBinOp,
+    TpyBoolLiteral,
+    TpyBreak,
     TpyCall,
     TpyExprStmt,
+    TpyForEach,
+    TpyIf,
     TpyImport,
     TpyIntLiteral,
+    TpyLiteralPattern,
+    TpyMatch,
+    TpyMatchCase,
     TpyModule,
     TpyName,
     TpyStrLiteral,
     TpyTypeRef,
     TpyUnaryOp,
     TpyVarDecl,
+    TpyWhile,
+    TpyWildcardPattern,
 )
 from .nodes import (
     API_VERSION,
     Assign,
     BinOp,
     BinOpKind,
+    BoolLit,
     Call,
+    CmpOpKind,
+    Compare,
     ExprStmt,
+    ForEach,
+    ForRange,
     FrontendModule,
     FromImport,
+    If,
     Import,
     IntLit,
     IntTypeArg,
     Loc,
+    Match,
+    MatchCase,
+    MatchValue,
+    MatchWildcard,
     Name,
     NamedType,
+    RangeDir,
+    RepeatUntil,
     StrLit,
     TypeArg,
     TypeExpr,
@@ -58,6 +79,7 @@ from .nodes import (
     UnaryOp,
     UnaryOpKind,
     VarDecl,
+    While,
 )
 
 
@@ -85,6 +107,22 @@ _UNARYOP_OP_STR: dict[UnaryOpKind, str] = {
     UnaryOpKind.NEG: "-",
     UnaryOpKind.NOT: "!",
     UnaryOpKind.INVERT: "~",
+}
+
+# IR comparison enum -> parser string opcode (matches the parser's
+# `_CMPOP_TO_STR` table). Used for both the single-op case (lowers to
+# `TpyBinOp`) and the chained-op case (lowers to `TpyChainedCompare`).
+_CMPOP_OP_STR: dict[CmpOpKind, str] = {
+    CmpOpKind.EQ: "==",
+    CmpOpKind.NE: "!=",
+    CmpOpKind.LT: "<",
+    CmpOpKind.LE: "<=",
+    CmpOpKind.GT: ">",
+    CmpOpKind.GE: ">=",
+    CmpOpKind.IS: "is",
+    CmpOpKind.IS_NOT: "is not",
+    CmpOpKind.IN: "in",
+    CmpOpKind.NOT_IN: "not in",
 }
 
 
@@ -281,9 +319,137 @@ def _lower_stmt(
         if target is None or value is None:
             return None
         return TpyAssign(target=target, value=value, loc=loc)
+    if isinstance(stmt, If):
+        cond = _lower_expr(stmt.cond, name_to_origin, plugin_name, fm, diags)
+        if cond is None:
+            return None
+        then_body = _lower_stmt_list(
+            stmt.then_body, name_to_origin, plugin_name, fm, diags)
+        else_body = _lower_stmt_list(
+            stmt.else_body, name_to_origin, plugin_name, fm, diags)
+        return TpyIf(condition=cond, then_body=then_body, else_body=else_body, loc=loc)
+    if isinstance(stmt, While):
+        cond = _lower_expr(stmt.cond, name_to_origin, plugin_name, fm, diags)
+        if cond is None:
+            return None
+        body = _lower_stmt_list(
+            stmt.body, name_to_origin, plugin_name, fm, diags)
+        return TpyWhile(condition=cond, body=body, loc=loc)
+    if isinstance(stmt, RepeatUntil):
+        # Desugar to `while True: body; if cond: break`. Pascal's
+        # `repeat...until` runs the body at least once and exits when
+        # cond becomes true; the `while True` shape preserves that.
+        cond = _lower_expr(stmt.cond, name_to_origin, plugin_name, fm, diags)
+        if cond is None:
+            return None
+        body = _lower_stmt_list(
+            stmt.body, name_to_origin, plugin_name, fm, diags)
+        body.append(TpyIf(
+            condition=cond,
+            then_body=[TpyBreak(loc=loc)],
+            else_body=[],
+            loc=loc,
+        ))
+        return TpyWhile(
+            condition=TpyBoolLiteral(value=True, loc=loc),
+            body=body, loc=loc,
+        )
+    if isinstance(stmt, ForRange):
+        # Desugar to `for var in range(start, end[+1], [-1]): body`.
+        # `inclusive=True` (Pascal default) bumps the endpoint by one
+        # so the upper bound is visited; descending loops use a step
+        # of -1 and bump the endpoint by -1 instead.
+        start = _lower_expr(stmt.start, name_to_origin, plugin_name, fm, diags)
+        end = _lower_expr(stmt.end, name_to_origin, plugin_name, fm, diags)
+        if start is None or end is None:
+            return None
+        bump = 1 if stmt.direction == RangeDir.ASC else -1
+        if stmt.inclusive:
+            end = TpyBinOp(
+                left=end,
+                op="+" if bump > 0 else "-",
+                right=TpyIntLiteral(value=1, loc=loc),
+                loc=loc,
+            )
+        range_args = [start, end]
+        if bump != 1:
+            range_args.append(TpyIntLiteral(value=bump, loc=loc))
+        range_call = TpyCall(
+            func=TpyName(name="range", loc=loc),
+            args=range_args,
+            loc=loc,
+        )
+        body = _lower_stmt_list(
+            stmt.body, name_to_origin, plugin_name, fm, diags)
+        return TpyForEach(var=stmt.var, iterable=range_call, body=body, loc=loc)
+    if isinstance(stmt, ForEach):
+        it = _lower_expr(stmt.iter, name_to_origin, plugin_name, fm, diags)
+        if it is None:
+            return None
+        body = _lower_stmt_list(
+            stmt.body, name_to_origin, plugin_name, fm, diags)
+        return TpyForEach(var=stmt.var, iterable=it, body=body, loc=loc)
+    if isinstance(stmt, Match):
+        subject = _lower_expr(stmt.subject, name_to_origin, plugin_name, fm, diags)
+        if subject is None:
+            return None
+        tpy_cases: list[TpyMatchCase] = []
+        for case in stmt.cases:
+            pattern = _lower_pattern(case.pattern, name_to_origin,
+                                     plugin_name, fm, diags)
+            if pattern is None:
+                return None
+            guard = None
+            if case.guard is not None:
+                guard = _lower_expr(case.guard, name_to_origin,
+                                    plugin_name, fm, diags)
+                if guard is None:
+                    return None
+            body = _lower_stmt_list(
+                case.body, name_to_origin, plugin_name, fm, diags)
+            tpy_cases.append(TpyMatchCase(
+                pattern=pattern, guard=guard, body=body,
+                loc=_to_source_loc(case.loc),
+            ))
+        return TpyMatch(subject=subject, cases=tpy_cases, loc=loc)
     diags.append(_ir_invalid(
         plugin_name, fm,
         f"unsupported top-level stmt kind: {type(stmt).__name__}",
+    ))
+    return None
+
+
+def _lower_stmt_list(stmts, name_to_origin, plugin_name, fm, diags):
+    out: list = []
+    for s in stmts:
+        lowered = _lower_stmt(s, name_to_origin, plugin_name, fm, diags)
+        if lowered is not None:
+            out.append(lowered)
+    return out
+
+
+def _lower_pattern(p, name_to_origin, plugin_name, fm, diags):
+    loc = _to_source_loc(p.loc) if getattr(p, "loc", None) else None
+    if isinstance(p, MatchWildcard):
+        return TpyWildcardPattern(loc=loc)
+    if isinstance(p, MatchValue):
+        # M3 only emits literal value patterns (IntLit / StrLit / BoolLit).
+        # Sema's TpyLiteralPattern accepts int/float/str/bool/None.
+        v = p.value
+        if isinstance(v, IntLit):
+            return TpyLiteralPattern(value=v.value, loc=loc)
+        if isinstance(v, StrLit):
+            return TpyLiteralPattern(value=v.value, loc=loc)
+        if isinstance(v, BoolLit):
+            return TpyLiteralPattern(value=v.value, loc=loc)
+        diags.append(_ir_invalid(
+            plugin_name, fm,
+            f"MatchValue payload must be a literal in M3, got {type(v).__name__}",
+        ))
+        return None
+    diags.append(_ir_invalid(
+        plugin_name, fm,
+        f"unsupported MatchPattern kind: {type(p).__name__}",
     ))
     return None
 
@@ -298,6 +464,10 @@ def _lower_expr(
     loc = _to_source_loc(expr.loc) if getattr(expr, "loc", None) else None
     if isinstance(expr, StrLit):
         out = TpyStrLiteral(value=expr.value)
+        out.loc = loc
+        return out
+    if isinstance(expr, BoolLit):
+        out = TpyBoolLiteral(value=expr.value)
         out.loc = loc
         return out
     if isinstance(expr, IntLit):
@@ -335,6 +505,40 @@ def _lower_expr(
         if operand is None:
             return None
         out = TpyUnaryOp(op=op_str, operand=operand)
+        out.loc = loc
+        return out
+    if isinstance(expr, Compare):
+        if not expr.ops or len(expr.ops) != len(expr.comparators):
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                "Compare requires ops and comparators of equal, "
+                "non-zero length",
+            ))
+            return None
+        # Single-op comparison lowers to `TpyBinOp` (matches what the
+        # parser produces for a non-chained Python compare). Chained
+        # form (a < b < c) would lower to `TpyChainedCompare`; no
+        # M3-target source language uses chains, so it's left for a
+        # future plugin to opt into.
+        if len(expr.ops) != 1:
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                "chained comparisons are not lowered in M3",
+            ))
+            return None
+        op_str = _CMPOP_OP_STR.get(expr.ops[0])
+        if op_str is None:
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                f"unsupported CmpOpKind: {expr.ops[0]}",
+            ))
+            return None
+        lhs = _lower_expr(expr.lhs, name_to_origin, plugin_name, fm, diags)
+        rhs = _lower_expr(expr.comparators[0], name_to_origin,
+                          plugin_name, fm, diags)
+        if lhs is None or rhs is None:
+            return None
+        out = TpyBinOp(left=lhs, op=op_str, right=rhs)
         out.loc = loc
         return out
     if isinstance(expr, Call):

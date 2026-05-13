@@ -35,16 +35,31 @@ class TokKind(Enum):
     MINUS = "MINUS"
     STAR = "STAR"
     SLASH = "SLASH"
+    EQ = "EQ"                # =
+    NE = "NE"                # <>
+    LT = "LT"                # <
+    LE = "LE"                # <=
+    GT = "GT"                # >
+    GE = "GE"                # >=
     EOF = "EOF"
 
 
-# `integer` is a type name we treat as a keyword so the parser can
-# distinguish it from user identifiers; `div` / `mod` are integer
-# operators with keyword spelling rather than punctuation.
+# Pascal keywords. Type names (`integer`, `boolean`) and word-spelled
+# operators (`div`, `mod`, `and`, `or`, `not`, `xor`) are treated as
+# keywords so the parser can distinguish them from user identifiers.
+# Bool literals (`true`, `false`) are also keywords because their
+# spelling collides with the identifier syntax.
 KEYWORDS = frozenset({
     "program", "begin", "end",
-    "var", "integer",
+    "var", "integer", "boolean",
     "div", "mod",
+    "and", "or", "not", "xor",
+    "true", "false",
+    "if", "then", "else",
+    "while", "do",
+    "for", "to", "downto",
+    "repeat", "until",
+    "case", "of",
 })
 
 
@@ -163,6 +178,32 @@ def tokenize(source: str, path: Path) -> list[Token]:
             sl, sc = line, col
             adv()
             tokens.append(Token(TokKind.SLASH, "/", sl, sc, line, col - 1))
+            continue
+        if ch == "=":
+            sl, sc = line, col
+            adv()
+            tokens.append(Token(TokKind.EQ, "=", sl, sc, line, col - 1))
+            continue
+        if ch == "<":
+            sl, sc = line, col
+            adv()
+            if i < n and source[i] == "=":
+                adv()
+                tokens.append(Token(TokKind.LE, "<=", sl, sc, line, col - 1))
+            elif i < n and source[i] == ">":
+                adv()
+                tokens.append(Token(TokKind.NE, "<>", sl, sc, line, col - 1))
+            else:
+                tokens.append(Token(TokKind.LT, "<", sl, sc, line, col - 1))
+            continue
+        if ch == ">":
+            sl, sc = line, col
+            adv()
+            if i < n and source[i] == "=":
+                adv()
+                tokens.append(Token(TokKind.GE, ">=", sl, sc, line, col - 1))
+            else:
+                tokens.append(Token(TokKind.GT, ">", sl, sc, line, col - 1))
             continue
         # Integer literal (decimal). Hex / octal land later milestones.
         if ch.isdigit():

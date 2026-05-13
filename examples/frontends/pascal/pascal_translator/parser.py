@@ -2,23 +2,41 @@
 
 Grammar handled so far (subset of Turbo Pascal):
 
-    Program       ::= 'program' Ident ';' VarBlock? Block '.'
+    Program       ::= 'program' Ident ';' VarBlock? CompoundStmt '.'
     VarBlock      ::= 'var' (VarDecl ';')+
     VarDecl       ::= IdentList ':' TypeName
     IdentList     ::= Ident (',' Ident)*
-    TypeName      ::= 'integer'                          -- expand later
-    Block         ::= 'begin' StmtSeq 'end'
+    TypeName      ::= 'integer' | 'boolean'              -- expand later
+    CompoundStmt  ::= 'begin' StmtSeq 'end'
     StmtSeq       ::= Stmt (';' Stmt)*                   -- trailing ';' allowed
-    Stmt          ::= AssignStmt | CallStmt | (empty)
+    Stmt          ::= AssignStmt | CallStmt | CompoundStmt
+                    | IfStmt | WhileStmt | ForStmt | RepeatStmt | CaseStmt
+                    | (empty)
     AssignStmt    ::= Ident ':=' Expr
     CallStmt      ::= Ident '(' Args? ')'
     Args          ::= Expr (',' Expr)*
+    IfStmt        ::= 'if' Expr 'then' Stmt ('else' Stmt)?
+    WhileStmt     ::= 'while' Expr 'do' Stmt
+    ForStmt       ::= 'for' Ident ':=' Expr ('to' | 'downto') Expr 'do' Stmt
+    RepeatStmt    ::= 'repeat' StmtSeq 'until' Expr
+    CaseStmt      ::= 'case' Expr 'of' CaseArm (';' CaseArm)*
+                      (';' 'else' Stmt)? ';'? 'end'
+    CaseArm       ::= Expr (',' Expr)* ':' Stmt
 
-Expression precedence (lowest -> highest):
+Expression precedence (lowest -> highest, matching Pascal's
+standard precedence: logical < comparison < additive < multiplicative
+< unary < primary):
+
+    OrExpr        ::= AndExpr (('or' | 'xor') AndExpr)*
+    AndExpr       ::= NotExpr ('and' NotExpr)*
+    NotExpr       ::= 'not' NotExpr | CmpExpr
+    CmpExpr       ::= AddExpr (CmpOp AddExpr)?
+                      -- Pascal does NOT chain (a < b < c is a syntax error)
+    CmpOp         ::= '=' | '<>' | '<' | '<=' | '>' | '>='
     AddExpr       ::= MulExpr (('+' | '-') MulExpr)*
     MulExpr       ::= UnaryExpr (('*' | '/' | 'div' | 'mod') UnaryExpr)*
     UnaryExpr     ::= ('+' | '-')? Primary
-    Primary       ::= IntLit | StrLit | Ident | '(' Expr ')'
+    Primary       ::= IntLit | StrLit | BoolLit | Ident | '(' Expr ')'
 """
 
 from __future__ import annotations
@@ -123,13 +141,12 @@ class _Parser:
             names.append(self._eat(TokKind.IDENT).text)
         self._eat(TokKind.COLON)
         type_tok = self._eat(TokKind.KEYWORD)
-        # M2 supports a single type spelling. The lexer classifies
-        # `integer` as a keyword; widening to a TypeName production
-        # arrives with later milestones (real, boolean, FixStr[N], etc.).
-        if type_tok.text != "integer":
+        # M3 supports `integer` and `boolean`. Real / Char / FixStr[N]
+        # arrive in later milestones.
+        if type_tok.text not in ("integer", "boolean"):
             raise ParseError(
                 f"unsupported type {type_tok.text!r} "
-                f"(M2 only supports 'integer')",
+                f"(currently only 'integer' and 'boolean')",
                 type_tok.line, type_tok.col,
             )
         return pa.VarDecl(
@@ -141,21 +158,56 @@ class _Parser:
     # Block / statements
 
     def parse_block(self) -> pa.Block:
+        """Parse the program-level `begin ... end` body. Differs from
+        `parse_compound_stmt` only in the AST type returned -- the
+        statement-position form wraps the same payload in `CompoundStmt`.
+        """
         begin = self._eat(TokKind.KEYWORD, "begin")
+        stmts = self._parse_stmt_seq_until_end()
+        end = self._eat(TokKind.KEYWORD, "end")
+        return pa.Block(statements=stmts, loc=self._loc(begin, end))
+
+    def _parse_stmt_seq_until_end(self) -> list:
+        """Parse a statement sequence terminated by `end` (or by an
+        outer caller's sentinel keyword). Consumes interleaved `;`
+        separators; trailing `;` before the terminator is allowed.
+        """
         stmts: list = []
-        # Allow an empty block ('begin end') and any number of trailing
-        # semicolons between statements.
-        while not (self.cur.kind == TokKind.KEYWORD and self.cur.text == "end"):
+        while not (self.cur.kind == TokKind.KEYWORD
+                   and self.cur.text in self._STMT_SEQ_TERMINATORS):
             if self.cur.kind == TokKind.SEMI:
                 self.i += 1
                 continue
             stmts.append(self.parse_statement())
             if self.cur.kind == TokKind.SEMI:
                 self.i += 1
+        return stmts
+
+    _STMT_SEQ_TERMINATORS = frozenset({"end", "until", "else"})
+
+    def parse_compound_stmt(self) -> pa.CompoundStmt:
+        begin = self._eat(TokKind.KEYWORD, "begin")
+        stmts = self._parse_stmt_seq_until_end()
         end = self._eat(TokKind.KEYWORD, "end")
-        return pa.Block(statements=stmts, loc=self._loc(begin, end))
+        return pa.CompoundStmt(statements=stmts, loc=self._loc(begin, end))
 
     def parse_statement(self):
+        # Compound statement
+        if self.cur.kind == TokKind.KEYWORD and self.cur.text == "begin":
+            return self.parse_compound_stmt()
+        # Control-flow keywords
+        if self.cur.kind == TokKind.KEYWORD:
+            kw = self.cur.text
+            if kw == "if":
+                return self.parse_if_stmt()
+            if kw == "while":
+                return self.parse_while_stmt()
+            if kw == "for":
+                return self.parse_for_stmt()
+            if kw == "repeat":
+                return self.parse_repeat_stmt()
+            if kw == "case":
+                return self.parse_case_stmt()
         if self.cur.kind != TokKind.IDENT:
             t = self.cur
             raise ParseError(
@@ -167,7 +219,7 @@ class _Parser:
                          loc=self._loc(ident_tok, ident_tok))
         self.i += 1
         # `name := expr` or `name(args)` -- bare-identifier statements
-        # (parameterless procedure calls) are M3+.
+        # (parameterless procedure calls) are deferred.
         if self.cur.kind == TokKind.ASSIGN:
             self.i += 1
             value = self.parse_expression()
@@ -193,10 +245,165 @@ class _Parser:
         )
 
     # ------------------------------------------------------------------
+    # Control flow
+
+    def parse_if_stmt(self) -> pa.IfStmt:
+        start = self._eat(TokKind.KEYWORD, "if")
+        cond = self.parse_expression()
+        self._eat(TokKind.KEYWORD, "then")
+        then_branch = self.parse_statement()
+        else_branch = None
+        end_tok = self.tokens[self.i - 1]
+        if self.cur.kind == TokKind.KEYWORD and self.cur.text == "else":
+            self.i += 1
+            else_branch = self.parse_statement()
+            end_tok = self.tokens[self.i - 1]
+        return pa.IfStmt(
+            cond=cond, then_branch=then_branch, else_branch=else_branch,
+            loc=self._loc(start, end_tok),
+        )
+
+    def parse_while_stmt(self) -> pa.WhileStmt:
+        start = self._eat(TokKind.KEYWORD, "while")
+        cond = self.parse_expression()
+        self._eat(TokKind.KEYWORD, "do")
+        body = self.parse_statement()
+        end_tok = self.tokens[self.i - 1]
+        return pa.WhileStmt(cond=cond, body=body,
+                            loc=self._loc(start, end_tok))
+
+    def parse_for_stmt(self) -> pa.ForStmt:
+        start = self._eat(TokKind.KEYWORD, "for")
+        var_tok = self._eat(TokKind.IDENT)
+        self._eat(TokKind.ASSIGN)
+        start_expr = self.parse_expression()
+        dir_tok = self._eat(TokKind.KEYWORD)
+        if dir_tok.text not in ("to", "downto"):
+            raise ParseError(
+                f"expected 'to' or 'downto', got {dir_tok.text!r}",
+                dir_tok.line, dir_tok.col,
+            )
+        end_expr = self.parse_expression()
+        self._eat(TokKind.KEYWORD, "do")
+        body = self.parse_statement()
+        end_tok = self.tokens[self.i - 1]
+        return pa.ForStmt(
+            var=var_tok.text, start=start_expr, end=end_expr,
+            direction=dir_tok.text, body=body,
+            loc=self._loc(start, end_tok),
+        )
+
+    def parse_repeat_stmt(self) -> pa.RepeatStmt:
+        start = self._eat(TokKind.KEYWORD, "repeat")
+        stmts = self._parse_stmt_seq_until_end()
+        # `until` is in the terminator set so _parse_stmt_seq_until_end
+        # stops at it; consume it now.
+        if not (self.cur.kind == TokKind.KEYWORD and self.cur.text == "until"):
+            t = self.cur
+            raise ParseError(
+                f"expected 'until' to close repeat, got {t.text!r}",
+                t.line, t.col,
+            )
+        self.i += 1
+        cond = self.parse_expression()
+        end_tok = self.tokens[self.i - 1]
+        return pa.RepeatStmt(statements=stmts, cond=cond,
+                             loc=self._loc(start, end_tok))
+
+    def parse_case_stmt(self) -> pa.CaseStmt:
+        start = self._eat(TokKind.KEYWORD, "case")
+        subject = self.parse_expression()
+        self._eat(TokKind.KEYWORD, "of")
+        arms: list = []
+        else_branch = None
+        while True:
+            if self.cur.kind == TokKind.KEYWORD and self.cur.text == "end":
+                break
+            if self.cur.kind == TokKind.KEYWORD and self.cur.text == "else":
+                self.i += 1
+                else_branch = self.parse_statement()
+                if self.cur.kind == TokKind.SEMI:
+                    self.i += 1
+                continue
+            if self.cur.kind == TokKind.SEMI:
+                self.i += 1
+                continue
+            arms.append(self._parse_case_arm())
+            if self.cur.kind == TokKind.SEMI:
+                self.i += 1
+        end_tok = self._eat(TokKind.KEYWORD, "end")
+        return pa.CaseStmt(
+            subject=subject, arms=arms, else_branch=else_branch,
+            loc=self._loc(start, end_tok),
+        )
+
+    def _parse_case_arm(self) -> pa.CaseArm:
+        first_loc = self.cur
+        values: list = [self.parse_expression()]
+        while self.cur.kind == TokKind.COMMA:
+            self.i += 1
+            values.append(self.parse_expression())
+        self._eat(TokKind.COLON)
+        body = self.parse_statement()
+        end_tok = self.tokens[self.i - 1]
+        return pa.CaseArm(values=values, body=body,
+                          loc=self._loc(first_loc, end_tok))
+
+    # ------------------------------------------------------------------
     # Expressions
 
     def parse_expression(self):
-        return self._parse_add()
+        return self._parse_or()
+
+    def _parse_or(self):
+        node = self._parse_and()
+        while (self.cur.kind == TokKind.KEYWORD
+               and self.cur.text in ("or", "xor")):
+            op_tok = self.cur
+            self.i += 1
+            rhs = self._parse_and()
+            node = pa.BinOp(
+                op=op_tok.text, lhs=node, rhs=rhs,
+                loc=self._loc_span(node, rhs),
+            )
+        return node
+
+    def _parse_and(self):
+        node = self._parse_not()
+        while self.cur.kind == TokKind.KEYWORD and self.cur.text == "and":
+            op_tok = self.cur
+            self.i += 1
+            rhs = self._parse_not()
+            node = pa.BinOp(
+                op=op_tok.text, lhs=node, rhs=rhs,
+                loc=self._loc_span(node, rhs),
+            )
+        return node
+
+    def _parse_not(self):
+        if self.cur.kind == TokKind.KEYWORD and self.cur.text == "not":
+            op_tok = self.cur
+            self.i += 1
+            operand = self._parse_not()
+            return pa.UnaryOp(
+                op="not", operand=operand,
+                loc=self._loc_span(op_tok, operand),
+            )
+        return self._parse_cmp()
+
+    def _parse_cmp(self):
+        lhs = self._parse_add()
+        if self.cur.kind in (TokKind.EQ, TokKind.NE,
+                             TokKind.LT, TokKind.LE,
+                             TokKind.GT, TokKind.GE):
+            op_tok = self.cur
+            self.i += 1
+            rhs = self._parse_add()
+            return pa.BinOp(
+                op=op_tok.text, lhs=lhs, rhs=rhs,
+                loc=self._loc_span(lhs, rhs),
+            )
+        return lhs
 
     def _parse_add(self):
         node = self._parse_mul()
@@ -249,6 +456,10 @@ class _Parser:
         if t.kind == TokKind.STR_LIT:
             self.i += 1
             return pa.StrLit(value=t.text, loc=self._loc(t, t))
+        if t.kind == TokKind.KEYWORD and t.text in ("true", "false"):
+            self.i += 1
+            return pa.BoolLit(value=(t.text == "true"),
+                              loc=self._loc(t, t))
         if t.kind == TokKind.IDENT:
             self.i += 1
             return pa.Ident(name=t.text, loc=self._loc(t, t))
