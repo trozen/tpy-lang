@@ -181,12 +181,16 @@ class Name:
 class Call:
     """Function call.
 
-    M1 form is positional-only. `type_args`, `kwargs`, `star_args`,
-    `double_star` from the design doc are not used yet; they land with
-    later milestones.
+    `type_args` carries explicit type arguments at the call site --
+    Pascal needs them for generic-type constructor calls like
+    `Array[Int32, 8]()`. Lowering passes them through to the TpyCall's
+    `call_type` so sema's type-instantiation path fires. `kwargs`,
+    `star_args`, `double_star` from the design doc are not used yet;
+    they land with later milestones.
     """
     kind: str = field(default="Call", init=False)
     callee: "Expr" = None  # type: ignore[assignment]
+    type_args: tuple[TypeArg, ...] = ()
     args: tuple["Expr", ...] = ()
     loc: Loc | None = None
 
@@ -211,6 +215,29 @@ class UnaryOp:
 
 
 @dataclass
+class Attr:
+    """Field access: `target.ident`. The target is an arbitrary
+    expression; assignment-target shape (`p.x := v`) reuses this node
+    by appearing inside `Assign.targets`."""
+    kind: str = field(default="Attr", init=False)
+    target: "Expr" = None  # type: ignore[assignment]
+    ident: str = ""
+    loc: Loc | None = None
+
+
+@dataclass
+class Subscript:
+    """Indexed access: `target[index]`. Plugins targeting languages
+    with non-zero-based indexing (Pascal, Fortran) compute the offset
+    in `index` at translate time -- lowering passes the index through
+    unchanged."""
+    kind: str = field(default="Subscript", init=False)
+    target: "Expr" = None  # type: ignore[assignment]
+    index: "Expr" = None  # type: ignore[assignment]
+    loc: Loc | None = None
+
+
+@dataclass
 class Compare:
     """Comparison expression.
 
@@ -226,7 +253,8 @@ class Compare:
     loc: Loc | None = None
 
 
-Expr = Union[StrLit, BoolLit, IntLit, Name, Call, BinOp, UnaryOp, Compare]
+Expr = Union[StrLit, BoolLit, IntLit, Name, Call, BinOp, UnaryOp, Compare,
+             Attr, Subscript]
 
 
 # --- Statements -----------------------------------------------------------
@@ -388,6 +416,44 @@ Stmt = Union[ExprStmt, VarDecl, Assign, If, While, RepeatUntil,
              ForRange, ForEach, Match, Return]
 
 
+# --- Record declarations -------------------------------------------------
+
+
+@dataclass
+class Field:
+    """One field on a `Record`. M5 only emits unsubscripted,
+    default-less fields; record methods / generic fields / decorators
+    are reserved for future milestones."""
+    name: str = ""
+    type: TypeExpr = None  # type: ignore[assignment]
+    default: "Expr | None" = None
+    decorators: tuple = ()
+    loc: Loc | None = None
+
+
+@dataclass
+class Record:
+    """Record (class) declaration.
+
+    M5 carries only `name` and `fields` -- single inheritance, methods,
+    nested records / enums / aliases, decorators, and generic type
+    params land in later milestones but the slots stay so plugins can
+    grow into them.
+    """
+    kind: str = field(default="Record", init=False)
+    name: str = ""
+    type_params: tuple = ()
+    base: "NamedType | None" = None
+    fields: tuple[Field, ...] = ()
+    methods: tuple = ()
+    nested_records: tuple = ()
+    nested_enums: tuple = ()
+    nested_constants: tuple = ()
+    nested_aliases: tuple = ()
+    decorators: tuple = ()
+    loc: Loc | None = None
+
+
 # --- Function declarations -----------------------------------------------
 
 
@@ -494,7 +560,7 @@ class FrontendModule:
     type_aliases: tuple = ()
     constants: tuple = ()
     enums: tuple = ()
-    records: tuple = ()
+    records: tuple["Record", ...] = ()
     functions: tuple["Function", ...] = ()
     top_level_stmts: tuple[Stmt, ...] = ()
     directives: FrontendDirectives = field(default_factory=FrontendDirectives)

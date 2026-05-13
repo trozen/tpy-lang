@@ -3,17 +3,24 @@
 Grammar handled so far (subset of Turbo Pascal):
 
     Program       ::= 'program' Ident ';' Decls CompoundStmt '.'
-    Decls         ::= (VarBlock | ProcDecl | FuncDecl)*
+    Decls         ::= (TypeBlock | VarBlock | ProcDecl | FuncDecl)*
+    TypeBlock     ::= 'type' (TypeDecl ';')+
+    TypeDecl      ::= Ident '=' TypeSpec
+    TypeSpec      ::= NamedTypeSpec | RecordTypeSpec | ArrayTypeSpec
+    NamedTypeSpec ::= Ident                        -- 'integer', 'Point', ...
+    RecordTypeSpec::= 'record' FieldList? 'end'
+    FieldList     ::= FieldGroup (';' FieldGroup)* ';'?
+    FieldGroup    ::= IdentList ':' TypeSpec
+    ArrayTypeSpec ::= 'array' '[' IntLit '..' IntLit ']' 'of' TypeSpec
     ProcDecl      ::= 'procedure' Ident ParamList? ';' RoutineBody ';'
-    FuncDecl      ::= 'function' Ident ParamList? ':' TypeName ';'
+    FuncDecl      ::= 'function' Ident ParamList? ':' NamedTypeSpec ';'
                       RoutineBody ';'
     RoutineBody   ::= VarBlock? CompoundStmt
     ParamList     ::= '(' ParamGroup (';' ParamGroup)* ')'
-    ParamGroup    ::= 'var'? IdentList ':' TypeName
+    ParamGroup    ::= 'var'? IdentList ':' NamedTypeSpec
     VarBlock      ::= 'var' (VarDecl ';')+
-    VarDecl       ::= IdentList ':' TypeName
+    VarDecl       ::= IdentList ':' TypeSpec
     IdentList     ::= Ident (',' Ident)*
-    TypeName      ::= 'integer' | 'boolean'              -- expand later
     CompoundStmt  ::= 'begin' StmtSeq 'end'
     StmtSeq       ::= Stmt (';' Stmt)*                   -- trailing ';' allowed
     Stmt          ::= AssignStmt | CallStmt | CompoundStmt
@@ -102,14 +109,17 @@ class _Parser:
         start = self._eat(TokKind.KEYWORD, "program")
         name_tok = self._eat(TokKind.IDENT)
         self._eat(TokKind.SEMI)
-        # Pascal allows var-blocks and procedure/function decls in any
-        # order before the main block. M4 accepts interleaving but
-        # collapses multiple var-blocks: standard Pascal has at most
-        # one module-level var-block; emitting an error on duplicates
+        # Pascal allows type / var / procedure / function decls in any
+        # order before the main block. Standard Pascal has at most one
+        # module-level var section; emitting an error on duplicates
         # surfaces a likely typo without complicating the AST.
+        type_blocks: list = []
         var_block: pa.VarBlock | None = None
         subroutines: list = []
         while True:
+            if self.cur.kind == TokKind.KEYWORD and self.cur.text == "type":
+                type_blocks.append(self.parse_type_block())
+                continue
             if self.cur.kind == TokKind.KEYWORD and self.cur.text == "var":
                 if var_block is not None:
                     t = self.cur
@@ -133,12 +143,126 @@ class _Parser:
             )
         return pa.Program(
             name=name_tok.text,
+            type_blocks=type_blocks,
             var_block=var_block,
             subroutines=subroutines,
             block=block,
             loc=self._loc(start, dot),
             file=self.path,
         )
+
+    # ------------------------------------------------------------------
+    # Type declarations
+
+    def parse_type_block(self) -> pa.TypeBlock:
+        start = self._eat(TokKind.KEYWORD, "type")
+        decls: list = []
+        # `type` runs until the next non-decl keyword. We trust the
+        # caller (parse_program) to dispatch us only when one is
+        # actually starting, so we read at least one decl.
+        while self.cur.kind == TokKind.IDENT:
+            decls.append(self.parse_type_decl())
+            self._eat(TokKind.SEMI)
+        if not decls:
+            t = self.cur
+            raise ParseError(
+                "'type' section must declare at least one type",
+                start.line, start.col,
+            )
+        end = decls[-1].loc
+        return pa.TypeBlock(decls=decls, loc=pa.Loc(
+            file=self.path,
+            line=start.line, col=start.col,
+            end_line=end.end_line, end_col=end.end_col,
+        ))
+
+    def parse_type_decl(self) -> pa.TypeDecl:
+        name_tok = self._eat(TokKind.IDENT)
+        self._eat(TokKind.EQ)
+        spec = self.parse_type_spec()
+        end_tok = self.tokens[self.i - 1]
+        return pa.TypeDecl(
+            name=name_tok.text, type_spec=spec,
+            loc=self._loc(name_tok, end_tok),
+        )
+
+    def parse_type_spec(self):
+        """Parse a type specification. Three forms recognised in M5:
+        a bare identifier (named type), a record body, or an array type."""
+        if self.cur.kind == TokKind.KEYWORD and self.cur.text == "record":
+            return self.parse_record_type()
+        if self.cur.kind == TokKind.KEYWORD and self.cur.text == "array":
+            return self.parse_array_type()
+        # Named type: either a keyword (`integer`, `boolean`) or a
+        # user-defined ident.
+        t = self.cur
+        if t.kind == TokKind.KEYWORD and t.text in ("integer", "boolean"):
+            self.i += 1
+            return pa.NamedTypeSpec(name=t.text, loc=self._loc(t, t))
+        if t.kind == TokKind.IDENT:
+            self.i += 1
+            return pa.NamedTypeSpec(name=t.text, loc=self._loc(t, t))
+        raise ParseError(
+            f"expected type, got {t.kind.value} {t.text!r}",
+            t.line, t.col,
+        )
+
+    def parse_record_type(self) -> pa.RecordTypeSpec:
+        start = self._eat(TokKind.KEYWORD, "record")
+        fields: list = []
+        while not (self.cur.kind == TokKind.KEYWORD
+                   and self.cur.text == "end"):
+            fields.append(self._parse_record_field_group())
+            if self.cur.kind == TokKind.SEMI:
+                self.i += 1
+        end = self._eat(TokKind.KEYWORD, "end")
+        return pa.RecordTypeSpec(fields=fields, loc=self._loc(start, end))
+
+    def _parse_record_field_group(self) -> pa.RecordField:
+        first = self.cur
+        names: list[str] = [self._eat(TokKind.IDENT).text]
+        while self.cur.kind == TokKind.COMMA:
+            self.i += 1
+            names.append(self._eat(TokKind.IDENT).text)
+        self._eat(TokKind.COLON)
+        spec = self.parse_type_spec()
+        end_tok = self.tokens[self.i - 1]
+        return pa.RecordField(
+            names=names, type_spec=spec,
+            loc=self._loc(first, end_tok),
+        )
+
+    def parse_array_type(self) -> pa.ArrayTypeSpec:
+        start = self._eat(TokKind.KEYWORD, "array")
+        self._eat(TokKind.LBRACK)
+        lower = self._parse_signed_int_lit()
+        self._eat(TokKind.DOTDOT)
+        upper = self._parse_signed_int_lit()
+        self._eat(TokKind.RBRACK)
+        self._eat(TokKind.KEYWORD, "of")
+        element = self.parse_type_spec()
+        end_tok = self.tokens[self.i - 1]
+        if upper < lower:
+            raise ParseError(
+                f"array upper bound ({upper}) less than lower bound ({lower})",
+                start.line, start.col,
+            )
+        return pa.ArrayTypeSpec(
+            lower=lower, upper=upper, element=element,
+            loc=self._loc(start, end_tok),
+        )
+
+    def _parse_signed_int_lit(self) -> int:
+        """Parse a (possibly signed) integer literal -- array bounds
+        can be negative (`array[-5..5]`)."""
+        sign = 1
+        if self.cur.kind == TokKind.MINUS:
+            sign = -1
+            self.i += 1
+        elif self.cur.kind == TokKind.PLUS:
+            self.i += 1
+        tok = self._eat(TokKind.INT_LIT)
+        return sign * int(tok.text)
 
     # ------------------------------------------------------------------
     # Procedure / function declarations
@@ -154,10 +278,20 @@ class _Parser:
         return_type: str | None = None
         if is_function:
             self._eat(TokKind.COLON)
-            ret_tok = self._eat(TokKind.KEYWORD)
-            if ret_tok.text not in ("integer", "boolean"):
+            ret_tok = self.cur
+            if ret_tok.kind == TokKind.KEYWORD:
+                if ret_tok.text not in ("integer", "boolean"):
+                    raise ParseError(
+                        f"unsupported function return type {ret_tok.text!r}",
+                        ret_tok.line, ret_tok.col,
+                    )
+                self.i += 1
+            elif ret_tok.kind == TokKind.IDENT:
+                self.i += 1
+            else:
                 raise ParseError(
-                    f"unsupported function return type {ret_tok.text!r}",
+                    f"expected function return type, got "
+                    f"{ret_tok.kind.value} {ret_tok.text!r}",
                     ret_tok.line, ret_tok.col,
                 )
             return_type = ret_tok.text
@@ -205,16 +339,30 @@ class _Parser:
             self.i += 1
             names.append(self._eat(TokKind.IDENT).text)
         self._eat(TokKind.COLON)
-        type_tok = self._eat(TokKind.KEYWORD)
-        if type_tok.text not in ("integer", "boolean"):
+        # Parameter types are named (no inline `array of ...` form in
+        # M5 -- arrays-as-params arrive when the design's
+        # auto-pointer-promotion is in place).
+        type_tok = self.cur
+        if type_tok.kind == TokKind.KEYWORD:
+            if type_tok.text not in ("integer", "boolean"):
+                raise ParseError(
+                    f"unsupported parameter type {type_tok.text!r}",
+                    type_tok.line, type_tok.col,
+                )
+            self.i += 1
+        elif type_tok.kind == TokKind.IDENT:
+            self.i += 1
+        else:
             raise ParseError(
-                f"unsupported parameter type {type_tok.text!r}",
+                f"expected parameter type, got {type_tok.kind.value} "
+                f"{type_tok.text!r}",
                 type_tok.line, type_tok.col,
             )
+        spec = pa.NamedTypeSpec(name=type_tok.text,
+                                loc=self._loc(type_tok, type_tok))
         loc = self._loc(first, type_tok)
         return [
-            pa.Param(name=n, type_name=type_tok.text,
-                     is_var=is_var, loc=loc)
+            pa.Param(name=n, type_spec=spec, is_var=is_var, loc=loc)
             for n in names
         ]
 
@@ -245,18 +393,11 @@ class _Parser:
             self.i += 1
             names.append(self._eat(TokKind.IDENT).text)
         self._eat(TokKind.COLON)
-        type_tok = self._eat(TokKind.KEYWORD)
-        # M3 supports `integer` and `boolean`. Real / Char / FixStr[N]
-        # arrive in later milestones.
-        if type_tok.text not in ("integer", "boolean"):
-            raise ParseError(
-                f"unsupported type {type_tok.text!r} "
-                f"(currently only 'integer' and 'boolean')",
-                type_tok.line, type_tok.col,
-            )
+        spec = self.parse_type_spec()
+        end_tok = self.tokens[self.i - 1]
         return pa.VarDecl(
-            names=names, type_name=type_tok.text,
-            loc=self._loc(first, type_tok),
+            names=names, type_spec=spec,
+            loc=self._loc(first, end_tok),
         )
 
     # ------------------------------------------------------------------
@@ -319,19 +460,38 @@ class _Parser:
                 f"expected statement, got {t.kind.value} {t.text!r}",
                 t.line, t.col,
             )
+        # Parse a "target chain": `name`, `name.field`, `name[i]`,
+        # `name.field[i]`, etc. The chain stops before any `(`, since a
+        # `(` follows a bare identifier means a procedure call
+        # statement, not a call inside an assignment target.
+        start_tok = self.cur
         ident_tok = self.cur
-        ident = pa.Ident(name=ident_tok.text,
-                         loc=self._loc(ident_tok, ident_tok))
         self.i += 1
-        # `name := expr` or `name(args)` -- bare-identifier statements
-        # (parameterless procedure calls) are deferred.
+        target = pa.Ident(name=ident_tok.text,
+                          loc=self._loc(ident_tok, ident_tok))
+        while self.cur.kind in (TokKind.DOT, TokKind.LBRACK):
+            if self.cur.kind == TokKind.DOT:
+                self.i += 1
+                name_tok = self._eat(TokKind.IDENT)
+                target = pa.FieldAccess(
+                    target=target, ident=name_tok.text,
+                    loc=self._loc(start_tok, name_tok),
+                )
+            else:
+                self._eat(TokKind.LBRACK)
+                idx = self.parse_expression()
+                rbrack = self._eat(TokKind.RBRACK)
+                target = pa.IndexExpr(
+                    target=target, index=idx,
+                    loc=self._loc(start_tok, rbrack),
+                )
         if self.cur.kind == TokKind.ASSIGN:
             self.i += 1
             value = self.parse_expression()
             end_tok = self.tokens[self.i - 1]
-            return pa.AssignStmt(target=ident, value=value,
-                                 loc=self._loc(ident_tok, end_tok))
-        if self.cur.kind == TokKind.LPAREN:
+            return pa.AssignStmt(target=target, value=value,
+                                 loc=self._loc(start_tok, end_tok))
+        if self.cur.kind == TokKind.LPAREN and isinstance(target, pa.Ident):
             self._eat(TokKind.LPAREN)
             args: list = []
             if self.cur.kind != TokKind.RPAREN:
@@ -340,11 +500,11 @@ class _Parser:
                     self.i += 1
                     args.append(self.parse_expression())
             rparen = self._eat(TokKind.RPAREN)
-            return pa.CallStmt(callee=ident, args=args,
-                               loc=self._loc(ident_tok, rparen))
+            return pa.CallStmt(callee=target, args=args,
+                               loc=self._loc(start_tok, rparen))
         t = self.cur
         raise ParseError(
-            f"expected ':=' or '(' after identifier, "
+            f"expected ':=' or '(' after target, "
             f"got {t.kind.value} {t.text!r}",
             t.line, t.col,
         )
@@ -551,9 +711,56 @@ class _Parser:
                 op=op_tok.text, operand=operand,
                 loc=self._loc_span(op_tok, operand),
             )
-        return self._parse_primary()
+        return self._parse_postfix()
 
-    def _parse_primary(self):
+    def _parse_postfix(self):
+        """Parse an atom followed by any number of postfix operators:
+        `(args)` (call), `.ident` (field access), `[index]` (subscript).
+        Mixing chains -- `f(x).y[i]` -- works naturally."""
+        node = self._parse_atom()
+        while True:
+            if self.cur.kind == TokKind.LPAREN:
+                if not isinstance(node, pa.Ident):
+                    t = self.cur
+                    raise ParseError(
+                        "call applied to non-identifier expression "
+                        "(method calls land in a later milestone)",
+                        t.line, t.col,
+                    )
+                self.i += 1
+                args: list = []
+                if self.cur.kind != TokKind.RPAREN:
+                    args.append(self.parse_expression())
+                    while self.cur.kind == TokKind.COMMA:
+                        self.i += 1
+                        args.append(self.parse_expression())
+                rparen = self._eat(TokKind.RPAREN)
+                node = pa.CallExpr(
+                    callee=node, args=args,
+                    loc=self._loc_span(node, rparen),
+                )
+                continue
+            if self.cur.kind == TokKind.DOT:
+                self.i += 1
+                name_tok = self._eat(TokKind.IDENT)
+                node = pa.FieldAccess(
+                    target=node, ident=name_tok.text,
+                    loc=self._loc_span(node, name_tok),
+                )
+                continue
+            if self.cur.kind == TokKind.LBRACK:
+                self.i += 1
+                idx = self.parse_expression()
+                rbrack = self._eat(TokKind.RBRACK)
+                node = pa.IndexExpr(
+                    target=node, index=idx,
+                    loc=self._loc_span(node, rbrack),
+                )
+                continue
+            break
+        return node
+
+    def _parse_atom(self):
         t = self.cur
         if t.kind == TokKind.INT_LIT:
             self.i += 1
@@ -567,22 +774,7 @@ class _Parser:
                               loc=self._loc(t, t))
         if t.kind == TokKind.IDENT:
             self.i += 1
-            ident = pa.Ident(name=t.text, loc=self._loc(t, t))
-            if self.cur.kind == TokKind.LPAREN:
-                # Function-call form in expression position. M4 has no
-                # arrays so `name(args)` unambiguously parses as a
-                # call; arrays land in M5 and bring `name[i]` instead.
-                self.i += 1
-                args: list = []
-                if self.cur.kind != TokKind.RPAREN:
-                    args.append(self.parse_expression())
-                    while self.cur.kind == TokKind.COMMA:
-                        self.i += 1
-                        args.append(self.parse_expression())
-                rparen = self._eat(TokKind.RPAREN)
-                return pa.CallExpr(callee=ident, args=args,
-                                   loc=self._loc(t, rparen))
-            return ident
+            return pa.Ident(name=t.text, loc=self._loc(t, t))
         if t.kind == TokKind.LPAREN:
             self.i += 1
             inner = self.parse_expression()

@@ -27,6 +27,7 @@ from typing import Callable
 from tpyc.diagnostics import Diagnostic, DiagnosticLevel
 from tpyc.frontend_ir import (
     Assign,
+    Attr,
     BinOp,
     BinOpKind,
     BoolLit,
@@ -34,6 +35,7 @@ from tpyc.frontend_ir import (
     CmpOpKind,
     Compare,
     ExprStmt,
+    Field,
     ForRange,
     FrontendDirectives,
     FrontendModule,
@@ -42,6 +44,7 @@ from tpyc.frontend_ir import (
     If,
     ImportName,
     IntLit,
+    IntTypeArg,
     Loc as IRLoc,
     Match,
     MatchCase,
@@ -52,9 +55,12 @@ from tpyc.frontend_ir import (
     Param,
     PointerType,
     RangeDir,
+    Record,
     RepeatUntil,
     Return,
     StrLit,
+    Subscript,
+    TypeTypeArg,
     UnaryOp,
     UnaryOpKind,
     VarDecl,
@@ -138,6 +144,18 @@ class _Ctx:
     needed_imports: dict[str, set[str]] = field(default_factory=dict)
     type_env: dict[str, str] = field(default_factory=dict)
     signatures: dict[str, _Sig] = field(default_factory=dict)
+    # User record type names (declared via Pascal `type X = record ...`).
+    # The translator uses this set to distinguish user record types
+    # from built-in scalar type spellings.
+    record_types: set[str] = field(default_factory=set)
+    # Field type map: record_name -> {field_name: pascal_type_spelling}.
+    # Powers writeln-overload dispatch for `p.x` and similar field
+    # access in expression position.
+    record_fields: dict[str, dict[str, str]] = field(default_factory=dict)
+    # Lower bound for each declared array variable, keyed by variable
+    # name. Indexing into the variable subtracts this from the index
+    # expression so the lowered IR uses 0-based indexing.
+    array_lower_bounds: dict[str, int] = field(default_factory=dict)
     # Per-routine state (saved / restored when entering / leaving each
     # subroutine; left at the defaults at module-body level).
     current_func: str | None = None
@@ -162,18 +180,51 @@ def translate(program: pa.Program,
             return_type=sub.return_type,
         )
 
+    # Pre-scan type blocks so all user record names are known before
+    # any var/param/return type is lowered against them. Also record
+    # each field's Pascal type spelling so writeln dispatch can route
+    # `p.x` correctly.
+    for tb in program.type_blocks:
+        for td in tb.decls:
+            if isinstance(td.type_spec, pa.RecordTypeSpec):
+                ctx.record_types.add(td.name)
+                field_map: dict[str, str] = {}
+                for fg in td.type_spec.fields:
+                    field_type = (fg.type_spec.name
+                                  if isinstance(fg.type_spec,
+                                                pa.NamedTypeSpec)
+                                  else None)
+                    if field_type is not None:
+                        for fname in fg.names:
+                            field_map[fname] = field_type
+                ctx.record_fields[td.name] = field_map
+
+    records: list = []
     top_level_stmts: list = []
     functions: list = []
 
-    # Module-level var section -> per-name IR VarDecls.
+    # Type blocks -> IR Records.
+    for tb in program.type_blocks:
+        for td in tb.decls:
+            rec = _lower_type_decl(td, ctx)
+            if rec is not None:
+                records.append(rec)
+
+    # Module-level var section -> per-name IR VarDecls. Scalar globals
+    # stay uninitialised in the IR (codegen emits `{}` zero-init).
+    # Records need an explicit default-constructor init -- TPy rejects
+    # uninitialised record globals.
     if program.var_block is not None:
         for decl in program.var_block.decls:
-            ir_type = _lower_named_type(decl.type_name, decl.loc, ctx)
             for name in decl.names:
-                ctx.type_env[name] = decl.type_name
+                ir_type = _lower_type_spec(decl.type_spec, ctx)
+                if ir_type is None:
+                    continue
+                _record_var_metadata(name, decl.type_spec, ctx)
                 top_level_stmts.append(VarDecl(
-                    name=name, type=ir_type, init=None, mutable=True,
-                    loc=_to_ir_loc(decl.loc),
+                    name=name, type=ir_type,
+                    init=_default_init_module(decl.type_spec, decl.loc, ctx),
+                    mutable=True, loc=_to_ir_loc(decl.loc),
                 ))
 
     # Module-level body.
@@ -204,11 +255,164 @@ def translate(program: pa.Program,
         source_language="pascal",
         source_lines=program.source_lines,
         imports=imports,
+        records=tuple(records),
         functions=tuple(functions),
         top_level_stmts=tuple(top_level_stmts),
         directives=FrontendDirectives(),
     )
     return fm, ctx.diagnostics
+
+
+# ---------------------------------------------------------------------------
+# Type lowering
+
+def _lower_type_decl(td: pa.TypeDecl, ctx: _Ctx) -> Record | None:
+    """Lower a single `type X = TypeSpec` declaration.
+
+    M5 supports `record` here. Each scalar field gets a Pascal-style
+    zero default (`0` for integer, `False` for boolean) so TPy's
+    auto-generated default constructor lets `var p: Point;` and
+    `p := Point()` both work without the user spelling out an init
+    method. Pascal's de facto behaviour is that record fields start
+    zero-initialised; emitting explicit defaults preserves that.
+    """
+    if isinstance(td.type_spec, pa.RecordTypeSpec):
+        fields: list = []
+        for fg in td.type_spec.fields:
+            ir_t = _lower_type_spec(fg.type_spec, ctx)
+            if ir_t is None:
+                return None
+            default = _field_default_for_spec(fg.type_spec, fg.loc, ctx)
+            for name in fg.names:
+                fields.append(Field(
+                    name=name, type=ir_t, default=default,
+                    loc=_to_ir_loc(fg.loc),
+                ))
+        return Record(
+            name=td.name, fields=tuple(fields),
+            loc=_to_ir_loc(td.loc),
+        )
+    ctx.diagnostics.append(_diag(
+        f"M5 type declarations only support `record` (not "
+        f"{type(td.type_spec).__name__})",
+        td.loc,
+    ))
+    return None
+
+
+def _lower_type_spec(spec, ctx: _Ctx):
+    """Lower a Pascal TypeSpec to an IR type. Returns NamedType (for
+    builtins or user records) or NamedType("Array", ...) (for arrays).
+    """
+    if isinstance(spec, pa.NamedTypeSpec):
+        # Built-in scalar (integer / boolean) routes through the
+        # built-in mapping; user record types pass through as-is.
+        if spec.name in _TYPE_MAP:
+            tpy_name = _TYPE_MAP[spec.name]
+            if tpy_name not in _BUILTIN_TYPES_NO_IMPORT:
+                ctx.add_import("tpy", tpy_name)
+            return NamedType(name=tpy_name, args=(),
+                             loc=_to_ir_loc(spec.loc))
+        if spec.name in ctx.record_types:
+            return NamedType(name=spec.name, args=(),
+                             loc=_to_ir_loc(spec.loc))
+        ctx.diagnostics.append(_diag(
+            f"unknown type {spec.name!r}", spec.loc))
+        return None
+    if isinstance(spec, pa.ArrayTypeSpec):
+        elem = _lower_type_spec(spec.element, ctx)
+        if elem is None:
+            return None
+        count = spec.upper - spec.lower + 1
+        ctx.add_import("tpy", "Array")
+        return NamedType(
+            name="Array",
+            args=(TypeTypeArg(value=elem),
+                  IntTypeArg(value=count)),
+            loc=_to_ir_loc(spec.loc),
+        )
+    ctx.diagnostics.append(_diag(
+        f"unsupported type spec {type(spec).__name__}",
+        getattr(spec, "loc", _zero_loc()),
+    ))
+    return None
+
+
+def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
+    """Update the static type env and per-variable metadata (array
+    lower bounds) based on a Pascal var's declared type."""
+    if isinstance(spec, pa.NamedTypeSpec):
+        ctx.type_env[name] = spec.name
+        return
+    if isinstance(spec, pa.ArrayTypeSpec):
+        ctx.type_env[name] = "array"
+        ctx.array_lower_bounds[name] = spec.lower
+        return
+
+
+def _default_init_for_spec(spec, loc: pa.Loc, ctx: _Ctx):
+    """Zero-style default init for a function-local declaration.
+
+    - Scalars route through `_default_init_for` (int 0, bool False).
+    - User record types lower to a default constructor call `T()`,
+      which TPy provides for records without an explicit `__init__`.
+    - Arrays rely on `Array[T, N]`'s own zero-fill default
+      construction (no init needed in the IR).
+    """
+    if isinstance(spec, pa.NamedTypeSpec):
+        if spec.name in ctx.record_types:
+            return _default_record_ctor(spec.name, loc)
+        return _default_init_for(spec.name, loc)
+    return None
+
+
+def _default_init_module(spec, loc: pa.Loc, ctx: _Ctx):
+    """Default init for a module-level variable. Scalars get None (C++
+    auto-zero-init applies); records and arrays require an explicit
+    constructor call -- TPy rejects uninitialised non-value globals."""
+    if isinstance(spec, pa.NamedTypeSpec):
+        if spec.name in ctx.record_types:
+            return _default_record_ctor(spec.name, loc)
+    if isinstance(spec, pa.ArrayTypeSpec):
+        return _default_array_ctor(spec, loc, ctx)
+    return None
+
+
+def _default_array_ctor(spec: pa.ArrayTypeSpec, loc: pa.Loc, ctx: _Ctx):
+    """`Array[T, N]()` constructor call. The translator emits the
+    type args explicitly via IR `Call.type_args`; lowering threads
+    them into the resulting TpyCall's `call_type` so sema's type-
+    instantiation path picks the right element type and count."""
+    elem_type = _lower_type_spec(spec.element, ctx)
+    if elem_type is None:
+        return None
+    count = spec.upper - spec.lower + 1
+    ctx.add_import("tpy", "Array")
+    ir_loc = _to_ir_loc(loc)
+    return Call(
+        callee=Name(ident="Array", loc=ir_loc),
+        type_args=(TypeTypeArg(value=elem_type),
+                   IntTypeArg(value=count)),
+        args=(), loc=ir_loc,
+    )
+
+
+def _default_record_ctor(name: str, loc: pa.Loc):
+    ir_loc = _to_ir_loc(loc)
+    return Call(
+        callee=Name(ident=name, loc=ir_loc),
+        args=(), loc=ir_loc,
+    )
+
+
+def _field_default_for_spec(spec, loc: pa.Loc, ctx: _Ctx):
+    """Default value for a record field. Scalar fields get a literal
+    zero; record-typed fields get a nested default-constructor call."""
+    if isinstance(spec, pa.NamedTypeSpec):
+        if spec.name in ctx.record_types:
+            return _default_record_ctor(spec.name, loc)
+        return _default_init_for(spec.name, loc)
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -230,7 +434,7 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
     # Params.
     ir_params: list = []
     for p in sub.params:
-        base_type = _lower_named_type(p.type_name, p.loc, ctx)
+        base_type = _lower_type_spec(p.type_spec, ctx)
         if base_type is None:
             ctx.current_func = saved_func
             ctx.current_func_return_type = saved_return
@@ -243,10 +447,11 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
             name=p.name, type=param_type, default=None,
             loc=_to_ir_loc(p.loc),
         ))
-        # The type env records the Pascal type (without the `Ptr`
-        # wrapper) so writeln dispatch and other type-driven decisions
-        # see the value type, not the pointer.
-        ctx.type_env[p.name] = p.type_name
+        # The type env records the Pascal type spelling (without the
+        # `Ptr` wrapper) so writeln dispatch and other type-driven
+        # decisions see the value type, not the pointer.
+        if isinstance(p.type_spec, pa.NamedTypeSpec):
+            ctx.type_env[p.name] = p.type_spec.name
 
     # `var` params require take_ptr / deref / unsafe_store visibility
     # in the lowered module.
@@ -263,12 +468,15 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
     body_stmts: list = []
     if sub.var_block is not None:
         for decl in sub.var_block.decls:
-            ir_type = _lower_named_type(decl.type_name, decl.loc, ctx)
             for name in decl.names:
-                ctx.type_env[name] = decl.type_name
+                ir_type = _lower_type_spec(decl.type_spec, ctx)
+                if ir_type is None:
+                    continue
+                _record_var_metadata(name, decl.type_spec, ctx)
                 body_stmts.append(VarDecl(
                     name=name, type=ir_type,
-                    init=_default_init_for(decl.type_name, decl.loc),
+                    init=_default_init_for_spec(decl.type_spec,
+                                                decl.loc, ctx),
                     mutable=True, loc=_to_ir_loc(decl.loc),
                 ))
 
@@ -279,7 +487,8 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
     # result (e.g. assigning only inside an if-branch); the explicit
     # init is harmless when every path eventually writes.
     if sub.return_type is not None:
-        result_type = _lower_named_type(sub.return_type, sub.loc, ctx)
+        ret_spec = pa.NamedTypeSpec(name=sub.return_type, loc=sub.loc)
+        result_type = _lower_type_spec(ret_spec, ctx)
         body_stmts.append(VarDecl(
             name=_RESULT_NAME, type=result_type,
             init=_default_init_for(sub.return_type, sub.loc),
@@ -296,7 +505,8 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
     # Trailing return for functions.
     return_ir_type = None
     if sub.return_type is not None:
-        return_ir_type = _lower_named_type(sub.return_type, sub.loc, ctx)
+        ret_spec = pa.NamedTypeSpec(name=sub.return_type, loc=sub.loc)
+        return_ir_type = _lower_type_spec(ret_spec, ctx)
         body_stmts.append(Return(
             value=Name(ident=_RESULT_NAME, loc=_to_ir_loc(sub.loc)),
             loc=_to_ir_loc(sub.loc),
@@ -370,32 +580,87 @@ def _lower_stmt(stmt, ctx: _Ctx):
 
 
 def _lower_assign_stmt(stmt: pa.AssignStmt, ctx: _Ctx):
-    target_name = stmt.target.name
-    # Pascal "function_name := expr" sets the return value of the
-    # current function; rewrite to assign to the synthetic result var.
-    if (ctx.current_func is not None
-            and target_name == ctx.current_func
-            and ctx.current_func_return_type is not None):
-        target_name = _RESULT_NAME
+    # Bare-identifier target: special cases for Pascal function-return
+    # (`function_name := expr`) and `var` parameter writes.
+    if isinstance(stmt.target, pa.Ident):
+        target_name = stmt.target.name
+        if (ctx.current_func is not None
+                and target_name == ctx.current_func
+                and ctx.current_func_return_type is not None):
+            target_name = _RESULT_NAME
+        value = _lower_expr(stmt.value, ctx)
+        if value is None:
+            return None
+        if target_name in ctx.current_var_params:
+            ctx.add_import("tpy.unsafe", "unsafe_store")
+            ir_call = Call(
+                callee=Name(ident="unsafe_store",
+                            loc=_to_ir_loc(stmt.target.loc)),
+                args=(
+                    Name(ident=target_name, loc=_to_ir_loc(stmt.target.loc)),
+                    IntLit(value=0, loc=_to_ir_loc(stmt.target.loc)),
+                    value,
+                ),
+                loc=_to_ir_loc(stmt.loc),
+            )
+            return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
+        target = Name(ident=target_name, loc=_to_ir_loc(stmt.target.loc))
+        return Assign(targets=(target,), value=value, loc=_to_ir_loc(stmt.loc))
+    # Compound target (field access / array index). The target is
+    # lowered as an expression with `Attr` / `Subscript` nodes; IR
+    # `Assign.targets` accepts these directly.
+    target = _lower_target(stmt.target, ctx)
+    if target is None:
+        return None
     value = _lower_expr(stmt.value, ctx)
     if value is None:
         return None
-    # Writes to a `var` parameter route through `unsafe_store`.
-    if target_name in ctx.current_var_params:
-        ctx.add_import("tpy.unsafe", "unsafe_store")
-        ir_call = Call(
-            callee=Name(ident="unsafe_store",
-                        loc=_to_ir_loc(stmt.target.loc)),
-            args=(
-                Name(ident=target_name, loc=_to_ir_loc(stmt.target.loc)),
-                IntLit(value=0, loc=_to_ir_loc(stmt.target.loc)),
-                value,
-            ),
-            loc=_to_ir_loc(stmt.loc),
-        )
-        return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
-    target = Name(ident=target_name, loc=_to_ir_loc(stmt.target.loc))
     return Assign(targets=(target,), value=value, loc=_to_ir_loc(stmt.loc))
+
+
+def _lower_target(target, ctx: _Ctx):
+    """Lower a Pascal lvalue (FieldAccess / IndexExpr). Field accesses
+    pass through unchanged; array indexes subtract the variable's
+    declared lower bound so the lowered IR is 0-based."""
+    if isinstance(target, pa.FieldAccess):
+        obj = _lower_expr(target.target, ctx)
+        if obj is None:
+            return None
+        return Attr(target=obj, ident=target.ident,
+                    loc=_to_ir_loc(target.loc))
+    if isinstance(target, pa.IndexExpr):
+        return _lower_index_expr(target, ctx)
+    ctx.diagnostics.append(_diag(
+        f"unsupported assignment target {type(target).__name__}",
+        getattr(target, "loc", _zero_loc()),
+    ))
+    return None
+
+
+def _lower_index_expr(expr: pa.IndexExpr, ctx: _Ctx):
+    """Lower `arr[i]` to `IR Subscript(arr, i - lower_bound)`.
+
+    The translator looks up the declared lower bound via the variable's
+    name. Indexing into anything other than a bare identifier (e.g.
+    nested arrays, future record-of-array fields) defaults to a
+    lower bound of 1, matching Pascal's string-indexing convention.
+    """
+    target_node = _lower_expr(expr.target, ctx)
+    index_node = _lower_expr(expr.index, ctx)
+    if target_node is None or index_node is None:
+        return None
+    lower = 1
+    if isinstance(expr.target, pa.Ident):
+        lower = ctx.array_lower_bounds.get(expr.target.name, 1)
+    if lower != 0:
+        index_node = BinOp(
+            op=BinOpKind.SUB,
+            lhs=index_node,
+            rhs=IntLit(value=lower, loc=_to_ir_loc(expr.loc)),
+            loc=_to_ir_loc(expr.loc),
+        )
+    return Subscript(target=target_node, index=index_node,
+                     loc=_to_ir_loc(expr.loc))
 
 
 def _lower_compound_as_marker(stmt: pa.CompoundStmt, ctx: _Ctx):
@@ -567,6 +832,14 @@ def _lower_expr(expr, ctx: _Ctx):
                 loc=_to_ir_loc(expr.loc),
             )
         return Name(ident=expr.name, loc=_to_ir_loc(expr.loc))
+    if isinstance(expr, pa.FieldAccess):
+        obj = _lower_expr(expr.target, ctx)
+        if obj is None:
+            return None
+        return Attr(target=obj, ident=expr.ident,
+                    loc=_to_ir_loc(expr.loc))
+    if isinstance(expr, pa.IndexExpr):
+        return _lower_index_expr(expr, ctx)
     if isinstance(expr, pa.CallExpr):
         return _lower_call_expr(expr, ctx)
     if isinstance(expr, pa.BinOp):
@@ -643,6 +916,23 @@ def _static_type_of(expr, ctx: _Ctx) -> str | None:
         return "boolean"
     if isinstance(expr, pa.Ident):
         return ctx.type_env.get(expr.name)
+    if isinstance(expr, pa.FieldAccess):
+        # M5 supports only one level of field access on a known record
+        # variable (`p.x`); deeper chains route through this branch
+        # recursively, but currently nested-record fields don't have a
+        # tracked type spelling and return None.
+        if isinstance(expr.target, pa.Ident):
+            record_name = ctx.type_env.get(expr.target.name)
+            if record_name in ctx.record_fields:
+                return ctx.record_fields[record_name].get(expr.ident)
+        return None
+    if isinstance(expr, pa.IndexExpr):
+        # M5 only supports arrays of scalar `integer` elements; tracking
+        # the element type for nested arrays is future work.
+        if isinstance(expr.target, pa.Ident):
+            if expr.target.name in ctx.array_lower_bounds:
+                return "integer"
+        return None
     if isinstance(expr, pa.CallExpr):
         sig = ctx.signatures.get(expr.callee.name)
         return sig.return_type if sig is not None else None
@@ -667,18 +957,6 @@ def _default_init_for(type_name: str, loc: pa.Loc):
     # path reads the synthetic var before writing it, which is the
     # right behavior for unsupported return types.
     return None
-
-
-def _lower_named_type(type_name: str, loc: pa.Loc,
-                      ctx: _Ctx) -> NamedType | None:
-    tpy_name = _TYPE_MAP.get(type_name)
-    if tpy_name is None:
-        ctx.diagnostics.append(_diag(
-            f"unsupported type {type_name!r}", loc))
-        return None
-    if tpy_name not in _BUILTIN_TYPES_NO_IMPORT:
-        ctx.add_import("tpy", tpy_name)
-    return NamedType(name=tpy_name, args=(), loc=_to_ir_loc(loc))
 
 
 # ---------------------------------------------------------------------------

@@ -46,6 +46,77 @@ class Ident:
 
 
 @dataclass
+class FieldAccess:
+    """`target.ident` -- read field of a record value."""
+    target: object   # Expr
+    ident: str
+    loc: Loc
+
+
+@dataclass
+class IndexExpr:
+    """`target[index]` -- Pascal 1-based (or arbitrary lower-bound)
+    array element. The translator subtracts the array's declared
+    lower bound so the lowered IR uses 0-based indexing."""
+    target: object   # Expr
+    index: object    # Expr
+    loc: Loc
+
+
+# --- Type specifications -------------------------------------------------
+
+
+@dataclass
+class NamedTypeSpec:
+    """A named type reference: `integer`, `Point`, etc."""
+    name: str
+    loc: Loc
+
+
+@dataclass
+class RecordTypeSpec:
+    """An anonymous record type: `record x, y: integer end`."""
+    fields: list   # list[RecordField]
+    loc: Loc
+
+
+@dataclass
+class RecordField:
+    """One field group inside a record body. Pascal allows
+    `x, y: integer` to declare both at once; the translator flattens
+    these into one IR `Field` per name."""
+    names: list    # list[str]
+    type_spec: object  # TypeSpec
+    loc: Loc
+
+
+@dataclass
+class ArrayTypeSpec:
+    """`array[lo..hi] of T`. Bounds are integer literals; richer
+    bound forms (constants, identifiers) come later."""
+    lower: int
+    upper: int
+    element: object   # TypeSpec
+    loc: Loc
+
+
+@dataclass
+class TypeDecl:
+    """A single entry in a `type` section: `Name = TypeSpec`."""
+    name: str
+    type_spec: object   # TypeSpec
+    loc: Loc
+
+
+@dataclass
+class TypeBlock:
+    """The `type` section. Pascal allows multiple type decls grouped
+    under one `type` keyword (each terminated by `;`)."""
+    decls: list   # list[TypeDecl]
+    loc: Loc
+
+
+@dataclass
 class CallExpr:
     """Function call in expression position: `factorial(n - 1)`. The
     statement-position counterpart is `CallStmt`; the two are kept
@@ -80,9 +151,11 @@ class VarDecl:
 
     Pascal allows multiple names in one decl; we keep them grouped in
     the AST and split into per-name IR `VarDecl` nodes at translate time.
+    `type_spec` is one of `NamedTypeSpec`, `ArrayTypeSpec`,
+    `RecordTypeSpec`.
     """
     names: list      # list[str], canonical lowercase
-    type_name: str
+    type_spec: object  # TypeSpec
     loc: Loc
 
 
@@ -100,8 +173,9 @@ class VarBlock:
 
 @dataclass
 class AssignStmt:
-    """`target := expr;`"""
-    target: Ident
+    """`target := expr;` -- `target` is one of `Ident`, `FieldAccess`,
+    or `IndexExpr`."""
+    target: object   # Ident | FieldAccess | IndexExpr
     value: object    # Expr
     loc: Loc
 
@@ -192,10 +266,11 @@ class Param:
 
     `is_var=True` marks a Pascal `var` (by-reference) parameter; the
     translator lowers it to a `PointerType` IR param and rewrites uses
-    inside the body.
+    inside the body. `type_spec` is a TypeSpec (typically a
+    `NamedTypeSpec`; array parameters by value aren't supported in M5).
     """
     name: str       # canonical lowercase
-    type_name: str
+    type_spec: object  # TypeSpec
     is_var: bool
     loc: Loc
 
@@ -220,6 +295,7 @@ class SubroutineDecl:
 @dataclass
 class Program:
     name: str
+    type_blocks: list       # list[TypeBlock]; Pascal allows several
     var_block: object       # VarBlock | None
     subroutines: list       # list[SubroutineDecl]
     block: Block

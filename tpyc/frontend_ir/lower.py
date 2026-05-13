@@ -29,6 +29,7 @@ from ..parse.nodes import (
     TpyBreak,
     TpyCall,
     TpyExprStmt,
+    TpyFieldAccess,
     TpyForEach,
     TpyFunction,
     TpyIf,
@@ -39,17 +40,21 @@ from ..parse.nodes import (
     TpyMatchCase,
     TpyModule,
     TpyName,
+    TpyRecord,
     TpyReturn,
     TpyStrLiteral,
+    TpySubscript,
     TpyTypeRef,
     TpyUnaryOp,
     TpyVarDecl,
     TpyWhile,
     TpyWildcardPattern,
 )
+from ..typesys import FieldInfo, RecordInfo
 from .nodes import (
     API_VERSION,
     Assign,
+    Attr,
     BinOp,
     BinOpKind,
     BoolLit,
@@ -57,6 +62,7 @@ from .nodes import (
     CmpOpKind,
     Compare,
     ExprStmt,
+    Field,
     ForEach,
     ForRange,
     FrontendModule,
@@ -76,9 +82,11 @@ from .nodes import (
     Param,
     PointerType,
     RangeDir,
+    Record,
     RepeatUntil,
     Return,
     StrLit,
+    Subscript,
     TypeArg,
     TypeExpr,
     TypeTypeArg,
@@ -233,6 +241,40 @@ def lower_module(
                 f"unknown import node kind: {type(imp).__name__}",
             ))
 
+    # Build the parser-adapter / TypeResolver early so we can register
+    # user records into the adapter's registry before lowering any
+    # bodies that might reference them. The same TypeResolver the .py
+    # parser uses runs over our adapter -- it reads parser-internal
+    # attributes/methods exposed on the adapter object.
+    from .resolver_adapter import make_plugin_resolver
+    resolver = make_plugin_resolver(
+        module_name=fm.qname,
+        imports=dict(module_imports),
+        name_index=tuple(
+            (local, mod, original)
+            for local, (mod, original) in name_to_origin.items()
+        ),
+    )
+
+    # Records: lower each and register the resulting RecordInfo into
+    # the resolver's registry so type references downstream (var decls,
+    # function params, other records) can resolve user record names.
+    tpy_records: list[TpyRecord] = []
+    record_class_names: set[str] = set()
+    for rec in fm.records:
+        lowered_rec, rinfo = _lower_record(rec, plugin_name, fm, diags)
+        if lowered_rec is None or rinfo is None:
+            continue
+        tpy_records.append(lowered_rec)
+        resolver.registry.register_record(rinfo)
+        record_class_names.add(rec.name)
+    if record_class_names:
+        # Adapter exposes a `frozenset` here; merge with whatever the
+        # resolver-adapter constructor pre-populated (currently empty).
+        resolver._parser._module_class_names = frozenset(
+            resolver._parser._module_class_names | record_class_names
+        )
+
     # Functions: lower each to a TpyFunction. Function bodies do not
     # share the module-level statement list, so lowering them before
     # walking top_level_stmts keeps things tidy.
@@ -265,24 +307,8 @@ def lower_module(
     if has_ir_error or plugin_had_error:
         return LoweredFrontend(module=None, diagnostics=diags)
 
-    # Build a real `TypeResolver` over a parser-shaped adapter. This is
-    # the same `TypeResolver` the .py parser uses; the adapter just
-    # exposes the parser-internal attributes/methods the resolver reads.
-    # Lowering is responsible for populating the adapter's import
-    # name-index from the IR's `FromImport` nodes so that
-    # `_resolve_type_name` can route a bare type like `"Int32"` to its
-    # origin module before sema looks up the primitive.
-    from .resolver_adapter import make_plugin_resolver
-    resolver = make_plugin_resolver(
-        module_name=fm.qname,
-        imports=dict(module_imports),
-        name_index=tuple(
-            (local, mod, original)
-            for local, (mod, original) in name_to_origin.items()
-        ),
-    )
     module = TpyModule(
-        records=[],
+        records=tpy_records,
         functions=tpy_functions,
         protocols=[],
         enums=[],
@@ -451,6 +477,70 @@ def _lower_stmt_list(stmts, name_to_origin, plugin_name, fm, diags):
     return out
 
 
+def _is_known_record_name(name: str, fm: FrontendModule) -> bool:
+    """True iff `name` matches the name of a record declared in this
+    FrontendModule. Used during expression lowering to recognise
+    constructor calls (`Point()`) so the resulting TpyCall carries a
+    `call_type` -- the same shape the Python parser emits for
+    type-instantiation calls.
+    """
+    return any(rec.name == name for rec in fm.records)
+
+
+def _lower_record(
+    rec: Record,
+    plugin_name: str,
+    fm: FrontendModule,
+    diags: list[FrontendDiagnostic],
+) -> tuple[TpyRecord | None, RecordInfo | None]:
+    """Lower an IR `Record` to a `TpyRecord` plus the parallel
+    `RecordInfo` the resolver registry consumes.
+
+    Field types lower to `TpyTypeRef`; sema's `resolve_refs` pass turns
+    them into real `TpyType`s using the resolver. The TpyRecord and
+    RecordInfo share the same FieldInfo objects (parser convention),
+    so mutation by either downstream consumer is visible to the other.
+    """
+    field_infos: list[FieldInfo] = []
+    for f in rec.fields:
+        t = _lower_type(f.type, plugin_name, fm, diags)
+        if t is None:
+            return None, None
+        default_expr = None
+        if f.default is not None:
+            default_expr = _lower_expr(
+                f.default, {}, plugin_name, fm, diags)
+            if default_expr is None:
+                return None, None
+        field_infos.append(FieldInfo(
+            name=f.name, type=t,
+            default_expr=default_expr,
+            loc=_to_source_loc(f.loc),
+        ))
+    if rec.methods or rec.nested_records or rec.nested_enums:
+        diags.append(_ir_invalid(
+            plugin_name, fm,
+            "M5 records support fields only (methods / nested types "
+            "are reserved for later milestones)",
+        ))
+        return None, None
+    tpy_rec = TpyRecord(
+        name=rec.name,
+        fields=field_infos,
+    )
+    # RecordInfo's `module` is the public module qname; for plugin
+    # modules that match the FrontendModule.qname directly (no facade
+    # rewriting). Builtin-type-key stays unset because plugin records
+    # aren't `@builtin_type` decorated.
+    record_info = RecordInfo(
+        name=rec.name,
+        fields=field_infos,
+        has_init=False,
+        module=fm.qname,
+    )
+    return tpy_rec, record_info
+
+
 def _lower_function(
     fn: Function,
     name_to_origin: dict[str, tuple[str, str]],
@@ -602,6 +692,21 @@ def _lower_expr(
         out = TpyBinOp(left=lhs, op=op_str, right=rhs)
         out.loc = loc
         return out
+    if isinstance(expr, Attr):
+        target = _lower_expr(expr.target, name_to_origin, plugin_name, fm, diags)
+        if target is None:
+            return None
+        out = TpyFieldAccess(obj=target, field=expr.ident)
+        out.loc = loc
+        return out
+    if isinstance(expr, Subscript):
+        target = _lower_expr(expr.target, name_to_origin, plugin_name, fm, diags)
+        index = _lower_expr(expr.index, name_to_origin, plugin_name, fm, diags)
+        if target is None or index is None:
+            return None
+        out = TpySubscript(obj=target, index=index)
+        out.loc = loc
+        return out
     if isinstance(expr, Call):
         callee = _lower_expr(expr.callee, name_to_origin, plugin_name, fm, diags)
         if callee is None:
@@ -614,6 +719,35 @@ def _lower_expr(
             args.append(la)
         out = TpyCall(func=callee, args=args)
         out.loc = loc
+        # `type_args` on the IR maps to the parser's `call_type`: a
+        # TpyTypeRef whose `args` are the explicit type/int args. This
+        # is what powers generic-constructor calls like
+        # `Array[Int32, 8]()` and `Container[T]()`.
+        if expr.type_args:
+            if not isinstance(expr.callee, Name):
+                diags.append(_ir_invalid(
+                    plugin_name, fm,
+                    "type_args only allowed on calls with a bare-name callee",
+                ))
+                return None
+            type_ref_args: list = []
+            for a in expr.type_args:
+                if isinstance(a, IntTypeArg):
+                    type_ref_args.append(a.value)
+                elif isinstance(a, TypeTypeArg):
+                    lowered = _lower_type(a.value, plugin_name, fm, diags)
+                    if lowered is None:
+                        return None
+                    type_ref_args.append(lowered)
+                else:
+                    diags.append(_ir_invalid(
+                        plugin_name, fm,
+                        f"unsupported TypeArg on Call: {type(a).__name__}",
+                    ))
+                    return None
+            out.call_type = TpyTypeRef(
+                name=expr.callee.ident, args=tuple(type_ref_args), loc=loc,
+            )
         # If the callee is a bare Name that we imported via FromImport,
         # tag the call so sema knows which module exports it (parallel
         # to what Parser._resolve_call_import does for .py sources).
@@ -621,6 +755,15 @@ def _lower_expr(
             origin = name_to_origin.get(expr.callee.ident)
             if origin is not None:
                 out.resolved_import = origin
+            # Constructor call (no explicit type_args): if the callee
+            # is the name of a user-declared record in this module,
+            # tag the call as a constructor so sema's record-instantiation
+            # path fires with the right module-qname.
+            elif (out.call_type is None
+                  and _is_known_record_name(expr.callee.ident, fm)):
+                out.call_type = TpyTypeRef(
+                    name=expr.callee.ident, args=(), loc=loc,
+                )
         return out
     diags.append(_ir_invalid(
         plugin_name, fm,

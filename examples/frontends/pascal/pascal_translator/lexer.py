@@ -41,6 +41,9 @@ class TokKind(Enum):
     LE = "LE"                # <=
     GT = "GT"                # >
     GE = "GE"                # >=
+    LBRACK = "LBRACK"        # [
+    RBRACK = "RBRACK"        # ]
+    DOTDOT = "DOTDOT"        # ..  (range separator in array bounds and case ranges)
     EOF = "EOF"
 
 
@@ -61,6 +64,7 @@ KEYWORDS = frozenset({
     "repeat", "until",
     "case", "of",
     "procedure", "function",
+    "type", "record", "array", "of",
 })
 
 
@@ -132,7 +136,21 @@ def tokenize(source: str, path: Path) -> list[Token]:
         if ch == ".":
             sl, sc = line, col
             adv()
-            tokens.append(Token(TokKind.DOT, ".", sl, sc, line, col - 1))
+            if i < n and source[i] == ".":
+                adv()
+                tokens.append(Token(TokKind.DOTDOT, "..", sl, sc, line, col - 1))
+            else:
+                tokens.append(Token(TokKind.DOT, ".", sl, sc, line, col - 1))
+            continue
+        if ch == "[":
+            sl, sc = line, col
+            adv()
+            tokens.append(Token(TokKind.LBRACK, "[", sl, sc, line, col - 1))
+            continue
+        if ch == "]":
+            sl, sc = line, col
+            adv()
+            tokens.append(Token(TokKind.RBRACK, "]", sl, sc, line, col - 1))
             continue
         if ch == "(":
             sl, sc = line, col
