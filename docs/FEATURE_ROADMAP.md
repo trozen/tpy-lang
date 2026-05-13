@@ -5,6 +5,12 @@ Each entry captures the design impact, current state, dependencies, and rough ef
 
 Effort scale: **S** (days), **M** (1-2 weeks), **L** (2-4 weeks), **XL** (4+ weeks).
 
+Status convention (leading marker in the Status column):
+- 🚧 in progress / partial (some shipped, more to go)
+- 🆕 not started
+- 🔬 research (design phase, no implementation yet)
+- Plain `Done` (or `Done (scope qualifier)`) means the declared scope is complete.
+
 For tactical items see `TODO.md`; for known compiler defects see `BUGS.md`.
 For current feature status, see `LANGUAGE_FEATURES.md`.
 
@@ -46,7 +52,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B8 | Dataclasses | M | Done | [VII](#dataclasses) |
 | B9 | List comprehensions | M | Done | [VI](#list-comprehensions) |
 | B10 | `@overload` dispatch flattening | M | Done | [VII](#overload-dispatch-flattening) |
-| B11 | List slicing | M | Phase 1+2 done | [VII](#list-slicing) |
+| B11 | List slicing | M | Done | [VII](#list-slicing) |
 | B12 | `Self` type | S | Done | [I](#self-type) |
 | B13 | Bi-directional type inference | M | Done | [I](#bi-directional-type-inference) |
 | B14 | `Optional[StaticProtocol]` codegen | S | Done | [II](#optionalstaticprotocol-codegen) |
@@ -59,9 +65,9 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 |---|---------|--------|--------|---------|
 | C1 | Exception model (design) | M | Done | [III](#exception-model-tryexceptraise) |
 | C2 | Exception implementation | L | Done | [III](#exception-model-tryexceptraise) |
-| C3 | @noalloc enforcement | L | Parsed only | [IV](#noalloc-enforcement) |
-| C4 | Effect framework (@nothrow, @pure) | M-L | Not started | [IV](#effect-system-generalized) |
-| C5 | Cyclic dependency handling | L | Not started | [V](#cyclic-dependency-handling) |
+| C3 | @noalloc enforcement | L | 🚧 Parsed only | [IV](#noalloc-enforcement) |
+| C4 | Effect framework (@nothrow, @pure) | M-L | 🆕 Not started | [IV](#effect-system-generalized) |
+| C5 | Cyclic dependency handling | L | Done (v1 conservative) | [V](#cyclic-dependency-handling) |
 | C6 | `@error_return` annotation | M | Done | [III](#error_return-annotation) |
 
 ### Phase D: Functional + Python Compat
@@ -75,7 +81,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D4 | with statement | M | Done | [VI](#with-statement-context-managers) |
 | D5 | Nested `def` with captures, `nonlocal` | M-L | Done | [VI](#closures--nested-functions) |
 | D6 | Properties (@property) | M | Done | [VII](#properties) |
-| D7 | Literal types (Literal[...]) | M | Phase 3b done | [III](#literal-types) |
+| D7 | Literal types (Literal[...]) | M | 🚧 Phases 1-4 done | [III](#literal-types) |
 | D8 | `@override` decorator | S | Done | [VII](#override-decorator) |
 | D9 | set type | L | Done | [VII](#set-type) |
 | D10 | bytes type | M | Done | [VII](#bytes-type) |
@@ -98,37 +104,39 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| E1 | Send/Sync markers | S-M | Phase 1 done | [IV](#thread-safety-markers-send--sync) |
+| E1 | Send/Sync markers | S-M | 🚧 Phase 1 done | [IV](#thread-safety-markers-send--sync) |
 | E2 | Container mutation during iteration | S-M | Done | [IV](#container-mutation-during-iteration) |
-| E3 | del statement | S-M | Not started | [VI](#del-statement-explicit-destruction) |
-| E4 | Ptr escape analysis | XL | Partial | [IV](#ptrt-escape-analysis--lifetime-tracking) |
-| E5 | Auto-detect readonly | M-L | Not started | [IV](#auto-detect-readonly-from-method-body) |
-| E6 | Dead code detection | M | Not started | [VIII](#dead-code-detection) |
-| E7 | Error recovery / multi-error diagnostics | L | Not started | [VIII](#error-recovery--multi-error-diagnostics) |
+| E3 | del statement | S-M | Done | [VI](#del-statement-explicit-destruction) |
+| E4 | Ptr escape analysis | XL | 🚧 Partial | [IV](#ptrt-escape-analysis--lifetime-tracking) |
+| E5 | Auto-detect readonly | M-L | Done | [IV](#auto-detect-readonly-from-method-body) |
+| E6 | Dead code detection | M | 🆕 Not started | [VIII](#dead-code-detection) |
+| E7 | Error recovery / multi-error diagnostics | L | 🚧 Partial (infra only) | [VIII](#error-recovery--multi-error-diagnostics) |
 | E8a | Drop flag (`__tpy_owned_`) | S | Done | [IV](#move-safe-destructors) |
-| E8b | Sentinel field optimization (eliminate drop flag) | M | Not started | [IV](#move-safe-destructors) |
-| E9 | Integer range analysis / bounds check elision | M-L | Partial | [VIII](#integer-range-analysis--bounds-check-elision) |
+| E8b | Sentinel field optimization (eliminate drop flag) | M | 🆕 Not started | [IV](#move-safe-destructors) |
+| E9 | Integer range analysis / bounds check elision | M-L | 🚧 Partial | [VIII](#integer-range-analysis--bounds-check-elision) |
 
 ### Phase F: Compile-Time Power
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| F1 | Compile-time evaluation | XL | Not started | [V](#compile-time-evaluation-constexpr--comptime) |
-| F2 | Macro system | XL | Phase 2 done | [V](#macro-system--metaprogramming) |
+| F1 | Compile-time evaluation | XL | 🆕 Not started | [V](#compile-time-evaluation-constexpr--comptime) |
+| F2 | Macro system | XL | 🚧 Phases 1/2/7 done | [V](#macro-system--metaprogramming) |
 | F3 | Generators / yield | L-XL | Done | [VI](#generators-yield) |
-| F4 | Typestate | XL | Research | [VIII](#typestate-object-lifecycle) |
-| F5 | Self-interpret (TPy eval in tpyc) | XL | Not started | [V](#self-interpret-tpy-eval-in-tpyc) |
-| F6 | Alternative backends | XL | Not started | [V](#alternative-backends) |
-| F7 | Decorator definitions in library code | M-L | Phase 1 done | [V](#decorator-definitions-in-library-code) |
-| F8 | Compile-time conditional compilation / build profiles | M | Not started | [V](#compile-time-conditional-compilation--build-profiles) |
+| F4 | Typestate | XL | 🔬 Research | [VIII](#typestate-object-lifecycle) |
+| F5 | Self-interpret (TPy eval in tpyc) | XL | 🆕 Not started | [V](#self-interpret-tpy-eval-in-tpyc) |
+| F6 | Alternative backends | XL | 🆕 Not started | [V](#alternative-backends) |
+| F7 | Decorator definitions in library code | M-L | 🚧 Phase 1 done | [V](#decorator-definitions-in-library-code) |
+| F8 | Compile-time conditional compilation / build profiles | M | 🆕 Not started | [V](#compile-time-conditional-compilation--build-profiles) |
+| F9 | Frontend plugin API (DSL / non-Python source) | XL | 🔬 Design draft | [V](#frontend-plugin-api) |
+| F10 | IR migration (THIR / MIR) | XL | 🆕 Not started | [V](#ir-migration-thir--mir) |
 
 ### Phase G: Concurrency (Future)
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| G1 | async/await + minimal asyncio | XL | v1 shipped -- see [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md); design in [`docs/ASYNC_DESIGN.md`](ASYNC_DESIGN.md) | [IX](#asyncawait-or-alternative-model) |
-| G1.5 | asyncio runtime port C++ -> TPy | M | Phase 0 done (SleepFuture); Phases 1-4 + blockers tracked in [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md#v1x-milestone-asyncio-runtime-tpy-port-must-precede-v15). **Must precede v1.5 work** so `gather`/`wait_for`/`async with` are written as TPy on a TPy executor. | [IX](#asyncawait-or-alternative-model) |
-| G2 | Channels | L | Not started | [IX](#channels) |
+| G1 | async/await + minimal asyncio | XL | 🚧 v1 shipped -- see [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md); design in [`docs/ASYNC_DESIGN.md`](ASYNC_DESIGN.md) | [IX](#asyncawait-or-alternative-model) |
+| G1.5 | asyncio runtime port C++ -> TPy | M | 🚧 Phase 0 done (SleepFuture); Phases 1-4 + blockers tracked in [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md#v1x-milestone-asyncio-runtime-tpy-port-must-precede-v15). **Must precede v1.5 work** so `gather`/`wait_for`/`async with` are written as TPy on a TPy executor. | [IX](#asyncawait-or-alternative-model) |
+| G2 | Channels | L | 🆕 Not started | [IX](#channels) |
 
 Phases are not strictly sequential -- items from different phases can be interleaved
 based on what's most needed. E1 (Send/Sync markers) is recommended early regardless
@@ -1150,7 +1158,7 @@ Multi-value `Literal` supported. Only direct literal arguments dispatch to
 Natural extension of the type system. Works well with overloads (different return types
 per literal value). Key enabler for `open()` binary mode dispatch.
 
-**Current state**: Phase 3b done. Phases 4-6 planned. See `docs/LITERAL_TYPES_DESIGN.md`.
+**Current state**: Phases 1-4 done. Phases 5-6 planned. See `docs/LITERAL_TYPES_DESIGN.md`.
 
 - **Phase 1 (done)**: `Literal["a", "b", ...]` with string values. Ordering-independent:
   `Literal` stubs are preferred over plain stubs regardless of declaration order.
@@ -1167,16 +1175,31 @@ per literal value). Key enabler for `open()` binary mode dispatch.
 - **Phase 3b (done)**: Literal overload flattening. Each `@overload` stub with
   Literal params gets a per-literal C++ specialization with name mangling
   (`func__lit_value`) and dead branch elimination. Works for functions and methods.
-- **Phase 4**: Match/case exhaustiveness for Literal subjects.
-- **Phase 5**: Literal types in variables. `x: Literal["rb"] = "rb"` retains the
-  literal type. Enables indirect dispatch without annotation.
-- **Phase 6**: Literal as a general type. Return types, fields, union flattening
-  (`Literal["a"] | Literal["b"]` == `Literal["a", "b"]`).
+- **Phase 3c (done)**: Multi-value Literal dead branch elimination -- comparisons
+  against Literal-narrowed variables fold when the value set is provably disjoint.
+- **Phase 4 (done)**: `match`/`case` exhaustiveness for Literal subjects, with
+  per-arm narrowing to the matched value set (enabling dispatch to more specific
+  overloads from within arm bodies). Missing-value warning consistent with enum/bool/union.
+- **Phase 5 (decision deferred)**: Literal types in unannotated variables.
+  Today `mode = "rb"; open(f, mode)` falls through to the `str` overload because
+  `mode` is plain `StrType`. Three design options on the table (A: every str literal
+  becomes `LiteralType` -- 45+ ripple sites; B: only `Final` / `Literal`-annotated
+  locals retain literal-ness -- minimal ripple, opt-in; C: track in `PendingStrType`,
+  resolve when single-valued). Pending real usage patterns. See LITERAL_TYPES_DESIGN.md.
+- **Phase 6 (future)**: Literal as a general type. Return positions
+  (`def get_mode() -> Literal["r", "rb"]`), field types
+  (`class C: mode: Literal["debug", "release"]`), and union flattening
+  (`Literal["a"] | Literal["b"]` == `Literal["a", "b"]` via `make_union()`).
+
+**Minor extensions** (separate from the phase ladder): Literal type in `Final`
+variables (variant of Phase 5); collision-free name mangling for unusual literal
+chars (current scheme collides on e.g. `Literal[","]` vs `Literal["_"]`).
+Cross-function literal inference (caller -> param) is explicitly out of scope.
 
 **Dependencies**: Phase 3: Narrowing infrastructure. Phase 3b: Phase 3.
 Phase 5: Audit of str type checks.
 
-**Effort**: Phase 3: M. Phase 3b: M. Phase 4: M. Phase 5: M. Phase 6: L.
+**Effort**: Phase 5: M. Phase 6: L.
 
 ---
 
@@ -1325,11 +1348,20 @@ methods, it is readonly.
 Also improves None-safety narrowing (more methods known readonly = fewer false
 invalidations).
 
-**Current state**: Not started. `@readonly` infrastructure fully implemented.
+**Current state**: Done. `tpyc/sema/mutation_propagation.py::infer_method_const`
+runs in Phase 2 (call-graph fixpoint) and back-propagates const inference: any
+method with `self_mutated=False` (Phase 1 + Phase 2 facts) gets `is_readonly=True`
+implicitly, reusing all existing readonly checks (codegen `const`, receiver
+enforcement, protocol conformance). Excluded: staticmethods, consuming methods
+(`Own[Self]` receiver), explicit `@readonly` (already set), `auto_readonly` mutable
+clones, constructors / in-place operators (`_NEVER_INFER_CONST`), and methods
+that return a borrow from self's mutable storage (would silently change `T&`
+to `const T&` and override the user's declared return type -- inherently-const
+view returns are still inferred).
 
 **Dependencies**: `@readonly` system (done). Effect framework would generalize this.
 
-**Effort**: M-L (method body analysis, transitive call checking)
+**Effort**: M-L (done)
 
 ---
 
@@ -1436,18 +1468,23 @@ See LANGUAGE_FEATURES.md "Compile-Time Hooks" for detailed design (`@compile_tim
 **Why it matters**: Eliminates boilerplate, enables library-level code generation without
 compiler changes. Similar to Rust proc_macro, Zig comptime, Python metaclasses.
 
-**Current state**: Phase 2 done. Class macros (Phase 1) and call-site macros (Phase 2)
-implemented. `@dataclass` reimplemented as a class macro with `Field`/`field()` descriptors.
-`asdict()`/`astuple()` implemented as `@call_macro` functions that expand at compile time.
-Call macros receive `MacroArg` (AST + resolved type) and return replacement `TpyExpr`.
+**Current state**: Phases 1, 1c, 2, and 7 done. Three macro kinds shipped:
+class macros (Phase 1, `@class_macro`), call-site macros (Phase 2, `@call_macro`),
+and builder-trace macros (Phase 7, `@builder_macro` / `@builder_method` /
+`@builder_returns` / `@builder_terminal`). `@dataclass` reimplemented as a class
+macro with `Field`/`field()` descriptors. `asdict()`/`astuple()` implemented as
+`@call_macro` functions that expand at compile time. `argparse.ArgumentParser`
+implemented as a builder-trace macro (`BuilderContext` walks the builder pattern
+at compile time and synthesizes records + parse functions). Builder-trace
+expansion runs in a dedicated pass 5.5 between class-constants analysis and
+record-method-body analysis, so synthesized methods get full pass-6 sema.
 See `docs/MACRO_DESIGN.md` for the full design.
 
 Remaining (Phase 3+): quote templates, string-based method generation,
 hygiene, CPython compatibility, replace codegen special cases
 (`__repr__`/`__hash__`/`operator<=>`) with macro-generated AST.
 Companion type creation (`cls.add_companion_type`) for generating helper
-types (e.g. key enums for O(1) JSON field dispatch). Requires nested
-class support in parser/sema/codegen.
+types (e.g. key enums for O(1) JSON field dispatch).
 
 **Dependencies**: None for Phase 1 (done). Compile-time evaluation (F1) needed for
 Phase 4 (TpyMini VM). `@dataclass` replacement validates the API.
@@ -1580,7 +1617,7 @@ Cycles are fine when modules contain only **declarations** (constants, types, fu
 with **module-level initialization code** that depends on state from another module in
 the cycle.
 
-Approach:
+Approach (all three shipped in v1):
 - **Allow cycles by default** when all modules in the cycle are declaration-only
   (types, functions, constants). This is the common case.
 - **Error on cycles with init-order dependency**: when a module has top-level statements
@@ -1588,15 +1625,37 @@ Approach:
 - **C++ forward declarations**: for types used only by pointer/reference across the cycle
   boundary, emit forward declarations to break the include cycle.
 
-**Why it matters**: Real-world projects inevitably have circular imports. The current
-compiler has no handling -- cyclic imports would cause infinite recursion or undefined
-behavior in compilation order.
+**Why it matters**: Real-world projects inevitably have circular imports. Python silently
+partially-initializes; TPy has the full dependency graph at compile time and can do better
+-- accept the safe shapes, reject the unsafe ones with a clear error.
 
-**Current state**: Not started.
+**Current state**: Done (v1 conservative). `tpyc/compiler.py::_compute_compile_order`
+runs Tarjan SCC over the import graph and topo-sorts the condensation. Each non-trivial
+SCC goes through `_reject_unsupported_cycle` (the v1 conservatism gate). Cycle-member
+forward-declaration headers are emitted to break complete-type cycles for pointer /
+reference cross-references. Workspace-wide two-pass sema runs for cycle members so
+re-exports through the cycle resolve. Universal re-export with cycle-aware `using`
+suppression is in place.
 
-**Dependencies**: Multi-module compilation (done). Header organization (related).
+Accepted today: declaration-only cycles (types referenced by pointer / reference / in
+containers across the boundary), function and record re-exports through the cycle,
+dataclass/enum/protocol mutual references, three-module cycles, overload-method cycles.
+See `tests/cases/imports/mutual_*` for the happy-path coverage.
 
-**Effort**: L
+Rejected today (with clear errors): top-level init cycles, by-value cross-cycle fields
+or in containers, by-value `__init__` params, by-value method params on inline
+templates, by-value generic / template function params across the cycle, concrete
+inheritance across the cycle, symmetric by-value field cycles. See
+`tests/cases/imports/error_mutual_*` for the rejected shapes.
+
+**Future extensions** (not blocking "Done"):
+- Relax the by-value gate where the cycle is actually breakable (e.g. when one side
+  can be lowered to pointer storage).
+- Diamond / four-plus-module cycle shapes not yet exercised at scale.
+
+**Dependencies**: Multi-module compilation (done). Header organization (done).
+
+**Effort**: L (done; gate relaxations are incremental)
 
 ---
 
@@ -1620,6 +1679,98 @@ a longer-term consideration.
 easier when the frontend is stable).
 
 **Effort**: XL (entirely new codegen pipeline)
+
+---
+
+### Frontend Plugin API
+
+Translate non-Python source languages into a shared frontend IR that lowers to
+`TpyModule` and reuses TPy's sema + codegen pipeline. First concrete targets: a
+Turbo Pascal POC and a larger internal DSL with project-file-driven source
+discovery and native runtime bindings.
+
+```
+                              +-----------------+
+  source  ----[ plugin ]--->  | FrontendModule  | --[ lowering ]--> TpyModule
+  (.pas, .myl, ...)           |     (IR)        |                       |
+                              +-----------------+                    sema / codegen
+```
+
+The plugin is a purely syntactic frontend: it parses source files and emits IR.
+Lowering owns the IR -> `TpyModule` adapter; sema and codegen are unchanged. The
+IR is plain dataclasses (serializable), versioned via `api_version`, and reuses
+TPy's type system symbolically (`NamedType`, `OptionalType`, `UnionType`, etc.).
+
+**Plugin contract** (v1): `FrontendPlugin.parse(ctx, module_name, file_path) ->
+FrontendOutput`; CLI flags `--dsl-plugin` and `--dsl-opt`; decorator manifest
+extends the compiler's decorator registry; diagnostics via `FrontendDiagnostic`.
+Trust boundary: plugins run unrestricted Python (compile-time trusted code).
+
+**Why it matters**: Lets out-of-tree translators ship as Python modules instead of
+forking the compiler. Plugin shapes the design supports include schema-driven
+codegen (protobuf-style), schema-only data descriptors (JSON Schema, Avro), and
+data files with compile-time validation (CSV / JSON data). The IR is the
+contract; the compiler internals stay free to evolve.
+
+**Current state**: Design draft. See `docs/FRONTEND_PLUGIN_DESIGN.md`. No
+implementation yet -- the design is shaped by two concrete v1 targets (Pascal
+POC at `examples/frontends/pascal/DESIGN.md` + a larger internal DSL) and lists
+22 explicitly-anticipated future requirements.
+
+**Dependencies**: None (parser + sema + codegen are the consumers; the plugin
+contract sits on top).
+
+**Effort**: XL (IR types, lowering pass, module resolver provider chain,
+discovery dispatch, diagnostics envelope, CLI, plugin loader).
+
+---
+
+### IR Migration (THIR / MIR)
+
+Replace the current in-place-annotated-AST + sema-side-tables model with two
+explicit IRs between sema and codegen:
+
+- **THIR** (typed higher-level IR): self-contained snapshot of the
+  fully-resolved program -- types, dispatch decisions, narrowing facts, all
+  materialized as values rather than scattered across AST fields and analyzer
+  dicts. Decouples codegen from a live `SemanticAnalyzer` instance.
+- **MIR** (mid-level IR): lower-level form used for liveness, move/copy
+  lowering, and the borrow checker. Loan tracking gets precise field-path
+  storage keys instead of today's string-based `BorrowTracker`; branch-merge
+  joins become precise (per-path) rather than conservative-union.
+
+```
+parse -> sema -> [THIR] -> MIR liveness / move / borrow -> [MIR] -> codegen
+```
+
+**Why it matters**: Three concrete pain points today --
+1. **Tight coupling**: codegen cannot run without a live sema. Sema state is
+   spread across AST node fields, `SemanticContext` `id()`-keyed dicts, and
+   `BorrowTracker` string maps. There is no self-contained "this is what sema
+   produced" artifact.
+2. **Hard to debug**: no way to dump the fully-typed, fully-resolved program
+   between sema and codegen.
+3. **Borrow-checker precision**: today's branch-join merges borrows
+   conservatively (union of both branches); a move on one path can falsely
+   conflict with a borrow on a mutually exclusive path.
+
+Beyond the immediate fixes, THIR is the natural cache boundary for any future
+incremental compilation work, and MIR is what the planned LSP target depends on
+(structured per-construct facts that survive across compiler versions).
+
+**Current state**: Not started. See `docs/IR_DESIGN.md` for the full design --
+THIR node set, lowering plan, MIR node set, liveness + move/copy + borrow
+passes, rollout phasing, and what *doesn't* change. Per the design doc's
+status table, every step (THIR nodes, lowering, codegen migration, MIR nodes,
+liveness, move lowering, borrow checker, opt-in safe mode, MIR-backed codegen,
+retirement of old logic) is "Not started".
+
+**Dependencies**: None within tpyc (it's a self-contained refactor). Blocks:
+LSP target (per CLAUDE.md), incremental front-end caching, and any future
+non-C++ backend (F6) that wants a stable IR to consume.
+
+**Effort**: XL (multi-quarter refactor; sequenced in rollout phases per
+IR_DESIGN.md).
 
 ---
 
@@ -1906,11 +2057,21 @@ use(buf)         # compile error: use after del
 `init_tracker` infrastructure. Useful for large resources where you want deterministic
 cleanup before scope end.
 
-**Current state**: Not started.
+**Current state**: Done. `del x` (variable unbinding) and `del obj[key]`
+(element deletion via `__delitem__`) both shipped. Use after `del` is a
+compile-time error; re-assignment after `del` is supported. Works on locals,
+parameters, globals, nonlocals, loop variables, generator-bound names, and
+module-level variables. Early destruction (move-sink) is emitted only when
+the variable is the sole owner of its value; aliases, parameters, and
+globals just unbind the name. See LANGUAGE_FEATURES.md.
+
+**Limitation:** pointer-locals that were initially aliases
+(e.g. `a = b; a = new_value; del a`) skip early destruction conservatively,
+even after reassignment to an owned value.
 
 **Dependencies**: `init_tracker` (done). Move semantics (done).
 
-**Effort**: S-M
+**Effort**: S-M (done)
 
 ---
 
@@ -2300,25 +2461,24 @@ class ArrayList[T, N: int]:
 new `list[T]` (elements are not contiguous). String step slicing returns `str`
 (owned string).
 
-**Current state**: Phase 1 and Phase 2 done. Built-in container slicing (`list[T]`,
-`Array[T,N]`, `Span[T]`, `Span[readonly[T]]`) returns `Span[T]` / `Span[readonly[T]]`.
-String slicing returns `StrView` (existing). Indices clamped (Python semantics),
-negative indices supported. `@readonly` context and `Span[readonly[T]]` source propagate
-to `Span[readonly[T]]` result.
+**Current state**: All phases done.
 
-Phase 2 adds the `slice` built-in type. User records with `@overload __getitem__`
-can accept both `Int32` (index) and `slice` (range) parameters.
+- **Phase 1 (done)**: Built-in container slicing (`list[T]`, `Array[T,N]`, `Span[T]`,
+  `Span[readonly[T]]`) returns `Span[T]` / `Span[readonly[T]]`. String slicing returns
+  `StrView`. Indices clamped (Python semantics), negative indices supported. `@readonly`
+  context and `Span[readonly[T]]` source propagate to `Span[readonly[T]]` result.
+- **Phase 2 (done)**: `slice` built-in type. User records with `@overload __getitem__`
+  accept both `Int32` (index) and `slice` (range) parameters.
+- **Phase 3 (done)**: Stepped slicing with a two-type design -- `basic_slice`
+  (start, stop) for `a[1:3]` returns zero-copy views, `slice` (start, stop, step) for
+  `a[1:3:2]` returns owned copies. `basic_slice` coerces to `slice` (C++ implicit
+  via `Slice(BasicSlice)` ctor). C++ structs: `tpy::BasicSlice` and `tpy::Slice`.
+  Callable constructors `basic_slice(start, stop)` and `slice(start, stop, step)`
+  available; slice objects can be stored, passed, and returned. Stepped slice
+  assignment (`a[::2] = [...]`) supported with runtime length/step-compatibility
+  check; step=1 allows resize; generator RHS accepted.
 
-Phase 3 adds stepped slicing with a two-type design: `basic_slice` (start, stop)
-for `a[1:3]` syntax returning zero-copy views, and `slice` (start, stop, step)
-for `a[1:3:2]` syntax returning owned copies. `basic_slice` coerces to `slice`.
-C++ structs: `tpy::BasicSlice` and `tpy::Slice`. Stepped slice assignment
-(`a[::2] = [...]`) not yet supported.
-
-**Dependencies**: All phases done. Remaining: `slice()`/`basic_slice()` constructors,
-stepped slice assignment.
-
-**Effort**: S (Phase 1, done), M (Phase 2, done), S (Phase 3)
+**Effort**: S (Phase 1, done), M (Phase 2, done), S (Phase 3, done)
 
 ---
 
@@ -2973,7 +3133,11 @@ Implementation approach: introduce an `Invalid` type that propagates through ana
 without triggering cascading errors. Expressions involving `Invalid` silently produce
 `Invalid` rather than new error messages.
 
-**Current state**: Not started.
+**Current state**: Partial -- infrastructure only. `SemanticContext.emit_error()` collects
+non-fatal diagnostics, but the analyzer still raises `SemanticError` (fail-fast) on most
+error paths. No `Invalid` type and no widespread recovery: a single semantic error still
+aborts the module. Activating multi-error reporting requires converting the bulk of
+`raise SemanticError(...)` sites to `emit_error()` + `Invalid`-propagation.
 
 **Dependencies**: None, but touches sema broadly (every error path needs graceful recovery).
 
