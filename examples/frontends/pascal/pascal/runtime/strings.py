@@ -10,6 +10,17 @@
 # Indexing is 0-based at the C++ level; the Pascal translator subtracts
 # the 1-based offset at the source-language indexing site, matching how
 # it handles array variables.
+#
+# TODO (M6 follow-up): give __add__, __eq__, __ne__, and assign explicit
+# @overload variants for `str`, `StrView`, `PStr[N]`, and `Char` (mirror
+# `str.__add__` in lib/tpy/tpy/_builtins/_types.py). The translator
+# currently funnels PStr operands through `str(...)` at call sites in
+# `_coerce_string_operand` / `_lower_string_assign` to satisfy the
+# single `other: str` overload; widening the runtime surface lets that
+# wrapping go away. Open question: result capacity for cross-capacity
+# concat (`PStr[10] + PStr[20]`) -- prefer `Own[PStr[N]]` matching the
+# self-side capacity, but verify TPy's overload-resolution behaviour
+# for generic-class methods first.
 
 from __future__ import annotations
 from tpy import Int32, UInt32, Own, Char, StrView
