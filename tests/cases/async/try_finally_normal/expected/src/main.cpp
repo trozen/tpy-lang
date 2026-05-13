@@ -76,7 +76,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpy::async_run(main_coro());
+    ::tpystd::asyncio::run<void>(main_coro());
 }
 
 void __tpy_init() {

@@ -1,26 +1,9 @@
 # tpy: cpp_namespace("tpystd::asyncio")
 """asyncio v1 -- minimum viable async runtime.
 
-Provides:
-  * `asyncio.run(coro)` -- drive a top-level coroutine to completion;
-    sleeps idle on the executor's timer heap when the coro is Pending.
-  * `asyncio.sleep(seconds)` -- park the calling coroutine for a
-    duration. Lowered to a SleepFuture wrapped in Task[None] -- the
-    user `await`s it like any Task.
-  * `asyncio.Future[T]` -- single-awaiter manual-completion awaitable.
-
-The CPython phase falls through to CPython's own `asyncio` module (this
-file is not under `lib/cpy/`); on the TPy compile path the bindings
-lower to helpers in `runtime/cpp/include/tpy/async.hpp` and to the TPy
-Executor implementation in `_executor.py`. `@native` is used for
-non-template bridges; `@cpp_template` only where the C++ side is a
-function template that needs per-call-site instantiation
-(`async_run`, `Task<void>::from_coro`, `make_user_task`).
-
-`async_run` is a thin C++ template shell that handles void-return
-typing (which TPy can't express today; tracked as a v1.2 compiler
-item) and delegates the run-loop body to the TPy `_run_drain_main_task`
-helper below. See `docs/ASYNC_PROGRESS.md` for v1.1 port history.
+`run` / `sleep` / `create_task` / `Task[T]` / `Future[T]` /
+`CancelledError`. Lowers to `runtime/cpp/include/tpy/async.hpp` and
+the TPy Executor in `_executor.py`. See `docs/ASYNC_DESIGN.md`.
 """
 from builtins import BaseException, Exception
 from tpy.extern import cpp_template, native
@@ -32,25 +15,32 @@ from tpy.coro import (
 from tpy.mem import UninitArrayStorage
 from time import monotonic
 from ._executor import (
-    AnyTaskBox, Executor, _ExecutorScope,
+    AnyTaskBox, Executor, _ExecutorScope, _get_current_executor,
 )
 
 
-# Run a coroutine to completion. Drives the executor's timer heap.
-# Lowers to `::tpy::async_run` (a thin C++ template shell) which
-# builds the main Task and delegates the run loop to
-# `_run_drain_main_task` below.
-@cpp_template("::tpy::async_run({0})")
-def run[T](coro: Awaitable[T]) -> T: ...
+# TODO: drop `Own[]` + `std::move()` (and on `run` below) once BUGS.md
+# "Awaitable[T] rvalue forwarding" is fixed.
+@cpp_template("::tpy::make_executor_owned_task<{T}>(std::move({0}))")
+def _make_executor_owned_task[T](coro: Own[Awaitable[T]]) -> Task[T]: ...
 
 
-# TPy run-loop body, called from `tpy::async_run`. Takes the box (by
-# Own) rather than the Task[T] handle so the signature stays
-# non-generic: generic-T TPy functions emit by-value-by-default for
-# nocopy params, which would force the C++ shell to surrender
-# ownership of the Task and lose the ability to read its result
-# afterward. The C++ shell keeps its half of the shared TaskState via
-# the Task<T> handle and extracts the result after this call returns.
+@cpp_template("::tpy::task_to_any_box({0})")
+def _task_to_any_box[T](task: Task[T]) -> Own[AnyTaskBox]: ...
+
+
+def run[T](coro: Own[Awaitable[T]]) -> T:
+    if not _get_current_executor().is_null():
+        raise RuntimeError(
+            "asyncio.run() cannot be called from a running event loop")
+    task = _make_executor_owned_task[T](coro)
+    box = _task_to_any_box[T](task)
+    _run_drain_main_task(box)
+    return task.__poll__(Waker()).value()
+
+
+# Box param (not Task[T]) keeps the signature non-generic so `run` can
+# read the result via its own Task[T] handle after this call returns.
 def _run_drain_main_task(box: Own[AnyTaskBox]) -> None:
     executor = Executor()
     scope = _ExecutorScope(executor)
@@ -58,14 +48,7 @@ def _run_drain_main_task(box: Own[AnyTaskBox]) -> None:
     try:
         executor.run_until(main_id)
     finally:
-        # Drain spawned tasks with cancellation so their finally
-        # blocks run. The inner try/except is scoped narrowly to the
-        # drain call only -- any exception from `run_until` above
-        # (e.g. "no progress possible" RuntimeError) propagates out
-        # of the outer try unaffected and surfaces as the user-visible
-        # error from `asyncio.run`. Swallow drain-time exceptions
-        # because v1 has no place to surface them and dropping the
-        # executor mid-throw would terminate.
+        # Swallow drain-time exceptions; v1 has no place to surface them.
         try:
             executor.drain_spawned_with_cancel(main_id)
         except BaseException:

@@ -1,6 +1,8 @@
-# asyncio.run cannot be called from a running event loop. Per
-# docs/ASYNC_DESIGN.md ("Context propagation"): mirrors CPython's
-# RuntimeError. Validates the runtime panic path.
+# Nested asyncio.run raises RuntimeError (mirrors CPython's "asyncio.run()
+# cannot be called from a running event loop"). This case verifies the
+# *uncaught* path: the exception is not caught, so the program terminates
+# via tpy_terminate_handler. Companion `run_reentry_caught` covers the
+# catchable-exception path. Per docs/ASYNC_DESIGN.md "Context propagation".
 import asyncio
 
 

@@ -143,12 +143,12 @@ inline void register_timer_thunk(void* exec, double deadline_seconds,
 /// thread-local ops table is overwritten with the same values each
 /// time, so repeated calls are idempotent for a fixed `ExecT`. Panics
 /// if a running executor is already installed on this thread (nested
-/// `asyncio.run` or a leaked `_ExecutorScope`); the nested-run path in
-/// `async_run` rejects this earlier with a better message, this is the
-/// backstop. The check is keyed on `current_executor` rather than the
-/// ops table itself so that raw `Executor()` construction in unit tests
-/// (without a `_ExecutorScope`) is unaffected -- those tests never set
-/// `current_executor`.
+/// `asyncio.run` or a leaked `_ExecutorScope`); the TPy `asyncio.run`
+/// body rejects this earlier with a `RuntimeError` (matching CPython),
+/// this is the backstop. The check is keyed on `current_executor`
+/// rather than the ops table itself so that raw `Executor()`
+/// construction in unit tests (without a `_ExecutorScope`) is
+/// unaffected -- those tests never set `current_executor`.
 template <typename ExecT>
 inline void register_executor_ops_from(ExecT&) noexcept {
     if (current_executor != nullptr) {
@@ -761,65 +761,5 @@ inline bool task_poll_cancelled(Task<T>& t) {
 // Task<void> uses the primary template; Poll<void>'s `pending()` /
 // `ready()` shape works through the same code path because all the
 // generic accessors are conditional on the value type.
-
-}  // namespace tpy
-
-// Forward declaration of the TPy-side run-loop helper. Defined in the
-// generated `tpystd/asyncio.hpp` from `lib/tpy/asyncio/__init__.py`.
-// Lives outside namespace tpy so the namespace lines up with TPy's
-// codegen choice. Non-generic so the signature is fully concrete --
-// async_run hands off the slot-table box and keeps its half of the
-// shared TaskState in the Task<T> local for result extraction.
-namespace tpystd::asyncio {
-void _run_drain_main_task(::tpy::AnyTaskBox&& box);
-}  // namespace tpystd::asyncio
-
-namespace tpy {
-
-/**
- * async_run -- `asyncio.run` driver.
- *
- * Thin C++ shell that handles result-type-dependent setup (Task<T>
- * construction with the right ResultT) and result extraction (which
- * needs `if constexpr (is_void_v<T>)` -- a thing TPy can't currently
- * express; tracked as a v1.2 compiler item in `BUGS.md`). The run
- * loop itself (executor construction, thread-local scope, spawn,
- * run_until, drain) lives in the TPy `_run_drain_main_task` helper
- * that this shell calls into.
- *
- * v1 has no I/O reactor -- only timer-driven sleep. A coro that returns
- * Pending with no pending timers panics ("no progress possible") inside
- * `_run_drain_main_task`; that's the v1 equivalent of asyncio's "no
- * current event loop" error.
- */
-template <typename CoroT>
-inline auto async_run(CoroT&& coro)
-    -> decltype(std::declval<CoroT&>().__poll__(std::declval<Waker>()).value()) {
-    using ResultT = decltype(std::declval<CoroT&>().__poll__(std::declval<Waker>()).value());
-    // Per docs/ASYNC_DESIGN.md ("Context propagation"): asyncio.run
-    // cannot be re-entered. Matches CPython's "asyncio.run() cannot be
-    // called from a running event loop" RuntimeError.
-    if (current_executor != nullptr) {
-        tpy_panic("asyncio.run() cannot be called from a running event loop");
-    }
-    auto task = make_executor_owned_task<ResultT>(std::forward<CoroT>(coro));
-    // Delegate the run loop to TPy. This call sets up a TPy Executor
-    // internally, drives the task to completion via the slot-table
-    // box (which shares the underlying TaskState with our `task`
-    // handle), drains spawned tasks with cancellation, and clears
-    // the thread-local before returning.
-    {
-        AnyTaskBox box = task_to_any_box(task);
-        ::tpystd::asyncio::_run_drain_main_task(std::move(box));
-    }
-    // Read the cached result (or rethrow the cached exception). Uses
-    // `if constexpr` to handle void uniformly with non-void.
-    if constexpr (std::is_void_v<ResultT>) {
-        task.__poll__(Waker{}).value();
-        return;
-    } else {
-        return task.__poll__(Waker{}).value();
-    }
-}
 
 }  // namespace tpy

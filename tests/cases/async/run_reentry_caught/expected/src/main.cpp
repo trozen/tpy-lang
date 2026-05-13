@@ -9,8 +9,8 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // print("inner start")
-            std::cout << "inner start" << "\n";
+            // print("inner ran -- should not happen")
+            std::cout << "inner ran -- should not happen" << "\n";
             __state = S_DONE;
             return ::tpy::Poll<void>::ready();
         }
@@ -30,8 +30,16 @@ __coro_inner inner() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // asyncio.run(inner())  # second run while one is already active
-            ::tpystd::asyncio::run<void>(inner());
+            // try:
+            {
+                try {
+                    // asyncio.run(inner())
+                    ::tpystd::asyncio::run<void>(inner());
+                } catch (const ::tpy::RuntimeError& e) {
+                    // print("caught:", e)
+                    std::cout << "caught:" << " " << e << "\n";
+                }
+            }
             __state = S_DONE;
             return ::tpy::Poll<void>::ready();
         }
@@ -57,11 +65,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Nested asyncio.run raises RuntimeError (mirrors CPython's "asyncio.run()
-    // # cannot be called from a running event loop"). This case verifies the
-    // # *uncaught* path: the exception is not caught, so the program terminates
-    // # via tpy_terminate_handler. Companion `run_reentry_caught` covers the
-    // # catchable-exception path. Per docs/ASYNC_DESIGN.md "Context propagation".
+    // # Nested asyncio.run raises a catchable RuntimeError.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
     // main()

@@ -99,7 +99,7 @@ __coro_main main() {
 // def entry() -> None:
 void entry() {
     // asyncio.run(main())
-    ::tpy::async_run(main());
+    ::tpystd::asyncio::run<void>(main());
 }
 
 void __tpy_init() {

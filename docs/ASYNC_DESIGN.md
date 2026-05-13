@@ -32,23 +32,27 @@ Phased; each phase shipped independently. Detailed plan + per-phase scope + comp
 | 0 (DONE) | `SleepFuture` -> TPy | Validates the shape: TPy class with `__cancel_pending` field works as a `Task<void>::from_coro` `CoroT`. C++ keeps a single bridge helper `executor_register_timer_seconds`. |
 | 1 (DONE) | Compiler bindings | `time.sleep_until_steady`, `current_executor` get/set/clear via `ExecutorHandle` POD, `AnyTaskBox` `@native` wrapper around `shared_ptr<AnyTask>` (deviates from the original draft's `unique_ptr` so the user `Task<T>` and the executor slot can share state), `task_poll_cancelled` test util as TPy generic function. No new compiler features required. |
 | 2 (DONE) | `Executor` body to TPy | Slot table (`list[Slot]`), runnable deque, timer min-heap, all methods (`spawn`, `mark_runnable`, `poll_slot`, `drain_runnable`, `wait_for_event`, `run_until`, `drain_spawned_with_cancel`). Plus `ExecutorOps` dispatch table so `Waker::wake` / `make_user_task` / `executor_register_timer_seconds` route from C++ into the TPy executor. Deviation: timer-heap uses `list[tuple[float, UInt64]]` + parallel `dict[UInt64, Waker]` instead of `list[tuple[float, Waker]]` (Wakers aren't Comparable, which `heapq[T: Comparable]` requires). |
-| 3 (DONE) | `async_run` to TPy | Setup/teardown via a `_ExecutorScope` class with `__del__` (RAII for `current_executor` clear-on-exit; v1 doesn't nest so no save/restore needed). Main-coro spawn closure + result extraction stay C++ (templated over `ResultT`, uses `if constexpr` for the void return-type case TPy can't express today). Run loop body is TPy. |
-| 4 (DONE) | Cleanup | Removed `tpy::Executor` struct + legacy dispatch fallbacks (`Waker::wake` cast, `make_user_task` spawn fallback, `executor_register_timer_seconds` TimePoint path) + unused TPy bindings. `tpy::async_run` stays as a ~25-line shell; the residual C++ surface (`Task<T>`, `TaskState<T>`, `AnyTaskBox`, `Poll<T>`, `current_executor` thread-local) is itemized in v1.2 below. |
+| 3 (DONE) | `async_run` to TPy | Setup/teardown via a `_ExecutorScope` class with `__del__` (RAII for `current_executor` clear-on-exit; v1 doesn't nest so no save/restore needed). Run loop body is TPy. Main-coro spawn closure + result extraction initially stayed C++ (templated over `ResultT`, used `if constexpr` for the void return-type case); fully ported to TPy in v1.2 step 1 once `val_or_ref_t<void>` was specialized. |
+| 4 (DONE) | Cleanup | Removed `tpy::Executor` struct + legacy dispatch fallbacks (`Waker::wake` cast, `make_user_task` spawn fallback, `executor_register_timer_seconds` TimePoint path) + unused TPy bindings. `tpy::async_run` was retained as a ~25-line shell, then removed in v1.2 step 1 below. The residual C++ surface (`Task<T>`, `TaskState<T>`, `AnyTaskBox`, `Poll<T>`, `current_executor` thread-local) is itemized in v1.2 below. |
 
 ### v1.2 -- compiler-driven shrinking of v1.1's residual C++ surface
 
 Each item below is blocked on a specific compiler bug or missing feature. Orthogonal to v1.5 -- progress on either track is independent.
 
-**Compiler bugs (`BUGS.md`):**
+**Shipped (v1.2 step 1):**
 
-| Bug | Lines | What it unblocks |
-|-----|-------|------------------|
-| Ref-type `list[T].pop()` into a local fails C++ build (`val_or_ref_t<T> = T&` can't bind to rvalue) | `BUGS.md:17-18` | Ref-type `TimerEntry` → `list[TimerEntry]` (sibling path to the ValueType variant below). Either fix lets `Executor.timer_heap` drop the parallel `timer_wakers` dict. |
-| Non-`@native` ValueType record's `is_value_type` specialization emitted after template instantiation in same TU | `BUGS.md:19-20` | Value-type `TimerEntry(ValueType)` → `list[TimerEntry]` (sibling path to the ref-type variant above). |
-| `@native` value-type record emits `is_value_type` in wrong namespace | `BUGS.md:21-22` | `ExecutorHandle` storable as a TPy field → `_ExecutorScope` can save/restore the prior handle (today just clears, since v1 doesn't nest `asyncio.run`). Needed before nestable runtimes. |
-| `def f[T] -> T` for `T = None` substitutes `val_or_ref_t<void>` → `void&` | `BUGS.md:23-24` | Pure-TPy `asyncio.run` → removes `tpy::async_run` shell. |
-| `@cpp_template` literal `{...}` produces internal error | `BUGS.md:25-26` | Clearer diagnostic; pairs with the escape-syntax feature below. |
-| Generic TPy `Awaitable[T]` param binds C++ template arg as `const T&` instead of forwarding rvalue | `BUGS.md:27-28` | Pure-TPy `make_user_task` / `make_executor_owned_task` / `make_any_task_for_test` → removes most C++ template factories. |
+- `val_or_ref_t<void>` specialization in `runtime/cpp/include/tpy/type_traits.hpp` -- unblocks generic `def f[T] -> T` for `T = None`.
+- `asyncio.run` ported to pure TPy in `lib/tpy/asyncio/__init__.py`; `tpy::async_run` C++ template shell removed. Uses `Own[Awaitable[T]]` + `std::move` workaround for the rvalue-forwarding bug below (see code TODOs).
+
+**Compiler bugs still blocking further cleanup (`BUGS.md`):**
+
+| Bug | What it unblocks |
+|-----|------------------|
+| Ref-type `list[T].pop()` into a local fails C++ build (`val_or_ref_t<T> = T&` can't bind to rvalue) | Ref-type `TimerEntry` → `list[TimerEntry]` (sibling path to the ValueType variant below). Either fix lets `Executor.timer_heap` drop the parallel `_timer_wakers` dict. |
+| Non-`@native` ValueType record's `is_value_type` specialization emitted after template instantiation in same TU | Value-type `TimerEntry(ValueType)` → `list[TimerEntry]` (sibling path to the ref-type variant above). |
+| `@native` value-type record emits `is_value_type` in wrong namespace | `ExecutorHandle` storable as a TPy field → `_ExecutorScope` can save/restore the prior handle (today just clears, since v1 doesn't nest `asyncio.run`). Needed before nestable runtimes. |
+| `@cpp_template` literal `{...}` produces internal error | Clearer diagnostic; pairs with the escape-syntax feature below. |
+| Generic TPy `Awaitable[T]` param binds C++ template arg as `const T&` instead of forwarding rvalue | Pure-TPy `make_user_task` / `make_executor_owned_task` / `make_any_task_for_test` → removes most C++ template factories. Today worked around at `_make_executor_owned_task` via explicit `Own[Awaitable[T]]` + `std::move({0})`; proper codegen fix would drop both. |
 
 **Compiler features (`TODO.md`):**
 

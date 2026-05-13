@@ -132,28 +132,23 @@ template<typename T> struct is_sync<SpanIter<T>> : std::false_type {};
 template<typename T>
 concept Sync = is_sync<T>::value;
 
-/**
- * Return type helpers for generic code.
- *
- * These pick value or reference return types based on is_value_type trait:
- * - val_or_ref_t<T>: T for value types, T& for object types (mutable)
- * - val_or_cref_t<T>: T for value types, const T& for object types (const)
- */
-template<typename T>
-using val_or_ref_t = std::conditional_t<is_value_type<T>::value, T, T&>;
+// Dispatched through impl structs so `T = void` can be specialized;
+// `val_or_ref_t<void> = void` lets `def f[T] -> T` instantiate with
+// T=None (the naked `std::conditional_t<..., void, void&>` form would
+// substitute to ill-formed `void&`).
+namespace detail {
+    template<typename T> struct val_or_ref_impl       { using type = std::conditional_t<is_value_type<T>::value, T,        T&>; };
+    template<typename T> struct val_or_cref_impl      { using type = std::conditional_t<is_value_type<T>::value, T,        const T&>; };
+    template<typename T> struct param_val_or_ref_impl { using type = std::conditional_t<is_value_type<T>::value, const T&, T&>; };
 
-template<typename T>
-using val_or_cref_t = std::conditional_t<is_value_type<T>::value, T, const T&>;
+    template<> struct val_or_ref_impl<void>       { using type = void; };
+    template<> struct val_or_cref_impl<void>      { using type = void; };
+    template<> struct param_val_or_ref_impl<void> { using type = void; };
+}
 
-/**
- * Parameter type helper for generic code.
- *
- * Picks parameter type based on is_value_type trait:
- * - const T& for value types (immutable in Python, compiler optimizes small types)
- * - T& for object types (mutable in Python)
- */
-template<typename T>
-using param_val_or_ref_t = std::conditional_t<is_value_type<T>::value, const T&, T&>;
+template<typename T> using val_or_ref_t       = typename detail::val_or_ref_impl<T>::type;
+template<typename T> using val_or_cref_t      = typename detail::val_or_cref_impl<T>::type;
+template<typename T> using param_val_or_ref_t = typename detail::param_val_or_ref_impl<T>::type;
 
 /**
  * val_or_ref<T> - Wrapper for iterator __next__() returns.

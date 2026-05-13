@@ -768,18 +768,15 @@ What got removed from `runtime/cpp/include/tpy/async.hpp`:
 - `<chrono>`, `<thread>`, `<queue>`, `<deque>`, `<vector>` includes
   in async.hpp (only the `Executor` struct used these).
 
-What stays in C++:
+What stays in C++ (after v1.1; `tpy::async_run` shell removed in v1.2,
+see "v1.2 step 1" section below):
 
-- `tpy::async_run<CoroT>` template shell -- entry point for
-  `asyncio.run`. Still needed because TPy can't express the
-  void-uniform return-type shape today (see Phase 3 doc and BUGS.md
-  "`def f[T] -> T` for `T = None`").
 - `tpy::make_user_task<T, CoroT>` -- `asyncio.create_task` lowering.
   Dispatches via `executor_ops.spawn`.
 - `tpy::executor_register_timer_seconds` -- SleepFuture's
   `_register_timer_at` bridge. Dispatches via `executor_ops.register_timer`.
 - `tpy::make_executor_owned_task<T, CoroT>`, `tpy::task_to_any_box<T>`
-  -- helpers used by the async_run shell.
+  -- helpers used by the TPy `asyncio.run` function.
 - `tpy::make_any_task_for_test<T, CoroT>` -- test-only factory used by
   `tests/cases/async/tpy_executor_smoke/` etc.
 - `tpy::AnyTask`, `tpy::AnyTaskBox`, `tpy::TaskState<T>`,
@@ -791,6 +788,56 @@ What stays in C++:
   dispatch infrastructure.
 
 All 50 async tests + the full 3719-test suite pass after the cleanup.
+
+### v1.2 step 1 -- `val_or_ref_t<void>` + pure-TPy `asyncio.run` -- DONE
+
+Closes the BUGS entry `def f[T] -> T returning val_or_ref_t<T> fails
+C++ substitution for T = None`. Removes the `tpy::async_run` C++
+template shell that was retained in Phase 3 specifically because TPy
+couldn't express the void-uniform return-type shape.
+
+Changes:
+
+- `runtime/cpp/include/tpy/type_traits.hpp` -- refactored the three
+  generic-T aliases (`val_or_ref_t`, `val_or_cref_t`,
+  `param_val_or_ref_t`) to dispatch through `detail::*_impl` structs,
+  then added void specializations so `val_or_ref_t<void> = void` (was
+  `void&`, ill-formed). `param_val_or_ref_t<void> = void` is defensive
+  (TPy doesn't emit `void` params in practice).
+- `lib/tpy/asyncio/__init__.py` -- `run[T]` is now a pure-TPy generic
+  with body: nested-run check (raises `RuntimeError`, was C++
+  `tpy_panic`), `_make_executor_owned_task[T](coro)`,
+  `_task_to_any_box[T](task)`, `_run_drain_main_task(box)`,
+  `return task.__poll__(Waker()).value()`. The final `return` works
+  uniformly for void and non-void T because `Poll<void>::value()`
+  returns void and `return void_expr;` is valid in a void-returning
+  function.
+- `runtime/cpp/include/tpy/async.hpp` -- `tpy::async_run` template
+  removed (~30 lines).
+- `tests/cases/generics/generic_func_return_none/` -- new regression
+  test exercising `def drain[T](aw: Awaitable[T]) -> T` with `T=None`
+  via an awaitable returning `Poll[None]`. Locks in `val_or_ref_t<void>`.
+- Snapshot drifts in 22 async tests: call sites changed from
+  `::tpy::async_run(coro)` to `::tpystd::asyncio::run<T>(coro)`.
+
+Workarounds applied (TODOs in code; tied to BUGS entry on
+`Awaitable[T]` rvalue forwarding):
+
+- `_make_executor_owned_task[T](coro: Own[Awaitable[T]])` -- the
+  `Own[]` annotation shifts the param to value-typed emission so
+  forwarding through the TPy local works.
+- `@cpp_template("::tpy::make_executor_owned_task<{T}>(std::move({0}))")`
+  -- explicit `std::move` re-establishes rvalue-ness at the inner
+  call site.
+- `run[T](coro: Own[Awaitable[T]])` -- same annotation propagated
+  outward. API-level: `asyncio.run(coro)` now consumes the coro
+  argument (transfer of ownership), matching the semantic intent.
+
+Behavioural change worth noting: the nested-`asyncio.run` guard moved
+from `tpy_panic` (uncatchable, process-terminating) to a `RuntimeError`
+(catchable TPy exception). Matches CPython's behaviour ("asyncio.run()
+cannot be called from a running event loop" is a `RuntimeError` there).
+The `tests/cases/async/panic_run_reentry/` case was renamed accordingly.
 
 ### Blocked -- stays C++ until compiler features land
 

@@ -42,7 +42,7 @@ void main() {
     // f.set_result(Int32(99))
     f.set_result(99);
     // asyncio.run(main_coro(f))
-    ::tpy::async_run(main_coro(f));
+    ::tpystd::asyncio::run<void>(main_coro(f));
 }
 
 void __tpy_init() {

@@ -28,7 +28,7 @@ __coro_hello hello() {
 // def main() -> None:
 void main() {
     // asyncio.run(hello())
-    ::tpy::async_run(hello());
+    ::tpystd::asyncio::run<void>(hello());
 }
 
 void __tpy_init() {

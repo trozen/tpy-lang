@@ -1075,7 +1075,9 @@ Pending (v1.5): `async with`, `async for`, `gather`, `wait_for`, `asyncio.Event`
 
 Pending (v2+): I/O reactor (epoll on Linux, kqueue on BSD/macOS, IOCP on Windows), `asyncio.Queue`, async generators, `@error_return` async, `__await__` adaptation, multi-thread executor.
 
-v1.1 runtime port: SHIPPED. Executor body + `Task` + `Future` moved from `runtime/cpp/include/tpy/async.hpp` to `lib/tpy/asyncio/_executor.py`, dispatched from C++ via a thread-local `ExecutorOps` function-pointer table. Remaining C++ residual (`Poll<T>` specializations, `current_executor` thread-local `void*`, bridge helpers) is blocked on the compiler items tracked in `BUGS.md` and `TODO.md` (generic-T specializations for value/void/move-only, `@cpp_template` literal-brace escape, `thread_local` storage in TPy). See [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md#v1x-milestone-asyncio-runtime-tpy-port-must-precede-v15) for the phase-by-phase history.
+v1.1 runtime port: SHIPPED. Executor body + `Task` + `Future` moved from `runtime/cpp/include/tpy/async.hpp` to `lib/tpy/asyncio/_executor.py`, dispatched from C++ via a thread-local `ExecutorOps` function-pointer table.
+
+v1.2 step 1: SHIPPED. `val_or_ref_t<void>` specialization unblocked generic `def f[T] -> T` for `T = None`; `asyncio.run` itself ported from a C++ template shell to a pure-TPy generic; `tpy::async_run` template removed. Remaining C++ residual (`Poll<T>` specializations, `make_user_task` / `make_executor_owned_task` / `task_to_any_box` / `make_any_task_for_test` templated factories, `TaskState[T]` / `AnyTaskBox` type-erasure machinery) is blocked on the compiler items tracked in `BUGS.md` and `TODO.md` (generic-T specializations for value/reference/move-only, `Awaitable[T]` rvalue forwarding through TPy locals, `@cpp_template` literal-brace escape, `thread_local` storage in TPy). See [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md#v1x-milestone-asyncio-runtime-tpy-port-must-precede-v15) for the phase-by-phase history.
 
 ### threading
 

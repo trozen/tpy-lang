@@ -79,20 +79,10 @@ class AnyTaskBox:
 
     Wraps a `shared_ptr<AnyTask>` on the C++ side so a spawned task can
     be shared between the user-facing `Task[T]` handle and the
-    executor's slot table. Dropping the user handle leaves the task
-    running; completing the task lets the slot drop its reference while
-    the user's handle continues to observe the cached result.
-
-    The `Executor` slot table holds `list[AnyTaskBox]`. The underlying
-    `AnyTask` instance is constructed by the C++ factories
-    (`make_user_task`, `async_run`'s main-coro spawn) which stay in
-    C++ -- TPy code cannot construct a non-empty AnyTaskBox today.
+    executor's slot table.
 
     TODO(async-v1.2): remove this wrapper once TPy gains a
-    shared-ownership smart pointer; at that point `TaskState[T]` moves
-    to TPy and the slot table holds a @dynamic-protocol adapter
-    directly. The corresponding C++ struct in async.hpp has the
-    matching TODO.
+    shared-ownership smart pointer; `TaskState[T]` moves to TPy then.
     """
     def __init__(self) -> None: ...
 
@@ -185,9 +175,6 @@ class Executor:
         self.timer_heap = []
         self._timer_wakers = {}
         self._next_timer_id = 0
-        # Register this executor type's mark_runnable thunk in the
-        # global ExecutorOps table so Waker::wake() dispatches into us
-        # for any Waker constructed against this executor.
         _register_executor_ops_from(self)
 
     def register_timer(self, deadline: float, waker: Waker) -> None:
@@ -317,25 +304,14 @@ class Executor:
 def _self_handle(executor: Executor) -> ExecutorHandle: ...
 
 
-# Wire Waker::wake() into this executor's mark_runnable via the global
-# ExecutorOps table. Called from Executor.__init__; the C++ helper is
-# templated over the concrete executor type so the table holds a thunk
-# that knows how to cast `void*` back to TPy `Executor*` and dispatch.
-# Idempotent for instances of the same class -- repeated calls set the
-# same function pointer.
+# Wire Waker::wake() into this Executor's mark_runnable via the
+# thread-local ExecutorOps table. Idempotent for a fixed `ExecT`.
 @cpp_template("::tpy::register_executor_ops_from({0})")
 def _register_executor_ops_from(executor: Executor) -> None: ...
 
 
-# Test-only factory for AnyTaskBox. Builds a TaskState<T> on the heap
-# and wraps it without registering with any executor; the resulting
-# box can be spawned on a TPy-side Executor directly. Used by Phase
-# 2.2 tests that drive the TPy executor without going through
-# `asyncio.run`. Production code goes via `asyncio.create_task` (which
-# routes through `make_user_task` and the spawn ops dispatch) or via
-# `asyncio.run` (whose C++ shell uses `make_executor_owned_task` +
-# `task_to_any_box` -- both kept in async.hpp but with no TPy
-# bindings here, since the shell is the only caller).
+# Test-only AnyTaskBox factory: builds a TaskState<T> without executor
+# registration so tests can drive the executor directly.
 @cpp_template("::tpy::make_any_task_for_test<{T}>({0})")
 def _make_any_task_for_test[T](coro: Awaitable[T]) -> Own[AnyTaskBox]: ...
 

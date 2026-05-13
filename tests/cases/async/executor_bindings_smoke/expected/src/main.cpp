@@ -90,14 +90,14 @@ void check_teardown() {
     // # _ExecutorScope.__del__ has fired, clearing it (and clearing the
     // # ExecutorOps table). Direct evidence that the RAII teardown ran.
     // asyncio.run(trivial())
-    ::tpy::async_run(trivial());
+    ::tpystd::asyncio::run<void>(trivial());
     // print("after run, null?", _get_current_executor().is_null())
     std::cout << "after run, null?" << " " << ::tpy::print_bool(::tpy::current_executor_get().is_null()) << "\n";
     // # A second asyncio.run is allowed because the thread-local was
     // # cleared (re-entry into a running event loop is what gets
     // # rejected; back-to-back runs are fine).
     // asyncio.run(trivial())
-    ::tpy::async_run(trivial());
+    ::tpystd::asyncio::run<void>(trivial());
     // print("second run completed, null?", _get_current_executor().is_null())
     std::cout << "second run completed, null?" << " " << ::tpy::print_bool(::tpy::current_executor_get().is_null()) << "\n";
 }
@@ -111,7 +111,7 @@ void main() {
     // check_sleep()
     check_sleep();
     // asyncio.run(check_inside())
-    ::tpy::async_run(check_inside());
+    ::tpystd::asyncio::run<void>(check_inside());
     // check_teardown()
     check_teardown();
 }
