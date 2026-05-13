@@ -13,7 +13,7 @@ from ..typesys import (
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
     PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, unwrap_qualifiers, is_any_int_type,
-
+    RecordInfo,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
@@ -639,6 +639,23 @@ class MethodAnalyzer:
                     self.ctx.set_expr_type(expr, result)
                     return result
 
+        # Module-qualified static method call: m.Foo.method() or pkg.sub.Foo.method().
+        # Receiver shape is TpyFieldAccess(<module-chain>, ClassName); none of the
+        # other TpyFieldAccess branches recognise it because the inner is a module
+        # binding (not a record chain) and the leaf is a class (not a function).
+        # `user_module_call` is only set for the static-method dispatch -- the
+        # unbound-self path (BaseN.method(self, ...)) uses `this->Parent::method`
+        # codegen that doesn't go through the module-qualified namespace.
+        if isinstance(expr.obj, TpyFieldAccess):
+            resolved = self._try_resolve_module_qualified_class(expr.obj)
+            if resolved is not None:
+                module_name, _class_short, record_info = resolved
+                result = self._dispatch_static_method_call(expr, record_info)
+                if result is not None:
+                    if expr.is_static_call:
+                        expr.user_module_call = module_name
+                    return result
+
         # Dotted module access: X.Y.func(), X.Y.Z.func(), etc.
         if isinstance(expr.obj, TpyFieldAccess):
             dotted_name = self._try_resolve_dotted_module(expr.obj)
@@ -950,10 +967,17 @@ class MethodAnalyzer:
 
         if record_info is None:
             return None
+        return self._dispatch_static_method_call(expr, record_info)
 
-        # Walk record_info's MRO: inherited instance methods resolve for the
-        # BaseN.method(self, ...) form, and inherited static methods keep the
-        # long-standing static-call path.
+    def _dispatch_static_method_call(
+        self, expr: TpyMethodCall, record_info: RecordInfo,
+    ) -> TpyType | None:
+        """Dispatch a staticmethod / unbound-self call on a pre-resolved record.
+
+        Walks MRO, distinguishes static from unbound-self, handles generic
+        class / method type args. Shared by bare-name (`Foo.method()`) and
+        module-qualified (`m.Foo.method()`) receivers.
+        """
         overloads = self.ctx.registry.get_method_overloads_with_parents(
             record_info, expr.method)
         if not overloads:
@@ -978,6 +1002,31 @@ class MethodAnalyzer:
         return_type = self._resolve_and_check_args(expr, overloads, {})
         expr.is_static_call = True
         return return_type
+
+    def _try_resolve_module_qualified_class(
+        self, obj: TpyFieldAccess,
+    ) -> tuple[str, str, RecordInfo] | None:
+        """Resolve `obj` as `<module-chain>.ClassName` to (module_name, class_short, record_info).
+
+        Handles both single-segment module references (`TpyName(m).Class`) and
+        dotted-segment ones (`TpyFieldAccess(pkg.sub).Class`). Returns None when
+        the inner receiver isn't a module binding or the named class isn't
+        registered in that module.
+        """
+        class_short = obj.field
+        if isinstance(obj.obj, TpyName):
+            module_name = self._resolve_module_name(obj.obj.name)
+        elif isinstance(obj.obj, TpyFieldAccess):
+            module_name = self._try_resolve_dotted_module(obj.obj)
+        else:
+            return None
+        if module_name is None:
+            return None
+        record_info = self.ctx.registry.find_record_by_qname(
+            f"{module_name}.{class_short}")
+        if record_info is None:
+            return None
+        return (module_name, class_short, record_info)
 
     def _analyze_unbound_self_method_call(
         self, expr: TpyMethodCall, record_info, overloads: list[FunctionInfo],

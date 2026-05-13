@@ -2858,6 +2858,38 @@ class ExpressionGenerator:
         else:
             args = ", ".join(self.gen_expr_deref(a) for a in expr.args)
 
+        # Module-qualified static method call: m.Foo.method() or pkg.sub.Foo.method().
+        # Sema sets is_static_call AND user_module_call together with a
+        # TpyFieldAccess receiver (the leaf field is the class short name);
+        # render as `<module_cpp>::Class::method(args)` so the C++ name is
+        # fully qualified through the module namespace, not just the class.
+        if (expr.is_static_call and expr.user_module_call is not None
+                and isinstance(expr.obj, TpyFieldAccess)):
+            fi = expr.resolved_function_info
+            class_short = expr.obj.field
+            if fi and fi.cpp_template:
+                gen_args = [self.gen_expr(arg) for arg in expr.args]
+                return self.builtins.gen_call_from_fi(
+                    fi, None, gen_args, type_args=expr.inferred_type_args)
+            record_info = self.ctx.analyzer.registry.find_record_by_qname(
+                f"{expr.user_module_call}.{class_short}")
+            if record_info and record_info.is_native and record_info.native_name:
+                cpp_class = record_info.native_name
+            else:
+                cpp_class = qualified_cpp_name(expr.user_module_call, class_short)
+            cpp_method = fi.native_name if fi and fi.native_name else escape_cpp_name(expr.method)
+            static_method_targs = ""
+            if expr.inferred_type_args:
+                n_class = len(record_info.type_params) if record_info and record_info.type_params else 0
+                class_args = expr.inferred_type_args[:n_class]
+                method_args = expr.inferred_type_args[n_class:]
+                if class_args:
+                    type_args_str = ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in class_args)
+                    cpp_class = f"{cpp_class}<{type_args_str}>"
+                if method_args:
+                    static_method_targs = "<" + ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in method_args) + ">"
+            return f"{cpp_class}::{cpp_method}{static_method_targs}({args})"
+
         # Handle user module function calls: module.func() -> ::tpyapp::module::func()
         if expr.user_module_call is not None:
             fi = expr.resolved_function_info
@@ -3321,8 +3353,58 @@ class ExpressionGenerator:
                         or registry.get_enum(dotted) is not None)
             return False
         if isinstance(node, TpyFieldAccess):
+            # Module-qualified class chain: `m.Foo` or `pkg.sub.Foo` names a
+            # static type even though the head (`m` or `pkg.sub`) is a module
+            # binding, not a type. Try resolving the chain leading to `node`
+            # as a module name; if the leaf field is a record in that module,
+            # the chain names a static type.
+            module_name = self._chain_to_module_name(node.obj)
+            if module_name is not None:
+                if self.ctx.analyzer.registry.find_module_record(
+                        module_name, node.field) is not None:
+                    return True
             return self._is_static_type_chain(node.obj)
         return False
+
+    def _chain_to_module_name(self, node: TpyExpr) -> str | None:
+        """Walk a TpyName/TpyFieldAccess chain looking for a module binding.
+
+        Returns the registered module name (e.g. "factory", "pkg.sub") when the
+        chain resolves to one, else None. Used by `_is_static_type_chain` to
+        recognise module-qualified class references like `m.Foo` or
+        `pkg.sub.Foo` as static-type heads.
+
+        Accepts both the explicitly-bound `import m` form (MODULE binding for
+        `m`) and the dotted `import pkg.sub` form, where `pkg` is unbound but
+        `pkg.sub` is registered in the module registry -- mirrors the sema-
+        side `_try_resolve_dotted_module` walk.
+        """
+        if isinstance(node, TpyName):
+            if not self.ctx.current_ns:
+                return None
+            binding = self.ctx.current_ns.lookup(node.name)
+            if binding is None:
+                # Mirror sema's `_try_resolve_dotted_module`: unbound is only
+                # acceptable when the name actually resolves as a registered
+                # module. Without this gate, any unbound identifier would be
+                # treated as a static-type chain head and suppress the
+                # receiver-eval that should run on a runtime expression.
+                if self.ctx.analyzer.registry.get_module(node.name) is not None:
+                    return node.name
+                return None
+            if binding.kind == BindingKind.MODULE:
+                return (binding.import_source[0]
+                        if binding.import_source else node.name)
+            return None
+        if isinstance(node, TpyFieldAccess):
+            head = self._chain_to_module_name(node.obj)
+            if head is None:
+                return None
+            dotted = f"{head}.{node.field}"
+            if self.ctx.analyzer.registry.get_module(dotted) is not None:
+                return dotted
+            return None
+        return None
 
     def _class_constant_access_parts(self, expr: TpyFieldAccess) -> tuple[str | None, str]:
         """Return (receiver_eval, qualified) for a class-constant access.

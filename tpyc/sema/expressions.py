@@ -1608,6 +1608,14 @@ class ExpressionAnalyzer:
                     f"{import_info[0]}.{import_info[1]}")
         if record_info is None:
             return None
+        return self._class_constant_access_on_record(expr, record_info)
+
+    def _class_constant_access_on_record(
+        self, expr: TpyFieldAccess, record_info: RecordInfo,
+    ) -> TpyType | None:
+        """Class-constant resolution given a pre-resolved record. Shared by the
+        bare-name path (`Foo.CONST`) and the module-qualified path
+        (`m.Foo.CONST`)."""
         # Phase 9: bare-class access on a generic class can't render the
         # parameterized qname (no type args at the access site), so reject
         # and point the user at instance access. `Class[Int32].X` syntax
@@ -1727,6 +1735,18 @@ class ExpressionAnalyzer:
                     class_const = self._try_class_constant_access(expr, binding)
                     if class_const is not None:
                         return class_const
+
+        # Module-qualified class member access: m.Foo.CONST, pkg.sub.Foo.CONST.
+        # Mirrors the method-call dispatcher's _try_resolve_module_qualified_class.
+        # Codegen reads class_constant_owner (set inside the helper) to emit the
+        # full C++ qname; the syntactic receiver shape doesn't matter from there.
+        if isinstance(expr.obj, TpyFieldAccess):
+            resolved = self.methods._try_resolve_module_qualified_class(expr.obj)
+            if resolved is not None:
+                _module_name, _class_short, record_info = resolved
+                class_const = self._class_constant_access_on_record(expr, record_info)
+                if class_const is not None:
+                    return class_const
 
         # `import pkg.sub` + `pkg.sub.X`: walk the chain to recover a dotted
         # module name and treat the leaf as a variable on that module.
