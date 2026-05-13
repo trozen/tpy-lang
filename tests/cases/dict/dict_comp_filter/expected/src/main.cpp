@@ -16,7 +16,7 @@ void main() {
                 __result.insert_or_assign(x, (::tpy::mul_check<int32_t>(x, x)));
             }
         }
-        __result;
+        std::move(__result);
     });
     // for k in evens:
     auto& __obj_1 = evens;
@@ -44,7 +44,7 @@ void main() {
                 __result.insert_or_assign(k, v);
             }
         }
-        __result;
+        std::move(__result);
     });
     // for k in big:
     auto& __obj_3 = big;

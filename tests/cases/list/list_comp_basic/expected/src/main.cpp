@@ -15,7 +15,7 @@ void main() {
         for (int32_t x = 0; x < __stop_0; ++x) {
             __result.push_back((::tpy::mul_check<int32_t>(x, x)));
         }
-        __result;
+        std::move(__result);
     });
     // print(squares)
     std::cout << ::tpy::ListPrinter(squares) << "\n";
@@ -33,7 +33,7 @@ void main() {
             int32_t x = *__beg_1;
             __result.push_back(x);
         }
-        __result;
+        std::move(__result);
     });
     // print(copy)
     std::cout << ::tpy::ListPrinter(copy) << "\n";
@@ -49,7 +49,7 @@ void main() {
         for (int32_t x = __start_2; x < __stop_3; ++x) {
             __result.push_back(x);
         }
-        __result;
+        std::move(__result);
     });
     // print(shifted)
     std::cout << ::tpy::ListPrinter(shifted) << "\n";
@@ -67,7 +67,7 @@ void main() {
             const auto& p = *__beg_4;
             __result.push_back(p.x);
         }
-        __result;
+        std::move(__result);
     });
     // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
@@ -80,7 +80,7 @@ void main() {
         for (int32_t x = 0; x < __stop_5; ++x) {
             __result.push_back((::tpy::add_check<int32_t>(x, 1)));
         }
-        __result;
+        std::move(__result);
     })) << "\n";
     // # String comprehension
     // words: list[str] = ["hello", "world"]
@@ -96,7 +96,7 @@ void main() {
             const std::string& w = *__beg_6;
             __result.push_back(::tpy::fixed_to_str<int32_t>(::tpy::__len__(w)));
         }
-        __result;
+        std::move(__result);
     });
     // print(upper)
     std::cout << ::tpy::ListPrinter(upper) << "\n";
@@ -116,7 +116,7 @@ void main() {
             int32_t x = *__beg_7;
             __result.push_back(x);
         }
-        __result;
+        std::move(__result);
     });
     // print(stepped)
     std::cout << ::tpy::ListPrinter(stepped) << "\n";
@@ -132,7 +132,7 @@ std::vector<int32_t> make_list(int32_t n) {
         for (int32_t x = 0; x < __stop_0; ++x) {
             __result.push_back((::tpy::mul_check<int32_t>(x, 10)));
         }
-        __result;
+        std::move(__result);
     });
 }
 

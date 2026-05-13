@@ -20,7 +20,7 @@ void main() {
             std::string k = std::get<0>(__tup_1);
             __result.insert(k);
         }
-        __result;
+        std::move(__result);
     });
     // print(len(names))
     std::cout << ::tpy::__len__(names) << "\n";
@@ -44,7 +44,7 @@ void main() {
             int32_t v = std::get<1>(__tup_2);
             __result.insert(v);
         }
-        __result;
+        std::move(__result);
     });
     // print(len(vals))
     std::cout << ::tpy::__len__(vals) << "\n";

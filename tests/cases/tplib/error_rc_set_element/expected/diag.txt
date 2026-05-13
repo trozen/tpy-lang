@@ -1,0 +1,1 @@
+main.py:27: error: Type 'Rc[Key]' cannot be used as a dict key (requires @dataclass(frozen=True) for __hash__ support)

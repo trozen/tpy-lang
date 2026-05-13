@@ -92,6 +92,23 @@ When to reach for each:
   both lower to `T*` at borrow positions, and storage-form Optional
   sources are lifted automatically when flowing into `Ptr[T]` slots.
 
+### tplib at a glance
+
+`tplib` ships TPy-native types that are too project-specific for the
+language but common enough to standardize. Import as `from tplib import X`.
+
+| Type | Use when |
+|------|----------|
+| `Box[T]` | You need a heap-allocated owning container -- e.g. recursive types, or oversized records you don't want stack-stored. Single owner. |
+| `Rc[T]` | You need shared ownership (multiple owners of the same value, possibly with shared mutation). `@nocopy`; share via `.clone()`. Construct with `Rc.new(value)`. |
+| `Weak[T]` | Non-owning companion to `Rc[T]`; breaks reference cycles. `from tplib.rc import Weak`. Mint via `rc.downgrade()`; recover a strong handle (or `None`) via `weak.upgrade()`. |
+| `ArrayList[T, N]` | Fixed-capacity list with stack-allocated storage -- avoids heap allocation when the upper bound is known. |
+| `FixStr[N]` | Fixed-capacity string with stack-allocated storage. |
+| `tplib.json` | JSON decoding/encoding via a `@model` class macro. |
+
+For full details (semantics, tradeoffs, current rough edges), see
+`LANGUAGE_FEATURES.md`.
+
 ---
 
 ## 4. Integer conventions

@@ -49,7 +49,7 @@ namespace tpyapp::main {
         for (int32_t _ = 0; _ < __stop_0; ++_) {
             __result.insert_or_assign(std::string(label), std::string(label));
         }
-        __result;
+        std::move(__result);
     });
 }
 

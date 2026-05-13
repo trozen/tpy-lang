@@ -14,7 +14,7 @@ void main() {
         for (int32_t x = 0; x < __stop_0; ++x) {
             __result.insert((::tpy::mul_check<int32_t>(x, x)));
         }
-        __result;
+        std::move(__result);
     });
     // for v in squares:
     auto& __obj_1 = squares;
@@ -38,7 +38,7 @@ void main() {
             int32_t x = *__beg_2;
             __result.insert(x);
         }
-        __result;
+        std::move(__result);
     });
     // print(len(unique))
     std::cout << ::tpy::__len__(unique) << "\n";
@@ -55,7 +55,7 @@ void main() {
             const std::string& n = *__beg_3;
             __result.insert(n);
         }
-        __result;
+        std::move(__result);
     });
     // print(len(name_set))
     std::cout << ::tpy::__len__(name_set) << "\n";
@@ -68,7 +68,7 @@ void main() {
         for (int32_t x = __start_4; x < __stop_5; ++x) {
             __result.insert(x);
         }
-        __result;
+        std::move(__result);
     });
     // for v in r2:
     auto& __obj_6 = r2;

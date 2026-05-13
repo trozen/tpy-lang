@@ -67,7 +67,7 @@ void __tpy_init() {
             const std::string& x = *__beg_0;
             __result.push_back(::tpy::__len__(x));
         }
-        __result;
+        std::move(__result);
     });
     r1 = &__global_slot_2;
     // # Set comprehension
@@ -81,7 +81,7 @@ void __tpy_init() {
             const std::string& x = *__beg_1;
             __result.insert(::tpy::__len__(x));
         }
-        __result;
+        std::move(__result);
     });
     r2 = &__global_slot_3;
     // # Dict comprehension
@@ -95,7 +95,7 @@ void __tpy_init() {
             const std::string& x = *__beg_2;
             __result.insert_or_assign(x, ::tpy::__len__(x));
         }
-        __result;
+        std::move(__result);
     });
     r3 = &__global_slot_4;
     // # Generator expression
@@ -104,7 +104,7 @@ void __tpy_init() {
         [__src = std::vector<std::string>({"a", "bb", "ccc"}), __started = false, __beg = std::vector<std::string>::iterator(), __end = std::vector<std::string>::iterator()]() mutable -> std::optional<int32_t> {
             if (!__started) { __beg = __src.begin(); __end = __src.end(); __started = true; }
             while (__beg != __end) {
-                std::string x = *__beg++;
+                const std::string& x = *__beg++;
                 return std::optional<int32_t>(::tpy::__len__(x));
             }
             return std::nullopt;
@@ -125,7 +125,7 @@ void __tpy_init() {
                 __result.push_back(::tpy::__len__(x));
             }
         }
-        __result;
+        std::move(__result);
     });
     r5 = &__global_slot_6;
     // # Range-based (original bug repro from TODO)
@@ -137,7 +137,7 @@ void __tpy_init() {
         for (int32_t x = 0; x < __stop_4; ++x) {
             __result.push_back((::tpy::mul_check<int32_t>(x, x)));
         }
-        __result;
+        std::move(__result);
     });
     r6 = &__global_slot_7;
     // # Array comprehension path (range-based, promotes to std::array)
@@ -147,7 +147,7 @@ void __tpy_init() {
         for (int32_t x = 0; x < 5; ++x) {
             __result[static_cast<std::size_t>(x)] = ::tpy::BigInt((::tpy::mul_check<int32_t>(x, x)));
         }
-        __result;
+        std::move(__result);
     });
     r7 = &__global_slot_8;
     // main()

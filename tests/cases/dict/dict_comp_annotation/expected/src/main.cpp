@@ -19,7 +19,7 @@ void main() {
             int32_t x = *__beg_0;
             __result.insert_or_assign(::tpy::BigInt(x), ::tpy::BigInt((::tpy::mul_check<int32_t>(x, x))));
         }
-        __result;
+        std::move(__result);
     });
     // for k in widened:
     auto& __obj_1 = widened;
@@ -38,7 +38,7 @@ void main() {
         for (int32_t x = 0; x < __stop_2; ++x) {
             __result.insert_or_assign(x, static_cast<int64_t>((::tpy::mul_check<int32_t>(x, 2))));
         }
-        __result;
+        std::move(__result);
     });
     // for k in wide64:
     auto& __obj_3 = wide64;

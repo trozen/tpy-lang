@@ -16,7 +16,7 @@ void main() {
                 __result.insert(x);
             }
         }
-        __result;
+        std::move(__result);
     });
     // for v in evens:
     auto& __obj_1 = evens;
@@ -42,7 +42,7 @@ void main() {
                 __result.insert(w);
             }
         }
-        __result;
+        std::move(__result);
     });
     // print(len(long_words))
     std::cout << ::tpy::__len__(long_words) << "\n";

@@ -69,7 +69,7 @@ void main() {
         return ::tpy::make_generator<std::string>(
             [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::string> {
                 while (__beg != __end) {
-                    std::string w = *__beg++;
+                    const std::string& w = *__beg++;
                     return std::optional<std::string>(::tpy::str_upper(w));
                 }
                 return std::nullopt;

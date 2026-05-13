@@ -20,7 +20,7 @@ void main() {
             const auto& item = *__beg_0;
             __result.push_back((((item.has_value())) ? ((*item).x) : (-1)));
         }
-        __result;
+        std::move(__result);
     });
     // print(xs)
     std::cout << ::tpy::ListPrinter(xs) << "\n";
@@ -36,7 +36,7 @@ void main() {
             const auto& item = *__beg_1;
             __result.push_back((((item.has_value())) ? (::tpy::repr_of(item)) : ("none")));
         }
-        __result;
+        std::move(__result);
     });
     // print(reprs)
     std::cout << ::tpy::ListPrinter(reprs) << "\n";

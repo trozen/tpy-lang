@@ -37,7 +37,7 @@ void main() {
             int32_t x = *__beg_0;
             __result.push_back((::tpy::mul_check<int32_t>(x, 2)));
         }
-        __result;
+        std::move(__result);
     });
     // print(doubled)
     std::cout << ::tpy::ListPrinter(doubled) << "\n";
@@ -52,7 +52,7 @@ void main() {
             int32_t x = *__beg_1;
             __result.insert((::tpy::div_floor<int32_t>(x, 10)));
         }
-        __result;
+        std::move(__result);
     });
     // print(len(unique))
     std::cout << ::tpy::__len__(unique) << "\n";

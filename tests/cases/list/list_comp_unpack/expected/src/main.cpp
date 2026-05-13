@@ -22,7 +22,7 @@ void main() {
             int32_t v = std::get<1>(__tup_1);
             __result.push_back(v);
         }
-        __result;
+        std::move(__result);
     });
     // print(values)
     std::cout << ::tpy::ListPrinter(values) << "\n";
@@ -39,7 +39,7 @@ void main() {
             int32_t v = std::get<1>(__tup_2);
             __result.push_back(k);
         }
-        __result;
+        std::move(__result);
     });
     // print(keys)
     std::cout << ::tpy::ListPrinter(keys) << "\n";
@@ -59,7 +59,7 @@ void main() {
             int32_t v = std::get<1>(__tup_3);
             __result.push_back((::tpy::mul_check<int32_t>(v, 2)));
         }
-        __result;
+        std::move(__result);
     });
     // print(doubled)
     std::cout << ::tpy::ListPrinter(doubled) << "\n";
@@ -79,7 +79,7 @@ void main() {
                 __result.push_back(k);
             }
         }
-        __result;
+        std::move(__result);
     });
     // print(big_keys)
     std::cout << ::tpy::ListPrinter(big_keys) << "\n";
@@ -97,7 +97,7 @@ void main() {
             int32_t v = std::get<1>(__tup_5);
             __result.push_back((::tpy::str_concat((::tpy::str_concat(k, "=")), ::tpy::fixed_to_str<int32_t>(v))));
         }
-        __result;
+        std::move(__result);
     });
     // print(labels)
     std::cout << ::tpy::ListPrinter(labels) << "\n";
@@ -114,7 +114,7 @@ void main() {
             int32_t v = std::get<1>(__tup_6);
             __result.push_back(v);
         }
-        __result;
+        std::move(__result);
     });
     // print(vals_only)
     std::cout << ::tpy::ListPrinter(vals_only) << "\n";
@@ -134,7 +134,7 @@ void main() {
                 __result.push_back(v);
             }
         }
-        __result;
+        std::move(__result);
     });
     // print(filtered)
     std::cout << ::tpy::ListPrinter(filtered) << "\n";
@@ -153,7 +153,7 @@ void main() {
             int32_t n = std::get<1>(__tup_8);
             __result.push_back(n);
         }
-        __result;
+        std::move(__result);
     });
     // print(middle)
     std::cout << ::tpy::ListPrinter(middle) << "\n";
@@ -170,7 +170,7 @@ void main() {
             bool b = std::get<2>(__tup_9);
             __result.push_back((::tpy::str_concat((::tpy::str_concat(s, ":")), std::string(::tpy::bool_to_str(b)))));
         }
-        __result;
+        std::move(__result);
     });
     // print(first_and_last)
     std::cout << ::tpy::ListPrinter(first_and_last) << "\n";
@@ -189,7 +189,7 @@ void main() {
             const auto& p = std::get<1>(__tup_10);
             __result.push_back(p);
         }
-        __result;
+        std::move(__result);
     });
     // print(pts[0].x)
     std::cout << ::tpy::__getitem__(pts, 0).x << "\n";

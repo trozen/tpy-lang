@@ -117,8 +117,10 @@ class Rc[T](Deref[T]):
         return Weak[T](self._cell)
 
     # Content equality and ordering: delegate to T. Matches Box and Rust's
-    # `Rc<T>::eq` (content, not identity). Identity comparison stays
-    # available via `is`.
+    # `Rc<T>::eq` (content, not identity). TPy's `is` is currently restricted
+    # to None/enum/bool comparisons, so cell-pointer identity ("do these two
+    # handles share the same allocation?") is not yet expressible at the TPy
+    # surface; see BUGS.md for the gap.
     def __str__(self) -> str:
         return f"Rc({self.get()})"
 

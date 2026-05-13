@@ -21,7 +21,7 @@ void main() {
             int32_t v = std::get<1>(__tup_1);
             __result.insert_or_assign(k, (::tpy::mul_check<int32_t>(v, 2)));
         }
-        __result;
+        std::move(__result);
     });
     // for k in doubled:
     auto& __obj_1 = doubled;
@@ -47,7 +47,7 @@ void main() {
             int32_t v = std::get<1>(__tup_2);
             __result.insert_or_assign(k, v);
         }
-        __result;
+        std::move(__result);
     });
     // print(result["x"])
     std::cout << ::tpy::__getitem__(result, "x") << "\n";
@@ -68,7 +68,7 @@ void main() {
             int32_t v = std::get<1>(__tup_3);
             __result.insert_or_assign(v, k);
         }
-        __result;
+        std::move(__result);
     });
     // print(swapped[3])
     std::cout << ::tpy::__getitem__(swapped, 3) << "\n";

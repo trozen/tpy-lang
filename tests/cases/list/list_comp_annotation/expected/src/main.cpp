@@ -19,7 +19,7 @@ std::vector<::tpy::BigInt> make_bigints() {
             int32_t x = *__beg_0;
             __result.push_back(::tpy::BigInt(x));
         }
-        __result;
+        std::move(__result);
     });
 }
 
@@ -45,7 +45,7 @@ void main() {
             int32_t x = *__beg_0;
             __result.push_back(::tpy::BigInt(x));
         }
-        __result;
+        std::move(__result);
     });
     // print(big)
     std::cout << ::tpy::ListPrinter(big) << "\n";
@@ -61,7 +61,7 @@ void main() {
             int32_t x = *__beg_1;
             __result.push_back(static_cast<int64_t>(x));
         }
-        __result;
+        std::move(__result);
     });
     // print(wide)
     std::cout << ::tpy::ListPrinter(wide) << "\n";
@@ -82,7 +82,7 @@ void main() {
             int32_t x = *__beg_2;
             __result.push_back(::tpy::BigInt((::tpy::mul_check<int32_t>(x, 2))));
         }
-        __result;
+        std::move(__result);
     });
     // print(doubled)
     std::cout << ::tpy::ListPrinter(doubled) << "\n";
@@ -100,7 +100,7 @@ void main() {
                 __result.push_back(::tpy::BigInt(x));
             }
         }
-        __result;
+        std::move(__result);
     });
     // print(big_pos)
     std::cout << ::tpy::ListPrinter(big_pos) << "\n";
@@ -116,7 +116,7 @@ void main() {
             int32_t x = *__beg_4;
             __result.push_back(static_cast<int64_t>(x));
         }
-        __result;
+        std::move(__result);
     });
     accept_wide(__tmp_1);
     // # No annotation: element type inferred from iterable (no coercion)
@@ -131,7 +131,7 @@ void main() {
             int32_t x = *__beg_5;
             __result.push_back((::tpy::add_check<int32_t>(x, 1)));
         }
-        __result;
+        std::move(__result);
     });
     // print(same)
     std::cout << ::tpy::ListPrinter(same) << "\n";

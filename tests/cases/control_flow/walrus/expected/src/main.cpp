@@ -176,7 +176,7 @@ void test_comprehension_walrus() {
                 __result.push_back(y);
             }
         }
-        __result;
+        std::move(__result);
     });
     // print(filtered)
     std::cout << ::tpy::ListPrinter(filtered) << "\n";

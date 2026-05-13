@@ -19,7 +19,7 @@ void main() {
             int32_t x = *__beg_0;
             __result.insert(static_cast<int64_t>(x));
         }
-        __result;
+        std::move(__result);
     });
     // for v in wide:
     auto& __obj_1 = wide;
@@ -38,7 +38,7 @@ void main() {
         for (int32_t x = 0; x < __stop_2; ++x) {
             __result.insert(::tpy::BigInt((::tpy::mul_check<int32_t>(x, x))));
         }
-        __result;
+        std::move(__result);
     });
     // for v in big:
     auto& __obj_3 = big;

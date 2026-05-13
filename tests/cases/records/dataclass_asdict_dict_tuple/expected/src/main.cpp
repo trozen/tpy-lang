@@ -21,7 +21,7 @@ void main() {
             const auto& __macro_2 = std::get<1>(__tup_1);
             __result.insert_or_assign(__macro_1, ::tpy::ordered_map<std::string, int32_t>({{"x", __macro_2.x}, {"y", __macro_2.y}}));
         }
-        __result;
+        std::move(__result);
     })}})) << "\n";
     // # asdict: tuple with DC element
     // t = TupleOfDC((Point(Int32(1), Int32(2)), Int32(42)))
@@ -48,7 +48,7 @@ void main() {
             const auto& __macro_2 = std::get<1>(__tup_2);
             __result.insert_or_assign(__macro_1, std::tuple<int32_t, int32_t>{__macro_2.x, __macro_2.y});
         }
-        __result;
+        std::move(__result);
     }))) << "\n";
     // # astuple: tuple with DC element
     // t3 = TupleOfDC((Point(Int32(1), Int32(2)), Int32(42)))

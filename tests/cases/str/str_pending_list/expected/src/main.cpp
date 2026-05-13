@@ -60,7 +60,7 @@ std::vector<std::string> in_list_comp() {
         for (int32_t _ = 0; _ < __stop_0; ++_) {
             __result.push_back(std::string(label));
         }
-        __result;
+        std::move(__result);
     });
 }
 

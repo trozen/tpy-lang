@@ -14,7 +14,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, RecordInfo,
     NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, AnyType, OptionalType, UnionType, VoidType,
-    ReadonlyType, unwrap_readonly, is_any_str_type, PendingStrType, PendingViewType,
+    ReadonlyType, unwrap_readonly, unwrap_qualifiers, is_any_str_type, PendingStrType, PendingViewType,
     is_any_bytes_type, PendingBytesType,
     make_union,
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
@@ -2853,11 +2853,23 @@ class ExpressionAnalyzer:
         elem_type: TpyType,
         hint: TpyType | tuple[TpyType | None, TpyType | None] | None,
     ) -> TpyType | tuple[TpyType, TpyType]:
-        # Comprehension loop vars are never mutated -- use const ref for
-        # non-value types and expensive-to-copy value types (str, BigInt).
-        unwrapped = unwrap_readonly(elem_type)
-        if not unwrapped.is_value_type() or unwrapped.is_expensive_copy():
-            gen.const_loop_var = True
+        # unwrap_qualifiers (not unwrap_readonly) so a wrapped value-type
+        # element still counts as value-type, matching the for-loop predicate
+        # in sema/statements.py.
+        unwrapped = unwrap_qualifiers(elem_type)
+        worth_const_ref = (not unwrapped.is_value_type()
+                           or unwrapped.is_expensive_copy())
+        if gen.unpack_vars is not None:
+            names = [u for u in gen.unpack_vars if u is not None]
+        else:
+            names = [gen.var]
+        # Clear any prior marks in case an outer scope already used these
+        # names; the post-body check at the bottom must see only marks from
+        # this comp's body.
+        for n in names:
+            self.ctx.func.mutated_loop_vars.discard(n)
+            self.ctx.func.consumed_loop_vars.discard(n)
+
         with self.scopes.comprehension_scope() as inner_scope:
             if gen.unpack_vars is not None:
                 if not isinstance(elem_type, TupleType):
@@ -2872,12 +2884,17 @@ class ExpressionAnalyzer:
                         if uvar is not None:
                             stack.enter_context(
                                 self.scopes.loop_var(inner_scope, uvar, utype,
-                                                     inner_scope.depth, is_foreach=False))
-                    return self._analyze_comp_body(gen, expr, hint)
+                                                     inner_scope.depth, is_foreach=True))
+                    result = self._analyze_comp_body(gen, expr, hint)
             else:
                 with self.scopes.loop_var(inner_scope, gen.var, elem_type,
-                                          inner_scope.depth, is_foreach=False):
-                    return self._analyze_comp_body(gen, expr, hint)
+                                          inner_scope.depth, is_foreach=True):
+                    result = self._analyze_comp_body(gen, expr, hint)
+
+        if worth_const_ref and not any(n in self.ctx.func.mutated_loop_vars
+                                       for n in names):
+            gen.const_loop_var = True
+        return result
 
     def _analyze_comp_body(
         self,

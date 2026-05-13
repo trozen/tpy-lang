@@ -22,7 +22,7 @@ void main() {
                 __result.push_back(x);
             }
         }
-        __result;
+        std::move(__result);
     });
     // print(pos)
     std::cout << ::tpy::ListPrinter(pos) << "\n";
@@ -37,7 +37,7 @@ void main() {
                 __result.push_back((::tpy::mul_check<int32_t>(x, x)));
             }
         }
-        __result;
+        std::move(__result);
     });
     // print(evens)
     std::cout << ::tpy::ListPrinter(evens) << "\n";
@@ -52,7 +52,7 @@ void main() {
                 __result.push_back(x);
             }
         }
-        __result;
+        std::move(__result);
     });
     // print(result)
     std::cout << ::tpy::ListPrinter(result) << "\n";
@@ -72,7 +72,7 @@ void main() {
                 __result.push_back(w);
             }
         }
-        __result;
+        std::move(__result);
     });
     // print(short)
     std::cout << ::tpy::ListPrinter(short_) << "\n";

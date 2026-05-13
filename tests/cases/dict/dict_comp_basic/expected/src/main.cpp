@@ -14,7 +14,7 @@ void main() {
         for (int32_t x = 0; x < __stop_0; ++x) {
             __result.insert_or_assign(x, (::tpy::mul_check<int32_t>(x, x)));
         }
-        __result;
+        std::move(__result);
     });
     // for k in squares:
     auto& __obj_1 = squares;
@@ -38,7 +38,7 @@ void main() {
             const std::string& n = *__beg_2;
             __result.insert_or_assign(n, ::tpy::__len__(n));
         }
-        __result;
+        std::move(__result);
     });
     // print(name_lens["alice"])
     std::cout << ::tpy::__getitem__(name_lens, "alice") << "\n";
@@ -61,7 +61,7 @@ void main() {
             int32_t v = std::get<1>(__tup_1);
             __result.insert_or_assign(k, v);
         }
-        __result;
+        std::move(__result);
     });
     // print(copy["a"])
     std::cout << ::tpy::__getitem__(copy, "a") << "\n";
@@ -76,7 +76,7 @@ void main() {
         for (int32_t x = __start_4; x < __stop_5; ++x) {
             __result.insert_or_assign(x, (::tpy::add_check<int32_t>(x, 10)));
         }
-        __result;
+        std::move(__result);
     });
     // for k in r2:
     auto& __obj_6 = r2;

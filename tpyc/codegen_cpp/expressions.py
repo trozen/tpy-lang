@@ -4090,7 +4090,7 @@ class ExpressionGenerator:
                 buf.write(f"{ind2}__result[__idx_{n}] = {insert_code};\n")
 
             buf.write(f"{ind1}}}\n")
-            buf.write(f"{ind1}__result;\n")
+            buf.write(f"{ind1}std::move(__result);\n")
             buf.write(f"{stmt_ind}}})")
 
             return buf.getvalue()
@@ -4211,11 +4211,10 @@ class ExpressionGenerator:
             if gen.unpack_vars is not None:
                 self._emit_inline_tuple_unpack(
                     buf, gen, sema_elem, ind3i, source_expr="*__beg++")
-            elif sema_elem.is_value_type():
-                cpp_iter_elem = sema_elem.to_cpp()
-                buf.write(f"{ind3i}{cpp_iter_elem} {cpp_var} = *__beg++;\n")
             else:
-                buf.write(f"{ind3i}auto&& {cpp_var} = *__beg++;\n")
+                binding = loop_var_binding(sema_elem, cpp_var, "*__beg++",
+                                           gen.const_loop_var)
+                buf.write(f"{ind3i}{binding}\n")
 
             self._gen_genexpr_yield(buf, gen, yield_code, cpp_elem, ind3i, ind3i + INDENT)
             buf.write(f"{ind2i}}}\n")
@@ -4345,7 +4344,7 @@ class ExpressionGenerator:
             buf.write(f"{ind2}{insert_stmt};\n")
 
         buf.write(f"{ind1}}}\n")
-        buf.write(f"{ind1}__result;\n")
+        buf.write(f"{ind1}std::move(__result);\n")
         buf.write(f"{stmt_ind}}})")
 
         return buf.getvalue()
@@ -4400,7 +4399,8 @@ class ExpressionGenerator:
         assert isinstance(elem_type, TupleType)
         self.ctx.unpack_counter += 1
         tmp = f"__tup_{self.ctx.unpack_counter}"
-        buf.write(f"{ind}const auto& {tmp} = {source_expr};\n")
+        ref_binding = "const auto&" if gen.const_loop_var else "auto&"
+        buf.write(f"{ind}{ref_binding} {tmp} = {source_expr};\n")
         for i, uvar in enumerate(gen.unpack_vars):
             if uvar is None:
                 continue
@@ -4410,7 +4410,7 @@ class ExpressionGenerator:
             if utype.is_value_type():
                 buf.write(f"{ind}{cpp_type} {cpp_name} = std::get<{i}>({tmp});\n")
             else:
-                buf.write(f"{ind}const auto& {cpp_name} = std::get<{i}>({tmp});\n")
+                buf.write(f"{ind}{ref_binding} {cpp_name} = std::get<{i}>({tmp});\n")
 
     def _gen_comp_range_loop(self, buf: io.StringIO, gen: TpyComprehensionGenerator,
                               elem_type: TpyType, ind1: str, ind2: str,

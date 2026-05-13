@@ -32,7 +32,7 @@ void main() {
             const auto& __macro_1 = *__beg_0;
             __result.push_back(::tpy::ordered_map<std::string, int32_t>({{"x", __macro_1.x}, {"y", __macro_1.y}}));
         }
-        __result;
+        std::move(__result);
     })}}))) << "\n";
 }
 

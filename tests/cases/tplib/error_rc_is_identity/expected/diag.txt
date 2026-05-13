@@ -1,0 +1,1 @@
+main.py:12: error: 'is' / 'is not' can only compare Optional/Ptr/union types with None, got Rc[Int32] and Rc[Int32]

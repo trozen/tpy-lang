@@ -34,7 +34,7 @@ void main() {
             const auto& __macro_1 = *__beg_0;
             __result.push_back((((__macro_1.has_value())) ? (std::optional<::tpy::ordered_map<std::string, int32_t>>(::tpy::ordered_map<std::string, int32_t>({{"x", (*__macro_1).x}, {"y", (*__macro_1).y}}))) : (std::optional<::tpy::ordered_map<std::string, int32_t>>(std::nullopt))));
         }
-        __result;
+        std::move(__result);
     })}})) << "\n";
     // print(astuple(pl))
     std::cout << ::tpy::TuplePrinter(std::tuple<std::vector<std::optional<std::tuple<int32_t, int32_t>>>>(({
@@ -47,7 +47,7 @@ void main() {
             const auto& __macro_1 = *__beg_1;
             __result.push_back((((__macro_1.has_value())) ? (std::optional<std::tuple<int32_t, int32_t>>(std::tuple<int32_t, int32_t>{(*__macro_1).x, (*__macro_1).y})) : (std::optional<std::tuple<int32_t, int32_t>>(std::nullopt))));
         }
-        __result;
+        std::move(__result);
     }))) << "\n";
     // # 4. Deeply nested Optional
     // ml1 = MaybeLine(Line(Point(0, 0), Point(1, 1)))
@@ -86,7 +86,7 @@ void main() {
             const auto& __macro_2 = std::get<1>(__tup_1);
             __result.insert_or_assign(__macro_1, (((__macro_2.has_value())) ? (std::optional<::tpy::ordered_map<std::string, int32_t>>(::tpy::ordered_map<std::string, int32_t>({{"x", (*__macro_2).x}, {"y", (*__macro_2).y}}))) : (std::optional<::tpy::ordered_map<std::string, int32_t>>(std::nullopt))));
         }
-        __result;
+        std::move(__result);
     })}})) << "\n";
 }
 

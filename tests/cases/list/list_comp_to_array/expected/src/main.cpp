@@ -12,7 +12,7 @@ void range_basic() {
         for (int32_t x = 0; x < 5; ++x) {
             __result[static_cast<std::size_t>(x)] = (::tpy::mul_check<int32_t>(x, x));
         }
-        __result;
+        std::move(__result);
     });
     // for s in squares:
     auto& __obj_0 = squares;
@@ -33,7 +33,7 @@ void range_transform() {
         for (int32_t x = 0; x < 4; ++x) {
             __result[static_cast<std::size_t>(x)] = (::tpy::mul_check<int32_t>(x, 2));
         }
-        __result;
+        std::move(__result);
     });
     // print(len(doubled))
     std::cout << ::tpy::__len__(doubled) << "\n";
@@ -49,7 +49,7 @@ void range_empty() {
         for (int32_t x = 0; x < 0; ++x) {
             __result[static_cast<std::size_t>(x)] = x;
         }
-        __result;
+        std::move(__result);
     });
     // print(len(empty))
     std::cout << ::tpy::__len__(empty) << "\n";
@@ -64,7 +64,7 @@ void range_two_arg() {
         for (int32_t x = __start_0, __idx_0 = 0; __idx_0 < 5; ++x, ++__idx_0) {
             __result[static_cast<std::size_t>(__idx_0)] = x;
         }
-        __result;
+        std::move(__result);
     });
     // for i in items:
     auto& __obj_0 = items;
@@ -91,7 +91,7 @@ void array_source() {
             int32_t x = *__beg_0;
             __result[__idx_0] = (::tpy::mul_check<int32_t>(x, 2));
         }
-        __result;
+        std::move(__result);
     });
     // for d in doubled:
     auto& __obj_1 = doubled;
@@ -121,7 +121,7 @@ void array_filter_fallback() {
                 __result.push_back(x);
             }
         }
-        __result;
+        std::move(__result);
     });
     // for e in evens:
     auto& __obj_1 = evens;
@@ -146,7 +146,7 @@ void range_three_arg() {
             int32_t x = *__beg_0;
             __result[__idx_0] = x;
         }
-        __result;
+        std::move(__result);
     });
     // for e in evens:
     auto& __obj_1 = evens;
@@ -171,7 +171,7 @@ void range_negative_step() {
             int32_t x = *__beg_0;
             __result[__idx_0] = x;
         }
-        __result;
+        std::move(__result);
     });
     // for c in countdown:
     auto& __obj_1 = countdown;
@@ -196,7 +196,7 @@ void range_empty_negative() {
             int32_t x = *__beg_0;
             __result[__idx_0] = x;
         }
-        __result;
+        std::move(__result);
     });
     // print(len(empty))
     std::cout << ::tpy::__len__(empty) << "\n";
@@ -212,7 +212,7 @@ void fallback_mutation() {
         for (int32_t x = 0; x < __stop_0; ++x) {
             __result.push_back(x);
         }
-        __result;
+        std::move(__result);
     });
     // items.append(99)
     items.push_back(99);
@@ -235,7 +235,7 @@ void explicit_array_annotation() {
         for (int32_t x = 0; x < 5; ++x) {
             __result[static_cast<std::size_t>(x)] = x;
         }
-        __result;
+        std::move(__result);
     });
     // for i in items:
     auto& __obj_0 = items;
@@ -258,7 +258,7 @@ void explicit_list_annotation() {
         for (int32_t x = 0; x < __stop_0; ++x) {
             __result.push_back(x);
         }
-        __result;
+        std::move(__result);
     });
     // for i in items:
     auto& __obj_1 = items;
