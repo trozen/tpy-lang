@@ -5471,8 +5471,11 @@ Send/Sync rules for built-in types:
   `try: <single top-level await>; except E: ...` shape is supported for
   throw-tier exceptions, including catching `CancelledError`.
   `Task.cancel()` flips a flag that the next poll checks and throws
-  `CancelledError`. `asyncio.run(coro)` drives a thread-local
-  runnable-queue + timer-min-heap executor; `Waker.wake()` schedules the
+  `CancelledError`. `asyncio.run(coro)` drives an executor whose body is
+  TPy code (`lib/tpy/asyncio/_executor.py` -- slot table for parked
+  tasks, runnable deque, timer min-heap) dispatched from C++ via a
+  thread-local `ExecutorOps` function-pointer table in
+  `runtime/cpp/include/tpy/async.hpp`; `Waker.wake()` schedules the
   parked task by slot id/generation; `asyncio.sleep(s)` is a real
   wall-clock sleep; `asyncio.create_task(coro)` registers the task with
   the executor for concurrent scheduling and returns a `Task[T]` handle

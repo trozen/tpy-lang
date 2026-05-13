@@ -137,8 +137,19 @@ For `tpyc/` compiler modules:
 - Use type annotations
 - **ASCII only** in source code and comments -- no Unicode arrows (`→`), em dashes (`—`), or other non-ASCII characters. Use `->` and `--` instead.
 
-For test snippets (`tests/cases/*/src/main.py`):
-- Prefer plain literals (`1`, `"hello"`, `{1, 2}`) over explicit constructors (`Int32(1)`, `{"a": Int32(1)}`) and variable type annotations (`x: list[Int32] = ...`) when the compiler can infer the type from context. Only use explicit constructors or annotations when the test is specifically exercising constructor syntax, type annotations, or a case where inference would be ambiguous.
+**Don't write types the compiler can infer.** Applies everywhere -- test snippets (`tests/cases/*/src/main.py`), stdlib (`lib/tpy/`), examples. Only spell out the type when inference would actually fail or be ambiguous, or when the test is specifically exercising the constructor/annotation syntax.
+
+Concretely, prefer the left form over the right when both compile:
+
+| Prefer | Avoid (when context determines the type) |
+|--------|------------------------------------------|
+| `1`, `"hi"`, `{1, 2}`, `-1` | `Int32(1)`, `StrView("hi")`, `Int32(-1)` |
+| `n = len(xs)`, `i < len(xs)` | `n = Int32(len(xs))`, `i < Int32(len(xs))` |
+| `self.count = 0`, `self.count += 1` | `self.count = UInt32(0)`, `self.count += UInt32(1)` |
+| `poll_pending()` (return type infers `T`) | `poll_pending[None]()`, `poll_pending[T]()` |
+| `def f() -> Poll[T]: return poll_pending()` | `... return poll_pending[T]()` |
+
+TPy infers integer-typed-field assigns and augmented-assigns, comparisons that widen BigInt to a sibling IntN, and generic-function type params from return-type context. The explicit form is appropriate when the inferred type would be wrong (e.g. `n: BigInt = len(xs)` when you actually want BigInt for arithmetic that would overflow Int32) or when there's no return-type context at all.
 
 ## Terminology
 
@@ -268,7 +279,7 @@ Features this doc references or assumes, with one-line explanations and deeper-d
 - **Protocols** -- structural protocols (duck-typed at compile time, monomorphized per concrete type) vs `@dynamic` protocols (runtime polymorphism via `Adapter`/`RefAdapter` wrappers). See `docs/PROTOCOL_DESIGN.md` + `docs/DYNAMIC_PROTOCOL_DESIGN.md`; examples in `tests/cases/protocols/`.
 - **Flow-sensitive analysis** -- `sema/flow_facts.py` snapshots per-branch state (assignment, termination, narrowing, consumed vars) as immutable values to merge at join points; `sema/narrowing.py` handles Optional/None narrowing; `sema/value_range.py` tracks integer `[lo, hi]` ranges used for bounds-check and div-zero elision.
 - **Borrow form / storage form** -- non-value types have two C++ shapes: *storage form* at fields / container elements / `Own[T]` slots / returns (self-contained value, e.g. `std::optional<T>`, `std::variant<A, B>`), and *borrow form* at function params / locals / iterator yields (indirect reference, e.g. `T*`, `std::variant<A*, B*>`, `T&`). Codegen emits per-element conversion helpers at boundaries (`tpy::optional_to_ptr` / `ptr_to_optional`, `to_ptr_variant`, `tuple_to_storage` / `tuple_to_pointer`). The duality is the source of a recurring bug class; see `docs/LANGUAGE_FEATURES.md` "Borrow Form vs Storage Form" for the canonical introduction, and `docs/IR_DESIGN.md` Open Questions item 9 for the planned IR-level resolution.
-- **async/await (v1 shipped)** -- `async def`/`await` lower to a state-machine struct with `poll(waker) -> Poll[T]` via a "resumable-frame" abstraction in codegen (not C++20 coroutines, not an extension of generator codegen). Cancellation is exception-based (`CancelledError` thrown at next suspension). v1 ships `run`/`sleep`/`create_task`/`Task`/`Future` driven by a real waker executor (slot table + timer min-heap + runnable deque); v1.5 adds `async with`/`async for`/`gather`/`wait_for` + a sync-`with` upgrade for `__exit__` exc args. See `docs/ASYNC_DESIGN.md` for design and `docs/ASYNC_PROGRESS.md` for current status; examples in `tests/cases/async/`.
+- **async/await (v1.1 shipped)** -- `async def`/`await` lower to a state-machine struct with `poll(waker) -> Poll[T]` via a "resumable-frame" abstraction in codegen (not C++20 coroutines, not an extension of generator codegen). Cancellation is exception-based (`CancelledError` thrown at next suspension). v1 shipped `run`/`sleep`/`create_task`/`Task`/`Future`; v1.1 then ported the executor body (slot table + timer min-heap + runnable deque) to TPy in `lib/tpy/asyncio/_executor.py` -- the runtime is now TPy code dispatched from C++ via an `ExecutorOps` function-pointer table (see `runtime/cpp/include/tpy/async.hpp`). v1.5 adds `async with`/`async for`/`gather`/`wait_for` + a sync-`with` upgrade for `__exit__` exc args. v1.2 (parallel track) shrinks the residual C++ surface -- blocked on the compiler items listed in BUGS.md / TODO.md. See `docs/ASYNC_DESIGN.md` for the roadmap and `docs/ASYNC_PROGRESS.md` for the v1.1 phase-by-phase history; examples in `tests/cases/async/`.
 
 ## Key Documentation Files
 

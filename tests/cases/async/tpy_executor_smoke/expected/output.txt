@@ -1,0 +1,25 @@
+spawn id: 0
+len slots: 1
+len runnable_q: 1
+slot_done before drain: False
+slot_done after run: True
+has_live skip=ff: False
+---
+two slots: 2
+two runnable: 2
+drained: True
+a done: True
+b done: True
+has_live skip a: False
+---
+timer count before: 1
+wait fired: True
+timer count after: 0
+---
+idle drain: False
+idle drain after cancel: False
+---
+parked, slot done: False
+has live before cancel: True
+after cancel, slot done: True
+has live after cancel: False

@@ -1,0 +1,6 @@
+done? True
+runnable? False
+gen0: 0
+runnable after set? True
+gen after set: 3
+done after set? True

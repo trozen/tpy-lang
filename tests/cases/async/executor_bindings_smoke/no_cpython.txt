@@ -1,0 +1,2 @@
+Imports asyncio._executor (TPy-internal v1.x port bindings). CPython's
+stdlib asyncio has no _executor submodule.

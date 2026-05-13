@@ -401,6 +401,7 @@ process-CPU clocks shipped; calendar / formatting surface deferred.
 | `perf_counter()` / `monotonic()` | Done | `std::chrono::steady_clock`. CPython's `perf_counter` and `monotonic` share the same underlying clock on POSIX; we mirror that |
 | `perf_counter_ns()` / `monotonic_ns()` / `time_ns()` | Done | Return `Int64`; epoch reasonable through year 2262 (INT64_MAX ns) |
 | `process_time()` | Done | `std::clock() / CLOCKS_PER_SEC`. CPU time, ~1us resolution on Linux glibc (CPython uses `clock_gettime(CLOCK_PROCESS_CPUTIME_ID)` for ns precision -- a future tightening) |
+| `sleep_until_steady(deadline)` | Done | TPy extension (no CPython equivalent). Sleeps until the given `monotonic()`-domain deadline; used by `asyncio`'s timer-heap drain |
 | `struct_time` | Missing | Needs named-tuple-like or @dataclass |
 | `gmtime`, `localtime` | Missing | Depends on struct_time |
 | `strftime`, `strptime` | Missing | Formatting strings; depends on struct_time |
@@ -1068,13 +1069,13 @@ Done in v1:
 - `asyncio.create_task(coro())` -- registers an async-def call with the running executor and returns `Task[T]` (T inferred from the async def's return type) sharing state with the executor's task slot.
 - `asyncio.Future[T]` -- single-awaiter manual-completion awaitable (`set_result(value)` / `set_exception(exc)` / `done()`); ownership-transfer API on `set_result` so nocopy types flow through.
 - `asyncio.CancelledError` -- raised at the next suspension point of a cancelled task; thread through `try`/`finally`.
-- Thread-local `Executor` (in `runtime/cpp/include/tpy/async.hpp`) backing the public surface: slot table for parked tasks (waker is `(slot_id, generation)`), runnable deque for ready-to-resume tasks, timer min-heap keyed on steady-clock deadlines.
+- `Executor` body (slot table for parked tasks with `(slot_id, generation)` wakers, runnable deque, timer min-heap keyed on steady-clock deadlines) lives in TPy at `lib/tpy/asyncio/_executor.py`; `runtime/cpp/include/tpy/async.hpp` keeps only the FFI shell (thread-local `ExecutorOps` dispatch table + `Waker`/`Poll`/`Task` runtime types + a handful of bridge helpers).
 
 Pending (v1.5): `async with`, `async for`, `gather`, `wait_for`, `asyncio.Event`, awaits inside `if`/`while`/`for`/`with` sub-bodies, general `try`/`except` around awaits, partial / nested try-around-await. Sync `with` will gain `__exit__(exc_type, exc, tb)` upgrade so context managers can inspect the exception.
 
 Pending (v2+): I/O reactor (epoll on Linux, kqueue on BSD/macOS, IOCP on Windows), `asyncio.Queue`, async generators, `@error_return` async, `__await__` adaptation, multi-thread executor.
 
-Pending runtime port (v1.5 prerequisite, milestone G1.5): port executor + `Task` + `Future` from `runtime/cpp/include/tpy/async.hpp` to TPy-source under `lib/tpy/asyncio/`. Blocked on shared-ownership smart pointer (`Rc[T]` / `Arc[T]`) and `thread_local` storage in TPy. (Generic `@dynamic` protocols -- the third historical blocker -- shipped; see `docs/DYNAMIC_PROTOCOL_DESIGN.md` step 12.) See `TODO.md` and [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md#v1x-milestone-asyncio-runtime-tpy-port-must-precede-v15).
+v1.1 runtime port: SHIPPED. Executor body + `Task` + `Future` moved from `runtime/cpp/include/tpy/async.hpp` to `lib/tpy/asyncio/_executor.py`, dispatched from C++ via a thread-local `ExecutorOps` function-pointer table. Remaining C++ residual (`Poll<T>` specializations, `current_executor` thread-local `void*`, bridge helpers) is blocked on the compiler items tracked in `BUGS.md` and `TODO.md` (generic-T specializations for value/void/move-only, `@cpp_template` literal-brace escape, `thread_local` storage in TPy). See [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md#v1x-milestone-asyncio-runtime-tpy-port-must-precede-v15) for the phase-by-phase history.
 
 ### threading
 

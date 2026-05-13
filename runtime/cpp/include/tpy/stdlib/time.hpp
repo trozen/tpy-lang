@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdint>
 #include <ctime>
+#include <thread>
 
 namespace tpy::stdlib::time {
 
@@ -44,6 +45,18 @@ inline int64_t time_ns() {
 
 inline double process_time() {
     return static_cast<double>(std::clock()) / CLOCKS_PER_SEC;
+}
+
+// Sleep until a steady_clock deadline expressed as seconds since the
+// clock's epoch (the same domain as monotonic() / perf_counter()).
+// Returns immediately if the deadline is already in the past.
+// Used by asyncio's TPy-side run loop to wait for the next timer.
+inline void sleep_until_steady(double deadline_seconds) {
+    using DurDouble = std::chrono::duration<double>;
+    using TP = std::chrono::steady_clock::time_point;
+    auto deadline = TP(std::chrono::duration_cast<TP::duration>(
+        DurDouble(deadline_seconds)));
+    std::this_thread::sleep_until(deadline);
 }
 
 } // namespace tpy::stdlib::time

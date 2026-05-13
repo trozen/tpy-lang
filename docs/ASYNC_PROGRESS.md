@@ -455,44 +455,150 @@ relevant `@builtin_function` codegen via the resolved function's
 qname rather than the user-facing import path, so the placement is
 no longer load-bearing.)
 
-### Phase 1 -- Compiler bindings (prerequisite)
+### Phase 1 -- Compiler bindings (prerequisite) -- DONE
 
-Land the small bindings the rest of the port needs. None of these
-require new compiler features.
+All compiler bindings the rest of the port needs are landed. None
+required new compiler features.
 
-- `time.sleep_until_steady(deadline_seconds)` -- single C++-bound
-  function wrapping `std::this_thread::sleep_until`. Lets the run loop
-  wait for the next timer in TPy.
+- `time.sleep_until_steady(deadline_seconds)` -- DONE. Wraps
+  `std::this_thread::sleep_until` for a steady_clock-seconds deadline
+  (matching `time.monotonic()`'s domain). Lives in
+  `runtime/cpp/include/tpy/stdlib/time.hpp`; bound from
+  `lib/tpy/time.py`. Lets the run loop wait for the next timer in TPy.
 - `_get_current_executor()` / `_set_current_executor(e)` /
-  `_clear_current_executor()` -- thin getters/setters for the
-  `thread_local Executor* current_executor` pointer. Stays a C++
-  thread_local for now (TPy has no thread-local syntax); TPy code uses
-  RAII via `__del__` for save/restore.
-- `AnyTaskBox` -- `@native("::tpy::AnyTaskBox")` thin wrapper around
-  `unique_ptr<AnyTask>`. TPy code stores `list[AnyTaskBox]` in the
-  executor's slot table; methods (`poll_any`, `cancel_any`, `empty`,
-  `reset`) are `@cpp_template` shims.
+  `_clear_current_executor()` -- DONE. Thin getters/setters for the
+  `thread_local Executor* current_executor` pointer, surfaced as
+  `tpy::ExecutorHandle` (POD value type mirroring `Waker`). Bindings
+  live in `lib/tpy/asyncio/_executor.py`. Storage type is `void*` so
+  Phase 2's TPy-side executor pointer can ride on the same handle
+  without changing the bridge signatures; only the casts in the C++
+  bridges need swapping. Stays a C++ thread_local for now (TPy has no
+  thread-local syntax); Phase 3 will wrap save/restore in a TPy
+  `_ExecutorScope` class with `__del__`.
+- `AnyTaskBox` -- DONE. `@native("tpy::AnyTaskBox")` wrapper around
+  `shared_ptr<AnyTask>` (NOT `unique_ptr` as originally drafted: the
+  user-facing `Task<T>` and the executor's slot table share the same
+  heap state via `shared_ptr` so the fire-and-forget pattern works).
+  Move-only on both sides; methods `poll_any` / `cancel_any` / `empty`
+  / `reset` resolve as members of the @native struct. TPy code cannot
+  construct a non-empty box today; Phase 2 will wire up a factory
+  alongside the executor body port. Has a `TODO(async-v1.x)` to remove
+  the @native wrapper once shared-ownership smart pointers land in TPy
+  -- at that point `TaskState[T]` moves to TPy and the slot table
+  holds a @dynamic protocol adapter directly.
 - Timer slot type: plain `tuple[float, Waker]`, sorted via
   `heapq.heappush` / `heappop` on `list[tuple[float, Waker]]`. (The
   tuple<->Comparable conformance gap has been closed; no dedicated
-  Timer class needed.)
-- `task_poll_cancelled[T](t: Task[T]) -> bool` -- TPy generic function
-  replacing the C++ template. Test-only utility; converting it
-  validates the binding plumbing on something safe.
+  Timer class needed.) No new work.
+- `task_poll_cancelled[T](t) -> bool` -- DONE (already shipped in
+  Phase 0 under `tpy.coro` as a real TPy generic body; replaces the
+  C++ template). Validated the binding plumbing on something safe.
+
+Test: `tests/cases/async/executor_bindings_smoke/` -- smoke-tests
+all bindings (parse + compile + link + behavior on the empty-box /
+null-handle paths and the in-vs-out-of-asyncio.run handle distinction).
+Full poll-an-AnyTaskBox-to-completion coverage waits for Phase 2's
+factory wiring.
 
 ### Phase 2 -- Executor body to TPy
 
-Move the data structures + methods of `tpy::Executor` to a TPy class in
-`lib/tpy/asyncio/_executor.py` (or similar). Keep `make_user_task`,
-`AnyTask`/`AnyTaskImpl`, `TaskState`, `Task` in C++ (see "blocked"
-below). The TPy executor:
+Staged leaf-up to avoid resolving the full C++-to-TPy dispatch problem
+in one PR. The TPy `Executor` is implemented in
+`lib/tpy/asyncio/_executor.py` as a parallel implementation to
+`tpy::Executor`; runtime callers (`make_user_task`,
+`executor_register_timer_seconds`, `Waker::wake()`, `async_run`) still
+talk to the C++ struct. Phase 3 swings asyncio.run onto the TPy
+executor; Phase 4 deletes the dead C++ struct. Keeps `make_user_task`,
+`AnyTask`/`AnyTaskImpl`, `TaskState`, `Task` in C++ (see "Blocked"
+below).
+
+**Sub-step 2.1 (DONE) -- `Slot` leaf class.** Three fields
+(`box: AnyTaskBox`, `generation: UInt32`, `runnable: bool`) and an
+`is_done()` reflecting `box.empty()`. Test:
+`tests/cases/async/executor_slot_smoke/`. Required removing
+`# tpy: native_module` from `_executor.py` so the module generates
+real codegen for the new class.
+
+**Sub-step 2.2 (DONE) -- `Executor` TPy class.** All 9 methods land
+with TPy bodies: `spawn`, `mark_runnable`, `poll_slot`,
+`drain_runnable`, `slot_done`, `has_live_tasks`, `register_timer`,
+`wait_for_event`, `run_until`, `drain_spawned_with_cancel`. Three
+deviations from the doc:
+
+- *Timer heap shape*: `list[tuple[float, UInt64]]` paired with
+  `dict[UInt64, Waker]` instead of `list[tuple[float, Waker]]`.
+  TPy's `heapq[T: Comparable]` requires tuple elements to satisfy
+  Comparable, and `Waker` (a POD value type) doesn't; the parallel
+  dict keyed on a per-executor monotonic counter sidesteps this.
+  Ties on deadline resolve via the counter so heap order is
+  deterministic.
+- *Waker construction*: a free helper `_make_waker(handle, task_id,
+  generation)` lives next to the class. The TPy class can't host a
+  `@cpp_template` method body (compiler restricts that to `@native`
+  classes), and brace-initializer literals collide with cpp_template's
+  `{...}` substitution syntax. A new C++ helper `tpy::make_waker` plus
+  a templated `tpy::make_executor_handle<T>(T&)` keep async.hpp ignorant
+  of the generated Executor's C++ class name.
+- *`wait_for_event` initial implementation bypassed `waker.wake()`* in
+  favour of `self.mark_runnable(_waker_task_id(w), _waker_generation(w))`
+  because `Waker::wake()` dispatched into `tpy::Executor*` on the C++
+  side. Phase 2.4 landed the ops-table dispatch (see below) and
+  `wait_for_event` now calls `waker.wake()` directly; the
+  `_waker_task_id` / `_waker_generation` accessors stay around for
+  tests that want to inspect a waker's payload without dispatching.
+
+**Sub-step 2.3 (DONE) -- Test-only AnyTaskBox factory.**
+`_make_any_task_for_test[T](coro: Awaitable[T]) -> Own[AnyTaskBox]`
+bound to a templated C++ helper that builds a `TaskStateImpl<T, CoroT>`
+and wraps it. Lets tests drive the TPy executor without going through
+`make_user_task` (which still requires a running C++ Executor). Phase 3
+unifies this with the production create_task path.
+
+Test: `tests/cases/async/tpy_executor_smoke/` -- spawn + drain +
+run_until on a coroutine that returns immediately; multiple-spawn
+fan-out; past-deadline timer fire mechanics; idle-drain + cancel-drain
+no-op paths.
+
+**Sub-step 2.4 (DONE) -- Waker dispatch via ops table.** Lets external
+holders of a Waker (timer-fired wakers, `Future.set_result()` callers,
+etc.) target a TPy-side Executor. Three changes:
+
+- *`Waker.exec` type*: `Executor*` -> `void*`. Storage is opaque; the
+  ops table knows how to interpret it. `Executor*` -> `void*` is an
+  implicit conversion so existing `Waker{this, id, gen}` construction
+  in C++ code continued to compile.
+- *`tpy::ExecutorOps`* global function-pointer table holding a
+  `mark_runnable` thunk. `register_executor_ops_from<ExecT>(ExecT&)`
+  is a templated helper that wires a per-executor-type thunk into the
+  table; the thunk casts `void*` back to `ExecT*` and forwards to its
+  `mark_runnable` method. Idempotent for instances of the same
+  `ExecT` -- repeated calls set the same function pointer.
+- *`Waker::wake()` dispatch*: now goes through `executor_ops.mark_runnable`
+  if it's been set; falls back to the legacy `static_cast<Executor*>(exec)
+  ->mark_runnable(...)` cast otherwise. Phase 4 removes the fallback
+  together with the C++ Executor struct.
+
+`Executor.__init__` calls `_register_executor_ops_from(self)` so every
+TPy Executor wires up dispatch automatically. Mixing C++ and TPy
+Executors in the same process is unsupported (the last `__init__` wins
+the ops slot) but doesn't arise in practice -- existing tests use one
+or the other, never both. Phase 3 + 4 collapse this to a single
+production code path.
+
+Test: `tests/cases/async/tpy_executor_wake_dispatch/` covers
+(i) external `waker.wake()` returning a parked slot to the runnable
+queue, (ii) stale-generation wakes being silently dropped, and
+(iii) a countdown coroutine driven to completion through repeated
+register_timer + wait_for_event + `waker.wake()` cycles.
+
+**Original doc sketch (kept for reference):**
 
 - `slots: list[Slot]` where `Slot` is a TPy class wrapping
   `AnyTaskBox`, `generation: UInt32`, `runnable: bool`.
 - `runnable_q: list[UInt32]` used as a deque (or a proper deque type
   if one lands).
 - `timer_heap: list[tuple[float, Waker]]` driven via `heapq.heappush` /
-  `heappop`.
+  `heappop`. (See 2.2 deviation above.)
 - Methods: `spawn`, `mark_runnable`, `poll_slot`, `drain_runnable`,
   `slot_done`, `has_live_tasks`, `wait_for_event`, `run_until`,
   `drain_spawned_with_cancel`. All pure TPy logic plus calls into the
@@ -500,21 +606,191 @@ below). The TPy executor:
 - Mutation-during-iteration safety: same as in C++ today, indices into
   `slots`, no held references across `poll_any`.
 
-### Phase 3 -- async_run to TPy + RAII scope guard
+### Phase 3 -- async_run to TPy + RAII scope guard -- DONE
 
-`async_run` becomes a TPy generic function. Setup/teardown of
-`current_executor` flows through a `_ExecutorScope` class with `__del__`
-that swaps the thread_local pointer back, providing exception-safe
-cleanup. The main coro is spawned via a small C++ helper (templated
-over `ResultT` to construct the result-capturing closure -- see
-"blocked" below); everything else is TPy.
+Production asyncio now drives through the TPy `Executor`. Shape ended
+up slightly different from the original sketch: `async_run` remains a
+small C++ template shell (around 25 lines), but its body delegates the
+run loop entirely to a non-generic TPy helper. Phase 4 collapses the
+shell once a TPy-side compiler feature is in place.
 
-### Phase 4 -- Cleanup
+**Sub-step 3a (DONE) -- ExecutorOps extension.** Added `SpawnFn` and
+`RegisterTimerFn` slots to `tpy::ExecutorOps` alongside the
+`MarkRunnableFn` from Phase 2.4. `register_executor_ops_from<ExecT>(self)`
+now wires up all three thunks at TPy Executor construction. The
+`make_user_task` and `executor_register_timer_seconds` C++ entry
+points dispatch through the table (`current_executor` as opaque void*)
+with the legacy `static_cast<Executor*>(exec)->method(...)` cast as a
+fallback for the still-living C++ Executor case. Phase 4 removes the
+fallback together with the C++ Executor struct.
 
-Remove dead C++: `tpy::Executor` struct, `tpy::async_run` template,
-`tpy::AnyTask`/`AnyTaskImpl` (only if no longer referenced from
-`make_user_task`), `tpy::FunctionTask`. The bridge helper from Phase 0
-stays.
+**Sub-step 3b (DONE) -- async_run helpers.** Two new C++ template
+helpers in `runtime/cpp/include/tpy/async.hpp`:
+
+- `make_executor_owned_task<T, CoroT>(coro)` -- builds a
+  `shared_ptr<TaskStateImpl<T, CoroT>>` with `executor_owned = true`
+  and wraps it in a `Task<T>` without spawning. Lets the C++ shell
+  keep its half of the shared TaskState for result extraction while
+  TPy drives the slot table.
+- `task_to_any_box<T>(task)` -- mirror the Task's underlying state
+  into an `AnyTaskBox`. shared_ptr ref-count goes up by one; both
+  views observe the same completion state.
+
+**Sub-step 3c (DONE) -- `_ExecutorScope` RAII guard.** Wraps the
+current-executor thread-local: `__init__` writes `executor`'s handle,
+`__del__` clears it. v1 always starts from null (asyncio.run rejects
+nesting at the call site) so no save/restore is needed; the class
+could grow a `_prev: ExecutorHandle` field if nestable-runtime support
+ever lands, but ExecutorHandle isn't currently storable as a TPy class
+field because the codegen for `@native` value-type records emits the
+wrong namespace in the `is_value_type` specialization. Recorded as a
+follow-up TPy compiler fix.
+
+**Sub-step 3d (DONE) -- `asyncio.run` body.** Shape:
+
+```python
+@cpp_template("::tpy::async_run({0})")
+def run[T](coro: Awaitable[T]) -> T: ...   # stays cpp_template
+```
+
+with `tpy::async_run` reduced to:
+
+```cpp
+template <typename CoroT>
+inline auto async_run(CoroT&& coro)
+    -> decltype(/* ResultT */) {
+    if (current_executor != nullptr) tpy_panic(...);
+    auto task = make_executor_owned_task<ResultT>(std::forward<CoroT>(coro));
+    {
+        AnyTaskBox box = task_to_any_box(task);
+        ::tpystd::asyncio::_run_drain_main_task(std::move(box));
+    }
+    if constexpr (std::is_void_v<ResultT>) {
+        task.__poll__(Waker{}).value();
+        return;
+    } else {
+        return task.__poll__(Waker{}).value();
+    }
+}
+```
+
+calling the non-generic TPy helper:
+
+```python
+def _run_drain_main_task(box: Own[AnyTaskBox]) -> None:
+    executor = Executor()
+    scope = _ExecutorScope(executor)
+    main_id = executor.spawn(box)
+    try:
+        executor.run_until(main_id)
+    finally:
+        try:
+            executor.drain_spawned_with_cancel(main_id)
+        except BaseException:
+            pass
+```
+
+**Why a C++ shell stays around the TPy body:**
+
+- *void/T uniform return*: TPy compiles `def run[T] -> T` to a function
+  template returning `val_or_ref_t<T>`, which substitutes to `void&` for
+  T=None and fails. The C++ shell handles this with `if constexpr
+  (std::is_void_v<ResultT>)`. A TPy-side fix would require either a
+  void specialization in `val_or_ref_t` or a compiler change to handle
+  generic-T-can-be-void returns more gracefully.
+- *Coro consumption*: passing the just-returned coro rvalue through a
+  TPy parameter chain loses rvalue-ness; the C++ shell forwards the
+  rvalue directly into `make_executor_owned_task` so template deduction
+  binds `CoroT` to a value type rather than a reference (which would
+  trip `std::optional<CoroT>` inside `TaskStateImpl`).
+- *Result extraction*: keeping the user-facing `Task<T>` handle alive
+  past the run loop lets the shell call `task.__poll__(Waker{}).value()`
+  to read the cached result (or rethrow the cached exception). The TPy
+  helper receives an `AnyTaskBox` cloned from the same shared state.
+
+**`Executor.poll_slot` reallocation-safety fix.** During Phase 3 testing,
+`asyncio_drain_finally` (and any test where the main coro spawns a
+nested task) segfaulted because `poll_slot` held a `Slot&` reference
+across the recursive `poll_any` call. When the nested spawn pushed a
+new slot, `slots` reallocated and the cached reference became dangling.
+The fix re-indexes `self.slots[idx]` after the `poll_any` returns,
+mirroring the same comment in the C++ Executor's `poll_slot`. Generic
+TPy port lesson: any TPy code that drives a coroutine while holding a
+reference into a container the coroutine might mutate has to re-index
+after the call.
+
+Tests: existing `asyncio_*` suite (50 cases) plus 2.2/2.4 smokes all
+pass. No new Phase-3-specific test case -- the existing
+`asyncio_drain_finally`, `asyncio_concurrent_tasks`,
+`asyncio_fire_and_forget`, etc. exercise the new TPy run loop because
+production `asyncio.run` now goes through it.
+
+**Compiler items surfaced during Phase 3 (not blocking but tracked):**
+
+1. `@native` value-type records emit `is_value_type` specialization in
+   the module's own namespace instead of the renamed `@native` target
+   namespace. Blocks using `ExecutorHandle` as a TPy field type.
+2. `def f[T] -> T` returning `val_or_ref_t<T>` fails for `T = None`
+   (void). Blocks porting `asyncio.run` to a pure-TPy function without
+   the C++ shell.
+3. TPy parameter coro values become const lvalues; deducing C++ template
+   args from them yields `const T&` instead of a moveable rvalue
+   reference. Worked around in Phase 3 by passing rvalues through the
+   C++ shell.
+
+### Phase 4 -- Cleanup -- DONE
+
+What got removed from `runtime/cpp/include/tpy/async.hpp`:
+
+- The `tpy::Executor` struct (the entire v1 runnable-queue +
+  timer-heap driver, ~150 lines including the `Slot`, `Timer`, and
+  `TimePoint` nested types). Production now uses the TPy `Executor`
+  in `lib/tpy/asyncio/_executor.py`.
+- The forward declaration `struct Executor;` at the top of the file.
+- The legacy `static_cast<tpy::Executor*>(exec)->mark_runnable(...)`
+  fallback in `Waker::wake()`.
+- The legacy spawn-fallback in `make_user_task` (`current_executor
+  ->spawn(state)`).
+- The legacy register-timer fallback in
+  `executor_register_timer_seconds` (the `Executor::TimePoint`
+  conversion and `current_executor->register_timer(...)` call).
+- The `current_executor` thread-local's `Executor*` declared type
+  (now `void*` -- ops thunks know how to interpret it).
+- The `tpy::waker_task_id` / `tpy::waker_generation` accessor helpers
+  + their TPy bindings (originally added so Phase 2's pre-2.4
+  `wait_for_event` could bypass `Waker::wake`; obsoleted when 2.4
+  wired wake dispatch through the ops table).
+- The `_make_executor_owned_task` and `_task_to_any_box` TPy bindings
+  in `lib/tpy/asyncio/_executor.py` (unused since async_run's TPy
+  helper switched to taking the box directly; the C++ helpers
+  `make_executor_owned_task` and `task_to_any_box` stay in async.hpp
+  because the C++ shell uses them).
+- `<chrono>`, `<thread>`, `<queue>`, `<deque>`, `<vector>` includes
+  in async.hpp (only the `Executor` struct used these).
+
+What stays in C++:
+
+- `tpy::async_run<CoroT>` template shell -- entry point for
+  `asyncio.run`. Still needed because TPy can't express the
+  void-uniform return-type shape today (see Phase 3 doc and BUGS.md
+  "`def f[T] -> T` for `T = None`").
+- `tpy::make_user_task<T, CoroT>` -- `asyncio.create_task` lowering.
+  Dispatches via `executor_ops.spawn`.
+- `tpy::executor_register_timer_seconds` -- SleepFuture's
+  `_register_timer_at` bridge. Dispatches via `executor_ops.register_timer`.
+- `tpy::make_executor_owned_task<T, CoroT>`, `tpy::task_to_any_box<T>`
+  -- helpers used by the async_run shell.
+- `tpy::make_any_task_for_test<T, CoroT>` -- test-only factory used by
+  `tests/cases/async/tpy_executor_smoke/` etc.
+- `tpy::AnyTask`, `tpy::AnyTaskBox`, `tpy::TaskState<T>`,
+  `tpy::TaskStateImpl<T, CoroT>`, `tpy::Task<T>` -- the type-erased
+  task machinery. Each will move to TPy if/when the compiler features
+  in the "Blocked" section below land.
+- `tpy::Poll<T>`, `tpy::Waker`, `tpy::CancelledError`,
+  `tpy::ExecutorHandle`, `tpy::ExecutorOps` -- primitives and runtime
+  dispatch infrastructure.
+
+All 50 async tests + the full 3719-test suite pass after the cleanup.
 
 ### Blocked -- stays C++ until compiler features land
 

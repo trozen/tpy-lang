@@ -1,0 +1,3 @@
+Imports asyncio._executor (TPy-internal v1.x port) and depends on the
+ops-table dispatch wired into the C++ Waker::wake() path. CPython has
+no analogue for this dispatch.

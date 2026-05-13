@@ -21,25 +21,20 @@
 
 #pragma once
 
-#include <chrono>
 #include <cstdint>
-#include <deque>
 #include <exception>
 #include <memory>
 #include <optional>
-#include <queue>
-#include <thread>
 #include <type_traits>
 #include <utility>
-#include <vector>
 
 #include "core.hpp"
 
 namespace tpy {
 
-// Forward declaration: Waker only references the executor by pointer.
-// The concrete v1 executor is defined below.
-struct Executor;
+// Forward declaration so ExecutorOps's SpawnFn signature can name
+// AnyTaskBox before the struct itself is defined further down.
+struct AnyTaskBox;
 
 /**
  * CancelledError -- thrown into a coroutine at the resumed-await position
@@ -54,21 +49,117 @@ struct CancelledError : BaseException {
 /**
  * Waker -- a small POD value that lets a parked task be re-scheduled.
  *
- * - exec is the executor the parked task lives in.
+ * - exec is an opaque handle to the TPy `Executor` instance the
+ *   parked task lives in. Stored as void* because the executor's
+ *   concrete C++ type is generated from TPy code (not visible from
+ *   async.hpp); dispatch routes through `tpy::executor_ops` set up at
+ *   executor construction time.
  * - task_id indexes into the executor's task table.
  * - generation changes when a slot completes or is reused; wake()
  *   checks generation matches before scheduling, so wakes from
  *   completed/cancelled tasks are silent no-ops.
  */
 struct Waker {
-    Executor* exec = nullptr;
-    uint32_t task_id = 0;
-    uint32_t generation = 0;
+    void* exec = nullptr;
+    // task_id / generation are int32_t so TPy code can pass them
+    // directly to `list[T]` indexing (which requires Int32) without a
+    // cast. They are conceptually non-negative slot indices; the signed
+    // type is a TPy interop concession, not a semantic claim.
+    int32_t task_id = 0;
+    int32_t generation = 0;
 
     // Re-schedule the parked task. No-op if the slot's generation has
     // moved on (the parked task already completed or was cancelled).
     void wake() const noexcept;
 };
+
+/**
+ * ExecutorOps -- dispatch table for executor entry points called from
+ * C++ contexts that don't know the concrete executor type. Covers the
+ * three cross-language boundaries: `mark_runnable` (Waker::wake),
+ * `spawn` (make_user_task), and `register_timer`
+ * (executor_register_timer_seconds).
+ *
+ * Populated by `register_executor_ops_from<ExecT>(exec_ref)` (called
+ * from the TPy `Executor.__init__`). The function pointers capture
+ * `ExecT` via templated thunks so the table is rebound per concrete
+ * executor type. When no executor is running the table stays unset and
+ * the C++ entry points silently no-op (or panic in the spawn case --
+ * `asyncio.create_task` outside `asyncio.run` should panic).
+ */
+// Not noexcept: the underlying TPy `Executor.mark_runnable` does a
+// `list.append(slot_id)` which can throw `std::bad_alloc`. A noexcept
+// thunk that called it would call std::terminate on OOM. The outer
+// `Waker::wake` keeps its noexcept guarantee by absorbing any throw
+// into a silent drop (see Waker::wake's body).
+using MarkRunnableFn = void (*)(void* exec, int32_t task_id,
+                                int32_t generation);
+// AnyTaskBox is forward-declared above; passing by rvalue reference
+// keeps the function-pointer type usable with the forward declaration
+// (the move into the thunk body requires the full type at thunk
+// instantiation, which happens once AnyTaskBox is defined).
+using SpawnFn = int32_t (*)(void* exec, AnyTaskBox&& box);
+using RegisterTimerFn = void (*)(void* exec, double deadline_seconds,
+                                 Waker waker);
+
+struct ExecutorOps {
+    MarkRunnableFn mark_runnable = nullptr;
+    SpawnFn spawn = nullptr;
+    RegisterTimerFn register_timer = nullptr;
+};
+
+// thread_local to match `current_executor` below: a Waker stamped on
+// thread A must not dispatch through thread B's ops table. v1 asyncio
+// is single-threaded per run, but two concurrent `asyncio.run` calls
+// on different threads must not race here.
+inline thread_local ExecutorOps executor_ops{};
+
+// Thread-local pointer to the running executor. Stored as `void*`
+// because the concrete type is the TPy `Executor` class (compiled
+// elsewhere); the ops table thunks know how to cast it back. Declared
+// here (rather than near ExecutorHandle below) so the nested-run guard
+// in `register_executor_ops_from` can reference it.
+inline thread_local void* current_executor = nullptr;
+
+template <typename ExecT>
+inline void mark_runnable_thunk(void* exec, int32_t task_id,
+                                int32_t generation) {
+    static_cast<ExecT*>(exec)->mark_runnable(task_id, generation);
+}
+
+template <typename ExecT>
+inline int32_t spawn_thunk(void* exec, AnyTaskBox&& box) {
+    return static_cast<ExecT*>(exec)->spawn(std::move(box));
+}
+
+template <typename ExecT>
+inline void register_timer_thunk(void* exec, double deadline_seconds,
+                                 Waker waker) {
+    static_cast<ExecT*>(exec)->register_timer(deadline_seconds, waker);
+}
+
+/// Register thunks that dispatch into the concrete `ExecT`'s methods.
+/// Called from the TPy Executor's __init__ on each construction; the
+/// thread-local ops table is overwritten with the same values each
+/// time, so repeated calls are idempotent for a fixed `ExecT`. Panics
+/// if a running executor is already installed on this thread (nested
+/// `asyncio.run` or a leaked `_ExecutorScope`); the nested-run path in
+/// `async_run` rejects this earlier with a better message, this is the
+/// backstop. The check is keyed on `current_executor` rather than the
+/// ops table itself so that raw `Executor()` construction in unit tests
+/// (without a `_ExecutorScope`) is unaffected -- those tests never set
+/// `current_executor`.
+template <typename ExecT>
+inline void register_executor_ops_from(ExecT&) noexcept {
+    if (current_executor != nullptr) {
+        tpy_panic("register_executor_ops_from: another executor is "
+                  "already running on this thread "
+                  "(nested asyncio.run or leaked _ExecutorScope)");
+    }
+    executor_ops.mark_runnable = &mark_runnable_thunk<ExecT>;
+    executor_ops.spawn = &spawn_thunk<ExecT>;
+    executor_ops.register_timer = &register_timer_thunk<ExecT>;
+}
 
 /**
  * Poll<T> -- the result of polling an Awaitable.
@@ -427,182 +518,159 @@ public:
 };
 
 /**
- * Executor -- v1 driver: runnable queue + timer heap.
+ * AnyTaskBox -- type-erased owning slot entry for the executor's task
+ * table. Wraps a shared_ptr<AnyTask> so the user-facing Task<T> and the
+ * executor's slot table can share the same heap state: dropping the
+ * user handle leaves the spawned task running, and a completed task
+ * drops out of the slot table while the user can still observe the
+ * cached result via their Task<T> handle.
  *
- * Spawned tasks (asyncio.create_task) and the main asyncio.run task live
- * in indexed slots. Waker::wake() marks a slot runnable if the slot is
- * still live and the generation matches. Timers store the parked task's
- * waker, so sleep only re-schedules the task that awaited it.
+ * TODO(async-v1.x): remove this @native wrapper once TPy gains a
+ * shared-ownership smart pointer (Rc/Arc/SharedBox); at that point
+ * TaskState<T> can move to TPy and the slot table can hold a
+ * @dynamic-protocol adapter directly. Tracked under "Blocked" in
+ * docs/ASYNC_PROGRESS.md's v1.x section.
  */
-struct Executor {
-    using TimePoint = std::chrono::steady_clock::time_point;
+struct AnyTaskBox {
+    std::shared_ptr<AnyTask> task;
 
-    struct Timer {
-        TimePoint deadline;
-        Waker waker;
+    AnyTaskBox() = default;
+    explicit AnyTaskBox(std::shared_ptr<AnyTask> t) noexcept
+        : task(std::move(t)) {}
 
-        bool operator<(const Timer& other) const {
-            return deadline > other.deadline;
-        }
-    };
+    // Move-only TPy semantics (matches Task<T>). The wrapped shared_ptr
+    // is copyable internally, and clones happen deliberately at C++
+    // construction sites that bridge two views of the same TaskState
+    // (e.g. `task_to_any_box(task)` mirrors a `Task<T>`'s state into a
+    // separate AnyTaskBox so executor + user-handle both observe
+    // completion). What's forbidden is *implicit* copy of an
+    // AnyTaskBox value through the TPy API surface -- each spawn site
+    // hands ownership to a single slot.
+    AnyTaskBox(AnyTaskBox&&) noexcept = default;
+    AnyTaskBox& operator=(AnyTaskBox&&) noexcept = default;
+    AnyTaskBox(const AnyTaskBox&) = delete;
+    AnyTaskBox& operator=(const AnyTaskBox&) = delete;
 
-    struct Slot {
-        std::shared_ptr<AnyTask> task;  // null once the task has completed
-        uint32_t generation = 0;
-        bool runnable = false;
+    bool empty() const noexcept { return task == nullptr; }
+    void reset() noexcept { task.reset(); }
 
-        bool is_done() const noexcept { return task == nullptr; }
-    };
-
-    std::priority_queue<Timer> timers;
-    std::vector<Slot> slots;
-    std::deque<uint32_t> runnable;
-
-    void register_timer(TimePoint deadline, Waker waker) {
-        timers.push(Timer{deadline, waker});
+    // Drive the held task once. Returns true iff it completed (Ready
+    // or threw). Panics on a null box.
+    bool poll_any(Waker w) {
+        if (!task) tpy_panic("AnyTaskBox::poll_any on empty box");
+        return task->poll_any(w);
     }
 
-    // Take ownership of a spawned task. asyncio.create_task hands its
-    // TaskState<T> here for independent polling; the user's Task<T>
-    // handle shares the same state via shared_ptr so completion is
-    // visible to both the executor (drops on done) and the user's await
-    // (returns the cached value).
-    uint32_t spawn(std::shared_ptr<AnyTask> task) {
-        uint32_t id = static_cast<uint32_t>(slots.size());
-        slots.emplace_back();
-        auto& slot = slots.back();
-        slot.task = std::move(task);
-        slot.runnable = true;
-        runnable.push_back(id);
-        return id;
-    }
-
-    void mark_runnable(uint32_t id, uint32_t generation) noexcept {
-        if (id >= slots.size()) return;
-        auto& slot = slots[id];
-        if (slot.is_done() || slot.generation != generation || slot.runnable) {
-            return;
-        }
-        slot.runnable = true;
-        runnable.push_back(id);
-    }
-
-    bool poll_slot(uint32_t id) {
-        if (id >= slots.size()) return false;
-        if (!slots[id].runnable || slots[id].is_done()) return false;
-        slots[id].runnable = false;
-        Waker waker{this, id, slots[id].generation};
-        // The frame's poll may recursively spawn new tasks (which calls
-        // slots.emplace_back and may reallocate), so we keep no slot
-        // reference across the call. The AnyTask pointee itself lives on
-        // the heap and is stable; only the slot vector storage moves.
-        AnyTask* task = slots[id].task.get();
-        if (task->poll_any(waker)) {
-            slots[id].task.reset();
-            ++slots[id].generation;
-        }
-        return true;
-    }
-
-    bool drain_runnable() {
-        bool any_polled = false;
-        while (!runnable.empty()) {
-            uint32_t id = runnable.front();
-            runnable.pop_front();
-            any_polled = poll_slot(id) || any_polled;
-        }
-        return any_polled;
-    }
-
-    bool slot_done(uint32_t id) const {
-        return id < slots.size() && slots[id].is_done();
-    }
-
-    bool has_live_tasks(uint32_t skip_id) const {
-        for (uint32_t id = 0; id < slots.size(); ++id) {
-            if (id == skip_id) continue;
-            if (!slots[id].is_done()) return true;
-        }
-        return false;
-    }
-
-    // Wait for the next timer event. Returns true if at least one timer
-    // fired; false if there's nothing to wait on (caller panics).
-    bool wait_for_event() {
-        if (timers.empty()) return false;
-        TimePoint next = timers.top().deadline;
-        std::this_thread::sleep_until(next);
-        auto now = std::chrono::steady_clock::now();
-        while (!timers.empty() && timers.top().deadline <= now) {
-            Timer timer = timers.top();
-            timers.pop();
-            timer.waker.wake();
-        }
-        return true;
-    }
-
-    void run_until(uint32_t main_id) {
-        while (true) {
-            if (slot_done(main_id)) return;
-            if (drain_runnable()) continue;
-            if (slot_done(main_id)) return;
-            if (!wait_for_event()) {
-                tpy_panic("asyncio.run: no progress possible (coroutine "
-                          "returned Pending with no pending timers; v1 has "
-                          "no I/O reactor)");
-            }
-        }
-    }
-
-    // Cancel all live spawned tasks and drive them to completion so
-    // their finally blocks run. We re-schedule live tasks directly
-    // instead of waiting on timers; a task parked at an await point
-    // observes cancellation when it is polled again.
-    void drain_spawned_with_cancel(uint32_t skip_id, int max_polls = 8) {
-        for (uint32_t id = 0; id < slots.size(); ++id) {
-            if (id == skip_id) continue;
-            auto& slot = slots[id];
-            if (!slot.is_done()) {
-                slot.task->cancel_any();
-            }
-        }
-        for (int i = 0; i < max_polls && has_live_tasks(skip_id); ++i) {
-            for (uint32_t id = 0; id < slots.size(); ++id) {
-                if (id == skip_id) continue;
-                auto& slot = slots[id];
-                if (!slot.is_done()) {
-                    mark_runnable(id, slot.generation);
-                }
-            }
-            if (!drain_runnable()) break;
-        }
+    // Flag cancellation on the held task. No-op on a null box.
+    void cancel_any() noexcept {
+        if (task) task->cancel_any();
     }
 };
 
+
+/// Waker::wake dispatches into the running executor via the global
+/// ops table. Three early-out paths:
+///   * `exec == nullptr`: default-constructed Waker, no target.
+///   * `executor_ops.mark_runnable == nullptr`: the executor that
+///     stamped this Waker has been torn down (`_ExecutorScope.__del__`
+///     clears the ops table on exit). Silent no-op rather than UB on
+///     a stale pointer.
+///   * any exception thrown by the underlying `mark_runnable` (e.g.
+///     `std::bad_alloc` from the runnable-queue push): swallowed.
+///     wake() preserves a `noexcept` contract; the most we'd do on
+///     OOM is drop the wake, and the caller can't usefully react to
+///     it anyway.
 inline void Waker::wake() const noexcept {
-    if (exec != nullptr) {
-        exec->mark_runnable(task_id, generation);
+    if (exec == nullptr) return;
+    if (executor_ops.mark_runnable == nullptr) return;
+    try {
+        executor_ops.mark_runnable(exec, task_id, generation);
+    } catch (...) {
+        // Drop the wake; cannot propagate from a noexcept context.
     }
 }
 
-// Thread-local current executor pointer. Awaitables that need timer
-// registration consult this.
-inline thread_local Executor* current_executor = nullptr;
+/**
+ * ExecutorHandle -- opaque value-type handle to the currently-running
+ * TPy `Executor` instance, mirroring Waker's POD shape. Stored as
+ * `void*` because the concrete type is generated from TPy code and
+ * its C++ class name isn't visible from async.hpp; the ops thunks
+ * registered by `register_executor_ops_from<ExecT>(self)` cast it
+ * back at the call site.
+ */
+struct ExecutorHandle {
+    void* ptr = nullptr;
+    bool is_null() const noexcept { return ptr == nullptr; }
+};
 
+/// Read the current-executor thread-local as an opaque handle. Returns
+/// a null handle if no executor is running.
+inline ExecutorHandle current_executor_get() noexcept {
+    return ExecutorHandle{current_executor};
+}
+
+/// Write the current-executor thread-local. Used by the TPy
+/// `_ExecutorScope` RAII guard around `asyncio.run`.
+inline void current_executor_set(ExecutorHandle h) noexcept {
+    current_executor = h.ptr;
+}
+
+/// Clear the current-executor thread-local. Used by the smoke test's
+/// manual save/restore path; production teardown goes through
+/// `executor_scope_teardown` below.
+inline void current_executor_clear() noexcept {
+    current_executor = nullptr;
+}
+
+/// Tear down everything an `_ExecutorScope` set up: zero the
+/// ExecutorOps dispatch table and clear the current-executor
+/// thread-local. Any Waker stamped against the now-destroyed executor
+/// that fires later (e.g. a held-Future's saved `_waiter`) becomes a
+/// silent no-op in `Waker::wake` because both `executor_ops.mark_runnable`
+/// and `exec` are observed as null.
+inline void executor_scope_teardown() noexcept {
+    executor_ops = ExecutorOps{};
+    current_executor = nullptr;
+}
+
+/// Wrap a reference to any object as an opaque ExecutorHandle. The TPy
+/// `Executor.poll_slot` uses this to stamp Wakers with a back-pointer
+/// to itself (`&self` is the runtime address; void* erasure lets the
+/// handle outlive direct C++ knowledge of the generated TPy class).
+/// Strips const because the void* storage is type-erased -- the
+/// thunks that cast back know the underlying mutability requirements
+/// of each call site.
+template <typename T>
+inline ExecutorHandle make_executor_handle(T& obj) noexcept {
+    return ExecutorHandle{const_cast<void*>(
+        static_cast<const void*>(&obj))};
+}
+
+/// Construct a Waker from an executor handle + task id + generation.
+/// TPy-side bridge used by the TPy `Executor.poll_slot` to stamp
+/// Wakers with a back-pointer to itself without exposing Waker's
+/// individual fields as TPy-mutable. The `exec` pointer is opaque;
+/// `Waker::wake` dispatches via the ops table set up at executor
+/// construction.
+inline Waker make_waker(ExecutorHandle h, int32_t task_id,
+                        int32_t generation) noexcept {
+    Waker w;
+    w.exec = h.ptr;
+    w.task_id = task_id;
+    w.generation = generation;
+    return w;
+}
 
 /// Bridge for TPy-side awaitables: register a timer with the current
 /// executor at a deadline expressed in steady_clock seconds (matching
 /// `time.monotonic()`'s domain). No-op if no executor is running, so
 /// hand-rolled awaitables polled from a test harness without
-/// `asyncio.run` don't crash.
+/// `asyncio.run` don't crash. Dispatches via the ops table.
 inline void executor_register_timer_seconds(double deadline_seconds,
                                             Waker waker) {
     if (current_executor == nullptr) return;
-    using DurDouble = std::chrono::duration<double>;
-    auto deadline = Executor::TimePoint(
-        std::chrono::duration_cast<Executor::TimePoint::duration>(
-            DurDouble(deadline_seconds)));
-    current_executor->register_timer(deadline, waker);
+    if (executor_ops.register_timer == nullptr) return;
+    executor_ops.register_timer(current_executor, deadline_seconds, waker);
 }
 
 /// asyncio.create_task lowers to this: build a Task<T> from the
@@ -617,11 +685,62 @@ inline Task<T> make_user_task(CoroT&& coro) {
         tpy_panic("asyncio.create_task: no running event loop "
                   "(call asyncio.run(coro) to drive it)");
     }
+    if (executor_ops.spawn == nullptr) {
+        // Inconsistent state: thread-local executor is set but the
+        // spawn op wasn't registered. Should never happen -- the TPy
+        // `Executor.__init__` always populates the ops table. If
+        // reached, the runtime is in a corrupted state (e.g. ops
+        // cleared mid-loop, or a third-party `_set_current_executor`
+        // call bypassed Executor construction).
+        tpy_panic("asyncio.create_task: executor ops not registered "
+                  "(internal invariant violated)");
+    }
     auto state = std::make_shared<TaskStateImpl<T, CoroT>>(
         std::forward<CoroT>(coro));
     state->executor_owned = true;
-    current_executor->spawn(state);
+    executor_ops.spawn(current_executor, AnyTaskBox(state));
     return Task<T>::from_state(std::move(state));
+}
+
+
+/// Build an AnyTaskBox from a coroutine without registering with any
+/// executor. Test-only path: lets a test drive a TPy `Executor`
+/// directly without going through `make_user_task` (which requires a
+/// running event loop). Production spawn flows through `make_user_task`
+/// and the ExecutorOps `spawn` thunk; this factory is intentionally
+/// distinct so test scaffolding doesn't depend on the executor being
+/// the current one. Does NOT set `executor_owned = true` on the
+/// underlying state -- callers that drive the task through both an
+/// executor and a `Task<T>` handle should use `make_executor_owned_task`
+/// + `task_to_any_box` instead.
+template <typename T, typename CoroT>
+inline AnyTaskBox make_any_task_for_test(CoroT&& coro) {
+    auto state = std::make_shared<TaskStateImpl<T, CoroT>>(
+        std::forward<CoroT>(coro));
+    return AnyTaskBox(state);
+}
+
+/// Build a `Task<T>` whose state is marked `executor_owned`, ready to
+/// be spawned on an executor. Returns the user-facing handle; pair
+/// with `task_to_any_box(task)` to get the matching slot-table entry.
+/// Used by TPy `asyncio.run` to construct the main task without
+/// going through `make_user_task` (which spawns eagerly via the
+/// thread-local executor and doesn't return the slot id).
+template <typename T, typename CoroT>
+inline Task<T> make_executor_owned_task(CoroT&& coro) {
+    auto state = std::make_shared<TaskStateImpl<T, CoroT>>(
+        std::forward<CoroT>(coro));
+    state->executor_owned = true;
+    return Task<T>::from_state(std::move(state));
+}
+
+/// Clone a `Task<T>`'s underlying TaskState into an AnyTaskBox so the
+/// executor's slot table can drive it while the user holds onto the
+/// `Task<T>` handle. shared_ptr ref-count goes up by one; both views
+/// observe the same completion state.
+template <typename T>
+inline AnyTaskBox task_to_any_box(const Task<T>& t) {
+    return AnyTaskBox(t.state());
 }
 
 
@@ -639,76 +758,68 @@ inline bool task_poll_cancelled(Task<T>& t) {
 }
 
 
+// Task<void> uses the primary template; Poll<void>'s `pending()` /
+// `ready()` shape works through the same code path because all the
+// generic accessors are conditional on the value type.
+
+}  // namespace tpy
+
+// Forward declaration of the TPy-side run-loop helper. Defined in the
+// generated `tpystd/asyncio.hpp` from `lib/tpy/asyncio/__init__.py`.
+// Lives outside namespace tpy so the namespace lines up with TPy's
+// codegen choice. Non-generic so the signature is fully concrete --
+// async_run hands off the slot-table box and keeps its half of the
+// shared TaskState in the Task<T> local for result extraction.
+namespace tpystd::asyncio {
+void _run_drain_main_task(::tpy::AnyTaskBox&& box);
+}  // namespace tpystd::asyncio
+
+namespace tpy {
+
 /**
- * async_run -- v1 `asyncio.run` driver.
+ * async_run -- `asyncio.run` driver.
  *
- * Sets up a thread-local Executor, polls the top-level coro to
- * completion, and waits on the executor's timer heap when the coro
- * returns Pending. Returns the awaited value (Poll<T>::value() result)
- * for non-void coros; returns void otherwise.
+ * Thin C++ shell that handles result-type-dependent setup (Task<T>
+ * construction with the right ResultT) and result extraction (which
+ * needs `if constexpr (is_void_v<T>)` -- a thing TPy can't currently
+ * express; tracked as a v1.2 compiler item in `BUGS.md`). The run
+ * loop itself (executor construction, thread-local scope, spawn,
+ * run_until, drain) lives in the TPy `_run_drain_main_task` helper
+ * that this shell calls into.
  *
  * v1 has no I/O reactor -- only timer-driven sleep. A coro that returns
- * Pending with no pending timers panics ("no progress possible"); this
- * is the v1 equivalent of asyncio's "no current event loop" error.
+ * Pending with no pending timers panics ("no progress possible") inside
+ * `_run_drain_main_task`; that's the v1 equivalent of asyncio's "no
+ * current event loop" error.
  */
 template <typename CoroT>
 inline auto async_run(CoroT&& coro)
     -> decltype(std::declval<CoroT&>().__poll__(std::declval<Waker>()).value()) {
     using ResultT = decltype(std::declval<CoroT&>().__poll__(std::declval<Waker>()).value());
-    using CoroValT = std::remove_cvref_t<CoroT>;
     // Per docs/ASYNC_DESIGN.md ("Context propagation"): asyncio.run
     // cannot be re-entered. Matches CPython's "asyncio.run() cannot be
     // called from a running event loop" RuntimeError.
     if (current_executor != nullptr) {
         tpy_panic("asyncio.run() cannot be called from a running event loop");
     }
-    Executor exec;
-    Executor* prev = current_executor;
-    current_executor = &exec;
-    constexpr uint32_t no_skip = static_cast<uint32_t>(-1);
-    uint32_t main_id = no_skip;
-    // Drain spawned tasks (cancel + poll until done) before returning,
-    // so finally blocks run for any in-flight fire-and-forget tasks.
-    // current_executor must still be active during drain because
-    // user finally blocks may register timers / poll futures.
-    auto drain_and_restore_executor = [&](uint32_t skip_id) noexcept {
-        try {
-            exec.drain_spawned_with_cancel(skip_id);
-        } catch (...) {
-            // Swallow exceptions thrown out of finally blocks during
-            // drain; v1 has no place to surface them and dropping the
-            // executor with a live exception would terminate.
-        }
-        current_executor = prev;
-    };
-    try {
-        auto state = std::make_shared<TaskStateImpl<ResultT, CoroValT>>(
-            std::forward<CoroT>(coro));
-        main_id = exec.spawn(state);
-        exec.run_until(main_id);
-        drain_and_restore_executor(main_id);
-        if (state->has_exc) {
-            std::rethrow_exception(state->exc);
-        }
-        if constexpr (std::is_void_v<ResultT>) {
-            return;
-        } else {
-            if (!state->has_result) {
-                tpy_panic("asyncio.run: main coroutine completed without result");
-            }
-            ResultT value(std::move(*state->result_));
-            state->result_.reset();
-            state->has_result = false;
-            return value;
-        }
-    } catch (...) {
-        drain_and_restore_executor(main_id);
-        throw;
+    auto task = make_executor_owned_task<ResultT>(std::forward<CoroT>(coro));
+    // Delegate the run loop to TPy. This call sets up a TPy Executor
+    // internally, drives the task to completion via the slot-table
+    // box (which shares the underlying TaskState with our `task`
+    // handle), drains spawned tasks with cancellation, and clears
+    // the thread-local before returning.
+    {
+        AnyTaskBox box = task_to_any_box(task);
+        ::tpystd::asyncio::_run_drain_main_task(std::move(box));
+    }
+    // Read the cached result (or rethrow the cached exception). Uses
+    // `if constexpr` to handle void uniformly with non-void.
+    if constexpr (std::is_void_v<ResultT>) {
+        task.__poll__(Waker{}).value();
+        return;
+    } else {
+        return task.__poll__(Waker{}).value();
     }
 }
-
-// Task<void> uses the primary template; Poll<void>'s `pending()` /
-// `ready()` shape works through the same code path because all the
-// generic accessors are conditional on the value type.
 
 }  // namespace tpy

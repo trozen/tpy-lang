@@ -1,0 +1,2 @@
+Imports asyncio._executor.Slot (TPy-internal v1.x port leaf type).
+CPython's stdlib asyncio has no _executor submodule.

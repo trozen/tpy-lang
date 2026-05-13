@@ -1,0 +1,9 @@
+parked, runnable_q: 0
+slot done: False
+after wake, runnable_q: 1
+re-parked, runnable_q: 0
+---
+stale wake runnable_q: 0
+---
+after first poll, slot done: False
+countdown finished, slot done: True

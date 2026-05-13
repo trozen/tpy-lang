@@ -11,10 +11,16 @@ Provides:
 
 The CPython phase falls through to CPython's own `asyncio` module (this
 file is not under `lib/cpy/`); on the TPy compile path the bindings
-lower to helpers in `runtime/cpp/include/tpy/async.hpp`. `@native` is
-used for non-template bridges; `@cpp_template` only where the C++ side
-is a function template that needs per-call-site instantiation
+lower to helpers in `runtime/cpp/include/tpy/async.hpp` and to the TPy
+Executor implementation in `_executor.py`. `@native` is used for
+non-template bridges; `@cpp_template` only where the C++ side is a
+function template that needs per-call-site instantiation
 (`async_run`, `Task<void>::from_coro`, `make_user_task`).
+
+`async_run` is a thin C++ template shell that handles void-return
+typing (which TPy can't express today; tracked as a v1.2 compiler
+item) and delegates the run-loop body to the TPy `_run_drain_main_task`
+helper below. See `docs/ASYNC_PROGRESS.md` for v1.1 port history.
 """
 from builtins import BaseException, Exception
 from tpy.extern import cpp_template, native
@@ -25,12 +31,45 @@ from tpy.coro import (
 )
 from tpy.mem import UninitArrayStorage
 from time import monotonic
+from ._executor import (
+    AnyTaskBox, Executor, _ExecutorScope,
+)
 
 
 # Run a coroutine to completion. Drives the executor's timer heap.
-# TODO: replace with native?
+# Lowers to `::tpy::async_run` (a thin C++ template shell) which
+# builds the main Task and delegates the run loop to
+# `_run_drain_main_task` below.
 @cpp_template("::tpy::async_run({0})")
 def run[T](coro: Awaitable[T]) -> T: ...
+
+
+# TPy run-loop body, called from `tpy::async_run`. Takes the box (by
+# Own) rather than the Task[T] handle so the signature stays
+# non-generic: generic-T TPy functions emit by-value-by-default for
+# nocopy params, which would force the C++ shell to surrender
+# ownership of the Task and lose the ability to read its result
+# afterward. The C++ shell keeps its half of the shared TaskState via
+# the Task<T> handle and extracts the result after this call returns.
+def _run_drain_main_task(box: Own[AnyTaskBox]) -> None:
+    executor = Executor()
+    scope = _ExecutorScope(executor)
+    main_id = executor.spawn(box)
+    try:
+        executor.run_until(main_id)
+    finally:
+        # Drain spawned tasks with cancellation so their finally
+        # blocks run. The inner try/except is scoped narrowly to the
+        # drain call only -- any exception from `run_until` above
+        # (e.g. "no progress possible" RuntimeError) propagates out
+        # of the outer try unaffected and surfaces as the user-visible
+        # error from `asyncio.run`. Swallow drain-time exceptions
+        # because v1 has no place to surface them and dropping the
+        # executor mid-throw would terminate.
+        try:
+            executor.drain_spawned_with_cancel(main_id)
+        except BaseException:
+            pass
 
 
 # Bridge: register a steady-clock-seconds deadline with the running
@@ -66,13 +105,21 @@ class SleepFuture:
     def __poll__(self, waker: Waker) -> Poll[None]:
         if self.__cancel_pending:
             self.__cancel_pending = False
+            # TODO: cancelling a registered SleepFuture leaves its timer
+            # entry in the executor's timer_heap + _timer_wakers. The
+            # generation guard makes the eventual wake a silent no-op,
+            # so it's harmless per-cancel, but the heap grows unbounded
+            # under cancel-heavy workloads. Fix: track the (timer_id,
+            # waker) pair on self at registration time and remove it
+            # from the executor here before throwing. Needs an executor
+            # `cancel_timer(timer_id)` primitive.
             raise CancelledError()
         if monotonic() >= self.deadline:
             return poll_ready_none()
         if not self.registered:
             _register_timer_at(self.deadline, waker)
             self.registered = True
-        return poll_pending[None]()
+        return poll_pending()
 
 
 # Park the calling coroutine for `seconds` seconds. Returns a Task[None]
@@ -169,4 +216,4 @@ class Future[T]:
                 "Future already has a waiter (single-awaiter v1)")
         self._waiter = waker
         self._has_waiter = True
-        return poll_pending[T]()
+        return poll_pending()
