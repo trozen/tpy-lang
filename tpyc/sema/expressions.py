@@ -459,8 +459,8 @@ class ExpressionAnalyzer:
                 self.ctx.set_expr_type(expr, typ)
                 return typ
 
-        # Non-empty dict literal with dict type hint
-        if isinstance(expr, TpyDictLiteral) and expr.keys:
+        # Dict literal with dict type hint
+        if isinstance(expr, TpyDictLiteral):
             inner_hint = unwrap_readonly(type_hint)
             if isinstance(inner_hint, OwnType):
                 inner_hint = inner_hint.wrapped
@@ -2459,6 +2459,10 @@ class ExpressionAnalyzer:
     ) -> TpyType:
         """Analyze a dict literal {key: value, ...}"""
         if not expr.keys:
+            # Hint from LHS / param / return type pins K, V directly -- no
+            # usage-based inference needed.
+            if expected_key is not None and expected_value is not None:
+                return make_dict(expected_key, expected_value)
             if not is_body_like_scope(self.ctx.func.current_function):
                 raise self.ctx.error(
                     "Empty dict literal requires explicit type annotation", expr)

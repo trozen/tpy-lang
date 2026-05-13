@@ -183,11 +183,7 @@ class Executor:
         self.slots = []
         self.runnable_q = []
         self.timer_heap = []
-        # TODO(empty-container-field-inference): inline as `self._timer_wakers = {}`
-        # once empty container literals back-infer from the LHS field type.
-        # See BUGS.md "Empty container literal {} / [] assigned to a field".
-        empty_wakers: dict[UInt64, Waker] = {}
-        self._timer_wakers = empty_wakers
+        self._timer_wakers = {}
         self._next_timer_id = 0
         # Register this executor type's mark_runnable thunk in the
         # global ExecutorOps table so Waker::wake() dispatches into us

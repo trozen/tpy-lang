@@ -31,7 +31,7 @@ from ..parse import (
     TpyIf, TpyWhile, TpyForEach, TpyBreak, TpyContinue, TpyAssert,
     TpyRaise, TpyExceptHandler, TpyTry, TpyWith,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
-    TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyDictLiteral, TpyCoerce,
+    TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyCoerce,
     TpySubscript, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
     TpyNoneLiteral,
@@ -2557,7 +2557,6 @@ class StatementAnalyzer:
             # Handle empty list literal or generic type constructor with explicit type annotation
             # Note: [] * N is collapsed to [] in the parser
             is_empty_literal = isinstance(stmt.init, TpyArrayLiteral) and not stmt.init.elements
-            is_empty_dict_literal = isinstance(stmt.init, TpyDictLiteral) and not stmt.init.keys
             _generic_td = (find_factory_by_simple_name(stmt.init.func_name)
                            if isinstance(stmt.init, TpyCall) and isinstance(stmt.init.func, TpyName) else None)
             is_generic_constructor = (isinstance(stmt.init, TpyCall) and
@@ -2566,17 +2565,7 @@ class StatementAnalyzer:
                                       _generic_td is not None and
                                       bool(_generic_td.param_kinds))
 
-            # Empty dict literal with annotation: d: dict[K, V] = {}
-            if is_empty_dict_literal and stmt.type:
-                if is_dict(stmt.type):
-                    init_type = stmt.type
-                    self.ctx.set_expr_type(stmt.init, init_type)
-                else:
-                    raise self.ctx.error(
-                        f"Empty dict literal requires dict type annotation, got {stmt.type}",
-                        stmt,
-                    )
-            elif (is_empty_literal or is_generic_constructor) and stmt.type:
+            if (is_empty_literal or is_generic_constructor) and stmt.type:
                 # Check if annotation matches the constructor's generic type
                 annotation_matches = False
                 if is_generic_constructor:

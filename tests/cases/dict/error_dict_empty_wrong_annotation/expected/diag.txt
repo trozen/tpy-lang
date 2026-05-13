@@ -1,0 +1,1 @@
+main.py:4: error: Type mismatch in variable 'd': expected int, got PendingDict[???, ???]#0
