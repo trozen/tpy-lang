@@ -867,7 +867,7 @@ class ExpressionGenerator:
                         # -> string): auto would deduce the source type.
                         if is_any_str_type(own.wrapped):
                             tmp = self.ctx.temps.create_typed(
-                                own.wrapped.to_cpp(), gen_arg, brace_init=True)
+                                self.types.type_to_cpp(own.wrapped), gen_arg, brace_init=True)
                         else:
                             tmp = self.ctx.temps.create_typed("auto", gen_arg)
                         gen_arg = f"std::move({tmp})"
