@@ -113,6 +113,32 @@ Dispatched: <list> | Clean: <list>
 
 Omit empty severity sections. If everything is clean: `# /tpy-review report: all dispatched specialists clean`.
 
+### 7. Recommend a sign-off plan
+
+After the report, add a short **Recommendation** section: a single flat bullet list the user can scan and approve in one pass, without re-reading the findings above. This is the skill's takeaway -- the user shouldn't have to synthesize the report themselves.
+
+Each bullet: one action + one short reason. No file:line refs here (they're in the report above), no per-specialist attribution, no severity tags. Order by what should happen first.
+
+Cover three buckets, but only as bullets -- do not use sub-headers:
+- **Handle now**: every Critical, plus any Warning cheap enough to fix before commit.
+- **File and defer**: Warnings worth tracking in `BUGS.md` / `TODO.md` but not blocking; Suggestions worth remembering.
+- **Skip**: Suggestions not worth tracking (say so explicitly so the user knows they were considered).
+
+Cap at ~8 bullets; if more, the report itself is too noisy -- collapse related items.
+
+Example:
+
+```
+## Recommendation
+
+- Fix the `Optional[T]` borrow-form mismatch before commit -- miscompiles existing code.
+- Add a regression test for the empty-tuple case alongside the fix.
+- File the `@readonly_propagate` doc gap in TODO.md -- not blocking, but easy to forget.
+- Skip the naming nits -- bikeshed, not worth a follow-up.
+```
+
+If everything is clean or only trivial suggestions remain, a one-liner is fine: `## Recommendation: nothing to do; safe to commit.`
+
 ## Important
 
 - Do NOT run `uv run pytest` -- specialists are forbidden from this and so are you. The developer runs the suite before requesting review; flag concerns rather than verifying via pytest.
