@@ -170,6 +170,14 @@ class IntLit:
 
 
 @dataclass
+class FloatLit:
+    """Floating-point literal expression."""
+    kind: str = field(default="FloatLit", init=False)
+    value: float = 0.0
+    loc: Loc | None = None
+
+
+@dataclass
 class Name:
     """Identifier reference."""
     kind: str = field(default="Name", init=False)
@@ -253,8 +261,8 @@ class Compare:
     loc: Loc | None = None
 
 
-Expr = Union[StrLit, BoolLit, IntLit, Name, Call, BinOp, UnaryOp, Compare,
-             Attr, Subscript]
+Expr = Union[StrLit, BoolLit, IntLit, FloatLit, Name, Call, BinOp, UnaryOp,
+             Compare, Attr, Subscript]
 
 
 # --- Statements -----------------------------------------------------------

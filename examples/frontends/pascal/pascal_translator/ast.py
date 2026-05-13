@@ -34,6 +34,12 @@ class IntLit:
 
 
 @dataclass
+class FloatLit:
+    value: float
+    loc: Loc
+
+
+@dataclass
 class BoolLit:
     value: bool
     loc: Loc

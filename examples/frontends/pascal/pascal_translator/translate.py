@@ -38,6 +38,7 @@ from tpyc.frontend_ir import (
     EnumValue,
     ExprStmt,
     Field,
+    FloatLit,
     ForRange,
     FrontendDirectives,
     FrontendModule,
@@ -80,11 +81,17 @@ from . import ast as pa
 _TYPE_MAP: dict[str, str] = {
     "integer": "Int32",
     "boolean": "bool",
+    # TP `real` is a 6-byte float at the hardware level; we map both
+    # `real` and `double` to TPy's `float` (IEEE 754 64-bit) for the
+    # POC. Divergence documented in
+    # `examples/frontends/pascal/DESIGN.md`.
+    "real": "float",
+    "double": "float",
 }
 
 # Types that should NOT trigger an automatic `from tpy import X` -- the
 # entries that live in TPy's builtins module are visible without import.
-_BUILTIN_TYPES_NO_IMPORT: frozenset[str] = frozenset({"bool"})
+_BUILTIN_TYPES_NO_IMPORT: frozenset[str] = frozenset({"bool", "float"})
 
 # Pascal infix operators -> IR BinOpKind. Pascal `/` is the integer-or-
 # real "true" division (real result for integers); `div` is integer
@@ -882,6 +889,10 @@ def _lower_case_stmt(stmt: pa.CaseStmt, ctx: _Ctx):
 def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
     name = stmt.callee.name
     if name in ("write", "writeln"):
+        # `_lower_writeln_stmt` handles both `write` and `writeln` --
+        # the callee name picks the runtime function (`write` or
+        # `writeln`) and the rest of the dispatch (per-arg-type
+        # overloads) is identical.
         return _lower_writeln_stmt(stmt, ctx)
     if name in ("read", "readln"):
         return _lower_readln_stmt(stmt, ctx)
@@ -990,6 +1001,8 @@ def _lower_writeln_stmt(stmt: pa.CallStmt, ctx: _Ctx):
     arg_type = _static_type_of(arg, ctx)
     if arg_type == "integer":
         runtime_name = f"{callee_name}_int"
+    elif arg_type == "real":
+        runtime_name = f"{callee_name}_float"
     else:
         # StrView path: string literals already have StrView type;
         # PStr arguments are wrapped in `str(...)` so the runtime
@@ -1052,6 +1065,8 @@ def _build_user_call_args(callee_name: str, args: list, sig: _Sig,
 def _lower_expr(expr, ctx: _Ctx):
     if isinstance(expr, pa.IntLit):
         return IntLit(value=expr.value, loc=_to_ir_loc(expr.loc))
+    if isinstance(expr, pa.FloatLit):
+        return FloatLit(value=expr.value, loc=_to_ir_loc(expr.loc))
     if isinstance(expr, pa.StrLit):
         return StrLit(value=expr.value, loc=_to_ir_loc(expr.loc))
     if isinstance(expr, pa.BoolLit):
@@ -1184,6 +1199,8 @@ def _static_type_of(expr, ctx: _Ctx) -> str | None:
     """Best-effort static type for writeln-overload dispatch."""
     if isinstance(expr, pa.IntLit):
         return "integer"
+    if isinstance(expr, pa.FloatLit):
+        return "real"
     if isinstance(expr, pa.StrLit):
         return "string"
     if isinstance(expr, pa.BoolLit):
@@ -1219,12 +1236,23 @@ def _static_type_of(expr, ctx: _Ctx) -> str | None:
         sig = ctx.signatures.get(expr.callee.name)
         return sig.return_type if sig is not None else None
     if isinstance(expr, pa.BinOp):
-        # String operations stay string-typed; arithmetic / comparison
-        # stay integer (M6's only result categories).
+        # String operations stay string-typed; numeric arithmetic
+        # widens to `real` whenever either operand is real (Pascal's
+        # promotion rule). `/` (true division) always yields a real,
+        # matching Pascal semantics.
         if expr.op == "+" and _produces_string_value(expr, ctx):
             return "string"
+        if expr.op == "/":
+            return "real"
+        lhs_t = _static_type_of(expr.lhs, ctx)
+        rhs_t = _static_type_of(expr.rhs, ctx)
+        if lhs_t == "real" or rhs_t == "real":
+            return "real"
         return "integer"
     if isinstance(expr, pa.UnaryOp):
+        operand_t = _static_type_of(expr.operand, ctx)
+        if operand_t == "real":
+            return "real"
         return "integer"
     return None
 
@@ -1241,6 +1269,8 @@ def _default_init_for(type_name: str, loc: pa.Loc):
         return IntLit(value=0, loc=ir_loc)
     if type_name == "boolean":
         return BoolLit(value=False, loc=ir_loc)
+    if type_name in ("real", "double"):
+        return FloatLit(value=0.0, loc=ir_loc)
     # Fallback: no init. The compiler will raise a clear error if a
     # path reads the synthetic var before writing it, which is the
     # right behavior for unsupported return types.

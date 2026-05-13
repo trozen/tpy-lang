@@ -31,6 +31,7 @@ from ..parse.nodes import (
     TpyEnum,
     TpyExprStmt,
     TpyFieldAccess,
+    TpyFloatLiteral,
     TpyForEach,
     TpyFunction,
     TpyIf,
@@ -68,6 +69,7 @@ from .nodes import (
     EnumValue,
     ExprStmt,
     Field,
+    FloatLit,
     ForEach,
     ForRange,
     FrontendModule,
@@ -702,6 +704,10 @@ def _lower_expr(
         return out
     if isinstance(expr, IntLit):
         out = TpyIntLiteral(value=expr.value)
+        out.loc = loc
+        return out
+    if isinstance(expr, FloatLit):
+        out = TpyFloatLiteral(value=expr.value)
         out.loc = loc
         return out
     if isinstance(expr, Name):

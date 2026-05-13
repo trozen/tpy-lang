@@ -200,10 +200,10 @@ class _Parser:
         if self.cur.kind == TokKind.LPAREN:
             return self.parse_enum_type()
         # Named type: either a scalar keyword (`integer`, `boolean`,
-        # `char`) or a user-defined ident.
+        # `char`, `real`, `double`) or a user-defined ident.
         t = self.cur
         if t.kind == TokKind.KEYWORD and t.text in (
-                "integer", "boolean", "char"):
+                "integer", "boolean", "char", "real", "double"):
             self.i += 1
             return pa.NamedTypeSpec(name=t.text, loc=self._loc(t, t))
         if t.kind == TokKind.IDENT:
@@ -321,7 +321,8 @@ class _Parser:
             self._eat(TokKind.COLON)
             ret_tok = self.cur
             if ret_tok.kind == TokKind.KEYWORD:
-                if ret_tok.text not in ("integer", "boolean"):
+                if ret_tok.text not in (
+                        "integer", "boolean", "real", "double"):
                     raise ParseError(
                         f"unsupported function return type {ret_tok.text!r}",
                         ret_tok.line, ret_tok.col,
@@ -385,7 +386,7 @@ class _Parser:
         # auto-pointer-promotion is in place).
         type_tok = self.cur
         if type_tok.kind == TokKind.KEYWORD:
-            if type_tok.text not in ("integer", "boolean"):
+            if type_tok.text not in ("integer", "boolean", "real", "double"):
                 raise ParseError(
                     f"unsupported parameter type {type_tok.text!r}",
                     type_tok.line, type_tok.col,
@@ -806,6 +807,9 @@ class _Parser:
         if t.kind == TokKind.INT_LIT:
             self.i += 1
             return pa.IntLit(value=int(t.text), loc=self._loc(t, t))
+        if t.kind == TokKind.FLOAT_LIT:
+            self.i += 1
+            return pa.FloatLit(value=float(t.text), loc=self._loc(t, t))
         if t.kind == TokKind.STR_LIT:
             self.i += 1
             return pa.StrLit(value=t.text, loc=self._loc(t, t))

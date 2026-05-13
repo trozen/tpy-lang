@@ -24,6 +24,7 @@ class TokKind(Enum):
     KEYWORD = "KEYWORD"
     STR_LIT = "STR_LIT"
     INT_LIT = "INT_LIT"
+    FLOAT_LIT = "FLOAT_LIT"
     SEMI = "SEMI"
     DOT = "DOT"
     COLON = "COLON"
@@ -54,7 +55,7 @@ class TokKind(Enum):
 # spelling collides with the identifier syntax.
 KEYWORDS = frozenset({
     "program", "begin", "end",
-    "var", "integer", "boolean", "string", "char",
+    "var", "integer", "boolean", "string", "char", "real", "double",
     "div", "mod",
     "and", "or", "not", "xor",
     "true", "false",
@@ -224,14 +225,37 @@ def tokenize(source: str, path: Path) -> list[Token]:
             else:
                 tokens.append(Token(TokKind.GT, ">", sl, sc, line, col - 1))
             continue
-        # Integer literal (decimal). Hex / octal land later milestones.
+        # Numeric literal (decimal). Float form: integer-part `.` digits
+        # with an optional exponent (`e`/`E`, optional sign, digits).
+        # Hex / octal arrive in later milestones.
         if ch.isdigit():
             sl, sc = line, col
             start = i
             while i < n and source[i].isdigit():
                 adv()
-            tokens.append(Token(TokKind.INT_LIT, source[start:i],
-                                sl, sc, line, col - 1))
+            is_float = False
+            # `.` followed by a digit is a fractional part. A `..` (the
+            # range-bounds separator in `array[1..N]`) is not, so we
+            # peek two characters and bail when the next-but-one is
+            # itself `.`.
+            if (i < n and source[i] == "."
+                    and not (i + 1 < n and source[i + 1] == ".")):
+                is_float = True
+                adv()  # consume '.'
+                while i < n and source[i].isdigit():
+                    adv()
+            if i < n and source[i] in ("e", "E"):
+                is_float = True
+                adv()
+                if i < n and source[i] in ("+", "-"):
+                    adv()
+                if not (i < n and source[i].isdigit()):
+                    raise LexError("malformed numeric literal: "
+                                   "exponent has no digits", sl, sc)
+                while i < n and source[i].isdigit():
+                    adv()
+            kind = TokKind.FLOAT_LIT if is_float else TokKind.INT_LIT
+            tokens.append(Token(kind, source[start:i], sl, sc, line, col - 1))
             continue
         # String literal: 'text' with '' for embedded apostrophe
         if ch == "'":

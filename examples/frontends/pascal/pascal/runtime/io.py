@@ -23,6 +23,26 @@ def writeln_int(n: Int32) -> None:
     print(n)
 
 
+def writeln_float(x: float) -> None:
+    print(x)
+
+
+# `write` (no trailing newline). Pascal lets writeln(...) and write(...)
+# stream a sequence of values; M9 keeps it simple -- per-type calls
+# with no separator, matching the way the translator routes one arg
+# per builtin call.
+def write(s: str) -> None:
+    print(s, end="")
+
+
+def write_int(n: Int32) -> None:
+    print(n, end="")
+
+
+def write_float(x: float) -> None:
+    print(x, end="")
+
+
 def readln_int() -> Int32:
     """Read a line of stdin and parse it as an Int32. Pascal's
     `readln(int_var)` lowers to `int_var := readln_int();`."""
