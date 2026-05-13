@@ -156,6 +156,10 @@ class _Ctx:
     # name. Indexing into the variable subtracts this from the index
     # expression so the lowered IR uses 0-based indexing.
     array_lower_bounds: dict[str, int] = field(default_factory=dict)
+    # FixStr capacity per declared `string`/`string[N]` variable.
+    # Used by assignment lowering (`s := 'lit'` -> `s.assign('lit')`)
+    # and by string-literal-vs-FixStr disambiguation.
+    string_vars: dict[str, int] = field(default_factory=dict)
     # Per-routine state (saved / restored when entering / leaving each
     # subroutine; left at the defaults at module-body level).
     current_func: str | None = None
@@ -302,10 +306,10 @@ def _lower_type_decl(td: pa.TypeDecl, ctx: _Ctx) -> Record | None:
 
 def _lower_type_spec(spec, ctx: _Ctx):
     """Lower a Pascal TypeSpec to an IR type. Returns NamedType (for
-    builtins or user records) or NamedType("Array", ...) (for arrays).
+    builtins, user records, or strings) or NamedType("Array", ...).
     """
     if isinstance(spec, pa.NamedTypeSpec):
-        # Built-in scalar (integer / boolean) routes through the
+        # Built-in scalar (integer / boolean / char) routes through the
         # built-in mapping; user record types pass through as-is.
         if spec.name in _TYPE_MAP:
             tpy_name = _TYPE_MAP[spec.name]
@@ -331,6 +335,13 @@ def _lower_type_spec(spec, ctx: _Ctx):
                   IntTypeArg(value=count)),
             loc=_to_ir_loc(spec.loc),
         )
+    if isinstance(spec, pa.StringTypeSpec):
+        ctx.add_import("pascal.runtime.strings", "PStr")
+        return NamedType(
+            name="PStr",
+            args=(IntTypeArg(value=spec.capacity),),
+            loc=_to_ir_loc(spec.loc),
+        )
     ctx.diagnostics.append(_diag(
         f"unsupported type spec {type(spec).__name__}",
         getattr(spec, "loc", _zero_loc()),
@@ -340,7 +351,8 @@ def _lower_type_spec(spec, ctx: _Ctx):
 
 def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
     """Update the static type env and per-variable metadata (array
-    lower bounds) based on a Pascal var's declared type."""
+    lower bounds, string capacities) based on a Pascal var's declared
+    type."""
     if isinstance(spec, pa.NamedTypeSpec):
         ctx.type_env[name] = spec.name
         return
@@ -348,33 +360,42 @@ def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
         ctx.type_env[name] = "array"
         ctx.array_lower_bounds[name] = spec.lower
         return
+    if isinstance(spec, pa.StringTypeSpec):
+        ctx.type_env[name] = "string"
+        ctx.string_vars[name] = spec.capacity
+        return
 
 
 def _default_init_for_spec(spec, loc: pa.Loc, ctx: _Ctx):
     """Zero-style default init for a function-local declaration.
 
     - Scalars route through `_default_init_for` (int 0, bool False).
-    - User record types lower to a default constructor call `T()`,
-      which TPy provides for records without an explicit `__init__`.
-    - Arrays rely on `Array[T, N]`'s own zero-fill default
-      construction (no init needed in the IR).
+    - User record types lower to a default constructor call `T()`.
+    - Arrays / strings get their explicit type-args constructor.
     """
     if isinstance(spec, pa.NamedTypeSpec):
         if spec.name in ctx.record_types:
             return _default_record_ctor(spec.name, loc)
         return _default_init_for(spec.name, loc)
+    if isinstance(spec, pa.ArrayTypeSpec):
+        return _default_array_ctor(spec, loc, ctx)
+    if isinstance(spec, pa.StringTypeSpec):
+        return _default_fixstr_ctor(spec.capacity, loc, ctx)
     return None
 
 
 def _default_init_module(spec, loc: pa.Loc, ctx: _Ctx):
     """Default init for a module-level variable. Scalars get None (C++
-    auto-zero-init applies); records and arrays require an explicit
-    constructor call -- TPy rejects uninitialised non-value globals."""
+    auto-zero-init applies); records, arrays, and strings require an
+    explicit constructor call -- TPy rejects uninitialised non-value
+    globals."""
     if isinstance(spec, pa.NamedTypeSpec):
         if spec.name in ctx.record_types:
             return _default_record_ctor(spec.name, loc)
     if isinstance(spec, pa.ArrayTypeSpec):
         return _default_array_ctor(spec, loc, ctx)
+    if isinstance(spec, pa.StringTypeSpec):
+        return _default_fixstr_ctor(spec.capacity, loc, ctx)
     return None
 
 
@@ -393,6 +414,17 @@ def _default_array_ctor(spec: pa.ArrayTypeSpec, loc: pa.Loc, ctx: _Ctx):
         callee=Name(ident="Array", loc=ir_loc),
         type_args=(TypeTypeArg(value=elem_type),
                    IntTypeArg(value=count)),
+        args=(), loc=ir_loc,
+    )
+
+
+def _default_fixstr_ctor(capacity: int, loc: pa.Loc, ctx: _Ctx):
+    """`PStr[N]()` constructor call."""
+    ctx.add_import("pascal.runtime.strings", "PStr")
+    ir_loc = _to_ir_loc(loc)
+    return Call(
+        callee=Name(ident="PStr", loc=ir_loc),
+        type_args=(IntTypeArg(value=capacity),),
         args=(), loc=ir_loc,
     )
 
@@ -588,6 +620,13 @@ def _lower_assign_stmt(stmt: pa.AssignStmt, ctx: _Ctx):
                 and target_name == ctx.current_func
                 and ctx.current_func_return_type is not None):
             target_name = _RESULT_NAME
+        # String-variable assignment routes through PStr.assign so the
+        # buffer stays in place. Without this, Pascal's `s := 'literal'`
+        # would translate to `s = "literal"` (TPy `str` reassignment),
+        # which TPy can't coerce into a PStr.
+        if target_name in ctx.string_vars and _produces_string_value(
+                stmt.value, ctx):
+            return _lower_string_assign(target_name, stmt, ctx)
         value = _lower_expr(stmt.value, ctx)
         if value is None:
             return None
@@ -616,6 +655,69 @@ def _lower_assign_stmt(stmt: pa.AssignStmt, ctx: _Ctx):
     if value is None:
         return None
     return Assign(targets=(target,), value=value, loc=_to_ir_loc(stmt.loc))
+
+
+def _coerce_string_operand(lowered, source, ctx: _Ctx):
+    """Wrap a PStr-typed operand in `str(...)` so it can be passed
+    where a `str` (StrView) is expected -- both PStr's `__add__` and
+    `__eq__` take `str`. String literals already have str type and
+    pass through unchanged.
+    """
+    if isinstance(source, pa.StrLit):
+        return lowered
+    if not _produces_string_value(source, ctx):
+        return lowered
+    loc = lowered.loc if lowered is not None else None
+    return Call(
+        callee=Name(ident="str", loc=loc),
+        args=(lowered,), loc=loc,
+    )
+
+
+def _produces_string_value(expr, ctx: _Ctx) -> bool:
+    """True when an expression produces a string-typed result that
+    should be assigned into a PStr lvalue via `assign(...)` rather
+    than ordinary value reassignment."""
+    if isinstance(expr, pa.StrLit):
+        return True
+    if isinstance(expr, pa.Ident):
+        return expr.name in ctx.string_vars
+    if isinstance(expr, pa.BinOp) and expr.op == "+":
+        return (_produces_string_value(expr.lhs, ctx)
+                or _produces_string_value(expr.rhs, ctx))
+    return False
+
+
+def _lower_string_assign(target_name: str, stmt: pa.AssignStmt,
+                         ctx: _Ctx):
+    """Lower `target := <string expr>` to `target.assign(<expr>)`. The
+    PStr-side `assign` method clears the buffer and copies the source
+    characters, so the lvalue keeps its identity (mirrors Pascal's
+    value-copy assignment semantics).
+
+    Non-`str` source values (a PStr variable, or the `Own[PStr]`
+    produced by `+`) are funneled through `str(...)` so PStr.assign's
+    `str` parameter always sees a string view -- PStr's `__str__`
+    returns one for us.
+    """
+    value = _lower_expr(stmt.value, ctx)
+    if value is None:
+        return None
+    loc = _to_ir_loc(stmt.loc)
+    target_loc = _to_ir_loc(stmt.target.loc)
+    if not isinstance(stmt.value, pa.StrLit):
+        value = Call(
+            callee=Name(ident="str", loc=target_loc),
+            args=(value,), loc=loc,
+        )
+    call = Call(
+        callee=Attr(
+            target=Name(ident=target_name, loc=target_loc),
+            ident="assign", loc=target_loc,
+        ),
+        args=(value,), loc=loc,
+    )
+    return ExprStmt(value=call, loc=loc)
 
 
 def _lower_target(target, ctx: _Ctx):
@@ -765,7 +867,15 @@ def _lower_writeln_stmt(stmt: pa.CallStmt, ctx: _Ctx):
     if arg_type == "integer":
         runtime_name = f"{callee_name}_int"
     else:
+        # StrView path: string literals already have StrView type;
+        # PStr arguments are wrapped in `str(...)` so the runtime
+        # writeln(StrView) overload accepts them.
         runtime_name = callee_name
+        if arg_type == "string" and not isinstance(arg, pa.StrLit):
+            ir_arg = Call(
+                callee=Name(ident="str", loc=_to_ir_loc(arg.loc)),
+                args=(ir_arg,), loc=_to_ir_loc(arg.loc),
+            )
     ctx.add_import("pascal.runtime.io", runtime_name)
     ir_call = Call(
         callee=Name(ident=runtime_name, loc=_to_ir_loc(stmt.callee.loc)),
@@ -849,6 +959,10 @@ def _lower_expr(expr, ctx: _Ctx):
             rhs = _lower_expr(expr.rhs, ctx)
             if lhs is None or rhs is None:
                 return None
+            # String comparison: route both operands through `str(...)`
+            # so the comparison reaches PStr's `__eq__(other: str)`.
+            lhs = _coerce_string_operand(lhs, expr.lhs, ctx)
+            rhs = _coerce_string_operand(rhs, expr.rhs, ctx)
             return Compare(
                 lhs=lhs, ops=(cmp_op,), comparators=(rhs,),
                 loc=_to_ir_loc(expr.loc),
@@ -862,6 +976,12 @@ def _lower_expr(expr, ctx: _Ctx):
         rhs = _lower_expr(expr.rhs, ctx)
         if lhs is None or rhs is None:
             return None
+        # String concatenation (`+`): wrap each PStr operand in
+        # `str(...)` so each call site hits PStr.__add__(other: str)
+        # regardless of which side carries the PStr value.
+        if op == BinOpKind.ADD and _produces_string_value(expr, ctx):
+            lhs = _coerce_string_operand(lhs, expr.lhs, ctx)
+            rhs = _coerce_string_operand(rhs, expr.rhs, ctx)
         return BinOp(op=op, lhs=lhs, rhs=rhs, loc=_to_ir_loc(expr.loc))
     if isinstance(expr, pa.UnaryOp):
         op = _UNARY_OP.get(expr.op)
@@ -882,6 +1002,23 @@ def _lower_expr(expr, ctx: _Ctx):
 
 def _lower_call_expr(expr: pa.CallExpr, ctx: _Ctx):
     name = expr.callee.name
+    # Pascal builtin `length(x)` -> TPy `len(x)`. Routes for both
+    # strings (PStr) and arrays. `len` is a Python builtin so no
+    # import is required.
+    if name == "length":
+        if len(expr.args) != 1:
+            ctx.diagnostics.append(_diag(
+                "length(x) takes exactly one argument",
+                expr.callee.loc,
+            ))
+            return None
+        arg = _lower_expr(expr.args[0], ctx)
+        if arg is None:
+            return None
+        return Call(
+            callee=Name(ident="len", loc=_to_ir_loc(expr.callee.loc)),
+            args=(arg,), loc=_to_ir_loc(expr.loc),
+        )
     sig = ctx.signatures.get(name)
     if sig is None:
         ctx.diagnostics.append(_diag(
@@ -934,9 +1071,17 @@ def _static_type_of(expr, ctx: _Ctx) -> str | None:
                 return "integer"
         return None
     if isinstance(expr, pa.CallExpr):
+        if expr.callee.name == "length":
+            return "integer"
         sig = ctx.signatures.get(expr.callee.name)
         return sig.return_type if sig is not None else None
-    if isinstance(expr, (pa.BinOp, pa.UnaryOp)):
+    if isinstance(expr, pa.BinOp):
+        # String operations stay string-typed; arithmetic / comparison
+        # stay integer (M6's only result categories).
+        if expr.op == "+" and _produces_string_value(expr, ctx):
+            return "string"
+        return "integer"
+    if isinstance(expr, pa.UnaryOp):
         return "integer"
     return None
 

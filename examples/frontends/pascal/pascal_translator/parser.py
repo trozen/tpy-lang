@@ -187,16 +187,20 @@ class _Parser:
         )
 
     def parse_type_spec(self):
-        """Parse a type specification. Three forms recognised in M5:
-        a bare identifier (named type), a record body, or an array type."""
+        """Parse a type specification. Forms recognised so far: bare
+        named type, `record ... end`, `array[lo..hi] of T`, and
+        Pascal's two string forms (`string` and `string[N]`)."""
         if self.cur.kind == TokKind.KEYWORD and self.cur.text == "record":
             return self.parse_record_type()
         if self.cur.kind == TokKind.KEYWORD and self.cur.text == "array":
             return self.parse_array_type()
-        # Named type: either a keyword (`integer`, `boolean`) or a
-        # user-defined ident.
+        if self.cur.kind == TokKind.KEYWORD and self.cur.text == "string":
+            return self.parse_string_type()
+        # Named type: either a scalar keyword (`integer`, `boolean`,
+        # `char`) or a user-defined ident.
         t = self.cur
-        if t.kind == TokKind.KEYWORD and t.text in ("integer", "boolean"):
+        if t.kind == TokKind.KEYWORD and t.text in (
+                "integer", "boolean", "char"):
             self.i += 1
             return pa.NamedTypeSpec(name=t.text, loc=self._loc(t, t))
         if t.kind == TokKind.IDENT:
@@ -205,6 +209,24 @@ class _Parser:
         raise ParseError(
             f"expected type, got {t.kind.value} {t.text!r}",
             t.line, t.col,
+        )
+
+    def parse_string_type(self) -> pa.StringTypeSpec:
+        """`string` (default capacity 255) or `string[N]` (custom)."""
+        start = self._eat(TokKind.KEYWORD, "string")
+        capacity = 255
+        if self.cur.kind == TokKind.LBRACK:
+            self.i += 1
+            capacity = self._parse_signed_int_lit()
+            self._eat(TokKind.RBRACK)
+        end_tok = self.tokens[self.i - 1]
+        if capacity < 1:
+            raise ParseError(
+                f"string capacity must be positive (got {capacity})",
+                start.line, start.col,
+            )
+        return pa.StringTypeSpec(
+            capacity=capacity, loc=self._loc(start, end_tok),
         )
 
     def parse_record_type(self) -> pa.RecordTypeSpec:

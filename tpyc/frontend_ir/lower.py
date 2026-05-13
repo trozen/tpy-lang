@@ -38,6 +38,7 @@ from ..parse.nodes import (
     TpyLiteralPattern,
     TpyMatch,
     TpyMatchCase,
+    TpyMethodCall,
     TpyModule,
     TpyName,
     TpyRecord,
@@ -708,6 +709,26 @@ def _lower_expr(
         out.loc = loc
         return out
     if isinstance(expr, Call):
+        # Method-call shape: callee is `obj.method` -- emit TpyMethodCall
+        # directly so sema's method-dispatch path fires. TpyCall with a
+        # field-access function would otherwise have to be re-routed by
+        # sema, and not every method-resolution path handles that.
+        if isinstance(expr.callee, Attr):
+            obj = _lower_expr(expr.callee.target, name_to_origin,
+                              plugin_name, fm, diags)
+            if obj is None:
+                return None
+            args: list = []
+            for a in expr.args:
+                la = _lower_expr(a, name_to_origin, plugin_name, fm, diags)
+                if la is None:
+                    return None
+                args.append(la)
+            mcall = TpyMethodCall(
+                obj=obj, method=expr.callee.ident, args=args,
+            )
+            mcall.loc = loc
+            return mcall
         callee = _lower_expr(expr.callee, name_to_origin, plugin_name, fm, diags)
         if callee is None:
             return None

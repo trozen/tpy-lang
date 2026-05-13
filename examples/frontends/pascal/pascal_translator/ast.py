@@ -101,6 +101,14 @@ class ArrayTypeSpec:
 
 
 @dataclass
+class StringTypeSpec:
+    """`string` (default capacity 255) or `string[N]` (custom capacity).
+    Lowers to `FixStr[capacity]` in the IR."""
+    capacity: int
+    loc: Loc
+
+
+@dataclass
 class TypeDecl:
     """A single entry in a `type` section: `Name = TypeSpec`."""
     name: str
