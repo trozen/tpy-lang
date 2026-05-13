@@ -669,6 +669,24 @@ def get_case_default_int(case_dir: Path) -> str:
     return _validate_default_int_name(options.get("default_int", "Int32"))
 
 
+def _frontend_registry_for(src_file: Path):
+    """Return (registry, extra_lib_dirs) for a non-Python entry, or
+    (None, []) for ordinary .py cases.
+
+    M1 hard-codes the Pascal plugin -- a generic discovery loop arrives
+    once there are multiple plugins.
+    """
+    if src_file.suffix not in (".pas", ".pp"):
+        return None, []
+    from tpyc.frontend_plugin import FrontendRegistry, load_plugin
+    plugin_dir = PROJECT_ROOT / "examples" / "frontends" / "pascal"
+    plugin_path = plugin_dir / "pascal_frontend.py"
+    plugin = load_plugin(str(plugin_path), {})
+    reg = FrontendRegistry()
+    reg.register(plugin)
+    return reg, [plugin_dir]
+
+
 def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str | None = None) -> CompileResult:
     """Compile a TurboPython file and capture diagnostics.
 
@@ -676,12 +694,17 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
     Warnings are collected but don't cause failure. Errors cause failure.
     Uses Compiler for multi-module support.
     """
-    module_name = get_module_name(src_file)
+    frontend_registry, extra_lib_dirs = _frontend_registry_for(src_file)
+    plugin_extensions = (frontend_registry.all_extensions()
+                         if frontend_registry is not None else frozenset())
+    module_name = get_module_name(src_file, plugin_extensions)
     default_int = _validate_default_int_name(default_int or "Int32")
+    lib_dirs = list(DEFAULT_LIB_DIRS) + extra_lib_dirs
 
     try:
         # Use Compiler for multi-module support
-        compiler = Compiler(src_file, default_int=default_int, lib_dirs=DEFAULT_LIB_DIRS)
+        compiler = Compiler(src_file, default_int=default_int, lib_dirs=lib_dirs,
+                            frontend_registry=frontend_registry)
         compiled_modules = compiler.compile()
 
         # Collect diagnostics from compiler and all analyzers
@@ -1690,12 +1713,19 @@ def _filter_lib_traceback(stderr: str) -> str:
 _SKIP_DIRS = {"__tpyc__", "expected", "__pycache__"}
 
 
+# File extensions that mark a candidate entry point in a case's `src/`
+# directory. `.pas` is recognized so the Pascal frontend-plugin POC can
+# live next to ordinary `.py` cases without a separate runner.
+_ENTRY_EXTENSIONS = ("*.py", "*.pas")
+
+
 def _discover_from_dirs(base_dirs: list[Path]):
     """Discover test cases from the given directories.
 
-    Walks recursively looking for ``src/`` directories that contain ``.py``
-    files, but skips build artifact trees (__tpyc__, expected, __pycache__)
-    to avoid scanning thousands of irrelevant directories.
+    Walks recursively looking for ``src/`` directories that contain a
+    `.py` or `.pas` entry, but skips build artifact trees (__tpyc__,
+    expected, __pycache__) to avoid scanning thousands of irrelevant
+    directories.
 
     Returns list of (name, case_dir, main_src) tuples.
     """
@@ -1717,15 +1747,22 @@ def _discover_from_dirs(base_dirs: list[Path]):
                 continue
 
             case_dir = cur.parent
-            src_files = list(cur.glob("*.py"))
+            src_files: list[Path] = []
+            for pat in _ENTRY_EXTENSIONS:
+                src_files.extend(cur.glob(pat))
             if not src_files:
                 continue
 
-            # Prefer main.py as entry point, otherwise pick first alphabetically
+            # Prefer main.{pas,py} as entry point, otherwise pick first
+            # alphabetically. .pas wins over .py if both exist so a
+            # frontend-plugin case can keep a helper .py file in src/.
             main_src = None
-            for sf in src_files:
-                if sf.name == "main.py":
-                    main_src = sf
+            for preferred in ("main.pas", "main.py"):
+                for sf in src_files:
+                    if sf.name == preferred:
+                        main_src = sf
+                        break
+                if main_src is not None:
                     break
             if main_src is None:
                 main_src = sorted(src_files, key=lambda p: p.name)[0]

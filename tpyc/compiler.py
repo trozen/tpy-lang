@@ -26,6 +26,11 @@ from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from .sema.reach_analysis import compute_reached_symbols
 from .modules.resolver import ModuleResolver, ResolvedModule
 from .modules import get_builtin_module_names
+from .frontend_plugin import (
+    FrontendPlugin, FrontendPluginError, FrontendRegistry, WorkspaceContext,
+)
+from .frontend_diagnostics import FrontendDiagnostic, FrontendDiagnosticCategory
+from .frontend_ir import lower_module
 from .type_def_registry import (
     get_type_def as _get_type_def,
     attach_dynamic_type_def, TypeCategory,
@@ -1013,18 +1018,24 @@ class Compiler:
     """
 
     def __init__(self, entry_point: Path, default_int: str = "Int32",
-                 lib_dirs: list[Path] | None = None):
+                 lib_dirs: list[Path] | None = None,
+                 frontend_registry: 'FrontendRegistry | None' = None):
         """Initialize compiler with entry point path.
 
         Args:
             entry_point: Path to the main source file.
             default_int: Unannotated integer literal default type.
             lib_dirs: Extra directories to search for library modules.
+            frontend_registry: Optional registry of frontend plugins
+                (one per non-Python source extension). When set, files
+                whose extension matches a registered plugin are routed
+                through the plugin + lowering pass instead of `Parser`.
         """
         self.entry_point = entry_point.resolve()
         self.resolver: ModuleResolver | None = ModuleResolver(self.entry_point.parent,
                                                                extra_dirs=lib_dirs or [])
         self.default_int_type = parse_default_int_type(default_int)
+        self.frontend_registry = frontend_registry
         self._init_shared()
 
     def _init_shared(self) -> None:
@@ -1076,6 +1087,7 @@ class Compiler:
         module_name: str = "main",
         default_int: str = "Int32",
         lib_dirs: list[Path] | None = None,
+        frontend_registry: 'FrontendRegistry | None' = None,
     ) -> "Compiler":
         """Create a compiler for a single module from source code (e.g., stdin)."""
         compiler = cls.__new__(cls)
@@ -1085,9 +1097,15 @@ class Compiler:
         else:
             compiler.resolver = None
         compiler.default_int_type = parse_default_int_type(default_int)
+        compiler.frontend_registry = frontend_registry
         compiler._init_shared()
         compiler._source_input = (source, module_name)
         return compiler
+
+    def _plugin_extensions(self) -> frozenset[str]:
+        if self.frontend_registry is None:
+            return frozenset()
+        return self.frontend_registry.all_extensions()
 
     def compile(self) -> list[CompiledModule]:
         """Compile entry point and all imported modules.
@@ -1173,7 +1191,7 @@ class Compiler:
 
         # 1b. Discover all modules (starting from entry point)
         # Entry point uses simple name (not dotted) since it's the root
-        entry_name = ModuleResolver.get_module_name(self.entry_point)
+        entry_name = ModuleResolver.get_module_name(self.entry_point, self._plugin_extensions())
         self._discover_modules(entry_name, self.entry_point, [], is_entry_point=True)
 
         # Rediscover in case user modules added new stdlib deps
@@ -1303,6 +1321,21 @@ class Compiler:
             return
 
         if module_name in self.modules:
+            return
+
+        # Frontend-plugin dispatch: if a registered plugin claims this
+        # file's extension, route through the plugin + lowering pass
+        # instead of TPy's Python parser. The lowered TpyModule is
+        # registered like any other module so downstream discovery,
+        # sema, and codegen are unchanged.
+        plugin = (self.frontend_registry.for_path(path)
+                  if self.frontend_registry is not None else None)
+        if plugin is not None:
+            self._discover_via_plugin(
+                plugin, module_name, path, import_chain,
+                is_entry_point=is_entry_point,
+                is_package_init=is_package_init,
+            )
             return
 
         # Check for macro module directive before parsing (macro modules
@@ -1459,6 +1492,68 @@ class Compiler:
             ast.star_imports.add(resolved_name)
 
         return resolved_name
+
+    def _discover_via_plugin(
+        self,
+        plugin: 'FrontendPlugin',
+        module_name: str,
+        path: Path,
+        import_chain: list[str],
+        *,
+        is_entry_point: bool,
+        is_package_init: bool,
+    ) -> None:
+        """Discover a module via a frontend plugin.
+
+        Invokes `plugin.parse()`, runs lowering to a TpyModule, registers
+        the lowered module in `self.modules`, and recurses into its
+        user imports the same way the .py discovery path does.
+        """
+        if self.resolver is not None:
+            search_dirs = (self.resolver.base_dir,
+                           *self.resolver.extra_dirs)
+        else:
+            search_dirs = ()
+        ctx = WorkspaceContext(
+            api_version=plugin.api_version,
+            entry_point=self.entry_point,
+            search_dirs=tuple(search_dirs),
+            options=plugin.options,
+            no_stdlib=False,
+        )
+        try:
+            output = plugin.parse(ctx, module_name, path)
+        except FrontendPluginError as e:
+            self.diagnostics.append(e.diagnostic)
+            return
+
+        lowered = lower_module(
+            output.module,
+            plugin_name=plugin.name,
+            plugin_diagnostics=output.diagnostics,
+        )
+        for fd in lowered.diagnostics:
+            self.diagnostics.append(fd.diagnostic)
+        if lowered.module is None:
+            return
+        ast = lowered.module
+
+        self.modules[module_name] = CompiledModule(
+            name=module_name,
+            path=path,
+            ast=ast,
+            exports=ModuleExports(),
+            is_entry_point=is_entry_point,
+            is_package_init=is_package_init,
+        )
+
+        new_chain = import_chain + [module_name]
+        builtin_names = get_builtin_module_names()
+        for imported_name, import_lineno in list(ast.user_module_imports.items()):
+            self._process_user_import(
+                imported_name, import_lineno, module_name, path,
+                builtin_names, new_chain, parent_ast=ast,
+            )
 
     def _process_user_import(
         self,
@@ -2723,7 +2818,7 @@ class Compiler:
             if shadowed_name in self.modules:
                 continue
             for importing_module, lineno in importers:
-                if importing_module == compiled.name or (compiled.is_entry_point and importing_module == ModuleResolver.get_module_name(self.entry_point)):
+                if importing_module == compiled.name or (compiled.is_entry_point and importing_module == ModuleResolver.get_module_name(self.entry_point, self._plugin_extensions())):
                     analyzer.ctx.diagnostics.append(Diagnostic(
                         DiagnosticLevel.WARNING,
                         f"import '{shadowed_name}' shadows builtin module",

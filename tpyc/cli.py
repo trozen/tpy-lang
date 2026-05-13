@@ -51,6 +51,9 @@ from .compiler import (
     DEFAULT_INT_CHOICES, list_compilers, get_or_build_pch,
 )
 from . import __version__, get_git_commit, get_runtime_dir, get_lib_dir, get_docs_dir
+from .frontend_plugin import (
+    FrontendPluginError, FrontendRegistry, load_plugin, route_dsl_opts,
+)
 
 
 def _fmt_ms(seconds: float) -> str:
@@ -173,12 +176,46 @@ def _timed_run(cmd: list[str]) -> tuple[subprocess.CompletedProcess[str], float]
     return r, time.monotonic() - t
 
 
-def get_module_name(input_path: Path) -> str:
-    """Get module name from source file (e.g., hello.py -> hello)."""
+def get_module_name(input_path: Path,
+                    extra_extensions: frozenset[str] = frozenset()) -> str:
+    """Get module name from source file (e.g., hello.py -> hello).
+
+    `extra_extensions` lets frontend-plugin source files (e.g. `.pas`)
+    contribute additional strippable suffixes.
+    """
     name = input_path.name
     if name.endswith(".py"):
         return name[:-3]
+    for ext in extra_extensions:
+        if name.endswith(ext):
+            return name[: -len(ext)]
     return name
+
+
+def _build_frontend_registry(plugin_specs: list[str],
+                             dsl_opts: list[str]) -> FrontendRegistry | None:
+    """Load plugins listed on the command line and return a registry.
+
+    Two-pass: instantiate every plugin first (so we know the set of
+    registered plugin `name`s), then route `--dsl-opt` values to each
+    plugin's options dict. Returns None when no plugins were requested.
+    """
+    if not plugin_specs:
+        if dsl_opts:
+            from .diagnostics import Diagnostic, DiagnosticLevel
+            raise FrontendPluginError(Diagnostic(
+                level=DiagnosticLevel.ERROR,
+                message=("--dsl-opt requires at least one --dsl-plugin"),
+            ))
+        return None
+    loaded = [load_plugin(spec, {}) for spec in plugin_specs]
+    routed = route_dsl_opts(dsl_opts, [p.name for p in loaded])
+    for p in loaded:
+        p.options = routed.get(p.name, {})
+    registry = FrontendRegistry()
+    for p in loaded:
+        registry.register(p)
+    return registry
 
 
 def _split_tpyc_argv(argv: list[str]) -> tuple[list[str], list[str]]:
@@ -271,6 +308,15 @@ def _run_cli(is_runner: bool) -> int:
              "bundled), or none (disabled -- any module that imports `re` "
              "becomes a compile error, useful for embedded targets that want "
              "to strip out regex)",
+    )
+    parser.add_argument(
+        "--dsl-plugin", action="append", default=None, metavar="SPEC",
+        help="Load a frontend plugin (path to .py file or importable module). "
+             "Can be repeated.",
+    )
+    parser.add_argument(
+        "--dsl-opt", action="append", default=None, metavar="NAME.KEY=VALUE",
+        help="Pass an option to a frontend plugin. Can be repeated.",
     )
     parser.add_argument("-j", "--jobs", type=int, default=None,
                         help="Parallel compile jobs (default: number of CPUs)")
@@ -391,6 +437,17 @@ def _run_cli(is_runner: bool) -> int:
     reading_from_stdin = args.cmd is not None or args.input == "-"
     temp_dir = None
 
+    # Load frontend plugins, if any, before deriving the module name so
+    # that plugin-claimed extensions (e.g. `.pas`) are stripped.
+    try:
+        frontend_registry = _build_frontend_registry(
+            args.dsl_plugin or [], args.dsl_opt or [])
+    except FrontendPluginError as e:
+        print(f"error: {e.diagnostic.message}", file=sys.stderr)
+        return 1
+    plugin_extensions = (frontend_registry.all_extensions()
+                         if frontend_registry is not None else frozenset())
+
     if reading_from_stdin:
         source = args.cmd if args.cmd is not None else sys.stdin.read()
         module_name = "main"
@@ -415,7 +472,7 @@ def _run_cli(is_runner: bool) -> int:
             output_dir = input_path.parent / "__tpyc__"
 
         # Get module name for output paths
-        module_name = get_module_name(input_path)
+        module_name = get_module_name(input_path, plugin_extensions)
 
     if args.dump_code and (args.build or args.exec):
         parser.error("--dump-code cannot be combined with --build or --exec")
@@ -445,9 +502,11 @@ def _run_cli(is_runner: bool) -> int:
         t_compile_start = time.monotonic()
         if reading_from_stdin:
             compiler = Compiler.from_source(source, module_name, default_int=args.default_int,
-                                            lib_dirs=lib_dirs)
+                                            lib_dirs=lib_dirs,
+                                            frontend_registry=frontend_registry)
         else:
-            compiler = Compiler(input_path, default_int=args.default_int, lib_dirs=lib_dirs)
+            compiler = Compiler(input_path, default_int=args.default_int, lib_dirs=lib_dirs,
+                                frontend_registry=frontend_registry)
 
         compiled_modules = compiler.compile()
         t_compile = time.monotonic() - t_compile_start

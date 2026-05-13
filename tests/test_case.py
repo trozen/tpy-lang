@@ -69,7 +69,9 @@ def _module_to_expected_path(expected_dir: Path, mod_name: str, ext: str) -> Pat
 ])
 def test_case(case_dir, main_src, request):
     expected_dir = case_dir / "expected"
-    module_name = get_module_name(main_src)
+    # Plugin-claimed extensions (e.g. `.pas`) strip alongside `.py` so
+    # the module name matches what the compiler derives internally.
+    module_name = get_module_name(main_src, frozenset({".pas", ".pp"}))
     build_dir = case_dir / "__tpyc__"
     is_error = case_dir.name.startswith("error_")
     is_panic = case_dir.name.startswith("panic_")
