@@ -34,6 +34,8 @@ from tpyc.frontend_ir import (
     Call,
     CmpOpKind,
     Compare,
+    Enum,
+    EnumValue,
     ExprStmt,
     Field,
     ForRange,
@@ -160,6 +162,14 @@ class _Ctx:
     # Used by assignment lowering (`s := 'lit'` -> `s.assign('lit')`)
     # and by string-literal-vs-FixStr disambiguation.
     string_vars: dict[str, int] = field(default_factory=dict)
+    # Enum member -> enclosing enum type name. Pascal puts each enum
+    # member in unqualified scope (`c := Red;`) -- the translator
+    # rewrites a bare `Red` to `Attr(Color, "Red")` so the lowered
+    # IR / TPy AST sees a canonical qualified access.
+    enum_member_to_type: dict[str, str] = field(default_factory=dict)
+    # Enum name -> list of member names (kept for diagnostics / future
+    # checks like exhaustive case-arm analysis).
+    enum_types: dict[str, list[str]] = field(default_factory=dict)
     # Per-routine state (saved / restored when entering / leaving each
     # subroutine; left at the defaults at module-body level).
     current_func: str | None = None
@@ -184,10 +194,8 @@ def translate(program: pa.Program,
             return_type=sub.return_type,
         )
 
-    # Pre-scan type blocks so all user record names are known before
-    # any var/param/return type is lowered against them. Also record
-    # each field's Pascal type spelling so writeln dispatch can route
-    # `p.x` correctly.
+    # Pre-scan type blocks so all user record / enum names are known
+    # before any var/param/return type is lowered against them.
     for tb in program.type_blocks:
         for td in tb.decls:
             if isinstance(td.type_spec, pa.RecordTypeSpec):
@@ -202,17 +210,42 @@ def translate(program: pa.Program,
                         for fname in fg.names:
                             field_map[fname] = field_type
                 ctx.record_fields[td.name] = field_map
+            elif isinstance(td.type_spec, pa.EnumTypeSpec):
+                ctx.enum_types[td.name] = list(td.type_spec.members)
+                for member in td.type_spec.members:
+                    if member in ctx.enum_member_to_type:
+                        ctx.diagnostics.append(_diag(
+                            f"enum member {member!r} declared in both "
+                            f"{ctx.enum_member_to_type[member]!r} and "
+                            f"{td.name!r}",
+                            td.loc,
+                        ))
+                        continue
+                    ctx.enum_member_to_type[member] = td.name
 
     records: list = []
+    enums: list = []
     top_level_stmts: list = []
     functions: list = []
 
-    # Type blocks -> IR Records.
+    # Type blocks -> IR Records / Enums (in declaration order, so a
+    # later type can reference earlier ones).
     for tb in program.type_blocks:
         for td in tb.decls:
-            rec = _lower_type_decl(td, ctx)
-            if rec is not None:
-                records.append(rec)
+            if isinstance(td.type_spec, pa.RecordTypeSpec):
+                rec = _lower_type_decl(td, ctx)
+                if rec is not None:
+                    records.append(rec)
+            elif isinstance(td.type_spec, pa.EnumTypeSpec):
+                enum_node = _lower_enum_decl(td, ctx)
+                if enum_node is not None:
+                    enums.append(enum_node)
+            else:
+                ctx.diagnostics.append(_diag(
+                    f"unsupported type declaration "
+                    f"{type(td.type_spec).__name__}",
+                    td.loc,
+                ))
 
     # Module-level var section -> per-name IR VarDecls. Scalar globals
     # stay uninitialised in the IR (codegen emits `{}` zero-init).
@@ -260,6 +293,7 @@ def translate(program: pa.Program,
         source_lines=program.source_lines,
         imports=imports,
         records=tuple(records),
+        enums=tuple(enums),
         functions=tuple(functions),
         top_level_stmts=tuple(top_level_stmts),
         directives=FrontendDirectives(),
@@ -269,6 +303,23 @@ def translate(program: pa.Program,
 
 # ---------------------------------------------------------------------------
 # Type lowering
+
+def _lower_enum_decl(td: pa.TypeDecl, ctx: _Ctx) -> Enum | None:
+    """Lower a Pascal `type Color = (Red, Green, ...)` declaration to
+    an IR `Enum`. Member values stay implicit; the IR lowering pass
+    auto-numbers them starting at 0."""
+    assert isinstance(td.type_spec, pa.EnumTypeSpec)
+    values: list = []
+    for member in td.type_spec.members:
+        values.append(EnumValue(
+            name=member, value=None,
+            loc=_to_ir_loc(td.type_spec.loc),
+        ))
+    return Enum(
+        name=td.name, values=tuple(values),
+        loc=_to_ir_loc(td.loc),
+    )
+
 
 def _lower_type_decl(td: pa.TypeDecl, ctx: _Ctx) -> Record | None:
     """Lower a single `type X = TypeSpec` declaration.
@@ -317,7 +368,7 @@ def _lower_type_spec(spec, ctx: _Ctx):
                 ctx.add_import("tpy", tpy_name)
             return NamedType(name=tpy_name, args=(),
                              loc=_to_ir_loc(spec.loc))
-        if spec.name in ctx.record_types:
+        if spec.name in ctx.record_types or spec.name in ctx.enum_types:
             return NamedType(name=spec.name, args=(),
                              loc=_to_ir_loc(spec.loc))
         ctx.diagnostics.append(_diag(
@@ -941,6 +992,19 @@ def _lower_expr(expr, ctx: _Ctx):
                 args=(Name(ident=expr.name, loc=_to_ir_loc(expr.loc)),),
                 loc=_to_ir_loc(expr.loc),
             )
+        # Unqualified enum member reference: Pascal puts every enum
+        # member in scope, so `Red` reads as `Color.Red`. A local
+        # variable / parameter / function name with the same spelling
+        # wins (matches Pascal's scoping rule).
+        if (expr.name in ctx.enum_member_to_type
+                and expr.name not in ctx.type_env
+                and expr.name not in ctx.signatures):
+            enum_name = ctx.enum_member_to_type[expr.name]
+            ir_loc = _to_ir_loc(expr.loc)
+            return Attr(
+                target=Name(ident=enum_name, loc=ir_loc),
+                ident=expr.name, loc=ir_loc,
+            )
         return Name(ident=expr.name, loc=_to_ir_loc(expr.loc))
     if isinstance(expr, pa.FieldAccess):
         obj = _lower_expr(expr.target, ctx)
@@ -1052,7 +1116,13 @@ def _static_type_of(expr, ctx: _Ctx) -> str | None:
     if isinstance(expr, pa.BoolLit):
         return "boolean"
     if isinstance(expr, pa.Ident):
-        return ctx.type_env.get(expr.name)
+        if expr.name in ctx.type_env:
+            return ctx.type_env[expr.name]
+        # Bare reference to an enum member: its static type is the
+        # enclosing enum type name.
+        if expr.name in ctx.enum_member_to_type:
+            return ctx.enum_member_to_type[expr.name]
+        return None
     if isinstance(expr, pa.FieldAccess):
         # M5 supports only one level of field access on a known record
         # variable (`p.x`); deeper chains route through this branch

@@ -188,14 +188,17 @@ class _Parser:
 
     def parse_type_spec(self):
         """Parse a type specification. Forms recognised so far: bare
-        named type, `record ... end`, `array[lo..hi] of T`, and
-        Pascal's two string forms (`string` and `string[N]`)."""
+        named type, `record ... end`, `array[lo..hi] of T`, the two
+        string forms (`string` and `string[N]`), and an enumeration
+        body `(Ident, Ident, ...)`."""
         if self.cur.kind == TokKind.KEYWORD and self.cur.text == "record":
             return self.parse_record_type()
         if self.cur.kind == TokKind.KEYWORD and self.cur.text == "array":
             return self.parse_array_type()
         if self.cur.kind == TokKind.KEYWORD and self.cur.text == "string":
             return self.parse_string_type()
+        if self.cur.kind == TokKind.LPAREN:
+            return self.parse_enum_type()
         # Named type: either a scalar keyword (`integer`, `boolean`,
         # `char`) or a user-defined ident.
         t = self.cur
@@ -210,6 +213,22 @@ class _Parser:
             f"expected type, got {t.kind.value} {t.text!r}",
             t.line, t.col,
         )
+
+    def parse_enum_type(self) -> pa.EnumTypeSpec:
+        start = self._eat(TokKind.LPAREN)
+        members: list[str] = []
+        if self.cur.kind != TokKind.RPAREN:
+            members.append(self._eat(TokKind.IDENT).text)
+            while self.cur.kind == TokKind.COMMA:
+                self.i += 1
+                members.append(self._eat(TokKind.IDENT).text)
+        end = self._eat(TokKind.RPAREN)
+        if not members:
+            raise ParseError(
+                "enum type must declare at least one member",
+                start.line, start.col,
+            )
+        return pa.EnumTypeSpec(members=members, loc=self._loc(start, end))
 
     def parse_string_type(self) -> pa.StringTypeSpec:
         """`string` (default capacity 255) or `string[N]` (custom)."""

@@ -416,6 +416,31 @@ Stmt = Union[ExprStmt, VarDecl, Assign, If, While, RepeatUntil,
              ForRange, ForEach, Match, Return]
 
 
+# --- Enum declarations ---------------------------------------------------
+
+
+@dataclass
+class EnumValue:
+    """One member of an `Enum`. `value` is optional -- when absent, the
+    lowering pass assigns Pascal-style auto-numbered values starting
+    at 0."""
+    name: str = ""
+    value: "Expr | None" = None
+    decorators: tuple = ()
+    loc: Loc | None = None
+
+
+@dataclass
+class Enum:
+    """Enumeration type declaration."""
+    kind: str = field(default="Enum", init=False)
+    name: str = ""
+    base_type: "NamedType | None" = None
+    values: tuple[EnumValue, ...] = ()
+    decorators: tuple = ()
+    loc: Loc | None = None
+
+
 # --- Record declarations -------------------------------------------------
 
 
@@ -559,7 +584,7 @@ class FrontendModule:
     imports: tuple[ImportDecl, ...] = ()
     type_aliases: tuple = ()
     constants: tuple = ()
-    enums: tuple = ()
+    enums: tuple["Enum", ...] = ()
     records: tuple["Record", ...] = ()
     functions: tuple["Function", ...] = ()
     top_level_stmts: tuple[Stmt, ...] = ()

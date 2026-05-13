@@ -28,6 +28,7 @@ from ..parse.nodes import (
     TpyBoolLiteral,
     TpyBreak,
     TpyCall,
+    TpyEnum,
     TpyExprStmt,
     TpyFieldAccess,
     TpyForEach,
@@ -47,6 +48,7 @@ from ..parse.nodes import (
     TpySubscript,
     TpyTypeRef,
     TpyUnaryOp,
+    TpyValuePattern,
     TpyVarDecl,
     TpyWhile,
     TpyWildcardPattern,
@@ -62,6 +64,8 @@ from .nodes import (
     Call,
     CmpOpKind,
     Compare,
+    Enum,
+    EnumValue,
     ExprStmt,
     Field,
     ForEach,
@@ -158,12 +162,19 @@ def lower_module(
     fm: FrontendModule,
     plugin_name: str,
     plugin_diagnostics: Iterable[Diagnostic] = (),
+    *,
+    is_entry_point: bool = False,
 ) -> LoweredFrontend:
     """Lower a FrontendModule produced by a plugin to a TpyModule.
 
     `plugin_name` is used to tag wrapped diagnostics from the plugin.
     `plugin_diagnostics` come from `FrontendOutput.diagnostics`; they
     are wrapped with category `PLUGIN_REPORTED` and propagated.
+    `is_entry_point` mirrors TPy's parser-side convention: the
+    entry-point module's records and enums are minted with qname prefix
+    `__main__` (matching sema's `ctx.module_name = "__main__"` rename)
+    so resolver-side placeholders agree with sema's
+    `attach_dynamic_type_def` registrations downstream.
     """
     diags: list[FrontendDiagnostic] = []
 
@@ -260,10 +271,15 @@ def lower_module(
     # Records: lower each and register the resulting RecordInfo into
     # the resolver's registry so type references downstream (var decls,
     # function params, other records) can resolve user record names.
+    # For the entry point we mint qnames against `__main__`; sema
+    # follows the same rule for the entry module, so this keeps
+    # parser-side and sema-side qnames in lockstep.
+    qname_prefix = "__main__" if is_entry_point else fm.qname
     tpy_records: list[TpyRecord] = []
     record_class_names: set[str] = set()
     for rec in fm.records:
-        lowered_rec, rinfo = _lower_record(rec, plugin_name, fm, diags)
+        lowered_rec, rinfo = _lower_record(
+            rec, plugin_name, fm, diags, qname_prefix)
         if lowered_rec is None or rinfo is None:
             continue
         tpy_records.append(lowered_rec)
@@ -274,6 +290,20 @@ def lower_module(
         # resolver-adapter constructor pre-populated (currently empty).
         resolver._parser._module_class_names = frozenset(
             resolver._parser._module_class_names | record_class_names
+        )
+
+    # Enums: lower each and register a placeholder NominalType so the
+    # resolver can route `EnumName` and `EnumName.Member` references.
+    # Sema's `register_enum` re-registers later with the fully-populated
+    # NominalType + TypeDef.enum payload (members, underlying type, ...).
+    tpy_enums: list[TpyEnum] = []
+    for en in fm.enums:
+        lowered_en = _lower_enum(en, plugin_name, fm, diags)
+        if lowered_en is None:
+            continue
+        tpy_enums.append(lowered_en)
+        resolver.registry.register_enum_placeholder(
+            en.name, module=qname_prefix,
         )
 
     # Functions: lower each to a TpyFunction. Function bodies do not
@@ -312,7 +342,7 @@ def lower_module(
         records=tpy_records,
         functions=tpy_functions,
         protocols=[],
-        enums=[],
+        enums=tpy_enums,
         top_level_stmts=top_level_stmts,
         source_lines=list(fm.source_lines),
         imports=module_imports,
@@ -478,6 +508,44 @@ def _lower_stmt_list(stmts, name_to_origin, plugin_name, fm, diags):
     return out
 
 
+def _lower_enum(
+    en: Enum,
+    plugin_name: str,
+    fm: FrontendModule,
+    diags: list[FrontendDiagnostic],
+) -> TpyEnum | None:
+    """Lower an IR `Enum` to a `TpyEnum`.
+
+    M7 emits Pascal-style auto-numbered enums (members get values 0, 1,
+    2, ...). Explicit member values from `EnumValue.value` are accepted
+    only when they are `IntLit`; richer expressions wait on a later
+    milestone since TpyEnum's members slot is `(name, int, loc)` --
+    pre-resolved at parser/lowering time.
+    """
+    members: list = []
+    auto_index = 0
+    for v in en.values:
+        if v.value is None:
+            int_value = auto_index
+        elif isinstance(v.value, IntLit):
+            int_value = v.value.value
+        else:
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                "EnumValue.value must be IntLit or None in M7 "
+                "(auto-numbering / explicit int literal)",
+            ))
+            return None
+        members.append((v.name, int_value, _to_source_loc(v.loc)))
+        auto_index = int_value + 1
+    return TpyEnum(
+        name=en.name,
+        members=members,
+        is_int_enum=False,
+        loc=_to_source_loc(en.loc),
+    )
+
+
 def _is_known_record_name(name: str, fm: FrontendModule) -> bool:
     """True iff `name` matches the name of a record declared in this
     FrontendModule. Used during expression lowering to recognise
@@ -493,6 +561,7 @@ def _lower_record(
     plugin_name: str,
     fm: FrontendModule,
     diags: list[FrontendDiagnostic],
+    qname_prefix: str,
 ) -> tuple[TpyRecord | None, RecordInfo | None]:
     """Lower an IR `Record` to a `TpyRecord` plus the parallel
     `RecordInfo` the resolver registry consumes.
@@ -529,15 +598,16 @@ def _lower_record(
         name=rec.name,
         fields=field_infos,
     )
-    # RecordInfo's `module` is the public module qname; for plugin
-    # modules that match the FrontendModule.qname directly (no facade
-    # rewriting). Builtin-type-key stays unset because plugin records
-    # aren't `@builtin_type` decorated.
+    # RecordInfo's `module` is the public module qname; entry-point
+    # modules use `__main__` (matches sema's `ctx.module_name` rename
+    # for the entry point), other modules use their dotted name.
+    # Builtin-type-key stays unset because plugin records aren't
+    # `@builtin_type` decorated.
     record_info = RecordInfo(
         name=rec.name,
         fields=field_infos,
         has_init=False,
-        module=fm.qname,
+        module=qname_prefix,
     )
     return tpy_rec, record_info
 
@@ -585,8 +655,10 @@ def _lower_pattern(p, name_to_origin, plugin_name, fm, diags):
     if isinstance(p, MatchWildcard):
         return TpyWildcardPattern(loc=loc)
     if isinstance(p, MatchValue):
-        # M3 only emits literal value patterns (IntLit / StrLit / BoolLit).
-        # Sema's TpyLiteralPattern accepts int/float/str/bool/None.
+        # Literal patterns (int / str / bool) route through TpyLiteralPattern.
+        # Named-constant patterns (`Color.Red`) keep their expression
+        # form via TpyValuePattern, which sema resolves to the enum
+        # member value at match-analysis time.
         v = p.value
         if isinstance(v, IntLit):
             return TpyLiteralPattern(value=v.value, loc=loc)
@@ -594,9 +666,15 @@ def _lower_pattern(p, name_to_origin, plugin_name, fm, diags):
             return TpyLiteralPattern(value=v.value, loc=loc)
         if isinstance(v, BoolLit):
             return TpyLiteralPattern(value=v.value, loc=loc)
+        if isinstance(v, Attr):
+            lowered = _lower_expr(v, {}, plugin_name, fm, diags)
+            if lowered is None:
+                return None
+            return TpyValuePattern(expr=lowered, loc=loc)
         diags.append(_ir_invalid(
             plugin_name, fm,
-            f"MatchValue payload must be a literal in M3, got {type(v).__name__}",
+            f"MatchValue payload must be a literal or attribute "
+            f"reference, got {type(v).__name__}",
         ))
         return None
     diags.append(_ir_invalid(

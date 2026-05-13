@@ -109,6 +109,14 @@ class StringTypeSpec:
 
 
 @dataclass
+class EnumTypeSpec:
+    """`(Red, Green, Blue)` -- the enumeration body of a `type X = (...)`
+    declaration. Members are auto-numbered from 0."""
+    members: list  # list[str], canonical lowercase
+    loc: Loc
+
+
+@dataclass
 class TypeDecl:
     """A single entry in a `type` section: `Name = TypeSpec`."""
     name: str

@@ -1531,6 +1531,7 @@ class Compiler:
             output.module,
             plugin_name=plugin.name,
             plugin_diagnostics=output.diagnostics,
+            is_entry_point=is_entry_point,
         )
         for fd in lowered.diagnostics:
             self.diagnostics.append(fd.diagnostic)
