@@ -8,10 +8,10 @@
 
 namespace tpyapp::mathlib {
 
-inline constexpr std::string_view __name__ = "mathlib";
-
 extern "C" int32_t abs(int32_t x);
 extern "C" int32_t tpy_clock();
+
+inline constexpr std::string_view __name__ = "mathlib";
 
 void __tpy_init();
 } // namespace tpyapp::mathlib

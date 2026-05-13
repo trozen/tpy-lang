@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 extern std::string s;
 extern char c;
 extern std::vector<::tpy::BigInt>* items;
@@ -20,8 +22,6 @@ extern std::optional<double> z;
 inline constexpr std::string_view __name__ = "__main__";
 
 void print_range();
-
-using ::tpystd::tplib::array_list::ArrayList;
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -9,6 +9,9 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::coro::poll_once;
+using ::tpystd::coro::task_poll_cancelled;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_yield_once;
@@ -37,9 +40,6 @@ struct __coro_yield_once {
         return os << "<coroutine yield_once>";
     }
 };
-
-using ::tpystd::coro::poll_once;
-using ::tpystd::coro::task_poll_cancelled;
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::a::Counter;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 template<::tpyapp::b::Greeter T_g>
@@ -21,8 +23,6 @@ std::string use_proto(T_g& g) {
     // return g.hello()
     return g.hello();
 }
-
-using ::tpyapp::a::Counter;
 
 void __tpy_init();
 } // namespace tpyapp::main

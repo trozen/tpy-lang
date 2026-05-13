@@ -8,19 +8,19 @@
 
 namespace tpyapp::main {
 
-inline constexpr std::string_view __name__ = "__main__";
-
-void test_imported_read_no_warn();
-void test_imported_mutate_warns();
-void test_imported_transitive_mutation_warns();
-void test_imported_transitive_read_no_warn();
-
 using ::tpyapp::helpers::add_point;
 using ::tpyapp::helpers::add_point_wrapper;
 using ::tpyapp::helpers::read_wrapper;
 using ::tpyapp::helpers::sum_points;
 
 using ::tpyapp::helpers::Point;
+
+inline constexpr std::string_view __name__ = "__main__";
+
+void test_imported_read_no_warn();
+void test_imported_mutate_warns();
+void test_imported_transitive_mutation_warns();
+void test_imported_transitive_read_no_warn();
 
 void __tpy_init();
 } // namespace tpyapp::main

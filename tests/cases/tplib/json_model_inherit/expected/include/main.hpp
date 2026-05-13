@@ -11,6 +11,14 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::json::writer::_hex_byte;
+
+using ::tpystd::tplib::json::parser::JsonError;
+using ::tpystd::tplib::json::parser::JsonReader;
+using ::tpystd::tplib::json::writer::JsonWriter;
+
+using ::tpystd::tplib::json::parser::JsonToken;
+
 struct Base;
 struct User;
 struct Admin;
@@ -981,13 +989,5 @@ inline std::expected<Admin, ::tpystd::tplib::json::parser::JsonError> Admin::try
     // from tplib.json.model import model
     return Admin::try_from_json(__data);
 }
-using ::tpystd::tplib::json::writer::_hex_byte;
-
-using ::tpystd::tplib::json::parser::JsonError;
-using ::tpystd::tplib::json::parser::JsonReader;
-using ::tpystd::tplib::json::writer::JsonWriter;
-
-using ::tpystd::tplib::json::parser::JsonToken;
-
 void __tpy_init();
 } // namespace tpyapp::main

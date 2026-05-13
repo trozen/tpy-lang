@@ -8,11 +8,11 @@
 
 namespace tpyapp::main {
 
-inline constexpr std::string_view __name__ = "__main__";
-
 using ::tpyapp::config::Settings;
 
 inline auto& DEFAULT = ::tpyapp::config::DEFAULT;
+
+inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();
 } // namespace tpyapp::main

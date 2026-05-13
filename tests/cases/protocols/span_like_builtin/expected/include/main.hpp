@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 template<::tpystd::tpy::Spannable<int32_t> T_c>
@@ -36,8 +38,6 @@ int32_t sum_span(const T_c& c) {
     // return total
     return total;
 }
-
-using ::tpystd::tplib::array_list::ArrayList;
 
 void __tpy_init();
 } // namespace tpyapp::main

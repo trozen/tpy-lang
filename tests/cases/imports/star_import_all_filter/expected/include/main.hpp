@@ -8,10 +8,10 @@
 
 namespace tpyapp::main {
 
-inline constexpr std::string_view __name__ = "__main__";
-
 using ::tpyapp::lib::Hidden;
 using ::tpyapp::lib::Public;
+
+inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();
 } // namespace tpyapp::main

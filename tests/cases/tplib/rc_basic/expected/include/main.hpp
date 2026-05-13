@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::rc::Rc;
+
 struct State;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -40,7 +42,5 @@ inline int32_t State::doubled() const {
     // return self.x * 2
     return (::tpy::mul_check<int32_t>(this->x, 2));
 }
-using ::tpystd::tplib::rc::Rc;
-
 void __tpy_init();
 } // namespace tpyapp::main

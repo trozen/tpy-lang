@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::asyncio::Future;
+
 struct Tracked;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -102,8 +104,6 @@ struct __coro_main_coro {
         return os << "<coroutine main_coro>";
     }
 };
-
-using ::tpystd::asyncio::Future;
 
 void __tpy_init();
 } // namespace tpyapp::main

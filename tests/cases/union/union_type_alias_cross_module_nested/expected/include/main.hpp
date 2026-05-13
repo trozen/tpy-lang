@@ -8,14 +8,14 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::shapes::Circle;
+using ::tpyapp::shapes::Rect;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 using ::tpyapp::shapes::Shape;
 
 void main();
-
-using ::tpyapp::shapes::Circle;
-using ::tpyapp::shapes::Rect;
 
 void __tpy_init();
 } // namespace tpyapp::main

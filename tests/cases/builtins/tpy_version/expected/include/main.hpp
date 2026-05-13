@@ -8,13 +8,13 @@
 
 namespace tpyapp::main {
 
-inline constexpr std::string_view __name__ = "__main__";
-
-void main();
-
 inline auto& __version__ = ::tpystd::tpy::version::__version__;
 inline auto& is_compiled = ::tpystd::tpy::version::is_compiled;
 inline auto& version_info = ::tpystd::tpy::version::version_info;
+
+inline constexpr std::string_view __name__ = "__main__";
+
+void main();
 
 void __tpy_init();
 } // namespace tpyapp::main

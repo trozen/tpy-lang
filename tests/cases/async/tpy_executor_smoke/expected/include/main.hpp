@@ -12,6 +12,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::asyncio::_executor::Executor;
+
 struct CancellableForever;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -98,7 +100,5 @@ inline ::tpy::Poll<void> CancellableForever::__poll__(::tpy::Waker waker) const 
     // return poll_pending[None]()
     return ::tpy::Poll<void>::pending();
 }
-using ::tpystd::asyncio::_executor::Executor;
-
 void __tpy_init();
 } // namespace tpyapp::main

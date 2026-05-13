@@ -9,12 +9,12 @@
 
 namespace tpyapp::main {
 
+extern "C" int32_t abs(int32_t x);
+extern "C" int32_t tpy_clock();
+
 inline constexpr std::string_view __name__ = "__main__";
 
 extern "C" void app_init();
-
-extern "C" int32_t abs(int32_t x);
-extern "C" int32_t tpy_clock();
 
 void __tpy_init();
 } // namespace tpyapp::main

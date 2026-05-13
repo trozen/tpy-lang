@@ -8,11 +8,11 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::random::Random;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
-
-using ::tpystd::random::Random;
 
 void __tpy_init();
 } // namespace tpyapp::main

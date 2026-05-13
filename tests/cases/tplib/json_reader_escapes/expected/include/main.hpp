@@ -11,6 +11,10 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::json::parser::JsonError;
+using ::tpystd::tplib::json::parser::JsonReader;
+using ::tpystd::tplib::json::writer::JsonWriter;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_reader_standard();
@@ -19,10 +23,6 @@ std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_reader_unicod
 void test_writer_control_chars();
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> test_roundtrip();
 void main();
-
-using ::tpystd::tplib::json::parser::JsonError;
-using ::tpystd::tplib::json::parser::JsonReader;
-using ::tpystd::tplib::json::writer::JsonWriter;
 
 void __tpy_init();
 } // namespace tpyapp::main

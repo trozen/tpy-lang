@@ -9,11 +9,11 @@
 
 namespace tpyapp::main {
 
+using P = ::tpyapp::pkg::sub::Point;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
-
-using P = ::tpyapp::pkg::sub::Point;
 
 void __tpy_init();
 } // namespace tpyapp::main

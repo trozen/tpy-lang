@@ -8,12 +8,12 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::heapq::heappop;
+using ::tpystd::heapq::heappush;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
-
-using ::tpystd::heapq::heappop;
-using ::tpystd::heapq::heappush;
 
 void __tpy_init();
 } // namespace tpyapp::main

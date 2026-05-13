@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 template<::tpystd::typing::Sequence<int32_t> T_items>
@@ -41,8 +43,6 @@ int32_t sum_all(const T_items& items) {
     // return total
     return total;
 }
-
-using ::tpystd::tplib::array_list::ArrayList;
 
 void __tpy_init();
 } // namespace tpyapp::main

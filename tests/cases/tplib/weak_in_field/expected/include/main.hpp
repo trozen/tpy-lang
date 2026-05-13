@@ -9,6 +9,9 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::rc::Rc;
+using ::tpystd::tplib::rc::Weak;
+
 struct Observer;
 struct Counter;
 
@@ -69,8 +72,5 @@ inline int32_t Observer::read() {
     // return upgraded.get().value
     return (*upgraded).get().value;
 }
-using ::tpystd::tplib::rc::Rc;
-using ::tpystd::tplib::rc::Weak;
-
 void __tpy_init();
 } // namespace tpyapp::main

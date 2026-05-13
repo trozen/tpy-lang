@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void from_list();
@@ -16,8 +18,6 @@ void from_array();
 void from_span();
 void from_readonly_span();
 void from_arraylist();
-
-using ::tpystd::tplib::array_list::ArrayList;
 
 void __tpy_init();
 } // namespace tpyapp::main

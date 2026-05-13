@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::box::Box;
+
 struct State;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -30,8 +32,6 @@ inline std::ostream& operator<<(std::ostream& os, const State& obj) {
     ::tpy::print_object_default(os, "State", obj);
     return os;
 }
-
-using ::tpystd::tplib::box::Box;
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -10,13 +10,13 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::json::parser::JsonError;
+using ::tpystd::tplib::json::parser::JsonReader;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 std::expected<void, ::tpystd::tplib::json::parser::JsonError> parse_bad();
 void main();
-
-using ::tpystd::tplib::json::parser::JsonError;
-using ::tpystd::tplib::json::parser::JsonReader;
 
 void __tpy_init();
 } // namespace tpyapp::main

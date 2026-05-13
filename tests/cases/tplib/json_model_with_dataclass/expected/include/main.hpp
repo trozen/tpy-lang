@@ -11,6 +11,14 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::json::writer::_hex_byte;
+
+using ::tpystd::tplib::json::parser::JsonError;
+using ::tpystd::tplib::json::parser::JsonReader;
+using ::tpystd::tplib::json::writer::JsonWriter;
+
+using ::tpystd::tplib::json::parser::JsonToken;
+
 struct Item;
 struct Container;
 
@@ -202,13 +210,5 @@ inline bool Container::__eq__(const Container& other) const {
 inline std::string Container::__repr__() const {
     return std::format("Container(label={}, items={})", ::tpy::repr_of(this->label), ::tpy::list_to_str(this->items));
 }
-using ::tpystd::tplib::json::writer::_hex_byte;
-
-using ::tpystd::tplib::json::parser::JsonError;
-using ::tpystd::tplib::json::parser::JsonReader;
-using ::tpystd::tplib::json::writer::JsonWriter;
-
-using ::tpystd::tplib::json::parser::JsonToken;
-
 void __tpy_init();
 } // namespace tpyapp::main

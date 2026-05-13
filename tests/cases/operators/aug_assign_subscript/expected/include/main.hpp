@@ -9,14 +9,14 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void test_list_aug_assign();
 void test_arraylist_aug_assign();
 void test_negative_index_aug_assign();
 void test_array_aug_assign();
-
-using ::tpystd::tplib::array_list::ArrayList;
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -8,6 +8,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::coro::poll_once;
+
 struct ReadyAwaitable;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -39,7 +41,5 @@ inline ::tpy::Poll<int32_t> ReadyAwaitable::__poll__(::tpy::Waker waker) const {
     // return poll_ready(self.value)
     return ::tpy::Poll<int32_t>::ready(this->value);
 }
-using ::tpystd::coro::poll_once;
-
 void __tpy_init();
 } // namespace tpyapp::main

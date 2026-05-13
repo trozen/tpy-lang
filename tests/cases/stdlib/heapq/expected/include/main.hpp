@@ -8,10 +8,6 @@
 
 namespace tpyapp::main {
 
-inline constexpr std::string_view __name__ = "__main__";
-
-void main();
-
 using ::tpystd::heapq::heapify;
 using ::tpystd::heapq::heappop;
 using ::tpystd::heapq::heappush;
@@ -19,6 +15,10 @@ using ::tpystd::heapq::heappushpop;
 using ::tpystd::heapq::heapreplace;
 using ::tpystd::heapq::nlargest;
 using ::tpystd::heapq::nsmallest;
+
+inline constexpr std::string_view __name__ = "__main__";
+
+void main();
 
 void __tpy_init();
 } // namespace tpyapp::main

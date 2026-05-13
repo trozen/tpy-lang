@@ -9,11 +9,11 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::mypackage::utils::helper;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t main();
-
-using ::tpyapp::mypackage::utils::helper;
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -9,11 +9,11 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::fix_str::FixStr;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
-
-using ::tpystd::tplib::fix_str::FixStr;
 
 void __tpy_init();
 } // namespace tpyapp::main

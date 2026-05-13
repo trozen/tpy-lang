@@ -8,6 +8,8 @@
 
 namespace tpyapp::a {
 
+using ::tpyapp::b::BType;
+
 struct AType;
 
 inline constexpr std::string_view __name__ = "a";
@@ -25,8 +27,6 @@ inline std::ostream& operator<<(std::ostream& os, const AType& obj) {
     ::tpy::print_object_default(os, "AType", obj);
     return os;
 }
-
-using ::tpyapp::b::BType;
 
 void __tpy_init();
 } // namespace tpyapp::a

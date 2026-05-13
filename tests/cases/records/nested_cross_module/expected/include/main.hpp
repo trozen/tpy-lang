@@ -8,11 +8,11 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::shapes::Container;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
-
-using ::tpyapp::shapes::Container;
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -12,6 +12,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::asyncio::_executor::Executor;
+
 struct NeverComplete;
 struct CountdownThenReady;
 
@@ -80,7 +82,5 @@ inline ::tpy::Poll<void> CountdownThenReady::__poll__(::tpy::Waker waker) {
     // return poll_pending[None]()
     return ::tpy::Poll<void>::pending();
 }
-using ::tpystd::asyncio::_executor::Executor;
-
 void __tpy_init();
 } // namespace tpyapp::main

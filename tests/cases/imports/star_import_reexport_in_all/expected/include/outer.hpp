@@ -8,10 +8,10 @@
 
 namespace tpyapp::outer {
 
+using ::tpyapp::inner::shared_helper;
+
 extern std::vector<std::string>* __all__;
 inline constexpr std::string_view __name__ = "outer";
-
-using ::tpyapp::inner::shared_helper;
 
 void __tpy_init();
 } // namespace tpyapp::outer

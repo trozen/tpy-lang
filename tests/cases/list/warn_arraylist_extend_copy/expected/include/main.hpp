@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -33,8 +35,6 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     ::tpy::print_object_default(os, "Node", obj);
     return os;
 }
-
-using ::tpystd::tplib::array_list::ArrayList;
 
 void __tpy_init();
 } // namespace tpyapp::main

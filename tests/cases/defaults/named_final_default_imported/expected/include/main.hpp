@@ -8,13 +8,13 @@
 
 namespace tpyapp::main {
 
+inline auto& CASELESS = ::tpyapp::consts::CASELESS;
+inline auto& NOFLAG = ::tpyapp::consts::NOFLAG;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t use(uint32_t flags = ::tpyapp::consts::CASELESS);
 void main();
-
-inline auto& CASELESS = ::tpyapp::consts::CASELESS;
-inline auto& NOFLAG = ::tpyapp::consts::NOFLAG;
 
 void __tpy_init();
 } // namespace tpyapp::main

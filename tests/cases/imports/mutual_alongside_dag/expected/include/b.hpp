@@ -9,13 +9,13 @@
 
 namespace tpyapp::b {
 
+using ::tpyapp::util::boost;
+
 inline constexpr std::string_view __name__ = "b";
 
 int32_t b_func();
 int32_t b_helper();
 int32_t b_func_via_a();
-
-using ::tpyapp::util::boost;
 
 void __tpy_init();
 } // namespace tpyapp::b

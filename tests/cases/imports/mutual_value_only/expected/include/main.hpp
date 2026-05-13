@@ -9,13 +9,13 @@
 
 namespace tpyapp::main {
 
-inline constexpr std::string_view __name__ = "__main__";
-
-void main();
-
 using ::tpyapp::b::H;
 using ::tpyapp::a::K;
 using ::tpyapp::a::K_then_H;
+
+inline constexpr std::string_view __name__ = "__main__";
+
+void main();
 
 void __tpy_init();
 } // namespace tpyapp::main

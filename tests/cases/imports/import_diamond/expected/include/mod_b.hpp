@@ -8,11 +8,11 @@
 
 namespace tpyapp::mod_b {
 
+using ::tpyapp::mod_d::d_value;
+
 inline constexpr std::string_view __name__ = "mod_b";
 
 int32_t b_value();
-
-using ::tpyapp::mod_d::d_value;
 
 void __tpy_init();
 } // namespace tpyapp::mod_b

@@ -8,9 +8,9 @@
 
 namespace tpyapp::main {
 
-inline constexpr std::string_view __name__ = "__main__";
-
 inline auto& PUBLIC_VAL = ::tpyapp::lib::PUBLIC_VAL;
+
+inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();
 } // namespace tpyapp::main

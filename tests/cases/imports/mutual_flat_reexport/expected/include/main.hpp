@@ -9,10 +9,10 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::c::Cls;
+
 extern ::tpyapp::c::Cls* x;
 inline constexpr std::string_view __name__ = "__main__";
-
-using ::tpyapp::c::Cls;
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -8,13 +8,13 @@
 
 namespace tpyapp::main {
 
-inline constexpr std::string_view __name__ = "__main__";
-
-void main();
-
 inline auto& re_compile = ::tpystd::re::compile;
 
 using re_error = ::tpystd::re::error;
+
+inline constexpr std::string_view __name__ = "__main__";
+
+void main();
 
 void __tpy_init();
 } // namespace tpyapp::main

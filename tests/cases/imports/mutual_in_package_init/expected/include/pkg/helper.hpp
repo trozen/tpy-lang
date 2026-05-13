@@ -9,6 +9,8 @@
 
 namespace tpyapp::pkg::helper {
 
+using ::tpyapp::pkg::user::use_pkg;
+
 struct Boosted;
 
 inline constexpr std::string_view __name__ = "pkg.helper";
@@ -31,8 +33,6 @@ inline std::ostream& operator<<(std::ostream& os, const Boosted& obj) {
     ::tpy::print_object_default(os, "Boosted", obj);
     return os;
 }
-
-using ::tpyapp::pkg::user::use_pkg;
 
 void __tpy_init();
 } // namespace tpyapp::pkg::helper

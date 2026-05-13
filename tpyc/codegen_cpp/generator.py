@@ -460,6 +460,9 @@ class CodeGenerator:
         This method handles the complex ordering requirements.
         """
         deps = self._collect_protocol_deps(module)
+        # Emit before forward decls/concepts so inline references to imported
+        # names are in scope (e.g. struct member initializers using `Rc<T>`).
+        self._gen_reexport_using_decls(hpp)
         self._generate_forward_decls_and_concepts(hpp, module, deps)
         self._generate_definitions_and_reexports(hpp, module, global_decls, final_decls, seen_globals, deps)
 
@@ -880,8 +883,7 @@ class CodeGenerator:
                         hpp, method, record_name=record.name)
                     hpp.write("\n")
                     # Inline factory method definition (now that struct is complete)
-                    from .gen_generators import GeneratorCodegen
-                    struct_name = GeneratorCodegen.gen_struct_name(method, record.name)
+                    struct_name = self.gen_generators.gen_struct_name(method, record.name)
                     cpp_record = escape_cpp_name(record.name.replace(".", "::"))
                     params = self.functions.gen_params(
                         method.params, method, emit_defaults=False)
@@ -975,7 +977,7 @@ class CodeGenerator:
         # visible without cross-module namespace qualification. This is legal
         # because extern "C" functions can be declared multiple times.
         # Applies to @native(binding="C") imports and @export(binding="C") exports.
-        # Skip functions that are also re-exports (handled below to avoid duplicates).
+        # Skip functions that are also re-exports (handled separately).
         for local_name in sorted(self.ctx.user_imported_functions):
             if local_name in self.ctx.reexported_functions:
                 continue
@@ -986,6 +988,11 @@ class CodeGenerator:
         if emitted_func_decl:
             hpp.write("\n")
 
+
+    def _gen_reexport_using_decls(self, hpp: TextIO) -> None:
+        """Emit `using` declarations for re-exported symbols (functions /
+        records / enums / variables).
+        """
         # Re-exported functions
         if self.ctx.reexported_functions:
             any_written = False
@@ -1021,49 +1028,22 @@ class CodeGenerator:
             if any_written:
                 hpp.write("\n")
 
-        # Re-exported records (skip native records and @builtin_type stubs).
-        # Nested types (`Container.Inner`) are accessible through the
-        # outer record's `using` -- emitting a separate
-        # `using ::ns::Container::Inner;` at namespace scope is illegal
-        # C++ (using-declaration for member at non-class scope).
-        if self.ctx.reexported_records:
-            any_written = False
-            for local_name, (source_module, original_name) in sorted(self.ctx.reexported_records.items()):
-                if "." in local_name or "." in original_name:
-                    continue
-                record_info = self.analyzer.registry.get_record(original_name)
-                if record_info and (record_info.is_native or record_info.is_keyword_stub):
-                    continue
-                qualified = qualified_cpp_name(source_module, original_name)
-                if local_name == original_name:
-                    hpp.write(f"using {qualified};\n")
-                else:
-                    hpp.write(f"using {local_name} = {qualified};\n")
-                any_written = True
-            if any_written:
-                hpp.write("\n")
+        # Re-exported records / enums. Skip nested types (`.` in name): a
+        # `using ::ns::Container::Inner;` at namespace scope is illegal C++
+        # (using-declaration for a member at non-class scope); the inner
+        # type is accessible through the outer's `using`. Also skip natives
+        # / @builtin_type stubs (no namespace declaration to point at).
+        def _record_skip(name: str) -> bool:
+            info = self.analyzer.registry.get_record(name)
+            return info is not None and (info.is_native or info.is_keyword_stub)
 
-        # Re-exported enums (skip nested enums for the same reason as
-        # nested records above). @native enums are also skipped -- they
-        # have no `tpyapp::<mod>::E` declaration to `using` (we skipped
-        # `_gen_enum_decl`); consumers reference them via _native_cpp_names.
-        if self.ctx.reexported_enums:
-            any_written = False
-            for local_name, (source_module, original_name) in sorted(self.ctx.reexported_enums.items()):
-                if "." in local_name or "." in original_name:
-                    continue
-                enum_type = self.analyzer.registry.get_enum(original_name)
-                einfo = enum_info_of(enum_type) if enum_type is not None else None
-                if einfo is not None and einfo.is_native:
-                    continue
-                qualified = qualified_cpp_name(source_module, original_name)
-                if local_name == original_name:
-                    hpp.write(f"using {qualified};\n")
-                else:
-                    hpp.write(f"using {local_name} = {qualified};\n")
-                any_written = True
-            if any_written:
-                hpp.write("\n")
+        def _enum_skip(name: str) -> bool:
+            enum_type = self.analyzer.registry.get_enum(name)
+            info = enum_info_of(enum_type) if enum_type is not None else None
+            return info is not None and info.is_native
+
+        self._emit_alias_using_block(hpp, self.ctx.reexported_records, _record_skip)
+        self._emit_alias_using_block(hpp, self.ctx.reexported_enums, _enum_skip)
 
         # Re-exported variables. Skip:
         #   - variables whose ultimate source is a native_module (no
@@ -1086,6 +1066,31 @@ class CodeGenerator:
             if any_written:
                 hpp.write("\n")
 
+    def _emit_alias_using_block(
+        self, hpp: TextIO,
+        items: dict[str, tuple[str, str]],
+        skip: Callable[[str], bool],
+    ) -> None:
+        """Emit `using ::ns::Foo;` (or `using Local = ::ns::Foo;`) for each
+        entry in `items`, skipping nested types and entries the predicate
+        rejects. Trailing blank line if anything was written.
+        """
+        if not items:
+            return
+        any_written = False
+        for local_name, (source_module, original_name) in sorted(items.items()):
+            if "." in local_name or "." in original_name:
+                continue
+            if skip(original_name):
+                continue
+            qualified = qualified_cpp_name(source_module, original_name)
+            if local_name == original_name:
+                hpp.write(f"using {qualified};\n")
+            else:
+                hpp.write(f"using {local_name} = {qualified};\n")
+            any_written = True
+        if any_written:
+            hpp.write("\n")
 
     def _gen_recursive_union_struct(self, out: TextIO, name: str, typ: UnionType) -> None:
         """Generate a wrapper struct for a recursive union type alias.

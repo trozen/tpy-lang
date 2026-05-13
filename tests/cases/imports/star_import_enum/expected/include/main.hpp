@@ -8,10 +8,10 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::lib::Color;
+
 extern ::tpyapp::lib::Color c;
 inline constexpr std::string_view __name__ = "__main__";
-
-using ::tpyapp::lib::Color;
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -9,11 +9,11 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::box::Box;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
-
-using ::tpystd::tplib::box::Box;
 
 void __tpy_init();
 } // namespace tpyapp::main

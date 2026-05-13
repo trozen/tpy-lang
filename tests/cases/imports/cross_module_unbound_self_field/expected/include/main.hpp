@@ -8,6 +8,9 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::bases::Counter;
+using ::tpyapp::bases::Tag;
+
 struct Combined;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -46,8 +49,5 @@ inline std::string Combined::summary() const {
     // return label + "=" + str(n)
     return (::tpy::str_concat((::tpy::str_concat(label, "=")), ::tpy::fixed_to_str<int32_t>(n)));
 }
-using ::tpyapp::bases::Counter;
-using ::tpyapp::bases::Tag;
-
 void __tpy_init();
 } // namespace tpyapp::main

@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::box::Box;
+
 struct Value;
 struct Neg;
 
@@ -46,8 +48,6 @@ struct Value {
         return os;
     }
 };
-
-using ::tpystd::tplib::box::Box;
 
 void __tpy_init();
 } // namespace tpyapp::main

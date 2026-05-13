@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -49,8 +51,6 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
-
-using ::tpystd::tplib::array_list::ArrayList;
 
 void __tpy_init();
 } // namespace tpyapp::main

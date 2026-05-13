@@ -8,9 +8,9 @@
 
 namespace tpyapp::b {
 
-inline constexpr std::string_view __name__ = "b";
-
 inline auto& LIMIT = ::tpyapp::c::LIMIT;
+
+inline constexpr std::string_view __name__ = "b";
 
 void __tpy_init();
 } // namespace tpyapp::b

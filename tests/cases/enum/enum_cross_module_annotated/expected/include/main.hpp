@@ -8,13 +8,13 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::colors::Color;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 std::string describe(::tpyapp::colors::Color c);
 ::tpyapp::colors::Color default_color();
 void main();
-
-using ::tpyapp::colors::Color;
 
 void __tpy_init();
 } // namespace tpyapp::main

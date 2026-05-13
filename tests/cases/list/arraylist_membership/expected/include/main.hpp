@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 struct SimpleBuffer;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -81,7 +83,5 @@ inline ::tpy::SpanIter<const int32_t> SimpleBuffer::__iter__() const {
     // return SpanIter(self.__span__())
     return ::tpy::SpanIter<const int32_t>(this->__span__());
 }
-using ::tpystd::tplib::array_list::ArrayList;
-
 void __tpy_init();
 } // namespace tpyapp::main

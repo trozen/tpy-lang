@@ -11,6 +11,14 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::json::writer::_hex_byte;
+
+using ::tpystd::tplib::json::parser::JsonError;
+using ::tpystd::tplib::json::parser::JsonReader;
+using ::tpystd::tplib::json::writer::JsonWriter;
+
+using ::tpystd::tplib::json::parser::JsonToken;
+
 struct Seconds;
 struct Event;
 struct Schedule;
@@ -360,13 +368,5 @@ inline std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedul
     // from typing import Optional
     return Schedule::try_from_json(__data);
 }
-using ::tpystd::tplib::json::writer::_hex_byte;
-
-using ::tpystd::tplib::json::parser::JsonError;
-using ::tpystd::tplib::json::parser::JsonReader;
-using ::tpystd::tplib::json::writer::JsonWriter;
-
-using ::tpystd::tplib::json::parser::JsonToken;
-
 void __tpy_init();
 } // namespace tpyapp::main

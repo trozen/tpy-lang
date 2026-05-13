@@ -9,10 +9,10 @@
 
 namespace tpyapp::main {
 
-inline constexpr std::string_view __name__ = "__main__";
-
 using ::tpyapp::mod_a::func_a;
 using ::tpyapp::mod_b::func_b;
+
+inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();
 } // namespace tpyapp::main

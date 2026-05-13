@@ -9,11 +9,11 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::a::AType;
+
 extern ::tpyapp::a::AType* a;
 extern ::tpyapp::b::BType* b;
 inline constexpr std::string_view __name__ = "__main__";
-
-using ::tpyapp::a::AType;
 
 void __tpy_init();
 } // namespace tpyapp::main

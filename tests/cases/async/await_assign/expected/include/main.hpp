@@ -8,6 +8,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::coro::poll_once;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_sub;
@@ -59,8 +61,6 @@ struct __coro_caller {
         return os << "<coroutine caller>";
     }
 };
-
-using ::tpystd::coro::poll_once;
 
 void __tpy_init();
 } // namespace tpyapp::main

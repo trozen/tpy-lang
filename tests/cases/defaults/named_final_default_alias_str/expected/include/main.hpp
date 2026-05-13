@@ -8,14 +8,14 @@
 
 namespace tpyapp::main {
 
+inline auto& DEFAULT_FLAGS = ::tpyapp::consts::CASELESS;
+inline auto& DEFAULT_GREETING = ::tpyapp::consts::DEFAULT_GREETING;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t use_alias(uint32_t flags = ::tpyapp::consts::CASELESS);
 std::string greet(std::string_view prefix = ::tpyapp::consts::DEFAULT_GREETING);
 void main();
-
-inline auto& DEFAULT_FLAGS = ::tpyapp::consts::CASELESS;
-inline auto& DEFAULT_GREETING = ::tpyapp::consts::DEFAULT_GREETING;
 
 void __tpy_init();
 } // namespace tpyapp::main

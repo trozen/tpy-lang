@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::box::Box;
+
 struct Expr;
 struct Lit;
 struct BinOp;
@@ -70,8 +72,6 @@ struct Expr {
         return os;
     }
 };
-
-using ::tpystd::tplib::box::Box;
 
 void __tpy_init();
 } // namespace tpyapp::main

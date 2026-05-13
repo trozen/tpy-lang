@@ -9,11 +9,11 @@
 
 namespace tpyapp::mypackage::consumer {
 
+using ::tpyapp::mypackage::utils::add;
+
 inline constexpr std::string_view __name__ = "mypackage.consumer";
 
 int32_t compute();
-
-using ::tpyapp::mypackage::utils::add;
 
 void __tpy_init();
 } // namespace tpyapp::mypackage::consumer

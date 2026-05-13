@@ -8,11 +8,11 @@
 
 namespace tpyapp::mod_b {
 
+inline auto& shared_value = ::tpyapp::mod_c::shared_value;
+
 inline constexpr std::string_view __name__ = "mod_b";
 
 void func_b();
-
-inline auto& shared_value = ::tpyapp::mod_c::shared_value;
 
 void __tpy_init();
 } // namespace tpyapp::mod_b

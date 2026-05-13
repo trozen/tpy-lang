@@ -8,10 +8,6 @@
 
 namespace tpyapp::main {
 
-inline constexpr std::string_view __name__ = "__main__";
-
-void main();
-
 using ::tpystd::re::compile;
 using ::tpystd::re::findall;
 using ::tpystd::re::fullmatch;
@@ -29,6 +25,10 @@ inline auto& DOTALL = ::tpystd::re::DOTALL;
 inline auto& IGNORECASE = ::tpystd::re::IGNORECASE;
 inline auto& MULTILINE = ::tpystd::re::MULTILINE;
 inline auto& VERBOSE = ::tpystd::re::VERBOSE;
+
+inline constexpr std::string_view __name__ = "__main__";
+
+void main();
 
 void __tpy_init();
 } // namespace tpyapp::main

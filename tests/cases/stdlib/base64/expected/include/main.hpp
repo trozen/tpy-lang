@@ -8,10 +8,6 @@
 
 namespace tpyapp::main {
 
-inline constexpr std::string_view __name__ = "__main__";
-
-void main();
-
 using ::tpystd::base64::b16decode;
 using ::tpystd::base64::b16encode;
 using ::tpystd::base64::b32decode;
@@ -24,6 +20,10 @@ using ::tpystd::base64::standard_b64decode;
 using ::tpystd::base64::standard_b64encode;
 using ::tpystd::base64::urlsafe_b64decode;
 using ::tpystd::base64::urlsafe_b64encode;
+
+inline constexpr std::string_view __name__ = "__main__";
+
+void main();
 
 void __tpy_init();
 } // namespace tpyapp::main

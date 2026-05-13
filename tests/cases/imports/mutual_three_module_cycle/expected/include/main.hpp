@@ -8,11 +8,11 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::a::call_b;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
-
-using ::tpyapp::a::call_b;
 
 void __tpy_init();
 } // namespace tpyapp::main

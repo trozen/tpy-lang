@@ -10,11 +10,11 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::asyncio::_executor::Slot;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
-
-using ::tpystd::asyncio::_executor::Slot;
 
 void __tpy_init();
 } // namespace tpyapp::main

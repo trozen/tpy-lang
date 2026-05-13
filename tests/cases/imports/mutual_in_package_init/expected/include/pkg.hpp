@@ -9,11 +9,11 @@
 
 namespace tpyapp::pkg {
 
-inline constexpr std::string_view __name__ = "pkg";
-
 using ::tpyapp::pkg::user::use_pkg;
 
 using ::tpyapp::pkg::helper::Boosted;
+
+inline constexpr std::string_view __name__ = "pkg";
 
 void __tpy_init();
 } // namespace tpyapp::pkg

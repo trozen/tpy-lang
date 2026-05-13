@@ -10,6 +10,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::json::writer::JsonWriter;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void test_basic();
@@ -22,8 +24,6 @@ void test_pretty_nested();
 void test_pretty_empty();
 void test_pretty_4space();
 void test_pretty_array();
-
-using ::tpystd::tplib::json::writer::JsonWriter;
 
 void __tpy_init();
 } // namespace tpyapp::main

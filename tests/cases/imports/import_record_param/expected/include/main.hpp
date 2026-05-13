@@ -8,12 +8,12 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::shapes::Circle;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t get_radius(const ::tpyapp::shapes::Circle& c);
 void main();
-
-using ::tpyapp::shapes::Circle;
 
 void __tpy_init();
 } // namespace tpyapp::main

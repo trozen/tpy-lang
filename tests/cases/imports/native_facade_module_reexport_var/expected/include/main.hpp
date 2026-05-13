@@ -8,12 +8,12 @@
 
 namespace tpyapp::main {
 
+inline auto& LIMIT = ::tpyapp::constants::LIMIT;
+inline auto& VERSION = ::tpyapp::constants::VERSION;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
-
-inline auto& LIMIT = ::tpyapp::constants::LIMIT;
-inline auto& VERSION = ::tpyapp::constants::VERSION;
 
 void __tpy_init();
 } // namespace tpyapp::main

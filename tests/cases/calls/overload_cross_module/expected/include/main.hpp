@@ -8,14 +8,14 @@
 
 namespace tpyapp::main {
 
-inline constexpr std::string_view __name__ = "__main__";
-
-void main();
-
 using ::tpyapp::animals::describe;
 
 using ::tpyapp::animals::Cat;
 using ::tpyapp::animals::Dog;
+
+inline constexpr std::string_view __name__ = "__main__";
+
+void main();
 
 void __tpy_init();
 } // namespace tpyapp::main

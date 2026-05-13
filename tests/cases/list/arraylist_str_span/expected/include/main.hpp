@@ -9,12 +9,12 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t sum_span(std::span<const int32_t> s);
 void main();
-
-using ::tpystd::tplib::array_list::ArrayList;
 
 void __tpy_init();
 } // namespace tpyapp::main

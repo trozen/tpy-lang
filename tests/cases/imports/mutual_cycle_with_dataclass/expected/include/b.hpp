@@ -8,12 +8,12 @@
 
 namespace tpyapp::b {
 
+using ::tpyapp::a::Pair;
+
 inline constexpr std::string_view __name__ = "b";
 
 int32_t sum_pair(const ::tpyapp::a::Pair& p);
 int32_t make_pair_sum(int32_t x, int32_t y);
-
-using ::tpyapp::a::Pair;
 
 void __tpy_init();
 } // namespace tpyapp::b

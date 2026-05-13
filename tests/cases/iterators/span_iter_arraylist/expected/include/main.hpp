@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 template<::tpystd::typing::Iterable<int32_t> T_it>
@@ -29,8 +31,6 @@ void consume(T_it& it) {
         std::cout << x << "\n";
     }
 }
-
-using ::tpystd::tplib::array_list::ArrayList;
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -11,6 +11,14 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::json::writer::_hex_byte;
+
+using ::tpystd::tplib::json::parser::JsonError;
+using ::tpystd::tplib::json::parser::JsonReader;
+using ::tpystd::tplib::json::writer::JsonWriter;
+
+using ::tpystd::tplib::json::parser::JsonToken;
+
 enum class Color : int32_t {
     RED = 1,
     BLUE = 2,
@@ -254,13 +262,5 @@ inline void Registry::update(int32_t key, Color color) {
     // self.items[key] = copy(item)
     ::tpy::__setitem__(this->items, key, Item(item));
 }
-using ::tpystd::tplib::json::writer::_hex_byte;
-
-using ::tpystd::tplib::json::parser::JsonError;
-using ::tpystd::tplib::json::parser::JsonReader;
-using ::tpystd::tplib::json::writer::JsonWriter;
-
-using ::tpystd::tplib::json::parser::JsonToken;
-
 void __tpy_init();
 } // namespace tpyapp::main

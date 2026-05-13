@@ -8,9 +8,9 @@
 
 namespace tpyapp::pkg {
 
-inline constexpr std::string_view __name__ = "pkg";
-
 using C = ::tpyapp::pkg::colors::Color;
+
+inline constexpr std::string_view __name__ = "pkg";
 
 void __tpy_init();
 } // namespace tpyapp::pkg

@@ -8,6 +8,8 @@
 
 namespace tpyapp::b {
 
+using ::tpyapp::a::Counter;
+
 // class Greeter(Protocol):
 template<typename T>
 concept Greeter = requires(T& t) {
@@ -17,8 +19,6 @@ concept Greeter = requires(T& t) {
 inline constexpr std::string_view __name__ = "b";
 
 ::tpy::BigInt counter_zero();
-
-using ::tpyapp::a::Counter;
 
 void __tpy_init();
 } // namespace tpyapp::b

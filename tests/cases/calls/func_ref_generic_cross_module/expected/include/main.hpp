@@ -8,6 +8,9 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::helper::identity;
+using ::tpyapp::helper::swap;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename __F0>
@@ -40,9 +43,6 @@ std::tuple<int32_t, int32_t> apply_swap(__F0&& f, int32_t a, int32_t b) {
     // return f(a, b)
     return f(a, b);
 }
-
-using ::tpyapp::helper::identity;
-using ::tpyapp::helper::swap;
 
 void __tpy_init();
 } // namespace tpyapp::main

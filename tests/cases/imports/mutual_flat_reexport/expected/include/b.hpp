@@ -8,9 +8,9 @@
 
 namespace tpyapp::b {
 
-inline constexpr std::string_view __name__ = "b";
-
 using ::tpyapp::c::Cls;
+
+inline constexpr std::string_view __name__ = "b";
 
 void __tpy_init();
 } // namespace tpyapp::b

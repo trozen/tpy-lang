@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::rc::Rc;
+
 struct Counter;
 struct Holder;
 
@@ -62,7 +64,5 @@ inline void Counter::bump() {
     // self.value += Int32(1)
     this->value = ::tpy::add_check<int32_t>(this->value, 1);
 }
-using ::tpystd::tplib::rc::Rc;
-
 void __tpy_init();
 } // namespace tpyapp::main

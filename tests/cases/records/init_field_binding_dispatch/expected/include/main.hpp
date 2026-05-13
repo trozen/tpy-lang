@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::helper::Color;
+
 enum class E : int32_t {
     A = 0,
     B = 1,
@@ -135,8 +137,6 @@ namespace tpyapp::main {
 inline std::ostream& operator<<(std::ostream& __os, Outer::Kind __e) {
     return __os << "Kind." << ::tpy::EnumUtil<Outer::Kind>::name(__e);
 }
-
-using ::tpyapp::helper::Color;
 
 void __tpy_init();
 } // namespace tpyapp::main

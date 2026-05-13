@@ -8,6 +8,8 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::mywrap::MyWrap;
+
 struct Expr;
 struct Lit;
 struct BinOp;
@@ -66,8 +68,6 @@ struct Expr {
         return os;
     }
 };
-
-using ::tpyapp::mywrap::MyWrap;
 
 void __tpy_init();
 } // namespace tpyapp::main

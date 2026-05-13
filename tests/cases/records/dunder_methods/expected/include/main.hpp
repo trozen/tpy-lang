@@ -9,12 +9,12 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 extern std::vector<int32_t>* items;
 extern ::tpystd::tplib::array_list::ArrayList<int32_t, 10>* al;
 extern std::array<int32_t, 3>* arr;
 inline constexpr std::string_view __name__ = "__main__";
-
-using ::tpystd::tplib::array_list::ArrayList;
 
 void __tpy_init();
 } // namespace tpyapp::main

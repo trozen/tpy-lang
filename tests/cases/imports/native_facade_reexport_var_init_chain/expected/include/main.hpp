@@ -8,11 +8,11 @@
 
 namespace tpyapp::main {
 
+inline auto& COUNTER = ::repro_init::pkg::state::COUNTER;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void main();
-
-inline auto& COUNTER = ::repro_init::pkg::state::COUNTER;
 
 void __tpy_init();
 } // namespace tpyapp::main

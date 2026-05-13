@@ -11,6 +11,14 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::json::writer::_hex_byte;
+
+using ::tpystd::tplib::json::parser::JsonError;
+using ::tpystd::tplib::json::parser::JsonReader;
+using ::tpystd::tplib::json::writer::JsonWriter;
+
+using ::tpystd::tplib::json::parser::JsonToken;
+
 struct User;
 struct WithDefault;
 struct Base;
@@ -575,13 +583,5 @@ inline std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extende
     // from typing import Optional
     return Extended::try_from_json(__data);
 }
-using ::tpystd::tplib::json::writer::_hex_byte;
-
-using ::tpystd::tplib::json::parser::JsonError;
-using ::tpystd::tplib::json::parser::JsonReader;
-using ::tpystd::tplib::json::writer::JsonWriter;
-
-using ::tpystd::tplib::json::parser::JsonToken;
-
 void __tpy_init();
 } // namespace tpyapp::main

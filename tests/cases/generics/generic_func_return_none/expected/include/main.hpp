@@ -8,6 +8,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::coro::poll_once;
+
 struct Int32One;
 struct Nothing;
 
@@ -63,8 +65,6 @@ template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
     // return poll_once(aw).value()
     return std::move(::tpystd::coro::poll_once<T>(aw)).value();
 }
-
-using ::tpystd::coro::poll_once;
 
 void __tpy_init();
 } // namespace tpyapp::main

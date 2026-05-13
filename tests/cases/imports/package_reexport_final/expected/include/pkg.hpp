@@ -8,10 +8,10 @@
 
 namespace tpyapp::pkg {
 
-inline constexpr std::string_view __name__ = "pkg";
-
 inline auto& LIMIT = ::tpyapp::pkg::constants::LIMIT;
 inline auto& VERSION = ::tpyapp::pkg::constants::VERSION;
+
+inline constexpr std::string_view __name__ = "pkg";
 
 void __tpy_init();
 } // namespace tpyapp::pkg

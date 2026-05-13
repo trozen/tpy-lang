@@ -8,6 +8,8 @@
 
 namespace tpyapp::b {
 
+using Other = ::tpyapp::a::A;
+
 struct Helper;
 
 inline constexpr std::string_view __name__ = "b";
@@ -32,8 +34,6 @@ inline std::ostream& operator<<(std::ostream& os, const Helper& obj) {
     ::tpy::print_object_default(os, "Helper", obj);
     return os;
 }
-
-using Other = ::tpyapp::a::A;
 
 void __tpy_init();
 } // namespace tpyapp::b

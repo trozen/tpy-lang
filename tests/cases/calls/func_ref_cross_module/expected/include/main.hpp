@@ -8,6 +8,9 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::helper::shout;
+using ::tpyapp::helper::triple;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename __F0>
@@ -27,9 +30,6 @@ int32_t apply(__F0&& f, int32_t x) {
     // return f(x)
     return f(x);
 }
-
-using ::tpyapp::helper::shout;
-using ::tpyapp::helper::triple;
 
 void __tpy_init();
 } // namespace tpyapp::main

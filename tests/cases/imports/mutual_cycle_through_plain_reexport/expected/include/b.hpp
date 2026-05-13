@@ -9,11 +9,11 @@
 
 namespace tpyapp::b {
 
+using ::tpyapp::c::cee;
+
 inline constexpr std::string_view __name__ = "b";
 
 int32_t bee_uses_a();
-
-using ::tpyapp::c::cee;
 
 void __tpy_init();
 } // namespace tpyapp::b

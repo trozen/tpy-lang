@@ -8,14 +8,14 @@
 
 namespace tpyapp::main {
 
+inline auto& LIMIT = ::tpyapp::pkg::constants::LIMIT;
+inline auto& VERSION = ::tpyapp::pkg::constants::VERSION;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 std::string banner(std::string_view prefix = ::tpyapp::pkg::VERSION);
 int32_t cap(int32_t n = ::tpyapp::pkg::LIMIT);
 void main();
-
-inline auto& LIMIT = ::tpyapp::pkg::constants::LIMIT;
-inline auto& VERSION = ::tpyapp::pkg::constants::VERSION;
 
 void __tpy_init();
 } // namespace tpyapp::main
