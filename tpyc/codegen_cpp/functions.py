@@ -159,10 +159,11 @@ def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
                 return "std::nullopt"
         return "nullptr"
     if isinstance(expr, TpyName):
-        # Final[T] module constant in default position; sema validated the
-        # binding. Cross-module names need qualification because each module's
-        # `inline constexpr` lives in its own C++ namespace.
-        imp = ctx.user_imported_variables.get(expr.name)
+        # Final[T] module constant in default position (sema validated).
+        # Use `imported_names` (immediate source) instead of the
+        # attribute table so the qname routes through the importer's
+        # `inline auto&` alias rather than the ultimate definer.
+        imp = ctx.analyzer.imported_names.get(expr.name)
         if imp is not None:
             source_module, original_name = imp
             return qualified_cpp_name(source_module, original_name)

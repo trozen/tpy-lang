@@ -40,6 +40,7 @@ from ..parse import (
 )
 from ..coercions import CoercionContext
 from ..namespace import BindingKind
+from ..symbol_binding import SymbolKind, lookup_imported
 from ..prescan import ScanResult, scan_reassigned_vars
 from ..liveness import analyze_last_uses
 from ..parse.nodes import VarLinkage
@@ -2150,13 +2151,16 @@ class StatementAnalyzer:
         if bad is None:
             return
         prefix = f"{label} requires a compile-time constant initializer"
-        if isinstance(bad, TpyName) and bad.name in self.ctx.user_imported_variables:
-            src_mod, _ = self.ctx.user_imported_variables[bad.name]
-            raise self.ctx.error(
-                f"{prefix}; cross-module Final references are not yet supported "
-                f"('{bad.name}' is imported from '{src_mod}')",
-                loc,
-            )
+        if isinstance(bad, TpyName):
+            imp = lookup_imported(
+                self.ctx.module_attributes, bad.name, SymbolKind.VARIABLE)
+            if imp is not None:
+                src_mod, _ = imp
+                raise self.ctx.error(
+                    f"{prefix}; cross-module Final references are not yet supported "
+                    f"('{bad.name}' is imported from '{src_mod}')",
+                    loc,
+                )
         if bad is not init and isinstance(bad, TpyName):
             raise self.ctx.error(
                 f"{prefix}; '{bad.name}' is not a Final constant",

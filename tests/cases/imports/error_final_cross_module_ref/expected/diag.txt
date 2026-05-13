@@ -1,0 +1,1 @@
+main.py:8: error: Final variable 'LIMIT' requires a compile-time constant initializer; cross-module Final references are not yet supported ('COUNTER' is imported from 'source')

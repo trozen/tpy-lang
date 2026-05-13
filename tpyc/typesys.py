@@ -3695,11 +3695,6 @@ class ModuleInfo:
     type_aliases: dict[str, 'TpyType'] = field(default_factory=dict)  # alias_name -> resolved type
     recursive_union_names: set[str] = field(default_factory=set)  # subset of type_aliases that are recursive union aliases
     enums: dict[str, 'NominalType'] = field(default_factory=dict)  # enum_name -> NominalType (enum-kind)
-    # Re-exported names: this module imported X from another module and exposes
-    # it under its own name (e.g. package __init__.py or stdlib facade).
-    # Codegen consumers walk these chains to find the ultimate definition site
-    # (matters for native_module facades which have no .hpp to chain through).
-    reexported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
     # Defining modules whose symbols this module's generated code references.
     # Computed by sema.reach_analysis. Used by codegen to propagate native-
     # module `# tpy: include(...)` directives transitively across native-to-

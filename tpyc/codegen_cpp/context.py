@@ -28,6 +28,7 @@ from ..namespace import Namespace, BindingKind
 from ..type_def_registry import (
     is_bool_type, is_dict, is_set, is_bytes_view_type, is_str_view_type,
 )
+from ..symbol_binding import lookup_imported, SymbolKind
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
@@ -834,10 +835,6 @@ class CodeGenContext:
     implicit_stdlib_modules: set[str] = field(default_factory=set)
     macro_dep_modules: set[str] = field(default_factory=set)
     emitted_tpy_inits: set[str] = field(default_factory=set)
-    # Maps local_name -> (source_module, original_name) to support import aliases
-    user_imported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
-    user_imported_protocols: dict[str, tuple[str, str]] = field(default_factory=dict)
-    user_imported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
     top_level_decls: dict[str, int] = field(default_factory=dict)
     current_stmt_line: int = 0
 
@@ -845,12 +842,6 @@ class CodeGenContext:
     # TODO: replace with dict[str, NativeGlobalInfo] holding c_name, linkage, var_type
     # instead of a flat name->name mapping (the TpyVarDecl nodes already carry this)
     native_global_names: dict[str, str] = field(default_factory=dict)
-
-    # --- Re-exports (from __init__.py) ---
-    reexported_functions: dict[str, tuple[str, str]] = field(default_factory=dict)
-    reexported_records: dict[str, tuple[str, str]] = field(default_factory=dict)
-    reexported_variables: dict[str, tuple[str, str]] = field(default_factory=dict)
-    reexported_enums: dict[str, tuple[str, str]] = field(default_factory=dict)
 
     # --- Recursive union metadata (populated from module.recursive_union_names) ---
     # Names of recursive aliases declared in the *current* module. Used by
@@ -1636,11 +1627,15 @@ class CodeGenContext:
             return True
         if self._is_pointer_global(expr) or self.is_pointer_local(expr):
             return True
-        if isinstance(expr, TpyName) and expr.name in self.user_imported_variables:
-            source_module, original_name = self.user_imported_variables[expr.name]
-            module_info = self.analyzer.registry.get_module(source_module)
-            if module_info and original_name in module_info.variables:
-                return module_info.variables[original_name].is_pointer
+        if isinstance(expr, TpyName):
+            imp = lookup_imported(
+                self.analyzer.ctx.module_attributes,
+                expr.name, SymbolKind.VARIABLE)
+            if imp is not None:
+                source_module, original_name = imp
+                module_info = self.analyzer.registry.get_module(source_module)
+                if module_info and original_name in module_info.variables:
+                    return module_info.variables[original_name].is_pointer
         return False
 
     def is_already_pointer_source(self, expr: TpyExpr) -> bool:

@@ -27,6 +27,7 @@ from .typesys import (
     unwrap_final,
 )
 from .type_def_registry import is_str_type, is_str_view_type
+from .symbol_binding import SymbolKind, lookup_imported
 from .typesys import (
     VOID as _VOID, STR as _STR, STRVIEW as _STRVIEW, BOOL as _BOOL,
     FLOAT as _FLOAT, FLOAT32 as _FLOAT32, BIGINT as _BIGINT,
@@ -263,13 +264,14 @@ def _is_static_str(expr: TpyExpr, ctx: 'SemanticContext | None' = None) -> bool:
 
 def _name_is_final_str(name: str, ctx: 'SemanticContext') -> bool:
     """True when ``name`` refers to a module-level Final[str] constant."""
-    # Local module declaration -- locally-declared Finals never appear in
-    # user_imported_variables, so this branch is terminal.
+    # Local module declaration -- locally-declared bindings have
+    # `defining_module is None`, so `lookup_imported` returns None and
+    # we fall through to the import path below.
     if name in ctx.final_globals:
         local_type = ctx.global_scope.lookup(name)
         return local_type is not None and _is_str_like(local_type)
     # Imported from another module
-    source = ctx.user_imported_variables.get(name)
+    source = lookup_imported(ctx.module_attributes, name, SymbolKind.VARIABLE)
     if source is None:
         return False
     source_module, original_name = source

@@ -17,6 +17,7 @@ from ..typesys import (
 from ..parse import TpyProtocol, TpyRecord
 from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, qualified_cpp_name
 from ..type_def_registry import is_str_type, protocol_info_of
+from ..symbol_binding import lookup_imported, SymbolKind
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -143,8 +144,11 @@ class ProtocolGenerator:
             return protocol_info.cpp_concept
         is_dynamic = protocol_info is not None and protocol_info.is_dynamic
         # Check if this is an imported protocol from another user module
-        if protocol.name in self.ctx.user_imported_protocols:
-            source_module, original_name = self.ctx.user_imported_protocols[protocol.name]
+        qual = lookup_imported(
+            self.ctx.analyzer.ctx.module_attributes, protocol.name,
+            SymbolKind.PROTOCOL_STATIC, SymbolKind.PROTOCOL_DYNAMIC)
+        if qual is not None:
+            source_module, original_name = qual
             cpp_name = f"__{original_name}_Concept__" if is_dynamic else original_name
             return qualified_cpp_name(source_module, cpp_name)
         # Protocol from a bare-imported module (import typing + typing.Sized)
@@ -167,8 +171,11 @@ class ProtocolGenerator:
         (`Awaitable<int32_t>`) and nested-template references (`Awaitable<T>`).
         """
         name = protocol.name
-        if name in self.ctx.user_imported_protocols:
-            source_module, original_name = self.ctx.user_imported_protocols[name]
+        qual = lookup_imported(
+            self.ctx.analyzer.ctx.module_attributes, name,
+            SymbolKind.PROTOCOL_STATIC, SymbolKind.PROTOCOL_DYNAMIC)
+        if qual is not None:
+            source_module, original_name = qual
             base = qualified_cpp_name(source_module, original_name)
         else:
             base = name

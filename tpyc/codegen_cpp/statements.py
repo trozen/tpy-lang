@@ -32,6 +32,7 @@ from ..parse import (
     TpyMatch,
 )
 from ..namespace import Namespace
+from ..symbol_binding import SymbolKind
 from ..sema.context import PENDING_CONTAINER_TYPES
 from ..diagnostics import SemanticError
 from ..liveness import stmts_terminate
@@ -581,31 +582,29 @@ class StatementGenerator:
         Records, functions, and protocols re-exported by the facade are pure
         declarations; only re-exported variables involve runtime
         construction the consumer must trigger.
+
+        The attribute table's VARIABLE bindings carry the chain-flattened
+        ultimate definer in `binding.defining_module`, so a single pass
+        over the facade's table yields the set of init targets.
         """
         registry = self.ctx.analyzer.registry
         info = registry.get_module(native_module)
-        if info is None or not info.reexported_variables:
+        if info is None or info.module_attributes is None:
             return []
         order: list[str] = []
         seen: set[str] = set()
-        for src_mod, src_name in info.reexported_variables.values():
-            cur_mod, cur_name = src_mod, src_name
-            visited_chain: set[tuple[str, str]] = set()
-            while True:
-                key = (cur_mod, cur_name)
-                if key in visited_chain:
-                    break
-                visited_chain.add(key)
-                cur_info = registry.get_module(cur_mod)
-                if cur_info is None or cur_info.is_builtin:
-                    break
-                next_step = cur_info.reexported_variables.get(cur_name)
-                if next_step is None:
-                    if not cur_info.is_native_module and cur_mod not in seen:
-                        seen.add(cur_mod)
-                        order.append(cur_mod)
-                    break
-                cur_mod, cur_name = next_step
+        for cell in info.module_attributes.values():
+            bd = cell.binding
+            if bd.kind != SymbolKind.VARIABLE or bd.defining_module is None:
+                continue
+            ult_mod = bd.defining_module
+            if ult_mod in seen:
+                continue
+            ult_info = registry.get_module(ult_mod)
+            if ult_info is None or ult_info.is_builtin or ult_info.is_native_module:
+                continue
+            seen.add(ult_mod)
+            order.append(ult_mod)
         return order
 
     def _is_plain_nonvalue(self, t: TpyType) -> bool:

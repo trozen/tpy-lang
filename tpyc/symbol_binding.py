@@ -167,6 +167,50 @@ def lookup_qualified(
     return qualify_imported(cell.binding, current_module)
 
 
+def lookup_imported(
+    table: 'dict[str, BindingCell] | None', name: str, *kinds: SymbolKind,
+) -> 'tuple[str, str] | None':
+    """Return `(defining_module, canonical_name)` when `name` is bound as
+    an *imported* symbol of one of `kinds` -- i.e. the cell exists, kind
+    matches, and the binding has a non-None `defining_module`. Returns
+    None for local definitions, kind mismatches, missing entries, and a
+    None table.
+    """
+    if table is None:
+        return None
+    cell = table.get(name)
+    if cell is None:
+        return None
+    bd = cell.binding
+    if bd.defining_module is None:
+        return None
+    if kinds and bd.kind not in kinds:
+        return None
+    return (bd.defining_module, bd.canonical_name)
+
+
+def resolve_definer(
+    registry, module_name: str, name: str, *kinds: SymbolKind,
+) -> tuple[str, str]:
+    """Return the (definer_module, definer_name) for `name` as bound in
+    `module_name`'s attribute table, or `(module_name, name)` if the
+    cell is missing / locally-defined / kind-mismatched.
+
+    `registry` only needs `get_module(name) -> object | None`; the
+    returned object only needs a `module_attributes` attribute that's
+    a `dict | None`. Works equally with the sema `TypeRegistry` and the
+    `Compiler`'s `modules` dict via a thin adapter.
+    """
+    mi = registry.get_module(module_name)
+    if mi is None:
+        return (module_name, name)
+    table = getattr(mi, "module_attributes", None)
+    imp = lookup_imported(table, name, *kinds)
+    if imp is None:
+        return (module_name, name)
+    return imp
+
+
 def walk_attribute_chain(
     registry, module_name: str, name: str,
     accept,  # Callable[[SymbolBinding], bool]

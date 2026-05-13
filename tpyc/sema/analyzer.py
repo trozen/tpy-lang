@@ -47,7 +47,7 @@ from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
 from ..cycle_detection import detect_type_cycles
 from ..parse import SourceLocation, is_parser_keyword
-from ..type_def_registry import is_str_type, is_str_view_type, protocol_info_of
+from ..type_def_registry import is_str_type, is_str_view_type, protocol_info_of, enum_info_of
 from ..parse.resolve_refs import (
     _walk_body, _merged_method_scope, _record_scope,
     promote_bare_nominals,
@@ -55,8 +55,8 @@ from ..parse.resolve_refs import (
 from .macros import _promote_method_signature
 from .builder_trace import BuilderTraceExpander
 from ..symbol_binding import (
-    SymbolKind, install_binding, protocol_kind_for,
-    is_macro_kind, is_kind, walk_attribute_chain,
+    SymbolKind, install_binding, lookup_imported, protocol_kind_for,
+    is_macro_kind, is_kind, walk_attribute_chain, resolve_definer,
 )
 
 
@@ -1146,7 +1146,8 @@ class SemanticAnalyzer:
             name = default.name
             if name in self.ctx.final_globals:
                 continue
-            imp = self.ctx.user_imported_variables.get(name)
+            imp = lookup_imported(
+                self.ctx.module_attributes, name, SymbolKind.VARIABLE)
             if imp is not None:
                 source_module, original_name = imp
                 source_info = self.ctx.registry.get_module(source_module)
@@ -2335,7 +2336,16 @@ class SemanticAnalyzer:
         var_info = module_info.variables[original_name]
         self.ctx.global_scope.define(local_name, var_info.type)
         self.ctx.global_ns.bind_variable(local_name, var_info.type)
-        self.ctx.user_imported_variables[local_name] = (module_name, original_name)
+        # Install into the attribute table so use-site checks that read
+        # `module_attributes` (e.g. `is_indirect_name`, `pointer_globals`)
+        # find non-value imports and emit the right deref / pointer
+        # qualification. Without this, a non-value-typed implicit-stdlib
+        # variable would lose its `(*x)` indirection at use sites.
+        install_binding(
+            self.ctx.module_attributes, local_name,
+            SymbolKind.VARIABLE, var_info.type,
+            defining_module=module_name, canonical_name=original_name,
+        )
         return True
 
     def _register_tpy_type_alias(self, original_name: str, local_name: str) -> None:
@@ -2406,10 +2416,9 @@ class SemanticAnalyzer:
         """Register an imported name when the source's per-kind dicts
         haven't materialized yet but its attribute-table binding has
         (cycle re-export). Dispatches on `src_binding.kind` to install
-        the same registry/global_ns/user_imported_* state the per-kind
-        branches in `_register_user_module_import` would, plus the
-        attribute-table binding so downstream consumers see it.
-        Returns True on success.
+        the same registry/global_ns/attribute-table state the per-kind
+        branches in `_register_user_module_import` would, so downstream
+        consumers see the import. Returns True on success.
         """
         ult_mod = src_binding.defining_module or module_name
         ult_name = src_binding.canonical_name
@@ -2424,7 +2433,6 @@ class SemanticAnalyzer:
                     name=local_name,
                     func_infos=func_infos,
                 ))
-            self.ctx.user_imported_functions[local_name] = (module_name, original_name)
             install_binding(
                 self.ctx.module_attributes, local_name,
                 SymbolKind.FUNCTION, func_infos,
@@ -2444,7 +2452,6 @@ class SemanticAnalyzer:
         if kind in (SymbolKind.PROTOCOL_STATIC, SymbolKind.PROTOCOL_DYNAMIC):
             self.ctx.registry.register_protocol(info, local_name)
             self.ctx.global_ns.bind_imported_name(local_name, module_name, original_name)
-            self.ctx.user_imported_protocols[local_name] = (module_name, original_name)
             install_binding(
                 self.ctx.module_attributes, local_name,
                 kind, info,
@@ -2482,28 +2489,6 @@ class SemanticAnalyzer:
             )
             return True
         return False
-
-    def _flatten_var_chain(self, source_module: str,
-                            original_name: str) -> tuple[str, str]:
-        """Walk through `ModuleInfo.reexported_variables` to find the
-        ultimate defining module for a re-exported variable. Mirrors
-        `Compiler._flatten_var_reexport` but works on the analyzer's
-        registry (which has `ModuleInfo`, not `CompiledModule`).
-        """
-        visited: set[tuple[str, str]] = set()
-        cur_mod, cur_name = source_module, original_name
-        while True:
-            key = (cur_mod, cur_name)
-            if key in visited:
-                return (cur_mod, cur_name)
-            visited.add(key)
-            mi = self.ctx.registry.get_module(cur_mod)
-            if mi is None:
-                return (cur_mod, cur_name)
-            next_step = mi.reexported_variables.get(cur_name)
-            if next_step is None:
-                return (cur_mod, cur_name)
-            cur_mod, cur_name = next_step
 
     def _register_user_module_import(self, module_name: str, original_name: str, local_name: str,
                                      from_star_import: bool = False) -> bool:
@@ -2548,7 +2533,6 @@ class SemanticAnalyzer:
             # registering a function group here would clobber that binding.
             # Still record the import so re-export works.
             if func_infos and func_infos[0].special_handling:
-                self.ctx.user_imported_functions[local_name] = (module_name, original_name)
                 install_binding(
                     self.ctx.module_attributes, local_name,
                     SymbolKind.FUNCTION, func_infos,
@@ -2562,7 +2546,6 @@ class SemanticAnalyzer:
                     name=local_name,
                     func_infos=func_infos,
                 ))
-            self.ctx.user_imported_functions[local_name] = (module_name, original_name)
             # Attribution matches `_extract_declaration_exports`'s
             # function re-export logic: defining_module is the ultimate
             # definer (originating_module); canonical_name is the
@@ -2591,9 +2574,8 @@ class SemanticAnalyzer:
             self._register_nested_with_alias(
                 module_info.enums, self.ctx.registry.register_enum,
                 original_name, local_name)
-            # Attribution matches `imported_record_qualification` /
-            # `exports.reexported_records`: defining_module is the
-            # *ultimate* definer (record_info.defining_module),
+            # Install with the chain-flattened attribution: defining_module
+            # is the *ultimate* definer (record_info.defining_module),
             # canonical_name is the record's name in that module.
             install_binding(
                 self.ctx.module_attributes, local_name,
@@ -2610,7 +2592,6 @@ class SemanticAnalyzer:
             self.ctx.registry.register_protocol(protocol_info, local_name)
             # Also bind in namespace so it can be resolved as a type
             self.ctx.global_ns.bind_imported_name(local_name, module_name, original_name)
-            self.ctx.user_imported_protocols[local_name] = (module_name, original_name)
             install_binding(
                 self.ctx.module_attributes, local_name,
                 protocol_kind_for(protocol_info.is_dynamic), protocol_info,
@@ -2647,11 +2628,9 @@ class SemanticAnalyzer:
             if local_name != original_name:
                 self.ctx.registry.register_enum(enum_type, original_name)
             self.ctx.global_ns.bind_enum(enum_type, name=local_name)
-            # Attribution matches `imported_enum_qualification` /
-            # `exports.reexported_enums`: defining_module is the
-            # ultimate declaring module (EnumInfo.module_name),
+            # Install with chain-flattened attribution: defining_module
+            # is the ultimate declaring module (EnumInfo.module_name),
             # canonical_name is the enum's name in that module.
-            from ..type_def_registry import enum_info_of
             einfo = enum_info_of(enum_type)
             ult_mod = einfo.module_name if (einfo and einfo.module_name) else module_name
             install_binding(
@@ -2666,12 +2645,13 @@ class SemanticAnalyzer:
             var_info = module_info.variables[original_name]
             self.ctx.global_scope.define(local_name, var_info.type)
             self.ctx.global_ns.bind_variable(local_name, var_info.type)
-            self.ctx.user_imported_variables[local_name] = (module_name, original_name)
-            # Flatten the re-export chain so the binding records the
-            # ultimate definer (matches how `_extract_body_exports`
-            # populates `reexported_variables`).
-            ult_mod, ult_name = self._flatten_var_chain(
-                module_name, original_name)
+            # Install with the chain-flattened ultimate defining module
+            # so the consumer's `.hpp` renders the definer's qname
+            # directly (matters when the immediate source is a
+            # native_module facade with no .hpp).
+            ult_mod, ult_name = resolve_definer(
+                self.ctx.registry, module_name, original_name,
+                SymbolKind.VARIABLE)
             install_binding(
                 self.ctx.module_attributes, local_name,
                 SymbolKind.VARIABLE, var_info.type,
@@ -2961,6 +2941,11 @@ class SemanticAnalyzer:
             if name_filter is None and dep_mod_name not in self.ctx.macro_ns:
                 self.ctx.macro_ns.bind_module(dep_mod_name)
 
+            # Macro-dep symbols flow into the consumer's per-module
+            # attribute table as imports so the re-export emit picks
+            # them up (the macro-expanded code references these names,
+            # so the consumer's `.hpp` needs to alias them in its
+            # namespace just like any other `from M import X`).
             if module_info.records:
                 for name, record_info in module_info.records.items():
                     if name_filter is not None and name not in name_filter:
@@ -2969,6 +2954,12 @@ class SemanticAnalyzer:
                         self.ctx.registry.register_record(record_info, name)
                     self.ctx.macro_ns.bind_imported_name(name, dep_mod_name, name)
                     self.ctx.imported_names.setdefault(name, (dep_mod_name, name))
+                    install_binding(
+                        self.ctx.module_attributes, name,
+                        SymbolKind.RECORD, record_info,
+                        defining_module=(record_info.defining_module or dep_mod_name),
+                        canonical_name=record_info.name,
+                    )
 
             if module_info.functions:
                 for name, func_infos in module_info.functions.items():
@@ -2978,9 +2969,16 @@ class SemanticAnalyzer:
                     if not is_special:
                         if self.ctx.registry.get_function(name) is None:
                             self.ctx.registry.register_function_group(name, func_infos)
-                        self.ctx.user_imported_functions.setdefault(name, (dep_mod_name, name))
                     self.ctx.macro_ns.bind_imported_name(name, dep_mod_name, name)
                     self.ctx.imported_names.setdefault(name, (dep_mod_name, name))
+                    ult_mod = (func_infos[0].originating_module
+                               if func_infos else None) or dep_mod_name
+                    ult_name = func_infos[0].name if func_infos else name
+                    install_binding(
+                        self.ctx.module_attributes, name,
+                        SymbolKind.FUNCTION, func_infos,
+                        defining_module=ult_mod, canonical_name=ult_name,
+                    )
 
             if module_info.enums:
                 for name, enum_type in module_info.enums.items():
@@ -2990,3 +2988,11 @@ class SemanticAnalyzer:
                         self.ctx.registry.register_enum(enum_type, name)
                     self.ctx.macro_ns.bind_enum(enum_type, name=name)
                     self.ctx.imported_names.setdefault(name, (dep_mod_name, name))
+                    einfo = enum_info_of(enum_type)
+                    ult_mod = (einfo.module_name if einfo and einfo.module_name
+                               else dep_mod_name)
+                    install_binding(
+                        self.ctx.module_attributes, name,
+                        SymbolKind.ENUM, enum_type,
+                        defining_module=ult_mod, canonical_name=enum_type.name,
+                    )

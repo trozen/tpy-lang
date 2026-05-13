@@ -1469,9 +1469,12 @@ class TypeRegistrar:
                 TypeCategory.RECORD,
                 record=info,
             )
-        # Local class definition shadows any `from X import name` import
-        if self.ctx.user_imported_functions.pop(info.name, None):
-            self.ctx.registry.functions.pop(info.name, None)
+        # Local class definition shadows any `from X import name` import:
+        # if registry.functions still holds an entry under this name
+        # (left over from an earlier function-import), clear it so the
+        # class binding wins lookups. The attribute-table cell was
+        # re-bound to RECORD by `install_binding` above.
+        self.ctx.registry.functions.pop(info.name, None)
 
         # Warn when a field or method name shadows an auto-synthesized C++ method
         SYNTHESIZED_FROM_DUNDER = {
@@ -2563,8 +2566,6 @@ class TypeRegistrar:
 
         self.ctx.registry.register_function(info)
         self.ctx.global_ns.bind_function(info)
-        # Local definition shadows any `from X import name` import
-        self.ctx.user_imported_functions.pop(info.name, None)
         # Per-module attribute table (Phase 1). Use the registry's list
         # so binding.info shares identity with the freshly-registered
         # one (which `_extract_declaration_exports` will copy into

@@ -100,24 +100,26 @@ imports to canonicalize without a topological order. Runs before
 `_resolve_module_refs` so `TypeResolver` can mint canonical
 `_module_qname` directly.
 
-Re-export chains work because `Compiler._extract_exports` share-
-points the `RecordInfo` / `ProtocolInfo` / enum `NominalType` object
-through every re-exporting module
-(`exports.records[local_name] = module_info.records[original_name]`).
-The shared ref always carries the ultimate `defining_module`, so
-canonicalization produces the same tuple no matter how many
-intermediates surfaced the type -- no transitive chain walk needed.
-Functions and variables flatten to the ultimate definer at extract
-time (via `originating_module` and `_flatten_var_reexport`) so
-consumer codegen and `using` emissions land at the definer's
-namespace directly. The per-module attribute table
-(`CompiledModule.module_attributes`) stores the same flattened
-bindings under one entry per local name; codegen, parser
-canonicalization, macro chain resolution, the cycle re-export
-pre-pop, and compile-time star-import expansion
-(`_expand_star_imports_for_module`) all read it via
-`lookup_qualified` / `walk_attribute_chain` helpers in
-`tpyc/symbol_binding.py`.
+Re-export attribution lives on the per-module attribute table
+(`CompiledModule.module_attributes`): one `BindingCell` per local
+name, with the binding's `defining_module` and `canonical_name`
+already chain-flattened to the ultimate definer at install time
+(sema's `_register_user_module_import` resolves variables via
+`resolve_definer`; records/enums/functions take the ultimate from
+`record_info.defining_module` / `EnumInfo.module_name` /
+`func_info.originating_module`; `_pre_populate_reexport_bindings`
+fixpoints cycle peers before any module's `bind_imports` runs).
+Codegen, parser canonicalization, macro chain resolution, the
+cycle re-export pre-pop, and compile-time star-import expansion
+(`_expand_star_imports_for_module`) all read this table through
+`lookup_qualified` / `lookup_imported` / `resolve_definer` /
+`walk_attribute_chain` helpers in `tpyc/symbol_binding.py`. The
+per-kind `ModuleExports.{records, functions, enums, protocols,
+variables, type_aliases}` dicts are supplementary lookup tables
+keyed by name -- they share-point the underlying Info objects
+(a `RecordInfo` lives once and is referenced by every re-exporting
+module's `exports.records`) but do not carry attribution; the
+table is where defining_module / canonical_name live.
 
 Only types backed by a real `TypeDef` entry (records, enums,
 protocols, type-factory-backed generics) are canonicalized. Type

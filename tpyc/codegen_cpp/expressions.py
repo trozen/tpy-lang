@@ -29,7 +29,7 @@ from ..type_def_registry import (
     is_enum_type, is_int_enum_type, enum_info_of,
     protocol_info_of,
 )
-from ..symbol_binding import lookup_qualified
+from ..symbol_binding import lookup_qualified, lookup_imported, resolve_definer, SymbolKind
 
 
 _CMP_HELPER: Final = {
@@ -454,28 +454,6 @@ class ExpressionGenerator:
             else:
                 result = f"(*{result})"
         return result
-
-    def _follow_reexport_chain(self, module_name: str,
-                                name: str) -> tuple[str, str]:
-        """Follow ``module.reexported_variables[name]`` until a defining module.
-
-        For re-exports through native_module facades, the facade module exposes
-        no .hpp alias, so codegen has to resolve to the original source module's
-        symbol directly.
-        """
-        visited: set[tuple[str, str]] = set()
-        while True:
-            key = (module_name, name)
-            if key in visited:
-                return module_name, name
-            visited.add(key)
-            mod_info = self.ctx.analyzer.registry.get_module(module_name)
-            if mod_info is None:
-                return module_name, name
-            chain = mod_info.reexported_variables.get(name)
-            if chain is None:
-                return module_name, name
-            module_name, name = chain
 
     def _maybe_convert_opt_str_param(self, name: str, result: str,
                                       target_type: TpyType | None) -> str:
@@ -993,38 +971,46 @@ class ExpressionGenerator:
             # Skip if shadowed by a local variable
             if expr.name in self.ctx.native_global_names and expr.name not in self.ctx.local_scope_names:
                 return qualify_native_name(self.ctx.native_global_names[expr.name])
-            # Check if this is an imported variable from a user module
-            if expr.name in self.ctx.user_imported_variables:
-                # Don't qualify if shadowed by a local variable
-                if expr.name in self.ctx.local_scope_names:
-                    return escape_cpp_name(expr.name)
-                # Check if redefined at top level
-                if expr.name in self.ctx.top_level_decls:
-                    decl_line = self.ctx.top_level_decls[expr.name]
-                    # In a function (current_stmt_line == 0): always use local
-                    # At top level: use local only if current line >= declaration line
-                    if self.ctx.current_stmt_line == 0 or self.ctx.current_stmt_line >= decl_line:
+            # Imported variable from a user module. Read through
+            # `imported_names` (not the attribute table) because uses
+            # that source-precede a later top-level redefine still
+            # need to qualify to the import; `imported_names` is the
+            # shadow-resilient history tracker. Filter to variables by
+            # checking the immediate source's `variables` dict.
+            imp = self.ctx.analyzer.imported_names.get(expr.name)
+            if imp is not None:
+                src_mod_imm, orig_imm = imp
+                src_info_imm = self.ctx.analyzer.registry.get_module(src_mod_imm)
+                if src_info_imm is not None and orig_imm in src_info_imm.variables:
+                    # Don't qualify if shadowed by a local variable
+                    if expr.name in self.ctx.local_scope_names:
                         return escape_cpp_name(expr.name)
-                # Use qualified import reference (convert dotted name to C++ namespace).
-                # Pointer indirection for non-value-type globals is handled by
-                # is_indirect_name() -> gen_expr_deref() at call sites.
-                source_module, original_name = self.ctx.user_imported_variables[expr.name]
-                source_info = self.ctx.analyzer.registry.get_module(source_module)
-                # If the source re-exports the symbol from yet another module
-                # (package __init__.py or native_module facade), follow the
-                # chain so codegen lands at the original definition site.
-                if source_info is not None and source_info.reexported_variables:
-                    source_module, original_name = self._follow_reexport_chain(
-                        source_module, original_name)
+                    # Check if redefined at top level
+                    if expr.name in self.ctx.top_level_decls:
+                        decl_line = self.ctx.top_level_decls[expr.name]
+                        # In a function (current_stmt_line == 0): always use local
+                        # At top level: use local only if current line >= declaration line
+                        if self.ctx.current_stmt_line == 0 or self.ctx.current_stmt_line >= decl_line:
+                            return escape_cpp_name(expr.name)
+                    # Use qualified import reference (convert dotted name
+                    # to C++ namespace). Pointer indirection for non-value
+                    # globals is handled by is_indirect_name() ->
+                    # gen_expr_deref() at call sites. Follow the
+                    # re-export chain to the ultimate defining module so
+                    # the qname renders against a module that actually
+                    # emits the symbol (matters for facade re-exports).
+                    source_module, original_name = resolve_definer(
+                        self.ctx.analyzer.registry,
+                        src_mod_imm, orig_imm, SymbolKind.VARIABLE)
                     source_info = self.ctx.analyzer.registry.get_module(source_module)
-                # native_global variables use a user-specified C++ symbol name
-                # (e.g. "engine::score") that's independent of the module's
-                # cpp_namespace -- look it up in the source module's ModuleInfo.
-                if source_info is not None:
-                    var_info = source_info.variables.get(original_name)
-                    if var_info is not None and var_info.native_cpp_name is not None:
-                        return var_info.native_cpp_name
-                return qualified_cpp_name(source_module, original_name)
+                    # native_global variables use a user-specified C++ symbol name
+                    # (e.g. "engine::score") that's independent of the module's
+                    # cpp_namespace -- look it up in the source module's ModuleInfo.
+                    if source_info is not None:
+                        var_info = source_info.variables.get(original_name)
+                        if var_info is not None and var_info.native_cpp_name is not None:
+                            return var_info.native_cpp_name
+                    return qualified_cpp_name(source_module, original_name)
             result = escape_cpp_name(expr.name)
             # Generator body: optional-wrapped fields need dereference
             if self.ctx.in_generator_body and expr.name in self.ctx.generator_optional_fields:
@@ -2501,20 +2487,11 @@ class ExpressionGenerator:
                 # unqualified lookup can't bind to a lexical collision in
                 # the caller's scope (class method, namespace-member, ADL).
                 func_cpp_name = qualify_native_name(func_info.native_name or func_info.name)
-            elif expr.func_name in self.ctx.user_imported_functions:
-                # Cross-module call: qualify via the attribute table when
-                # available (ad-hoc analyzer in tests / REPL falls back
-                # to direct FunctionInfo attribution).
-                analyzer_ctx = self.ctx.analyzer.ctx
-                qual = lookup_qualified(
-                    analyzer_ctx.module_attributes,
-                    expr.func_name, analyzer_ctx.module_name)
-                if qual is not None:
-                    source_module, qual_name = qual
-                else:
-                    immediate, original_name = self.ctx.user_imported_functions[expr.func_name]
-                    source_module = func_info.originating_module or immediate
-                    qual_name = func_info.name
+            elif (qual := lookup_imported(
+                    self.ctx.analyzer.ctx.module_attributes,
+                    expr.func_name, SymbolKind.FUNCTION)) is not None:
+                # Cross-module call: qualify via the attribute table.
+                source_module, qual_name = qual
                 emit_name = mangled if is_literal_mangled else qual_name
                 func_cpp_name = qualified_cpp_name(source_module, emit_name)
             elif expr.func_name in self.ctx.analyzer.imported_names:
@@ -5399,8 +5376,11 @@ class ExpressionGenerator:
         if expr.function_ref_type_args:
             targs = "<" + ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in expr.function_ref_type_args) + ">"
         # Cross-module: use qualified name
-        if expr.name in self.ctx.user_imported_functions:
-            source_module, original_name = self.ctx.user_imported_functions[expr.name]
+        qual = lookup_imported(
+            self.ctx.analyzer.ctx.module_attributes,
+            expr.name, SymbolKind.FUNCTION)
+        if qual is not None:
+            source_module, original_name = qual
             return qualified_cpp_name(source_module, original_name) + targs
         # Native functions: use native C++ name
         if fi.is_native:

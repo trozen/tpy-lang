@@ -10,7 +10,7 @@ from typing import Callable, TextIO, TYPE_CHECKING
 import io
 import sys as _sys
 
-from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type, bare_name
+from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type, bare_name
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
@@ -25,6 +25,7 @@ from .records import RecordGenerator
 from .functions import FunctionGenerator
 from .type_resolution import resolve_stmt_type_cascade
 from .string_dispatch import find_best_discriminator, STRING_SWITCH_THRESHOLD
+from ..symbol_binding import SymbolKind
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
@@ -119,10 +120,6 @@ class CodeGenerator:
                  is_entry_point: bool = True,
                  actual_user_modules: set[str] | None = None,
                  implicit_stdlib_modules: set[str] | None = None,
-                 reexported_functions: dict[str, tuple[str, str]] | None = None,
-                 reexported_records: dict[str, tuple[str, str]] | None = None,
-                 reexported_variables: dict[str, tuple[str, str]] | None = None,
-                 reexported_enums: dict[str, tuple[str, str]] | None = None,
                  cycle_peers: 'frozenset[str] | None' = None) -> tuple[str, str]:
         """Generate C++ header and source files.
 
@@ -132,10 +129,6 @@ class CodeGenerator:
             is_entry_point: True if this is the entry point module (generates main()).
             actual_user_modules: Set of module names that are actually user modules (have source files).
                                  If None, uses module.user_module_imports (legacy behavior).
-            reexported_functions: Dict of {local_name: (source_module, original_name)} for re-exports.
-            reexported_records: Dict of {local_name: (source_module, original_name)} for re-exports.
-            reexported_variables: Dict of {local_name: (source_module, original_name)} for re-exports.
-            reexported_enums: Dict of {local_name: (source_module, original_name)} for re-exports.
         """
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
@@ -265,17 +258,7 @@ class CodeGenerator:
             self.ctx.user_module_imports = module.user_module_imports
             self.ctx.all_user_modules = set(module.user_module_imports.keys())
         self.ctx.implicit_stdlib_modules = implicit_stdlib_modules or set()
-        self.ctx.user_imported_functions = {
-            k: v for k, v in self.analyzer.ctx.user_imported_functions.items()
-            if not (fi := self.analyzer.registry.get_function(k)) or not any(f.is_decorator_stub for f in fi)
-        }
-        self.ctx.user_imported_protocols = dict(self.analyzer.ctx.user_imported_protocols)
-        self.ctx.user_imported_variables = dict(self.analyzer.ctx.user_imported_variables)
         self.ctx.top_level_decls = dict(self.analyzer.ctx.top_level_decls)
-        self.ctx.reexported_functions = reexported_functions or {}
-        self.ctx.reexported_records = reexported_records or {}
-        self.ctx.reexported_variables = reexported_variables or {}
-        self.ctx.reexported_enums = reexported_enums or {}
         self.ctx.macro_dep_modules = set(self.analyzer.ctx.macro_dep_modules)
         self.ctx.init_recursive_unions(
             module.recursive_union_names,
@@ -367,7 +350,10 @@ class CodeGenerator:
             and name not in self.ctx.final_globals
         }
         # Also include imported non-value-type globals
-        for name in self.ctx.user_imported_variables:
+        for name, cell in (self.analyzer.ctx.module_attributes or {}).items():
+            bd = cell.binding
+            if bd.kind != SymbolKind.VARIABLE or bd.defining_module is None:
+                continue
             binding = self.ctx.analyzer.global_ns.lookup_local(name)
             if binding and binding.type and not binding.type.is_value_type() and not self.ctx.is_recursive_union(binding.type):
                 self.ctx.pointer_globals.add(name)
@@ -973,42 +959,65 @@ class CodeGenerator:
             if self.functions.gen_function_decl(hpp, func):
                 emitted_func_decl = True
 
-        # Re-declare imported C-linkage functions in this namespace so they're
-        # visible without cross-module namespace qualification. This is legal
-        # because extern "C" functions can be declared multiple times.
-        # Applies to @native(binding="C") imports and @export(binding="C") exports.
-        # Skip functions that are also re-exports (handled separately).
-        for local_name in sorted(self.ctx.user_imported_functions):
-            if local_name in self.ctx.reexported_functions:
-                continue
-            func_infos = self.ctx.analyzer.registry.get_function(local_name)
-            if func_infos and (func_infos[0].is_native_c or func_infos[0].is_extern_c):
-                self.functions.gen_extern_c_redecl(hpp, func_infos[0])
-                emitted_func_decl = True
         if emitted_func_decl:
             hpp.write("\n")
 
-
     def _gen_reexport_using_decls(self, hpp: TextIO) -> None:
         """Emit `using` declarations for re-exported symbols (functions /
-        records / enums / variables).
+        records / enums / variables). One pass over the per-module
+        attribute table buckets cells by kind; each block below emits
+        its `using` / `inline auto&` shape from the bucketed entry.
         """
+        table = self.analyzer.ctx.module_attributes or {}
+        func_reexports: list[tuple[str, str, str, object]] = []
+        record_reexports: list[tuple[str, str, str, object]] = []
+        enum_reexports: list[tuple[str, str, str, object]] = []
+        var_reexports: list[tuple[str, str, str, object]] = []
+        for name, cell in table.items():
+            bd = cell.binding
+            if bd.defining_module is None:
+                continue  # local definition
+            # The binding's `info` carries the kind-specific payload
+            # (function infos / RecordInfo / enum NominalType / variable
+            # TpyType). Pass it through so the kind-specific blocks
+            # below can apply their filters (decorator stubs, native,
+            # cpp_template, special_handling) even for direct imports
+            # from implicit-stdlib roots where the consumer module's
+            # registry isn't populated.
+            entry = (name, bd.defining_module, bd.canonical_name, bd.info)
+            if bd.kind == SymbolKind.FUNCTION:
+                func_reexports.append(entry)
+            elif bd.kind == SymbolKind.RECORD:
+                record_reexports.append(entry)
+            elif bd.kind == SymbolKind.ENUM:
+                enum_reexports.append(entry)
+            elif bd.kind == SymbolKind.VARIABLE:
+                var_reexports.append(entry)
+        func_reexports.sort()
+        record_reexports.sort()
+        enum_reexports.sort()
+        var_reexports.sort()
+
         # Re-exported functions
-        if self.ctx.reexported_functions:
+        if func_reexports:
             any_written = False
-            for local_name, (source_module, original_name) in sorted(self.ctx.reexported_functions.items()):
-                # Cycle suppression (Phase 5): functions are not
-                # forward-declared in `<peer>_fwd.hpp`, so a `using`
-                # for a cycle peer's function would reach into the
-                # peer's full header. Consumer codegen lands at the
-                # defining module directly, so this is a pure
-                # interop-surface degradation.
+            for local_name, source_module, original_name, info in func_reexports:
+                # Cycle suppression: functions aren't forward-declared
+                # in `<peer>_fwd.hpp`, so a `using` for a cycle peer's
+                # function would reach into the peer's full header.
+                # Consumers qualify through the defining module
+                # directly, so this is interop-surface only.
                 if source_module in self.ctx.cycle_peers:
                     continue
+                # `info` is the FunctionInfo list from the binding (set
+                # at install time); prefer it over registry.get_function
+                # which is None for direct implicit-stdlib imports
+                # bypassing the consumer's local registry.
+                func_infos = info if isinstance(info, list) else (
+                    self.ctx.analyzer.registry.get_function(local_name))
                 # For C-linkage functions, emit an extern "C" re-declaration.
                 # Using/alias re-exports don't work because the C++ name may
                 # differ from the Python name (e.g., @native("SDL_GetTicks", binding="C") def get_ticks).
-                func_infos = self.ctx.analyzer.registry.get_function(local_name)
                 if func_infos and (func_infos[0].is_native_c or func_infos[0].is_extern_c):
                     self.functions.gen_extern_c_redecl(hpp, func_infos[0])
                     any_written = True
@@ -1033,17 +1042,23 @@ class CodeGenerator:
         # (using-declaration for a member at non-class scope); the inner
         # type is accessible through the outer's `using`. Also skip natives
         # / @builtin_type stubs (no namespace declaration to point at).
-        def _record_skip(name: str) -> bool:
-            info = self.analyzer.registry.get_record(name)
-            return info is not None and (info.is_native or info.is_keyword_stub)
+        # Enums also suppress cycle-peer re-exports (revisitable -- the
+        # forward-declared enum in `<peer>_fwd.hpp` would in principle
+        # be `using`'d safely).
+        def _record_skip(info: object, name: str) -> bool:
+            ri = info if isinstance(info, RecordInfo) else (
+                self.analyzer.registry.get_record(name))
+            return ri is not None and (ri.is_native or ri.is_keyword_stub)
 
-        def _enum_skip(name: str) -> bool:
-            enum_type = self.analyzer.registry.get_enum(name)
-            info = enum_info_of(enum_type) if enum_type is not None else None
-            return info is not None and info.is_native
+        def _enum_skip(info: object, name: str) -> bool:
+            et = info if info is not None else (
+                self.analyzer.registry.get_enum(name))
+            einfo = enum_info_of(et) if et is not None else None
+            return einfo is not None and einfo.is_native
 
-        self._emit_alias_using_block(hpp, self.ctx.reexported_records, _record_skip)
-        self._emit_alias_using_block(hpp, self.ctx.reexported_enums, _enum_skip)
+        self._emit_alias_using_block(hpp, record_reexports, _record_skip)
+        self._emit_alias_using_block(
+            hpp, enum_reexports, _enum_skip, skip_cycle_peers=True)
 
         # Re-exported variables. Skip:
         #   - variables whose ultimate source is a native_module (no
@@ -1052,9 +1067,9 @@ class CodeGenerator:
         #   - variables sourced from a cycle peer (variables aren't
         #     declared in `<peer>_fwd.hpp`, so a `using` would reach
         #     into the peer's full header).
-        if self.ctx.reexported_variables:
+        if var_reexports:
             any_written = False
-            for local_name, (source_module, original_name) in sorted(self.ctx.reexported_variables.items()):
+            for local_name, source_module, original_name, _info in var_reexports:
                 if source_module in self.ctx.cycle_peers:
                     continue
                 src_info = self.analyzer.registry.get_module(source_module)
@@ -1068,20 +1083,26 @@ class CodeGenerator:
 
     def _emit_alias_using_block(
         self, hpp: TextIO,
-        items: dict[str, tuple[str, str]],
-        skip: Callable[[str], bool],
+        entries: list[tuple[str, str, str, object]],
+        skip: Callable[[object, str], bool],
+        *, skip_cycle_peers: bool = False,
     ) -> None:
-        """Emit `using ::ns::Foo;` (or `using Local = ::ns::Foo;`) for each
-        entry in `items`, skipping nested types and entries the predicate
-        rejects. Trailing blank line if anything was written.
+        """Emit `using ::ns::Foo;` (or `using Local = ::ns::Foo;`) for
+        each entry in `entries`, skipping nested types and entries the
+        predicate rejects. Entries are `(local_name, source_module,
+        original_name, info)` tuples sourced from the bucketing pass in
+        `_gen_reexport_using_decls`. Trailing blank line if anything
+        was written.
         """
-        if not items:
+        if not entries:
             return
         any_written = False
-        for local_name, (source_module, original_name) in sorted(items.items()):
+        for local_name, source_module, original_name, info in entries:
+            if skip_cycle_peers and source_module in self.ctx.cycle_peers:
+                continue
             if "." in local_name or "." in original_name:
                 continue
-            if skip(original_name):
+            if skip(info, original_name):
                 continue
             qualified = qualified_cpp_name(source_module, original_name)
             if local_name == original_name:

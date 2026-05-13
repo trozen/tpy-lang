@@ -1451,18 +1451,32 @@ The work landed across 8 commits, one per phase of the plan:
   slot, so the additive change is localized.
 - Per-kind dict cleanup (per Phase 4's "Drop the can_reexport
   gate; per-kind dicts and reexported_* continue to exist as
-  derived views") is not yet done. The `reexported_*` dicts
-  on `ModuleExports` and the `user_imported_*` dicts on
-  `SemanticContext` remain authoritative for codegen; the
-  attribute table is a parallel structure. Removing them is a
-  separable follow-up that requires migrating every reader off
-  the per-kind path.
-- `reexported_protocols` is still missing -- protocols flow
-  through `exports.protocols` directly (with the source's
-  ProtocolInfo by reference) and the binding's defining_module
-  carries the immediate import source. The cross-check
-  tolerates this; codegen for protocol re-exports doesn't emit
-  separate `using` lines today.
+  derived views") **was completed in a follow-up.** The
+  `reexported_*` dicts on `ModuleExports`, the
+  `user_imported_*` dicts on `SemanticContext`, and the codegen
+  ctx mirrors of both were all removed. `module_attributes` is
+  the single source of truth for re-export attribution;
+  `analyzer.imported_names` is the universal import-history
+  tracker used by codegen sites that need the immediate
+  pre-shadow source (variable use-site and Final[T] default-
+  expr emit). The cross-check assertion
+  (`_assert_module_attributes_consistent`) was retired with the
+  parallel structure. `_backfill_module_attributes` survives as
+  the catch-all for any `exports.{records, functions, protocols,
+  enums, variables, type_aliases}` entry that didn't receive an
+  `install_binding` during registration; in practice this is
+  builtin exception records (which `register_record` skips when
+  `builtin_type_key` is set), body-sema-registered untyped
+  globals, and a few macro-emitted records, but the function
+  scope is "anything sema didn't install", not those categories
+  specifically.
+- A standalone-doc-worthy follow-up: cycle-peer enum re-exports
+  remain suppressed by codegen (records get cycle-peer `using`
+  emissions through `<peer>_fwd.hpp`, enums do not). Forward-
+  declared enums could in principle be `using`'d safely
+  (`_fwd.hpp` declares them with underlying type); the filter
+  is documented in `codegen_cpp/generator.py` as revisitable
+  once a concrete use case arises.
 - `_normalize_function_info_refs` order-dependence (the
   "Workspace-subphase-by-subphase declaration pipeline"
   follow-up) was not addressed. Still latent.
@@ -1470,10 +1484,11 @@ The work landed across 8 commits, one per phase of the plan:
 #### Known remaining gaps
 
 - **Source-order conflict resolution.** TPy still applies
-  "local declaration wins" (register_function pops
-  user_imported_functions on local definition, etc.). The
-  doc's "last module-scope binding wins" semantics is a
-  separable Python-faithfulness change requiring per-statement
+  "local declaration wins" (the local `register_*` re-binds
+  the `module_attributes` cell to `defining_module=None` and
+  clears any prior `registry.functions[X]` entry). The doc's
+  "last module-scope binding wins" semantics is a separable
+  Python-faithfulness change requiring per-statement
   binding-population order tracking, not just per-kind
   precedence rules. Affected tests
   (`source_order_local_then_import`,
