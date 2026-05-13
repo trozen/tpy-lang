@@ -1205,9 +1205,20 @@ def build_and_run(build_dir: Path, module_name: str,
                 cpp_build_failed=True,
             )
 
-    # Run and capture output
+    # Run and capture output. If a `src/input.txt` fixture exists in
+    # the case directory (one level above `build_dir`), pipe it to the
+    # binary's stdin -- enables snapshot-testing programs that read
+    # from stdin (M8 number guesser, etc.).
     exe_file = layout.binary_path()
-    result = subprocess.run([str(exe_file)], capture_output=True, text=True)
+    stdin_input = None
+    case_input = build_dir.parent / "src" / "input.txt"
+    if case_input.exists():
+        stdin_input = case_input.read_text()
+    result = subprocess.run(
+        [str(exe_file)],
+        input=stdin_input,
+        capture_output=True, text=True,
+    )
     return RunResult(
         success=(result.returncode == 0),
         stdout=result.stdout,

@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdint>
 #include <format>
+#include <iostream>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -19,6 +20,19 @@
 #include <vector>
 
 namespace tpy {
+
+// -- stdin helper --
+
+// Read a line from stdin (newline stripped). Raises ValueError on EOF.
+// Powers the `input()` builtin -- Python's `input()` raises EOFError;
+// TPy maps that to ValueError today (no dedicated EOFError class yet).
+inline std::string input_line() {
+    std::string line;
+    if (!std::getline(std::cin, line)) {
+        raise<ValueError>("unexpected end of input");
+    }
+    return line;
+}
 
 // -- ord/Char helpers --
 

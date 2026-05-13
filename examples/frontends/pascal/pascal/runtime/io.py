@@ -1,14 +1,15 @@
 """Pascal I/O runtime: write / writeln / read / readln.
 
-M1: `writeln(StrView)`. M2: `writeln_int(Int32)`. Float / boolean /
-char overloads, the `write` (no-newline) variants, and `read` /
-`readln` for stdin arrive in later milestones.
+Per-overload runtime entries (writeln_int, writeln_float, readln_int,
+...) rather than `@overload`, so the translator's dispatch stays at the
+import-name level (matches the design table's "one runtime entry per
+overload" guidance).
 
-Each Pascal arg type gets a distinct TPy function (`writeln_int`,
-`writeln_float`, ...) instead of an `@overload`, so the translator's
-overload-dispatch can stay at the import-name level rather than relying
-on TPy's overload resolution -- this is also what the design table
-implies (one runtime entry per overload).
+M1: `writeln(StrView)`. M2: `writeln_int(Int32)`. M8: `readln_int` /
+`readln_line` for stdin -- both route through TPy's `input()` builtin
+(added with M8) so the Pascal runtime stays in pure TPy with no
+vendored C/C++ source. Float / boolean / char overloads and `write`
+(no-newline) variants land in later milestones as needed.
 """
 
 from tpy import Int32
@@ -20,3 +21,16 @@ def writeln(s: str) -> None:
 
 def writeln_int(n: Int32) -> None:
     print(n)
+
+
+def readln_int() -> Int32:
+    """Read a line of stdin and parse it as an Int32. Pascal's
+    `readln(int_var)` lowers to `int_var := readln_int();`."""
+    return Int32(input())
+
+
+def readln_line() -> str:
+    """Read a line of stdin and return it. The Pascal translator
+    routes `readln(str_var)` through `str_var.assign(readln_line())`
+    so the lvalue keeps its identity."""
+    return input()

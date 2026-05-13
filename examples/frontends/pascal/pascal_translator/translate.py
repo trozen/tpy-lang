@@ -883,6 +883,8 @@ def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
     name = stmt.callee.name
     if name in ("write", "writeln"):
         return _lower_writeln_stmt(stmt, ctx)
+    if name in ("read", "readln"):
+        return _lower_readln_stmt(stmt, ctx)
     sig = ctx.signatures.get(name)
     if sig is None:
         ctx.diagnostics.append(_diag(
@@ -900,6 +902,77 @@ def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
         loc=_to_ir_loc(stmt.loc),
     )
     return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
+
+
+def _lower_readln_stmt(stmt: pa.CallStmt, ctx: _Ctx):
+    """Lower `readln(var)` / `read(var)` to an assignment from the
+    matching pascal-runtime helper. Pascal passes the argument by
+    reference; here we model that by dispatching on the variable's
+    declared type and emitting a value-returning call paired with an
+    assign-back to the variable. Args must be plain identifiers in
+    M8 -- compound targets (record fields, array elements) wait on a
+    later pass.
+    """
+    callee_name = stmt.callee.name
+    if len(stmt.args) != 1:
+        ctx.diagnostics.append(_diag(
+            f"{callee_name!r} takes exactly one argument in M8",
+            stmt.loc,
+        ))
+        return None
+    arg = stmt.args[0]
+    if not isinstance(arg, pa.Ident):
+        ctx.diagnostics.append(_diag(
+            f"{callee_name!r} argument must be a variable",
+            getattr(arg, "loc", stmt.loc),
+        ))
+        return None
+    var_name = arg.name
+    arg_type = ctx.type_env.get(var_name)
+    target_loc = _to_ir_loc(arg.loc)
+    if arg_type == "integer":
+        ctx.add_import("pascal.runtime.io", "readln_int")
+        rhs = Call(
+            callee=Name(ident="readln_int", loc=target_loc),
+            args=(), loc=target_loc,
+        )
+        target = Name(ident=var_name, loc=target_loc)
+        # `var` parameter: route through unsafe_store so the write
+        # lands in the caller's slot.
+        if var_name in ctx.current_var_params:
+            ctx.add_import("tpy.unsafe", "unsafe_store")
+            ir_call = Call(
+                callee=Name(ident="unsafe_store", loc=target_loc),
+                args=(target, IntLit(value=0, loc=target_loc), rhs),
+                loc=_to_ir_loc(stmt.loc),
+            )
+            return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
+        return Assign(
+            targets=(target,), value=rhs,
+            loc=_to_ir_loc(stmt.loc),
+        )
+    if arg_type == "string":
+        ctx.add_import("pascal.runtime.io", "readln_line")
+        line_call = Call(
+            callee=Name(ident="readln_line", loc=target_loc),
+            args=(), loc=target_loc,
+        )
+        # Route through PStr.assign for the same reason `s := lit`
+        # does -- preserves the lvalue identity and matches Pascal's
+        # in-place semantics.
+        assign_call = Call(
+            callee=Attr(
+                target=Name(ident=var_name, loc=target_loc),
+                ident="assign", loc=target_loc,
+            ),
+            args=(line_call,), loc=_to_ir_loc(stmt.loc),
+        )
+        return ExprStmt(value=assign_call, loc=_to_ir_loc(stmt.loc))
+    ctx.diagnostics.append(_diag(
+        f"{callee_name!r} does not support type {arg_type!r}",
+        arg.loc,
+    ))
+    return None
 
 
 def _lower_writeln_stmt(stmt: pa.CallStmt, ctx: _Ctx):

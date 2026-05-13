@@ -653,6 +653,13 @@ def filter[T](fn: Fn[[T], bool], iterable: Iterable[T]) -> Iterator[T]: ...
 def filter[T](fn: None, iterable: Iterable[T]) -> Iterator[T]: ...
 
 
+# Read one line from stdin (the trailing newline is stripped). Returns
+# the line as a heap-allocated `String`. Mirrors CPython's `input()`
+# minus the optional prompt arg, which is future work.
+@native("tpy::input_line")
+def input() -> String: ...
+
+
 # -- Special-handling builtins (custom sema/codegen, signatures are illustrative) --
 
 @builtin_function("builtins.print")
