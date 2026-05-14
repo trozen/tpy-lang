@@ -2418,24 +2418,13 @@ def resolve_int_literals(
     resolver can be a fixed type or a callable (e.g. default_int_for_literal)
     that maps IntLiteralType -> concrete int type.
     FloatLiteralType always resolves to FLOAT (float64).
-    Handles TupleType at arbitrary nesting depth.
     """
     def _resolve(t: TpyType) -> TpyType:
         if isinstance(t, IntLiteralType):
             return resolver(t) if callable(resolver) else resolver
         if isinstance(t, FloatLiteralType):
             return FLOAT
-        if isinstance(t, TupleType):
-            return t.map_inner_types(_resolve)
-        from tpyc.type_def_registry import is_array as _is_array, is_span as _is_span, is_list as _is_list_ctr
-        if _is_array(t) and isinstance(t.type_args[0], (IntLiteralType, FloatLiteralType)):
-            elem = _resolve(t.type_args[0])
-            return make_array(elem, t.type_args[1])
-        from tpyc.type_def_registry import is_list as _is_list
-        if _is_list(t) and isinstance(t.type_args[0], (IntLiteralType, FloatLiteralType)):
-            elem = _resolve(t.type_args[0])
-            return make_list(elem)
-        return t
+        return t.map_inner_types(_resolve)
     return _resolve(typ)
 
 

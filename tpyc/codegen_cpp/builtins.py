@@ -175,7 +175,7 @@ class BuiltinGenerator:
                 continue
             if all(self._builtin_codegen_type_matches(arg, arg_t, ptype)
                    for arg, arg_t, (_, ptype) in zip(args, arg_types, overload.params)):
-                gen_args = [self._gen_expr_deref(arg, ptype)
+                gen_args = [self._gen_call_arg(arg, ptype, inline_template=True)
                             for arg, (_, ptype) in zip(args, overload.params)]
                 return overload, gen_args
 
@@ -233,15 +233,12 @@ class BuiltinGenerator:
             folded = self._try_float_str_fold(fi, args)
             if folded is not None:
                 return folded
-            if fi.cpp_template:
-                # Template strings handle move semantics themselves (may embed std::move)
-                gen_args = [self._gen_expr_deref(arg, ptype)
-                            for arg, (_, ptype) in zip(args, fi.params)]
-            else:
-                # Native functions: use gen_call_arg for auto-consuming
-                # Iterable[Own[T]] and auto-move on Own[T] params
-                gen_args = [self._gen_call_arg(arg, ptype)
-                            for arg, (_, ptype) in zip(args, fi.params)]
+            # cpp_template substitutes the arg expression textually, so a
+            # bare lvalue arg is fine when it's not a last-use consume --
+            # skip gen_call_arg's lvalue->rvalue copy-temp in that case.
+            inline_template = bool(fi.cpp_template)
+            gen_args = [self._gen_call_arg(arg, ptype, inline_template=inline_template)
+                        for arg, (_, ptype) in zip(args, fi.params)]
             return self.gen_call_from_fi(fi, None, gen_args, type_args=type_args)
         # Fallback: re-resolve (shouldn't normally be needed)
         overload, gen_args = self._match_overload_args(args, overloads)

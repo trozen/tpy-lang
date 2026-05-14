@@ -10,7 +10,7 @@ void test_single() {
     // p: Ptr[Point] = unsafe_alloc()
     Point* p = static_cast<Point*>(::operator new(sizeof(Point), std::align_val_t(alignof(Point))));
     // unsafe_init(p, Point(10, 20))
-    ::new(static_cast<void*>(p)) Point(std::move(Point(10, 20)));
+    ::new(static_cast<void*>(p)) Point(Point(10, 20));
     // print(p.x)
     std::cout << ::tpy::deref_check(p).x << "\n";
     // print(p.y)
@@ -27,7 +27,7 @@ void test_mutate() {
     // p: Ptr[Point] = unsafe_alloc()
     Point* p = static_cast<Point*>(::operator new(sizeof(Point), std::align_val_t(alignof(Point))));
     // unsafe_init(p, Point(1, 2))
-    ::new(static_cast<void*>(p)) Point(std::move(Point(1, 2)));
+    ::new(static_cast<void*>(p)) Point(Point(1, 2));
     // p.x = Int32(100)
     ::tpy::deref_check(p).x = 100;
     // p.y = Int32(200)
@@ -50,11 +50,11 @@ void test_alloc_n() {
     // p2: Ptr[Point] = unsafe_ptr_add(p, 2)
     Point* p2 = (p + 2);
     // unsafe_init(p, Point(1, 2))
-    ::new(static_cast<void*>(p)) Point(std::move(Point(1, 2)));
+    ::new(static_cast<void*>(p)) Point(Point(1, 2));
     // unsafe_init(p1, Point(3, 4))
-    ::new(static_cast<void*>(p1)) Point(std::move(Point(3, 4)));
+    ::new(static_cast<void*>(p1)) Point(Point(3, 4));
     // unsafe_init(p2, Point(5, 6))
-    ::new(static_cast<void*>(p2)) Point(std::move(Point(5, 6)));
+    ::new(static_cast<void*>(p2)) Point(Point(5, 6));
     // print(unsafe_load(p, UInt32(0)).x, unsafe_load(p, UInt32(0)).y)
     std::cout << p[0].x << " " << p[0].y << "\n";
     // print(unsafe_load(p, UInt32(1)).x, unsafe_load(p, UInt32(1)).y)
@@ -77,7 +77,7 @@ void test_explicit_type_arg() {
     // p: Ptr[Int32] = unsafe_alloc[Int32]()
     int32_t* p = static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))));
     // unsafe_init(p, Int32(99))
-    ::new(static_cast<void*>(p)) int32_t(std::move(99));
+    ::new(static_cast<void*>(p)) int32_t(99);
     // print(unsafe_load(p, UInt32(0)))
     std::cout << p[0] << "\n";
     // unsafe_drop(p)
@@ -92,11 +92,11 @@ void test_alloc_n_value_type() {
     // p: Ptr[Int32] = unsafe_alloc_n(UInt32(3))
     int32_t* p = static_cast<int32_t*>(::operator new(sizeof(int32_t) * 3, std::align_val_t(alignof(int32_t))));
     // unsafe_init(p, Int32(10))
-    ::new(static_cast<void*>(p)) int32_t(std::move(10));
+    ::new(static_cast<void*>(p)) int32_t(10);
     // unsafe_init(unsafe_ptr_add(p, 1), Int32(20))
-    ::new(static_cast<void*>((p + 1))) int32_t(std::move(20));
+    ::new(static_cast<void*>((p + 1))) int32_t(20);
     // unsafe_init(unsafe_ptr_add(p, 2), Int32(30))
-    ::new(static_cast<void*>((p + 2))) int32_t(std::move(30));
+    ::new(static_cast<void*>((p + 2))) int32_t(30);
     // print(unsafe_load(p, UInt32(0)))
     std::cout << p[0] << "\n";
     // print(unsafe_load(p, UInt32(1)))

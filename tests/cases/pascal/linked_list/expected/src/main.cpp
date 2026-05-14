@@ -27,7 +27,7 @@ void __tpy_init() {
         // new(cur);
         cur = static_cast<node*>(::operator new(sizeof(node), std::align_val_t(alignof(node))));
         // new(cur);
-        ::new(static_cast<void*>(cur)) node(std::move(node()));
+        ::new(static_cast<void*>(cur)) node(node());
         // cur^.value := i * i;
         ::tpy::deref_check(cur).value = (::tpy::mul_check<int32_t>(i, i));
         // cur^.next := head;

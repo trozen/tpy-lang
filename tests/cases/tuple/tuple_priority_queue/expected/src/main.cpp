@@ -8,13 +8,13 @@ namespace tpyapp::main {
 void main() {
     // pq: list[tuple[Int32, str]] = []
     std::vector<std::tuple<int32_t, std::string>> pq = std::vector<std::tuple<int32_t, std::string>>{};
-    // heappush(pq, (Int32(3), "third"))
+    // heappush(pq, (3, "third"))
     ::tpystd::heapq::heappush<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{3, "third"});
-    // heappush(pq, (Int32(1), "first"))
+    // heappush(pq, (1, "first"))
     ::tpystd::heapq::heappush<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{1, "first"});
-    // heappush(pq, (Int32(2), "second"))
+    // heappush(pq, (2, "second"))
     ::tpystd::heapq::heappush<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{2, "second"});
-    // heappush(pq, (Int32(1), "tied_with_first"))
+    // heappush(pq, (1, "tied_with_first"))
     ::tpystd::heapq::heappush<std::tuple<int32_t, std::string>>(pq, std::tuple<int32_t, std::string>{1, "tied_with_first"});
     // while len(pq) > 0:
     while ((::tpy::__len__(pq) > 0)) {

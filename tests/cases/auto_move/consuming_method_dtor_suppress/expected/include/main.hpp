@@ -25,7 +25,7 @@ struct HeapVal {
         // print("init", value)
         std::cout << "init" << " " << value << "\n";
         // unsafe_init(self._ptr, value)
-        ::new(static_cast<void*>(this->_ptr)) int32_t(std::move(value));
+        ::new(static_cast<void*>(this->_ptr)) int32_t(value);
     }
     HeapVal(const HeapVal&) = delete;
     HeapVal& operator=(const HeapVal&) = delete;

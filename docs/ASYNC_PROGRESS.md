@@ -820,24 +820,36 @@ Changes:
 - Snapshot drifts in 22 async tests: call sites changed from
   `::tpy::async_run(coro)` to `::tpystd::asyncio::run<T>(coro)`.
 
-Workarounds applied (TODOs in code; tied to BUGS entry on
-`Awaitable[T]` rvalue forwarding):
-
-- `_make_executor_owned_task[T](coro: Own[Awaitable[T]])` -- the
-  `Own[]` annotation shifts the param to value-typed emission so
-  forwarding through the TPy local works.
-- `@cpp_template("::tpy::make_executor_owned_task<{T}>(std::move({0}))")`
-  -- explicit `std::move` re-establishes rvalue-ness at the inner
-  call site.
-- `run[T](coro: Own[Awaitable[T]])` -- same annotation propagated
-  outward. API-level: `asyncio.run(coro)` now consumes the coro
-  argument (transfer of ownership), matching the semantic intent.
+API shape: `run[T](coro: Own[Awaitable[T]])`. The `Own[]` annotation
+expresses ownership transfer -- `asyncio.run` consumes the coro --
+matching CPython's semantic intent. Originally the v1.2 step 1 port
+also embedded a manual `std::move({0})` in
+`_make_executor_owned_task`'s `@cpp_template` as a forwarding
+workaround; v1.2 step 2 (below) made that redundant by routing
+cpp_template calls through `gen_call_arg`'s auto-move logic.
 
 Behavioural change worth noting: the nested-`asyncio.run` guard moved
 from `tpy_panic` (uncatchable, process-terminating) to a `RuntimeError`
 (catchable TPy exception). Matches CPython's behaviour ("asyncio.run()
 cannot be called from a running event loop" is a `RuntimeError` there).
 The `tests/cases/async/panic_run_reentry/` case was renamed accordingly.
+
+### v1.2 step 2 -- cpp_template auto-move for `Own[T]` args -- DONE
+
+`@cpp_template` calls previously generated args via `_gen_expr_deref`
+(bare expression, no auto-move), so a `coro: Own[T]` local passed to a
+cpp_template-bound consumer needed a manual `std::move({N})` in the
+template string. They now route through `gen_call_arg(inline_template=
+True)` -- the same helper `@native` calls already used -- so auto-move
+at last use fires uniformly. Manual `std::move({N})` removed from
+`_make_executor_owned_task` (asyncio) and `unsafe_init` (tpy.unsafe).
+Snapshot drifts in `auto_move/consuming_method_*` and
+`pointers/unsafe_alloc` (cleaner output, runtime identical).
+
+Closes the codegen part of the old "Awaitable[T] rvalue forwarding"
+bug. The remaining piece is a sema-diagnostic gap when a non-`Own`
+borrow or a non-last-use `Own[T]` reaches a consuming cpp_template --
+tracked in `BUGS.md` under Safety / borrow checker.
 
 ### Blocked -- stays C++ until compiler features land
 

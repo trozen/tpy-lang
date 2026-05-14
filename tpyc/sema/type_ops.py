@@ -12,17 +12,17 @@ from ..typesys import (
     TpyType, TypeParamRef, NominalType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType,
     make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType,
-    IntLiteralType, TypeParamKind, BIGINT, UnknownElementType,
+    IntLiteralType, FloatLiteralType, TypeParamKind, BIGINT, UnknownElementType,
     NoneType, VoidType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
     unwrap_ref_type, RefType,
-    is_callable_type, is_integer_type, is_void_like_type,
+    is_callable_type, is_integer_type, is_float_type, is_void_like_type,
 )
 from ..coercions import resolve_coercion, CoercionContext
 from ..diagnostics import SemanticError
 from .. import qnames
 from ..type_def_registry import (
-    is_copy_iter, is_own_iter, is_array, is_span, is_list,
+    is_copy_iter, is_own_iter, is_array, is_span, is_list, is_dict, is_set,
     get_type_def, find_factory_by_simple_name, protocol_info_of,
 )
 from ..parse import TpyFunction
@@ -525,6 +525,9 @@ class TypeOperations:
                 if isinstance(existing, IntLiteralType) and is_integer_type(arg_type):
                     inferred[param_type.name] = arg_type
                     return True
+                if isinstance(existing, FloatLiteralType) and is_float_type(arg_type):
+                    inferred[param_type.name] = arg_type
+                    return True
                 # Ref[T] matches bare T: the same type param can be inferred
                 # as bare T (from iterables) and Ref[T] (from function returns).
                 # Accept both directions without conflict.
@@ -859,27 +862,42 @@ class TypeOperations:
     def types_match_for_inference(self, type_a: TpyType, type_b: TpyType) -> bool:
         """Check if two types match for inference consistency.
 
-        Handles IntLiteralType matching other integer types (BigInt, Int32),
-        and PendingViewType (PendingStr/PendingBytes) matching each other
-        and their resolved types.
+        Recurses element-wise through tuple/list/dict/set so that the
+        literal-coercion rules below apply inside compound shapes -- not
+        just at the top level.
         """
         if type_a == type_b:
             return True
-        # IntLiteralType matches any integer type
         if isinstance(type_a, IntLiteralType) and is_integer_type(type_b):
             return True
         if isinstance(type_b, IntLiteralType) and is_integer_type(type_a):
             return True
-        # Both IntLiteralType - they're compatible
         if isinstance(type_a, IntLiteralType) and isinstance(type_b, IntLiteralType):
             return True
-        # PendingViewType (PendingStr/PendingBytes) matches same-family pending or resolved types
+        if isinstance(type_a, FloatLiteralType) and is_float_type(type_b):
+            return True
+        if isinstance(type_b, FloatLiteralType) and is_float_type(type_a):
+            return True
+        if isinstance(type_a, FloatLiteralType) and isinstance(type_b, FloatLiteralType):
+            return True
         if isinstance(type_a, PendingViewType) and isinstance(type_b, PendingViewType):
             return type_a.family is type_b.family
         if isinstance(type_a, PendingViewType):
             return type_b in (type_a.family.owned_type, type_a.family.view_type)
         if isinstance(type_b, PendingViewType):
             return type_a in (type_b.family.owned_type, type_b.family.view_type)
+        if isinstance(type_a, TupleType) and isinstance(type_b, TupleType):
+            if len(type_a.element_types) != len(type_b.element_types):
+                return False
+            return all(self.types_match_for_inference(a, b)
+                       for a, b in zip(type_a.element_types, type_b.element_types))
+        if is_list(type_a) and is_list(type_b):
+            return self.types_match_for_inference(type_a.type_args[0], type_b.type_args[0])
+        if is_dict(type_a) and is_dict(type_b):
+            return (self.types_match_for_inference(type_a.type_args[0], type_b.type_args[0])
+                    and self.types_match_for_inference(type_a.type_args[1], type_b.type_args[1]))
+        if is_set(type_a) and is_set(type_b):
+            return self.types_match_for_inference(type_a.type_args[0], type_b.type_args[0])
         return False
 
     def infer_type_params_for_function(

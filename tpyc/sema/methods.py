@@ -32,6 +32,7 @@ from .calls import (
     arity_error_msg, resolve_kwargs, validate_generic_defaults,
     validate_type_param_bounds,
     _enrich_literal_types,
+    resolve_inferred_type_arg,
 )
 from .statements import _root_name_of_expr, _is_self_call_deferred
 
@@ -1855,7 +1856,10 @@ class MethodAnalyzer:
             )
 
         # Store inferred type args (new params only) for codegen
-        expr.inferred_type_args = tuple(method_subst[p] for p in new_params)
+        expr.inferred_type_args = tuple(
+            resolve_inferred_type_arg(method_subst[p], self.ctx.default_int_type)
+            for p in new_params
+        )
 
         # Merge class subst + method subst for full substitution
         full_subst = dict(class_subst) if class_subst else {}
