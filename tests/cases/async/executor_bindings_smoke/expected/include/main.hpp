@@ -29,7 +29,7 @@ void main();
 struct __coro_check_inside {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpy::ExecutorHandle> h;
+    ::tpy::ExecutorHandle h;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -150,7 +150,7 @@ class Task[T]:
 
 @builtin_type("tpy.Waker")
 @native("tpy::Waker")
-class Waker:
+class Waker(ValueType):
     """Handle that lets a parked task be re-scheduled.
 
     Awaitables that haven't yet produced a value store the Waker passed

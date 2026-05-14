@@ -1,7 +1,6 @@
 # heapq: core min-heap ops, nsmallest/nlargest, int and str element types.
 # Tuple priority queue covered separately in cases/tuple/tuple_priority_queue.
-# Reference-type heaps still blocked on generic list.pop() for ref types;
-# see lib/tpy/heapq.py header for details.
+# Reference-type heap exercised in cases/lists/list_pop_ref_type.
 from heapq import heappush, heappop, heapify, heappushpop, heapreplace, nsmallest, nlargest
 
 def main() -> None:

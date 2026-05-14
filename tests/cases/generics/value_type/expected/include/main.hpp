@@ -32,6 +32,12 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
     ::tpy::print_object_default(os, "Vec2", obj);
     return os;
 }
+} // namespace tpyapp::main
+
+template<> struct tpy::is_value_type<::tpyapp::main::Vec2> : std::true_type {};
+
+namespace tpyapp::main {
+
 
 // # Rect uses Vec2 -- tests nested value types
 // class Rect(ValueType):
@@ -51,13 +57,12 @@ inline std::ostream& operator<<(std::ostream& os, const Rect& obj) {
     ::tpy::print_object_default(os, "Rect", obj);
     return os;
 }
-
 } // namespace tpyapp::main
 
-template<> struct tpy::is_value_type<tpyapp::main::Vec2> : std::true_type {};
-template<> struct tpy::is_value_type<tpyapp::main::Rect> : std::true_type {};
+template<> struct tpy::is_value_type<::tpyapp::main::Rect> : std::true_type {};
 
 namespace tpyapp::main {
+
 
 void __tpy_init();
 } // namespace tpyapp::main

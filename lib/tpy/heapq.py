@@ -12,13 +12,6 @@
 #     Blocked on variadic-in-method-call codegen (same gate as math.hypot
 #     variadic) plus a generator-driven n-way iterator-heads heap.
 #
-# Language-level blockers that limit heapq coverage:
-#   - Generic list[T].pop() produces invalid C++ when T is a reference type
-#     (val_or_ref_t<T> = T& can't bind to pop_back's rvalue return). Blocks
-#     ref-type heaps; also affects the existing generic_stack test when
-#     instantiated with a user class. Needs codegen fix for generic-T
-#     returns that take ownership.
-#
 # Codegen perf gap affecting this module (see TODO.md "Missed optimizations" and
 # `docs/IR_DESIGN.md` "Open Questions" item 8):
 #   - Generic-T params route through the trait `param_val_or_ref_t<T>` which is

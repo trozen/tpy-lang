@@ -32,6 +32,12 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
     ::tpy::print_object_default(os, "Vec2", obj);
     return os;
 }
+} // namespace tpyapp::main
+
+template<> struct tpy::is_value_type<::tpyapp::main::Vec2> : std::true_type {};
+
+namespace tpyapp::main {
+
 
 // class Pair[T: ValueType](ValueType):
 template<::tpy::ValueType T>
@@ -52,13 +58,12 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
     ::tpy::print_object_default(os, "Pair", obj);
     return os;
 }
-
 } // namespace tpyapp::main
 
-template<> struct tpy::is_value_type<tpyapp::main::Vec2> : std::true_type {};
-template<typename T> struct tpy::is_value_type<tpyapp::main::Pair<T>> : std::true_type {};
+template<typename T> struct tpy::is_value_type<::tpyapp::main::Pair<T>> : std::true_type {};
 
 namespace tpyapp::main {
+
 
 void __tpy_init();
 } // namespace tpyapp::main

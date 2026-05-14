@@ -4441,6 +4441,7 @@ class Car(Vehicle, Printable, Measurable):
   - Generic type parameters use `ValuePrinter` for runtime dispatch (bool/float correctly formatted)
 - **Working**: List methods: `append()`, `pop()`, `insert()`, `remove()`, `clear()`, `extend()`
   - **Note**: `remove(value)` silently does nothing when value not found (Python raises `ValueError`)
+  - `pop()` / `pop(index)` return `Own[T]` (ownership transfer), matching `dict.pop` / `set.pop`. For reference-type T this means the popped element is moved out cleanly; for value-type T the `Own[T]` resolves to plain `T` and the call is equivalent to a direct value return.
 - **Working**: List repetition: `[element] * N` and `[elements...] * N`
   - Single-element: uses efficient fill constructor
   - Multi-element: uses `tpy::repeat_range` to repeat the sequence N times
@@ -5480,8 +5481,7 @@ Send/Sync rules for built-in types:
   TPy code (`lib/tpy/asyncio/_executor.py` -- slot table for parked
   tasks, runnable deque, timer min-heap) dispatched from C++ via a
   thread-local `ExecutorOps` function-pointer table in
-  `runtime/cpp/include/tpy/async.hpp`; `Waker.wake()` schedules the
-  parked task by slot id/generation; `asyncio.sleep(s)` is a real
+  `runtime/cpp/include/tpy/async.hpp`; `Waker` (declared `ValueType` -- 16-byte POD, passed by value through every `__poll__` call) carries an opaque executor pointer plus slot id/generation, and `Waker.wake()` schedules the parked task by id/generation; `asyncio.sleep(s)` is a real
   wall-clock sleep; `asyncio.create_task(coro)` registers the task with
   the executor for concurrent scheduling and returns a `Task[T]` handle
   (T inferred from the async def's return type) that shares state with

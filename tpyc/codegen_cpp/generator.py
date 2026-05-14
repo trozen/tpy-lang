@@ -15,7 +15,7 @@ from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protoco
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
 
-from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, qualified_cpp_name, escape_cpp_string, escape_cpp_char, escape_cpp_name
+from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_char, escape_cpp_name
 from .types import TypeResolver
 from .protocols import ProtocolGenerator
 from .builtins import BuiltinGenerator
@@ -537,6 +537,8 @@ class CodeGenerator:
 
         Called immediately after the record's struct definition so that
         subsequent records can use it as a set/dict-key element type.
+        `@native`-renamed records use `record_info.native_name` as the
+        qualified target (mirrors `_emit_value_type_spec`).
         """
         info = self.analyzer.registry.get_record(record.name)
         if not info or "__hash__" not in info.methods:
@@ -544,7 +546,9 @@ class CodeGenerator:
         if record.type_params or record.builtin_type_key:
             return
         ns = module_to_cpp_namespace(self.ctx.module_name)
-        cpp_name = qualified_cpp_name(self.ctx.module_name, record.name)
+        cpp_name = (qualify_native_name(info.native_name)
+                    if info.native_name
+                    else qualified_cpp_name(self.ctx.module_name, record.name))
         hpp.write(f"}} // namespace {ns}\n\n")
         hpp.write(f"template<> struct std::hash<{cpp_name}> {{\n")
         hpp.write(f"    size_t operator()(const {cpp_name}& val) const noexcept {{\n")
@@ -554,10 +558,72 @@ class CodeGenerator:
         hpp.write(f"\nnamespace {ns} {{\n\n")
 
     def _emit_nested_hash_specializations(self, hpp: TextIO, record: 'TpyRecord') -> None:
-        """Emit std::hash specializations for nested records (recursively)."""
+        """Emit std::hash specializations for nested records (recursively).
+
+        Skips `@native` nested records -- those are emitted by the
+        dedicated native-records pass in `_generate_definitions_and_reexports`.
+        Symmetric with `_emit_nested_value_type_specs`.
+        """
         for nested_rec in record.nested_records:
+            if self._is_native_record(nested_rec.name):
+                continue
             self._emit_hash_specialization(hpp, nested_rec)
             self._emit_nested_hash_specializations(hpp, nested_rec)
+
+    def _emit_value_type_spec(self, hpp: TextIO, record: TpyRecord) -> None:
+        """Emit `tpy::is_value_type<T>` spec for a ValueType record.
+
+        Called immediately after the record's struct definition so any
+        subsequent inline method body / templated call instantiating on
+        the record sees the spec. `@native`-renamed records use
+        `record_info.native_name` as the qualified C++ type (the rename
+        target lives outside the module's namespace).
+
+        Note: no `builtin_type_key` guard, asymmetric with
+        `_emit_hash_specialization`. `@builtin_type` ValueType records
+        (e.g. `Waker`) rely on this emission today -- there's no
+        hand-written spec in `runtime/cpp/include/tpy/type_traits.hpp`
+        for them, so the codegen path is load-bearing. Revisit if a
+        future `@builtin_type` + `@native` ValueType adds a hand-written
+        spec; the resulting duplicate `template<>` would be a hard C++
+        error pointing here.
+        """
+        record_info = self.analyzer.registry.get_record(record.name)
+        if not record_info or not record_info.is_value_type:
+            return
+        ns = module_to_cpp_namespace(self.ctx.module_name)
+        base_cpp_name = (qualify_native_name(record_info.native_name)
+                         if record_info.native_name
+                         else qualified_cpp_name(self.ctx.module_name, record.name))
+        hpp.write(f"}} // namespace {ns}\n\n")
+        if record.type_params:
+            tparams_decl = ", ".join(
+                f"std::size_t {tp}" if (i < len(record_info.type_param_kinds)
+                    and record_info.type_param_kinds[i].name == "INT")
+                else f"typename {tp}"
+                for i, tp in enumerate(record.type_params)
+            )
+            tparams_use = ", ".join(record.type_params)
+            hpp.write(f"template<{tparams_decl}> struct tpy::is_value_type<{base_cpp_name}<{tparams_use}>> : std::true_type {{}};\n")
+        else:
+            hpp.write(f"template<> struct tpy::is_value_type<{base_cpp_name}> : std::true_type {{}};\n")
+        hpp.write(f"\nnamespace {ns} {{\n\n")
+
+    def _emit_nested_value_type_specs(self, hpp: TextIO, record: 'TpyRecord') -> None:
+        """Emit value-type specs for nested records (recursively).
+
+        Skips `@native` nested records -- those are emitted by the
+        dedicated native-records pass in `_generate_definitions_and_reexports`.
+        Emitting here too would produce a duplicate `template<>` (hard C++
+        error). Parser today rejects `@native` nested in `@native` but
+        permits `@native` nested in a non-native outer, so the duplicate
+        path is reachable without this guard.
+        """
+        for nested_rec in record.nested_records:
+            if self._is_native_record(nested_rec.name):
+                continue
+            self._emit_value_type_spec(hpp, nested_rec)
+            self._emit_nested_value_type_specs(hpp, nested_rec)
 
     def _emit_concept_and_dynamic(self, hpp: TextIO, protocol: 'TpyProtocol') -> None:
         """Emit concept for a protocol, plus base class if @dynamic.
@@ -627,6 +693,9 @@ class CodeGenerator:
             if record.name in deps.bound_protocol_records:
                 self.records.gen_record_decl(hpp, record)
                 self._emit_hash_specialization(hpp, record)
+                self._emit_nested_hash_specializations(hpp, record)
+                self._emit_value_type_spec(hpp, record)
+                self._emit_nested_value_type_specs(hpp, record)
                 hpp.write("\n")
 
         # Full definitions for records that are type args to bounded records
@@ -636,6 +705,9 @@ class CodeGenerator:
                     continue
                 self.records.gen_record_decl(hpp, record)
                 self._emit_hash_specialization(hpp, record)
+                self._emit_nested_hash_specializations(hpp, record)
+                self._emit_value_type_spec(hpp, record)
+                self._emit_nested_value_type_specs(hpp, record)
                 hpp.write("\n")
 
         # Forward declare records referenced in protocols (bounds now available)
@@ -669,6 +741,18 @@ class CodeGenerator:
         global_decls: list, final_decls: list, seen_globals: dict, deps: _ProtocolDeps
     ) -> None:
         """Generate remaining forward decls, global externs, record definitions, functions, and re-exports."""
+        # Hash + is_value_type specs for @native records. The main per-record
+        # emit path (`sort_records_by_inheritance`) filters native records out,
+        # so without this pass `val_or_ref_t<NativeT>` lands on the false-type
+        # default (T&) in generic instantiations -- wrong ABI for a value type --
+        # and any TPy-declared `__hash__` on a native record loses its
+        # `std::hash` spec, breaking dict/set use. Emitted before any record
+        # body / function body that might instantiate on the native type.
+        for record in module.all_records():
+            if self._is_native_record(record.name):
+                self._emit_hash_specialization(hpp, record)
+                self._emit_value_type_spec(hpp, record)
+
         # Enum class declarations (before records, since records may have enum fields).
         # @native enums skip the declaration entirely -- the user's
         # `# tpy: include(...)` directive provides the C++ enum class.
@@ -817,6 +901,13 @@ class CodeGenerator:
             self.records.gen_record_decl(hpp, record)
             self._emit_hash_specialization(hpp, record)
             self._emit_nested_hash_specializations(hpp, record)
+            # is_value_type spec MUST precede any subsequent inline method
+            # body / generator struct / coro struct that template-instantiates
+            # on this record. Per-record placement (same pattern as the hash
+            # spec above) makes the ordering structural rather than a
+            # codegen-pass invariant.
+            self._emit_value_type_spec(hpp, record)
+            self._emit_nested_value_type_specs(hpp, record)
             hpp.write("\n")
 
         # Deferred forward declarations for functions with nested types
@@ -893,32 +984,6 @@ class CodeGenerator:
         if not self.ctx.cycle_peers:
             for record in sorted_records:
                 self.records.gen_record_method_defs(hpp, record, mode="def_hpp")
-
-        # ValueType specializations: exit namespace, emit, re-enter
-        value_type_records = [
-            r for r in module.all_records()
-            if (info := self.analyzer.registry.get_record(r.name)) and info.is_value_type
-        ]
-        if value_type_records:
-            ns = module_to_cpp_namespace(self.ctx.module_name)
-            hpp.write(f"}} // namespace {ns}\n\n")
-            for record in value_type_records:
-                record_info = self.analyzer.registry.get_record(record.name)
-                if record.type_params:
-                    # Generic record: partial specialization
-                    tparams_decl = ", ".join(
-                        f"std::size_t {tp}" if (record_info and i < len(record_info.type_param_kinds)
-                            and record_info.type_param_kinds[i].name == "INT")
-                        else f"typename {tp}"
-                        for i, tp in enumerate(record.type_params)
-                    )
-                    tparams_use = ", ".join(record.type_params)
-                    cpp_name = record.name.replace(".", "::")
-                    hpp.write(f"template<{tparams_decl}> struct tpy::is_value_type<{ns}::{cpp_name}<{tparams_use}>> : std::true_type {{}};\n")
-                else:
-                    cpp_name = record.name.replace(".", "::")
-                    hpp.write(f"template<> struct tpy::is_value_type<{ns}::{cpp_name}> : std::true_type {{}};\n")
-            hpp.write(f"\nnamespace {ns} {{\n\n")
 
         # std::hash specializations are emitted per-record inline (see
         # _emit_hash_specialization), not batched here. This ensures hash

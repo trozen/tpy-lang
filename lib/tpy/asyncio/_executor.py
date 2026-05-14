@@ -35,19 +35,20 @@ TPy-side classes:
 import heapq
 
 from time import monotonic, sleep_until_steady
-from tpy import Int32, Own, UInt64, nocopy, readonly
+from tpy import Int32, Own, ValueType, nocopy, readonly
 from tpy.extern import cpp_template, native
 from tpy.coro import Awaitable, Waker
 
 
 @native("tpy::ExecutorHandle")
-class ExecutorHandle:
+class ExecutorHandle(ValueType):
     """Opaque handle to the running executor's thread-local pointer.
 
-    POD value type, default-constructs to null. The TPy executor port
-    (Phase 2/3) stores its own pointer here via `_set_current_executor`
-    and reads it back via `_get_current_executor`. Awaitables that need
-    timer access today consult the thread-local directly through the
+    POD value type (8-byte `void* ptr` C++ side), default-constructs
+    to null. The TPy executor port (Phase 2/3) stores its own pointer
+    here via `_set_current_executor` and reads it back via
+    `_get_current_executor`. Awaitables that need timer access today
+    consult the thread-local directly through the
     `executor_register_timer_seconds` bridge, not through this handle.
     """
     def __init__(self) -> None: ...
@@ -105,6 +106,19 @@ def _make_waker(handle: ExecutorHandle, task_id: Int32,
                 generation: Int32) -> Waker: ...
 
 
+class TimerEntry(ValueType):
+    """One entry in the executor's timer min-heap. Ordered by deadline."""
+    deadline: float
+    waker: Waker
+
+    def __init__(self, deadline: float, waker: Waker) -> None:
+        self.deadline = deadline
+        self.waker = waker
+
+    def __lt__(self, other: 'TimerEntry') -> bool:
+        return self.deadline < other.deadline
+
+
 @nocopy
 class Slot:
     """One entry in the executor's slot table.
@@ -151,37 +165,16 @@ class Executor:
 
     slots: list[Slot]
     runnable_q: list[Int32]
-    # TODO(async-v1.2): collapse `timer_heap` + `_timer_wakers` into a
-    # single `list[TimerEntry]`. Blocked on the two compiler bugs below.
-    #
-    # Timer heap entries are (deadline, timer_id) tuples; the parallel
-    # _timer_wakers dict holds the Waker keyed by timer_id. Wakers
-    # aren't Comparable, and TPy's heapq requires tuple elements to be
-    # Comparable, so a Waker can't live inside the tuple directly.
-    #
-    # The natural shape is a `TimerEntry` class (value or reference)
-    # with `__lt__` on deadline -- BOTH variants are blocked by TPy
-    # compiler bugs today (see BUGS.md "Ref-type list[T].pop()" and
-    # "Non-@native ValueType is_value_type ordering"). Either fix lands
-    # this cleanup. The unique timer_id breaks ties so heap order is
-    # fully determined by deadline + insertion order.
-    timer_heap: list[tuple[float, UInt64]]
-    _timer_wakers: dict[UInt64, Waker]
-    _next_timer_id: UInt64
+    timer_heap: list[TimerEntry]
 
     def __init__(self) -> None:
         self.slots = []
         self.runnable_q = []
         self.timer_heap = []
-        self._timer_wakers = {}
-        self._next_timer_id = 0
         _register_executor_ops_from(self)
 
     def register_timer(self, deadline: float, waker: Waker) -> None:
-        tid = self._next_timer_id
-        self._next_timer_id += 1
-        self._timer_wakers[tid] = waker
-        heapq.heappush(self.timer_heap, (deadline, tid))
+        heapq.heappush(self.timer_heap, TimerEntry(deadline, waker))
 
     def spawn(self, box: Own[AnyTaskBox]) -> Int32:
         new_id = len(self.slots)
@@ -249,14 +242,11 @@ class Executor:
     def wait_for_event(self) -> bool:
         if len(self.timer_heap) == 0:
             return False
-        next_deadline = self.timer_heap[0][0]
-        sleep_until_steady(next_deadline)
+        sleep_until_steady(self.timer_heap[0].deadline)
         now = monotonic()
-        while len(self.timer_heap) > 0 and self.timer_heap[0][0] <= now:
-            deadline, tid = heapq.heappop(self.timer_heap)
-            waker = self._timer_wakers[tid]
-            del self._timer_wakers[tid]
-            waker.wake()
+        while len(self.timer_heap) > 0 and self.timer_heap[0].deadline <= now:
+            entry = heapq.heappop(self.timer_heap)
+            entry.waker.wake()
         return True
 
     def run_until(self, main_id: Int32) -> None:
@@ -327,22 +317,13 @@ class _ExecutorScope:
     v1 asyncio.run doesn't support nesting (the caller already verified
     the thread-local was null before constructing the scope), so the
     saved-prev is always null and the clear-on-teardown is equivalent
-    to a save/restore. If nestable-runtime support is ever added, this
-    class grows a `_prev: ExecutorHandle` field -- ExecutorHandle isn't
-    currently storable as a TPy field because the codegen for `@native`
-    value-type records emits the wrong namespace in the `is_value_type`
-    specialization (a TPy compiler bug to address before nesting can
-    be added).
+    to a save/restore. Nestable-runtime support could grow a
+    `_prev: ExecutorHandle` field freely now -- ExecutorHandle declares
+    `ValueType` and picks up an `is_value_type<ExecutorHandle>` spec via
+    the native-records emission pass.
     """
 
     def __init__(self, executor: Executor) -> None:
-        # Inlined to avoid an `ExecutorHandle` lvalue: TPy classes
-        # default to reference semantics, so a named local of an
-        # `@native` value-type record (without is_value_type=True in
-        # the compiler's type registry) gets emitted as `T& local = ...`
-        # which can't bind to the rvalue returned by _self_handle.
-        # The chained-call form passes the rvalue straight into the
-        # by-value parameter of _set_current_executor.
         _set_current_executor(_self_handle(executor))
 
     def __del__(self) -> None:
