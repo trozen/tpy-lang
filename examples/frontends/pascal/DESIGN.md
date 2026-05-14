@@ -168,14 +168,21 @@ TPy-core changes.
   raw-mode termios). `WhereX`/`WhereY` are deferred (need a cursor-
   position query round trip + raw stdin); `KeyPressed` is deferred
   (needs non-blocking stdin / termios, which TPy doesn't expose).
-- **`Graph` unit**: `InitGraph`, `CloseGraph`, `SetColor`,
-  `SetBkColor`, `PutPixel`, `Line`, `Rectangle`, `Circle`, `Bar`,
-  `OutTextXY`, `MoveTo`, `LineTo`, `FloodFill`, palette ops.
-  Backed by a TPy `pascal.runtime.graph` module that wraps a
-  modern graphics layer -- candidates: SDL2 (via TPy native
-  interop), or a simpler PNG/SVG snapshot backend for headless
-  test runs. Pascal source is unchanged; the runtime swap is
-  invisible to it.
+- **`Graph` unit** (M19, shipped, Tier-A subset): `InitGraph`,
+  `CloseGraph`, `SetColor`, `SetBkColor`, `ClearDevice`,
+  `PutPixel`, `GetPixel`, `Line`, `Rectangle`, `Bar`, `Circle`,
+  `GetMaxX`, `GetMaxY`. All drawing is pure TPy against a packed-
+  Int32 RGB pixel buffer (the TP7 16-color palette resolves to
+  `0xRRGGBB` literals at SetColor time). `CloseGraph` dumps the
+  canvas to a P3 PPM (`out.ppm` in the program's cwd, which is the
+  per-case build dir under `__tpyc__/` -- gitignored, never
+  snapshotted). Tests read pixels back via `GetPixel` and
+  snapshot the text output only. Tier B (text rendering via
+  embedded bitmap font, pen-state `MoveTo` / `LineTo` / `GetX` /
+  `GetY`, `Arc` / `Ellipse` / `FillEllipse`) and the optional
+  SDL2 display layer ship in later milestones; the SDL2 layer is
+  intentionally opt-in (system SDL2 not required for the regular
+  test suite).
 
 ### Tier 3 (genuinely out)
 
@@ -454,6 +461,11 @@ TODOs the tier needs.
     behaviour. Function-typed procedural types (`type Fn =
     function(...): R`) parse but `f := some_func` collides with
     the parameterless-bare-name rewrite; left for a future pass.
+19. **Graph unit, Tier A.** BGI primitives (open / close / clear /
+    pixel / line / rect / bar / circle) backed by a pure-TPy
+    pixel buffer; PPM snapshot at `CloseGraph`, no SDL2
+    dependency for the regular test suite. Tests use `GetPixel`
+    to read back specific coords and snapshot the text output.
 
 Each milestone closes with: tests in `tests/cases/pascal/`, snapshot
 diagnostics + output + generated C++ checked in, runs green under
