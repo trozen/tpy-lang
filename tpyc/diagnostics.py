@@ -45,6 +45,19 @@ NOCOPY_REMEDIATION_HINT = (
 )
 
 
+def nocopy_container_elem_error(typ: object, kind: str) -> str:
+    """Error message for `@nocopy` types used as set elements or dict keys.
+
+    `kind` is "set element" or "dict key". Hash-table-backed `ordered_set` /
+    `ordered_map` index entries via `std::pair<const K, ...>`, which requires
+    copy-constructible K -- @nocopy types can't satisfy that.
+    """
+    return (
+        f"Type '{typ}' is non-copyable and cannot be used as a {kind}; "
+        f"{kind}s must be copy-constructible"
+    )
+
+
 @dataclass
 class Diagnostic:
     """A compiler diagnostic (error or warning)."""

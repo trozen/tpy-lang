@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
-    INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, UnionType,
+    INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, UnionType, TupleType,
     PendingListType, PendingDictType, PendingSetType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
@@ -792,6 +792,11 @@ class SemanticContext:
             return self.is_type_nocopy(typ.wrapped)
         if isinstance(typ, OptionalType):
             return self.is_type_nocopy(typ.inner)
+        if isinstance(typ, TupleType):
+            for e in typ.element_types:
+                if isinstance(e, TpyType) and self.is_type_nocopy(e):
+                    return True
+            return False
         record = self.registry.get_record_for_type(typ)
         if record is not None and record.is_nocopy:
             return True
@@ -826,6 +831,11 @@ class SemanticContext:
             return self.is_type_non_copyable(typ.wrapped)
         if isinstance(typ, OptionalType):
             return self.is_type_non_copyable(typ.inner)
+        if isinstance(typ, TupleType):
+            for e in typ.element_types:
+                if isinstance(e, TpyType) and self.is_type_non_copyable(e):
+                    return True
+            return False
         record = self.registry.get_record_for_type(typ)
         if record is None:
             return False

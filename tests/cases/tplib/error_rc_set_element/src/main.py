@@ -1,9 +1,11 @@
-# Regression: `set[Rc[T]]` (and `dict[Rc[T], V]`) rejected at sema today,
-# but with a misleading diagnostic -- it says "dict key" for a set element
-# and suggests `@dataclass(frozen=True)` even though `Rc.__hash__` exists.
-# Pinning the current message so the BUGS.md fix lands together with the
-# message correction; see BUGS.md "set[Rc[T]] and dict[Rc[T], V] are
-# inconsistently rejected ...".
+# Regression: `set[Rc[T]]` is rejected at sema with a precise diagnostic
+# pointing at the copy-constructibility requirement -- ordered_set's
+# current std::unordered_map-based index stores keys in pair<const K, V>
+# which forces copy-construction; Rc[T] (move-only) can't satisfy that.
+# The same gate fires regardless of how the set is constructed (literal
+# here; see error_rc_set_add for the `set()` + `.add()` form). The
+# restriction is a runtime limitation, not a language design choice --
+# a future runtime redesign could lift it.
 from tpy import Int32
 from tplib import Rc
 
@@ -24,7 +26,7 @@ class Key:
 def main() -> None:
     a = Rc.new(Key(1))
     b = Rc.new(Key(2))
-    s: set[Rc[Key]] = {a.clone(), b.clone()}  # tpyc: error(/Type 'Rc\[Key\]' cannot be used as a dict key/)
+    s: set[Rc[Key]] = {a.clone(), b.clone()}  # tpyc: error(/Rc\[Key\].*non-copyable.*set element/)
     print(len(s))
 
 

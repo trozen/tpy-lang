@@ -19,7 +19,7 @@ from ..typesys import (
     is_callable_type, is_integer_type, is_float_type, is_void_like_type,
 )
 from ..coercions import resolve_coercion, CoercionContext
-from ..diagnostics import SemanticError
+from ..diagnostics import SemanticError, nocopy_container_elem_error
 from .. import qnames
 from ..type_def_registry import (
     is_copy_iter, is_own_iter, is_array, is_span, is_list, is_dict, is_set,
@@ -206,6 +206,21 @@ class TypeOperations:
                         f"Protocol type '{elem_type}' cannot be used as a container element type",
                         loc,
                     )
+            # set/dict element/key copy-constructibility. The literal-path
+            # check in expressions.py covers `{x, y}` / `{k: v}` forms; this
+            # branch closes the bypass where the user constructs an empty
+            # container via `set()` / `dict()` and inserts via `.add()` /
+            # subscript -- without it, sema accepts and the failure surfaces
+            # as a wall of C++ template errors from std::pair / hashtable
+            # internals (sets and dicts are hash-table-backed, K must be
+            # copy-constructible).
+            if is_set(typ) or is_dict(typ):
+                key_or_elem = typ.type_args[0] if typ.type_args else None
+                if (key_or_elem is not None
+                        and isinstance(key_or_elem, TpyType)
+                        and self.ctx.is_type_non_copyable(key_or_elem)):
+                    kind = "dict key" if is_dict(typ) else "set element"
+                    raise SemanticError(nocopy_container_elem_error(key_or_elem, kind), loc)
         elif isinstance(typ, OptionalType):
             self.validate_type(typ.inner, allow_type_param_ref, loc)
             if is_protocol_type(typ.inner):

@@ -52,7 +52,7 @@ from ..type_def_registry import (
 from ..namespace import BindingKind, NameBinding
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
-from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
+from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING, nocopy_container_elem_error
 from .context import is_body_like_scope
 from .narrowing import NarrowingTracker
 from .numeric_lattice import widen_numeric_types
@@ -2061,30 +2061,51 @@ class ExpressionAnalyzer:
 
     _HASHABLE = NominalType("Hashable", is_protocol=True)
 
-    def _validate_dict_key_type(self, key_type: TpyType, expr: TpyExpr) -> None:
-        """Validate that a type can be used as a dict key."""
-        if isinstance(key_type, OwnType):
-            key_type = key_type.wrapped
-        if isinstance(key_type, IntLiteralType):
+    def _validate_hashable_container_elem(
+        self, elem: TpyType, kind: str, expr: TpyExpr
+    ) -> None:
+        """Validate that `elem` can be used as a set element / dict key.
+
+        `kind` is "set element" or "dict key" and feeds into diagnostics.
+        Hash-table-backed containers store keys in std::pair<const K, ...>
+        which requires copy-constructible K; @nocopy types are rejected
+        first with a precise message so the user doesn't hit a wall of
+        C++ template errors from ordered_set/ordered_map internals.
+        """
+        if isinstance(elem, OwnType):
+            elem = elem.wrapped
+        if isinstance(elem, IntLiteralType):
             return
-        if is_enum_type(key_type):
+        if is_enum_type(elem):
             return
-        if isinstance(key_type, PendingViewType):
+        if isinstance(elem, PendingViewType):
             return
-        # User records: allow frozen dataclasses (have synthesized __hash__ + __eq__)
-        if isinstance(key_type, NominalType) and key_type.is_user_record:
-            info = self.ctx.registry.get_record(key_type.name)
-            if not (info is not None and info.is_frozen
-                    and "__hash__" in info.methods and "__eq__" in info.methods):
+        if self.ctx.is_type_non_copyable(elem):
+            raise self.ctx.error(nocopy_container_elem_error(elem, kind), expr)
+        # User records: require __hash__ + __eq__ (frozen dataclasses
+        # synthesize both; explicit definitions also count).
+        if isinstance(elem, NominalType) and elem.is_user_record:
+            info = self.ctx.registry.get_record(elem.name)
+            has_hash = info is not None and "__hash__" in info.methods
+            has_eq = info is not None and "__eq__" in info.methods
+            if not (has_hash and has_eq):
+                missing = []
+                if not has_hash:
+                    missing.append("__hash__")
+                if not has_eq:
+                    missing.append("__eq__")
+                missing_str = " and ".join(missing)
+                pronoun = "them" if len(missing) > 1 else "it"
                 raise self.ctx.error(
-                    f"Type '{key_type}' cannot be used as a dict key "
-                    f"(requires @dataclass(frozen=True) for __hash__ support)", expr,
+                    f"Type '{elem}' cannot be used as a {kind} "
+                    f"(missing {missing_str}; "
+                    f"use @dataclass(frozen=True) or define {pronoun} explicitly)", expr,
                 )
             return
-        if self.protocols.type_conforms_to_protocol(key_type, self._HASHABLE):
+        if self.protocols.type_conforms_to_protocol(elem, self._HASHABLE):
             return
         raise self.ctx.error(
-            f"Type '{key_type}' cannot be used as a dict key (not hashable)", expr,
+            f"Type '{elem}' cannot be used as a {kind} (not hashable)", expr,
         )
 
     # -- await -----------------------------------------------------------
@@ -2550,7 +2571,7 @@ class ExpressionAnalyzer:
         if isinstance(value_type, PendingViewType):
             value_type = value_type.family.owned_type
 
-        self._validate_dict_key_type(key_type, expr)
+        self._validate_hashable_container_elem(key_type, "dict key", expr)
         return make_dict(key_type, value_type)
 
     def _analyze_set_literal(
@@ -2602,7 +2623,7 @@ class ExpressionAnalyzer:
         if isinstance(elem_type, PendingViewType):
             elem_type = elem_type.family.owned_type
 
-        self._validate_dict_key_type(elem_type, expr)
+        self._validate_hashable_container_elem(elem_type, "set element", expr)
         return make_set(elem_type)
 
     def _analyze_list_repeat(self, expr: TpyListRepeat) -> TpyType:
@@ -2724,7 +2745,7 @@ class ExpressionAnalyzer:
             result_elem_type = expected_elem
 
         if kind == "set":
-            self._validate_dict_key_type(result_elem_type, expr)
+            self._validate_hashable_container_elem(result_elem_type, "set element", expr)
 
         expr.result_elem_type = result_elem_type
 
@@ -2833,7 +2854,7 @@ class ExpressionAnalyzer:
                 "dict comprehension value", coercion_ctx=CoercionContext.INIT)
             value_type = expected_value
 
-        self._validate_dict_key_type(key_type, expr)
+        self._validate_hashable_container_elem(key_type, "dict key", expr)
         expr.result_key_type = key_type
         expr.result_value_type = value_type
         return make_dict(key_type, value_type)
