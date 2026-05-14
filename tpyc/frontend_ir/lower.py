@@ -23,8 +23,10 @@ from ..frontend_diagnostics import FrontendDiagnostic, FrontendDiagnosticCategor
 from ..parse.nodes import (
     ModuleDirectives,
     SourceLocation,
+    TpyAsPattern,
     TpyAssign,
     TpyBinOp,
+    TpyClassPattern,
     TpyBoolLiteral,
     TpyBreak,
     TpyCall,
@@ -44,6 +46,7 @@ from ..parse.nodes import (
     TpyModule,
     TpyName,
     TpyNoneLiteral,
+    TpyRaise,
     TpyRecord,
     TpyReturn,
     TpySetLiteral,
@@ -51,6 +54,7 @@ from ..parse.nodes import (
     TpySubscript,
     TpyTypeRef,
     TpyUnaryOp,
+    TpyUnionRef,
     TpyValuePattern,
     TpyVarDecl,
     TpyWhile,
@@ -84,6 +88,7 @@ from .nodes import (
     Loc,
     Match,
     MatchCase,
+    MatchClass,
     MatchValue,
     MatchWildcard,
     Name,
@@ -91,6 +96,7 @@ from .nodes import (
     NoneLit,
     Param,
     PointerType,
+    Raise,
     RangeDir,
     Record,
     RepeatUntil,
@@ -104,6 +110,7 @@ from .nodes import (
     TypeTypeArg,
     UnaryOp,
     UnaryOpKind,
+    UnionType,
     VarDecl,
     While,
 )
@@ -496,6 +503,16 @@ def _lower_stmt(
             if value is None:
                 return None
         return TpyReturn(value=value, loc=loc)
+    if isinstance(stmt, Raise):
+        value = None
+        if stmt.value is not None:
+            value = _lower_expr(stmt.value, name_to_origin,
+                                plugin_name, fm, diags)
+            if value is None:
+                return None
+        out = TpyRaise(raise_expr=value)
+        out.loc = loc
+        return out
     if isinstance(stmt, Match):
         subject = _lower_expr(stmt.subject, name_to_origin, plugin_name, fm, diags)
         if subject is None:
@@ -614,16 +631,36 @@ def _lower_record(
             default_expr=default_expr,
             loc=_to_source_loc(f.loc),
         ))
-    if rec.methods or rec.nested_records or rec.nested_enums:
+    if rec.nested_records or rec.nested_enums:
         diags.append(_ir_invalid(
             plugin_name, fm,
-            "M5 records support fields only (methods / nested types "
-            "are reserved for later milestones)",
+            "nested records / enums are reserved for later milestones",
         ))
         return None, None
+    methods: list[TpyFunction] = []
+    for m in rec.methods:
+        lowered = _lower_function(m, {}, plugin_name, fm, diags)
+        if lowered is None:
+            return None, None
+        lowered.is_method = True
+        # Strip the leading `self` parameter from `params`: TPy's
+        # method-arg accounting (sema's `init_params`, arity checks,
+        # etc.) excludes self. The IR carries it because plugins
+        # build method bodies that reference `self` by name; for the
+        # TpyFunction the receiver is implicit.
+        if lowered.params and lowered.params[0][0] == "self":
+            lowered.params = lowered.params[1:]
+        if m.is_property_getter:
+            lowered.is_property_getter = True
+        if m.is_property_setter:
+            lowered.is_property_setter = True
+            if m.property_name is not None:
+                lowered.property_name = m.property_name
+        methods.append(lowered)
     tpy_rec = TpyRecord(
         name=rec.name,
         fields=field_infos,
+        methods=methods,
     )
     # RecordInfo's `module` is the public module qname; entry-point
     # modules use `__main__` (matches sema's `ctx.module_name` rename
@@ -652,9 +689,16 @@ def _lower_function(
     """
     params: list = []
     for p in fn.params:
-        t = _lower_type(p.type, plugin_name, fm, diags)
-        if t is None:
-            return None
+        # An un-annotated param (`type is None`) is permitted for
+        # `self` on record methods, mirroring the no-annotation form
+        # in ordinary TPy source. The resolver-attached pre-pass
+        # treats a None-typed first-param of a method as `Self`.
+        if p.type is None:
+            t = None
+        else:
+            t = _lower_type(p.type, plugin_name, fm, diags)
+            if t is None:
+                return None
         if p.default is not None:
             diags.append(_ir_invalid(
                 plugin_name, fm,
@@ -704,6 +748,15 @@ def _lower_pattern(p, name_to_origin, plugin_name, fm, diags):
             f"reference, got {type(v).__name__}",
         ))
         return None
+    if isinstance(p, MatchClass):
+        cls_ref = TpyName(name=p.class_name)
+        cls_ref.loc = loc
+        class_pat = TpyClassPattern(
+            cls=cls_ref, positional=[], keywords=[], loc=loc,
+        )
+        if p.bind is not None:
+            return TpyAsPattern(pattern=class_pat, name=p.bind, loc=loc)
+        return class_pat
     diags.append(_ir_invalid(
         plugin_name, fm,
         f"unsupported MatchPattern kind: {type(p).__name__}",
@@ -965,6 +1018,15 @@ def _lower_type(
         # lowering we know the binding by construction.
         return TpyTypeRef(name="tpy:Ptr", args=(inner,),
                           loc=_to_source_loc(t.loc))
+    if isinstance(t, UnionType):
+        members: list = []
+        for m in t.members:
+            lm = _lower_type(m, plugin_name, fm, diags)
+            if lm is None:
+                return None
+            members.append(lm)
+        return TpyUnionRef(members=tuple(members),
+                           loc=_to_source_loc(t.loc))
     diags.append(_ir_invalid(
         plugin_name, fm,
         f"unsupported TypeExpr kind: {type(t).__name__}",

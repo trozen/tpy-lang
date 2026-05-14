@@ -137,9 +137,21 @@ class PointerType:
     loc: Loc | None = None
 
 
+@dataclass
+class UnionType:
+    """`A | B | C` -- a Python-style union annotation. Used by
+    plugins (e.g. Pascal variant records) to type a discriminated-
+    payload field as the union of its variant inner records. Lowers
+    to a `TpyUnionRef` so the resolver runs the same union-shape
+    pipeline as ordinary Python source."""
+    kind: str = field(default="UnionType", init=False)
+    members: tuple["TypeExpr", ...] = ()
+    loc: Loc | None = None
+
+
 # Plugin authors compose types out of the nodes above. Later milestones
 # widen this union with OptionalType / OwnType / ReadonlyType / etc.
-TypeExpr = Union[NamedType, PointerType]
+TypeExpr = Union[NamedType, PointerType, UnionType]
 
 
 # --- Expressions ----------------------------------------------------------
@@ -404,7 +416,20 @@ class MatchWildcard:
     loc: Loc | None = None
 
 
-MatchPattern = Union[MatchValue, MatchWildcard]
+@dataclass
+class MatchClass:
+    """Class pattern: `case ClassName() [as bind]`. Used by plugins
+    (e.g. Pascal variant records) to narrow a union-typed subject to
+    one of its alternative classes. The bound name (if set) lets the
+    arm body reach the narrowed value's fields without an explicit
+    cast."""
+    kind: str = field(default="MatchClass", init=False)
+    class_name: str = ""
+    bind: str | None = None
+    loc: Loc | None = None
+
+
+MatchPattern = Union[MatchValue, MatchWildcard, MatchClass]
 
 
 @dataclass
@@ -420,6 +445,17 @@ class MatchCase:
 class Return:
     """Return statement. `value=None` for procedure-style returns."""
     kind: str = field(default="Return", init=False)
+    value: Expr | None = None
+    loc: Loc | None = None
+
+
+@dataclass
+class Raise:
+    """`raise <expr>` -- throw an exception. `value=None` for the
+    bare-`raise` re-raise form. Plugins emitting accessor methods
+    that need a "this variant isn't live" panic use this with a
+    `RuntimeError(...)` constructor as the value."""
+    kind: str = field(default="Raise", init=False)
     value: Expr | None = None
     loc: Loc | None = None
 
@@ -527,6 +563,13 @@ class Function:
     field is kept on the node so lowering can route correctly once
     records exist. `type_params` and `decorators` are reserved for
     future milestones.
+
+    Property accessors (`is_property_getter` / `is_property_setter`)
+    let a plugin emit `@property` getter/setter pairs without going
+    through decorator-string round-trip; the IR lowering threads
+    these directly onto the resulting `TpyFunction`. `property_name`
+    on a setter names the property the setter belongs to (e.g. for
+    `@foo.setter`, `property_name == 'foo'`).
     """
     kind: str = field(default="Function", init=False)
     name: str = ""
@@ -536,6 +579,9 @@ class Function:
     body: tuple[Stmt, ...] = ()
     decorators: tuple = ()
     is_method: bool = False
+    is_property_getter: bool = False
+    is_property_setter: bool = False
+    property_name: str | None = None
     loc: Loc | None = None
 
 

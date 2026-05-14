@@ -1116,9 +1116,17 @@ class RecordGenerator:
                                     value = f"::tpy::tuple_to_storage<{fld_cpp}>({value})"
                                 # Pointer-variant param -> value-variant field: deref+copy.
                                 # The param is variant<T*...> but the field stores variant<T...>.
+                                # Only emit `to_value_variant` when the source's own type
+                                # is also a union -- a bare record-instance assignment
+                                # (e.g. `self.payload = SomeVariant()`) goes through the
+                                # std::variant converting constructor directly and would
+                                # fail template deduction for `to_value_variant`.
                                 if self.ctx.is_ptr_variant_union(fld_type):
-                                    val_cpp = self.types.type_to_cpp(fld_type)
-                                    value = f"::tpy::to_value_variant<{val_cpp}>({value})"
+                                    source_type = self.ctx.get_expr_type(source)
+                                    from ..typesys import UnionType
+                                    if isinstance(source_type, UnionType):
+                                        val_cpp = self.types.type_to_cpp(fld_type)
+                                        value = f"::tpy::to_value_variant<{val_cpp}>({value})"
                                 inits.append((field_name, value))
                                 hoisted_ids.add(id(stmt))
             return inits, hoisted_ids
