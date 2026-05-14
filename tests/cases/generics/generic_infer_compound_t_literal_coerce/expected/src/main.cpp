@@ -61,6 +61,11 @@ void main() {
     // take_any([(1, "a"), (2, "b")])  # tpyc: ok
     std::vector<std::tuple<int32_t, std::string>> __tmp_5 = {std::tuple<int32_t, std::string>{1, "a"}, std::tuple<int32_t, std::string>{2, "b"}};
     take_any<std::vector<std::tuple<int32_t, std::string>>>(__tmp_5);
+    // # Both args are bare literal tuples (T inferred from first, consistency
+    // # check + resolution applied through compound shape against the second).
+    // # Without the unification, codegen leaked `std::tuple<3, std::string>`.
+    // pair_any((3, "x"), (4, "y"))  # tpyc: ok
+    pair_any<std::tuple<int32_t, std::string>>(std::tuple<int32_t, std::string>{3, "x"}, std::tuple<int32_t, std::string>{4, "y"});
 }
 
 void __tpy_init() {

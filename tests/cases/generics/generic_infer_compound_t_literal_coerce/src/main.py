@@ -25,6 +25,10 @@ def take_any[T](x: T) -> None:
     pass
 
 
+def pair_any[T](a: T, b: T) -> None:
+    pass
+
+
 def main() -> None:
     # Tuple-shaped T: bare literal `3` coerces to Int32 in the second-arg
     # tuple even though T was determined by the first arg.
@@ -61,6 +65,11 @@ def main() -> None:
     # recursion, T would reach codegen as list[tuple[IntLiteral, str]] and
     # leak the literal value into the C++ template argument.
     take_any([(1, "a"), (2, "b")])  # tpyc: ok
+
+    # Both args are bare literal tuples (T inferred from first, consistency
+    # check + resolution applied through compound shape against the second).
+    # Without the unification, codegen leaked `std::tuple<3, std::string>`.
+    pair_any((3, "x"), (4, "y"))  # tpyc: ok
 
 
 main()
