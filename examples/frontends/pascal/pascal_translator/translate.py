@@ -81,6 +81,7 @@ from . import ast as pa
 _TYPE_MAP: dict[str, str] = {
     "integer": "Int32",
     "boolean": "bool",
+    "char": "Char",
     # TP `real` is a 6-byte float at the hardware level; we map both
     # `real` and `double` to TPy's `float` (IEEE 754 64-bit) for the
     # POC. Divergence documented in
@@ -177,6 +178,11 @@ class _Ctx:
     # Enum name -> list of member names (kept for diagnostics / future
     # checks like exhaustive case-arm analysis).
     enum_types: dict[str, list[str]] = field(default_factory=dict)
+    # User-defined type aliases that don't materialize as IR Record /
+    # Enum nodes. Today this only carries subrange types (`type Byte
+    # = 0..255` -> integer); later milestones can add string aliases,
+    # array aliases, pointer aliases, etc.
+    type_aliases: dict[str, object] = field(default_factory=dict)
     # Per-routine state (saved / restored when entering / leaving each
     # subroutine; left at the defaults at module-body level).
     current_func: str | None = None
@@ -229,6 +235,11 @@ def translate(program: pa.Program,
                         ))
                         continue
                     ctx.enum_member_to_type[member] = td.name
+            elif isinstance(td.type_spec, pa.SubrangeTypeSpec):
+                # Subrange types lower to plain integer. The alias
+                # name is recorded so var decls / parameter types can
+                # reference it.
+                ctx.type_aliases[td.name] = td.type_spec
 
     records: list = []
     enums: list = []
@@ -236,7 +247,9 @@ def translate(program: pa.Program,
     functions: list = []
 
     # Type blocks -> IR Records / Enums (in declaration order, so a
-    # later type can reference earlier ones).
+    # later type can reference earlier ones). Subrange aliases were
+    # registered into `ctx.type_aliases` during the pre-scan and
+    # don't materialise as IR nodes.
     for tb in program.type_blocks:
         for td in tb.decls:
             if isinstance(td.type_spec, pa.RecordTypeSpec):
@@ -247,12 +260,26 @@ def translate(program: pa.Program,
                 enum_node = _lower_enum_decl(td, ctx)
                 if enum_node is not None:
                     enums.append(enum_node)
+            elif isinstance(td.type_spec, pa.SubrangeTypeSpec):
+                pass  # registered in pre-scan as a type alias
             else:
                 ctx.diagnostics.append(_diag(
                     f"unsupported type declaration "
                     f"{type(td.type_spec).__name__}",
                     td.loc,
                 ))
+
+    # Module-level const sections. Each Pascal const declaration
+    # becomes an IR `VarDecl(init=...)` with a type inferred from the
+    # initializer literal. Immutability is enforced at the source
+    # level by the lack of any reassignment path that targets the
+    # name (Pascal forbids `const X := ...`); a downstream sema
+    # check is future work.
+    for cb in program.const_blocks:
+        for cd in cb.decls:
+            lowered = _lower_const_decl(cd, ctx)
+            if lowered is not None:
+                top_level_stmts.append(lowered)
 
     # Module-level var section -> per-name IR VarDecls. Scalar globals
     # stay uninitialised in the IR (codegen emits `{}` zero-init).
@@ -378,6 +405,10 @@ def _lower_type_spec(spec, ctx: _Ctx):
         if spec.name in ctx.record_types or spec.name in ctx.enum_types:
             return NamedType(name=spec.name, args=(),
                              loc=_to_ir_loc(spec.loc))
+        if spec.name in ctx.type_aliases:
+            # Re-lower as the underlying type. M10 only carries
+            # subrange aliases (integer-backed).
+            return _lower_type_spec(ctx.type_aliases[spec.name], ctx)
         ctx.diagnostics.append(_diag(
             f"unknown type {spec.name!r}", spec.loc))
         return None
@@ -400,6 +431,13 @@ def _lower_type_spec(spec, ctx: _Ctx):
             args=(IntTypeArg(value=spec.capacity),),
             loc=_to_ir_loc(spec.loc),
         )
+    if isinstance(spec, pa.SubrangeTypeSpec):
+        # M10 lowers Pascal subrange types to plain `integer`. Tier 2
+        # makes the bounds first-class with insertion of assert /
+        # clamp sites at assignment / index sites.
+        ctx.add_import("tpy", "Int32")
+        return NamedType(name="Int32", args=(),
+                         loc=_to_ir_loc(spec.loc))
     ctx.diagnostics.append(_diag(
         f"unsupported type spec {type(spec).__name__}",
         getattr(spec, "loc", _zero_loc()),
@@ -407,12 +445,78 @@ def _lower_type_spec(spec, ctx: _Ctx):
     return None
 
 
+def _lower_const_decl(decl: pa.ConstDecl, ctx: _Ctx):
+    """Lower a Pascal `const N = value;` to an IR `VarDecl(init=value)`.
+
+    M10 accepts literal initialisers; the IR type is inferred from
+    the literal shape (int / real / bool / string). Compile-time
+    constant expressions and string-as-PStr-bound consts are future
+    work; document the gap rather than partially support either.
+    """
+    value = decl.value
+    type_name: str | None = None
+    if isinstance(value, pa.IntLit):
+        type_name = "integer"
+    elif isinstance(value, pa.FloatLit):
+        type_name = "real"
+    elif isinstance(value, pa.BoolLit):
+        type_name = "boolean"
+    elif isinstance(value, pa.StrLit):
+        type_name = "string_view"  # treat as str (TPy StrView)
+    elif isinstance(value, pa.UnaryOp) and value.op in ("+", "-"):
+        inner = value.operand
+        if isinstance(inner, pa.IntLit):
+            type_name = "integer"
+        elif isinstance(inner, pa.FloatLit):
+            type_name = "real"
+    if type_name is None:
+        ctx.diagnostics.append(_diag(
+            f"const {decl.name!r} value must be a literal in M10",
+            decl.loc,
+        ))
+        return None
+    # Map the inferred Pascal type to its IR shape. `string_view` is
+    # the str/StrView path -- consts that hold a string literal stay
+    # `str`-typed, not PStr; existing string-assign machinery already
+    # routes a `str` source into a PStr lvalue when needed.
+    if type_name == "string_view":
+        ir_type = NamedType(name="str", args=(), loc=_to_ir_loc(decl.loc))
+        ctx.type_env[decl.name] = "string_view"
+    else:
+        spec = pa.NamedTypeSpec(name=type_name, loc=decl.loc)
+        ir_type = _lower_type_spec(spec, ctx)
+        if ir_type is None:
+            return None
+        ctx.type_env[decl.name] = type_name
+    init = _lower_expr(value, ctx)
+    if init is None:
+        return None
+    return VarDecl(
+        name=decl.name, type=ir_type, init=init,
+        mutable=True, loc=_to_ir_loc(decl.loc),
+    )
+
+
 def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
     """Update the static type env and per-variable metadata (array
     lower bounds, string capacities) based on a Pascal var's declared
     type."""
     if isinstance(spec, pa.NamedTypeSpec):
-        ctx.type_env[name] = spec.name
+        # Resolve through type aliases (subranges, future aliases)
+        # so writeln dispatch sees the underlying Pascal type rather
+        # than the alias name.
+        resolved = spec.name
+        seen: set[str] = set()
+        while resolved in ctx.type_aliases and resolved not in seen:
+            seen.add(resolved)
+            target = ctx.type_aliases[resolved]
+            if isinstance(target, pa.NamedTypeSpec):
+                resolved = target.name
+                continue
+            if isinstance(target, pa.SubrangeTypeSpec):
+                resolved = "integer"
+            break
+        ctx.type_env[name] = resolved
         return
     if isinstance(spec, pa.ArrayTypeSpec):
         ctx.type_env[name] = "array"
@@ -550,12 +654,21 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
         ctx.add_import("tpy", "deref")
         ctx.add_import("tpy.unsafe", "unsafe_store")
 
+    # Local const sections come before the var section in routine
+    # bodies (matches Pascal's textual order). Each const emits an
+    # ordinary VarDecl with an explicit init.
+    body_stmts: list = []
+    for cb in sub.const_blocks:
+        for cd in cb.decls:
+            lowered = _lower_const_decl(cd, ctx)
+            if lowered is not None:
+                body_stmts.append(lowered)
+
     # Local var-block. Locals get a zero-style default init so TPy's
     # definitely-assigned analysis admits Pascal's common
     # write-then-read flow without forcing the user to spell out a
     # value at declaration. (Turbo Pascal de facto zero-inits locals;
     # the explicit init keeps the surface program portable.)
-    body_stmts: list = []
     if sub.var_block is not None:
         for decl in sub.var_block.decls:
             for name in decl.names:
@@ -685,6 +798,21 @@ def _lower_assign_stmt(stmt: pa.AssignStmt, ctx: _Ctx):
         if target_name in ctx.string_vars and _produces_string_value(
                 stmt.value, ctx):
             return _lower_string_assign(target_name, stmt, ctx)
+        # Char-typed target: a 1-char string literal RHS auto-wraps
+        # in `Char(...)`. Pascal doesn't distinguish single-char
+        # string vs char literals at the syntax level -- both spell as
+        # 'A' -- so the conversion lands at the assignment site.
+        if (ctx.type_env.get(target_name) == "char"
+                and isinstance(stmt.value, pa.StrLit)
+                and len(stmt.value.value) == 1):
+            stmt = pa.AssignStmt(
+                target=stmt.target,
+                value=pa.CallExpr(
+                    callee=pa.Ident(name="char", loc=stmt.value.loc),
+                    args=[stmt.value], loc=stmt.value.loc,
+                ),
+                loc=stmt.loc,
+            )
         value = _lower_expr(stmt.value, ctx)
         if value is None:
             return None
@@ -896,6 +1024,20 @@ def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
         return _lower_writeln_stmt(stmt, ctx)
     if name in ("read", "readln"):
         return _lower_readln_stmt(stmt, ctx)
+    if name in ("inc", "dec"):
+        return _lower_inc_dec_stmt(stmt, ctx, name)
+    if name == "randomize":
+        if stmt.args:
+            ctx.diagnostics.append(_diag(
+                "randomize takes no arguments", stmt.loc))
+            return None
+        ctx.add_import("pascal.runtime.builtins", "randomize")
+        call = Call(
+            callee=Name(ident="randomize",
+                        loc=_to_ir_loc(stmt.callee.loc)),
+            args=(), loc=_to_ir_loc(stmt.loc),
+        )
+        return ExprStmt(value=call, loc=_to_ir_loc(stmt.loc))
     sig = ctx.signatures.get(name)
     if sig is None:
         ctx.diagnostics.append(_diag(
@@ -913,6 +1055,61 @@ def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
         loc=_to_ir_loc(stmt.loc),
     )
     return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
+
+
+def _lower_inc_dec_stmt(stmt: pa.CallStmt, ctx: _Ctx, name: str):
+    """`inc(x)` / `inc(x, n)` -- mutate `x` by 1 (or `n`). `dec` is
+    the symmetric subtract. M10 accepts an Ident target; richer
+    lvalue targets (record fields, array elements) follow when the
+    common kid-program cases need them."""
+    if len(stmt.args) not in (1, 2):
+        ctx.diagnostics.append(_diag(
+            f"{name}(x[, n]) takes 1 or 2 arguments", stmt.loc))
+        return None
+    arg = stmt.args[0]
+    if not isinstance(arg, pa.Ident):
+        ctx.diagnostics.append(_diag(
+            f"{name}(...) target must be a variable", arg.loc))
+        return None
+    step_pa = stmt.args[1] if len(stmt.args) == 2 else pa.IntLit(
+        value=1, loc=arg.loc,
+    )
+    op = BinOpKind.ADD if name == "inc" else BinOpKind.SUB
+    target_loc = _to_ir_loc(arg.loc)
+    target = Name(ident=arg.name, loc=target_loc)
+    step = _lower_expr(step_pa, ctx)
+    if step is None:
+        return None
+    delta = BinOp(
+        op=op,
+        lhs=Name(ident=arg.name, loc=target_loc),
+        rhs=step, loc=_to_ir_loc(stmt.loc),
+    )
+    # Var-param targets route through unsafe_store, the same way
+    # ordinary assignment does.
+    if arg.name in ctx.current_var_params:
+        ctx.add_import("tpy.unsafe", "unsafe_store")
+        ctx.add_import("tpy", "deref")
+        # Reading via deref(name); writing via unsafe_store(name, 0, v).
+        read = Call(
+            callee=Name(ident="deref", loc=target_loc),
+            args=(Name(ident=arg.name, loc=target_loc),),
+            loc=target_loc,
+        )
+        delta = BinOp(op=op, lhs=read, rhs=step,
+                      loc=_to_ir_loc(stmt.loc))
+        store = Call(
+            callee=Name(ident="unsafe_store", loc=target_loc),
+            args=(
+                Name(ident=arg.name, loc=target_loc),
+                IntLit(value=0, loc=target_loc),
+                delta,
+            ),
+            loc=_to_ir_loc(stmt.loc),
+        )
+        return ExprStmt(value=store, loc=_to_ir_loc(stmt.loc))
+    return Assign(targets=(target,), value=delta,
+                  loc=_to_ir_loc(stmt.loc))
 
 
 def _lower_readln_stmt(stmt: pa.CallStmt, ctx: _Ctx):
@@ -1105,6 +1302,11 @@ def _lower_expr(expr, ctx: _Ctx):
     if isinstance(expr, pa.CallExpr):
         return _lower_call_expr(expr, ctx)
     if isinstance(expr, pa.BinOp):
+        # `x in [a, b, c]` desugars to `(x = a) or (x = b) or (x = c)`.
+        # M10 only accepts literal-element set RHS; bigger Pascal sets
+        # arrive in Tier 2 with a real `tpy.Set` runtime type.
+        if expr.op == "in" and isinstance(expr.rhs, pa.SetLit):
+            return _lower_in_membership(expr, ctx)
         cmp_op = _CMP_OP.get(expr.op)
         if cmp_op is not None:
             lhs = _lower_expr(expr.lhs, ctx)
@@ -1152,25 +1354,201 @@ def _lower_expr(expr, ctx: _Ctx):
     return None
 
 
-def _lower_call_expr(expr: pa.CallExpr, ctx: _Ctx):
-    name = expr.callee.name
-    # Pascal builtin `length(x)` -> TPy `len(x)`. Routes for both
-    # strings (PStr) and arrays. `len` is a Python builtin so no
-    # import is required.
-    if name == "length":
-        if len(expr.args) != 1:
-            ctx.diagnostics.append(_diag(
-                "length(x) takes exactly one argument",
-                expr.callee.loc,
-            ))
+def _lower_in_membership(expr: pa.BinOp, ctx: _Ctx):
+    """Lower `x in [a, b, c]` to `(x = a) or (x = b) or (x = c)`. An
+    empty literal set folds to a plain `False`. Each element is
+    compared with the LHS via the existing equality / comparison
+    machinery -- enum members route through their unqualified-scope
+    rewrite, so `c in [Red, Green]` works without naming the enum
+    type."""
+    if not isinstance(expr.rhs, pa.SetLit):
+        ctx.diagnostics.append(_diag(
+            "`in` rhs must be a set literal in M10", expr.rhs.loc
+            if hasattr(expr.rhs, "loc") else expr.loc,
+        ))
+        return None
+    elements = expr.rhs.elements
+    ir_loc = _to_ir_loc(expr.loc)
+    if not elements:
+        return BoolLit(value=False, loc=ir_loc)
+    lhs_ir = _lower_expr(expr.lhs, ctx)
+    if lhs_ir is None:
+        return None
+    # Build `(lhs = e1) or (lhs = e2) or ...`. Lowering each element
+    # via the standard expression path picks up the enum-member
+    # rewrite + literal-vs-Ident handling for free.
+    or_chain = None
+    for elem in elements:
+        elem_ir = _lower_expr(elem, ctx)
+        if elem_ir is None:
             return None
-        arg = _lower_expr(expr.args[0], ctx)
-        if arg is None:
+        cmp = Compare(
+            lhs=lhs_ir, ops=(CmpOpKind.EQ,), comparators=(elem_ir,),
+            loc=ir_loc,
+        )
+        or_chain = cmp if or_chain is None else BinOp(
+            op=BinOpKind.LOGICAL_OR, lhs=or_chain, rhs=cmp, loc=ir_loc,
+        )
+    return or_chain
+
+
+def _builtin_passthrough(tpy_name: str, expr: pa.CallExpr, ctx: _Ctx):
+    """Wrap an arg list in a Call to a TPy / Python builtin of the
+    matching name. Used for `abs`, `chr`, `ord`, `length`->`len` --
+    one Pascal call site -> one TPy call."""
+    if len(expr.args) != 1:
+        ctx.diagnostics.append(_diag(
+            f"{expr.callee.name}(x) takes exactly one argument",
+            expr.callee.loc,
+        ))
+        return None
+    arg = _lower_expr(expr.args[0], ctx)
+    if arg is None:
+        return None
+    return Call(
+        callee=Name(ident=tpy_name, loc=_to_ir_loc(expr.callee.loc)),
+        args=(arg,), loc=_to_ir_loc(expr.loc),
+    )
+
+
+def _builtin_sqr(expr: pa.CallExpr, ctx: _Ctx):
+    """`sqr(x)` -> `x * x`. Pascal's classic shorthand."""
+    if len(expr.args) != 1:
+        ctx.diagnostics.append(_diag(
+            "sqr(x) takes exactly one argument", expr.callee.loc))
+        return None
+    arg = _lower_expr(expr.args[0], ctx)
+    if arg is None:
+        return None
+    return BinOp(op=BinOpKind.MUL, lhs=arg, rhs=arg,
+                 loc=_to_ir_loc(expr.loc))
+
+
+def _builtin_succ_pred(name: str, expr: pa.CallExpr, ctx: _Ctx):
+    """`succ(x)` / `pred(x)` -- step an ordinal by one. M10 supports
+    integer args (routes to `pascal.runtime.builtins.succ_int` /
+    `pred_int`); char args are desugared to `chr(ord(c) +/- 1)`;
+    enum args produce a clear translator-side error for now."""
+    if len(expr.args) != 1:
+        ctx.diagnostics.append(_diag(
+            f"{name}(x) takes exactly one argument", expr.callee.loc))
+        return None
+    arg = expr.args[0]
+    arg_type = _static_type_of(arg, ctx)
+    if arg_type == "integer":
+        helper = f"{name}_int"
+        ctx.add_import("pascal.runtime.builtins", helper)
+        ir_arg = _lower_expr(arg, ctx)
+        if ir_arg is None:
             return None
         return Call(
-            callee=Name(ident="len", loc=_to_ir_loc(expr.callee.loc)),
-            args=(arg,), loc=_to_ir_loc(expr.loc),
+            callee=Name(ident=helper, loc=_to_ir_loc(expr.callee.loc)),
+            args=(ir_arg,), loc=_to_ir_loc(expr.loc),
         )
+    if arg_type == "char":
+        # `succ(c)` -> `chr(ord(c) + 1)`; `pred(c)` -> `chr(ord(c) - 1)`.
+        ir_arg = _lower_expr(arg, ctx)
+        if ir_arg is None:
+            return None
+        ir_loc = _to_ir_loc(expr.loc)
+        op = BinOpKind.ADD if name == "succ" else BinOpKind.SUB
+        ord_call = Call(
+            callee=Name(ident="ord", loc=ir_loc),
+            args=(ir_arg,), loc=ir_loc,
+        )
+        stepped = BinOp(
+            op=op, lhs=ord_call,
+            rhs=IntLit(value=1, loc=ir_loc), loc=ir_loc,
+        )
+        return Call(
+            callee=Name(ident="chr", loc=ir_loc),
+            args=(stepped,), loc=ir_loc,
+        )
+    ctx.diagnostics.append(_diag(
+        f"{name}() on type {arg_type!r} is not supported in M10 "
+        "(integer and char only)",
+        arg.loc,
+    ))
+    return None
+
+
+def _builtin_random(expr: pa.CallExpr, ctx: _Ctx):
+    """`random` (no arg) returns a real in [0, 1); `random(n)`
+    returns an integer in [0, n). Both route to
+    `pascal.runtime.builtins`."""
+    if len(expr.args) == 0:
+        ctx.add_import("pascal.runtime.builtins", "random_real")
+        return Call(
+            callee=Name(ident="random_real",
+                        loc=_to_ir_loc(expr.callee.loc)),
+            args=(), loc=_to_ir_loc(expr.loc),
+        )
+    if len(expr.args) == 1:
+        ctx.add_import("pascal.runtime.builtins", "random_int")
+        ir_arg = _lower_expr(expr.args[0], ctx)
+        if ir_arg is None:
+            return None
+        return Call(
+            callee=Name(ident="random_int",
+                        loc=_to_ir_loc(expr.callee.loc)),
+            args=(ir_arg,), loc=_to_ir_loc(expr.loc),
+        )
+    ctx.diagnostics.append(_diag(
+        "random takes 0 or 1 argument", expr.callee.loc))
+    return None
+
+
+def _builtin_odd(expr: pa.CallExpr, ctx: _Ctx):
+    """`odd(x)` -> `(x mod 2) <> 0`. Equivalent to `x & 1 == 1` for
+    non-negative integers and matches Pascal's definition (true when
+    the low bit is set) for negative integers as well."""
+    if len(expr.args) != 1:
+        ctx.diagnostics.append(_diag(
+            "odd(x) takes exactly one argument", expr.callee.loc))
+        return None
+    arg = _lower_expr(expr.args[0], ctx)
+    if arg is None:
+        return None
+    ir_loc = _to_ir_loc(expr.loc)
+    mod = BinOp(
+        op=BinOpKind.MOD,
+        lhs=arg, rhs=IntLit(value=2, loc=ir_loc),
+        loc=ir_loc,
+    )
+    return Compare(
+        lhs=mod, ops=(CmpOpKind.NE,),
+        comparators=(IntLit(value=0, loc=ir_loc),),
+        loc=ir_loc,
+    )
+
+
+_BUILTIN_EXPR: dict[str, "Callable"] = {
+    # length(x) -> TPy len(x); works for strings and arrays.
+    "length": lambda e, c: _builtin_passthrough("len", e, c),
+    # Pascal pass-through builtins. TPy provides matching functions
+    # in builtins; no import needed.
+    "abs": lambda e, c: _builtin_passthrough("abs", e, c),
+    "chr": lambda e, c: _builtin_passthrough("chr", e, c),
+    "ord": lambda e, c: _builtin_passthrough("ord", e, c),
+    # Pascal-internal char wrapping: `char('X')` -> TPy Char('X').
+    # Emitted by the assignment-coercion path when a 1-char string
+    # literal lands in a Char-typed lvalue.
+    "char": lambda e, c: _builtin_passthrough("Char", e, c),
+    # Desugar-only builtins.
+    "sqr": _builtin_sqr,
+    "odd": _builtin_odd,
+    # Pascal-runtime backed builtins.
+    "succ": lambda e, c: _builtin_succ_pred("succ", e, c),
+    "pred": lambda e, c: _builtin_succ_pred("pred", e, c),
+    "random": _builtin_random,
+}
+
+
+def _lower_call_expr(expr: pa.CallExpr, ctx: _Ctx):
+    name = expr.callee.name
+    # Pascal builtins routed inline (no Pascal-runtime trip).
+    if name in _BUILTIN_EXPR:
+        return _BUILTIN_EXPR[name](expr, ctx)
     sig = ctx.signatures.get(name)
     if sig is None:
         ctx.diagnostics.append(_diag(
@@ -1207,7 +1585,11 @@ def _static_type_of(expr, ctx: _Ctx) -> str | None:
         return "boolean"
     if isinstance(expr, pa.Ident):
         if expr.name in ctx.type_env:
-            return ctx.type_env[expr.name]
+            t = ctx.type_env[expr.name]
+            # A const declared as a string literal is `string_view` in
+            # the type env; writeln dispatch and string-arg paths both
+            # treat it the same as the `string` (PStr) type.
+            return "string" if t == "string_view" else t
         # Bare reference to an enum member: its static type is the
         # enclosing enum type name.
         if expr.name in ctx.enum_member_to_type:
@@ -1231,9 +1613,27 @@ def _static_type_of(expr, ctx: _Ctx) -> str | None:
                 return "integer"
         return None
     if isinstance(expr, pa.CallExpr):
-        if expr.callee.name == "length":
+        name = expr.callee.name
+        # Pascal builtins: routing here mirrors the
+        # `_BUILTIN_EXPR` table. Adding a new builtin? add a return
+        # type here too so writeln-dispatch and assignment-target
+        # type-check both see the right result type.
+        if name in ("length", "ord"):
             return "integer"
-        sig = ctx.signatures.get(expr.callee.name)
+        if name == "chr":
+            return "char"
+        if name == "abs":
+            # abs propagates the operand type (Int32 / real / etc.).
+            return _static_type_of(expr.args[0], ctx) if expr.args else None
+        if name == "sqr":
+            return _static_type_of(expr.args[0], ctx) if expr.args else None
+        if name == "odd":
+            return "boolean"
+        if name in ("succ", "pred"):
+            return _static_type_of(expr.args[0], ctx) if expr.args else None
+        if name == "random":
+            return "integer" if expr.args else "real"
+        sig = ctx.signatures.get(name)
         return sig.return_type if sig is not None else None
     if isinstance(expr, pa.BinOp):
         # String operations stay string-typed; numeric arithmetic

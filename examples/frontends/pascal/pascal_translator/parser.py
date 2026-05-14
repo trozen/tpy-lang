@@ -109,16 +109,21 @@ class _Parser:
         start = self._eat(TokKind.KEYWORD, "program")
         name_tok = self._eat(TokKind.IDENT)
         self._eat(TokKind.SEMI)
-        # Pascal allows type / var / procedure / function decls in any
-        # order before the main block. Standard Pascal has at most one
-        # module-level var section; emitting an error on duplicates
-        # surfaces a likely typo without complicating the AST.
+        # Pascal allows const / type / var / procedure / function decls
+        # in any order before the main block. Standard Pascal has at
+        # most one module-level var section; emitting an error on
+        # duplicates surfaces a likely typo without complicating the
+        # AST.
         type_blocks: list = []
+        const_blocks: list = []
         var_block: pa.VarBlock | None = None
         subroutines: list = []
         while True:
             if self.cur.kind == TokKind.KEYWORD and self.cur.text == "type":
                 type_blocks.append(self.parse_type_block())
+                continue
+            if self.cur.kind == TokKind.KEYWORD and self.cur.text == "const":
+                const_blocks.append(self.parse_const_block())
                 continue
             if self.cur.kind == TokKind.KEYWORD and self.cur.text == "var":
                 if var_block is not None:
@@ -144,11 +149,46 @@ class _Parser:
         return pa.Program(
             name=name_tok.text,
             type_blocks=type_blocks,
+            const_blocks=const_blocks,
             var_block=var_block,
             subroutines=subroutines,
             block=block,
             loc=self._loc(start, dot),
             file=self.path,
+        )
+
+    # ------------------------------------------------------------------
+    # Const declarations
+
+    def parse_const_block(self) -> pa.ConstBlock:
+        start = self._eat(TokKind.KEYWORD, "const")
+        decls: list = []
+        while self.cur.kind == TokKind.IDENT:
+            decls.append(self.parse_const_decl())
+            self._eat(TokKind.SEMI)
+        if not decls:
+            raise ParseError(
+                "'const' section must declare at least one constant",
+                start.line, start.col,
+            )
+        end = decls[-1].loc
+        return pa.ConstBlock(decls=decls, loc=pa.Loc(
+            file=self.path,
+            line=start.line, col=start.col,
+            end_line=end.end_line, end_col=end.end_col,
+        ))
+
+    def parse_const_decl(self) -> pa.ConstDecl:
+        name_tok = self._eat(TokKind.IDENT)
+        self._eat(TokKind.EQ)
+        # M10 accepts any expression; the translator validates that it
+        # evaluates to a literal at lower time. Optional `: Type` type
+        # annotation (TP7-style typed constants) is future work.
+        value = self.parse_expression()
+        end_tok = self.tokens[self.i - 1]
+        return pa.ConstDecl(
+            name=name_tok.text, value=value,
+            loc=self._loc(name_tok, end_tok),
         )
 
     # ------------------------------------------------------------------
@@ -189,8 +229,8 @@ class _Parser:
     def parse_type_spec(self):
         """Parse a type specification. Forms recognised so far: bare
         named type, `record ... end`, `array[lo..hi] of T`, the two
-        string forms (`string` and `string[N]`), and an enumeration
-        body `(Ident, Ident, ...)`."""
+        string forms (`string` and `string[N]`), an enumeration body
+        `(Ident, Ident, ...)`, and a subrange `lo..hi`."""
         if self.cur.kind == TokKind.KEYWORD and self.cur.text == "record":
             return self.parse_record_type()
         if self.cur.kind == TokKind.KEYWORD and self.cur.text == "array":
@@ -199,6 +239,12 @@ class _Parser:
             return self.parse_string_type()
         if self.cur.kind == TokKind.LPAREN:
             return self.parse_enum_type()
+        # Subrange shape: a signed int literal followed by `..` and
+        # another int literal -- only recognised at the start of a
+        # type spec to avoid confusion with array bounds (where the
+        # `..` is consumed by the surrounding `array[...]` grammar).
+        if self._looks_like_subrange():
+            return self.parse_subrange_type()
         # Named type: either a scalar keyword (`integer`, `boolean`,
         # `char`, `real`, `double`) or a user-defined ident.
         t = self.cur
@@ -229,6 +275,37 @@ class _Parser:
                 start.line, start.col,
             )
         return pa.EnumTypeSpec(members=members, loc=self._loc(start, end))
+
+    def _looks_like_subrange(self) -> bool:
+        """True iff the upcoming tokens form `INT_LIT '..' INT_LIT` --
+        the subrange shape allowed at the start of a type spec.
+        Handles optional unary `+`/`-` on either bound."""
+        i = self.i
+        # Skip optional sign + int literal for the lower bound.
+        if self.tokens[i].kind in (TokKind.PLUS, TokKind.MINUS):
+            i += 1
+        if i >= len(self.tokens) or self.tokens[i].kind != TokKind.INT_LIT:
+            return False
+        i += 1
+        return (i < len(self.tokens)
+                and self.tokens[i].kind == TokKind.DOTDOT)
+
+    def parse_subrange_type(self) -> pa.SubrangeTypeSpec:
+        first = self.cur
+        lower = self._parse_signed_int_lit()
+        self._eat(TokKind.DOTDOT)
+        upper = self._parse_signed_int_lit()
+        end_tok = self.tokens[self.i - 1]
+        if upper < lower:
+            raise ParseError(
+                f"subrange upper bound ({upper}) less than "
+                f"lower bound ({lower})",
+                first.line, first.col,
+            )
+        return pa.SubrangeTypeSpec(
+            lower=lower, upper=upper,
+            loc=self._loc(first, end_tok),
+        )
 
     def parse_string_type(self) -> pa.StringTypeSpec:
         """`string` (default capacity 255) or `string[N]` (custom)."""
@@ -338,16 +415,34 @@ class _Parser:
                 )
             return_type = ret_tok.text
         self._eat(TokKind.SEMI)
-        # Routine body: optional local var-block, then a compound stmt.
+        # Routine body: any number of `const` and at most one `var`
+        # section (in either order), then the compound stmt.
+        local_const_blocks: list = []
         local_var_block = None
-        if self.cur.kind == TokKind.KEYWORD and self.cur.text == "var":
-            local_var_block = self.parse_var_block()
+        while True:
+            if (self.cur.kind == TokKind.KEYWORD
+                    and self.cur.text == "const"):
+                local_const_blocks.append(self.parse_const_block())
+                continue
+            if (self.cur.kind == TokKind.KEYWORD
+                    and self.cur.text == "var"):
+                if local_var_block is not None:
+                    t = self.cur
+                    raise ParseError(
+                        f"duplicate 'var' section in routine "
+                        f"{name_tok.text!r}",
+                        t.line, t.col,
+                    )
+                local_var_block = self.parse_var_block()
+                continue
+            break
         body = self.parse_compound_stmt()
         self._eat(TokKind.SEMI)
         return pa.SubroutineDecl(
             name=name_tok.text,
             params=params,
             return_type=return_type,
+            const_blocks=local_const_blocks,
             var_block=local_var_block,
             body=body,
             loc=self._loc(kw_tok, self.tokens[self.i - 1]),
@@ -544,6 +639,18 @@ class _Parser:
             rparen = self._eat(TokKind.RPAREN)
             return pa.CallStmt(callee=target, args=args,
                                loc=self._loc(start_tok, rparen))
+        # Parameterless call: a bare identifier followed by a
+        # statement terminator (`;` or `end`/`else`/`until`) is a
+        # procedure call with no args (Pascal allows `randomize;`).
+        # Only valid when the target chain is a single Ident -- field
+        # / subscript chains have nowhere to apply such a call.
+        if isinstance(target, pa.Ident) and (
+            self.cur.kind == TokKind.SEMI
+            or (self.cur.kind == TokKind.KEYWORD
+                and self.cur.text in self._STMT_SEQ_TERMINATORS)
+        ):
+            return pa.CallStmt(callee=target, args=[],
+                               loc=self._loc(start_tok, ident_tok))
         t = self.cur
         raise ParseError(
             f"expected ':=' or '(' after target, "
@@ -710,7 +817,38 @@ class _Parser:
                 op=op_tok.text, lhs=lhs, rhs=rhs,
                 loc=self._loc_span(lhs, rhs),
             )
+        # `x in [a, b, c]` -- set-membership test. M10 restricts the
+        # RHS to a literal set; full set values arrive in Tier 2.
+        if (self.cur.kind == TokKind.KEYWORD
+                and self.cur.text == "in"):
+            op_tok = self.cur
+            self.i += 1
+            rhs = self._parse_set_literal_or_expr()
+            return pa.BinOp(
+                op="in", lhs=lhs, rhs=rhs,
+                loc=self._loc_span(lhs, rhs),
+            )
         return lhs
+
+    def _parse_set_literal_or_expr(self):
+        """The RHS of `in`. M10 supports only the literal set form
+        `[ expr, expr, ... ]`; richer forms (range `1..5`, a set-
+        typed variable) wait on Tier 2."""
+        if self.cur.kind != TokKind.LBRACK:
+            t = self.cur
+            raise ParseError(
+                "expected '[' starting a set literal after 'in'",
+                t.line, t.col,
+            )
+        start = self._eat(TokKind.LBRACK)
+        elements: list = []
+        if self.cur.kind != TokKind.RBRACK:
+            elements.append(self.parse_expression())
+            while self.cur.kind == TokKind.COMMA:
+                self.i += 1
+                elements.append(self.parse_expression())
+        end = self._eat(TokKind.RBRACK)
+        return pa.SetLit(elements=elements, loc=self._loc(start, end))
 
     def _parse_add(self):
         node = self._parse_mul()

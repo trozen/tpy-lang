@@ -55,9 +55,9 @@ class TokKind(Enum):
 # spelling collides with the identifier syntax.
 KEYWORDS = frozenset({
     "program", "begin", "end",
-    "var", "integer", "boolean", "string", "char", "real", "double",
+    "const", "var", "integer", "boolean", "string", "char", "real", "double",
     "div", "mod",
-    "and", "or", "not", "xor",
+    "and", "or", "not", "xor", "in",
     "true", "false",
     "if", "then", "else",
     "while", "do",
@@ -77,6 +77,10 @@ class Token:
     col: int
     end_line: int
     end_col: int
+
+
+def _is_hex_digit(ch: str) -> bool:
+    return ("0" <= ch <= "9") or ("a" <= ch <= "f") or ("A" <= ch <= "F")
 
 
 class LexError(Exception):
@@ -257,27 +261,67 @@ def tokenize(source: str, path: Path) -> list[Token]:
             kind = TokKind.FLOAT_LIT if is_float else TokKind.INT_LIT
             tokens.append(Token(kind, source[start:i], sl, sc, line, col - 1))
             continue
-        # String literal: 'text' with '' for embedded apostrophe
-        if ch == "'":
+        # Hex integer literal: $FF, $1aB. Decimal digits in a hex
+        # literal are also accepted ($08).
+        if ch == "$":
             sl, sc = line, col
             adv()
+            if not (i < n and _is_hex_digit(source[i])):
+                raise LexError("hex literal '$' must be followed by "
+                               "hex digits", sl, sc)
+            start = i
+            while i < n and _is_hex_digit(source[i]):
+                adv()
+            value = int(source[start:i], 16)
+            tokens.append(Token(TokKind.INT_LIT, str(value),
+                                sl, sc, line, col - 1))
+            continue
+        # String literal -- 'text' with '' for embedded apostrophes.
+        # Pascal allows `'hello'#13#10'world'` to be a single string;
+        # we glue adjacent `'...'` and `#nn` fragments together at
+        # lex time and emit one STR_LIT. A leading `#nn` (no quote)
+        # is also a string-fragment start, so the same loop body
+        # handles both entry points.
+        if ch == "'" or ch == "#":
+            sl, sc = line, col
             buf: list[str] = []
             while True:
-                if i >= n:
-                    raise LexError("unterminated string literal", sl, sc)
-                c = source[i]
-                if c == "\n":
-                    raise LexError("newline in string literal", line, col)
-                if c == "'":
-                    # Check for doubled apostrophe (escape).
-                    if i + 1 < n and source[i + 1] == "'":
-                        buf.append("'")
-                        adv(); adv()
-                        continue
-                    adv()  # closing quote
+                cur = source[i] if i < n else ""
+                if cur == "'":
+                    adv()
+                    while True:
+                        if i >= n:
+                            raise LexError("unterminated string literal",
+                                           sl, sc)
+                        c = source[i]
+                        if c == "\n":
+                            raise LexError("newline in string literal",
+                                           line, col)
+                        if c == "'":
+                            if i + 1 < n and source[i + 1] == "'":
+                                buf.append("'")
+                                adv(); adv()
+                                continue
+                            adv()
+                            break
+                        buf.append(c)
+                        adv()
+                elif cur == "#":
+                    adv()
+                    if not (i < n and source[i].isdigit()):
+                        raise LexError("'#' must be followed by "
+                                       "decimal digits (control-char "
+                                       "code)", sl, sc)
+                    start = i
+                    while i < n and source[i].isdigit():
+                        adv()
+                    code = int(source[start:i])
+                    if code < 0 or code > 255:
+                        raise LexError(
+                            f"#{code} out of range (0..255)", sl, sc)
+                    buf.append(chr(code))
+                else:
                     break
-                buf.append(c)
-                adv()
             tokens.append(Token(TokKind.STR_LIT, "".join(buf),
                                 sl, sc, line, col - 1))
             continue

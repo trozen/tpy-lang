@@ -123,6 +123,26 @@ class EnumTypeSpec:
 
 
 @dataclass
+class SubrangeTypeSpec:
+    """`lo..hi` -- a subrange of an ordinal type. M10 parses these and
+    lowers to plain `integer` (no bounds enforcement). Tier 2 will
+    make the bounds first-class with insertion of assert / clamp
+    sites at assignment / index sites."""
+    lower: int
+    upper: int
+    loc: Loc
+
+
+@dataclass
+class SetLit:
+    """`[a, b, c]` -- a set literal appearing as the RHS of `in` (or
+    in future as the value of a set-typed variable). M10 only
+    accepts literal-shaped element lists."""
+    elements: list   # list[Expr]
+    loc: Loc
+
+
+@dataclass
 class TypeDecl:
     """A single entry in a `type` section: `Name = TypeSpec`."""
     name: str
@@ -178,6 +198,24 @@ class VarDecl:
     """
     names: list      # list[str], canonical lowercase
     type_spec: object  # TypeSpec
+    loc: Loc
+
+
+@dataclass
+class ConstDecl:
+    """`name = value` inside a `const` section. Pascal infers the
+    type from the literal -- the translator picks the matching TPy
+    type at lower time."""
+    name: str
+    value: object   # Expr (M10: literal forms only)
+    loc: Loc
+
+
+@dataclass
+class ConstBlock:
+    """A `const` section. Pascal allows several at module / routine
+    scope (much like `var`)."""
+    decls: list   # list[ConstDecl]
     loc: Loc
 
 
@@ -304,13 +342,15 @@ class SubroutineDecl:
     `return_type` is None for procedures and the type name (currently
     'integer' or 'boolean') for functions. `var_block` holds the
     routine's local var section (Pascal's `var name: T;` block between
-    the header and the body).
+    the header and the body). `const_blocks` is the optional local
+    `const` section(s) preceding it.
     """
     name: str
     params: list   # list[Param]
     return_type: str | None
-    var_block: object  # VarBlock | None
-    body: object    # CompoundStmt
+    const_blocks: list   # list[ConstBlock]; Pascal allows several
+    var_block: object    # VarBlock | None
+    body: object         # CompoundStmt
     loc: Loc
 
 
@@ -318,6 +358,7 @@ class SubroutineDecl:
 class Program:
     name: str
     type_blocks: list       # list[TypeBlock]; Pascal allows several
+    const_blocks: list      # list[ConstBlock]; Pascal allows several
     var_block: object       # VarBlock | None
     subroutines: list       # list[SubroutineDecl]
     block: Block
