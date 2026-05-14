@@ -197,11 +197,19 @@ TPy-core changes.
   that calls them at startup compile cleanly without doing
   anything; default `InitGraph(0, 0, '')` already picks a sane
   canvas.
-- **`Graph` unit, optional SDL2 display layer** -- still
-  deferred. Intentionally opt-in: system SDL2 not required for
-  the regular test suite. Tier-A + Tier-B + Tier-C drawing
-  already produces a PPM snapshot; the SDL2 layer would just
-  present that same buffer in a window.
+- **`Graph` unit, optional SDL2 display layer** (M22, shipped):
+  Pascal `uses GraphSDL;` brings in a `Show` procedure that
+  opens an SDL2 window with the current Graph canvas, blocks
+  until the user presses any key or closes the window, then
+  tears down. Implemented as a one-shot `@native` binding to
+  `tpy::pascal::sdl_show_pixels` (declared in
+  `runtime/cpp/include/tpy/pascal_graph_sdl.hpp`); drawing
+  happens against the Graph context's pixel buffer in pure TPy
+  as before. Importing `GraphSDL` triggers a system `-lSDL2`
+  link via `# tpy: link("SDL2")` -- users need `libsdl2-dev`
+  installed. Programs that don't `uses GraphSDL` (including
+  every regular test) compile without any SDL2 dependency.
+  Manual demo lives at `examples/frontends/pascal/sdl_demo/`.
 
 ### Tier 3 (genuinely out)
 
@@ -497,9 +505,13 @@ TODOs the tier needs.
     `FloodFill` (4-way iterative), `Bar3D` (filled rect + 3D
     edges), `SetRGBPalette` (override a palette entry), and the
     DOS-driver hook stubs (`DetectGraph`, `RegisterBGIDriver`,
-    `RegisterBGIFont`). Completes the BGI surface relevant to
-    real TP7 demo programs; the optional SDL2 display layer is
-    the only Graph item still pending.
+    `RegisterBGIFont`).
+22. **Optional SDL2 display layer.** `uses GraphSDL;` adds a
+    `Show` procedure that opens an SDL2 window with the current
+    canvas via the `tpy::pascal::sdl_show_pixels` C++ wrapper.
+    Opt-in: triggers a system `-lSDL2` link only when imported;
+    regular tests don't touch it. Manual demo program at
+    `examples/frontends/pascal/sdl_demo/`.
 
 Each milestone closes with: tests in `tests/cases/pascal/`, snapshot
 diagnostics + output + generated C++ checked in, runs green under
