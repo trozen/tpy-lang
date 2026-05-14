@@ -109,8 +109,13 @@ TPy-core changes.
   TPy's implicit pointer-attribute deref. A thin Pascal-runtime
   wrapper is also an option if the unsafe-call surface gets
   unwieldy.
-- **File I/O**: `Text`, `File of T`, `Assign`, `Reset`, `Rewrite`,
-  `Read`, `Write`, `Close`. Maps to TPy file I/O.
+- **File I/O** (M13, shipped, text subset): `text` type and
+  `Assign(f, name)` / `Reset(f)` / `Rewrite(f)` / `Close(f)` /
+  `Writeln(f, x)` / `Readln(f, x)` / `Eof(f)`. Backed by a
+  `pascal.runtime.io.TextFile` class that slurps the file into a
+  per-line buffer on `Reset` and flushes accumulated writes on
+  `Close`. `File of T` (typed binary files), `Append`, `Erase`,
+  `Rename` are still pending.
 - **Variant records**: `record case Tag: T of ... end`. Maps to a
   TPy union type.
 - **Strings beyond ShortString**: longer-than-255, AnsiString,
@@ -371,6 +376,9 @@ TODOs the tier needs.
     the `py.X` escape hatch into TPy stdlib.
 12. **Language polish.** `case` ranges (`1..5:`), full `set of T`
     with all set ops, subrange bounds-checking at assignment sites.
+13. **Text-file I/O.** `text` type, `Assign`/`Reset`/`Rewrite`/`Close`,
+    `Writeln(f, x)`/`Readln(f, x)`, `Eof(f)`, backed by a Pascal-
+    runtime `TextFile` class with a per-line buffer.
 
 Each milestone closes with: tests in `tests/cases/pascal/`, snapshot
 diagnostics + output + generated C++ checked in, runs green under

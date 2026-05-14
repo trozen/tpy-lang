@@ -432,7 +432,7 @@ class _Parser:
         # `char`, `real`, `double`) or a user-defined ident.
         t = self.cur
         if t.kind == TokKind.KEYWORD and t.text in (
-                "integer", "boolean", "char", "real", "double"):
+                "integer", "boolean", "char", "real", "double", "text"):
             self.i += 1
             return pa.NamedTypeSpec(name=t.text, loc=self._loc(t, t))
         if t.kind == TokKind.IDENT:

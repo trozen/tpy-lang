@@ -55,7 +55,7 @@ class TokKind(Enum):
 # spelling collides with the identifier syntax.
 KEYWORDS = frozenset({
     "program", "begin", "end",
-    "const", "var", "integer", "boolean", "string", "char", "real",
+    "const", "var", "integer", "boolean", "string", "char", "real", "text",
     "div", "mod",
     "and", "or", "not", "xor", "in",
     "true", "false",

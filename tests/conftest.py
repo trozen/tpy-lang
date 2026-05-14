@@ -1214,9 +1214,13 @@ def build_and_run(build_dir: Path, module_name: str,
     case_input = build_dir.parent / "src" / "input.txt"
     if case_input.exists():
         stdin_input = case_input.read_text()
+    # Run with cwd=build_dir so any files the program writes via a
+    # relative path (e.g. Pascal `Assign(f, 'out.txt')`) land in the
+    # gitignored build directory rather than the test runner's cwd.
     result = subprocess.run(
         [str(exe_file)],
         input=stdin_input,
+        cwd=str(build_dir),
         capture_output=True, text=True,
     )
     return RunResult(

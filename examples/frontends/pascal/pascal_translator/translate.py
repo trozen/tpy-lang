@@ -548,6 +548,10 @@ def _lower_type_spec(spec, ctx: _Ctx):
                 ctx.add_import("tpy", tpy_name)
             return NamedType(name=tpy_name, args=(),
                              loc=_to_ir_loc(spec.loc))
+        if spec.name == "text":
+            ctx.add_import("pascal.runtime.io", "TextFile")
+            return NamedType(name="TextFile", args=(),
+                             loc=_to_ir_loc(spec.loc))
         if spec.name in ctx.record_types or spec.name in ctx.enum_types:
             return NamedType(name=spec.name, args=(),
                              loc=_to_ir_loc(spec.loc))
@@ -735,6 +739,13 @@ def _default_init_for_spec(spec, loc: pa.Loc, ctx: _Ctx):
             callee=Name(ident="set", loc=ir_loc),
             args=(), loc=ir_loc,
         )
+    if isinstance(resolved, pa.NamedTypeSpec) and resolved.name == "text":
+        ir_loc = _to_ir_loc(loc)
+        ctx.add_import("pascal.runtime.io", "TextFile")
+        return Call(
+            callee=Name(ident="TextFile", loc=ir_loc),
+            args=(), loc=ir_loc,
+        )
     return None
 
 
@@ -759,6 +770,13 @@ def _default_init_module(spec, loc: pa.Loc, ctx: _Ctx):
         ir_loc = _to_ir_loc(loc)
         return Call(
             callee=Name(ident="set", loc=ir_loc),
+            args=(), loc=ir_loc,
+        )
+    if isinstance(resolved, pa.NamedTypeSpec) and resolved.name == "text":
+        ir_loc = _to_ir_loc(loc)
+        ctx.add_import("pascal.runtime.io", "TextFile")
+        return Call(
+            callee=Name(ident="TextFile", loc=ir_loc),
             args=(), loc=ir_loc,
         )
     return None
@@ -1332,13 +1350,22 @@ def _build_range_guard(subject_name: str, lo_ir, hi_ir, loc):
 
 def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
     name = stmt.callee.name
+    if name in ("assign", "reset", "rewrite", "close"):
+        # File-state procedures; `assign(f, name)` stores the path,
+        # `reset(f)`/`rewrite(f)` open it for read/write, `close(f)`
+        # flushes. The translator routes each to a method call on the
+        # `TextFile` runtime class.
+        return _lower_file_op_stmt(stmt, ctx, name)
     if name in ("write", "writeln"):
-        # `_lower_writeln_stmt` handles both `write` and `writeln` --
-        # the callee name picks the runtime function (`write` or
-        # `writeln`) and the rest of the dispatch (per-arg-type
-        # overloads) is identical.
+        # File-form (`write(f, x)` / `writeln(f, x)`) dispatches on
+        # first-arg-is-text; stdout form (`write(x)` / `writeln(x)`)
+        # falls through to the existing `_lower_writeln_stmt`.
+        if _is_text_first_arg(stmt.args, ctx):
+            return _lower_file_write_stmt(stmt, ctx, name)
         return _lower_writeln_stmt(stmt, ctx)
     if name in ("read", "readln"):
+        if _is_text_first_arg(stmt.args, ctx):
+            return _lower_file_read_stmt(stmt, ctx, name)
         return _lower_readln_stmt(stmt, ctx)
     if name in ("inc", "dec"):
         return _lower_inc_dec_stmt(stmt, ctx, name)
@@ -1497,6 +1524,194 @@ def _lower_readln_stmt(stmt: pa.CallStmt, ctx: _Ctx):
         arg.loc,
     ))
     return None
+
+
+def _is_text_first_arg(args: list, ctx: _Ctx) -> bool:
+    """True iff `args[0]` is a Pascal Ident whose static type env entry
+    is `'text'`. Used by `write`/`writeln`/`read`/`readln` dispatch to
+    pick the file-form lowering."""
+    if not args:
+        return False
+    a = args[0]
+    if not isinstance(a, pa.Ident):
+        return False
+    return ctx.type_env.get(a.name) == "text"
+
+
+# Pascal->TextFile method name suffix per Pascal arg type. Used by
+# `_lower_file_write_stmt` / `_lower_file_read_stmt` to pick the right
+# overload on the `TextFile` runtime class.
+_TEXTFILE_WRITE_SUFFIX: dict[str, str] = {
+    "integer": "_int",
+    "real": "_float",
+    "string": "_str",
+    "char": "_str",  # 1-char string treated as a string write
+    "string_view": "_str",
+}
+
+_TEXTFILE_READ_SUFFIX: dict[str, str] = {
+    "integer": "_int",
+    "string": "_line",
+    "string_view": "_line",
+}
+
+
+def _lower_file_op_stmt(stmt: pa.CallStmt, ctx: _Ctx, name: str):
+    """Lower a file-state procedure call (`assign` / `reset` /
+    `rewrite` / `close`) into a TextFile method call. Argument count
+    is checked here so the diagnostic points at the source site
+    rather than at the runtime method signature."""
+    expected = 2 if name == "assign" else 1
+    if len(stmt.args) != expected:
+        ctx.diagnostics.append(_diag(
+            f"{name}(...) expects {expected} argument(s), got "
+            f"{len(stmt.args)}",
+            stmt.loc,
+        ))
+        return None
+    file_arg = stmt.args[0]
+    if not isinstance(file_arg, pa.Ident):
+        ctx.diagnostics.append(_diag(
+            f"{name}(...) file argument must be a variable",
+            getattr(file_arg, "loc", stmt.loc),
+        ))
+        return None
+    if ctx.type_env.get(file_arg.name) != "text":
+        ctx.diagnostics.append(_diag(
+            f"{name}(...) first argument must be a `text` variable",
+            file_arg.loc,
+        ))
+        return None
+    callee_loc = _to_ir_loc(stmt.callee.loc)
+    method_loc = _to_ir_loc(file_arg.loc)
+    method_args: tuple = ()
+    if name == "assign":
+        path_arg = _lower_expr(stmt.args[1], ctx)
+        if path_arg is None:
+            return None
+        method_args = (path_arg,)
+    call = Call(
+        callee=Attr(
+            target=Name(ident=file_arg.name, loc=method_loc),
+            ident=name, loc=callee_loc,
+        ),
+        args=method_args, loc=_to_ir_loc(stmt.loc),
+    )
+    return ExprStmt(value=call, loc=_to_ir_loc(stmt.loc))
+
+
+def _lower_file_write_stmt(stmt: pa.CallStmt, ctx: _Ctx, name: str):
+    """Lower `write(f, x)` / `writeln(f, x)` to a TextFile method
+    call. The method name (`write_<suffix>` / `writeln_<suffix>`) is
+    picked from the value's static type so the runtime can emit the
+    right textual form for each value type."""
+    if len(stmt.args) != 2:
+        ctx.diagnostics.append(_diag(
+            f"{name}(f, x) takes exactly two arguments in M13",
+            stmt.loc,
+        ))
+        return None
+    file_arg = stmt.args[0]
+    value_arg = stmt.args[1]
+    value_ir = _lower_expr(value_arg, ctx)
+    if value_ir is None:
+        return None
+    value_type = _static_type_of(value_arg, ctx)
+    suffix = _TEXTFILE_WRITE_SUFFIX.get(value_type or "")
+    if suffix is None:
+        ctx.diagnostics.append(_diag(
+            f"{name}(f, x) does not support value type "
+            f"{value_type!r}",
+            getattr(value_arg, "loc", stmt.loc),
+        ))
+        return None
+    if value_type == "string" and not isinstance(value_arg, pa.StrLit):
+        # PStr argument: route through `str(...)` so the method sees
+        # a `str` view (writeln_str / write_str take `str`).
+        value_ir = Call(
+            callee=Name(ident="str", loc=_to_ir_loc(value_arg.loc)),
+            args=(value_ir,), loc=_to_ir_loc(value_arg.loc),
+        )
+    callee_loc = _to_ir_loc(stmt.callee.loc)
+    method_loc = _to_ir_loc(file_arg.loc)
+    method_name = name + suffix
+    call = Call(
+        callee=Attr(
+            target=Name(ident=file_arg.name, loc=method_loc),
+            ident=method_name, loc=callee_loc,
+        ),
+        args=(value_ir,), loc=_to_ir_loc(stmt.loc),
+    )
+    return ExprStmt(value=call, loc=_to_ir_loc(stmt.loc))
+
+
+def _lower_file_read_stmt(stmt: pa.CallStmt, ctx: _Ctx, name: str):
+    """Lower `read(f, x)` / `readln(f, x)` to either an `Assign`
+    (scalar target) or a `PStr.assign(...)` call (string target).
+    The target type drives both the runtime method and the lvalue
+    write form (mirrors `_lower_readln_stmt` for stdin)."""
+    if len(stmt.args) != 2:
+        ctx.diagnostics.append(_diag(
+            f"{name}(f, x) takes exactly two arguments in M13",
+            stmt.loc,
+        ))
+        return None
+    file_arg = stmt.args[0]
+    target_arg = stmt.args[1]
+    if not isinstance(target_arg, pa.Ident):
+        ctx.diagnostics.append(_diag(
+            f"{name}(f, x) target must be a variable",
+            getattr(target_arg, "loc", stmt.loc),
+        ))
+        return None
+    target_name = target_arg.name
+    target_type = ctx.type_env.get(target_name)
+    suffix = _TEXTFILE_READ_SUFFIX.get(target_type or "")
+    if suffix is None:
+        ctx.diagnostics.append(_diag(
+            f"{name}(f, x) does not support target type "
+            f"{target_type!r}",
+            target_arg.loc,
+        ))
+        return None
+    callee_loc = _to_ir_loc(stmt.callee.loc)
+    method_loc = _to_ir_loc(file_arg.loc)
+    target_loc = _to_ir_loc(target_arg.loc)
+    method_name = "readln" + suffix
+    rhs = Call(
+        callee=Attr(
+            target=Name(ident=file_arg.name, loc=method_loc),
+            ident=method_name, loc=callee_loc,
+        ),
+        args=(), loc=_to_ir_loc(stmt.loc),
+    )
+    if target_type == "string":
+        # PStr lvalue: keep the buffer in place via `s.assign(line)`.
+        assign_call = Call(
+            callee=Attr(
+                target=Name(ident=target_name, loc=target_loc),
+                ident="assign", loc=target_loc,
+            ),
+            args=(rhs,), loc=_to_ir_loc(stmt.loc),
+        )
+        return ExprStmt(value=assign_call, loc=_to_ir_loc(stmt.loc))
+    # Scalar lvalue.
+    if target_name in ctx.current_var_params:
+        ctx.add_import("tpy.unsafe", "unsafe_store")
+        ir_call = Call(
+            callee=Name(ident="unsafe_store", loc=target_loc),
+            args=(
+                Name(ident=target_name, loc=target_loc),
+                IntLit(value=0, loc=target_loc),
+                rhs,
+            ),
+            loc=_to_ir_loc(stmt.loc),
+        )
+        return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
+    return Assign(
+        targets=(Name(ident=target_name, loc=target_loc),),
+        value=rhs, loc=_to_ir_loc(stmt.loc),
+    )
 
 
 def _lower_writeln_stmt(stmt: pa.CallStmt, ctx: _Ctx):
@@ -1948,7 +2163,36 @@ _BUILTIN_EXPR: dict[str, "Callable"] = {
     "succ": lambda e, c: _builtin_succ_pred("succ", e, c),
     "pred": lambda e, c: _builtin_succ_pred("pred", e, c),
     "random": _builtin_random,
+    "eof": lambda e, c: _builtin_eof(e, c),
 }
+
+
+def _builtin_eof(expr: pa.CallExpr, ctx: _Ctx):
+    """`eof(f)` returns `bool`. The single argument must be a text
+    variable; the call routes to `f.eof()` on the TextFile runtime
+    class."""
+    if len(expr.args) != 1:
+        ctx.diagnostics.append(_diag(
+            "eof(f) takes exactly one argument", expr.loc))
+        return None
+    arg = expr.args[0]
+    if not isinstance(arg, pa.Ident):
+        ctx.diagnostics.append(_diag(
+            "eof(f) argument must be a variable",
+            getattr(arg, "loc", expr.loc)))
+        return None
+    if ctx.type_env.get(arg.name) != "text":
+        ctx.diagnostics.append(_diag(
+            "eof(f) argument must be a `text` variable", arg.loc))
+        return None
+    arg_loc = _to_ir_loc(arg.loc)
+    return Call(
+        callee=Attr(
+            target=Name(ident=arg.name, loc=arg_loc),
+            ident="eof", loc=_to_ir_loc(expr.callee.loc),
+        ),
+        args=(), loc=_to_ir_loc(expr.loc),
+    )
 
 
 def _lower_call_expr(expr: pa.CallExpr, ctx: _Ctx):
