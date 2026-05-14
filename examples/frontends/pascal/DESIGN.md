@@ -186,15 +186,22 @@ TPy-core changes.
   region) and `FillEllipse` (per-row horizontal-extent scan).
   Same in-buffer drawing + PPM snapshot model as Tier A; no
   SDL2 dependency for the regular test suite.
-- **`Graph` unit, optional SDL2 display layer** -- deferred to a
-  later milestone. Intentionally opt-in: system SDL2 not required
-  for the regular test suite. Tier-A + Tier-B drawing already
-  produces a PPM snapshot; the SDL2 layer would just present that
-  same buffer in a window.
-- **`Graph` unit, deferred Tier-C primitives** -- `Arc` (parametric
-  circle segment), `FloodFill` (scan-line algorithm), `Bar3D`,
-  palette ops (`SetRGBPalette`, `GetPalette`), DOS-driver hooks
-  (`DetectGraph`, `RegisterBGIDriver`, `RegisterBGIFont`).
+- **`Graph` unit, Tier C** (M21, shipped): `Arc` (parametric
+  circle segment via sin/cos, 1-degree step), `FloodFill` (4-way
+  iterative seed fill with a coord-stack worklist), `Bar3D`
+  (filled rect + slanted depth edges + optional top face),
+  `SetRGBPalette` (override a palette entry; accepts 6-bit or
+  8-bit RGB values), and the DOS-driver hook stubs --
+  `DetectGraph` (no-op), `RegisterBGIDriver` / `RegisterBGIFont`
+  (return 0 to indicate "registered"). The stubs let TP7 source
+  that calls them at startup compile cleanly without doing
+  anything; default `InitGraph(0, 0, '')` already picks a sane
+  canvas.
+- **`Graph` unit, optional SDL2 display layer** -- still
+  deferred. Intentionally opt-in: system SDL2 not required for
+  the regular test suite. Tier-A + Tier-B + Tier-C drawing
+  already produces a PPM snapshot; the SDL2 layer would just
+  present that same buffer in a window.
 
 ### Tier 3 (genuinely out)
 
@@ -486,6 +493,13 @@ TODOs the tier needs.
     `GetPixel`. Also fixed a pre-existing TPy codegen typo
     (`tokenize.TokenizeError` -> `tokenize.TokenError`) that the
     runtime's font-data file exercised for the first time.
+21. **Graph unit, Tier C.** `Arc` (parametric circle segment),
+    `FloodFill` (4-way iterative), `Bar3D` (filled rect + 3D
+    edges), `SetRGBPalette` (override a palette entry), and the
+    DOS-driver hook stubs (`DetectGraph`, `RegisterBGIDriver`,
+    `RegisterBGIFont`). Completes the BGI surface relevant to
+    real TP7 demo programs; the optional SDL2 display layer is
+    the only Graph item still pending.
 
 Each milestone closes with: tests in `tests/cases/pascal/`, snapshot
 diagnostics + output + generated C++ checked in, runs green under

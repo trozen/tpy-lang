@@ -20,6 +20,8 @@ this file is its own complete drawing implementation regardless.
 
 from __future__ import annotations
 
+import math as _math
+
 from tpy import Int32
 
 
@@ -575,6 +577,35 @@ def ellipse(cx: Int32, cy: Int32, rx: Int32, ry: Int32) -> None:
             p += 2 * ry_sq * x - 2 * rx_sq * y + rx_sq
 
 
+def arc(cx: Int32, cy: Int32, start_angle: Int32,
+        end_angle: Int32, r: Int32) -> None:
+    """Draw a circular arc from `start_angle` to `end_angle` (both
+    in degrees, BGI convention: 0 = east, increasing
+    counter-clockwise) at radius `r`. Implemented parametrically:
+    walk the angle in 1-degree steps and plot each (x, y) via the
+    polar-to-cartesian transform. Coarser than a midpoint variant
+    but accurate enough for the canvas sizes the POC targets and
+    independent of the radius."""
+    packed = _resolve_color(_ctx.fg)
+    if r <= 0:
+        _set_pixel_raw(cx, cy, packed)
+        return
+    a = start_angle
+    end = end_angle
+    if end < a:
+        end = end + Int32(360)
+    while a <= end:
+        rad = float(a) * 3.141592653589793 / 180.0
+        x = cx + Int32(round(float(r) * _math.cos(rad)))
+        # BGI's y axis is screen-style (y grows downward) but
+        # angle 0 is east + counter-clockwise; cos handles x as
+        # usual, and we flip the sin component so a +90 angle
+        # lands above the centre, matching what TP7 users see.
+        y = cy - Int32(round(float(r) * _math.sin(rad)))
+        _set_pixel_raw(x, y, packed)
+        a += 1
+
+
 def fillellipse(cx: Int32, cy: Int32, rx: Int32, ry: Int32) -> None:
     """Filled ellipse. Scans every y-row in `[cy-ry, cy+ry]` and
     fills a horizontal extent computed from the ellipse equation:
@@ -612,4 +643,116 @@ def fillellipse(cx: Int32, cy: Int32, rx: Int32, ry: Int32) -> None:
             _set_pixel_raw(x, y, packed)
             x += 1
         dy += 1
+
+
+# Tier C primitives ------------------------------------------------
+#
+# Less-common BGI procedures that complete the unit's surface
+# without major new infrastructure. None of these need a separate
+# milestone -- they all sit on top of the pixel buffer and
+# palette table.
+
+
+def floodfill(x: Int32, y: Int32, border: Int32) -> None:
+    """4-way flood fill from (x, y). Recolors every pixel reachable
+    from the seed that ISN'T the border color, using the current
+    pen color as the fill. An empty seed (seed already equals the
+    border color or is outside the canvas) is a no-op. Iterative
+    via a worklist -- TPy doesn't love deep recursion and the
+    typical kid-program canvas can easily exceed the call stack."""
+    if x < 0 or x >= _ctx.width:
+        return
+    if y < 0 or y >= _ctx.height:
+        return
+    fill_packed = _resolve_color(_ctx.fg)
+    border_packed = _resolve_color(border)
+    start_idx = y * _ctx.width + x
+    if _ctx.pixels[start_idx] == border_packed:
+        return
+    if _ctx.pixels[start_idx] == fill_packed:
+        return
+    target = _ctx.pixels[start_idx]
+    stack_x: list[Int32] = [x]
+    stack_y: list[Int32] = [y]
+    while len(stack_x) > 0:
+        cx = stack_x.pop()
+        cy = stack_y.pop()
+        if cx < 0 or cx >= _ctx.width:
+            continue
+        if cy < 0 or cy >= _ctx.height:
+            continue
+        idx = cy * _ctx.width + cx
+        if _ctx.pixels[idx] != target:
+            continue
+        _ctx.pixels[idx] = fill_packed
+        stack_x.append(cx + Int32(1))
+        stack_y.append(cy)
+        stack_x.append(cx - Int32(1))
+        stack_y.append(cy)
+        stack_x.append(cx)
+        stack_y.append(cy + Int32(1))
+        stack_x.append(cx)
+        stack_y.append(cy - Int32(1))
+
+
+def bar3d(x1: Int32, y1: Int32, x2: Int32, y2: Int32,
+          depth: Int32, top: bool) -> None:
+    """`Bar3D` -- a filled rectangle plus depth lines on the
+    right + top edges, giving the chart-style 3D look. `top=True`
+    draws the top face's near edge as well; `top=False` leaves it
+    open (used when stacking bars vertically). The body fill uses
+    the current pen color; the 3D edge lines use the same color."""
+    bar(x1, y1, x2, y2)
+    if depth <= 0:
+        return
+    # Right face: depth-shifted vertical edge from (x2+depth, y1-?)
+    # In BGI the depth lines slant up-and-right by `depth` pixels.
+    rx = x2 + depth
+    ty = y1 - depth
+    by = y2 - depth
+    line(x2, y1, rx, ty)
+    line(x2, y2, rx, by)
+    line(rx, ty, rx, by)
+    if top:
+        line(x1, y1, x1 + depth, ty)
+        line(x1 + depth, ty, rx, ty)
+
+
+def setrgbpalette(index: Int32, r: Int32, g: Int32,
+                   b: Int32) -> None:
+    """Override one entry in the 16-color palette. TP7 uses 6-bit
+    RGB values (0..63) here; we accept either 6-bit or 8-bit
+    values transparently -- values <= 63 get scaled up to 0..255
+    (multiply by 4 and saturate), values > 63 are taken as 8-bit
+    directly. Out-of-range `index` is silently ignored."""
+    if index < 0 or index >= 16:
+        return
+    rr = r if r > 63 else (r * 4 if r * 4 < 256 else 255)
+    gg = g if g > 63 else (g * 4 if g * 4 < 256 else 255)
+    bb = b if b > 63 else (b * 4 if b * 4 < 256 else 255)
+    _PALETTE[index] = (rr << 16) | (gg << 8) | bb
+
+
+def detectgraph(var_driver: Int32, var_mode: Int32) -> None:
+    """No-op stub. TP7's `DetectGraph(var Driver, Mode: Integer)`
+    asks the BGI driver to suggest a (driver, mode) pair; we
+    operate independently of BGI drivers so the call doesn't
+    need to do anything. Programs that use the standard idiom of
+    calling `DetectGraph` immediately before `InitGraph` work --
+    `InitGraph(0, 0, '')` already picks our default canvas."""
+    pass
+
+
+def registerbgidriver(driver: Int32) -> Int32:
+    """No-op stub matching TP7's `RegisterBGIDriver` signature.
+    Real TP7 used this to register linked-in driver binaries
+    when running off-disk; we don't load drivers, so the call
+    always succeeds with status 0."""
+    return Int32(0)
+
+
+def registerbgifont(font: Int32) -> Int32:
+    """No-op stub matching TP7's `RegisterBGIFont` signature.
+    Our text rendering uses the embedded 8x8 font set unconditionally."""
+    return Int32(0)
 

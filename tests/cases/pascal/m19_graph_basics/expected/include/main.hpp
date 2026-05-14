@@ -8,12 +8,16 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::graph::arc;
 using ::tpyapp::graph::bar;
+using ::tpyapp::graph::bar3d;
 using ::tpyapp::graph::circle;
 using ::tpyapp::graph::cleardevice;
 using ::tpyapp::graph::closegraph;
+using ::tpyapp::graph::detectgraph;
 using ::tpyapp::graph::ellipse;
 using ::tpyapp::graph::fillellipse;
+using ::tpyapp::graph::floodfill;
 using ::tpyapp::graph::getmaxx;
 using ::tpyapp::graph::getmaxy;
 using ::tpyapp::graph::getpixel;
@@ -27,8 +31,11 @@ using ::tpyapp::graph::outtext;
 using ::tpyapp::graph::outtextxy;
 using ::tpyapp::graph::putpixel;
 using ::tpyapp::graph::rectangle;
+using ::tpyapp::graph::registerbgidriver;
+using ::tpyapp::graph::registerbgifont;
 using ::tpyapp::graph::setbkcolor;
 using ::tpyapp::graph::setcolor;
+using ::tpyapp::graph::setrgbpalette;
 
 using ::tpyapp::graph::GraphContext;
 
