@@ -104,7 +104,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| E1 | Send/Sync markers | S-M | 🚧 Phase 1 done | [IV](#thread-safety-markers-send--sync) |
+| E1 | Send/Sync markers | S-M | 🚧 Phase 1 done; Phases 2-6 + open questions in [`docs/SEND_SYNC_DESIGN.md`](SEND_SYNC_DESIGN.md) | [IV](#thread-safety-markers-send--sync) |
 | E2 | Container mutation during iteration | S-M | Done | [IV](#container-mutation-during-iteration) |
 | E3 | del statement | S-M | Done | [VI](#del-statement-explicit-destruction) |
 | E4 | Ptr escape analysis | XL | 🚧 Partial | [IV](#ptrt-escape-analysis--lifetime-tracking) |
@@ -1267,6 +1267,9 @@ interactions. Also provides the foundation for `@noalloc` enforcement and `@noth
 ---
 
 ### Thread Safety Markers (Send / Sync)
+
+> **Full design + phased roadmap + open questions: [`docs/SEND_SYNC_DESIGN.md`](SEND_SYNC_DESIGN.md).** The summary below is the high-level pitch; the design doc is the source of truth.
+
 
 ```python
 class Counter:         # implicitly Sendable (all fields are value types)
