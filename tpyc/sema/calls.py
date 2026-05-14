@@ -398,6 +398,19 @@ def validate_generic_defaults(
                 f"type '{resolved_type}' (resolved from generic '{func.name}')")
 
 
+def resolve_inferred_type_arg(t: "TpyType | int", default_int_type: TpyType) -> "TpyType | int":
+    """Resolve literal/pending types in an inferred type arg for codegen.
+
+    Inferred values can be ints (integer-kind type params, e.g. N in
+    Array[T, N]) -- those pass through unchanged.
+    """
+    if isinstance(t, int):
+        return t
+    if isinstance(t, PendingListType):
+        return make_list(resolve_int_literals(t.element_type, default_int_type))
+    return resolve_int_literals(t, default_int_type)
+
+
 def validate_type_param_bounds(
     type_subst: dict[str, TpyType],
     bounds: dict[str, NominalType],
@@ -626,14 +639,7 @@ class CallAnalyzer:
         return td_call
 
     def _resolve_inferred_type_arg(self, t: "TpyType | int") -> "TpyType | int":
-        """Resolve literal types in inferred type args before codegen.
-
-        Inferred values can be ints (integer-kind type params, e.g. N in
-        Array[T, N]) -- those pass through unchanged.
-        """
-        if isinstance(t, int):
-            return t
-        return resolve_int_literals(t, self.ctx.default_int_type)
+        return resolve_inferred_type_arg(t, self.ctx.default_int_type)
 
     def _raise_empty_container_from_arg(self, outer_call: TpyCall, args, arg_types) -> 'NoReturn':
         """Raise a user-facing "cannot infer empty container types" error.
@@ -4184,8 +4190,11 @@ class CallAnalyzer:
                     expr
                 )
 
-        # Store inferred type args for codegen (preserves Ref for val_or_ref<T>)
-        expr.inferred_type_args = tuple(type_subst[p] for p in func.type_params)
+        # type_subst keeps literal-marked types for per-arg coercion below;
+        # codegen needs them resolved so they don't reach C++ as template args.
+        expr.inferred_type_args = tuple(
+            self._resolve_inferred_type_arg(type_subst[p]) for p in func.type_params
+        )
 
         # Validate defaults for generic params not covered by explicit args
         self._validate_generic_defaults(expr, func, type_subst)
@@ -4455,16 +4464,8 @@ class CallAnalyzer:
                     explicit_type_args=wildcard_type_args,
                 )
                 if inferred:
-                    # Resolve pending types for codegen.
                     for k, v in list(inferred.items()):
-                        if isinstance(v, IntLiteralType):
-                            inferred[k] = self.ctx.default_int_for_literal(v)
-                        elif isinstance(v, PendingListType):
-                            # Resolve PendingListType to ListType
-                            elem_type = v.element_type
-                            if isinstance(elem_type, IntLiteralType):
-                                elem_type = self.ctx.default_int_for_literal(elem_type)
-                            inferred[k] = make_list(elem_type)
+                        inferred[k] = self._resolve_inferred_type_arg(v)
                     # Validate type parameter bounds
                     for param_name, type_arg in inferred.items():
                         if param_name in record.type_param_bounds:

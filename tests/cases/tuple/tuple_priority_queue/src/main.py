@@ -6,10 +6,10 @@ from tpy import Int32
 
 def main() -> None:
     pq: list[tuple[Int32, str]] = []
-    heappush(pq, (Int32(3), "third"))
-    heappush(pq, (Int32(1), "first"))
-    heappush(pq, (Int32(2), "second"))
-    heappush(pq, (Int32(1), "tied_with_first"))
+    heappush(pq, (3, "third"))
+    heappush(pq, (1, "first"))
+    heappush(pq, (2, "second"))
+    heappush(pq, (1, "tied_with_first"))
 
     while len(pq) > 0:
         prio, payload = heappop(pq)

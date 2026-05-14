@@ -3353,7 +3353,11 @@ p = first(points)      # T inferred as Point from list[Point]
 Inference also accepts coercible concrete arguments on generic calls when type
 parameters are inferred from other arguments. Example: if a generic function
 has `delta: Int64`, passing `Int32` for `delta` is accepted via normal
-argument coercion.
+argument coercion. The same per-element coercion applies when `T` is itself a
+compound shape (`tuple`, `list`, `dict`, `set`): for `heappush[T: Comparable]`
+called as `heappush(pq, (3, "third"))` where `pq: list[tuple[Int32, str]]`,
+the literal `3` inside the second-arg tuple coerces to `Int32` to match the
+slot in the already-determined `T`.
 
 **Contextual Type Inference**: When arguments don't fully determine all type
 parameters, the expected type from context (assignment annotation, return type,
