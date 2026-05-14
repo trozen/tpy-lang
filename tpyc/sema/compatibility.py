@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING, Optional
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, ListRepeatType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, UnknownElementType,
-    LiteralType, FLOAT, make_list, make_dict, make_set,
+    LiteralType, LiteralValue, LiteralTag, FLOAT, make_list, make_dict, make_set,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NominalType, TypeParamRef, NoneType, AnyType, OptionalType, UnionType,
     is_protocol_type, unwrap_own, unwrap_readonly, unwrap_optional_own,
@@ -24,6 +24,7 @@ from ..parse import (
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFunction, TpyIfExpr, TpyTupleLiteral, SourceLocation
 )
+from .literal_utils import literal_value_from_expr
 from ..coercions import resolve_coercion, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY
 from ..modules import get_span_return_type
 from .context import addr_taken_roots
@@ -36,6 +37,22 @@ from ..type_def_registry import (
     protocol_info_of,
 )
 from .overloads import type_matches_numeric
+
+
+def _literal_value_from_source(
+    source_expr: TpyExpr | None, expected: LiteralType,
+) -> LiteralValue | None:
+    """LiteralValue from a literal AST source, gated on tag-vs-base agreement."""
+    lv = literal_value_from_expr(source_expr)
+    if lv is None:
+        return None
+    if lv.tag is LiteralTag.STR and expected.is_str_base():
+        return lv
+    if lv.tag is LiteralTag.BOOL and expected.is_bool_base():
+        return lv
+    if lv.tag is LiteralTag.INT and expected.is_int_base():
+        return lv
+    return None
 
 
 def _dangling_view_message(return_type: TpyType) -> str | None:
@@ -928,13 +945,28 @@ class TypeCompatibility:
         if isinstance(actual, LiteralType) and isinstance(expected, LiteralType):
             if all(v in expected.values for v in actual.values):
                 return None
+            # Reject explicitly: skipping the permissive str/int branches below
+            # is what enforces value-set membership.
+            return CompatError(
+                f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
         if isinstance(expected, LiteralType):
-            if expected.is_str_base() and is_str_category(actual):
-                return None
-            if expected.base_type == actual:
-                return None
-            if expected.is_int_base() and isinstance(actual, IntLiteralType):
-                return None
+            src_lit = _literal_value_from_source(source_expr, expected)
+            if src_lit is not None:
+                if src_lit in expected.values:
+                    return None
+                return CompatError(
+                    f"Type mismatch in {context}: expected {expected}, "
+                    f"got {src_lit}", loc)
+            if isinstance(actual, IntLiteralType) and actual.value is not None and expected.is_int_base():
+                if expected.contains(LiteralTag.INT, actual.value):
+                    return None
+                return CompatError(
+                    f"Type mismatch in {context}: expected {expected}, "
+                    f"got {actual.value}", loc)
+            # Non-literal source flowing into a Literal[...] LHS is rejected:
+            # sema cannot prove the runtime value is in the declared set, and
+            # the LHS's narrower type drives downstream Literal-specialized
+            # dispatch (which would run the wrong arm on an out-of-set value).
         if isinstance(actual, LiteralType):
             if actual.is_str_base() and is_str_category(expected):
                 return None

@@ -1,0 +1,1 @@
+main.py:6: error: Type mismatch in variable 'n': expected Literal[1, 2], got 5

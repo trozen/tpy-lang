@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Callable
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, BIGINT,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
-    PendingStrType, PendingViewType, LiteralType,
+    PendingStrType, PendingViewType, LiteralType, LiteralTag,
     PendingBytesType, TupleType, UnknownElementType,
     NominalType, PtrType, OwnType, ReadonlyType, RefType, CallableType, is_fn_type, VoidType, NoneType,
     OptionalType,
@@ -314,7 +314,7 @@ def _classify_strict_match(
                 if all(v in param_inner.values for v in arg_inner.values) else None)
     # IntLiteralType matches LiteralType with int base if value is in the set.
     if isinstance(arg_inner, IntLiteralType) and isinstance(param_inner, LiteralType) and param_inner.is_int_base():
-        if arg_inner.value is not None and param_inner.contains("int", arg_inner.value):
+        if arg_inner.value is not None and param_inner.contains(LiteralTag.INT, arg_inner.value):
             return (MatchTier.EXACT_CONCRETE, 0)
         return None
     # PendingBytesType (unresolved bytes local) matches bytes params
@@ -515,7 +515,7 @@ def type_matches_with_coercion(
     # IntLiteralType matches LiteralType with int base if value is in the set
     if isinstance(arg_inner, IntLiteralType) and isinstance(param_inner, LiteralType) and param_inner.is_int_base():
         if arg_inner.value is not None:
-            return param_inner.contains("int", arg_inner.value)
+            return param_inner.contains(LiteralTag.INT, arg_inner.value)
         return False
     # PendingBytesType matches any bytes type (bytes, bytearray, BytesView)
     if isinstance(arg_inner, PendingBytesType) and is_bytes_category(param_inner):

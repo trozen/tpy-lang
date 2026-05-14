@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType,
-    PendingListType, PendingDictType, PendingSetType, PendingViewType, make_list, make_dict, make_set, TypeParamRef, NominalType,
+    PendingListType, PendingDictType, PendingSetType, PendingViewType, ViewTypeFamily, make_list, make_dict, make_set, TypeParamRef, NominalType,
     UnionType, NoneType, VoidType, TupleType,
     unwrap_readonly, is_protocol_type, resolve_int_literals,
     is_integer_type, is_float_type, is_void_like_type,
@@ -212,10 +212,14 @@ class TypeResolver:
                 return TupleType(tuple(resolved_elems))
         return typ
 
+    def _resolve_view_storage(self, family: ViewTypeFamily, var_id: int) -> TpyType:
+        """Resolve a view-vars entry to its storage form (view or owned)."""
+        info = self.ctx.analyzer.ctx.view_vars(family).get(var_id)
+        return info.resolved_type if info and info.resolved_type else family.owned_type
+
     def _resolve_pending_view(self, typ: PendingViewType) -> TpyType:
         """Resolve a PendingViewType to its concrete type."""
-        info = self.ctx.analyzer.ctx.view_vars(typ.family).get(typ.var_id)
-        return info.resolved_type if info and info.resolved_type else typ.family.owned_type
+        return self._resolve_view_storage(typ.family, typ.var_id)
 
     def _resolve_pending_container(self, typ: TpyType) -> TpyType | None:
         """Resolve a pending container type via unified lookup.

@@ -1,0 +1,1 @@
+main.py:13: error: Type mismatch in reassignment to 'n': expected Literal[1, 2], got Int32

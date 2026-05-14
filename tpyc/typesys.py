@@ -604,14 +604,22 @@ class IntLiteralType(TpyType):
         return True
 
 
+class LiteralTag(Enum):
+    """Type-tag for a `Literal[...]` member. Disambiguates True from 1 and
+    similar bool-vs-int collisions that compare equal in Python."""
+    STR = "str"
+    INT = "int"
+    BOOL = "bool"
+
+
 @dataclass(frozen=True)
 class LiteralValue:
     """A typed literal value. Distinguishes True from 1 via tag."""
-    tag: str           # "str", "int", "bool"
+    tag: LiteralTag
     value: str | int | bool
 
     def __str__(self) -> str:
-        if self.tag == "str":
+        if self.tag is LiteralTag.STR:
             return f'"{self.value}"'
         return str(self.value)
 
@@ -654,6 +662,23 @@ class LiteralType(TpyType):
     def to_cpp_const_param(self, name: str) -> str:
         return self.base_type.to_cpp_const_param(name)
 
+    def to_cpp_return(self) -> str:
+        """Return form for `Literal[...]` returns.
+
+        For str-base Literal: every value is a string literal (static storage),
+        so emit `std::string_view` -- no heap alloc, no dangling risk. For
+        value-type bases (int, bool) the base's own return form is already
+        right (returned by value).
+        """
+        if self.is_str_base():
+            return self.base_type.to_cpp_param_type()  # std::string_view
+        return self.base_type.to_cpp_return()
+
+    def to_cpp_return_const(self) -> str:
+        if self.is_str_base():
+            return self.base_type.to_cpp_param_type()
+        return self.base_type.to_cpp_return_const()
+
     def param_needs_copy_for_reassign(self) -> bool:
         return self.base_type.param_needs_copy_for_reassign()
 
@@ -681,7 +706,7 @@ class LiteralType(TpyType):
         from .type_def_registry import is_bool_type
         return is_bool_type(self.base_type)
 
-    def contains(self, tag: str, value: str | int | bool) -> bool:
+    def contains(self, tag: LiteralTag, value: str | int | bool) -> bool:
         """Check if a tagged value is in this Literal's value set."""
         return LiteralValue(tag, value) in self.values
 
@@ -2984,6 +3009,7 @@ class ViewTypeFamily:
     owned_type: TpyType
     view_type: TpyType
     promote_param_match: Callable[['TpyType'], bool]  # predicate: matches String/ByteArray
+    is_any_member: Callable[['TpyType'], bool]  # predicate: matches any str/bytes-category type
     pending_type_class: type  # PendingStrType or PendingBytesType
     element_type: TpyType
     display_name: str
@@ -3108,15 +3134,44 @@ _ELEMENT_FROM_FIRST_ARG_CATEGORIES = frozenset({
 from .type_def_registry import is_string_type as _is_string_type, is_bytearray_type as _is_bytearray_type
 STR_FAMILY = ViewTypeFamily(
     owned_type=STR, view_type=STRVIEW, promote_param_match=_is_string_type,
+    is_any_member=is_any_str_type,
     pending_type_class=PendingStrType, element_type=CHAR,
     display_name="str", qualified="builtins.str",
 )
 BYTES_FAMILY = ViewTypeFamily(
     owned_type=BYTES, view_type=BYTESVIEW, promote_param_match=_is_bytearray_type,
+    is_any_member=is_any_bytes_type,
     pending_type_class=PendingBytesType, element_type=UINT8,
     display_name="bytes", qualified="builtins.bytes",
 )
 VIEW_TYPE_FAMILIES = (STR_FAMILY, BYTES_FAMILY)
+
+# Family lookup tables. Owned types share the NominalType class, so dispatch
+# on qname; pending types each have their own class.
+_VIEW_OWNED_QNAME_TO_FAMILY: dict[str, ViewTypeFamily] = {
+    _f.owned_type.qualified_name(): _f for _f in VIEW_TYPE_FAMILIES
+}
+_VIEW_PENDING_CLASS_TO_FAMILY: dict[type, ViewTypeFamily] = {
+    _f.pending_type_class: _f for _f in VIEW_TYPE_FAMILIES
+}
+
+
+def view_family_for_type(var_type: 'TpyType') -> Optional[ViewTypeFamily]:
+    """Return the ViewTypeFamily for a str/bytes/pending-view type, or None.
+
+    `LiteralType` over a str/bytes base also resolves to its base's family --
+    Literal-annotated locals get the same view-storage inference as plain
+    str/bytes locals, while the LiteralType annotation is preserved for
+    overload dispatch / narrowing / out-of-set rejection.
+    """
+    family = _VIEW_PENDING_CLASS_TO_FAMILY.get(type(var_type))
+    if family is not None:
+        return family
+    if isinstance(var_type, LiteralType):
+        return view_family_for_type(var_type.base_type)
+    qn = var_type.qualified_name() if isinstance(var_type, NominalType) else None
+    return _VIEW_OWNED_QNAME_TO_FAMILY.get(qn) if qn else None
+
 
 # Int32 range limits (for runtime-constant checks). Use int_traits_of(t) for
 # other widths.

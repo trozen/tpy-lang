@@ -1,0 +1,1 @@
+main.py:9: error: Augmented assignment is not supported for Literal[...] -- the result is not guaranteed to be in the declared value set

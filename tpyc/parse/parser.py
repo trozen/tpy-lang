@@ -15,7 +15,7 @@ from typing import Any, Literal, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
     FieldInfo, NominalType, OptionalType, RecordInfo, TypeRegistry,
-    FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, LiteralValue,
+    FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, LiteralValue, LiteralTag,
     bare_name,
 )
 from ..module_names import public_module_name
@@ -2783,31 +2783,31 @@ class Parser:
         if not slices:
             raise ParseError("Literal requires at least one argument", node)
         values: list[LiteralValue] = []
-        tag: str | None = None
+        tag: LiteralTag | None = None
         for s in slices:
             if isinstance(s, ast.Constant) and isinstance(s.value, str):
-                if tag is not None and tag != "str":
+                if tag is not None and tag is not LiteralTag.STR:
                     raise ParseError("Literal cannot mix value types", node)
-                tag = "str"
-                values.append(LiteralValue("str", s.value))
+                tag = LiteralTag.STR
+                values.append(LiteralValue(LiteralTag.STR, s.value))
             elif isinstance(s, ast.Constant) and isinstance(s.value, bool):
-                if tag is not None and tag != "bool":
+                if tag is not None and tag is not LiteralTag.BOOL:
                     raise ParseError("Literal cannot mix value types", node)
-                tag = "bool"
-                values.append(LiteralValue("bool", s.value))
+                tag = LiteralTag.BOOL
+                values.append(LiteralValue(LiteralTag.BOOL, s.value))
             elif isinstance(s, ast.Constant) and isinstance(s.value, int):
-                if tag is not None and tag != "int":
+                if tag is not None and tag is not LiteralTag.INT:
                     raise ParseError("Literal cannot mix value types", node)
-                tag = "int"
-                values.append(LiteralValue("int", s.value))
+                tag = LiteralTag.INT
+                values.append(LiteralValue(LiteralTag.INT, s.value))
             elif (isinstance(s, ast.UnaryOp) and isinstance(s.op, ast.USub)
                   and isinstance(s.operand, ast.Constant)
                   and isinstance(s.operand.value, int)
                   and not isinstance(s.operand.value, bool)):
-                if tag is not None and tag != "int":
+                if tag is not None and tag is not LiteralTag.INT:
                     raise ParseError("Literal cannot mix value types", node)
-                tag = "int"
-                values.append(LiteralValue("int", -s.operand.value))
+                tag = LiteralTag.INT
+                values.append(LiteralValue(LiteralTag.INT, -s.operand.value))
             else:
                 raise ParseError(
                     "Literal supports string, int, and bool arguments", node)

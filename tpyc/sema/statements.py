@@ -14,7 +14,7 @@ from ..typesys import (
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType,
     unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
     LiteralType,
-    ViewTypeFamily, VIEW_TYPE_FAMILIES, STR_FAMILY, BYTES_FAMILY,
+    ViewTypeFamily, view_family_for_type,
     PendingGenericInstanceType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union, final_type_str_to_strview,
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR,
@@ -221,23 +221,8 @@ def _is_self_call_deferred(
     return False
 
 
-# Map raw owned types (by qname) and pending view types (by class) to their
-# ViewTypeFamily. Owned types share the NominalType class, so dispatch on qname.
-_VIEW_OWNED_QNAME_TO_FAMILY: dict[str, ViewTypeFamily] = {
-    _f.owned_type.qualified_name(): _f for _f in VIEW_TYPE_FAMILIES
-}
-_VIEW_PENDING_CLASS_TO_FAMILY: dict[type, ViewTypeFamily] = {
-    _f.pending_type_class: _f for _f in VIEW_TYPE_FAMILIES
-}
-
-
-def _view_family_for_type(var_type: TpyType) -> ViewTypeFamily | None:
-    """Return the ViewTypeFamily for a str/bytes/pending-view type, or None."""
-    family = _VIEW_PENDING_CLASS_TO_FAMILY.get(type(var_type))
-    if family is not None:
-        return family
-    qn = var_type.qualified_name() if isinstance(var_type, NominalType) else None
-    return _VIEW_OWNED_QNAME_TO_FAMILY.get(qn) if qn else None
+# view_family_for_type is in typesys (alongside ViewTypeFamily / VIEW_TYPE_FAMILIES).
+# Re-imported at the top of this module.
 
 
 def _handle_pinned_view_rebind(ctx: SemanticContext, name: str, stmt: TpyStmt) -> None:
@@ -2313,10 +2298,14 @@ class StatementAnalyzer:
         if isinstance(var_type, FloatLiteralType):
             return FLOAT
 
-        # View-type families (str/bytes): create pending view type for deferred resolution
-        family = _view_family_for_type(var_type)
+        # View-type families (str/bytes): register a pending view-vars entry for
+        # deferred view-vs-owned storage resolution. For LiteralType[str/bytes] the
+        # entry is registered for codegen but `stmt.type` stays LiteralType so
+        # OOS rejection / dispatch / narrowing keep seeing the annotation.
+        family = view_family_for_type(var_type)
         if family is not None:
-            return self._infer_new_local_view_type(name, var_type, init_expr, init_type, line, family)
+            pending = self._infer_new_local_view_type(name, var_type, init_expr, init_type, line, family)
+            return var_type if isinstance(var_type, LiteralType) else pending
         elif (isinstance(var_type, PendingListType)
                 and init_expr is not None and isinstance(init_expr, TpyName)):
             return self.deduction.register_list_alias(
@@ -2716,16 +2705,25 @@ class StatementAnalyzer:
                         else:
                             self.deduction.link_list_literals(inner_existing.literal_id, inner_init.literal_id)
                     var_type = existing_type
-                # PendingViewType reassignment: track view-compatibility, keep pending
-                elif isinstance(inner_existing, PendingViewType):
-                    vf = inner_existing.family
-                    is_any_check = is_any_str_type if vf is STR_FAMILY else is_any_bytes_type
-                    if is_any_check(inner_init):
+                # View-family reassignment (PendingViewType or LiteralType[str/bytes]).
+                # Pre-filter with cheap isinstance tuple so non-view reassignments
+                # (records / lists / dicts) skip the qualified_name() lookup inside
+                # view_family_for_type.
+                elif (isinstance(inner_existing, (PendingViewType, LiteralType))
+                        and (vf := view_family_for_type(inner_existing)) is not None):
+                    if vf.is_any_member(inner_init):
                         if not self.deduction.is_view_compatible_source(stmt.init, inner_init):
                             self.deduction.mark_view_reassigned_from_owned(stmt.name, vf)
                         else:
                             self.deduction.track_view_reassign_source(stmt.name, inner_init, vf)
                     var_type = existing_type
+                    if isinstance(inner_existing, LiteralType):
+                        # LiteralType additionally runs coerce_expr so out-of-set
+                        # literal RHS is rejected. (PendingViewType silently widens --
+                        # tracked in BUGS.md.)
+                        stmt.init = self.compat.coerce_expr(stmt.init, inner_init, var_type,
+                                                            f"reassignment to '{stmt.name}'",
+                                                            coercion_ctx=CoercionContext.ASSIGN)
                 else:
                     var_type = self.deduction.resolve_reassignment_target_type(
                         stmt.name, inner_existing, inner_init, init_expr=stmt.init
@@ -3473,8 +3471,7 @@ class StatementAnalyzer:
             # PendingViewType reassignment: track view-compatibility, keep pending
             elif isinstance(inner_target, PendingViewType):
                 vf = inner_target.family
-                is_any_check = is_any_str_type if vf is STR_FAMILY else is_any_bytes_type
-                if is_any_check(inner_value):
+                if vf.is_any_member(inner_value):
                     if not self.deduction.is_view_compatible_source(stmt.value, inner_value):
                         self.deduction.mark_view_reassigned_from_owned(stmt.target.name, vf)
                     else:
@@ -4060,6 +4057,15 @@ class StatementAnalyzer:
                 f"Augmented assignment does not narrow '{stmt.target.name}' from int to {type_name}; "
                 f"variable remains int (BigInt). Annotate or initialize '{stmt.target.name}' as {type_name} "
                 f"to keep {type_name} arithmetic.",
+                stmt,
+            )
+        # Literal-typed targets reject augmented assignment outright: the result
+        # of `x += y` is rarely in the declared value set, and Literal[str] locals
+        # use std::string_view storage which can't hold a new owned string anyway.
+        if isinstance(target_type, LiteralType):
+            raise self.ctx.error(
+                f"Augmented assignment is not supported for Literal[...] -- the "
+                f"result is not guaranteed to be in the declared value set",
                 stmt,
             )
         # Target must be numeric, owned string, or a type with registered operators.
