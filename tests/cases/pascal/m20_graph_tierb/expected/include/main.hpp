@@ -32,10 +32,11 @@ using ::tpyapp::graph::setcolor;
 
 using ::tpyapp::graph::GraphContext;
 
-extern int32_t red;
-extern int32_t green;
-extern int32_t yellow;
 extern int32_t white;
+extern int32_t yellow;
+extern int32_t red;
+extern int32_t cyan;
+extern int32_t green;
 extern int32_t gd;
 extern int32_t gm;
 inline constexpr std::string_view __name__ = "__main__";

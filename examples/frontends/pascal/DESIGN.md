@@ -168,21 +168,33 @@ TPy-core changes.
   raw-mode termios). `WhereX`/`WhereY` are deferred (need a cursor-
   position query round trip + raw stdin); `KeyPressed` is deferred
   (needs non-blocking stdin / termios, which TPy doesn't expose).
-- **`Graph` unit** (M19, shipped, Tier-A subset): `InitGraph`,
+- **`Graph` unit, Tier A** (M19, shipped): `InitGraph`,
   `CloseGraph`, `SetColor`, `SetBkColor`, `ClearDevice`,
   `PutPixel`, `GetPixel`, `Line`, `Rectangle`, `Bar`, `Circle`,
   `GetMaxX`, `GetMaxY`. All drawing is pure TPy against a packed-
   Int32 RGB pixel buffer (the TP7 16-color palette resolves to
   `0xRRGGBB` literals at SetColor time). `CloseGraph` dumps the
-  canvas to a P3 PPM (`out.ppm` in the program's cwd, which is the
-  per-case build dir under `__tpyc__/` -- gitignored, never
+  canvas to a P3 PPM (`out.ppm` in the program's cwd, which is
+  the per-case build dir under `__tpyc__/` -- gitignored, never
   snapshotted). Tests read pixels back via `GetPixel` and
-  snapshot the text output only. Tier B (text rendering via
-  embedded bitmap font, pen-state `MoveTo` / `LineTo` / `GetX` /
-  `GetY`, `Arc` / `Ellipse` / `FillEllipse`) and the optional
-  SDL2 display layer ship in later milestones; the SDL2 layer is
-  intentionally opt-in (system SDL2 not required for the regular
-  test suite).
+  snapshot the text output only.
+- **`Graph` unit, Tier B** (M20, shipped): pen state (`MoveTo`,
+  `LineTo`, `GetX`, `GetY`); text rendering (`OutTextXY`,
+  `OutText`) via an embedded 8x8 bitmap font covering space /
+  digits / uppercase A-Z / common punctuation (lowercase ASCII
+  case-folds to uppercase); `Ellipse` outline (midpoint, two-
+  region) and `FillEllipse` (per-row horizontal-extent scan).
+  Same in-buffer drawing + PPM snapshot model as Tier A; no
+  SDL2 dependency for the regular test suite.
+- **`Graph` unit, optional SDL2 display layer** -- deferred to a
+  later milestone. Intentionally opt-in: system SDL2 not required
+  for the regular test suite. Tier-A + Tier-B drawing already
+  produces a PPM snapshot; the SDL2 layer would just present that
+  same buffer in a window.
+- **`Graph` unit, deferred Tier-C primitives** -- `Arc` (parametric
+  circle segment), `FloodFill` (scan-line algorithm), `Bar3D`,
+  palette ops (`SetRGBPalette`, `GetPalette`), DOS-driver hooks
+  (`DetectGraph`, `RegisterBGIDriver`, `RegisterBGIFont`).
 
 ### Tier 3 (genuinely out)
 
@@ -466,6 +478,14 @@ TODOs the tier needs.
     pixel buffer; PPM snapshot at `CloseGraph`, no SDL2
     dependency for the regular test suite. Tests use `GetPixel`
     to read back specific coords and snapshot the text output.
+20. **Graph unit, Tier B.** Pen state (`MoveTo` / `LineTo` /
+    `GetX` / `GetY`), text rendering via an embedded 8x8 bitmap
+    font (`OutTextXY` / `OutText`), and ellipse primitives
+    (`Ellipse` outline + `FillEllipse`). Same in-buffer model as
+    Tier A; tests verify glyph pixels and ellipse extents via
+    `GetPixel`. Also fixed a pre-existing TPy codegen typo
+    (`tokenize.TokenizeError` -> `tokenize.TokenError`) that the
+    runtime's font-data file exercised for the first time.
 
 Each milestone closes with: tests in `tests/cases/pascal/`, snapshot
 diagnostics + output + generated C++ checked in, runs green under

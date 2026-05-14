@@ -1,0 +1,16 @@
+penx=10 peny=8
+poly@5,2=14
+poly@10,5=14
+poly@2,8=0
+H_lit@16,0=15
+H_dark@15,0=0
+I_lit@25,0=15
+I_dark@30,0=0
+1_lit@13,8=3
+ell_right@50,20=4
+ell_top@40,15=4
+ell_center@40,20=0
+fill_center@60,20=2
+fill_right@70,20=2
+fill_outside@72,20=0
+done
