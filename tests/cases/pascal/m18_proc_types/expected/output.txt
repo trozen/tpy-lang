@@ -1,0 +1,2 @@
+shout: 1
+whisper: 2

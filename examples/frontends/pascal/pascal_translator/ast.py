@@ -223,6 +223,21 @@ class PointerTypeSpec:
 
 
 @dataclass
+class ProcedureTypeSpec:
+    """`procedure(p1: T1; ...)` or `function(p1: T1; ...): R` --
+    a procedural type (function-pointer style). Pascal source can
+    declare named callbacks via `type Fn = procedure(x: integer);`
+    and store a same-shape procedure / function reference in a
+    `Fn`-typed variable. The translator lowers this to a TPy
+    `Callable[[...], R]`. Parameter names are accepted at parse
+    time for source-language fidelity but don't make it into the
+    target type."""
+    params: list   # list[Param]
+    return_type: object | None  # TypeSpec | None
+    loc: Loc
+
+
+@dataclass
 class TypeDecl:
     """A single entry in a `type` section: `Name = TypeSpec`."""
     name: str

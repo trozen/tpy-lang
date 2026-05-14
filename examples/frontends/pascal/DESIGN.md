@@ -443,10 +443,17 @@ TODOs the tier needs.
     (`s.name := 'foo'`); `with rec do <stmt>` (bare-Ident
     receiver, single-record); typed-array constants (`const arr:
     array[1..N] of integer = (1, 2, ...)`); nested procedures /
-    functions lifted to module-level with mangled names. Deferred:
-    procedural types (`type Fn = procedure(x: integer)` -- needs
-    a Callable IR node) and typed-record-consts (TPy doesn't
-    auto-derive a kwarg ctor when every field has a default).
+    functions lifted to module-level with mangled names.
+18. **Procedural types + typed-record-consts.** `type Fn =
+    procedure(x: integer);` introduces a procedural type alias
+    backed by TPy `Callable[[Int32], None]`; values can be
+    assigned (`f := proc`) and called through (`f(x)`). Typed-
+    record-consts (`const p: Point = (x: 1; y: 2);`) emit a
+    default-constructed record plus per-field assignments --
+    TP7's const-isn't-actually-const semantics matches the
+    behaviour. Function-typed procedural types (`type Fn =
+    function(...): R`) parse but `f := some_func` collides with
+    the parameterless-bare-name rewrite; left for a future pass.
 
 Each milestone closes with: tests in `tests/cases/pascal/`, snapshot
 diagnostics + output + generated C++ checked in, runs green under

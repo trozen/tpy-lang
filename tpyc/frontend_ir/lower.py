@@ -27,6 +27,7 @@ from ..parse.nodes import (
     TpyAsPattern,
     TpyAssign,
     TpyBinOp,
+    TpyCallableRef,
     TpyClassPattern,
     TpyBoolLiteral,
     TpyBreak,
@@ -70,6 +71,7 @@ from .nodes import (
     BinOpKind,
     BoolLit,
     Call,
+    CallableType,
     CmpOpKind,
     Compare,
     Enum,
@@ -1039,6 +1041,28 @@ def _lower_type(
             members.append(lm)
         return TpyUnionRef(members=tuple(members),
                            loc=_to_source_loc(t.loc))
+    if isinstance(t, CallableType):
+        params_lowered: list = []
+        for p in t.params:
+            lp = _lower_type(p, plugin_name, fm, diags)
+            if lp is None:
+                return None
+            params_lowered.append(lp)
+        if t.return_type is None:
+            # `procedure(...)` -- the void-returning form. TPy
+            # spells this as `Callable[[...], None]`; the resolver
+            # accepts `NoneType` (`TpyTypeRef("None")`) as the
+            # return type.
+            ret = TpyTypeRef(name="None", args=(),
+                             loc=_to_source_loc(t.loc))
+        else:
+            ret = _lower_type(t.return_type, plugin_name, fm, diags)
+            if ret is None:
+                return None
+        return TpyCallableRef(
+            kind="Callable", params=tuple(params_lowered),
+            return_type=ret, loc=_to_source_loc(t.loc),
+        )
     diags.append(_ir_invalid(
         plugin_name, fm,
         f"unsupported TypeExpr kind: {type(t).__name__}",

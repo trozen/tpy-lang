@@ -473,6 +473,9 @@ class _Parser:
             return self.parse_set_type()
         if self.cur.kind == TokKind.CARET:
             return self.parse_pointer_type()
+        if (self.cur.kind == TokKind.KEYWORD
+                and self.cur.text in ("procedure", "function")):
+            return self.parse_procedure_type()
         if self.cur.kind == TokKind.LPAREN:
             return self.parse_enum_type()
         # Subrange shape: a signed int literal followed by `..` and
@@ -559,6 +562,27 @@ class _Parser:
             )
         return pa.StringTypeSpec(
             capacity=capacity, loc=self._loc(start, end_tok),
+        )
+
+    def parse_procedure_type(self) -> pa.ProcedureTypeSpec:
+        """`procedure(p1: T1; p2: T2)` or `function(p1: T; ...): R`
+        as a type. Parameter names are required by the surface
+        grammar (TP7-style) but don't carry through to the lowered
+        Callable type. Used in typed-callback patterns."""
+        kw = self._eat(TokKind.KEYWORD)
+        assert kw.text in ("procedure", "function")
+        is_function = kw.text == "function"
+        params: list = []
+        if self.cur.kind == TokKind.LPAREN:
+            params = self.parse_param_list()
+        return_type: object | None = None
+        if is_function:
+            self._eat(TokKind.COLON)
+            return_type = self.parse_type_spec()
+        end_tok = self.tokens[self.i - 1]
+        return pa.ProcedureTypeSpec(
+            params=params, return_type=return_type,
+            loc=self._loc(kw, end_tok),
         )
 
     def parse_pointer_type(self) -> pa.PointerTypeSpec:

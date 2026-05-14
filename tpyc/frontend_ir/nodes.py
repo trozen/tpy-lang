@@ -149,9 +149,24 @@ class UnionType:
     loc: Loc | None = None
 
 
+@dataclass
+class CallableType:
+    """`Callable[[P1, P2], R]` -- a function-pointer-style type
+    annotation. Used by plugins (e.g. Pascal `type Fn = procedure
+    (x: integer);`) to express a first-class callable value's type.
+    Lowers to a `TpyCallableRef`. The `params` slot carries TypeExpr
+    nodes per parameter (parameter names aren't part of the type
+    signature); `return_type=None` lowers to a `None`-returning
+    callable (Pascal `procedure`)."""
+    kind: str = field(default="CallableType", init=False)
+    params: tuple["TypeExpr", ...] = ()
+    return_type: "TypeExpr | None" = None
+    loc: Loc | None = None
+
+
 # Plugin authors compose types out of the nodes above. Later milestones
 # widen this union with OptionalType / OwnType / ReadonlyType / etc.
-TypeExpr = Union[NamedType, PointerType, UnionType]
+TypeExpr = Union[NamedType, PointerType, UnionType, CallableType]
 
 
 # --- Expressions ----------------------------------------------------------

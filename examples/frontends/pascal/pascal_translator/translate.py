@@ -32,6 +32,7 @@ from tpyc.frontend_ir import (
     BinOpKind,
     BoolLit,
     Call,
+    CallableType,
     CmpOpKind,
     Compare,
     Enum,
@@ -336,6 +337,10 @@ def translate(program: pa.Program,
                 # walking `ctx.record_types` / `ctx.type_aliases`,
                 # so forward references work for free.
                 ctx.type_aliases[td.name] = td.type_spec
+            elif isinstance(td.type_spec, pa.ProcedureTypeSpec):
+                # `type Fn = procedure(...)` / `type Fn = function
+                # (...): R` -- procedural type alias.
+                ctx.type_aliases[td.name] = td.type_spec
 
     # `uses` clauses: resolve each to a canonical TPy module name and
     # mark it as a star import. Bare names (`uses Crt`) resolve only
@@ -380,6 +385,8 @@ def translate(program: pa.Program,
                 pass  # registered in pre-scan as a type alias
             elif isinstance(td.type_spec, pa.PointerTypeSpec):
                 pass  # registered in pre-scan as a type alias
+            elif isinstance(td.type_spec, pa.ProcedureTypeSpec):
+                pass  # registered in pre-scan as a type alias
             else:
                 ctx.diagnostics.append(_diag(
                     f"unsupported type declaration "
@@ -396,7 +403,11 @@ def translate(program: pa.Program,
     for cb in program.const_blocks:
         for cd in cb.decls:
             lowered = _lower_const_decl(cd, ctx)
-            if lowered is not None:
+            if lowered is None:
+                continue
+            if isinstance(lowered, (tuple, list)):
+                top_level_stmts.extend(lowered)
+            else:
                 top_level_stmts.append(lowered)
 
     # Module-level var section -> per-name IR VarDecls. Scalar globals
@@ -832,6 +843,22 @@ def _lower_type_spec(spec, ctx: _Ctx):
         return PointerType(
             inner=pointee, loc=_to_ir_loc(spec.loc),
         )
+    if isinstance(spec, pa.ProcedureTypeSpec):
+        param_types: list = []
+        for p in spec.params:
+            pt = _lower_type_spec(p.type_spec, ctx)
+            if pt is None:
+                return None
+            param_types.append(pt)
+        ret: object | None = None
+        if spec.return_type is not None:
+            ret = _lower_type_spec(spec.return_type, ctx)
+            if ret is None:
+                return None
+        return CallableType(
+            params=tuple(param_types), return_type=ret,
+            loc=_to_ir_loc(spec.loc),
+        )
     ctx.diagnostics.append(_diag(
         f"unsupported type spec {type(spec).__name__}",
         getattr(spec, "loc", _zero_loc()),
@@ -889,20 +916,45 @@ def _lower_typed_const_decl(decl: pa.ConstDecl, ctx: _Ctx):
     if (isinstance(spec, pa.NamedTypeSpec)
             and spec.name in ctx.record_types
             and isinstance(decl.value, pa.RecordLit)):
-        # Typed-record-const: `const p: Point = (x: 1; y: 2);`
-        # TPy doesn't auto-derive a keyword-arg constructor when
-        # every field has a default (the auto-init takes no args),
-        # so we can't pass `Point(x=1, y=2)` directly. Emitting a
-        # default-construct + per-field assignment would work but
-        # changes the const's semantics (the value would be a
-        # mutable record). Defer typed-record-consts to a later
-        # round; document the gap rather than partially support it.
-        ctx.diagnostics.append(_diag(
-            f"typed-record-const {decl.name!r} not yet supported; "
-            f"declare as a `var` and assign fields individually",
-            decl.loc,
-        ))
-        return None
+        # Typed-record-const: lowered as a default-constructed
+        # record followed by per-field assignments. TPy doesn't
+        # auto-derive a keyword-arg constructor when every field
+        # has a default, so we can't fold the init into one call.
+        # The end result is functionally identical for the kid-
+        # program scope (TP7 itself doesn't enforce that consts are
+        # immutable at the bytecode level either).
+        ir_type = _lower_type_spec(spec, ctx)
+        if ir_type is None:
+            return None
+        record_field_map = ctx.record_fields.get(spec.name, {})
+        ctor_call = Call(
+            callee=Name(ident=spec.name, loc=ir_loc),
+            args=(), loc=ir_loc,
+        )
+        stmts: list = [VarDecl(
+            name=decl.name, type=ir_type, init=ctor_call,
+            mutable=True, loc=ir_loc,
+        )]
+        for fname, fvalue in decl.value.fields:
+            if fname not in record_field_map:
+                ctx.diagnostics.append(_diag(
+                    f"typed-record-const {decl.name!r}: field "
+                    f"{fname!r} is not declared on record "
+                    f"{spec.name!r}",
+                    decl.loc,
+                ))
+                return None
+            fv_ir = _lower_expr(fvalue, ctx)
+            if fv_ir is None:
+                return None
+            stmts.append(Assign(
+                targets=(Attr(
+                    target=Name(ident=decl.name, loc=ir_loc),
+                    ident=fname, loc=ir_loc,
+                ),),
+                value=fv_ir, loc=ir_loc,
+            ))
+        return tuple(stmts) if len(stmts) > 1 else stmts[0]
     if isinstance(decl.value, (pa.ArrayLit, pa.RecordLit)):
         ctx.diagnostics.append(_diag(
             f"typed-const {decl.name!r}: value form doesn't match "
@@ -1007,6 +1059,8 @@ def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
             elif isinstance(target, pa.PointerTypeSpec):
                 pointer_pointee = target.pointee
                 resolved = "pointer"
+            elif isinstance(target, pa.ProcedureTypeSpec):
+                resolved = "procedure"
             break
         ctx.type_env[name] = resolved
         if subrange_bounds is not None:
@@ -1031,6 +1085,9 @@ def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
         # Remember the pointee spec keyed by var name -- `New(p)` /
         # `Dispose(p)` need the pointee type at the call site.
         ctx.pointer_pointee[name] = spec.pointee
+        return
+    if isinstance(spec, pa.ProcedureTypeSpec):
+        ctx.type_env[name] = "procedure"
         return
 
 
@@ -1269,7 +1326,11 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx,
     for cb in sub.const_blocks:
         for cd in cb.decls:
             lowered = _lower_const_decl(cd, ctx)
-            if lowered is not None:
+            if lowered is None:
+                continue
+            if isinstance(lowered, (tuple, list)):
+                body_stmts.extend(lowered)
+            else:
                 body_stmts.append(lowered)
 
     # Local var-block. Locals get a zero-style default init so TPy's
@@ -2134,6 +2195,24 @@ def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
         return ExprStmt(value=call, loc=_to_ir_loc(stmt.loc))
     sig = ctx.signatures.get(name)
     if sig is None:
+        # Calling through a procedural-typed local: `f(x)` where
+        # `f: TFn = procedure(x: integer)`. The variable carries
+        # a callable value; emit a plain Call with the args
+        # lowered. The type env tells us `name` is procedural.
+        if ctx.type_env.get(name) == "procedure":
+            args: list = []
+            for a in stmt.args:
+                la = _lower_expr(a, ctx)
+                if la is None:
+                    return None
+                args.append(la)
+            ir_call = Call(
+                callee=Name(ident=name,
+                            loc=_to_ir_loc(stmt.callee.loc)),
+                args=tuple(args),
+                loc=_to_ir_loc(stmt.loc),
+            )
+            return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
         # Mirror the call-expression behaviour: when at least one
         # `uses` clause is present, the name might be a star-imported
         # procedure from a sibling module -- emit a generic Call and
