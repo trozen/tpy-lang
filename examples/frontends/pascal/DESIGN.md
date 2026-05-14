@@ -94,14 +94,15 @@ TPy-core changes.
   `set[T]`; literal `[a, b, c]` and `[lo..hi]`; `+`/`-`/`*` set ops
   (union / difference / intersection); `in` membership on set-typed
   variables.
-- **Subrange enforcement** (M12, shipped): insert `check_subrange(...)`
-  calls at assignment sites whose declared type is a subrange alias.
-  Always-on (no `{$R+}` / `{$R-}` directive handling). Index-site
-  enforcement still pending.
-- **Ranges in `case`** (M12, shipped): `case x of 1..5: ...`. Lowers
-  to a guarded `MatchWildcard` arm (`case _ if lo <= x <= hi:`).
-  Scalar labels keep their structural `MatchValue` form. Enum-typed
-  range labels need ordering comparisons on enums and are deferred.
+- **Subrange enforcement** (M12, M14.5, shipped): insert
+  `check_subrange(...)` at assignment sites and at array index
+  sites. Always-on (no `{$R+}` / `{$R-}` directive handling).
+- **Ranges in `case`** (M12, M14.5, shipped): `case x of 1..5: ...`.
+  Integer / Char ranges lower to a guarded `MatchWildcard` arm
+  (`case _ if lo <= x <= hi:`); enum-typed ranges expand to one
+  `MatchValue` arm per enum member in the closed interval (no
+  ordering comparisons on enums required). Scalar labels stay
+  structural `MatchValue` for the jump-table form.
 - **Pointers**: `^T`, `New`, `Dispose`, `^x.field`. Maps to `Ptr[T]`
   via `tpy.unsafe.unsafe_alloc` (allocate) + `unsafe_init`
   (placement-construct), with `unsafe_drop` + `unsafe_free` on
@@ -109,25 +110,30 @@ TPy-core changes.
   TPy's implicit pointer-attribute deref. A thin Pascal-runtime
   wrapper is also an option if the unsafe-call surface gets
   unwieldy.
-- **File I/O** (M13, shipped, text subset): `text` type and
-  `Assign(f, name)` / `Reset(f)` / `Rewrite(f)` / `Close(f)` /
-  `Writeln(f, x)` / `Readln(f, x)` / `Eof(f)`. Backed by a
-  `pascal.runtime.io.TextFile` class that slurps the file into a
-  per-line buffer on `Reset` and flushes accumulated writes on
-  `Close`. `File of T` (typed binary files), `Append`, `Erase`,
-  `Rename` are still pending.
+- **File I/O** (M13, M14.5, shipped, text subset): `text` type and
+  `Assign(f, name)` / `Reset(f)` / `Rewrite(f)` / `Append(f)` /
+  `Close(f)` / `Writeln(f, x)` / `Readln(f, x)` / `Eof(f)`. Backed
+  by a `pascal.runtime.io.TextFile` class that slurps the file into
+  a per-line buffer on `Reset` and flushes accumulated writes on
+  `Close`. `File of T` (typed binary files) is still pending.
+  `Erase` / `Rename` are blocked on TPy not exposing the `os`
+  module (no `os.remove`/`os.rename`).
 - **Variant records**: `record case Tag: T of ... end`. Maps to a
   TPy union type.
 - **Strings beyond ShortString**: longer-than-255, AnsiString,
   PChar interop. Lower priority within Tier 2; FixStr covers the
   kid-program use case.
-- **`Crt` unit (portable subset)**: `TextColor`, `TextBackground`,
-  `GotoXY`, `WhereX`, `WhereY`, `ClrScr`, `ClrEol`, `KeyPressed`,
-  `ReadKey`, `Delay`, `Sound`/`NoSound` (best-effort). Backed by a
-  Pascal-runtime module that emits ANSI escape codes for color /
-  cursor and uses TPy stdin / threading for keyboard polling. The
-  PC-speaker calls (`Sound`/`NoSound`) likely become no-ops on
-  modern systems.
+- **`Crt` unit (portable subset)** (M14, M14.5, shipped, partial):
+  color constants (`Black`..`White`), `TextColor`,
+  `TextBackground`, `ClrScr`, `ClrEol`, `GotoXY`, `Delay`,
+  `Sound`/`NoSound` (no-ops on modern systems), and `ReadKey`
+  (bare-name or parens-form both work).  Backed by
+  `pascal/lib/crt.py`, a Pascal-frontend stdlib module that emits
+  ANSI CSI/SGR escape codes and routes `ReadKey` through TPy's
+  `input()` builtin (one-line-at-a-time, since TPy doesn't expose
+  raw-mode termios). `WhereX`/`WhereY` are deferred (need a cursor-
+  position query round trip + raw stdin); `KeyPressed` is deferred
+  (needs non-blocking stdin / termios, which TPy doesn't expose).
 - **`Graph` unit**: `InitGraph`, `CloseGraph`, `SetColor`,
   `SetBkColor`, `PutPixel`, `Line`, `Rectangle`, `Circle`, `Bar`,
   `OutTextXY`, `MoveTo`, `LineTo`, `FloodFill`, palette ops.
@@ -379,6 +385,17 @@ TODOs the tier needs.
 13. **Text-file I/O.** `text` type, `Assign`/`Reset`/`Rewrite`/`Close`,
     `Writeln(f, x)`/`Readln(f, x)`, `Eof(f)`, backed by a Pascal-
     runtime `TextFile` class with a per-line buffer.
+14. **`Crt` portable subset.** Color / cursor / clear-screen via
+    ANSI escapes; `Delay`/`Sound`/`NoSound`; `ReadKey`. Shipped as
+    `pascal/lib/crt.py`, a Pascal-frontend stdlib module
+    discoverable by `uses Crt;` without the user copying anything
+    into the project tree.
+14.5. **Gap closing.** Items deferred from M12-M14 that didn't
+    need new TPy work: enum range labels expanded via the enum's
+    member list, subrange enforcement at array index sites,
+    `Append(f)` text-file mode, bare-name parameterless function
+    calls (`ch := ReadKey;` without parens) via Python-module
+    signature ingestion at translate time.
 
 Each milestone closes with: tests in `tests/cases/pascal/`, snapshot
 diagnostics + output + generated C++ checked in, runs green under

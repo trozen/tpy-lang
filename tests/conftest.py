@@ -684,7 +684,12 @@ def _frontend_registry_for(src_file: Path):
     plugin = load_plugin(str(plugin_path), {})
     reg = FrontendRegistry()
     reg.register(plugin)
-    return reg, [plugin_dir]
+    # Pascal-frontend stdlib lives at `pascal/lib/`. Adding it as a
+    # search root means a Pascal `uses Crt;` (which lowers to a star
+    # import of bare `crt`) resolves to `pascal/lib/crt.py` rather
+    # than failing to discover the module.
+    pascal_stdlib_dir = plugin_dir / "pascal" / "lib"
+    return reg, [plugin_dir, pascal_stdlib_dir]
 
 
 def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str | None = None) -> CompileResult:

@@ -68,6 +68,35 @@ void __tpy_init() {
     std::cout << "sum: ";
     // writeln(sum);
     std::cout << sum << "\n";
+    // assign(f, 'out.txt');
+    f->assign("out.txt");
+    // append(f);
+    f->append();
+    // writeln(f, 50);
+    f->writeln_int(50);
+    // writeln(f, 'tail');
+    f->writeln_str("tail");
+    // close(f);
+    f->close();
+    // assign(f, 'out.txt');
+    f->assign("out.txt");
+    // reset(f);
+    f->reset();
+    // write('lines: ');
+    std::cout << "lines: ";
+    // n := 0;
+    n = 0;
+    // while not eof(f) do
+    while ((!(f->eof()))) {
+        // readln(f, line);
+        line->assign(f->readln_line());
+        // n := n + 1;
+        n = (::tpy::add_check<int32_t>(n, 1));
+    }
+    // writeln(n);
+    std::cout << n << "\n";
+    // close(f);
+    f->close();
 }
 
 } // namespace tpyapp::main

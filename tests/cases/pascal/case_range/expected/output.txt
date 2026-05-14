@@ -7,3 +7,5 @@ mid
 high
 high
 high
+weekday
+weekend

@@ -700,8 +700,13 @@ class _Parser:
     def parse_var_block(self) -> pa.VarBlock:
         start = self._eat(TokKind.KEYWORD, "var")
         decls: list = []
-        # A `var` section runs until the next non-decl keyword (`begin`).
-        while not (self.cur.kind == TokKind.KEYWORD and self.cur.text == "begin"):
+        # A `var` section ends at the next decl-section keyword
+        # (`procedure`, `function`, `const`, `type`, `var`) or at the
+        # body marker (`begin`). Each entry inside the section starts
+        # with an IDENT (the variable name); a non-IDENT closes the
+        # section so the outer `_parse_decl_blocks` loop can dispatch
+        # to the next handler.
+        while self.cur.kind == TokKind.IDENT:
             decls.append(self.parse_var_decl())
             self._eat(TokKind.SEMI)
         if not decls:

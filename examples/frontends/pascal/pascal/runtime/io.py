@@ -77,12 +77,14 @@ class TextFile:
     _lines: list[str]
     _index: Int32
     _write_buf: list[str]
+    _append_mode: bool
 
     def __init__(self) -> None:
         self.path = ""
         self._lines = []
         self._index = Int32(0)
         self._write_buf = []
+        self._append_mode = False
 
     def assign(self, name: str) -> None:
         self.path = name
@@ -96,6 +98,7 @@ class TextFile:
         self._lines = data.splitlines()
         self._index = Int32(0)
         self._write_buf = []
+        self._append_mode = False
 
     def rewrite(self) -> None:
         """Open the assigned path for writing. Pascal `Rewrite`
@@ -104,17 +107,29 @@ class TextFile:
         self._lines = []
         self._index = Int32(0)
         self._write_buf = []
+        self._append_mode = False
+
+    def append(self) -> None:
+        """Open the assigned path for appending. New writes go to the
+        end of the existing file; `close` flushes them with "a" mode
+        so the on-disk file keeps its prior content."""
+        self._lines = []
+        self._index = Int32(0)
+        self._write_buf = []
+        self._append_mode = True
 
     def close(self) -> None:
         """Flush pending writes (if any) and reset the file state.
         Calling `close` twice or on an unopened file is a no-op."""
         if len(self._write_buf) > 0:
-            with open(self.path, "w") as f:
+            mode: str = "a" if self._append_mode else "w"
+            with open(self.path, mode) as f:
                 for chunk in self._write_buf:
                     f.write(chunk)
         self._lines = []
         self._index = Int32(0)
         self._write_buf = []
+        self._append_mode = False
 
     def eof(self) -> bool:
         return self._index >= len(self._lines)

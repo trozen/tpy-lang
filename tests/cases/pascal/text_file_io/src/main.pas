@@ -30,4 +30,25 @@ begin
   close(f);
   write('sum: ');
   writeln(sum);
+
+  { Append: open the same file for append, add two more lines,
+    close, then reopen for read and confirm both old + new
+    content are present. }
+  assign(f, 'out.txt');
+  append(f);
+  writeln(f, 50);
+  writeln(f, 'tail');
+  close(f);
+
+  assign(f, 'out.txt');
+  reset(f);
+  write('lines: ');
+  n := 0;
+  while not eof(f) do
+  begin
+    readln(f, line);
+    n := n + 1;
+  end;
+  writeln(n);
+  close(f);
 end.

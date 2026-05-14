@@ -1,13 +1,25 @@
 { M12: `case` arms with range labels. Mixes single-value labels,
   comma-separated lists, and range labels (`1..3`) in one statement.
-  Enum-typed range labels (e.g. `Mon..Fri`) are intentionally not
-  exercised here -- they need ordering comparisons on enums, which
-  TPy doesn't expose yet; the workaround is to enumerate the values
-  via the comma-separated label form. }
+  Enum-typed range labels (`Mon..Fri`) are expanded to one
+  MatchValue arm per enum member in the closed interval at
+  translate time -- sidesteps the missing ordering comparisons on
+  enum types. }
 program CaseRange;
+type
+  Day = (Mon, Tue, Wed, Thu, Fri, Sat, Sun);
 var
   n: integer;
   i: integer;
+  d: Day;
+
+procedure classify(d: Day);
+begin
+  case d of
+    Mon..Fri: writeln('weekday');
+    Sat..Sun: writeln('weekend');
+  end;
+end;
+
 begin
   for i := 0 to 8 do
   begin
@@ -20,4 +32,8 @@ begin
       else      writeln('out');
     end;
   end;
+  d := Wed;
+  classify(d);
+  d := Sat;
+  classify(d);
 end.

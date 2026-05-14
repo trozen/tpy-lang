@@ -12,10 +12,7 @@ namespace tpyapp::main {
 
 using ::pascal_rt::runtime::builtins::check_subrange;
 
-extern std::array<int32_t, 8>* data;
-extern int32_t i;
-extern int32_t j;
-extern int32_t tmp;
+extern std::array<int32_t, 5>* data;
 inline constexpr std::string_view __name__ = "__main__";
 
 void __tpy_init();

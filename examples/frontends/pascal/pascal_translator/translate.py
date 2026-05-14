@@ -183,10 +183,12 @@ class _Ctx:
     # Powers writeln-overload dispatch for `p.x` and similar field
     # access in expression position.
     record_fields: dict[str, dict[str, str]] = field(default_factory=dict)
-    # Lower bound for each declared array variable, keyed by variable
-    # name. Indexing into the variable subtracts this from the index
-    # expression so the lowered IR uses 0-based indexing.
+    # Declared lower / upper bounds for each array variable, keyed
+    # by variable name. The lower bound is subtracted from the index
+    # so the lowered IR uses 0-based indexing; the upper bound feeds
+    # the index-site range check (`check_subrange`).
     array_lower_bounds: dict[str, int] = field(default_factory=dict)
+    array_upper_bounds: dict[str, int] = field(default_factory=dict)
     # FixStr capacity per declared `string`/`string[N]` variable.
     # Used by assignment lowering (`s := 'lit'` -> `s.assign('lit')`)
     # and by string-literal-vs-FixStr disambiguation.
@@ -302,6 +304,8 @@ def translate(program: pa.Program,
             ctx.star_imports.add(resolved)
             if resolved_path is not None and resolved_path.suffix == ".pas":
                 _ingest_unit_signatures(resolved_path, ctx)
+            elif resolved_path is not None and resolved_path.suffix == ".py":
+                _ingest_py_module_signatures(resolved_path, ctx)
 
     records: list = []
     enums: list = []
@@ -413,16 +417,28 @@ def translate(program: pa.Program,
 # ---------------------------------------------------------------------------
 # Type lowering
 
+_PASCAL_STDLIB_DIR = (
+    Path(__file__).resolve().parent.parent / "pascal" / "lib"
+)
+
+
 def _resolve_uses_name_and_path(uses_name: str, loc: pa.Loc,
                                 ctx: _Ctx) -> tuple:
     """Resolve a Pascal `uses` target. Returns `(module_name, path)`.
 
     - `py.X`           -> `(X, None)` -- defer to TPy resolver; no
                           file-system lookup at translate time.
-    - bare `Foo`       -> search user dirs for `Foo.pas` / `foo.py`;
-                          returns the file's stem and absolute path.
-                          Returns `(None, None)` and emits a
-                          diagnostic when not found.
+    - bare `Foo`       -> search user dirs first (then the Pascal-
+                          frontend stdlib at `pascal/lib/`) for
+                          `Foo.pas` / `foo.py`; returns the file's
+                          stem and absolute path.  Returns
+                          `(None, None)` and emits a diagnostic
+                          when not found.
+
+    The Pascal stdlib (Crt, ...) lives at `_PASCAL_STDLIB_DIR` --
+    distinct from TPy's `lib/tpy/`, so bare `uses Math;` doesn't
+    accidentally pick up `lib/tpy/math.py`. The TPy stdlib remains
+    reachable via the explicit `uses py.X;` escape hatch.
     """
     if uses_name.startswith("py."):
         return uses_name[3:], None
@@ -435,7 +451,10 @@ def _resolve_uses_name_and_path(uses_name: str, loc: pa.Loc,
     ]
     target = uses_name.lower()
     import os
-    for d in user_dirs:
+    search_dirs = list(user_dirs)
+    if _PASCAL_STDLIB_DIR.is_dir():
+        search_dirs.append(_PASCAL_STDLIB_DIR)
+    for d in search_dirs:
         try:
             entries = os.listdir(d)
         except OSError:
@@ -453,6 +472,49 @@ def _resolve_uses_name_and_path(uses_name: str, loc: pa.Loc,
         loc,
     ))
     return None, None
+
+
+def _ingest_py_module_signatures(path, ctx: _Ctx) -> None:
+    """Parse a Pascal-side TPy module (`.py`) and harvest top-level
+    `def` signatures into `ctx.signatures`. Used so a Pascal bare
+    name like `ch := ReadKey;` (no parens) can be recognized as a
+    parameterless function call rather than a constant read.
+
+    Only top-level `def`s are visited; classes / nested defs / async
+    defs are skipped. The harvested signature uses a generic
+    return-type marker (`'auto'`) -- the translator only needs to
+    know that a name refers to a callable, not the precise return
+    type."""
+    import ast as _pyast
+    try:
+        source = path.read_text()
+        tree = _pyast.parse(source)
+    except Exception:
+        return
+    for node in tree.body:
+        if not isinstance(node, _pyast.FunctionDef):
+            continue
+        if node.name.startswith("_"):
+            continue
+        if node.name in ctx.signatures:
+            continue
+        # Only count positional-or-keyword args without defaults --
+        # default-valued args still let the user write the bare-name
+        # form, but for translator dispatch we mirror only the
+        # required parameters.
+        args_obj = node.args
+        param_names = [a.arg for a in args_obj.posonlyargs] \
+                      + [a.arg for a in args_obj.args]
+        # `*args` and `**kwargs` aren't supported on Pascal-callable
+        # functions; skip such defs (likely Python-only helpers).
+        if args_obj.vararg or args_obj.kwarg:
+            continue
+        ctx.signatures[node.name] = _Sig(
+            name=node.name,
+            param_names=param_names,
+            param_var_flags=[False] * len(param_names),
+            return_type="auto",
+        )
 
 
 def _ingest_unit_signatures(path, ctx: _Ctx) -> None:
@@ -688,6 +750,7 @@ def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
     if isinstance(spec, pa.ArrayTypeSpec):
         ctx.type_env[name] = "array"
         ctx.array_lower_bounds[name] = spec.lower
+        ctx.array_upper_bounds[name] = spec.upper
         return
     if isinstance(spec, pa.StringTypeSpec):
         ctx.type_env[name] = "string"
@@ -1196,23 +1259,38 @@ def _lower_index_expr(expr: pa.IndexExpr, ctx: _Ctx):
     name. Indexing into anything other than a bare identifier (e.g.
     nested arrays, future record-of-array fields) defaults to a
     lower bound of 1, matching Pascal's string-indexing convention.
+
+    When the array's declared bounds are known, the lowered code
+    also wraps the index in a `check_subrange(...)` call so an out-
+    of-range read panics with a TP-style range-check message before
+    the C++ subscript reaches an undefined-behaviour region.
     """
     target_node = _lower_expr(expr.target, ctx)
     index_node = _lower_expr(expr.index, ctx)
     if target_node is None or index_node is None:
         return None
     lower = 1
+    upper: int | None = None
     if isinstance(expr.target, pa.Ident):
         lower = ctx.array_lower_bounds.get(expr.target.name, 1)
+        upper = ctx.array_upper_bounds.get(expr.target.name)
+    ir_loc = _to_ir_loc(expr.loc)
+    if upper is not None:
+        index_node = _wrap_subrange_check(
+            index_node, (lower, upper),
+            f"{expr.target.name} index"
+            if isinstance(expr.target, pa.Ident) else "array index",
+            ir_loc, ctx,
+        )
     if lower != 0:
         index_node = BinOp(
             op=BinOpKind.SUB,
             lhs=index_node,
-            rhs=IntLit(value=lower, loc=_to_ir_loc(expr.loc)),
-            loc=_to_ir_loc(expr.loc),
+            rhs=IntLit(value=lower, loc=ir_loc),
+            loc=ir_loc,
         )
     return Subscript(target=target_node, index=index_node,
-                     loc=_to_ir_loc(expr.loc))
+                     loc=ir_loc)
 
 
 def _lower_compound_as_marker(stmt: pa.CompoundStmt, ctx: _Ctx):
@@ -1271,14 +1349,19 @@ def _lower_case_stmt(stmt: pa.CaseStmt, ctx: _Ctx):
     # we can name in both the Match.subject and each guard. Status-quo
     # all-scalar-label cases skip the hoist so they keep emitting a
     # bare `match expr:` shape.
-    has_range = any(
-        isinstance(v, pa.RangeLabel)
+    # Enum range labels (`Mon..Fri:`) expand to one MatchValue arm
+    # per enum member in [lo..hi] -- the enum's member list is in
+    # `ctx.enum_types`, so we don't need ordering comparisons on
+    # enum types (TPy doesn't expose any). Integer / Char ranges
+    # fall back to a guarded MatchWildcard arm.
+    guard_ranges_present = any(
+        isinstance(v, pa.RangeLabel) and not _enum_range_members(v, ctx)
         for arm in stmt.arms for v in arm.values
     )
     prelude: list = []
     subject_ref = subject
     subject_name: str | None = None
-    if has_range:
+    if guard_ranges_present:
         if isinstance(subject, Name):
             subject_name = subject.ident
         else:
@@ -1298,6 +1381,18 @@ def _lower_case_stmt(stmt: pa.CaseStmt, ctx: _Ctx):
         for v in arm.values:
             arm_ir_loc = _to_ir_loc(arm.loc)
             if isinstance(v, pa.RangeLabel):
+                enum_members = _enum_range_members(v, ctx)
+                if enum_members is not None:
+                    for member_ident in enum_members:
+                        member_ir = _lower_expr(member_ident, ctx)
+                        if member_ir is None:
+                            return None
+                        cases.append(MatchCase(
+                            pattern=MatchValue(value=member_ir,
+                                               loc=arm_ir_loc),
+                            body=body, loc=arm_ir_loc,
+                        ))
+                    continue
                 lo_ir = _lower_expr(v.lo, ctx)
                 hi_ir = _lower_expr(v.hi, ctx)
                 if lo_ir is None or hi_ir is None:
@@ -1330,6 +1425,32 @@ def _lower_case_stmt(stmt: pa.CaseStmt, ctx: _Ctx):
     return match
 
 
+def _enum_range_members(label: pa.RangeLabel, ctx: _Ctx):
+    """If `label.lo` and `label.hi` are both Ident references to
+    members of the same enum, return the list of Ident nodes for the
+    members in `[lo .. hi]` (inclusive, in declaration order). The
+    case-stmt lowering uses this to expand `Mon..Fri:` into per-
+    member MatchValue arms, sidestepping the need for ordering
+    comparisons on enum types.
+
+    Returns `None` when either bound isn't an enum member, when they
+    belong to different enums, or when `hi` precedes `lo` in the
+    enum's declaration order."""
+    lo, hi = label.lo, label.hi
+    if not (isinstance(lo, pa.Ident) and isinstance(hi, pa.Ident)):
+        return None
+    lo_enum = ctx.enum_member_to_type.get(lo.name)
+    hi_enum = ctx.enum_member_to_type.get(hi.name)
+    if lo_enum is None or hi_enum is None or lo_enum != hi_enum:
+        return None
+    members = ctx.enum_types[lo_enum]
+    lo_i = members.index(lo.name)
+    hi_i = members.index(hi.name)
+    if hi_i < lo_i:
+        return None
+    return [pa.Ident(name=m, loc=label.loc) for m in members[lo_i:hi_i + 1]]
+
+
 def _build_range_guard(subject_name: str, lo_ir, hi_ir, loc):
     """Build the guard expression `lo <= subject <= hi`. The frontend
     IR `Compare` is single-op only (matches Pascal); we emit two
@@ -1350,11 +1471,12 @@ def _build_range_guard(subject_name: str, lo_ir, hi_ir, loc):
 
 def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
     name = stmt.callee.name
-    if name in ("assign", "reset", "rewrite", "close"):
-        # File-state procedures; `assign(f, name)` stores the path,
-        # `reset(f)`/`rewrite(f)` open it for read/write, `close(f)`
-        # flushes. The translator routes each to a method call on the
-        # `TextFile` runtime class.
+    if name in ("assign", "reset", "rewrite", "append", "close"):
+        # File-state procedures; `assign(f, name)` takes two args,
+        # the rest take just the file. The translator routes each
+        # to a same-named method call on the `TextFile` runtime
+        # class. `Erase`/`Rename` are deferred -- they need `os`
+        # functions TPy doesn't expose yet.
         return _lower_file_op_stmt(stmt, ctx, name)
     if name in ("write", "writeln"):
         # File-form (`write(f, x)` / `writeln(f, x)`) dispatches on
@@ -1383,6 +1505,25 @@ def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
         return ExprStmt(value=call, loc=_to_ir_loc(stmt.loc))
     sig = ctx.signatures.get(name)
     if sig is None:
+        # Mirror the call-expression behaviour: when at least one
+        # `uses` clause is present, the name might be a star-imported
+        # procedure from a sibling module -- emit a generic Call and
+        # let TPy sema validate post-star-expansion. Without any
+        # `uses` clauses the name is genuinely unknown; error out.
+        if ctx.star_imports:
+            args: list = []
+            for a in stmt.args:
+                la = _lower_expr(a, ctx)
+                if la is None:
+                    return None
+                args.append(la)
+            ir_call = Call(
+                callee=Name(ident=name,
+                            loc=_to_ir_loc(stmt.callee.loc)),
+                args=tuple(args),
+                loc=_to_ir_loc(stmt.loc),
+            )
+            return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
         ctx.diagnostics.append(_diag(
             f"unknown procedure {name!r}", stmt.callee.loc))
         return None
@@ -1825,6 +1966,23 @@ def _lower_expr(expr, ctx: _Ctx):
             return Attr(
                 target=Name(ident=enum_name, loc=ir_loc),
                 ident=expr.name, loc=ir_loc,
+            )
+        # Bare-name parameterless function call: when the name is a
+        # known function (signature with no params and a return
+        # type) and isn't shadowed by a local variable, synthesize a
+        # call. Pascal allows the parens-free form for functions:
+        # `ch := ReadKey;`. Functions/procedures with required
+        # parameters keep the existing "must use parens" rule -- a
+        # bare reference to them stays a plain Name.
+        sig = ctx.signatures.get(expr.name)
+        if (sig is not None
+                and sig.return_type is not None
+                and not sig.param_names
+                and expr.name not in ctx.type_env):
+            ir_loc = _to_ir_loc(expr.loc)
+            return Call(
+                callee=Name(ident=expr.name, loc=ir_loc),
+                args=(), loc=ir_loc,
             )
         return Name(ident=expr.name, loc=_to_ir_loc(expr.loc))
     if isinstance(expr, pa.FieldAccess):
