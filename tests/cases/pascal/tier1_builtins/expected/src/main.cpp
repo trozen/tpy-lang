@@ -13,41 +13,38 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // i := 5;
     i = 5;
     // inc(i);              writeln(i);  { 6 }
     i = (::tpy::add_check<int32_t>(i, 1));
     // inc(i);              writeln(i);  { 6 }
-    ::pascal_rt::runtime::io::writeln_int(i);
+    std::cout << i << "\n";
     // inc(i, 3);           writeln(i);  { 9 }
     i = (::tpy::add_check<int32_t>(i, 3));
     // inc(i, 3);           writeln(i);  { 9 }
-    ::pascal_rt::runtime::io::writeln_int(i);
+    std::cout << i << "\n";
     // dec(i, 2);           writeln(i);  { 7 }
     i = (::tpy::sub_check<int32_t>(i, 2));
     // dec(i, 2);           writeln(i);  { 7 }
-    ::pascal_rt::runtime::io::writeln_int(i);
+    std::cout << i << "\n";
     // writeln(sqr(i));                  { 49 }
-    ::pascal_rt::runtime::io::writeln_int((::tpy::mul_check<int32_t>(i, i)));
+    std::cout << (::tpy::mul_check<int32_t>(i, i)) << "\n";
     // if odd(i) then writeln('odd') else writeln('even');
     if (((::tpy::mod_floor<int32_t>(i, 2)) != 0)) {
         // if odd(i) then writeln('odd') else writeln('even');
-        ::pascal_rt::runtime::io::writeln("odd");
+        std::cout << "odd" << "\n";
     } else {
         // if odd(i) then writeln('odd') else writeln('even');
-        ::pascal_rt::runtime::io::writeln("even");
+        std::cout << "even" << "\n";
     }
     // writeln(abs(-42));                { 42 }
-    ::pascal_rt::runtime::io::writeln_int(::std::abs(-42));
+    std::cout << ::std::abs(-42) << "\n";
     // c := 'A';
     c = ::tpy::char_from_str("A");
     // writeln(ord(c));                  { 65 }
-    ::pascal_rt::runtime::io::writeln_int(static_cast<int32_t>(static_cast<unsigned char>(c)));
+    std::cout << static_cast<int32_t>(static_cast<unsigned char>(c)) << "\n";
     // writeln(chr(66));                 { B }
-    ::pascal_rt::runtime::io::writeln(std::string(::tpy::char_to_str(static_cast<char>(66))));
+    std::cout << static_cast<char>(66) << "\n";
 }
 
 } // namespace tpyapp::main

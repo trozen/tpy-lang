@@ -191,15 +191,16 @@ class Call:
 
     `type_args` carries explicit type arguments at the call site --
     Pascal needs them for generic-type constructor calls like
-    `Array[Int32, 8]()`. Lowering passes them through to the TpyCall's
-    `call_type` so sema's type-instantiation path fires. `kwargs`,
-    `star_args`, `double_star` from the design doc are not used yet;
-    they land with later milestones.
+    `Array[Int32, 8]()`. `kwargs` is a tuple of `(name, value)` pairs
+    -- needed for calls like Python's `print(x, end="")`. `star_args`
+    / `double_star` from the design doc are not used yet; they land
+    with later milestones.
     """
     kind: str = field(default="Call", init=False)
     callee: "Expr" = None  # type: ignore[assignment]
     type_args: tuple[TypeArg, ...] = ()
     args: tuple["Expr", ...] = ()
+    kwargs: tuple[tuple[str, "Expr"], ...] = ()
     loc: Loc | None = None
 
 
@@ -550,7 +551,21 @@ class FromImport:
     loc: Loc | None = None
 
 
-ImportDecl = Union[Import, FromImport]
+@dataclass
+class StarImport:
+    """`from M import *` -- bring every public name from `M` into the
+    importer's unqualified scope. Powers Pascal `uses A, B, C` and any
+    other source language with similar wildcard-import semantics. The
+    importer-side names list is resolved at compile time by TPy's
+    `_expand_star_imports_for_module`, which reads `M`'s public
+    surface from its module attribute table.
+    """
+    kind: str = field(default="StarImport", init=False)
+    module: str = ""
+    loc: Loc | None = None
+
+
+ImportDecl = Union[Import, FromImport, StarImport]
 
 
 # --- Directives -----------------------------------------------------------

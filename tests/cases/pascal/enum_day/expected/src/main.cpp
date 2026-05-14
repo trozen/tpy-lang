@@ -88,26 +88,23 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // d := Fri;
     d = day::fri;
     // if d = Fri then
     if ((d == day::fri)) {
         // writeln('TGIF')
-        ::pascal_rt::runtime::io::writeln("TGIF");
+        std::cout << "TGIF" << "\n";
     } else {
         // writeln('not yet');
-        ::pascal_rt::runtime::io::writeln("not yet");
+        std::cout << "not yet" << "\n";
     }
     // if (d <> Sat) and (d <> Sun) then
     if (((d != day::sat) && (d != day::sun))) {
         // writeln('weekday')
-        ::pascal_rt::runtime::io::writeln("weekday");
+        std::cout << "weekday" << "\n";
     } else {
         // writeln('weekend');
-        ::pascal_rt::runtime::io::writeln("weekend");
+        std::cout << "weekend" << "\n";
     }
 }
 

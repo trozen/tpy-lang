@@ -26,14 +26,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // for i := 0 to 10 do
     int32_t __stop_0 = ::tpy::add_check<int32_t>(10, 1);
     for (int32_t i = 0; i < __stop_0; ++i) {
         // writeln(fib(i));
-        ::pascal_rt::runtime::io::writeln_int(fib(i));
+        std::cout << fib(i) << "\n";
     }
 }
 

@@ -11,9 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // p: Point;
     static point __global_slot_1 = point();
     p = &__global_slot_1;
@@ -22,11 +19,11 @@ void __tpy_init() {
     // p.y := 20;
     p->y = 20;
     // writeln(p.x);
-    ::pascal_rt::runtime::io::writeln_int(p->x);
+    std::cout << p->x << "\n";
     // writeln(p.y);
-    ::pascal_rt::runtime::io::writeln_int(p->y);
+    std::cout << p->y << "\n";
     // writeln(p.x + p.y);
-    ::pascal_rt::runtime::io::writeln_int((::tpy::add_check<int32_t>(p->x, p->y)));
+    std::cout << (::tpy::add_check<int32_t>(p->x, p->y)) << "\n";
 }
 
 } // namespace tpyapp::main

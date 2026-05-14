@@ -90,27 +90,24 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // b := 42;
     b = 42;
     // writeln(b);
-    ::pascal_rt::runtime::io::writeln_int(b);
+    std::cout << b << "\n";
     // d := Sat;
     d = day::sat;
     // if d in [Sat, Sun] then writeln('weekend')
     if (((d == day::sat) || (d == day::sun))) {
         // if d in [Sat, Sun] then writeln('weekend')
-        ::pascal_rt::runtime::io::writeln("weekend");
+        std::cout << "weekend" << "\n";
     } else {
         // else writeln('weekday');
-        ::pascal_rt::runtime::io::writeln("weekday");
+        std::cout << "weekday" << "\n";
     }
     // if 5 in [1, 3, 5, 7, 9] then writeln('odd small');
     if ((((((5 == 1) || (5 == 3)) || (5 == 5)) || (5 == 7)) || (5 == 9))) {
         // if 5 in [1, 3, 5, 7, 9] then writeln('odd small');
-        ::pascal_rt::runtime::io::writeln("odd small");
+        std::cout << "odd small" << "\n";
     }
 }
 

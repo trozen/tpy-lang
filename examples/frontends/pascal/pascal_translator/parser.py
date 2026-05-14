@@ -106,39 +106,31 @@ class _Parser:
     # Program / declarations
 
     def parse_program(self) -> pa.Program:
-        start = self._eat(TokKind.KEYWORD, "program")
+        """Parse a Pascal compilation unit -- either `program X; ...
+        end.` or `unit X; interface ... implementation ... end.`.
+        Both forms share the decl-block grammar; only the body shape
+        differs."""
+        head = self.cur
+        if head.kind != TokKind.KEYWORD or head.text not in (
+                "program", "unit"):
+            raise ParseError(
+                f"expected 'program' or 'unit' header, got "
+                f"{head.kind.value} {head.text!r}",
+                head.line, head.col,
+            )
+        self.i += 1
+        kind = head.text
         name_tok = self._eat(TokKind.IDENT)
         self._eat(TokKind.SEMI)
-        # Pascal allows const / type / var / procedure / function decls
-        # in any order before the main block. Standard Pascal has at
-        # most one module-level var section; emitting an error on
-        # duplicates surfaces a likely typo without complicating the
-        # AST.
-        type_blocks: list = []
-        const_blocks: list = []
-        var_block: pa.VarBlock | None = None
-        subroutines: list = []
-        while True:
-            if self.cur.kind == TokKind.KEYWORD and self.cur.text == "type":
-                type_blocks.append(self.parse_type_block())
-                continue
-            if self.cur.kind == TokKind.KEYWORD and self.cur.text == "const":
-                const_blocks.append(self.parse_const_block())
-                continue
-            if self.cur.kind == TokKind.KEYWORD and self.cur.text == "var":
-                if var_block is not None:
-                    t = self.cur
-                    raise ParseError(
-                        "duplicate module-level 'var' section",
-                        t.line, t.col,
-                    )
-                var_block = self.parse_var_block()
-                continue
-            if self.cur.kind == TokKind.KEYWORD and self.cur.text in (
-                    "procedure", "function"):
-                subroutines.append(self.parse_subroutine())
-                continue
-            break
+        if kind == "unit":
+            return self._parse_unit_body(head, name_tok)
+        return self._parse_program_body(head, name_tok)
+
+    def _parse_program_body(self, head, name_tok) -> pa.Program:
+        """Parse the decls + `begin ... end.` body of a `program`."""
+        uses_clauses, type_blocks, const_blocks, var_block, subroutines = (
+            self._parse_decl_blocks()
+        )
         block = self.parse_block()
         dot = self._eat(TokKind.DOT)
         if self.cur.kind != TokKind.EOF:
@@ -147,15 +139,204 @@ class _Parser:
                 self.cur.line, self.cur.col,
             )
         return pa.Program(
-            name=name_tok.text,
+            name=name_tok.text, kind="program",
+            uses_clauses=uses_clauses,
             type_blocks=type_blocks,
             const_blocks=const_blocks,
             var_block=var_block,
             subroutines=subroutines,
             block=block,
-            loc=self._loc(start, dot),
+            loc=self._loc(head, dot),
             file=self.path,
         )
+
+    def _parse_unit_body(self, head, name_tok) -> pa.Program:
+        """Parse the `interface ... implementation ... [initialization
+        ...] end.` body of a `unit`. M11 flattens interface +
+        implementation decls into one module scope -- no strict
+        export hiding."""
+        uses_clauses: list = []
+        type_blocks: list = []
+        const_blocks: list = []
+        var_block: pa.VarBlock | None = None
+        subroutines: list = []
+        init_block = None
+        # `interface` is mandatory in a Pascal unit; `implementation`
+        # too. `initialization` (and `finalization`, deferred) are
+        # optional.
+        self._eat(TokKind.KEYWORD, "interface")
+        iface_uses, iface_types, iface_consts, iface_var, iface_subs = (
+            self._parse_decl_blocks(signatures_only=True)
+        )
+        uses_clauses.extend(iface_uses)
+        type_blocks.extend(iface_types)
+        const_blocks.extend(iface_consts)
+        if iface_var is not None:
+            var_block = iface_var
+        subroutines.extend(iface_subs)
+        self._eat(TokKind.KEYWORD, "implementation")
+        impl_uses, impl_types, impl_consts, impl_var, impl_subs = (
+            self._parse_decl_blocks()
+        )
+        uses_clauses.extend(impl_uses)
+        type_blocks.extend(impl_types)
+        const_blocks.extend(impl_consts)
+        if impl_var is not None:
+            if var_block is not None:
+                t = self.cur
+                raise ParseError(
+                    "duplicate 'var' section across interface and "
+                    "implementation",
+                    t.line, t.col,
+                )
+            var_block = impl_var
+        subroutines.extend(impl_subs)
+        if (self.cur.kind == TokKind.KEYWORD
+                and self.cur.text == "initialization"):
+            begin_init = self._eat(TokKind.KEYWORD, "initialization")
+            stmts = self._parse_stmt_seq_until_end()
+            end = self._eat(TokKind.KEYWORD, "end")
+            init_block = pa.Block(
+                statements=stmts, loc=self._loc(begin_init, end),
+            )
+        else:
+            self._eat(TokKind.KEYWORD, "end")
+        dot = self._eat(TokKind.DOT)
+        if self.cur.kind != TokKind.EOF:
+            raise ParseError(
+                f"unexpected token after unit '.': {self.cur.text!r}",
+                self.cur.line, self.cur.col,
+            )
+        return pa.Program(
+            name=name_tok.text, kind="unit",
+            uses_clauses=uses_clauses,
+            type_blocks=type_blocks,
+            const_blocks=const_blocks,
+            var_block=var_block,
+            subroutines=subroutines,
+            block=init_block,
+            loc=self._loc(head, dot),
+            file=self.path,
+        )
+
+    def _parse_decl_blocks(self, *, signatures_only: bool = False) -> tuple:
+        """Parse zero-or-more decl sections in any order: `uses`,
+        `type`, `const`, `var`, `procedure`, `function`. Returns a
+        five-tuple of lists / single-or-None values matching the
+        Program AST slots.
+
+        `signatures_only=True` is for Pascal's `interface` section --
+        subroutines parse as signature-only forward declarations
+        (header + `;`, no body). The implementation section parses
+        the same names again, with bodies, and the translator emits
+        just the implementation-side ones. `var` is rejected in
+        signatures-only mode: TP's `interface var` would be a public
+        global, which we treat as future work to keep the M11 unit
+        surface tight.
+        """
+        uses: list = []
+        type_blocks: list = []
+        const_blocks: list = []
+        var_block: pa.VarBlock | None = None
+        subroutines: list = []
+        while True:
+            if self.cur.kind != TokKind.KEYWORD:
+                break
+            kw = self.cur.text
+            if kw == "uses":
+                uses.extend(self.parse_uses_clause())
+                continue
+            if kw == "type":
+                type_blocks.append(self.parse_type_block())
+                continue
+            if kw == "const":
+                const_blocks.append(self.parse_const_block())
+                continue
+            if kw == "var":
+                if signatures_only:
+                    # Interface-section globals would be exported
+                    # module variables; M11 leaves them unsupported.
+                    t = self.cur
+                    raise ParseError(
+                        "interface-section `var` declarations are "
+                        "not supported in M11",
+                        t.line, t.col,
+                    )
+                if var_block is not None:
+                    t = self.cur
+                    raise ParseError(
+                        "duplicate 'var' section",
+                        t.line, t.col,
+                    )
+                var_block = self.parse_var_block()
+                continue
+            if kw in ("procedure", "function"):
+                if signatures_only:
+                    # Skip forward declarations -- the implementation
+                    # section will redeclare the same names with the
+                    # actual bodies. We still advance past them to
+                    # keep parsing flowing.
+                    self._skip_subroutine_signature()
+                    continue
+                subroutines.append(self.parse_subroutine())
+                continue
+            break
+        return uses, type_blocks, const_blocks, var_block, subroutines
+
+    def _skip_subroutine_signature(self) -> None:
+        """Consume a `procedure X(...);` or `function X(...): T;`
+        forward declaration without saving it. The implementation
+        section is the source of truth for the body."""
+        self.i += 1  # 'procedure' / 'function'
+        self._eat(TokKind.IDENT)
+        if self.cur.kind == TokKind.LPAREN:
+            depth = 0
+            while True:
+                if self.cur.kind == TokKind.LPAREN:
+                    depth += 1
+                elif self.cur.kind == TokKind.RPAREN:
+                    depth -= 1
+                    self.i += 1
+                    if depth == 0:
+                        break
+                    continue
+                self.i += 1
+        if self.cur.kind == TokKind.COLON:
+            self.i += 1
+            # Skip the return-type token (keyword or ident).
+            self.i += 1
+        self._eat(TokKind.SEMI)
+
+    def parse_uses_clause(self) -> list:
+        """Parse `uses Name1, py.X, Name2, ...;` and return the list
+        of canonical-form unit names. A bare identifier resolves
+        against the user's project (no TPy stdlib lookup); the
+        `py.X` form is the explicit escape hatch -- the leading
+        `py.` segment is preserved in the returned string so the
+        translator can apply the right resolution policy."""
+        self._eat(TokKind.KEYWORD, "uses")
+        names: list = []
+        names.append(self._parse_uses_name())
+        while self.cur.kind == TokKind.COMMA:
+            self.i += 1
+            names.append(self._parse_uses_name())
+        self._eat(TokKind.SEMI)
+        return names
+
+    def _parse_uses_name(self) -> str:
+        """One unit name in a `uses` clause. Accepts either a bare
+        identifier (canonical Pascal unit) or `py.X` (escape hatch to
+        TPy stdlib / arbitrary Python module). Future dotted Delphi-
+        style names (`System.SysUtils`) follow the same shape but
+        skip the `py` interpretation."""
+        head = self._eat(TokKind.IDENT)
+        if self.cur.kind == TokKind.DOT:
+            parts = [head.text]
+            while self.cur.kind == TokKind.DOT:
+                self.i += 1
+                parts.append(self._eat(TokKind.IDENT).text)
+            return ".".join(parts)
+        return head.text
 
     # ------------------------------------------------------------------
     # Const declarations

@@ -53,9 +53,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // c := Green;
     c = color::green;
     // case c of
@@ -64,19 +61,19 @@ void __tpy_init() {
     // Red: writeln('red');
     case color::red: {
         // Red: writeln('red');
-        ::pascal_rt::runtime::io::writeln("red");
+        std::cout << "red" << "\n";
         break;
     }
     // Green: writeln('green');
     case color::green: {
         // Green: writeln('green');
-        ::pascal_rt::runtime::io::writeln("green");
+        std::cout << "green" << "\n";
         break;
     }
     // Blue: writeln('blue');
     case color::blue: {
         // Blue: writeln('blue');
-        ::pascal_rt::runtime::io::writeln("blue");
+        std::cout << "blue" << "\n";
         break;
     }
     }

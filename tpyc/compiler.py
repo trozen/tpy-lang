@@ -1032,8 +1032,14 @@ class Compiler:
                 through the plugin + lowering pass instead of `Parser`.
         """
         self.entry_point = entry_point.resolve()
-        self.resolver: ModuleResolver | None = ModuleResolver(self.entry_point.parent,
-                                                               extra_dirs=lib_dirs or [])
+        self.resolver: ModuleResolver | None = ModuleResolver(
+            self.entry_point.parent,
+            extra_dirs=lib_dirs or [],
+            extra_extensions=tuple(sorted(
+                frontend_registry.all_extensions()
+                if frontend_registry is not None else ()
+            )),
+        )
         self.default_int_type = parse_default_int_type(default_int)
         self.frontend_registry = frontend_registry
         self._init_shared()
@@ -1093,7 +1099,13 @@ class Compiler:
         compiler = cls.__new__(cls)
         compiler.entry_point = Path("<stdin>")
         if lib_dirs:
-            compiler.resolver = ModuleResolver(Path.cwd(), extra_dirs=lib_dirs)
+            compiler.resolver = ModuleResolver(
+                Path.cwd(), extra_dirs=lib_dirs,
+                extra_extensions=tuple(sorted(
+                    frontend_registry.all_extensions()
+                    if frontend_registry is not None else ()
+                )),
+            )
         else:
             compiler.resolver = None
         compiler.default_int_type = parse_default_int_type(default_int)
@@ -1514,10 +1526,20 @@ class Compiler:
                            *self.resolver.extra_dirs)
         else:
             search_dirs = ()
+        # TPy stdlib root: `<install>/lib/tpy/`. Plugins that resolve
+        # source-language imports against the user's project layout
+        # filter this out so an unqualified Pascal `uses Math` can't
+        # silently grab `tpy.math`.
+        from tpyc import get_lib_dir
+        stdlib_root = (get_lib_dir() / "tpy").resolve()
+        stdlib_search_dirs = tuple(
+            d for d in search_dirs if d.resolve() == stdlib_root
+        )
         ctx = WorkspaceContext(
             api_version=plugin.api_version,
             entry_point=self.entry_point,
             search_dirs=tuple(search_dirs),
+            stdlib_search_dirs=stdlib_search_dirs,
             options=plugin.options,
             no_stdlib=False,
         )

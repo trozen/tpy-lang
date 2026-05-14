@@ -15,9 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // a := 10;
     a = 10;
     // b := 20;
@@ -25,7 +22,7 @@ void __tpy_init() {
     // c := a + b * 2 - 1;
     c = (::tpy::sub_check<int32_t>((::tpy::add_check<int32_t>(a, (::tpy::mul_check<int32_t>(b, 2)))), 1));
     // writeln(c);
-    ::pascal_rt::runtime::io::writeln_int(c);
+    std::cout << c << "\n";
 }
 
 } // namespace tpyapp::main

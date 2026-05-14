@@ -25,9 +25,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // py := 0;
     py = 0;
     // while py < 16 do
@@ -60,16 +57,16 @@ void __tpy_init() {
             // if iter = 30 then write('#') else write(' ');
             if ((iter == 30)) {
                 // if iter = 30 then write('#') else write(' ');
-                ::pascal_rt::runtime::io::write("#");
+                std::cout << "#";
             } else {
                 // if iter = 30 then write('#') else write(' ');
-                ::pascal_rt::runtime::io::write(" ");
+                std::cout << " ";
             }
             // px := px + 1;
             px = (::tpy::add_check<int32_t>(px, 1));
         }
         // writeln('');
-        ::pascal_rt::runtime::io::writeln("");
+        std::cout << "" << "\n";
         // py := py + 1;
         py = (::tpy::add_check<int32_t>(py, 1));
     }

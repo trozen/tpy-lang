@@ -4,13 +4,8 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
-#include "pascal_rt.hpp"
-#include "pascal_rt/runtime.hpp"
-#include "pascal_rt/runtime/io.hpp"
 
 namespace tpyapp::main {
-
-using ::pascal_rt::runtime::io::writeln_int;
 
 extern std::array<int32_t, 8>* data;
 extern int32_t i;

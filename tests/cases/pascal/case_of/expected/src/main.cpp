@@ -11,9 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // for i := 1 to 5 do
     int32_t __stop_0 = ::tpy::add_check<int32_t>(5, 1);
     for (int32_t i = 1; i < __stop_0; ++i) {
@@ -23,31 +20,31 @@ void __tpy_init() {
         // 1: writeln('one');
         case 1: {
             // 1: writeln('one');
-            ::pascal_rt::runtime::io::writeln("one");
+            std::cout << "one" << "\n";
             break;
         }
         // 2, 3: writeln('two-or-three');
         case 2: {
             // 2, 3: writeln('two-or-three');
-            ::pascal_rt::runtime::io::writeln("two-or-three");
+            std::cout << "two-or-three" << "\n";
             break;
         }
         // 2, 3: writeln('two-or-three');
         case 3: {
             // 2, 3: writeln('two-or-three');
-            ::pascal_rt::runtime::io::writeln("two-or-three");
+            std::cout << "two-or-three" << "\n";
             break;
         }
         // 4: writeln('four');
         case 4: {
             // 4: writeln('four');
-            ::pascal_rt::runtime::io::writeln("four");
+            std::cout << "four" << "\n";
             break;
         }
         // case i of
         default: {
             // writeln('other');
-            ::pascal_rt::runtime::io::writeln("other");
+            std::cout << "other" << "\n";
             break;
         }
         }

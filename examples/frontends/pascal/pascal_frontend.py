@@ -57,7 +57,7 @@ class PascalFrontend(FrontendPlugin):
                 ),
                 diagnostics=[diag],
             )
-        module, diags = _translate.translate(program, module_name)
+        module, diags = _translate.translate(program, module_name, ctx)
         return FrontendOutput(module=module, diagnostics=diags)
 
 

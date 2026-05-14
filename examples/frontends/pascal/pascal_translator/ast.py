@@ -356,12 +356,26 @@ class SubroutineDecl:
 
 @dataclass
 class Program:
+    """A Pascal compilation unit -- either a `program X; ... begin ...
+    end.` (executable entry point) or a `unit X; interface ...
+    implementation ... end.` (importable unit).
+
+    Both shapes share top-level decl slots (type / const / var /
+    subroutines). `block` is the main begin/end body for programs and
+    the optional `initialization` block for units; `kind`
+    distinguishes the two so the translator can route correctly.
+    `uses_clauses` is a flat list of module names from any `uses A,
+    B, ...;` declarations (Pascal allows them both at the top of a
+    program/unit and inside the `implementation` section).
+    """
     name: str
+    kind: str               # "program" or "unit"
+    uses_clauses: list      # list[str] -- unit names referenced via `uses`
     type_blocks: list       # list[TypeBlock]; Pascal allows several
     const_blocks: list      # list[ConstBlock]; Pascal allows several
     var_block: object       # VarBlock | None
     subroutines: list       # list[SubroutineDecl]
-    block: Block
+    block: object           # Block | None -- program body / unit init
     loc: Loc
     file: Path
     source_lines: tuple[str, ...] = field(default_factory=tuple)

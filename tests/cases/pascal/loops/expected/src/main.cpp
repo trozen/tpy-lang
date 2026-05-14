@@ -17,9 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // total := 0;
     total = 0;
     // i := 1;
@@ -52,9 +49,9 @@ void __tpy_init() {
     // descending := total;
     descending = total;
     // writeln(ascending);
-    ::pascal_rt::runtime::io::writeln_int(ascending);
+    std::cout << ascending << "\n";
     // writeln(descending);
-    ::pascal_rt::runtime::io::writeln_int(descending);
+    std::cout << descending << "\n";
 }
 
 } // namespace tpyapp::main

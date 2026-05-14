@@ -92,6 +92,7 @@ from .nodes import (
     Record,
     RepeatUntil,
     Return,
+    StarImport,
     StrLit,
     Subscript,
     TypeArg,
@@ -219,6 +220,7 @@ def lower_module(
     module_aliases: dict[str, str] = {}
     name_to_origin: dict[str, tuple[str, str]] = {}
     leading_imports: list[TpyImport] = []
+    star_imports: set[str] = set()
 
     for imp in fm.imports:
         loc = _to_source_loc(imp.loc)
@@ -247,6 +249,24 @@ def lower_module(
                 bucket.add((nm.original, nm.local))
                 name_to_origin[nm.local] = (imp.module, nm.original)
             user_module_imports[imp.module] = lineno
+            leading_imports.append(TpyImport(
+                module_name=imp.module, loc=loc))
+        elif isinstance(imp, StarImport):
+            if not imp.module:
+                diags.append(_ir_invalid(
+                    plugin_name, fm, "StarImport.module is empty"))
+                continue
+            # The compiler's `_expand_star_imports_for_module` consumes
+            # `star_imports` + `module_imports[mod] = set()` and fans
+            # the imported module's public surface into the importer.
+            # Implicit-stdlib star imports (`tpy` / `builtins` /
+            # `typing`) are handled at parse time by the .py parser
+            # itself; plugin lowering doesn't take that path because
+            # source-language plugins would name a non-implicit
+            # module here.
+            module_imports.setdefault(imp.module, set())
+            user_module_imports[imp.module] = lineno
+            star_imports.add(imp.module)
             leading_imports.append(TpyImport(
                 module_name=imp.module, loc=loc))
         else:
@@ -351,6 +371,7 @@ def lower_module(
         user_module_imports=user_module_imports,
         module_aliases=module_aliases,
         bare_module_imports=bare_module_imports,
+        star_imports=star_imports,
         directives=directives,
         resolver=resolver,
     )
@@ -822,7 +843,13 @@ def _lower_expr(
             if la is None:
                 return None
             args.append(la)
-        out = TpyCall(func=callee, args=args)
+        kwargs: dict = {}
+        for kw_name, kw_value in expr.kwargs:
+            la = _lower_expr(kw_value, name_to_origin, plugin_name, fm, diags)
+            if la is None:
+                return None
+            kwargs[kw_name] = la
+        out = TpyCall(func=callee, args=args, kwargs=kwargs)
         out.loc = loc
         # `type_args` on the IR maps to the parser's `call_type`: a
         # TpyTypeRef whose `args` are the explicit type/int args. This

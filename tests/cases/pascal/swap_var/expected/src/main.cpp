@@ -24,9 +24,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // x := 1;
     x = 1;
     // y := 2;
@@ -34,9 +31,9 @@ void __tpy_init() {
     // swap(x, y);
     swap(&x, &y);
     // writeln(x);
-    ::pascal_rt::runtime::io::writeln_int(x);
+    std::cout << x << "\n";
     // writeln(y);
-    ::pascal_rt::runtime::io::writeln_int(y);
+    std::cout << y << "\n";
 }
 
 } // namespace tpyapp::main

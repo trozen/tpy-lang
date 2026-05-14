@@ -9,11 +9,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // writeln('Hello, World!');
-    ::pascal_rt::runtime::io::writeln("Hello, World!");
+    std::cout << "Hello, World!" << "\n";
 }
 
 } // namespace tpyapp::main

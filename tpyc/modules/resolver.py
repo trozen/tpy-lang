@@ -48,9 +48,13 @@ class ModuleResolver:
     - Dotted module paths: "mypackage.submod" -> mypackage/submod.py
     - Package imports: "mypackage" -> mypackage/__init__.py
     - Namespace packages: Submodule imports work without __init__ files
+    - Frontend-plugin extensions: extra_extensions adds non-`.py` source
+      extensions (e.g. `.pas`) that resolve alongside `.py` files.
+      First match wins per directory.
     """
     base_dir: Path
     extra_dirs: list[Path] = field(default_factory=list)
+    extra_extensions: tuple[str, ...] = ()
 
     def resolve(self, module_path: str) -> ResolvedModule | None:
         """Resolve a module path to a file.
@@ -104,6 +108,18 @@ class ModuleResolver:
                 canonical_name=module_path,
                 package_name=package_name
             )
+        # Frontend-plugin extensions: try each in registration order
+        # after `.py` so a `foo.py` next to a `foo.pas` wins (Python
+        # source is the canonical TPy form). Empty-tuple default keeps
+        # the non-plugin path zero-cost.
+        for ext in self.extra_extensions:
+            ext_name = f"{final}{ext}"
+            if ext_name in entries and (current / ext_name).is_file():
+                return ResolvedModule(
+                    path=current / ext_name,
+                    canonical_name=module_path,
+                    package_name=package_name
+                )
 
         if final in entries and (current / final).is_dir():
             pkg_dir = current / final

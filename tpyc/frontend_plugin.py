@@ -29,10 +29,18 @@ class WorkspaceContext:
     compiler flag), and `read_file` for opening the entry source.
     `find_files` and `resolve_module` from the design doc are deferred
     until a plugin needs them.
+
+    `stdlib_search_dirs` is the subset of `search_dirs` that holds
+    TPy's implicit stdlib (`lib/tpy/`). Plugins that translate a
+    `uses`- or `import`-style directive in their source language can
+    consult this to keep stdlib invisible to bare imports while still
+    leaving an escape hatch (e.g. `uses py.math` in Pascal) that
+    routes through the full search path.
     """
     api_version: int
     entry_point: Path
     search_dirs: tuple[Path, ...]
+    stdlib_search_dirs: tuple[Path, ...]
     options: dict[str, str]
     no_stdlib: bool
 

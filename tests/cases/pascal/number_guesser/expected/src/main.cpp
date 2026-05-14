@@ -23,23 +23,23 @@ void __tpy_init() {
     // while attempt <> target do
     while ((attempt != target)) {
         // writeln('Enter a guess:');
-        ::pascal_rt::runtime::io::writeln("Enter a guess:");
+        std::cout << "Enter a guess:" << "\n";
         // readln(attempt);
         attempt = ::pascal_rt::runtime::io::readln_int();
         // if attempt < target then
         if ((attempt < target)) {
             // writeln('too low')
-            ::pascal_rt::runtime::io::writeln("too low");
+            std::cout << "too low" << "\n";
         } else {
             // else if attempt > target then
             if ((attempt > target)) {
                 // writeln('too high');
-                ::pascal_rt::runtime::io::writeln("too high");
+                std::cout << "too high" << "\n";
             }
         }
     }
     // writeln('Correct!');
-    ::pascal_rt::runtime::io::writeln("Correct!");
+    std::cout << "Correct!" << "\n";
 }
 
 } // namespace tpyapp::main

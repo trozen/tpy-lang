@@ -13,7 +13,6 @@ void __tpy_init() {
 
     ::pascal_rt::__tpy_init();
     ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     ::pascal_rt::runtime::strings::__tpy_init();
     // s: string;
     static ::pascal_rt::runtime::strings::PStr<255> __global_slot_1 = ::pascal_rt::runtime::strings::PStr<255>();
@@ -21,7 +20,7 @@ void __tpy_init() {
     // s := 'Hello, World!';
     s->assign("Hello, World!");
     // writeln(s);
-    ::pascal_rt::runtime::io::writeln(std::string(::tpy::__str__((*s))));
+    std::cout << std::string(::tpy::__str__((*s))) << "\n";
 }
 
 } // namespace tpyapp::main

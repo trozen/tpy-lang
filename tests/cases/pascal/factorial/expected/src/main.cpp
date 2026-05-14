@@ -26,14 +26,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // for i := 1 to 6 do
     int32_t __stop_0 = ::tpy::add_check<int32_t>(6, 1);
     for (int32_t i = 1; i < __stop_0; ++i) {
         // writeln(factorial(i));
-        ::pascal_rt::runtime::io::writeln_int(factorial(i));
+        std::cout << factorial(i) << "\n";
     }
 }
 

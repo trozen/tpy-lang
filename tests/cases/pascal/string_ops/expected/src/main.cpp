@@ -17,7 +17,6 @@ void __tpy_init() {
 
     ::pascal_rt::__tpy_init();
     ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     ::pascal_rt::runtime::strings::__tpy_init();
     // greeting: string;
     static ::pascal_rt::runtime::strings::PStr<255> __global_slot_1 = ::pascal_rt::runtime::strings::PStr<255>();
@@ -35,16 +34,16 @@ void __tpy_init() {
     // result := greeting + ', ' + name + '!';
     result->assign(std::string((::tpy::str_concat(std::string((::tpy::str_concat(std::string((::tpy::str_concat(std::string(::tpy::__str__((*greeting))), ", "))), std::string(::tpy::__str__((*name)))))), "!"))));
     // writeln(result);
-    ::pascal_rt::runtime::io::writeln(std::string(::tpy::__str__((*result))));
+    std::cout << std::string(::tpy::__str__((*result))) << "\n";
     // writeln(length(result));
-    ::pascal_rt::runtime::io::writeln_int(::tpy::__len__((*result)));
+    std::cout << ::tpy::__len__((*result)) << "\n";
     // if result = 'Hello, World!' then
     if ((std::string(::tpy::__str__((*result))) == "Hello, World!")) {
         // writeln('match')
-        ::pascal_rt::runtime::io::writeln("match");
+        std::cout << "match" << "\n";
     } else {
         // writeln('no match');
-        ::pascal_rt::runtime::io::writeln("no match");
+        std::cout << "no match" << "\n";
     }
 }
 

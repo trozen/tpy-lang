@@ -17,9 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // data: array[1..8] of integer;
     static std::array<int32_t, 8> __global_slot_1 = std::array<int32_t, 8>();
     data = &__global_slot_1;
@@ -60,7 +57,7 @@ void __tpy_init() {
     int32_t __stop_2 = ::tpy::add_check<int32_t>(8, 1);
     for (int32_t i = 1; i < __stop_2; ++i) {
         // writeln(data[i]);
-        ::pascal_rt::runtime::io::writeln_int(::tpy::__getitem__((*data), (::tpy::sub_check<int32_t>(i, 1))));
+        std::cout << ::tpy::__getitem__((*data), (::tpy::sub_check<int32_t>(i, 1))) << "\n";
     }
 }
 

@@ -7,15 +7,12 @@
 #include "pascal_rt.hpp"
 #include "pascal_rt/runtime.hpp"
 #include "pascal_rt/runtime/builtins.hpp"
-#include "pascal_rt/runtime/io.hpp"
 
 namespace tpyapp::main {
 
 using ::pascal_rt::runtime::builtins::pred_int;
 using ::pascal_rt::runtime::builtins::random_int;
 using ::pascal_rt::runtime::builtins::succ_int;
-using ::pascal_rt::runtime::io::writeln;
-using ::pascal_rt::runtime::io::writeln_int;
 
 extern int32_t i;
 extern int32_t r;

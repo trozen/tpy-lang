@@ -11,28 +11,25 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // for i := 1 to 15 do
     int32_t __stop_0 = ::tpy::add_check<int32_t>(15, 1);
     for (int32_t i = 1; i < __stop_0; ++i) {
         // if i mod 15 = 0 then
         if (((::tpy::mod_floor<int32_t>(i, 15)) == 0)) {
             // writeln('FizzBuzz')
-            ::pascal_rt::runtime::io::writeln("FizzBuzz");
+            std::cout << "FizzBuzz" << "\n";
         } else {
             // else if i mod 3 = 0 then
             if (((::tpy::mod_floor<int32_t>(i, 3)) == 0)) {
                 // writeln('Fizz')
-                ::pascal_rt::runtime::io::writeln("Fizz");
+                std::cout << "Fizz" << "\n";
             // else if i mod 5 = 0 then
             } else if (((::tpy::mod_floor<int32_t>(i, 5)) == 0)) {
                 // writeln('Buzz')
-                ::pascal_rt::runtime::io::writeln("Buzz");
+                std::cout << "Buzz" << "\n";
             } else {
                 // writeln(i);
-                ::pascal_rt::runtime::io::writeln_int(i);
+                std::cout << i << "\n";
             }
         }
     }

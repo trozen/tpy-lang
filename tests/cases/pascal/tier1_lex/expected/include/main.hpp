@@ -6,13 +6,9 @@
 #include "tpystd/typing/_typing.hpp"
 #include "pascal_rt.hpp"
 #include "pascal_rt/runtime.hpp"
-#include "pascal_rt/runtime/io.hpp"
 #include "pascal_rt/runtime/strings.hpp"
 
 namespace tpyapp::main {
-
-using ::pascal_rt::runtime::io::writeln;
-using ::pascal_rt::runtime::io::writeln_int;
 
 using ::pascal_rt::runtime::strings::PStr;
 

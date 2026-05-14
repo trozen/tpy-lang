@@ -19,9 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
     // N = 10;
     n = 10;
     // Pi = 3.14159;
@@ -33,18 +30,18 @@ void __tpy_init() {
     // i := N + 5;
     i = (::tpy::add_check<int32_t>(n, 5));
     // writeln(i);
-    ::pascal_rt::runtime::io::writeln_int(i);
+    std::cout << i << "\n";
     // writeln(Pi);
-    ::pascal_rt::runtime::io::writeln_float(pi);
+    std::cout << ::tpy::print_float(pi) << "\n";
     // writeln(Greeting);
-    ::pascal_rt::runtime::io::writeln(std::string(greeting));
+    std::cout << std::string(greeting) << "\n";
     // if Enabled then writeln('on') else writeln('off');
     if (enabled) {
         // if Enabled then writeln('on') else writeln('off');
-        ::pascal_rt::runtime::io::writeln("on");
+        std::cout << "on" << "\n";
     } else {
         // if Enabled then writeln('on') else writeln('off');
-        ::pascal_rt::runtime::io::writeln("off");
+        std::cout << "off" << "\n";
     }
 }
 

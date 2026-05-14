@@ -61,6 +61,7 @@ from tpyc.frontend_ir import (
     Record,
     RepeatUntil,
     Return,
+    StarImport,
     StrLit,
     Subscript,
     TypeTypeArg,
@@ -152,6 +153,15 @@ class _Ctx:
     """Shared translator state."""
     diagnostics: list[Diagnostic] = field(default_factory=list)
     needed_imports: dict[str, set[str]] = field(default_factory=dict)
+    # Module names from Pascal `uses` clauses. Lowered to IR
+    # StarImports; the compiler's `_expand_star_imports_for_module`
+    # fans each module's public surface into the user's unqualified
+    # scope at compile time.
+    star_imports: set[str] = field(default_factory=set)
+    # WorkspaceContext from the plugin's `parse()` call. Used by
+    # `uses` resolution to locate `.pas` / `.py` units in the user's
+    # project layout (search dirs minus the TPy stdlib root).
+    workspace: object | None = None
     type_env: dict[str, str] = field(default_factory=dict)
     signatures: dict[str, _Sig] = field(default_factory=dict)
     # User record type names (declared via Pascal `type X = record ...`).
@@ -194,8 +204,10 @@ class _Ctx:
 
 
 def translate(program: pa.Program,
-              module_name: str) -> tuple[FrontendModule, list[Diagnostic]]:
-    ctx = _Ctx()
+              module_name: str,
+              workspace=None,
+              ) -> tuple[FrontendModule, list[Diagnostic]]:
+    ctx = _Ctx(workspace=workspace)
 
     # Pre-scan subroutines so callers can see their signatures even
     # when emitted before the callee in source order.
@@ -240,6 +252,22 @@ def translate(program: pa.Program,
                 # name is recorded so var decls / parameter types can
                 # reference it.
                 ctx.type_aliases[td.name] = td.type_spec
+
+    # `uses` clauses: resolve each to a canonical TPy module name and
+    # mark it as a star import. Bare names (`uses Crt`) resolve only
+    # against the user's project search path; `py.X` (`uses py.math`)
+    # is the explicit escape hatch into TPy stdlib / arbitrary Python
+    # modules. For Pascal-source units we also peek at the
+    # interface-section signatures and seed `ctx.signatures` so the
+    # translator's writeln-dispatch / return-type-aware paths can see
+    # cross-unit functions without waiting for sema.
+    for uses_name in program.uses_clauses:
+        resolved, resolved_path = _resolve_uses_name_and_path(
+            uses_name, program.loc, ctx)
+        if resolved is not None:
+            ctx.star_imports.add(resolved)
+            if resolved_path is not None and resolved_path.suffix == ".pas":
+                _ingest_unit_signatures(resolved_path, ctx)
 
     records: list = []
     enums: list = []
@@ -298,11 +326,15 @@ def translate(program: pa.Program,
                     mutable=True, loc=_to_ir_loc(decl.loc),
                 ))
 
-    # Module-level body.
-    for stmt in program.block.statements:
-        lowered = _lower_stmt(stmt, ctx)
-        if lowered is not None:
-            top_level_stmts.append(lowered)
+    # Module-level body. For a `program X;` this is the main begin /
+    # end block. For a `unit X;` it's the optional `initialization
+    # ... end` section -- absent units have `block is None` and emit
+    # nothing here.
+    if program.block is not None:
+        for stmt in program.block.statements:
+            lowered = _lower_stmt(stmt, ctx)
+            if lowered is not None:
+                top_level_stmts.append(lowered)
 
     # Subroutines.
     for sub in program.subroutines:
@@ -310,7 +342,14 @@ def translate(program: pa.Program,
         if fn is not None:
             functions.append(fn)
 
-    imports = tuple(
+    # Emit imports in a deterministic order: star imports first (so
+    # any name-collision diagnostics blame the explicit uses-clause
+    # site), then the per-name imports for runtime helpers.
+    star_decls = tuple(
+        StarImport(module=mod)
+        for mod in sorted(ctx.star_imports)
+    )
+    from_decls = tuple(
         FromImport(
             module=mod,
             names=tuple(sorted(
@@ -319,7 +358,9 @@ def translate(program: pa.Program,
             )),
         )
         for mod, names in sorted(ctx.needed_imports.items())
+        if mod not in ctx.star_imports
     )
+    imports = star_decls + from_decls
 
     fm = FrontendModule(
         qname=module_name,
@@ -337,6 +378,77 @@ def translate(program: pa.Program,
 
 # ---------------------------------------------------------------------------
 # Type lowering
+
+def _resolve_uses_name_and_path(uses_name: str, loc: pa.Loc,
+                                ctx: _Ctx) -> tuple:
+    """Resolve a Pascal `uses` target. Returns `(module_name, path)`.
+
+    - `py.X`           -> `(X, None)` -- defer to TPy resolver; no
+                          file-system lookup at translate time.
+    - bare `Foo`       -> search user dirs for `Foo.pas` / `foo.py`;
+                          returns the file's stem and absolute path.
+                          Returns `(None, None)` and emits a
+                          diagnostic when not found.
+    """
+    if uses_name.startswith("py."):
+        return uses_name[3:], None
+    ws = ctx.workspace
+    if ws is None:
+        return uses_name, None
+    stdlib_dirs = {d.resolve() for d in ws.stdlib_search_dirs}
+    user_dirs = [
+        d for d in ws.search_dirs if d.resolve() not in stdlib_dirs
+    ]
+    target = uses_name.lower()
+    import os
+    for d in user_dirs:
+        try:
+            entries = os.listdir(d)
+        except OSError:
+            continue
+        for fname in entries:
+            stem, _, ext = fname.rpartition(".")
+            if ext not in ("pas", "py"):
+                continue
+            if stem.lower() == target:
+                return stem, d / fname
+    ctx.diagnostics.append(_diag(
+        f"unit {uses_name!r} not found in project directories. "
+        f"Use `py.{uses_name.lower()}` to import a TPy / Python "
+        f"module by that name explicitly.",
+        loc,
+    ))
+    return None, None
+
+
+def _ingest_unit_signatures(path, ctx: _Ctx) -> None:
+    """Parse a Pascal `.pas` unit and add its interface-section
+    subroutine signatures into `ctx.signatures`. The translator
+    consults this map for writeln-dispatch and return-type
+    decisions; without it, every cross-unit call looks unknown.
+
+    Parse errors are swallowed -- they'll resurface when the
+    compiler discovers and re-parses the unit through the normal
+    path, at which point the user sees the real diagnostic.
+    """
+    from . import parser as pa_parser
+    try:
+        source = path.read_text()
+        unit_program = pa_parser.parse(source, path)
+    except Exception:
+        return
+    if unit_program.kind != "unit":
+        return
+    for sub in unit_program.subroutines:
+        if sub.name in ctx.signatures:
+            continue
+        ctx.signatures[sub.name] = _Sig(
+            name=sub.name,
+            param_names=[p.name for p in sub.params],
+            param_var_flags=[p.is_var for p in sub.params],
+            return_type=sub.return_type,
+        )
+
 
 def _lower_enum_decl(td: pa.TypeDecl, ctx: _Ctx) -> Enum | None:
     """Lower a Pascal `type Color = (Red, Green, ...)` declaration to
@@ -1184,6 +1296,11 @@ def _lower_readln_stmt(stmt: pa.CallStmt, ctx: _Ctx):
 
 
 def _lower_writeln_stmt(stmt: pa.CallStmt, ctx: _Ctx):
+    """Lower Pascal `writeln(x)` / `write(x)` to TPy `print` -- the
+    builtin handles any type (`__str__`-driven), so no Pascal-runtime
+    detour is needed. The translator wraps PStr operands in `str(...)`
+    only because TPy's print sees a string view rather than a PStr.
+    """
     callee_name = stmt.callee.name
     if len(stmt.args) != 1:
         ctx.diagnostics.append(_diag(
@@ -1196,26 +1313,26 @@ def _lower_writeln_stmt(stmt: pa.CallStmt, ctx: _Ctx):
     if ir_arg is None:
         return None
     arg_type = _static_type_of(arg, ctx)
-    if arg_type == "integer":
-        runtime_name = f"{callee_name}_int"
-    elif arg_type == "real":
-        runtime_name = f"{callee_name}_float"
-    else:
-        # StrView path: string literals already have StrView type;
-        # PStr arguments are wrapped in `str(...)` so the runtime
-        # writeln(StrView) overload accepts them.
-        runtime_name = callee_name
-        if arg_type == "string" and not isinstance(arg, pa.StrLit):
-            ir_arg = Call(
-                callee=Name(ident="str", loc=_to_ir_loc(arg.loc)),
-                args=(ir_arg,), loc=_to_ir_loc(arg.loc),
-            )
-    ctx.add_import("pascal.runtime.io", runtime_name)
-    ir_call = Call(
-        callee=Name(ident=runtime_name, loc=_to_ir_loc(stmt.callee.loc)),
-        args=(ir_arg,),
-        loc=_to_ir_loc(stmt.loc),
-    )
+    if arg_type == "string" and not isinstance(arg, pa.StrLit):
+        # PStr argument: TPy's print formats `str` / `StrView`
+        # naturally; wrap to surface the string view.
+        ir_arg = Call(
+            callee=Name(ident="str", loc=_to_ir_loc(arg.loc)),
+            args=(ir_arg,), loc=_to_ir_loc(arg.loc),
+        )
+    callee_loc = _to_ir_loc(stmt.callee.loc)
+    if callee_name == "writeln":
+        ir_call = Call(
+            callee=Name(ident="print", loc=callee_loc),
+            args=(ir_arg,), loc=_to_ir_loc(stmt.loc),
+        )
+    else:  # write
+        ir_call = Call(
+            callee=Name(ident="print", loc=callee_loc),
+            args=(ir_arg,),
+            kwargs=(("end", StrLit(value="", loc=callee_loc)),),
+            loc=_to_ir_loc(stmt.loc),
+        )
     return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
 
 
@@ -1551,6 +1668,24 @@ def _lower_call_expr(expr: pa.CallExpr, ctx: _Ctx):
         return _BUILTIN_EXPR[name](expr, ctx)
     sig = ctx.signatures.get(name)
     if sig is None:
+        # The name isn't a known same-module subroutine. If the unit
+        # `uses` some other module(s), the function might be star-
+        # imported from there -- emit a generic Call and let TPy's
+        # sema validate after star-expansion has run. With no
+        # `uses` clauses the name is genuinely unknown; error out.
+        if ctx.star_imports:
+            args: list = []
+            for a in expr.args:
+                la = _lower_expr(a, ctx)
+                if la is None:
+                    return None
+                args.append(la)
+            return Call(
+                callee=Name(ident=name,
+                            loc=_to_ir_loc(expr.callee.loc)),
+                args=tuple(args),
+                loc=_to_ir_loc(expr.loc),
+            )
         ctx.diagnostics.append(_diag(
             f"unknown function {name!r} in expression position",
             expr.callee.loc,

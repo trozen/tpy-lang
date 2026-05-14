@@ -11,7 +11,6 @@
 namespace tpyapp::main {
 
 using ::pascal_rt::runtime::io::readln_int;
-using ::pascal_rt::runtime::io::writeln;
 
 extern int32_t target;
 extern int32_t attempt;

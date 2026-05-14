@@ -4,14 +4,8 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
-#include "pascal_rt.hpp"
-#include "pascal_rt/runtime.hpp"
-#include "pascal_rt/runtime/io.hpp"
 
 namespace tpyapp::main {
-
-using ::pascal_rt::runtime::io::writeln;
-using ::pascal_rt::runtime::io::writeln_int;
 
 extern int32_t i;
 inline constexpr std::string_view __name__ = "__main__";
