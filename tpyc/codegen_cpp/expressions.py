@@ -771,6 +771,8 @@ class ExpressionGenerator:
         # of the existing storage-form-to-borrow-form lift performed for
         # OptionalType destinations in `_gen_optional_ptr_arg`.
         if ptype is not None:
+            # Cache the unwrap once; cpp_template hot path hits this for every
+            # arg of every typed call.
             ptype_inner = unwrap_readonly(unwrap_ref_type(ptype))
             if isinstance(ptype_inner, PtrType):
                 arg_type = self.ctx.get_expr_type(arg)
@@ -778,21 +780,20 @@ class ExpressionGenerator:
                         and arg_type.uses_pointer_repr()
                         and self.ctx.is_storage_form_optional_source(arg)):
                     gen_arg = f"::tpy::optional_to_ptr({gen_arg})"
-        # Tuple-of-pointer-repr-Optional param: bridge between borrow form
-        # (std::tuple<T*, ...>, bare tuple param) and storage form
-        # (std::tuple<std::optional<T>, ...>, Own[tuple] param). Source/slot
-        # mismatch on either side needs an element-wise converter.
-        if ptype is not None:
-            ptype_inner = unwrap_readonly(unwrap_ref_type(ptype))
-            slot_is_storage = isinstance(ptype_inner, OwnType)
+            # Tuple-of-pointer-repr-Optional param: bridge between borrow form
+            # (std::tuple<T*, ...>, bare tuple param) and storage form
+            # (std::tuple<std::optional<T>, ...>, Own[tuple] param). Source/slot
+            # mismatch on either side needs an element-wise converter.
+            tuple_ptype_inner = ptype_inner
+            slot_is_storage = isinstance(tuple_ptype_inner, OwnType)
             if slot_is_storage:
-                ptype_inner = unwrap_readonly(unwrap_ref_type(ptype_inner.wrapped))
-            if (isinstance(ptype_inner, TupleType)
-                    and ptype_inner.has_pointer_repr_optional_element()):
+                tuple_ptype_inner = unwrap_readonly(unwrap_ref_type(tuple_ptype_inner.wrapped))
+            if (isinstance(tuple_ptype_inner, TupleType)
+                    and tuple_ptype_inner.has_pointer_repr_optional_element()):
                 arg_is_storage = self.ctx.is_storage_form_source(arg)
                 if arg_is_storage and not slot_is_storage:
-                    ptype_cpp = (ptype_inner.to_cpp_return_const() if target_const_borrow
-                                 else ptype_inner.to_cpp_return())
+                    ptype_cpp = (tuple_ptype_inner.to_cpp_return_const() if target_const_borrow
+                                 else tuple_ptype_inner.to_cpp_return())
                     gen_arg = f"::tpy::tuple_to_pointer<{ptype_cpp}>({gen_arg})"
                 elif not arg_is_storage and slot_is_storage:
                     # Tuple literal source: sema's per-element Own check
@@ -806,11 +807,9 @@ class ExpressionGenerator:
                     helper = ("tuple_to_storage_move"
                               if isinstance(arg, TpyTupleLiteral)
                               else "tuple_to_storage")
-                    gen_arg = f"::tpy::{helper}<{ptype_inner.to_cpp()}>({gen_arg})"
-        if ptype is not None:
+                    gen_arg = f"::tpy::{helper}<{tuple_ptype_inner.to_cpp()}>({gen_arg})"
             # Auto-consuming iteration: Iterable[Own[T]] param with last-use arg
             # that has consuming __iter__. Generate consuming call instead of copy.
-            ptype_inner = unwrap_readonly(unwrap_ref_type(ptype))
             if (is_protocol_type(ptype_inner) and isinstance(ptype_inner, NominalType)
                     and ptype_inner.name == "Iterable"
                     and ptype_inner.type_args
@@ -818,7 +817,7 @@ class ExpressionGenerator:
                 consuming = self._gen_consuming_iter(arg, gen_arg)
                 if consuming is not None:
                     return consuming
-            own = unwrap_optional_own(unwrap_readonly(unwrap_ref_type(ptype)))
+            own = unwrap_optional_own(ptype_inner)
             if own is not None:
                 moved = self._maybe_move(arg, gen_arg)
                 if moved is gen_arg and _is_simple_lvalue(arg):
@@ -2322,18 +2321,15 @@ class ExpressionGenerator:
             return f"::tpy::EnumUtil<{cpp_type}>::from_value({arg})"
         if (special := self._maybe_gen_special_builtin_call(expr)) is not None:
             return special
-        # Type constructor with resolved @cpp_template (e.g. Int32(42), str(x))
-        # Sema resolves {cpp} and class-level type params, so the template only
-        # has positional {0}, {1} placeholders.  Generic constructors (call_type
+        # Resolved @cpp_template free-function call (e.g. Int32(42), str(x),
+        # or a user `@cpp_template` binding). Generic constructors (call_type
         # set) need auto-move/own_iter arg handling in the full path below.
         fi = expr.resolved_function_info
         if fi and fi.cpp_template and not expr.call_type:
             result_type = self.ctx.get_expr_type(expr) or fi.return_type
             if result_type and result_type is not VOID:
-                gen_args = [self.builtins._gen_expr_deref(arg, ptype)
-                            for arg, (_, ptype) in zip(expr.args, fi.params)]
-                return self.builtins.gen_call_from_fi(
-                    fi, None, gen_args, type_args=expr.inferred_type_args)
+                return self.builtins.gen_template_or_native_call(
+                    expr.args, [fi], fi=fi, type_args=expr.inferred_type_args)
         # print() maps to std::printf
         if expr.func_name == "print":
             return self.builtins.gen_print(expr.args, expr.kwargs)
@@ -2914,9 +2910,8 @@ class ExpressionGenerator:
             # Special-handling functions with cpp_template resolved by sema
             fi = expr.resolved_function_info
             if fi and fi.special_handling and fi.cpp_template:
-                gen_args = [self.gen_expr_deref(arg, p.type)
-                            for arg, p in zip(expr.args, fi.params)]
-                return self.builtins.gen_call_from_fi(fi, None, gen_args)
+                return self.builtins.gen_template_or_native_call(
+                    expr.args, [fi], fi=fi)
             module_info = self.ctx.analyzer.registry.get_module(module_name)
             if module_info and expr.method in module_info.functions:
                 return self.builtins.gen_template_or_native_call(
@@ -2924,9 +2919,8 @@ class ExpressionGenerator:
                     fi=expr.resolved_function_info, type_args=expr.inferred_type_args)
             # Type constructor with @cpp_template (e.g., tpy.Int32(42))
             if fi and fi.cpp_template and not fi.type_params:
-                gen_args = [self.builtins._gen_expr_deref(arg, ptype)
-                            for arg, (_, ptype) in zip(expr.args, fi.params)]
-                return self.builtins.gen_call_from_fi(fi, None, gen_args)
+                return self.builtins.gen_template_or_native_call(
+                    expr.args, [fi], fi=fi)
             # Type constructor with @native (e.g., builtins.float("nan")). Route
             # through gen_call_from_fi with None receiver -- the receiver is a
             # module namespace, not a value, so it must not be prepended to the
@@ -2957,10 +2951,8 @@ class ExpressionGenerator:
                     return self.builtins.gen_call_from_fi(method_info, obj_expr, gen_args)
                 receiver = self._gen_builtin_method_receiver(expr)
                 if expr.is_static_call and method_info.cpp_template:
-                    gen_args = [self.builtins._gen_expr_deref(arg, ptype)
-                                for arg, (_, ptype) in zip(expr.args, method_info.params)]
-                    return self.builtins.gen_call_from_fi(
-                        method_info, None, gen_args,
+                    return self.builtins.gen_template_or_native_call(
+                        expr.args, [method_info], fi=method_info,
                         type_args=expr.inferred_type_args)
                 return self.builtins.gen_method_from_function_info(receiver, expr.args, method_info)
 

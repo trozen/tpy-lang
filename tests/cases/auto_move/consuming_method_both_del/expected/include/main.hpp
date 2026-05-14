@@ -26,7 +26,7 @@ struct Base {
         // print("Base.init", value)
         std::cout << "Base.init" << " " << value << "\n";
         // unsafe_init(self._ptr, value)
-        ::new(static_cast<void*>(this->_ptr)) int32_t(std::move(value));
+        ::new(static_cast<void*>(this->_ptr)) int32_t(value);
     }
     Base(const Base&) = delete;
     Base& operator=(const Base&) = delete;

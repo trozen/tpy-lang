@@ -42,7 +42,11 @@ Each item below is blocked on a specific compiler bug or missing feature. Orthog
 **Shipped (v1.2 step 1):**
 
 - `val_or_ref_t<void>` specialization in `runtime/cpp/include/tpy/type_traits.hpp` -- unblocks generic `def f[T] -> T` for `T = None`.
-- `asyncio.run` ported to pure TPy in `lib/tpy/asyncio/__init__.py`; `tpy::async_run` C++ template shell removed. Uses `Own[Awaitable[T]]` + `std::move` workaround for the rvalue-forwarding bug below (see code TODOs).
+- `asyncio.run` ported to pure TPy in `lib/tpy/asyncio/__init__.py`; `tpy::async_run` C++ template shell removed. `coro: Own[Awaitable[T]]` is the correct annotation for a consuming param.
+
+**Shipped (v1.2 step 2):**
+
+- `@cpp_template` calls now route through `gen_call_arg(inline_template=True)` for arg generation, so the auto-move-at-last-use logic fires for `Own[T]` args in cpp_template calls (`tpyc/codegen_cpp/builtins.py`, `tpyc/codegen_cpp/expressions.py`). Removed redundant manual `std::move({0})` from `_make_executor_owned_task` (asyncio) and `unsafe_init` (tpy.unsafe). Closes the codegen part of the old "Awaitable[T] rvalue forwarding" bug; the remaining piece is a sema-diagnostic gap tracked in `BUGS.md`.
 
 **Compiler bugs still blocking further cleanup (`BUGS.md`):**
 
@@ -52,7 +56,6 @@ Each item below is blocked on a specific compiler bug or missing feature. Orthog
 | Non-`@native` ValueType record's `is_value_type` specialization emitted after template instantiation in same TU | Value-type `TimerEntry(ValueType)` → `list[TimerEntry]` (sibling path to the ref-type variant above). |
 | `@native` value-type record emits `is_value_type` in wrong namespace | `ExecutorHandle` storable as a TPy field → `_ExecutorScope` can save/restore the prior handle (today just clears, since v1 doesn't nest `asyncio.run`). Needed before nestable runtimes. |
 | `@cpp_template` literal `{...}` produces internal error | Clearer diagnostic; pairs with the escape-syntax feature below. |
-| Generic TPy `Awaitable[T]` param binds C++ template arg as `const T&` instead of forwarding rvalue | Pure-TPy `make_user_task` / `make_executor_owned_task` / `make_any_task_for_test` → removes most C++ template factories. Today worked around at `_make_executor_owned_task` via explicit `Own[Awaitable[T]]` + `std::move({0})`; proper codegen fix would drop both. |
 
 **Compiler features (`TODO.md`):**
 

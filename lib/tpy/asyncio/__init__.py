@@ -19,9 +19,7 @@ from ._executor import (
 )
 
 
-# TODO: drop `Own[]` + `std::move()` (and on `run` below) once BUGS.md
-# "Awaitable[T] rvalue forwarding" is fixed.
-@cpp_template("::tpy::make_executor_owned_task<{T}>(std::move({0}))")
+@cpp_template("::tpy::make_executor_owned_task<{T}>({0})")
 def _make_executor_owned_task[T](coro: Own[Awaitable[T]]) -> Task[T]: ...
 
 
