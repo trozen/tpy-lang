@@ -4,8 +4,13 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "pascal_rt.hpp"
+#include "pascal_rt/runtime.hpp"
+#include "pascal_rt/runtime/builtins.hpp"
 
 namespace tpyapp::main {
+
+using ::pascal_rt::runtime::builtins::check_subrange;
 
 enum class day : int32_t {
     mon = 0,

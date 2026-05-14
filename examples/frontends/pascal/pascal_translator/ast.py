@@ -135,10 +135,29 @@ class SubrangeTypeSpec:
 
 @dataclass
 class SetLit:
-    """`[a, b, c]` -- a set literal appearing as the RHS of `in` (or
-    in future as the value of a set-typed variable). M10 only
-    accepts literal-shaped element lists."""
-    elements: list   # list[Expr]
+    """`[a, b, c]` or `[a, lo..hi, c]` -- a set literal. Elements
+    are either `Expr` (single value) or `RangeLabel` (lo..hi)."""
+    elements: list   # list[Expr | RangeLabel]
+    loc: Loc
+
+
+@dataclass
+class RangeLabel:
+    """`lo..hi` -- a range, used inside `case` arm labels and set
+    literals. Distinct from `SubrangeTypeSpec` (which carries integer
+    bounds for a type declaration); a RangeLabel carries arbitrary
+    expressions because case labels and set elements can reference
+    named constants and enum members."""
+    lo: object       # Expr
+    hi: object       # Expr
+    loc: Loc
+
+
+@dataclass
+class SetTypeSpec:
+    """`set of T` -- M12 type spec. Element type `T` is the only
+    payload; tpy.Set[T] is the lowering target."""
+    element: object  # TypeSpec
     loc: Loc
 
 
@@ -297,10 +316,11 @@ class RepeatStmt:
 class CaseArm:
     """One arm in a `case` statement: `value [, value ...] : stmt`.
 
-    M3 supports literal-value arms only (integers and strings). Range
-    patterns (`1..5: ...`) are deferred to a later milestone.
+    M12 extends labels to allow range labels (`1..5`) alongside
+    single-value labels; each `values` entry is either an `Expr` (a
+    single literal / named-constant label) or a `RangeLabel`.
     """
-    values: list     # list[Expr] -- one arm may list multiple values
+    values: list     # list[Expr | RangeLabel]
     body: object     # Stmt
     loc: Loc
 

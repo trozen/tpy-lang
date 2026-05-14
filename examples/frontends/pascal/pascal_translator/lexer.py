@@ -65,7 +65,7 @@ KEYWORDS = frozenset({
     "repeat", "until",
     "case", "of",
     "procedure", "function",
-    "type", "record", "array", "of",
+    "type", "record", "array", "of", "set",
     "unit", "uses", "interface", "implementation", "initialization",
 })
 

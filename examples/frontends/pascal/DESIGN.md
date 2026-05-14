@@ -84,12 +84,24 @@ The same architecture; v1's design must not foreclose any of these.
 Most need only translator + runtime additions, not plugin-API or
 TPy-core changes.
 
-- **Units**: `unit`, `interface`, `implementation`, `uses`. Maps to
-  TPy modules + explicit imports; the unit name becomes the module
-  name. Two TP files in the same dir form a multi-file program.
-  Prerequisite for the standard library units (Graph, Crt, etc.).
-- **Sets**: `set of T` for richer T (any ordinal). Maps to a TPy
-  `set` runtime type; `+`, `-`, `*` set ops, `in` membership.
+- **Units** (M11, shipped): `unit`, `interface`, `implementation`,
+  `uses`. Maps to TPy modules + star imports; the unit name becomes
+  the module name. Polyglot resolution: `uses X;` finds `X.pas` or
+  `X.py` in the entry-point directory; `uses py.X;` strips the
+  `py.` prefix and resolves `X` as a TPy stdlib / arbitrary Python
+  module.
+- **Sets** (M12, shipped): `set of T` for any ordinal. Maps to a TPy
+  `set[T]`; literal `[a, b, c]` and `[lo..hi]`; `+`/`-`/`*` set ops
+  (union / difference / intersection); `in` membership on set-typed
+  variables.
+- **Subrange enforcement** (M12, shipped): insert `check_subrange(...)`
+  calls at assignment sites whose declared type is a subrange alias.
+  Always-on (no `{$R+}` / `{$R-}` directive handling). Index-site
+  enforcement still pending.
+- **Ranges in `case`** (M12, shipped): `case x of 1..5: ...`. Lowers
+  to a guarded `MatchWildcard` arm (`case _ if lo <= x <= hi:`).
+  Scalar labels keep their structural `MatchValue` form. Enum-typed
+  range labels need ordering comparisons on enums and are deferred.
 - **Pointers**: `^T`, `New`, `Dispose`, `^x.field`. Maps to `Ptr[T]`
   via `tpy.unsafe.unsafe_alloc` (allocate) + `unsafe_init`
   (placement-construct), with `unsafe_drop` + `unsafe_free` on
@@ -104,10 +116,6 @@ TPy-core changes.
 - **Strings beyond ShortString**: longer-than-255, AnsiString,
   PChar interop. Lower priority within Tier 2; FixStr covers the
   kid-program use case.
-- **Subrange enforcement**: insert bounds checks at assignment /
-  index sites for declared subranges.
-- **Ranges in `case`**: `case x of 1..5: ...` -- mostly syntactic
-  but needs translation rules.
 - **`Crt` unit (portable subset)**: `TextColor`, `TextBackground`,
   `GotoXY`, `WhereX`, `WhereY`, `ClrScr`, `ClrEol`, `KeyPressed`,
   `ReadKey`, `Delay`, `Sound`/`NoSound` (best-effort). Backed by a
@@ -355,6 +363,14 @@ TODOs the tier needs.
    read-side runtime.
 9. **Realistic program.** ASCII Mandelbrot or similar; covers
    floats + arrays + nested loops + I/O end-to-end.
+10. **Tier-1 builtins finish.** `const`, char / hex / `#nn` literals,
+    `inc/dec/abs/chr/ord/sqr/odd`, `succ/pred`, `random/randomize`,
+    subrange-type aliases, set-membership `in` for literal sets.
+11. **Units.** `unit X; interface ... implementation ... end.` and
+    `uses Y;` clauses, including the polyglot Pascal/Python mode and
+    the `py.X` escape hatch into TPy stdlib.
+12. **Language polish.** `case` ranges (`1..5:`), full `set of T`
+    with all set ops, subrange bounds-checking at assignment sites.
 
 Each milestone closes with: tests in `tests/cases/pascal/`, snapshot
 diagnostics + output + generated C++ checked in, runs green under

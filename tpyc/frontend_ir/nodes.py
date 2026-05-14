@@ -262,8 +262,16 @@ class Compare:
     loc: Loc | None = None
 
 
+@dataclass
+class SetLit:
+    """Set literal: `{a, b, c}`. Lowers to TpySetLiteral."""
+    kind: str = field(default="SetLit", init=False)
+    elements: tuple["Expr", ...] = ()
+    loc: Loc | None = None
+
+
 Expr = Union[StrLit, BoolLit, IntLit, FloatLit, Name, Call, BinOp, UnaryOp,
-             Compare, Attr, Subscript]
+             Compare, Attr, Subscript, SetLit]
 
 
 # --- Statements -----------------------------------------------------------

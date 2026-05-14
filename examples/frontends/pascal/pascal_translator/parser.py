@@ -418,6 +418,8 @@ class _Parser:
             return self.parse_array_type()
         if self.cur.kind == TokKind.KEYWORD and self.cur.text == "string":
             return self.parse_string_type()
+        if self.cur.kind == TokKind.KEYWORD and self.cur.text == "set":
+            return self.parse_set_type()
         if self.cur.kind == TokKind.LPAREN:
             return self.parse_enum_type()
         # Subrange shape: a signed int literal followed by `..` and
@@ -504,6 +506,17 @@ class _Parser:
             )
         return pa.StringTypeSpec(
             capacity=capacity, loc=self._loc(start, end_tok),
+        )
+
+    def parse_set_type(self) -> pa.SetTypeSpec:
+        """`set of T` -- a set whose elements are of type `T`.
+        Lowers to `NamedType("set", [T])` (TPy `set[T]`)."""
+        start = self._eat(TokKind.KEYWORD, "set")
+        self._eat(TokKind.KEYWORD, "of")
+        element = self.parse_type_spec()
+        end_tok = self.tokens[self.i - 1]
+        return pa.SetTypeSpec(
+            element=element, loc=self._loc(start, end_tok),
         )
 
     def parse_record_type(self) -> pa.RecordTypeSpec:
@@ -934,15 +947,29 @@ class _Parser:
 
     def _parse_case_arm(self) -> pa.CaseArm:
         first_loc = self.cur
-        values: list = [self.parse_expression()]
+        values: list = [self._parse_case_label()]
         while self.cur.kind == TokKind.COMMA:
             self.i += 1
-            values.append(self.parse_expression())
+            values.append(self._parse_case_label())
         self._eat(TokKind.COLON)
         body = self.parse_statement()
         end_tok = self.tokens[self.i - 1]
         return pa.CaseArm(values=values, body=body,
                           loc=self._loc(first_loc, end_tok))
+
+    def _parse_case_label(self):
+        """A single case label: either an expression or a range
+        `lo..hi`. Ranges lower to a guarded MatchWildcard arm; bare
+        expressions stay structural MatchValue arms."""
+        lo_expr = self.parse_expression()
+        if self.cur.kind == TokKind.DOTDOT:
+            self.i += 1
+            hi_expr = self.parse_expression()
+            return pa.RangeLabel(
+                lo=lo_expr, hi=hi_expr,
+                loc=self._loc_span(lo_expr, hi_expr),
+            )
+        return lo_expr
 
     # ------------------------------------------------------------------
     # Expressions
@@ -1012,24 +1039,41 @@ class _Parser:
         return lhs
 
     def _parse_set_literal_or_expr(self):
-        """The RHS of `in`. M10 supports only the literal set form
-        `[ expr, expr, ... ]`; richer forms (range `1..5`, a set-
-        typed variable) wait on Tier 2."""
-        if self.cur.kind != TokKind.LBRACK:
-            t = self.cur
-            raise ParseError(
-                "expected '[' starting a set literal after 'in'",
-                t.line, t.col,
-            )
+        """The RHS of `in`. Either a bracket-form set literal
+        (`[ expr, expr, lo..hi, ... ]`, possibly with ranges) or any
+        other expression (e.g. a set-typed variable). The bracket
+        form is also accepted as a primary expression elsewhere; this
+        wrapper is kept so the existing `in` callers continue to work."""
+        if self.cur.kind == TokKind.LBRACK:
+            return self._parse_set_literal()
+        return self.parse_expression()
+
+    def _parse_set_literal(self) -> pa.SetLit:
+        """`[ elem (, elem)* ]` where each element is either a single
+        expression or a range `lo..hi`."""
         start = self._eat(TokKind.LBRACK)
         elements: list = []
         if self.cur.kind != TokKind.RBRACK:
-            elements.append(self.parse_expression())
+            elements.append(self._parse_set_element())
             while self.cur.kind == TokKind.COMMA:
                 self.i += 1
-                elements.append(self.parse_expression())
+                elements.append(self._parse_set_element())
         end = self._eat(TokKind.RBRACK)
         return pa.SetLit(elements=elements, loc=self._loc(start, end))
+
+    def _parse_set_element(self):
+        """A single element inside a `[ ... ]` set literal. Either a
+        plain expression, or `lo..hi` (a RangeLabel) -- the same shape
+        used inside case-arm labels."""
+        lo_expr = self.parse_expression()
+        if self.cur.kind == TokKind.DOTDOT:
+            self.i += 1
+            hi_expr = self.parse_expression()
+            return pa.RangeLabel(
+                lo=lo_expr, hi=hi_expr,
+                loc=self._loc_span(lo_expr, hi_expr),
+            )
+        return lo_expr
 
     def _parse_add(self):
         node = self._parse_mul()
@@ -1144,6 +1188,8 @@ class _Parser:
             inner = self.parse_expression()
             self._eat(TokKind.RPAREN)
             return inner
+        if t.kind == TokKind.LBRACK:
+            return self._parse_set_literal()
         raise ParseError(
             f"expected expression, got {t.kind.value} {t.text!r}",
             t.line, t.col,

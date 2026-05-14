@@ -45,6 +45,7 @@ from ..parse.nodes import (
     TpyName,
     TpyRecord,
     TpyReturn,
+    TpySetLiteral,
     TpyStrLiteral,
     TpySubscript,
     TpyTypeRef,
@@ -92,6 +93,7 @@ from .nodes import (
     Record,
     RepeatUntil,
     Return,
+    SetLit,
     StarImport,
     StrLit,
     Subscript,
@@ -762,6 +764,16 @@ def _lower_expr(
         if operand is None:
             return None
         out = TpyUnaryOp(op=op_str, operand=operand)
+        out.loc = loc
+        return out
+    if isinstance(expr, SetLit):
+        lowered_elems: list = []
+        for elem in expr.elements:
+            le = _lower_expr(elem, name_to_origin, plugin_name, fm, diags)
+            if le is None:
+                return None
+            lowered_elems.append(le)
+        out = TpySetLiteral(elements=lowered_elems)
         out.loc = loc
         return out
     if isinstance(expr, Compare):

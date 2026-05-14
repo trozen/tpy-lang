@@ -1,0 +1,9 @@
+zero
+low
+low
+low
+mid
+mid
+high
+high
+high

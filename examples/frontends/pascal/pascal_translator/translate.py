@@ -61,6 +61,7 @@ from tpyc.frontend_ir import (
     Record,
     RepeatUntil,
     Return,
+    SetLit as IRSetLit,
     StarImport,
     StrLit,
     Subscript,
@@ -131,6 +132,16 @@ _CMP_OP: dict[str, CmpOpKind] = {
     ">=": CmpOpKind.GE,
 }
 
+# Pascal set-arithmetic remapping. Pascal spells set union / difference
+# / intersection as `+` / `-` / `*` (overloaded with int arithmetic);
+# when both operands are set-typed, the translator routes the IR op
+# through this table so codegen reaches TPy's set ops (`|` / `-` / `&`).
+_SET_OP: dict[BinOpKind, BinOpKind] = {
+    BinOpKind.ADD: BinOpKind.BIT_OR,
+    BinOpKind.SUB: BinOpKind.SUB,
+    BinOpKind.MUL: BinOpKind.BIT_AND,
+}
+
 
 # Name of the synthetic local that carries a function's return value.
 # Pascal's `function_name := expr` writes get rewritten to assign to
@@ -189,10 +200,23 @@ class _Ctx:
     # checks like exhaustive case-arm analysis).
     enum_types: dict[str, list[str]] = field(default_factory=dict)
     # User-defined type aliases that don't materialize as IR Record /
-    # Enum nodes. Today this only carries subrange types (`type Byte
-    # = 0..255` -> integer); later milestones can add string aliases,
-    # array aliases, pointer aliases, etc.
+    # Enum nodes. Today this carries subrange types (`type Byte
+    # = 0..255` -> integer with bounds asserts) and set-of aliases;
+    # later milestones can add string aliases, pointer aliases, etc.
     type_aliases: dict[str, object] = field(default_factory=dict)
+    # Counter for synthetic locals introduced by lowering (case-subject
+    # temps, etc.). Each fresh name is `__pascal_synth_N`.
+    next_synth_id: int = 0
+    # Subrange bounds for variables / parameters whose declared type is
+    # a subrange alias. Keyed by var/param name -> (lo, hi). Used by
+    # assignment lowering to wrap the RHS in `check_subrange(...)`.
+    subrange_bounds: dict[str, tuple[int, int]] = field(default_factory=dict)
+    # Field-level subrange bounds for record types whose fields are
+    # declared with a subrange-aliased type. Keyed by (record_name,
+    # field_name) -> (lo, hi). Used by compound-target assignment
+    # lowering when the target is `record.field`.
+    record_field_subrange: dict[tuple[str, str], tuple[int, int]] = field(
+        default_factory=dict)
     # Per-routine state (saved / restored when entering / leaving each
     # subroutine; left at the defaults at module-body level).
     current_func: str | None = None
@@ -201,6 +225,11 @@ class _Ctx:
 
     def add_import(self, module: str, name: str) -> None:
         self.needed_imports.setdefault(module, set()).add(name)
+
+    def fresh_synth_name(self, hint: str) -> str:
+        i = self.next_synth_id
+        self.next_synth_id = i + 1
+        return f"__pascal_synth_{hint}_{i}"
 
 
 def translate(program: pa.Program,
@@ -252,6 +281,11 @@ def translate(program: pa.Program,
                 # name is recorded so var decls / parameter types can
                 # reference it.
                 ctx.type_aliases[td.name] = td.type_spec
+            elif isinstance(td.type_spec, pa.SetTypeSpec):
+                # `type IntSet = set of integer;` registers as an
+                # alias; var decls / params route through the alias
+                # back to the underlying `set[T]` IR type.
+                ctx.type_aliases[td.name] = td.type_spec
 
     # `uses` clauses: resolve each to a canonical TPy module name and
     # mark it as a star import. Bare names (`uses Crt`) resolve only
@@ -289,6 +323,8 @@ def translate(program: pa.Program,
                 if enum_node is not None:
                     enums.append(enum_node)
             elif isinstance(td.type_spec, pa.SubrangeTypeSpec):
+                pass  # registered in pre-scan as a type alias
+            elif isinstance(td.type_spec, pa.SetTypeSpec):
                 pass  # registered in pre-scan as a type alias
             else:
                 ctx.diagnostics.append(_diag(
@@ -332,9 +368,7 @@ def translate(program: pa.Program,
     # nothing here.
     if program.block is not None:
         for stmt in program.block.statements:
-            lowered = _lower_stmt(stmt, ctx)
-            if lowered is not None:
-                top_level_stmts.append(lowered)
+            top_level_stmts.extend(_lower_stmt_to_tuple(stmt, ctx))
 
     # Subroutines.
     for sub in program.subroutines:
@@ -544,12 +578,23 @@ def _lower_type_spec(spec, ctx: _Ctx):
             loc=_to_ir_loc(spec.loc),
         )
     if isinstance(spec, pa.SubrangeTypeSpec):
-        # M10 lowers Pascal subrange types to plain `integer`. Tier 2
-        # makes the bounds first-class with insertion of assert /
-        # clamp sites at assignment / index sites.
+        # The IR type is plain `Int32`; subrange enforcement happens at
+        # the assignment / parameter-entry sites by wrapping the RHS in
+        # `check_subrange(value, lo, hi, name)`. Going via a runtime
+        # helper rather than a new IR-level Assert node keeps the
+        # subrange invariant fully inside the Pascal frontend.
         ctx.add_import("tpy", "Int32")
         return NamedType(name="Int32", args=(),
                          loc=_to_ir_loc(spec.loc))
+    if isinstance(spec, pa.SetTypeSpec):
+        elem = _lower_type_spec(spec.element, ctx)
+        if elem is None:
+            return None
+        return NamedType(
+            name="set",
+            args=(TypeTypeArg(value=elem),),
+            loc=_to_ir_loc(spec.loc),
+        )
     ctx.diagnostics.append(_diag(
         f"unsupported type spec {type(spec).__name__}",
         getattr(spec, "loc", _zero_loc()),
@@ -619,6 +664,7 @@ def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
         # than the alias name.
         resolved = spec.name
         seen: set[str] = set()
+        subrange_bounds: tuple[int, int] | None = None
         while resolved in ctx.type_aliases and resolved not in seen:
             seen.add(resolved)
             target = ctx.type_aliases[resolved]
@@ -626,9 +672,14 @@ def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
                 resolved = target.name
                 continue
             if isinstance(target, pa.SubrangeTypeSpec):
+                subrange_bounds = (target.lower, target.upper)
                 resolved = "integer"
+            elif isinstance(target, pa.SetTypeSpec):
+                resolved = "set"
             break
         ctx.type_env[name] = resolved
+        if subrange_bounds is not None:
+            ctx.subrange_bounds[name] = subrange_bounds
         return
     if isinstance(spec, pa.ArrayTypeSpec):
         ctx.type_env[name] = "array"
@@ -638,6 +689,22 @@ def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
         ctx.type_env[name] = "string"
         ctx.string_vars[name] = spec.capacity
         return
+    if isinstance(spec, pa.SetTypeSpec):
+        ctx.type_env[name] = "set"
+        return
+
+
+def _resolve_alias_target(spec, ctx: _Ctx):
+    """Walk through `type X = Y;` aliases until a non-NamedTypeSpec
+    target is reached. Returns the resolved spec (which may still be
+    a NamedTypeSpec if the name has no alias entry)."""
+    seen: set[str] = set()
+    while (isinstance(spec, pa.NamedTypeSpec)
+           and spec.name in ctx.type_aliases
+           and spec.name not in seen):
+        seen.add(spec.name)
+        spec = ctx.type_aliases[spec.name]
+    return spec
 
 
 def _default_init_for_spec(spec, loc: pa.Loc, ctx: _Ctx):
@@ -646,15 +713,28 @@ def _default_init_for_spec(spec, loc: pa.Loc, ctx: _Ctx):
     - Scalars route through `_default_init_for` (int 0, bool False).
     - User record types lower to a default constructor call `T()`.
     - Arrays / strings get their explicit type-args constructor.
+    - Aliased composite types (e.g. `IntSet = set of integer`)
+      resolve through `type_aliases` before defaulting.
     """
-    if isinstance(spec, pa.NamedTypeSpec):
-        if spec.name in ctx.record_types:
-            return _default_record_ctor(spec.name, loc)
-        return _default_init_for(spec.name, loc)
-    if isinstance(spec, pa.ArrayTypeSpec):
-        return _default_array_ctor(spec, loc, ctx)
-    if isinstance(spec, pa.StringTypeSpec):
-        return _default_fixstr_ctor(spec.capacity, loc, ctx)
+    resolved = _resolve_alias_target(spec, ctx)
+    if isinstance(resolved, pa.NamedTypeSpec):
+        if resolved.name in ctx.record_types:
+            return _default_record_ctor(resolved.name, loc)
+        return _default_init_for(resolved.name, loc)
+    if isinstance(resolved, pa.ArrayTypeSpec):
+        return _default_array_ctor(resolved, loc, ctx)
+    if isinstance(resolved, pa.StringTypeSpec):
+        return _default_fixstr_ctor(resolved.capacity, loc, ctx)
+    if isinstance(resolved, pa.SetTypeSpec):
+        # Empty `set()` constructor rather than `{}` literal -- TPy
+        # treats the bare `{}` as a dict and would reject the assign
+        # without an explicit set annotation; the constructor form
+        # carries the type unambiguously.
+        ir_loc = _to_ir_loc(loc)
+        return Call(
+            callee=Name(ident="set", loc=ir_loc),
+            args=(), loc=ir_loc,
+        )
     return None
 
 
@@ -663,13 +743,24 @@ def _default_init_module(spec, loc: pa.Loc, ctx: _Ctx):
     auto-zero-init applies); records, arrays, and strings require an
     explicit constructor call -- TPy rejects uninitialised non-value
     globals."""
-    if isinstance(spec, pa.NamedTypeSpec):
-        if spec.name in ctx.record_types:
-            return _default_record_ctor(spec.name, loc)
-    if isinstance(spec, pa.ArrayTypeSpec):
-        return _default_array_ctor(spec, loc, ctx)
-    if isinstance(spec, pa.StringTypeSpec):
-        return _default_fixstr_ctor(spec.capacity, loc, ctx)
+    resolved = _resolve_alias_target(spec, ctx)
+    if isinstance(resolved, pa.NamedTypeSpec):
+        if resolved.name in ctx.record_types:
+            return _default_record_ctor(resolved.name, loc)
+    if isinstance(resolved, pa.ArrayTypeSpec):
+        return _default_array_ctor(resolved, loc, ctx)
+    if isinstance(resolved, pa.StringTypeSpec):
+        return _default_fixstr_ctor(resolved.capacity, loc, ctx)
+    if isinstance(resolved, pa.SetTypeSpec):
+        # Empty `set()` constructor rather than `{}` literal -- TPy
+        # treats the bare `{}` as a dict and would reject the assign
+        # without an explicit set annotation; the constructor form
+        # carries the type unambiguously.
+        ir_loc = _to_ir_loc(loc)
+        return Call(
+            callee=Name(ident="set", loc=ir_loc),
+            args=(), loc=ir_loc,
+        )
     return None
 
 
@@ -732,7 +823,9 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
     # the module env. M4 routines don't see module vars (Pascal does,
     # but supporting that requires more sema-side scope work).
     saved_type_env = ctx.type_env
+    saved_subrange_bounds = ctx.subrange_bounds
     ctx.type_env = dict(ctx.type_env)
+    ctx.subrange_bounds = dict(ctx.subrange_bounds)
     ctx.current_func = sub.name
     ctx.current_func_return_type = sub.return_type
     ctx.current_var_params = {p.name for p in sub.params if p.is_var}
@@ -746,6 +839,7 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
             ctx.current_func_return_type = saved_return
             ctx.current_var_params = saved_var_params
             ctx.type_env = saved_type_env
+            ctx.subrange_bounds = saved_subrange_bounds
             return None
         param_type = (PointerType(inner=base_type, loc=_to_ir_loc(p.loc))
                       if p.is_var else base_type)
@@ -755,9 +849,11 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
         ))
         # The type env records the Pascal type spelling (without the
         # `Ptr` wrapper) so writeln dispatch and other type-driven
-        # decisions see the value type, not the pointer.
+        # decisions see the value type, not the pointer. Routing
+        # through `_record_var_metadata` also resolves subrange-alias
+        # type specs so later writes to this param get bounds-checked.
         if isinstance(p.type_spec, pa.NamedTypeSpec):
-            ctx.type_env[p.name] = p.type_spec.name
+            _record_var_metadata(p.name, p.type_spec, ctx)
 
     # `var` params require take_ptr / deref / unsafe_store visibility
     # in the lowered module.
@@ -813,9 +909,7 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
 
     # Body statements.
     for stmt in sub.body.statements:
-        lowered = _lower_stmt(stmt, ctx)
-        if lowered is not None:
-            body_stmts.append(lowered)
+        body_stmts.extend(_lower_stmt_to_tuple(stmt, ctx))
 
     # Trailing return for functions.
     return_ir_type = None
@@ -831,6 +925,7 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
     ctx.current_func_return_type = saved_return
     ctx.current_var_params = saved_var_params
     ctx.type_env = saved_type_env
+    ctx.subrange_bounds = saved_subrange_bounds
     return Function(
         name=sub.name,
         params=tuple(ir_params),
@@ -928,6 +1023,11 @@ def _lower_assign_stmt(stmt: pa.AssignStmt, ctx: _Ctx):
         value = _lower_expr(stmt.value, ctx)
         if value is None:
             return None
+        bounds = ctx.subrange_bounds.get(target_name)
+        if bounds is not None:
+            value = _wrap_subrange_check(
+                value, bounds, target_name, _to_ir_loc(stmt.loc), ctx,
+            )
         if target_name in ctx.current_var_params:
             ctx.add_import("tpy.unsafe", "unsafe_store")
             ir_call = Call(
@@ -983,6 +1083,40 @@ def _produces_string_value(expr, ctx: _Ctx) -> bool:
     if isinstance(expr, pa.BinOp) and expr.op == "+":
         return (_produces_string_value(expr.lhs, ctx)
                 or _produces_string_value(expr.rhs, ctx))
+    return False
+
+
+def _wrap_subrange_check(value, bounds: tuple[int, int],
+                         name: str, loc, ctx: _Ctx):
+    """Wrap an IR expression in `check_subrange(value, lo, hi, name)`.
+    The runtime helper panics with a TP-style range-check message
+    when `value` falls outside `[lo, hi]`. Always-on (the M12 plan
+    explicitly opts out of TP7's `{$R+}` / `{$R-}` directive)."""
+    lo, hi = bounds
+    ctx.add_import("pascal.runtime.builtins", "check_subrange")
+    return Call(
+        callee=Name(ident="check_subrange", loc=loc),
+        args=(
+            value,
+            IntLit(value=lo, loc=loc),
+            IntLit(value=hi, loc=loc),
+            StrLit(value=name, loc=loc),
+        ),
+        loc=loc,
+    )
+
+
+def _produces_set_value(expr, ctx: _Ctx) -> bool:
+    """True when a Pascal expression yields a `set`-typed value.
+    Drives the BinOp `+/-/*` remap that routes set operands through
+    set ops rather than int / float arithmetic."""
+    if isinstance(expr, pa.SetLit):
+        return True
+    if isinstance(expr, pa.Ident):
+        return ctx.type_env.get(expr.name) == "set"
+    if isinstance(expr, pa.BinOp) and expr.op in ("+", "-", "*"):
+        return (_produces_set_value(expr.lhs, ctx)
+                and _produces_set_value(expr.rhs, ctx))
     return False
 
 
@@ -1082,19 +1216,29 @@ def _lower_compound_as_marker(stmt: pa.CompoundStmt, ctx: _Ctx):
     return None
 
 
+def _lower_stmt_to_tuple(stmt, ctx: _Ctx) -> tuple:
+    """Lower one Pascal statement, flattening either single-statement
+    or multi-statement lowering returns. Some Pascal statements (e.g.
+    `case x of` with a range label) lower to a subject-temp VarDecl
+    plus a Match, which the case-lowering returns as a tuple."""
+    lowered = _lower_stmt(stmt, ctx)
+    if lowered is None:
+        return ()
+    if isinstance(lowered, (tuple, list)):
+        return tuple(lowered)
+    return (lowered,)
+
+
 def _lower_branch(stmt, ctx: _Ctx) -> tuple:
     if isinstance(stmt, pa.CompoundStmt):
         return _lower_block_stmts(stmt.statements, ctx)
-    lowered = _lower_stmt(stmt, ctx)
-    return (lowered,) if lowered is not None else ()
+    return _lower_stmt_to_tuple(stmt, ctx)
 
 
 def _lower_block_stmts(stmts, ctx: _Ctx) -> tuple:
     out: list = []
     for s in stmts:
-        lowered = _lower_stmt(s, ctx)
-        if lowered is not None:
-            out.append(lowered)
+        out.extend(_lower_stmt_to_tuple(s, ctx))
     return tuple(out)
 
 
@@ -1102,16 +1246,58 @@ def _lower_case_stmt(stmt: pa.CaseStmt, ctx: _Ctx):
     subject = _lower_expr(stmt.subject, ctx)
     if subject is None:
         return None
+    # Detect whether any arm uses a range label. Range labels lower
+    # to a `MatchCase(MatchWildcard, guard=lo <= subject_temp <= hi)`
+    # arm, which needs to reference the subject by name -- so we
+    # hoist arbitrary subject expressions into a synthetic local that
+    # we can name in both the Match.subject and each guard. Status-quo
+    # all-scalar-label cases skip the hoist so they keep emitting a
+    # bare `match expr:` shape.
+    has_range = any(
+        isinstance(v, pa.RangeLabel)
+        for arm in stmt.arms for v in arm.values
+    )
+    prelude: list = []
+    subject_ref = subject
+    subject_name: str | None = None
+    if has_range:
+        if isinstance(subject, Name):
+            subject_name = subject.ident
+        else:
+            subject_name = ctx.fresh_synth_name("case")
+            ir_loc = _to_ir_loc(stmt.subject.loc)
+            prelude.append(VarDecl(
+                name=subject_name,
+                type=None,
+                init=subject,
+                mutable=False,
+                loc=ir_loc,
+            ))
+            subject_ref = Name(ident=subject_name, loc=ir_loc)
     cases: list = []
     for arm in stmt.arms:
         body = _lower_branch(arm.body, ctx)
         for v in arm.values:
+            arm_ir_loc = _to_ir_loc(arm.loc)
+            if isinstance(v, pa.RangeLabel):
+                lo_ir = _lower_expr(v.lo, ctx)
+                hi_ir = _lower_expr(v.hi, ctx)
+                if lo_ir is None or hi_ir is None:
+                    return None
+                guard = _build_range_guard(
+                    subject_name, lo_ir, hi_ir, arm_ir_loc,
+                )
+                cases.append(MatchCase(
+                    pattern=MatchWildcard(loc=arm_ir_loc),
+                    guard=guard, body=body, loc=arm_ir_loc,
+                ))
+                continue
             ir_v = _lower_expr(v, ctx)
             if ir_v is None:
                 return None
             cases.append(MatchCase(
-                pattern=MatchValue(value=ir_v, loc=_to_ir_loc(arm.loc)),
-                body=body, loc=_to_ir_loc(arm.loc),
+                pattern=MatchValue(value=ir_v, loc=arm_ir_loc),
+                body=body, loc=arm_ir_loc,
             ))
     if stmt.else_branch is not None:
         else_body = _lower_branch(stmt.else_branch, ctx)
@@ -1119,8 +1305,26 @@ def _lower_case_stmt(stmt: pa.CaseStmt, ctx: _Ctx):
             pattern=MatchWildcard(loc=_to_ir_loc(stmt.loc)),
             body=else_body, loc=_to_ir_loc(stmt.loc),
         ))
-    return Match(subject=subject, cases=tuple(cases),
-                 loc=_to_ir_loc(stmt.loc))
+    match = Match(subject=subject_ref, cases=tuple(cases),
+                  loc=_to_ir_loc(stmt.loc))
+    if prelude:
+        return tuple(prelude) + (match,)
+    return match
+
+
+def _build_range_guard(subject_name: str, lo_ir, hi_ir, loc):
+    """Build the guard expression `lo <= subject <= hi`. The frontend
+    IR `Compare` is single-op only (matches Pascal); we emit two
+    comparisons joined by logical-AND."""
+    subj = Name(ident=subject_name, loc=loc)
+    lo_cmp = Compare(
+        lhs=lo_ir, ops=(CmpOpKind.LE,), comparators=(subj,), loc=loc,
+    )
+    hi_cmp = Compare(
+        lhs=subj, ops=(CmpOpKind.LE,), comparators=(hi_ir,), loc=loc,
+    )
+    return BinOp(op=BinOpKind.LOGICAL_AND, lhs=lo_cmp, rhs=hi_cmp,
+                 loc=loc)
 
 
 # ---------------------------------------------------------------------------
@@ -1418,12 +1622,27 @@ def _lower_expr(expr, ctx: _Ctx):
         return _lower_index_expr(expr, ctx)
     if isinstance(expr, pa.CallExpr):
         return _lower_call_expr(expr, ctx)
+    if isinstance(expr, pa.SetLit):
+        return _lower_set_literal(expr, ctx)
     if isinstance(expr, pa.BinOp):
-        # `x in [a, b, c]` desugars to `(x = a) or (x = b) or (x = c)`.
-        # M10 only accepts literal-element set RHS; bigger Pascal sets
-        # arrive in Tier 2 with a real `tpy.Set` runtime type.
-        if expr.op == "in" and isinstance(expr.rhs, pa.SetLit):
-            return _lower_in_membership(expr, ctx)
+        # `x in <rhs>`: for a literal scalar-only set, keep the
+        # OR-of-equality form (cheap on tiny static sets and works for
+        # mixed-type case-membership over enum / int literals). For
+        # set literals with ranges, or non-literal set-typed RHS, use
+        # TPy's native `x in set_value` form.
+        if expr.op == "in":
+            if (isinstance(expr.rhs, pa.SetLit)
+                    and all(not isinstance(e, pa.RangeLabel)
+                            for e in expr.rhs.elements)):
+                return _lower_in_membership(expr, ctx)
+            lhs = _lower_expr(expr.lhs, ctx)
+            rhs = _lower_expr(expr.rhs, ctx)
+            if lhs is None or rhs is None:
+                return None
+            return Compare(
+                lhs=lhs, ops=(CmpOpKind.IN,), comparators=(rhs,),
+                loc=_to_ir_loc(expr.loc),
+            )
         cmp_op = _CMP_OP.get(expr.op)
         if cmp_op is not None:
             lhs = _lower_expr(expr.lhs, ctx)
@@ -1443,6 +1662,13 @@ def _lower_expr(expr, ctx: _Ctx):
             ctx.diagnostics.append(_diag(
                 f"unsupported binary operator {expr.op!r}", expr.loc))
             return None
+        # Set arithmetic: `+`/`-`/`*` between two set-typed operands
+        # remaps to `|`/`-`/`&` so it reaches TPy's set ops instead of
+        # the int / float arithmetic ops with the same Pascal spelling.
+        if op in (BinOpKind.ADD, BinOpKind.SUB, BinOpKind.MUL):
+            if (_produces_set_value(expr.lhs, ctx)
+                    and _produces_set_value(expr.rhs, ctx)):
+                op = _SET_OP[op]
         lhs = _lower_expr(expr.lhs, ctx)
         rhs = _lower_expr(expr.rhs, ctx)
         if lhs is None or rhs is None:
@@ -1507,6 +1733,70 @@ def _lower_in_membership(expr: pa.BinOp, ctx: _Ctx):
             op=BinOpKind.LOGICAL_OR, lhs=or_chain, rhs=cmp, loc=ir_loc,
         )
     return or_chain
+
+
+def _lower_set_literal(expr: pa.SetLit, ctx: _Ctx):
+    """Lower a Pascal set literal `[ ... ]` in expression position. An
+    all-scalar literal `[a, b, c]` lowers directly to an IR `SetLit`
+    (-> TPy `{a, b, c}`). When any element is a `RangeLabel`, the
+    literal lowers to a composite `set(...).union(set(range(lo, hi+1)),
+    ...)` so the range is expanded materially. Range expansion uses
+    the builtin `set` / `range` constructors, which TPy already
+    supports for any ordinal element type."""
+    ir_loc = _to_ir_loc(expr.loc)
+    if all(not isinstance(e, pa.RangeLabel) for e in expr.elements):
+        elems_ir: list = []
+        for elem in expr.elements:
+            le = _lower_expr(elem, ctx)
+            if le is None:
+                return None
+            elems_ir.append(le)
+        return IRSetLit(elements=tuple(elems_ir), loc=ir_loc)
+    # Mixed (scalar + range) literal: build chunks of scalars and
+    # ranges, then union them. `set()` of a tuple wraps scalars,
+    # `set(range(lo, hi+1))` wraps an inclusive range.
+    chunks: list = []
+    scalar_buf: list = []
+
+    def flush_scalars():
+        if not scalar_buf:
+            return
+        chunks.append(IRSetLit(
+            elements=tuple(scalar_buf), loc=ir_loc,
+        ))
+        scalar_buf.clear()
+
+    for elem in expr.elements:
+        if isinstance(elem, pa.RangeLabel):
+            flush_scalars()
+            lo_ir = _lower_expr(elem.lo, ctx)
+            hi_ir = _lower_expr(elem.hi, ctx)
+            if lo_ir is None or hi_ir is None:
+                return None
+            range_call = Call(
+                callee=Name(ident="range", loc=ir_loc),
+                args=(
+                    lo_ir,
+                    BinOp(op=BinOpKind.ADD, lhs=hi_ir,
+                          rhs=IntLit(value=1, loc=ir_loc), loc=ir_loc),
+                ), loc=ir_loc,
+            )
+            chunks.append(Call(
+                callee=Name(ident="set", loc=ir_loc),
+                args=(range_call,), loc=ir_loc,
+            ))
+        else:
+            le = _lower_expr(elem, ctx)
+            if le is None:
+                return None
+            scalar_buf.append(le)
+    flush_scalars()
+    if not chunks:
+        return IRSetLit(elements=(), loc=ir_loc)
+    out = chunks[0]
+    for c in chunks[1:]:
+        out = BinOp(op=BinOpKind.BIT_OR, lhs=out, rhs=c, loc=ir_loc)
+    return out
 
 
 def _builtin_passthrough(tpy_name: str, expr: pa.CallExpr, ctx: _Ctx):

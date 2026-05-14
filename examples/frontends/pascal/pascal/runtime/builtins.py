@@ -40,3 +40,18 @@ def succ_int(x: Int32) -> Int32:
 
 def pred_int(x: Int32) -> Int32:
     return x - 1
+
+
+def check_subrange(value: Int32, lo: Int32, hi: Int32, name: str) -> Int32:
+    """Assert `value` lies in `[lo, hi]`, returning it untouched. TP7
+    raises a range-check error (code 201) when an out-of-range value
+    is assigned to a subrange-typed variable. The translator inserts
+    a call to this helper at every assignment site whose target type
+    is a subrange alias, so the panic surfaces close to the bad
+    write."""
+    if value < lo or value > hi:
+        raise RuntimeError(
+            f"range check error: value {value} out of range "
+            f"[{lo}..{hi}] for {name!r}"
+        )
+    return value

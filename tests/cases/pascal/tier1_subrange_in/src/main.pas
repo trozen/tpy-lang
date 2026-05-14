@@ -1,6 +1,7 @@
-{ Tier-1: subrange type (parsed as alias to integer; no bounds
-  enforcement in M10) and set-membership `in` with literal-element
-  sets over integers and over enum members. }
+{ Subrange type alias and set-membership `in` with literal-element
+  sets over integers and over enum members. M12 makes subrange
+  assignments bounds-checked at translate time via the runtime
+  helper `check_subrange`. }
 program SubrangeIn;
 type
   Byte = 0..255;
