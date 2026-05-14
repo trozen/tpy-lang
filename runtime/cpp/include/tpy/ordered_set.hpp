@@ -255,6 +255,17 @@ private:
     Node* tail_ = nullptr;
 };
 
+// Construct an ordered_set from move-only T types. Mirrors make_vector /
+// make_ordered_map: the initializer_list ctor stores elements as const,
+// forcing a copy of T -- this helper forwards each element into insert
+// so move-only values work in set literals once sema permits them.
+template<typename T, typename... Args>
+ordered_set<T> make_ordered_set(Args&&... args) {
+    ordered_set<T> s;
+    (s.insert(std::forward<Args>(args)), ...);
+    return s;
+}
+
 // ---------------------------------------------------------------------------
 // OwnIterSet -- drain iterator for ordered_set
 //

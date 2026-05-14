@@ -228,14 +228,14 @@ public:
 
     // -- Modifiers ----------------------------------------------------------
 
-    template<typename KK>
-    void insert_or_assign(KK&& key, V value) {
+    template<typename KK, typename VV>
+    void insert_or_assign(KK&& key, VV&& value) {
         auto it = table_.find(key);
         if (it != table_.end()) {
-            it->second->value = std::move(value);
+            it->second->value = std::forward<VV>(value);
             return;
         }
-        auto* node = new Node(std::forward<KK>(key), std::move(value));
+        auto* node = new Node(std::forward<KK>(key), std::forward<VV>(value));
         link_back(node);
         table_.emplace(node->key, node);
     }
@@ -362,6 +362,32 @@ private:
     Node* head_ = nullptr;
     Node* tail_ = nullptr;
 };
+
+namespace detail {
+
+template<typename K, typename V>
+inline void make_ordered_map_impl(ordered_map<K, V>&) {}
+
+template<typename K, typename V, typename KK, typename VV, typename... Rest>
+void make_ordered_map_impl(ordered_map<K, V>& m, KK&& k, VV&& v, Rest&&... rest) {
+    m.insert_or_assign(std::forward<KK>(k), std::forward<VV>(v));
+    make_ordered_map_impl<K, V>(m, std::forward<Rest>(rest)...);
+}
+
+} // namespace detail
+
+// Construct an ordered_map from move-only K or V types. Mirrors make_vector:
+// the initializer_list ctor stores elements as const, forcing a copy of V --
+// this helper forwards each pair into insert_or_assign so move-only values
+// (e.g. Rc[T], Box[T]) and keys work in dict literals.
+template<typename K, typename V, typename... Args>
+ordered_map<K, V> make_ordered_map(Args&&... args) {
+    static_assert(sizeof...(Args) % 2 == 0,
+                  "make_ordered_map requires an even number of arguments (key/value pairs)");
+    ordered_map<K, V> m;
+    detail::make_ordered_map_impl<K, V>(m, std::forward<Args>(args)...);
+    return m;
+}
 
 // ---------------------------------------------------------------------------
 // OwnIterDict -- drain iterator for ordered_map keys

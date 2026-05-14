@@ -3889,8 +3889,19 @@ class ExpressionGenerator:
                         v_resolved = FloatLiteralType()
                 v_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(v, v_type), v_resolved, v_type)
                 v_cpp = self._to_value_variant_if_needed(v, v_cpp, v_type)
-                pairs.append(f"{{{k_cpp}, {v_cpp}}}")
-        return f"::tpy::ordered_map<{cpp_key}, {cpp_val}>({{{', '.join(pairs)}}})"
+                pairs.append((k_cpp, v_cpp))
+        # Non-copyable value: route through make_ordered_map to avoid the
+        # std::initializer_list<std::tuple<K,V>> ctor (whose elements are
+        # const and force a copy of V). Mirrors the list/make_vector path.
+        # Only v_type is checked: @nocopy keys are blocked by sema today
+        # (BUGS.md set/dict[Rc[T]]). When that gate lifts, this check must
+        # also cover k_type -- otherwise nocopy keys silently take the
+        # initializer_list path and fail at C++ compile.
+        if self._is_nocopy_container_element(v_type):
+            flat = ", ".join(f"{k}, {v}" for k, v in pairs)
+            return f"::tpy::make_ordered_map<{cpp_key}, {cpp_val}>({flat})"
+        braces = ", ".join(f"{{{k}, {v}}}" for k, v in pairs)
+        return f"::tpy::ordered_map<{cpp_key}, {cpp_val}>({{{braces}}})"
 
     def _gen_set_literal(self, expr: TpySetLiteral) -> str:
         """Generate set literal code: {a, b, ...} -> ::tpy::ordered_set<T>({a, b, ...})"""
@@ -3914,6 +3925,12 @@ class ExpressionGenerator:
                 e_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(e, elem_type), e_resolved, elem_type)
                 e_cpp = self._to_value_variant_if_needed(e, e_cpp, elem_type)
                 elems.append(e_cpp)
+        # Non-copyable element: route through make_ordered_set to avoid the
+        # std::initializer_list ctor copy. Parallels the dict / list fix.
+        # Currently sema gates @nocopy set elements (BUGS.md set/dict-key entry);
+        # this path is structural parity, exercised once that gate lifts.
+        if self._is_nocopy_container_element(elem_type):
+            return f"::tpy::make_ordered_set<{cpp_elem}>({', '.join(elems)})"
         return f"::tpy::ordered_set<{cpp_elem}>({{{', '.join(elems)}}})"
 
     def _gen_list_repeat(self, expr: TpyListRepeat, target_type: TpyType | None) -> str:
