@@ -270,6 +270,32 @@ def translate(program: pa.Program,
                     if field_type is not None:
                         for fname in fg.names:
                             field_map[fname] = field_type
+                # Variant records (flatten): the parent record
+                # holds the common fields PLUS the discriminant and
+                # every variant's fields as plain siblings. TP7
+                # itself doesn't enforce the discriminant at
+                # runtime, so a flat layout matches the source-
+                # language semantics exactly; the storage cost is
+                # the sum (rather than the max) of the variants
+                # which is irrelevant for the kid-program record
+                # sizes this POC targets.
+                if td.type_spec.variant is not None:
+                    if isinstance(td.type_spec.variant.tag_type,
+                                  pa.NamedTypeSpec):
+                        field_map[td.type_spec.variant.tag_name] = (
+                            td.type_spec.variant.tag_type.name
+                        )
+                    for case in td.type_spec.variant.cases:
+                        for vfg in case.fields:
+                            v_field_type = (
+                                vfg.type_spec.name
+                                if isinstance(vfg.type_spec,
+                                              pa.NamedTypeSpec)
+                                else None
+                            )
+                            if v_field_type is not None:
+                                for fname in vfg.names:
+                                    field_map[fname] = v_field_type
                 ctx.record_fields[td.name] = field_map
             elif isinstance(td.type_spec, pa.EnumTypeSpec):
                 ctx.enum_types[td.name] = list(td.type_spec.members)
@@ -333,9 +359,9 @@ def translate(program: pa.Program,
     for tb in program.type_blocks:
         for td in tb.decls:
             if isinstance(td.type_spec, pa.RecordTypeSpec):
-                rec = _lower_type_decl(td, ctx)
-                if rec is not None:
-                    records.append(rec)
+                recs = _lower_type_decl(td, ctx)
+                if recs is not None:
+                    records.extend(recs)
             elif isinstance(td.type_spec, pa.EnumTypeSpec):
                 enum_node = _lower_enum_decl(td, ctx)
                 if enum_node is not None:
@@ -579,16 +605,108 @@ def _lower_enum_decl(td: pa.TypeDecl, ctx: _Ctx) -> Enum | None:
     )
 
 
-def _lower_type_decl(td: pa.TypeDecl, ctx: _Ctx) -> Record | None:
-    """Lower a single `type X = TypeSpec` declaration.
+def _build_variant_init(variant, parent_name: str, parent_loc,
+                          ctx: _Ctx):
+    """Generate `__init__(self) -> None: self.<tag> = FirstLabel`
+    for a flattened variant record. The discriminant field doesn't
+    get a field-level default (TPy's `expr_to_cpp_default` doesn't
+    recognise enum-attribute defaults yet), so this tiny init keeps
+    the record default-constructible from the user side."""
+    if not variant.cases or not variant.cases[0].labels:
+        return None
+    first_label = variant.cases[0].labels[0]
+    if not isinstance(first_label, pa.Ident):
+        ctx.diagnostics.append(_diag(
+            f"variant record discriminant labels must be enum "
+            f"members (got {type(first_label).__name__})",
+            getattr(first_label, "loc", parent_loc),
+        ))
+        return None
+    if not isinstance(variant.tag_type, pa.NamedTypeSpec):
+        return None
+    ir_loc = _to_ir_loc(parent_loc)
+    assign = Assign(
+        targets=(Attr(
+            target=Name(ident="self", loc=ir_loc),
+            ident=variant.tag_name, loc=ir_loc,
+        ),),
+        value=Attr(
+            target=Name(ident=variant.tag_type.name, loc=ir_loc),
+            ident=first_label.name, loc=ir_loc,
+        ),
+        loc=ir_loc,
+    )
+    return Function(
+        name="__init__",
+        params=(Param(
+            name="self",
+            type=NamedType(name=parent_name, args=(), loc=ir_loc),
+            loc=ir_loc,
+        ),),
+        return_type=NamedType(name="None", args=(), loc=ir_loc),
+        body=(assign,),
+        is_method=True,
+        loc=ir_loc,
+    )
 
-    M5 supports `record` here. Each scalar field gets a Pascal-style
-    zero default (`0` for integer, `False` for boolean) so TPy's
-    auto-generated default constructor lets `var p: Point;` and
-    `p := Point()` both work without the user spelling out an init
-    method. Pascal's de facto behaviour is that record fields start
-    zero-initialised; emitting explicit defaults preserves that.
-    """
+
+def _flatten_variant_fields(spec, ctx):
+    """Pascal  -> a flat list of s
+    that the parent record carries directly. The discriminant
+    becomes a regular field of the tag type; every variant case's
+    fields are added as siblings. TP7 itself doesn't enforce the
+    tag invariant at runtime, so the flat layout matches the
+    source-language semantics exactly: setting  after
+     just writes a stale slot that won't be read
+    until the user resets the kind. Returns None on error."""
+    variant = spec.variant
+    fields: list = []
+    # Discriminant field. The tag name ( in )
+    # surfaces as a plain enum/ordinal field; reads / writes route
+    # through the standard FieldAccess / Assign paths.
+    tag_ir_type = _lower_type_spec(variant.tag_type, ctx)
+    if tag_ir_type is None:
+        return None
+    # No default here -- enum-typed defaults are handled by the
+    # auto-generated `__init__` in `_lower_type_decl` (TPy's
+    # field-default validator only accepts literal-ish constants).
+    fields.append(Field(
+        name=variant.tag_name, type=tag_ir_type,
+        default=None, loc=_to_ir_loc(variant.loc),
+    ))
+    # Variant fields, flattened across cases. A name collision
+    # across two variants is illegal in TP7; we surface a clean
+    # diagnostic rather than emitting a duplicate field.
+    seen: set[str] = set()
+    for case in variant.cases:
+        for fg in case.fields:
+            ir_t = _lower_type_spec(fg.type_spec, ctx)
+            if ir_t is None:
+                return None
+            default = _field_default_for_spec(fg.type_spec, fg.loc, ctx)
+            for name in fg.names:
+                if name in seen:
+                    ctx.diagnostics.append(_diag(
+                        f"variant field {name!r} declared in more "
+                        f"than one case (flatten layout requires "
+                        f"unique field names across variants)",
+                        fg.loc,
+                    ))
+                    return None
+                seen.add(name)
+                fields.append(Field(
+                    name=name, type=ir_t, default=default,
+                    loc=_to_ir_loc(fg.loc),
+                ))
+    return fields
+
+
+
+
+def _lower_type_decl(td: pa.TypeDecl, ctx: _Ctx) -> list | None:
+    """Lower a single `type X = TypeSpec` declaration to a list of
+    IR Records (one entry today; future variants of `record` could
+    expand to several). Returns None on error."""
     if isinstance(td.type_spec, pa.RecordTypeSpec):
         fields: list = []
         for fg in td.type_spec.fields:
@@ -601,10 +719,29 @@ def _lower_type_decl(td: pa.TypeDecl, ctx: _Ctx) -> Record | None:
                     name=name, type=ir_t, default=default,
                     loc=_to_ir_loc(fg.loc),
                 ))
-        return Record(
+        methods: tuple = ()
+        if td.type_spec.variant is not None:
+            variant_fields = _flatten_variant_fields(td.type_spec, ctx)
+            if variant_fields is None:
+                return None
+            fields.extend(variant_fields)
+            # TPy's field-default validator rejects `EnumName.MemberName`
+            # as a non-const default (`expr_to_cpp_default` doesn't yet
+            # recognise enum-attribute accesses), so the discriminant
+            # field can't carry its first-variant default directly.
+            # Generate a tiny `__init__` that assigns it instead;
+            # everything else relies on per-field defaults.
+            init = _build_variant_init(
+                td.type_spec.variant, td.name, td.loc, ctx,
+            )
+            if init is None:
+                return None
+            methods = (init,)
+        return [Record(
             name=td.name, fields=tuple(fields),
+            methods=methods,
             loc=_to_ir_loc(td.loc),
-        )
+        )]
     ctx.diagnostics.append(_diag(
         f"M5 type declarations only support `record` (not "
         f"{type(td.type_spec).__name__})",

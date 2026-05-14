@@ -536,13 +536,63 @@ class _Parser:
     def parse_record_type(self) -> pa.RecordTypeSpec:
         start = self._eat(TokKind.KEYWORD, "record")
         fields: list = []
+        variant: pa.RecordVariantSection | None = None
         while not (self.cur.kind == TokKind.KEYWORD
                    and self.cur.text == "end"):
+            if (self.cur.kind == TokKind.KEYWORD
+                    and self.cur.text == "case"):
+                variant = self._parse_record_variant_section()
+                break
             fields.append(self._parse_record_field_group())
             if self.cur.kind == TokKind.SEMI:
                 self.i += 1
         end = self._eat(TokKind.KEYWORD, "end")
-        return pa.RecordTypeSpec(fields=fields, loc=self._loc(start, end))
+        return pa.RecordTypeSpec(
+            fields=fields, variant=variant,
+            loc=self._loc(start, end),
+        )
+
+    def _parse_record_variant_section(self) -> pa.RecordVariantSection:
+        """`case <tag-name>: <tag-type> of label[, label ...]: (fields);
+        ...` -- TP7's variant-record body. The discriminant name
+        is mandatory in the M16 surface (tagless variants would
+        require a synthetic name; defer that until a real program
+        demands it)."""
+        start = self._eat(TokKind.KEYWORD, "case")
+        tag_name = self._eat(TokKind.IDENT).text
+        self._eat(TokKind.COLON)
+        tag_type = self.parse_type_spec()
+        self._eat(TokKind.KEYWORD, "of")
+        cases: list = []
+        while not (self.cur.kind == TokKind.KEYWORD
+                   and self.cur.text == "end"):
+            arm_start = self.cur
+            labels: list = [self.parse_expression()]
+            while self.cur.kind == TokKind.COMMA:
+                self.i += 1
+                labels.append(self.parse_expression())
+            self._eat(TokKind.COLON)
+            self._eat(TokKind.LPAREN)
+            arm_fields: list = []
+            if self.cur.kind != TokKind.RPAREN:
+                arm_fields.append(self._parse_record_field_group())
+                while self.cur.kind == TokKind.SEMI:
+                    self.i += 1
+                    if self.cur.kind == TokKind.RPAREN:
+                        break
+                    arm_fields.append(self._parse_record_field_group())
+            rparen = self._eat(TokKind.RPAREN)
+            if self.cur.kind == TokKind.SEMI:
+                self.i += 1
+            cases.append(pa.RecordVariantCase(
+                labels=labels, fields=arm_fields,
+                loc=self._loc(arm_start, rparen),
+            ))
+        end_tok = self.cur  # `end` -- caller eats it
+        return pa.RecordVariantSection(
+            tag_name=tag_name, tag_type=tag_type, cases=cases,
+            loc=self._loc(start, end_tok),
+        )
 
     def _parse_record_field_group(self) -> pa.RecordField:
         first = self.cur

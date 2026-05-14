@@ -137,8 +137,23 @@ TPy-core changes.
     fixed format too. Tracked here rather than in `BUGS.md` /
     `TODO.md` because the unblock is TPy-stdlib scope, not a
     Pascal-frontend defect.
-- **Variant records**: `record case Tag: T of ... end`. Maps to a
-  TPy union type.
+- **Variant records** (M16, shipped, flatten layout): `record [common-fields;]
+  case <tag>: <T> of label: (fields); ... end`. The parent record
+  holds the common fields, the discriminant field, and every
+  variant case's fields as plain siblings. TP7 doesn't enforce the
+  discriminant at runtime either, so the flatten layout matches
+  the source-language semantics directly. The translator generates
+  a tiny `__init__` that sets the discriminant to the first
+  declared label (TPy's field-default validator rejects
+  enum-attribute defaults, hence the init). Name collisions across
+  variant cases are surfaced as a Pascal-level diagnostic. The
+  alternative we tried -- an inner-record-per-variant + union
+  payload + `@property` accessors -- hit two TPy codegen
+  limitations recorded in `BUGS.md` (class-pattern `as` bind
+  pre-declared as `std::optional<T>`, and reassignable record
+  locals stored as `std::optional<T>`); both are reachable from
+  plain `.py` code and worth fixing independently, but they made
+  the type-safe variant codegen impractical for this milestone.
 - **Strings beyond ShortString**: longer-than-255, AnsiString,
   PChar interop. Lower priority within Tier 2; FixStr covers the
   kid-program use case.
@@ -419,6 +434,9 @@ TODOs the tier needs.
     `p^` / `p^ := v` / `p^.field` / `nil` and forward type
     declarations within a `type` block (the canonical linked-list
     shape).
+16. **Variant records.** Pascal `record ... case kind: T of ...
+    end`. Flatten layout: parent record carries common fields +
+    discriminant + every variant case's fields as siblings.
 
 Each milestone closes with: tests in `tests/cases/pascal/`, snapshot
 diagnostics + output + generated C++ checked in, runs green under

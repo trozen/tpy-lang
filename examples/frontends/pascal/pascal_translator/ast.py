@@ -98,9 +98,15 @@ class NamedTypeSpec:
 
 @dataclass
 class RecordTypeSpec:
-    """An anonymous record type: `record x, y: integer end`."""
+    """An anonymous record type: `record x, y: integer end`.
+
+    A `variant` section (set when the record body ends with
+    `case <tag>: <T> of ...`) carries the per-variant payload.
+    Records without a variant section leave `variant` as None and
+    behave as plain flat records."""
     fields: list   # list[RecordField]
     loc: Loc
+    variant: object | None = None  # RecordVariantSection | None
 
 
 @dataclass
@@ -110,6 +116,34 @@ class RecordField:
     these into one IR `Field` per name."""
     names: list    # list[str]
     type_spec: object  # TypeSpec
+    loc: Loc
+
+
+@dataclass
+class RecordVariantSection:
+    """`case <tag>: <T> of label1: (fields); label2: (fields); ...`
+    inside a record body. The discriminant name (`tag`) becomes a
+    Pascal-source-visible field whose type is the enum / ordinal
+    type `T`; each label-bound case carries its own field group.
+
+    Translator semantics (M16): the parent record stores a
+    `payload` union of per-variant inner records, and the
+    discriminant / variant fields surface as `@property` accessors
+    that match on the live payload variant."""
+    tag_name: str
+    tag_type: object       # TypeSpec
+    cases: list            # list[RecordVariantCase]
+    loc: Loc
+
+
+@dataclass
+class RecordVariantCase:
+    """One arm of a record's variant section: `labels: (fields)`.
+    `labels` is the list of constants (enum members or integer
+    literals) that select this variant. `fields` is the field list
+    declared in the parens."""
+    labels: list           # list[Expr] -- enum members / int literals
+    fields: list           # list[RecordField]
     loc: Loc
 
 
