@@ -361,16 +361,67 @@ class _Parser:
 
     def parse_const_decl(self) -> pa.ConstDecl:
         name_tok = self._eat(TokKind.IDENT)
+        type_spec: object | None = None
+        if self.cur.kind == TokKind.COLON:
+            # Typed-const form: `name: T = (...)`. The value shape
+            # depends on T (array literal `(e, e, ...)` for arrays,
+            # record literal `(f: v; f: v)` for records, scalar
+            # otherwise); the translator validates the match.
+            self.i += 1
+            type_spec = self.parse_type_spec()
         self._eat(TokKind.EQ)
-        # M10 accepts any expression; the translator validates that it
-        # evaluates to a literal at lower time. Optional `: Type` type
-        # annotation (TP7-style typed constants) is future work.
-        value = self.parse_expression()
+        if type_spec is not None and self.cur.kind == TokKind.LPAREN:
+            value = self._parse_typed_const_paren_lit()
+        else:
+            value = self.parse_expression()
         end_tok = self.tokens[self.i - 1]
         return pa.ConstDecl(
-            name=name_tok.text, value=value,
+            name=name_tok.text, value=value, type_spec=type_spec,
             loc=self._loc(name_tok, end_tok),
         )
+
+    def _parse_typed_const_paren_lit(self):
+        """A typed-const value starting with `(` is either an array
+        literal `(e1, e2, ...)` or a record literal
+        `(field1: v1; field2: v2; ...)`. The two forms differ on the
+        first token after the opening paren: an IDENT followed by
+        `:` indicates the record form."""
+        start = self._eat(TokKind.LPAREN)
+        is_record = (self.cur.kind == TokKind.IDENT
+                     and self._peek(1).kind == TokKind.COLON)
+        if is_record:
+            field_pairs: list = []
+            while self.cur.kind != TokKind.RPAREN:
+                fname_tok = self._eat(TokKind.IDENT)
+                self._eat(TokKind.COLON)
+                fval = self.parse_expression()
+                field_pairs.append((fname_tok.text, fval))
+                if self.cur.kind == TokKind.SEMI:
+                    self.i += 1
+                elif self.cur.kind == TokKind.COMMA:
+                    # Some TP7 dialects accept commas; tolerate.
+                    self.i += 1
+            end = self._eat(TokKind.RPAREN)
+            return pa.RecordLit(
+                fields=field_pairs, loc=self._loc(start, end),
+            )
+        elements: list = []
+        if self.cur.kind != TokKind.RPAREN:
+            elements.append(self.parse_expression())
+            while self.cur.kind == TokKind.COMMA:
+                self.i += 1
+                elements.append(self.parse_expression())
+        end = self._eat(TokKind.RPAREN)
+        return pa.ArrayLit(
+            elements=elements, loc=self._loc(start, end),
+        )
+
+    def _peek(self, offset: int):
+        """Return the token at `self.i + offset` (or EOF if past end)."""
+        i = self.i + offset
+        if i < len(self.tokens):
+            return self.tokens[i]
+        return self.tokens[-1]
 
     # ------------------------------------------------------------------
     # Type declarations
@@ -673,10 +724,12 @@ class _Parser:
                 )
             return_type = ret_tok.text
         self._eat(TokKind.SEMI)
-        # Routine body: any number of `const` and at most one `var`
-        # section (in either order), then the compound stmt.
+        # Routine body: any number of `const`, `var`, or nested
+        # `procedure`/`function` declarations (in any order TP7
+        # accepts), then the compound stmt.
         local_const_blocks: list = []
         local_var_block = None
+        nested_subroutines: list = []
         while True:
             if (self.cur.kind == TokKind.KEYWORD
                     and self.cur.text == "const"):
@@ -693,6 +746,10 @@ class _Parser:
                     )
                 local_var_block = self.parse_var_block()
                 continue
+            if (self.cur.kind == TokKind.KEYWORD
+                    and self.cur.text in ("procedure", "function")):
+                nested_subroutines.append(self.parse_subroutine())
+                continue
             break
         body = self.parse_compound_stmt()
         self._eat(TokKind.SEMI)
@@ -704,6 +761,7 @@ class _Parser:
             var_block=local_var_block,
             body=body,
             loc=self._loc(kw_tok, self.tokens[self.i - 1]),
+            nested_subroutines=nested_subroutines,
         )
 
     def parse_param_list(self) -> list:
@@ -854,6 +912,8 @@ class _Parser:
                 return self.parse_repeat_stmt()
             if kw == "case":
                 return self.parse_case_stmt()
+            if kw == "with":
+                return self.parse_with_stmt()
         if self.cur.kind != TokKind.IDENT:
             t = self.cur
             raise ParseError(
@@ -994,6 +1054,26 @@ class _Parser:
         end_tok = self.tokens[self.i - 1]
         return pa.RepeatStmt(statements=stmts, cond=cond,
                              loc=self._loc(start, end_tok))
+
+    def parse_with_stmt(self) -> pa.WithStmt:
+        """`with rec do <stmt>` -- single-receiver form. Multi-receiver
+        `with a, b do ...` is TP7-valid but currently rejected; the
+        translator doesn't yet need it."""
+        start = self._eat(TokKind.KEYWORD, "with")
+        record = self.parse_expression()
+        if self.cur.kind == TokKind.COMMA:
+            t = self.cur
+            raise ParseError(
+                "multi-receiver `with a, b do ...` is not supported",
+                t.line, t.col,
+            )
+        self._eat(TokKind.KEYWORD, "do")
+        body = self.parse_statement()
+        end_tok = self.tokens[self.i - 1]
+        return pa.WithStmt(
+            record=record, body=body,
+            loc=self._loc(start, end_tok),
+        )
 
     def parse_case_stmt(self) -> pa.CaseStmt:
         start = self._eat(TokKind.KEYWORD, "case")

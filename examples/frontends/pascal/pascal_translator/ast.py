@@ -283,11 +283,36 @@ class VarDecl:
 
 @dataclass
 class ConstDecl:
-    """`name = value` inside a `const` section. Pascal infers the
-    type from the literal -- the translator picks the matching TPy
-    type at lower time."""
+    """`name = value` (untyped form) or `name: T = value` (typed
+    form) inside a `const` section. Pascal allows typed const arrays
+    `name: array[1..N] of integer = (1, 2, ...)` and typed const
+    records `name: P = (x: 1; y: 2)`; the parser captures the
+    optional `type_spec` and the translator picks the appropriate
+    TPy default-init shape."""
     name: str
-    value: object   # Expr (M10: literal forms only)
+    value: object   # Expr or ArrayLit / RecordLit
+    loc: Loc
+    type_spec: object | None = None
+
+
+@dataclass
+class ArrayLit:
+    """`(e1, e2, ..., eN)` -- a parenthesized list of expressions,
+    used as the value form of a typed-const array. Single-element
+    case `(e)` collides with a parenthesized expression at parse
+    time; the parser only emits ArrayLit when the surrounding
+    grammar (typed const) requires it."""
+    elements: list   # list[Expr]
+    loc: Loc
+
+
+@dataclass
+class RecordLit:
+    """`(field1: v1; field2: v2; ...)` -- the value form of a typed-
+    const record. Field order matches the record's declaration; the
+    translator emits keyword args to the auto-generated record
+    constructor."""
+    fields: list   # list[tuple[name, Expr]]
     loc: Loc
 
 
@@ -374,6 +399,19 @@ class RepeatStmt:
 
 
 @dataclass
+class WithStmt:
+    """`with rec do <stmt>` -- inside `stmt`, bare references to
+    `rec`'s fields are syntactic sugar for `rec.field`. M17 supports
+    a single record receiver (multi-receiver `with a, b do` is
+    a TP7 form that's deferred). The translator rewrites bare-field
+    Ident reads / writes inside `body` to FieldAccess(`record`, ident);
+    other names pass through unchanged."""
+    record: object   # Expr (parsed; translator validates Ident shape)
+    body: object     # Stmt
+    loc: Loc
+
+
+@dataclass
 class CaseArm:
     """One arm in a `case` statement: `value [, value ...] : stmt`.
 
@@ -424,7 +462,11 @@ class SubroutineDecl:
     'integer' or 'boolean') for functions. `var_block` holds the
     routine's local var section (Pascal's `var name: T;` block between
     the header and the body). `const_blocks` is the optional local
-    `const` section(s) preceding it.
+    `const` section(s) preceding it. `nested_subroutines` carries
+    any `procedure` / `function` declared *inside* this routine
+    (M17): they're lowered as module-level functions with mangled
+    names, callable from the enclosing routine's body but not from
+    outside.
     """
     name: str
     params: list   # list[Param]
@@ -433,6 +475,11 @@ class SubroutineDecl:
     var_block: object    # VarBlock | None
     body: object         # CompoundStmt
     loc: Loc
+    nested_subroutines: list = None  # list[SubroutineDecl]
+
+    def __post_init__(self):
+        if self.nested_subroutines is None:
+            self.nested_subroutines = []
 
 
 @dataclass

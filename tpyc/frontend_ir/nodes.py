@@ -283,6 +283,15 @@ class SetLit:
 
 
 @dataclass
+class ListLit:
+    """List literal: `[a, b, c]`. Lowers to TpyArrayLiteral (which
+    is TPy's spelling for a Python list literal at the AST level)."""
+    kind: str = field(default="ListLit", init=False)
+    elements: tuple["Expr", ...] = ()
+    loc: Loc | None = None
+
+
+@dataclass
 class NoneLit:
     """`None` literal -- the null/empty sentinel. Lowers to
     TpyNoneLiteral. Used by plugins that translate a source-language
@@ -292,7 +301,7 @@ class NoneLit:
 
 
 Expr = Union[StrLit, BoolLit, IntLit, FloatLit, Name, Call, BinOp, UnaryOp,
-             Compare, Attr, Subscript, SetLit, NoneLit]
+             Compare, Attr, Subscript, SetLit, ListLit, NoneLit]
 
 
 # --- Statements -----------------------------------------------------------

@@ -23,6 +23,7 @@ from ..frontend_diagnostics import FrontendDiagnostic, FrontendDiagnosticCategor
 from ..parse.nodes import (
     ModuleDirectives,
     SourceLocation,
+    TpyArrayLiteral,
     TpyAsPattern,
     TpyAssign,
     TpyBinOp,
@@ -85,6 +86,7 @@ from .nodes import (
     Import,
     IntLit,
     IntTypeArg,
+    ListLit,
     Loc,
     Match,
     MatchCase,
@@ -829,6 +831,16 @@ def _lower_expr(
                 return None
             lowered_elems.append(le)
         out = TpySetLiteral(elements=lowered_elems)
+        out.loc = loc
+        return out
+    if isinstance(expr, ListLit):
+        lowered_elems = []
+        for elem in expr.elements:
+            le = _lower_expr(elem, name_to_origin, plugin_name, fm, diags)
+            if le is None:
+                return None
+            lowered_elems.append(le)
+        out = TpyArrayLiteral(elements=lowered_elems)
         out.loc = loc
         return out
     if isinstance(expr, NoneLit):

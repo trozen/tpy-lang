@@ -437,6 +437,16 @@ TODOs the tier needs.
 16. **Variant records.** Pascal `record ... case kind: T of ...
     end`. Flatten layout: parent record carries common fields +
     discriminant + every variant case's fields as siblings.
+17. **TP7 cleanup -- everyday features the original DESIGN.md
+    glossed over.** Multi-arg `write` / `writeln` (`writeln('x=',
+    x, ' y=', y)`); string-field write through compound target
+    (`s.name := 'foo'`); `with rec do <stmt>` (bare-Ident
+    receiver, single-record); typed-array constants (`const arr:
+    array[1..N] of integer = (1, 2, ...)`); nested procedures /
+    functions lifted to module-level with mangled names. Deferred:
+    procedural types (`type Fn = procedure(x: integer)` -- needs
+    a Callable IR node) and typed-record-consts (TPy doesn't
+    auto-derive a kwarg ctor when every field has a default).
 
 Each milestone closes with: tests in `tests/cases/pascal/`, snapshot
 diagnostics + output + generated C++ checked in, runs green under

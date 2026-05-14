@@ -48,6 +48,7 @@ from tpyc.frontend_ir import (
     ImportName,
     IntLit,
     IntTypeArg,
+    ListLit as IRListLit,
     Loc as IRLoc,
     Match,
     MatchCase,
@@ -194,6 +195,11 @@ class _Ctx:
     # `Dispose(p)` need the pointee type at the call site to emit
     # `unsafe_alloc[T]()` / `unsafe_init(p, default(T))`.
     pointer_pointee: dict[str, object] = field(default_factory=dict)
+    # Pascal-source-name -> mangled name for any nested subroutine
+    # in scope while lowering a routine's body. Calls to a bare
+    # name are looked up here first; if a mapping exists, the call
+    # routes to the mangled top-level function.
+    nested_renames: dict[str, str] = field(default_factory=dict)
     # FixStr capacity per declared `string`/`string[N]` variable.
     # Used by assignment lowering (`s := 'lit'` -> `s.assign('lit')`)
     # and by string-literal-vs-FixStr disambiguation.
@@ -263,10 +269,12 @@ def translate(program: pa.Program,
                 ctx.record_types.add(td.name)
                 field_map: dict[str, str] = {}
                 for fg in td.type_spec.fields:
-                    field_type = (fg.type_spec.name
-                                  if isinstance(fg.type_spec,
-                                                pa.NamedTypeSpec)
-                                  else None)
+                    if isinstance(fg.type_spec, pa.NamedTypeSpec):
+                        field_type: str | None = fg.type_spec.name
+                    elif isinstance(fg.type_spec, pa.StringTypeSpec):
+                        field_type = "string"
+                    else:
+                        field_type = None
                     if field_type is not None:
                         for fname in fg.names:
                             field_map[fname] = field_type
@@ -416,11 +424,14 @@ def translate(program: pa.Program,
         for stmt in program.block.statements:
             top_level_stmts.extend(_lower_stmt_to_tuple(stmt, ctx))
 
-    # Subroutines.
+    # Subroutines (including any nested ones declared inside a
+    # routine's local-decl section). Nested subroutines lower to
+    # module-level functions with mangled names; their parent's
+    # body sees the rename in `ctx.nested_renames`.
     for sub in program.subroutines:
-        fn = _lower_subroutine(sub, ctx)
-        if fn is not None:
-            functions.append(fn)
+        fns = _lower_subroutine(sub, ctx)
+        if fns is not None:
+            functions.extend(fns)
 
     # Emit imports in a deterministic order: star imports first (so
     # any name-collision diagnostics blame the explicit uses-clause
@@ -828,14 +839,103 @@ def _lower_type_spec(spec, ctx: _Ctx):
     return None
 
 
-def _lower_const_decl(decl: pa.ConstDecl, ctx: _Ctx):
-    """Lower a Pascal `const N = value;` to an IR `VarDecl(init=value)`.
+def _lower_typed_const_decl(decl: pa.ConstDecl, ctx: _Ctx):
+    """Typed-const form: `const name: T = <ArrayLit | RecordLit |
+    scalar>`. The type annotation drives both the IR shape and the
+    value form expected. Arrays accept a parens-list of scalars;
+    records accept a parens-list of `field: value` pairs; scalar
+    types fall through to the literal init path."""
+    spec = decl.type_spec
+    ir_loc = _to_ir_loc(decl.loc)
+    _record_var_metadata(decl.name, spec, ctx)
+    if isinstance(spec, pa.ArrayTypeSpec) and isinstance(
+            decl.value, pa.ArrayLit):
+        ir_type = _lower_type_spec(spec, ctx)
+        if ir_type is None:
+            return None
+        expected = spec.upper - spec.lower + 1
+        if len(decl.value.elements) != expected:
+            ctx.diagnostics.append(_diag(
+                f"typed-const {decl.name!r} expects {expected} "
+                f"element(s), got {len(decl.value.elements)}",
+                decl.loc,
+            ))
+            return None
+        elem_ir_type = _lower_type_spec(spec.element, ctx)
+        if elem_ir_type is None:
+            return None
+        elem_irs: list = []
+        for elem in decl.value.elements:
+            le = _lower_expr(elem, ctx)
+            if le is None:
+                return None
+            elem_irs.append(le)
+        # TPy's hand-written `Array[T, N]([...])` idiom relies on the
+        # parser-set `subscript_callee` plus type inference from the
+        # LHS annotation; the frontend IR's typed Call shape with
+        # `type_args` confuses the `Array has no __init__` guard
+        # (the parser doesn't see the call as a generic-ctor
+        # invocation in this path). Lower the const as a plain
+        # `<annotation> = <ListLit>` instead -- TPy's analyze-with-
+        # hint path on TpyArrayLiteral specialises to `Array[T, N]`
+        # constructor directly when the hint is array-shaped.
+        list_arg = IRListLit(
+            elements=tuple(elem_irs), loc=ir_loc,
+        )
+        return VarDecl(
+            name=decl.name, type=ir_type, init=list_arg,
+            mutable=True, loc=ir_loc,
+        )
+    if (isinstance(spec, pa.NamedTypeSpec)
+            and spec.name in ctx.record_types
+            and isinstance(decl.value, pa.RecordLit)):
+        # Typed-record-const: `const p: Point = (x: 1; y: 2);`
+        # TPy doesn't auto-derive a keyword-arg constructor when
+        # every field has a default (the auto-init takes no args),
+        # so we can't pass `Point(x=1, y=2)` directly. Emitting a
+        # default-construct + per-field assignment would work but
+        # changes the const's semantics (the value would be a
+        # mutable record). Defer typed-record-consts to a later
+        # round; document the gap rather than partially support it.
+        ctx.diagnostics.append(_diag(
+            f"typed-record-const {decl.name!r} not yet supported; "
+            f"declare as a `var` and assign fields individually",
+            decl.loc,
+        ))
+        return None
+    if isinstance(decl.value, (pa.ArrayLit, pa.RecordLit)):
+        ctx.diagnostics.append(_diag(
+            f"typed-const {decl.name!r}: value form doesn't match "
+            f"declared type {type(spec).__name__}",
+            decl.loc,
+        ))
+        return None
+    # Scalar typed const: same path as the untyped form, but with
+    # the user's declared type as the annotation.
+    ir_type = _lower_type_spec(spec, ctx)
+    if ir_type is None:
+        return None
+    init = _lower_expr(decl.value, ctx)
+    if init is None:
+        return None
+    return VarDecl(
+        name=decl.name, type=ir_type, init=init,
+        mutable=False, loc=ir_loc,
+    )
 
-    M10 accepts literal initialisers; the IR type is inferred from
-    the literal shape (int / real / bool / string). Compile-time
-    constant expressions and string-as-PStr-bound consts are future
-    work; document the gap rather than partially support either.
+
+def _lower_const_decl(decl: pa.ConstDecl, ctx: _Ctx):
+    """Lower a Pascal `const N = value;` (untyped) or
+    `const arr: T = (...);` (typed) to an IR `VarDecl(init=value)`.
+
+    The untyped form infers the IR type from the literal shape;
+    the typed form uses the explicit type annotation and routes
+    array / record value literals through the matching IR
+    constructors. Compile-time constant expressions are future
+    work; document the gap rather than partially support them.
     """
+    if decl.type_spec is not None:
+        return _lower_typed_const_decl(decl, ctx)
     value = decl.value
     type_name: str | None = None
     if isinstance(value, pa.IntLit):
@@ -854,7 +954,8 @@ def _lower_const_decl(decl: pa.ConstDecl, ctx: _Ctx):
             type_name = "real"
     if type_name is None:
         ctx.diagnostics.append(_diag(
-            f"const {decl.name!r} value must be a literal in M10",
+            f"const {decl.name!r} value must be a literal "
+            f"(or use a typed-const form `name: T = ...`)",
             decl.loc,
         ))
         return None
@@ -1082,7 +1183,21 @@ def _field_default_for_spec(spec, loc: pa.Loc, ctx: _Ctx):
 # ---------------------------------------------------------------------------
 # Subroutines
 
-def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
+def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx,
+                       name_prefix: str = "") -> list | None:
+    """Lower a Pascal subroutine to a list of `Function`s -- the
+    routine itself plus, recursively, any nested subroutines
+    (lifted to module-level with mangled names like
+    `outer__inner`). `name_prefix` carries the parent chain when
+    lowering a nested routine.
+
+    Nested routines aren't closures: bodies don't capture outer
+    locals, only call other in-scope nested routines via the
+    `ctx.nested_renames` map. A nested call to a routine whose
+    Pascal name is `inner` is rewritten to its mangled top-level
+    name at every `Call` site.
+    """
+    mangled = f"{name_prefix}{sub.name}"
     saved_func = ctx.current_func
     saved_return = ctx.current_func_return_type
     saved_var_params = ctx.current_var_params
@@ -1091,11 +1206,28 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
     # but supporting that requires more sema-side scope work).
     saved_type_env = ctx.type_env
     saved_subrange_bounds = ctx.subrange_bounds
+    saved_renames = ctx.nested_renames
     ctx.type_env = dict(ctx.type_env)
     ctx.subrange_bounds = dict(ctx.subrange_bounds)
+    ctx.nested_renames = dict(ctx.nested_renames)
     ctx.current_func = sub.name
     ctx.current_func_return_type = sub.return_type
     ctx.current_var_params = {p.name for p in sub.params if p.is_var}
+
+    # Register nested-subroutine signatures + name-renames BEFORE
+    # lowering the body, so calls inside the body resolve to the
+    # mangled top-level names.
+    nested_mangled_names: list[tuple[pa.SubroutineDecl, str]] = []
+    for nested in sub.nested_subroutines:
+        nested_mangled = f"{mangled}__{nested.name}"
+        ctx.signatures[nested_mangled] = _Sig(
+            name=nested_mangled,
+            param_names=[p.name for p in nested.params],
+            param_var_flags=[p.is_var for p in nested.params],
+            return_type=nested.return_type,
+        )
+        ctx.nested_renames[nested.name] = nested_mangled
+        nested_mangled_names.append((nested, nested_mangled))
 
     # Params.
     ir_params: list = []
@@ -1107,6 +1239,7 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
             ctx.current_var_params = saved_var_params
             ctx.type_env = saved_type_env
             ctx.subrange_bounds = saved_subrange_bounds
+            ctx.nested_renames = saved_renames
             return None
         param_type = (PointerType(inner=base_type, loc=_to_ir_loc(p.loc))
                       if p.is_var else base_type)
@@ -1188,18 +1321,33 @@ def _lower_subroutine(sub: pa.SubroutineDecl, ctx: _Ctx) -> Function | None:
             loc=_to_ir_loc(sub.loc),
         ))
 
-    ctx.current_func = saved_func
-    ctx.current_func_return_type = saved_return
-    ctx.current_var_params = saved_var_params
-    ctx.type_env = saved_type_env
-    ctx.subrange_bounds = saved_subrange_bounds
-    return Function(
-        name=sub.name,
+    parent_fn = Function(
+        name=mangled,
         params=tuple(ir_params),
         return_type=return_ir_type,
         body=tuple(body_stmts),
         loc=_to_ir_loc(sub.loc),
     )
+    # Lower nested routines recursively. We unwind the rename map
+    # back to `saved_renames` first so nested routines don't see
+    # each other's siblings unless they're declared inside the same
+    # parent (in which case they DO see them, because the parent's
+    # `_lower_subroutine` re-installed the renames as it ran).
+    nested_fns: list = []
+    for nested, _nested_mangled in nested_mangled_names:
+        recurse = _lower_subroutine(
+            nested, ctx, name_prefix=f"{mangled}__",
+        )
+        if recurse is not None:
+            nested_fns.extend(recurse)
+
+    ctx.current_func = saved_func
+    ctx.current_func_return_type = saved_return
+    ctx.current_var_params = saved_var_params
+    ctx.type_env = saved_type_env
+    ctx.subrange_bounds = saved_subrange_bounds
+    ctx.nested_renames = saved_renames
+    return [parent_fn] + nested_fns
 
 
 # ---------------------------------------------------------------------------
@@ -1249,11 +1397,209 @@ def _lower_stmt(stmt, ctx: _Ctx):
         return RepeatUntil(body=body, cond=cond, loc=_to_ir_loc(stmt.loc))
     if isinstance(stmt, pa.CaseStmt):
         return _lower_case_stmt(stmt, ctx)
+    if isinstance(stmt, pa.WithStmt):
+        return _lower_with_stmt(stmt, ctx)
     ctx.diagnostics.append(_diag(
         f"unsupported statement {type(stmt).__name__}",
         getattr(stmt, "loc", _zero_loc()),
     ))
     return None
+
+
+def _lower_with_stmt(stmt: pa.WithStmt, ctx: _Ctx):
+    """Lower `with rec do <body>` by walking `body` and rewriting
+    bare-Ident references to `rec`'s fields into `FieldAccess(rec,
+    name)`. M17 restricts the receiver to a bare Pascal Ident
+    whose declared type is a known user record -- richer receivers
+    (`with f().r do`, `with p^ do`) would need a synthetic local to
+    avoid re-evaluating the receiver and are deferred."""
+    if not isinstance(stmt.record, pa.Ident):
+        ctx.diagnostics.append(_diag(
+            "`with` receiver must be a record variable in M17",
+            getattr(stmt.record, "loc", stmt.loc),
+        ))
+        return None
+    rec_name = stmt.record.name
+    record_type = ctx.type_env.get(rec_name)
+    # The receiver may be a pointer to a record (`with p do ...` for
+    # `p: ^Node`); resolve through the pointee in that case.
+    if record_type == "pointer":
+        pointee = ctx.pointer_pointee.get(rec_name)
+        if (isinstance(pointee, pa.NamedTypeSpec)
+                and pointee.name in ctx.record_fields):
+            record_type = pointee.name
+    if record_type not in ctx.record_fields:
+        ctx.diagnostics.append(_diag(
+            f"`with` receiver {rec_name!r} is not a record value "
+            f"(type env: {ctx.type_env.get(rec_name)!r})",
+            stmt.record.loc,
+        ))
+        return None
+    field_names = set(ctx.record_fields[record_type].keys())
+    rewritten = _with_rewrite_stmt(stmt.body, rec_name, field_names)
+    # Lower through `_lower_branch` so a compound body becomes a
+    # flat list of statements (the top-level "compound marker"
+    # path would otherwise reject multi-stmt compounds).
+    lowered = _lower_branch(rewritten, ctx)
+    if not lowered:
+        return None
+    if len(lowered) == 1:
+        return lowered[0]
+    return lowered
+
+
+def _with_rewrite_stmt(stmt, rec_name: str, fields: set[str]):
+    """Walk a Pascal statement subtree, rewriting bare Ident
+    references to names in `fields` into `FieldAccess(rec_name, name)`.
+    Returns a fresh AST -- the original tree is left untouched so
+    the same `with`-scoped name doesn't leak across siblings."""
+    if isinstance(stmt, pa.CompoundStmt):
+        return pa.CompoundStmt(
+            statements=[
+                _with_rewrite_stmt(s, rec_name, fields)
+                for s in stmt.statements
+            ],
+            loc=stmt.loc,
+        )
+    if isinstance(stmt, pa.AssignStmt):
+        return pa.AssignStmt(
+            target=_with_rewrite_expr(stmt.target, rec_name, fields,
+                                       is_target=True),
+            value=_with_rewrite_expr(stmt.value, rec_name, fields),
+            loc=stmt.loc,
+        )
+    if isinstance(stmt, pa.CallStmt):
+        return pa.CallStmt(
+            callee=stmt.callee,
+            args=[_with_rewrite_expr(a, rec_name, fields) for a in stmt.args],
+            loc=stmt.loc,
+        )
+    if isinstance(stmt, pa.IfStmt):
+        return pa.IfStmt(
+            cond=_with_rewrite_expr(stmt.cond, rec_name, fields),
+            then_branch=_with_rewrite_stmt(stmt.then_branch, rec_name, fields),
+            else_branch=(_with_rewrite_stmt(stmt.else_branch, rec_name, fields)
+                         if stmt.else_branch is not None else None),
+            loc=stmt.loc,
+        )
+    if isinstance(stmt, pa.WhileStmt):
+        return pa.WhileStmt(
+            cond=_with_rewrite_expr(stmt.cond, rec_name, fields),
+            body=_with_rewrite_stmt(stmt.body, rec_name, fields),
+            loc=stmt.loc,
+        )
+    if isinstance(stmt, pa.RepeatStmt):
+        return pa.RepeatStmt(
+            statements=[
+                _with_rewrite_stmt(s, rec_name, fields)
+                for s in stmt.statements
+            ],
+            cond=_with_rewrite_expr(stmt.cond, rec_name, fields),
+            loc=stmt.loc,
+        )
+    if isinstance(stmt, pa.ForStmt):
+        return pa.ForStmt(
+            var=stmt.var,
+            start=_with_rewrite_expr(stmt.start, rec_name, fields),
+            end=_with_rewrite_expr(stmt.end, rec_name, fields),
+            direction=stmt.direction,
+            body=_with_rewrite_stmt(stmt.body, rec_name, fields),
+            loc=stmt.loc,
+        )
+    if isinstance(stmt, pa.CaseStmt):
+        return pa.CaseStmt(
+            subject=_with_rewrite_expr(stmt.subject, rec_name, fields),
+            arms=[
+                pa.CaseArm(
+                    values=[
+                        _with_rewrite_expr(v, rec_name, fields)
+                        if not isinstance(v, pa.RangeLabel) else v
+                        for v in arm.values
+                    ],
+                    body=_with_rewrite_stmt(arm.body, rec_name, fields),
+                    loc=arm.loc,
+                )
+                for arm in stmt.arms
+            ],
+            else_branch=(_with_rewrite_stmt(stmt.else_branch, rec_name, fields)
+                         if stmt.else_branch is not None else None),
+            loc=stmt.loc,
+        )
+    if isinstance(stmt, pa.WithStmt):
+        # Nested `with` -- the inner receiver may shadow some of
+        # the outer fields. Rewrite the inner receiver first so any
+        # outer-field references in it land correctly, then walk
+        # into the inner body with the inner record's fields.
+        return pa.WithStmt(
+            record=_with_rewrite_expr(stmt.record, rec_name, fields),
+            body=stmt.body,  # inner _lower_with_stmt handles this
+            loc=stmt.loc,
+        )
+    return stmt
+
+
+def _with_rewrite_expr(expr, rec_name: str, fields: set[str],
+                        is_target: bool = False):
+    """Recursively rewrite an expression. Bare `Ident(name)` where
+    `name` is one of `fields` becomes `FieldAccess(Ident(rec_name),
+    name)`. Other AST shapes pass through structurally."""
+    if expr is None:
+        return None
+    if isinstance(expr, pa.Ident):
+        if expr.name in fields:
+            return pa.FieldAccess(
+                target=pa.Ident(name=rec_name, loc=expr.loc),
+                ident=expr.name, loc=expr.loc,
+            )
+        return expr
+    if isinstance(expr, (pa.IntLit, pa.FloatLit, pa.StrLit,
+                          pa.BoolLit, pa.NilLit)):
+        return expr
+    if isinstance(expr, pa.FieldAccess):
+        return pa.FieldAccess(
+            target=_with_rewrite_expr(expr.target, rec_name, fields),
+            ident=expr.ident, loc=expr.loc,
+        )
+    if isinstance(expr, pa.IndexExpr):
+        return pa.IndexExpr(
+            target=_with_rewrite_expr(expr.target, rec_name, fields),
+            index=_with_rewrite_expr(expr.index, rec_name, fields),
+            loc=expr.loc,
+        )
+    if isinstance(expr, pa.DerefExpr):
+        return pa.DerefExpr(
+            target=_with_rewrite_expr(expr.target, rec_name, fields),
+            loc=expr.loc,
+        )
+    if isinstance(expr, pa.CallExpr):
+        return pa.CallExpr(
+            callee=expr.callee,
+            args=[_with_rewrite_expr(a, rec_name, fields) for a in expr.args],
+            loc=expr.loc,
+        )
+    if isinstance(expr, pa.BinOp):
+        return pa.BinOp(
+            op=expr.op,
+            lhs=_with_rewrite_expr(expr.lhs, rec_name, fields),
+            rhs=_with_rewrite_expr(expr.rhs, rec_name, fields),
+            loc=expr.loc,
+        )
+    if isinstance(expr, pa.UnaryOp):
+        return pa.UnaryOp(
+            op=expr.op,
+            operand=_with_rewrite_expr(expr.operand, rec_name, fields),
+            loc=expr.loc,
+        )
+    if isinstance(expr, pa.SetLit):
+        return pa.SetLit(
+            elements=[
+                _with_rewrite_expr(e, rec_name, fields)
+                if not isinstance(e, pa.RangeLabel) else e
+                for e in expr.elements
+            ],
+            loc=expr.loc,
+        )
+    return expr
 
 
 def _lower_assign_stmt(stmt: pa.AssignStmt, ctx: _Ctx):
@@ -1333,7 +1679,13 @@ def _lower_assign_stmt(stmt: pa.AssignStmt, ctx: _Ctx):
         return Assign(targets=(target,), value=value, loc=_to_ir_loc(stmt.loc))
     # Compound target (field access / array index). The target is
     # lowered as an expression with `Attr` / `Subscript` nodes; IR
-    # `Assign.targets` accepts these directly.
+    # `Assign.targets` accepts these directly. PStr-typed targets
+    # still need to route through `.assign(...)` (the buffer-stable
+    # form) -- otherwise a `s.name := 'lit'` write would attempt a
+    # full-record-style reassignment, which PStr rejects.
+    if _compound_target_is_string(stmt.target, ctx) and (
+            _produces_string_value(stmt.value, ctx)):
+        return _lower_compound_string_assign(stmt, ctx)
     target = _lower_target(stmt.target, ctx)
     if target is None:
         return None
@@ -1341,6 +1693,60 @@ def _lower_assign_stmt(stmt: pa.AssignStmt, ctx: _Ctx):
     if value is None:
         return None
     return Assign(targets=(target,), value=value, loc=_to_ir_loc(stmt.loc))
+
+
+def _compound_target_is_string(target, ctx: _Ctx) -> bool:
+    """True when a compound assignment target (FieldAccess /
+    IndexExpr) ends up writing to a PStr-typed slot. Today only
+    record-field shape (`s.name`) is recognised -- array elements
+    of string element type are uncommon in the kid-program scope
+    and can land later."""
+    if not isinstance(target, pa.FieldAccess):
+        return False
+    inner = target.target
+    if isinstance(inner, pa.DerefExpr):
+        inner = inner.target
+    if not isinstance(inner, pa.Ident):
+        return False
+    record_type = ctx.type_env.get(inner.name)
+    if record_type == "pointer":
+        pointee = ctx.pointer_pointee.get(inner.name)
+        if (isinstance(pointee, pa.NamedTypeSpec)
+                and pointee.name in ctx.record_fields):
+            record_type = pointee.name
+    if record_type not in ctx.record_fields:
+        return False
+    field_type = ctx.record_fields[record_type].get(target.ident)
+    return field_type == "string"
+
+
+def _lower_compound_string_assign(stmt: pa.AssignStmt, ctx: _Ctx):
+    """Lower `<record>.<field> := <str expr>` (where field is PStr-
+    typed) to `<record>.<field>.assign(<str expr>)`. Mirrors the
+    bare-Ident path -- PStr's `assign(str)` preserves the buffer's
+    identity and matches Pascal's value-copy assignment semantics
+    for strings."""
+    target = _lower_target(stmt.target, ctx)
+    if target is None:
+        return None
+    value = _lower_expr(stmt.value, ctx)
+    if value is None:
+        return None
+    if not isinstance(stmt.value, pa.StrLit):
+        # Non-literal RHS (a PStr variable, a concat result):
+        # funnel through `str(...)` so PStr.assign sees a StrView.
+        value = Call(
+            callee=Name(ident="str", loc=_to_ir_loc(stmt.value.loc)),
+            args=(value,), loc=_to_ir_loc(stmt.value.loc),
+        )
+    loc = _to_ir_loc(stmt.loc)
+    assign_call = Call(
+        callee=Attr(
+            target=target, ident="assign", loc=loc,
+        ),
+        args=(value,), loc=loc,
+    )
+    return ExprStmt(value=assign_call, loc=loc)
 
 
 def _coerce_string_operand(lowered, source, ctx: _Ctx):
@@ -1684,6 +2090,14 @@ def _build_range_guard(subject_name: str, lo_ir, hi_ir, loc):
 
 def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
     name = stmt.callee.name
+    # Nested-subroutine call: route through the mangled top-level
+    # name registered when the enclosing routine started lowering.
+    if name in ctx.nested_renames:
+        name = ctx.nested_renames[name]
+        stmt = pa.CallStmt(
+            callee=pa.Ident(name=name, loc=stmt.callee.loc),
+            args=stmt.args, loc=stmt.loc,
+        )
     if name in ("assign", "reset", "rewrite", "append", "close"):
         # File-state procedures; `assign(f, name)` takes two args,
         # the rest take just the file. The translator routes each
@@ -2149,44 +2563,66 @@ def _lower_file_read_stmt(stmt: pa.CallStmt, ctx: _Ctx, name: str):
 
 
 def _lower_writeln_stmt(stmt: pa.CallStmt, ctx: _Ctx):
-    """Lower Pascal `writeln(x)` / `write(x)` to TPy `print` -- the
-    builtin handles any type (`__str__`-driven), so no Pascal-runtime
-    detour is needed. The translator wraps PStr operands in `str(...)`
-    only because TPy's print sees a string view rather than a PStr.
+    """Lower Pascal `writeln(x, y, z)` / `write(x, y)` to a
+    sequence of single-arg TPy `print(...)` calls. TP7 lets you pass
+    any number of args, with each rendered using its default
+    formatting and no separator; the trailing newline (`writeln`
+    only) goes on the last call. PStr operands route through
+    `str(...)` so TPy's print sees a StrView.
+
+    Returns a tuple of `ExprStmt`s when there are multiple args (the
+    enclosing `_lower_stmt_to_tuple` flattens them into the body).
     """
     callee_name = stmt.callee.name
-    if len(stmt.args) != 1:
-        ctx.diagnostics.append(_diag(
-            f"{callee_name!r} takes exactly one argument",
-            stmt.loc,
-        ))
-        return None
-    arg = stmt.args[0]
-    ir_arg = _lower_expr(arg, ctx)
-    if ir_arg is None:
-        return None
-    arg_type = _static_type_of(arg, ctx)
-    if arg_type == "string" and not isinstance(arg, pa.StrLit):
-        # PStr argument: TPy's print formats `str` / `StrView`
-        # naturally; wrap to surface the string view.
-        ir_arg = Call(
-            callee=Name(ident="str", loc=_to_ir_loc(arg.loc)),
-            args=(ir_arg,), loc=_to_ir_loc(arg.loc),
-        )
-    callee_loc = _to_ir_loc(stmt.callee.loc)
-    if callee_name == "writeln":
-        ir_call = Call(
+    if not stmt.args:
+        if callee_name != "writeln":
+            ctx.diagnostics.append(_diag(
+                f"{callee_name!r} requires at least one argument",
+                stmt.loc,
+            ))
+            return None
+        # Bare `writeln;` -- print just the newline.
+        callee_loc = _to_ir_loc(stmt.callee.loc)
+        return ExprStmt(value=Call(
             callee=Name(ident="print", loc=callee_loc),
-            args=(ir_arg,), loc=_to_ir_loc(stmt.loc),
+            args=(), loc=_to_ir_loc(stmt.loc),
+        ), loc=_to_ir_loc(stmt.loc))
+    stmts: list = []
+    last_index = len(stmt.args) - 1
+    for i, arg in enumerate(stmt.args):
+        ir_arg = _lower_expr(arg, ctx)
+        if ir_arg is None:
+            return None
+        arg_type = _static_type_of(arg, ctx)
+        if arg_type == "string" and not isinstance(arg, pa.StrLit):
+            ir_arg = Call(
+                callee=Name(ident="str", loc=_to_ir_loc(arg.loc)),
+                args=(ir_arg,), loc=_to_ir_loc(arg.loc),
+            )
+        callee_loc = _to_ir_loc(stmt.callee.loc)
+        # Each arg except the trailing `writeln` arg is printed with
+        # `end=""` so the values stream into one line; the last
+        # `writeln` arg lets `print` emit its default trailing
+        # newline. `write` always uses `end=""`.
+        is_last_writeln = (
+            callee_name == "writeln" and i == last_index
         )
-    else:  # write
-        ir_call = Call(
-            callee=Name(ident="print", loc=callee_loc),
-            args=(ir_arg,),
-            kwargs=(("end", StrLit(value="", loc=callee_loc)),),
-            loc=_to_ir_loc(stmt.loc),
-        )
-    return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
+        if is_last_writeln:
+            ir_call = Call(
+                callee=Name(ident="print", loc=callee_loc),
+                args=(ir_arg,), loc=_to_ir_loc(stmt.loc),
+            )
+        else:
+            ir_call = Call(
+                callee=Name(ident="print", loc=callee_loc),
+                args=(ir_arg,),
+                kwargs=(("end", StrLit(value="", loc=callee_loc)),),
+                loc=_to_ir_loc(stmt.loc),
+            )
+        stmts.append(ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc)))
+    if len(stmts) == 1:
+        return stmts[0]
+    return tuple(stmts)
 
 
 def _build_user_call_args(callee_name: str, args: list, sig: _Sig,
@@ -2690,6 +3126,14 @@ def _lower_call_expr(expr: pa.CallExpr, ctx: _Ctx):
     # Pascal builtins routed inline (no Pascal-runtime trip).
     if name in _BUILTIN_EXPR:
         return _BUILTIN_EXPR[name](expr, ctx)
+    # Nested-subroutine call: route through the mangled top-level
+    # name (parallel to the call-stmt path).
+    if name in ctx.nested_renames:
+        name = ctx.nested_renames[name]
+        expr = pa.CallExpr(
+            callee=pa.Ident(name=name, loc=expr.callee.loc),
+            args=expr.args, loc=expr.loc,
+        )
     sig = ctx.signatures.get(name)
     if sig is None:
         # The name isn't a known same-module subroutine. If the unit

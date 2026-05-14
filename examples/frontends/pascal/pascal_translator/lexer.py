@@ -61,7 +61,7 @@ KEYWORDS = frozenset({
     "and", "or", "not", "xor", "in",
     "true", "false", "nil",
     "if", "then", "else",
-    "while", "do",
+    "while", "do", "with",
     "for", "to", "downto",
     "repeat", "until",
     "case", "of",
