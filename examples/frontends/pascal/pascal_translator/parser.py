@@ -420,6 +420,8 @@ class _Parser:
             return self.parse_string_type()
         if self.cur.kind == TokKind.KEYWORD and self.cur.text == "set":
             return self.parse_set_type()
+        if self.cur.kind == TokKind.CARET:
+            return self.parse_pointer_type()
         if self.cur.kind == TokKind.LPAREN:
             return self.parse_enum_type()
         # Subrange shape: a signed int literal followed by `..` and
@@ -506,6 +508,18 @@ class _Parser:
             )
         return pa.StringTypeSpec(
             capacity=capacity, loc=self._loc(start, end_tok),
+        )
+
+    def parse_pointer_type(self) -> pa.PointerTypeSpec:
+        """`^T` -- a pointer to a value of type T. Inside a `type`
+        block T may name a record that's declared later in the same
+        block (the canonical linked-list pattern); the translator's
+        two-pass type lowering resolves that forward reference."""
+        start = self._eat(TokKind.CARET)
+        pointee = self.parse_type_spec()
+        end_tok = self.tokens[self.i - 1]
+        return pa.PointerTypeSpec(
+            pointee=pointee, loc=self._loc(start, end_tok),
         )
 
     def parse_set_type(self) -> pa.SetTypeSpec:
@@ -805,7 +819,8 @@ class _Parser:
         self.i += 1
         target = pa.Ident(name=ident_tok.text,
                           loc=self._loc(ident_tok, ident_tok))
-        while self.cur.kind in (TokKind.DOT, TokKind.LBRACK):
+        while self.cur.kind in (TokKind.DOT, TokKind.LBRACK,
+                                 TokKind.CARET):
             if self.cur.kind == TokKind.DOT:
                 self.i += 1
                 name_tok = self._eat(TokKind.IDENT)
@@ -813,13 +828,20 @@ class _Parser:
                     target=target, ident=name_tok.text,
                     loc=self._loc(start_tok, name_tok),
                 )
-            else:
+            elif self.cur.kind == TokKind.LBRACK:
                 self._eat(TokKind.LBRACK)
                 idx = self.parse_expression()
                 rbrack = self._eat(TokKind.RBRACK)
                 target = pa.IndexExpr(
                     target=target, index=idx,
                     loc=self._loc(start_tok, rbrack),
+                )
+            else:  # CARET -- pointer deref `p^`
+                caret = self.cur
+                self.i += 1
+                target = pa.DerefExpr(
+                    target=target,
+                    loc=self._loc(start_tok, caret),
                 )
         if self.cur.kind == TokKind.ASSIGN:
             self.i += 1
@@ -1167,6 +1189,14 @@ class _Parser:
                     loc=self._loc_span(node, rbrack),
                 )
                 continue
+            if self.cur.kind == TokKind.CARET:
+                caret = self.cur
+                self.i += 1
+                node = pa.DerefExpr(
+                    target=node,
+                    loc=self._loc_span(node, caret),
+                )
+                continue
             break
         return node
 
@@ -1185,6 +1215,9 @@ class _Parser:
             self.i += 1
             return pa.BoolLit(value=(t.text == "true"),
                               loc=self._loc(t, t))
+        if t.kind == TokKind.KEYWORD and t.text == "nil":
+            self.i += 1
+            return pa.NilLit(loc=self._loc(t, t))
         if t.kind == TokKind.IDENT:
             self.i += 1
             return pa.Ident(name=t.text, loc=self._loc(t, t))

@@ -55,6 +55,7 @@ from tpyc.frontend_ir import (
     MatchWildcard,
     Name,
     NamedType,
+    NoneLit,
     Param,
     PointerType,
     RangeDir,
@@ -189,6 +190,10 @@ class _Ctx:
     # the index-site range check (`check_subrange`).
     array_lower_bounds: dict[str, int] = field(default_factory=dict)
     array_upper_bounds: dict[str, int] = field(default_factory=dict)
+    # Pointer-typed var name -> pointee Pascal TypeSpec. `New(p)` /
+    # `Dispose(p)` need the pointee type at the call site to emit
+    # `unsafe_alloc[T]()` / `unsafe_init(p, default(T))`.
+    pointer_pointee: dict[str, object] = field(default_factory=dict)
     # FixStr capacity per declared `string`/`string[N]` variable.
     # Used by assignment lowering (`s := 'lit'` -> `s.assign('lit')`)
     # and by string-literal-vs-FixStr disambiguation.
@@ -288,6 +293,15 @@ def translate(program: pa.Program,
                 # alias; var decls / params route through the alias
                 # back to the underlying `set[T]` IR type.
                 ctx.type_aliases[td.name] = td.type_spec
+            elif isinstance(td.type_spec, pa.PointerTypeSpec):
+                # `type PNode = ^Node;` -- pointer type alias. The
+                # pointee may refer to a record declared later in
+                # the same type block (the canonical linked-list /
+                # tree pattern); type lowering resolves the
+                # pointee name after the prescan completes by
+                # walking `ctx.record_types` / `ctx.type_aliases`,
+                # so forward references work for free.
+                ctx.type_aliases[td.name] = td.type_spec
 
     # `uses` clauses: resolve each to a canonical TPy module name and
     # mark it as a star import. Bare names (`uses Crt`) resolve only
@@ -329,6 +343,8 @@ def translate(program: pa.Program,
             elif isinstance(td.type_spec, pa.SubrangeTypeSpec):
                 pass  # registered in pre-scan as a type alias
             elif isinstance(td.type_spec, pa.SetTypeSpec):
+                pass  # registered in pre-scan as a type alias
+            elif isinstance(td.type_spec, pa.PointerTypeSpec):
                 pass  # registered in pre-scan as a type alias
             else:
                 ctx.diagnostics.append(_diag(
@@ -661,6 +677,13 @@ def _lower_type_spec(spec, ctx: _Ctx):
             args=(TypeTypeArg(value=elem),),
             loc=_to_ir_loc(spec.loc),
         )
+    if isinstance(spec, pa.PointerTypeSpec):
+        pointee = _lower_type_spec(spec.pointee, ctx)
+        if pointee is None:
+            return None
+        return PointerType(
+            inner=pointee, loc=_to_ir_loc(spec.loc),
+        )
     ctx.diagnostics.append(_diag(
         f"unsupported type spec {type(spec).__name__}",
         getattr(spec, "loc", _zero_loc()),
@@ -731,6 +754,7 @@ def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
         resolved = spec.name
         seen: set[str] = set()
         subrange_bounds: tuple[int, int] | None = None
+        pointer_pointee: object | None = None
         while resolved in ctx.type_aliases and resolved not in seen:
             seen.add(resolved)
             target = ctx.type_aliases[resolved]
@@ -742,10 +766,15 @@ def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
                 resolved = "integer"
             elif isinstance(target, pa.SetTypeSpec):
                 resolved = "set"
+            elif isinstance(target, pa.PointerTypeSpec):
+                pointer_pointee = target.pointee
+                resolved = "pointer"
             break
         ctx.type_env[name] = resolved
         if subrange_bounds is not None:
             ctx.subrange_bounds[name] = subrange_bounds
+        if pointer_pointee is not None:
+            ctx.pointer_pointee[name] = pointer_pointee
         return
     if isinstance(spec, pa.ArrayTypeSpec):
         ctx.type_env[name] = "array"
@@ -758,6 +787,12 @@ def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
         return
     if isinstance(spec, pa.SetTypeSpec):
         ctx.type_env[name] = "set"
+        return
+    if isinstance(spec, pa.PointerTypeSpec):
+        ctx.type_env[name] = "pointer"
+        # Remember the pointee spec keyed by var name -- `New(p)` /
+        # `Dispose(p)` need the pointee type at the call site.
+        ctx.pointer_pointee[name] = spec.pointee
         return
 
 
@@ -809,7 +844,21 @@ def _default_init_for_spec(spec, loc: pa.Loc, ctx: _Ctx):
             callee=Name(ident="TextFile", loc=ir_loc),
             args=(), loc=ir_loc,
         )
+    if isinstance(resolved, pa.PointerTypeSpec):
+        # Default-init a pointer to `nil` (null). `Ptr[T]()` is the
+        # nullptr constructor in TPy; we emit it with explicit
+        # type_args so codegen knows the pointee type.
+        return _make_nil_ptr(resolved.pointee, loc, ctx)
     return None
+
+
+def _make_nil_ptr(pointee_spec, loc: pa.Loc, ctx: _Ctx):
+    """Default-init of a pointer-typed variable -- `None` (Pascal
+    `nil`). The variable's declared type (`Ptr[T]`) gives TPy the
+    pointee type at the assignment / declaration site, so we don't
+    have to spell `Ptr[T]()` here. Mirrors the idiom in
+    `tests/cases/pointers/ptr_none_checks`."""
+    return NoneLit(loc=_to_ir_loc(loc))
 
 
 def _default_init_module(spec, loc: pa.Loc, ctx: _Ctx):
@@ -1071,6 +1120,27 @@ def _lower_stmt(stmt, ctx: _Ctx):
 
 
 def _lower_assign_stmt(stmt: pa.AssignStmt, ctx: _Ctx):
+    # `p^ := v` (assign through a pointer dereference): TPy's `deref`
+    # returns by value, so we can't reuse the value-write path. Route
+    # through `unsafe_store(p, 0, v)` -- the only writable form for
+    # `Ptr[T]` to a value type. For record-typed pointers, `p^.field
+    # := v` parses as a FieldAccess whose target is a DerefExpr; the
+    # field-write path below relies on TPy's implicit pointer-attr
+    # deref so a separate handler isn't needed.
+    if isinstance(stmt.target, pa.DerefExpr):
+        ptr_ir = _lower_expr(stmt.target.target, ctx)
+        value = _lower_expr(stmt.value, ctx)
+        if ptr_ir is None or value is None:
+            return None
+        ctx.add_import("tpy.unsafe", "unsafe_store")
+        ir_loc = _to_ir_loc(stmt.loc)
+        return ExprStmt(value=Call(
+            callee=Name(ident="unsafe_store", loc=ir_loc),
+            args=(ptr_ir,
+                  IntLit(value=0, loc=ir_loc),
+                  value),
+            loc=ir_loc,
+        ), loc=ir_loc)
     # Bare-identifier target: special cases for Pascal function-return
     # (`function_name := expr`) and `var` parameter writes.
     if isinstance(stmt.target, pa.Ident):
@@ -1236,9 +1306,15 @@ def _lower_string_assign(target_name: str, stmt: pa.AssignStmt,
 def _lower_target(target, ctx: _Ctx):
     """Lower a Pascal lvalue (FieldAccess / IndexExpr). Field accesses
     pass through unchanged; array indexes subtract the variable's
-    declared lower bound so the lowered IR is 0-based."""
+    declared lower bound so the lowered IR is 0-based. `p^.field` is
+    a FieldAccess with a DerefExpr target; the deref is stripped
+    because TPy's `Attr` on a `Ptr[Record]` already does the
+    implicit pointer->field write."""
     if isinstance(target, pa.FieldAccess):
-        obj = _lower_expr(target.target, ctx)
+        inner = target.target
+        if isinstance(inner, pa.DerefExpr):
+            inner = inner.target
+        obj = _lower_expr(inner, ctx)
         if obj is None:
             return None
         return Attr(target=obj, ident=target.ident,
@@ -1491,6 +1567,8 @@ def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
         return _lower_readln_stmt(stmt, ctx)
     if name in ("inc", "dec"):
         return _lower_inc_dec_stmt(stmt, ctx, name)
+    if name in ("new", "dispose"):
+        return _lower_new_dispose_stmt(stmt, ctx, name)
     if name == "randomize":
         if stmt.args:
             ctx.diagnostics.append(_diag(
@@ -1539,6 +1617,84 @@ def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
         loc=_to_ir_loc(stmt.loc),
     )
     return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
+
+
+def _lower_new_dispose_stmt(stmt: pa.CallStmt, ctx: _Ctx, name: str):
+    """Lower `New(p)` / `Dispose(p)` to TPy unsafe primitives.
+
+    `New(p)` -> two statements: `p = unsafe_alloc[T]()` then
+    `unsafe_init(p, default(T))`. `Dispose(p)` -> `unsafe_drop(p)`
+    then `unsafe_free(p)`. Both return a tuple of statements so the
+    enclosing `_lower_stmt_to_tuple` splices them in."""
+    if len(stmt.args) != 1:
+        ctx.diagnostics.append(_diag(
+            f"{name}(p) takes exactly one argument", stmt.loc))
+        return None
+    arg = stmt.args[0]
+    if not isinstance(arg, pa.Ident):
+        ctx.diagnostics.append(_diag(
+            f"{name}(p) target must be a pointer variable", arg.loc))
+        return None
+    if ctx.type_env.get(arg.name) != "pointer":
+        ctx.diagnostics.append(_diag(
+            f"{name}(p) target must be a pointer variable, got "
+            f"{ctx.type_env.get(arg.name)!r}",
+            arg.loc,
+        ))
+        return None
+    pointee_spec = ctx.pointer_pointee.get(arg.name)
+    if pointee_spec is None:
+        ctx.diagnostics.append(_diag(
+            f"{name}(p) target {arg.name!r} has no recorded pointee",
+            arg.loc,
+        ))
+        return None
+    ir_loc = _to_ir_loc(stmt.loc)
+    target_loc = _to_ir_loc(arg.loc)
+    if name == "new":
+        pointee_ir = _lower_type_spec(pointee_spec, ctx)
+        if pointee_ir is None:
+            return None
+        ctx.add_import("tpy.unsafe", "unsafe_alloc")
+        ctx.add_import("tpy.unsafe", "unsafe_init")
+        alloc_call = Call(
+            callee=Name(ident="unsafe_alloc", loc=ir_loc),
+            type_args=(TypeTypeArg(value=pointee_ir),),
+            args=(), loc=ir_loc,
+        )
+        assign = Assign(
+            targets=(Name(ident=arg.name, loc=target_loc),),
+            value=alloc_call, loc=ir_loc,
+        )
+        default_val = _default_init_for_spec(pointee_spec, stmt.loc, ctx)
+        if default_val is None:
+            ctx.diagnostics.append(_diag(
+                f"new({arg.name}): cannot synthesize default for pointee "
+                f"type {type(pointee_spec).__name__}",
+                arg.loc,
+            ))
+            return None
+        init_call = Call(
+            callee=Name(ident="unsafe_init", loc=ir_loc),
+            args=(Name(ident=arg.name, loc=target_loc), default_val),
+            loc=ir_loc,
+        )
+        return (assign, ExprStmt(value=init_call, loc=ir_loc))
+    # name == "dispose"
+    ctx.add_import("tpy.unsafe", "unsafe_drop")
+    ctx.add_import("tpy.unsafe", "unsafe_free")
+    drop_call = Call(
+        callee=Name(ident="unsafe_drop", loc=ir_loc),
+        args=(Name(ident=arg.name, loc=target_loc),), loc=ir_loc,
+    )
+    free_call = Call(
+        callee=Name(ident="unsafe_free", loc=ir_loc),
+        args=(Name(ident=arg.name, loc=target_loc),), loc=ir_loc,
+    )
+    return (
+        ExprStmt(value=drop_call, loc=ir_loc),
+        ExprStmt(value=free_call, loc=ir_loc),
+    )
 
 
 def _lower_inc_dec_stmt(stmt: pa.CallStmt, ctx: _Ctx, name: str):
@@ -1945,6 +2101,22 @@ def _lower_expr(expr, ctx: _Ctx):
         return StrLit(value=expr.value, loc=_to_ir_loc(expr.loc))
     if isinstance(expr, pa.BoolLit):
         return BoolLit(value=expr.value, loc=_to_ir_loc(expr.loc))
+    if isinstance(expr, pa.NilLit):
+        # Pascal `nil` lowers to TPy's `None` sentinel: `Ptr[T]`
+        # supports `p = None` as the nullptr assign form and `is
+        # None` / `is not None` as the null-check form (see TPy's
+        # `tests/cases/pointers/ptr_none_checks`). No type
+        # inference dance required.
+        return NoneLit(loc=_to_ir_loc(expr.loc))
+    if isinstance(expr, pa.DerefExpr):
+        target = _lower_expr(expr.target, ctx)
+        if target is None:
+            return None
+        ctx.add_import("tpy", "deref")
+        return Call(
+            callee=Name(ident="deref", loc=_to_ir_loc(expr.loc)),
+            args=(target,), loc=_to_ir_loc(expr.loc),
+        )
     if isinstance(expr, pa.Ident):
         # Reads of a `var` parameter route through `deref(p)`.
         if expr.name in ctx.current_var_params:
@@ -1986,7 +2158,19 @@ def _lower_expr(expr, ctx: _Ctx):
             )
         return Name(ident=expr.name, loc=_to_ir_loc(expr.loc))
     if isinstance(expr, pa.FieldAccess):
-        obj = _lower_expr(expr.target, ctx)
+        # Pascal `p^.field` parses as FieldAccess(DerefExpr(p),
+        # field). Strip the redundant deref here -- TPy's
+        # `Attr` on a `Ptr[Record]` already does the implicit
+        # pointer->field load (and writes through the pointer if
+        # this is on the LHS of an assignment). Avoiding the
+        # explicit `deref(p)` call keeps the C++ shape as
+        # `p->field` rather than `(*p).field` -- both work, but
+        # the former is what TPy normally emits for pointer
+        # fields.
+        inner_target = expr.target
+        if isinstance(inner_target, pa.DerefExpr):
+            inner_target = inner_target.target
+        obj = _lower_expr(inner_target, ctx)
         if obj is None:
             return None
         return Attr(target=obj, ident=expr.ident,
@@ -2018,6 +2202,17 @@ def _lower_expr(expr, ctx: _Ctx):
             )
         cmp_op = _CMP_OP.get(expr.op)
         if cmp_op is not None:
+            # Pascal `p = nil` / `p <> nil` lowers to TPy `p is None`
+            # / `p is not None`. The `=` / `<>` value-comparison
+            # form doesn't work on `Ptr[T]` (no `__eq__` defined for
+            # raw pointers); the identity form is what TPy expects
+            # for null checks.
+            if expr.op in ("=", "<>") and (
+                isinstance(expr.lhs, pa.NilLit)
+                or isinstance(expr.rhs, pa.NilLit)
+            ):
+                cmp_op = (CmpOpKind.IS if expr.op == "="
+                          else CmpOpKind.IS_NOT)
             lhs = _lower_expr(expr.lhs, ctx)
             rhs = _lower_expr(expr.rhs, ctx)
             if lhs is None or rhs is None:
@@ -2423,13 +2618,23 @@ def _static_type_of(expr, ctx: _Ctx) -> str | None:
             return ctx.enum_member_to_type[expr.name]
         return None
     if isinstance(expr, pa.FieldAccess):
-        # M5 supports only one level of field access on a known record
-        # variable (`p.x`); deeper chains route through this branch
-        # recursively, but currently nested-record fields don't have a
-        # tracked type spelling and return None.
-        if isinstance(expr.target, pa.Ident):
-            record_name = ctx.type_env.get(expr.target.name)
-            if record_name in ctx.record_fields:
+        # M5 supports one level of field access on a known record
+        # variable (`p.x`); M15 also resolves `p^.x` where `p` is a
+        # pointer to a record (via `ctx.pointer_pointee`).
+        inner = expr.target
+        if isinstance(inner, pa.DerefExpr):
+            inner = inner.target
+        if isinstance(inner, pa.Ident):
+            record_name: str | None = None
+            t = ctx.type_env.get(inner.name)
+            if t in ctx.record_fields:
+                record_name = t
+            elif t == "pointer":
+                pointee = ctx.pointer_pointee.get(inner.name)
+                if (isinstance(pointee, pa.NamedTypeSpec)
+                        and pointee.name in ctx.record_fields):
+                    record_name = pointee.name
+            if record_name is not None:
                 return ctx.record_fields[record_name].get(expr.ident)
         return None
     if isinstance(expr, pa.IndexExpr):

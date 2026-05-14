@@ -103,21 +103,40 @@ TPy-core changes.
   `MatchValue` arm per enum member in the closed interval (no
   ordering comparisons on enums required). Scalar labels stay
   structural `MatchValue` for the jump-table form.
-- **Pointers**: `^T`, `New`, `Dispose`, `^x.field`. Maps to `Ptr[T]`
-  via `tpy.unsafe.unsafe_alloc` (allocate) + `unsafe_init`
-  (placement-construct), with `unsafe_drop` + `unsafe_free` on
-  Dispose. Field access through a pointer (`^x.field`) lowers to
-  TPy's implicit pointer-attribute deref. A thin Pascal-runtime
-  wrapper is also an option if the unsafe-call surface gets
-  unwieldy.
+- **Pointers** (M15, shipped): `^T` (type) lowers to `Ptr[T]`.
+  `New(p)` -> `unsafe_alloc[T]()` + `unsafe_init(p, default(T))`;
+  `Dispose(p)` -> `unsafe_drop(p)` + `unsafe_free(p)`. `p^` (read)
+  -> `deref(p)`; `p^ := v` (write) -> `unsafe_store(p, 0, v)`.
+  `p^.field` parses as a FieldAccess on DerefExpr and lowers to a
+  bare `Attr(p, field)` -- TPy's `Ptr[Record]` auto-derefs on
+  attribute access, so the C++ shape is `p->field`. `nil` lowers
+  to `None`; comparisons against `nil` route through
+  `is None` / `is not None` (TPy raw pointers don't define `==`).
+  Forward type references within a `type` block work via
+  registration in the prescan pass (`PNode = ^Node;` before
+  `Node = record ... end;` is fine).
 - **File I/O** (M13, M14.5, shipped, text subset): `text` type and
   `Assign(f, name)` / `Reset(f)` / `Rewrite(f)` / `Append(f)` /
   `Close(f)` / `Writeln(f, x)` / `Readln(f, x)` / `Eof(f)`. Backed
   by a `pascal.runtime.io.TextFile` class that slurps the file into
   a per-line buffer on `Reset` and flushes accumulated writes on
-  `Close`. `File of T` (typed binary files) is still pending.
-  `Erase` / `Rename` are blocked on TPy not exposing the `os`
-  module (no `os.remove`/`os.rename`).
+  `Close`.
+  - `Erase` / `Rename` are blocked on TPy not exposing the `os`
+    module (no `os.remove` / `os.rename`).
+  - `File of T` (typed binary files) is blocked on the TPy `struct`
+    stdlib macro -- the read side (`unpack`, `unpack_from`,
+    `calcsize`) is in place, but `pack` / `pack_into` are still
+    `TODO` at the top of `lib/tpy/struct.py` (the comment cites the
+    need for a statement-expression or buffer-builder pattern).
+    Once `pack` lands, `File of <primitive>` and `File of <flat
+    record-of-primitives>` are mechanical: the Pascal translator
+    knows `T` at translate time and can emit a literal format
+    string into `struct.pack` / `struct.unpack`. `File of <record
+    containing PStr>` is messier but doable -- ShortString is
+    fixed-size (length byte + N bytes), so it round-trips through a
+    fixed format too. Tracked here rather than in `BUGS.md` /
+    `TODO.md` because the unblock is TPy-stdlib scope, not a
+    Pascal-frontend defect.
 - **Variant records**: `record case Tag: T of ... end`. Maps to a
   TPy union type.
 - **Strings beyond ShortString**: longer-than-255, AnsiString,
@@ -396,6 +415,10 @@ TODOs the tier needs.
     `Append(f)` text-file mode, bare-name parameterless function
     calls (`ch := ReadKey;` without parens) via Python-module
     signature ingestion at translate time.
+15. **Pointers + forward types.** `^T` / `New` / `Dispose` /
+    `p^` / `p^ := v` / `p^.field` / `nil` and forward type
+    declarations within a `type` block (the canonical linked-list
+    shape).
 
 Each milestone closes with: tests in `tests/cases/pascal/`, snapshot
 diagnostics + output + generated C++ checked in, runs green under

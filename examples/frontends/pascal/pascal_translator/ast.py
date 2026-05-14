@@ -46,6 +46,13 @@ class BoolLit:
 
 
 @dataclass
+class NilLit:
+    """`nil` literal -- the null pointer. Pointer-typed only; the
+    translator lowers it to TPy's `Ptr[T]()` default-constructor."""
+    loc: Loc
+
+
+@dataclass
 class Ident:
     name: str        # canonical lowercase form
     loc: Loc
@@ -56,6 +63,16 @@ class FieldAccess:
     """`target.ident` -- read field of a record value."""
     target: object   # Expr
     ident: str
+    loc: Loc
+
+
+@dataclass
+class DerefExpr:
+    """`p^` -- read the pointee of a pointer expression. Translator
+    lowers to TPy `deref(p)`. The Pascal sugar `p^.field` is parsed
+    as `FieldAccess(target=DerefExpr(p), ident=field)`; codegen for
+    `Attr` on a `Ptr[T]` already does the implicit deref in TPy."""
+    target: object   # Expr
     loc: Loc
 
 
@@ -158,6 +175,16 @@ class SetTypeSpec:
     """`set of T` -- M12 type spec. Element type `T` is the only
     payload; tpy.Set[T] is the lowering target."""
     element: object  # TypeSpec
+    loc: Loc
+
+
+@dataclass
+class PointerTypeSpec:
+    """`^T` -- M15 type spec. The pointee type may be a forward
+    reference to a record declared later in the same type block; the
+    translator resolves these in a second pass after every name in
+    the block is known."""
+    pointee: object  # TypeSpec
     loc: Loc
 
 

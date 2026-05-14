@@ -43,6 +43,7 @@ from ..parse.nodes import (
     TpyMethodCall,
     TpyModule,
     TpyName,
+    TpyNoneLiteral,
     TpyRecord,
     TpyReturn,
     TpySetLiteral,
@@ -87,6 +88,7 @@ from .nodes import (
     MatchWildcard,
     Name,
     NamedType,
+    NoneLit,
     Param,
     PointerType,
     RangeDir,
@@ -774,6 +776,10 @@ def _lower_expr(
                 return None
             lowered_elems.append(le)
         out = TpySetLiteral(elements=lowered_elems)
+        out.loc = loc
+        return out
+    if isinstance(expr, NoneLit):
+        out = TpyNoneLiteral()
         out.loc = loc
         return out
     if isinstance(expr, Compare):

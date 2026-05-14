@@ -45,6 +45,7 @@ class TokKind(Enum):
     LBRACK = "LBRACK"        # [
     RBRACK = "RBRACK"        # ]
     DOTDOT = "DOTDOT"        # ..  (range separator in array bounds and case ranges)
+    CARET = "CARET"          # ^   (pointer type prefix + deref postfix)
     EOF = "EOF"
 
 
@@ -58,7 +59,7 @@ KEYWORDS = frozenset({
     "const", "var", "integer", "boolean", "string", "char", "real", "text",
     "div", "mod",
     "and", "or", "not", "xor", "in",
-    "true", "false",
+    "true", "false", "nil",
     "if", "then", "else",
     "while", "do",
     "for", "to", "downto",
@@ -229,6 +230,11 @@ def tokenize(source: str, path: Path) -> list[Token]:
                 tokens.append(Token(TokKind.GE, ">=", sl, sc, line, col - 1))
             else:
                 tokens.append(Token(TokKind.GT, ">", sl, sc, line, col - 1))
+            continue
+        if ch == "^":
+            sl, sc = line, col
+            adv()
+            tokens.append(Token(TokKind.CARET, "^", sl, sc, line, col - 1))
             continue
         # Numeric literal (decimal). Float form: integer-part `.` digits
         # with an optional exponent (`e`/`E`, optional sign, digits).

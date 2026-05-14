@@ -270,8 +270,17 @@ class SetLit:
     loc: Loc | None = None
 
 
+@dataclass
+class NoneLit:
+    """`None` literal -- the null/empty sentinel. Lowers to
+    TpyNoneLiteral. Used by plugins that translate a source-language
+    null (Pascal `nil`, etc.) to TPy's nullable form."""
+    kind: str = field(default="NoneLit", init=False)
+    loc: Loc | None = None
+
+
 Expr = Union[StrLit, BoolLit, IntLit, FloatLit, Name, Call, BinOp, UnaryOp,
-             Compare, Attr, Subscript, SetLit]
+             Compare, Attr, Subscript, SetLit, NoneLit]
 
 
 # --- Statements -----------------------------------------------------------
