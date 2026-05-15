@@ -15,7 +15,7 @@ from ..typesys import (
     IntLiteralType, FloatLiteralType, TypeParamKind, BIGINT, UnknownElementType,
     NoneType, VoidType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
-    unwrap_ref_type, RefType, is_dyn_protocol,
+    unwrap_ref_type, unwrap_qualifiers, RefType, is_dyn_protocol,
     is_callable_type, is_integer_type, is_float_type, is_void_like_type,
 )
 from ..coercions import resolve_coercion, CoercionContext
@@ -726,6 +726,9 @@ class TypeOperations:
         inferred: dict[str, TpyType],
     ) -> bool:
         """Match a protocol with TypeParamRef type_args against arg_type (e.g., NativeIterable[T], Iterator[T])."""
+        # Mirror classify_protocol_conformance: conformance is on the
+        # underlying record, not its Ref/readonly/Own wrapper.
+        arg_type = unwrap_qualifiers(arg_type)
         # GenExprType satisfies Iterable[T] and Iterator[T];
         # CopyIter/OwnIter satisfy Iterable[T] only.
         if ((isinstance(arg_type, GenExprType) and param_type.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR))

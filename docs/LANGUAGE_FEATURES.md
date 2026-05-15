@@ -3370,6 +3370,15 @@ called as `heappush(pq, (3, "third"))` where `pq: list[tuple[Int32, str]]`,
 the literal `3` inside the second-arg tuple coerces to `Int32` to match the
 slot in the already-determined `T`.
 
+**Protocol-typed args**: when a callee parameter is a generic protocol
+(`Iterable[T]`, `Awaitable[T]`, ...) and the arg is a record conforming
+structurally or via inheritance, inference strips `Ref[T]` / `readonly[T]` /
+`Own[T]` wrappers on the arg side before resolving the record's method table.
+This mirrors what protocol conformance checking already does, so a record
+passed via a generic outer parameter (whose expression carries an implicit
+`Ref[T]` wrapper) infers the protocol's type arg the same way it would for a
+locally constructed value.
+
 **Contextual Type Inference**: When arguments don't fully determine all type
 parameters, the expected type from context (assignment annotation, return type,
 reassignment, field assignment) fills in the remaining params:

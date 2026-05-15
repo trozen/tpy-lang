@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 from tpyc.typesys import (
     TypeParamRef, NominalType, PtrType, TupleType,
     TpyType, CHAR, OwnType, GenExprType,
-    is_any_str_type, is_protocol_type, unwrap_ref_type,
+    is_any_str_type, is_protocol_type, unwrap_ref_type, unwrap_qualifiers,
 )
 from tpyc.type_def_registry import is_span, is_span_iter, is_copy_iter, is_own_iter, is_iterator_adapter, protocol_info_of
 from tpyc.modules.defs import ParamDef, MethodDef
@@ -246,6 +246,10 @@ def get_extends_protocol_type_arg(
     implemented_protocols if a registry is provided.
     """
     from tpyc.typesys import impl_proto_matches_name, get_protocol_qname
+
+    # Mirror classify_protocol_conformance: conformance is on the
+    # underlying record, not its Ref/readonly/Own wrapper.
+    tpy_type = unwrap_qualifiers(tpy_type)
 
     type_params = extract_type_params(tpy_type)
 
