@@ -617,6 +617,7 @@ process(b"hello")      # zero-alloc: static span passed directly
   - Views: `d.keys()`, `d.values()`, `d.items()` return zero-allocation views with `for`-loop, `len()`, `in`
   - `Iterable[T]` conformance: `dict[K,V]` and views conform to `Iterable` (`d` is `Iterable[K]`, `d.keys()` is `Iterable[K]`, `d.values()` is `Iterable[V]`, `d.items()` is `Iterable[tuple[K, V]]`) and can be passed to generic functions accepting `Iterable[T]`
   - Keys: `str`, `int`, fixed-width ints, `float`, `bool`, `Char`
+  - Keys must be hashable AND copy-constructible. Sema enforces both at annotation resolution -- annotating `d: dict[K, V]` is enough; you don't need a literal or `__setitem__` to trigger the check. Non-hashable user records (no `__hash__` / `__eq__`, including inherited) get a "missing `__hash__`; use @dataclass(frozen=True) or define it explicitly" message. `@nocopy` keys (`Rc[T]`, `Box[T]`, user `@nocopy` classes, tuples wrapping them) get a precise "non-copyable" message -- the copy-constructibility requirement is a runtime limitation (`tpy::ordered_map`'s `std::pair<const K, ...>` entries force copy-construction), not a language design choice. (Move-only **values** in `dict[K, Rc[T]]` work; only the key slot is gated.)
   - **Type parameters are invariant**: `dict[K, Child]` is not compatible with `dict[K, Base]` even when `Child` inherits from `Base`. C++ `ordered_map<V>` is a non-converting template — passing `Child` where `Base` is expected would fail at C++ build time or silently slice objects.
   - Return by value requires `Own[dict[K, V]]`
 - **Working**: `set[T]` - ordered hash set -> `tpy::ordered_set<T>` (insertion-order preserving)
@@ -630,7 +631,7 @@ process(b"hello")      # zero-alloc: static span passed directly
   - Operators: `|` (union), `&` (intersection), `-` (difference), `^` (symmetric difference)
   - Comparison: `<=` (subset), `<` (strict subset), `>=` (superset), `>` (strict superset)
   - Augmented: `|=`, `&=`, `-=`, `^=`
-  - Elements must be hashable (same constraint as dict keys)
+  - Elements must be hashable AND copy-constructible (same constraint as dict keys -- enforced at annotation resolution, not just at literals/comprehensions; copy-constructibility is a runtime limitation, not a language design choice)
   - **Type parameter is invariant**: `set[Child]` is not compatible with `set[Base]` even when `Child` inherits from `Base`. C++ `ordered_set<T>` is a non-converting template.
   - Return by value requires `Own[set[T]]`
 - **Open**: Bounded variants: `BoundedList[T, N]`, `BoundedDict[K, V, N]`
@@ -890,7 +891,7 @@ Restrictions:
 - **Working**: `Ptr[T]` -> `T*`
 - **Working**: `Ptr[readonly[T]]` -> `const T*`
 - **Working**: `Own[T]` -> `T` (ownership transfer for return values)
-- **Working**: `Rc[T]` / `Weak[T]` -- pure-TPy non-atomic single-threaded shared-ownership smart pointer with a non-owning companion (`tplib/rc.py`). `_RcCell[T]` holds `{strong, weak, inline-storage}`; clones alias the same allocation. Payload destruction happens at the last `Rc` drop (strong reaches 0); cell deallocation defers until the last `Weak` drops (weak reaches 0), so `Weak.upgrade()` can safely check `strong > 0` against still-valid memory and return `Rc[T] | None`. `@nocopy` at the TPy level: deliberate sharing is always explicit via `Rc.clone()`, `Rc.downgrade()`, `Weak.clone()`, or `Weak.upgrade()`. `Rc[T]` implements `Deref[T]` for transparent field/method access in TPy (`r.x`, `r.method()`); under CPython use `r.get().x` explicitly because the auto-deref protocol isn't simulated -- tests relying on `r.x` syntax need `no_cpython.txt`. `Weak[T]` deliberately does NOT implement `Deref` -- access must go through `upgrade()` so callers handle the "payload already dropped" case. Not `Covariant[T]`: shared-mutable Rc isn't safely covariant (a writer through a Parent view could install a non-Child into the shared slot) and the wrapping through `_RcCell` breaks pointer covariance anyway. Mutation through any clone is visible to all other clones; for shared-immutable use `Rc[readonly[T]]`. Dunder surface on Rc mirrors `Box[T]`: `__str__`, `__repr__`, plus `__eq__` (content equality, delegates to `T.__eq__`, gated on `T: Equatable`), `__lt__`/`__le__`/`__gt__`/`__ge__` (gated on `T: Comparable`), and `__hash__` (gated on `T: Hashable`). Cycles between two strong `Rc` handles still leak (the canonical fix is to wire one edge of the cycle as `Weak`; see `weak_cycle_breaks` test). No atomic refcount today (single-threaded only -- atomic `Arc[T]` is a v3+ item). Construct via `Rc.new(value)`; the `Rc(other)` sharing-ctor shape is still blocked by a sema bug filed in `BUGS.md`. `dict[K, Rc[T]]` literal initialization works (`d = {"a": r.clone(), ...}` lowers via `tpy::make_ordered_map`, preserving move semantics for the @nocopy value). Several rough edges around `Rc.new` and `Rc`-as-record-field are tracked in `BUGS.md` (set/dict[Rc[T]] inconsistent rejection, `Rc.new(3.14)` float-literal-as-template-arg) -- check there before reaching for these patterns. Import: `from tplib import Rc` for the strong-handle surface; `Weak` lives only at `tplib.rc.Weak` (not re-exported flat) so the future `Arc[T]` companion at `tplib.arc.Weak` can take the same bare name without collision -- mirrors `std::rc::Weak` vs `std::sync::Weak` in Rust. Use `from tplib.rc import Rc, Weak` when both handles are needed.
+- **Working**: `Rc[T]` / `Weak[T]` -- pure-TPy non-atomic single-threaded shared-ownership smart pointer with a non-owning companion (`tplib/rc.py`). `_RcCell[T]` holds `{strong, weak, inline-storage}`; clones alias the same allocation. Payload destruction happens at the last `Rc` drop (strong reaches 0); cell deallocation defers until the last `Weak` drops (weak reaches 0), so `Weak.upgrade()` can safely check `strong > 0` against still-valid memory and return `Rc[T] | None`. `@nocopy` at the TPy level: deliberate sharing is always explicit via `Rc.clone()`, `Rc.downgrade()`, `Weak.clone()`, or `Weak.upgrade()`. `Rc[T]` implements `Deref[T]` for transparent field/method access in TPy (`r.x`, `r.method()`); under CPython use `r.get().x` explicitly because the auto-deref protocol isn't simulated -- tests relying on `r.x` syntax need `no_cpython.txt`. `Weak[T]` deliberately does NOT implement `Deref` -- access must go through `upgrade()` so callers handle the "payload already dropped" case. Not `Covariant[T]`: shared-mutable Rc isn't safely covariant (a writer through a Parent view could install a non-Child into the shared slot) and the wrapping through `_RcCell` breaks pointer covariance anyway. Mutation through any clone is visible to all other clones; for shared-immutable use `Rc[readonly[T]]`. Dunder surface on Rc mirrors `Box[T]`: `__str__`, `__repr__`, plus `__eq__` (content equality, delegates to `T.__eq__`, gated on `T: Equatable`), `__lt__`/`__le__`/`__gt__`/`__ge__` (gated on `T: Comparable`), and `__hash__` (gated on `T: Hashable`). Cycles between two strong `Rc` handles still leak (the canonical fix is to wire one edge of the cycle as `Weak`; see `weak_cycle_breaks` test). No atomic refcount today (single-threaded only -- atomic `Arc[T]` is a v3+ item). Construct via `Rc.new(value)`; the `Rc(other)` sharing-ctor shape is still blocked by a sema bug filed in `BUGS.md`. `dict[K, Rc[T]]` literal initialization works (`d = {"a": r.clone(), ...}` lowers via `tpy::make_ordered_map`, preserving move semantics for the @nocopy value). `Rc[T]` is rejected as a `set` element / `dict` key with a precise diagnostic -- hash-table-backed containers store keys in `std::pair<const K, ...>` and require copy-constructible K, which `@nocopy` cannot satisfy. Several remaining rough edges around `Rc.new` are tracked in `BUGS.md` (`Rc.new(3.14)` float-literal-as-template-arg) -- check there before reaching for these patterns. Import: `from tplib import Rc` for the strong-handle surface; `Weak` lives only at `tplib.rc.Weak` (not re-exported flat) so the future `Arc[T]` companion at `tplib.arc.Weak` can take the same bare name without collision -- mirrors `std::rc::Weak` vs `std::sync::Weak` in Rust. Use `from tplib.rc import Rc, Weak` when both handles are needed.
 - **Working**: `tpy.unsafe` -- unsafe pointer operations (`unsafe_ptr`, `unsafe_load`, `unsafe_store`, `unsafe_copy_n`, `unsafe_ptr_add`, `unsafe_ptr_diff`, `unsafe_cast`, `unsafe_const_cast`, `unsafe_str_view`, `unsafe_alloc`, `unsafe_alloc_n`, `unsafe_free`, `unsafe_init`, `unsafe_drop`, `unsafe_move_out`)
 - **Working**: `tpy.mem` -- uninitialized storage primitives (`UninitArrayStorage[T, N]`, `UninitHeapStorage[T]`)
 - **Working (internal)**: `Ref[T]` -- internal type for explicit reference semantics. Flows through the type system uniformly: auto-inserted on function params/returns, preserved on non-reassigned locals, returned by field access and subscript. Detects implicit copies when storing borrowed references into fields/containers (complemented by `needs_copy_warning` for owned lvalue copies). Also drives lambda trailing return types (`-> T&`) and `val_or_ref<T>` template args for iterator combinators. Not user-facing -- users see `T` in annotations, the compiler infers reference vs owned.
@@ -1761,7 +1762,7 @@ h = hash(3.14)        # UInt64
 h = hash(True)        # UInt64
 ```
 
-All primitive types (str, int, fixed-width ints, float, bool, Char), `bytes`, `BytesView`, and Enum types are hashable. `bytearray` is not hashable (mutable). Dict key validation uses the `Hashable` protocol -- only hashable types can be used as dict keys or set elements.
+All primitive types (str, int, fixed-width ints, float, bool, Char), `bytes`, `BytesView`, and Enum types are hashable. `bytearray` is not hashable (mutable). Dict key / set element validation requires conformance to BOTH the `Hashable` and `Equatable` protocols (ordered_set / ordered_map use std::hash AND std::equal_to). Conformance walks the inheritance chain, so a subclass inherits its parent's dunders.
 
 Generated C++ uses `tpy::__hash__()` free function dispatch with overloads for built-in types (`std::integral`, `double`, strings, bytes, `BigInt`, enums) and a default template forwarding to user-defined `__hash__()` methods.
 
@@ -2425,7 +2426,17 @@ def bad() -> Pet:
     return Dog()           # ERROR: local adapter destroyed on return
 ```
 
-**`Optional[Pet]` rejection** -- `Optional` of a `@dynamic` protocol is a sema error in params, locals, and record fields (until `Box[P]` exists for heap-owned dynamic values).
+**`Optional[Pet]` rejection** -- `Optional` of a `@dynamic` protocol is a sema error in params, locals, and record fields. Heap-owned dynamic values now have `Box[P]`; the supported optional shape is `Box[Pet] | None` (a nullable owning slot), not bare `Optional[Pet]`.
+
+**`Box[P]` for `@dynamic` P -- heap-owned erased dynamic-protocol values.** `Box[Pet]` accepts any conformer (inheritance or structural) and stores it through the C++ abstract base:
+- **Inheritance path:** `Box[Pet](Parrot(...))` where `Parrot(Pet): ...` emits `std::unique_ptr<Pet>(new Parrot{...})`. Trivial pointer upcast through Parrot's inherited vtable.
+- **Structural path:** `Box[Pet](Dog(...))` where `Dog` has the required methods but doesn't inherit Pet emits `std::unique_ptr<Pet>(new tpy::Adapter<Pet, Dog>{...})`. The Adapter wraps Dog and routes virtual calls.
+
+Same machinery in both paths once the Box is constructed: `Pet&` access via `box.get()`, virtual dispatch on method calls, virtual destructor cleanup on `box`'s drop. Unblocks `list[Box[Pet]]` (heterogeneous polymorphic containers), record fields of erased-protocol type (`class Owner: pet: Box[Pet]`), and Send-tagged storage via `Box[Send[Pet]]` (see `docs/SEND_SYNC_DESIGN.md` OQ5).
+
+The same wrapping rule fires anywhere a `Own[P]` parameter receives a concrete conformer: codegen emits the heap-owning `unique_ptr<P>` wrapper at the call site. Sema's `infer_type_params_for_record` prefers the LHS hint's `T=P` over the arg-inferred concrete T when the arg doesn't inherit P (structural case); when the arg DOES inherit (e.g. `Box[Pet] = Box(Parrot())`), the existing `Covariant[T]` path handles uplift and the wrapping doesn't fire.
+
+**Limitation:** member access on an `Own[P]` parameter via the `.` operator (`pet.name()` inside `def f(p: Own[Pet])`) is not yet supported -- the C++ shape is `std::unique_ptr<P>` and `.name()` lowers to the C++ `.` operator which doesn't traverse the smart pointer. Box's constructor isn't affected (it only passes `value` to `unsafe_take`). Tracked in `TODO.md`.
 
 **Cross-module** -- `@dynamic` protocols can be defined in one module and imported in another. The compiler generates fully qualified C++ names (e.g., `::tpyapp::pets::Pet`).
 
@@ -3044,7 +3055,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
     - `isinstance(x, T)` checks in if/elif/else are statically resolved to `true`/`false` per overload
     - `match`/`case` on union subjects selects only the matching arm per overload
     - Call-site overload resolution is tier-ranked in two passes (`sema/overloads.py`, see `docs/OVERLOAD_DESIGN.md#call-resolution` for the full algorithm). First pass: each candidate classifies every arg into a `(tier, widening_cost)` pair, strongest-first tiers being `EXACT_CONCRETE > EXACT_GENERIC_SHAPE > PROTOCOL_EXPLICIT > PROTOCOL_STRUCTURAL > GENERIC_PROTOCOL_EXPLICIT > GENERIC_PROTOCOL_STRUCTURAL > GENERIC_WILDCARD`; candidates are sorted by aggregate tier counts with widening cost as the tiebreaker, and genuine ties become an `Ambiguous overload for 'f': ...` diagnostic rather than a declaration-order pick. Second pass (coercion fallback) runs only when no strict match exists. Concrete overloads always rank above equally-matching generics, so stub order cannot change the winner. Empty-container literals carry an `UnknownElementType` placeholder for their element type; ranking against multi-overload builtins (e.g. `sum([])`) treats it as `default_int_type` so `sum([]) == 0` picks the `Int32` overload at cost 0. Single-generic builtins (`sorted`, `all`, `any`, `iter`, `enumerate`, `reversed`) and user-defined generics use a different mechanism -- see `@type_param_default` below.
-    - `Literal["r", "w", ...]` parameter annotations for literal-value-based dispatch: `open(path, "rb")` can resolve to a different return type than `open(path, "r")`. Supports string, integer (including negative), and bool values. Multiple values per `Literal[...]` annotation supported. Mixed value types in a single `Literal[...]` are rejected. Literal arguments dispatch to `Literal` overloads; variables fall through to plain type overloads. Equality narrowing on `Literal`-typed parameters: `if mode == "rb":` narrows to `Literal["rb"]`, enabling dispatch to more specific stubs within branches. `match`/`case` on `Literal`-typed parameters with exhaustiveness checking and subject narrowing per arm. Literal overload flattening: each stub gets a per-literal C++ specialization with name mangling and dead branch elimination, enabling different return types per literal value for both functions and methods. Multi-value dead branch elimination: `or`/`and` chains (`mode == "r" or mode == "w"`) and `in`/`not in` operators (`mode in {"r", "w"}`) are folded when all values of a multi-value `Literal` are covered or contradicted. Requires `from typing import Literal`.
+    - `Literal["r", "w", ...]` parameter annotations for literal-value-based dispatch: `open(path, "rb")` can resolve to a different return type than `open(path, "r")`. Supports string, integer (including negative), and bool values. Multiple values per `Literal[...]` annotation supported. Mixed value types in a single `Literal[...]` are rejected. Literal arguments and `Literal`-annotated locals dispatch to `Literal` overloads (`x: Literal["rb"] = "rb"; pick(x)` picks the Literal specialization, and the dispatch survives branch joins where every assigned value stays in the declared set); unannotated variables fall through to plain type overloads. Out-of-set assignments to a `Literal`-annotated local are rejected at compile time (`m: Literal["r", "w"] = "wb"` and the reassignment counterpart both error). `Literal[str]`-annotated locals also use view-storage (`std::string_view`) when every bound value is a string-literal AST node -- view inference widens to owned `std::string` when a Literal-returning function call (or other non-view-safe Literal-typed source) is bound. Non-Literal-typed RHS (`m: Literal["r", "w"] = some_str_func()`) is rejected at compile time: sema cannot prove the runtime value is in the declared set, and accepting it would miscompile via Literal-specialized dispatch. Augmented assignment on a `Literal[...]`-annotated local (`m += "x"`) is rejected outright -- the result is rarely in the declared value set and the local's view storage couldn't hold a new owned string anyway. `Literal[str]` in return position also emits `std::string_view` (every value is a static-lifetime literal), so callers binding the return into a `Literal[...]` local get view storage end-to-end with no heap allocation. Equality narrowing on `Literal`-typed parameters: `if mode == "rb":` narrows to `Literal["rb"]`, enabling dispatch to more specific stubs within branches. `match`/`case` on `Literal`-typed parameters with exhaustiveness checking and subject narrowing per arm. Literal overload flattening: each stub gets a per-literal C++ specialization with name mangling and dead branch elimination, enabling different return types per literal value for both functions and methods. Multi-value dead branch elimination: `or`/`and` chains (`mode == "r" or mode == "w"`) and `in`/`not in` operators (`mode in {"r", "w"}`) are folded when all values of a multi-value `Literal` are covered or contradicted. Requires `from typing import Literal`.
     - `from typing import overload` import required
     - CPython compatible: mode (a) stubs are no-ops in CPython, implementation runs with isinstance checks. Mode (b) uses a runtime dispatch shim (`lib/cpy/typing.py`) that dispatches by arity and `isinstance` on type annotations. Tests using `@native` stubs mixed with mode (b) skip the CPython phase since `@native` has no CPython implementation.
 - **Working**: `T | None` for non-value types (records, lists, arrays) → nullable pointer (`T*`)
@@ -3358,6 +3369,15 @@ compound shape (`tuple`, `list`, `dict`, `set`): for `heappush[T: Comparable]`
 called as `heappush(pq, (3, "third"))` where `pq: list[tuple[Int32, str]]`,
 the literal `3` inside the second-arg tuple coerces to `Int32` to match the
 slot in the already-determined `T`.
+
+**Protocol-typed args**: when a callee parameter is a generic protocol
+(`Iterable[T]`, `Awaitable[T]`, ...) and the arg is a record conforming
+structurally or via inheritance, inference strips `Ref[T]` / `readonly[T]` /
+`Own[T]` wrappers on the arg side before resolving the record's method table.
+This mirrors what protocol conformance checking already does, so a record
+passed via a generic outer parameter (whose expression carries an implicit
+`Ref[T]` wrapper) infers the protocol's type arg the same way it would for a
+locally constructed value.
 
 **Contextual Type Inference**: When arguments don't fully determine all type
 parameters, the expected type from context (assignment annotation, return type,
@@ -4440,6 +4460,7 @@ class Car(Vehicle, Printable, Measurable):
   - Generic type parameters use `ValuePrinter` for runtime dispatch (bool/float correctly formatted)
 - **Working**: List methods: `append()`, `pop()`, `insert()`, `remove()`, `clear()`, `extend()`
   - **Note**: `remove(value)` silently does nothing when value not found (Python raises `ValueError`)
+  - `pop()` / `pop(index)` return `Own[T]` (ownership transfer), matching `dict.pop` / `set.pop`. For reference-type T this means the popped element is moved out cleanly; for value-type T the `Own[T]` resolves to plain `T` and the call is equivalent to a direct value return.
 - **Working**: List repetition: `[element] * N` and `[elements...] * N`
   - Single-element: uses efficient fill constructor
   - Multi-element: uses `tpy::repeat_range` to repeat the sequence N times
@@ -5479,16 +5500,22 @@ Send/Sync rules for built-in types:
   TPy code (`lib/tpy/asyncio/_executor.py` -- slot table for parked
   tasks, runnable deque, timer min-heap) dispatched from C++ via a
   thread-local `ExecutorOps` function-pointer table in
-  `runtime/cpp/include/tpy/async.hpp`; `Waker.wake()` schedules the
-  parked task by slot id/generation; `asyncio.sleep(s)` is a real
+  `runtime/cpp/include/tpy/async.hpp`; `Waker` (declared `ValueType` -- 16-byte POD, passed by value through every `__poll__` call) carries an opaque executor pointer plus slot id/generation, and `Waker.wake()` schedules the parked task by id/generation; `asyncio.sleep(s)` is a real
   wall-clock sleep; `asyncio.create_task(coro)` registers the task with
-  the executor for concurrent scheduling and returns a `Task[T]` handle
-  (T inferred from the async def's return type) that shares state with
-  the executor; both `asyncio.run` and `asyncio.create_task` require a
-  direct call to a known `async def` in v1 (other awaitables such as
-  `Future` need a coroutine wrapper -- v1.5).
+  the executor for concurrent scheduling and returns an `Own[Task[T]]`
+  handle (T inferred from the async def's return type) that shares state
+  with the executor -- the caller binds it to a `Task[T]` local via the
+  implicit `Own[]` unwrap and can then `await` the local or pass it as a
+  borrow; `await asyncio.create_task(...)` on a temporary works too
+  (move-constructed into the awaiter frame). Both `asyncio.run` and
+  `asyncio.create_task` require a direct call to a known `async def` in
+  v1 (other awaitables such as `Future` need a coroutine wrapper -- v1.5).
   `asyncio.Future[T]` provides manual completion via
-  `set_result` / `set_exception`.
+  `set_result` / `set_exception`. `asyncio.Event` is the no-payload
+  completion-signal primitive (use instead of `Future[None]`, which is
+  currently unusable; see BUGS.md); `set` / `clear` / `is_set` match
+  CPython, but TPy's Event is directly awaitable (`await event`)
+  whereas CPython requires `await event.wait()`.
   `tpy.coro.poll_once(aw)` is a synchronous one-step driver useful for
   tests and non-asyncio contexts; sema-types `f()` (for `async def f`)
   as `Awaitable[T]` so generic helpers expecting `Awaitable[T]` accept

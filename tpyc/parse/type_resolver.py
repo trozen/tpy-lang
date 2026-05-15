@@ -22,7 +22,7 @@ from ..typesys import (
     TpyType, NominalType, PtrType, OwnType, ReadonlyType, AutoReadonlyType,
     AutoOwnType, FinalType, ClassVarType, OptionalType, VoidType, UnionType, TupleType,
     CallableType, make_union, make_fn_type,
-    TypeParamRef, TypeParamKind, LiteralType,
+    TypeParamRef, TypeParamKind, LiteralType, LiteralTag,
     INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW,
     BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE, ANY, AnyType,
     ALL_FIXED_INTS,
@@ -280,7 +280,9 @@ class TypeResolver:
         # Literal
         if isinstance(ref, TpyLiteralRef):
             tag = ref.values[0].tag
-            base_type = {"str": STR, "int": INT32, "bool": BOOL}[tag]
+            base_type = {
+                LiteralTag.STR: STR, LiteralTag.INT: INT32, LiteralTag.BOOL: BOOL,
+            }[tag]
             return LiteralType(base_type, ref.values)
 
         # TpyTypeRef

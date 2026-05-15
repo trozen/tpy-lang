@@ -156,7 +156,7 @@ Examples of the policy in action:
 | [`pickle`](#pickle) | P2 | Blocked | 0% | -- | Needs dynamic type info + `io` |
 | [`shelve`](#shelve) | P3 | Blocked | 0% | -- | Needs pickle |
 | [`inspect`](#inspect) | P2 | Blocked | 0% | -- | Needs runtime type/func introspection |
-| [`asyncio`](#asyncio) | P1 | Partial | ~15% | pure | v1: `run`/`sleep`/`create_task`/`Task[T]`/`Future[T]`/`CancelledError` + thread-local executor with slot table, runnable deque, timer min-heap, cancel-drain at run-end. Missing: `async with`/`async for`/`gather`/`wait_for` (v1.5); I/O reactor (v2); multi-thread (v3+) |
+| [`asyncio`](#asyncio) | P1 | Partial | ~15% | pure | v1: `run`/`sleep`/`create_task`/`Task[T]`/`Future[T]`/`Event`/`CancelledError` + thread-local executor with slot table, runnable deque, timer min-heap, cancel-drain at run-end. Missing: `async with`/`async for`/`gather`/`wait_for` (v1.5); I/O reactor (v2); multi-thread (v3+) |
 | [`threading`](#threading) | P1 | Blocked | 0% | -- | Needs threading primitives |
 | [`multiprocessing`](#multiprocessing) | P2 | Blocked | 0% | -- | Needs process spawning + IPC |
 | [`subprocess`](#subprocess) | P1 | Blocked | 0% | -- | Needs process spawning |
@@ -183,7 +183,6 @@ unblock.
 | Socket primitives | socket, http.client, smtplib, ftplib, urllib.request | L |
 | Runtime type info / reflection for `get_type_hints`, `type(x)`, `isinstance` on concrete | typing runtime, inspect, pickle | L |
 | Closure capture for `partial`/`lru_cache` | functools | S-M (may already work via Callable) |
-| Generic `list[T].pop()` (and similar move-out returns) for reference-type T -- currently emits `val_or_ref_t<T> = T&` bound to rvalue | Reference-type heaps/stacks/queues in stdlib and user code; blocks `generic_stack` example with class elements | S-M (codegen) |
 
 ### Existing BUGS.md entries that gate pure-TPy stdlib work
 
@@ -1019,11 +1018,15 @@ CPython's algorithm (sift-up/sift-down) line-for-line; heap items ordered by
 | `key=` arg on `nlargest`/`nsmallest` | Missing | Needs `Callable[[T], K: Comparable]` threading; straightforward add once prioritized |
 
 Design note: CPython's `heapq` operates on any mutable sequence; TPy restricts
-to `list[T]` for now. Ref-type heaps work because reads go through `copy()`
-(mirroring the `bisect.insort_left` pattern); users get explicit copy
-semantics for reference types.
+to `list[T]` for now. Ref-type heaps work because (1) `heappush` / `heappushpop`
+/ `heapreplace` take `item: Own[T]` -- caller transfers ownership of the new
+element -- and (2) internal `_siftup` / `_siftdown` reads go through `copy()`
+(mirroring the `bisect.insort_left` pattern); users get explicit ownership
+and copy semantics for reference types. T must be copyable -- `@nocopy`
+element types fail at C++ compile time with a deleted-copy-constructor
+error today (clean sema diagnostic tracked in `BUGS.md`).
 
-Tests: `cases/stdlib/heapq`.
+Tests: `cases/stdlib/heapq`, `cases/stdlib/heapq_ref_type`.
 
 ### copy
 
@@ -1065,13 +1068,14 @@ for value types; dataclass deep-copy would need macro-driven recursion similar t
 Done in v1:
 
 - `asyncio.run(coro)` -- drives a top-level coroutine to completion; sleeps idle on the executor's timer min-heap; cancel-drains remaining spawned tasks at exit so `finally` runs for fire-and-forget tasks.
-- `asyncio.sleep(seconds)` -- registers a steady-clock deadline with the running executor; returns a `Task[None]`.
-- `asyncio.create_task(coro())` -- registers an async-def call with the running executor and returns `Task[T]` (T inferred from the async def's return type) sharing state with the executor's task slot.
-- `asyncio.Future[T]` -- single-awaiter manual-completion awaitable (`set_result(value)` / `set_exception(exc)` / `done()`); ownership-transfer API on `set_result` so nocopy types flow through.
+- `asyncio.sleep(seconds)` -- registers a steady-clock deadline with the running executor; returns `Own[Task[None]]`.
+- `asyncio.create_task(coro())` -- registers an async-def call with the running executor and returns `Own[Task[T]]` (T inferred from the async def's return type) sharing state with the executor's task slot.
+- `asyncio.Future[T]` -- single-awaiter manual-completion awaitable (`set_result(value)` / `set_exception(exc)` / `done()`); ownership-transfer API on `set_result` so nocopy types flow through. `Future[None]` is currently unusable (void-payload template substitution issue, BUGS.md); use `Event` for no-payload completion signals.
+- `asyncio.Event` -- boolean completion signal (`set` / `clear` / `is_set` / directly awaitable). The no-payload analog of `Future[T]`. CPython parity for the API surface; TPy diverges in that `await event` works directly (CPython requires `await event.wait()`) because TPy can't yet define `async def` methods on classes. Single-awaiter v1.
 - `asyncio.CancelledError` -- raised at the next suspension point of a cancelled task; thread through `try`/`finally`.
 - `Executor` body (slot table for parked tasks with `(slot_id, generation)` wakers, runnable deque, timer min-heap keyed on steady-clock deadlines) lives in TPy at `lib/tpy/asyncio/_executor.py`; `runtime/cpp/include/tpy/async.hpp` keeps only the FFI shell (thread-local `ExecutorOps` dispatch table + `Waker`/`Poll`/`Task` runtime types + a handful of bridge helpers).
 
-Pending (v1.5): `async with`, `async for`, `gather`, `wait_for`, `asyncio.Event`, awaits inside `if`/`while`/`for`/`with` sub-bodies, general `try`/`except` around awaits, partial / nested try-around-await. Sync `with` will gain `__exit__(exc_type, exc, tb)` upgrade so context managers can inspect the exception.
+Pending (v1.5): `async with`, `async for`, `gather`, `wait_for`, awaits inside `if`/`while`/`for`/`with` sub-bodies, general `try`/`except` around awaits, partial / nested try-around-await. Sync `with` will gain `__exit__(exc_type, exc, tb)` upgrade so context managers can inspect the exception.
 
 Pending (v2+): I/O reactor (epoll on Linux, kqueue on BSD/macOS, IOCP on Windows), `asyncio.Queue`, async generators, `@error_return` async, `__await__` adaptation, multi-thread executor.
 

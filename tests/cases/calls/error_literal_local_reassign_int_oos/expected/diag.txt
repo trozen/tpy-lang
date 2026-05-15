@@ -1,0 +1,1 @@
+main.py:7: error: Type mismatch in reassignment to 'n': expected Literal[1, 2], got 5

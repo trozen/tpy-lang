@@ -23,6 +23,8 @@ struct NamedPet : ::tpyapp::pet::Pet {
 
 } // namespace tpyapp::main
 
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::NamedPet> : std::true_type {};
+
 template<tpyapp::main::__NamedPet_Concept__ T>
 struct tpy::Adapter<tpyapp::main::NamedPet, T> : tpyapp::main::NamedPet {
     T inner;

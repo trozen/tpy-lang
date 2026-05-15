@@ -44,10 +44,10 @@ struct __coro_worker {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    ::tpy::Task<void> task;
+    std::optional<::tpy::Task<void>> task;
     std::optional<::tpy::CancelledError> _;
     std::optional<::tpy::Task<void>> __sub_0;
-    std::optional<::tpy::Task<void>> __sub_1;
+    ::tpy::Task<void>* __sub_1 = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -31,6 +31,8 @@ struct DynValued {
 
 } // namespace tpyapp::main
 
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::DynValued> : std::true_type {};
+
 template<tpyapp::main::__DynValued_Concept__ T>
 struct tpy::Adapter<tpyapp::main::DynValued, T> : tpyapp::main::DynValued {
     T inner;

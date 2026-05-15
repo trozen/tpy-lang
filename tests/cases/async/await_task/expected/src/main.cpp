@@ -31,7 +31,7 @@ __coro_sub sub() {
             // t = task_from_coro(sub())
             t = ::tpy::Task<int32_t>::from_coro(sub());
             // return await t
-            __sub_0.emplace(std::move(t));
+            __sub_0 = &((*t));
             __state = S_AFTER_AWAIT_0;
         }
         [[fallthrough]];
@@ -40,7 +40,7 @@ __coro_sub sub() {
             auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<int32_t>::pending();
             auto __ret0 = std::move(__r0).value();
-            __sub_0.reset();
+            __sub_0 = nullptr;
             __state = S_DONE;
             return ::tpy::Poll<int32_t>::ready(std::move(__ret0));
             ::tpy::tpy_panic("async def fell through without returning a value");

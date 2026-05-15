@@ -1,0 +1,1 @@
+main.py:6: error: Type mismatch in variable 'b': expected Literal[True], got False

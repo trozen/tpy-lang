@@ -51,7 +51,7 @@ from ..parse.nodes import (
     TpyExprStmt, TpyName, TpyExpr, TpyTry, TpyExceptHandler, TpyCall,
     TpyFieldAccess,
 )
-from ..typesys import unwrap_ref_type
+from ..typesys import unwrap_ref_type, unwrap_own
 from ..type_def_registry import is_str_type
 from ..liveness import stmts_terminate
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext
@@ -578,20 +578,25 @@ class AsyncCoroCodegen:
                 mode = AwaitMode.INLINE
                 sub_cpp = self._sub_struct_name(await_node.awaited_async_func_name)
             elif await_node.awaited_task_inner is not None:
-                # Use the actual operand type as the storage type. The
-                # operand's analyzed type is what conforms to Awaitable[T]
-                # -- could be Task[T], Future[T], or a user record. Value
-                # awaitables are consumed into the frame; reference
-                # awaitables are borrowed so other tasks keep observing
-                # the same object (e.g. Future.set_result wakes await f).
+                # Value awaitables and temporaries are consumed into the
+                # frame's std::optional sub-future slot (ERASED); stable
+                # non-value lvalues are stored as a pointer (BORROWED) so
+                # other tasks keep observing the same object (e.g.
+                # Future.set_result wakes await f). Re-awaiting a BORROWED
+                # local after Ready hits the runtime "poll after Ready"
+                # panic, not UAF -- the local outlives every suspension.
                 operand_type = self.ctx.get_expr_type(await_node.value)
                 if operand_type is None:
                     raise CodeGenError(
                         "await operand has no analyzed type", loc=stmt.loc)
-                operand_inner = unwrap_ref_type(operand_type)
+                operand_inner = unwrap_own(unwrap_ref_type(operand_type))
                 sub_cpp = self.types.type_to_cpp(operand_inner)
-                mode = (AwaitMode.ERASED if operand_inner.is_value_type()
-                        else AwaitMode.BORROWED)
+                if operand_inner.is_value_type():
+                    mode = AwaitMode.ERASED
+                elif self._is_stable_lvalue(await_node.value):
+                    mode = AwaitMode.BORROWED
+                else:
+                    mode = AwaitMode.ERASED
             else:
                 raise CodeGenError(
                     "await reached codegen without sema-resolved sub-future "
@@ -980,22 +985,22 @@ class AsyncCoroCodegen:
         return f"__sub_{t.suspension_index}"
 
     @staticmethod
-    def _check_borrowed_operand_is_stable(operand: TpyExpr) -> None:
-        # Allow: bare name (frame field/local/param) or field access
-        # rooted at a bare name (parent's frame field). Disallow calls,
-        # subscripts, binops, conditional/comprehension expressions,
-        # etc. -- those return temporaries.
+    def _is_stable_lvalue(operand: TpyExpr) -> bool:
+        """True when the operand resolves to a stable lvalue: a bare
+        name (frame field / local / parameter) or a chain of field
+        accesses rooted at a bare name. Subscripts, calls, binops,
+        conditional/comprehension expressions, etc. return temporaries
+        whose address would dangle across suspensions.
+
+        Stricter than sema's `is_lvalue` (`sema/compatibility.py`):
+        subscripts (addressable in C++ but yield container-element
+        temporaries across suspensions) and `TpyCoerce` (sema-only
+        wrapper, doesn't reach this codegen path) are both excluded.
+        """
         e = operand
         while isinstance(e, TpyFieldAccess):
             e = e.obj
-        if isinstance(e, TpyName):
-            return
-        raise CodeGenError(
-            "await of a non-value awaitable requires a stable lvalue "
-            "(local variable, parameter, or field access) -- the "
-            "borrow stored in the frame would dangle if the operand is "
-            "a temporary; bind the awaitable to a local before await",
-            loc=operand.loc)
+        return isinstance(e, TpyName)
 
     def _emit_sub_reset(self, out: "TextIO", indent: str,
                         t: AwaitTransition) -> None:
@@ -1118,15 +1123,10 @@ class AsyncCoroCodegen:
             out.write(f"{indent}__sub_{t.suspension_index}.emplace(std::move("
                       f"{operand_cpp}));\n")
         elif t.mode is AwaitMode.BORROWED:
-            # Borrowed mode stores `&operand` in the frame; the operand
-            # must therefore be a stable lvalue across suspensions. A
-            # call expression returns a temporary destroyed at the end
-            # of the full-expression, so taking its address would be
-            # UB on the next poll. Reject anything that isn't a bare
-            # name or a field access on a name (which the parent frame
-            # captures stably). Users hitting this should bind the
-            # awaitable to a local first.
-            self._check_borrowed_operand_is_stable(t.operand_expr)
+            # Borrow mode is only selected when the operand was already
+            # determined to be a stable lvalue (`_is_stable_lvalue`).
+            # Temporaries route to ERASED mode and are stored by value
+            # in the frame's std::optional sub-future slot.
             operand_cpp = self.expressions.gen_expr(t.operand_expr)
             out.write(f"{indent}__sub_{t.suspension_index} = &({operand_cpp});\n")
         else:

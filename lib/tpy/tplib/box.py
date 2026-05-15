@@ -2,18 +2,16 @@
 from __future__ import annotations
 from typing import Self
 from tpy import Own, Ptr, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, readonly, auto_readonly
-from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out
+from tpy.unsafe import unsafe_free, unsafe_init, unsafe_drop, unsafe_move_out, unsafe_take, unsafe_release
 
 class Box[T](Deref[T], Covariant[T]):
     _ptr: Ptr[T]
 
     def __init__(self, value: Own[T]):
-        self._ptr = unsafe_alloc()
-        unsafe_init(self._ptr, value)
+        self._ptr = unsafe_take(value)
 
     def __del__(self):
-        unsafe_drop(self._ptr)
-        unsafe_free(self._ptr)
+        unsafe_release(self._ptr)
 
     # __deref__ implicitly gets dual mutable/const overloads via
     # IMPLICIT_AUTO_READONLY_METHODS in typesys; no explicit @auto_readonly

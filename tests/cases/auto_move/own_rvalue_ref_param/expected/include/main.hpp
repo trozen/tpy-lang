@@ -42,7 +42,7 @@ struct Container {
     Container() : items(std::vector<T>{}) {}
 
     // def push(self, item: Own[T]) -> None:
-    void push(T&& item) {
+    void push(::tpy::own_param_t<T> item) {
         // self.items.append(item)
         this->items.push_back(std::move(item));
     }

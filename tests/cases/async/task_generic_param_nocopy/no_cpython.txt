@@ -1,0 +1,1 @@
+CPython doesn't support generic-function subscript syntax (`fn[T](args)`); this regression is about TPy codegen of generic Task[T] params.

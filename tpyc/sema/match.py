@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType,
     NominalType,
     NoneType, OptionalType, UnionType, PendingStrType,
-    LiteralType, LiteralValue, TypeParamRef,
+    LiteralType, LiteralValue, LiteralTag, TypeParamRef,
     unwrap_readonly, unwrap_ref_type,
     is_float_type, is_any_str_type,
 )
@@ -824,7 +824,9 @@ class MatchAnalyzer:
             return None
         if isinstance(pattern, TpyLiteralPattern):
             val = pattern.value
-            tag = "bool" if isinstance(val, bool) else "int" if isinstance(val, int) else "str"
+            tag = (LiteralTag.BOOL if isinstance(val, bool)
+                   else LiteralTag.INT if isinstance(val, int)
+                   else LiteralTag.STR)
             return [LiteralValue(tag, val)]
         if isinstance(pattern, TpyOrPattern):
             result: list[LiteralValue] = []

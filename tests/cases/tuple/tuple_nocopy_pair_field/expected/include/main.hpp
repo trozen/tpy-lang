@@ -50,6 +50,11 @@ struct Container {
         // self.pair = (a, b)
         this->pair = std::tuple<Handle, Handle>{std::move(a), std::move(b)};
     }
+    // non-copyable
+    Container(const Container&) = delete;
+    Container& operator=(const Container&) = delete;
+    Container(Container&&) = default;
+    Container& operator=(Container&&) = default;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 

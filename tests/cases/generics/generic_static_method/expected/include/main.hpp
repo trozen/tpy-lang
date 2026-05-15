@@ -21,7 +21,7 @@ struct Container {
 
     // def __init__(self, value: Own[T]):
     Container() = default;
-    explicit Container(T&& value) : value(std::move(value)) {}
+    explicit Container(::tpy::own_param_t<T> value) : value(std::move(value)) {}
 
     // def __repr__(self) -> str:
     std::string __repr__() const {
@@ -31,7 +31,7 @@ struct Container {
 
     // @staticmethod
     // def create(v: Own[T]) -> Own[Container[T]]:
-    static Container<T> create(T&& v) {
+    static Container<T> create(::tpy::own_param_t<T> v) {
         // return Container(v)
         return Container<T>(std::move(v));
     }

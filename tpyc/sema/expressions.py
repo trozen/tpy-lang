@@ -2059,33 +2059,6 @@ class ExpressionAnalyzer:
 
         return PendingListType(first_type, size, literal_id)
 
-    _HASHABLE = NominalType("Hashable", is_protocol=True)
-
-    def _validate_dict_key_type(self, key_type: TpyType, expr: TpyExpr) -> None:
-        """Validate that a type can be used as a dict key."""
-        if isinstance(key_type, OwnType):
-            key_type = key_type.wrapped
-        if isinstance(key_type, IntLiteralType):
-            return
-        if is_enum_type(key_type):
-            return
-        if isinstance(key_type, PendingViewType):
-            return
-        # User records: allow frozen dataclasses (have synthesized __hash__ + __eq__)
-        if isinstance(key_type, NominalType) and key_type.is_user_record:
-            info = self.ctx.registry.get_record(key_type.name)
-            if not (info is not None and info.is_frozen
-                    and "__hash__" in info.methods and "__eq__" in info.methods):
-                raise self.ctx.error(
-                    f"Type '{key_type}' cannot be used as a dict key "
-                    f"(requires @dataclass(frozen=True) for __hash__ support)", expr,
-                )
-            return
-        if self.protocols.type_conforms_to_protocol(key_type, self._HASHABLE):
-            return
-        raise self.ctx.error(
-            f"Type '{key_type}' cannot be used as a dict key (not hashable)", expr,
-        )
 
     # -- await -----------------------------------------------------------
 
@@ -2116,7 +2089,6 @@ class ExpressionAnalyzer:
         if async_fi is not None:
             # Recursively analyze the operand call (validates arg types).
             self.analyze_expr(operand)
-            from ..typesys import unwrap_ref_type, NominalType
             expr.awaited_async_func_name = async_fi.name
             # async_fi.return_type is Awaitable[T]; the user-visible await
             # result is T (the protocol's type arg).
@@ -2135,13 +2107,14 @@ class ExpressionAnalyzer:
         #     (structural Awaitable -- supports user-written awaitables
         #     alongside hand-written awaiter types).
         operand_type = self.analyze_expr(operand)
-        from ..typesys import unwrap_ref_type, NominalType
-        unwrapped = unwrap_ref_type(operand_type)
+        # An Own[Task[T]] rvalue (e.g. `await asyncio.create_task(...)`)
+        # is a valid await operand -- strip the Own[] before structural
+        # matching so the inner Task[T] / Awaitable conformance check fires.
+        unwrapped = unwrap_own(unwrap_ref_type(operand_type))
         if isinstance(unwrapped, NominalType):
             inner = self._extract_awaitable_inner(unwrapped)
             if inner is not None:
-                from ..typesys import TpyType as _TpyType
-                if isinstance(inner, _TpyType):
+                if isinstance(inner, TpyType):
                     expr.awaited_task_inner = inner
                     return inner
         raise self.ctx.error(
@@ -2550,7 +2523,7 @@ class ExpressionAnalyzer:
         if isinstance(value_type, PendingViewType):
             value_type = value_type.family.owned_type
 
-        self._validate_dict_key_type(key_type, expr)
+        self.type_ops.validate_hashable_container_elem(key_type, "dict key", expr.loc)
         return make_dict(key_type, value_type)
 
     def _analyze_set_literal(
@@ -2602,7 +2575,7 @@ class ExpressionAnalyzer:
         if isinstance(elem_type, PendingViewType):
             elem_type = elem_type.family.owned_type
 
-        self._validate_dict_key_type(elem_type, expr)
+        self.type_ops.validate_hashable_container_elem(elem_type, "set element", expr.loc)
         return make_set(elem_type)
 
     def _analyze_list_repeat(self, expr: TpyListRepeat) -> TpyType:
@@ -2724,7 +2697,7 @@ class ExpressionAnalyzer:
             result_elem_type = expected_elem
 
         if kind == "set":
-            self._validate_dict_key_type(result_elem_type, expr)
+            self.type_ops.validate_hashable_container_elem(result_elem_type, "set element", expr.loc)
 
         expr.result_elem_type = result_elem_type
 
@@ -2833,7 +2806,7 @@ class ExpressionAnalyzer:
                 "dict comprehension value", coercion_ctx=CoercionContext.INIT)
             value_type = expected_value
 
-        self._validate_dict_key_type(key_type, expr)
+        self.type_ops.validate_hashable_container_elem(key_type, "dict key", expr.loc)
         expr.result_key_type = key_type
         expr.result_value_type = value_type
         return make_dict(key_type, value_type)

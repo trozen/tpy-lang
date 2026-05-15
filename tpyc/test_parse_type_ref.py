@@ -15,7 +15,7 @@ from .parse import (
     Parser, ParseError,
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef,
 )
-from .typesys import LiteralValue
+from .typesys import LiteralValue, LiteralTag
 
 
 def _make_parser() -> Parser:
@@ -236,24 +236,24 @@ class TestLiteral:
     def test_str_literal(self):
         ref = _parse_ann(_make_parser(), 'Literal["a", "b"]')
         assert isinstance(ref, TpyLiteralRef)
-        assert ref.values == (LiteralValue("str", "a"), LiteralValue("str", "b"))
+        assert ref.values == (LiteralValue(LiteralTag.STR, "a"), LiteralValue(LiteralTag.STR, "b"))
 
     def test_int_literal(self):
         ref = _parse_ann(_make_parser(), "Literal[1, 2, 3]")
         assert isinstance(ref, TpyLiteralRef)
         assert ref.values == (
-            LiteralValue("int", 1), LiteralValue("int", 2), LiteralValue("int", 3),
+            LiteralValue(LiteralTag.INT, 1), LiteralValue(LiteralTag.INT, 2), LiteralValue(LiteralTag.INT, 3),
         )
 
     def test_bool_literal(self):
         ref = _parse_ann(_make_parser(), "Literal[True, False]")
         assert isinstance(ref, TpyLiteralRef)
-        assert ref.values == (LiteralValue("bool", True), LiteralValue("bool", False))
+        assert ref.values == (LiteralValue(LiteralTag.BOOL, True), LiteralValue(LiteralTag.BOOL, False))
 
     def test_negative_int_literal(self):
         ref = _parse_ann(_make_parser(), "Literal[-5]")
         assert isinstance(ref, TpyLiteralRef)
-        assert ref.values == (LiteralValue("int", -5),)
+        assert ref.values == (LiteralValue(LiteralTag.INT, -5),)
 
     def test_mixed_types_rejected(self):
         with pytest.raises(ParseError, match="Literal cannot mix value types"):

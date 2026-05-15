@@ -1,1 +1,1 @@
-main.py:23: error: Type mismatch in '|=' operand: expected Base, got Child
+main.py:32: error: Type mismatch in '|=' operand: expected Base, got Child

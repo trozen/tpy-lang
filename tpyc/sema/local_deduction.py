@@ -21,6 +21,7 @@ from ..typesys import (
     ListLiteralInfo,
     make_list,
     ListRepeatType,
+    LiteralType,
     make_array,
     NoneType,
     OptionalType,
@@ -831,7 +832,12 @@ class LocalTypeDeduction:
         Note: bytes literals are NOT view-safe (temporary vectors, unlike string
         literals which have static storage).
         """
-        is_str = is_str_type(init_type) or is_str_view_type(init_type) or isinstance(init_type, PendingStrType)
+        # LiteralType over str counts as the family for view-safety purposes:
+        # all values are compile-time string literals (static lifetime) and Literal
+        # returns are emitted as view storage. (Literal over bytes isn't a thing --
+        # LiteralValue tags are str/int/bool only.)
+        lit_str = isinstance(init_type, LiteralType) and init_type.is_str_base()
+        is_str = is_str_type(init_type) or is_str_view_type(init_type) or isinstance(init_type, PendingStrType) or lit_str
         is_bytes = is_bytes_type(init_type) or is_bytes_view_type(init_type) or isinstance(init_type, PendingBytesType)
         if not (is_str or is_bytes):
             return False
@@ -848,19 +854,25 @@ class LocalTypeDeduction:
         # Named variable reference
         if isinstance(init_expr, TpyName):
             name = init_expr.name
-            # Check if it's a str/bytes parameter (C++ already passes as view)
+            # Check if it's a str/bytes parameter (C++ already passes as view).
+            # LiteralType[str] params are also view in C++ (param form delegates to
+            # base.to_cpp_param_type() -> std::string_view).
             func = self.ctx.func.current_function
             if isinstance(func, TpyFunction):
                 for pname, ptype in func.params:
                     if pname == name:
-                        if is_str and (is_str_type(ptype) or is_str_view_type(ptype)):
+                        lit_str_param = isinstance(ptype, LiteralType) and ptype.is_str_base()
+                        if is_str and (is_str_type(ptype) or is_str_view_type(ptype) or lit_str_param):
                             return True
                         if is_bytes and (is_bytes_type(ptype) or is_bytes_view_type(ptype)):
                             return True
 
-            # Another pending or view local (must match the same family)
+            # Another pending or view local (must match the same family).
+            # LiteralType[str] locals get view storage end-to-end (see
+            # _resolve_literal_view_storage in codegen).
             scope_type = self.ctx.func.current_scope.lookup(name) if self.ctx.func.current_scope else None
-            if is_str and (isinstance(scope_type, PendingStrType) or is_str_view_type(scope_type)):
+            lit_str_scope = isinstance(scope_type, LiteralType) and scope_type.is_str_base()
+            if is_str and (isinstance(scope_type, PendingStrType) or is_str_view_type(scope_type) or lit_str_scope):
                 return True
             if is_bytes and (isinstance(scope_type, PendingBytesType) or is_bytes_view_type(scope_type)):
                 return True
@@ -869,9 +881,12 @@ class LocalTypeDeduction:
             if is_str and name in self.ctx.final_globals:
                 return True
 
-        # Function/method call returning a view type
+        # Function/method call returning a view type (or a `Literal[str]`,
+        # which is emitted as view storage in return position).
         if isinstance(init_expr, (TpyCall, TpyMethodCall)):
             if is_str_view_type(init_type) or is_bytes_view_type(init_type):
+                return True
+            if isinstance(init_type, LiteralType) and init_type.is_str_base():
                 return True
 
         # Subscript on lvalue container -- source-mutation tracking

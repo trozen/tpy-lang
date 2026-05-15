@@ -34,6 +34,8 @@ struct Shape {
 
 } // namespace tpyapp::main
 
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Shape> : std::true_type {};
+
 template<tpyapp::main::__Shape_Concept__ T>
 struct tpy::Adapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
     T inner;

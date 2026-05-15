@@ -1,0 +1,1 @@
+main.py:28: error: Protocol type 'Pet' cannot be used as a type argument. Protocols are only valid as function and method parameters

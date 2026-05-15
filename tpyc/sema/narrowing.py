@@ -17,8 +17,9 @@ from ..typesys import (
 from ..parse import (
     TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyFieldAccess,
     TpySubscript, TpyNoneLiteral, TpyCall, TpyMethodCall,
-    TpyIntLiteral, TpyStrLiteral, TpyBoolLiteral, TpyCoerce, TpyNamedExpr,
+    TpyIntLiteral, TpyCoerce, TpyNamedExpr,
 )
+from .literal_utils import literal_value_from_expr
 from .value_range import ValueRange
 from ..prescan import match_is_none, _expr_to_narrowing_key
 from ..namespace import BindingKind
@@ -400,7 +401,7 @@ class NarrowingTracker:
             k = _expr_to_narrowing_key(var_side)
             if k is None:
                 continue
-            lv = self._extract_literal_value(lit_side)
+            lv = literal_value_from_expr(lit_side)
             if lv is not None:
                 key, lit_val = k, lv
                 break
@@ -419,21 +420,6 @@ class NarrowingTracker:
             return {key: true_type}, {key: false_type}
         else:
             return {key: false_type}, {key: true_type}
-
-    @staticmethod
-    def _extract_literal_value(expr: TpyExpr) -> LiteralValue | None:
-        """Extract a LiteralValue from a literal expression node."""
-        if isinstance(expr, TpyStrLiteral):
-            return LiteralValue("str", expr.value)
-        if isinstance(expr, TpyBoolLiteral):
-            return LiteralValue("bool", expr.value)
-        if isinstance(expr, TpyIntLiteral):
-            return LiteralValue("int", expr.value)
-        # Negative int: -1 is TpyUnaryOp("-", TpyIntLiteral(1))
-        if (isinstance(expr, TpyUnaryOp) and expr.op == "-"
-                and isinstance(expr.operand, TpyIntLiteral)):
-            return LiteralValue("int", -expr.operand.value)
-        return None
 
     def condition_type_facts(
         self, condition: TpyExpr,

@@ -25,7 +25,7 @@ from ..typesys import (
     TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, IntLiteralType, is_fn_type, CallableType,
     UnionType, VoidType, NoneType, NONE,
     BIGINT, BOOL, STR, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
-    PtrType, LiteralType, LiteralValue, is_any_str_type,
+    PtrType, LiteralType, LiteralValue, LiteralTag, is_any_str_type,
     is_primitive_type,
     resolve_int_literals, CONST_PARAMS_METHODS,
     error_return_to_cpp, unwrap_ref_type,
@@ -62,9 +62,9 @@ def _infer_literal_default_type(expr: TpyExpr) -> TpyType | None:
     if isinstance(expr, TpyIntLiteral):
         return IntLiteralType(value=expr.value)
     if isinstance(expr, TpyBoolLiteral):
-        return LiteralType(BOOL, (LiteralValue("bool", expr.value),))
+        return LiteralType(BOOL, (LiteralValue(LiteralTag.BOOL, expr.value),))
     if isinstance(expr, TpyStrLiteral):
-        return LiteralType(STR, (LiteralValue("str", expr.value),))
+        return LiteralType(STR, (LiteralValue(LiteralTag.STR, expr.value),))
     if isinstance(expr, TpyUnaryOp) and expr.op == "-":
         inner = _infer_literal_default_type(expr.operand)
         if isinstance(inner, IntLiteralType) and inner.value is not None:
@@ -1160,7 +1160,7 @@ class FunctionGenerator:
                 self.ctx.literal_overload_facts[pname] = narrowed
             elif isinstance(narrowed, IntLiteralType) and narrowed.value is not None:
                 self.ctx.literal_overload_facts[pname] = LiteralType(
-                    BIGINT, (LiteralValue("int", narrowed.value),))
+                    BIGINT, (LiteralValue(LiteralTag.INT, narrowed.value),))
 
     def _build_overload_narrowing(
         self, impl: TpyFunction, stub: TpyFunction,

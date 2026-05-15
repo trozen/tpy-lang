@@ -13,7 +13,7 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
     NoneType, NominalType, AnyType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type, ALL_FIXED_INTS,
-    ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType,
+    ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType, LiteralTag,
     is_own_pointer_repr_optional,
     resolve_int_literals,
     error_return_to_cpp, qualify_exception_name, is_return_exception,
@@ -34,6 +34,8 @@ from ..parse import (
 from ..namespace import Namespace
 from ..symbol_binding import SymbolKind
 from ..sema.context import PENDING_CONTAINER_TYPES
+from ..sema.literal_utils import literal_value_from_expr
+from ..typesys import view_family_for_type
 from ..diagnostics import SemanticError
 from ..liveness import stmts_terminate
 
@@ -778,6 +780,23 @@ class StatementGenerator:
         return (f"{indent}{rebind_slot}.emplace({init_expr});\n"
                 f"{indent}{name} = &*{rebind_slot};\n")
 
+    def _resolve_literal_view_storage(self, name: str, var_type: TpyType) -> TpyType:
+        """Substitute LiteralType[str/bytes] with the view-inferred storage form.
+
+        Sema preserves `stmt.type = LiteralType` so OOS / dispatch / narrowing
+        see the annotation; codegen needs the str/bytes view-vs-owned form
+        chosen by view inference, looked up by variable name.
+        """
+        if not isinstance(var_type, LiteralType):
+            return var_type
+        family = view_family_for_type(var_type)
+        if family is None:
+            return var_type
+        var_id = self.ctx.analyzer.ctx.view_var_map(family).get(name)
+        if var_id is None:
+            return var_type
+        return self.types._resolve_view_storage(family, var_id)
+
     def _resolve_target_type(self, stmt: TpyVarDecl) -> TpyType | None:
         """Resolve the target type for a variable declaration."""
         target_type = resolve_stmt_binding_type(
@@ -800,8 +819,7 @@ class StatementGenerator:
             if resolved is not None:
                 target_type = resolved
             elif isinstance(target_type, PendingViewType):
-                info = self.ctx.analyzer.ctx.view_vars(target_type.family).get(target_type.var_id)
-                target_type = info.resolved_type if info and info.resolved_type else target_type.family.owned_type
+                target_type = self.types._resolve_pending_view(target_type)
         return target_type
 
     def _resolve_pending_container(self, typ: TpyType) -> TpyType | None:
@@ -831,8 +849,7 @@ class StatementGenerator:
             if isinstance(elem, IntLiteralType):
                 var_type = make_list(resolve_lit(elem))
         elif isinstance(var_type, PendingViewType):
-            info = self.ctx.analyzer.ctx.view_vars(var_type.family).get(var_type.var_id)
-            var_type = info.resolved_type if info and info.resolved_type else var_type.family.owned_type
+            var_type = self.types._resolve_pending_view(var_type)
         # Resolve IntLiteralType in all composite types (tuples, arrays, lists)
         var_type = resolve_int_literals(var_type, resolve_lit)
         # Resolve FloatLiteralType to float64 (same as sema: float literals default to double)
@@ -855,7 +872,7 @@ class StatementGenerator:
     def _resolve_cpp_type(self, stmt: TpyVarDecl) -> str:
         """Resolve the C++ type string for a variable declaration."""
         if stmt.type:
-            return self._cpp_decl_type(stmt.type)
+            return self._cpp_decl_type(self._resolve_literal_view_storage(stmt.name, stmt.type))
         elif stmt.init:
             resolved_type = resolve_stmt_binding_type(
                 stmt,
@@ -3759,7 +3776,7 @@ class StatementGenerator:
             if isinstance(condition, TpyName):
                 lit_type = self.ctx.literal_facts.get(condition.name)
                 if (isinstance(lit_type, LiteralType) and len(lit_type.values) == 1
-                        and lit_type.values[0].tag == "bool"):
+                        and lit_type.values[0].tag is LiteralTag.BOOL):
                     return bool(lit_type.values[0].value)
 
         # Logical chains: && / ||
@@ -3804,14 +3821,13 @@ class StatementGenerator:
         """
         if not isinstance(condition, TpyBinOp) or condition.op not in ("==", "!="):
             return None
-        from .expressions import _extract_literal_value
         for var_side, lit_side in [(condition.left, condition.right), (condition.right, condition.left)]:
             if not isinstance(var_side, TpyName):
                 continue
             lit_type = self.ctx.literal_facts.get(var_side.name)
             if not isinstance(lit_type, LiteralType):
                 continue
-            lit_val = _extract_literal_value(lit_side)
+            lit_val = literal_value_from_expr(lit_side)
             if lit_val is None:
                 continue
             in_set = lit_val in lit_type.values

@@ -12,7 +12,7 @@ from typing import Callable, NoReturn, TYPE_CHECKING
 from ..typesys import (
     TpyType, NominalType, OwnType, OptionalType, TupleType, own_tuple_target, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
     IntLiteralType, resolve_int_literals,
-    LiteralType, LiteralValue, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
+    LiteralType, LiteralValue, LiteralTag, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, ParamInfo, ReadonlyType,
     UNKNOWN_ELEMENT, UnknownElementType, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
     UnionType, VOID, BIGINT, BOOL, STR, INT32, AnyType, ANY, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union,
@@ -94,11 +94,11 @@ def _enrich_literal_types(
     enriched = []
     for arg_t, arg in zip(arg_types, args):
         if is_str_type(arg_t) and isinstance(arg, TpyStrLiteral):
-            enriched.append(LiteralType(STR, (LiteralValue("str", arg.value),)))
+            enriched.append(LiteralType(STR, (LiteralValue(LiteralTag.STR, arg.value),)))
         elif isinstance(arg_t, IntLiteralType) and arg_t.value is not None:
-            enriched.append(LiteralType(INT32, (LiteralValue("int", arg_t.value),)))
+            enriched.append(LiteralType(INT32, (LiteralValue(LiteralTag.INT, arg_t.value),)))
         elif is_bool_type(arg_t) and isinstance(arg, TpyBoolLiteral):
-            enriched.append(LiteralType(BOOL, (LiteralValue("bool", arg.value),)))
+            enriched.append(LiteralType(BOOL, (LiteralValue(LiteralTag.BOOL, arg.value),)))
         elif isinstance(arg_t, LiteralType):
             enriched.append(arg_t)
         else:

@@ -18,7 +18,7 @@ void check_outside() {
             // h = _get_current_executor()
             h = ::tpy::current_executor_get();
             // print("inside null?", h.is_null())
-            std::cout << "inside null?" << " " << ::tpy::print_bool((*h).is_null()) << "\n";
+            std::cout << "inside null?" << " " << ::tpy::print_bool(h.is_null()) << "\n";
             // # Manual save/restore round-trip via the public bindings; not
             // # the production path (that's _ExecutorScope.__del__, exercised
             // # by check_teardown below).
@@ -27,7 +27,7 @@ void check_outside() {
             // print("after clear:", _get_current_executor().is_null())
             std::cout << "after clear:" << " " << ::tpy::print_bool(::tpy::current_executor_get().is_null()) << "\n";
             // _set_current_executor(h)
-            ::tpy::current_executor_set((*h));
+            ::tpy::current_executor_set(h);
             // print("after restore:", _get_current_executor().is_null())
             std::cout << "after restore:" << " " << ::tpy::print_bool(::tpy::current_executor_get().is_null()) << "\n";
             __state = S_DONE;

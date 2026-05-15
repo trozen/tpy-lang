@@ -53,9 +53,9 @@ __coro_worker worker() {
             (void)std::move(__r0).value();
             __sub_0.reset();
             // task.cancel()
-            task.cancel();
+            (*task).cancel();
             // await task
-            __sub_1.emplace(std::move(task));
+            __sub_1 = &((*task));
             __state = S_AFTER_AWAIT_1;
         }
         [[fallthrough]];
@@ -65,9 +65,9 @@ __coro_worker worker() {
                 auto __r1 = __sub_1->__poll__(waker);
                 if (__r1.is_pending()) return ::tpy::Poll<void>::pending();
                 (void)std::move(__r1).value();
-                __sub_1.reset();
+                __sub_1 = nullptr;
             } catch (const ::tpy::CancelledError&) {
-                __sub_1.reset();
+                __sub_1 = nullptr;
                 // print("caught")
                 std::cout << "caught" << "\n";
             }

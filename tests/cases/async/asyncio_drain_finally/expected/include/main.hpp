@@ -45,7 +45,7 @@ struct __coro_background {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    ::tpy::Task<void> t;
+    std::optional<::tpy::Task<void>> t;
 
     enum : int32_t {
         S_INITIAL = 0,

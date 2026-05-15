@@ -21,6 +21,8 @@ struct Pet {
 
 } // namespace tpyapp::main
 
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Pet> : std::true_type {};
+
 template<tpyapp::main::__Pet_Concept__ T>
 struct tpy::Adapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     T inner;

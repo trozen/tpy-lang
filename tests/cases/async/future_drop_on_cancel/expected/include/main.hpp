@@ -86,8 +86,8 @@ struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::Future<Tracked>> f;
-    ::tpy::Task<Tracked> t;
-    std::optional<::tpy::Task<Tracked>> __sub_0;
+    std::optional<::tpy::Task<Tracked>> t;
+    ::tpy::Task<Tracked>* __sub_0 = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,

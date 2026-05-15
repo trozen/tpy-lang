@@ -28,12 +28,12 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
     ::tpy::print_object_default(os, "Vec2", obj);
     return os;
 }
-
 } // namespace tpyapp::shapes
 
-template<> struct tpy::is_value_type<tpyapp::shapes::Vec2> : std::true_type {};
+template<> struct tpy::is_value_type<::tpyapp::shapes::Vec2> : std::true_type {};
 
 namespace tpyapp::shapes {
+
 
 void __tpy_init();
 } // namespace tpyapp::shapes

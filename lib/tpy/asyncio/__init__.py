@@ -1,7 +1,7 @@
 # tpy: cpp_namespace("tpystd::asyncio")
 """asyncio v1 -- minimum viable async runtime.
 
-`run` / `sleep` / `create_task` / `Task[T]` / `Future[T]` /
+`run` / `sleep` / `create_task` / `Task[T]` / `Future[T]` / `Event` /
 `CancelledError`. Lowers to `runtime/cpp/include/tpy/async.hpp` and
 the TPy Executor in `_executor.py`. See `docs/ASYNC_DESIGN.md`.
 """
@@ -20,7 +20,7 @@ from ._executor import (
 
 
 @cpp_template("::tpy::make_executor_owned_task<{T}>({0})")
-def _make_executor_owned_task[T](coro: Own[Awaitable[T]]) -> Task[T]: ...
+def _make_executor_owned_task[T](coro: Own[Awaitable[T]]) -> Own[Task[T]]: ...
 
 
 @cpp_template("::tpy::task_to_any_box({0})")
@@ -64,7 +64,7 @@ def _register_timer_at(deadline_seconds: float, waker: Waker) -> None: ...
 # runtime's heterogeneous poll-box. Used by `sleep` to ship a
 # SleepFuture (a TPy class) through the executor's spawn list.
 @cpp_template("::tpy::Task<void>::from_coro({0})")
-def _task_void_from_coro[T](coro: T) -> Task[None]: ...
+def _task_void_from_coro[T](coro: T) -> Own[Task[None]]: ...
 
 
 class SleepFuture:
@@ -103,17 +103,18 @@ class SleepFuture:
         return poll_pending()
 
 
-# Park the calling coroutine for `seconds` seconds. Returns a Task[None]
-# whose underlying SleepFuture registers a timer with the current
-# executor on first poll; the run loop wakes when the deadline arrives.
-def sleep(seconds: float) -> Task[None]:
+# Park the calling coroutine for `seconds` seconds. Returns an
+# Own[Task[None]] whose underlying SleepFuture registers a timer with
+# the current executor on first poll; the run loop wakes when the
+# deadline arrives.
+def sleep(seconds: float) -> Own[Task[None]]:
     return _task_void_from_coro(SleepFuture(seconds))
 
 
-# Spawn `coro` on the current executor and return a Task[T] handle.
+# Spawn `coro` on the current executor and return an Own[Task[T]] handle.
 # The C++ helper (`make_user_task`) panics if no event loop is running.
 @cpp_template("::tpy::make_user_task<{T}>({0})")
-def create_task[T](coro: Awaitable[T]) -> Task[T]: ...
+def create_task[T](coro: Awaitable[T]) -> Own[Task[T]]: ...
 
 
 class InvalidStateError(Exception):
@@ -195,6 +196,50 @@ class Future[T]:
         if self._has_waiter:
             raise ValueError(
                 "Future already has a waiter (single-awaiter v1)")
+        self._waiter = waker
+        self._has_waiter = True
+        return poll_pending()
+
+
+class Event:
+    """Boolean completion signal -- the no-payload analog of Future.
+    Single-awaiter v1.
+
+    `set` / `clear` / `is_set` match CPython. Divergence: TPy's Event
+    is directly awaitable (`await event`) where CPython requires
+    `await event.wait()` -- TPy classes can't yet define `async def`
+    methods, so tests using Event need `no_cpython.txt`.
+    """
+
+    _is_set: bool
+    _has_waiter: bool
+    _waiter: Waker
+
+    def __init__(self) -> None:
+        self._is_set = False
+        self._has_waiter = False
+        self._waiter = Waker()
+
+    def is_set(self) -> bool:
+        return self._is_set
+
+    def set(self) -> None:
+        if self._is_set:
+            return
+        self._is_set = True
+        if self._has_waiter:
+            self._waiter.wake()
+            self._has_waiter = False
+
+    def clear(self) -> None:
+        self._is_set = False
+
+    def __poll__(self, waker: Waker) -> Poll[None]:
+        if self._is_set:
+            return poll_ready_none()
+        if self._has_waiter:
+            raise ValueError(
+                "Event already has a waiter (single-awaiter v1)")
         self._waiter = waker
         self._has_waiter = True
         return poll_pending()

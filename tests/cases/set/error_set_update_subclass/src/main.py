@@ -1,6 +1,8 @@
 # set.update() requires identical element types -- subclass not accepted
-# (set elements stored by value; Child where Base expected would slice elements)
-from tpy import Int32
+# (set elements stored by value; Child where Base expected would slice elements).
+# Base defines __hash__/__eq__ so the set[Base] / set[Child] annotations pass
+# the hashability gate and the intended subclass-narrowing check is reached.
+from tpy import Int32, UInt64
 
 
 class Base:
@@ -8,6 +10,12 @@ class Base:
 
     def __init__(self, v: Int32) -> None:
         self.val = v
+
+    def __hash__(self) -> UInt64:
+        return UInt64(self.val)
+
+    def __eq__(self, other: "Base") -> bool:
+        return self.val == other.val
 
 
 class Child(Base):

@@ -1,0 +1,1 @@
+main.py:21: error: Type Cat does not conform to protocol Pet in argument 'value'

@@ -65,10 +65,10 @@ struct GenericHolder {
 
     // def __init__(self, item: Own[T]):
     GenericHolder() = default;
-    explicit GenericHolder(T&& item) : item(std::move(item)) {}
+    explicit GenericHolder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
 
     // def replace(self, item: Own[T]) -> None:
-    void replace(T&& item) {
+    void replace(::tpy::own_param_t<T> item) {
         // self.item = item
         this->item = std::move(item);
     }

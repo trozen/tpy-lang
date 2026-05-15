@@ -46,7 +46,7 @@ struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::Future<int32_t>> done;
-    ::tpy::Task<void> t;
+    std::optional<::tpy::Task<void>> t;
     int32_t _;
     ::tpystd::asyncio::Future<int32_t>* __sub_0 = nullptr;
 

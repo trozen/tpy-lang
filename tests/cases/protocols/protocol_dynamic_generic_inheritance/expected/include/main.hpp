@@ -36,6 +36,9 @@ struct Counter : Source<T> {
 
 } // namespace tpyapp::main
 
+template<typename T>
+struct tpy::is_dyn_protocol_base<tpyapp::main::Source<T>> : std::true_type {};
+
 template<typename T, tpyapp::main::__Source_Concept__<T> __tpy_Impl>
 struct tpy::Adapter<tpyapp::main::Source<T>, __tpy_Impl> : tpyapp::main::Source<T> {
     __tpy_Impl inner;
@@ -50,6 +53,9 @@ struct tpy::RefAdapter<tpyapp::main::Source<T>, __tpy_Impl> : tpyapp::main::Sour
     RefAdapter(__tpy_Impl& ref) : inner(ref) {}
     T get() override { return inner.get(); }
 };
+
+template<typename T>
+struct tpy::is_dyn_protocol_base<tpyapp::main::Counter<T>> : std::true_type {};
 
 template<typename T, tpyapp::main::__Counter_Concept__<T> __tpy_Impl>
 struct tpy::Adapter<tpyapp::main::Counter<T>, __tpy_Impl> : tpyapp::main::Counter<T> {

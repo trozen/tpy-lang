@@ -14,7 +14,7 @@ from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
     ListRepeatType, GenExprType, make_list, TupleType, OptionalType, PtrType, IntLiteralType, FloatLiteralType, AnyType, PendingListType, UnknownElementType, BIGINT, FLOAT,
-    impl_proto_matches_name, get_protocol_qname,
+    impl_proto_matches_name, get_protocol_qname, unwrap_qualifiers,
 )
 from ..coercions import is_protocol_safe_coercion, is_protocol_type_arg_widening
 
@@ -177,9 +177,10 @@ class ProtocolChecker:
         sole path that succeeded. Returns None when actual does not conform.
         """
         # Unwrap ownership/const/ref wrappers -- readonly[T], Own[T], Ref[T]
-        # conform to any protocol that T conforms to
-        if isinstance(actual, (ReadonlyType, OwnType, RefType)):
-            return self.classify_protocol_conformance(actual.wrapped, protocol)
+        # conform to any protocol that T conforms to.
+        unwrapped = unwrap_qualifiers(actual)
+        if unwrapped is not actual:
+            return self.classify_protocol_conformance(unwrapped, protocol)
 
         # IntLiteralType: check if default int type conforms
         if isinstance(actual, IntLiteralType):

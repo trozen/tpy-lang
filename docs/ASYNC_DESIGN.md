@@ -31,7 +31,7 @@ Phased; each phase shipped independently. Detailed plan + per-phase scope + comp
 |-------|------|-------------|
 | 0 (DONE) | `SleepFuture` -> TPy | Validates the shape: TPy class with `__cancel_pending` field works as a `Task<void>::from_coro` `CoroT`. C++ keeps a single bridge helper `executor_register_timer_seconds`. |
 | 1 (DONE) | Compiler bindings | `time.sleep_until_steady`, `current_executor` get/set/clear via `ExecutorHandle` POD, `AnyTaskBox` `@native` wrapper around `shared_ptr<AnyTask>` (deviates from the original draft's `unique_ptr` so the user `Task<T>` and the executor slot can share state), `task_poll_cancelled` test util as TPy generic function. No new compiler features required. |
-| 2 (DONE) | `Executor` body to TPy | Slot table (`list[Slot]`), runnable deque, timer min-heap, all methods (`spawn`, `mark_runnable`, `poll_slot`, `drain_runnable`, `wait_for_event`, `run_until`, `drain_spawned_with_cancel`). Plus `ExecutorOps` dispatch table so `Waker::wake` / `make_user_task` / `executor_register_timer_seconds` route from C++ into the TPy executor. Deviation: timer-heap uses `list[tuple[float, UInt64]]` + parallel `dict[UInt64, Waker]` instead of `list[tuple[float, Waker]]` (Wakers aren't Comparable, which `heapq[T: Comparable]` requires). |
+| 2 (DONE) | `Executor` body to TPy | Slot table (`list[Slot]`), runnable deque, timer min-heap, all methods (`spawn`, `mark_runnable`, `poll_slot`, `drain_runnable`, `wait_for_event`, `run_until`, `drain_spawned_with_cancel`). Plus `ExecutorOps` dispatch table so `Waker::wake` / `make_user_task` / `executor_register_timer_seconds` route from C++ into the TPy executor. Timer-heap is `list[TimerEntry]` (TimerEntry has `__lt__` on deadline holding the slot id and generation); the original Phase-2 workaround of `list[tuple[float, UInt64]]` + parallel `dict[UInt64, Waker]` was consolidated in v1.2 step 3 once the `is_value_type` spec-emission bug allowing a user `ValueType` to be used as a `list` element type was fixed. |
 | 3 (DONE) | `async_run` to TPy | Setup/teardown via a `_ExecutorScope` class with `__del__` (RAII for `current_executor` clear-on-exit; v1 doesn't nest so no save/restore needed). Run loop body is TPy. Main-coro spawn closure + result extraction initially stayed C++ (templated over `ResultT`, used `if constexpr` for the void return-type case); fully ported to TPy in v1.2 step 1 once `val_or_ref_t<void>` was specialized. |
 | 4 (DONE) | Cleanup | Removed `tpy::Executor` struct + legacy dispatch fallbacks (`Waker::wake` cast, `make_user_task` spawn fallback, `executor_register_timer_seconds` TimePoint path) + unused TPy bindings. `tpy::async_run` was retained as a ~25-line shell, then removed in v1.2 step 1 below. The residual C++ surface (`Task<T>`, `TaskState<T>`, `AnyTaskBox`, `Poll<T>`, `current_executor` thread-local) is itemized in v1.2 below. |
 
@@ -48,13 +48,14 @@ Each item below is blocked on a specific compiler bug or missing feature. Orthog
 
 - `@cpp_template` calls now route through `gen_call_arg(inline_template=True)` for arg generation, so the auto-move-at-last-use logic fires for `Own[T]` args in cpp_template calls (`tpyc/codegen_cpp/builtins.py`, `tpyc/codegen_cpp/expressions.py`). Removed redundant manual `std::move({0})` from `_make_executor_owned_task` (asyncio) and `unsafe_init` (tpy.unsafe). Closes the codegen part of the old "Awaitable[T] rvalue forwarding" bug; the remaining piece is a sema-diagnostic gap tracked in `BUGS.md`.
 
+**Shipped (v1.2 step 3):**
+
+- `is_value_type<T>` specialization is now emitted right after the record's class declaration (was emitted at file end -- caused "specialization after instantiation" for ValueType records used in inline templated calls). `@native`-renamed records use `record_info.native_name` as the qualified C++ type (was using the module's namespace -- specialized a non-existent type). Site: `tpyc/codegen_cpp/generator.py:_emit_value_type_spec`. Asyncio cleanup: `Executor.timer_heap` collapsed from `(deadline, timer_id) tuple` + parallel `_timer_wakers` dict to `list[TimerEntry]`. (The `ValueType` base on TimerEntry was a workaround for the separate heapq `item: T` -> `T&` rvalue-binding gap; dropped once heapq signatures moved to `Own[T]`.)
+
 **Compiler bugs still blocking further cleanup (`BUGS.md`):**
 
 | Bug | What it unblocks |
 |-----|------------------|
-| Ref-type `list[T].pop()` into a local fails C++ build (`val_or_ref_t<T> = T&` can't bind to rvalue) | Ref-type `TimerEntry` → `list[TimerEntry]` (sibling path to the ValueType variant below). Either fix lets `Executor.timer_heap` drop the parallel `_timer_wakers` dict. |
-| Non-`@native` ValueType record's `is_value_type` specialization emitted after template instantiation in same TU | Value-type `TimerEntry(ValueType)` → `list[TimerEntry]` (sibling path to the ref-type variant above). |
-| `@native` value-type record emits `is_value_type` in wrong namespace | `ExecutorHandle` storable as a TPy field → `_ExecutorScope` can save/restore the prior handle (today just clears, since v1 doesn't nest `asyncio.run`). Needed before nestable runtimes. |
 | `@cpp_template` literal `{...}` produces internal error | Clearer diagnostic; pairs with the escape-syntax feature below. |
 
 **Compiler features (`TODO.md`):**

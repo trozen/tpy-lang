@@ -142,15 +142,14 @@ class Task[T]:
     def cancel(self) -> None: ...
 
     # Structural Awaitable[T] conformance. The C++ side has the method;
-    # the declaration here lets TPy code call it (and lets sema match
-    # `Task[T]` against `Awaitable[T]` parameters from inside generic
-    # bodies without falling back on structural inference).
+    # the declaration here lets TPy code call `task.__poll__(...)`
+    # directly (e.g. asyncio.run reads the result this way).
     def __poll__(self, waker: 'Waker') -> 'Poll[T]': ...
 
 
 @builtin_type("tpy.Waker")
 @native("tpy::Waker")
-class Waker:
+class Waker(ValueType):
     """Handle that lets a parked task be re-scheduled.
 
     Awaitables that haven't yet produced a value store the Waker passed

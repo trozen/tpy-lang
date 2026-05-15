@@ -6,7 +6,7 @@ Type validation, substitution, and inference operations.
 
 from __future__ import annotations
 from dataclasses import replace as dc_replace
-from typing import TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, TypeParamRef, NominalType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType,
@@ -15,14 +15,15 @@ from ..typesys import (
     IntLiteralType, FloatLiteralType, TypeParamKind, BIGINT, UnknownElementType,
     NoneType, VoidType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
-    unwrap_ref_type, RefType,
+    unwrap_ref_type, unwrap_qualifiers, RefType, is_dyn_protocol,
     is_callable_type, is_integer_type, is_float_type, is_void_like_type,
 )
 from ..coercions import resolve_coercion, CoercionContext
-from ..diagnostics import SemanticError
+from ..diagnostics import SemanticError, nocopy_container_elem_error
 from .. import qnames
 from ..type_def_registry import (
     is_copy_iter, is_own_iter, is_array, is_span, is_list, is_dict, is_set,
+    is_enum_type,
     get_type_def, find_factory_by_simple_name, protocol_info_of,
 )
 from ..parse import TpyFunction
@@ -32,6 +33,7 @@ from .overloads import resolve_overload
 if TYPE_CHECKING:
     from ..parse import SourceLocation
     from .context import SemanticContext
+    from .protocols import ProtocolChecker
 
 
 def _contains_type_param_ref(types: tuple[TpyType, ...]) -> bool:
@@ -45,11 +47,20 @@ def _contains_type_param_ref(types: tuple[TpyType, ...]) -> bool:
     return False
 
 
+_HASHABLE = NominalType("Hashable", is_protocol=True)
+_EQUATABLE = NominalType("Equatable", is_protocol=True)
+
+
 class TypeOperations:
     """Type validation, substitution, and inference operations."""
 
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
+        # Set after construction (ProtocolChecker depends on TypeOperations,
+        # so it can't be constructed before us). Mirrors the deferred-wiring
+        # pattern in TypeCompatibility. Used by validate_hashable_container_elem
+        # for Hashable + Equatable conformance.
+        self.protocols: ProtocolChecker
 
     def resolve_type(self, typ: TpyType, *, protocols_only: bool = False) -> TpyType:
         """Sema-local type normalization.
@@ -115,7 +126,7 @@ class TypeOperations:
 
     def validate_type(
         self, typ: TpyType, allow_type_param_ref: bool = False, loc: SourceLocation | None = None,
-        allow_forward_ref: bool = True,
+        allow_forward_ref: bool = True, check_hashable_constraints: bool = True,
     ) -> None:
         """Validate that a type is well-formed.
 
@@ -206,6 +217,16 @@ class TypeOperations:
                         f"Protocol type '{elem_type}' cannot be used as a container element type",
                         loc,
                     )
+            # Annotation-time gate for set/dict K. Deferred during early
+            # record registration -- sibling records' methods aren't
+            # populated yet, so we'd false-reject; validate_record_field_protocols
+            # re-runs us post-registration with the default flag.
+            if (is_set(typ) or is_dict(typ)) and check_hashable_constraints \
+                    and not allow_type_param_ref:
+                key_or_elem = typ.type_args[0] if typ.type_args else None
+                if key_or_elem is not None and isinstance(key_or_elem, TpyType):
+                    kind = "dict key" if is_dict(typ) else "set element"
+                    self.validate_hashable_container_elem(key_or_elem, kind, loc)
         elif isinstance(typ, OptionalType):
             self.validate_type(typ.inner, allow_type_param_ref, loc)
             if is_protocol_type(typ.inner):
@@ -255,6 +276,63 @@ class TypeOperations:
                     f"Protocol type '{elem_type}' cannot be used as a container element type",
                     loc,
                 )
+
+    def validate_hashable_container_elem(
+        self, elem: TpyType, kind: Literal["set element", "dict key"],
+        loc: SourceLocation | None,
+    ) -> None:
+        """Validate that `elem` can be used as a set element / dict key.
+
+        `kind` is "set element" or "dict key" and feeds into diagnostics.
+        Hash-table-backed ordered_set / ordered_map store entries in
+        `std::pair<const K, ...>`, which requires copy-constructible K;
+        @nocopy types are rejected first with a precise message so the
+        user doesn't hit a wall of C++ template errors from container
+        internals. Hashability is the second gate: a non-hashable K
+        otherwise fails C++ build with `static_assert(__is_invocable<
+        const _Hash&, const _Key&>{})`.
+
+        Called both from annotation-time validation (validate_type, above)
+        and from literal/comprehension expression analysis (4 callers in
+        sema/expressions.py).
+        """
+        if isinstance(elem, OwnType):
+            elem = elem.wrapped
+        if isinstance(elem, IntLiteralType):
+            return
+        if is_enum_type(elem):
+            return
+        if isinstance(elem, PendingViewType):
+            return
+        if self.ctx.is_type_non_copyable(elem):
+            raise SemanticError(nocopy_container_elem_error(elem, kind), loc)
+        # Need BOTH Hashable AND Equatable -- ordered_set/ordered_map use
+        # std::hash (requires __hash__) and std::equal_to (requires __eq__).
+        # Conformance walks the inheritance chain, so `class Child(Base)`
+        # where Base defines either dunder is accepted via Base.
+        hashable_ok = self.protocols.type_conforms_to_protocol(elem, _HASHABLE)
+        equatable_ok = self.protocols.type_conforms_to_protocol(elem, _EQUATABLE)
+        if hashable_ok and equatable_ok:
+            return
+        # User-record specific guidance: tell the user exactly which dunder
+        # is missing instead of the generic "not hashable" message.
+        if isinstance(elem, NominalType) and elem.is_user_record:
+            missing = []
+            if not hashable_ok:
+                missing.append("__hash__")
+            if not equatable_ok:
+                missing.append("__eq__")
+            missing_str = " and ".join(missing)
+            pronoun = "them" if len(missing) > 1 else "it"
+            raise SemanticError(
+                f"Type '{elem}' cannot be used as a {kind} "
+                f"(missing {missing_str}; "
+                f"use @dataclass(frozen=True) or define {pronoun} explicitly)",
+                loc,
+            )
+        raise SemanticError(
+            f"Type '{elem}' cannot be used as a {kind} (not hashable)", loc,
+        )
 
     def validate_record_type_args(
         self, typ: NominalType, record_info: RecordInfo, allow_type_param_ref: bool = False,
@@ -648,6 +726,9 @@ class TypeOperations:
         inferred: dict[str, TpyType],
     ) -> bool:
         """Match a protocol with TypeParamRef type_args against arg_type (e.g., NativeIterable[T], Iterator[T])."""
+        # Mirror classify_protocol_conformance: conformance is on the
+        # underlying record, not its Ref/readonly/Own wrapper.
+        arg_type = unwrap_qualifiers(arg_type)
         # GenExprType satisfies Iterable[T] and Iterator[T];
         # CopyIter/OwnIter satisfy Iterable[T] only.
         if ((isinstance(arg_type, GenExprType) and param_type.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR))
@@ -1047,7 +1128,65 @@ class TypeOperations:
             if tp not in inferred:
                 return None
 
+        # LHS-hint preference: when the hint's type-arg is @dynamic and the
+        # arg-inferred T doesn't inherit it, switch T to the hint so the
+        # call-site wrapping rule fires (structural conformer -> Adapter).
+        # When the arg DOES inherit, keep T=arg and let Covariant[T] uplift
+        # -- otherwise generic records using raw unsafe_alloc + unsafe_init
+        # (e.g. Tagged in covariant_custom) would break since unsafe_alloc
+        # can't allocate sizeof(abstract_base).
+        if expected_type is not None:
+            exp = expected_type.wrapped if isinstance(expected_type, OwnType) else expected_type
+            exp = unwrap_readonly(exp)
+            if (isinstance(exp, NominalType)
+                    and exp.qualified_name() == record.qualified_name()
+                    and len(exp.type_args) == len(record.type_params)):
+                for i, tp in enumerate(record.type_params):
+                    hint_t = exp.type_args[i]
+                    inferred_t = inferred[tp]
+                    if not (isinstance(hint_t, NominalType) and is_dyn_protocol(hint_t)):
+                        continue
+                    if isinstance(inferred_t, NominalType) and is_dyn_protocol(inferred_t):
+                        continue
+                    # Skip if the inferred concrete inherits the hint protocol --
+                    # the existing Covariant[T] path handles it.
+                    if self._inherits_protocol(inferred_t, hint_t):
+                        continue
+                    inferred[tp] = hint_t
+
         return inferred
+
+    def _inherits_protocol(self, concrete: TpyType, protocol: NominalType) -> bool:
+        """Return True if `concrete` transitively implements a @dynamic protocol matching `protocol`.
+
+        Decides whether arg-derived T should be kept (Covariant[T] handles the
+        uplift) or replaced by the LHS-hint protocol T (structural-conform case
+        that needs explicit heap wrapping). Same-named non-@dynamic protocols
+        don't match -- only @dynamic protocols are relevant to the LHS-hint path.
+
+        Near-duplicate of codegen's `directly_implements_dynamic` -- worth
+        unifying via a registry-level helper (tracked in TODO.md).
+        """
+        if not isinstance(concrete, NominalType) or not concrete.is_user_record:
+            return False
+        record_info = self.ctx.registry.get_record(concrete.name)
+        if record_info is None:
+            return False
+        proto_name = protocol.name
+        seen: set[str] = set()
+        stack = list(record_info.implemented_protocols)
+        while stack:
+            p = stack.pop()
+            if p.name in seen:
+                continue
+            seen.add(p.name)
+            pi = protocol_info_of(p)
+            if pi is None:
+                continue
+            if pi.is_dynamic and p.name == proto_name:
+                return True
+            stack.extend(pi.parent_protocols)
+        return False
 
     def match_generic_constructor(
         self, params: list, arg_types: list[TpyType]

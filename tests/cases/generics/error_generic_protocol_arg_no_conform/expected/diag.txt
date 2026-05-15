@@ -1,0 +1,1 @@
+main.py:20: error: Cannot infer type arguments for 'drive'. Specify explicitly: drive[T](...)

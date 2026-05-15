@@ -45,9 +45,9 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
             // f.set_result(Tracked("payload"))
             (*f).set_result(Tracked("payload"));
             // t.cancel()
-            t.cancel();
+            (*t).cancel();
             // await t
-            __sub_0.emplace(std::move(t));
+            __sub_0 = &((*t));
             __state = S_AFTER_AWAIT_0;
         }
         [[fallthrough]];
@@ -57,9 +57,9 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
                 auto __r0 = __sub_0->__poll__(waker);
                 if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
                 (void)std::move(__r0).value();
-                __sub_0.reset();
+                __sub_0 = nullptr;
             } catch (const ::tpy::CancelledError&) {
-                __sub_0.reset();
+                __sub_0 = nullptr;
                 // print("cancelled")
                 std::cout << "cancelled" << "\n";
             }

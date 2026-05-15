@@ -1,0 +1,1 @@
+main.py:12: error: Type mismatch in variable 'm': expected Literal["r", "w"], got str

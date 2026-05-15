@@ -525,13 +525,19 @@ with TPy bodies: `spawn`, `mark_runnable`, `poll_slot`,
 `wait_for_event`, `run_until`, `drain_spawned_with_cancel`. Three
 deviations from the doc:
 
-- *Timer heap shape*: `list[tuple[float, UInt64]]` paired with
-  `dict[UInt64, Waker]` instead of `list[tuple[float, Waker]]`.
-  TPy's `heapq[T: Comparable]` requires tuple elements to satisfy
-  Comparable, and `Waker` (a POD value type) doesn't; the parallel
-  dict keyed on a per-executor monotonic counter sidesteps this.
-  Ties on deadline resolve via the counter so heap order is
-  deterministic.
+- *Timer heap shape*: original Phase-2 workaround used
+  `list[tuple[float, UInt64]]` paired with `dict[UInt64, Waker]`
+  instead of `list[tuple[float, Waker]]` -- `heapq[T: Comparable]`
+  requires tuple elements to satisfy Comparable, and `Waker` (a POD
+  value type) doesn't. Consolidated in v1.2 step 3 into a single
+  `list[TimerEntry]` where `TimerEntry` holds
+  `(deadline: float, waker: Waker)` with `__lt__` on `deadline`
+  (slot_id / generation live inside the Waker); the parallel dict
+  and the explicit monotonic counter are gone.
+  Resolution depended on the v1.2 step 3 fix for the
+  `is_value_type<T>` spec-emission ordering bug, which previously
+  blocked using a user `ValueType` record as a `list` element type
+  in a generic context.
 - *Waker construction*: a free helper `_make_waker(handle, task_id,
   generation)` lives next to the class. The TPy class can't host a
   `@cpp_template` method body (compiler restricts that to `@native`
@@ -597,8 +603,8 @@ register_timer + wait_for_event + `waker.wake()` cycles.
   `AnyTaskBox`, `generation: UInt32`, `runnable: bool`.
 - `runnable_q: list[UInt32]` used as a deque (or a proper deque type
   if one lands).
-- `timer_heap: list[tuple[float, Waker]]` driven via `heapq.heappush` /
-  `heappop`. (See 2.2 deviation above.)
+- `timer_heap: list[TimerEntry]` driven via `heapq.heappush` /
+  `heappop`. (v1.2 step 3 consolidation -- see 2.2 above.)
 - Methods: `spawn`, `mark_runnable`, `poll_slot`, `drain_runnable`,
   `slot_done`, `has_live_tasks`, `wait_for_event`, `run_until`,
   `drain_spawned_with_cancel`. All pure TPy logic plus calls into the
@@ -725,18 +731,24 @@ pass. No new Phase-3-specific test case -- the existing
 `asyncio_fire_and_forget`, etc. exercise the new TPy run loop because
 production `asyncio.run` now goes through it.
 
-**Compiler items surfaced during Phase 3 (not blocking but tracked):**
+**Compiler items surfaced during Phase 3 (resolution status):**
 
 1. `@native` value-type records emit `is_value_type` specialization in
    the module's own namespace instead of the renamed `@native` target
-   namespace. Blocks using `ExecutorHandle` as a TPy field type.
+   namespace. **Resolved in v1.2 step 3** (`_emit_value_type_spec`
+   per-record placement now respects `record_info.native_name` for the
+   qualified target; a follow-up pass also covers native records that
+   `sort_records_by_inheritance` filters out of the main emit loop, so
+   generic-context use like `def f[T: ValueType](x: NativeT)` works).
 2. `def f[T] -> T` returning `val_or_ref_t<T>` fails for `T = None`
-   (void). Blocks porting `asyncio.run` to a pure-TPy function without
-   the C++ shell.
+   (void). **Resolved in v1.2 step 1** -- the `void`-specialized
+   `val_or_ref_t` lives in `runtime/cpp/include/tpy/type_traits.hpp`,
+   and `asyncio.run` is now pure TPy without a C++ shell.
 3. TPy parameter coro values become const lvalues; deducing C++ template
    args from them yields `const T&` instead of a moveable rvalue
-   reference. Worked around in Phase 3 by passing rvalues through the
-   C++ shell.
+   reference. **Resolved in v1.2 step 2** -- `@cpp_template` arg
+   generation now routes through `gen_call_arg(inline_template=True)`
+   so the auto-move-at-last-use logic fires for `Own[T]` args.
 
 ### Phase 4 -- Cleanup -- DONE
 
@@ -850,6 +862,32 @@ Closes the codegen part of the old "Awaitable[T] rvalue forwarding"
 bug. The remaining piece is a sema-diagnostic gap when a non-`Own`
 borrow or a non-last-use `Own[T]` reaches a consuming cpp_template --
 tracked in `BUGS.md` under Safety / borrow checker.
+
+### v1.2 step 3 -- `is_value_type` emission ordering + timer_heap cleanup -- DONE
+
+Fixed the two BUGS entries on `is_value_type<T>` specialization (the
+old "non-`@native` ValueType emitted after instantiation" + "`@native`
+value-type record specialized in wrong namespace"). Both shared a root
+cause: the spec was emitted in a batch at file end, after inline
+method bodies, using `{module_ns}::{cpp_name}` regardless of whether
+the record was `@native`-renamed elsewhere.
+
+Fix: moved the emission to right after the per-record class-decl
+loop in `tpyc/codegen_cpp/generator.py` (`_emit_value_type_spec`),
+and routed the qualified name through `record_info.native_name` when
+present. Adds two regression tests
+(`tests/cases/records/value_type_inline_method_use/` for the
+ordering bug and `tests/cases/native/native_value_type_namespace/`
+for the rename bug).
+
+Asyncio cleanup: `Executor.timer_heap` collapsed from
+`list[tuple[float, UInt64]]` + parallel `_timer_wakers: dict[UInt64, Waker]`
+to a single `list[TimerEntry]` with `__lt__` on deadline. The
+multi-paragraph apology comment that documented the workaround is
+gone. Net: 3779 tests pass. (TimerEntry was initially declared
+`ValueType` to work around the heapq `item: T` rvalue-binding gap;
+that base was dropped in a later commit once heapq's signatures
+moved to `Own[T]`.)
 
 ### Blocked -- stays C++ until compiler features land
 

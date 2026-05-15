@@ -82,10 +82,10 @@ struct GenericHolder {
 
     // def __init__(self, item: Own[T]):
     GenericHolder() = default;
-    explicit GenericHolder(T&& item) : item(std::move(item)) {}
+    explicit GenericHolder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
 
     // def set_item(self, item: Own[T]) -> None:
-    void set_item(T&& item) {
+    void set_item(::tpy::own_param_t<T> item) {
         // self.item = item  # tpyc: ok (generic method, last use -- std::move)
         this->item = std::move(item);
     }
@@ -106,7 +106,7 @@ struct GenericNotLastUse {
 
     // def __init__(self, item: Own[T]):
     GenericNotLastUse() = default;
-    explicit GenericNotLastUse(T&& item) : item(item) {
+    explicit GenericNotLastUse(::tpy::own_param_t<T> item) : item(item) {
         // print(item)
         std::cout << ::tpy::ValuePrinter(item) << "\n";
     }

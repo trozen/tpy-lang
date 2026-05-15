@@ -11,14 +11,14 @@
 | 3b | Literal overload flattening (per-literal C++ specializations) | Done |
 | 3c | Multi-value Literal dead branch elimination | Done |
 | 4 | `match`/`case` exhaustiveness for Literal subjects | Done |
-| 5 | Literal types in variables (`x: Literal["rb"] = "rb"`) | Not started |
-| 6 | General type positions (return types, fields, union flattening) | Not started |
+| 5 | Literal types in variables (`x: Literal["rb"] = "rb"`) | Done (annotated locals); Final variant deferred |
+| 6 | General type positions (return types, fields, union flattening) | Return position done (emits `std::string_view`); fields + union flattening deferred |
 
 ## Future Extensions
 
 | Feature | Notes |
 |---------|-------|
-| Literal type in `Final` variables | `x: Final = "rb"` infers `Literal["rb"]`. Variant of Phase 5. |
+| Literal type in `Final` variables | `x: Final = "rb"` infers `Literal["rb"]`. Variant of Phase 5; blocked on three A1 future-extensions (bare `Final`, local `Final`, `Final[Literal[...]]`) all not started -- see FEATURE_ROADMAP A1. |
 | TypedDict with Literal keys | `d["name"]` where key is `Literal`. Separate feature (D19) with own design. |
 | Cross-function literal propagation | Inferring `Literal` from callers. Not planned -- too complex and fragile. |
 | Collision-free name mangling | Current scheme replaces non-alnum with `_`, causing collisions (e.g. `Literal[","]` vs `Literal["_"]`). Switch to hex encoding for non-alnum chars (e.g. `,` -> `x2c`). Low priority -- only matters for unusual literal values. |
@@ -39,8 +39,15 @@ Resolution: strict pass matches literal values against `Literal` params
 (value subset check). Coercion pass falls back to base type matching.
 Literal stubs preferred over plain stubs regardless of declaration order.
 
-Current limitation: only direct literal arguments dispatch. Variables
-fall through to the base type fallback.
+Direct literal arguments AND `Literal`-annotated locals dispatch to
+`Literal` overloads; bare (unannotated) variables fall through to the
+base type fallback. Annotated `Literal[str]` locals additionally get
+view storage (`std::string_view`) when every source is a string-literal
+AST node, widening to owned `std::string` when a Literal-returning
+function call (or other non-view-safe Literal-typed source) is bound.
+Non-Literal-typed sources (e.g. `def get() -> str: ...` returning into a
+`Literal[...]` LHS) are rejected at compile time -- sema cannot prove
+the runtime value is in the declared set.
 
 ## Phase 2: Unify Types + Integer/Bool Literals (Done)
 
@@ -358,31 +365,51 @@ so persistent narrowings (e.g. `assert isinstance`) stay case-scoped.
 enabling operators like `str + Literal[str]` on narrowed variables.
 
 
-## Phase 5: Literal Types in Variables
+## Phase 5: Literal Types in Variables (Done for annotated locals)
 
-Literal values persist through variable bindings without explicit
-annotation.
+Literal values persist through variable bindings.
 
-### Problem
+**Current state:** `x: Literal["r", "w"] = "r"` retains `LiteralType` on
+the local, dispatches to the matching Literal-specialized overload
+(`pick__lit_r__w`), and survives branch joins where every assigned value
+is in the declared set. Out-of-set assignments (both init-time and
+reassignment) are now rejected with a clear `Type mismatch in {context}:
+expected Literal[...], got <value>` diagnostic that fires from
+`_check_compat` in `sema/compatibility.py`. Works for `Literal[str]`,
+`Literal[bool]`, and `Literal[int]` annotated locals.
 
-Today, `x = "rb"` produces `StrType` (or `PendingStrType` for locals).
+The **Final variant** -- `x: Final = "rb"` retaining `Literal["rb"]` --
+is deferred. It requires three independent A1 future-extension features
+(bare `Final`, local `Final`, `Final[Literal[...]]`) that are not yet
+started; once those land, the literal-retention layer is a small follow-up.
+
+Bare unannotated locals (`x = "rb"`) deliberately stay `StrType` -- the
+Option-A path (every str literal becomes `LiteralType`) was rejected because
+it would ripple through 45+ `isinstance(t, StrType)` sites.
+
+### Problem (historical)
+
+Historically, `x = "rb"` produces `StrType` (or `PendingStrType` for locals).
 The literal value is lost. To enable `open(file, x)` dispatching to the
 binary overload, the variable must carry the literal value in its type.
 
-Note: Phase 3 already makes `Literal`-annotated parameters useful. This
-phase extends to unannotated local variables. The practical gap is only
-when a literal is assigned to a local without annotation and then passed
-to a Literal-dispatched overload.
+Note: Phase 3 already makes `Literal`-annotated parameters useful, and the
+annotated-local path (`x: Literal["rb"] = "rb"`) ended up working too. The
+practical gap that remains is when a literal is assigned to a local without
+annotation and then passed to a Literal-dispatched overload.
 
 ### Design Options
 
 **Option A: Always produce literal types for string/int/bool literals.**
 
 `analyze_expr(TpyStrLiteral("rb"))` returns `LiteralType(StrType, ("rb",))`
-instead of `StrType`. Same for int/bool literals (already done for ints --
-`IntLiteralType`).
+instead of `StrType`. Same for int/bool literals.
 
-Pros: Simple, consistent with `IntLiteralType` which already works this way.
+Pros: Simple. Would also unblock bare-int dispatch to `Literal[int]` overloads
+(today `x = 1; pick(x)` dispatches to the plain `int` overload, not the
+`Literal[1, 2]` specialization -- the `IntLiteralType` defined in `typesys.py`
+exists for int-literal constant folding, but does NOT propagate to overload
+resolution on unannotated locals).
 Cons: Every `isinstance(t, StrType)` check (45+) needs to also handle
 `LiteralType`. Massive ripple.
 
@@ -423,20 +450,22 @@ logic exists in `local_deduction.py` (already handles `literal_values`
 dict for integers).
 
 
-## Phase 6: Literal as General Type (Future)
+## Phase 6: Literal as General Type
 
-### Return Types
+### Return Types (Done)
 
 ```python
 def get_mode() -> Literal["r", "rb"]: ...
 mode = get_mode()  # mode: Literal["r", "rb"]
 ```
 
-Requires `LiteralType` in return position. Codegen maps to the base type
-(C++ can't encode the constraint). Codegen paths that check
-`isinstance(ret_type, StrType)` for return value handling (copy semantics,
-`std::string` vs `std::string_view`) must unwrap `LiteralType` to
-`base_type` first.
+`LiteralType.to_cpp_return()` (and `to_cpp_return_const()`) delegates to
+`base_type.to_cpp_param_type()`, which gives the view form for str/bytes
+bases and the value form for int/bool bases. All values in a `Literal`
+are compile-time constants with static storage, so `std::string_view` is
+unconditionally safe (no dangling-return risk). Callers binding the
+return into a `Literal[...]`-annotated local pick up view storage
+end-to-end (no heap allocation).
 
 ### Fields
 

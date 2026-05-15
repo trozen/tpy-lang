@@ -81,7 +81,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D4 | with statement | M | Done | [VI](#with-statement-context-managers) |
 | D5 | Nested `def` with captures, `nonlocal` | M-L | Done | [VI](#closures--nested-functions) |
 | D6 | Properties (@property) | M | Done | [VII](#properties) |
-| D7 | Literal types (Literal[...]) | M | 🚧 Phases 1-4 done | [III](#literal-types) |
+| D7 | Literal types (Literal[...]) | M | Done (overload + narrowing surface) | [III](#literal-types) |
 | D8 | `@override` decorator | S | Done | [VII](#override-decorator) |
 | D9 | set type | L | Done | [VII](#set-type) |
 | D10 | bytes type | M | Done | [VII](#bytes-type) |
@@ -104,7 +104,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| E1 | Send/Sync markers | S-M | 🚧 Phase 1 done | [IV](#thread-safety-markers-send--sync) |
+| E1 | Send/Sync markers | S-M | 🚧 Phase 1 done; Phases 2-6 + open questions in [`docs/SEND_SYNC_DESIGN.md`](SEND_SYNC_DESIGN.md) | [IV](#thread-safety-markers-send--sync) |
 | E2 | Container mutation during iteration | S-M | Done | [IV](#container-mutation-during-iteration) |
 | E3 | del statement | S-M | Done | [VI](#del-statement-explicit-destruction) |
 | E4 | Ptr escape analysis | XL | 🚧 Partial | [IV](#ptrt-escape-analysis--lifetime-tracking) |
@@ -1144,21 +1144,28 @@ def open_file(path: str, mode: str) -> TextIO: ...  # fallback
 
 open_file("data.txt", "r")    # -> TextIO (matched Literal["r", "w"])
 open_file("data.txt", "rb")   # -> BinaryIO (matched Literal["rb", "wb"])
-mode = "r"
-open_file("data.txt", mode)   # -> TextIO (variable, falls through to str)
+mode: Literal["rb"] = "rb"
+open_file("data.txt", mode)   # -> BinaryIO (annotated local retains Literal)
+unannotated = "r"
+open_file("data.txt", unannotated)  # -> TextIO (bare local falls through)
 ```
 
 Compile-time checked value sets for `@overload` dispatch. `Literal["r", "w", ...]`
 in parameter annotations enables overload resolution based on literal values.
 Supports string, integer (including negative), and bool values.
-Multi-value `Literal` supported. Only direct literal arguments dispatch to
-`Literal` overloads; variables fall through to plain type overloads.
+Multi-value `Literal` supported. Direct literal arguments and `Literal`-annotated
+locals dispatch to `Literal` overloads; bare (unannotated) locals fall through
+to plain type overloads. Out-of-set assignments to a `Literal`-annotated local
+are rejected at compile time.
 
 **Why it matters**: Catches a common class of Python `ValueError` at compile time.
 Natural extension of the type system. Works well with overloads (different return types
 per literal value). Key enabler for `open()` binary mode dispatch.
 
-**Current state**: Phases 1-4 done. Phases 5-6 planned. See `docs/LITERAL_TYPES_DESIGN.md`.
+**Current state**: Done for the overload + narrowing surface (Phases 1-5) and for
+Literal returns (Phase 6 return position). Literal fields, union flattening, and
+the Final variant of Phase 5 are future extensions -- see below. See
+`docs/LITERAL_TYPES_DESIGN.md` for the full design.
 
 - **Phase 1 (done)**: `Literal["a", "b", ...]` with string values. Ordering-independent:
   `Literal` stubs are preferred over plain stubs regardless of declaration order.
@@ -1180,16 +1187,22 @@ per literal value). Key enabler for `open()` binary mode dispatch.
 - **Phase 4 (done)**: `match`/`case` exhaustiveness for Literal subjects, with
   per-arm narrowing to the matched value set (enabling dispatch to more specific
   overloads from within arm bodies). Missing-value warning consistent with enum/bool/union.
-- **Phase 5 (decision deferred)**: Literal types in unannotated variables.
-  Today `mode = "rb"; open(f, mode)` falls through to the `str` overload because
-  `mode` is plain `StrType`. Three design options on the table (A: every str literal
-  becomes `LiteralType` -- 45+ ripple sites; B: only `Final` / `Literal`-annotated
-  locals retain literal-ness -- minimal ripple, opt-in; C: track in `PendingStrType`,
-  resolve when single-valued). Pending real usage patterns. See LITERAL_TYPES_DESIGN.md.
-- **Phase 6 (future)**: Literal as a general type. Return positions
-  (`def get_mode() -> Literal["r", "rb"]`), field types
-  (`class C: mode: Literal["debug", "release"]`), and union flattening
-  (`Literal["a"] | Literal["b"]` == `Literal["a", "b"]` via `make_union()`).
+- **Phase 5 (annotated locals done; Final variant deferred)**: `x: Literal["r", "w"] = "r"`
+  retains `LiteralType` on the local, dispatches to the Literal-specialized overload,
+  and survives branch joins where every assigned value is in the declared set. Works for
+  `Literal[str]`, `Literal[bool]`, `Literal[int]`. Out-of-set assignments (init and
+  reassignment) are rejected with a clear diagnostic. Bare `x = "r"` deliberately stays
+  `StrType` (Option A was rejected -- would ripple through 45+ `isinstance(StrType)`
+  sites). The Final variant (`x: Final = "r"` infers `Literal["r"]`) is deferred: it
+  requires three A1 future-extensions (bare `Final`, local `Final`, `Final[Literal[...]]`)
+  all not started today.
+- **Phase 6 (return position done; fields + union flattening deferred)**: Literal as
+  a general type. Return positions (`def get_mode() -> Literal["r", "rb"]`) work --
+  `LiteralType` in return position is accepted by parser/sema, and codegen emits
+  view storage (`std::string_view` for str-base, value form for int/bool) since all
+  Literal values have static storage. Field types (`class C: mode: Literal["debug", "release"]`)
+  and union flattening (`Literal["a"] | Literal["b"]` == `Literal["a", "b"]` via
+  `make_union()`) remain.
 
 **Minor extensions** (separate from the phase ladder): Literal type in `Final`
 variables (variant of Phase 5); collision-free name mangling for unusual literal
@@ -1254,6 +1267,9 @@ interactions. Also provides the foundation for `@noalloc` enforcement and `@noth
 ---
 
 ### Thread Safety Markers (Send / Sync)
+
+> **Full design + phased roadmap + open questions: [`docs/SEND_SYNC_DESIGN.md`](SEND_SYNC_DESIGN.md).** The summary below is the high-level pitch; the design doc is the source of truth.
+
 
 ```python
 class Counter:         # implicitly Sendable (all fields are value types)

@@ -738,7 +738,14 @@ class TypeRegistrar:
                     f"Integer type parameter '{fld.type.name}' cannot be used as a type annotation",
                     loc=fld.loc
                 )
-            self.type_ops.validate_type(fld.type, allow_type_param_ref=is_generic, loc=fld.loc)
+            # Hashable-conformance check is deferred to the second-pass
+            # validate_record_field_protocols: records defined later in the
+            # same module aren't fully registered yet (no methods), so a
+            # field `dict[KeyDefinedLater, V]` would false-reject here.
+            self.type_ops.validate_type(
+                fld.type, allow_type_param_ref=is_generic, loc=fld.loc,
+                check_hashable_constraints=False,
+            )
             # Protocol types cannot be used as field types
             resolved_fld_type = self.type_ops.resolve_type(fld.type)
             # Persist the resolved type back so downstream sema/codegen sees
@@ -954,9 +961,17 @@ class TypeRegistrar:
                         method.loc or record.loc,
                     )
                 if not self.type_ops.is_type_param_ref(ptype):
-                    self.type_ops.validate_type(ptype, allow_type_param_ref=allow_tpref, loc=record.loc)
+                    # Hashable check deferred (see field-validation comment
+                    # above): sibling records aren't fully registered yet.
+                    self.type_ops.validate_type(
+                        ptype, allow_type_param_ref=allow_tpref, loc=record.loc,
+                        check_hashable_constraints=False,
+                    )
             if not self.type_ops.is_type_param_ref(method_return):
-                self.type_ops.validate_type(method_return, allow_type_param_ref=allow_tpref, loc=record.loc)
+                self.type_ops.validate_type(
+                    method_return, allow_type_param_ref=allow_tpref, loc=record.loc,
+                    check_hashable_constraints=False,
+                )
             # Protocol types cannot be used as method return types.
             # Exceptions: @dynamic protocols, and @native/@cpp_template stub methods
             # (C++ handles the actual return type).
@@ -1816,18 +1831,34 @@ class TypeRegistrar:
                 )
 
     def validate_record_field_protocols(self, record: TpyRecord) -> None:
-        """Re-validate record field types now that all protocols are registered.
+        """Re-validate record field + method-signature types now that all
+        protocols and sibling records are registered.
 
         register_record validates fields before protocols register, so checks
         that depend on protocol_info_of (e.g. Optional[@dynamic protocol]
-        rejection) silently pass. This second pass re-runs validate_type on
-        each field so those checks fire correctly.
+        rejection) and on sibling records' methods (Hashable/Equatable
+        conformance for dict-key / set-element gating) silently pass. This
+        second pass re-runs validate_type on each field and on every method
+        param / return type so those checks fire correctly.
         """
         is_generic = bool(record.type_params)
         for fld in record.fields:
             if fld.type is None:
                 continue
             self.type_ops.validate_type(fld.type, allow_type_param_ref=is_generic, loc=fld.loc)
+        for method in record.methods:
+            for _, ptype in method.params:
+                if ptype is not None and not self.type_ops.is_type_param_ref(ptype):
+                    self.type_ops.validate_type(
+                        ptype, allow_type_param_ref=is_generic,
+                        loc=method.loc or record.loc,
+                    )
+            if (method.return_type is not None
+                    and not self.type_ops.is_type_param_ref(method.return_type)):
+                self.type_ops.validate_type(
+                    method.return_type, allow_type_param_ref=is_generic,
+                    loc=method.loc or record.loc,
+                )
 
     def validate_value_type_fields(self, record: TpyRecord) -> None:
         """Validate that all fields of a ValueType record are themselves value types,

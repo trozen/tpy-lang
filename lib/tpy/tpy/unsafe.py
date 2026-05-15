@@ -95,6 +95,16 @@ def unsafe_init[T](p: Ptr[T], value: Own[T]) -> None: ...
 @native("tpy::destroy_at")
 def unsafe_drop[T](p: Ptr[T]) -> None: ...
 
+# unsafe_take: heap-allocate and move-in a value (combined alloc + init).
+# Abstract-T case is handled by C++ overload resolution: heap_take has
+# both a T&& primary and a unique_ptr<T> overload.
+@native("tpy::heap_take")
+def unsafe_take[T](value: Own[T]) -> Ptr[T]: ...
+
+# unsafe_release: destruct and free a heap-allocated T (combined drop + free).
+@native("tpy::heap_release")
+def unsafe_release[T](p: Ptr[T]) -> None: ...
+
 # unsafe_move_out: move a value out of a pointer location
 @cpp_template("std::move(*{0})")
 def unsafe_move_out[T](p: Ptr[T]) -> Own[T]: ...

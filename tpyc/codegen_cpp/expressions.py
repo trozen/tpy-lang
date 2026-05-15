@@ -11,14 +11,14 @@ from dataclasses import replace as dc_replace
 from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, IntLiteralType, FloatLiteralType, LiteralType, LiteralValue,
+    TpyType, IntLiteralType, FloatLiteralType, LiteralType,
     NominalType, PtrType, OwnType, OptionalType, NoneType, AnyType, make_array,
     PendingListType, ListRepeatType,
     TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_qualifiers, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     TupleType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
-    is_float_type, is_readonly_span)
+    is_float_type, is_readonly_span, is_dyn_protocol)
 from ..type_def_registry import (
     is_dict_view, is_set, is_dict, is_array, is_span, is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type,
@@ -74,6 +74,7 @@ from ..parse import (
 from ..prescan import match_is_none
 from ..namespace import BindingKind
 from ..sema.numeric_lattice import fixed_int_range_contains
+from ..sema.literal_utils import literal_value_from_expr
 from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, enum_cpp_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, view_key_target
 from .functions import literal_mangled_name
 from .. import qnames
@@ -99,20 +100,6 @@ def _flatten_chain(expr: TpyExpr, op: str) -> list[TpyExpr]:
     return result
 
 
-def _extract_literal_value(expr: TpyExpr) -> LiteralValue | None:
-    """Extract a LiteralValue from a literal AST node."""
-    if isinstance(expr, TpyStrLiteral):
-        return LiteralValue("str", expr.value)
-    if isinstance(expr, TpyBoolLiteral):
-        return LiteralValue("bool", expr.value)
-    if isinstance(expr, TpyIntLiteral):
-        return LiteralValue("int", expr.value)
-    if (isinstance(expr, TpyUnaryOp) and expr.op == "-"
-            and isinstance(expr.operand, TpyIntLiteral)):
-        return LiteralValue("int", -expr.operand.value)
-    return None
-
-
 def _check_literal_chain(
     expr: TpyBinOp, literal_facts: dict[str, TpyType],
 ) -> bool | None:
@@ -133,7 +120,7 @@ def _check_literal_chain(
                                    (operand.right, operand.left)]:
             if not isinstance(var_side, TpyName):
                 continue
-            lit_val = _extract_literal_value(lit_side)
+            lit_val = literal_value_from_expr(lit_side)
             if lit_val is None:
                 continue
             eq_facts.setdefault(var_side.name, set()).add(lit_val)
@@ -166,7 +153,7 @@ def _check_literal_in(
         return None
     rhs_values: set = set()
     for elem in expr.right.elements:
-        val = _extract_literal_value(elem)
+        val = literal_value_from_expr(elem)
         if val is None:
             return None
         rhs_values.add(val)
@@ -680,6 +667,9 @@ class ExpressionGenerator:
 
     def _gen_dynamic_protocol_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
         """If ptype is a @dynamic protocol, return the wrapped arg expression. Otherwise None."""
+        if isinstance(ptype, OwnType) and is_dyn_protocol(ptype.wrapped):
+            return self._gen_dynamic_protocol_own_arg(arg, ptype.wrapped)
+
         unwrapped_ptype = unwrap_readonly(ptype)
         if not is_protocol_type(unwrapped_ptype):
             return None
@@ -704,6 +694,27 @@ class ExpressionGenerator:
             else:
                 adapter_type = self.protocols.get_dynamic_ref_adapter_type(unwrapped_ptype, concrete_cpp)
             return self.ctx.temps.create_typed(adapter_type, arg_expr, brace_init=True)
+
+    def _gen_dynamic_protocol_own_arg(self, arg: TpyExpr, protocol: TpyType) -> str:
+        """Wrap an Own[ConcreteT] argument into Own[P] (unique_ptr<P>) where P is @dynamic.
+
+        Emits `std::make_unique<U>(arg)` where U is the concrete type
+        (inheritance) or `tpy::Adapter<P, ConcreteT>` (structural). The
+        resulting unique_ptr<U> implicitly converts to unique_ptr<P> via the
+        converting move ctor -- requires U* convertible to P*, which holds
+        for both paths (Adapter publicly inherits P).
+        """
+        arg_type = self.ctx.get_expr_type(arg)
+        if isinstance(arg_type, OwnType):
+            arg_type = arg_type.wrapped
+        arg_expr = self.gen_expr_deref(arg, arg_type)
+        arg_expr = self._maybe_move(arg, arg_expr)
+        concrete_cpp = self.types.type_to_cpp(arg_type)
+        if self.protocols.directly_implements_dynamic(arg_type, protocol):
+            target_cpp = concrete_cpp
+        else:
+            target_cpp = self.protocols.get_dynamic_adapter_type(protocol, concrete_cpp)
+        return f"std::make_unique<{target_cpp}>({arg_expr})"
 
     def _gen_covariant_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
         """If ptype requires covariant conversion, return the wrapped arg. Otherwise None."""
@@ -1804,7 +1815,7 @@ class ExpressionGenerator:
             lit_type = self.ctx.literal_facts.get(var_side.name)
             if not isinstance(lit_type, LiteralType):
                 continue
-            lit_val = self._extract_literal_value(lit_side)
+            lit_val = literal_value_from_expr(lit_side)
             if lit_val is None:
                 continue
             in_set = lit_val in lit_type.values
@@ -1814,9 +1825,6 @@ class ExpressionGenerator:
             if not in_set:
                 return "false" if expr.op == "==" else "true"
         return None
-
-    # Keep static method alias for backward compatibility (used by statements.py)
-    _extract_literal_value = staticmethod(_extract_literal_value)
 
     def _try_fold_literal_chain(self, expr: TpyBinOp) -> str | None:
         """Fold &&/|| chains to "true"/"false" using literal_facts."""

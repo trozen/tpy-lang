@@ -1,5 +1,11 @@
 # heapq -- min-heap priority queue over list[T], following CPython's algorithm.
 #
+# Constraint: T must be copyable. `_siftup` / `_siftdown` stash and shift
+# elements via `copy(heap[i])`, so `@nocopy` element types fail at C++
+# compile time with a deleted-copy-constructor error. The diagnostic gap
+# is tracked in BUGS.md; wrap a `@nocopy` payload in `Rc[T]` or `Box[T]`
+# if you need shared ownership in a heap.
+#
 # Gaps vs. CPython, tracked in STDLIB_ROADMAP.md:
 #   - nsmallest/nlargest take list[T] instead of Iterable[T]
 #     (same list-literal-vs-protocol conformance gap as math.prod/fsum;
@@ -12,23 +18,16 @@
 #     Blocked on variadic-in-method-call codegen (same gate as math.hypot
 #     variadic) plus a generator-driven n-way iterator-heads heap.
 #
-# Language-level blockers that limit heapq coverage:
-#   - Generic list[T].pop() produces invalid C++ when T is a reference type
-#     (val_or_ref_t<T> = T& can't bind to pop_back's rvalue return). Blocks
-#     ref-type heaps; also affects the existing generic_stack test when
-#     instantiated with a user class. Needs codegen fix for generic-T
-#     returns that take ownership.
-#
 # Codegen perf gap affecting this module (see TODO.md "Missed optimizations" and
 # `docs/IR_DESIGN.md` "Open Questions" item 8):
-#   - Generic-T params route through the trait `param_val_or_ref_t<T>` which is
-#     keyed on the C++ storage type, so `heappush[str]` lands on `const
-#     std::string&` instead of `std::string_view` (the trait can't distinguish
-#     TPy `str` from TPy `String`, since both share `std::string` storage).
-#     Every string literal push materializes a `std::string` at the call site
-#     (SSO covers short literals). No fix planned -- the perf gap is small
-#     in practice and every idiomatic alternative pays a real cost. See
-#     IR_DESIGN.md for the design landscape.
+#   - For `T = str`, the heap's element storage is `std::string` (TPy `str` and
+#     TPy `String` share `std::string` storage and the trait machinery can't
+#     distinguish them). Push (`item: Own[T]`) lowers to `std::string&&`, so a
+#     literal `heappush(words, "cherry")` materializes a `std::string` at the
+#     call site instead of passing through a `std::string_view`. SSO covers
+#     short literals. No fix planned -- the perf gap is small in practice and
+#     every idiomatic alternative pays a real cost. See IR_DESIGN.md for the
+#     design landscape.
 # tpy: cpp_namespace("tpystd::heapq")
 from tpy import Int32, Comparable, Own, copy
 
@@ -58,8 +57,8 @@ def _siftup[T: Comparable](heap: list[T], pos: Int32) -> None:
     heap[pos] = newitem
     _siftdown(heap, startpos, pos)
 
-def heappush[T: Comparable](heap: list[T], item: T) -> None:
-    heap.append(copy(item))
+def heappush[T: Comparable](heap: list[T], item: Own[T]) -> None:
+    heap.append(item)
     _siftdown(heap, 0, Int32(len(heap)) - 1)
 
 def heappop[T: Comparable](heap: list[T]) -> Own[T]:
@@ -78,19 +77,19 @@ def heapify[T: Comparable](x: list[T]) -> None:
         _siftup(x, i)
         i -= 1
 
-def heapreplace[T: Comparable](heap: list[T], item: T) -> Own[T]:
+def heapreplace[T: Comparable](heap: list[T], item: Own[T]) -> Own[T]:
     returnitem: T = copy(heap[0])
-    heap[0] = copy(item)
+    heap[0] = item
     _siftup(heap, 0)
     return returnitem
 
-def heappushpop[T: Comparable](heap: list[T], item: T) -> Own[T]:
+def heappushpop[T: Comparable](heap: list[T], item: Own[T]) -> Own[T]:
     if len(heap) > 0 and heap[0] < item:
         result: T = copy(heap[0])
-        heap[0] = copy(item)
+        heap[0] = item
         _siftup(heap, 0)
         return result
-    return copy(item)
+    return item
 
 def nsmallest[T: Comparable](n: Int32, a: list[T]) -> Own[list[T]]:
     h: list[T] = a.copy()

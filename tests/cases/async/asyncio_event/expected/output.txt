@@ -1,0 +1,8 @@
+False
+True
+False
+fast-path woke
+producer set
+consumer woke
+True
+False

@@ -35,7 +35,7 @@ struct Box {
 
     // def __init__(self, item: Own[T]):
     Box() = default;
-    explicit Box(T&& item) : item(std::move(item)) {}
+    explicit Box(::tpy::own_param_t<T> item) : item(std::move(item)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
