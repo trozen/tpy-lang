@@ -686,14 +686,14 @@ class _Parser:
     def parse_array_type(self) -> pa.ArrayTypeSpec:
         start = self._eat(TokKind.KEYWORD, "array")
         self._eat(TokKind.LBRACK)
-        lower = self._parse_signed_int_lit()
+        lower = self._parse_array_bound()
         self._eat(TokKind.DOTDOT)
-        upper = self._parse_signed_int_lit()
+        upper = self._parse_array_bound()
         self._eat(TokKind.RBRACK)
         self._eat(TokKind.KEYWORD, "of")
         element = self.parse_type_spec()
         end_tok = self.tokens[self.i - 1]
-        if upper < lower:
+        if isinstance(lower, int) and isinstance(upper, int) and upper < lower:
             raise ParseError(
                 f"array upper bound ({upper}) less than lower bound ({lower})",
                 start.line, start.col,
@@ -702,6 +702,23 @@ class _Parser:
             lower=lower, upper=upper, element=element,
             loc=self._loc(start, end_tok),
         )
+
+    def _parse_array_bound(self):
+        """Array bound: a signed integer literal or a Pascal-source
+        IDENT naming an integer const. The IDENT form returns
+        `ArrayBoundRef(name)`; the translator resolves it via the
+        const table at lower time. Anything else falls back to
+        `_parse_signed_int_lit`, which raises the usual
+        'expected int literal' error -- including for non-int
+        literals (real, char, string) where the user clearly
+        meant a literal but typed the wrong shape."""
+        if self.cur.kind == TokKind.IDENT:
+            tok = self.cur
+            self.i += 1
+            return pa.ArrayBoundRef(
+                name=tok.text, loc=self._loc(tok, tok),
+            )
+        return self._parse_signed_int_lit()
 
     def _parse_signed_int_lit(self) -> int:
         """Parse a (possibly signed) integer literal -- array bounds

@@ -97,6 +97,17 @@ class NamedTypeSpec:
 
 
 @dataclass
+class ArrayBoundRef:
+    """Named-constant array bound: `array[1..N] of integer` where
+    `N` is a `const N = 100;` symbol. The parser emits this when an
+    IDENT shows up where an integer literal would otherwise go;
+    the translator resolves the name through `ctx.const_values`
+    at lower time."""
+    name: str
+    loc: Loc
+
+
+@dataclass
 class RecordTypeSpec:
     """An anonymous record type: `record x, y: integer end`.
 

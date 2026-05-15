@@ -43,6 +43,18 @@ def write_float(x: float) -> None:
     print(x, end="")
 
 
+def format_bool(b: bool) -> str:
+    """Render a Pascal `boolean` value the way Turbo Pascal does:
+    uppercase `TRUE` / `FALSE`. Python's str(bool) yields title-case
+    `True` / `False`, which is a small but real divergence from TP7
+    -- programs that compare program output to expected text fail
+    without this. Called by `write`/`writeln` dispatch when an arg's
+    static type is `boolean`."""
+    if b:
+        return "TRUE"
+    return "FALSE"
+
+
 def readln_int() -> Int32:
     """Read a line of stdin and parse it as an Int32. Pascal's
     `readln(int_var)` lowers to `int_var := readln_int();`."""

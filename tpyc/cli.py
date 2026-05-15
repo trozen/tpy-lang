@@ -520,8 +520,18 @@ def _run_cli(is_runner: bool) -> int:
         warning_messages: list[str] = []
         n_warnings = 0
         for diag in compiler.diagnostics:
-            n_warnings += 1
-            warning_messages.append(diag.format(prog_name))
+            # Errors from the compiler driver itself (frontend plugin
+            # parse failures, module-resolution failures, etc.) must
+            # halt the build the same way analyzer-level errors do.
+            # Without this check a plugin's parse error surfaces as a
+            # downstream C++ compile failure because the empty-module
+            # fallback gets fed into the build pipeline.
+            if diag.level == DiagnosticLevel.ERROR:
+                has_errors = True
+                print(diag.format(prog_name), file=sys.stderr)
+            else:
+                n_warnings += 1
+                warning_messages.append(diag.format(prog_name))
         for compiled in compiled_modules:
             source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
             if compiled.analyzer:

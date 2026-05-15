@@ -120,7 +120,15 @@ def readkey() -> Char:
     # raw-mode termios (unavailable in TPy), the closest portable
     # behaviour is "read one line via `input`, return the first
     # character". An empty line stands in for "user pressed Enter".
-    line: str = input()
+    # On stdin EOF (piped input drained) TP7 would block forever; we
+    # return CR so the program can detect end-of-input via the loop
+    # condition rather than panic.
+    try:
+        line: str = input()
+    except ValueError:
+        # TPy's input() raises ValueError on stdin EOF (no dedicated
+        # EOFError class yet -- see runtime/cpp/include/tpy/builtins.hpp).
+        return Char("\r")
     if len(line) == 0:
         return Char("\r")
     return line[0]

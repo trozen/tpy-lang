@@ -192,6 +192,11 @@ class _Ctx:
     # the index-site range check (`check_subrange`).
     array_lower_bounds: dict[str, int] = field(default_factory=dict)
     array_upper_bounds: dict[str, int] = field(default_factory=dict)
+    # Per-array-variable element-type spelling (record name, "string",
+    # "integer", ...). Needed by compound-assign lowering (e.g.
+    # `arr[i].field := 'lit'` -> `arr[i].field.assign('lit')`) to
+    # locate the element's record field metadata.
+    array_element_type: dict[str, str] = field(default_factory=dict)
     # Pointer-typed var name -> pointee Pascal TypeSpec. `New(p)` /
     # `Dispose(p)` need the pointee type at the call site to emit
     # `unsafe_alloc[T]()` / `unsafe_init(p, default(T))`.
@@ -201,6 +206,13 @@ class _Ctx:
     # name are looked up here first; if a mapping exists, the call
     # routes to the mangled top-level function.
     nested_renames: dict[str, str] = field(default_factory=dict)
+    # Integer-valued constants known at translate time. Populated
+    # from `const N = 42;` declarations (only the plain-int form;
+    # typed-const arrays and records aren't compile-time-int
+    # values). Consumed by callers that need a literal int where a
+    # const name appears -- e.g. `array[1..N] of T` resolving via
+    # `ArrayBoundRef`.
+    const_values: dict[str, int] = field(default_factory=dict)
     # FixStr capacity per declared `string`/`string[N]` variable.
     # Used by assignment lowering (`s := 'lit'` -> `s.assign('lit')`)
     # and by string-literal-vs-FixStr disambiguation.
@@ -341,6 +353,13 @@ def translate(program: pa.Program,
                 # `type Fn = procedure(...)` / `type Fn = function
                 # (...): R` -- procedural type alias.
                 ctx.type_aliases[td.name] = td.type_spec
+            elif isinstance(td.type_spec, pa.ArrayTypeSpec):
+                # `type Vec = array[lo..hi] of E;` -- inline-array
+                # alias. Var decls referencing the alias inline-expand
+                # bounds/element-type via _record_var_metadata; the
+                # IR-side type lowering substitutes through
+                # _lower_type_spec.
+                ctx.type_aliases[td.name] = td.type_spec
 
     # `uses` clauses: resolve each to a canonical TPy module name and
     # mark it as a star import. Bare names (`uses Crt`) resolve only
@@ -386,6 +405,8 @@ def translate(program: pa.Program,
             elif isinstance(td.type_spec, pa.PointerTypeSpec):
                 pass  # registered in pre-scan as a type alias
             elif isinstance(td.type_spec, pa.ProcedureTypeSpec):
+                pass  # registered in pre-scan as a type alias
+            elif isinstance(td.type_spec, pa.ArrayTypeSpec):
                 pass  # registered in pre-scan as a type alias
             else:
                 ctx.diagnostics.append(_diag(
@@ -803,7 +824,11 @@ def _lower_type_spec(spec, ctx: _Ctx):
         elem = _lower_type_spec(spec.element, ctx)
         if elem is None:
             return None
-        count = spec.upper - spec.lower + 1
+        lo = _resolve_array_bound(spec.lower, ctx)
+        hi = _resolve_array_bound(spec.upper, ctx)
+        if lo is None or hi is None:
+            return None
+        count = hi - lo + 1
         ctx.add_import("tpy", "Array")
         return NamedType(
             name="Array",
@@ -880,7 +905,11 @@ def _lower_typed_const_decl(decl: pa.ConstDecl, ctx: _Ctx):
         ir_type = _lower_type_spec(spec, ctx)
         if ir_type is None:
             return None
-        expected = spec.upper - spec.lower + 1
+        lo = _resolve_array_bound(spec.lower, ctx)
+        hi = _resolve_array_bound(spec.upper, ctx)
+        if lo is None or hi is None:
+            return None
+        expected = hi - lo + 1
         if len(decl.value.elements) != expected:
             ctx.diagnostics.append(_diag(
                 f"typed-const {decl.name!r} expects {expected} "
@@ -1011,6 +1040,16 @@ def _lower_const_decl(decl: pa.ConstDecl, ctx: _Ctx):
             decl.loc,
         ))
         return None
+    # Stash integer consts so later sites that need a compile-time
+    # value (e.g. `array[1..N] of T`, where the array bound parser
+    # captures `N` as an `ArrayBoundRef`) can look it up.
+    if type_name == "integer":
+        if isinstance(value, pa.IntLit):
+            ctx.const_values[decl.name] = value.value
+        elif (isinstance(value, pa.UnaryOp) and value.op in ("+", "-")
+              and isinstance(value.operand, pa.IntLit)):
+            sign = -1 if value.op == "-" else 1
+            ctx.const_values[decl.name] = sign * value.operand.value
     # Map the inferred Pascal type to its IR shape. `string_view` is
     # the str/StrView path -- consts that hold a string literal stay
     # `str`-typed, not PStr; existing string-assign machinery already
@@ -1061,6 +1100,12 @@ def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
                 resolved = "pointer"
             elif isinstance(target, pa.ProcedureTypeSpec):
                 resolved = "procedure"
+            elif isinstance(target, pa.ArrayTypeSpec):
+                # `type Vec = array[lo..hi] of E;` -- inline-expand
+                # the alias into the var's metadata so index lowering
+                # picks up bounds and element type.
+                _record_var_metadata(name, target, ctx)
+                return
             break
         ctx.type_env[name] = resolved
         if subrange_bounds is not None:
@@ -1070,8 +1115,14 @@ def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
         return
     if isinstance(spec, pa.ArrayTypeSpec):
         ctx.type_env[name] = "array"
-        ctx.array_lower_bounds[name] = spec.lower
-        ctx.array_upper_bounds[name] = spec.upper
+        lo = _resolve_array_bound(spec.lower, ctx)
+        hi = _resolve_array_bound(spec.upper, ctx)
+        if lo is not None:
+            ctx.array_lower_bounds[name] = lo
+        if hi is not None:
+            ctx.array_upper_bounds[name] = hi
+        if isinstance(spec.element, pa.NamedTypeSpec):
+            ctx.array_element_type[name] = spec.element.name
         return
     if isinstance(spec, pa.StringTypeSpec):
         ctx.type_env[name] = "string"
@@ -1089,6 +1140,30 @@ def _record_var_metadata(name: str, spec, ctx: _Ctx) -> None:
     if isinstance(spec, pa.ProcedureTypeSpec):
         ctx.type_env[name] = "procedure"
         return
+
+
+def _resolve_array_bound(bound, ctx: _Ctx) -> int | None:
+    """Resolve an array-bound expression captured by the parser to
+    a concrete `int`. Integer literals pass through unchanged;
+    `ArrayBoundRef(name)` looks up the named const in
+    `ctx.const_values`, emitting a clean diagnostic when the name
+    isn't a known compile-time integer."""
+    if isinstance(bound, int):
+        return bound
+    if isinstance(bound, pa.ArrayBoundRef):
+        if bound.name in ctx.const_values:
+            return ctx.const_values[bound.name]
+        ctx.diagnostics.append(_diag(
+            f"array bound {bound.name!r} is not a declared "
+            f"integer constant",
+            bound.loc,
+        ))
+        return None
+    ctx.diagnostics.append(_diag(
+        f"unsupported array bound shape: {type(bound).__name__}",
+        getattr(bound, "loc", _zero_loc()),
+    ))
+    return None
 
 
 def _resolve_alias_target(spec, ctx: _Ctx):
@@ -1197,7 +1272,11 @@ def _default_array_ctor(spec: pa.ArrayTypeSpec, loc: pa.Loc, ctx: _Ctx):
     elem_type = _lower_type_spec(spec.element, ctx)
     if elem_type is None:
         return None
-    count = spec.upper - spec.lower + 1
+    lo = _resolve_array_bound(spec.lower, ctx)
+    hi = _resolve_array_bound(spec.upper, ctx)
+    if lo is None or hi is None:
+        return None
+    count = hi - lo + 1
     ctx.add_import("tpy", "Array")
     ir_loc = _to_ir_loc(loc)
     return Call(
@@ -1758,24 +1837,26 @@ def _lower_assign_stmt(stmt: pa.AssignStmt, ctx: _Ctx):
 
 def _compound_target_is_string(target, ctx: _Ctx) -> bool:
     """True when a compound assignment target (FieldAccess /
-    IndexExpr) ends up writing to a PStr-typed slot. Today only
-    record-field shape (`s.name`) is recognised -- array elements
-    of string element type are uncommon in the kid-program scope
-    and can land later."""
+    IndexExpr) ends up writing to a PStr-typed slot. Handles two
+    shapes today: `<rec>.field` (record local) and `<arr>[i].field`
+    (array element of record type)."""
     if not isinstance(target, pa.FieldAccess):
         return False
     inner = target.target
     if isinstance(inner, pa.DerefExpr):
         inner = inner.target
-    if not isinstance(inner, pa.Ident):
-        return False
-    record_type = ctx.type_env.get(inner.name)
-    if record_type == "pointer":
-        pointee = ctx.pointer_pointee.get(inner.name)
-        if (isinstance(pointee, pa.NamedTypeSpec)
-                and pointee.name in ctx.record_fields):
-            record_type = pointee.name
-    if record_type not in ctx.record_fields:
+    record_type: str | None = None
+    if isinstance(inner, pa.Ident):
+        record_type = ctx.type_env.get(inner.name)
+        if record_type == "pointer":
+            pointee = ctx.pointer_pointee.get(inner.name)
+            if (isinstance(pointee, pa.NamedTypeSpec)
+                    and pointee.name in ctx.record_fields):
+                record_type = pointee.name
+    elif isinstance(inner, pa.IndexExpr) and isinstance(
+            inner.target, pa.Ident):
+        record_type = ctx.array_element_type.get(inner.target.name)
+    if record_type is None or record_type not in ctx.record_fields:
         return False
     field_type = ctx.record_fields[record_type].get(target.ident)
     return field_type == "string"
@@ -1859,6 +1940,25 @@ def _wrap_subrange_check(value, bounds: tuple[int, int],
         ),
         loc=loc,
     )
+
+
+def _lower_bool_xor(expr: pa.BinOp, ctx: _Ctx):
+    """Expand `a xor b` (both booleans) to `(a or b) and not (a and
+    b)`. Pascal's `xor` is logical-XOR on booleans and bitwise-XOR
+    on integers; TPy's `^` only handles the integer side. Each
+    operand is lowered once via shared subexpressions in the IR;
+    TPy codegen + the C++ compiler fold the redundant evaluations
+    away for trivial operand shapes."""
+    lhs = _lower_expr(expr.lhs, ctx)
+    rhs = _lower_expr(expr.rhs, ctx)
+    if lhs is None or rhs is None:
+        return None
+    loc = _to_ir_loc(expr.loc)
+    or_part = BinOp(op=BinOpKind.LOGICAL_OR, lhs=lhs, rhs=rhs, loc=loc)
+    and_part = BinOp(op=BinOpKind.LOGICAL_AND, lhs=lhs, rhs=rhs, loc=loc)
+    not_and = UnaryOp(op=UnaryOpKind.NOT, operand=and_part, loc=loc)
+    return BinOp(op=BinOpKind.LOGICAL_AND, lhs=or_part, rhs=not_and,
+                 loc=loc)
 
 
 def _produces_set_value(expr, ctx: _Ctx) -> bool:
@@ -2232,6 +2332,18 @@ def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
                 loc=_to_ir_loc(stmt.loc),
             )
             return ExprStmt(value=ir_call, loc=_to_ir_loc(stmt.loc))
+        # Pascal control-flow words not yet supported. TP7 spells them
+        # as bare identifiers (`break;`, `continue;`, `exit;`, `goto L`),
+        # so they parse as parameterless calls and only fail here. Give
+        # a clearer message than "unknown procedure" so users don't go
+        # hunting for a missing import.
+        if name in ("break", "continue", "exit", "goto", "halt"):
+            ctx.diagnostics.append(_diag(
+                f"Pascal {name!r} statement is not yet supported by the "
+                "TPy Pascal frontend; rewrite the control flow using "
+                "boolean conditions, or call sys.exit() for halt",
+                stmt.callee.loc))
+            return None
         ctx.diagnostics.append(_diag(
             f"unknown procedure {name!r}", stmt.callee.loc))
         return None
@@ -2678,6 +2790,16 @@ def _lower_writeln_stmt(stmt: pa.CallStmt, ctx: _Ctx):
                 callee=Name(ident="str", loc=_to_ir_loc(arg.loc)),
                 args=(ir_arg,), loc=_to_ir_loc(arg.loc),
             )
+        elif arg_type == "boolean":
+            # Pascal `writeln(b)` outputs TRUE/FALSE uppercase; TPy's
+            # default str(bool) yields Title-case which is a real
+            # divergence from TP7. Route through a runtime helper.
+            ctx.add_import("pascal.runtime.io", "format_bool")
+            ir_arg = Call(
+                callee=Name(ident="format_bool",
+                            loc=_to_ir_loc(arg.loc)),
+                args=(ir_arg,), loc=_to_ir_loc(arg.loc),
+            )
         callee_loc = _to_ir_loc(stmt.callee.loc)
         # Each arg except the trailing `writeln` arg is printed with
         # `end=""` so the values stream into one line; the last
@@ -2889,6 +3011,15 @@ def _lower_expr(expr, ctx: _Ctx):
             if (_produces_set_value(expr.lhs, ctx)
                     and _produces_set_value(expr.rhs, ctx)):
                 op = _SET_OP[op]
+        # Pascal `xor` on booleans is logical XOR; on integers it's
+        # bitwise. TPy's `^` rejects bool^bool. When both operands are
+        # statically boolean, expand `a xor b` to `(a or b) and not
+        # (a and b)` -- a single fresh expression rather than introducing
+        # a helper, since TPy's short-circuit eval makes this cheap.
+        if op == BinOpKind.BIT_XOR and expr.op == "xor":
+            if (_static_type_of(expr.lhs, ctx) == "boolean"
+                    and _static_type_of(expr.rhs, ctx) == "boolean"):
+                return _lower_bool_xor(expr, ctx)
         lhs = _lower_expr(expr.lhs, ctx)
         rhs = _lower_expr(expr.rhs, ctx)
         if lhs is None or rhs is None:
@@ -3332,16 +3463,26 @@ def _static_type_of(expr, ctx: _Ctx) -> str | None:
         # widens to `real` whenever either operand is real (Pascal's
         # promotion rule). `/` (true division) always yields a real,
         # matching Pascal semantics.
+        if expr.op in ("=", "<>", "<", "<=", ">", ">=", "in"):
+            return "boolean"
         if expr.op == "+" and _produces_string_value(expr, ctx):
             return "string"
         if expr.op == "/":
             return "real"
         lhs_t = _static_type_of(expr.lhs, ctx)
         rhs_t = _static_type_of(expr.rhs, ctx)
+        # `and`/`or`/`xor` on booleans stay boolean; on integers they
+        # are bitwise and stay integer (Pascal overloads the same
+        # keyword across both domains).
+        if expr.op in ("and", "or", "xor") and (
+                lhs_t == "boolean" or rhs_t == "boolean"):
+            return "boolean"
         if lhs_t == "real" or rhs_t == "real":
             return "real"
         return "integer"
     if isinstance(expr, pa.UnaryOp):
+        if expr.op == "not":
+            return "boolean"
         operand_t = _static_type_of(expr.operand, ctx)
         if operand_t == "real":
             return "real"
