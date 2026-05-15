@@ -238,7 +238,7 @@ invariants: `PRIMITIVE_SNAPSHOT`, `ENUM_SNAPSHOT`, `FACTORY_SNAPSHOT`,
    `__main__`.** Sema uses `"__main__"` for the entry point; codegen
    uses the file-based module name (e.g. `"main"`).
 
-6. **`TpyTypeRef` flows to `TpyType` via `_resolve_pending_type_refs`
+6. **`TpyTypeRef` flows to `TpyType` via `resolve_refs`
    (in `parse/resolve_refs.py`)** which runs early in
    `compiler._analyze_module`. Downstream passes read `TpyType`. New
    passes that read annotation fields must run after this.

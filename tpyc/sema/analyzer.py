@@ -1457,7 +1457,7 @@ class SemanticAnalyzer:
             if func.builtin_decorator_key:
                 # Register minimal FunctionInfo so the key flows through exports.
                 # return_type comes from func (already VOID-substituted by
-                # _resolve_pending_type_refs); this FunctionInfo is used for
+                # parse.resolve_refs); this FunctionInfo is used for
                 # decorator-key lookup, not call resolution.
                 self.ctx.registry.register_function(FunctionInfo(
                     name=func.name, params=[], return_type=func.return_type,
@@ -1612,7 +1612,7 @@ class SemanticAnalyzer:
         @native classes require stub bodies; regular classes disallow
         stub bodies (except @overload stubs) and @native("...") decorators.
 
-        Runs after `_resolve_pending_type_refs` so base-resolution
+        Runs after `parse.resolve_refs` so base-resolution
         errors fire first (previously these checks ran at parse time
         and could mask those errors).
         """

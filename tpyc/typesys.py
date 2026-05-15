@@ -3753,7 +3753,7 @@ CONST_PARAMS_METHODS = frozenset({
 class MethodSignature:
     """Method signature required by a protocol.
 
-    Between parse and sema's `_resolve_pending_type_refs` pre-pass,
+    Between parse and the post-parse `resolve_refs` pass,
     `params` and `return_type` may hold `TypeRefNode` in place of
     `TpyType`.  All readers post-pre-pass see TpyType.  `return_type`
     may also be None when no annotation was provided -- sema

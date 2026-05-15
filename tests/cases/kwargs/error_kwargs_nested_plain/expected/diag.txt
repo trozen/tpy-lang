@@ -1,0 +1,1 @@
+main.py:9: error: **kwargs must have Unpack[TypedDict] annotation

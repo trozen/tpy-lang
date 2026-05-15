@@ -761,7 +761,7 @@ class Parser:
     ) -> None:
         """Parse a type alias RHS as a TypeRefNode.
 
-        Sema's `_resolve_pending_type_refs` resolves the ref with a
+        The post-parse `resolve_refs` pass resolves the ref with a
         `pending_alias` kwarg so same-body self-references produce a
         `NominalType(name)` placeholder.  Sema then detects recursive
         unions and registers the resolved alias in parser.registry so
@@ -943,7 +943,7 @@ class Parser:
         """Parse Unpack[TypedDict] annotation from **kwargs.
 
         Returns the inner TypedDict reference as a TypeRefNode; sema
-        resolves it via `_resolve_pending_type_refs` and validates it
+        resolves it via `resolve_refs` and validates it
         is a TypedDict in registration.
         """
         if not isinstance(annotation, ast.Subscript):
@@ -1395,7 +1395,7 @@ class Parser:
         # detection). TypedDict marker base is filtered out.
         #
         # Bases emit as TypeRefNode; sema re-resolves them in
-        # `_resolve_pending_type_refs` under the record's type-param
+        # `resolve_refs` under the record's type-param
         # scope.  Class-body checks that could mask base-resolution
         # errors (stub-body validation, @native decorator validation,
         # field-type inference failure) all run in sema, so no
@@ -1422,7 +1422,7 @@ class Parser:
                 if not isinstance(item.target, ast.Name):
                     raise ParseError("Invalid field declaration", item)
                 field_name = item.target.id
-                # Emit a TypeRefNode.  Sema's `_resolve_pending_type_refs`
+                # Emit a TypeRefNode.  The post-parse `resolve_refs` pass
                 # pre-pass resolves it before any reader consumes fld.type.
                 field_type = self._parse_type_ref(item.annotation, type_param_scope)
                 default_val = None
@@ -1748,7 +1748,7 @@ class Parser:
                     params.append((arg.arg, param_type))
 
                 # return_type=None means no annotation; sema's
-                # `_resolve_pending_type_refs` substitutes VOID.
+                # `resolve_refs` substitutes VOID.
                 return_type: 'TpyType | TypeRefNode | None' = None
                 if item.returns:
                     return_type = self._parse_type_ref(item.returns)
@@ -2098,7 +2098,7 @@ class Parser:
                 if arg.arg != "self":
                     raise ParseError(f"First parameter of method '{node.name}' must be 'self'", node)
                 # Emit the self annotation as a TypeRefNode; sema
-                # resolves it in `_resolve_pending_type_refs` and
+                # resolves it in `resolve_refs` and
                 # `method_expansion.expand_methods` validates the
                 # shape + derives flags.
                 if arg.annotation is not None:
@@ -2835,7 +2835,7 @@ class Parser:
         outer_scope: dict[str, TypeParamKind] | None = None,
     ) -> None:
         """Resolve TypeRefNodes in a TpyFunction's params / return_type /
-        vararg_type in place, using the current parser state.
+        vararg_type / kwarg_type in place, using the current parser state.
 
         `outer_scope` is the enclosing type-param scope at the call site
         (e.g. a nested def's enclosing function scope). The function's own
@@ -2848,9 +2848,9 @@ class Parser:
 
         Used by non-top-level callers of `_parse_function` (nested defs,
         macro fragment parsing, @builtin_decorator stubs) that need
-        TpyType immediately, without waiting for sema's
-        `_resolve_pending_type_refs` pre-pass. Top-level functions leave
-        refs in place for the sema pre-pass to resolve.
+        TpyType immediately, without waiting for the post-parse
+        `resolve_refs` pass. Top-level functions leave refs in place for
+        that pass to resolve.
         """
         scope: dict[str, TypeParamKind] = dict(outer_scope or {})
         if func.type_params:
@@ -2881,6 +2881,9 @@ class Parser:
         if isinstance(func.vararg_type, ref_types):
             func.vararg_type = self._resolve_type_ref_impl(
                 func.vararg_type, resolve_scope, is_type_arg=True)
+        if isinstance(func.kwarg_type, ref_types):
+            func.kwarg_type = self._resolve_type_ref_impl(
+                func.kwarg_type, resolve_scope, is_type_arg=True)
 
     def _parse_type_args_from_subscript(self, node: ast.Subscript) -> 'tuple[TpyType | TypeRefNode | None, ...]':
         """Extract type arguments from a subscript for generic function calls like first[Int32](x).
@@ -3173,7 +3176,7 @@ class Parser:
                 f"Type parameters are not supported on nested functions", node)
         func = self._parse_function(node)
         # Nested defs live inside a function body, so sema's top-level
-        # _resolve_pending_type_refs pre-pass doesn't see them. Resolve
+        # resolve_refs pre-pass doesn't see them. Resolve
         # refs immediately, passing the enclosing function's type-param
         # scope so outer generic params still resolve inside the nested
         # body. _parse_function restored self._type_param_scope to the
@@ -3886,7 +3889,7 @@ class FragmentParser(Parser):
                                            TpyCallableRef, TpyLiteralRef)):
                 # _finalize_function_refs doesn't touch self_annotation
                 # (non-fragment call sites feed through
-                # `_resolve_pending_type_refs` per-record). Resolve it here
+                # `resolve_refs` per-record). Resolve it here
                 # under the method's own type-param scope so expand_methods
                 # sees TpyType.
                 scope: dict[str, TypeParamKind] = {}

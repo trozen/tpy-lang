@@ -1,6 +1,6 @@
 """Method expansion sema pass.
 
-Runs between `_resolve_pending_type_refs` and `register_enum` on the
+Runs between `parse.resolve_refs` and `register_enum` on the
 module, and owns four transformations for record methods (free functions
 are not expanded here):
 
