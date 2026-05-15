@@ -150,6 +150,36 @@ def _protocol_scope(protocol):
     return {name: TypeParamKind.TYPE for name in protocol.type_params}
 
 
+def _resolve_value_position(resolver, t, scope=None, *, pending_alias=None):
+    """Resolve a value-bearing annotation slot.
+
+    Every annotation slot except the function-return slot is a value
+    position, so bare `None` lowers to NoneType -> std::monostate.
+    Used at function params / varargs / kwargs / self / fields / bases /
+    bounds / local variables / type-alias bodies / call-site type args.
+    Non-ref inputs pass through unchanged.
+    """
+    if isinstance(t, _REF_TYPES):
+        return resolver.resolve(t, scope, pending_alias=pending_alias, is_type_arg=True)
+    return t
+
+
+def _resolve_return_slot(resolver, t, scope=None):
+    """Resolve a function-return slot.
+
+    Bare `None` stays VoidType -> `void` (the function-returns-nothing
+    semantic) -- distinct from `None` at value-bearing slots (handled
+    by `_resolve_value_position`). The parser emits `None` for an
+    absent return annotation; substitute VOID so downstream readers
+    see a concrete TpyType.
+    """
+    if t is None:
+        return VOID
+    if isinstance(t, _REF_TYPES):
+        return resolver.resolve(t, scope)
+    return t
+
+
 def resolve_method_body_refs(method, record, resolver, *, promote_registry=None) -> None:
     """Resolve all TypeRefNodes in a record method's body (TpyVarDecl
     annotations, `TpyCall.call_type`, `TpyCall.type_args`,
@@ -182,7 +212,7 @@ def _walk_body(stmts, call_scope, resolver, *, promote_registry=None):
     for stmt in stmts:
         if isinstance(stmt, TpyVarDecl) and stmt.type is not None:
             if isinstance(stmt.type, _REF_TYPES):
-                stmt.type = resolver.resolve(stmt.type, call_scope)
+                stmt.type = _resolve_value_position(resolver, stmt.type, call_scope)
             elif promote_registry is not None:
                 # Only promote bare NominalTypes when sema explicitly
                 # asks (post-macro-deps pass).  Parse-time walks use
@@ -249,9 +279,7 @@ def _walk_type_args(expr, call_scope, resolver):
     for ta in expr.type_args:
         if isinstance(ta, _REF_TYPES):
             try:
-                # Call-site `f[T](...)` explicit type args fill generic
-                # slots, so they're type-arg positions (None -> NoneType).
-                new_args.append(resolver.resolve(ta, call_scope, is_type_arg=True))
+                new_args.append(_resolve_value_position(resolver, ta, call_scope))
             except ParseError as e:
                 expr.type_args = ()
                 if expr.type_args_parse_error is None:
@@ -277,17 +305,14 @@ def resolve_refs(module: TpyModule) -> None:
             "(module was not produced by the current-phase Parser)"
         )
 
+    # Resolver-bound thin wrappers so the internal callsites below stay
+    # terse; the policy lives on the module-level helpers
+    # `_resolve_value_position` / `_resolve_return_slot`.
     def _resolve(t, scope=None):
-        if isinstance(t, _REF_TYPES):
-            return resolver.resolve(t, scope)
-        return t
+        return _resolve_value_position(resolver, t, scope)
 
     def _resolve_return_type(t, scope=None):
-        # Parser emits None for an absent return annotation.  Substitute
-        # VOID so downstream readers see a concrete TpyType.
-        if t is None:
-            return VOID
-        return _resolve(t, scope)
+        return _resolve_return_slot(resolver, t, scope)
 
     # Type parameter bounds: resolved with no enclosing type-param
     # scope since bounds reference protocols in scope, not other
@@ -306,10 +331,8 @@ def resolve_refs(module: TpyModule) -> None:
     if module.type_aliases:
         resolved_aliases: dict[str, tuple[TpyType, object]] = {}
         for alias_name, (alias_ref, alias_loc) in module.type_aliases.items():
-            if isinstance(alias_ref, _REF_TYPES):
-                alias_type = resolver.resolve(alias_ref, None, pending_alias=alias_name)
-            else:
-                alias_type = alias_ref
+            alias_type = _resolve_value_position(
+                resolver, alias_ref, None, pending_alias=alias_name)
             # Tag self-referential union aliases as recursive; the indirection
             # check itself runs later in sema (`_validate_recursive_union_paths`)
             # so it can see same-module RecordInfo / TypeDef entries that

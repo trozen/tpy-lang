@@ -2816,13 +2816,19 @@ class Parser:
     def _resolve_type_ref_impl(
         self, ref: ResolverInputNode,
         type_param_scope: dict[str, TypeParamKind] | None = None,
+        *, is_type_arg: bool = False,
     ) -> TpyType:
         """Thin delegate to `TypeResolver.resolve`.  Retained for the
         walker-vs-resolver equivalence tests and for macro-fragment
         self-annotation resolution, both of which need a TpyType in
         hand synchronously.
+
+        `is_type_arg` see `TypeResolver.resolve`; pass True at value-
+        bearing slots (params, vararg, self_annotation, fields, ...)
+        so bare `None` lowers to NoneType. The function-return slot
+        keeps the default `False` so `-> None` stays VoidType.
         """
-        return self._resolver.resolve(ref, type_param_scope)
+        return self._resolver.resolve(ref, type_param_scope, is_type_arg=is_type_arg)
 
     def _finalize_function_refs(
         self, func: 'TpyFunction',
@@ -2857,7 +2863,7 @@ class Parser:
         new_params: list = []
         for name, t in func.params:
             if isinstance(t, ref_types):
-                t = self._resolve_type_ref_impl(t, resolve_scope)
+                t = self._resolve_type_ref_impl(t, resolve_scope, is_type_arg=True)
             new_params.append((name, t))
         func.params = new_params
         if func.return_type is None:
@@ -2865,8 +2871,8 @@ class Parser:
             # `TpyTypeRef("None")` so the same VOID singleton is
             # substituted without a direct typesys import.  The deferred
             # (sema-side) branch lives in
-            # `_resolve_pending_type_refs._resolve_return_type`; both
-            # paths converge on VOID.
+            # `resolve_refs._resolve_return_slot`; both paths converge
+            # on VOID.
             func.return_type = self._resolve_type_ref_impl(
                 TpyTypeRef(name="None"), resolve_scope)
         elif isinstance(func.return_type, ref_types):
@@ -2874,7 +2880,7 @@ class Parser:
                 func.return_type, resolve_scope)
         if isinstance(func.vararg_type, ref_types):
             func.vararg_type = self._resolve_type_ref_impl(
-                func.vararg_type, resolve_scope)
+                func.vararg_type, resolve_scope, is_type_arg=True)
 
     def _parse_type_args_from_subscript(self, node: ast.Subscript) -> 'tuple[TpyType | TypeRefNode | None, ...]':
         """Extract type arguments from a subscript for generic function calls like first[Int32](x).
@@ -3889,7 +3895,7 @@ class FragmentParser(Parser):
                     for i, name in enumerate(func.type_params):
                         scope[name] = kinds[i] if i < len(kinds) else TypeParamKind.TYPE
                 func.self_annotation = parser._resolve_type_ref_impl(
-                    func.self_annotation, scope or None)
+                    func.self_annotation, scope or None, is_type_arg=True)
             return func
         elif kind == "statements":
             return parser._parse_body(tree.body)

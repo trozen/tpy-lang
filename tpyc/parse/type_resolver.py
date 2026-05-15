@@ -164,13 +164,14 @@ class TypeResolver:
         inherit the context, and restored on exit.
 
         `is_type_arg=True` flips bare `None` resolution from `VoidType`
-        (function-return-shape) to `NoneType` (value-bearing slot, e.g.
-        the T in `Future[None]` / `Own[None]` / `list[None]`). Recursive
-        calls into generic-arg slots, structural-wrapper inners (Own,
-        Ptr, readonly, auto_*), tuple elements, and Callable param types
-        pass `True`; union members, Optional/Final/ClassVar inners, and
-        Callable return type stay `False` so VoidType-marker semantics
-        (Union collapse, top-level return shape) survive unchanged.
+        (the function-return-shape singleton) to `NoneType` (the value-
+        carrying unit type, lowered to `std::monostate`). True at every
+        annotation slot except the function-return slot (resolved via
+        `resolve_refs._resolve_return_slot`); union members and Optional/
+        Final/ClassVar inners also stay False so VoidType-marker semantics
+        (Union/Optional collapse, redundant `Any | None`) survive. The
+        flag name is historical and worth renaming to `is_value_position`
+        if/when this materializes as a THIR-level mark.
         """
         if pending_alias is not None:
             prev = self._pending_alias

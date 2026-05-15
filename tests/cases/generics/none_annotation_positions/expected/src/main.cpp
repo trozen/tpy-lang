@@ -4,16 +4,33 @@
 namespace tpyapp::main {
 
 
-// def main() -> None:
-void main() {
-    // # Discard the result -- the call-site type-arg resolution path is
-    // # what this case exercises; binding the result to a typed local is
-    // # covered by `cases/generics/none_annotation_positions`.
-    // identity[None](None)
-    std::monostate __tmp_1 = std::monostate{};
-    identity<std::monostate>(__tmp_1);
+// def takes_none(x: None) -> None:
+void takes_none(std::monostate x) {
+    // local: None = x
+    std::monostate local = x;
     // print("ran")
     std::cout << "ran" << "\n";
+}
+
+// def main() -> None:
+void main() {
+    // f = Field()
+    Field f = Field();
+    // f.take(None)
+    f.take(std::monostate{});
+    // takes_none(None)
+    takes_none(std::monostate{});
+    // with Guard():
+    auto __ctx_1 = Guard();
+    __ctx_1.__enter__();
+    try {
+        // print("body")
+        std::cout << "body" << "\n";
+    } catch (...) {
+        __ctx_1.__exit__();
+        throw;
+    }
+    __ctx_1.__exit__();
 }
 
 void __tpy_init() {

@@ -7,12 +7,9 @@ def identity[T](x: T) -> T:
 
 
 def main() -> None:
-    # Discard the result: assigning to a typed slot would force the
-    # surrounding position to commit to NoneType vs VoidType, which is
-    # a separate design question (variable annotation `x: None` is at
-    # top-level position -> VoidType -> ill-formed C++). Calling the
-    # generic and dropping the result is enough to exercise the
-    # call-site type-arg resolution path.
+    # Discard the result -- the call-site type-arg resolution path is
+    # what this case exercises; binding the result to a typed local is
+    # covered by `cases/generics/none_annotation_positions`.
     identity[None](None)
     print("ran")
 

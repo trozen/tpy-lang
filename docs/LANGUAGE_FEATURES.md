@@ -259,8 +259,8 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `String` | `std::string` (parameters: `const std::string&`) |
 | `StrView` | `std::string_view` |
 | `Char` | `char` |
-| `None` (function return / variable annotation) | `void` |
-| `None` (generic type argument, e.g. `Future[None]`, `Own[None]`, `list[None]`) | `std::monostate` |
+| `None` (function-return slot, e.g. `def f() -> None`) | `void` |
+| `None` (every other annotation slot -- function params, locals, fields, type-args like `Future[None]`/`Own[None]`/`list[None]`, tuple elements, ...) | `std::monostate` |
 | `T \| None` (T value type) | `std::optional<T>` |
 | `T \| None` (T non-value, params/returns/locals) | `T*` (borrow form -- pointer-repr Optional) |
 | `T \| None` (T non-value, fields/containers) | `std::optional<T>` (storage form) |
