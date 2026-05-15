@@ -22,7 +22,7 @@ Turbo Pascal program" and run it through tpyc end-to-end.
    length-prefixed, mutable). FixStr's existing TODOs (concat, eq,
    slicing, common methods) get closed as the POC needs them.
 4. **Be the canonical reference example** for plugin authors. Lives
-   in-tree at `examples/frontends/pascal/`; CI compiles its test
+   in-tree at `frontends/pascal/`; CI compiles its test
    suite to guard against plugin-API regressions.
 
 ## Non-goals
@@ -209,7 +209,7 @@ TPy-core changes.
   link via `# tpy: link("SDL2")` -- users need `libsdl2-dev`
   installed. Programs that don't `uses GraphSDL` (including
   every regular test) compile without any SDL2 dependency.
-  Manual demo lives at `examples/frontends/pascal/sdl_demo/`.
+  Manual demo lives at `frontends/pascal/sdl_demo/`.
 
 ### Tier 3 (genuinely out)
 
@@ -264,10 +264,10 @@ TPy-core changes.
 
 ## Translator architecture
 
-The plugin is a single Python package at `examples/frontends/pascal/`:
+The plugin is a single Python package at `frontends/pascal/`:
 
 ```
-examples/frontends/pascal/
+frontends/pascal/
   pascal_frontend.py         # PLUGIN entry, FrontendPlugin subclass
   DESIGN.md                  # this file
   lexer.py                   # token stream
@@ -366,7 +366,7 @@ class PascalFrontend(FrontendPlugin):
 PLUGIN = PascalFrontend
 ```
 
-CLI: `tpyc --dsl-plugin examples/frontends/pascal/pascal_frontend.py
+CLI: `tpyc --dsl-plugin frontends/pascal/pascal_frontend.py
 hello.pas`.
 
 ## Pascal-specific behaviors -- summary table
@@ -399,7 +399,7 @@ tests/cases/pascal/hello/
 ```
 
 The compiler invocation is the same as for `.py` cases, except with
-`--dsl-plugin examples/frontends/pascal/pascal_frontend.py` and a
+`--dsl-plugin frontends/pascal/pascal_frontend.py` and a
 `.pas` entry point.
 
 Snapshot policy follows `CLAUDE.md`'s test-case rules: the
@@ -511,7 +511,7 @@ TODOs the tier needs.
     canvas via the `tpy::pascal::sdl_show_pixels` C++ wrapper.
     Opt-in: triggers a system `-lSDL2` link only when imported;
     regular tests don't touch it. Manual demo program at
-    `examples/frontends/pascal/sdl_demo/`.
+    `frontends/pascal/sdl_demo/`.
 
 Each milestone closes with: tests in `tests/cases/pascal/`, snapshot
 diagnostics + output + generated C++ checked in, runs green under

@@ -1,0 +1,6 @@
+{
+    "plugin": "frontends/pascal/pascal_frontend.py",
+    "dsl_opts": {
+        "sdl": "off"
+    }
+}

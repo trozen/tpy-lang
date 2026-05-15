@@ -14,8 +14,8 @@ Install SDL2 dev headers/libs (one-time):
 
 Then from the repo root:
 
-    uv run tpy --dsl-plugin examples/frontends/pascal/pascal_frontend.py \
-               examples/frontends/pascal/sdl_demo/main.pas
+    uv run tpy --dsl-plugin frontends/pascal/pascal_frontend.py \
+               frontends/pascal/sdl_demo/main.pas
 
 The plugin defaults to `--dsl-opt pascal.sdl=auto`, which probes for the
 SDL2 dev headers and silently enables the SDL window when they're

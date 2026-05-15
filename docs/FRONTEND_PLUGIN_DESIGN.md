@@ -16,7 +16,7 @@ normal sema + codegen pipeline. The plugin is purely a *syntactic
 frontend*: it produces frontend IR and stops.
 
 The first concrete use case is a Turbo Pascal POC (see
-`examples/frontends/pascal/DESIGN.md`). The design is also driven by a
+`frontends/pascal/DESIGN.md`). The design is also driven by a
 larger internal target with cross-file implicit visibility,
 project-file-driven source discovery, language-specific runtime state,
 native C++ runtime bindings, and an out-of-tree plugin/runtime ownership
@@ -1186,7 +1186,7 @@ not foreclose them.
 
 ## Out of scope for this doc
 
-- The Pascal POC plan -- see `examples/frontends/pascal/DESIGN.md`.
+- The Pascal POC plan -- see `frontends/pascal/DESIGN.md`.
 - Specific external-language frontend designs -- those live in their
   respective plugins' repositories and reference this doc as the
   contract.

@@ -3,8 +3,8 @@
   SDL2 dependency. Run locally with libsdl2-dev installed:
 
       sudo apt install libsdl2-dev   (or your distro's equivalent)
-      uv run tpy --dsl-plugin examples/frontends/pascal/pascal_frontend.py \
-                 examples/frontends/pascal/sdl_demo/main.pas
+      uv run tpy --dsl-plugin frontends/pascal/pascal_frontend.py \
+                 frontends/pascal/sdl_demo/main.pas
 
   CloseGraph opens a window with the canvas; press any key or
   close the window to exit. The same drawing also writes

@@ -1714,7 +1714,7 @@ contract; the compiler internals stay free to evolve.
 
 **Current state**: Design draft. See `docs/FRONTEND_PLUGIN_DESIGN.md`. No
 implementation yet -- the design is shaped by two concrete v1 targets (Pascal
-POC at `examples/frontends/pascal/DESIGN.md` + a larger internal DSL) and lists
+POC at `frontends/pascal/DESIGN.md` + a larger internal DSL) and lists
 22 explicitly-anticipated future requirements.
 
 **Dependencies**: None (parser + sema + codegen are the consumers; the plugin

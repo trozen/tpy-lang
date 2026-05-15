@@ -2,7 +2,7 @@
 
 Entry module: exposes `PLUGIN` for the compiler to pick up via
 `--dsl-plugin path/to/pascal_frontend.py`. See
-`examples/frontends/pascal/DESIGN.md` for the milestone roadmap.
+`frontends/pascal/DESIGN.md` for the milestone roadmap.
 """
 
 from __future__ import annotations

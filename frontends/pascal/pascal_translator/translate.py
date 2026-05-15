@@ -108,7 +108,7 @@ _TYPE_MAP: dict[str, str] = {
     # TP `real` is a 6-byte float at the hardware level; we map both
     # `real` and `double` to TPy's `float` (IEEE 754 64-bit) for the
     # POC. Divergence documented in
-    # `examples/frontends/pascal/DESIGN.md`.
+    # `frontends/pascal/DESIGN.md`.
     "real": "float",
     "double": "float",
     "single": "float",
