@@ -1,17 +1,17 @@
-{ Manual demo for the optional SDL2 display layer (M22). NOT a
+{ Manual demo for the SDL2 display path of the Graph unit. NOT a
   pytest case -- the regular test suite must stay free of system
   SDL2 dependency. Run locally with libsdl2-dev installed:
 
       sudo apt install libsdl2-dev   (or your distro's equivalent)
-      cd examples/frontends/pascal/sdl_demo
-      uv run --project ../../../.. tpy main.pas
+      uv run tpy --dsl-plugin examples/frontends/pascal/pascal_frontend.py \
+                 examples/frontends/pascal/sdl_demo/main.pas
 
-  A window with a drawn scene opens; press any key or close the
-  window to exit. The same drawing also writes `out.ppm` in the
-  build dir, so users without SDL2 can run the program too --
-  they just won't get the interactive window. }
+  CloseGraph opens a window with the canvas; press any key or
+  close the window to exit. The same drawing also writes
+  `out.ppm` in the cwd, so users without SDL2 (or with
+  --dsl-opt pascal.sdl=off) still get a viewable snapshot. }
 program SDLDemo;
-uses Graph, GraphSDL;
+uses Graph;
 const
   Red = 4;
   Green = 2;
@@ -24,7 +24,11 @@ var
   gd, gm: integer;
 begin
   gd := 0;
-  gm := 0;  { default 320x200 }
+  { Explicit 320x200 canvas via the mode = width*1000 + height
+    smuggle. With `gm := 0` the BGI Detect path picks VGAHi
+    (640x480, matching TP7 on a VGA card), which is too big for
+    this hello-house scene. }
+  gm := 320200;
   initgraph(gd, gm, '');
 
   setcolor(LightBlue);
@@ -47,6 +51,5 @@ begin
   setcolor(White);
   outtextxy(80, 20, 'HELLO BGI');
 
-  show;
   closegraph;
 end.

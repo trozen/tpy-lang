@@ -26,6 +26,7 @@ from pascal_translator import parser as _parser  # noqa: E402
 from pascal_translator import translate as _translate  # noqa: E402
 from pascal_translator.lexer import LexError  # noqa: E402
 from pascal_translator.parser import ParseError  # noqa: E402
+from pascal_translator.translate import read_pascal_source  # noqa: E402
 
 
 class PascalFrontend(FrontendPlugin):
@@ -34,9 +35,23 @@ class PascalFrontend(FrontendPlugin):
     extensions = (".pas", ".pp")
     decorator_manifest = ()       # Pascal has no decorators in M1
 
+    def library_paths(self) -> tuple[Path, ...]:
+        # Two dirs: the plugin root (so `pascal.runtime.io` and
+        # similar dotted-stdlib modules resolve as `pascal/runtime/
+        # io.py`) and `pascal/lib/` (so bare `uses Crt`-style imports
+        # resolve to `pascal/lib/crt.py`). Both are needed; surfacing
+        # them through the FrontendPlugin hook means users only have
+        # to pass `--dsl-plugin pascal_frontend.py` -- no extra `-L`.
+        return (_THIS_DIR, _THIS_DIR / "pascal" / "lib")
+
     def parse(self, ctx: WorkspaceContext,
               module_name: str, file_path: Path) -> FrontendOutput:
-        source = ctx.read_file(file_path)
+        # Use the encoding-tolerant reader rather than ctx.read_file
+        # (which is UTF-8 only). TP7 source typically lives in a
+        # DOS / Windows-Eastern-European code page; reading it as
+        # UTF-8 raises on the first accented character in a
+        # comment or string literal.
+        source = read_pascal_source(file_path)
         try:
             program = _parser.parse(source, file_path)
         except (LexError, ParseError) as e:

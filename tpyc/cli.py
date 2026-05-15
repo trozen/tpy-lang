@@ -447,6 +447,23 @@ def _run_cli(is_runner: bool) -> int:
         return 1
     plugin_extensions = (frontend_registry.all_extensions()
                          if frontend_registry is not None else frozenset())
+    # Plugins may contribute extra library search dirs (e.g. the
+    # Pascal frontend ships its stdlib at `pascal/lib/`). Append them
+    # before the implicit TPy stdlib so the user doesn't need a `-L`
+    # for each plugin-owned directory.
+    if frontend_registry is not None:
+        plugin_libs: list[Path] = []
+        for p in frontend_registry.plugins:
+            for d in p.library_paths():
+                plugin_libs.append(Path(d).resolve())
+        stdlib_pos = len(lib_dirs)
+        if not args.no_stdlib:
+            # `lib_dirs` ends with the TPy stdlib (`lib/tpy/`) when
+            # not --no-stdlib; keep plugin libs ahead of it so they
+            # don't shadow stdlib lookups but still come after user
+            # `-L` dirs.
+            stdlib_pos = len(lib_dirs) - 1
+        lib_dirs[stdlib_pos:stdlib_pos] = plugin_libs
 
     if reading_from_stdin:
         source = args.cmd if args.cmd is not None else sys.stdin.read()

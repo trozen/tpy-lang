@@ -115,6 +115,18 @@ def nosound() -> None:
     pass
 
 
+def keypressed() -> bool:
+    """TP7 `KeyPressed`: True if a key is waiting in the keyboard
+    buffer. Real TP7 polls the BIOS keyboard state; the POC has no
+    non-blocking stdin probe, so we always return True. The common
+    idiom `repeat ... until KeyPressed;` thus exits its loop on the
+    first iteration -- programs that relied on the loop running for
+    a while will need explicit `delay()` calls between checks. The
+    SDL display hook (when on) provides the user-visible "block
+    until key" via the show-blocking call at CloseGraph."""
+    return True
+
+
 def readkey() -> Char:
     # TP7's ReadKey returns one character without echo. Without
     # raw-mode termios (unavailable in TPy), the closest portable

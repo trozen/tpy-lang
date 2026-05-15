@@ -12,6 +12,7 @@ using ::tpyapp::crt::clreol;
 using ::tpyapp::crt::clrscr;
 using ::tpyapp::crt::delay;
 using ::tpyapp::crt::gotoxy;
+using ::tpyapp::crt::keypressed;
 using ::tpyapp::crt::nosound;
 using ::tpyapp::crt::readkey;
 using ::tpyapp::crt::sound;

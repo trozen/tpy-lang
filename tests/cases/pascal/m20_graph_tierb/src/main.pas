@@ -51,7 +51,7 @@ begin
     the rightmost outline pixel should be at (50, 20). Fill at
     (60, 20) same radii; the center should be lit. }
   setcolor(Red);
-  ellipse(40, 20, 10, 5);
+  ellipse(40, 20, 0, 360, 10, 5);
   writeln('ell_right@50,20=', getpixel(50, 20));
   writeln('ell_top@40,15=', getpixel(40, 15));
   writeln('ell_center@40,20=', getpixel(40, 20));

@@ -681,7 +681,12 @@ def _frontend_registry_for(src_file: Path):
     from tpyc.frontend_plugin import FrontendRegistry, load_plugin
     plugin_dir = PROJECT_ROOT / "examples" / "frontends" / "pascal"
     plugin_path = plugin_dir / "pascal_frontend.py"
-    plugin = load_plugin(str(plugin_path), {})
+    # Force `sdl=off`: tests must not link SDL2 (the regular suite
+    # has to stay free of system SDL2 dependency). Default `auto`
+    # would otherwise flip to `on` on dev machines that happen to
+    # have libsdl2-dev installed and make graph-using tests block
+    # on a window dialog.
+    plugin = load_plugin(str(plugin_path), {"sdl": "off"})
     reg = FrontendRegistry()
     reg.register(plugin)
     # Pascal-frontend stdlib lives at `pascal/lib/`. Adding it as a

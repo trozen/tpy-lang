@@ -120,7 +120,18 @@ class _Parser:
             )
         self.i += 1
         kind = head.text
-        name_tok = self._eat(TokKind.IDENT)
+        # Accept type-spelling keywords (`text`, `string`, ...) as
+        # program/unit names too -- TP7 lets a user name a unit
+        # `text` even though that word also tags file-handle types.
+        # Without this, an `_ingest_unit_signatures` pass on a
+        # `unit text;` declaration parser-errors before any of its
+        # signatures are harvested.
+        if (self.cur.kind == TokKind.KEYWORD
+                and self.cur.text in self._USES_KEYWORD_ALLOW):
+            name_tok = self.cur
+            self.i += 1
+        else:
+            name_tok = self._eat(TokKind.IDENT)
         self._eat(TokKind.SEMI)
         if kind == "unit":
             return self._parse_unit_body(head, name_tok)
@@ -323,20 +334,41 @@ class _Parser:
         self._eat(TokKind.SEMI)
         return names
 
+    # Type-spelling keywords (`text`, `string`, `integer`, ...) that
+    # legacy TP7 programs sometimes also use as user-unit names
+    # (`uses crt, graph, text;`). Accept them as identifiers in the
+    # uses-clause / dotted-name positions where there's no ambiguity
+    # with their type-spec role.
+    _USES_KEYWORD_ALLOW: frozenset[str] = frozenset({
+        "text", "string", "integer", "boolean", "char", "real",
+    })
+
     def _parse_uses_name(self) -> str:
         """One unit name in a `uses` clause. Accepts either a bare
         identifier (canonical Pascal unit) or `py.X` (escape hatch to
         TPy stdlib / arbitrary Python module). Future dotted Delphi-
         style names (`System.SysUtils`) follow the same shape but
         skip the `py` interpretation."""
-        head = self._eat(TokKind.IDENT)
+        head = self._eat_uses_segment()
         if self.cur.kind == TokKind.DOT:
-            parts = [head.text]
+            parts = [head]
             while self.cur.kind == TokKind.DOT:
                 self.i += 1
-                parts.append(self._eat(TokKind.IDENT).text)
+                parts.append(self._eat_uses_segment())
             return ".".join(parts)
-        return head.text
+        return head
+
+    def _eat_uses_segment(self) -> str:
+        """One identifier-like segment in a uses clause. Accepts a
+        bare identifier or one of the type-spelling keywords in
+        `_USES_KEYWORD_ALLOW` (so `uses crt, graph, text;` parses
+        even though `text` is a keyword elsewhere)."""
+        if (self.cur.kind == TokKind.KEYWORD
+                and self.cur.text in self._USES_KEYWORD_ALLOW):
+            tok = self.cur
+            self.i += 1
+            return tok.text
+        return self._eat(TokKind.IDENT).text
 
     # ------------------------------------------------------------------
     # Const declarations
@@ -407,14 +439,29 @@ class _Parser:
             )
         elements: list = []
         if self.cur.kind != TokKind.RPAREN:
-            elements.append(self.parse_expression())
+            elements.append(self._parse_array_const_element())
             while self.cur.kind == TokKind.COMMA:
                 self.i += 1
-                elements.append(self.parse_expression())
+                elements.append(self._parse_array_const_element())
         end = self._eat(TokKind.RPAREN)
         return pa.ArrayLit(
             elements=elements, loc=self._loc(start, end),
         )
+
+    def _parse_array_const_element(self):
+        """One element inside an array-typed-const literal. Most
+        elements are plain expressions (`42`, `'foo'`, named consts),
+        but TP7 also allows nested record literals
+        (`(x: 1; y: 2)`) when the element type is a record -- the
+        canonical use is `array[1..N] of pointtype = ((x:_;y:_), ...)`.
+        We dispatch on the next token: a `(` followed by `IDENT :`
+        is a record literal; anything else falls through to a regular
+        expression."""
+        if (self.cur.kind == TokKind.LPAREN
+                and self._peek(1).kind == TokKind.IDENT
+                and self._peek(2).kind == TokKind.COLON):
+            return self._parse_typed_const_paren_lit()
+        return self.parse_expression()
 
     def _peek(self, offset: int):
         """Return the token at `self.i + offset` (or EOF if past end)."""
@@ -838,7 +885,15 @@ class _Parser:
         # auto-pointer-promotion is in place).
         type_tok = self.cur
         if type_tok.kind == TokKind.KEYWORD:
-            if type_tok.text not in ("integer", "boolean", "real", "double"):
+            # `text` is the file-handle type; `string`/`char` are the
+            # canonical TP7 string types. All three are common as
+            # procedure parameter types in legacy code, so accept
+            # them as type-keyword spellings here. The translator
+            # may still bail on the body if it can't lower one of
+            # them, but a parse-time rejection is the wrong layer.
+            if type_tok.text not in (
+                    "integer", "boolean", "real", "double",
+                    "string", "char", "text"):
                 raise ParseError(
                     f"unsupported parameter type {type_tok.text!r}",
                     type_tok.line, type_tok.col,

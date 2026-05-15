@@ -87,12 +87,32 @@ _TYPE_MAP: dict[str, str] = {
     "integer": "Int32",
     "boolean": "bool",
     "char": "Char",
+    # TP7 numeric type aliases. `byte` is 0..255 (8-bit), `word`
+    # is 0..65535 (16-bit), `longint` is the signed 32-bit alias,
+    # `cardinal` / `longword` are the unsigned 32-bit aliases. The
+    # POC collapses all of them onto Int32 (signed 32-bit) so they
+    # interoperate freely with the rest of the Pascal stdlib
+    # (initgraph, etc., all use Int32). The unsigned/byte/word
+    # ranges are not enforced; programs that depend on
+    # wraparound-on-overflow semantics will need explicit subrange
+    # types once those land.
+    "byte": "Int32",
+    "shortint": "Int32",
+    "word": "Int32",
+    "smallint": "Int32",
+    "longint": "Int32",
+    "longword": "Int32",
+    "cardinal": "Int32",
+    "int64": "Int64",
+    "qword": "Int64",
     # TP `real` is a 6-byte float at the hardware level; we map both
     # `real` and `double` to TPy's `float` (IEEE 754 64-bit) for the
     # POC. Divergence documented in
     # `examples/frontends/pascal/DESIGN.md`.
     "real": "float",
     "double": "float",
+    "single": "float",
+    "extended": "float",
 }
 
 # Types that should NOT trigger an automatic `from tpy import X` -- the
@@ -248,6 +268,14 @@ class _Ctx:
     current_func: str | None = None
     current_func_return_type: str | None = None
     current_var_params: set[str] = field(default_factory=set)
+    # SDL2 display mode resolved from `--dsl-opt pascal.sdl=on|off|auto`.
+    # When True and the program uses Graph, the translator transparently
+    # imports `_graph_sdl_hook` and prefixes each `closegraph` call with
+    # a `_sdl_show_canvas()` so the canvas pops up in an SDL window
+    # before teardown. Legacy `uses Graph` programs gain the window for
+    # free; programs that compile with `sdl=off` (default in CI / when
+    # libsdl2-dev is absent) stay SDL2-link-free.
+    sdl_enabled: bool = False
 
     def add_import(self, module: str, name: str) -> None:
         self.needed_imports.setdefault(module, set()).add(name)
@@ -258,11 +286,44 @@ class _Ctx:
         return f"__pascal_synth_{hint}_{i}"
 
 
+def _resolve_sdl_mode(workspace) -> bool:
+    """Decide whether SDL display is wired into Graph for this build.
+
+    Reads the `pascal.sdl` plugin option (`on`/`off`/`auto`, default
+    `auto`). `auto` probes for libsdl2 dev headers in the usual
+    distro locations -- present means the user can have a real SDL2
+    window, absent means PPM-only. Returns True iff the SDL2 path
+    should be active.
+    """
+    mode = "auto"
+    if workspace is not None and getattr(workspace, "options", None):
+        mode = workspace.options.get("sdl", "auto").lower()
+    if mode == "on":
+        return True
+    if mode == "off":
+        return False
+    # auto: probe a few canonical libsdl2-dev include locations. The
+    # actual compile step still fails cleanly if the header turns out
+    # to be missing, so a false-positive here just defers the error
+    # by one phase.
+    from pathlib import Path as _P
+    for cand in (
+        "/usr/include/SDL2/SDL.h",
+        "/usr/local/include/SDL2/SDL.h",
+        "/opt/homebrew/include/SDL2/SDL.h",
+        "/usr/include/x86_64-linux-gnu/SDL2/SDL.h",
+    ):
+        if _P(cand).is_file():
+            return True
+    return False
+
+
 def translate(program: pa.Program,
               module_name: str,
               workspace=None,
               ) -> tuple[FrontendModule, list[Diagnostic]]:
     ctx = _Ctx(workspace=workspace)
+    ctx.sdl_enabled = _resolve_sdl_mode(workspace)
 
     # Pre-scan subroutines so callers can see their signatures even
     # when emitted before the callee in source order.
@@ -378,6 +439,15 @@ def translate(program: pa.Program,
                 _ingest_unit_signatures(resolved_path, ctx)
             elif resolved_path is not None and resolved_path.suffix == ".py":
                 _ingest_py_module_signatures(resolved_path, ctx)
+
+    # SDL display hook: when SDL mode is active and the program uses
+    # the Graph unit, transparently add `_graph_sdl_hook` to the
+    # star-imports. The hook module brings in the `-lSDL2` link
+    # directive and the native `sdl_show_pixels` binding; closegraph
+    # call lowering will prefix each `closegraph` with a synthetic
+    # `_sdl_show_canvas()` call so the window pops up at teardown.
+    if ctx.sdl_enabled and "graph" in ctx.star_imports:
+        ctx.star_imports.add("_graph_sdl_hook")
 
     records: list = []
     enums: list = []
@@ -572,7 +642,7 @@ def _ingest_py_module_signatures(path, ctx: _Ctx) -> None:
     type."""
     import ast as _pyast
     try:
-        source = path.read_text()
+        source = read_pascal_source(path)
         tree = _pyast.parse(source)
     except Exception:
         return
@@ -614,7 +684,7 @@ def _ingest_unit_signatures(path, ctx: _Ctx) -> None:
     """
     from . import parser as pa_parser
     try:
-        source = path.read_text()
+        source = read_pascal_source(path)
         unit_program = pa_parser.parse(source, path)
     except Exception:
         return
@@ -2092,6 +2162,19 @@ def _lower_compound_as_marker(stmt: pa.CompoundStmt, ctx: _Ctx):
     return None
 
 
+_SDL_PRESENT_AFTER: frozenset[str] = frozenset({
+    # After these Graph/Crt calls, push the current canvas to the
+    # SDL window so any animation between initgraph and closegraph
+    # actually becomes visible. `delay` and `setvisualpage` are
+    # TP7's natural "frame complete" boundaries -- demoscene code
+    # uses one or the other to pace each frame. `setactivepage`
+    # and `clearviewport` are not present-points (they typically
+    # precede the new frame's drawing).
+    "delay",
+    "setvisualpage",
+})
+
+
 def _lower_stmt_to_tuple(stmt, ctx: _Ctx) -> tuple:
     """Lower one Pascal statement, flattening either single-statement
     or multi-statement lowering returns. Some Pascal statements (e.g.
@@ -2101,8 +2184,35 @@ def _lower_stmt_to_tuple(stmt, ctx: _Ctx) -> tuple:
     if lowered is None:
         return ()
     if isinstance(lowered, (tuple, list)):
-        return tuple(lowered)
-    return (lowered,)
+        result = tuple(lowered)
+    else:
+        result = (lowered,)
+    # SDL hook injection: when SDL is wired into Graph, append an
+    # implicit `_tpy_pascal_sdl_*` call after specific Pascal
+    # calls. This is what makes mid-program animation actually
+    # visible -- without it, the SDL window only pops up at
+    # closegraph, showing the final frame and nothing of what
+    # happened along the way.
+    if ctx.sdl_enabled and "_graph_sdl_hook" in ctx.star_imports:
+        if isinstance(stmt, pa.CallStmt) and isinstance(
+                stmt.callee, pa.Ident):
+            cname = stmt.callee.name
+            extra: object | None = None
+            if cname == "initgraph":
+                extra = "_tpy_pascal_sdl_open_window"
+            elif cname in _SDL_PRESENT_AFTER:
+                extra = "_tpy_pascal_sdl_present"
+            if extra is not None:
+                ir_loc = _to_ir_loc(stmt.loc)
+                hook = ExprStmt(
+                    value=Call(
+                        callee=Name(ident=extra, loc=ir_loc),
+                        args=(), loc=ir_loc,
+                    ),
+                    loc=ir_loc,
+                )
+                result = result + (hook,)
+    return result
 
 
 def _lower_branch(stmt, ctx: _Ctx) -> tuple:
@@ -2293,6 +2403,41 @@ def _lower_call_stmt(stmt: pa.CallStmt, ctx: _Ctx):
             args=(), loc=_to_ir_loc(stmt.loc),
         )
         return ExprStmt(value=call, loc=_to_ir_loc(stmt.loc))
+    if (name == "closegraph" and ctx.sdl_enabled
+            and "_graph_sdl_hook" in ctx.star_imports):
+        # SDL mode is on and the program uses Graph: wrap the
+        # closegraph call with the show-blocking / close-window
+        # pair so the user sees the final canvas, presses any key,
+        # and the SDL window then tears down before the canvas
+        # state is wiped. The hook functions' awkward names reduce
+        # accidental collision with Pascal identifiers.
+        ir_loc = _to_ir_loc(stmt.loc)
+        callee_loc = _to_ir_loc(stmt.callee.loc)
+
+        def _hook_call(ident: str) -> ExprStmt:
+            return ExprStmt(
+                value=Call(
+                    callee=Name(ident=ident, loc=ir_loc),
+                    args=(), loc=ir_loc,
+                ),
+                loc=ir_loc,
+            )
+
+        # Build the closegraph call ourselves rather than recursing
+        # back into _lower_call_stmt (which would re-trigger this
+        # block via the same ctx.sdl_enabled / star_imports state).
+        close_call = ExprStmt(
+            value=Call(
+                callee=Name(ident="closegraph", loc=callee_loc),
+                args=(), loc=ir_loc,
+            ),
+            loc=ir_loc,
+        )
+        return [
+            _hook_call("_tpy_pascal_sdl_show_canvas"),
+            close_call,
+            _hook_call("_tpy_pascal_sdl_close_window"),
+        ]
     sig = ctx.signatures.get(name)
     if sig is None:
         # Calling through a procedural-typed local: `f(x)` where
@@ -3522,6 +3667,33 @@ def _to_ir_loc(loc: pa.Loc) -> IRLoc:
     )
 
 
+def read_pascal_source(path: Path) -> str:
+    """Read a Pascal source file with encoding fallback.
+
+    TP7 source from the DOS / early-Windows era is typically in a
+    code-page-437 (US-DOS), CP852 (DOS Eastern European), or
+    CP1250 (Windows Eastern European) encoding rather than UTF-8.
+    A naive `Path.read_text()` chokes on the high bytes used for
+    accented characters in string literals and comments.
+
+    Strategy: try UTF-8 first (the modern default). On a decode
+    failure, fall back through the common DOS / Windows
+    Eastern-European code pages, then Latin-1 (one-to-one, never
+    fails) as the last resort. Used by both the entry-point parse
+    path and the `uses`-clause unit ingestion.
+    """
+    raw = path.read_bytes()
+    for enc in ("utf-8", "cp852", "cp1250", "cp437", "latin-1"):
+        try:
+            return raw.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    # latin-1 above can't actually fail (every byte maps), so we
+    # only get here when path.read_bytes itself failed -- but be
+    # defensive and surface SOMETHING rather than swallow.
+    return raw.decode("latin-1", errors="replace")
+
+
 def _zero_loc() -> pa.Loc:
     return pa.Loc(file=Path("<unknown>"),
                   line=0, col=0, end_line=0, end_col=0)
@@ -3531,6 +3703,16 @@ def _diag(message: str, loc: pa.Loc) -> Diagnostic:
     from tpyc.parse import SourceLocation
     return Diagnostic(
         level=DiagnosticLevel.ERROR,
+        message=message,
+        loc=SourceLocation(line=loc.line, column=max(0, loc.col - 1),
+                           file=str(loc.file)),
+    )
+
+
+def _warn(message: str, loc: pa.Loc) -> Diagnostic:
+    from tpyc.parse import SourceLocation
+    return Diagnostic(
+        level=DiagnosticLevel.WARNING,
         message=message,
         loc=SourceLocation(line=loc.line, column=max(0, loc.col - 1),
                            file=str(loc.file)),

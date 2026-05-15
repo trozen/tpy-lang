@@ -25,6 +25,64 @@ import math as _math
 from tpy import Int32
 
 
+# TP7 BGI graphics-driver constants. Programs typically write
+# `gd := VGA; gm := VGAMed; InitGraph(gd, gm, '')` -- the names are
+# expected to exist as module-level constants. The POC ignores the
+# driver/mode pair (initgraph hard-codes the canvas size); the
+# constants are here so user code that mentions them resolves.
+# Names are lowercased because the Pascal frontend canonicalises
+# identifiers to lowercase at parse time -- a Pascal `VGA` and
+# `vga` both look up the symbol `vga` in this module.
+detect: Int32 = Int32(0)
+cga: Int32 = Int32(1)
+mcga: Int32 = Int32(2)
+ega: Int32 = Int32(3)
+ega64: Int32 = Int32(4)
+egamono: Int32 = Int32(5)
+ibm8514: Int32 = Int32(6)
+hercmono: Int32 = Int32(7)
+att400: Int32 = Int32(8)
+vga: Int32 = Int32(9)
+pc3270: Int32 = Int32(10)
+currentdriver: Int32 = Int32(-128)
+
+# BGI graphics-mode constants. The POC only honours `mode=0`
+# (Detect-equivalent, default 320x200) and a "smuggle dimensions"
+# extension via mode = width*1000+height; the named modes here are
+# accepted-but-ignored. Real TP7 values:
+vgalo: Int32 = Int32(0)     # 640x200, 16 colours, 4 pages
+vgamed: Int32 = Int32(1)    # 640x350, 16 colours, 2 pages
+vgahi: Int32 = Int32(2)     # 640x480, 16 colours, 1 page
+egalo: Int32 = Int32(0)
+egahi: Int32 = Int32(1)
+cgac0: Int32 = Int32(0)
+cgac1: Int32 = Int32(1)
+cgac2: Int32 = Int32(2)
+cgac3: Int32 = Int32(3)
+cgahi: Int32 = Int32(4)
+
+# TP7 BGI 16-color palette names. Programs say `setcolor(LightBlue)`
+# rather than `setcolor(9)`; without these constants the source
+# fails to resolve. Values match the palette index used by
+# `_resolve_color`.
+black: Int32 = Int32(0)
+blue: Int32 = Int32(1)
+green: Int32 = Int32(2)
+cyan: Int32 = Int32(3)
+red: Int32 = Int32(4)
+magenta: Int32 = Int32(5)
+brown: Int32 = Int32(6)
+lightgray: Int32 = Int32(7)
+darkgray: Int32 = Int32(8)
+lightblue: Int32 = Int32(9)
+lightgreen: Int32 = Int32(10)
+lightcyan: Int32 = Int32(11)
+lightred: Int32 = Int32(12)
+lightmagenta: Int32 = Int32(13)
+yellow: Int32 = Int32(14)
+white: Int32 = Int32(15)
+
+
 # TP7 16-color palette -> 0xRRGGBB packed. We drop the alpha
 # channel (Int32 fits 24-bit RGB but not 32-bit ARGB); when an
 # SDL display layer ships, the present-loop synthesises alpha
@@ -103,17 +161,50 @@ def _set_pixel_raw(x: Int32, y: Int32, packed: Int32) -> None:
 
 def initgraph(driver: Int32, mode: Int32, path: str) -> None:
     """Open a graphics canvas. The TP7 `driver` / `mode` /
-    `pathtodriver` args are accepted for source-language fidelity;
-    we pick a fixed canvas size (320x200) when `driver=0`
-    (Detect). Non-zero `mode` lets a Pascal program request a
-    different size by smuggling `width*1000 + height` -- a
-    convenience-only extension; standard TP7 programs leave both
-    at zero and rely on the default."""
-    if mode > 0:
+    `pathtodriver` args are accepted for source-language fidelity.
+    The standard TP7 mode constants (vgalo / vgamed / vgahi /
+    egalo / egahi / cgahi etc.) are small integers in the 0..10
+    range; we map them to their real BGI dimensions. A `mode >=
+    1001` is interpreted as a width*1000 + height smuggle, a POC
+    convenience extension for programs that want an unusual canvas
+    size."""
+    if mode >= 1001:
         width = mode // 1000
         height = mode % 1000
-    else:
+    elif driver == 9 and mode == 0:        # VGA + VGALo
+        width = 640
+        height = 200
+    elif driver == 9 and mode == 1:        # VGA + VGAMed
+        width = 640
+        height = 350
+    elif driver == 9 and mode == 2:        # VGA + VGAHi
+        width = 640
+        height = 480
+    elif driver == 3 and mode == 0:        # EGA + EGALo
+        width = 640
+        height = 200
+    elif driver == 3 and mode == 1:        # EGA + EGAHi
+        width = 640
+        height = 350
+    elif driver == 1 and mode == 4:        # CGA + CGAHi
+        width = 640
+        height = 200
+    elif driver == 1:                      # other CGA modes
         width = 320
+        height = 200
+    else:
+        # Detect (driver=0), unknown driver/mode, or any other
+        # combination. Legacy TP7 demos used `gd := Detect; gm :=
+        # Detect;` -- the BGI picked whatever the card supported.
+        # On a typical CGA machine that was CGAHi (640x200); on
+        # EGA/VGA the chosen mode was taller, but classic kid-
+        # program coordinates rarely went past y=200 so the image
+        # ended up crammed in the upper part of a tall window.
+        # 640x200 is the lowest common denominator that still fits
+        # the corpus of legacy programs the POC targets. Programs
+        # that want a different size use the smuggle (mode = w*1000
+        # + h) or pass an explicit driver+mode pair.
+        width = 640
         height = 200
     _ctx.width = Int32(width)
     _ctx.height = Int32(height)
@@ -181,6 +272,63 @@ def cleardevice() -> None:
     while i < n:
         _ctx.pixels[i] = bg_packed
         i += 1
+
+
+def clearviewport() -> None:
+    """TP7 BGI: fill the active viewport with the background color.
+    The POC has no viewport concept (the whole canvas is the
+    viewport), so this is equivalent to `cleardevice`."""
+    cleardevice()
+
+
+def setfillstyle(pattern: Int32, color: Int32) -> None:
+    """TP7 BGI fill style. The POC only supports solid fill, so the
+    pattern argument is accepted for source-compatibility but
+    ignored. The color updates the foreground pen so subsequent
+    `bar` / `fillellipse` / `floodfill` calls use it."""
+    _ctx.fg = color
+
+
+def settextstyle(font: Int32, direction: Int32, size: Int32) -> None:
+    """TP7 BGI font selection. The POC ships only the 8x8 bitmap
+    font with left-to-right horizontal direction, so font /
+    direction / size are accepted for source-compatibility but
+    ignored."""
+    pass
+
+
+def setlinestyle(line_style: Int32, pattern: Int32,
+                 thickness: Int32) -> None:
+    """TP7 BGI line style: SolidLn / DottedLn / CenterLn / DashedLn
+    / UserBitLn, optional 16-bit user pattern, NormWidth (1) or
+    ThickWidth (3). The POC always draws solid 1-pixel lines, so
+    these are accepted for source-compatibility but ignored."""
+    pass
+
+
+def setgraphmode(mode: Int32) -> None:
+    """TP7 BGI: switch graphics modes while a session is open. The
+    POC keeps the canvas dimensions chosen at `initgraph` and does
+    not honour mid-program mode switches; the call is accepted for
+    source-compatibility but ignored. Programs that need a
+    different canvas size should pass the desired mode to
+    `initgraph` directly (or use the width*1000+height smuggle)."""
+    pass
+
+
+def setactivepage(page: Int32) -> None:
+    """TP7 BGI page flipping. Multi-page video modes were a TP7
+    feature for double-buffered animation on 16-color cards; the
+    POC has a single canvas, so this is a no-op. Programs that
+    relied on `setactivepage` + `setvisualpage` for flicker-free
+    animation render directly to the canvas instead."""
+    pass
+
+
+def setvisualpage(page: Int32) -> None:
+    """TP7 BGI page flipping (visual half). No-op for the POC --
+    see `setactivepage`."""
+    pass
 
 
 def putpixel(x: Int32, y: Int32, c: Int32) -> None:
@@ -529,11 +677,16 @@ def outtext(s: str) -> None:
 # per-scanline horizontal-extent table.
 
 
-def ellipse(cx: Int32, cy: Int32, rx: Int32, ry: Int32) -> None:
-    """Outline of an axis-aligned ellipse centred at (cx, cy) with
-    horizontal radius `rx` and vertical radius `ry`. Degenerate
-    cases (`rx==0` or `ry==0`) fall back to a single straight
-    line, matching what BGI does on real hardware."""
+def ellipse(cx: Int32, cy: Int32,
+            start_angle: Int32, end_angle: Int32,
+            rx: Int32, ry: Int32) -> None:
+    """Outline of an axis-aligned elliptical arc centred at
+    (cx, cy) with horizontal radius `rx` and vertical radius `ry`,
+    swept from `start_angle` to `end_angle` (degrees, CCW from the
+    +X axis -- TP7 BGI convention). 0..360 draws the full ellipse.
+    The angle parameters are accepted for source-compatibility with
+    TP7 but currently round to "full ellipse" -- partial-arc
+    ellipses can land alongside arc-with-angle support."""
     if rx == 0 and ry == 0:
         _set_pixel_raw(cx, cy, _resolve_color(_ctx.fg))
         return

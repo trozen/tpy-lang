@@ -98,8 +98,8 @@ void __tpy_init() {
     std::cout << ::tpyapp::graph::getpixel(13, 8) << "\n";
     // setcolor(Red);
     ::tpyapp::graph::setcolor(red);
-    // ellipse(40, 20, 10, 5);
-    ::tpyapp::graph::ellipse(40, 20, 10, 5);
+    // ellipse(40, 20, 0, 360, 10, 5);
+    ::tpyapp::graph::ellipse(40, 20, 0, 360, 10, 5);
     // writeln('ell_right@50,20=', getpixel(50, 20));
     std::cout << "ell_right@50,20=";
     // writeln('ell_right@50,20=', getpixel(50, 20));

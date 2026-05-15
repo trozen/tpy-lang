@@ -87,6 +87,15 @@ class FrontendPlugin(ABC):
               module_name: str, file_path: Path) -> FrontendOutput:
         ...
 
+    def library_paths(self) -> tuple[Path, ...]:
+        """Extra directories the plugin contributes to TPy's module
+        search path. The CLI prepends these to `lib_dirs` after the
+        user's `-L` so plugin-shipped libraries (e.g. the Pascal
+        stdlib under `pascal/lib/`) resolve without the user having
+        to pass `-L` for each one. Returns an empty tuple by default.
+        """
+        return ()
+
 
 @dataclass
 class FrontendRegistry:
