@@ -3025,8 +3025,8 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Nullable unions: `A | B | None` maps to `std::variant<A, B, std::monostate>`
   - `v is None` / `v is not None` on nullable unions: `std::holds_alternative<std::monostate>(v)`
   - `is not None` narrows to remaining non-None members; chained isinstance further narrows
-  - Field assignment: `obj.field = local` where field is value-variant and local is pointer-variant auto-converts via `::tpy::to_value_variant()` (copies the active member into field storage, emits copy warning)
-  - `None` assignment to nullable union field: `obj.field = None` emits `std::monostate{}` (not `nullptr`)
+  - Field assignment: `obj.field = local` where field is value-variant and local is pointer-variant auto-converts via `::tpy::to_value_variant()` (copies the active member into field storage, emits copy warning). The wrap is gated on the source being structurally a pointer-variant (ptr_variant local, union param, function call returning a non-value union) -- bare alternative sources (constructor `A(1)`, field access of a value-variant field, etc.) construct the value-variant directly and skip the wrap.
+  - `None` assignment to nullable union field: `obj.field = None` emits `std::monostate{}` (not `nullptr`). Holds even after the field is narrowed to non-None earlier in the same scope (e.g. `if self.f is None: return; ...; self.f = None`) -- the write uses the declared field type, not sema's narrowed view.
   - `copy()` on pointer-variant union locals: variant-aware deep copy via `::tpy::to_value_variant()`, preserving the full union type even when narrowed
   - `v == None` / `v != None` on nullable unions errors with hint to use `is`/`is not`
   - Type aliases: `Shape = Circle | Rect` (old-style assignment) and `type Shape = Circle | Rect` (Python 3.12 `type` statement)
@@ -3073,6 +3073,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Guarded paths (`if x is not None`) and `assert x is not None` narrow `x` to `T`
   - Returning narrowed optional values: `if x is not None: return x` correctly unwraps to `T`
   - Field narrowing: `if obj.field is not None:` narrows `obj.field` to `T` in the guarded scope
+  - Reassigning a narrowed `T | None` field back to `None` (`if self.x is None: return; ...; self.x = None`) emits `std::nullopt` against `std::optional<T>` storage. The assign target uses the declared field type, so the post-narrowing `None` write goes through the boundary conversion as if no narrowing happened. Applies symmetrically to value-Optional fields (`int | None`, etc.)
   - Nested field narrowing: `if obj.inner.field is not None:` narrows through multi-level field access
   - Field truthiness narrowing: `if obj.field:` narrows optional fields (with value-truthiness warning for value types)
   - Field narrowing facts are invalidated when the root object is passed by mutable reference to a function call

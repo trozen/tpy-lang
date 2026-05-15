@@ -459,7 +459,7 @@ class StatementGenerator:
                     # they need &() to produce Dog* for the return variant.
                     is_narrowed = (isinstance(ret_value, TpyName)
                                    and ret_value.name in self.ctx.narrowed_vars)
-                    if self._is_ptr_variant_source(ret_value) and not is_narrowed:
+                    if self.ctx.is_ptr_variant_source(ret_value) and not is_narrowed:
                         ret_expr = self.expressions.gen_expr(ret_value, ret_type)
                         return self._make_return(indent, ret_expr)
                     # VALUE_VARIANT source (Own[A|B] param) returning into a
@@ -1224,28 +1224,6 @@ class StatementGenerator:
             return self._is_const_union_source(obj)
         return False
 
-    def _is_ptr_variant_source(self, expr: TpyExpr) -> bool:
-        """Check if an expression produces a pointer variant (vs value variant).
-
-        Pointer-variant sources: ptr_variant locals, union params, function calls
-        returning non-value unions. Value-variant sources: constructors, Own returns,
-        field access, container subscript.
-        """
-        if isinstance(expr, TpyCoerce):
-            return self._is_ptr_variant_source(expr.expr)
-        if isinstance(expr, TpyName):
-            if expr.name in self.ctx.ptr_variant_locals:
-                return True
-            return False
-        if isinstance(expr, (TpyCall, TpyMethodCall)):
-            fi = expr.resolved_function_info
-            if fi is not None:
-                rt = fi.return_type
-                if self.ctx.is_ptr_variant_union(rt):
-                    return True
-            return False
-        return False
-
     def _gen_ptr_variant_local_init(
         self, stmt: 'TpyVarDecl', target_type: UnionType, cpp_name: str, indent: str,
     ) -> str:
@@ -1268,7 +1246,7 @@ class StatementGenerator:
         if isinstance(stmt.init, TpyNoneLiteral):
             return f"{indent}{pv_type} {cpp_name} = std::monostate{{}};\n"
 
-        if self._is_ptr_variant_source(stmt.init):
+        if self.ctx.is_ptr_variant_source(stmt.init):
             # Already a pointer variant (param, local, function call returning ptr variant)
             init_expr = self.expressions.gen_expr(stmt.init, target_type)
             return f"{indent}{pv_type} {cpp_name} = {init_expr};\n"
@@ -1330,7 +1308,7 @@ class StatementGenerator:
         if isinstance(stmt.init, TpyNoneLiteral):
             return f"{indent}{cpp_name} = std::monostate{{}};\n"
 
-        if self._is_ptr_variant_source(stmt.init):
+        if self.ctx.is_ptr_variant_source(stmt.init):
             init_expr = self.expressions.gen_expr(stmt.init, target_type)
             return f"{indent}{cpp_name} = {init_expr};\n"
 
@@ -1704,9 +1682,22 @@ class StatementGenerator:
             call = self.expressions._gen_method_call(stmt.target.dyn_setattr_call)
             return f"{indent}{call};\n"
 
-        # Field assignment: boundary conversions for optional/union pointer repr
+        # Field-target type lookup: use the declared field type, not sema's
+        # cached expression type. After narrowing (e.g. `if self.x is None:
+        # return`), the cached type for the field-access LHS is the narrowed
+        # inner, which would route None-assign past the OptionalType branch
+        # and emit bare `nullptr` against `std::optional<...>`. Reused below
+        # by the field-shape dispatch, the class-constant branch, and the
+        # default fallthrough -- all three are field-target paths.
+        field_target_type: TpyType | None = None
         if isinstance(stmt.target, TpyFieldAccess):
-            target_type = self.ctx.get_expr_type(stmt.target)
+            declared = self.expressions._get_cpp_declared_type(stmt.target)
+            field_target_type = (declared if declared is not None
+                                 else self.ctx.get_expr_type(stmt.target))
+
+        # Field assignment: boundary conversions for optional/union pointer repr.
+        if isinstance(stmt.target, TpyFieldAccess):
+            target_type = field_target_type
             if (isinstance(target_type, TupleType)
                     and target_type.has_pointer_repr_optional_element()):
                 source = self.ctx.unwrap_copy(stmt.value)
@@ -1756,7 +1747,7 @@ class StatementGenerator:
             if self.ctx.is_ptr_variant_union(target_type):
                 target = self.expressions.gen_expr(stmt.target)
                 value = self.expressions.gen_expr(stmt.value, target_type)
-                if self._is_ptr_variant_source(stmt.value):
+                if self.ctx.is_ptr_variant_source(stmt.value):
                     val_cpp = self.types.type_to_cpp(target_type)
                     value = f"::tpy::to_value_variant<{val_cpp}>({value})"
                 else:
@@ -1783,15 +1774,16 @@ class StatementGenerator:
         if (isinstance(stmt.target, TpyFieldAccess)
                 and stmt.target.class_constant_owner is not None):
             receiver_stmt, lvalue = self.expressions.gen_class_constant_lvalue(stmt.target)
-            target_type = self.ctx.get_expr_type(stmt.target)
+            target_type = field_target_type
             value = self.expressions.gen_expr_deref(stmt.value, target_type)
             value = self.expressions._maybe_move(stmt.value, value)
             prefix = f"{indent}{receiver_stmt};\n" if receiver_stmt else ""
             return f"{prefix}{indent}{lvalue} = {value};\n"
 
-        # Default: simple assignment (includes field assignments like self.x = val)
+        # Default: simple assignment (includes field assignments like self.x = val).
         target = self.expressions.gen_expr(stmt.target)
-        target_type = self.ctx.get_expr_type(stmt.target)
+        target_type = (field_target_type if isinstance(stmt.target, TpyFieldAccess)
+                       else self.ctx.get_expr_type(stmt.target))
         # Detect x = x + y on string types -> emit x += y for buffer reuse
         if isinstance(stmt.target, TpyName):
             if result := self._try_str_inplace_append(stmt.target.name, target, stmt.value, target_type, indent):

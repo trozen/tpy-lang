@@ -3880,23 +3880,18 @@ class ExpressionGenerator:
 
         Locals and params of non-value union type use pointer-variant repr
         (variant<T*,...>), but containers store value variants (variant<T,...>).
+        Narrowed names are already rendered as the concrete alternative
+        (Cat&), so they skip the wrap even though the underlying local is
+        still a ptr_variant_locals entry.
         """
         if elem_target is None or not isinstance(elem_target, UnionType):
             return code
-        # Check if this expression produces a pointer variant
         e = expr
         while isinstance(e, TpyCoerce):
             e = e.expr
-        is_ptr_src = False
-        if isinstance(e, TpyName) and e.name in self.ctx.ptr_variant_locals:
-            # Narrowed variables are already concrete (Cat&), not ptr-variants
-            if e.name not in self.ctx.narrowed_vars:
-                is_ptr_src = True
-        elif isinstance(e, (TpyCall, TpyMethodCall)):
-            fi = e.resolved_function_info
-            if fi is not None and self.ctx.is_ptr_variant_union(fi.return_type):
-                is_ptr_src = True
-        if not is_ptr_src:
+        if not self.ctx.is_ptr_variant_source(e):
+            return code
+        if isinstance(e, TpyName) and e.name in self.ctx.narrowed_vars:
             return code
         val_cpp = self.types.type_to_cpp(elem_target)
         return f"::tpy::to_value_variant<{val_cpp}>({code})"

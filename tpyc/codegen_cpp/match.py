@@ -220,7 +220,7 @@ class MatchGenerator:
         """
         if not self.ctx.is_ptr_variant_union(subject_type):
             return False
-        return self.stmts._is_ptr_variant_source(subject)
+        return self.ctx.is_ptr_variant_source(subject)
 
     def _gen_match_switch_union(
         self, out: TextIO, stmt: TpyMatch, subject_type: UnionType, indent: str,

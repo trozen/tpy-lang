@@ -970,6 +970,36 @@ class CodeGenContext:
                 and typ.uses_pointer_repr()
                 and not self.is_recursive_union(typ))
 
+    def is_ptr_variant_source(self, expr: TpyExpr) -> bool:
+        """Check if an expression produces a pointer variant (vs value variant).
+
+        Pointer-variant sources: ptr_variant locals, union params, function
+        calls returning non-value unions. Value-variant sources: constructors,
+        Own returns, field access, container subscript, bare alternative values.
+
+        Note: only `ReadonlyType` is unwrapped on params. `OwnType[A | B]`
+        params lower to a value-variant `std::variant<A, B>&&` (the caller
+        gave up ownership), so they should NOT take the ptr-variant path.
+        """
+        if isinstance(expr, TpyCoerce):
+            return self.is_ptr_variant_source(expr.expr)
+        if isinstance(expr, TpyName):
+            if expr.name in self.ptr_variant_locals:
+                return True
+            # __init__ codegen sets current_func_params but doesn't populate
+            # ptr_variant_locals (only the regular function-body path does).
+            # Consult the param table directly so ctor-init MIL conversions
+            # match the body-assignment behaviour.
+            ptype = self.current_func_params.get(expr.name)
+            if ptype is not None and self.is_ptr_variant_union(unwrap_readonly(ptype)):
+                return True
+            return False
+        if isinstance(expr, (TpyCall, TpyMethodCall)):
+            fi = expr.resolved_function_info
+            if fi is not None and self.is_ptr_variant_union(fi.return_type):
+                return True
+        return False
+
     def reset_scope(self) -> None:
         """Reset all per-scope state for a new function/method/module-init body."""
         self.declared_vars = set()
