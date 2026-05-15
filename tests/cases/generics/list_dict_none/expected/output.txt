@@ -1,0 +1,4 @@
+list len: 2
+dict size: 2
+has a: True
+tuple snd: 42

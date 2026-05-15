@@ -1,0 +1,3 @@
+Python 3.12+ doesn't subscript plain `def` functions at runtime
+(no `__class_getitem__`), so `poll_ready[None](None)` raises
+TypeError. TPy resolves the explicit `[None]` at parse time.

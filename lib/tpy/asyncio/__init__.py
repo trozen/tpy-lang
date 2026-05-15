@@ -63,7 +63,9 @@ def _register_timer_at(deadline_seconds: float, waker: Waker) -> None: ...
 # Bridge: wrap a value-typed awaitable into a Task[None] via the
 # runtime's heterogeneous poll-box. Used by `sleep` to ship a
 # SleepFuture (a TPy class) through the executor's spawn list.
-@cpp_template("::tpy::Task<void>::from_coro({0})")
+# `Task[None]` lowers to `Task<std::monostate>` (the unit type at
+# value-bearing positions), matching the rest of the type-arg-None pipeline.
+@cpp_template("::tpy::Task<::std::monostate>::from_coro({0})")
 def _task_void_from_coro[T](coro: T) -> Own[Task[None]]: ...
 
 

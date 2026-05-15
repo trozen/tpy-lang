@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def background(done: Future[Int32]) -> None:
-::tpy::Poll<void> __coro_background::__poll__(::tpy::Waker waker) {
+::tpy::Poll<::std::monostate> __coro_background::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -14,7 +14,7 @@ namespace tpyapp::main {
             // done.set_result(Int32(0))  # sentinel; only the wake matters
             done.set_result(0);
             __state = S_DONE;
-            return ::tpy::Poll<void>::ready();
+            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -28,13 +28,13 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<void> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // done: Future[Int32] = Future[Int32]()
             done = ::tpystd::asyncio::Future<int32_t>();
             // t: Task[None] = asyncio.create_task(background(done))
-            t = ::tpy::make_user_task<void>(background((*done)));
+            t = ::tpy::make_user_task<std::monostate>(background((*done)));
             // # Drop the handle without awaiting; the executor still drives the task.
             // del t
             { auto __del_sink = std::move(t); }
@@ -46,13 +46,13 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
             auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
+            if (__r0.is_pending()) return ::tpy::Poll<::std::monostate>::pending();
             _ = std::move(__r0).value();
             __sub_0 = nullptr;
             // print("main done")
             std::cout << "main done" << "\n";
             __state = S_DONE;
-            return ::tpy::Poll<void>::ready();
+            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -68,7 +68,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<void>(main_coro());
+    ::tpystd::asyncio::run<std::monostate>(main_coro());
 }
 
 void __tpy_init() {

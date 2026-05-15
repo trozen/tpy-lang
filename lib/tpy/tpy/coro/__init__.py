@@ -29,9 +29,11 @@ def poll_ready[T](value: Own[T]) -> Poll[T]: ...
 def poll_pending[T]() -> Poll[T]: ...
 
 
-# Separate factory because `Poll<void>::ready()` takes no value, so
-# the generic `poll_ready[T](value)` shape doesn't apply when T is None.
-@cpp_template("::tpy::Poll<void>::ready()")
+# Separate factory because the generic `poll_ready[T](value)` shape takes
+# an `Own[T]` argument, which `Own[None]` can't satisfy with no payload.
+# `Poll[None]` lowers to `Poll<std::monostate>`; the body produces a unit
+# value so the primary `Poll<T>::ready(T)` template applies uniformly.
+@cpp_template("::tpy::Poll<::std::monostate>::ready(::std::monostate{{}})")
 def poll_ready_none() -> Poll[None]: ...
 
 

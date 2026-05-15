@@ -1,0 +1,4 @@
+Python 3.12+ doesn't subscript plain `def` functions at runtime (no
+`__class_getitem__`), so `identity[None](None)` raises TypeError there.
+TPy resolves the explicit `[None]` at parse time -- the test specifically
+exercises that resolution path.

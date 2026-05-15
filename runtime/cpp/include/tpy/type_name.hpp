@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <string>
 #include <typeinfo>
+#include <variant>
 
 #include "core.hpp"
 
@@ -69,6 +70,7 @@ TPY_TYPE_NAME_(float,           "Float32");
 TPY_TYPE_NAME_(double,          "Float64");
 TPY_TYPE_NAME_(std::string,     "str");
 TPY_TYPE_NAME_(std::nullptr_t,  "None");
+TPY_TYPE_NAME_(std::monostate,  "None");
 
 #undef TPY_TYPE_NAME_
 

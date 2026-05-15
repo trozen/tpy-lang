@@ -1,5 +1,5 @@
 # `x is None` and `x is not None` on Any check the typeid against
-# tpy::NoneType (std::nullptr_t in TPy's runtime).
+# the TPy NoneType (std::monostate in TPy's runtime).
 
 from typing import Any
 

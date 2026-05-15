@@ -39,7 +39,7 @@ struct __coro_check_inside {
     __coro_check_inside()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_check_inside&) {
         return os << "<coroutine check_inside>";
@@ -59,7 +59,7 @@ struct __coro_trivial {
     __coro_trivial()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_trivial&) {
         return os << "<coroutine trivial>";

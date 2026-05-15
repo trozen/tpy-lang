@@ -7,17 +7,17 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // a: Any = None
-    ::tpy::Any a = ::tpy::make_any(nullptr);
+    ::tpy::Any a = ::tpy::make_any(std::monostate{});
     // b: Any = 42
     ::tpy::Any b = ::tpy::make_any(::tpy::BigInt(42));
     // print(a is None)
-    std::cout << ::tpy::print_bool((a.value.has_value() && a.value.type() == typeid(std::nullptr_t))) << "\n";
+    std::cout << ::tpy::print_bool((a.value.has_value() && a.value.type() == typeid(std::monostate))) << "\n";
     // print(b is None)
-    std::cout << ::tpy::print_bool((b.value.has_value() && b.value.type() == typeid(std::nullptr_t))) << "\n";
+    std::cout << ::tpy::print_bool((b.value.has_value() && b.value.type() == typeid(std::monostate))) << "\n";
     // print(a is not None)
-    std::cout << ::tpy::print_bool((!(a.value.has_value() && a.value.type() == typeid(std::nullptr_t)))) << "\n";
+    std::cout << ::tpy::print_bool((!(a.value.has_value() && a.value.type() == typeid(std::monostate)))) << "\n";
     // print(b is not None)
-    std::cout << ::tpy::print_bool((!(b.value.has_value() && b.value.type() == typeid(std::nullptr_t)))) << "\n";
+    std::cout << ::tpy::print_bool((!(b.value.has_value() && b.value.type() == typeid(std::monostate)))) << "\n";
 }
 
 void __tpy_init() {

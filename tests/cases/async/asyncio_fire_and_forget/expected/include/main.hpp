@@ -34,7 +34,7 @@ struct __coro_background {
     __coro_background(::tpystd::asyncio::Future<int32_t>& done)
         : __state(S_INITIAL), __cancel_pending(false), done(done) {}
 
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_background&) {
         return os << "<coroutine background>";
@@ -46,7 +46,7 @@ struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::Future<int32_t>> done;
-    std::optional<::tpy::Task<void>> t;
+    std::optional<::tpy::Task<std::monostate>> t;
     int32_t _;
     ::tpystd::asyncio::Future<int32_t>* __sub_0 = nullptr;
 
@@ -59,7 +59,7 @@ struct __coro_main_coro {
     __coro_main_coro()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";

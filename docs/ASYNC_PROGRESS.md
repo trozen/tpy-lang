@@ -433,8 +433,9 @@ C++ template machinery only to throw it away.
 single bridge helper `executor_register_timer_seconds(deadline_seconds,
 waker)` that hides the executor pointer + chrono details. Validates the
 shape: TPy class with `__cancel_pending` field passes through the parser
-without name mangling, and `Task<void>::from_coro<TPyClass>` works for
-TPy-emitted struct CoroT.
+without name mangling, and `Task<std::monostate>::from_coro<TPyClass>`
+(`Task<void>` at the time -- migrated to `std::monostate` by the
+position-aware-None fix) works for TPy-emitted struct CoroT.
 
 Also rehomed the user-facing async primitives to `tpy.coro` (canonical
 home, mirrors Rust `std::task` / Tokio `tokio::task`):
@@ -821,9 +822,12 @@ Changes:
   `tpy_panic`), `_make_executor_owned_task[T](coro)`,
   `_task_to_any_box[T](task)`, `_run_drain_main_task(box)`,
   `return task.__poll__(Waker()).value()`. The final `return` works
-  uniformly for void and non-void T because `Poll<void>::value()`
-  returns void and `return void_expr;` is valid in a void-returning
-  function.
+  uniformly for void and non-void T: today (post position-aware-None
+  fix) the T=None case lowers to `Poll<std::monostate>::value()`
+  returning `std::monostate{}` through the primary template -- v1.2's
+  original argument relied on the `Poll<void>::value()` specialization
+  + `val_or_ref_t<void>` and the literal `return void_expr;` form;
+  both forms compile cleanly.
 - `runtime/cpp/include/tpy/async.hpp` -- `tpy::async_run` template
   removed (~30 lines).
 - `tests/cases/generics/generic_func_return_none/` -- new regression

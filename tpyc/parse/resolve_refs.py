@@ -249,7 +249,9 @@ def _walk_type_args(expr, call_scope, resolver):
     for ta in expr.type_args:
         if isinstance(ta, _REF_TYPES):
             try:
-                new_args.append(resolver.resolve(ta, call_scope))
+                # Call-site `f[T](...)` explicit type args fill generic
+                # slots, so they're type-arg positions (None -> NoneType).
+                new_args.append(resolver.resolve(ta, call_scope, is_type_arg=True))
             except ParseError as e:
                 expr.type_args = ()
                 if expr.type_args_parse_error is None:

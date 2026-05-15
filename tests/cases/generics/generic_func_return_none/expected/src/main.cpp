@@ -11,7 +11,7 @@ void main() {
     std::cout << drain<int32_t>(__tmp_1) << "\n";
     // drain(Nothing())
     auto __tmp_2 = Nothing();
-    drain<void>(__tmp_2);
+    drain<std::monostate>(__tmp_2);
     // print("done")
     std::cout << "done" << "\n";
 }

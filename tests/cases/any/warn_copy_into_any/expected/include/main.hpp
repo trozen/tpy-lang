@@ -53,7 +53,7 @@ struct Holder {
     ::tpy::Any payload;
 
     // def __init__(self) -> None:
-    Holder() : payload(::tpy::make_any(nullptr)) {}
+    Holder() : payload(::tpy::make_any(std::monostate{})) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 

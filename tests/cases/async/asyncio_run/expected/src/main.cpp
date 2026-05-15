@@ -5,14 +5,14 @@ namespace tpyapp::main {
 
 
 // async def hello() -> None:
-::tpy::Poll<void> __coro_hello::__poll__(::tpy::Waker waker) {
+::tpy::Poll<::std::monostate> __coro_hello::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
             // print("hello async world")
             std::cout << "hello async world" << "\n";
             __state = S_DONE;
-            return ::tpy::Poll<void>::ready();
+            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -28,7 +28,7 @@ __coro_hello hello() {
 // def main() -> None:
 void main() {
     // asyncio.run(hello())
-    ::tpystd::asyncio::run<void>(hello());
+    ::tpystd::asyncio::run<std::monostate>(hello());
 }
 
 void __tpy_init() {

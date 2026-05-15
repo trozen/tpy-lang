@@ -33,7 +33,7 @@ int32_t task_arity_concrete(const ::tpy::Task<int32_t>& t) {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<void> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // t = asyncio.create_task(co(Int32(7)))
@@ -50,13 +50,13 @@ int32_t task_arity_concrete(const ::tpy::Task<int32_t>& t) {
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
             auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
+            if (__r0.is_pending()) return ::tpy::Poll<::std::monostate>::pending();
             result = std::move(__r0).value();
             __sub_0 = nullptr;
             // print(result)
             std::cout << result << "\n";
             __state = S_DONE;
-            return ::tpy::Poll<void>::ready();
+            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -72,7 +72,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<void>(main_coro());
+    ::tpystd::asyncio::run<std::monostate>(main_coro());
 }
 
 void __tpy_init() {

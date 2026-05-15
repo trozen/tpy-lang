@@ -29,7 +29,7 @@ Phased; each phase shipped independently. Detailed plan + per-phase scope + comp
 
 | Phase | Item | Description |
 |-------|------|-------------|
-| 0 (DONE) | `SleepFuture` -> TPy | Validates the shape: TPy class with `__cancel_pending` field works as a `Task<void>::from_coro` `CoroT`. C++ keeps a single bridge helper `executor_register_timer_seconds`. |
+| 0 (DONE) | `SleepFuture` -> TPy | Validates the shape: TPy class with `__cancel_pending` field works as a `Task<std::monostate>::from_coro` `CoroT`. C++ keeps a single bridge helper `executor_register_timer_seconds`. (Originally `Task<void>` -- the void specialization was retained for handwritten C++; TPy-side `Task[None]` now lowers to `Task<std::monostate>` through the primary template since the position-aware-None fix.) |
 | 1 (DONE) | Compiler bindings | `time.sleep_until_steady`, `current_executor` get/set/clear via `ExecutorHandle` POD, `AnyTaskBox` `@native` wrapper around `shared_ptr<AnyTask>` (deviates from the original draft's `unique_ptr` so the user `Task<T>` and the executor slot can share state), `task_poll_cancelled` test util as TPy generic function. No new compiler features required. |
 | 2 (DONE) | `Executor` body to TPy | Slot table (`list[Slot]`), runnable deque, timer min-heap, all methods (`spawn`, `mark_runnable`, `poll_slot`, `drain_runnable`, `wait_for_event`, `run_until`, `drain_spawned_with_cancel`). Plus `ExecutorOps` dispatch table so `Waker::wake` / `make_user_task` / `executor_register_timer_seconds` route from C++ into the TPy executor. Timer-heap is `list[TimerEntry]` (TimerEntry has `__lt__` on deadline holding the slot id and generation); the original Phase-2 workaround of `list[tuple[float, UInt64]]` + parallel `dict[UInt64, Waker]` was consolidated in v1.2 step 3 once the `is_value_type` spec-emission bug allowing a user `ValueType` to be used as a `list` element type was fixed. |
 | 3 (DONE) | `async_run` to TPy | Setup/teardown via a `_ExecutorScope` class with `__del__` (RAII for `current_executor` clear-on-exit; v1 doesn't nest so no save/restore needed). Run loop body is TPy. Main-coro spawn closure + result extraction initially stayed C++ (templated over `ResultT`, used `if constexpr` for the void return-type case); fully ported to TPy in v1.2 step 1 once `val_or_ref_t<void>` was specialized. |
@@ -454,7 +454,7 @@ public:
 
 Special cases:
 
-- **`Poll<void>`** -- just `bool ready_`, `value()` returns void. `Ready` constructor takes no arg.
+- **`Poll<void>`** -- just `bool ready_`, `value()` returns void. `Ready` constructor takes no arg. Retained as a runtime specialization for handwritten C++; TPy-side `Poll[None]` now lowers to `Poll<std::monostate>` through the primary template (the unit type carried as a payload, `value()` returns `std::monostate{}`).
 - **Reference T** (`Poll<T&>`) -- payload is `T*` internally; `value()` returns `T&`.
 - **Move-only T** -- payload uses `std::optional<T>` or aligned storage; `value() &&` moves out exactly once.
 - **Non-default-constructible T** -- payload uses `std::optional` or aligned storage so `Poll<T>::pending()` doesn't require constructing a T.

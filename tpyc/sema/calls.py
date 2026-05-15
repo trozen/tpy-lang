@@ -13,7 +13,7 @@ from ..typesys import (
     TpyType, NominalType, OwnType, OptionalType, TupleType, own_tuple_target, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
     IntLiteralType, resolve_int_literals,
     LiteralType, LiteralValue, LiteralTag, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
-    PtrType, is_readonly_ptr, VoidType, ParamInfo, ReadonlyType,
+    PtrType, is_readonly_ptr, VoidType, is_void_like_type, ParamInfo, ReadonlyType,
     UNKNOWN_ELEMENT, UnknownElementType, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
     UnionType, VOID, BIGINT, BOOL, STR, INT32, AnyType, ANY, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union,
     is_any_str_type, container_to_str_template, error_return_matches,
@@ -2591,7 +2591,9 @@ class CallAnalyzer:
         arg = expr.args[0]
         arg_type = self.ctx.get_expr_type(arg)
 
-        if isinstance(pointee, VoidType):
+        # Ptr[None] -- both VoidType (function-return form) and NoneType
+        # (type-arg form) pointees lower to void* and share this rule.
+        if is_void_like_type(pointee):
             raise self.ctx.error(f"{kind} to None does not accept arguments", expr)
 
         # Strip Ref from pointee: Ptr[T] where T was inferred as Ref[Point]

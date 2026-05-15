@@ -23,12 +23,18 @@ def unsafe_ptr(b: bytes) -> Ptr[readonly[UInt8]]: ...
 # unsafe_cast: reinterpret a pointer as a different pointee type
 # TODO: add @compiler_check decorator to make sema validation visible here
 # (currently keyed on qualified_name in calls.py: const-safety, type hint checks)
+#
+# Uses `{cpp}` (the return-type spelling) rather than `{T}*` so the
+# PtrType -> void* special-case for `T = None` is preserved -- bare
+# `{T}*` substitutes T via to_cpp_stored() and produces
+# `std::monostate*`, defeating the opaque-pointer-for-@native-C-interop
+# convention of `Ptr[None]`.
 @overload
-@cpp_template("reinterpret_cast<{T}*>({0})")
+@cpp_template("reinterpret_cast<{cpp}>({0})")
 def unsafe_cast[T, U](p: Ptr[U]) -> Ptr[T]: ...
 
 @overload
-@cpp_template("reinterpret_cast<const {T}*>({0})")
+@cpp_template("reinterpret_cast<{cpp}>({0})")
 def unsafe_cast[T, U](p: Ptr[readonly[U]]) -> Ptr[readonly[T]]: ...
 
 # unsafe_load: read a value through a pointer at offset

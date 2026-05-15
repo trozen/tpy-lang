@@ -38,7 +38,7 @@ struct Nothing {
 
 
     // def __poll__(self, w: Waker) -> Poll[None]:
-    ::tpy::Poll<void> __poll__(::tpy::Waker w) const;
+    ::tpy::Poll<std::monostate> __poll__(::tpy::Waker w) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Nothing";
 };
 
@@ -55,9 +55,9 @@ inline ::tpy::Poll<int32_t> Int32One::__poll__(::tpy::Waker w) const {
 }
 
 // def __poll__(self, w: Waker) -> Poll[None]:
-inline ::tpy::Poll<void> Nothing::__poll__(::tpy::Waker w) const {
+inline ::tpy::Poll<std::monostate> Nothing::__poll__(::tpy::Waker w) const {
     // return poll_ready_none()
-    return ::tpy::Poll<void>::ready();
+    return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
 }
 // def drain[T](aw: Awaitable[T]) -> T:
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>

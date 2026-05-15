@@ -321,7 +321,15 @@ class ProtocolGenerator:
                 else:
                     template_parts.append(f"{concept_name} T_{pname}")
             else:
-                # Multiple protocols or nullable: typename + requires clause
+                # Multiple protocols or nullable: typename + requires clause.
+                # `nullptr_t` here is the *nullable-static-protocol-param*
+                # sentinel (e.g. `def f(p: Sized | None)` -- the param accepts
+                # nullptr at the C++ level so `f(None)` lowers to a call with
+                # no arg). This is distinct from `None` as a value-bearing
+                # generic type argument (which lowers to std::monostate via
+                # NoneType.to_cpp): the protocol-template default is matched
+                # by passing literal `nullptr` and gated by `if constexpr`
+                # bodies, never stored as a value.
                 default_part = " = std::nullptr_t" if info.has_none and emit_defaults else ""
                 template_parts.append(f"typename T_{pname}{default_part}")
                 constraints = []

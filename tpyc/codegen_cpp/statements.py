@@ -51,6 +51,7 @@ from .functions import default_to_cpp
 from .type_resolution import resolve_stmt_binding_type
 from ..prescan import match_is_none
 from .match import MatchGenerator
+from .gen_async import POLL_VOID_READY_RETURN
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -2634,13 +2635,13 @@ class StatementGenerator:
             return ::tpy::Poll<T>::ready(<v>);
 
         For void-returning async defs:
-            return ::tpy::Poll<void>::ready();
+            return ::tpy::Poll<std::monostate>::ready(std::monostate{});
 
         For bare `return`:
-            void -> Poll<void>::ready()
+            void -> Poll<std::monostate>::ready(std::monostate{})
             non-void -> sema rejects elsewhere; here we panic on `{}` to be safe.
         """
-        ret_cpp = self.ctx.async_coro_return_cpp or "void"
+        ret_type = unwrap_ref_type(self.ctx.current_return_type)
         done_state = self.ctx.async_coro_done_state or "S_DONE"
         out = io.StringIO()
         # Walk enclosing finally chain (try/with around an `await` or just a
@@ -2649,8 +2650,8 @@ class StatementGenerator:
         if terminated:
             return out.getvalue()
         out.write(f"{indent}__state = {done_state};\n")
-        if ret_cpp == "void":
-            out.write(f"{indent}return ::tpy::Poll<void>::ready();\n")
+        if isinstance(ret_type, VoidType):
+            out.write(f"{indent}{POLL_VOID_READY_RETURN}\n")
         else:
             if stmt.value is None:
                 # Non-void async def with bare return -- sema should have
@@ -2658,6 +2659,7 @@ class StatementGenerator:
                 out.write(
                     f"{indent}::tpy::tpy_panic(\"non-void async def used bare return\");\n")
             else:
+                ret_cpp = self.ctx.async_coro_return_cpp or "void"
                 expr_cpp = self.expressions.gen_expr_deref(stmt.value)
                 out.write(
                     f"{indent}return ::tpy::Poll<{ret_cpp}>::ready({expr_cpp});\n")

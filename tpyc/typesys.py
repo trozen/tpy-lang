@@ -1167,6 +1167,12 @@ class PtrType(TpyType):
         return unwrap_readonly(self.pointee)
 
     def to_cpp(self) -> str:
+        # Ptr[None] -> void* (and Ptr[readonly[None]] -> const void*).
+        # `void*` is the canonical opaque-pointer idiom in C/C++ and is
+        # what user @native bindings to C structs expect; std::monostate*
+        # would force per-cast bridges at every interop boundary.
+        if is_void_like_type(self.inner_pointee):
+            return "const void*" if self.is_readonly else "void*"
         if self.is_readonly:
             return f"const {self.inner_pointee.to_cpp()}*"
         return f"{self.pointee.to_cpp()}*"
@@ -1983,10 +1989,19 @@ def own_tuple_target(expected: 'TpyType') -> 'TupleType | None':
 
 @dataclass(frozen=True)
 class NoneType(TpyType):
-    """The type of the None literal (distinct from VoidType which is for return types)."""
+    """Type of the `None` literal at value-bearing positions (generic
+    type args, parameter slots). Distinct from `VoidType` which lowers
+    to C++ `void` at function-return shape. The parser routes `None`
+    annotations to one or the other based on syntactic position (see
+    `parse/type_resolver.py`'s `is_type_arg` plumbing).
+    """
 
     def to_cpp(self) -> str:
-        return "std::nullptr_t"
+        # std::monostate is the canonical "unit type" in C++ -- already
+        # used by the runtime for variant None-members and printing. A
+        # `Foo[None]` lowering to `Foo<std::monostate>` is uniform with
+        # how nullable-union None members are spelled.
+        return "std::monostate"
 
     def __str__(self) -> str:
         return "None"

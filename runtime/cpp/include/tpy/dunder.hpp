@@ -278,6 +278,7 @@ bool __bool__(const T& x) {
 // Builtin type overloads (needed for generic T contexts)
 inline std::string __str__(bool x) { return x ? "True" : "False"; }
 inline std::string __str__(std::nullptr_t) { return "None"; }
+inline std::string __str__(std::monostate) { return "None"; }
 inline std::string __str__(char x) { return std::string(1, x); }
 inline std::string __str__(int8_t x) { return std::to_string(x); }
 inline std::string __str__(int16_t x) { return std::to_string(x); }
@@ -397,6 +398,14 @@ inline std::string_view __repr__(std::nullptr_t) {
     return "None";
 }
 
+// std::monostate is the TPy unit type at value-bearing positions
+// (Future[None], list[None], ...). Mirror the nullptr_t overload so
+// any_repr_capable<monostate> matches and Any cells holding None
+// route to "None" rather than the typeid fallback.
+inline std::string_view __repr__(std::monostate) {
+    return "None";
+}
+
 // Strings: Python repr quotes and escapes control chars / quote / backslash.
 // The const char* overload steals string-literal calls before the templated
 // formattable fallback (which would otherwise emit raw bytes via std::format).
@@ -507,6 +516,13 @@ uint64_t __hash__(T x) {
 // Floating-point
 inline uint64_t __hash__(double x) {
     return static_cast<uint64_t>(std::hash<double>{}(x));
+}
+
+// std::monostate is the TPy unit type at value-bearing positions; map
+// to Python's hash(None) (== 0 on most CPython builds, but the only
+// requirement is stability + matching None==None equality).
+inline uint64_t __hash__(std::monostate) {
+    return 0;
 }
 
 // Strings

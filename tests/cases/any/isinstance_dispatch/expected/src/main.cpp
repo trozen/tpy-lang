@@ -37,7 +37,7 @@ void main() {
     // show(2.5)
     show(::tpy::make_any(static_cast<double>(2.5)));
     // show(None)
-    show(::tpy::make_any(nullptr));
+    show(::tpy::make_any(std::monostate{}));
 }
 
 void __tpy_init() {

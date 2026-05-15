@@ -20,7 +20,7 @@ void main();
 struct __coro_compute {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpy::Task<void>> __sub_0;
+    std::optional<::tpy::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
         S_INITIAL = 0,

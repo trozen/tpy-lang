@@ -15,7 +15,7 @@ void main() {
     // d: Any = "x"
     ::tpy::Any d = ::tpy::make_any(std::string("x"));
     // e: Any = None
-    ::tpy::Any e = ::tpy::make_any(nullptr);
+    ::tpy::Any e = ::tpy::make_any(std::monostate{});
     // if a:
     if (::tpy::to_bool(a)) {
         // print("a-true")

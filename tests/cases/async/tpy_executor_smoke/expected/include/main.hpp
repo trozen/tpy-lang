@@ -39,7 +39,7 @@ struct CancellableForever {
     CancellableForever() : __cancel_pending(false) {}
 
     // def __poll__(self, waker: Waker) -> Poll[None]:
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker) const;
+    ::tpy::Poll<std::monostate> __poll__(::tpy::Waker waker) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.CancellableForever";
 };
 
@@ -82,7 +82,7 @@ struct __coro_void_coro {
     __coro_void_coro()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_void_coro&) {
         return os << "<coroutine void_coro>";
@@ -91,14 +91,14 @@ struct __coro_void_coro {
 
 
 // def __poll__(self, waker: Waker) -> Poll[None]:
-inline ::tpy::Poll<void> CancellableForever::__poll__(::tpy::Waker waker) const {
+inline ::tpy::Poll<std::monostate> CancellableForever::__poll__(::tpy::Waker waker) const {
     // if self.__cancel_pending:
     if (this->__cancel_pending) {
         // raise CancelledError()
         throw ::tpy::CancelledError{};
     }
     // return poll_pending[None]()
-    return ::tpy::Poll<void>::pending();
+    return ::tpy::Poll<std::monostate>::pending();
 }
 void __tpy_init();
 } // namespace tpyapp::main

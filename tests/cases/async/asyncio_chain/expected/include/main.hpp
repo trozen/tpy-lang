@@ -84,7 +84,7 @@ struct __coro_main {
     __coro_main()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main&) {
         return os << "<coroutine main>";

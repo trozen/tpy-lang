@@ -13,6 +13,7 @@
 #include <string_view>
 #include <tuple>
 #include <type_traits>
+#include <variant>
 #include <vector>
 
 namespace tpy {
@@ -45,6 +46,10 @@ template<> struct is_value_type<double> : std::true_type {};
 template<> struct is_value_type<std::string> : std::true_type {};
 template<> struct is_value_type<std::string_view> : std::true_type {};
 template<> struct is_value_type<BigInt> : std::true_type {};
+// std::monostate -- TPy NoneType at value-bearing positions (e.g. Future[None]).
+// Pure unit type, trivially copyable; passes through containers and generics
+// the same way primitives do.
+template<> struct is_value_type<std::monostate> : std::true_type {};
 
 // Forward declaration for SpanIter specialization
 template<typename T> struct SpanIter;

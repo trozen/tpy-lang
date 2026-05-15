@@ -29,7 +29,7 @@ struct __coro_producer {
     int32_t __state;
     bool __cancel_pending;
     ::tpystd::asyncio::Event& e;
-    std::optional<::tpy::Task<void>> __sub_0;
+    std::optional<::tpy::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -40,7 +40,7 @@ struct __coro_producer {
     __coro_producer(::tpystd::asyncio::Event& e)
         : __state(S_INITIAL), __cancel_pending(false), e(e) {}
 
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_producer&) {
         return os << "<coroutine producer>";
@@ -63,7 +63,7 @@ struct __coro_consumer {
     __coro_consumer(::tpystd::asyncio::Event& e)
         : __state(S_INITIAL), __cancel_pending(false), e(e) {}
 
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_consumer&) {
         return os << "<coroutine consumer>";
@@ -86,7 +86,7 @@ struct __coro_fast_path_consumer {
     __coro_fast_path_consumer(::tpystd::asyncio::Event& e)
         : __state(S_INITIAL), __cancel_pending(false), e(e) {}
 
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_fast_path_consumer&) {
         return os << "<coroutine fast_path_consumer>";
@@ -99,7 +99,7 @@ struct __coro_main_coro {
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::Event> e_fast;
     std::optional<::tpystd::asyncio::Event> e;
-    std::optional<::tpy::Task<void>> __sub_0;
+    std::optional<::tpy::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -110,7 +110,7 @@ struct __coro_main_coro {
     __coro_main_coro()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";

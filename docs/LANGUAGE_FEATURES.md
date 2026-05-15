@@ -259,7 +259,8 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `String` | `std::string` (parameters: `const std::string&`) |
 | `StrView` | `std::string_view` |
 | `Char` | `char` |
-| `None` | `void` (return type) |
+| `None` (function return / variable annotation) | `void` |
+| `None` (generic type argument, e.g. `Future[None]`, `Own[None]`, `list[None]`) | `std::monostate` |
 | `T \| None` (T value type) | `std::optional<T>` |
 | `T \| None` (T non-value, params/returns/locals) | `T*` (borrow form -- pointer-repr Optional) |
 | `T \| None` (T non-value, fields/containers) | `std::optional<T>` (storage form) |
@@ -276,6 +277,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `A \| B` (non-value, fields/containers) | `std::variant<A, B>` (storage form -- value-variant) |
 | `Ptr[T]` | `T*` |
 | `Ptr[readonly[T]]` | `const T*` |
+| `Ptr[None]` / `Ptr[readonly[None]]` | `void*` / `const void*` (preserves the C/C++ opaque-pointer idiom for `@native` interop, despite `None` lowering to `std::monostate` at other type-argument positions) |
 | `Own[T]` | `T` (by value, for returns/params) |
 | `Rc[T]` | TPy class wrapping `Ptr[_RcCell[T]]` (strong + weak counts + inline payload heap block); `@nocopy`, explicit `.clone()` to share. Construct via `Rc.new(value)`. |
 | `Weak[T]` | Non-owning companion to `Rc[T]`; shares `_RcCell` but doesn't keep the payload alive. `@nocopy`. Mint via `rc.downgrade()`; recover a strong handle (or None) via `weak.upgrade()`. |
@@ -924,7 +926,7 @@ from tpy import Ptr, Int32
 
 def test() -> None:
     # Null pointers
-    p: Ptr[None] = Ptr[None]()        # → nullptr
+    p: Ptr[None] = Ptr[None]()        # → void* (opaque-pointer idiom for C interop)
     q: Ptr[Int32] = Ptr[Int32]()      # → nullptr (typed null)
 
     # Address-of with take_ptr()

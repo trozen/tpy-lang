@@ -9,12 +9,12 @@ void main() {
     // e = Event()
     ::tpystd::asyncio::Event e = ::tpystd::asyncio::Event();
     // poll_once(e)
-    ::tpystd::coro::poll_once<void>(e);
+    ::tpystd::coro::poll_once<std::monostate>(e);
     // try:
     {
         try {
             // poll_once(e)
-            ::tpystd::coro::poll_once<void>(e);
+            ::tpystd::coro::poll_once<std::monostate>(e);
             // print("ERROR: second poll should have raised")
             std::cout << "ERROR: second poll should have raised" << "\n";
         } catch (const ::tpy::ValueError& ex) {

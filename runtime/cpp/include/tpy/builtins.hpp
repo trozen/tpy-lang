@@ -190,7 +190,11 @@ const T& max3(const T& a, const T& b, const T& c) {
 // User records with __bool__() match branch 3.
 template<typename T>
 bool to_bool(const T& x) {
-    if constexpr (std::is_constructible_v<bool, T>) {
+    if constexpr (std::is_same_v<T, std::monostate>) {
+        // None is falsy in Python; std::monostate (TPy unit type at
+        // value-bearing positions) has no bool conversion of its own.
+        return false;
+    } else if constexpr (std::is_constructible_v<bool, T>) {
         return static_cast<bool>(x);
     } else if constexpr (requires { x.empty(); }) {
         return !x.empty();

@@ -33,7 +33,7 @@ struct NeverComplete {
     NeverComplete() : __cancel_pending(false) {}
 
     // def __poll__(self, waker: Waker) -> Poll[None]:
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker) const;
+    ::tpy::Poll<std::monostate> __poll__(::tpy::Waker waker) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.NeverComplete";
 };
 
@@ -54,7 +54,7 @@ struct CountdownThenReady {
     explicit CountdownThenReady(uint32_t n) : remaining(n), __cancel_pending(false) {}
 
     // def __poll__(self, waker: Waker) -> Poll[None]:
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<std::monostate> __poll__(::tpy::Waker waker);
     static constexpr std::string_view __tpy_class_name__ = "__main__.CountdownThenReady";
 };
 
@@ -65,22 +65,22 @@ inline std::ostream& operator<<(std::ostream& os, const CountdownThenReady& obj)
 
 
 // def __poll__(self, waker: Waker) -> Poll[None]:
-inline ::tpy::Poll<void> NeverComplete::__poll__(::tpy::Waker waker) const {
+inline ::tpy::Poll<std::monostate> NeverComplete::__poll__(::tpy::Waker waker) const {
     // return poll_pending()
-    return ::tpy::Poll<void>::pending();
+    return ::tpy::Poll<std::monostate>::pending();
 }
 
 // def __poll__(self, waker: Waker) -> Poll[None]:
-inline ::tpy::Poll<void> CountdownThenReady::__poll__(::tpy::Waker waker) {
+inline ::tpy::Poll<std::monostate> CountdownThenReady::__poll__(::tpy::Waker waker) {
     // if self.remaining == UInt32(0):
     if ((this->remaining == 0)) {
         // return poll_ready_none()
-        return ::tpy::Poll<void>::ready();
+        return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     // self.remaining -= UInt32(1)
     this->remaining = ::tpy::sub_check<uint32_t>(this->remaining, 1);
     // return poll_pending[None]()
-    return ::tpy::Poll<void>::pending();
+    return ::tpy::Poll<std::monostate>::pending();
 }
 void __tpy_init();
 } // namespace tpyapp::main

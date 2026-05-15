@@ -29,7 +29,7 @@ struct __coro_hello {
     __coro_hello()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_hello&) {
         return os << "<coroutine hello>";

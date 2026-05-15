@@ -31,7 +31,8 @@ from ..typesys import (
     IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span,
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR, try_unwrap_class_constant,
     is_classvar_allowed_inner, CLASSVAR_INNER_TYPE_ERROR,
-    STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, TupleType, final_type_str_to_strview,
+    STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, NONE, TupleType, final_type_str_to_strview,
+    make_awaitable,
     register_return_exception, is_return_exception,
     attach_type_param_bounds,
     has_auto_readonly, has_auto_own,
@@ -2501,8 +2502,12 @@ class TypeRegistrar:
         # Awaitable[T] so structural matching at call sites (poll_once(f()),
         # `await f()`, etc.) works through the protocol machinery.
         if func.is_async:
-            from ..typesys import make_awaitable
-            fi_return_type = make_awaitable(resolved_return)
+            # `async def f() -> None` resolves the function return type
+            # to VoidType (top-level return-shape), but Awaitable[T] is a
+            # type-arg position where None lowers to NoneType. Convert at
+            # the boundary so `t: Task[None] = create_task(f())` matches.
+            inner = NONE if isinstance(resolved_return, VoidType) else resolved_return
+            fi_return_type = make_awaitable(inner)
         else:
             fi_return_type = resolved_return
         info = FunctionInfo(

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def producer(f: Future[Int32]) -> None:
-::tpy::Poll<void> __coro_producer::__poll__(::tpy::Waker waker) {
+::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // await asyncio.sleep(0.001)
@@ -16,13 +16,13 @@ namespace tpyapp::main {
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
             auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
+            if (__r0.is_pending()) return ::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
             // f.set_result(Int32(7))
             f.set_result(7);
             __state = S_DONE;
-            return ::tpy::Poll<void>::ready();
+            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -36,13 +36,13 @@ __coro_producer producer(::tpystd::asyncio::Future<int32_t>& f) {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<void> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // f: Future[Int32] = Future[Int32]()
             f = ::tpystd::asyncio::Future<int32_t>();
             // asyncio.create_task(producer(f))
-            ::tpy::make_user_task<void>(producer((*f)));
+            ::tpy::make_user_task<std::monostate>(producer((*f)));
             // result = await f
             __sub_0 = &((*f));
             __state = S_AFTER_AWAIT_0;
@@ -51,13 +51,13 @@ __coro_producer producer(::tpystd::asyncio::Future<int32_t>& f) {
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
             auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
+            if (__r0.is_pending()) return ::tpy::Poll<::std::monostate>::pending();
             result = std::move(__r0).value();
             __sub_0 = nullptr;
             // print(result)
             std::cout << result << "\n";
             __state = S_DONE;
-            return ::tpy::Poll<void>::ready();
+            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -73,7 +73,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<void>(main_coro());
+    ::tpystd::asyncio::run<std::monostate>(main_coro());
 }
 
 void __tpy_init() {

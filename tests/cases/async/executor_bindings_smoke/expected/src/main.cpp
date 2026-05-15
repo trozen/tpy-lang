@@ -11,7 +11,7 @@ void check_outside() {
 }
 
 // async def check_inside() -> None:
-::tpy::Poll<void> __coro_check_inside::__poll__(::tpy::Waker waker) {
+::tpy::Poll<::std::monostate> __coro_check_inside::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -31,7 +31,7 @@ void check_outside() {
             // print("after restore:", _get_current_executor().is_null())
             std::cout << "after restore:" << " " << ::tpy::print_bool(::tpy::current_executor_get().is_null()) << "\n";
             __state = S_DONE;
-            return ::tpy::Poll<void>::ready();
+            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -65,13 +65,13 @@ void check_sleep() {
 }
 
 // async def trivial() -> None:
-::tpy::Poll<void> __coro_trivial::__poll__(::tpy::Waker waker) {
+::tpy::Poll<::std::monostate> __coro_trivial::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
             // return None
             __state = S_DONE;
-            return ::tpy::Poll<void>::ready();
+            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -90,14 +90,14 @@ void check_teardown() {
     // # _ExecutorScope.__del__ has fired, clearing it (and clearing the
     // # ExecutorOps table). Direct evidence that the RAII teardown ran.
     // asyncio.run(trivial())
-    ::tpystd::asyncio::run<void>(trivial());
+    ::tpystd::asyncio::run<std::monostate>(trivial());
     // print("after run, null?", _get_current_executor().is_null())
     std::cout << "after run, null?" << " " << ::tpy::print_bool(::tpy::current_executor_get().is_null()) << "\n";
     // # A second asyncio.run is allowed because the thread-local was
     // # cleared (re-entry into a running event loop is what gets
     // # rejected; back-to-back runs are fine).
     // asyncio.run(trivial())
-    ::tpystd::asyncio::run<void>(trivial());
+    ::tpystd::asyncio::run<std::monostate>(trivial());
     // print("second run completed, null?", _get_current_executor().is_null())
     std::cout << "second run completed, null?" << " " << ::tpy::print_bool(::tpy::current_executor_get().is_null()) << "\n";
 }
@@ -111,7 +111,7 @@ void main() {
     // check_sleep()
     check_sleep();
     // asyncio.run(check_inside())
-    ::tpystd::asyncio::run<void>(check_inside());
+    ::tpystd::asyncio::run<std::monostate>(check_inside());
     // check_teardown()
     check_teardown();
 }

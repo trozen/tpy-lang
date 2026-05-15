@@ -51,7 +51,7 @@ from ..parse.nodes import (
     TpyExprStmt, TpyName, TpyExpr, TpyTry, TpyExceptHandler, TpyCall,
     TpyFieldAccess,
 )
-from ..typesys import unwrap_ref_type, unwrap_own
+from ..typesys import unwrap_ref_type, unwrap_own, VoidType
 from ..type_def_registry import is_str_type
 from ..liveness import stmts_terminate
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext
@@ -112,6 +112,17 @@ class Region:
     """
     pre_stmts: list[TpyStmt]
     transition: AwaitTransition | None  # None for the final region
+
+
+# Single C++ spelling of `Ready(unit)` for void-returning async defs.
+# `async def -> None` lowers Poll[None]'s type-arg slot to std::monostate
+# (the value-bearing-None unit type); the `ready` factory needs an actual
+# value of that type, so we construct `std::monostate{}` explicitly.
+# Centralised here so the 3 emit sites in this module + 1 in statements.py
+# can't drift apart.
+POLL_VOID_READY_RETURN = (
+    "return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});"
+)
 
 
 def _top_level_await_in(stmt: TpyStmt) -> TpyAwait | None:
@@ -304,9 +315,23 @@ class AsyncCoroCodegen:
     def _ret_cpp(self, func: TpyFunction) -> str:
         return self.types.type_to_cpp(unwrap_ref_type(func.return_type))
 
+    def _is_void_return(self, func: TpyFunction) -> bool:
+        """True iff func's declared return is `None` -- i.e. the top-level
+        `-> None` annotation that lowers to C++ `void`. Distinguished from
+        `Task[None]` / `Poll[None]` consumers, where the inner None is at
+        a type-arg position and routes to `std::monostate`."""
+        return isinstance(unwrap_ref_type(func.return_type), VoidType)
+
     def _poll_ret_cpp(self, func: TpyFunction) -> str:
-        ret = self._ret_cpp(func)
-        return "::tpy::Poll<void>" if ret == "void" else f"::tpy::Poll<{ret}>"
+        # The state-machine's __poll__ returns Poll[T], a type-arg slot,
+        # so a `-> None` async def flips its inner T to the unit type --
+        # matching how Task[None] / Future[None] / Awaitable[None] lower
+        # elsewhere. Without the flip, `Task<std::monostate>::poll_frame()`
+        # would call a `Poll<void> __poll__()` and the C++ compiler would
+        # reject the return-type mismatch.
+        if self._is_void_return(func):
+            return "::tpy::Poll<::std::monostate>"
+        return f"::tpy::Poll<{self._ret_cpp(func)}>"
 
     # -- Forward declarations -------------------------------------------------
 
@@ -934,15 +959,14 @@ class AsyncCoroCodegen:
                 # Final region. If the user's pre_stmts already terminate
                 # (last stmt is `return` / `raise` / etc.), no fallback
                 # is needed -- the return was already emitted. Otherwise
-                # emit `Poll<void>::ready()` for void coros, or a panic
-                # for non-void coros with a missing return.
+                # emit Ready(unit) for void coros, or a panic for non-void
+                # coros with a missing return.
                 if not stmts_terminate(region.pre_stmts):
-                    ret_cpp = self._ret_cpp(func)
-                    if ret_cpp == "void":
+                    if self._is_void_return(func):
                         if wrapper_try is not None:
                             out.write(f"{body_indent}this->__finally_top();\n")
                         out.write(f"{body_indent}__state = S_DONE;\n")
-                        out.write(f"{body_indent}return ::tpy::Poll<void>::ready();\n")
+                        out.write(f"{body_indent}{POLL_VOID_READY_RETURN}\n")
                     else:
                         out.write(f"{body_indent}::tpy::tpy_panic(\"async def fell "
                                   f"through without returning a value\");\n")
@@ -1046,7 +1070,6 @@ class AsyncCoroCodegen:
             else:
                 out.write(f"{indent}{target} = {moved};\n")
         elif t.kind is AwaitKind.RETURN:
-            ret_inner = self._ret_cpp(func)
             # `return await sub()` must walk any active finally chain
             # before emitting the actual return -- the wrapper-try
             # helper is on ctx.finally_stack at this point. Bind the
@@ -1058,13 +1081,13 @@ class AsyncCoroCodegen:
             # Mirrors statements.py's _make_async_return: emits
             # __finally_top() etc. before the actual return.
             self.statements._emit_finally_chain(out, indent)
-            if ret_inner == "void":
+            if self._is_void_return(func):
                 out.write(f"{indent}(void)__ret{t.suspension_index};\n")
                 out.write(f"{indent}__state = S_DONE;\n")
-                out.write(f"{indent}return ::tpy::Poll<void>::ready();\n")
+                out.write(f"{indent}{POLL_VOID_READY_RETURN}\n")
             else:
                 out.write(f"{indent}__state = S_DONE;\n")
-                out.write(f"{indent}return ::tpy::Poll<{ret_inner}>::ready("
+                out.write(f"{indent}return ::tpy::Poll<{self._ret_cpp(func)}>::ready("
                           f"std::move(__ret{t.suspension_index}));\n")
             return  # No further reset -- we already reset above.
         elif t.kind is AwaitKind.DISCARD:

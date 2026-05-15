@@ -31,7 +31,7 @@ struct __coro_sub {
     __coro_sub()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_sub&) {
         return os << "<coroutine sub>";
@@ -53,7 +53,7 @@ struct __coro_main_coro {
     __coro_main_coro()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
     void __finally_top();
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {

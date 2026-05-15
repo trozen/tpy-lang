@@ -23,7 +23,7 @@ from ..typesys import (
     AutoOwnType, FinalType, ClassVarType, OptionalType, VoidType, UnionType, TupleType,
     CallableType, make_union, make_fn_type,
     TypeParamRef, TypeParamKind, LiteralType, LiteralTag,
-    INT32, VOID, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW,
+    INT32, VOID, NONE, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW,
     BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE, ANY, AnyType,
     ALL_FIXED_INTS,
 )
@@ -147,6 +147,7 @@ class TypeResolver:
         self, ref: ResolverInputNode,
         type_param_scope: dict[str, TypeParamKind] | None = None,
         *, pending_alias: str | None = None,
+        is_type_arg: bool = False,
     ) -> TpyType:
         """Resolve a parser-walker-emitted type reference to a TpyType.
 
@@ -161,19 +162,29 @@ class TypeResolver:
         `type JsonValue = str | list[JsonValue]`.  It is saved on the
         resolver for the duration of this call so recursive re-entries
         inherit the context, and restored on exit.
+
+        `is_type_arg=True` flips bare `None` resolution from `VoidType`
+        (function-return-shape) to `NoneType` (value-bearing slot, e.g.
+        the T in `Future[None]` / `Own[None]` / `list[None]`). Recursive
+        calls into generic-arg slots, structural-wrapper inners (Own,
+        Ptr, readonly, auto_*), tuple elements, and Callable param types
+        pass `True`; union members, Optional/Final/ClassVar inners, and
+        Callable return type stay `False` so VoidType-marker semantics
+        (Union collapse, top-level return shape) survive unchanged.
         """
         if pending_alias is not None:
             prev = self._pending_alias
             self._pending_alias = pending_alias
             try:
-                return self._resolve_ref(ref, type_param_scope)
+                return self._resolve_ref(ref, type_param_scope, is_type_arg=is_type_arg)
             finally:
                 self._pending_alias = prev
-        return self._resolve_ref(ref, type_param_scope)
+        return self._resolve_ref(ref, type_param_scope, is_type_arg=is_type_arg)
 
     def resolve_lenient(
         self, ref: ResolverInputNode,
         type_param_scope: dict[str, TypeParamKind] | None = None,
+        *, is_type_arg: bool = False,
     ) -> TpyType:
         """Resolve like `resolve()` but, on a name-resolution failure for a
         bare `TpyTypeRef`, construct a `NominalType(name, args)` placeholder
@@ -189,13 +200,13 @@ class TypeResolver:
         to `resolve()` unchanged.
         """
         try:
-            return self.resolve(ref, type_param_scope)
+            return self.resolve(ref, type_param_scope, is_type_arg=is_type_arg)
         except ResolutionFailure:
             if not isinstance(ref, TpyTypeRef):
                 raise
             resolved_args: tuple = tuple(
                 a if isinstance(a, int)
-                else self.resolve_lenient(a, type_param_scope)
+                else self.resolve_lenient(a, type_param_scope, is_type_arg=True)
                 for a in ref.args
             )
             return NominalType(ref.name, resolved_args)
@@ -203,16 +214,25 @@ class TypeResolver:
     def _resolve_ref(
         self, ref: ResolverInputNode,
         type_param_scope: dict[str, TypeParamKind] | None,
+        *, is_type_arg: bool = False,
     ) -> TpyType:
         """Internal resolver.  Recursive calls to `self.resolve(...)` without
         `pending_alias` re-enter the public method, which skips the
-        save/restore and forwards straight here."""
+        save/restore and forwards straight here.
+
+        `is_type_arg` see `resolve()` docstring -- forwarded into the
+        bare-`None` branch and into `_resolve_primitive_type`.
+        """
         parser = self._parser
         if type_param_scope is None:
             type_param_scope = parser._type_param_scope
 
         # Union
         if isinstance(ref, TpyUnionRef):
+            # Union members keep VoidType marker semantics (collapse to
+            # Optional, redundant-Any check, Ptr-already-nullable warning).
+            # If the outer context is a type-arg slot, the union as a whole
+            # is still the type at that slot, not each member individually.
             parsed = [self.resolve(m, type_param_scope) for m in ref.members]
             non_none = [t for t in parsed if not isinstance(t, VoidType)]
             # Any is the universal supertype -- combining it with None or
@@ -270,7 +290,7 @@ class TypeResolver:
         # Callable / Fn
         if isinstance(ref, TpyCallableRef):
             param_types = tuple(
-                self.resolve(p, type_param_scope) for p in ref.params
+                self.resolve(p, type_param_scope, is_type_arg=True) for p in ref.params
             )
             return_type = self.resolve(ref.return_type, type_param_scope)
             if ref.kind == "Fn":
@@ -291,7 +311,7 @@ class TypeResolver:
 
         # "None" (void) -- emitted by walker for ast.Constant(None)
         if name == "None" and not ref.args:
-            return VOID
+            return NONE if is_type_arg else VOID
 
         # Structural wrappers (canonical `mod:Name` names set by the walker
         # only when the source name actually resolved to the expected module).
@@ -306,7 +326,17 @@ class TypeResolver:
             inner_arg = ref.args[0]
             assert not isinstance(inner_arg, int), \
                 f"structural wrapper {name} cannot take int arg"
-            inner = self.resolve(inner_arg, type_param_scope)
+            # Own/Ptr/readonly/auto_* are value-bearing slots (Own[None] etc.
+            # must produce NoneType). Optional/Final/ClassVar keep the outer
+            # context: Optional preserves the union-marker semantics, Final/
+            # ClassVar are annotation modifiers at whatever depth they appear.
+            inner_is_type_arg = name in (
+                "tpy:Ptr", "tpy:Own", "tpy:readonly",
+                "tpy:auto_readonly", "tpy:auto_own",
+            ) or is_type_arg
+            inner = self.resolve(
+                inner_arg, type_param_scope, is_type_arg=inner_is_type_arg,
+            )
             if name == "tpy:Ptr":
                 if isinstance(inner, ReadonlyType):
                     return PtrType(inner.wrapped, is_readonly=True)
@@ -345,7 +375,7 @@ class TypeResolver:
         # tuple
         if name == "builtins:tuple" and ref.args:
             elements = tuple(
-                self.resolve(a, type_param_scope)
+                self.resolve(a, type_param_scope, is_type_arg=True)
                 for a in ref.args if not isinstance(a, int)
             )
             return TupleType(elements)
@@ -365,7 +395,8 @@ class TypeResolver:
                     mod, attr = parts
                     resolved_q = self._resolve_qualified_type_name_str(mod, attr)
                     if resolved_q:
-                        primitive = self._resolve_primitive_type(*resolved_q, loc=ref.loc)
+                        primitive = self._resolve_primitive_type(
+                            *resolved_q, loc=ref.loc, is_type_arg=is_type_arg)
                         if primitive is not None:
                             return primitive
                         registered = self._resolve_registered_type(
@@ -401,7 +432,8 @@ class TypeResolver:
             # Bare name resolution
             resolved = parser._resolve_type_name(name)
             if resolved:
-                primitive = self._resolve_primitive_type(*resolved, loc=ref.loc)
+                primitive = self._resolve_primitive_type(
+                    *resolved, loc=ref.loc, is_type_arg=is_type_arg)
                 if primitive is not None:
                     return primitive
             resolved_name = resolved[1] if resolved else name
@@ -500,7 +532,8 @@ class TypeResolver:
                         loc=ref.loc,
                     )
                 type_args = tuple(
-                    a if isinstance(a, int) else self.resolve(a, type_param_scope)
+                    a if isinstance(a, int)
+                    else self.resolve(a, type_param_scope, is_type_arg=True)
                     for a in ref.args
                 )
                 qname = (f"{user_protocol.module}.{resolved_container}"
@@ -616,6 +649,7 @@ class TypeResolver:
     def _resolve_primitive_type(
         self, module: str, original: str,
         node: ast.expr | None = None, *, loc: SourceLocation | None = None,
+        is_type_arg: bool = False,
     ) -> TpyType | None:
         """Resolve a (module, original_name) pair to a primitive type.
 
@@ -634,7 +668,7 @@ class TypeResolver:
             elif original == "bytearray": return BYTEARRAY
             elif original == "basic_slice": return BASIC_SLICE
             elif original == "slice": return SLICE
-            elif original == "None": return VOID
+            elif original == "None": return NONE if is_type_arg else VOID
             elif original == "type": return NominalType("type", _module_qname=qnames.TYPE)
             elif original == "tuple":
                 raise ParseError("tuple requires type arguments: tuple[T1, T2, ...]", node, loc=loc)
@@ -822,7 +856,8 @@ class TypeResolver:
         for i, (arg, kind) in enumerate(zip(ref.args, param_kinds)):
             if kind == TypeParamKind.TYPE:
                 assert not isinstance(arg, int), f"type slot {i} got int literal"
-                parsed_args.append(self.resolve(arg, type_param_scope))
+                parsed_args.append(
+                    self.resolve(arg, type_param_scope, is_type_arg=True))
             elif kind == TypeParamKind.INT:
                 if isinstance(arg, int):
                     parsed_args.append(arg)
@@ -867,5 +902,6 @@ class TypeResolver:
                 kind = type_param_scope[arg.name]
                 type_args.append(TypeParamRef(arg.name, kind=kind))
             else:
-                type_args.append(self.resolve(arg, type_param_scope))
+                type_args.append(
+                    self.resolve(arg, type_param_scope, is_type_arg=True))
         return tuple(type_args)

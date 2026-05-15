@@ -92,6 +92,16 @@ class BuiltinGenerator:
                     placeholder = f"{{{name}}}"
                     if placeholder in template and hasattr(typ, "to_cpp"):
                         template = template.replace(placeholder, typ.to_cpp_stored())
+            # {cpp} substitutes the (substituted) return-type spelling.
+            # Used by free functions whose template needs the full
+            # return-type C++ shape rather than just `{T}` -- e.g.
+            # `unsafe_cast[T] -> Ptr[T]` wants `Ptr[None]` to lower to
+            # `void*` (PtrType's special-case) rather than `std::monostate*`.
+            if "{cpp}" in template and fi.return_type is not None:
+                ret_type = fi.return_type
+                if effective_subst:
+                    ret_type = self.types.substitute_type_params(ret_type, effective_subst)
+                template = template.replace("{cpp}", ret_type.to_cpp())
             if receiver is not None:
                 return expand_cpp_template(template, receiver, *gen_args,
                                            self_type=self_type)
@@ -334,6 +344,13 @@ class BuiltinGenerator:
 
             if isinstance(arg, TpyNoneLiteral):
                 parts.append('"None"')
+            elif isinstance(arg_type, NoneType):
+                # NoneType-typed expression (e.g. `x = await none_coro()`).
+                # std::monostate has no operator<<, so a direct `std::cout
+                # << x` won't compile; evaluate the expression for side
+                # effects, discard, then emit the literal.
+                expr_code = self._gen_expr_deref(arg)
+                parts.append(f'((void)({expr_code}), "None")')
             elif isinstance(arg, TpyStrLiteral):
                 parts.append(cpp_string_literal_expr(arg.value))
             elif self.types.is_runtime_bigint(arg, arg_type):

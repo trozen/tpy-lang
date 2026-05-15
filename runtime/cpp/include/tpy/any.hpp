@@ -109,6 +109,7 @@ concept any_repr_capable = requires(const T& t) {
 // non-capable T at concept-check time and break compilation.
 template <typename T>
 concept any_to_bool_capable =
+    std::is_same_v<T, std::monostate> ||
     std::is_constructible_v<bool, T> ||
     requires(const T& t) { { t.empty() } -> std::convertible_to<bool>; } ||
     requires(const T& t) { { t.__bool__() } -> std::convertible_to<bool>; };

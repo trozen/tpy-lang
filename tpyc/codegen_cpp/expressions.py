@@ -14,7 +14,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType,
     NominalType, PtrType, OwnType, OptionalType, NoneType, AnyType, make_array,
     PendingListType, ListRepeatType,
-    TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_qualifiers, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
+    TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_own, unwrap_qualifiers, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     TupleType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
@@ -945,11 +945,19 @@ class ExpressionGenerator:
             return "true" if expr.value else "false"
 
         elif isinstance(expr, TpyNoneLiteral):
-            if isinstance(target_type, OwnType) and isinstance(target_type.wrapped, OptionalType):
+            # Own[T] is a transparent wrapper for the purpose of choosing
+            # the C++ spelling of None -- the underlying T determines the
+            # value. (`Own[None]` arises for `value: Own[T]` params of
+            # generics like `Future[None].set_result`.)
+            unwrapped = unwrap_own(target_type)
+            if isinstance(unwrapped, OptionalType):
                 return "std::nullopt"
-            if isinstance(target_type, OptionalType):
-                return "std::nullopt"
-            if isinstance(target_type, UnionType):
+            if isinstance(unwrapped, UnionType):
+                return "std::monostate{}"
+            # NoneType target: parser routes `None` annotations to NoneType
+            # at type-arg positions (e.g. `T = None` in `Future[None]`).
+            # std::monostate is the canonical TPy unit-value lowering.
+            if isinstance(unwrapped, NoneType):
                 return "std::monostate{}"
             return "nullptr"
 
@@ -1565,7 +1573,8 @@ class ExpressionGenerator:
                 else:
                     return f"(!{check})"
             # Any vs None: typeid-based check (D15). The Any cell stores
-            # None as a value of type std::nullptr_t; an empty/moved-from
+            # None as a value of type std::monostate (the canonical TPy
+            # unit type at value-bearing positions); an empty/moved-from
             # Any is *not* None (it has no value at all).
             any_expr = None
             if isinstance(left_type, AnyType) and isinstance(expr.right, TpyNoneLiteral):
@@ -1575,7 +1584,7 @@ class ExpressionGenerator:
             if any_expr is not None:
                 val = self.gen_expr(any_expr)
                 check = (f"({val}.value.has_value() && "
-                         f"{val}.value.type() == typeid(std::nullptr_t))")
+                         f"{val}.value.type() == typeid(std::monostate))")
                 if expr.op == "is":
                     return check
                 return f"(!{check})"
@@ -2314,7 +2323,7 @@ class ExpressionGenerator:
             # Any narrowing (D15): typeid-based check. The runtime value
             # of an empty/moved-from Any has no value() and is *not*
             # treated as any concrete type, so the has_value() guard is
-            # essential. NoneType extracts as typeid(std::nullptr_t).
+            # essential. NoneType extracts as typeid(std::monostate).
             # Tuple form (isinstance(x, (A, B))) packs the check types
             # into a UnionType -- emit an OR of per-member typeid checks
             # rather than typeid(std::variant<A, B>) which would never

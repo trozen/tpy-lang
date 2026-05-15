@@ -29,7 +29,7 @@ void main() {
     // print(classify(2.5))
     std::cout << classify(::tpy::make_any(static_cast<double>(2.5))) << "\n";
     // print(classify(None))
-    std::cout << classify(::tpy::make_any(nullptr)) << "\n";
+    std::cout << classify(::tpy::make_any(std::monostate{})) << "\n";
 }
 
 void __tpy_init() {

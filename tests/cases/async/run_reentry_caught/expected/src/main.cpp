@@ -5,14 +5,14 @@ namespace tpyapp::main {
 
 
 // async def inner() -> None:
-::tpy::Poll<void> __coro_inner::__poll__(::tpy::Waker waker) {
+::tpy::Poll<::std::monostate> __coro_inner::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
             // print("inner ran -- should not happen")
             std::cout << "inner ran -- should not happen" << "\n";
             __state = S_DONE;
-            return ::tpy::Poll<void>::ready();
+            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -26,7 +26,7 @@ __coro_inner inner() {
 }
 
 // async def outer() -> None:
-::tpy::Poll<void> __coro_outer::__poll__(::tpy::Waker waker) {
+::tpy::Poll<::std::monostate> __coro_outer::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -34,14 +34,14 @@ __coro_inner inner() {
             {
                 try {
                     // asyncio.run(inner())
-                    ::tpystd::asyncio::run<void>(inner());
+                    ::tpystd::asyncio::run<std::monostate>(inner());
                 } catch (const ::tpy::RuntimeError& e) {
                     // print("caught:", e)
                     std::cout << "caught:" << " " << e << "\n";
                 }
             }
             __state = S_DONE;
-            return ::tpy::Poll<void>::ready();
+            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -57,7 +57,7 @@ __coro_outer outer() {
 // def main() -> None:
 void main() {
     // asyncio.run(outer())
-    ::tpystd::asyncio::run<void>(outer());
+    ::tpystd::asyncio::run<std::monostate>(outer());
 }
 
 void __tpy_init() {

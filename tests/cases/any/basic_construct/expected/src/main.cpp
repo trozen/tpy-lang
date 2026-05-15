@@ -13,7 +13,7 @@ void main() {
     // c: Any = 3.14
     ::tpy::Any c = ::tpy::make_any(static_cast<double>(3.14));
     // d: Any = None
-    ::tpy::Any d = ::tpy::make_any(nullptr);
+    ::tpy::Any d = ::tpy::make_any(std::monostate{});
     // e: Any = True
     ::tpy::Any e = ::tpy::make_any(true);
     // print("constructed")

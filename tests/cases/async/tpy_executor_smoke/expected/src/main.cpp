@@ -25,13 +25,13 @@ __coro_returns_value returns_value(::tpy::BigInt x) {
 }
 
 // async def void_coro() -> None:
-::tpy::Poll<void> __coro_void_coro::__poll__(::tpy::Waker waker) {
+::tpy::Poll<::std::monostate> __coro_void_coro::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
             // return None
             __state = S_DONE;
-            return ::tpy::Poll<void>::ready();
+            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -74,7 +74,7 @@ void test_multiple_spawns() {
     // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
     // a = e.spawn(_make_any_task_for_test(void_coro()))
-    int32_t a = e.spawn(::tpy::make_any_task_for_test<void>(void_coro()));
+    int32_t a = e.spawn(::tpy::make_any_task_for_test<std::monostate>(void_coro()));
     // b = e.spawn(_make_any_task_for_test(returns_value(42)))
     int32_t b = e.spawn(::tpy::make_any_task_for_test<::tpy::BigInt>(returns_value(::tpy::BigInt(42))));
     // print("two slots:", len(e.slots))
@@ -135,7 +135,7 @@ void test_drain_cancels_live_task() {
     // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
     // sid = e.spawn(_make_any_task_for_test(CancellableForever()))
-    int32_t sid = e.spawn(::tpy::make_any_task_for_test<void>(CancellableForever()));
+    int32_t sid = e.spawn(::tpy::make_any_task_for_test<std::monostate>(CancellableForever()));
     // e.drain_runnable()
     e.drain_runnable();
     // print("parked, slot done:", e.slot_done(sid))
