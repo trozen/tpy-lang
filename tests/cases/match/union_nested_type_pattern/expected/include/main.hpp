@@ -25,7 +25,7 @@ struct Box {
 
     // def __init__(self, value: Own[T]) -> None:
     Box() = default;
-    explicit Box(T&& value) : value(std::move(value)) {}
+    explicit Box(::tpy::own_param_t<T> value) : value(std::move(value)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -46,7 +46,7 @@ struct Pair {
 
     // def __init__(self, first: Own[T], second: str) -> None:
     Pair() = default;
-    explicit Pair(T&& first, std::string_view second) : first(std::move(first)), second(second) {}
+    explicit Pair(::tpy::own_param_t<T> first, std::string_view second) : first(std::move(first)), second(second) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 

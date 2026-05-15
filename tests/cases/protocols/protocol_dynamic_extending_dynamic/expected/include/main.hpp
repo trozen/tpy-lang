@@ -34,6 +34,8 @@ struct NamedPet : Pet {
 
 } // namespace tpyapp::main
 
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Pet> : std::true_type {};
+
 template<tpyapp::main::__Pet_Concept__ T>
 struct tpy::Adapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     T inner;
@@ -48,6 +50,8 @@ struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
     RefAdapter(T& ref) : inner(ref) {}
     std::string make_noise() override { return std::string(inner.make_noise()); }
 };
+
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::NamedPet> : std::true_type {};
 
 template<tpyapp::main::__NamedPet_Concept__ T>
 struct tpy::Adapter<tpyapp::main::NamedPet, T> : tpyapp::main::NamedPet {

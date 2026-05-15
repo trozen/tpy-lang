@@ -17,7 +17,7 @@ int32_t forward(Box&& b);
 Box passthrough(Box&& b);
 int32_t copy_store(Box&& b);
 template<::tpy::ValueType T>
-::tpy::val_or_ref_t<T> value_type_borrow(std::type_identity_t<T>&& x);
+::tpy::val_or_ref_t<T> value_type_borrow(::tpy::own_param_t<T> x);
 int32_t partial_consume(Box&& b, bool cond);
 int32_t both_branches(Box&& b, bool cond);
 int32_t early_return(Box&& b, bool cond);
@@ -61,7 +61,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 // # No warning: ValueType bound -- copy == move, no semantic difference
 // def value_type_borrow[T: ValueType](x: Own[T]) -> T:  # tpyc: ok
 template<::tpy::ValueType T>
-::tpy::val_or_ref_t<T> value_type_borrow(std::type_identity_t<T>&& x) {
+::tpy::val_or_ref_t<T> value_type_borrow(::tpy::own_param_t<T> x) {
     // return x
     return x;
 }

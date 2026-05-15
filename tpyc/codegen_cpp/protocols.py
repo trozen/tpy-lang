@@ -571,6 +571,17 @@ class ProtocolGenerator:
             template_header = f"template<{qconcept} {impl}>"
             qbase = qbase_name
 
+        # is_dyn_protocol_base specialization. Specialized as a template
+        # (partial for generic protocols, full otherwise) so a forward-
+        # declared T still resolves to the false_type primary -- recursive
+        # type aliases don't need T complete to evaluate own_param_t<T>.
+        if protocol.type_params:
+            tparam_only = "template<" + ", ".join(f"typename {tp}" for tp in protocol.type_params) + ">"
+            out.write(f"{tparam_only}\n")
+            out.write(f"struct tpy::is_dyn_protocol_base<{qbase}> : std::true_type {{}};\n\n")
+        else:
+            out.write(f"template<> struct tpy::is_dyn_protocol_base<{qbase}> : std::true_type {{}};\n\n")
+
         # -- Owning adapter (for locals and rvalue call-site args) --
         out.write(f"{template_header}\n")
         out.write(f"struct tpy::Adapter<{qbase}, {impl}> : {qbase} {{\n")

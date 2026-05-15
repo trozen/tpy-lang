@@ -16,7 +16,7 @@ template<typename T>
 template<typename T>
 void consume_list(std::vector<T>&& items);
 template<typename T>
-void consume_both(std::type_identity_t<T>&& a, std::type_identity_t<T>&& b);
+void consume_both(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b);
 void main();
 
 // class Point:
@@ -47,7 +47,7 @@ void consume_list(std::vector<T>&& items) {
 }
 // def consume_both[T](a: Own[T], b: Own[T]) -> None:
 template<typename T>
-void consume_both(std::type_identity_t<T>&& a, std::type_identity_t<T>&& b) {
+void consume_both(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b) {
     // pass
 }
 

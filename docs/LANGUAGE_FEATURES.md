@@ -2426,7 +2426,17 @@ def bad() -> Pet:
     return Dog()           # ERROR: local adapter destroyed on return
 ```
 
-**`Optional[Pet]` rejection** -- `Optional` of a `@dynamic` protocol is a sema error in params, locals, and record fields (until `Box[P]` exists for heap-owned dynamic values).
+**`Optional[Pet]` rejection** -- `Optional` of a `@dynamic` protocol is a sema error in params, locals, and record fields. Heap-owned dynamic values now have `Box[P]`; the supported optional shape is `Box[Pet] | None` (a nullable owning slot), not bare `Optional[Pet]`.
+
+**`Box[P]` for `@dynamic` P -- heap-owned erased dynamic-protocol values.** `Box[Pet]` accepts any conformer (inheritance or structural) and stores it through the C++ abstract base:
+- **Inheritance path:** `Box[Pet](Parrot(...))` where `Parrot(Pet): ...` emits `std::unique_ptr<Pet>(new Parrot{...})`. Trivial pointer upcast through Parrot's inherited vtable.
+- **Structural path:** `Box[Pet](Dog(...))` where `Dog` has the required methods but doesn't inherit Pet emits `std::unique_ptr<Pet>(new tpy::Adapter<Pet, Dog>{...})`. The Adapter wraps Dog and routes virtual calls.
+
+Same machinery in both paths once the Box is constructed: `Pet&` access via `box.get()`, virtual dispatch on method calls, virtual destructor cleanup on `box`'s drop. Unblocks `list[Box[Pet]]` (heterogeneous polymorphic containers), record fields of erased-protocol type (`class Owner: pet: Box[Pet]`), and Send-tagged storage via `Box[Send[Pet]]` (see `docs/SEND_SYNC_DESIGN.md` OQ5).
+
+The same wrapping rule fires anywhere a `Own[P]` parameter receives a concrete conformer: codegen emits the heap-owning `unique_ptr<P>` wrapper at the call site. Sema's `infer_type_params_for_record` prefers the LHS hint's `T=P` over the arg-inferred concrete T when the arg doesn't inherit P (structural case); when the arg DOES inherit (e.g. `Box[Pet] = Box(Parrot())`), the existing `Covariant[T]` path handles uplift and the wrapping doesn't fire.
+
+**Limitation:** member access on an `Own[P]` parameter via the `.` operator (`pet.name()` inside `def f(p: Own[Pet])`) is not yet supported -- the C++ shape is `std::unique_ptr<P>` and `.name()` lowers to the C++ `.` operator which doesn't traverse the smart pointer. Box's constructor isn't affected (it only passes `value` to `unsafe_take`). Tracked in `TODO.md`.
 
 **Cross-module** -- `@dynamic` protocols can be defined in one module and imported in another. The compiler generates fully qualified C++ names (e.g., `::tpyapp::pets::Pet`).
 

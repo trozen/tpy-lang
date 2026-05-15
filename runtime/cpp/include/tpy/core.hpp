@@ -14,6 +14,7 @@
 #include <exception>
 #include <expected>
 #include <format>
+#include <memory>
 #include <optional>
 #include <ostream>
 #include <string>
@@ -313,6 +314,46 @@ template <typename T>
 void destroy_at(T* p) {
     if constexpr (!std::is_trivially_destructible_v<T>) {
         p->~T();
+    }
+}
+
+/**
+ * Heap-allocate a T and move-construct it from `value` (combined alloc+init).
+ * The std::unique_ptr<T> overload below covers the abstract-@dynamic case
+ * where the caller has already heap-allocated; it just releases the handle.
+ */
+template <typename T>
+T* heap_take(T&& value) {
+    T* p = static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))));
+    ::new(static_cast<void*>(p)) T(std::move(value));
+    return p;
+}
+
+template <typename T>
+T* heap_take(std::unique_ptr<T> value) {
+    return value.release();
+}
+
+/**
+ * Destroy and free a heap-allocated T previously produced by heap_take.
+ *
+ * For polymorphic T (a class with a virtual destructor -- typically the
+ * abstract @dynamic protocol base), uses scalar `delete p`. Per [expr.delete],
+ * `delete p` with virtual destructor routes through the vtable's *deleting
+ * destructor*, which knows the dynamic type and calls the matching operator
+ * delete (aligned form if the dynamic type is over-aligned). This is the
+ * correct disposal path -- the compiler handles alignment via the vtable.
+ *
+ * For non-polymorphic T, manually destroys and frees with the same alignment
+ * heap_take used. Static and dynamic types coincide, so alignof(T) matches.
+ */
+template <typename T>
+void heap_release(T* p) {
+    if constexpr (std::has_virtual_destructor_v<T>) {
+        delete p;  // virtual deleting destructor handles alignment + dynamic size
+    } else {
+        tpy::destroy_at(p);
+        ::operator delete(p, std::align_val_t(alignof(T)));
     }
 }
 

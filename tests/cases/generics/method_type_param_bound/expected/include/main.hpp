@@ -23,7 +23,7 @@ struct Pair {
 
     // def __init__(self, a: Own[T], b: Own[T]) -> None:
     Pair() = default;
-    explicit Pair(T&& a, T&& b) : a(std::move(a)), b(std::move(b)) {}
+    explicit Pair(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b) : a(std::move(a)), b(std::move(b)) {}
 
     // def min_val[T: Comparable](self) -> T:
     ::tpy::val_or_ref_t<T> min_val()

@@ -21,6 +21,8 @@ struct Animal {
 
 } // namespace tpyapp::main
 
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Animal> : std::true_type {};
+
 template<tpyapp::main::__Animal_Concept__ T>
 struct tpy::Adapter<tpyapp::main::Animal, T> : tpyapp::main::Animal {
     T inner;
@@ -101,7 +103,7 @@ struct Tagged {
 
     // def __init__(self, val: Own[T], tag: N) -> None:
     Tagged() = default;
-    explicit Tagged(T&& val, const N& tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))), _tag(tag), _owned(true) {
+    explicit Tagged(::tpy::own_param_t<T> val, const N& tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))), _tag(tag), _owned(true) {
         // unsafe_init(self._ptr, val)
         ::new(static_cast<void*>(this->_ptr)) T(std::move(val));
     }

@@ -13,7 +13,7 @@ template<typename A, typename B> struct Wrapper;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename A, typename B>
-Wrapper<A, B> wrap_with_tag(std::type_identity_t<A>&& inner, std::type_identity_t<B>&& tag);
+Wrapper<A, B> wrap_with_tag(::tpy::own_param_t<A> inner, ::tpy::own_param_t<B> tag);
 void main();
 
 // class Box[T]:
@@ -24,7 +24,7 @@ struct Box {
 
     // def __init__(self, val: Own[T]) -> None:
     Box() = default;
-    explicit Box(T&& val) : val(std::move(val)) {}
+    explicit Box(::tpy::own_param_t<T> val) : val(std::move(val)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -44,7 +44,7 @@ struct Wrapper {
 
     // def __init__(self, inner: Own[A], tag: Own[B]) -> None:
     Wrapper() = default;
-    explicit Wrapper(A&& inner, B&& tag) : inner(std::move(inner)), tag(std::move(tag)) {}
+    explicit Wrapper(::tpy::own_param_t<A> inner, ::tpy::own_param_t<B> tag) : inner(std::move(inner)), tag(std::move(tag)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<A, B>& obj) {
 
 // def wrap_with_tag[A, B](inner: Own[A], tag: Own[B]) -> Own[Wrapper[A, B]]:
 template<typename A, typename B>
-Wrapper<A, B> wrap_with_tag(std::type_identity_t<A>&& inner, std::type_identity_t<B>&& tag) {
+Wrapper<A, B> wrap_with_tag(::tpy::own_param_t<A> inner, ::tpy::own_param_t<B> tag) {
     // return Wrapper[A, B](inner, tag)
     return Wrapper<A, B>(std::move(inner), std::move(tag));
 }

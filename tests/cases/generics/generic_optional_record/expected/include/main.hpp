@@ -46,7 +46,7 @@ struct Container {
 
     // def __init__(self, value: Own[T]) -> None:
     Container() = default;
-    explicit Container(T&& value) : _value(std::move(value)), _has(true) {}
+    explicit Container(::tpy::own_param_t<T> value) : _value(std::move(value)), _has(true) {}
 
     // def get(self) -> T | None:
     T* get() {

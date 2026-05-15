@@ -18,7 +18,7 @@ from ..typesys import (
     TupleType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
-    is_float_type, is_readonly_span)
+    is_float_type, is_readonly_span, is_dyn_protocol)
 from ..type_def_registry import (
     is_dict_view, is_set, is_dict, is_array, is_span, is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type,
@@ -667,6 +667,9 @@ class ExpressionGenerator:
 
     def _gen_dynamic_protocol_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
         """If ptype is a @dynamic protocol, return the wrapped arg expression. Otherwise None."""
+        if isinstance(ptype, OwnType) and is_dyn_protocol(ptype.wrapped):
+            return self._gen_dynamic_protocol_own_arg(arg, ptype.wrapped)
+
         unwrapped_ptype = unwrap_readonly(ptype)
         if not is_protocol_type(unwrapped_ptype):
             return None
@@ -691,6 +694,27 @@ class ExpressionGenerator:
             else:
                 adapter_type = self.protocols.get_dynamic_ref_adapter_type(unwrapped_ptype, concrete_cpp)
             return self.ctx.temps.create_typed(adapter_type, arg_expr, brace_init=True)
+
+    def _gen_dynamic_protocol_own_arg(self, arg: TpyExpr, protocol: TpyType) -> str:
+        """Wrap an Own[ConcreteT] argument into Own[P] (unique_ptr<P>) where P is @dynamic.
+
+        Emits `std::make_unique<U>(arg)` where U is the concrete type
+        (inheritance) or `tpy::Adapter<P, ConcreteT>` (structural). The
+        resulting unique_ptr<U> implicitly converts to unique_ptr<P> via the
+        converting move ctor -- requires U* convertible to P*, which holds
+        for both paths (Adapter publicly inherits P).
+        """
+        arg_type = self.ctx.get_expr_type(arg)
+        if isinstance(arg_type, OwnType):
+            arg_type = arg_type.wrapped
+        arg_expr = self.gen_expr_deref(arg, arg_type)
+        arg_expr = self._maybe_move(arg, arg_expr)
+        concrete_cpp = self.types.type_to_cpp(arg_type)
+        if self.protocols.directly_implements_dynamic(arg_type, protocol):
+            target_cpp = concrete_cpp
+        else:
+            target_cpp = self.protocols.get_dynamic_adapter_type(protocol, concrete_cpp)
+        return f"std::make_unique<{target_cpp}>({arg_expr})"
 
     def _gen_covariant_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
         """If ptype requires covariant conversion, return the wrapped arg. Otherwise None."""

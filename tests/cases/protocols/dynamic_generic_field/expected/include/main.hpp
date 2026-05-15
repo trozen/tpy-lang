@@ -21,6 +21,8 @@ struct Greeter {
 
 } // namespace tpyapp::main
 
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Greeter> : std::true_type {};
+
 template<tpyapp::main::__Greeter_Concept__ T>
 struct tpy::Adapter<tpyapp::main::Greeter, T> : tpyapp::main::Greeter {
     T inner;

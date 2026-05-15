@@ -15,7 +15,7 @@ from ..typesys import (
     IntLiteralType, FloatLiteralType, TypeParamKind, BIGINT, UnknownElementType,
     NoneType, VoidType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
-    unwrap_ref_type, RefType,
+    unwrap_ref_type, RefType, is_dyn_protocol,
     is_callable_type, is_integer_type, is_float_type, is_void_like_type,
 )
 from ..coercions import resolve_coercion, CoercionContext
@@ -1125,7 +1125,65 @@ class TypeOperations:
             if tp not in inferred:
                 return None
 
+        # LHS-hint preference: when the hint's type-arg is @dynamic and the
+        # arg-inferred T doesn't inherit it, switch T to the hint so the
+        # call-site wrapping rule fires (structural conformer -> Adapter).
+        # When the arg DOES inherit, keep T=arg and let Covariant[T] uplift
+        # -- otherwise generic records using raw unsafe_alloc + unsafe_init
+        # (e.g. Tagged in covariant_custom) would break since unsafe_alloc
+        # can't allocate sizeof(abstract_base).
+        if expected_type is not None:
+            exp = expected_type.wrapped if isinstance(expected_type, OwnType) else expected_type
+            exp = unwrap_readonly(exp)
+            if (isinstance(exp, NominalType)
+                    and exp.qualified_name() == record.qualified_name()
+                    and len(exp.type_args) == len(record.type_params)):
+                for i, tp in enumerate(record.type_params):
+                    hint_t = exp.type_args[i]
+                    inferred_t = inferred[tp]
+                    if not (isinstance(hint_t, NominalType) and is_dyn_protocol(hint_t)):
+                        continue
+                    if isinstance(inferred_t, NominalType) and is_dyn_protocol(inferred_t):
+                        continue
+                    # Skip if the inferred concrete inherits the hint protocol --
+                    # the existing Covariant[T] path handles it.
+                    if self._inherits_protocol(inferred_t, hint_t):
+                        continue
+                    inferred[tp] = hint_t
+
         return inferred
+
+    def _inherits_protocol(self, concrete: TpyType, protocol: NominalType) -> bool:
+        """Return True if `concrete` transitively implements a @dynamic protocol matching `protocol`.
+
+        Decides whether arg-derived T should be kept (Covariant[T] handles the
+        uplift) or replaced by the LHS-hint protocol T (structural-conform case
+        that needs explicit heap wrapping). Same-named non-@dynamic protocols
+        don't match -- only @dynamic protocols are relevant to the LHS-hint path.
+
+        Near-duplicate of codegen's `directly_implements_dynamic` -- worth
+        unifying via a registry-level helper (tracked in TODO.md).
+        """
+        if not isinstance(concrete, NominalType) or not concrete.is_user_record:
+            return False
+        record_info = self.ctx.registry.get_record(concrete.name)
+        if record_info is None:
+            return False
+        proto_name = protocol.name
+        seen: set[str] = set()
+        stack = list(record_info.implemented_protocols)
+        while stack:
+            p = stack.pop()
+            if p.name in seen:
+                continue
+            seen.add(p.name)
+            pi = protocol_info_of(p)
+            if pi is None:
+                continue
+            if pi.is_dynamic and p.name == proto_name:
+                return True
+            stack.extend(pi.parent_protocols)
+        return False
 
     def match_generic_constructor(
         self, params: list, arg_types: list[TpyType]

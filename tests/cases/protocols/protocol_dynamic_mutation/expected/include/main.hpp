@@ -23,6 +23,8 @@ struct Counter {
 
 } // namespace tpyapp::main
 
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Counter> : std::true_type {};
+
 template<tpyapp::main::__Counter_Concept__ T>
 struct tpy::Adapter<tpyapp::main::Counter, T> : tpyapp::main::Counter {
     T inner;

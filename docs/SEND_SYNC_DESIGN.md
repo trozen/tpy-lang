@@ -115,7 +115,7 @@ All six design questions are decided. Summary:
 | OQ2 | Erased-Callable Send-ness | Introduce `Send[T]` marker wrapper (mirrors `readonly[T]`); `T: Send` bound for generic params |
 | OQ3 | Coroutine / generator / lambda / closure frames | Unified internal `FrameType` -- structural slot walk; generator-codegen migration is independent |
 | OQ4 | Opt-in / opt-out syntax | Full kit: `class Foo(Send): ...` opt-in + `@unsafe_send` / `@unsafe_sync` + `@nosend` / `@nosync`; mutually exclusive per target (record markers conflict on the record; function decorators conflict on that function's FrameType) |
-| OQ5 | `@dynamic` protocol Send-ness | `Send[Pet]` -- valid wherever bare `Pet` is valid (params/locals). No compiler dependency on Box; storage form composes with `Box[Send[Pet]]` once Box[P] lands |
+| OQ5 | `@dynamic` protocol Send-ness | `Send[Pet]` -- valid wherever bare `Pet` is valid (params/locals). No compiler dependency on Box; storage form composes with `Box[Send[Pet]]` (Box[P] has shipped) |
 | OQ6 | Diagnostic surface | Inline chain at enforcement + `tpy.assert_send[T]()` / `assert_sync[T]()` + `tpyc --explain-send T` (all share one chain-walker) |
 
 Each is expanded below with semantics and the alternatives that were rejected.
@@ -346,7 +346,7 @@ Sema enforces the per-target mutual exclusion in the registration pass.
 
 ### OQ5. `@dynamic` protocol surface for Send-tagged values **[DECIDED: `Send[Pet]` in Phase 2; no Box dependency]**
 
-**Current state:** `@dynamic class Pet` creates an existential erased form. Today the user writes `def greet(p: Pet)` and codegen lowers to `tpy::RefAdapter<Pet, T>` (lvalues) or owning `tpy::Adapter<Pet, T>` (rvalues). `Adapter[P]` is **not** a TPy-level type -- it's a C++ codegen detail. Dynamic-protocol values cannot live in fields or containers today; that's gated on `Box[P]` (item #13 in `docs/DYNAMIC_PROTOCOL_DESIGN.md`, marked Future).
+**Current state:** `@dynamic class Pet` creates an existential erased form. The user writes `def greet(p: Pet)` and codegen lowers to `tpy::RefAdapter<Pet, T>` (lvalues) or owning `tpy::Adapter<Pet, T>` (rvalues). `Adapter[P]` is **not** a TPy-level type -- it's a C++ codegen detail. Dynamic-protocol values living in fields or containers go through `Box[P]` (shipped; items #13/#14/#15 in `docs/DYNAMIC_PROTOCOL_DESIGN.md` now Done).
 
 **Decision:** `Send[Pet]` is the surface, mirroring how bare `Pet` works. The wrapper applies uniformly:
 
@@ -354,7 +354,7 @@ Sema enforces the per-target mutual exclusion in the registration pass.
 - **As an erased borrow/local-owned form:** `def greet(p: Send[Pet])` -- codegen emits the same `tpy::Adapter<Pet, T>` / `tpy::RefAdapter<Pet, T>` as bare `Pet`. Sema checks at the call site that the concrete argument's type is Send before allowing the Adapter construction. No new C++ templates needed.
 - **As a storage form in fields/containers:** waits for `Box[P]` to land, exactly like bare `Pet` does today. Once `Box[P]` ships, `Box[Send[Pet]]` works automatically; no Send-specific Box machinery needed.
 
-**No compiler dependency on Box.** Phase 2 ships Send/Sync support without touching Box code. The composition `Box[Send[Pet]]` works once Box[P] lands because:
+**No compiler dependency on Box.** Phase 2 ships Send/Sync support without touching Box code. The composition `Box[Send[Pet]]` works (now that Box[P] has shipped) because:
 - `Box[T]` is library code in `lib/tpy/tplib/box.py`, implemented via the general `Deref[T]` protocol -- the compiler does not hardcode `Box`.
 - `Send[T]` is a type-system wrapper; it does not know about Box.
 - Their composition follows general rules.

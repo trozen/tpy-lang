@@ -27,6 +27,8 @@ struct DynNamed {
 
 } // namespace tpyapp::main
 
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::DynNamed> : std::true_type {};
+
 template<tpyapp::main::__DynNamed_Concept__ T>
 struct tpy::Adapter<tpyapp::main::DynNamed, T> : tpyapp::main::DynNamed {
     T inner;

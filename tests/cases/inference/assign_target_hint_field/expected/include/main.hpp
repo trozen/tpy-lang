@@ -76,7 +76,7 @@ struct WithHeapStorage {
 
     // def __init__(self, val: Own[T]):
     WithHeapStorage() = default;
-    explicit WithHeapStorage(T&& val) : _storage(::tpy::UninitHeapStorage<T>(1)) {
+    explicit WithHeapStorage(::tpy::own_param_t<T> val) : _storage(::tpy::UninitHeapStorage<T>(1)) {
         // self._storage.init0(val)
         this->_storage.init0(std::move(val));
     }

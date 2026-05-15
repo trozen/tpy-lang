@@ -19,9 +19,11 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 10 | Cross-module `@dynamic` protocols | Done |
 | 11 | `@dynamic` extending `@dynamic` (base class inheritance chain) | Done |
 | 12 | Generic `@dynamic` protocols | Done |
-| 13 | `Box[P]` integration (heap-allocated dynamic values) | Future |
-| 14 | Record fields typed as `@dynamic` protocol (needs `Box[P]`) | Future |
-| 15 | `list[Box[P]]` heterogeneous containers | Future |
+| 13 | `Box[P]` integration (heap-allocated dynamic values) | Done |
+| 14 | Record fields typed as `@dynamic` protocol via `Box[P]` | Done |
+| 15 | `list[Box[P]]` heterogeneous containers | Done |
+| 16 | `Own[P]` as a plain function parameter (with method access on the owned value) | Future (Box's constructor works; general member access via `.` on `Own[P]` is missing) |
+| 17 | `Rc[P]` for `@dynamic` P -- shared-ownership erased dyn protocol | Future. Design direction: Rust's `Arc<dyn Trait>` single co-located allocation (refcount header + concrete in one block, drop-fn-in-header for type-erased destruction). Interim workaround: `Rc[Box[P]]` (two allocations: cell + box's pet). See TODO.md. |
 
 ## Overview
 
@@ -419,16 +421,20 @@ Compiler infrastructure issues (not blocked on `Box[P]`):
 - **Protocol fields on `@dynamic`** -- field access on protocol-typed variables fails
   in sema ("Cannot access field"). Virtual getters are generated in the base class but
   sema doesn't resolve field access through the erased type.
+- **`Box[P].set` / `clone` / `take` broken for abstract P** -- the method bodies
+  placement-new or return abstract P by value (ill-formed). Box's `__init__` /
+  `__del__` work; only the post-construction mutation/sharing/extraction methods
+  fail. See BUGS.md for the full picture.
+
 ## Future Extensions
 
-- **`Box[P]`** -- heap-owned dynamic value for fields, containers, returns. Requires
-  `Box[T]` implementation (Phase 6 of move semantics).
-- **`Rc[P]`** -- shared-ownership dynamic value for reference-counted sharing.
 - **`Self` type in `@dynamic`** -- may be supported with restrictions (e.g., `Self` in
   return position only, behind `Box`).
 - **Multiple protocol conformance** -- `pet: Pet & Drawable` for intersection types.
-- **`list[Box[P]]`** -- heterogeneous containers with heap-owned dynamic values.
-  Requires `Box[P]` first.
+- **`Rc[P]`** -- shared-ownership dynamic value for reference-counted sharing.
+  Design direction locked to Rust's `Arc<dyn Trait>` single co-located allocation
+  (refcount header + concrete in one block, drop-fn pointer in header). Interim
+  workaround: `Rc[Box[P]]`. See TODO.md.
 
 ## Implementation Steps
 
@@ -450,5 +456,10 @@ Compiler infrastructure issues (not blocked on `Box[P]`):
    methods get `override`. Eliminates adapter wrapping entirely.
 6. **Return types** -- allow returning protocol-typed values when provably long-lived
    (globals, parameters); error on returning local adapters
-7. **`Box[P]` integration** (future) -- heap-allocated dynamic values for fields,
-   containers, and unrestricted returns
+7. **`Box[P]` integration** (done) -- heap-allocated dynamic values for fields,
+   containers, and (mostly) unrestricted returns. `Box[P]` accepts inheritance
+   and structural conformers; codegen wraps as `std::unique_ptr<P>(new Adapter<P, U>(...))`
+   for structural or `std::unique_ptr<P>(new ConcreteInheritor(...))` for inheritance.
+   See `tpy::own_param_t<T>`, `tpy::is_dyn_protocol_base<T>`, `tpy::heap_take` /
+   `tpy::heap_release`. Cross-references: `docs/LANGUAGE_FEATURES.md` Box[P] section;
+   `docs/SEND_SYNC_DESIGN.md` OQ5 for storage-form `Box[Send[P]]` composition.

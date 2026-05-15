@@ -8,6 +8,7 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -149,6 +150,28 @@ namespace detail {
 template<typename T> using val_or_ref_t       = typename detail::val_or_ref_impl<T>::type;
 template<typename T> using val_or_cref_t      = typename detail::val_or_cref_impl<T>::type;
 template<typename T> using param_val_or_ref_t = typename detail::param_val_or_ref_impl<T>::type;
+
+/**
+ * is_dyn_protocol_base<T> -- true iff T is a TPy @dynamic protocol abstract
+ * base. Codegen emits a specialization next to each @dynamic protocol class;
+ * default-false primary tolerates incomplete T (recursive type aliases).
+ */
+template<typename T> struct is_dyn_protocol_base : std::false_type {};
+
+template<typename T>
+inline constexpr bool is_dyn_protocol_base_v = is_dyn_protocol_base<T>::value;
+
+/**
+ * own_param_t<T> -- C++ parameter shape for a TPy Own[T] slot, picking per T
+ * at template instantiation: unique_ptr<T> for abstract @dynamic bases,
+ * T&& otherwise. Lazy via alias, so one template body handles all T.
+ */
+template<typename T>
+using own_param_t = std::conditional_t<
+    is_dyn_protocol_base_v<T>,
+    std::unique_ptr<T>,
+    T&&
+>;
 
 /**
  * val_or_ref<T> - Wrapper for iterator __next__() returns.

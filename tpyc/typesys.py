@@ -1220,6 +1220,15 @@ def is_readonly_ptr(typ: 'TpyType') -> bool:
     return isinstance(typ, PtrType) and typ.is_readonly
 
 
+def is_dyn_protocol(typ: 'TpyType') -> bool:
+    """Check if a type is a @dynamic protocol -- an abstract base in C++.
+
+    Such types have no value-by-value storage (size unknown, abstract methods);
+    Own[T] for these lowers to std::unique_ptr<T>, Ptr[T] stays T*.
+    """
+    return isinstance(typ, NominalType) and typ.is_dynamic_protocol
+
+
 @dataclass(frozen=True)
 class OwnType(TpyType):
     """Owned type - passed/returned by value (ownership transfer).
@@ -1230,6 +1239,10 @@ class OwnType(TpyType):
     wrapped: TpyType
 
     def to_cpp(self) -> str:
+        # Own[P] for abstract @dynamic P -- heap-owned via std::unique_ptr<P>
+        # since the abstract base has no sizeof.
+        if is_dyn_protocol(self.wrapped):
+            return f"std::unique_ptr<{self.wrapped.to_cpp()}>"
         return self.wrapped.to_cpp()
 
     def is_value_type(self) -> bool:
@@ -1243,29 +1256,29 @@ class OwnType(TpyType):
         return self.wrapped.is_sync()
 
     def to_cpp_param_type(self) -> str:
+        if is_dyn_protocol(self.wrapped):
+            return f"std::unique_ptr<{self.wrapped.to_cpp()}>"
         if self.wrapped.is_value_type():
             return self.wrapped.to_cpp()
         cpp_type = self.wrapped.to_cpp()
         if isinstance(self.wrapped, TypeParamRef):
-            return f"std::type_identity_t<{cpp_type}>&&"
+            # own_param_t resolves to unique_ptr<T> for abstract @dynamic T,
+            # T&& otherwise -- lazy per-T dispatch in a template context.
+            # Also prevents forwarding-ref deduction (non-deduced context).
+            return f"::tpy::own_param_t<{cpp_type}>"
         return f"{cpp_type}&&"
 
     def to_cpp_param(self, name: str) -> str:
-        # Value types (int32_t, bool, float, Char, Ptr, Span, str, etc.) are
-        # trivially movable — T by value is optimal, no T&& needed.
+        if is_dyn_protocol(self.wrapped):
+            return f"std::unique_ptr<{self.wrapped.to_cpp()}> {name}"
         if self.wrapped.is_value_type():
             return f"{self.wrapped.to_cpp()} {name}"
         cpp_type = self.wrapped.to_cpp()
-        # Bare TypeParamRef needs std::type_identity_t to prevent forwarding-ref
-        # deduction in free function templates. For nested types (list[T], etc.),
-        # T is in a non-deduced context so plain T&& is fine.
         if isinstance(self.wrapped, TypeParamRef):
-            return f"std::type_identity_t<{cpp_type}>&& {name}"
+            return f"::tpy::own_param_t<{cpp_type}> {name}"
         return f"{cpp_type}&& {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
-        if self.wrapped.is_value_type():
-            return f"{self.wrapped.to_cpp()} {name}"
         return self.to_cpp_param(name)
 
     def to_cpp_return(self) -> str:

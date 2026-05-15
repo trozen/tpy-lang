@@ -227,6 +227,19 @@ def unsafe_drop(p) -> None:
     obj[0] = None
 
 
+def unsafe_take(value):
+    """Heap-allocate and move-in a value (alloc + init combined)."""
+    slot = _HeapSlot()
+    slot[0] = value
+    return take_ptr(slot)
+
+
+def unsafe_release(p) -> None:
+    """Destruct and free a heap-allocated value (drop + free combined)."""
+    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    obj[0] = None
+
+
 def unsafe_str_view(p, size: int) -> str:
     """Create a string view from a Ptr[Char] and length."""
     obj = p.__deref__() if hasattr(p, '__deref__') else p._obj

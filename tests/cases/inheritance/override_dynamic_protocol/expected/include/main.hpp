@@ -21,6 +21,8 @@ struct Speaker {
 
 } // namespace tpyapp::main
 
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Speaker> : std::true_type {};
+
 template<tpyapp::main::__Speaker_Concept__ T>
 struct tpy::Adapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
     T inner;

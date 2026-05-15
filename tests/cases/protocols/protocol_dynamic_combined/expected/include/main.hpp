@@ -33,6 +33,8 @@ struct Noise {
 
 } // namespace tpyapp::main
 
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Describable> : std::true_type {};
+
 template<tpyapp::main::__Describable_Concept__ T>
 struct tpy::Adapter<tpyapp::main::Describable, T> : tpyapp::main::Describable {
     T inner;
@@ -47,6 +49,8 @@ struct tpy::RefAdapter<tpyapp::main::Describable, T> : tpyapp::main::Describable
     RefAdapter(T& ref) : inner(ref) {}
     std::string describe() override { return std::string(inner.describe()); }
 };
+
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Noise> : std::true_type {};
 
 template<tpyapp::main::__Noise_Concept__ T>
 struct tpy::Adapter<tpyapp::main::Noise, T> : tpyapp::main::Noise {

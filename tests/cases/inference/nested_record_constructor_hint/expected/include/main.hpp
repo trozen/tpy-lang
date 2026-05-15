@@ -24,7 +24,7 @@ struct Box {
 
     // def __init__(self, val: Own[T]) -> None:
     Box() = default;
-    explicit Box(T&& val) : val(std::move(val)) {}
+    explicit Box(::tpy::own_param_t<T> val) : val(std::move(val)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 

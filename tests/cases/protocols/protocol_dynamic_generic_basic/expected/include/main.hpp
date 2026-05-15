@@ -24,6 +24,9 @@ struct Container {
 
 } // namespace tpyapp::main
 
+template<typename T>
+struct tpy::is_dyn_protocol_base<tpyapp::main::Container<T>> : std::true_type {};
+
 template<typename T, tpyapp::main::__Container_Concept__<T> __tpy_Impl>
 struct tpy::Adapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::Container<T> {
     __tpy_Impl inner;
