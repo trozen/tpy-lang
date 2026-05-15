@@ -24,7 +24,7 @@ MethodEmitMode = Literal["inline", "decl", "def_hpp", "def_cpp"]
 from ..typesys import (
     TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, IntLiteralType, is_fn_type, CallableType,
     UnionType, VoidType, NoneType, NONE,
-    BIGINT, BOOL, STR, is_protocol_type, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
+    BIGINT, BOOL, STR, is_protocol_type, is_dyn_protocol, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
     PtrType, LiteralType, LiteralValue, LiteralTag, is_any_str_type,
     is_primitive_type,
     resolve_int_literals, CONST_PARAMS_METHODS,
@@ -517,8 +517,11 @@ class FunctionGenerator:
         cpp_error = error_return_to_cpp(error_return, self.ctx.analyzer.ctx.module_name, self.ctx.analyzer.registry) if error_return else None
         unwrapped = unwrap_readonly(unwrap_ref_type(return_type))
         # Unwrap Own[Protocol] so consuming __iter__ returning Own[Iterator[T]]
-        # is recognized as a protocol return and gets `auto` in C++.
-        if isinstance(unwrapped, OwnType) and is_protocol_type(unwrapped.wrapped):
+        # gets `auto` in C++. Abstract @dynamic P must stay wrapped -- Own[P]
+        # lowers to std::unique_ptr<P> via OwnType.to_cpp(); the protocol path
+        # below would emit `P&` to a temporary.
+        if (isinstance(unwrapped, OwnType) and is_protocol_type(unwrapped.wrapped)
+                and not is_dyn_protocol(unwrapped.wrapped)):
             unwrapped = unwrapped.wrapped
         if is_protocol_type(unwrapped) and isinstance(unwrapped, NominalType):
             pi = protocol_info_of(unwrapped)

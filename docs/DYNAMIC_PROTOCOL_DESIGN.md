@@ -22,7 +22,7 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 13 | `Box[P]` integration (heap-allocated dynamic values) | Done |
 | 14 | Record fields typed as `@dynamic` protocol via `Box[P]` | Done |
 | 15 | `list[Box[P]]` heterogeneous containers | Done |
-| 16 | `Own[P]` as a plain function parameter (with method access on the owned value) | Future (Box's constructor works; general member access via `.` on `Own[P]` is missing) |
+| 16 | `Own[P]` as a plain function parameter + return type (with method access on the owned value) | Done. Param/return lower to `std::unique_ptr<P>`; `p.method()` body access emits `p->method()`; concrete-source returns wrap via `std::make_unique<Adapter<P, T>>(...)` (or `std::make_unique<T>(...)` for inheritance conformers). Forward `Own[P] -> Own[P]` returns rely on C++ implicit-move (no `std::move` wrap). |
 | 17 | `Rc[P]` for `@dynamic` P -- shared-ownership erased dyn protocol | Future. Design direction: Rust's `Arc<dyn Trait>` single co-located allocation (refcount header + concrete in one block, drop-fn-in-header for type-erased destruction). Interim workaround: `Rc[Box[P]]` (two allocations: cell + box's pet). See TODO.md. |
 
 ## Overview

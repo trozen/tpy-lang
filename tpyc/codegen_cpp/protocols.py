@@ -210,6 +210,19 @@ class ProtocolGenerator:
                 stack.extend(p.name for p in info.parent_protocols)
         return False
 
+    def dyn_protocol_forward_ok(self, source: TpyType, target: TpyType) -> bool:
+        """True if `source` (@dynamic protocol) can be forwarded as `target`
+        (@dynamic protocol) without an Adapter wrap -- same protocol (joint
+        qualified_name + type_args check, so generic instantiations like
+        `Container[int]` and `Container[str]` stay distinct) or inheriting peer.
+        """
+        if not (isinstance(source, NominalType) and isinstance(target, NominalType)):
+            return False
+        if (source.qualified_name() == target.qualified_name()
+                and source.type_args == target.type_args):
+            return True
+        return self._protocol_inherits_from(source.name, target.name)
+
     def directly_implements_dynamic(self, concrete_type: TpyType, protocol: NominalType) -> bool:
         """Check if concrete_type inherits a @dynamic protocol (directly or transitively).
 

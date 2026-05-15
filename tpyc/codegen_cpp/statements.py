@@ -483,6 +483,16 @@ class StatementGenerator:
                 if self.ctx.current_error_return and self._get_error_return_fi(ret_value):
                     ret_expr = self._gen_error_return_call(ret_value)
                     return self._make_return(indent, ret_expr)
+                # Own[abstract @dynamic P] return: mirror the function-call
+                # arg path so `return Parrot(...)` lands in a `unique_ptr<Pet>`
+                # slot via `std::make_unique<Adapter<P, Concrete>>(...)`.
+                # `_is_dyn_own_wrap_needed` returns False for the forward case
+                # so named locals/params keep C++ implicit-move on return.
+                if (isinstance(ret_type, OwnType)
+                        and self.expressions._is_dyn_own_wrap_needed(ret_value, ret_type)):
+                    dyn_own_ret = self.expressions._gen_dynamic_protocol_arg(ret_value, ret_type)
+                    if dyn_own_ret is not None:
+                        return self._make_return(indent, dyn_own_ret)
                 ret_expr = self.expressions.gen_expr(
                     ret_value, ret_type)
                 # OPTIONAL_STORAGE source names (Own[Opt[P_ref]] params)

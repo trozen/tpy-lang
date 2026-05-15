@@ -491,6 +491,26 @@ class ExpressionGenerator:
             return self._resolve_field_declared_type(expr)
         return None
 
+    def _receiver_is_own_dyn(self, recv: TpyExpr) -> bool:
+        """True when `recv` renders as `std::unique_ptr<P>` for abstract @dynamic P.
+
+        Sema strips OwnType from name and subscript expressions, so the
+        declared/element type is the only surviving signal of the unique_ptr
+        shape. `_resolve_own_source_type` covers names + fi-returns (including
+        TypeParamRef substitution); subscripts route through the container's
+        element type.
+        """
+        src = self._resolve_own_source_type(recv)
+        if src is not None and is_dyn_protocol(src.wrapped):
+            return True
+        if isinstance(recv, TpySubscript):
+            obj_type = self.ctx.get_expr_type(recv.obj)
+            if obj_type is not None:
+                elem = obj_type.get_element_type()
+                if isinstance(elem, OwnType) and is_dyn_protocol(elem.wrapped):
+                    return True
+        return False
+
     def gen_expr_narrowed(self, expr: TpyExpr) -> tuple[str, TpyType]:
         """Generate expression and type with narrowing applied.
 
@@ -736,6 +756,33 @@ class ExpressionGenerator:
                         return OwnType(sub)
         return None
 
+    def _is_dyn_own_wrap_needed(self, expr: TpyExpr, target: 'OwnType') -> bool:
+        """True iff an `expr` returned into an `Own[abstract @dynamic P]` slot
+        needs a `std::make_unique<...>` wrap (concrete or different protocol).
+
+        Forward case (source already shaped as `Own[P]`, same protocol or
+        inheriting peer) returns False so the return statement can emit the
+        bare expression -- C++ implicit-moves named locals/params on by-value
+        return; wrapping with `std::move` would trigger `-Wredundant-move`.
+        """
+        if not is_dyn_protocol(target.wrapped):
+            return False
+        source = self._resolve_own_source_type(expr)
+        if source is not None:
+            inner = source.wrapped
+            if not is_protocol_type(inner):
+                return True
+            return not self.protocols.dyn_protocol_forward_ok(inner, target.wrapped)
+        # `_resolve_own_source_type` misses non-name expressions whose sema
+        # type was stripped to bare `P` (ternary, subscript element). C++
+        # shape is still `unique_ptr<P>`, so forward without wrap.
+        expr_type = self.ctx.get_expr_type(expr)
+        if isinstance(expr_type, OwnType):
+            expr_type = expr_type.wrapped
+        if is_dyn_protocol(expr_type) and self.protocols.dyn_protocol_forward_ok(expr_type, target.wrapped):
+            return False
+        return True
+
     def _gen_dynamic_protocol_own_arg(self, arg: TpyExpr, protocol: TpyType) -> str:
         """Wrap an Own[ConcreteT] argument into Own[P] (unique_ptr<P>) where P is @dynamic.
 
@@ -755,14 +802,16 @@ class ExpressionGenerator:
         source_own_type = self._resolve_own_source_type(arg)
         if source_own_type is not None:
             inner = source_own_type.wrapped
-            if is_protocol_type(inner) and (
-                inner.qualified_name() == protocol.qualified_name()
-                or self.protocols._protocol_inherits_from(inner.name, protocol.name)
-            ):
+            if is_protocol_type(inner) and self.protocols.dyn_protocol_forward_ok(inner, protocol):
                 return self.gen_call_arg(arg, OwnType(protocol))
         arg_type = self.ctx.get_expr_type(arg)
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
+        # Sibling of the forward branch above for non-name expressions whose
+        # sema type was stripped to bare `P` (ternary, subscript). Wrapping
+        # via `Adapter<P, P>` would be ill-formed -- abstract P has no sizeof.
+        if is_dyn_protocol(arg_type) and self.protocols.dyn_protocol_forward_ok(arg_type, protocol):
+            return self.gen_call_arg(arg, OwnType(protocol))
         arg_expr = self.gen_expr_deref(arg, arg_type)
         arg_expr = self._maybe_move(arg, arg_expr)
         concrete_cpp = self.types.type_to_cpp(arg_type)
@@ -3274,7 +3323,8 @@ class ExpressionGenerator:
                 return f"{obj}->{cpp_method}{method_targs}({args})"
             return f"::tpy::deref_check({obj}).{cpp_method}{method_targs}({args})"
         use_arrow = ((self.ctx.is_indirect_name(expr.obj) and not is_narrowed and not is_consuming)
-                     or is_optional_ptr)
+                     or is_optional_ptr
+                     or self._receiver_is_own_dyn(expr.obj))
         accessor = "->" if use_arrow else "."
         return f"{obj}{accessor}{cpp_method}{method_targs}({args})"
 
@@ -3702,7 +3752,7 @@ class ExpressionGenerator:
             if expr.ptr_non_null:
                 return f"{obj}->{cpp_field}"
             return f"::tpy::deref_check({obj}).{cpp_field}"
-        if is_indirect or is_optional_ptr:
+        if is_indirect or is_optional_ptr or self._receiver_is_own_dyn(expr.obj):
             return f"{obj}->{cpp_field}"
         return f"{obj}.{cpp_field}"
 
