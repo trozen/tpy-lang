@@ -22,7 +22,7 @@ from __future__ import annotations
 
 import math as _math
 
-from tpy import Int32
+from tpy import Array, Int32, Span
 
 
 # TP7 BGI graphics-driver constants. Programs typically write
@@ -60,6 +60,16 @@ cgac1: Int32 = Int32(1)
 cgac2: Int32 = Int32(2)
 cgac3: Int32 = Int32(3)
 cgahi: Int32 = Int32(4)
+
+# TP7 BGI putimage operators: how an incoming bitmap is combined
+# with the existing canvas pixel. NormalPut copies, the others
+# blend.
+normalput: Int32 = Int32(0)
+copyput: Int32 = Int32(0)
+xorput: Int32 = Int32(1)
+orput: Int32 = Int32(2)
+andput: Int32 = Int32(3)
+notput: Int32 = Int32(4)
 
 # TP7 BGI 16-color palette names. Programs say `setcolor(LightBlue)`
 # rather than `setcolor(9)`; without these constants the source
@@ -137,6 +147,41 @@ class GraphContext:
 # Module-level singleton. Pascal source sees the procedure-style
 # API; this object is internal.
 _ctx: GraphContext = GraphContext()
+
+
+class pointtype:
+    """TP7 BGI `PointType = record x, y: integer end`. Used by
+    `fillpoly` and as the element type of point arrays in user
+    programs. The Pascal frontend lowers `(x: 1; y: 2)` record
+    literals to `pointtype(1, 2)` ctor calls -- a 2-arg
+    constructor lets array-of-pointtype typed-consts initialise
+    inline rather than going through a build-then-assign loop."""
+
+    x: Int32
+    y: Int32
+
+    def __init__(self, x: Int32 = Int32(0), y: Int32 = Int32(0)) -> None:
+        self.x = x
+        self.y = y
+
+
+class BgiImage:
+    """TP7 BGI image buffer: a copy of a canvas rectangle, used by
+    `getimage` / `putimage` for sprite-style save/restore. Real
+    BGI returned a heap pointer wrapping a driver-specific packed
+    format; we just hold width / height plus a list of palette-
+    index pixels. The Pascal frontend aliases the bare `pointer`
+    type to this class -- programs in the legacy corpus only use
+    `pointer` for getimage/putimage buffers."""
+
+    width: Int32
+    height: Int32
+    pixels: list[Int32]
+
+    def __init__(self) -> None:
+        self.width = Int32(0)
+        self.height = Int32(0)
+        self.pixels = []
 
 
 def _resolve_color(c: Int32) -> Int32:
@@ -314,6 +359,208 @@ def setgraphmode(mode: Int32) -> None:
     different canvas size should pass the desired mode to
     `initgraph` directly (or use the width*1000+height smuggle)."""
     pass
+
+
+def setfillpattern(pattern: Array[Int32, 8], color: Int32) -> None:
+    """TP7 BGI custom fill pattern (`FillPatternType` is an 8-byte
+    bitmask). The POC only supports solid fill, so we set the
+    foreground colour and ignore the pattern -- subsequent
+    `bar` / `fillpoly` / `floodfill` calls draw in solid `color`.
+    The pattern parameter is typed `Array[Int32, 8]` so that
+    typed-const `fillpatterntype` values (which the Pascal frontend
+    expands to `Array[Int32, 8]`) pass without an explicit copy."""
+    _ctx.fg = color
+
+
+def drawpoly(num_points: Int32, points: Span[pointtype]) -> None:
+    """TP7 BGI: draw the outline of a closed polygon defined by
+    `num_points` vertices. Connects consecutive points with
+    straight lines in the current foreground colour and auto-
+    closes the polygon (last vertex back to the first)."""
+    if num_points < 2:
+        return
+    i = Int32(0)
+    while i < num_points - 1:
+        line(points[i].x, points[i].y,
+             points[i + 1].x, points[i + 1].y)
+        i += 1
+    line(points[num_points - 1].x, points[num_points - 1].y,
+         points[0].x, points[0].y)
+
+
+def fillpoly(num_points: Int32, points: Span[pointtype]) -> None:
+    """TP7 BGI: fill a closed polygon defined by `num_points`
+    vertices. Uses a scan-line fill: for each canvas row that
+    intersects the polygon's bounding box, find every edge
+    crossing and fill the spans between paired crossings.
+    Coincident-vertex edges contribute one crossing each so
+    horizontal edges don't double-count. The polygon is auto-
+    closed (last vertex connects back to the first)."""
+    if num_points < 3:
+        return
+    packed = _resolve_color(_ctx.fg)
+    # Bounding-box scan range (clip to canvas).
+    min_y = points[0].y
+    max_y = points[0].y
+    i = Int32(1)
+    while i < num_points:
+        if points[i].y < min_y:
+            min_y = points[i].y
+        if points[i].y > max_y:
+            max_y = points[i].y
+        i += 1
+    if min_y < 0:
+        min_y = Int32(0)
+    if max_y >= _ctx.height:
+        max_y = _ctx.height - 1
+    # Scan each row in the bounding box.
+    y = min_y
+    while y <= max_y:
+        crossings: list[Int32] = []
+        j = Int32(0)
+        while j < num_points:
+            k = (j + 1) % num_points
+            y0 = points[j].y
+            y1 = points[k].y
+            x0 = points[j].x
+            x1 = points[k].x
+            # Edge crosses scan line `y` iff y is in [min(y0,y1),
+            # max(y0,y1)). The half-open interval drops the upper
+            # endpoint so a shared vertex between two edges
+            # contributes exactly one crossing.
+            cross_lo = y0 if y0 < y1 else y1
+            cross_hi = y0 if y0 > y1 else y1
+            if y >= cross_lo and y < cross_hi:
+                # Linear interpolation: x at this y.
+                xi = x0 + (y - y0) * (x1 - x0) // (y1 - y0)
+                crossings.append(xi)
+            j += 1
+        # Sort crossings ascending (simple insertion sort -- the
+        # crossings list is short).
+        a = Int32(1)
+        while a < len(crossings):
+            v = crossings[a]
+            b = a - 1
+            while b >= 0 and crossings[b] > v:
+                crossings[b + 1] = crossings[b]
+                b -= 1
+            crossings[b + 1] = v
+            a += 1
+        # Fill spans between pairs of crossings.
+        p = Int32(0)
+        while p + 1 < len(crossings):
+            x_lo = crossings[p]
+            x_hi = crossings[p + 1]
+            if x_lo < 0:
+                x_lo = Int32(0)
+            if x_hi >= _ctx.width:
+                x_hi = _ctx.width - 1
+            x = x_lo
+            while x <= x_hi:
+                _set_pixel_raw(x, y, packed)
+                x += 1
+            p += 2
+        y += 1
+
+
+def imagesize(x1: Int32, y1: Int32, x2: Int32, y2: Int32) -> Int32:
+    """TP7 BGI: byte count needed to store the canvas rectangle
+    via `getimage`. Real BGI used this to size a heap allocation;
+    `BgiImage` self-allocates so the return value is opaque to
+    the runtime, but we still return a plausible 4-bytes-per-pixel
+    count plus a small header so programs that range-check it
+    against their `wielk: word` variable don't overflow."""
+    w = x2 - x1 + 1
+    h = y2 - y1 + 1
+    if w < 0:
+        w = -w
+    if h < 0:
+        h = -h
+    return Int32(4) + Int32(4) * w * h
+
+
+def getmem(buf: BgiImage, size: Int32) -> None:
+    """TP7 `GetMem(p, size)`: real BGI allocated `size` bytes and
+    set `p^`. The POC's `BgiImage` self-allocates via its default
+    constructor, so this is a no-op (the var-param semantics
+    aren't needed; the buffer's pixels list is repopulated on the
+    next `getimage` call)."""
+    pass
+
+
+def freemem(buf: BgiImage, size: Int32) -> None:
+    """TP7 `FreeMem(p, size)`: TPy's garbage collector handles the
+    buffer's lifetime, so this is a no-op. The buffer's internal
+    pixel list is left in place; the next `getimage` overwrites
+    it. Calling `freemem` then using `buf` again is benign here
+    even though it would have been undefined in real TP7."""
+    pass
+
+
+def getimage(x1: Int32, y1: Int32, x2: Int32, y2: Int32,
+             buf: BgiImage) -> None:
+    """Snapshot canvas pixels in the inclusive rect [(x1,y1),
+    (x2,y2)] into `buf`. Out-of-range pixels read as black (palette
+    index 0) so the snapshot stays rectangular even when the rect
+    is partly off-canvas."""
+    w = x2 - x1 + 1
+    h = y2 - y1 + 1
+    if w <= 0 or h <= 0:
+        buf.width = Int32(0)
+        buf.height = Int32(0)
+        buf.pixels = []
+        return
+    buf.width = w
+    buf.height = h
+    buf.pixels = [Int32(0)] * (w * h)
+    y = Int32(0)
+    while y < h:
+        sy = y1 + y
+        x = Int32(0)
+        while x < w:
+            sx = x1 + x
+            if (sx >= 0 and sx < _ctx.width
+                    and sy >= 0 and sy < _ctx.height):
+                buf.pixels[y * w + x] = _ctx.pixels[sy * _ctx.width + sx]
+            x += 1
+        y += 1
+
+
+def putimage(x: Int32, y: Int32, buf: BgiImage, op: Int32) -> None:
+    """Blit `buf` at canvas (x, y). `op` is TP7's BitBlt operator:
+    0 = NormalPut (copy), 1 = XorPut, 2 = OrPut, 3 = AndPut,
+    4 = NotPut. The op blends `buf`'s packed colour with the
+    existing canvas pixel; the result is searched back into the
+    16-colour palette via `_resolve_color` so subsequent reads
+    via `getpixel` round-trip correctly."""
+    if buf.width <= 0 or buf.height <= 0:
+        return
+    j = Int32(0)
+    while j < buf.height:
+        ty = y + j
+        i = Int32(0)
+        while i < buf.width:
+            tx = x + i
+            if (tx >= 0 and tx < _ctx.width
+                    and ty >= 0 and ty < _ctx.height):
+                src = buf.pixels[j * buf.width + i]
+                idx = ty * _ctx.width + tx
+                dst = _ctx.pixels[idx]
+                if op == 0:           # NormalPut / CopyPut
+                    out = src
+                elif op == 1:         # XorPut
+                    out = src ^ dst
+                elif op == 2:         # OrPut
+                    out = src | dst
+                elif op == 3:         # AndPut
+                    out = src & dst
+                elif op == 4:         # NotPut
+                    out = src ^ Int32(0xFFFFFF)
+                else:
+                    out = src
+                _ctx.pixels[idx] = out
+            i += 1
+        j += 1
 
 
 def setactivepage(page: Int32) -> None:

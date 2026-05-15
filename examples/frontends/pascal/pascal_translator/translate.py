@@ -880,6 +880,32 @@ def _lower_type_spec(spec, ctx: _Ctx):
             ctx.add_import("pascal.runtime.io", "TextFile")
             return NamedType(name="TextFile", args=(),
                              loc=_to_ir_loc(spec.loc))
+        # TP7 BGI types that come from the Graph unit. Programs that
+        # `uses Graph;` have these symbols in their star-import
+        # namespace; we don't add an explicit `from graph import`
+        # because the user already did. `pointer` maps to `BgiImage`
+        # -- the legacy corpus only ever uses `pointer` as an image
+        # save/restore buffer, so an alias is enough.
+        # `fillpatterntype` flattens to `Array[Int32, 8]` directly
+        # (it's a TP7 `array[1..8] of byte`); `pointtype` resolves
+        # to the matching `pointtype` record exported by graph.py.
+        if spec.name == "pointer":
+            return NamedType(name="BgiImage", args=(),
+                             loc=_to_ir_loc(spec.loc))
+        if spec.name == "pointtype":
+            return NamedType(name="pointtype", args=(),
+                             loc=_to_ir_loc(spec.loc))
+        if spec.name == "fillpatterntype":
+            ctx.add_import("tpy", "Int32")
+            ctx.add_import("tpy", "Array")
+            return NamedType(
+                name="Array",
+                args=(TypeTypeArg(value=NamedType(
+                          name="Int32", args=(),
+                          loc=_to_ir_loc(spec.loc))),
+                      IntTypeArg(value=8)),
+                loc=_to_ir_loc(spec.loc),
+            )
         if spec.name in ctx.record_types or spec.name in ctx.enum_types:
             return NamedType(name=spec.name, args=(),
                              loc=_to_ir_loc(spec.loc))
@@ -961,6 +987,29 @@ def _lower_type_spec(spec, ctx: _Ctx):
     return None
 
 
+def _lower_record_literal(lit: pa.RecordLit, record_name: str,
+                          ctx: _Ctx):
+    """Lower a Pascal record literal `(field1: v1; field2: v2; ...)`
+    to a positional `record_name(v1, v2, ...)` constructor call.
+    Used by array-of-record typed-consts where the array path needs
+    one expression per element (can't run a build-then-assign
+    sequence inline). The fields are passed in source order; the
+    record class is expected to declare a positional `__init__`
+    that matches (pointtype and friends do).
+    """
+    ir_loc = _to_ir_loc(lit.loc)
+    arg_irs: list = []
+    for _fname, fval in lit.fields:
+        fv = _lower_expr(fval, ctx)
+        if fv is None:
+            return None
+        arg_irs.append(fv)
+    return Call(
+        callee=Name(ident=record_name, loc=ir_loc),
+        args=tuple(arg_irs), loc=ir_loc,
+    )
+
+
 def _lower_typed_const_decl(decl: pa.ConstDecl, ctx: _Ctx):
     """Typed-const form: `const name: T = <ArrayLit | RecordLit |
     scalar>`. The type annotation drives both the IR shape and the
@@ -969,6 +1018,21 @@ def _lower_typed_const_decl(decl: pa.ConstDecl, ctx: _Ctx):
     types fall through to the literal init path."""
     spec = decl.type_spec
     ir_loc = _to_ir_loc(decl.loc)
+    # TP7's `FillPatternType` is `array[1..8] of byte`; the legacy
+    # corpus declares fill patterns as `const wz: fillpatterntype =
+    # ($aa, $55, ...)`. Expand the named type to its underlying
+    # array spec so the array-typed-const path below handles it.
+    if (isinstance(spec, pa.NamedTypeSpec)
+            and spec.name == "fillpatterntype"):
+        spec = pa.ArrayTypeSpec(
+            lower=1, upper=8,
+            element=pa.NamedTypeSpec(name="byte", loc=spec.loc),
+            loc=spec.loc,
+        )
+        decl = pa.ConstDecl(
+            name=decl.name, value=decl.value, type_spec=spec,
+            loc=decl.loc,
+        )
     _record_var_metadata(decl.name, spec, ctx)
     if isinstance(spec, pa.ArrayTypeSpec) and isinstance(
             decl.value, pa.ArrayLit):
@@ -990,9 +1054,24 @@ def _lower_typed_const_decl(decl: pa.ConstDecl, ctx: _Ctx):
         elem_ir_type = _lower_type_spec(spec.element, ctx)
         if elem_ir_type is None:
             return None
+        # Detect array-of-record (e.g. `array[1..N] of pointtype`).
+        # Element RecordLits then lower as constructor calls with
+        # per-field assignments rather than a flat value -- TPy
+        # records don't auto-derive a keyword-arg ctor when fields
+        # have defaults.
+        record_elem_name: str | None = None
+        if (isinstance(spec.element, pa.NamedTypeSpec)
+                and (spec.element.name in ctx.record_types
+                     or spec.element.name in ("pointtype",))):
+            record_elem_name = spec.element.name
         elem_irs: list = []
         for elem in decl.value.elements:
-            le = _lower_expr(elem, ctx)
+            if (record_elem_name is not None
+                    and isinstance(elem, pa.RecordLit)):
+                le = _lower_record_literal(
+                    elem, record_elem_name, ctx)
+            else:
+                le = _lower_expr(elem, ctx)
             if le is None:
                 return None
             elem_irs.append(le)
@@ -1262,6 +1341,15 @@ def _default_init_for_spec(spec, loc: pa.Loc, ctx: _Ctx):
     if isinstance(resolved, pa.NamedTypeSpec):
         if resolved.name in ctx.record_types:
             return _default_record_ctor(resolved.name, loc)
+        # Graph-unit record aliases: bare `pointer` -> BgiImage(),
+        # `pointtype` -> pointtype(). The user's program doesn't
+        # declare these as record_types (they come from `uses
+        # Graph;`), but they still need a default ctor call so the
+        # var-decl init isn't left empty.
+        if resolved.name == "pointer":
+            return _default_record_ctor("BgiImage", loc)
+        if resolved.name == "pointtype":
+            return _default_record_ctor("pointtype", loc)
         return _default_init_for(resolved.name, loc)
     if isinstance(resolved, pa.ArrayTypeSpec):
         return _default_array_ctor(resolved, loc, ctx)
@@ -1310,6 +1398,11 @@ def _default_init_module(spec, loc: pa.Loc, ctx: _Ctx):
     if isinstance(resolved, pa.NamedTypeSpec):
         if resolved.name in ctx.record_types:
             return _default_record_ctor(resolved.name, loc)
+        # Same graph-unit aliases as the function-local default path.
+        if resolved.name == "pointer":
+            return _default_record_ctor("BgiImage", loc)
+        if resolved.name == "pointtype":
+            return _default_record_ctor("pointtype", loc)
     if isinstance(resolved, pa.ArrayTypeSpec):
         return _default_array_ctor(resolved, loc, ctx)
     if isinstance(resolved, pa.StringTypeSpec):
@@ -3028,6 +3121,15 @@ def _lower_expr(expr, ctx: _Ctx):
         # inference dance required.
         return NoneLit(loc=_to_ir_loc(expr.loc))
     if isinstance(expr, pa.DerefExpr):
+        # `imag^` where `imag: pointer` aliases the Graph unit's
+        # BgiImage record is a no-op: the TPy class reference IS
+        # the value. Skip the deref so the call site gets the
+        # record reference directly. Real TPy `Ptr[T]` derefs
+        # still route through `deref(p)`.
+        if isinstance(expr.target, pa.Ident):
+            tname = ctx.type_env.get(expr.target.name)
+            if tname == "BgiImage" or tname == "pointer":
+                return _lower_expr(expr.target, ctx)
         target = _lower_expr(expr.target, ctx)
         if target is None:
             return None
