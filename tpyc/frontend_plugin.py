@@ -125,8 +125,13 @@ class FrontendRegistry:
         return frozenset(self.by_extension.keys())
 
 
-def load_plugin(spec: str, options: dict[str, str]) -> FrontendPlugin:
-    """Load a plugin by file path or dotted module name.
+def resolve_plugin_class(spec: str) -> type[FrontendPlugin]:
+    """Load a plugin module and return its `PLUGIN` class without
+    instantiating it. Used when the caller needs to read `name` /
+    `extensions` / `api_version` ClassVars (e.g. to route
+    `--dsl-opt` values to the right plugin, or to learn which
+    source extensions a plugin claims) before deciding what
+    options dict to pass to `__init__`.
 
     Steps follow `docs/FRONTEND_PLUGIN_DESIGN.md` "Loading and
     registration":
@@ -134,7 +139,6 @@ def load_plugin(spec: str, options: dict[str, str]) -> FrontendPlugin:
       2. Else, treat spec as an importable module name.
       3. Fetch `PLUGIN`; validate it is a FrontendPlugin subclass.
       4. Validate api_version is supported.
-      5. Instantiate with `options`.
     """
     spec_path = Path(spec)
     module = None
@@ -165,7 +169,16 @@ def load_plugin(spec: str, options: dict[str, str]) -> FrontendPlugin:
         raise _plugin_load_error(
             f"plugin {plugin_cls.name!r} declares api_version="
             f"{plugin_cls.api_version}; compiler supports {API_VERSION}")
-    return plugin_cls(options)
+    return plugin_cls
+
+
+def load_plugin(spec: str, options: dict[str, str]) -> FrontendPlugin:
+    """Resolve the plugin class and instantiate it with `options`.
+    Equivalent to `resolve_plugin_class(spec)(options)`; kept for
+    callers that don't need to inspect the class before
+    construction.
+    """
+    return resolve_plugin_class(spec)(options)
 
 
 def route_dsl_opts(

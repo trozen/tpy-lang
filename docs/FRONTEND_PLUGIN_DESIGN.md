@@ -1,6 +1,11 @@
 # Frontend Plugin Design
 
-Status: design draft (no implementation yet).
+Status: v1 shipped. `tpyc/frontend_plugin.py`, the lowering pass in
+`tpyc/frontend_ir/`, and the CLI plumbing (`--dsl-plugin` /
+`--dsl-opt`) are all in place, driving the Turbo Pascal frontend under
+`frontends/pascal/`. The v1 surface is what this document describes;
+fields marked **deferred** below have not landed yet and are noted at
+their definition sites.
 
 ## Motivation
 
@@ -163,6 +168,14 @@ class FrontendPlugin(ABC):
               module_name: str, file_path: Path
               ) -> FrontendOutput:
         ...
+
+    # Optional: directories the plugin contributes to the compiler's
+    # module search path. The CLI prepends these to `lib_dirs` after
+    # the user's `-L` (and before the TPy stdlib), so plugin-shipped
+    # libraries (e.g. a Pascal-side `Crt` / `Graph` unit ecosystem)
+    # resolve without per-user `-L` plumbing. Default: empty tuple.
+    def library_paths(self) -> tuple[Path, ...]:
+        return ()
 
 
 @dataclass
@@ -801,6 +814,29 @@ both flags are repeatable. `--dsl-plugin` accepts a path to a `.py`
 file or an importable dotted module name. `--dsl-opt` routes to a
 plugin by `<name>` prefix; unrouted options are an error.
 
+### Test-harness shortcut (options.json)
+
+The pytest test harness (`tests/conftest.py`) provides a static
+equivalent of the two CLI flags so plugin-bearing test cases don't
+have to be invoked through a runner. Each test case can carry an
+`options.json` file with:
+
+```json
+{
+    "plugin": "frontends/<name>/<frontend>.py",
+    "dsl_opts": {"key": "value"}
+}
+```
+
+The conftest walks up from the case directory toward `tests/cases/`,
+layering `options.json` files so that ancestor declarations act as
+defaults and the per-case file overrides them. `dsl_opts` merges
+key-wise -- a per-case file can override one option without
+restating the rest of the group's settings. Library paths come from
+the plugin's `library_paths()` hook, so no `-L`-style plumbing is
+needed in `options.json`. Other keys (`default_int`) keep their
+per-case scope; only the layered semantics here is new.
+
 ## Loading and registration
 
 ### In-process plugins (canonical path)
@@ -859,25 +895,36 @@ plain dataclasses, this is straightforward when needed.
 ```python
 @dataclass(frozen=True)
 class WorkspaceContext:
-    api_version: int                  # matches FrontendPlugin.api_version
-    entry_point: Path                 # the tpyc input file
-    search_dirs: tuple[Path, ...]     # base_dir + lib search paths
-    options: dict[str, str]           # --dsl-opt routed to this plugin
-    no_stdlib: bool                   # mirror of --no-stdlib
+    api_version: int                       # matches FrontendPlugin.api_version
+    entry_point: Path                      # the tpyc input file
+    search_dirs: tuple[Path, ...]          # base_dir + lib search paths
+    stdlib_search_dirs: tuple[Path, ...]   # subset of search_dirs that is
+                                           #   the TPy stdlib root
+    options: dict[str, str]                # --dsl-opt routed to this plugin
+    no_stdlib: bool                        # mirror of --no-stdlib
 
     def read_file(self, path: Path) -> str: ...
-    def find_files(self, ext: str, root: Path | None = None) -> list[Path]: ...
-    def resolve_module(self, dotted_name: str) -> Path | None: ...
+
+    # Deferred (not in v1 -- plugins should not call these):
+    # def find_files(self, ext: str, root: Path | None = None) -> list[Path]: ...
+    # def resolve_module(self, dotted_name: str) -> Path | None: ...
 ```
+
+`stdlib_search_dirs` lets a plugin keep its source-language `uses`/`import`
+resolution scoped to the user's project (and any plugin-shipped
+library paths), filtering out the TPy stdlib so an unqualified
+`uses Math` in Pascal can't silently grab `tpy.math`. Programs that
+DO want the stdlib reach it through an explicit escape hatch
+(e.g. `uses py.math`).
 
 - **Per-file plugins (Pascal-shape):** ignore `ctx` except for
   `options` and `no_stdlib`.
-- **Cross-file-aware plugins:** use `find_files` / `read_file` to look
-  at sibling sources during translation -- e.g. to materialize
-  explicit imports for languages with implicit cross-file visibility.
-- `resolve_module` exposes the same lookup TPy uses internally,
-  including plugin-registered extensions, so a plugin can ask "what
-  file is module X?" without reimplementing search-path semantics.
+- **Cross-file-aware plugins:** in v1, walk `search_dirs` directly via
+  `Path.iterdir()` / `Path.glob()`. The `find_files` / `resolve_module`
+  helpers are deferred to a later iteration once the second concrete
+  plugin's lookup pattern is in hand; plugins that need them today
+  should reimplement the walk inline and the API will absorb the
+  generalisation later without breaking signatures.
 
 Future extensions that require compiler-owned mutable state behind
 context methods (compile-time data registry, plugin-registered

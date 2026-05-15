@@ -1026,6 +1026,11 @@ class Compiler:
             entry_point: Path to the main source file.
             default_int: Unannotated integer literal default type.
             lib_dirs: Extra directories to search for library modules.
+                Whether the TPy stdlib is present is encoded purely by
+                whether `lib/tpy/` appears in this list -- the CLI's
+                `--no-stdlib` flag drops it. `_discover_via_plugin`
+                surfaces the resulting state to plugins via
+                `WorkspaceContext.no_stdlib`.
             frontend_registry: Optional registry of frontend plugins
                 (one per non-Python source extension). When set, files
                 whose extension matches a registered plugin are routed
@@ -1541,7 +1546,12 @@ class Compiler:
             search_dirs=tuple(search_dirs),
             stdlib_search_dirs=stdlib_search_dirs,
             options=plugin.options,
-            no_stdlib=False,
+            # The CLI encodes --no-stdlib by dropping `lib/tpy/` from
+            # `lib_dirs`; we surface that state directly to plugins
+            # by checking whether the stdlib survived the filter
+            # above, rather than threading a separate flag through
+            # the ctor chain.
+            no_stdlib=not stdlib_search_dirs,
         )
         try:
             output = plugin.parse(ctx, module_name, path)

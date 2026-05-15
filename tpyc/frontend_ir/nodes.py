@@ -499,7 +499,7 @@ class Match:
 
 
 Stmt = Union[ExprStmt, VarDecl, Assign, If, While, RepeatUntil,
-             ForRange, ForEach, Match, Return]
+             ForRange, ForEach, Match, Return, Raise]
 
 
 # --- Enum declarations ---------------------------------------------------

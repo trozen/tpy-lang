@@ -52,7 +52,8 @@ from .compiler import (
 )
 from . import __version__, get_git_commit, get_runtime_dir, get_lib_dir, get_docs_dir
 from .frontend_plugin import (
-    FrontendPluginError, FrontendRegistry, load_plugin, route_dsl_opts,
+    FrontendPluginError, FrontendRegistry, resolve_plugin_class,
+    route_dsl_opts,
 )
 
 
@@ -196,9 +197,13 @@ def _build_frontend_registry(plugin_specs: list[str],
                              dsl_opts: list[str]) -> FrontendRegistry | None:
     """Load plugins listed on the command line and return a registry.
 
-    Two-pass: instantiate every plugin first (so we know the set of
-    registered plugin `name`s), then route `--dsl-opt` values to each
-    plugin's options dict. Returns None when no plugins were requested.
+    Two-phase: resolve each plugin's class (so we learn its `name`
+    ClassVar without running `__init__`), route `--dsl-opt` values to
+    each plugin's options dict, *then* instantiate with the routed
+    dict. Plugins that validate required options in `__init__` see
+    the real values on the first call; reassigning `self.options`
+    after construction wouldn't trigger that path. Returns None when
+    no plugins were requested.
     """
     if not plugin_specs:
         if dsl_opts:
@@ -208,13 +213,11 @@ def _build_frontend_registry(plugin_specs: list[str],
                 message=("--dsl-opt requires at least one --dsl-plugin"),
             ))
         return None
-    loaded = [load_plugin(spec, {}) for spec in plugin_specs]
-    routed = route_dsl_opts(dsl_opts, [p.name for p in loaded])
-    for p in loaded:
-        p.options = routed.get(p.name, {})
+    plugin_classes = [resolve_plugin_class(spec) for spec in plugin_specs]
+    routed = route_dsl_opts(dsl_opts, [cls.name for cls in plugin_classes])
     registry = FrontendRegistry()
-    for p in loaded:
-        registry.register(p)
+    for cls in plugin_classes:
+        registry.register(cls(routed.get(cls.name, {})))
     return registry
 
 

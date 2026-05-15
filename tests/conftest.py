@@ -765,7 +765,13 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
                          if frontend_registry is not None else frozenset())
     module_name = get_module_name(src_file, plugin_extensions)
     default_int = _validate_default_int_name(default_int or "Int32")
-    lib_dirs = list(DEFAULT_LIB_DIRS) + extra_lib_dirs
+    # Plugin libraries come ahead of the implicit TPy stdlib so the
+    # search order matches what the CLI uses (`cli._run_cli` slots
+    # plugin lib dirs in front of the stdlib for the same reason).
+    # Without this, a plugin-shipped module that happens to share a
+    # name with a stdlib module would resolve differently under
+    # `tpyc foo.pas` vs. `pytest`.
+    lib_dirs = list(extra_lib_dirs) + list(DEFAULT_LIB_DIRS)
 
     try:
         # Use Compiler for multi-module support
@@ -1808,7 +1814,7 @@ def _all_plugin_entry_extensions() -> tuple[str, ...]:
     exts: set[str] = {".py"}
     if not CASES_DIR.exists():
         return tuple(sorted(exts))
-    from tpyc.frontend_plugin import load_plugin
+    from tpyc.frontend_plugin import resolve_plugin_class
     seen_specs: set[str] = set()
     for opts_path in CASES_DIR.rglob("options.json"):
         try:
@@ -1824,11 +1830,15 @@ def _all_plugin_entry_extensions() -> tuple[str, ...]:
         plugin_path = (PROJECT_ROOT / spec).resolve()
         if not plugin_path.is_file():
             continue
-        try:
-            plugin = load_plugin(str(plugin_path), {})
-        except Exception:
-            continue
-        for ext in plugin.extensions:
+        # Read `extensions` off the class (a ClassVar) rather than
+        # instantiating the plugin -- discovery runs once per session
+        # at pytest startup, so calling `__init__` here would force
+        # every plugin to support empty `dsl_opts` just for probing.
+        # A plugin that fails class-load (missing PLUGIN, wrong
+        # api_version) raises FrontendPluginError; let it propagate
+        # so we surface real bugs instead of swallowing them.
+        plugin_cls = resolve_plugin_class(str(plugin_path))
+        for ext in plugin_cls.extensions:
             exts.add(ext)
     return tuple(sorted(exts))
 
@@ -1899,8 +1909,6 @@ def _pick_main_src(src_files: list[Path],
         if c.stem == "main":
             return c
     return sorted(candidates, key=lambda p: p.name)[0]
-
-    return cases
 
 
 @functools.cache

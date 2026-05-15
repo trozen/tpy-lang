@@ -63,6 +63,7 @@ from ..parse.nodes import (
     TpyWildcardPattern,
 )
 from ..typesys import FieldInfo, RecordInfo
+from .resolver_adapter import make_plugin_resolver
 from .nodes import (
     API_VERSION,
     Assign,
@@ -295,7 +296,6 @@ def lower_module(
     # bodies that might reference them. The same TypeResolver the .py
     # parser uses runs over our adapter -- it reads parser-internal
     # attributes/methods exposed on the adapter object.
-    from .resolver_adapter import make_plugin_resolver
     resolver = make_plugin_resolver(
         module_name=fm.qname,
         imports=dict(module_imports),
