@@ -316,7 +316,7 @@ class SemanticAnalyzer:
         # (for codegen to resolve to the lib/tpy/builtins.py module functions).
         python_builtin_functions = ["len", "repr", "hash", "chr", "ord", "abs",
                                     "min", "max", "pow", "round", "divmod",
-                                    "next", "print", "range", "enumerate",
+                                    "next", "print", "input", "range", "enumerate",
                                     "zip", "isinstance", "iter",
                                     "all", "any", "sum", "sorted",
                                     "bin", "hex", "oct", "reversed",

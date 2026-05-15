@@ -1,0 +1,13 @@
+drv_ok=0
+arc_east@50,20=4
+arc_north@40,10=4
+arc_south_blank@40,30=0
+arc_west_blank@30,20=0
+bar3d_body@10,30=14
+bar3d_top_edge@16,24=14
+flood_interior@65,10=2
+flood_interior@67,12=2
+flood_border@60,5=3
+flood_outside@72,10=0
+rebound@78,2=6
+done

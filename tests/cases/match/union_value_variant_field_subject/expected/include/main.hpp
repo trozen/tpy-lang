@@ -73,7 +73,7 @@ inline std::ostream& operator<<(std::ostream& os, const W& obj) {
 // def get_label(self) -> str:
 inline std::string W::get_label() const {
     // match self.f:
-    auto __match_subject = this->f;
+    auto& __match_subject = this->f;
     switch (__match_subject.index()) {
     // case A(x=v):
     case 0: {

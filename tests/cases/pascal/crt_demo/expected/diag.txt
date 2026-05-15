@@ -1,0 +1,1 @@
+tpyc: warning: library module 'crt' has no # tpy: cpp_namespace directive (will use default 'tpyapp::crt')

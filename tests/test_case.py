@@ -23,6 +23,7 @@ import pytest
 from conftest import (
     UPDATE_EXPECTED,
     get_module_name,
+    plugin_extensions_for,
     compile_with_diagnostics,
     get_case_default_int,
     validate_annotations,
@@ -69,7 +70,13 @@ def _module_to_expected_path(expected_dir: Path, mod_name: str, ext: str) -> Pat
 ])
 def test_case(case_dir, main_src, request):
     expected_dir = case_dir / "expected"
-    module_name = get_module_name(main_src)
+    # Plugin-claimed extensions (e.g. `.pas`) strip alongside `.py` so
+    # the module name matches what the compiler derives internally.
+    # The set is asked from the same conftest helper that wires the
+    # plugin into Compiler -- both sides agree on which extensions
+    # a given test's frontend claims.
+    module_name = get_module_name(
+        main_src, plugin_extensions_for(main_src))
     build_dir = case_dir / "__tpyc__"
     is_error = case_dir.name.startswith("error_")
     is_panic = case_dir.name.startswith("panic_")

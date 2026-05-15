@@ -112,7 +112,11 @@ tests/cases/<group>/<case>/
     └── .fingerprints      # (optional) per-case input hashes for auto-skip
 ```
 
-Currently `options.json` supports `{"default_int": "Int32 | Int64 | BigInt"}`.
+`options.json` is layered: the conftest walks up from the case directory toward `tests/cases/`, merging every options.json it finds (deeper file overrides; `dsl_opts` merges per-key). One file at the group level (e.g. `tests/cases/pascal/options.json`) covers every case underneath; per-case files only need the keys that differ. Supported keys:
+
+- `default_int` -- `"Int32" | "Int64" | "BigInt"`. Per-case scope.
+- `plugin` -- path (relative to repo root) to a frontend-plugin `.py` file. Usually set at the group level (e.g. `frontends/pascal/pascal_frontend.py`).
+- `dsl_opts` -- dict of string options passed to the plugin's constructor (forwarded as if via `--dsl-opt name.key=value` on the CLI). Library paths come from the plugin's `library_paths()` hook -- no `-L` plumbing needed in options.json.
 
 ### Adding a new test case
 

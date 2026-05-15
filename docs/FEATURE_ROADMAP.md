@@ -127,7 +127,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | F6 | Alternative backends | XL | 🆕 Not started | [V](#alternative-backends) |
 | F7 | Decorator definitions in library code | M-L | 🚧 Phase 1 done | [V](#decorator-definitions-in-library-code) |
 | F8 | Compile-time conditional compilation / build profiles | M | 🆕 Not started | [V](#compile-time-conditional-compilation--build-profiles) |
-| F9 | Frontend plugin API (DSL / non-Python source) | XL | 🔬 Design draft | [V](#frontend-plugin-api) |
+| F9 | Frontend plugin API (DSL / non-Python source) | XL | ✅ v1 shipped | [V](#frontend-plugin-api) |
 | F10 | IR migration (THIR / MIR) | XL | 🆕 Not started | [V](#ir-migration-thir--mir) |
 
 ### Phase G: Concurrency (Future)
@@ -1728,10 +1728,15 @@ codegen (protobuf-style), schema-only data descriptors (JSON Schema, Avro), and
 data files with compile-time validation (CSV / JSON data). The IR is the
 contract; the compiler internals stay free to evolve.
 
-**Current state**: Design draft. See `docs/FRONTEND_PLUGIN_DESIGN.md`. No
-implementation yet -- the design is shaped by two concrete v1 targets (Pascal
-POC at `examples/frontends/pascal/DESIGN.md` + a larger internal DSL) and lists
-22 explicitly-anticipated future requirements.
+**Current state**: v1 shipped. `tpyc/frontend_plugin.py`,
+`tpyc/frontend_ir/`, the `--dsl-plugin` / `--dsl-opt` CLI flags, and
+the test-harness `options.json` `plugin` / `dsl_opts` mechanism are
+all in place. The first concrete plugin (Turbo Pascal POC) lives at
+`frontends/pascal/` and exercises the surface end-to-end. See
+`docs/FRONTEND_PLUGIN_DESIGN.md` for the spec, including the deferred
+fields (`WorkspaceContext.find_files` / `resolve_module`) that v1
+declines to implement until a second plugin's lookup pattern is in
+hand.
 
 **Dependencies**: None (parser + sema + codegen are the consumers; the plugin
 contract sits on top).

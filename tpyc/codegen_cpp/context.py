@@ -1159,7 +1159,7 @@ class CodeGenContext:
                 elif tok.type in (tokenize.NEWLINE, tokenize.NL) and depth <= 0:
                     end_idx = start_idx + tok.start[0] - 1
                     break
-        except (tokenize.TokenizeError, IndentationError):
+        except (tokenize.TokenError, IndentationError):
             pass  # Fall back: just the start line.
         end_idx = min(end_idx, len(self.source_lines) - 1)
         for i in range(start_idx, end_idx + 1):

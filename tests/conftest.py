@@ -635,38 +635,122 @@ def _validate_default_int_name(name: str) -> str:
     return name
 
 
-def load_case_options(case_dir: Path) -> dict[str, str]:
-    """Load and validate optional per-case test options.json."""
-    options_path = case_dir / "options.json"
-    if not options_path.exists():
+_ALLOWED_OPTIONS_KEYS = {"default_int", "plugin", "dsl_opts"}
+
+
+def _parse_options_file(path: Path) -> dict:
+    """Read and validate one options.json file. Returns {} when the
+    file is absent. Schema: `default_int` (str), `plugin` (str path
+    relative to PROJECT_ROOT), `dsl_opts` (dict[str, str] passed to
+    the frontend plugin)."""
+    if not path.exists():
         return {}
-
     try:
-        raw = json.loads(options_path.read_text())
+        raw = json.loads(path.read_text())
     except json.JSONDecodeError as e:
-        pytest.fail(f"{options_path}: invalid JSON ({e.msg})")
-
+        pytest.fail(f"{path}: invalid JSON ({e.msg})")
     if not isinstance(raw, dict):
-        pytest.fail(f"{options_path}: expected JSON object")
-
-    allowed_keys = {"default_int"}
-    unknown = sorted(k for k in raw.keys() if k not in allowed_keys)
+        pytest.fail(f"{path}: expected JSON object")
+    unknown = sorted(k for k in raw if k not in _ALLOWED_OPTIONS_KEYS)
     if unknown:
-        pytest.fail(f"{options_path}: unsupported keys: {', '.join(unknown)}")
-
+        pytest.fail(f"{path}: unsupported keys: {', '.join(unknown)}")
     if "default_int" in raw:
-        value = raw["default_int"]
-        if not isinstance(value, str):
-            pytest.fail(f"{options_path}: 'default_int' must be a string")
-        _validate_default_int_name(value)
-
+        if not isinstance(raw["default_int"], str):
+            pytest.fail(f"{path}: 'default_int' must be a string")
+        _validate_default_int_name(raw["default_int"])
+    if "plugin" in raw and not isinstance(raw["plugin"], str):
+        pytest.fail(f"{path}: 'plugin' must be a string path")
+    if "dsl_opts" in raw:
+        if not isinstance(raw["dsl_opts"], dict):
+            pytest.fail(f"{path}: 'dsl_opts' must be a dict")
+        for k, v in raw["dsl_opts"].items():
+            if not isinstance(v, str):
+                pytest.fail(
+                    f"{path}: dsl_opts {k!r} must be a string value")
     return raw
+
+
+def load_case_options(case_dir: Path) -> dict:
+    """Resolve the effective options for a test case.
+
+    Settings are gathered by walking up from `case_dir` to
+    `CASES_DIR`, layering options.json files so that ancestor
+    declarations act as defaults and the per-case file overrides
+    them. Typical layout: a `tests/cases/<group>/options.json`
+    declares the frontend plugin once for every case in the group;
+    individual cases drop their own options.json only when they
+    need to override a setting (e.g. `default_int`).
+    """
+    layers: list[Path] = []
+    cur = case_dir.resolve()
+    stop = CASES_DIR.resolve()
+    while True:
+        layers.append(cur / "options.json")
+        if cur == stop:
+            break
+        parent = cur.parent
+        if parent == cur:
+            break
+        cur = parent
+    merged: dict = {}
+    # Walk from ancestor to case dir so the case overrides defaults.
+    for layer in reversed(layers):
+        cfg = _parse_options_file(layer)
+        for k, v in cfg.items():
+            if k == "dsl_opts" and "dsl_opts" in merged:
+                # Merge dsl_opts dicts key-wise so a per-case
+                # options.json can override a single key without
+                # repeating the rest of the group's settings.
+                combined = dict(merged["dsl_opts"])
+                combined.update(v)
+                merged["dsl_opts"] = combined
+            else:
+                merged[k] = v
+    return merged
 
 
 def get_case_default_int(case_dir: Path) -> str:
     """Resolve default integer mode for a test case."""
     options = load_case_options(case_dir)
     return _validate_default_int_name(options.get("default_int", "Int32"))
+
+
+def plugin_extensions_for(src_file: Path) -> frozenset[str]:
+    """Return the source extensions claimed by the frontend plugin
+    declared for the test that owns `src_file`, or an empty
+    frozenset for plain-Python cases. Used by `tests/test_case.py`
+    to strip plugin-claimed extensions when computing the module
+    name -- mirrors the logic the CLI runs internally."""
+    reg, _ = _frontend_registry_for(src_file)
+    if reg is None:
+        return frozenset()
+    return reg.all_extensions()
+
+
+def _frontend_registry_for(src_file: Path):
+    """Return (registry, extra_lib_dirs) for the test that owns
+    `src_file`, or (None, []) for ordinary plain-Python cases.
+
+    The plugin and its options come from the case's effective
+    options.json (with walk-up merging from ancestor options.json
+    files). Library paths come from the plugin's `library_paths()`
+    hook -- conftest no longer hard-codes a frontend.
+    """
+    cfg = load_case_options(src_file.parent.parent)
+    plugin_spec = cfg.get("plugin")
+    if not plugin_spec:
+        return None, []
+    from tpyc.frontend_plugin import FrontendRegistry, load_plugin
+    plugin_path = (PROJECT_ROOT / plugin_spec).resolve()
+    if not plugin_path.is_file():
+        pytest.fail(
+            f"plugin file not found at {plugin_path} "
+            f"(declared in options.json for {src_file})")
+    plugin = load_plugin(str(plugin_path), dict(cfg.get("dsl_opts", {})))
+    reg = FrontendRegistry()
+    reg.register(plugin)
+    extra_lib_dirs = [Path(p).resolve() for p in plugin.library_paths()]
+    return reg, extra_lib_dirs
 
 
 def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str | None = None) -> CompileResult:
@@ -676,12 +760,23 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
     Warnings are collected but don't cause failure. Errors cause failure.
     Uses Compiler for multi-module support.
     """
-    module_name = get_module_name(src_file)
+    frontend_registry, extra_lib_dirs = _frontend_registry_for(src_file)
+    plugin_extensions = (frontend_registry.all_extensions()
+                         if frontend_registry is not None else frozenset())
+    module_name = get_module_name(src_file, plugin_extensions)
     default_int = _validate_default_int_name(default_int or "Int32")
+    # Plugin libraries come ahead of the implicit TPy stdlib so the
+    # search order matches what the CLI uses (`cli._run_cli` slots
+    # plugin lib dirs in front of the stdlib for the same reason).
+    # Without this, a plugin-shipped module that happens to share a
+    # name with a stdlib module would resolve differently under
+    # `tpyc foo.pas` vs. `pytest`.
+    lib_dirs = list(extra_lib_dirs) + list(DEFAULT_LIB_DIRS)
 
     try:
         # Use Compiler for multi-module support
-        compiler = Compiler(src_file, default_int=default_int, lib_dirs=DEFAULT_LIB_DIRS)
+        compiler = Compiler(src_file, default_int=default_int, lib_dirs=lib_dirs,
+                            frontend_registry=frontend_registry)
         compiled_modules = compiler.compile()
 
         # Collect diagnostics from compiler and all analyzers
@@ -1182,9 +1277,24 @@ def build_and_run(build_dir: Path, module_name: str,
                 cpp_build_failed=True,
             )
 
-    # Run and capture output
+    # Run and capture output. If a `src/input.txt` fixture exists in
+    # the case directory (one level above `build_dir`), pipe it to the
+    # binary's stdin -- enables snapshot-testing programs that read
+    # from stdin (M8 number guesser, etc.).
     exe_file = layout.binary_path()
-    result = subprocess.run([str(exe_file)], capture_output=True, text=True)
+    stdin_input = None
+    case_input = build_dir.parent / "src" / "input.txt"
+    if case_input.exists():
+        stdin_input = case_input.read_text()
+    # Run with cwd=build_dir so any files the program writes via a
+    # relative path (e.g. Pascal `Assign(f, 'out.txt')`) land in the
+    # gitignored build directory rather than the test runner's cwd.
+    result = subprocess.run(
+        [str(exe_file)],
+        input=stdin_input,
+        cwd=str(build_dir),
+        capture_output=True, text=True,
+    )
     return RunResult(
         success=(result.returncode == 0),
         stdout=result.stdout,
@@ -1690,15 +1800,62 @@ def _filter_lib_traceback(stderr: str) -> str:
 _SKIP_DIRS = {"__tpyc__", "expected", "__pycache__"}
 
 
+@functools.lru_cache(maxsize=1)
+def _all_plugin_entry_extensions() -> tuple[str, ...]:
+    """Collect every source extension claimed by any frontend plugin
+    declared in an options.json under `tests/cases/`. Used by case
+    discovery to glob `src/main.<ext>` for non-Python frontends
+    without conftest having to know which DSLs exist.
+
+    Plain `.py` is always included so plain-Python cases stay
+    discoverable without an options.json. Plugins are loaded once
+    per session via the lru_cache.
+    """
+    exts: set[str] = {".py"}
+    if not CASES_DIR.exists():
+        return tuple(sorted(exts))
+    from tpyc.frontend_plugin import resolve_plugin_class
+    seen_specs: set[str] = set()
+    for opts_path in CASES_DIR.rglob("options.json"):
+        try:
+            cfg = json.loads(opts_path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(cfg, dict):
+            continue
+        spec = cfg.get("plugin")
+        if not isinstance(spec, str) or spec in seen_specs:
+            continue
+        seen_specs.add(spec)
+        plugin_path = (PROJECT_ROOT / spec).resolve()
+        if not plugin_path.is_file():
+            continue
+        # Read `extensions` off the class (a ClassVar) rather than
+        # instantiating the plugin -- discovery runs once per session
+        # at pytest startup, so calling `__init__` here would force
+        # every plugin to support empty `dsl_opts` just for probing.
+        # A plugin that fails class-load (missing PLUGIN, wrong
+        # api_version) raises FrontendPluginError; let it propagate
+        # so we surface real bugs instead of swallowing them.
+        plugin_cls = resolve_plugin_class(str(plugin_path))
+        for ext in plugin_cls.extensions:
+            exts.add(ext)
+    return tuple(sorted(exts))
+
+
 def _discover_from_dirs(base_dirs: list[Path]):
     """Discover test cases from the given directories.
 
-    Walks recursively looking for ``src/`` directories that contain ``.py``
-    files, but skips build artifact trees (__tpyc__, expected, __pycache__)
-    to avoid scanning thousands of irrelevant directories.
+    Walks recursively looking for `src/` directories whose entry
+    point matches one of the registered extensions (`.py` plus any
+    extension a frontend plugin in an options.json claims). Build
+    artifact trees (__tpyc__, expected, __pycache__) are skipped to
+    avoid scanning thousands of irrelevant directories.
 
     Returns list of (name, case_dir, main_src) tuples.
     """
+    entry_exts = _all_plugin_entry_extensions()
+    glob_patterns = tuple(f"*{ext}" for ext in entry_exts)
     cases = []
 
     for base_dir in base_dirs:
@@ -1717,24 +1874,41 @@ def _discover_from_dirs(base_dirs: list[Path]):
                 continue
 
             case_dir = cur.parent
-            src_files = list(cur.glob("*.py"))
+            src_files: list[Path] = []
+            for pat in glob_patterns:
+                src_files.extend(cur.glob(pat))
             if not src_files:
                 continue
 
-            # Prefer main.py as entry point, otherwise pick first alphabetically
-            main_src = None
-            for sf in src_files:
-                if sf.name == "main.py":
-                    main_src = sf
-                    break
-            if main_src is None:
-                main_src = sorted(src_files, key=lambda p: p.name)[0]
+            # Pick the entry point. A plugin-claimed extension wins
+            # over `.py` so a frontend case can keep helper `.py`
+            # files in src/ alongside its main source; within the
+            # plugin-extension set we prefer one named `main.*`.
+            plugin_exts = [e for e in entry_exts if e != ".py"]
+            main_src = _pick_main_src(src_files, plugin_exts)
 
             rel_path = case_dir.relative_to(base_dir)
             name = f"{prefix}/{rel_path}".replace("\\", "/")
             cases.append((name, case_dir, main_src))
 
     return cases
+
+
+def _pick_main_src(src_files: list[Path],
+                   plugin_exts: list[str]) -> Path:
+    """Choose one entry-point file from `src_files`. A file whose
+    extension is registered by a frontend plugin wins over `.py`;
+    within either group a name `main.*` wins over anything else;
+    ties broken alphabetically. Always returns a value -- callers
+    ensure `src_files` is non-empty."""
+    plugin_set = set(plugin_exts)
+    plugin_files = [p for p in src_files if p.suffix in plugin_set]
+    py_files = [p for p in src_files if p.suffix == ".py"]
+    candidates = plugin_files or py_files or src_files
+    for c in candidates:
+        if c.stem == "main":
+            return c
+    return sorted(candidates, key=lambda p: p.name)[0]
 
 
 @functools.cache

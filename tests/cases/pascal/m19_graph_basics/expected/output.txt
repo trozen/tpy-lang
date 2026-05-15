@@ -1,0 +1,15 @@
+canvas=40x20
+px@5,5=4
+line@5,5=2
+line@10,10=2
+line@11,11=0
+rect_corner@15,0=14
+rect_corner@20,5=14
+rect_inside@17,2=0
+bar_corner@25,10=15
+bar_inside@27,12=15
+bar_outside@31,16=0
+circle_right@23,10=4
+circle_top@20,7=4
+circle_center@20,10=0
+done

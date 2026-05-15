@@ -15,10 +15,27 @@ from ..typesys import (
     unwrap_readonly, is_any_str_type,
 )
 from ..parse import (
-    TpyStmt, TpyExpr, TpyName, TpyMatch, TpyMatchCase, TpyPattern,
-    TpyWildcardPattern, TpyCapturePattern, TpyClassPattern, TpyLiteralPattern,
-    TpyValuePattern, TpyOrPattern, TpyAsPattern,
+    TpyStmt, TpyExpr, TpyFieldAccess, TpyName, TpyMatch, TpyMatchCase, TpyPattern,
+    TpySubscript, TpyWildcardPattern, TpyCapturePattern, TpyClassPattern,
+    TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
 )
+
+
+def _match_subject_is_lvalue(expr: TpyExpr) -> bool:
+    """A match subject is an lvalue when binding it with `auto&` is
+    safe (won't dangle) and useful (lets `case C() as v: v.f = ...`
+    write through to the original storage).
+
+    Plain names, field accesses whose target is itself an lvalue,
+    and subscripts on lvalue targets all qualify. Calls, literals,
+    and constructed temporaries do not."""
+    if isinstance(expr, TpyName):
+        return True
+    if isinstance(expr, TpyFieldAccess):
+        return _match_subject_is_lvalue(expr.obj)
+    if isinstance(expr, TpySubscript):
+        return _match_subject_is_lvalue(expr.obj)
+    return False
 from .context import INDENT, CodeGenError, escape_cpp_name, escape_cpp_string, escape_cpp_char, cpp_string_literal_expr
 from .string_dispatch import find_best_discriminator, STRING_SWITCH_THRESHOLD
 from ..type_def_registry import is_fixed_int_type, is_bool_type, is_enum_type
@@ -62,8 +79,14 @@ class MatchGenerator:
         # Evaluate subject and bind to a local
         subject_code = self.expressions.gen_expr(stmt.subject)
         self.ctx.temps.flush(out, indent)
-        # Use auto& for variables (safe reference), auto for temporaries (avoid dangling)
-        binding = "auto&" if isinstance(stmt.subject, TpyName) else "auto"
+        # Use auto& for lvalue subjects (safe reference; lets a
+        # mutating `case C() as v: v.field = ...` arm write through
+        # to the original storage). Plain names are lvalues; so is a
+        # field access whose target is itself an lvalue (e.g.
+        # `self.payload`). Everything else (calls, temporaries) is
+        # copied as `auto` to avoid dangling references.
+        binding = ("auto&" if _match_subject_is_lvalue(stmt.subject)
+                   else "auto")
         out.write(f"{indent}{binding} __match_subject = {subject_code};\n")
 
         if isinstance(subject_type, UnionType):

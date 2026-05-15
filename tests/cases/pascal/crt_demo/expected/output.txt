@@ -1,0 +1,2 @@
+[2J[H[31m[103m[5;3Hhello[92m[40m[K world
+press a key: X

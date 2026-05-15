@@ -1,0 +1,6 @@
+Enter a guess:
+too low
+Enter a guess:
+too high
+Enter a guess:
+Correct!
