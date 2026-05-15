@@ -530,7 +530,7 @@ deviations from the doc:
   instead of `list[tuple[float, Waker]]` -- `heapq[T: Comparable]`
   requires tuple elements to satisfy Comparable, and `Waker` (a POD
   value type) doesn't. Consolidated in v1.2 step 3 into a single
-  `list[TimerEntry]` where `TimerEntry(ValueType)` holds
+  `list[TimerEntry]` where `TimerEntry` holds
   `(deadline: float, waker: Waker)` with `__lt__` on `deadline`
   (slot_id / generation live inside the Waker); the parallel dict
   and the explicit monotonic counter are gone.
@@ -882,9 +882,12 @@ for the rename bug).
 
 Asyncio cleanup: `Executor.timer_heap` collapsed from
 `list[tuple[float, UInt64]]` + parallel `_timer_wakers: dict[UInt64, Waker]`
-to a single `list[TimerEntry]` (a `ValueType` with `__lt__` on
-deadline). The multi-paragraph apology comment that documented the
-workaround is gone. Net: 3779 tests pass.
+to a single `list[TimerEntry]` with `__lt__` on deadline. The
+multi-paragraph apology comment that documented the workaround is
+gone. Net: 3779 tests pass. (TimerEntry was initially declared
+`ValueType` to work around the heapq `item: T` rvalue-binding gap;
+that base was dropped in a later commit once heapq's signatures
+moved to `Own[T]`.)
 
 ### Blocked -- stays C++ until compiler features land
 

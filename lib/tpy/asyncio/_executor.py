@@ -106,7 +106,7 @@ def _make_waker(handle: ExecutorHandle, task_id: Int32,
                 generation: Int32) -> Waker: ...
 
 
-class TimerEntry(ValueType):
+class TimerEntry:
     """One entry in the executor's timer min-heap. Ordered by deadline."""
     deadline: float
     waker: Waker

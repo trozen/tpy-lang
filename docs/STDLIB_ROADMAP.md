@@ -1018,11 +1018,15 @@ CPython's algorithm (sift-up/sift-down) line-for-line; heap items ordered by
 | `key=` arg on `nlargest`/`nsmallest` | Missing | Needs `Callable[[T], K: Comparable]` threading; straightforward add once prioritized |
 
 Design note: CPython's `heapq` operates on any mutable sequence; TPy restricts
-to `list[T]` for now. Ref-type heaps work because reads go through `copy()`
-(mirroring the `bisect.insort_left` pattern); users get explicit copy
-semantics for reference types.
+to `list[T]` for now. Ref-type heaps work because (1) `heappush` / `heappushpop`
+/ `heapreplace` take `item: Own[T]` -- caller transfers ownership of the new
+element -- and (2) internal `_siftup` / `_siftdown` reads go through `copy()`
+(mirroring the `bisect.insort_left` pattern); users get explicit ownership
+and copy semantics for reference types. T must be copyable -- `@nocopy`
+element types fail at C++ compile time with a deleted-copy-constructor
+error today (clean sema diagnostic tracked in `BUGS.md`).
 
-Tests: `cases/stdlib/heapq`.
+Tests: `cases/stdlib/heapq`, `cases/stdlib/heapq_ref_type`.
 
 ### copy
 

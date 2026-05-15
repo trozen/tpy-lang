@@ -15,7 +15,8 @@ void main() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
         // heappush(h, v)
-        ::tpystd::heapq::heappush<::tpy::BigInt>(h, v);
+        auto __tmp_1 = v;
+        ::tpystd::heapq::heappush<::tpy::BigInt>(h, std::move(__tmp_1));
     }
     // out: list[int] = []
     std::vector<::tpy::BigInt> out = std::vector<::tpy::BigInt>{};
@@ -38,12 +39,10 @@ void main() {
     // heapify(h2)
     ::tpystd::heapq::heapify<int32_t>(h2);
     // print(heappushpop(h2, 0))
-    int32_t __tmp_1 = 0;
-    std::cout << ::tpystd::heapq::heappushpop<int32_t>(h2, __tmp_1) << "\n";
+    std::cout << ::tpystd::heapq::heappushpop<int32_t>(h2, 0) << "\n";
     // # heappushpop: larger-than-root pushes then pops root
     // print(heappushpop(h2, 4))
-    int32_t __tmp_2 = 4;
-    std::cout << ::tpystd::heapq::heappushpop<int32_t>(h2, __tmp_2) << "\n";
+    std::cout << ::tpystd::heapq::heappushpop<int32_t>(h2, 4) << "\n";
     // print(h2[0])
     std::cout << ::tpy::__getitem__(h2, 0) << "\n";
     // # heappushpop: item equal to root -- no swap, item returned unchanged
@@ -52,8 +51,7 @@ void main() {
     // heapify(h2eq)
     ::tpystd::heapq::heapify<int32_t>(h2eq);
     // print(heappushpop(h2eq, 2))
-    int32_t __tmp_3 = 2;
-    std::cout << ::tpystd::heapq::heappushpop<int32_t>(h2eq, __tmp_3) << "\n";
+    std::cout << ::tpystd::heapq::heappushpop<int32_t>(h2eq, 2) << "\n";
     // print(h2eq[0])
     std::cout << ::tpy::__getitem__(h2eq, 0) << "\n";
     // # heapreplace: always pop root then push
@@ -62,16 +60,14 @@ void main() {
     // heapify(h3)
     ::tpystd::heapq::heapify<int32_t>(h3);
     // print(heapreplace(h3, 10))
-    int32_t __tmp_4 = 10;
-    std::cout << ::tpystd::heapq::heapreplace<int32_t>(h3, __tmp_4) << "\n";
+    std::cout << ::tpystd::heapq::heapreplace<int32_t>(h3, 10) << "\n";
     // print(h3[0])
     std::cout << ::tpy::__getitem__(h3, 0) << "\n";
     // # 1-element heap round trip
     // h4: list[int] = []
     std::vector<::tpy::BigInt> h4 = std::vector<::tpy::BigInt>{};
     // heappush(h4, 42)
-    ::tpy::BigInt __tmp_5 = ::tpy::BigInt(42);
-    ::tpystd::heapq::heappush<::tpy::BigInt>(h4, __tmp_5);
+    ::tpystd::heapq::heappush<::tpy::BigInt>(h4, 42);
     // print(heappop(h4))
     std::cout << ::tpystd::heapq::heappop<::tpy::BigInt>(h4) << "\n";
     // print(len(h4))
@@ -84,30 +80,27 @@ void main() {
     std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(3, nums)) << "\n";
     // # n >= len returns the whole collection
     // print(nsmallest(20, [3, 1, 2]))
-    std::vector<int32_t> __tmp_6 = {3, 1, 2};
-    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(20, __tmp_6)) << "\n";
+    std::vector<int32_t> __tmp_2 = {3, 1, 2};
+    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(20, __tmp_2)) << "\n";
     // print(nlargest(20, [3, 1, 2]))
-    std::vector<int32_t> __tmp_7 = {3, 1, 2};
-    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(20, __tmp_7)) << "\n";
+    std::vector<int32_t> __tmp_3 = {3, 1, 2};
+    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(20, __tmp_3)) << "\n";
     // # n == 0 returns []
     // print(nsmallest(0, [3, 1, 2]))
-    std::vector<int32_t> __tmp_8 = {3, 1, 2};
-    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(0, __tmp_8)) << "\n";
+    std::vector<int32_t> __tmp_4 = {3, 1, 2};
+    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nsmallest<int32_t>(0, __tmp_4)) << "\n";
     // print(nlargest(0, [3, 1, 2]))
-    std::vector<int32_t> __tmp_9 = {3, 1, 2};
-    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(0, __tmp_9)) << "\n";
+    std::vector<int32_t> __tmp_5 = {3, 1, 2};
+    std::cout << ::tpy::ListPrinter(::tpystd::heapq::nlargest<int32_t>(0, __tmp_5)) << "\n";
     // # str heap: Comparable via <; lexicographic pop order.
     // words: list[str] = []
     std::vector<std::string> words = std::vector<std::string>{};
     // heappush(words, "cherry")
-    std::string __tmp_10 = "cherry";
-    ::tpystd::heapq::heappush<std::string>(words, __tmp_10);
+    ::tpystd::heapq::heappush<std::string>(words, "cherry");
     // heappush(words, "apple")
-    std::string __tmp_11 = "apple";
-    ::tpystd::heapq::heappush<std::string>(words, __tmp_11);
+    ::tpystd::heapq::heappush<std::string>(words, "apple");
     // heappush(words, "banana")
-    std::string __tmp_12 = "banana";
-    ::tpystd::heapq::heappush<std::string>(words, __tmp_12);
+    ::tpystd::heapq::heappush<std::string>(words, "banana");
     // while len(words) > 0:
     while ((::tpy::__len__(words) > 0)) {
         // print(heappop(words))
@@ -122,7 +115,8 @@ void __tpy_init() {
 
     // # heapq: core min-heap ops, nsmallest/nlargest, int and str element types.
     // # Tuple priority queue covered separately in cases/tuple/tuple_priority_queue.
-    // # Reference-type heap exercised in cases/lists/list_pop_ref_type.
+    // # Reference-type heap exercised in cases/stdlib/heapq_ref_type and
+    // # cases/lists/list_pop_ref_type.
     // from heapq import heappush, heappop, heapify, heappushpop, heapreplace, nsmallest, nlargest
     ::tpystd::heapq::__tpy_init();
     // main()
