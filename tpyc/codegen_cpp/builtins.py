@@ -364,21 +364,33 @@ class BuiltinGenerator:
                 # Bool uses Python-style formatting via ::tpy::print_bool
                 parts.append(f'::tpy::print_bool({self._gen_expr_deref(arg)})')
             elif isinstance(arg_type, OptionalType) and arg_type.uses_pointer_repr():
-                if isinstance(arg, TpyFieldAccess):
-                    # Field access produces std::optional<T> -- use print_optional_val
-                    parts.append(f'::tpy::print_optional_val({self._gen_expr(arg)})')
-                else:
-                    # Pointer-local/function return produces T* -- use print_optional
-                    parts.append(f'::tpy::print_optional({self._gen_expr(arg)})')
-            elif isinstance(arg_type, OptionalType) and not arg_type.uses_pointer_repr():
-                # Optional value-type: use print_optional_val with inner-type-aware formatting
+                # Pointer-repr Optional source: container/dict/set/bytes inners
+                # need an explicit Formatter -- the underlying types lack a
+                # plain operator<<, so the default `os << *ptr` path fails to
+                # compile. Other inners stay on CTAD. Field access always uses
+                # print_optional_val (field storage is std::optional<T>).
                 inner = arg_type.inner
-                gen = self._gen_expr_deref(arg)
+                gen = self._gen_expr(arg)
+                inner_cpp = inner.to_cpp()
+                fmt = self._optional_container_formatter(inner, inner_cpp)
+                fn = "print_optional_val" if isinstance(arg, TpyFieldAccess) else "print_optional"
+                tmpl = f"<{fmt}, {inner_cpp}>" if fmt is not None else ""
+                parts.append(f'::tpy::{fn}{tmpl}({gen})')
+            elif isinstance(arg_type, OptionalType) and not arg_type.uses_pointer_repr():
+                # Optional value-type: use print_optional_val with inner-type-aware formatting.
+                # Render the bare optional storage here (NOT _gen_expr_deref) -- print_optional_val
+                # consumes the std::optional<T> directly to print "None" vs the value. _gen_expr_deref
+                # would unwrap narrowed value-Optional fields, forcing a redundant rewrap on the way
+                # into the function.
+                inner = arg_type.inner
+                gen = self._gen_expr(arg)
                 inner_cpp = inner.to_cpp()
                 if is_bool_type(inner):
                     parts.append(f'::tpy::print_optional_val<::tpy::print_bool, {inner_cpp}>({gen})')
                 elif is_float_type(inner):
                     parts.append(f'::tpy::print_optional_val<::tpy::print_float, {inner_cpp}>({gen})')
+                elif (fmt := self._optional_container_formatter(inner, inner_cpp)) is not None:
+                    parts.append(f'::tpy::print_optional_val<{fmt}, {inner_cpp}>({gen})')
                 else:
                     parts.append(f'::tpy::print_optional_val({gen})')
             elif isinstance(arg_type, TupleType):
@@ -433,3 +445,40 @@ class BuiltinGenerator:
             parts.append("std::flush")
 
         return f"{sink} << " + " << ".join(parts)
+
+    def _optional_container_formatter(self, inner: TpyType, inner_cpp: str) -> str | None:
+        """Pick a Formatter type for print_optional / print_optional_val when
+        the Optional inner is a container/tuple/bytes type whose underlying C++
+        representation lacks a plain `operator<<` (list/Array/Span ->
+        vector/array/span, dict -> ordered_map, set -> ordered_set, tuple ->
+        std::tuple, bytes/bytearray -> vector<uint8_t>). Returns the Formatter
+        type string or None when no wrapper is needed (dict_view types have
+        their own operator<<, so the default print_optional/_val path works).
+        """
+        # bytearray is also "any bytes" per is_any_bytes_type, so check the
+        # narrower bytearray predicate first to keep the bytearray(b'...')
+        # repr distinct from bytes' b'...' repr.
+        if is_bytearray_type(inner):
+            return "::tpy::ByteArrayPrinter"
+        if is_any_bytes_type(inner):
+            return "::tpy::BytesPrinter"
+        if isinstance(inner, TupleType):
+            elem_cpps = ", ".join(et.to_cpp() for et in inner.element_types)
+            return f"::tpy::TuplePrinter<{elem_cpps}>"
+        if is_dict(inner):
+            type_args = inner.type_args
+            if type_args and len(type_args) >= 2:
+                key_cpp = type_args[0].to_cpp()
+                value_cpp = type_args[1].to_cpp()
+                return f"::tpy::DictPrinter<{key_cpp}, {value_cpp}>"
+            return None
+        if is_set(inner):
+            type_args = inner.type_args
+            if type_args:
+                elem_cpp = type_args[0].to_cpp()
+                return f"::tpy::SetPrinter<{elem_cpp}>"
+            return None
+        if (is_list(inner) or is_array(inner) or is_span(inner)
+                or isinstance(inner, ListRepeatType)):
+            return f"::tpy::ListPrinter<{inner_cpp}>"
+        return None

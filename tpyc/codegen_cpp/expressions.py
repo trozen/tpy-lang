@@ -440,6 +440,14 @@ class ExpressionGenerator:
                 result = f"::tpy::deref_optional_check({result})"
             else:
                 result = f"(*{result})"
+        elif is_narrowed_optional_field:
+            # Sema has proven the field non-None; the storage stays
+            # std::optional<T>, so the unwrap is always safe and doesn't need
+            # the target_type gate above. Narrowed value-Optional locals/params
+            # go through _maybe_unwrap_narrowed_optional at the write/read
+            # sites instead -- codegen's narrowed_vars is not populated for
+            # Optional None-narrowing (sema's _filter_union_codegen_facts).
+            result = f"(*{result})"
         return result
 
     def _maybe_convert_opt_str_param(self, name: str, result: str,

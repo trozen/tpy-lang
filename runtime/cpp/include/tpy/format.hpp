@@ -704,16 +704,31 @@ inline std::ostream& operator<<(std::ostream& os, const print_optional_val<Forma
  * print_optional - Print a nullable pointer as Python would.
  *
  * Prints "None" for nullptr, otherwise prints the pointed-to value.
+ * The optional Formatter template arg (default void) lets callers route
+ * the pointee through a wrapper printer -- e.g. ListPrinter<vector<T>>
+ * for nullable containers whose underlying type lacks a plain operator<<.
  */
-template<typename T>
+template<typename Formatter, typename T>
 struct print_optional {
     const T* ptr;
     explicit print_optional(const T* p) : ptr(p) {}
 };
 
+// Deduction guide: print_optional(ptr) deduces Formatter=void.
 template<typename T>
-inline std::ostream& operator<<(std::ostream& os, const print_optional<T>& po) {
-    if (po.ptr) os << *(po.ptr); else os << "None";
+print_optional(const T*) -> print_optional<void, T>;
+
+template<typename Formatter, typename T>
+inline std::ostream& operator<<(std::ostream& os, const print_optional<Formatter, T>& po) {
+    if (po.ptr) {
+        if constexpr (std::is_same_v<Formatter, void>) {
+            os << *(po.ptr);
+        } else {
+            os << Formatter(*(po.ptr));
+        }
+    } else {
+        os << "None";
+    }
     return os;
 }
 

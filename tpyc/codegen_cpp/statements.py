@@ -1633,6 +1633,11 @@ class StatementGenerator:
         # Special handling for subscript assignment
         if isinstance(stmt.target, TpySubscript):
             obj = self.expressions.gen_expr(stmt.target.obj)
+            is_indirect = self.ctx.is_indirect_name(stmt.target.obj)
+            # Unwrap a sema-narrowed value-Optional receiver before passing
+            # it to __setitem__; mirrors the subscript-read path.
+            obj = self.expressions._maybe_unwrap_narrowed_optional(
+                stmt.target.obj, obj, is_indirect)
             target_type = self.ctx.get_expr_type(stmt.target)
             value = self.expressions.gen_expr(stmt.value, target_type)
             value = self.expressions._maybe_move(stmt.value, value)
@@ -1641,7 +1646,7 @@ class StatementGenerator:
             obj_type = self.ctx.get_expr_type(stmt.target.obj)
             index_type = self.ctx.analyzer.get_expr_type(stmt.target.index)
             # Dereference globals for subscript access
-            subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(stmt.target.obj) else obj
+            subscript_obj = f"(*{obj})" if is_indirect else obj
             # Thread the dict/set's view-typed key through so bytes/str
             # literals pin to static storage (avoiding a stored dangling view).
             index_expr = self.expressions.gen_index_expr(
@@ -1893,6 +1898,10 @@ class StatementGenerator:
             receiver_stmt, target = self.expressions.gen_class_constant_lvalue(stmt.target)
         else:
             target = self.expressions.gen_expr(stmt.target)
+            # Unwrap a sema-narrowed value-Optional LHS so the synthesized
+            # `target = target op value` reads the inner T, not std::optional<T>.
+            target = self.expressions._maybe_unwrap_narrowed_optional(
+                stmt.target, target, self.ctx.is_indirect_name(stmt.target))
         target_type = self.ctx.get_expr_type(stmt.target)
         value = self.expressions.gen_expr(stmt.value, target_type)
         value_type = self.types.get_resolved_type(stmt.value, target_type)
@@ -1930,10 +1939,15 @@ class StatementGenerator:
             raise CodeGenError("Expected subscript target for augmented assignment", stmt.loc)
         subscript = stmt.target
         obj = self.expressions.gen_expr(subscript.obj)
+        is_indirect = self.ctx.is_indirect_name(subscript.obj)
+        # Unwrap a sema-narrowed value-Optional receiver so __getitem__ /
+        # __setitem__ see the inner container; mirrors _gen_assign_code.
+        obj = self.expressions._maybe_unwrap_narrowed_optional(
+            subscript.obj, obj, is_indirect)
         obj_type = self.types.get_resolved_type(subscript.obj)
         index_type = self.ctx.get_expr_type(subscript.index)
         # Dereference globals for subscript access
-        subscript_obj = f"(*{obj})" if self.ctx.is_indirect_name(subscript.obj) else obj
+        subscript_obj = f"(*{obj})" if is_indirect else obj
         index_expr = self.expressions.gen_index_expr(subscript.index, index_type or INT32)
 
         # Get element type

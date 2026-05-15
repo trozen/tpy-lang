@@ -3083,6 +3083,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Guarded paths (`if x is not None`) and `assert x is not None` narrow `x` to `T`
   - Returning narrowed optional values: `if x is not None: return x` correctly unwraps to `T`
   - Field narrowing: `if obj.field is not None:` narrows `obj.field` to `T` in the guarded scope
+  - Reads of narrowed value-Optional fields work in all consumer positions: aug-assign (`self.f += 1`), subscript-LHS (`self.f[i] = x`, `self.f[i] += 1` on `list[T] | None`/`dict[K,V] | None`), and ostream-print of `int | None` (BigInt) and other inners. The storage-form `std::optional<T>` is unwrapped at the read site so the consumer sees `T`.
   - Reassigning a narrowed `T | None` field back to `None` (`if self.x is None: return; ...; self.x = None`) emits `std::nullopt` against `std::optional<T>` storage. The assign target uses the declared field type, so the post-narrowing `None` write goes through the boundary conversion as if no narrowing happened. Applies symmetrically to value-Optional fields (`int | None`, etc.)
   - Nested field narrowing: `if obj.inner.field is not None:` narrows through multi-level field access
   - Field truthiness narrowing: `if obj.field:` narrows optional fields (with value-truthiness warning for value types)
@@ -3101,7 +3102,7 @@ See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including
   - Variables, parameters, returns use `std::optional<T>` directly
   - `x is None` / `x is not None` → `.has_value()` checks
   - Truthiness checks (`if x`, `assert x`, `while x`) narrow on true path, with warning about falsy non-None values
-  - `print()` prints `None` for empty, value otherwise
+  - `print()` prints `None` for empty, value otherwise. Container/tuple/bytes inners (`list[T] | None`, `dict[K, V] | None`, `set[T] | None`, `tuple[...] | None`, `bytes | None`, `bytearray | None`) print via their respective `ListPrinter` / `DictPrinter` / `SetPrinter` / `TuplePrinter` / `BytesPrinter` / `ByteArrayPrinter` wrappers, threaded through `print_optional` / `print_optional_val` as the `Formatter` template arg.
 - **Working**: Reassignment-based Optional inference for unannotated variables
   - `x = None; x = Point()` infers `x` as `Point | None`
   - `x = None; x = 123` infers `x` as `int | None`
