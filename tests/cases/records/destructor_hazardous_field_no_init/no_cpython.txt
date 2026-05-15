@@ -1,0 +1,4 @@
+CPython doesn't create instance attributes from type annotations alone,
+so Safe() doesn't auto-populate `name` like the C++ codegen does. The
+regression we're guarding is C++-specific (value-init of the str field
+yields an empty std::string_view); CPython compat isn't meaningful here.

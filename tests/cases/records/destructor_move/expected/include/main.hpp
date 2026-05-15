@@ -21,7 +21,6 @@ struct Tracker {
     bool __tpy_owned_ = true;
 
     // def __init__(self, name: str):
-    Tracker() = default;
     explicit Tracker(std::string_view name) : name(name) {}
     Tracker(const Tracker&) = delete;
     Tracker& operator=(const Tracker&) = delete;

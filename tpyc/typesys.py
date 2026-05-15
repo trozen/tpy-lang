@@ -3265,6 +3265,72 @@ def get_covariant_params(record_info: 'RecordInfo') -> set[str]:
     return result
 
 
+def type_value_init_indeterminate(typ: TpyType) -> bool:
+    """Whether C++ default-initialization of a field of this type leaves it
+    indeterminate.
+
+    Raw pointers (`Ptr[T]`) and primitive scalars are the hazard: a
+    non-trivial class `T() = default;` default-initializes each member, and
+    primitives get no zeroing. Strings, containers, Optional, Span, and
+    tuples of safe-defaults all yield defined states (their type has a
+    well-behaved default ctor). User records propagate via their own
+    `del_suppresses_default_ctor` rule -- this predicate treats them as
+    defined here.
+    """
+    from .type_def_registry import is_array, is_enum_type
+    if isinstance(typ, ReadonlyType):
+        return type_value_init_indeterminate(typ.wrapped)
+    if isinstance(typ, OwnType):
+        return type_value_init_indeterminate(typ.wrapped)
+    if isinstance(typ, OptionalType):
+        return False
+    if isinstance(typ, PtrType):
+        return True
+    if isinstance(typ, TupleType):
+        return any(type_value_init_indeterminate(e) for e in typ.element_types)
+    if is_array(typ):
+        elem = typ.get_element_type()
+        return elem is None or type_value_init_indeterminate(elem)
+    if is_enum_type(typ):
+        return False
+    if is_primitive_type(typ):
+        return True
+    return False
+
+
+def del_suppresses_default_ctor(record_info: 'RecordInfo') -> bool:
+    """Whether this record has no usable zero-arg constructor.
+
+    Three sources of suppression, all rooted in "~T() would read
+    indeterminate state if T() were callable":
+
+      - `@nocopy + __del__`: author intent -- no safe default state
+        (Box, Rc, Weak).
+      - `__del__` with `__init__` that has any required parameter: the
+        zero-arg overload is suppressed; callers must provide arguments.
+      - `__del__` with no `__init__` and at least one own field whose
+        value-initialization would leave it indeterminate (raw `Ptr[T]`,
+        primitive scalar without an in-class initializer).
+
+    Empty-fields `__del__`-only records (the abstract-base pattern) stay
+    default-constructible so derived classes can value-init the base
+    subobject. Codegen and sema both consult this predicate so the C++
+    build never silently deletes a constructor that sema reported as
+    available.
+    """
+    if record_info.is_nocopy and record_info.has_del:
+        return True
+    if not record_info.has_del:
+        return False
+    if record_info.has_init:
+        return any(default is None for _, _, default in record_info.init_params)
+    return any(
+        fld.default_value is None and not fld.is_factory_default
+        and type_value_init_indeterminate(fld.type)
+        for fld in record_info.fields
+    )
+
+
 @dataclass
 class FieldInfo:
     """Information about a record field."""

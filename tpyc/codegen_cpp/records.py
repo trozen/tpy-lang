@@ -15,6 +15,7 @@ from ..typesys import (
     unwrap_readonly, unwrap_optional_own,
     get_covariant_params, PtrType,
     bare_name,
+    del_suppresses_default_ctor, type_value_init_indeterminate,
 )
 from ..parse import (
     TpyRecord, TpyEnum, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
@@ -297,15 +298,9 @@ class RecordGenerator:
                 if has_required_params or proto_params:
                     if all_protocols_optional:
                         out.write(f"{INDENT}{cpp_rec_name}() : {cpp_rec_name}(static_cast<std::nullptr_t*>(nullptr)) {{}}\n")
-                    elif self._all_fields_default_constructible(record) and not (
-                        record.is_nocopy and record.del_method is not None
-                    ):
-                        # @nocopy + __del__ records have no safe default state:
-                        # default-init leaves their fields indeterminate, and
-                        # the destructor reads them. Without the auto ctor,
-                        # callers and enclosing records must initialize
-                        # explicitly (MIL-hoist into move-construction when
-                        # the field is another record's nocopy member).
+                    elif (record_info is not None
+                          and self._all_fields_default_constructible(record)
+                          and not del_suppresses_default_ctor(record_info)):
                         out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
                 if proto_params or has_dynamic:
                     cpp_params = self.functions.gen_params_with_protocols(
@@ -355,12 +350,10 @@ class RecordGenerator:
             else:
                 out.write(" {}\n")
         else:
-            # No __init__: for plain records, omit constructor declaration so the
-            # struct stays a C++ aggregate (supports both Type() and Type(a,b,c)).
-            # Records with __del__/@nocopy get user-declared copy/move ops which
-            # suppress the implicit default ctor, so they still need = default --
-            # except @nocopy + __del__, which has no safe default state (see the
-            # guard on the parameterized-ctor path above for the full rationale).
+            # No __init__: plain records stay C++ aggregates (no ctor declared).
+            # Records with __del__/@nocopy/__copy__ get user-declared copy/move
+            # ops, which suppress the implicit default ctor -- restore it with
+            # `= default;` unless `del_suppresses_default_ctor` says otherwise.
             if record_info and record_info.inherits_init_from is not None:
                 # `using Foo::Foo` only compiles if both halves match the C++
                 # class name. @native renames let the Python and C++ short
@@ -369,7 +362,7 @@ class RecordGenerator:
                 parent_cpp_short = parent_cpp.rsplit("::", 1)[-1]
                 out.write(f"{INDENT}using {parent_cpp}::{parent_cpp_short};\n")
             if record_info and (record_info.is_nocopy or record_info.has_del or record_info.has_copy):
-                if not (record_info.is_nocopy and record_info.has_del):
+                if not del_suppresses_default_ctor(record_info):
                     out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
 
         # Copy/move ops for @nocopy, __del__, or __copy__ classes.
@@ -1010,21 +1003,21 @@ class RecordGenerator:
                             )
                             blocked_by_body_local = bool(collect_name_refs(stmt.value) & local_names)
                             if blocked_by_bare_name or blocked_by_body_local:
-                                # @nocopy + __del__ fields have no default ctor (see
-                                # codegen of the wrapper struct); a body-assignment
-                                # for them would default-init the field in the MIL
+                                # Fields whose type has a suppressed default ctor
+                                # have no default state; a body-assignment for
+                                # them would default-init the field in the MIL
                                 # to an uncompilable state and produce a cryptic
                                 # C++ error. Reject cleanly here with guidance.
                                 if field_name in own_field_names:
                                     fld_rec = self.ctx.analyzer.registry.get_record_for_type(field_types[field_name])
-                                    if fld_rec is not None and fld_rec.is_nocopy and fld_rec.has_del:
+                                    if fld_rec is not None and del_suppresses_default_ctor(fld_rec):
                                         raise CodeGenError(
-                                            f"field '{field_name}' of @nocopy + __del__ type "
-                                            f"'{fld_rec.name}' must be initialized before any local "
-                                            f"variable is bound in this constructor. The assigned "
-                                            f"expression references a local defined earlier in the "
-                                            f"body; the field has no default constructor, so the "
-                                            f"initializer cannot run later than the member "
+                                            f"field '{field_name}' of non-default-constructible "
+                                            f"type '{fld_rec.name}' must be initialized before any "
+                                            f"local variable is bound in this constructor. The "
+                                            f"assigned expression references a local defined earlier "
+                                            f"in the body; the field has no default constructor, so "
+                                            f"the initializer cannot run later than the member "
                                             f"initializer list.\n"
                                             f"  Constructor order: super().__init__() -> field "
                                             f"assignments (self.x = ...) -> other logic.\n"
@@ -1050,16 +1043,17 @@ class RecordGenerator:
                                 checkpoint = self.ctx.temps.checkpoint()
                                 value = self.expressions.gen_expr(source, fld_type)
                                 if self.ctx.temps.rollback_to(checkpoint):
-                                    # @nocopy + __del__ fields have no default ctor,
-                                    # so body-assignment would default-init the field
-                                    # in the MIL to an uncompilable state. Reject
-                                    # cleanly here -- mirrors the bare-name guard above.
+                                    # Fields with a suppressed default ctor have no
+                                    # default state, so body-assignment would default-
+                                    # init the field in the MIL to an uncompilable
+                                    # state. Reject cleanly here -- mirrors the
+                                    # bare-name guard above.
                                     fld_rec = self.ctx.analyzer.registry.get_record_for_type(fld_type)
-                                    if fld_rec is not None and fld_rec.is_nocopy and fld_rec.has_del:
+                                    if fld_rec is not None and del_suppresses_default_ctor(fld_rec):
                                         raise CodeGenError(
-                                            f"field '{field_name}' of @nocopy + __del__ type "
-                                            f"'{fld_rec.name}' has no default constructor and "
-                                            f"its initializer expression requires a codegen "
+                                            f"field '{field_name}' of non-default-constructible "
+                                            f"type '{fld_rec.name}' has no default constructor "
+                                            f"and its initializer expression requires a codegen "
                                             f"temporary that cannot be declared in the member "
                                             f"initializer list. Refactor the RHS so it does not "
                                             f"need an intermediate (e.g. avoid varargs calls), "
@@ -1186,26 +1180,21 @@ class RecordGenerator:
             return protocols._is_default_constructible(typ)
         # Generic instantiation (e.g. Pair[Int32]): the base template class
         # usually emits = default, so any instantiation is C++-default-constructible.
-        # Exception: @nocopy + __del__ templates suppress their default ctor (see
-        # _all_fields_default_constructible / the parameterized-ctor emission guard).
-        # Treating such instantiations as default-constructible at the field level
-        # makes enclosing records emit a Foo() = default; that C++ then implicitly
-        # deletes -- producing a confusing per-layer error chain (e.g. Outer ->
-        # Holder -> Rc<T>) instead of a clean diagnostic.
+        # `del_suppresses_default_ctor` catches the exception (Box/Rc/Weak and
+        # other __del__ shapes) so the cascade through enclosing records stops
+        # at the first non-default-constructible field with a clean diagnostic
+        # rather than a confusing implicit-delete chain (Outer -> Holder -> Rc<T>).
         if typ.type_args:
             base_rec = self.ctx.analyzer.ctx.registry.get_record(typ.name)
             if base_rec is not None and base_rec.type_params:
-                if base_rec.is_nocopy and base_rec.has_del:
+                if del_suppresses_default_ctor(base_rec):
                     return False
                 return True  # generic class emits = default
             return protocols._is_default_constructible(typ)
         record_info = self.ctx.analyzer.ctx.registry.get_record(typ.name)
         if record_info is None:
             return False
-        # @nocopy + __del__ has no safe default state; its default ctor is
-        # suppressed by codegen, so fields of this type block the enclosing
-        # record from being C++-default-constructible.
-        if record_info.is_nocopy and record_info.has_del:
+        if del_suppresses_default_ctor(record_info):
             return False
         if not record_info.has_init:
             return True  # aggregate: always C++ default-constructible

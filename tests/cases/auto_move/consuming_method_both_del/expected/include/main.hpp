@@ -21,7 +21,6 @@ struct Base {
     bool __tpy_owned_ = true;
 
     // def __init__(self, value: Int32):
-    Base() = default;
     explicit Base(int32_t value) : _ptr(static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))))) {
         // print("Base.init", value)
         std::cout << "Base.init" << " " << value << "\n";
@@ -65,7 +64,6 @@ struct Child : Base {
     int32_t _extra;
 
     // def __init__(self, value: Int32, extra: Int32):
-    Child() = default;
     explicit Child(int32_t value, int32_t extra) : Base(value), _extra(extra) {
         // print("Child.init", extra)
         std::cout << "Child.init" << " " << extra << "\n";

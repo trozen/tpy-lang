@@ -188,7 +188,7 @@ Note: `@nocopy` and `__del__` are orthogonal to default-constructibility. A `@no
 
 Ternary expressions (`self.x = a if cond else b`) already go to the init-list as a single expression and are the preferred way to handle conditional initialization without a body assignment.
 
-**Top-level body assignments for `@nocopy` + `__del__` fields:** the field init RHS must not reference a body-local. These types have no default ctor (Decision 3), so the field cannot be default-initialized in the MIL and reassigned; the initializer must itself run in the MIL (move-construction). The MIL-hoist path accepts only constructor parameters and module-level references in the RHS; a local-referencing RHS is rejected with a clean sema error recommending a `@staticmethod` factory returning `Own[Self]` on the field's type to encapsulate the computation.
+**Top-level body assignments for fields whose type has a suppressed default ctor:** the field init RHS must not reference a body-local. These types have no default ctor (Decision 3), so the field cannot be default-initialized in the MIL and reassigned; the initializer must itself run in the MIL (move-construction). The MIL-hoist path accepts only constructor parameters and module-level references in the RHS; a local-referencing RHS is rejected with a clean sema error recommending a `@staticmethod` factory returning `Own[Self]` on the field's type to encapsulate the computation.
 
 ### Decision 3: `= default` Constructor
 
@@ -200,7 +200,13 @@ Currently this is emitted unconditionally. It enables `ClassName{}` and `std::op
 
 Check each field type. If any field is non-default-constructible (e.g., `@nocopy` without default ctor), skip the `= default` line. Need to track default-constructibility as a type property.
 
-Additionally, `@nocopy` records that also define `__del__` are themselves treated as non-default-constructible -- their auto `= default;` is suppressed. A default-initialized instance of such a type would leave pointer fields indeterminate and then run `__del__` on garbage. The suppression cascades: a record holding a `@nocopy + __del__` field also loses its auto `= default;` via the default-constructibility predicate.
+Additionally, the auto `= default;` is suppressed for any record where `~T` would read indeterminate field state if `T()` were callable -- see `del_suppresses_default_ctor` in `tpyc/typesys.py` for the predicate. Three cases trigger suppression:
+
+- `@nocopy + __del__` (author intent: no safe default; e.g. `Box`, `Rc`, `Weak`).
+- `__del__` with `__init__` that has any required parameter (the zero-arg overload was a footgun -- callers must use the parameterized form).
+- `__del__` with no `__init__` and any own field whose value-init would leave it indeterminate (raw `Ptr[T]`, primitive scalar without an in-class initializer).
+
+Empty-fields `__del__`-only records (the abstract-base pattern) stay default-constructible so derived classes' MIL can value-init the base subobject. The suppression cascades through the field-level default-constructibility predicate: a record holding a field of a suppressed type also loses its auto `= default;`.
 
 ### Decision 4: Uninitialized Field Detection
 

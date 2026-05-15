@@ -15,6 +15,7 @@ from ..typesys import (
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
     ListRepeatType, GenExprType, make_list, TupleType, OptionalType, PtrType, IntLiteralType, FloatLiteralType, AnyType, PendingListType, UnknownElementType, BIGINT, FLOAT,
     impl_proto_matches_name, get_protocol_qname, unwrap_qualifiers,
+    del_suppresses_default_ctor,
 )
 from ..coercions import is_protocol_safe_coercion, is_protocol_type_arg_widening
 
@@ -460,11 +461,12 @@ class ProtocolChecker:
             record = self.ctx.registry.get_record_for_type(actual)
             if record is None or record.builtin_type_key:
                 return False
-            # @nocopy + __del__ records have no safe default state; codegen
-            # suppresses their default ctor, so they must not be reported as
-            # default-constructible here either (applies to both non-generic
-            # records and generic instantiations like Rc[T] / Weak[T]).
-            if record.is_nocopy and record.has_del:
+            # Records whose default ctor codegen suppresses must not be reported
+            # as default-constructible here either, or sema accepts a call that
+            # the C++ build will silently delete. The shared predicate captures
+            # all three cases: @nocopy + __del__ (Box, Rc), __del__ + required-
+            # param __init__, __del__ + no __init__ + indeterminate-init field.
+            if del_suppresses_default_ctor(record):
                 return False
             if not record.has_init:
                 # Aggregate records have an implicit field-wise C++ ctor;

@@ -25,7 +25,6 @@ struct Resource {
     bool __tpy_owned_ = true;
 
     // def __init__(self, name: str):
-    Resource() = default;
     explicit Resource(std::string_view name) : name(name) {}
     Resource(const Resource&) = delete;
     Resource& operator=(const Resource&) = delete;
@@ -61,7 +60,6 @@ struct Base {
     bool __tpy_owned_ = true;
 
     // def __init__(self, tag: str):
-    Base() = default;
     explicit Base(std::string_view tag) : tag(tag) {}
     Base(const Base&) = delete;
     Base& operator=(const Base&) = delete;
@@ -94,7 +92,6 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 struct Child : Base {
 
     // def __init__(self, tag: str):
-    Child() = default;
     explicit Child(std::string_view tag) : Base(tag) {}
     Child(const Child&) = delete;
     Child& operator=(const Child&) = delete;

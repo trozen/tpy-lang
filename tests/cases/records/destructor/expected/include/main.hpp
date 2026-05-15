@@ -23,7 +23,6 @@ struct Resource {
     bool __tpy_owned_ = true;
 
     // def __init__(self, name: str):
-    Resource() = default;
     explicit Resource(std::string_view name) : name(name) {}
     Resource(const Resource&) = delete;
     Resource& operator=(const Resource&) = delete;

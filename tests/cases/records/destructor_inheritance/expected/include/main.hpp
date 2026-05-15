@@ -54,7 +54,6 @@ struct Child : Base {
     std::string label;
 
     // def __init__(self, label: str):
-    Child() = default;
     explicit Child(std::string_view label) : label(label) {}
     Child(const Child&) = delete;
     Child& operator=(const Child&) = delete;

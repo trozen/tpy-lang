@@ -26,7 +26,6 @@ struct Cell {
     bool __tpy_owned_ = true;
 
     // def __init__(self, v: Int32) -> None:
-    Cell() = default;
     explicit Cell(int32_t v) : val(v) {}
     Cell(const Cell&) = delete;
     Cell& operator=(const Cell&) = delete;

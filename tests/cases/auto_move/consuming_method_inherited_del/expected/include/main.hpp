@@ -21,7 +21,6 @@ struct Base {
     bool __tpy_owned_ = true;
 
     // def __init__(self, value: Int32):
-    Base() = default;
     explicit Base(int32_t value) : _ptr(static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))))) {
         // print("Base.init", value)
         std::cout << "Base.init" << " " << value << "\n";
@@ -66,7 +65,6 @@ inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
 struct Child : Base {
 
     // def __init__(self, value: Int32):
-    Child() = default;
     explicit Child(int32_t value) : Base(value) {
         // print("Child.init")
         std::cout << "Child.init" << "\n";

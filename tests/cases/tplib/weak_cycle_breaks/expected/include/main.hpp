@@ -30,7 +30,6 @@ struct Node {
     bool __tpy_owned_ = true;
 
     // def __init__(self, name: str) -> None:
-    Node() = default;
     explicit Node(std::string_view name) : name(name), parent(std::nullopt), children(std::vector<::tpystd::tplib::rc::Rc<Node>>{}) {
         // print("init", name)
         std::cout << "init" << " " << name << "\n";

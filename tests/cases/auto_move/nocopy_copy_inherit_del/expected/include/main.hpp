@@ -21,7 +21,6 @@ struct Resource {
     bool __tpy_owned_ = true;
 
     // def __init__(self, id: Int32):
-    Resource() = default;
     explicit Resource(int32_t id) : id(id) {
         // print("alloc", id)
         std::cout << "alloc" << " " << id << "\n";
@@ -57,7 +56,6 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 struct CopyableResource : Resource {
 
     // def __init__(self, id: Int32):
-    CopyableResource() = default;
     explicit CopyableResource(int32_t id) : Resource(id) {}
     // copyable via __copy__
     CopyableResource(const CopyableResource& other) : CopyableResource(other.__copy__()) {}

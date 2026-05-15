@@ -76,8 +76,12 @@ struct Adopter {
     ::tpystd::tplib::box::Box<Pet> pet;
 
     // def __init__(self, initial: Own[Pet]) -> None:
-    Adopter() = default;
     explicit Adopter(std::unique_ptr<Pet> initial) : pet(::tpystd::tplib::box::Box<Pet>(std::move(initial))) {}
+    // non-copyable (field 'pet')
+    Adopter(const Adopter&) = delete;
+    Adopter& operator=(const Adopter&) = delete;
+    Adopter(Adopter&&) = default;
+    Adopter& operator=(Adopter&&) = default;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Adopter";
 };
 

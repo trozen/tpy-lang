@@ -48,8 +48,12 @@ struct BinOp {
     ::tpystd::tplib::box::Box<Expr> right;
 
     // def __init__(self, left: Own[Box[Expr]], right: Own[Box[Expr]]) -> None:
-    BinOp() = default;
     explicit BinOp(::tpystd::tplib::box::Box<Expr>&& left, ::tpystd::tplib::box::Box<Expr>&& right) : left(std::move(left)), right(std::move(right)) {}
+    // non-copyable (field 'left')
+    BinOp(const BinOp&) = delete;
+    BinOp& operator=(const BinOp&) = delete;
+    BinOp(BinOp&&) = default;
+    BinOp& operator=(BinOp&&) = default;
     static constexpr std::string_view __tpy_class_name__ = "__main__.BinOp";
 };
 
@@ -64,8 +68,12 @@ struct Neg {
     ::tpystd::tplib::box::Box<Value> inner;
 
     // def __init__(self, inner: Own[Box[Value]]) -> None:
-    Neg() = default;
     explicit Neg(::tpystd::tplib::box::Box<Value>&& inner) : inner(std::move(inner)) {}
+    // non-copyable (field 'inner')
+    Neg(const Neg&) = delete;
+    Neg& operator=(const Neg&) = delete;
+    Neg(Neg&&) = default;
+    Neg& operator=(Neg&&) = default;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Neg";
 };
 

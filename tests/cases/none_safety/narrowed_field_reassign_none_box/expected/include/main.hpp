@@ -41,6 +41,11 @@ struct Holder {
 
     // def __init__(self) -> None:
     Holder() : slot(::tpystd::tplib::box::Box<Cell>(Cell(::tpy::BigInt(1)))) {}
+    // non-copyable (field 'slot')
+    Holder(const Holder&) = delete;
+    Holder& operator=(const Holder&) = delete;
+    Holder(Holder&&) = default;
+    Holder& operator=(Holder&&) = default;
 
     // def finish(self) -> None:
     void finish();

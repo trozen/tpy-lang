@@ -28,7 +28,6 @@ struct Node {
     bool __tpy_owned_ = true;
 
     // def __init__(self, name: str) -> None:
-    Node() = default;
     explicit Node(std::string_view name) : name(name), next(std::nullopt) {
         // print("init", name)
         std::cout << "init" << " " << name << "\n";

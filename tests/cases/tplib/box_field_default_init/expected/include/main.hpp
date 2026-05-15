@@ -41,6 +41,11 @@ struct Holder {
 
     // def __init__(self) -> None:
     Holder() : boxed(::tpystd::tplib::box::Box<Val>(Val(7))) {}
+    // non-copyable (field 'boxed')
+    Holder(const Holder&) = delete;
+    Holder& operator=(const Holder&) = delete;
+    Holder(Holder&&) = default;
+    Holder& operator=(Holder&&) = default;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 

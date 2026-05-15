@@ -29,7 +29,6 @@ struct Tracked {
     bool __tpy_owned_ = true;
 
     // def __init__(self, label: str) -> None:
-    Tracked() = default;
     explicit Tracked(std::string_view label) : label(label) {}
     Tracked(const Tracked&) = delete;
     Tracked& operator=(const Tracked&) = delete;

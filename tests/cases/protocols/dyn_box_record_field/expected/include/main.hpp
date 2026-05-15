@@ -98,8 +98,12 @@ struct Owner {
     ::tpystd::tplib::box::Box<Pet> pet;
 
     // def __init__(self, name_: str, pet: Own[Box[Pet]]) -> None:
-    Owner() = default;
     explicit Owner(std::string_view name_, ::tpystd::tplib::box::Box<Pet>&& pet) : name_(name_), pet(std::move(pet)) {}
+    // non-copyable (field 'pet')
+    Owner(const Owner&) = delete;
+    Owner& operator=(const Owner&) = delete;
+    Owner(Owner&&) = default;
+    Owner& operator=(Owner&&) = default;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Owner";
 };
 

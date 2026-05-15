@@ -27,7 +27,6 @@ struct State {
     bool __tpy_owned_ = true;
 
     // def __init__(self, label: str) -> None:
-    State() = default;
     explicit State(std::string_view label) : label(label) {
         // print("init", label)
         std::cout << "init" << " " << label << "\n";

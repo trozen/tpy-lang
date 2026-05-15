@@ -24,6 +24,12 @@ struct Neg {
     // inner: Box[Value]
     ::tpystd::tplib::box::Box<Value> inner;
 
+    Neg() = default;
+    // non-copyable (field 'inner')
+    Neg(const Neg&) = delete;
+    Neg& operator=(const Neg&) = delete;
+    Neg(Neg&&) = default;
+    Neg& operator=(Neg&&) = default;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Neg";
 };
 

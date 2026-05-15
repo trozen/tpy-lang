@@ -102,7 +102,6 @@ struct Tagged {
     bool __tpy_owned_ = true;
 
     // def __init__(self, val: Own[T], tag: N) -> None:
-    Tagged() = default;
     explicit Tagged(::tpy::own_param_t<T> val, const N& tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))), _tag(tag), _owned(true) {
         // unsafe_init(self._ptr, val)
         ::new(static_cast<void*>(this->_ptr)) T(std::move(val));

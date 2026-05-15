@@ -23,7 +23,8 @@ from ..typesys import (
     CallableType, is_fn_type, unwrap_ref_type,
     is_integer_type, is_any_int_type,
     is_callable_type, is_float_type, is_readonly_span, unwrap_qualifiers,
-    param_has_mutable_borrow_surface, contains_type_param)
+    param_has_mutable_borrow_surface, contains_type_param,
+    del_suppresses_default_ctor)
 from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
@@ -4576,13 +4577,21 @@ class CallAnalyzer:
         self, record: RecordInfo, expr: TpyCall,
         type_subst: dict[str, TpyType] | None,
     ) -> None:
-        """Reject zero-arg `Record()` for an aggregate (no __init__) when any
-        own field or parent isn't default-constructible.
+        """Reject zero-arg `Record()` for an aggregate (no __init__) when the
+        record's default ctor is suppressed by codegen, or when any own field
+        or parent isn't default-constructible.
 
         Mirrors `protocols.py::_is_default_constructible` so drift here would
         re-introduce the confusing C++ "implicitly deleted" error chain this
         helper exists to prevent.
         """
+        if del_suppresses_default_ctor(record):
+            raise self.ctx.error(
+                f"'{record.name}()' cannot be constructed without arguments: "
+                f"'{record.name}' has __del__ and would read indeterminate "
+                f"field state after default-initialization "
+                f"(provide an __init__ or an in-class field default)",
+                expr)
         def check(typ: TpyType, label: str) -> None:
             resolved = self.type_ops.substitute_type_params(typ, type_subst) if type_subst else typ
             if contains_type_param(resolved):

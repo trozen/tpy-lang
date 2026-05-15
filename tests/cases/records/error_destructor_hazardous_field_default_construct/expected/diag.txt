@@ -1,0 +1,1 @@
+main.py:17: error: 'Hazard()' cannot be constructed without arguments: 'Hazard' has __del__ and would read indeterminate field state after default-initialization (provide an __init__ or an in-class field default)

@@ -238,6 +238,7 @@ Full TurboPython -> C++ type mapping lives in `docs/LANGUAGE_FEATURES.md`. Types
 | `Array[T, N]` | `std::array<T, N>` |
 | `Ptr[T]` / `Ptr[readonly[T]]` | `T*` / `const T*` |
 | `Own[T]` | `T` by value (for returns/params); ownership transfer, not heap allocation |
+| `Box[T]` | Pure-TPy heap-allocated owning container (`tplib/box.py`); `@nocopy`, explicit `.clone()` to duplicate. Construct via `Box(value)` where `value: Own[T]`. |
 | `Rc[T]` | Pure-TPy non-atomic shared-ownership wrapper (`tplib/rc.py`); `@nocopy`, explicit `.clone()` to share. Construct via `Rc.new(value)`. |
 | `Weak[T]` | Non-owning companion to `Rc[T]`; shares the cell but doesn't keep payload alive. `@nocopy`. Mint via `rc.downgrade()`; recover a strong handle (or `None`) via `weak.upgrade()`. Imported as `from tplib.rc import Weak` (module-scoped so a future `tplib.arc.Weak` can coexist). |
 | `BytesView` | `std::span<const uint8_t>` |

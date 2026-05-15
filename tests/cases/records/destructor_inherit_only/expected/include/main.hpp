@@ -22,7 +22,6 @@ struct Base {
     bool __tpy_owned_ = true;
 
     // def __init__(self, name: str):
-    Base() = default;
     explicit Base(std::string_view name) : name(name) {}
     Base(const Base&) = delete;
     Base& operator=(const Base&) = delete;
@@ -57,7 +56,6 @@ struct Child : Base {
     std::string tag;
 
     // def __init__(self, name: str, tag: str):
-    Child() = default;
     explicit Child(std::string_view name, std::string_view tag) : Base(name), tag(tag) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };

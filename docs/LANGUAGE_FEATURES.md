@@ -279,6 +279,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `Ptr[readonly[T]]` | `const T*` |
 | `Ptr[None]` / `Ptr[readonly[None]]` | `void*` / `const void*` (preserves the C/C++ opaque-pointer idiom for `@native` interop, despite `None` lowering to `std::monostate` at other type-argument positions) |
 | `Own[T]` | `T` (by value, for returns/params) |
+| `Box[T]` | TPy class wrapping `Ptr[T]` (heap-allocated owning container); `@nocopy`, explicit `.clone()` to duplicate. Construct via `Box(value)` where `value: Own[T]`. |
 | `Rc[T]` | TPy class wrapping `Ptr[_RcCell[T]]` (strong + weak counts + inline payload heap block); `@nocopy`, explicit `.clone()` to share. Construct via `Rc.new(value)`. |
 | `Weak[T]` | Non-owning companion to `Rc[T]`; shares `_RcCell` but doesn't keep the payload alive. `@nocopy`. Mint via `rc.downgrade()`; recover a strong handle (or None) via `weak.upgrade()`. |
 | `bytes` | `std::vector<uint8_t>` |
@@ -1469,7 +1470,14 @@ struct Handle {
 };
 ```
 
-**`@nocopy` + `__del__` default ctor suppression:** When a `@nocopy` type also has `__del__`, the auto `ClassName() = default;` is **not** emitted. A default-initialized instance would leave pointer fields indeterminate, and the destructor would read them. Without the default ctor, such types can only be constructed via a parameterized ctor, and enclosing records that hold them as fields must MIL-initialize (the field appears in the member initializer list), not default-init-then-assign in the body. The default-ctor suppression cascades: a record holding a `@nocopy + __del__` field automatically loses its own auto `= default;` too. Field initializers whose RHS references a body-local variable cannot MIL-hoist and are rejected with a clean sema error; the recommended shape is a `@staticmethod` factory returning `Own[Self]` that bundles any multi-step or error-checked allocation. See `lib/tpy/re.py` (`_OwnedCode.make_compiled`, `_OwnedMatchContext.make_default`) for the canonical pattern.
+**`__del__` default ctor suppression:** When a record has `__del__`, the auto `ClassName() = default;` is suppressed in any of these cases:
+  - `@nocopy + __del__` (the author's "no safe default" declaration: `Box`, `Rc`, `Weak`).
+  - `__del__ + __init__` with any required parameter -- the user explicitly opted out of a zero-arg ctor.
+  - `__del__ + no __init__ + any own field that's indeterminate after C++ value-initialization` (raw `Ptr[T]`, primitive scalars like `Int32`/`Bool`/`Char`/floats without an in-class initializer). Such fields would be left in an indeterminate state by `T() = default;`, and the destructor would read them.
+
+Empty-fields `__del__`-only records (the abstract-Base pattern: `class Base: def __del__(self): ...`) **do** keep their auto default ctor, so derived classes can value-init the base subobject via their member initializer list.
+
+Without the default ctor, such types can only be constructed via a parameterized ctor, and enclosing records that hold them as fields must MIL-initialize (the field appears in the member initializer list), not default-init-then-assign in the body. The suppression cascades: a record holding a field of a `__del__`-suppressed type automatically loses its own auto `= default;` too. Field initializers whose RHS references a body-local variable cannot MIL-hoist and are rejected with a clean sema error; the recommended shape is a `@staticmethod` factory returning `Own[Self]` that bundles any multi-step or error-checked allocation. See `lib/tpy/re.py` (`_OwnedCode.make_compiled`, `_OwnedMatchContext.make_default`) for the canonical pattern.
 
 **`__copy__` escape hatch:** A class that would be implicitly nocopy (due to nocopy fields)
 can define `__copy__` to remain copyable. The method takes no parameters (besides self) and
@@ -2521,7 +2529,7 @@ The `Default` marker protocol declares that a type supports zero-argument defaul
 - `Ptr[T]` (default-constructs to `nullptr`)
 - `Array[T, N]` if element `T` satisfies `Default`
 - `tuple[T1, T2, ...]` if all element types satisfy `Default`
-- User records whose `__init__` has no required parameters; aggregates (no `__init__`) only when every parent and field type also satisfies `Default`. `@nocopy + __del__` records are never `Default` (no safe default state).
+- User records whose `__init__` has no required parameters; aggregates (no `__init__`) only when every parent and field type also satisfies `Default`. Records whose default ctor codegen suppresses are never `Default` (see `del_suppresses_default_ctor` in `tpyc/typesys.py`): `@nocopy + __del__` (e.g. `Box`, `Rc`), `__del__` with required-param `__init__`, and `__del__` with an indeterminate-init own field.
 
 **`make_default()`** is a portable function for default-constructing generic types:
 
@@ -4884,7 +4892,7 @@ TurboPython has two library search roots that provide reusable modules:
 
 | Module | Description |
 |--------|-------------|
-| `tplib.Box[T]` | Heap-allocated owning container (similar to Rust's `Box<T>`) |
+| `tplib.Box[T]` | Heap-allocated owning container (similar to Rust's `Box<T>`); `@nocopy` with explicit `.clone()` to duplicate |
 | `tplib.Rc[T]` (and `make_rc`) | Pure-TPy non-atomic shared-ownership smart pointer; `@nocopy` with explicit `.clone()` to share |
 | `tplib.ArrayList[T, N]` | Fixed-capacity list with stack-allocated uninitialized storage; full list API (`append`, `pop`, `insert`, `index`, `count`, `remove`, `reverse`, `sort`, `swap`, `truncate`, `extend`, `clear`, `__contains__`, `__eq__`, `__repr__`) |
 | `tplib.FixStr[N]` | Fixed-capacity string with stack-allocated storage; `__str__() -> StrView` for zero-copy printing |
