@@ -105,6 +105,18 @@ def unsafe_take[T](value: Own[T]) -> Ptr[T]: ...
 @native("tpy::heap_release")
 def unsafe_release[T](p: Ptr[T]) -> None: ...
 
+# unsafe_replace: replace the heap-stored T at p with value, returning the
+# live slot pointer. Caller must write the returned pointer back to its
+# storage slot -- for abstract @dynamic T the slot changes.
+# Precondition: value must not alias *p.
+@native("tpy::heap_replace")
+def unsafe_replace[T](p: Ptr[T], value: Own[T]) -> Ptr[T]: ...
+
+# unsafe_transfer_ownership: adopt a heap-allocated Ptr[T] as Own[T].
+# After the call the input pointer is invalidated.
+@native("tpy::transfer_ownership")
+def unsafe_transfer_ownership[T](p: Ptr[T]) -> Own[T]: ...
+
 # unsafe_move_out: move a value out of a pointer location
 @cpp_template("std::move(*{0})")
 def unsafe_move_out[T](p: Ptr[T]) -> Own[T]: ...

@@ -50,7 +50,7 @@ struct Pair {
     }
 
     // def first(self: auto_own[Self]) -> auto_own[T]:
-    T first() && {
+    ::tpy::own_return_t<T> first() && {
         // return self.first_val
         return std::move(this->first_val);
     }

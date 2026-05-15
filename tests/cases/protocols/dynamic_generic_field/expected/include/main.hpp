@@ -70,9 +70,9 @@ struct Owner {
     // item: Tagged[Greeter]
     Tagged<Greeter> item;
 
-    // def __init__(self, item: Tagged[Greeter]):
+    // def __init__(self, item: Own[Tagged[Greeter]]):
     Owner() = default;
-    explicit Owner(const Tagged<Greeter>& item) : item(item) {}
+    explicit Owner(Tagged<Greeter>&& item) : item(std::move(item)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Owner";
 };
 

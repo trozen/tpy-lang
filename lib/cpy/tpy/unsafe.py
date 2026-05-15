@@ -240,6 +240,21 @@ def unsafe_release(p) -> None:
     obj[0] = None
 
 
+def unsafe_replace(p, value):
+    """Replace the heap-stored value at p, returning the live slot pointer."""
+    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    obj[0] = value
+    return p
+
+
+def unsafe_transfer_ownership(p):
+    """Adopt the heap-stored value at p as an owned value; clears the slot."""
+    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    val = obj[0]
+    obj[0] = None
+    return val
+
+
 def unsafe_str_view(p, size: int) -> str:
     """Create a string view from a Ptr[Char] and length."""
     obj = p.__deref__() if hasattr(p, '__deref__') else p._obj

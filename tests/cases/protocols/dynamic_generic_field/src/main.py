@@ -1,7 +1,12 @@
 # @dynamic protocol type used as generic type argument in record field.
 # Verifies codegen emits the resolved type name, not literal "T".
+# Uses Own[Tagged[Greeter]] to transfer ownership; an implicit copy of
+# Tagged[Greeter] would be sema-rejected because Greeter (abstract
+# @dynamic) is non-copyable and propagates through the type-args walk
+# in is_type_non_copyable (a conservative over-approximation -- Tagged
+# is phantom in T -- but the move-based pattern is idiomatic anyway).
 from typing import Protocol
-from tpy import Int32, dynamic
+from tpy import Int32, Own, dynamic
 
 @dynamic
 class Greeter(Protocol):
@@ -14,12 +19,11 @@ class Tagged[T]:
 
 class Owner:
     item: Tagged[Greeter]
-    def __init__(self, item: Tagged[Greeter]):
+    def __init__(self, item: Own[Tagged[Greeter]]):
         self.item = item
 
 def main() -> None:
-    t = Tagged[Greeter](42)
-    o = Owner(t)
+    o = Owner(Tagged[Greeter](42))
     print(o.item.tag)
 
 main()

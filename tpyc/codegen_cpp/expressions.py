@@ -695,6 +695,39 @@ class ExpressionGenerator:
                 adapter_type = self.protocols.get_dynamic_ref_adapter_type(unwrapped_ptype, concrete_cpp)
             return self.ctx.temps.create_typed(adapter_type, arg_expr, brace_init=True)
 
+    def _resolve_own_source_type(self, arg: TpyExpr) -> 'OwnType | None':
+        """Return the source ownership type if `arg` is shaped as Own[X] in C++.
+
+        Names/params/fields use declared-type lookup (preserves OwnType).
+        Calls use the resolved function's return type, substituting
+        TypeParamRefs from the call's inferred type args or, for method
+        calls, the receiver's record-level type args.
+        """
+        declared = self._get_cpp_declared_type(arg)
+        if isinstance(declared, OwnType):
+            return declared
+        fi = getattr(arg, 'resolved_function_info', None)
+        if fi is None or not isinstance(fi.return_type, OwnType):
+            return None
+        inner = fi.return_type.wrapped
+        if not isinstance(inner, TypeParamRef):
+            return fi.return_type
+        ta = getattr(arg, 'inferred_type_args', None)
+        if ta and fi.type_params:
+            sub = dict(zip(fi.type_params, ta)).get(inner.name)
+            if sub is not None:
+                return OwnType(sub)
+        obj = getattr(arg, 'obj', None)
+        if obj is not None:
+            obj_type = self.ctx.get_expr_type(obj)
+            if isinstance(obj_type, NominalType) and obj_type.type_args:
+                record_info = self.ctx.analyzer.registry.get_record(obj_type.name)
+                if record_info and record_info.type_params:
+                    sub = dict(zip(record_info.type_params, obj_type.type_args)).get(inner.name)
+                    if sub is not None:
+                        return OwnType(sub)
+        return None
+
     def _gen_dynamic_protocol_own_arg(self, arg: TpyExpr, protocol: TpyType) -> str:
         """Wrap an Own[ConcreteT] argument into Own[P] (unique_ptr<P>) where P is @dynamic.
 
@@ -703,7 +736,22 @@ class ExpressionGenerator:
         resulting unique_ptr<U> implicitly converts to unique_ptr<P> via the
         converting move ctor -- requires U* convertible to P*, which holds
         for both paths (Adapter publicly inherits P).
+
+        Source already Own[P]: forward without wrapping. Adapter<P, P>
+        has a `T inner;` field of abstract P, so the wrap path is
+        ill-formed there. The source check goes through
+        `_resolve_own_source_type` rather than the cached expr type
+        because the latter strips OwnType, which would also match
+        borrowed P refs (not shaped as unique_ptr<P>).
         """
+        source_own_type = self._resolve_own_source_type(arg)
+        if source_own_type is not None:
+            inner = source_own_type.wrapped
+            if is_protocol_type(inner) and (
+                inner.qualified_name() == protocol.qualified_name()
+                or self.protocols._protocol_inherits_from(inner.name, protocol.name)
+            ):
+                return self.gen_call_arg(arg, OwnType(protocol))
         arg_type = self.ctx.get_expr_type(arg)
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
@@ -3123,6 +3171,10 @@ class ExpressionGenerator:
                                 gen_args.append(self.gen_expr_deref(arg))
                         else:
                             rptype = resolved_params[i].type if i < len(resolved_params) else ptype
+                            dynamic_arg = self._gen_dynamic_protocol_arg(arg, rptype)
+                            if dynamic_arg is not None:
+                                gen_args.append(dynamic_arg)
+                                continue
                             proto_arg = self._gen_protocol_arg(arg, rptype)
                             if proto_arg is not None:
                                 gen_args.append(proto_arg)

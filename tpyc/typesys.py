@@ -1282,6 +1282,11 @@ class OwnType(TpyType):
         return self.to_cpp_param(name)
 
     def to_cpp_return(self) -> str:
+        # Lazy dispatch via own_return_t<T>: T for concrete, unique_ptr<T>
+        # for abstract @dynamic. Direct `T` would be ill-formed when T
+        # monomorphizes to an abstract base.
+        if isinstance(self.wrapped, TypeParamRef):
+            return f"::tpy::own_return_t<{self.wrapped.to_cpp()}>"
         return self.to_cpp()
 
     def get_element_type(self) -> Optional['TpyType']:

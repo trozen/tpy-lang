@@ -1,0 +1,2 @@
+main.py:18: warning: returns a copy of str field 'self.label'; use -> StrView for zero-copy access or -> String to silence this warning
+main.py:27: warning: Own[Pet] param 'pet' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

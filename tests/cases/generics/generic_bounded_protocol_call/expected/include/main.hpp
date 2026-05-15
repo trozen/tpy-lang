@@ -50,7 +50,7 @@ int32_t inner_len(::tpy::param_val_or_ref_t<T> x);
 template<::tpystd::typing::Sized T>
 int32_t outer_len(::tpy::param_val_or_ref_t<T> x);
 template<Clonable T>
-T clone_it(::tpy::param_val_or_ref_t<T> item);
+::tpy::own_return_t<T> clone_it(::tpy::param_val_or_ref_t<T> item);
 template<::tpystd::tpy::Comparable T>
 bool is_less(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 void main();
@@ -254,7 +254,7 @@ int32_t outer_len(::tpy::param_val_or_ref_t<T> x) {
 }
 // def clone_it[T: Clonable](item: T) -> Own[T]:
 template<Clonable T>
-T clone_it(::tpy::param_val_or_ref_t<T> item) {
+::tpy::own_return_t<T> clone_it(::tpy::param_val_or_ref_t<T> item) {
     // return item.clone()  # Return type should be Own[T], not Own[Clonable]
     return item.clone();
 }

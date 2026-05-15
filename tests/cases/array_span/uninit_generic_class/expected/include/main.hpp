@@ -48,7 +48,7 @@ struct Holder {
     }
 
     // def take(self) -> Own[T]:
-    T take() {
+    ::tpy::own_return_t<T> take() {
         // return self._storage.take0()
         return this->_storage.take0();
     }

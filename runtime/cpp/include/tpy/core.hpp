@@ -24,6 +24,8 @@
 #include <utility>
 #include <variant>
 
+#include "type_traits.hpp"
+
 namespace tpy {
 
 // Python exception hierarchy -- inherits from std::exception for C++ throw/catch.
@@ -354,6 +356,47 @@ void heap_release(T* p) {
     } else {
         tpy::destroy_at(p);
         ::operator delete(p, std::align_val_t(alignof(T)));
+    }
+}
+
+/**
+ * Replace the heap-stored T at `p` with `value`, returning the live slot.
+ *
+ * Concrete T: same allocation, destroy + placement-new. Abstract @dynamic
+ * T: the slot's size depends on the dynamic type, so reconstruction
+ * requires free + reallocate -- returned pointer differs from input.
+ *
+ * Precondition: `value` must not alias `*p`. The abstract branch frees
+ * `*p` before consuming `value`; an aliased payload would be UAF.
+ * Callers must propagate the returned pointer.
+ */
+template <typename T>
+T* heap_replace(T* p, own_param_t<T> value) {
+    if constexpr (is_dyn_protocol_base_v<T>) {
+        heap_release(p);
+        return heap_take(std::move(value));
+    } else {
+        tpy::destroy_at(p);
+        ::new(static_cast<void*>(p)) T(std::move(value));
+        return p;
+    }
+}
+
+/**
+ * Convert a heap-allocated T* into an Own[T] by transferring ownership.
+ *
+ * Abstract @dynamic T: adopt as unique_ptr<T> (T-typed local impossible).
+ * Concrete T: move out, destroy the moved-from slot, free its storage.
+ */
+template <typename T>
+own_return_t<T> transfer_ownership(T* p) {
+    if constexpr (is_dyn_protocol_base_v<T>) {
+        return std::unique_ptr<T>(p);
+    } else {
+        T val = std::move(*p);
+        tpy::destroy_at(p);
+        ::operator delete(p, std::align_val_t(alignof(T)));
+        return val;
     }
 }
 

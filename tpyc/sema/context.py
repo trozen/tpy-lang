@@ -25,6 +25,7 @@ from ..typesys import (
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
     unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
+    is_dyn_protocol,
 )
 from ..namespace import Namespace
 from ..type_def_registry import int_traits_of
@@ -836,6 +837,11 @@ class SemanticContext:
                 if isinstance(e, TpyType) and self.is_type_non_copyable(e):
                     return True
             return False
+        # Abstract @dynamic protocol bases have pure virtuals and the
+        # concrete size depends on the dynamic type, so they have no usable
+        # copy/move ctor at the C++ level.
+        if is_dyn_protocol(typ):
+            return True
         record = self.registry.get_record_for_type(typ)
         if record is None:
             return False

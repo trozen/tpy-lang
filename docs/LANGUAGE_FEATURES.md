@@ -2436,7 +2436,14 @@ Same machinery in both paths once the Box is constructed: `Pet&` access via `box
 
 The same wrapping rule fires anywhere a `Own[P]` parameter receives a concrete conformer: codegen emits the heap-owning `unique_ptr<P>` wrapper at the call site. Sema's `infer_type_params_for_record` prefers the LHS hint's `T=P` over the arg-inferred concrete T when the arg doesn't inherit P (structural case); when the arg DOES inherit (e.g. `Box[Pet] = Box(Parrot())`), the existing `Covariant[T]` path handles uplift and the wrapping doesn't fire.
 
-**Limitation:** member access on an `Own[P]` parameter via the `.` operator (`pet.name()` inside `def f(p: Own[Pet])`) is not yet supported -- the C++ shape is `std::unique_ptr<P>` and `.name()` lowers to the C++ `.` operator which doesn't traverse the smart pointer. Box's constructor isn't affected (it only passes `value` to `unsafe_take`). Tracked in `TODO.md`.
+**Method support for abstract P:**
+- `box.get()`, `box.__init__`, `box.__del__` -- work for any P.
+- `box.set(value)` -- works for abstract P via `tpy::heap_replace<T>` (concrete branch: in-place destroy + placement-new; abstract branch: free + take).
+- `box.take()` -- works for abstract P via `tpy::transfer_ownership<T>` (returns `own_return_t<T>`, which is `unique_ptr<P>` for abstract P).
+- `box.clone()` -- **broken for abstract P**: its body does `Box(self.get())`, an implicit borrow->Own copy of P, which is impossible (no usable copy ctor on abstract P). Fails ugly at C++ compile time today. Tracked in `BUGS.md`; the principled fix needs a `Copyable` per-method bound (tracked in `TODO.md`).
+- `box.__eq__` / `__lt__` etc. -- require `T: Equatable` / `T: Comparable`; abstract P doesn't satisfy these, so the methods are unavailable for `Box[Pet]`.
+
+**Limitation:** member access on an `Own[P]` *function parameter* via the `.` operator (`pet.name()` inside `def f(p: Own[Pet])`) is not yet supported -- the C++ shape is `std::unique_ptr<P>` and `.name()` lowers to the C++ `.` operator which doesn't traverse the smart pointer. Box's constructor isn't affected (it only passes `value` to `unsafe_take`). Tracked in `TODO.md`.
 
 **Cross-module** -- `@dynamic` protocols can be defined in one module and imported in another. The compiler generates fully qualified C++ names (e.g., `::tpyapp::pets::Pet`).
 

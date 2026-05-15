@@ -174,6 +174,22 @@ using own_param_t = std::conditional_t<
 >;
 
 /**
+ * own_return_t<T> -- C++ return shape for a TPy Own[T] result.
+ *
+ * Companion to own_param_t. The param shape uses T&& for concrete T
+ * (rvalue ref to a caller-owned object), but T&& can't be a return type
+ * without dangling -- callees can't return a reference to their local.
+ * own_return_t is the by-value return shape: T for concrete (move),
+ * unique_ptr<T> for abstract @dynamic bases (ownership handle).
+ */
+template<typename T>
+using own_return_t = std::conditional_t<
+    is_dyn_protocol_base_v<T>,
+    std::unique_ptr<T>,
+    T
+>;
+
+/**
  * val_or_ref<T> - Wrapper for iterator __next__() returns.
  *
  * Stores value types (int, str, tuple, ...) by value, non-value types

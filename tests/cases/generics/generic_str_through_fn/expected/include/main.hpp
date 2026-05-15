@@ -13,12 +13,12 @@ template<typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-U apply(__F0&& f, ::tpy::param_val_or_ref_t<U> init);
+::tpy::own_return_t<U> apply(__F0&& f, ::tpy::param_val_or_ref_t<U> init);
 template<typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<U> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<U>;
   }
-U reduce2(__F0&& f, ::tpy::param_val_or_ref_t<U> a, ::tpy::param_val_or_ref_t<U> b);
+::tpy::own_return_t<U> reduce2(__F0&& f, ::tpy::param_val_or_ref_t<U> a, ::tpy::param_val_or_ref_t<U> b);
 void main();
 
 // def apply[U](f: Fn[[U], U], init: U) -> Own[U]:
@@ -26,7 +26,7 @@ template<typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-U apply(__F0&& f, ::tpy::param_val_or_ref_t<U> init) {
+::tpy::own_return_t<U> apply(__F0&& f, ::tpy::param_val_or_ref_t<U> init) {
     // return copy(f(init))
     return U(f(init));
 }
@@ -35,7 +35,7 @@ template<typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<U> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<U>;
   }
-U reduce2(__F0&& f, ::tpy::param_val_or_ref_t<U> a, ::tpy::param_val_or_ref_t<U> b) {
+::tpy::own_return_t<U> reduce2(__F0&& f, ::tpy::param_val_or_ref_t<U> a, ::tpy::param_val_or_ref_t<U> b) {
     // return copy(f(a, b))
     return U(f(a, b));
 }

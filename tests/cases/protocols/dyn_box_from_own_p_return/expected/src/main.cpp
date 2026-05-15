@@ -6,10 +6,10 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // o = Owner(Tagged[Greeter](42))
-    Owner o = Owner(Tagged<Greeter>(42));
-    // print(o.item.tag)
-    std::cout << o.item.tag << "\n";
+    // a = Adopter(Parrot(label="Polly"))
+    Adopter a = Adopter(std::make_unique<Parrot>(Parrot("Polly")));
+    // print(a.pet.get().name())
+    std::cout << a.pet.get().name() << "\n";
 }
 
 void __tpy_init() {
@@ -17,6 +17,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // from tplib import Box
+    ::tpystd::tplib::__tpy_init();
     // main()
     main();
 }

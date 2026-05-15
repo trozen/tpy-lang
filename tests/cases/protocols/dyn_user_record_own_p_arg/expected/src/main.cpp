@@ -6,10 +6,14 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // o = Owner(Tagged[Greeter](42))
-    Owner o = Owner(Tagged<Greeter>(42));
-    // print(o.item.tag)
-    std::cout << o.item.tag << "\n";
+    // s = Shelter()
+    Shelter s = Shelter();
+    // s.admit(Parrot(label="Polly"))
+    s.admit(std::make_unique<Parrot>(Parrot("Polly")));
+    // s.admit(Parrot(label="Mimi"))
+    s.admit(std::make_unique<Parrot>(Parrot("Mimi")));
+    // print(s.count)
+    std::cout << s.count << "\n";
 }
 
 void __tpy_init() {
