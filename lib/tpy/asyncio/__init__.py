@@ -20,7 +20,7 @@ from ._executor import (
 
 
 @cpp_template("::tpy::make_executor_owned_task<{T}>({0})")
-def _make_executor_owned_task[T](coro: Own[Awaitable[T]]) -> Task[T]: ...
+def _make_executor_owned_task[T](coro: Own[Awaitable[T]]) -> Own[Task[T]]: ...
 
 
 @cpp_template("::tpy::task_to_any_box({0})")
@@ -64,7 +64,7 @@ def _register_timer_at(deadline_seconds: float, waker: Waker) -> None: ...
 # runtime's heterogeneous poll-box. Used by `sleep` to ship a
 # SleepFuture (a TPy class) through the executor's spawn list.
 @cpp_template("::tpy::Task<void>::from_coro({0})")
-def _task_void_from_coro[T](coro: T) -> Task[None]: ...
+def _task_void_from_coro[T](coro: T) -> Own[Task[None]]: ...
 
 
 class SleepFuture:
@@ -103,17 +103,18 @@ class SleepFuture:
         return poll_pending()
 
 
-# Park the calling coroutine for `seconds` seconds. Returns a Task[None]
-# whose underlying SleepFuture registers a timer with the current
-# executor on first poll; the run loop wakes when the deadline arrives.
-def sleep(seconds: float) -> Task[None]:
+# Park the calling coroutine for `seconds` seconds. Returns an
+# Own[Task[None]] whose underlying SleepFuture registers a timer with
+# the current executor on first poll; the run loop wakes when the
+# deadline arrives.
+def sleep(seconds: float) -> Own[Task[None]]:
     return _task_void_from_coro(SleepFuture(seconds))
 
 
-# Spawn `coro` on the current executor and return a Task[T] handle.
+# Spawn `coro` on the current executor and return an Own[Task[T]] handle.
 # The C++ helper (`make_user_task`) panics if no event loop is running.
 @cpp_template("::tpy::make_user_task<{T}>({0})")
-def create_task[T](coro: Awaitable[T]) -> Task[T]: ...
+def create_task[T](coro: Awaitable[T]) -> Own[Task[T]]: ...
 
 
 class InvalidStateError(Exception):

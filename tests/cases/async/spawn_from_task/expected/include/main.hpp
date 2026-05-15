@@ -46,9 +46,9 @@ struct __coro_grandchild {
 struct __coro_child {
     int32_t __state;
     bool __cancel_pending;
-    ::tpy::Task<int32_t> g;
+    std::optional<::tpy::Task<int32_t>> g;
     int32_t __await_lift_0;
-    std::optional<::tpy::Task<int32_t>> __sub_0;
+    ::tpy::Task<int32_t>* __sub_0 = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -70,9 +70,9 @@ struct __coro_child {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    ::tpy::Task<int32_t> c;
+    std::optional<::tpy::Task<int32_t>> c;
     int32_t __await_lift_0;
-    std::optional<::tpy::Task<int32_t>> __sub_0;
+    ::tpy::Task<int32_t>* __sub_0 = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,

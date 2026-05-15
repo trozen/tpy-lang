@@ -46,12 +46,12 @@ struct __coro_doubler {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    ::tpy::Task<int32_t> t1;
-    ::tpy::Task<int32_t> t2;
+    std::optional<::tpy::Task<int32_t>> t1;
+    std::optional<::tpy::Task<int32_t>> t2;
     int32_t a;
     int32_t b;
-    std::optional<::tpy::Task<int32_t>> __sub_0;
-    std::optional<::tpy::Task<int32_t>> __sub_1;
+    ::tpy::Task<int32_t>* __sub_0 = nullptr;
+    ::tpy::Task<int32_t>* __sub_1 = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,

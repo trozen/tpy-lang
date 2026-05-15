@@ -47,15 +47,12 @@ def poll_once[T](aw: Awaitable[T]) -> Poll[T]:
 # `::tpy::Task<T>::from_coro(c)`. Used by tests that drive a Task
 # manually -- production code should reach for `asyncio.create_task`.
 @cpp_template("::tpy::Task<{T}>::from_coro({0})")
-def task_from_coro[T](coro: Awaitable[T]) -> Task[T]: ...
+def task_from_coro[T](coro: Awaitable[T]) -> Own[Task[T]]: ...
 
 
 # Poll an awaitable once and report whether it raised CancelledError.
 # Test convenience: production code should `try: await aw / except
-# CancelledError` directly. Pure TPy body. The param is `Awaitable[T]`
-# (rather than `Task[T]`) so the protocol-param codegen path passes
-# the operand by reference -- a concrete-but-nocopy `Task[T]` param
-# would otherwise emit by-value and trip Task's deleted copy ctor.
+# CancelledError` directly. Pure TPy body.
 def task_poll_cancelled[T](aw: Awaitable[T]) -> bool:
     try:
         aw.__poll__(Waker())

@@ -41,7 +41,7 @@ __coro_grandchild grandchild() {
             // g: Task[Int32] = asyncio.create_task(grandchild())
             g = ::tpy::make_user_task<int32_t>(grandchild());
             // return await g + Int32(1)
-            __sub_0.emplace(std::move(g));
+            __sub_0 = &((*g));
             __state = S_AFTER_AWAIT_0;
         }
         [[fallthrough]];
@@ -50,7 +50,7 @@ __coro_grandchild grandchild() {
             auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<int32_t>::pending();
             __await_lift_0 = std::move(__r0).value();
-            __sub_0.reset();
+            __sub_0 = nullptr;
             // return await g + Int32(1)
             __state = S_DONE;
             return ::tpy::Poll<int32_t>::ready((::tpy::add_check<int32_t>(__await_lift_0, 1)));
@@ -73,7 +73,7 @@ __coro_child child() {
             // c: Task[Int32] = asyncio.create_task(child())
             c = ::tpy::make_user_task<int32_t>(child());
             // print(await c)
-            __sub_0.emplace(std::move(c));
+            __sub_0 = &((*c));
             __state = S_AFTER_AWAIT_0;
         }
         [[fallthrough]];
@@ -82,7 +82,7 @@ __coro_child child() {
             auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
             __await_lift_0 = std::move(__r0).value();
-            __sub_0.reset();
+            __sub_0 = nullptr;
             // print(await c)
             std::cout << __await_lift_0 << "\n";
             __state = S_DONE;

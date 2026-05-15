@@ -47,7 +47,7 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
             // t2: Task[Int32] = asyncio.create_task(doubler(Int32(7), "t2"))
             t2 = ::tpy::make_user_task<int32_t>(doubler(7, "t2"));
             // a = await t1
-            __sub_0.emplace(std::move(t1));
+            __sub_0 = &((*t1));
             __state = S_AFTER_AWAIT_0;
         }
         [[fallthrough]];
@@ -56,9 +56,9 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
             auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
             a = std::move(__r0).value();
-            __sub_0.reset();
+            __sub_0 = nullptr;
             // b = await t2
-            __sub_1.emplace(std::move(t2));
+            __sub_1 = &((*t2));
             __state = S_AFTER_AWAIT_1;
         }
         [[fallthrough]];
@@ -67,7 +67,7 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
             auto __r1 = __sub_1->__poll__(waker);
             if (__r1.is_pending()) return ::tpy::Poll<void>::pending();
             b = std::move(__r1).value();
-            __sub_1.reset();
+            __sub_1 = nullptr;
             // print(a + b)
             std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n";
             __state = S_DONE;

@@ -4,14 +4,14 @@
 namespace tpyapp::main {
 
 
-// async def sub() -> Int32:
-::tpy::Poll<int32_t> __coro_sub::__poll__(::tpy::Waker waker) {
+// async def co(x: Int32) -> Int32:
+::tpy::Poll<int32_t> __coro_co::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // return Int32(77)
+            // return x + Int32(1)
             __state = S_DONE;
-            return ::tpy::Poll<int32_t>::ready(77);
+            return ::tpy::Poll<int32_t>::ready((::tpy::add_check<int32_t>(x, 1)));
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -19,49 +19,31 @@ namespace tpyapp::main {
 }
 
 
-// async def sub() -> Int32:
-__coro_sub sub() {
-    return __coro_sub();
+// async def co(x: Int32) -> Int32:
+__coro_co co(int32_t x) {
+    return __coro_co(x);
 }
 
-// async def caller() -> Int32:
-::tpy::Poll<int32_t> __coro_caller::__poll__(::tpy::Waker waker) {
-    switch (__state) {
-    case S_INITIAL: {
-            // t = task_from_coro(sub())
-            t = ::tpy::Task<int32_t>::from_coro(sub());
-            // return await t
-            __sub_0 = &((*t));
-            __state = S_AFTER_AWAIT_0;
-        }
-        [[fallthrough]];
-    case S_AFTER_AWAIT_0: {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpy::Poll<int32_t>::pending();
-            auto __ret0 = std::move(__r0).value();
-            __sub_0 = nullptr;
-            __state = S_DONE;
-            return ::tpy::Poll<int32_t>::ready(std::move(__ret0));
-            ::tpy::tpy_panic("async def fell through without returning a value");
-        }
-    case S_DONE: ::tpy::tpy_panic("poll after Ready");
-    }
-    __builtin_unreachable();
-}
-
-
-// async def caller() -> Int32:
-__coro_caller caller() {
-    return __coro_caller();
+// def task_arity_concrete(t: Task[Int32]) -> Int32:
+int32_t task_arity_concrete(const ::tpy::Task<int32_t>& t) {
+    // # Signature only: param is a Task[Int32] borrow. Body proves the
+    // # codegen path accepts the binding without copying.
+    // return 0
+    return 0;
 }
 
 // async def main_coro() -> None:
 ::tpy::Poll<void> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
-            // result = await caller()
-            __sub_0.emplace();
+            // t = asyncio.create_task(co(Int32(7)))
+            t = ::tpy::make_user_task<int32_t>(co(7));
+            // _ = task_arity_concrete(t)
+            _ = task_arity_concrete((*t));
+            // _ = task_arity_generic[Int32](t)
+            _ = task_arity_generic<int32_t>((*t));
+            // result = await t
+            __sub_0 = &((*t));
             __state = S_AFTER_AWAIT_0;
         }
         [[fallthrough]];
@@ -70,7 +52,7 @@ __coro_caller caller() {
             auto __r0 = __sub_0->__poll__(waker);
             if (__r0.is_pending()) return ::tpy::Poll<void>::pending();
             result = std::move(__r0).value();
-            __sub_0.reset();
+            __sub_0 = nullptr;
             // print(result)
             std::cout << result << "\n";
             __state = S_DONE;
@@ -98,11 +80,19 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tpy.coro import Task, task_from_coro
-    ::tpystd::tpy::__tpy_init();
-    ::tpystd::coro::__tpy_init();
+    // # Regression: generic and concrete Task[T] params are emitted by
+    // # reference at the C++ signature. Previously tpy.Task was registered
+    // # as is_value_type=True, so both `t: Task[T]` (generic) and
+    // # `t: Task[Int32]` (concrete) emitted `Task<T> t` by-value at the
+    // # generated C++ signature -- breaking the deleted copy ctor at the
+    // # call site. Now Task[T] is correctly is_value_type=False (matching
+    // # its @nocopy nature), so concrete returns spell `Own[Task[T]]` and
+    // # params spell `const Task<T>&`.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
+    // from tpy.coro import Task
+    ::tpystd::tpy::__tpy_init();
+    ::tpystd::coro::__tpy_init();
     // main()
     main();
 }

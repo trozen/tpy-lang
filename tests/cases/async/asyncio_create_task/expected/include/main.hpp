@@ -42,9 +42,9 @@ struct __coro_sub {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    ::tpy::Task<int32_t> t;
+    std::optional<::tpy::Task<int32_t>> t;
     int32_t val;
-    std::optional<::tpy::Task<int32_t>> __sub_0;
+    ::tpy::Task<int32_t>* __sub_0 = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -9,35 +9,36 @@
 
 namespace tpyapp::main {
 
-using ::tpystd::asyncio::Future;
-
 inline constexpr std::string_view __name__ = "__main__";
 
-struct __coro_background;
+struct __coro_co;
 struct __coro_main_coro;
 
-__coro_background background(::tpystd::asyncio::Future<int32_t>& done);
+__coro_co co(int32_t x);
+int32_t task_arity_concrete(const ::tpy::Task<int32_t>& t);
+template<typename T>
+int32_t task_arity_generic(const ::tpy::Task<T>& t);
 __coro_main_coro main_coro();
 void main();
 
-// Async coroutine: background
-struct __coro_background {
+// Async coroutine: co
+struct __coro_co {
     int32_t __state;
     bool __cancel_pending;
-    ::tpystd::asyncio::Future<int32_t>& done;
+    int32_t x;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_DONE = 1,
     };
 
-    __coro_background(::tpystd::asyncio::Future<int32_t>& done)
-        : __state(S_INITIAL), __cancel_pending(false), done(done) {}
+    __coro_co(int32_t x_)
+        : __state(S_INITIAL), __cancel_pending(false), x(std::move(x_)) {}
 
-    ::tpy::Poll<void> __poll__(::tpy::Waker waker);
+    ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
 
-    friend std::ostream& operator<<(std::ostream& os, const __coro_background&) {
-        return os << "<coroutine background>";
+    friend std::ostream& operator<<(std::ostream& os, const __coro_co&) {
+        return os << "<coroutine co>";
     }
 };
 
@@ -45,10 +46,10 @@ struct __coro_background {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpystd::asyncio::Future<int32_t>> done;
-    std::optional<::tpy::Task<void>> t;
+    std::optional<::tpy::Task<int32_t>> t;
     int32_t _;
-    ::tpystd::asyncio::Future<int32_t>* __sub_0 = nullptr;
+    int32_t result;
+    ::tpy::Task<int32_t>* __sub_0 = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -65,6 +66,15 @@ struct __coro_main_coro {
         return os << "<coroutine main_coro>";
     }
 };
+
+// def task_arity_generic[T](t: Task[T]) -> Int32:
+template<typename T>
+int32_t task_arity_generic(const ::tpy::Task<T>& t) {
+    // # Same as above, generic form. Pre-fix this emitted `Task<T> t`
+    // # by-value and the call site failed to compile.
+    // return 1
+    return 1;
+}
 
 void __tpy_init();
 } // namespace tpyapp::main

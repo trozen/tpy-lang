@@ -1068,8 +1068,8 @@ for value types; dataclass deep-copy would need macro-driven recursion similar t
 Done in v1:
 
 - `asyncio.run(coro)` -- drives a top-level coroutine to completion; sleeps idle on the executor's timer min-heap; cancel-drains remaining spawned tasks at exit so `finally` runs for fire-and-forget tasks.
-- `asyncio.sleep(seconds)` -- registers a steady-clock deadline with the running executor; returns a `Task[None]`.
-- `asyncio.create_task(coro())` -- registers an async-def call with the running executor and returns `Task[T]` (T inferred from the async def's return type) sharing state with the executor's task slot.
+- `asyncio.sleep(seconds)` -- registers a steady-clock deadline with the running executor; returns `Own[Task[None]]`.
+- `asyncio.create_task(coro())` -- registers an async-def call with the running executor and returns `Own[Task[T]]` (T inferred from the async def's return type) sharing state with the executor's task slot.
 - `asyncio.Future[T]` -- single-awaiter manual-completion awaitable (`set_result(value)` / `set_exception(exc)` / `done()`); ownership-transfer API on `set_result` so nocopy types flow through.
 - `asyncio.CancelledError` -- raised at the next suspension point of a cancelled task; thread through `try`/`finally`.
 - `Executor` body (slot table for parked tasks with `(slot_id, generation)` wakers, runnable deque, timer min-heap keyed on steady-clock deadlines) lives in TPy at `lib/tpy/asyncio/_executor.py`; `runtime/cpp/include/tpy/async.hpp` keeps only the FFI shell (thread-local `ExecutorOps` dispatch table + `Waker`/`Poll`/`Task` runtime types + a handful of bridge helpers).

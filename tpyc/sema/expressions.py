@@ -2089,7 +2089,6 @@ class ExpressionAnalyzer:
         if async_fi is not None:
             # Recursively analyze the operand call (validates arg types).
             self.analyze_expr(operand)
-            from ..typesys import unwrap_ref_type, NominalType
             expr.awaited_async_func_name = async_fi.name
             # async_fi.return_type is Awaitable[T]; the user-visible await
             # result is T (the protocol's type arg).
@@ -2108,13 +2107,14 @@ class ExpressionAnalyzer:
         #     (structural Awaitable -- supports user-written awaitables
         #     alongside hand-written awaiter types).
         operand_type = self.analyze_expr(operand)
-        from ..typesys import unwrap_ref_type, NominalType
-        unwrapped = unwrap_ref_type(operand_type)
+        # An Own[Task[T]] rvalue (e.g. `await asyncio.create_task(...)`)
+        # is a valid await operand -- strip the Own[] before structural
+        # matching so the inner Task[T] / Awaitable conformance check fires.
+        unwrapped = unwrap_own(unwrap_ref_type(operand_type))
         if isinstance(unwrapped, NominalType):
             inner = self._extract_awaitable_inner(unwrapped)
             if inner is not None:
-                from ..typesys import TpyType as _TpyType
-                if isinstance(inner, _TpyType):
+                if isinstance(inner, TpyType):
                     expr.awaited_task_inner = inner
                     return inner
         raise self.ctx.error(

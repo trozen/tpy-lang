@@ -5502,11 +5502,14 @@ Send/Sync rules for built-in types:
   thread-local `ExecutorOps` function-pointer table in
   `runtime/cpp/include/tpy/async.hpp`; `Waker` (declared `ValueType` -- 16-byte POD, passed by value through every `__poll__` call) carries an opaque executor pointer plus slot id/generation, and `Waker.wake()` schedules the parked task by id/generation; `asyncio.sleep(s)` is a real
   wall-clock sleep; `asyncio.create_task(coro)` registers the task with
-  the executor for concurrent scheduling and returns a `Task[T]` handle
-  (T inferred from the async def's return type) that shares state with
-  the executor; both `asyncio.run` and `asyncio.create_task` require a
-  direct call to a known `async def` in v1 (other awaitables such as
-  `Future` need a coroutine wrapper -- v1.5).
+  the executor for concurrent scheduling and returns an `Own[Task[T]]`
+  handle (T inferred from the async def's return type) that shares state
+  with the executor -- the caller binds it to a `Task[T]` local via the
+  implicit `Own[]` unwrap and can then `await` the local or pass it as a
+  borrow; `await asyncio.create_task(...)` on a temporary works too
+  (move-constructed into the awaiter frame). Both `asyncio.run` and
+  `asyncio.create_task` require a direct call to a known `async def` in
+  v1 (other awaitables such as `Future` need a coroutine wrapper -- v1.5).
   `asyncio.Future[T]` provides manual completion via
   `set_result` / `set_exception`.
   `tpy.coro.poll_once(aw)` is a synchronous one-step driver useful for

@@ -790,12 +790,14 @@ def _populate() -> None:
                      cpp_formatter=lambda args: "auto"))
 
     # Async Task[T]: type-erased poll-box (heap-owned coroutine frame).
-    # Move-only, so is_value_type=False (no copies); the C++ runtime
-    # already enforces this via deleted copy ctor / unique_ptr. Used by
-    # asyncio.create_task and as a heap-allocation point for type-erased
-    # awaits (Awaitable[T] params, unions of coros).
+    # Move-only (@nocopy in tpy/_core/_types.py), so is_value_type=False:
+    # the C++ runtime enforces this via deleted copy ctor / unique_ptr,
+    # and owning returns must spell `Own[Task[T]]` like every other
+    # resource-owning record. Used by asyncio.create_task and as a
+    # heap-allocation point for type-erased awaits (Awaitable[T] params,
+    # unions of coros).
     register(TypeDef(
-        "tpy.Task", TC.RECORD, is_value_type=True,
+        "tpy.Task", TC.RECORD, is_value_type=False,
         is_send=False, is_sync=False,
         cpp_formatter=lambda args: f"::tpy::Task<{args[0].to_cpp()}>",
     ))
