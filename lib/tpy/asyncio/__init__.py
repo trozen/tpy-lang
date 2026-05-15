@@ -1,7 +1,7 @@
 # tpy: cpp_namespace("tpystd::asyncio")
 """asyncio v1 -- minimum viable async runtime.
 
-`run` / `sleep` / `create_task` / `Task[T]` / `Future[T]` /
+`run` / `sleep` / `create_task` / `Task[T]` / `Future[T]` / `Event` /
 `CancelledError`. Lowers to `runtime/cpp/include/tpy/async.hpp` and
 the TPy Executor in `_executor.py`. See `docs/ASYNC_DESIGN.md`.
 """
@@ -196,6 +196,50 @@ class Future[T]:
         if self._has_waiter:
             raise ValueError(
                 "Future already has a waiter (single-awaiter v1)")
+        self._waiter = waker
+        self._has_waiter = True
+        return poll_pending()
+
+
+class Event:
+    """Boolean completion signal -- the no-payload analog of Future.
+    Single-awaiter v1.
+
+    `set` / `clear` / `is_set` match CPython. Divergence: TPy's Event
+    is directly awaitable (`await event`) where CPython requires
+    `await event.wait()` -- TPy classes can't yet define `async def`
+    methods, so tests using Event need `no_cpython.txt`.
+    """
+
+    _is_set: bool
+    _has_waiter: bool
+    _waiter: Waker
+
+    def __init__(self) -> None:
+        self._is_set = False
+        self._has_waiter = False
+        self._waiter = Waker()
+
+    def is_set(self) -> bool:
+        return self._is_set
+
+    def set(self) -> None:
+        if self._is_set:
+            return
+        self._is_set = True
+        if self._has_waiter:
+            self._waiter.wake()
+            self._has_waiter = False
+
+    def clear(self) -> None:
+        self._is_set = False
+
+    def __poll__(self, waker: Waker) -> Poll[None]:
+        if self._is_set:
+            return poll_ready_none()
+        if self._has_waiter:
+            raise ValueError(
+                "Event already has a waiter (single-awaiter v1)")
         self._waiter = waker
         self._has_waiter = True
         return poll_pending()

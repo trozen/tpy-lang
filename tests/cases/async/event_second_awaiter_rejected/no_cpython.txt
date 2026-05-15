@@ -1,0 +1,3 @@
+TPy's asyncio.Event is directly awaitable (driven here via poll_once);
+CPython's asyncio.Event has no __poll__ surface (uses __await__ via
+event.wait()).

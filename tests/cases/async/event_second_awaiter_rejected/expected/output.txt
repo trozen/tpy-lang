@@ -1,0 +1,1 @@
+caught: Event already has a waiter (single-awaiter v1)

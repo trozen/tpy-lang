@@ -5511,7 +5511,11 @@ Send/Sync rules for built-in types:
   `asyncio.create_task` require a direct call to a known `async def` in
   v1 (other awaitables such as `Future` need a coroutine wrapper -- v1.5).
   `asyncio.Future[T]` provides manual completion via
-  `set_result` / `set_exception`.
+  `set_result` / `set_exception`. `asyncio.Event` is the no-payload
+  completion-signal primitive (use instead of `Future[None]`, which is
+  currently unusable; see BUGS.md); `set` / `clear` / `is_set` match
+  CPython, but TPy's Event is directly awaitable (`await event`)
+  whereas CPython requires `await event.wait()`.
   `tpy.coro.poll_once(aw)` is a synchronous one-step driver useful for
   tests and non-asyncio contexts; sema-types `f()` (for `async def f`)
   as `Awaitable[T]` so generic helpers expecting `Awaitable[T]` accept
