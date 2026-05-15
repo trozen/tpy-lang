@@ -6,7 +6,7 @@ Type validation, substitution, and inference operations.
 
 from __future__ import annotations
 from dataclasses import replace as dc_replace
-from typing import TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, TypeParamRef, NominalType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType,
@@ -23,6 +23,7 @@ from ..diagnostics import SemanticError, nocopy_container_elem_error
 from .. import qnames
 from ..type_def_registry import (
     is_copy_iter, is_own_iter, is_array, is_span, is_list, is_dict, is_set,
+    is_enum_type,
     get_type_def, find_factory_by_simple_name, protocol_info_of,
 )
 from ..parse import TpyFunction
@@ -32,6 +33,7 @@ from .overloads import resolve_overload
 if TYPE_CHECKING:
     from ..parse import SourceLocation
     from .context import SemanticContext
+    from .protocols import ProtocolChecker
 
 
 def _contains_type_param_ref(types: tuple[TpyType, ...]) -> bool:
@@ -45,11 +47,20 @@ def _contains_type_param_ref(types: tuple[TpyType, ...]) -> bool:
     return False
 
 
+_HASHABLE = NominalType("Hashable", is_protocol=True)
+_EQUATABLE = NominalType("Equatable", is_protocol=True)
+
+
 class TypeOperations:
     """Type validation, substitution, and inference operations."""
 
     def __init__(self, ctx: SemanticContext):
         self.ctx = ctx
+        # Set after construction (ProtocolChecker depends on TypeOperations,
+        # so it can't be constructed before us). Mirrors the deferred-wiring
+        # pattern in TypeCompatibility. Used by validate_hashable_container_elem
+        # for Hashable + Equatable conformance.
+        self.protocols: ProtocolChecker
 
     def resolve_type(self, typ: TpyType, *, protocols_only: bool = False) -> TpyType:
         """Sema-local type normalization.
@@ -115,7 +126,7 @@ class TypeOperations:
 
     def validate_type(
         self, typ: TpyType, allow_type_param_ref: bool = False, loc: SourceLocation | None = None,
-        allow_forward_ref: bool = True,
+        allow_forward_ref: bool = True, check_hashable_constraints: bool = True,
     ) -> None:
         """Validate that a type is well-formed.
 
@@ -206,21 +217,16 @@ class TypeOperations:
                         f"Protocol type '{elem_type}' cannot be used as a container element type",
                         loc,
                     )
-            # set/dict element/key copy-constructibility. The literal-path
-            # check in expressions.py covers `{x, y}` / `{k: v}` forms; this
-            # branch closes the bypass where the user constructs an empty
-            # container via `set()` / `dict()` and inserts via `.add()` /
-            # subscript -- without it, sema accepts and the failure surfaces
-            # as a wall of C++ template errors from std::pair / hashtable
-            # internals (sets and dicts are hash-table-backed, K must be
-            # copy-constructible).
-            if is_set(typ) or is_dict(typ):
+            # Annotation-time gate for set/dict K. Deferred during early
+            # record registration -- sibling records' methods aren't
+            # populated yet, so we'd false-reject; validate_record_field_protocols
+            # re-runs us post-registration with the default flag.
+            if (is_set(typ) or is_dict(typ)) and check_hashable_constraints \
+                    and not allow_type_param_ref:
                 key_or_elem = typ.type_args[0] if typ.type_args else None
-                if (key_or_elem is not None
-                        and isinstance(key_or_elem, TpyType)
-                        and self.ctx.is_type_non_copyable(key_or_elem)):
+                if key_or_elem is not None and isinstance(key_or_elem, TpyType):
                     kind = "dict key" if is_dict(typ) else "set element"
-                    raise SemanticError(nocopy_container_elem_error(key_or_elem, kind), loc)
+                    self.validate_hashable_container_elem(key_or_elem, kind, loc)
         elif isinstance(typ, OptionalType):
             self.validate_type(typ.inner, allow_type_param_ref, loc)
             if is_protocol_type(typ.inner):
@@ -270,6 +276,63 @@ class TypeOperations:
                     f"Protocol type '{elem_type}' cannot be used as a container element type",
                     loc,
                 )
+
+    def validate_hashable_container_elem(
+        self, elem: TpyType, kind: Literal["set element", "dict key"],
+        loc: SourceLocation | None,
+    ) -> None:
+        """Validate that `elem` can be used as a set element / dict key.
+
+        `kind` is "set element" or "dict key" and feeds into diagnostics.
+        Hash-table-backed ordered_set / ordered_map store entries in
+        `std::pair<const K, ...>`, which requires copy-constructible K;
+        @nocopy types are rejected first with a precise message so the
+        user doesn't hit a wall of C++ template errors from container
+        internals. Hashability is the second gate: a non-hashable K
+        otherwise fails C++ build with `static_assert(__is_invocable<
+        const _Hash&, const _Key&>{})`.
+
+        Called both from annotation-time validation (validate_type, above)
+        and from literal/comprehension expression analysis (4 callers in
+        sema/expressions.py).
+        """
+        if isinstance(elem, OwnType):
+            elem = elem.wrapped
+        if isinstance(elem, IntLiteralType):
+            return
+        if is_enum_type(elem):
+            return
+        if isinstance(elem, PendingViewType):
+            return
+        if self.ctx.is_type_non_copyable(elem):
+            raise SemanticError(nocopy_container_elem_error(elem, kind), loc)
+        # Need BOTH Hashable AND Equatable -- ordered_set/ordered_map use
+        # std::hash (requires __hash__) and std::equal_to (requires __eq__).
+        # Conformance walks the inheritance chain, so `class Child(Base)`
+        # where Base defines either dunder is accepted via Base.
+        hashable_ok = self.protocols.type_conforms_to_protocol(elem, _HASHABLE)
+        equatable_ok = self.protocols.type_conforms_to_protocol(elem, _EQUATABLE)
+        if hashable_ok and equatable_ok:
+            return
+        # User-record specific guidance: tell the user exactly which dunder
+        # is missing instead of the generic "not hashable" message.
+        if isinstance(elem, NominalType) and elem.is_user_record:
+            missing = []
+            if not hashable_ok:
+                missing.append("__hash__")
+            if not equatable_ok:
+                missing.append("__eq__")
+            missing_str = " and ".join(missing)
+            pronoun = "them" if len(missing) > 1 else "it"
+            raise SemanticError(
+                f"Type '{elem}' cannot be used as a {kind} "
+                f"(missing {missing_str}; "
+                f"use @dataclass(frozen=True) or define {pronoun} explicitly)",
+                loc,
+            )
+        raise SemanticError(
+            f"Type '{elem}' cannot be used as a {kind} (not hashable)", loc,
+        )
 
     def validate_record_type_args(
         self, typ: NominalType, record_info: RecordInfo, allow_type_param_ref: bool = False,

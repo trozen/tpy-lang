@@ -1,1 +1,1 @@
-main.py:24: error: Type mismatch in argument 'other': expected Base, got Child
+main.py:32: error: Type mismatch in argument 'other': expected Base, got Child

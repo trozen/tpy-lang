@@ -617,7 +617,7 @@ process(b"hello")      # zero-alloc: static span passed directly
   - Views: `d.keys()`, `d.values()`, `d.items()` return zero-allocation views with `for`-loop, `len()`, `in`
   - `Iterable[T]` conformance: `dict[K,V]` and views conform to `Iterable` (`d` is `Iterable[K]`, `d.keys()` is `Iterable[K]`, `d.values()` is `Iterable[V]`, `d.items()` is `Iterable[tuple[K, V]]`) and can be passed to generic functions accepting `Iterable[T]`
   - Keys: `str`, `int`, fixed-width ints, `float`, `bool`, `Char`
-  - Keys must be hashable AND copy-constructible: hash-table-backed `tpy::ordered_map` stores entries in `std::pair<const K, ...>`, so `@nocopy` types (e.g. `Rc[T]`, `Box[T]`, user `@nocopy` classes) are rejected at sema with a precise diagnostic. The check fires at annotation resolution -- annotating `d: dict[Rc[T], V]` is enough; you don't have to wait for a literal or `__setitem__`. (Move-only **values** in `dict[K, Rc[T]]` work; only the key slot is gated. This is a runtime limitation, not a language design choice -- a future runtime redesign could lift it.)
+  - Keys must be hashable AND copy-constructible. Sema enforces both at annotation resolution -- annotating `d: dict[K, V]` is enough; you don't need a literal or `__setitem__` to trigger the check. Non-hashable user records (no `__hash__` / `__eq__`, including inherited) get a "missing `__hash__`; use @dataclass(frozen=True) or define it explicitly" message. `@nocopy` keys (`Rc[T]`, `Box[T]`, user `@nocopy` classes, tuples wrapping them) get a precise "non-copyable" message -- the copy-constructibility requirement is a runtime limitation (`tpy::ordered_map`'s `std::pair<const K, ...>` entries force copy-construction), not a language design choice. (Move-only **values** in `dict[K, Rc[T]]` work; only the key slot is gated.)
   - **Type parameters are invariant**: `dict[K, Child]` is not compatible with `dict[K, Base]` even when `Child` inherits from `Base`. C++ `ordered_map<V>` is a non-converting template — passing `Child` where `Base` is expected would fail at C++ build time or silently slice objects.
   - Return by value requires `Own[dict[K, V]]`
 - **Working**: `set[T]` - ordered hash set -> `tpy::ordered_set<T>` (insertion-order preserving)
@@ -631,7 +631,7 @@ process(b"hello")      # zero-alloc: static span passed directly
   - Operators: `|` (union), `&` (intersection), `-` (difference), `^` (symmetric difference)
   - Comparison: `<=` (subset), `<` (strict subset), `>=` (superset), `>` (strict superset)
   - Augmented: `|=`, `&=`, `-=`, `^=`
-  - Elements must be hashable AND copy-constructible (same constraint as dict keys -- `@nocopy` types are rejected at sema; this is a runtime limitation, not a language design choice)
+  - Elements must be hashable AND copy-constructible (same constraint as dict keys -- enforced at annotation resolution, not just at literals/comprehensions; copy-constructibility is a runtime limitation, not a language design choice)
   - **Type parameter is invariant**: `set[Child]` is not compatible with `set[Base]` even when `Child` inherits from `Base`. C++ `ordered_set<T>` is a non-converting template.
   - Return by value requires `Own[set[T]]`
 - **Open**: Bounded variants: `BoundedList[T, N]`, `BoundedDict[K, V, N]`
@@ -1762,7 +1762,7 @@ h = hash(3.14)        # UInt64
 h = hash(True)        # UInt64
 ```
 
-All primitive types (str, int, fixed-width ints, float, bool, Char), `bytes`, `BytesView`, and Enum types are hashable. `bytearray` is not hashable (mutable). Dict key validation uses the `Hashable` protocol -- only hashable types can be used as dict keys or set elements.
+All primitive types (str, int, fixed-width ints, float, bool, Char), `bytes`, `BytesView`, and Enum types are hashable. `bytearray` is not hashable (mutable). Dict key / set element validation requires conformance to BOTH the `Hashable` and `Equatable` protocols (ordered_set / ordered_map use std::hash AND std::equal_to). Conformance walks the inheritance chain, so a subclass inherits its parent's dunders.
 
 Generated C++ uses `tpy::__hash__()` free function dispatch with overloads for built-in types (`std::integral`, `double`, strings, bytes, `BigInt`, enums) and a default template forwarding to user-defined `__hash__()` methods.
 

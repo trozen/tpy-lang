@@ -1,0 +1,1 @@
+main.py:17: error: Type 'HashOnly' cannot be used as a set element (missing __eq__; use @dataclass(frozen=True) or define it explicitly)

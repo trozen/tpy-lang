@@ -181,6 +181,8 @@ class SemanticAnalyzer:
         self.compat.type_ops = self.type_ops
         self.compat.protocols = self.protocols
         self.compat.deduction = self.deduction
+        # validate_hashable_container_elem needs Hashable conformance
+        self.type_ops.protocols = self.protocols
 
         # Narrowing tracker (depends on type_ops, protocols)
         self.narrowing = NarrowingTracker(self.ctx, self.type_ops, self.protocols)
