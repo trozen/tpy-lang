@@ -1,0 +1,1 @@
+main.py:14: error: await operand must be a direct call to an async def, a Task[T] / Future[T], or a value of a type with a `__poll__(self, waker: Waker) -> Poll[T]` method

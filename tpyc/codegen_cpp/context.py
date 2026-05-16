@@ -216,6 +216,12 @@ def module_to_cpp_namespace(module_name: str) -> str:
     return f"tpyapp::{module_name.replace('.', '::')}"
 
 
+def module_has_cpp_namespace_override(module_name: str) -> bool:
+    """True if `module_name` has an explicit `# tpy: cpp_namespace` directive
+    (i.e. its C++ namespace differs from the default `tpyapp::<module>`)."""
+    return module_name in _namespace_map
+
+
 def qualified_cpp_name(module_name: str, name: str) -> str:
     """Build an absolute-qualified C++ name for cross-module references.
 

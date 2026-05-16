@@ -2127,19 +2127,12 @@ class ExpressionAnalyzer:
         """Return the awaited type T if `typ` conforms to Awaitable[T],
         else None.
 
-        Handles the v1 known awaitable shapes:
-          - tpy.Task[T]                 -> T
-          - tpy.* generic with type_args, qname starting with `asyncio.`
-            and a `__poll__(Waker) -> Poll[T]` method on its record.
-          - Any user record with `__poll__(self, waker: Waker) -> Poll[T]`
-            (structural Awaitable conformance).
+        Structural: any record with `__poll__(self, waker: Waker) -> Poll[T]`.
+        Covers tpy.Task[T] (qname `tpy.Task` -> the @builtin_type stub in
+        asyncio._executor), user-defined Future[T] / Event-like types, and
+        any other record that satisfies the Awaitable protocol.
         """
         from ..typesys import NominalType, TpyType as _TpyType
-        # Direct Task[T] match.
-        if (typ._module_qname == "tpy.Task"
-                and len(typ.type_args) == 1
-                and isinstance(typ.type_args[0], _TpyType)):
-            return typ.type_args[0]
         # Structural: look up the record and check for a __poll__ method
         # whose signature matches Awaitable[T].
         record_info = self.ctx.registry.get_record_for_type(typ)

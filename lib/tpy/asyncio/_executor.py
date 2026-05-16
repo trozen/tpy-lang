@@ -222,11 +222,14 @@ class Task[T]:
     """Type-erased async task. Holds a `Rc[TaskState[T]]` shared with
     the executor's slot table for spawned tasks.
 
-    Claims the user-facing qname `tpy.Task` via `@builtin_type`; the
-    compiler hardcoding (`tpyc/type_def_registry.py`,
-    `tpyc/typesys.py`, `tpyc/sema/expressions.py`) resolves through
-    the qname. The `cpp_formatter` in `type_def_registry.py` points to
-    `::tpystd::asyncio::_executor::Task<T>`.
+    Claims the user-facing qname `tpy.Task` via `@builtin_type`. The
+    rest is regular @nocopy generic-class machinery: the C++ name
+    (`::tpystd::asyncio::_executor::Task<T>`) is derived from this
+    module's `# tpy: cpp_namespace` directive through
+    `NominalType._fallback_cpp_base_name`, and awaitability comes from
+    the `__poll__(self, w: Waker) -> Poll[T]` method below being
+    structurally matched by `_extract_awaitable_inner` in
+    `tpyc/sema/expressions.py`.
     """
 
     _state: Rc[TaskState[T]]

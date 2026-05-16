@@ -128,9 +128,10 @@ class AnyFixedSigned(Protocol): ...
 class AnyFixedUnsigned(Protocol): ...
 
 # Compiler hardcodes the qnames `tpy.Waker` / `tpy.Poll` here.
-# `tpy.Task` is also hardcoded but its class lives in `asyncio._executor`
-# (its body needs tplib's Box / Rc which aren't reachable from this
-# implicit-stdlib layer).
+# `tpy.Task` claims the same qname namespace but its class lives in
+# `asyncio._executor` (its body needs tplib's Box / Rc which aren't
+# reachable from this implicit-stdlib layer). Task has no static
+# TypeDef entry -- it resolves through the regular generic-class path.
 
 
 @builtin_type("tpy.Waker")

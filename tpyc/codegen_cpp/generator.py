@@ -15,7 +15,7 @@ from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protoco
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
 
-from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_char, escape_cpp_name
+from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_char, escape_cpp_name
 from .types import TypeResolver
 from .protocols import ProtocolGenerator
 from .builtins import BuiltinGenerator
@@ -195,21 +195,50 @@ class CodeGenerator:
         # that registers all modules into a shared dict (or any path that
         # transitively pulls a peer module with a colliding short name)
         # would misqualify the local record.
+        # Two cross-module record cases handled in one walk:
+        #   (a) Plain user records imported from a peer module -- qualify
+        #       through `record_info.module`.
+        #   (b) `@builtin_type`-with-body records (Task and future
+        #       siblings) whose stub claims a well-known qname like
+        #       `tpy.Task` but whose body lives in a `# tpy: cpp_namespace`-
+        #       tagged module (e.g. `asyncio._executor`). These would
+        #       otherwise mis-qualify as `tpyapp::<module>::Name`, so the
+        #       defining_module + cpp_namespace override path is required.
+        # Common skips (already registered, local shadow, @native rename)
+        # apply to both; the case split determines which module to qualify
+        # through.
         local_short_record_names = {r.name for r in module.records}
         for dep_module in self.analyzer.registry.modules.values():
-            if dep_module.is_builtin or dep_module.name == current_module:
+            if dep_module.name == current_module:
                 continue
             for short, record_info in dep_module.records.items():
-                if record_info.is_native or record_info.builtin_type_key:
-                    continue
                 if short in _native_cpp_names:
                     continue
                 if short in local_short_record_names:
                     continue
-                if record_info.module is None or record_info.module == current_module:
+                if record_info.is_native:
+                    # @native rename handled above; skip whether or not
+                    # native_name is set.
                     continue
-                register_native_cpp_name(
-                    short, qualified_cpp_name(record_info.module, short))
+                if record_info.builtin_type_key:
+                    # Case (b)
+                    if record_info.is_keyword_stub:
+                        continue
+                    defining = record_info.defining_module
+                    if not defining:
+                        continue
+                    if not module_has_cpp_namespace_override(defining):
+                        continue
+                    register_native_cpp_name(
+                        short, qualified_cpp_name(defining, short))
+                else:
+                    # Case (a)
+                    if dep_module.is_builtin:
+                        continue
+                    if record_info.module is None or record_info.module == current_module:
+                        continue
+                    register_native_cpp_name(
+                        short, qualified_cpp_name(record_info.module, short))
         for local_name in list(self.analyzer.registry.enums.keys()):
             qual = self.analyzer.registry.imported_enum_qualification(
                 local_name, current_module)

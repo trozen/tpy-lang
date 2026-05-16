@@ -892,7 +892,10 @@ class NominalType(TpyType):
             return td.cpp_formatter(self.type_args)
         if td is not None and td.is_compile_time_only:
             raise TypeError(f"{self.name} is compile-time only and has no C++ representation")
-        # Check for native C++ name mapping (@native/@native_c records)
+        # Check for native C++ name mapping. `_native_cpp_names` is populated
+        # during codegen setup -- includes @native records, imported records,
+        # AND @builtin_type-with-body records (registered via the
+        # `record_info.builtin_type_key` loop in codegen_cpp/generator.py).
         cpp_name = _native_cpp_names.get(self.name, self.name)
         if self.type_args:
             args = ", ".join(
@@ -2739,15 +2742,6 @@ def make_copy_iter(element_type: 'TpyType') -> 'NominalType':
 def make_own_iter(element_type: 'TpyType') -> 'NominalType':
     return NominalType(name="OwnIter", type_args=(element_type,),
                        _module_qname="tpy.OwnIter")
-
-
-def make_task(awaited_type: 'TpyType') -> 'NominalType':
-    """Factory for Task[T]. Plain NominalType with qname tpy.Task;
-    behavior (is_value_type=False since it owns an Rc-shared heap
-    allocation, cpp_formatter -> ::tpystd::asyncio::_executor::Task<T>)
-    comes from the TypeDef registry."""
-    return NominalType(name="Task", type_args=(awaited_type,),
-                       _module_qname="tpy.Task")
 
 
 def make_poll(awaited_type: 'TpyType') -> 'NominalType':

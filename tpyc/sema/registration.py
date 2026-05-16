@@ -1538,6 +1538,11 @@ class TypeRegistrar:
         # - User records use `{module}.{name}`; entry-point records fall
         #   back to `__main__.{name}`. Mirrors the enum treatment so every
         #   record has a queryable TypeDef entry.
+        # @builtin_type-with-body records (Task, future siblings) with no
+        # pre-existing static TypeDef rely on the auto-derived is_send /
+        # is_sync below: a field-walk diagnoses non-Send fields (e.g. Rc).
+        # If a refactor strips such a field, is_send/is_sync silently flip
+        # to True. Watch for that on field-shape changes to these records.
         if info.builtin_type_key:
             attach_dynamic_type_def(
                 info.builtin_type_key,

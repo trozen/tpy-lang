@@ -789,28 +789,6 @@ def _populate() -> None:
     register(TypeDef("tpy.OwnIter",  TC.ITERATOR, is_value_type=True,
                      cpp_formatter=lambda args: "auto"))
 
-    # Async Task[T]: type-erased poll-box (heap-owned coroutine frame).
-    # Move-only via @nocopy in `lib/tpy/asyncio/_executor.py`; the C++
-    # side enforces this through the Rc[TaskState[T]] field, so owning
-    # returns spell `Own[Task[T]]` like every other resource-owning
-    # record. Used by asyncio.create_task and as the storage type for
-    # awaited tasks.
-    #
-    # FRAGILE: the cpp_formatter hardcodes the class's current location
-    # (`asyncio._executor.Task`). Task is a regular TPy class today, so
-    # in principle codegen could derive the C++ name from its RecordInfo
-    # instead of having a special formatter -- the entire `tpy.Task`
-    # registry entry + `make_task` factory + sema fast-paths are leftover
-    # special-casing from when Task was `@native("tpy::Task")`. Tracked
-    # as a cleanup item in TODO.md; if asyncio's module layout ever
-    # reorganizes, this string + the sema qname checks in
-    # `tpyc/sema/expressions.py` need to move in lockstep.
-    register(TypeDef(
-        "tpy.Task", TC.RECORD, is_value_type=False,
-        is_send=False, is_sync=False,
-        cpp_formatter=lambda args: f"::tpystd::asyncio::_executor::Task<{args[0].to_cpp()}>",
-    ))
-
     # Async Poll[T]: tagged Pending/Ready[T] value returned by poll().
     # Value-typed (the Poll itself is a small struct; the underlying T
     # may not be value-typed but is move-constructed in/out).
@@ -845,7 +823,7 @@ def _populate_factories() -> None:
         PtrType, ReadonlyType,
         make_list, make_dict, make_dict_keys_view, make_dict_values_view,
         make_dict_items_view, make_set, make_array, make_span,
-        make_span_iter, make_range, make_task, make_poll, WAKER,
+        make_span_iter, make_range, make_poll, WAKER,
         FLOAT32, FLOAT, BIGINT, BOOL, CHAR, STR, STRING, STRVIEW, FSTR,
         BYTES, BYTEARRAY, BYTESVIEW, BASIC_SLICE, SLICE,
         INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
@@ -896,7 +874,6 @@ def _populate_factories() -> None:
         ("tpy.Array",            (TYPE, INT),  lambda t, n: make_array(t, n)),
         ("tpy.Span",             (TYPE,),      lambda t: make_span(t)),
         ("tpy.SpanIter",         (TYPE,),      make_span_iter),
-        ("tpy.Task",             (TYPE,),      lambda t: make_task(t)),
         ("tpy.Poll",             (TYPE,),      lambda t: make_poll(t)),
         ("tpy.Waker",            (),           lambda: WAKER),
         ("tpy.Float32",          (),           lambda: FLOAT32),

@@ -994,12 +994,22 @@ and the master merge bringing the None and narrowed-field-LHS fixes):
 
 - **Updated** `tpy.coro` to drop the Task import and the
   cpp_template-based `task_from_coro` (now in `asyncio` as pure TPy).
-  Compiler hardcoding for `tpy.Task` (in
-  `tpyc/type_def_registry.py`, `tpyc/typesys.py`,
-  `tpyc/sema/expressions.py`) is unchanged -- the qname is preserved
-  via `@builtin_type("tpy.Task")` on the new TPy class; only the
-  `cpp_formatter` updated to point to
-  `::tpystd::asyncio::_executor::Task<T>`.
+  The follow-up commit removed the remaining compiler hardcoding for
+  `tpy.Task` (the static `TypeDef` entry with its `cpp_formatter`, the
+  `make_task` factory + factory-map entry, and the qname fast-path in
+  `_extract_awaitable_inner`). Task now resolves through the regular
+  generic-class path: the `@builtin_type("tpy.Task")` decoration claims
+  the qname; `_user_record_qname` in the type resolver returns that
+  qname ahead of the canonical-import tuple; and codegen registers the
+  qualified C++ name `::tpystd::asyncio::_executor::Task<T>` into
+  `_native_cpp_names` via a new dep-module loop that handles
+  `@builtin_type`-with-body records living in `# tpy: cpp_namespace`-
+  tagged modules. `_extract_awaitable_inner` keeps only the structural
+  `__poll__(self, w: Waker) -> Poll[T]` match, which Task satisfies
+  naturally. Poll and Waker still go through their static TypeDef
+  entries because the explicit `is_value_type` / `is_send` / `is_sync`
+  overrides encode `@native` POD semantics the structural rules can't
+  derive.
 
 - **Test updates**: 10 tests updated `from tpy.coro import Task` to
   `from asyncio import Task` and a few added `cancel()` methods to

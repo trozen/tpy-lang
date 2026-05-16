@@ -640,10 +640,19 @@ class TypeResolver:
         neither source supplies a module (bare placeholders that later
         passes will resolve) or the tuple is not canonicalized.
         """
+        rinfo = self._parser.registry.get_record(container)
+        # @builtin_type-with-body records (no factory entry, e.g.
+        # asyncio._executor.Task with @builtin_type("tpy.Task")) carry
+        # their canonical qname in `builtin_type_key`. It wins over both
+        # the canonical-import tuple and the defining-module form so
+        # the resulting NominalType's _module_qname matches the static
+        # TypeDef key regardless of how the type was imported.
+        # `RecordInfo.qualified_name()` short-circuits on builtin_type_key.
+        if rinfo is not None and rinfo.builtin_type_key:
+            return rinfo.qualified_name()
         if resolved is not None and canonical:
             return f"{resolved[0]}.{resolved[1]}"
-        rinfo = self._parser.registry.get_record(container)
-        if rinfo is not None and rinfo.module and not rinfo.builtin_type_key:
+        if rinfo is not None and rinfo.module:
             return f"{rinfo.module}.{container}"
         return None
 

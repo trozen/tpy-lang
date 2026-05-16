@@ -75,7 +75,6 @@ def _canonical_instances() -> dict[str, ts.TpyType]:
         "tpy.CopyIter": ts.make_copy_iter(I32),
         "tpy.OwnIter":  ts.make_own_iter(I32),
         "tpy.Ptr":      ts.PtrType(I32),
-        "tpy.Task":     ts.make_task(I32),
         "tpy.Poll":     ts.make_poll(I32),
         "tpy.Waker":    ts.WAKER,
     }
@@ -1054,7 +1053,6 @@ FACTORY_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "tpy.Array":            ("TYPE", "INT"),
     "tpy.Span":             ("TYPE",),
     "tpy.SpanIter":         ("TYPE",),
-    "tpy.Task":             ("TYPE",),
     "tpy.Poll":             ("TYPE",),
     "tpy.Waker":            (),
     # Structural wrapper
@@ -1124,7 +1122,6 @@ def test_factory_produces_same_instance_as_registry():
         "tpy.Span":             (I32,),
         "tpy.SpanIter":         (I32,),
         "tpy.Ptr":              (I32,),
-        "tpy.Task":             (I32,),
         "tpy.Poll":             (I32,),
     }
     for qname, args in canonical_args.items():
