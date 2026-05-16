@@ -12,8 +12,10 @@
 // Core utilities (no dependencies)
 #include "core.hpp"
 
-// Async primitives: Poll<T>, Waker, CancelledError. The Awaitable<T>
-// concept is generated per call site by codegen, like Iterator<T>.
+// Async primitives: Waker, CancelledError, ExecutorOps dispatch table.
+// Poll<T> is a pure-TPy class (lives in lib/tpy/tpy/_core/_types.py).
+// The Awaitable<T> concept is generated per call site by codegen, like
+// Iterator<T>.
 #include "async.hpp"
 
 // Enum utility trait (primary template; specializations in generated code)

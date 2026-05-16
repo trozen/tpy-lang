@@ -2744,14 +2744,6 @@ def make_own_iter(element_type: 'TpyType') -> 'NominalType':
                        _module_qname="tpy.OwnIter")
 
 
-def make_poll(awaited_type: 'TpyType') -> 'NominalType':
-    """Factory for Poll[T]. Plain NominalType with qname tpy.Poll;
-    behavior (is_value_type=True POD-like, cpp_formatter ->
-    ::tpy::Poll<T>) comes from the TypeDef registry."""
-    return NominalType(name="Poll", type_args=(awaited_type,),
-                       _module_qname="tpy.Poll")
-
-
 def make_awaitable(awaited_type: 'TpyType') -> 'NominalType':
     """Factory for the structural protocol Awaitable[T] (tpy.coro.Awaitable).
     Used as the sema-visible return type of `async def f() -> T` so that

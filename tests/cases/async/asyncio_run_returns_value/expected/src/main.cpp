@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def compute() -> int:
-::tpy::Poll<::tpy::BigInt> __coro_compute::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::tpy::BigInt> __coro_compute::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // await asyncio.sleep(0.001)
@@ -16,12 +16,13 @@ namespace tpyapp::main {
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
             auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpy::Poll<::tpy::BigInt>::pending();
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
             // return 42
             __state = S_DONE;
-            return ::tpy::Poll<::tpy::BigInt>::ready(42);
+            ::tpy::BigInt __tpy_async_ret = 42;
+            return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

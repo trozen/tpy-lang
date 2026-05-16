@@ -4,16 +4,16 @@
 namespace tpyapp::main {
 
 
-// def make_ready() -> Poll[None]:
-::tpy::Poll<std::monostate> make_ready() {
+// def make_ready() -> Own[Poll[None]]:
+::tpystd::tpy::Poll<std::monostate> make_ready() {
     // return poll_ready[None](None)
-    return ::tpy::Poll<std::monostate>::ready(std::monostate{});
+    return ::tpystd::coro::poll_ready<std::monostate>(std::monostate{});
 }
 
 // def main() -> None:
 void main() {
     // p = make_ready()
-    ::tpy::Poll<std::monostate> p = make_ready();
+    ::tpystd::tpy::Poll<std::monostate> p = make_ready();
     // print("ok")
     std::cout << "ok" << "\n";
 }

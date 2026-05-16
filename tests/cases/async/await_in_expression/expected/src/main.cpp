@@ -5,13 +5,14 @@ namespace tpyapp::main {
 
 
 // async def add_one(x: Int32) -> Int32:
-::tpy::Poll<int32_t> __coro_add_one::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_add_one::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
             // return x + Int32(1)
             __state = S_DONE;
-            return ::tpy::Poll<int32_t>::ready((::tpy::add_check<int32_t>(x, 1)));
+            int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(x, 1));
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -25,7 +26,7 @@ __coro_add_one add_one(int32_t x) {
 }
 
 // async def caller() -> Int32:
-::tpy::Poll<int32_t> __coro_caller::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_caller::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // return await add_one(Int32(5)) + await add_one(Int32(10))
@@ -36,7 +37,7 @@ __coro_add_one add_one(int32_t x) {
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
             auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpy::Poll<int32_t>::pending();
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
             __await_lift_0 = std::move(__r0).value();
             __sub_0.reset();
             // return await add_one(Int32(5)) + await add_one(Int32(10))
@@ -47,13 +48,14 @@ __coro_add_one add_one(int32_t x) {
     case S_AFTER_AWAIT_1: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
             auto __r1 = __sub_1->__poll__(waker);
-            if (__r1.is_pending()) return ::tpy::Poll<int32_t>::pending();
+            if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
             __await_lift_1 = std::move(__r1).value();
             __sub_1.reset();
             // # Two awaits in one expression -- requires the await-lift pass.
             // return await add_one(Int32(5)) + await add_one(Int32(10))
             __state = S_DONE;
-            return ::tpy::Poll<int32_t>::ready((::tpy::add_check<int32_t>(__await_lift_0, __await_lift_1)));
+            int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(__await_lift_0, __await_lift_1));
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -67,7 +69,7 @@ __coro_caller caller() {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // val = await caller()
@@ -78,13 +80,13 @@ __coro_caller caller() {
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
             auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpy::Poll<::std::monostate>::pending();
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             val = std::move(__r0).value();
             __sub_0.reset();
             // print(val)
             std::cout << val << "\n";
             __state = S_DONE;
-            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

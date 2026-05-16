@@ -32,7 +32,7 @@ struct __coro_side_effect {
     __coro_side_effect()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_side_effect&) {
@@ -55,7 +55,7 @@ struct __coro_caller {
     __coro_caller()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_caller&) {

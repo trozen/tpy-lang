@@ -774,7 +774,7 @@ class TypeRegistrar:
                     f"user-defined '__await__' is not yet supported "
                     f"(method on '{record.name}'); v1 only supports the "
                     f"structural Awaitable protocol via `poll(self, "
-                    f"waker: Waker) -> Poll[T]`",
+                    f"waker: Waker) -> Own[Poll[T]]`",
                     m.loc or record.loc,
                 )
 

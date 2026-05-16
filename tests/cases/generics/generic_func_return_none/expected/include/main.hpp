@@ -9,6 +9,8 @@
 namespace tpyapp::main {
 
 using ::tpystd::coro::poll_once;
+using ::tpystd::coro::poll_ready;
+using ::tpystd::coro::poll_ready_none;
 
 struct Int32One;
 struct Nothing;
@@ -23,8 +25,8 @@ void main();
 struct Int32One {
 
 
-    // def __poll__(self, w: Waker) -> Poll[Int32]:
-    ::tpy::Poll<int32_t> __poll__(::tpy::Waker w) const;
+    // def __poll__(self, w: Waker) -> Own[Poll[Int32]]:
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpy::Waker w) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Int32One";
 };
 
@@ -37,8 +39,8 @@ inline std::ostream& operator<<(std::ostream& os, const Int32One& obj) {
 struct Nothing {
 
 
-    // def __poll__(self, w: Waker) -> Poll[None]:
-    ::tpy::Poll<std::monostate> __poll__(::tpy::Waker w) const;
+    // def __poll__(self, w: Waker) -> Own[Poll[None]]:
+    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpy::Waker w) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Nothing";
 };
 
@@ -48,22 +50,22 @@ inline std::ostream& operator<<(std::ostream& os, const Nothing& obj) {
 }
 
 
-// def __poll__(self, w: Waker) -> Poll[Int32]:
-inline ::tpy::Poll<int32_t> Int32One::__poll__(::tpy::Waker w) const {
+// def __poll__(self, w: Waker) -> Own[Poll[Int32]]:
+inline ::tpystd::tpy::Poll<int32_t> Int32One::__poll__(::tpy::Waker w) const {
     // return poll_ready(Int32(1))
-    return ::tpy::Poll<int32_t>::ready(1);
+    return ::tpystd::coro::poll_ready<int32_t>(1);
 }
 
-// def __poll__(self, w: Waker) -> Poll[None]:
-inline ::tpy::Poll<std::monostate> Nothing::__poll__(::tpy::Waker w) const {
+// def __poll__(self, w: Waker) -> Own[Poll[None]]:
+inline ::tpystd::tpy::Poll<std::monostate> Nothing::__poll__(::tpy::Waker w) const {
     // return poll_ready_none()
-    return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    return ::tpystd::coro::poll_ready_none();
 }
 // def drain[T](aw: Awaitable[T]) -> T:
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 ::tpy::val_or_ref_t<T> drain(T_aw& aw) {
     // return poll_once(aw).value()
-    return std::move(::tpystd::coro::poll_once<T>(aw)).value();
+    return ::tpystd::coro::poll_once<T>(aw).value();
 }
 
 void __tpy_init();

@@ -5,13 +5,14 @@ namespace tpyapp::main {
 
 
 // async def co(x: Int32) -> Int32:
-::tpy::Poll<int32_t> __coro_co::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_co::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
             // return x + Int32(1)
             __state = S_DONE;
-            return ::tpy::Poll<int32_t>::ready((::tpy::add_check<int32_t>(x, 1)));
+            int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(x, 1));
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -33,7 +34,7 @@ int32_t task_arity_concrete(const ::tpystd::asyncio::_executor::Task<int32_t>& t
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // t = asyncio.create_task(co(Int32(7)))
@@ -50,13 +51,13 @@ int32_t task_arity_concrete(const ::tpystd::asyncio::_executor::Task<int32_t>& t
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
             auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpy::Poll<::std::monostate>::pending();
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             result = std::move(__r0).value();
             __sub_0 = nullptr;
             // print(result)
             std::cout << result << "\n";
             __state = S_DONE;
-            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

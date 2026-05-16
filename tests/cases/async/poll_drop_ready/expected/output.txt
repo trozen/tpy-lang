@@ -1,0 +1,8 @@
+Probe(1) init
+constructed, is_ready: True
+dropping ready poll without consume
+Probe(1) drop
+---
+Probe(2) init
+consumed value tag: 2
+Probe(2) drop

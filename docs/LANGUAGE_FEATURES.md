@@ -5505,11 +5505,20 @@ Send/Sync rules for built-in types:
 | `tuple[T1, T2, ...]` | Yes (if all Ti Send) | Yes (if all Ti Sync) | Composite |
 
 - **Working (v1)**: `async`/`await` -> resumable-frame state machines.
-  `async def f() -> T:` lowers to a struct with `__poll__(Waker) -> Poll[T]`.
-  `await <call-to-async-def>` inlines the sub-coroutine struct in the
-  parent's frame; `await <Task[T]>` / `await <Future[T]>` / `await
-  <user awaitable>` use structural dispatch on a `__poll__(Waker) -> Poll[T]`
-  method (dunder name matches `__iter__` / `__hash__` / etc.). Value-type awaitables are moved into the frame; reference-type
+  `async def f() -> T:` lowers to a struct with
+  `__poll__(Waker) -> Own[Poll[T]]`. `await <call-to-async-def>` inlines
+  the sub-coroutine struct in the parent's frame; `await <Task[T]>` /
+  `await <Future[T]>` / `await <user awaitable>` use structural dispatch
+  on a `__poll__(Waker) -> Own[Poll[T]]` method (dunder name matches
+  `__iter__` / `__hash__` / etc.). `Poll[T]` is a pure-TPy `@nocopy`
+  record (`lib/tpy/tpy/_core/_types.py`); the previous
+  `tpy::Poll<T>` / `Poll<void>` / `Poll<T&>` C++ template + its two
+  specializations were removed in the v1.2 Poll-port. The single TPy
+  body's `UninitArrayStorage[T, 1]` + `_has` storage matches the old
+  `std::optional<T>` layout byte-for-byte, with `T = None` lowering to
+  `std::monostate` to cover the void analog and reference-T positions
+  going through the caller's storage form (no separate specialization
+  needed). Value-type awaitables are moved into the frame; reference-type
   awaitables are stored as borrowed frame pointers so object identity is
   preserved across a suspension. Awaits in non-statement positions (call
   args, BinOps, conditions) are lifted to preceding `__await_lift_<n>`

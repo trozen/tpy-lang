@@ -3118,7 +3118,16 @@ class ExpressionGenerator:
                 cpp_class = record_info.native_name
                 cpp_method = fi.native_name if fi and fi.native_name else escape_cpp_name(expr.method)
                 return f"{cpp_class}::{cpp_method}({args})"
+            # Implicit-stdlib peers don't emit a `using ::ns::Foo;` alias
+            # (suppressed in `_emit_alias_using_block` to avoid include
+            # cycles), so the bare class name needs explicit qualification.
             class_name = expr.obj.name
+            if (record_info is not None
+                    and record_info.module is not None
+                    and record_info.module in self.ctx.implicit_stdlib_modules
+                    and record_info.module != self.ctx.module_name):
+                class_name = qualified_cpp_name(
+                    record_info.module, record_info.name)
             static_method_targs = ""
             if expr.inferred_type_args:
                 # Split inferred type args into class-level and method-level

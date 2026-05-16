@@ -2663,10 +2663,10 @@ class StatementGenerator:
 
             <walk active finally frames>
             __state = S_DONE;
-            return ::tpy::Poll<T>::ready(<v>);
+            return ::tpystd::tpy::Poll<T>::ready(<v>);
 
         For void-returning async defs:
-            return ::tpy::Poll<std::monostate>::ready(std::monostate{});
+            return ::tpystd::tpy::Poll<std::monostate>::ready(std::monostate{});
 
         For bare `return`:
             void -> Poll<std::monostate>::ready(std::monostate{})
@@ -2692,8 +2692,14 @@ class StatementGenerator:
             else:
                 ret_cpp = self.ctx.async_coro_return_cpp or "void"
                 expr_cpp = self.expressions.gen_expr_deref(stmt.value)
+                # Bind to a local first so `std::move` has a typed source:
+                # `std::move({1, 2, 3})` (braced initializer) doesn't compile
+                # because the template parameter can't be deduced.
+                tmp = "__tpy_async_ret"
+                out.write(f"{indent}{ret_cpp} {tmp} = {expr_cpp};\n")
                 out.write(
-                    f"{indent}return ::tpy::Poll<{ret_cpp}>::ready({expr_cpp});\n")
+                    f"{indent}return ::tpystd::tpy::Poll<{ret_cpp}>::ready("
+                    f"std::move({tmp}));\n")
         return out.getvalue()
 
     def _make_break_continue(self, indent: str, *, is_break: bool) -> str:

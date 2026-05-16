@@ -5,13 +5,14 @@ namespace tpyapp::main {
 
 
 // async def returns_value(x: int) -> int:
-::tpy::Poll<::tpy::BigInt> __coro_returns_value::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::tpy::BigInt> __coro_returns_value::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
             // return x + 100
             __state = S_DONE;
-            return ::tpy::Poll<::tpy::BigInt>::ready(((x) + (::tpy::BigInt(100))));
+            ::tpy::BigInt __tpy_async_ret = ((x) + (::tpy::BigInt(100)));
+            return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -25,13 +26,13 @@ __coro_returns_value returns_value(::tpy::BigInt x) {
 }
 
 // async def void_coro() -> None:
-::tpy::Poll<::std::monostate> __coro_void_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_void_coro::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
             // return None
             __state = S_DONE;
-            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

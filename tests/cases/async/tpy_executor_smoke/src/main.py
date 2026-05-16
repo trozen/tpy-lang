@@ -13,7 +13,7 @@ from asyncio._executor import (
     _self_handle,
 )
 from time import monotonic
-from tpy import CancelledError
+from tpy import CancelledError, Own
 from tpy.coro import Poll, Waker, poll_pending
 
 
@@ -26,7 +26,7 @@ class CancellableForever:
     def __init__(self) -> None:
         self.__cancel_pending = False
 
-    def __poll__(self, waker: Waker) -> Poll[None]:
+    def __poll__(self, waker: Waker) -> Own[Poll[None]]:
         if self.__cancel_pending:
             raise CancelledError()
         return poll_pending[None]()

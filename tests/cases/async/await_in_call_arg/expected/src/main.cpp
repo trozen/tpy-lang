@@ -5,13 +5,14 @@ namespace tpyapp::main {
 
 
 // async def get_val() -> Int32:
-::tpy::Poll<int32_t> __coro_get_val::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_get_val::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
             // return Int32(7)
             __state = S_DONE;
-            return ::tpy::Poll<int32_t>::ready(7);
+            int32_t __tpy_async_ret = 7;
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -25,7 +26,7 @@ __coro_get_val get_val() {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // print(await get_val())  # await in argument position
@@ -36,7 +37,7 @@ __coro_get_val get_val() {
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
             auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpy::Poll<::std::monostate>::pending();
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             __await_lift_0 = std::move(__r0).value();
             __sub_0.reset();
             // print(await get_val())  # await in argument position
@@ -49,13 +50,13 @@ __coro_get_val get_val() {
     case S_AFTER_AWAIT_1: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
             auto __r1 = __sub_1->__poll__(waker);
-            if (__r1.is_pending()) return ::tpy::Poll<::std::monostate>::pending();
+            if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             __await_lift_1 = std::move(__r1).value();
             __sub_1.reset();
             // print(await get_val() + Int32(1))  # await mixed with binop
             std::cout << (::tpy::add_check<int32_t>(__await_lift_1, 1)) << "\n";
             __state = S_DONE;
-            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

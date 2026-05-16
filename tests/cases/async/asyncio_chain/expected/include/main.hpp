@@ -35,7 +35,7 @@ struct __coro_add {
     __coro_add(int32_t x_, int32_t y_)
         : __state(S_INITIAL), __cancel_pending(false), x(std::move(x_)), y(std::move(y_)) {}
 
-    ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_add&) {
@@ -62,7 +62,7 @@ struct __coro_compute {
     __coro_compute()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_compute&) {
@@ -86,7 +86,7 @@ struct __coro_main {
     __coro_main()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main&) {

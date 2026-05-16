@@ -5,13 +5,14 @@ namespace tpyapp::main {
 
 
 // async def sub() -> Int32:
-::tpy::Poll<int32_t> __coro_sub::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_sub::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
             // return Int32(42)
             __state = S_DONE;
-            return ::tpy::Poll<int32_t>::ready(42);
+            int32_t __tpy_async_ret = 42;
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -25,7 +26,7 @@ __coro_sub sub() {
 }
 
 // async def main_coro() -> Int32:
-::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             try {
@@ -43,12 +44,12 @@ __coro_sub sub() {
             try {
                 if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
                 auto __r0 = __sub_0->__poll__(waker);
-                if (__r0.is_pending()) return ::tpy::Poll<int32_t>::pending();
+                if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
                 auto __ret0 = std::move(__r0).value();
                 __sub_0.reset();
                 this->__finally_top();
                 __state = S_DONE;
-                return ::tpy::Poll<int32_t>::ready(std::move(__ret0));
+                return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__ret0));
                 ::tpy::tpy_panic("async def fell through without returning a value");
             } catch (...) {
                 __sub_0.reset();

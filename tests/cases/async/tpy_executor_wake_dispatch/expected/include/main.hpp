@@ -15,6 +15,8 @@
 namespace tpyapp::main {
 
 using ::tpystd::asyncio::_executor::_make_any_task_for_test;
+using ::tpystd::coro::poll_pending;
+using ::tpystd::coro::poll_ready_none;
 
 using ::tpystd::asyncio::_executor::Executor;
 
@@ -36,8 +38,8 @@ struct NeverComplete {
     // def __init__(self) -> None:
     NeverComplete() : __cancel_pending(false) {}
 
-    // def __poll__(self, waker: Waker) -> Poll[None]:
-    ::tpy::Poll<std::monostate> __poll__(::tpy::Waker waker) const;
+    // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpy::Waker waker) const;
 
     // def cancel(self) -> None:
     void cancel();
@@ -60,8 +62,8 @@ struct CountdownThenReady {
     CountdownThenReady() = default;
     explicit CountdownThenReady(uint32_t n) : remaining(n), __cancel_pending(false) {}
 
-    // def __poll__(self, waker: Waker) -> Poll[None]:
-    ::tpy::Poll<std::monostate> __poll__(::tpy::Waker waker);
+    // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpy::Waker waker);
 
     // def cancel(self) -> None:
     void cancel();
@@ -74,10 +76,10 @@ inline std::ostream& operator<<(std::ostream& os, const CountdownThenReady& obj)
 }
 
 
-// def __poll__(self, waker: Waker) -> Poll[None]:
-inline ::tpy::Poll<std::monostate> NeverComplete::__poll__(::tpy::Waker waker) const {
+// def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+inline ::tpystd::tpy::Poll<std::monostate> NeverComplete::__poll__(::tpy::Waker waker) const {
     // return poll_pending()
-    return ::tpy::Poll<std::monostate>::pending();
+    return ::tpystd::coro::poll_pending<std::monostate>();
 }
 
 // def cancel(self) -> None:
@@ -86,17 +88,17 @@ inline void NeverComplete::cancel() {
     this->__cancel_pending = true;
 }
 
-// def __poll__(self, waker: Waker) -> Poll[None]:
-inline ::tpy::Poll<std::monostate> CountdownThenReady::__poll__(::tpy::Waker waker) {
+// def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+inline ::tpystd::tpy::Poll<std::monostate> CountdownThenReady::__poll__(::tpy::Waker waker) {
     // if self.remaining == UInt32(0):
     if ((this->remaining == 0)) {
         // return poll_ready_none()
-        return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+        return ::tpystd::coro::poll_ready_none();
     }
     // self.remaining -= UInt32(1)
     this->remaining = ::tpy::sub_check<uint32_t>(this->remaining, 1);
     // return poll_pending[None]()
-    return ::tpy::Poll<std::monostate>::pending();
+    return ::tpystd::coro::poll_pending<std::monostate>();
 }
 
 // def cancel(self) -> None:

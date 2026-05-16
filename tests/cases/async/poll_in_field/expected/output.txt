@@ -1,0 +1,2 @@
+ready: True
+value: 42

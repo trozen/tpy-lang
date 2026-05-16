@@ -4,9 +4,10 @@
 # pre-fix for the void-payload case); this exercises the generic-T=None
 # path through the `Own[T]` parameter slot.
 from tpy.coro import Poll, poll_ready
+from tpy import Own
 
 
-def make_ready() -> Poll[None]:
+def make_ready() -> Own[Poll[None]]:
     return poll_ready[None](None)
 
 

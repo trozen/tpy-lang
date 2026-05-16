@@ -79,7 +79,7 @@ class SleepFuture:
     def cancel(self) -> None:
         self.__cancel_pending = True
 
-    def __poll__(self, waker: Waker) -> Poll[None]:
+    def __poll__(self, waker: Waker) -> Own[Poll[None]]:
         if self.__cancel_pending:
             self.__cancel_pending = False
             # TODO: cancelling a registered SleepFuture leaves its timer
@@ -203,7 +203,7 @@ class Future[T]:
     def cancel(self) -> None:
         pass
 
-    def __poll__(self, waker: Waker) -> Poll[T]:
+    def __poll__(self, waker: Waker) -> Own[Poll[T]]:
         if self._done:
             if self._exception is not None:
                 raise self._exception
@@ -262,7 +262,7 @@ class Event:
     def cancel(self) -> None:
         pass
 
-    def __poll__(self, waker: Waker) -> Poll[None]:
+    def __poll__(self, waker: Waker) -> Own[Poll[None]]:
         if self._is_set:
             return poll_ready_none()
         if self._has_waiter:

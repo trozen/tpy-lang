@@ -5,13 +5,14 @@ namespace tpyapp::main {
 
 
 // async def f() -> Int32:
-::tpy::Poll<int32_t> __coro_f::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_f::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
             // return Int32(42)
             __state = S_DONE;
-            return ::tpy::Poll<int32_t>::ready(42);
+            int32_t __tpy_async_ret = 42;
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -28,7 +29,7 @@ __coro_f f() {
 void main() {
     // print(poll_once(f()).value())
     auto __tmp_1 = f();
-    std::cout << std::move(::tpystd::coro::poll_once<int32_t>(__tmp_1)).value() << "\n";
+    std::cout << ::tpystd::coro::poll_once<int32_t>(__tmp_1).value() << "\n";
 }
 
 void __tpy_init() {

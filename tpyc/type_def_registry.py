@@ -789,15 +789,6 @@ def _populate() -> None:
     register(TypeDef("tpy.OwnIter",  TC.ITERATOR, is_value_type=True,
                      cpp_formatter=lambda args: "auto"))
 
-    # Async Poll[T]: tagged Pending/Ready[T] value returned by poll().
-    # Value-typed (the Poll itself is a small struct; the underlying T
-    # may not be value-typed but is move-constructed in/out).
-    register(TypeDef(
-        "tpy.Poll", TC.RECORD, is_value_type=True,
-        is_send=False, is_sync=False,
-        cpp_formatter=lambda args: f"::tpy::Poll<{args[0].to_cpp()}>",
-    ))
-
     # Async Waker: re-schedule handle. POD value type. Non-generic.
     register(TypeDef(
         "tpy.Waker", TC.RECORD, is_value_type=True,
@@ -823,7 +814,7 @@ def _populate_factories() -> None:
         PtrType, ReadonlyType,
         make_list, make_dict, make_dict_keys_view, make_dict_values_view,
         make_dict_items_view, make_set, make_array, make_span,
-        make_span_iter, make_range, make_poll, WAKER,
+        make_span_iter, make_range, WAKER,
         FLOAT32, FLOAT, BIGINT, BOOL, CHAR, STR, STRING, STRVIEW, FSTR,
         BYTES, BYTEARRAY, BYTESVIEW, BASIC_SLICE, SLICE,
         INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
@@ -874,7 +865,6 @@ def _populate_factories() -> None:
         ("tpy.Array",            (TYPE, INT),  lambda t, n: make_array(t, n)),
         ("tpy.Span",             (TYPE,),      lambda t: make_span(t)),
         ("tpy.SpanIter",         (TYPE,),      make_span_iter),
-        ("tpy.Poll",             (TYPE,),      lambda t: make_poll(t)),
         ("tpy.Waker",            (),           lambda: WAKER),
         ("tpy.Float32",          (),           lambda: FLOAT32),
         ("tpy.Char",             (),           lambda: CHAR),

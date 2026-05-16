@@ -62,15 +62,15 @@ Each item below is blocked on a specific compiler bug or missing feature. Orthog
 
 | Feature | Status | What it unblocks |
 |---------|--------|------------------|
-| Single-threaded shared-ownership smart pointer `Rc[T]` | **shipped** (`lib/tpy/tplib/rc.py`; construct via `Rc.new(value)`) | `TaskState[T]`, `Task[T]`, `AnyTaskBox`, `AnyTask` → TPy. Biggest remaining shrink: removes the type-erasure stack. Now unblocked — implementation work is a v1.2 follow-up commit. |
+| Single-threaded shared-ownership smart pointer `Rc[T]` | **shipped** (`lib/tpy/tplib/rc.py`; construct via `Rc.new(value)`) | `TaskState[T]`, `Task[T]`, `AnyTaskBox`, `AnyTask` → TPy. Biggest remaining shrink: removes the type-erasure stack. Shipped in v1.2 step 4. |
 | Atomic `Arc[T]` + `Weak[T]` | v3+ (multi-threaded executor + multi-awaiter Future) | Cross-thread async surface. Not blocking single-threaded v1.x cleanup. |
 | `thread_local` storage in TPy | not started | `current_executor` + handle accessor bridges → TPy. Low priority for single-threaded v1. |
-| Generic class specializations for void/reference/move-only `T` | not started | `Poll[T]` → TPy. Removes the last primitive in `runtime/cpp/include/tpy/async.hpp`. |
+| Generic class specializations for void/reference/move-only `T` | **not needed** (v1.2 step 5) | Originally listed as a prerequisite for `Poll[T]` → TPy, but the port shipped without it: `Poll[None]` -> `Poll<std::monostate>` covers the void analog, the reference-T specialization was never instantiated by generated code, and move-only / non-default-constructible T are handled by `UninitArrayStorage`'s placement-new contract. |
 | `@cpp_template` literal-brace escape syntax (`{{` / `}}`) | not started | `make_executor_handle` / `make_waker` → one-line `@cpp_template` bindings (today both wrap C++ helpers). |
 
 **Cumulative effect** once all land: `runtime/cpp/include/tpy/async.hpp` collapses to just the `Waker` POD + `CancelledError` + optionally the `ExecutorOps` dispatch table (or its TPy-only equivalent if `thread_local` lands). Everything else lives in TPy.
 
-**What the v1.1 port left explicitly C++ for the long term**: `Task<T>::from_coro<CoroT>` (templated factory; could become `@cpp_template` once the brace-escape lands), `Poll<T>` storage (compiler item above), the templated thunk machinery (`mark_runnable_thunk` / `spawn_thunk` / `register_timer_thunk`) used by `ExecutorOps` (only goes away if the dispatch model changes -- not blocked on a compiler item, just an architectural choice).
+**What the v1.1 port left explicitly C++ for the long term**: the templated thunk machinery (`mark_runnable_thunk` / `spawn_thunk` / `register_timer_thunk`) used by `ExecutorOps` (only goes away if the dispatch model changes -- not blocked on a compiler item, just an architectural choice). `Task<T>::from_coro<CoroT>` was a candidate but was ported to TPy alongside the type-erasure stack in v1.2 step 4; `Poll<T>` was a candidate but was ported in v1.2 step 5.
 
 ### v1.5 -- composability surface
 

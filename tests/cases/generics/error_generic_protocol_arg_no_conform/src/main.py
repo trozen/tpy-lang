@@ -4,15 +4,16 @@
 # enables structural inference for conforming records must NOT let
 # non-conforming records through.
 from tpy.coro import Awaitable, Poll, Waker, poll_once, poll_pending
+from tpy import Own
 
 
 class NotAwaitable[T]:
     # Lacks __poll__, so does not conform to Awaitable[T].
-    def whatever(self, w: Waker) -> Poll[T]:
+    def whatever(self, w: Waker) -> Own[Poll[T]]:
         return poll_pending()
 
 
-def drive[T](aw: Awaitable[T]) -> Poll[T]:
+def drive[T](aw: Awaitable[T]) -> Own[Poll[T]]:
     return poll_once(aw)
 
 

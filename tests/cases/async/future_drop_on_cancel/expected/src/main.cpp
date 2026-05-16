@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def waiter(f: Future[Tracked]) -> Tracked:
-::tpy::Poll<Tracked> __coro_waiter::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<Tracked> __coro_waiter::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // return await f
@@ -16,11 +16,11 @@ namespace tpyapp::main {
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
             auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpy::Poll<Tracked>::pending();
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<Tracked>::pending();
             auto __ret0 = std::move(__r0).value();
             __sub_0 = nullptr;
             __state = S_DONE;
-            return ::tpy::Poll<Tracked>::ready(std::move(__ret0));
+            return ::tpystd::tpy::Poll<Tracked>::ready(std::move(__ret0));
             ::tpy::tpy_panic("async def fell through without returning a value");
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -35,7 +35,7 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // f: Future[Tracked] = Future[Tracked]()
@@ -55,7 +55,7 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
             try {
                 if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
                 auto __r0 = __sub_0->__poll__(waker);
-                if (__r0.is_pending()) return ::tpy::Poll<::std::monostate>::pending();
+                if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
                 (void)std::move(__r0).value();
                 __sub_0 = nullptr;
             } catch (const ::tpy::CancelledError&) {
@@ -64,7 +64,7 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
                 std::cout << "cancelled" << "\n";
             }
             __state = S_DONE;
-            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

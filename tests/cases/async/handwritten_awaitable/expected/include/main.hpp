@@ -9,6 +9,7 @@
 namespace tpyapp::main {
 
 using ::tpystd::coro::poll_once;
+using ::tpystd::coro::poll_ready;
 
 struct ReadyAwaitable;
 
@@ -25,8 +26,8 @@ struct ReadyAwaitable {
     ReadyAwaitable() = default;
     explicit ReadyAwaitable(int32_t value) : value(value) {}
 
-    // def __poll__(self, waker: Waker) -> Poll[Int32]:
-    ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker) const;
+    // def __poll__(self, waker: Waker) -> Own[Poll[Int32]]:
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpy::Waker waker) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.ReadyAwaitable";
 };
 
@@ -36,10 +37,11 @@ inline std::ostream& operator<<(std::ostream& os, const ReadyAwaitable& obj) {
 }
 
 
-// def __poll__(self, waker: Waker) -> Poll[Int32]:
-inline ::tpy::Poll<int32_t> ReadyAwaitable::__poll__(::tpy::Waker waker) const {
+// def __poll__(self, waker: Waker) -> Own[Poll[Int32]]:
+inline ::tpystd::tpy::Poll<int32_t> ReadyAwaitable::__poll__(::tpy::Waker waker) const {
     // return poll_ready(self.value)
-    return ::tpy::Poll<int32_t>::ready(this->value);
+    auto __tmp_1 = this->value;
+    return ::tpystd::coro::poll_ready<int32_t>(std::move(__tmp_1));
 }
 void __tpy_init();
 } // namespace tpyapp::main

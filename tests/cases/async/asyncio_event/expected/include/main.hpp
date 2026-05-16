@@ -40,7 +40,7 @@ struct __coro_producer {
     __coro_producer(::tpystd::asyncio::Event& e)
         : __state(S_INITIAL), __cancel_pending(false), e(e) {}
 
-    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_producer&) {
@@ -64,7 +64,7 @@ struct __coro_consumer {
     __coro_consumer(::tpystd::asyncio::Event& e)
         : __state(S_INITIAL), __cancel_pending(false), e(e) {}
 
-    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_consumer&) {
@@ -88,7 +88,7 @@ struct __coro_fast_path_consumer {
     __coro_fast_path_consumer(::tpystd::asyncio::Event& e)
         : __state(S_INITIAL), __cancel_pending(false), e(e) {}
 
-    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_fast_path_consumer&) {
@@ -113,7 +113,7 @@ struct __coro_main_coro {
     __coro_main_coro()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {

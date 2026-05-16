@@ -1,13 +1,15 @@
 /**
  * TurboPython Runtime - Async primitives
  *
- * Poll<T>, Waker, CancelledError. The structural Awaitable<T> concept
+ * Waker, CancelledError. `Poll<T>` is a pure-TPy class today (lives in
+ * `lib/tpy/tpy/_core/_types.py`); the structural Awaitable<T> concept
  * is generated per-call-site by codegen (matching how Iterator<T> is
- * handled), so it is not defined here.
+ * handled), so neither is defined here.
  *
  * The `Awaitable` contract: a type T is awaitable iff it has a method
- *   tpy::Poll<U> __poll__(tpy::Waker w);
- * for some U. `await x` lowers to a sequence of __poll__ calls; each call
+ *   def __poll__(self, w: Waker) -> Own[Poll[U]]
+ * for some U (lowering to a `::tpystd::tpy::Poll<U>` value return at the
+ * C++ ABI level). `await x` lowers to a sequence of __poll__ calls; each call
  * returns either Poll::pending() (the awaiting frame parks) or
  * Poll::ready(value) (the value is consumed). The dunder name matches
  * how other TPy/typing structural protocols spell their required
@@ -22,11 +24,6 @@
 #pragma once
 
 #include <cstdint>
-#include <exception>
-#include <memory>
-#include <optional>
-#include <type_traits>
-#include <utility>
 
 #include "core.hpp"
 
@@ -150,137 +147,11 @@ inline void register_executor_ops_from(ExecT&) noexcept {
     executor_ops.register_timer = &register_timer_thunk<ExecT>;
 }
 
-/**
- * Poll<T> -- the result of polling an Awaitable.
- *
- * Pending: the awaitable has not yet produced a value; the caller
- * should park (the awaitable has saved the Waker and will fire it
- * when ready).
- *
- * Ready(v): the value v has been produced. After consumption with
- * value() &&, the Poll is empty; polling again is the awaitable's
- * job to handle (most awaitables panic on re-poll-after-Ready).
- */
-template <typename T>
-class Poll {
-    static_assert(!std::is_reference_v<T>,
-                  "Poll<T&> uses the reference specialization");
-
-    std::optional<T> value_;
-
-public:
-    Poll() = default;
-
-    static Poll<T> pending() noexcept { return Poll<T>{}; }
-
-    static Poll<T> ready(T value) {
-        Poll<T> p;
-        p.value_.emplace(std::move(value));
-        return p;
-    }
-
-    template <typename... Args>
-    static Poll<T> ready_emplace(Args&&... args) {
-        Poll<T> p;
-        p.value_.emplace(std::forward<Args>(args)...);
-        return p;
-    }
-
-    bool is_pending() const noexcept { return !value_.has_value(); }
-    bool is_ready() const noexcept { return value_.has_value(); }
-
-    // Move out the contained value. Caller must check is_ready() first.
-    T value() && {
-        if (!value_.has_value()) tpy_panic("Poll::value() called on Pending");
-        T v(std::move(*value_));
-        value_.reset();
-        return v;
-    }
-
-    const T& value() const& {
-        if (!value_.has_value()) tpy_panic("Poll::value() called on Pending");
-        return *value_;
-    }
-};
-
-// Void specialization: no payload.
-template <>
-class Poll<void> {
-    bool ready_ = false;
-
-public:
-    Poll() = default;
-
-    static Poll<void> pending() noexcept { return Poll<void>{}; }
-    static Poll<void> ready() noexcept {
-        Poll<void> p;
-        p.ready_ = true;
-        return p;
-    }
-
-    bool is_pending() const noexcept { return !ready_; }
-    bool is_ready() const noexcept { return ready_; }
-    void value() const {
-        if (!ready_) tpy_panic("Poll::value() called on Pending");
-    }
-};
-
-// Reference specialization: payload is a pointer internally.
-template <typename T>
-class Poll<T&> {
-    T* ptr_ = nullptr;
-
-public:
-    Poll() = default;
-
-    static Poll<T&> pending() noexcept { return Poll<T&>{}; }
-    static Poll<T&> ready(T& value) noexcept {
-        Poll<T&> p;
-        p.ptr_ = &value;
-        return p;
-    }
-
-    bool is_pending() const noexcept { return ptr_ == nullptr; }
-    bool is_ready() const noexcept { return ptr_ != nullptr; }
-    T& value() const {
-        if (!ptr_) tpy_panic("Poll::value() called on Pending");
-        return *ptr_;
-    }
-};
-
-// Stream insertion for the user-facing async types -- enables
-// print(x) / REPL auto-echo. Without these, any expression-statement
-// in the REPL whose value is a Poll / Waker / Task fails C++ build at
-// the implicit `std::cout << result` site.
-
-// Poll: render as `Poll.ready(<value>)` / `Poll.pending()` /
-// `Poll.ready()` (void) to match the `poll_ready` / `poll_pending`
-// constructor names users see.
-template <typename T>
-std::ostream& operator<<(std::ostream& os, const Poll<T>& p) {
-    if (p.is_pending()) return os << "Poll.pending()";
-    if constexpr (requires(std::ostream& s, const T& v) { s << v; }) {
-        return os << "Poll.ready(" << p.value() << ")";
-    } else {
-        return os << "Poll.ready(...)";
-    }
-}
-
-inline std::ostream& operator<<(std::ostream& os, const Poll<void>& p) {
-    return os << (p.is_pending() ? "Poll.pending()" : "Poll.ready()");
-}
-
 // Waker: POD with no user-meaningful state; a bare `Waker()` repr is
 // enough for print/REPL.
 inline std::ostream& operator<<(std::ostream& os, const Waker&) {
     return os << "Waker()";
 }
-
-// The type-erasure stack (Task[T], TaskState[T], AnyTask, etc.) lives
-// in `lib/tpy/asyncio/_executor.py` after the v1.2 step 4 cutover; see
-// `docs/ASYNC_PROGRESS.md` for the move history.
-
-
 
 /// Waker::wake dispatches into the running executor via the global
 /// ops table. Three early-out paths:
@@ -386,7 +257,5 @@ inline void executor_register_timer_seconds(double deadline_seconds,
     if (executor_ops.register_timer == nullptr) return;
     executor_ops.register_timer(current_executor, deadline_seconds, waker);
 }
-
-
 
 }  // namespace tpy

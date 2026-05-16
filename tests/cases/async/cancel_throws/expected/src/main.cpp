@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def yield_once() -> Int32:
-::tpy::Poll<int32_t> __coro_yield_once::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_yield_once::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             // await asyncio.sleep(60.0)
@@ -16,12 +16,13 @@ namespace tpyapp::main {
     case S_AFTER_AWAIT_0: {
             if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
             auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpy::Poll<int32_t>::pending();
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
             // return Int32(99)
             __state = S_DONE;
-            return ::tpy::Poll<int32_t>::ready(99);
+            int32_t __tpy_async_ret = 99;
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def background() -> None:
-::tpy::Poll<::std::monostate> __coro_background::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_background::__poll__(::tpy::Waker waker) {
     switch (__state) {
     case S_INITIAL: {
             try {
@@ -23,14 +23,14 @@ namespace tpyapp::main {
             try {
                 if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
                 auto __r0 = __sub_0->__poll__(waker);
-                if (__r0.is_pending()) return ::tpy::Poll<::std::monostate>::pending();
+                if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
                 (void)std::move(__r0).value();
                 __sub_0.reset();
                 // print("not reached")
                 std::cout << "not reached" << "\n";
                 this->__finally_top();
                 __state = S_DONE;
-                return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+                return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
             } catch (...) {
                 __sub_0.reset();
                 this->__finally_top();
@@ -53,7 +53,7 @@ __coro_background background() {
 }
 
 // async def main_coro() -> None:
-::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -64,7 +64,7 @@ __coro_background background() {
             // print("main done")
             std::cout << "main done" << "\n";
             __state = S_DONE;
-            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

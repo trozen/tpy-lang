@@ -5,23 +5,24 @@
 # distinct-name (T/U) shapes -- the fix isn't about TypeParamRef identity,
 # it's about the structural-inference path stripping Ref on the arg side.
 from tpy import Int32
+from tpy import Own
 from tpy.coro import Awaitable, Poll, Waker, poll_once, poll_pending
 
 
 class MyTask[T]:
-    def __poll__(self, w: Waker) -> Poll[T]:
+    def __poll__(self, w: Waker) -> Own[Poll[T]]:
         return poll_pending()
 
 
-def drive_implicit[T](aw: Awaitable[T]) -> Poll[T]:
+def drive_implicit[T](aw: Awaitable[T]) -> Own[Poll[T]]:
     return poll_once(aw)
 
 
-def use_shadowed[T](t: MyTask[T]) -> Poll[T]:
+def use_shadowed[T](t: MyTask[T]) -> Own[Poll[T]]:
     return drive_implicit(t)
 
 
-def use_renamed[U](t: MyTask[U]) -> Poll[U]:
+def use_renamed[U](t: MyTask[U]) -> Own[Poll[U]]:
     return drive_implicit(t)
 
 

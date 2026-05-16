@@ -60,7 +60,7 @@ from tplib.rc import Rc
 # generated coro struct so structural conformance picks it up.
 @dynamic
 class AsyncFrame[T](Protocol):
-    def __poll__(self, waker: Waker) -> Poll[T]: ...
+    def __poll__(self, waker: Waker) -> Own[Poll[T]]: ...
     def cancel(self) -> None: ...
 
 
@@ -114,7 +114,7 @@ class TaskState[T]:
 
     # User-facing poll. Drives the frame for non-executor-owned tasks;
     # for executor-owned tasks, parks (the executor's poll_any drives).
-    def __poll__(self, w: Waker) -> Poll[T]:
+    def __poll__(self, w: Waker) -> Own[Poll[T]]:
         if self.done:
             if self.has_exc:
                 if self.exc_was_cancelled:
@@ -241,7 +241,7 @@ class Task[T]:
         self._state = state
         self._cancelled = False
 
-    def __poll__(self, w: Waker) -> Poll[T]:
+    def __poll__(self, w: Waker) -> Own[Poll[T]]:
         return self._state.get().__poll__(w)
 
     def cancel(self) -> None:

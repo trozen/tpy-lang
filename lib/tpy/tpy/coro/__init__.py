@@ -6,7 +6,6 @@ Module name borrowed from the design-doc's `Coroutine[T]` terminology
 """
 from .._typing import Protocol
 from .._bootstrap._decorators import Own, dynamic
-from .._bootstrap._extern import cpp_template
 from .._builtins._exceptions import CancelledError
 from .._core import Waker, Poll
 
@@ -18,7 +17,7 @@ from .._core import Waker, Poll
 # and signals "runtime protocol method -- prefer `await` / `poll_once`
 # to direct calls".
 class Awaitable[T](Protocol):
-    def __poll__(self, waker: Waker) -> Poll[T]: ...
+    def __poll__(self, waker: Waker) -> Own[Poll[T]]: ...
 
 
 # `AsyncFrame[T]` / `AnyTask` (@dynamic protocols used by the task
@@ -26,26 +25,24 @@ class Awaitable[T](Protocol):
 # isn't reachable from this implicit-stdlib module.
 
 
-@cpp_template("::tpy::Poll<{T}>::ready({0})")
-def poll_ready[T](value: Own[T]) -> Poll[T]: ...
+def poll_ready[T](value: Own[T]) -> Own[Poll[T]]:
+    return Poll[T].ready(value)
 
 
-@cpp_template("::tpy::Poll<{T}>::pending()")
-def poll_pending[T]() -> Poll[T]: ...
+def poll_pending[T]() -> Own[Poll[T]]:
+    return Poll[T].pending()
 
 
-# Separate factory because the generic `poll_ready[T](value)` shape takes
-# an `Own[T]` argument, which `Own[None]` can't satisfy with no payload.
-# `Poll[None]` lowers to `Poll<std::monostate>`; the body produces a unit
-# value so the primary `Poll<T>::ready(T)` template applies uniformly.
-@cpp_template("::tpy::Poll<::std::monostate>::ready(::std::monostate{{}})")
-def poll_ready_none() -> Poll[None]: ...
+# Separate factory because `poll_ready[T](value)` needs an `Own[T]`
+# argument that `Own[None]` can't satisfy with no payload.
+def poll_ready_none() -> Own[Poll[None]]:
+    return Poll[None].ready(None)
 
 
 # Synchronous one-step driver. Calls `__poll__(Waker())` once and
 # returns the Poll[T] for the caller to inspect. Useful for tests and
 # synchronous drivers that don't go through `asyncio.run`.
-def poll_once[T](aw: Awaitable[T]) -> Poll[T]:
+def poll_once[T](aw: Awaitable[T]) -> Own[Poll[T]]:
     return aw.__poll__(Waker())
 
 

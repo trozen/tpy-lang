@@ -8,9 +8,11 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::coro::poll_ready;
+
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpy::Poll<std::monostate> make_ready();
+::tpystd::tpy::Poll<std::monostate> make_ready();
 void main();
 
 void __tpy_init();

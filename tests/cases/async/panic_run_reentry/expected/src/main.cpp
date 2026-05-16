@@ -5,14 +5,14 @@ namespace tpyapp::main {
 
 
 // async def inner() -> None:
-::tpy::Poll<::std::monostate> __coro_inner::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_inner::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
             // print("inner start")
             std::cout << "inner start" << "\n";
             __state = S_DONE;
-            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -26,14 +26,14 @@ __coro_inner inner() {
 }
 
 // async def outer() -> None:
-::tpy::Poll<::std::monostate> __coro_outer::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_outer::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
             // asyncio.run(inner())  # second run while one is already active
             ::tpystd::asyncio::run<std::monostate>(inner());
             __state = S_DONE;
-            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

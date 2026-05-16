@@ -10,7 +10,7 @@ from asyncio._executor import (
     _self_handle,
 )
 from time import monotonic
-from tpy import UInt32
+from tpy import UInt32, Own
 from tpy.coro import Poll, Waker, poll_pending, poll_ready_none
 
 
@@ -22,7 +22,7 @@ class NeverComplete:
     def __init__(self) -> None:
         self.__cancel_pending = False
 
-    def __poll__(self, waker: Waker) -> Poll[None]:
+    def __poll__(self, waker: Waker) -> Own[Poll[None]]:
         return poll_pending()
 
     def cancel(self) -> None:
@@ -40,7 +40,7 @@ class CountdownThenReady:
         self.remaining = n
         self.__cancel_pending = False
 
-    def __poll__(self, waker: Waker) -> Poll[None]:
+    def __poll__(self, waker: Waker) -> Own[Poll[None]]:
         if self.remaining == UInt32(0):
             return poll_ready_none()
         self.remaining -= UInt32(1)

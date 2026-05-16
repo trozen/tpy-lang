@@ -11,7 +11,7 @@ void check_outside() {
 }
 
 // async def check_inside() -> None:
-::tpy::Poll<::std::monostate> __coro_check_inside::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_check_inside::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -31,7 +31,7 @@ void check_outside() {
             // print("after restore:", _get_current_executor().is_null())
             std::cout << "after restore:" << " " << ::tpy::print_bool(::tpy::current_executor_get().is_null()) << "\n";
             __state = S_DONE;
-            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -53,13 +53,13 @@ void check_sleep() {
 }
 
 // async def trivial() -> None:
-::tpy::Poll<::std::monostate> __coro_trivial::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_trivial::__poll__(::tpy::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
             // return None
             __state = S_DONE;
-            return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

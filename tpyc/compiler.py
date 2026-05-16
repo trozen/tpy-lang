@@ -2457,8 +2457,13 @@ class Compiler:
             parser_registry.modules[mod_name] = module_info
             # Hoist visible records under their short name so the type
             # resolver finds `submod.X` without needing a side-effecting
-            # registration during type resolution.
+            # registration during type resolution. Skip entries the source
+            # module re-exported under a private alias (`from ..X import Y
+            # as _Y`) -- the source's underscore prefix is its privacy
+            # signal; hoisting would re-expose the canonical name `Y`.
             for short, rinfo in module_info.records.items():
+                if short.startswith("_") and short != rinfo.name:
+                    continue
                 if parser_registry.get_record(short) is None:
                     parser_registry.register_record(rinfo, short)
 
@@ -2706,9 +2711,19 @@ class Compiler:
                 for proto in module_info.protocols.values():
                     analyzer.registry.register_protocol(proto)
                 self._index_builtin_type_records(module_info, analyzer)
-                for record in module_info.records.values():
-                    if not record.builtin_type_key:
-                        analyzer.registry.register_record(record)
+                # Only auto-inject records whose public module is a
+                # top-level implicit-stdlib root (`tpy` / `builtins` /
+                # `typing`); records nested under explicit submodules
+                # like `tpy.mem.UninitArrayStorage` require an explicit
+                # `from tpy.mem import ...` to become visible. Pass the
+                # source's short name so a private re-export (`from ..X
+                # import Y as _Y`) doesn't re-expose the canonical name.
+                for short, record in module_info.records.items():
+                    if record.builtin_type_key:
+                        continue
+                    if record.module not in self._IMPLICIT_STDLIB:
+                        continue
+                    analyzer.registry.register_record(record, short)
 
         # Set module name for __name__
         module_name = "__main__" if compiled.is_entry_point else compiled.name

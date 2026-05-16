@@ -9,17 +9,18 @@
 namespace tpyapp::main {
 
 using ::tpystd::coro::poll_once;
+using ::tpystd::coro::poll_pending;
 
 template<typename T> struct MyTask;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
-::tpy::Poll<T> drive_implicit(T_aw& aw);
+::tpystd::tpy::Poll<T> drive_implicit(T_aw& aw);
 template<typename T>
-::tpy::Poll<T> use_shadowed(MyTask<T>& t);
+::tpystd::tpy::Poll<T> use_shadowed(MyTask<T>& t);
 template<typename U>
-::tpy::Poll<U> use_renamed(MyTask<U>& t);
+::tpystd::tpy::Poll<U> use_renamed(MyTask<U>& t);
 void main();
 
 // class MyTask[T]:
@@ -27,10 +28,10 @@ template<typename T>
 struct MyTask {
 
 
-    // def __poll__(self, w: Waker) -> Poll[T]:
-    ::tpy::Poll<T> __poll__(::tpy::Waker w) const {
+    // def __poll__(self, w: Waker) -> Own[Poll[T]]:
+    ::tpystd::tpy::Poll<T> __poll__(::tpy::Waker w) const {
         // return poll_pending()
-        return ::tpy::Poll<T>::pending();
+        return ::tpystd::coro::poll_pending<T>();
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyTask";
 };
@@ -41,21 +42,21 @@ inline std::ostream& operator<<(std::ostream& os, const MyTask<T>& obj) {
     return os;
 }
 
-// def drive_implicit[T](aw: Awaitable[T]) -> Poll[T]:
+// def drive_implicit[T](aw: Awaitable[T]) -> Own[Poll[T]]:
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
-::tpy::Poll<T> drive_implicit(T_aw& aw) {
+::tpystd::tpy::Poll<T> drive_implicit(T_aw& aw) {
     // return poll_once(aw)
     return ::tpystd::coro::poll_once<T>(aw);
 }
-// def use_shadowed[T](t: MyTask[T]) -> Poll[T]:
+// def use_shadowed[T](t: MyTask[T]) -> Own[Poll[T]]:
 template<typename T>
-::tpy::Poll<T> use_shadowed(MyTask<T>& t) {
+::tpystd::tpy::Poll<T> use_shadowed(MyTask<T>& t) {
     // return drive_implicit(t)
     return drive_implicit<T>(t);
 }
-// def use_renamed[U](t: MyTask[U]) -> Poll[U]:
+// def use_renamed[U](t: MyTask[U]) -> Own[Poll[U]]:
 template<typename U>
-::tpy::Poll<U> use_renamed(MyTask<U>& t) {
+::tpystd::tpy::Poll<U> use_renamed(MyTask<U>& t) {
     // return drive_implicit(t)
     return drive_implicit<U>(t);
 }

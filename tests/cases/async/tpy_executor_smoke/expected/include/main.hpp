@@ -15,6 +15,7 @@
 namespace tpyapp::main {
 
 using ::tpystd::asyncio::_executor::_make_any_task_for_test;
+using ::tpystd::coro::poll_pending;
 
 using ::tpystd::asyncio::_executor::Executor;
 
@@ -44,8 +45,8 @@ struct CancellableForever {
     // def __init__(self) -> None:
     CancellableForever() : __cancel_pending(false) {}
 
-    // def __poll__(self, waker: Waker) -> Poll[None]:
-    ::tpy::Poll<std::monostate> __poll__(::tpy::Waker waker) const;
+    // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpy::Waker waker) const;
 
     // def cancel(self) -> None:
     void cancel();
@@ -71,7 +72,7 @@ struct __coro_returns_value {
     __coro_returns_value(::tpy::BigInt x_)
         : __state(S_INITIAL), __cancel_pending(false), x(std::move(x_)) {}
 
-    ::tpy::Poll<::tpy::BigInt> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_returns_value&) {
@@ -92,7 +93,7 @@ struct __coro_void_coro {
     __coro_void_coro()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_void_coro&) {
@@ -101,15 +102,15 @@ struct __coro_void_coro {
 };
 
 
-// def __poll__(self, waker: Waker) -> Poll[None]:
-inline ::tpy::Poll<std::monostate> CancellableForever::__poll__(::tpy::Waker waker) const {
+// def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+inline ::tpystd::tpy::Poll<std::monostate> CancellableForever::__poll__(::tpy::Waker waker) const {
     // if self.__cancel_pending:
     if (this->__cancel_pending) {
         // raise CancelledError()
         throw ::tpy::CancelledError{};
     }
     // return poll_pending[None]()
-    return ::tpy::Poll<std::monostate>::pending();
+    return ::tpystd::coro::poll_pending<std::monostate>();
 }
 
 // def cancel(self) -> None:

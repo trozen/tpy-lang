@@ -121,7 +121,7 @@ class Region:
 # Centralised here so the 3 emit sites in this module + 1 in statements.py
 # can't drift apart.
 POLL_VOID_READY_RETURN = (
-    "return ::tpy::Poll<::std::monostate>::ready(::std::monostate{});"
+    "return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});"
 )
 
 
@@ -330,8 +330,8 @@ class AsyncCoroCodegen:
         # would call a `Poll<void> __poll__()` and the C++ compiler would
         # reject the return-type mismatch.
         if self._is_void_return(func):
-            return "::tpy::Poll<::std::monostate>"
-        return f"::tpy::Poll<{self._ret_cpp(func)}>"
+            return "::tpystd::tpy::Poll<::std::monostate>"
+        return f"::tpystd::tpy::Poll<{self._ret_cpp(func)}>"
 
     # -- Forward declarations -------------------------------------------------
 
@@ -1094,7 +1094,7 @@ class AsyncCoroCodegen:
                 out.write(f"{indent}{POLL_VOID_READY_RETURN}\n")
             else:
                 out.write(f"{indent}__state = S_DONE;\n")
-                out.write(f"{indent}return ::tpy::Poll<{self._ret_cpp(func)}>::ready("
+                out.write(f"{indent}return ::tpystd::tpy::Poll<{self._ret_cpp(func)}>::ready("
                           f"std::move(__ret{t.suspension_index}));\n")
             return  # No further reset -- we already reset above.
         elif t.kind is AwaitKind.DISCARD:

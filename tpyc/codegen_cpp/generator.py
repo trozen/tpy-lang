@@ -1160,7 +1160,15 @@ class CodeGenerator:
             einfo = enum_info_of(et) if et is not None else None
             return einfo is not None and einfo.is_native
 
-        self._emit_alias_using_block(hpp, record_reexports, _record_skip)
+        # Mirrors `protocol_reexports_external` below; downstream record
+        # references already use the fully-qualified `::tpystd::X::Foo`
+        # form, so the unqualified alias would only matter inside this
+        # header and fails the cyclic-include ordering check.
+        record_reexports_external = [
+            e for e in record_reexports
+            if e[1] not in self.ctx.implicit_stdlib_modules
+        ]
+        self._emit_alias_using_block(hpp, record_reexports_external, _record_skip)
 
         # Re-exported protocols (@dynamic generates an abstract base
         # class with the protocol's clean name; @static protocols
@@ -1520,13 +1528,46 @@ class CodeGenerator:
                     out.write(f'#include "{include_path}"\n')
                 included.add(include_path)
             out.write('\n')
-        # Include implicit stdlib module headers (protocols, type declarations).
-        # Skip modules that generate no header (native_module).
+        # Skip implicit stdlib peers we don't actually depend on -- auto-
+        # including unrelated peers creates cycles when two stdlib modules
+        # cross-reference each other. Strip self-parent prefixes because
+        # qname-derived reach collapses `tpy.Foo` to "tpy" even for types
+        # defined in this module.
+        own_deps = set(self.ctx.user_module_imports) | set(self.analyzer.ctx.reached)
+        own_parents = {
+            ".".join(self.ctx.module_name.split(".")[:i + 1])
+            for i in range(self.ctx.module_name.count("."))
+        }
+        own_parents.add(self.ctx.module_name)
+        own_deps -= own_parents
+        # Closed-under-prefixes set of deps: dep `tpy._core._types` makes
+        # peer `tpy._core` match (peer is an ancestor of a dep). Direction
+        # 1 (peer descends from a dep) still keys on `own_deps` itself --
+        # NOT this closure -- because parent-stripping above removed
+        # `own_parents` from `own_deps` to suppress self-refs, and a
+        # full prefix-closure would re-add them.
+        dep_prefix_closure = set(own_deps)
+        for dep in own_deps:
+            dep_parts = dep.split(".")
+            for i in range(1, len(dep_parts)):
+                dep_prefix_closure.add(".".join(dep_parts[:i]))
+
+        def _dep_match(peer: str) -> bool:
+            if peer in dep_prefix_closure:
+                return True
+            peer_parts = peer.split(".")
+            for i in range(1, len(peer_parts)):
+                if ".".join(peer_parts[:i]) in own_deps:
+                    return True
+            return False
+
         for implicit_mod in sorted(self.ctx.implicit_stdlib_modules):
             if implicit_mod == self.ctx.module_name:
                 continue
             mod_info = self.analyzer.registry.get_module(implicit_mod)
             if mod_info and not mod_info.generates_header:
+                continue
+            if not _dep_match(implicit_mod):
                 continue
             if implicit_mod in self.ctx.all_user_modules:
                 include_path = self._module_to_include_path(implicit_mod)

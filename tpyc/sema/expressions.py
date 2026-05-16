@@ -2120,17 +2120,18 @@ class ExpressionAnalyzer:
         raise self.ctx.error(
             "await operand must be a direct call to an async def, a "
             "Task[T] / Future[T], or a value of a type with a "
-            "`__poll__(self, waker: Waker) -> Poll[T]` method",
+            "`__poll__(self, waker: Waker) -> Own[Poll[T]]` method",
             expr)
 
     def _extract_awaitable_inner(self, typ) -> 'TpyType | None':
         """Return the awaited type T if `typ` conforms to Awaitable[T],
         else None.
 
-        Structural: any record with `__poll__(self, waker: Waker) -> Poll[T]`.
+        Structural: any record with `__poll__(self, waker: Waker) -> Own[Poll[T]]`.
         Covers tpy.Task[T] (qname `tpy.Task` -> the @builtin_type stub in
         asyncio._executor), user-defined Future[T] / Event-like types, and
-        any other record that satisfies the Awaitable protocol.
+        any other record that satisfies the Awaitable protocol. The Own
+        wrapper is required because Poll[T] is @nocopy (v1.2 step 5).
         """
         from ..typesys import NominalType, TpyType as _TpyType
         # Structural: look up the record and check for a __poll__ method
@@ -2154,7 +2155,14 @@ class ExpressionAnalyzer:
             ret = fi.return_type
             if ret is None:
                 continue
-            ret = unwrap_ref_type(ret)
+            # Poll[T] is @nocopy, so a bare `-> Poll[T]` is a reference
+            # return -- skip non-Own returns so the user gets the "no
+            # __poll__ method" diagnostic (which prints the correct
+            # `Own[Poll[T]]` signature) instead of a C++ build failure.
+            ret_outer = unwrap_ref_type(ret)
+            if not isinstance(ret_outer, OwnType):
+                continue
+            ret = unwrap_own(ret_outer)
             if (isinstance(ret, NominalType)
                     and ret._module_qname == "tpy.Poll"
                     and len(ret.type_args) == 1):

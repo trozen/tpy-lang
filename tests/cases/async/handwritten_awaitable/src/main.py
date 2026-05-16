@@ -4,6 +4,7 @@
 # is documentation; the compiler validates the `poll` method signature
 # against the protocol).
 from tpy import Int32
+from tpy import Own
 from tpy.coro import Poll, Waker, Awaitable, poll_ready, poll_once
 
 class ReadyAwaitable(Awaitable[Int32]):
@@ -12,7 +13,7 @@ class ReadyAwaitable(Awaitable[Int32]):
     def __init__(self, value: Int32) -> None:
         self.value = value
 
-    def __poll__(self, waker: Waker) -> Poll[Int32]:
+    def __poll__(self, waker: Waker) -> Own[Poll[Int32]]:
         return poll_ready(self.value)
 
 def main() -> None:

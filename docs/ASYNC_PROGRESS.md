@@ -1049,14 +1049,81 @@ asyncio's `__init__.py` has only one sibling import path
   through @dynamic-protocol-typed fields for const inference.
 
 What's left in `runtime/cpp/include/tpy/async.hpp`: `Waker`,
-`Poll<T>` (still C++ -- the four specializations need a generic-class
-spec compiler feature to port), `CancelledError`, `ExecutorOps` (now
-just `mark_runnable` + `register_timer`), `ExecutorHandle` +
-`current_executor` thread-local, plus the small bridge helpers
-(`make_executor_handle`, `make_waker`,
+`CancelledError`, `ExecutorOps` (now just `mark_runnable` +
+`register_timer`), `ExecutorHandle` + `current_executor` thread-local,
+plus the small bridge helpers (`make_executor_handle`, `make_waker`,
 `executor_register_timer_seconds`).
 
 3901 tests pass.
+
+### v1.2 step 5 -- Poll[T] to TPy -- DONE
+
+`tpy::Poll<T>` and its `Poll<void>` / `Poll<T&>` specializations are
+deleted from `runtime/cpp/include/tpy/async.hpp`. Replaced by a single
+`@nocopy class Poll[T]` body in `lib/tpy/tpy/_core/_types.py` whose
+storage is `UninitArrayStorage[T, 1]` + a `_has` bool -- byte-for-byte
+equivalent to the previous `std::optional<T>` layout, with no need for
+the three C++ specializations because:
+
+- The void analog is `Poll[None]`, which lowers to
+  `Poll<std::monostate>` (TPy's existing `None`-at-type-arg-position
+  rule). Same primary body covers it.
+- The reference-T specialization (`Poll<T&>`) was never actually
+  instantiated by any TPy-generated code -- confirmed via grep before
+  removal. Reference-T positions go through the caller's storage form
+  (e.g. `Optional[T*]` collapses to a nullable pointer; no Poll-level
+  specialization needed).
+- Move-only / non-default-constructible T are handled by
+  `UninitArrayStorage`'s placement-new contract, same as
+  `std::optional<T>` did before.
+
+What landed:
+
+- **TPy class**: `@builtin_type("tpy.Poll") @nocopy class Poll[T]` in
+  `_types.py` with `pending()` / `ready(value)` static factories and
+  `is_ready()` / `is_pending()` / `value()` instance methods. Storage
+  uses an aliased `from ..mem import UninitArrayStorage as
+  _UninitArrayStorage` to keep the name out of `_types.py`'s public
+  surface (it still leaks into the implicit-stdlib qname scope -- see
+  BUGS.md entry).
+- **`tpy.coro` factories** (`poll_ready` / `poll_pending` /
+  `poll_ready_none`) lost their `@cpp_template` shells and became
+  pure-TPy functions that delegate to `Poll[T].ready` / `Poll[T].pending`.
+- **Codegen**: `gen_async.py` and `statements.py` swap the
+  hardcoded `::tpy::Poll<T>::ready(...)` strings for
+  `::tpystd::tpy::Poll<T>::ready(...)`. `_make_async_return` binds the
+  return value to a typed local before wrapping with `std::move` so
+  braced initializers (`return [1, 2, 3]` inside async) survive the
+  `Own[T]` -> `T&&` shape of `Poll[T].ready`'s param.
+  `expressions.gen_call`'s static-method dispatch now qualifies the
+  class name with its defining module's C++ namespace when the source
+  is an implicit-stdlib peer, since the using-decl-suppression below
+  removes the unqualified-`Poll` shorthand.
+- **Generator include filter**: `_emit_alias_using_block` skips
+  `using ::ns::Foo;` for record re-exports sourced from an implicit-
+  stdlib peer (same rule already applied to protocol/enum re-exports).
+  Without this, the generated `coro.hpp`'s `using ::tpystd::tpy::Poll;`
+  would resolve to a not-yet-defined name when `coro.hpp` is included
+  mid-chain from `_executor.hpp`. The auto-include of every implicit-
+  stdlib peer also now skips peers we don't transitively reach
+  (`generator.py`'s `own_deps` check), filtering out spurious
+  `_types.hpp` <-> `coro.hpp` cycle pulls.
+- **Sema**: `Awaitable[T]` conformance check now unwraps `Own[...]`
+  before checking the `Poll[T]` qname, since user `__poll__` methods
+  now declare `-> Own[Poll[T]]` (Poll is no longer value-typed, so
+  by-value returns spell as `Own[...]`).
+- **TypeDef registry**: `tpy.Poll`'s `cpp_formatter` updated to
+  `::tpystd::tpy::Poll<T>`, `is_value_type` flipped to `False`. The
+  `make_poll` factory and registry entry remain as leftover scaffolding
+  -- same shape as `tpy.Task` (per the comment above its registry
+  entry); a follow-up could collapse both via the regular
+  user-record path.
+- **Snapshot churn**: every async test's `coro.hpp` regenerated; user
+  code declaring `def __poll__(...) -> Poll[T]` had to update to
+  `-> Own[Poll[T]]` (7 test sources touched in
+  `tests/cases/{async,generics}/`).
+
+3928 tests pass.
 
 ### Blocked -- stays C++ until compiler features land
 

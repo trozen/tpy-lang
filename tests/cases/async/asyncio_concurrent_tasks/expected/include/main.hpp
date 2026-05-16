@@ -37,7 +37,7 @@ struct __coro_doubler {
     __coro_doubler(int32_t n_, std::string_view label_)
         : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)), label(std::move(label_)) {}
 
-    ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_doubler&) {
@@ -66,7 +66,7 @@ struct __coro_main_coro {
     __coro_main_coro()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
