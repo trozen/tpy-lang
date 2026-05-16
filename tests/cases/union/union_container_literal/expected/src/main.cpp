@@ -129,7 +129,8 @@ void main() {
     process_dict(d3);
     // # Pass union dict literal as argument
     // process_dict({"a": "direct"})
-    process_dict(::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>({{"a", "direct"}}));
+    ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>> __tmp_1 = ::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>({{"a", "direct"}});
+    process_dict(__tmp_1);
     // # Pass union list as argument (variable)
     // items: list[Int32 | str] = ["hello", 1, "world"]
     std::vector<std::variant<int32_t, std::string>> items = {"hello", 1, "world"};
@@ -137,8 +138,8 @@ void main() {
     process_list(items);
     // # Pass union list literal as argument
     // process_list(["direct", 99])
-    std::vector<std::variant<int32_t, std::string>> __tmp_1 = {"direct", 99};
-    process_list(__tmp_1);
+    std::vector<std::variant<int32_t, std::string>> __tmp_2 = {"direct", 99};
+    process_list(__tmp_2);
     // # Pass union dict as Own argument
     // consume_dict({"a": "owned", "b": 1})
     consume_dict(::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>({{"a", "owned"}, {"b", 1}}));

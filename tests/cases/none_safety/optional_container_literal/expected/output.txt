@@ -1,0 +1,8 @@
+1
+1
+1
+None list
+None dict
+None set
+1 1 1
+10 99

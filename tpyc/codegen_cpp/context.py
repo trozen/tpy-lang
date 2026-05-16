@@ -20,6 +20,7 @@ from ..typesys import (
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
+    TpyDictLiteral, TpySetLiteral, TpyDictComprehension, TpySetComprehension,
     TpyGeneratorExpression,
     TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpySlice, TpyCall, TpyName, TpyFieldAccess,
     TpyIfExpr,
@@ -368,6 +369,20 @@ DUNDER_TO_BINARY_OP: dict[str, str] = {
     "__and__": "&", "__or__": "|", "__xor__": "^",
     "__lshift__": "<<", "__rshift__": ">>",
 }
+
+# Container/generator-shaped expressions whose gen_expr emits a value
+# (`vector<T>{...}`, `ordered_map<K, V>{...}`, generator state struct, ...)
+# regardless of the target type. Distinct from pointer-emit rvalues
+# (function calls returning T*, pointer-local names) which already yield
+# stable pointer storage. Codegen sites initializing a pointer-form slot
+# from an Optional source use this to decide whether to materialize a
+# named slot before taking address.
+_CONTAINER_LITERAL_NODES: tuple = (
+    TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
+    TpyDictLiteral, TpySetLiteral,
+    TpyDictComprehension, TpySetComprehension,
+    TpyGeneratorExpression,
+)
 
 
 class SlotState:
@@ -1776,10 +1791,15 @@ class CodeGenContext:
             result_type = self.analyzer.get_expr_type(expr)
             if not is_bool_type(result_type):
                 return self.is_rvalue_source(expr.left) and self.is_rvalue_source(expr.right)
-        # Constructor calls, literals, ops are rvalues
+        # Constructor calls, literals, ops are rvalues. Listed explicitly to
+        # avoid relying on the `return True` fallthrough below for the
+        # container-literal family -- preserves the listing as the canonical
+        # set of rvalue-yielding expression shapes.
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-                             TpyBoolLiteral, TpyNoneLiteral, TpyArrayLiteral, TpyListRepeat,
-                             TpyListComprehension, TpyBinOp, TpyUnaryOp)):
+                             TpyBoolLiteral, TpyNoneLiteral,
+                             TpyBinOp, TpyUnaryOp)):
+            return True
+        if isinstance(expr, _CONTAINER_LITERAL_NODES):
             return True
         if isinstance(expr, TpyMethodCall):
             return not self._call_returns_cpp_ref(expr.resolved_function_info, expr.obj)
@@ -1802,6 +1822,22 @@ class CodeGenContext:
             return True  # Default: treat unknown calls as rvalue
         return True  # Default: rvalue
 
+    def is_container_literal_expr(self, expr: TpyExpr) -> bool:
+        """Predicate form of `_CONTAINER_LITERAL_NODES`; see the constant
+        comment for the value-emit-rvalue rationale."""
+        return isinstance(expr, _CONTAINER_LITERAL_NODES)
+
+    def is_value_emit_rvalue(self, expr: TpyExpr) -> bool:
+        """Rvalue source whose `gen_expr` yields a value (not a `T*`), so a
+        pointer-form Optional sink needs to materialize a named slot before
+        taking address. Container/comprehension/generator literals plus
+        rvalue field accesses (`temp.field` on a moved-from object) are the
+        exhaustive set under the pointer-repr-Optional outer guard at the
+        two `_gen_pointer_local_init`/`_rebind` call sites.
+        """
+        return self.is_container_literal_expr(expr) or (
+            isinstance(expr, TpyFieldAccess) and self.is_rvalue_source(expr))
+
     def is_temporary_expr(self, expr: TpyExpr) -> bool:
         """Check if an expression produces a temporary (rvalue).
 
@@ -1814,11 +1850,8 @@ class CodeGenContext:
         # Scalar literals: 1, 3.14, "x", True, None
         if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral, TpyNoneLiteral)):
             return True
-        # Container literals: [], [1,2,3], [0]*10, [x for x in items]
-        if isinstance(expr, (TpyArrayLiteral, TpyListRepeat, TpyListComprehension)):
-            return True
-        # Generator expressions produce rvalue temporaries
-        if isinstance(expr, TpyGeneratorExpression):
+        # Container literals, comprehensions, generator expressions.
+        if self.is_container_literal_expr(expr):
             return True
         # Explicit coercions: Ptr[T]->T is dereference (lvalue), others produce temporaries
         if isinstance(expr, TpyCoerce):

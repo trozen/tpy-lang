@@ -25,7 +25,8 @@ void main() {
     // print(b.by_name["x"], len(b.by_pair), len(b.by_pair["first"]))
     std::cout << ::tpy::__getitem__(b.by_name, "x") << " " << ::tpy::__len__(b.by_pair) << " " << ::tpy::__len__(::tpy::__getitem__(b.by_pair, "first")) << "\n";
     // print(take({}))
-    std::cout << take(::tpy::ordered_map<std::string, ::tpy::BigInt>()) << "\n";
+    ::tpy::ordered_map<std::string, ::tpy::BigInt> __tmp_1 = ::tpy::ordered_map<std::string, ::tpy::BigInt>();
+    std::cout << take(__tmp_1) << "\n";
     // fresh = make()
     ::tpy::ordered_map<std::string, ::tpy::BigInt> fresh = make();
     // fresh["y"] = 2

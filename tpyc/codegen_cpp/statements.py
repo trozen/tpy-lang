@@ -1039,10 +1039,13 @@ class StatementGenerator:
                     self.ctx.const_indirect_locals.add(name)
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return f"{indent}{const_pfx}{cpp_type}* {name} = ::tpy::optional_to_ptr({init_expr});\n"
-            if not (isinstance(init, TpyFieldAccess) and self.ctx.is_rvalue_source(init)):
+            # Value-emit rvalues reach this branch because sema annotates
+            # them with the Optional target type, but their gen_expr emits
+            # a value -- the direct-pointer assignment below would produce
+            # `T* x = T-val`. Fall through to the rvalue-slot path.
+            if not self.ctx.is_value_emit_rvalue(init):
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return f"{indent}{const_pfx}{cpp_type}* {name} = {init_expr};\n"
-            # rvalue field: fall through to rvalue path
 
         init_expr = self.expressions.gen_expr(init, target_type)
 
@@ -1180,10 +1183,11 @@ class StatementGenerator:
             if is_storage_opt_lvalue:
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return f"{indent}{cpp_name} = ::tpy::optional_to_ptr({init_expr});\n"
-            if isinstance(init, TpyFieldAccess):
-                # rvalue field: fall through to rvalue path
-                pass
-            else:
+            # Mirror of the init-site value-emit-rvalue check. Currently
+            # unreachable for container literals because sema infers their
+            # intrinsic type during rebind (not the target Optional), but
+            # kept symmetric in case sema's type propagation changes.
+            if not self.ctx.is_value_emit_rvalue(init):
                 init_expr = self.expressions.gen_expr(init, target_type)
                 return f"{indent}{cpp_name} = {init_expr};\n"
 
