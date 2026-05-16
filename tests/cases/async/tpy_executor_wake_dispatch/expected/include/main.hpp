@@ -9,8 +9,12 @@
 #include "tpystd/asyncio/_executor/_executor.hpp"
 #include <tpy/system.hpp>
 #include <tpy/stdlib/time.hpp>
+#include "tpystd/tplib.hpp"
+#include "tpystd/tplib/box.hpp"
 
 namespace tpyapp::main {
+
+using ::tpystd::asyncio::_executor::_make_any_task_for_test;
 
 using ::tpystd::asyncio::_executor::Executor;
 
@@ -34,6 +38,9 @@ struct NeverComplete {
 
     // def __poll__(self, waker: Waker) -> Poll[None]:
     ::tpy::Poll<std::monostate> __poll__(::tpy::Waker waker) const;
+
+    // def cancel(self) -> None:
+    void cancel();
     static constexpr std::string_view __tpy_class_name__ = "__main__.NeverComplete";
 };
 
@@ -55,6 +62,9 @@ struct CountdownThenReady {
 
     // def __poll__(self, waker: Waker) -> Poll[None]:
     ::tpy::Poll<std::monostate> __poll__(::tpy::Waker waker);
+
+    // def cancel(self) -> None:
+    void cancel();
     static constexpr std::string_view __tpy_class_name__ = "__main__.CountdownThenReady";
 };
 
@@ -70,6 +80,12 @@ inline ::tpy::Poll<std::monostate> NeverComplete::__poll__(::tpy::Waker waker) c
     return ::tpy::Poll<std::monostate>::pending();
 }
 
+// def cancel(self) -> None:
+inline void NeverComplete::cancel() {
+    // self.__cancel_pending = True
+    this->__cancel_pending = true;
+}
+
 // def __poll__(self, waker: Waker) -> Poll[None]:
 inline ::tpy::Poll<std::monostate> CountdownThenReady::__poll__(::tpy::Waker waker) {
     // if self.remaining == UInt32(0):
@@ -81,6 +97,12 @@ inline ::tpy::Poll<std::monostate> CountdownThenReady::__poll__(::tpy::Waker wak
     this->remaining = ::tpy::sub_check<uint32_t>(this->remaining, 1);
     // return poll_pending[None]()
     return ::tpy::Poll<std::monostate>::pending();
+}
+
+// def cancel(self) -> None:
+inline void CountdownThenReady::cancel() {
+    // self.__cancel_pending = True
+    this->__cancel_pending = true;
 }
 void __tpy_init();
 } // namespace tpyapp::main

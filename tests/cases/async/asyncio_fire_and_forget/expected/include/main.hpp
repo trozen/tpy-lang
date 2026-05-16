@@ -10,6 +10,7 @@
 namespace tpyapp::main {
 
 using ::tpystd::asyncio::Future;
+using ::tpystd::asyncio::_executor::Task;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -35,6 +36,7 @@ struct __coro_background {
         : __state(S_INITIAL), __cancel_pending(false), done(done) {}
 
     ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_background&) {
         return os << "<coroutine background>";
@@ -46,7 +48,7 @@ struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::Future<int32_t>> done;
-    std::optional<::tpy::Task<std::monostate>> t;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> t;
     int32_t _;
     ::tpystd::asyncio::Future<int32_t>* __sub_0 = nullptr;
 
@@ -60,6 +62,7 @@ struct __coro_main_coro {
         : __state(S_INITIAL), __cancel_pending(false) {}
 
     ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";

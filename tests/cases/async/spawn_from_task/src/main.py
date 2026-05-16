@@ -5,7 +5,7 @@
 # call -- the reference would dangle after slots reallocated.
 import asyncio
 from tpy import Int32
-from tpy.coro import Task
+from asyncio import Task
 
 
 async def grandchild() -> Int32:

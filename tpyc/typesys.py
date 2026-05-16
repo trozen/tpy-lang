@@ -2635,8 +2635,9 @@ def make_own_iter(element_type: 'TpyType') -> 'NominalType':
 
 def make_task(awaited_type: 'TpyType') -> 'NominalType':
     """Factory for Task[T]. Plain NominalType with qname tpy.Task;
-    behavior (is_value_type=False since it owns a heap allocation,
-    cpp_formatter -> ::tpy::Task<T>) comes from the TypeDef registry."""
+    behavior (is_value_type=False since it owns an Rc-shared heap
+    allocation, cpp_formatter -> ::tpystd::asyncio::_executor::Task<T>)
+    comes from the TypeDef registry."""
     return NominalType(name="Task", type_args=(awaited_type,),
                        _module_qname="tpy.Task")
 

@@ -32,7 +32,7 @@ __coro_producer producer(::tpystd::asyncio::Future<std::monostate>& fut) {
             // fut: Future[None] = Future[None]()
             fut = ::tpystd::asyncio::Future<std::monostate>();
             // asyncio.create_task(producer(fut))
-            ::tpy::make_user_task<std::monostate>(producer((*fut)));
+            ::tpystd::asyncio::create_task<std::monostate>(producer((*fut)));
             // await fut
             __sub_0 = &((*fut));
             __state = S_AFTER_AWAIT_0;

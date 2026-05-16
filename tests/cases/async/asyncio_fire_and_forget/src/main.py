@@ -11,7 +11,7 @@
 import asyncio
 from asyncio import Future
 from tpy import Int32
-from tpy.coro import Task
+from asyncio import Task
 
 
 async def background(done: Future[Int32]) -> None:

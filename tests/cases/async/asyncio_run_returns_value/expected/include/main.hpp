@@ -20,7 +20,7 @@ void main();
 struct __coro_compute {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpy::Task<std::monostate>> __sub_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -32,6 +32,7 @@ struct __coro_compute {
         : __state(S_INITIAL), __cancel_pending(false) {}
 
     ::tpy::Poll<::tpy::BigInt> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_compute&) {
         return os << "<coroutine compute>";

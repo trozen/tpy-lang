@@ -1,6 +1,6 @@
 import asyncio
 from tpy import Int32
-from tpy.coro import Task
+from asyncio import Task
 
 async def sub() -> Int32:
     return Int32(42)

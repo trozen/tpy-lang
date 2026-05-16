@@ -1,7 +1,7 @@
 # `await task` -- type-erased await via Task[T]. The Task is constructed
 # manually (no executor) via `tpy.coro.task_from_coro`.
 from tpy import Int32
-from tpy.coro import Task, task_from_coro
+from asyncio import Task, task_from_coro
 import asyncio
 
 async def sub() -> Int32:

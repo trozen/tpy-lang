@@ -35,6 +35,7 @@ struct __coro_producer {
         : __state(S_INITIAL), __cancel_pending(false), fut(fut) {}
 
     ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_producer&) {
         return os << "<coroutine producer>";
@@ -58,6 +59,7 @@ struct __coro_main_coro {
         : __state(S_INITIAL), __cancel_pending(false) {}
 
     ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";

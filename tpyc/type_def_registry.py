@@ -790,16 +790,25 @@ def _populate() -> None:
                      cpp_formatter=lambda args: "auto"))
 
     # Async Task[T]: type-erased poll-box (heap-owned coroutine frame).
-    # Move-only (@nocopy in tpy/_core/_types.py), so is_value_type=False:
-    # the C++ runtime enforces this via deleted copy ctor / unique_ptr,
-    # and owning returns must spell `Own[Task[T]]` like every other
-    # resource-owning record. Used by asyncio.create_task and as a
-    # heap-allocation point for type-erased awaits (Awaitable[T] params,
-    # unions of coros).
+    # Move-only via @nocopy in `lib/tpy/asyncio/_executor.py`; the C++
+    # side enforces this through the Rc[TaskState[T]] field, so owning
+    # returns spell `Own[Task[T]]` like every other resource-owning
+    # record. Used by asyncio.create_task and as the storage type for
+    # awaited tasks.
+    #
+    # FRAGILE: the cpp_formatter hardcodes the class's current location
+    # (`asyncio._executor.Task`). Task is a regular TPy class today, so
+    # in principle codegen could derive the C++ name from its RecordInfo
+    # instead of having a special formatter -- the entire `tpy.Task`
+    # registry entry + `make_task` factory + sema fast-paths are leftover
+    # special-casing from when Task was `@native("tpy::Task")`. Tracked
+    # as a cleanup item in TODO.md; if asyncio's module layout ever
+    # reorganizes, this string + the sema qname checks in
+    # `tpyc/sema/expressions.py` need to move in lockstep.
     register(TypeDef(
         "tpy.Task", TC.RECORD, is_value_type=False,
         is_send=False, is_sync=False,
-        cpp_formatter=lambda args: f"::tpy::Task<{args[0].to_cpp()}>",
+        cpp_formatter=lambda args: f"::tpystd::asyncio::_executor::Task<{args[0].to_cpp()}>",
     ))
 
     # Async Poll[T]: tagged Pending/Ready[T] value returned by poll().

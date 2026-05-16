@@ -4,7 +4,7 @@
 # Task<std::monostate> consumes it; pre-fix this path used Task<void> /
 # Poll<void> exclusively.
 import asyncio
-from tpy.coro import Task
+from asyncio import Task
 
 
 async def background() -> None:

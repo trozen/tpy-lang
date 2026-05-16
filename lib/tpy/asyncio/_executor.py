@@ -34,10 +34,257 @@ TPy-side classes:
 """
 import heapq
 
+from typing import Protocol
+from builtins import BaseException
 from time import monotonic, sleep_until_steady
-from tpy import Int32, Own, ValueType, nocopy, readonly
-from tpy.extern import cpp_template, native
-from tpy.coro import Awaitable, Waker
+from tpy import Int32, Own, ValueType, CancelledError, copy, dynamic, nocopy, readonly
+from tpy.extern import builtin_type, cpp_template, native
+from tpy.coro import Awaitable, Poll, Waker, poll_ready, poll_pending
+from tpy.mem import UninitArrayStorage
+from tplib import Box
+from tplib.rc import Rc
+
+
+# Type-erased task machinery is co-located with the executor (rather
+# than split into a sibling submodule) to avoid the parent-package
+# auto-include cycle in `tpyc/codegen_cpp/generator.py:1530+`; see
+# BUGS.md.
+
+
+# Type-erased async frame for Task storage. @dynamic so concrete coro
+# structs are held through Box[AsyncFrame[T]] without tracking each
+# generated CoroT statically. Distinct from `tpy.coro.Awaitable[T]`:
+# Awaitable is the structural shape for await-sites and user-defined
+# awaitables; AsyncFrame adds the cancel() precondition required by
+# the task machinery. gen_async.py auto-emits cancel() on every
+# generated coro struct so structural conformance picks it up.
+@dynamic
+class AsyncFrame[T](Protocol):
+    def __poll__(self, waker: Waker) -> Poll[T]: ...
+    def cancel(self) -> None: ...
+
+
+# T-erased view of a task for the executor's slot table. TaskState[T]
+# structurally conforms via its poll_any / cancel_any methods; the
+# slot table holds Box[AnyTask] without parameterization on T.
+@dynamic
+class AnyTask(Protocol):
+    def poll_any(self, waker: Waker) -> bool: ...
+    def cancel_any(self) -> None: ...
+
+
+@nocopy
+class TaskState[T]:
+    """Shared backing for a `Task[T]`.
+
+    Owns a `Box[AsyncFrame[T]]` (the type-erased coroutine frame) and
+    caches result/exception once the frame completes. Single-awaiter
+    for v1: a second `__poll__` after Ready panics.
+    """
+
+    frame: Box[AsyncFrame[T]] | None
+    result: UninitArrayStorage[T, 1]
+    exc: BaseException | None
+    # Storing the caught BaseException slices the dynamic type, so
+    # __poll__ can't recover the concrete subclass for `except`
+    # matching. Carry a dedicated flag for CancelledError (the common
+    # case) and raise a fresh instance on retrieval. See BUGS.md.
+    exc_was_cancelled: bool
+    awaiter: Waker
+    done: bool
+    has_result: bool
+    has_exc: bool
+    executor_owned: bool
+
+    def __init__(self, frame: Own[Box[AsyncFrame[T]]]) -> None:
+        self.frame = frame
+        self.result = UninitArrayStorage[T, 1]()
+        self.exc = None
+        self.exc_was_cancelled = False
+        self.awaiter = Waker()
+        self.done = False
+        self.has_result = False
+        self.has_exc = False
+        self.executor_owned = False
+
+    def __del__(self) -> None:
+        if self.has_result:
+            self.result.take0()
+            self.has_result = False
+
+    # User-facing poll. Drives the frame for non-executor-owned tasks;
+    # for executor-owned tasks, parks (the executor's poll_any drives).
+    def __poll__(self, w: Waker) -> Poll[T]:
+        if self.done:
+            if self.has_exc:
+                if self.exc_was_cancelled:
+                    raise CancelledError()
+                exc = self.exc
+                if exc is None:
+                    raise RuntimeError("Task: done state inconsistent")
+                raise exc
+            if not self.has_result:
+                raise RuntimeError(
+                    "Task: __poll__ after Ready was already consumed")
+            self.has_result = False
+            return poll_ready(self.result.take0())
+        if self.executor_owned:
+            self.awaiter = w
+            return poll_pending()
+        # Non-executor-owned: drive the frame directly.
+        frame = self.frame
+        if frame is None:
+            raise RuntimeError("Task: __poll__ on empty TaskState")
+        try:
+            p = frame.get().__poll__(w)
+            if p.is_ready():
+                self.done = True
+            return p
+        except CancelledError:
+            self.done = True
+            self.has_exc = True
+            self.exc_was_cancelled = True
+            raise
+        except BaseException as e:
+            self.done = True
+            self.has_exc = True
+            # Explicit copy: acknowledges that `e`'s dynamic type is
+            # sliced into the BaseException slot (separate concern from
+            # whether we want a copy; tracked in BUGS.md).
+            self.exc = copy(e)
+            raise
+
+    # AnyTask interface: drives the frame and caches result/exc. Used
+    # by the executor's slot table via the TaskStateView adapter.
+    def poll_any(self, w: Waker) -> bool:
+        if self.done:
+            return True
+        frame = self.frame
+        if frame is None:
+            return True
+        try:
+            p = frame.get().__poll__(w)
+            if p.is_ready():
+                self.done = True
+                self.result.init0(p.value())
+                self.has_result = True
+                self.awaiter.wake()
+                return True
+            return False
+        except CancelledError:
+            self.done = True
+            self.has_exc = True
+            self.exc_was_cancelled = True
+            self.awaiter.wake()
+            return True
+        except BaseException as e:
+            self.done = True
+            self.has_exc = True
+            # Explicit copy: acknowledges that `e`'s dynamic type is
+            # sliced into the BaseException slot (separate concern from
+            # whether we want a copy; tracked in BUGS.md).
+            self.exc = copy(e)
+            self.awaiter.wake()
+            return True
+
+    def cancel_any(self) -> None:
+        # Self-mutation token so auto-readonly inference doesn't mark
+        # this method const (which would block the non-const
+        # frame.cancel() call below via the @dynamic Box).
+        self.done = self.done
+        if self.done:
+            return
+        frame = self.frame
+        if frame is not None:
+            frame.get().cancel()
+
+
+# Adapter that exposes a TaskState[T] through the non-generic AnyTask
+# protocol. Holds an Rc clone of the same TaskState; the executor's
+# slot table holds Box[AnyTask] wrapping this view.
+@nocopy
+class TaskStateView[T]:
+    state: Rc[TaskState[T]]
+
+    def __init__(self, state: Own[Rc[TaskState[T]]]) -> None:
+        self.state = state
+
+    def poll_any(self, w: Waker) -> bool:
+        return self.state.get().poll_any(w)
+
+    def cancel_any(self) -> None:
+        self.state.get().cancel_any()
+
+
+@builtin_type("tpy.Task")
+@nocopy
+class Task[T]:
+    """Type-erased async task. Holds a `Rc[TaskState[T]]` shared with
+    the executor's slot table for spawned tasks.
+
+    Claims the user-facing qname `tpy.Task` via `@builtin_type`; the
+    compiler hardcoding (`tpyc/type_def_registry.py`,
+    `tpyc/typesys.py`, `tpyc/sema/expressions.py`) resolves through
+    the qname. The `cpp_formatter` in `type_def_registry.py` points to
+    `::tpystd::asyncio::_executor::Task<T>`.
+    """
+
+    _state: Rc[TaskState[T]]
+    # _cancelled exists to defeat auto-readonly inference on cancel()
+    # (same workaround as TaskState.cancel_any).
+    _cancelled: bool
+
+    def __init__(self, state: Own[Rc[TaskState[T]]]) -> None:
+        self._state = state
+        self._cancelled = False
+
+    def __poll__(self, w: Waker) -> Poll[T]:
+        return self._state.get().__poll__(w)
+
+    def cancel(self) -> None:
+        self._cancelled = True
+        self._state.get().cancel_any()
+
+
+# Wrap a concrete coro in `Box[AsyncFrame[T]]`. `decltype({0})`
+# recovers the concrete CoroT at the call site so the Adapter
+# specialization picks up the right inner type.
+@cpp_template(
+    "::tpystd::tplib::box::Box<::tpystd::asyncio::_executor::AsyncFrame<{T}>>("
+    "std::make_unique<::tpy::Adapter<"
+    "::tpystd::asyncio::_executor::AsyncFrame<{T}>, "
+    "std::remove_cvref_t<decltype({0})>>>(std::move({0})))"
+)
+def _box_coro[T](coro: Own[Awaitable[T]]) -> Own[Box[AsyncFrame[T]]]: ...
+
+
+def task_from_coro[T](coro: Own[Awaitable[T]]) -> Own[Task[T]]:
+    """Box an awaitable into a heap-allocated Task[T] without
+    registering with an executor (no `asyncio.run` required).
+    """
+    return _build_task[T](coro, False)
+
+
+def make_executor_owned_task[T](coro: Own[Awaitable[T]]) -> Own[Task[T]]:
+    """Build a Task[T] flagged `executor_owned=True` (ready to be
+    spawned via the executor's slot table)."""
+    return _build_task[T](coro, True)
+
+
+def _build_task[T](coro: Own[Awaitable[T]], executor_owned: bool) -> Own[Task[T]]:
+    frame = _box_coro[T](coro)
+    state = TaskState[T](frame)
+    state.executor_owned = executor_owned
+    return Task[T](Rc.new(state))
+
+
+def task_to_any_box[T](task: Task[T]) -> Own[Box[AnyTask]]:
+    """Mirror a `Task[T]`'s shared state into a `Box[AnyTask]` for the
+    executor's slot table."""
+    return Box[AnyTask](TaskStateView[T](task._state.clone()))
+
+
+# --- Executor bindings (original _executor.py content) ------------------
 
 
 @native("tpy::ExecutorHandle")
@@ -47,9 +294,7 @@ class ExecutorHandle(ValueType):
     POD value type (8-byte `void* ptr` C++ side), default-constructs
     to null. The TPy executor port (Phase 2/3) stores its own pointer
     here via `_set_current_executor` and reads it back via
-    `_get_current_executor`. Awaitables that need timer access today
-    consult the thread-local directly through the
-    `executor_register_timer_seconds` bridge, not through this handle.
+    `_get_current_executor`.
     """
     def __init__(self) -> None: ...
 
@@ -73,30 +318,6 @@ def _clear_current_executor() -> None: ...
 def _executor_scope_teardown() -> None: ...
 
 
-@native("tpy::AnyTaskBox")
-@nocopy
-class AnyTaskBox:
-    """Type-erased owning slot entry for the executor's task table.
-
-    Wraps a `shared_ptr<AnyTask>` on the C++ side so a spawned task can
-    be shared between the user-facing `Task[T]` handle and the
-    executor's slot table.
-
-    TODO(async-v1.2): remove this wrapper once TPy gains a
-    shared-ownership smart pointer; `TaskState[T]` moves to TPy then.
-    """
-    def __init__(self) -> None: ...
-
-    @readonly
-    def empty(self) -> bool: ...
-
-    def reset(self) -> None: ...
-
-    def poll_any(self, waker: Waker) -> bool: ...
-
-    def cancel_any(self) -> None: ...
-
-
 # Construct a Waker stamped with this executor's handle + task id +
 # generation. The TPy executor's poll_slot calls this when handing a
 # waker to a coroutine; `Waker::wake` dispatches into mark_runnable
@@ -104,6 +325,19 @@ class AnyTaskBox:
 @native("tpy::make_waker")
 def _make_waker(handle: ExecutorHandle, task_id: Int32,
                 generation: Int32) -> Waker: ...
+
+
+# Dispatch into the current TPy `Executor`'s `spawn` method from a TPy
+# context that only has the opaque `ExecutorHandle`. The static_cast
+# uses the fully qualified `::tpystd::asyncio::_executor::Executor`
+# because the template body is inlined at every call site (in
+# arbitrary modules' namespaces); a bare `Executor` would fail to
+# resolve outside this module's compilation unit.
+@cpp_template(
+    "static_cast<::tpystd::asyncio::_executor::Executor*>({0}.ptr)->spawn({1})"
+)
+def _executor_spawn_via_handle(handle: ExecutorHandle,
+                               box: Own[Box[AnyTask]]) -> Int32: ...
 
 
 class TimerEntry:
@@ -123,29 +357,30 @@ class TimerEntry:
 class Slot:
     """One entry in the executor's slot table.
 
-    Holds the AnyTaskBox driving a spawned task. The generation counter
-    advances when the slot completes, invalidating any stale wakers
-    that were handed out before completion (see `Waker::wake` in
-    `runtime/cpp/include/tpy/async.hpp`: late wakes whose generation no
-    longer matches are silent no-ops).
+    Holds a `Box[AnyTask]` driving a spawned task (None once the task
+    completes). The generation counter advances when the slot
+    completes, invalidating any stale wakers that were handed out
+    before completion (see `Waker::wake` in
+    `runtime/cpp/include/tpy/async.hpp`: late wakes whose generation
+    no longer matches are silent no-ops).
 
     `runnable` mirrors the slot's presence in the executor's runnable
     deque: set true when `mark_runnable` adds the slot's id to the
     queue, cleared when the executor pops it to poll.
     """
 
-    box: AnyTaskBox
+    box: Box[AnyTask] | None
     generation: Int32
     runnable: bool
 
     def __init__(self) -> None:
-        self.box = AnyTaskBox()
+        self.box = None
         self.generation = 0
         self.runnable = False
 
     @readonly
     def is_done(self) -> bool:
-        return self.box.empty()
+        return self.box is None
 
 
 @nocopy
@@ -176,7 +411,7 @@ class Executor:
     def register_timer(self, deadline: float, waker: Waker) -> None:
         heapq.heappush(self.timer_heap, TimerEntry(deadline, waker))
 
-    def spawn(self, box: Own[AnyTaskBox]) -> Int32:
+    def spawn(self, box: Own[Box[AnyTask]]) -> Int32:
         new_id = len(self.slots)
         slot = Slot()
         slot.box = box
@@ -206,8 +441,11 @@ class Executor:
         # the slots vector. Hold no Slot reference across the call --
         # re-index after it returns. The AnyTask object lives on the
         # heap and is stable; only the vector storage moves.
-        if self.slots[slot_id].box.poll_any(waker):
-            self.slots[slot_id].box.reset()
+        box = self.slots[slot_id].box
+        if box is None:
+            return False
+        if box.get().poll_any(waker):
+            self.slots[slot_id].box = None
             self.slots[slot_id].generation += 1
         return True
 
@@ -269,7 +507,9 @@ class Executor:
         i: Int32 = 0
         while i < n:
             if i != skip_id and not self.slots[i].is_done():
-                self.slots[i].box.cancel_any()
+                box = self.slots[i].box
+                if box is not None:
+                    box.get().cancel_any()
             i += 1
         attempt: Int32 = 0
         while attempt < max_polls and self.has_live_tasks(skip_id):
@@ -300,10 +540,11 @@ def _self_handle(executor: Executor) -> ExecutorHandle: ...
 def _register_executor_ops_from(executor: Executor) -> None: ...
 
 
-# Test-only AnyTaskBox factory: builds a TaskState<T> without executor
-# registration so tests can drive the executor directly.
-@cpp_template("::tpy::make_any_task_for_test<{T}>({0})")
-def _make_any_task_for_test[T](coro: Awaitable[T]) -> Own[AnyTaskBox]: ...
+# Test-only Box[AnyTask] factory: builds a TaskState[T] without
+# executor registration so tests can drive the executor directly.
+def _make_any_task_for_test[T](coro: Own[Awaitable[T]]) -> Own[Box[AnyTask]]:
+    task = make_executor_owned_task[T](coro)
+    return task_to_any_box[T](task)
 
 
 @nocopy

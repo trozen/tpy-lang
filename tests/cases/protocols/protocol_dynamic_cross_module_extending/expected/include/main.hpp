@@ -8,6 +8,8 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::pet::Pet;
+
 // @dynamic
 // class NamedPet(Pet, Protocol):
 template<typename T>

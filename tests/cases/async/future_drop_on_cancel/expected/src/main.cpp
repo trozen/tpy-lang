@@ -41,7 +41,7 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
             // f: Future[Tracked] = Future[Tracked]()
             f = ::tpystd::asyncio::Future<Tracked>();
             // t = asyncio.create_task(waiter(f))
-            t = ::tpy::make_user_task<Tracked>(waiter((*f)));
+            t = ::tpystd::asyncio::create_task<Tracked>(waiter((*f)));
             // f.set_result(Tracked("payload"))
             (*f).set_result(Tracked("payload"));
             // t.cancel()

@@ -8,6 +8,8 @@
 
 namespace tpyapp::main {
 
+using ::tpyapp::pet::Pet;
+
 struct Dog;
 struct Cat;
 

@@ -42,7 +42,7 @@ __coro_producer producer(::tpystd::asyncio::Future<int32_t>& f) {
             // f: Future[Int32] = Future[Int32]()
             f = ::tpystd::asyncio::Future<int32_t>();
             // asyncio.create_task(producer(f))
-            ::tpy::make_user_task<std::monostate>(producer((*f)));
+            ::tpystd::asyncio::create_task<std::monostate>(producer((*f)));
             // result = await f
             __sub_0 = &((*f));
             __state = S_AFTER_AWAIT_0;

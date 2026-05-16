@@ -8,7 +8,7 @@
 # params spell `const Task<T>&`.
 import asyncio
 from tpy import Int32
-from tpy.coro import Task
+from asyncio import Task
 
 
 async def co(x: Int32) -> Int32:

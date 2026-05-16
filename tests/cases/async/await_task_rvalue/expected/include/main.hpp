@@ -32,6 +32,7 @@ struct __coro_sub {
         : __state(S_INITIAL), __cancel_pending(false) {}
 
     ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_sub&) {
         return os << "<coroutine sub>";
@@ -43,7 +44,7 @@ struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
     int32_t result;
-    std::optional<::tpy::Task<int32_t>> __sub_0;
+    std::optional<::tpystd::asyncio::_executor::Task<int32_t>> __sub_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -55,6 +56,7 @@ struct __coro_main_coro {
         : __state(S_INITIAL), __cancel_pending(false) {}
 
     ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";

@@ -25,6 +25,9 @@ class NeverComplete:
     def __poll__(self, waker: Waker) -> Poll[None]:
         return poll_pending()
 
+    def cancel(self) -> None:
+        self.__cancel_pending = True
+
 
 class CountdownThenReady:
     """Returns Pending for the first N polls, then Ready. Used to
@@ -42,6 +45,9 @@ class CountdownThenReady:
             return poll_ready_none()
         self.remaining -= UInt32(1)
         return poll_pending[None]()
+
+    def cancel(self) -> None:
+        self.__cancel_pending = True
 
 
 def test_external_wake() -> None:

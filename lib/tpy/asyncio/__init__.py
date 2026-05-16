@@ -7,39 +7,36 @@ the TPy Executor in `_executor.py`. See `docs/ASYNC_DESIGN.md`.
 """
 from builtins import BaseException, Exception
 from tpy.extern import cpp_template, native
-from tpy import Own, CancelledError
+from tpy import Own, Int32, CancelledError
 from tpy.coro import (
-    Task, Waker, Poll, Awaitable,
+    Waker, Poll, Awaitable,
     poll_ready, poll_pending, poll_ready_none,
 )
 from tpy.mem import UninitArrayStorage
+from tplib import Box
 from time import monotonic
 from ._executor import (
-    AnyTaskBox, Executor, _ExecutorScope, _get_current_executor,
+    Task, AnyTask, AsyncFrame,
+    task_from_coro, make_executor_owned_task, task_to_any_box,
+    Executor, ExecutorHandle, _ExecutorScope,
+    _get_current_executor, _executor_spawn_via_handle,
 )
-
-
-@cpp_template("::tpy::make_executor_owned_task<{T}>({0})")
-def _make_executor_owned_task[T](coro: Own[Awaitable[T]]) -> Own[Task[T]]: ...
-
-
-@cpp_template("::tpy::task_to_any_box({0})")
-def _task_to_any_box[T](task: Task[T]) -> Own[AnyTaskBox]: ...
 
 
 def run[T](coro: Own[Awaitable[T]]) -> T:
     if not _get_current_executor().is_null():
         raise RuntimeError(
             "asyncio.run() cannot be called from a running event loop")
-    task = _make_executor_owned_task[T](coro)
-    box = _task_to_any_box[T](task)
+    task = make_executor_owned_task[T](coro)
+    box = task_to_any_box[T](task)
     _run_drain_main_task(box)
     return task.__poll__(Waker()).value()
 
 
-# Box param (not Task[T]) keeps the signature non-generic so `run` can
-# read the result via its own Task[T] handle after this call returns.
-def _run_drain_main_task(box: Own[AnyTaskBox]) -> None:
+# Lives here (not _executor.py): C++ function using-decls in
+# asyncio.hpp require the source namespace already opened, which
+# breaks under the parent-package include cycle.
+def _run_drain_main_task(box: Own[Box[AnyTask]]) -> None:
     executor = Executor()
     scope = _ExecutorScope(executor)
     main_id = executor.spawn(box)
@@ -60,15 +57,6 @@ def _run_drain_main_task(box: Own[AnyTaskBox]) -> None:
 def _register_timer_at(deadline_seconds: float, waker: Waker) -> None: ...
 
 
-# Bridge: wrap a value-typed awaitable into a Task[None] via the
-# runtime's heterogeneous poll-box. Used by `sleep` to ship a
-# SleepFuture (a TPy class) through the executor's spawn list.
-# `Task[None]` lowers to `Task<std::monostate>` (the unit type at
-# value-bearing positions), matching the rest of the type-arg-None pipeline.
-@cpp_template("::tpy::Task<::std::monostate>::from_coro({0})")
-def _task_void_from_coro[T](coro: T) -> Own[Task[None]]: ...
-
-
 class SleepFuture:
     """Awaits a steady-clock deadline. Registers a timer with the
     current executor on first poll and returns Pending until the
@@ -84,6 +72,12 @@ class SleepFuture:
         self.deadline = monotonic() + seconds
         self.registered = False
         self.__cancel_pending = False
+
+    # Required for structural conformance to `@dynamic AsyncFrame[T]`
+    # (in `asyncio._executor`). Mirrors the codegen-emitted `cancel()` on
+    # every generated coro struct.
+    def cancel(self) -> None:
+        self.__cancel_pending = True
 
     def __poll__(self, waker: Waker) -> Poll[None]:
         if self.__cancel_pending:
@@ -110,13 +104,30 @@ class SleepFuture:
 # the current executor on first poll; the run loop wakes when the
 # deadline arrives.
 def sleep(seconds: float) -> Own[Task[None]]:
-    return _task_void_from_coro(SleepFuture(seconds))
+    return task_from_coro[None](SleepFuture(seconds))
 
 
-# Spawn `coro` on the current executor and return an Own[Task[T]] handle.
-# The C++ helper (`make_user_task`) panics if no event loop is running.
-@cpp_template("::tpy::make_user_task<{T}>({0})")
-def create_task[T](coro: Awaitable[T]) -> Own[Task[T]]: ...
+# Spawn `coro` on the current executor and return an Own[Task[T]]
+# handle. The task is registered with the executor's slot table so
+# it runs concurrently with the spawning task. Raises RuntimeError if
+# no event loop is running.
+def create_task[T](coro: Own[Awaitable[T]]) -> Own[Task[T]]:
+    handle = _get_current_executor()
+    if handle.is_null():
+        raise RuntimeError(
+            "asyncio.create_task: no running event loop "
+            "(call asyncio.run(coro) to drive it)")
+    task = make_executor_owned_task[T](coro)
+    box = task_to_any_box[T](task)
+    _spawn_on_handle(handle, box)
+    return task
+
+
+# Non-template wrapper so the cpp_template's static_cast instantiates
+# here rather than inside generic `create_task<T>` (where C++ template
+# name-lookup trips on the fully qualified Executor namespace).
+def _spawn_on_handle(handle: ExecutorHandle, box: Own[Box[AnyTask]]) -> Int32:
+    return _executor_spawn_via_handle(handle, box)
 
 
 class InvalidStateError(Exception):
@@ -183,6 +194,15 @@ class Future[T]:
             self._waiter.wake()
             self._has_waiter = False
 
+    # Required for structural conformance to `@dynamic AsyncFrame[T]`
+    # (in `asyncio._executor`). Future cancellation is task-level: the
+    # awaiting Task throws CancelledError before re-polling the Future,
+    # so the Future itself has no inner state to flip. This is the
+    # protocol hook called via the type-erased Adapter; the body is
+    # intentionally a no-op.
+    def cancel(self) -> None:
+        pass
+
     def __poll__(self, waker: Waker) -> Poll[T]:
         if self._done:
             if self._exception is not None:
@@ -235,6 +255,12 @@ class Event:
 
     def clear(self) -> None:
         self._is_set = False
+
+    # Required for structural conformance to `@dynamic AsyncFrame[T]`
+    # (in `asyncio._executor`). Event cancellation is task-level (see
+    # Future.cancel above for the rationale); body is a no-op.
+    def cancel(self) -> None:
+        pass
 
     def __poll__(self, waker: Waker) -> Poll[None]:
         if self._is_set:

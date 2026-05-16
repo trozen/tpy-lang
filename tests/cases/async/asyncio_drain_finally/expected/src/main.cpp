@@ -58,7 +58,7 @@ __coro_background background() {
     switch (__state) {
     case S_INITIAL: {
             // t: Task[None] = asyncio.create_task(background())
-            t = ::tpy::make_user_task<std::monostate>(background());
+            t = ::tpystd::asyncio::create_task<std::monostate>(background());
             // del t
             { auto __del_sink = std::move(t); }
             // print("main done")
@@ -96,9 +96,6 @@ void __tpy_init() {
     // # task completes via the cached exception path.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.coro import Task
-    ::tpystd::tpy::__tpy_init();
-    ::tpystd::coro::__tpy_init();
     // main()
     main();
 }

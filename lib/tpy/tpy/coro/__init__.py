@@ -5,10 +5,10 @@ Module name borrowed from the design-doc's `Coroutine[T]` terminology
 (see Rust `std::task` / Tokio `tokio::task` for prior art).
 """
 from .._typing import Protocol
-from .._bootstrap._decorators import Own
+from .._bootstrap._decorators import Own, dynamic
 from .._bootstrap._extern import cpp_template
 from .._builtins._exceptions import CancelledError
-from .._core import Task, Waker, Poll
+from .._core import Waker, Poll
 
 
 # Structural awaitable. Distinct from `typing.Awaitable[T]` (CPython's
@@ -19,6 +19,11 @@ from .._core import Task, Waker, Poll
 # to direct calls".
 class Awaitable[T](Protocol):
     def __poll__(self, waker: Waker) -> Poll[T]: ...
+
+
+# `AsyncFrame[T]` / `AnyTask` (@dynamic protocols used by the task
+# machinery) live in `asyncio._executor` -- they sit on tplib, which
+# isn't reachable from this implicit-stdlib module.
 
 
 @cpp_template("::tpy::Poll<{T}>::ready({0})")
@@ -42,14 +47,6 @@ def poll_ready_none() -> Poll[None]: ...
 # synchronous drivers that don't go through `asyncio.run`.
 def poll_once[T](aw: Awaitable[T]) -> Poll[T]:
     return aw.__poll__(Waker())
-
-
-# Box an awaitable into a heap-allocated Task[T] without registering it
-# with an executor (no `asyncio.run` required). Mirrors C++
-# `::tpy::Task<T>::from_coro(c)`. Used by tests that drive a Task
-# manually -- production code should reach for `asyncio.create_task`.
-@cpp_template("::tpy::Task<{T}>::from_coro({0})")
-def task_from_coro[T](coro: Awaitable[T]) -> Own[Task[T]]: ...
 
 
 # Poll an awaitable once and report whether it raised CancelledError.

@@ -6,11 +6,15 @@
 #include "tpystd/typing/_typing.hpp"
 #include "tpystd/coro.hpp"
 #include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
 
 using ::tpystd::coro::poll_once;
+using ::tpystd::asyncio::_executor::task_from_coro;
 using ::tpystd::coro::task_poll_cancelled;
+
+using ::tpystd::asyncio::_executor::Task;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -23,7 +27,7 @@ void main();
 struct __coro_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpy::Task<std::monostate>> __sub_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -35,6 +39,7 @@ struct __coro_coro {
         : __state(S_INITIAL), __cancel_pending(false) {}
 
     ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
     void __finally_top();
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_coro&) {

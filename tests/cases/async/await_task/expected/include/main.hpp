@@ -6,8 +6,13 @@
 #include "tpystd/typing/_typing.hpp"
 #include "tpystd/coro.hpp"
 #include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
+
+using ::tpystd::asyncio::_executor::task_from_coro;
+
+using ::tpystd::asyncio::_executor::Task;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -34,6 +39,7 @@ struct __coro_sub {
         : __state(S_INITIAL), __cancel_pending(false) {}
 
     ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_sub&) {
         return os << "<coroutine sub>";
@@ -44,8 +50,8 @@ struct __coro_sub {
 struct __coro_caller {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpy::Task<int32_t>> t;
-    ::tpy::Task<int32_t>* __sub_0 = nullptr;
+    std::optional<::tpystd::asyncio::_executor::Task<int32_t>> t;
+    ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -57,6 +63,7 @@ struct __coro_caller {
         : __state(S_INITIAL), __cancel_pending(false) {}
 
     ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_caller&) {
         return os << "<coroutine caller>";
@@ -80,6 +87,7 @@ struct __coro_main_coro {
         : __state(S_INITIAL), __cancel_pending(false) {}
 
     ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";

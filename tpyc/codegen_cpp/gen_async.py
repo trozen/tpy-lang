@@ -748,6 +748,13 @@ class AsyncCoroCodegen:
         # method (matches `tpy.coro.Awaitable.__poll__`).
         out.write(f"{INDENT}{self._poll_ret_cpp(func)} __poll__(::tpy::Waker waker);\n")
 
+        # cancel() -- flips the cancel flag so the next resumed poll
+        # throws CancelledError at the suspension point. Required for
+        # structural conformance to @dynamic tpy.coro.AsyncFrame[T];
+        # the type-erased task machinery dispatches cancellation through
+        # this method via the Adapter<AsyncFrame<T>, CoroT> vtable.
+        out.write(f"{INDENT}void cancel() {{ __cancel_pending = true; }}\n")
+
         # __finally_top() forward declaration -- v1's wrapper-try-finally
         # support emits the source-level `finally:` body as a private
         # member; each region's catch wrapper and the non-throw-exit path

@@ -39,7 +39,7 @@ __coro_grandchild grandchild() {
     switch (__state) {
     case S_INITIAL: {
             // g: Task[Int32] = asyncio.create_task(grandchild())
-            g = ::tpy::make_user_task<int32_t>(grandchild());
+            g = ::tpystd::asyncio::create_task<int32_t>(grandchild());
             // return await g + Int32(1)
             __sub_0 = &((*g));
             __state = S_AFTER_AWAIT_0;
@@ -71,7 +71,7 @@ __coro_child child() {
     switch (__state) {
     case S_INITIAL: {
             // c: Task[Int32] = asyncio.create_task(child())
-            c = ::tpy::make_user_task<int32_t>(child());
+            c = ::tpystd::asyncio::create_task<int32_t>(child());
             // print(await c)
             __sub_0 = &((*c));
             __state = S_AFTER_AWAIT_0;
@@ -117,9 +117,6 @@ void __tpy_init() {
     // # call -- the reference would dangle after slots reallocated.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.coro import Task
-    ::tpystd::tpy::__tpy_init();
-    ::tpystd::coro::__tpy_init();
     // main()
     main();
 }

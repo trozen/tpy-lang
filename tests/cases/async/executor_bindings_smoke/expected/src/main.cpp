@@ -44,18 +44,6 @@ __coro_check_inside check_inside() {
     return __coro_check_inside();
 }
 
-// def check_box() -> None:
-void check_box() {
-    // box = AnyTaskBox()
-    ::tpy::AnyTaskBox box = ::tpy::AnyTaskBox();
-    // print("box empty?", box.empty())
-    std::cout << "box empty?" << " " << ::tpy::print_bool(box.empty()) << "\n";
-    // box.reset()
-    box.reset();
-    // print("box empty after reset?", box.empty())
-    std::cout << "box empty after reset?" << " " << ::tpy::print_bool(box.empty()) << "\n";
-}
-
 // def check_sleep() -> None:
 void check_sleep() {
     // sleep_until_steady(monotonic() - 1.0)
@@ -106,8 +94,6 @@ void check_teardown() {
 void main() {
     // check_outside()
     check_outside();
-    // check_box()
-    check_box();
     // check_sleep()
     check_sleep();
     // asyncio.run(check_inside())
@@ -121,8 +107,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # v1.1 asyncio-port bindings: ExecutorHandle + current-executor
-    // # getter/setter/clear, AnyTaskBox, time.sleep_until_steady.
+    // # asyncio-port bindings: ExecutorHandle + current-executor
+    // # getter/setter/clear, time.sleep_until_steady.
     // # Smoke-checks that the bindings parse, compile, link, and behave,
     // # plus that asyncio.run's _ExecutorScope correctly clears the
     // # thread-local on teardown (so a stale post-run wake is a silent
@@ -130,7 +116,6 @@ void __tpy_init() {
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
     // from asyncio._executor import (
-    // AnyTaskBox,
     // _clear_current_executor,
     // _get_current_executor,
     // _set_current_executor,

@@ -49,7 +49,7 @@ void test_spawn_and_run() {
     // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
     // box = _make_any_task_for_test(returns_value(7))
-    ::tpy::AnyTaskBox box = ::tpy::make_any_task_for_test<::tpy::BigInt>(returns_value(::tpy::BigInt(7)));
+    ::tpystd::tplib::box::Box<::tpystd::asyncio::_executor::AnyTask> box = ::tpystd::asyncio::_executor::_make_any_task_for_test<::tpy::BigInt>(returns_value(::tpy::BigInt(7)));
     // sid = e.spawn(box)
     int32_t sid = e.spawn(std::move(box));
     // print("spawn id:", sid)
@@ -74,9 +74,9 @@ void test_multiple_spawns() {
     // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
     // a = e.spawn(_make_any_task_for_test(void_coro()))
-    int32_t a = e.spawn(::tpy::make_any_task_for_test<std::monostate>(void_coro()));
+    int32_t a = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(void_coro()));
     // b = e.spawn(_make_any_task_for_test(returns_value(42)))
-    int32_t b = e.spawn(::tpy::make_any_task_for_test<::tpy::BigInt>(returns_value(::tpy::BigInt(42))));
+    int32_t b = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<::tpy::BigInt>(returns_value(::tpy::BigInt(42))));
     // print("two slots:", len(e.slots))
     std::cout << "two slots:" << " " << ::tpy::__len__(e.slots) << "\n";
     // print("two runnable:", len(e.runnable_q))
@@ -135,7 +135,7 @@ void test_drain_cancels_live_task() {
     // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
     // sid = e.spawn(_make_any_task_for_test(CancellableForever()))
-    int32_t sid = e.spawn(::tpy::make_any_task_for_test<std::monostate>(CancellableForever()));
+    int32_t sid = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(CancellableForever()));
     // e.drain_runnable()
     e.drain_runnable();
     // print("parked, slot done:", e.slot_done(sid))
@@ -185,6 +185,7 @@ void __tpy_init() {
     // # executor) is deferred to Phase 2.4; tests here use either coroutines
     // # that complete on first poll or directly-pushed runnable ids.
     // from asyncio._executor import (
+    // AnyTask,
     // Executor,
     // _make_any_task_for_test,
     // _make_waker,

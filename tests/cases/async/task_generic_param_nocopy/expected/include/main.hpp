@@ -9,15 +9,17 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::asyncio::_executor::Task;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_co;
 struct __coro_main_coro;
 
 __coro_co co(int32_t x);
-int32_t task_arity_concrete(const ::tpy::Task<int32_t>& t);
+int32_t task_arity_concrete(const ::tpystd::asyncio::_executor::Task<int32_t>& t);
 template<typename T>
-int32_t task_arity_generic(const ::tpy::Task<T>& t);
+int32_t task_arity_generic(const ::tpystd::asyncio::_executor::Task<T>& t);
 __coro_main_coro main_coro();
 void main();
 
@@ -36,6 +38,7 @@ struct __coro_co {
         : __state(S_INITIAL), __cancel_pending(false), x(std::move(x_)) {}
 
     ::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_co&) {
         return os << "<coroutine co>";
@@ -46,10 +49,10 @@ struct __coro_co {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpy::Task<int32_t>> t;
+    std::optional<::tpystd::asyncio::_executor::Task<int32_t>> t;
     int32_t _;
     int32_t result;
-    ::tpy::Task<int32_t>* __sub_0 = nullptr;
+    ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -61,6 +64,7 @@ struct __coro_main_coro {
         : __state(S_INITIAL), __cancel_pending(false) {}
 
     ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";
@@ -69,7 +73,7 @@ struct __coro_main_coro {
 
 // def task_arity_generic[T](t: Task[T]) -> Int32:
 template<typename T>
-int32_t task_arity_generic(const ::tpy::Task<T>& t) {
+int32_t task_arity_generic(const ::tpystd::asyncio::_executor::Task<T>& t) {
     // # Same as above, generic form. Pre-fix this emitted `Task<T> t`
     // # by-value and the call site failed to compile.
     // return 1

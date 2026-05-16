@@ -1,1 +1,0 @@
-main.py:11: error: asyncio.create_task() requires a direct call to an async def in v1; pass `f(...)` where `f` is `async def f(...) -> T`

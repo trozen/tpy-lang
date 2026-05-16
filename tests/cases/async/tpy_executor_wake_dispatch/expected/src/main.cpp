@@ -9,7 +9,7 @@ void test_external_wake() {
     // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
     // sid = e.spawn(_make_any_task_for_test(NeverComplete()))
-    int32_t sid = e.spawn(::tpy::make_any_task_for_test<std::monostate>(NeverComplete()));
+    int32_t sid = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(NeverComplete()));
     // e.drain_runnable()
     e.drain_runnable();
     // print("parked, runnable_q:", len(e.runnable_q))
@@ -37,7 +37,7 @@ void test_stale_generation_wake() {
     // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
     // sid = e.spawn(_make_any_task_for_test(NeverComplete()))
-    int32_t sid = e.spawn(::tpy::make_any_task_for_test<std::monostate>(NeverComplete()));
+    int32_t sid = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(NeverComplete()));
     // e.drain_runnable()
     e.drain_runnable();
     // # Fabricate a waker with a wrong (future) generation.
@@ -57,7 +57,7 @@ void test_timer_drives_to_completion() {
     // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
     // sid = e.spawn(_make_any_task_for_test(CountdownThenReady(UInt32(3))))
-    int32_t sid = e.spawn(::tpy::make_any_task_for_test<std::monostate>(CountdownThenReady(3)));
+    int32_t sid = e.spawn(::tpystd::asyncio::_executor::_make_any_task_for_test<std::monostate>(CountdownThenReady(3)));
     // # First drain handles the initial poll (decrements to 2).
     // e.drain_runnable()
     e.drain_runnable();

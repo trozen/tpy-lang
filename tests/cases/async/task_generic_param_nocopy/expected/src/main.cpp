@@ -25,7 +25,7 @@ __coro_co co(int32_t x) {
 }
 
 // def task_arity_concrete(t: Task[Int32]) -> Int32:
-int32_t task_arity_concrete(const ::tpy::Task<int32_t>& t) {
+int32_t task_arity_concrete(const ::tpystd::asyncio::_executor::Task<int32_t>& t) {
     // # Signature only: param is a Task[Int32] borrow. Body proves the
     // # codegen path accepts the binding without copying.
     // return 0
@@ -37,7 +37,7 @@ int32_t task_arity_concrete(const ::tpy::Task<int32_t>& t) {
     switch (__state) {
     case S_INITIAL: {
             // t = asyncio.create_task(co(Int32(7)))
-            t = ::tpy::make_user_task<int32_t>(co(7));
+            t = ::tpystd::asyncio::create_task<int32_t>(co(7));
             // _ = task_arity_concrete(t)
             _ = task_arity_concrete((*t));
             // _ = task_arity_generic[Int32](t)
@@ -90,9 +90,6 @@ void __tpy_init() {
     // # params spell `const Task<T>&`.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.coro import Task
-    ::tpystd::tpy::__tpy_init();
-    ::tpystd::coro::__tpy_init();
     // main()
     main();
 }

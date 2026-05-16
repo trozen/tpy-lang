@@ -6,6 +6,7 @@
 # executor) is deferred to Phase 2.4; tests here use either coroutines
 # that complete on first poll or directly-pushed runnable ids.
 from asyncio._executor import (
+    AnyTask,
     Executor,
     _make_any_task_for_test,
     _make_waker,
@@ -29,6 +30,9 @@ class CancellableForever:
         if self.__cancel_pending:
             raise CancelledError()
         return poll_pending[None]()
+
+    def cancel(self) -> None:
+        self.__cancel_pending = True
 
 
 async def returns_value(x: int) -> int:

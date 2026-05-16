@@ -127,24 +127,10 @@ class AnyFixedSigned(Protocol): ...
 @native("tpy::AnyFixedUnsigned")
 class AnyFixedUnsigned(Protocol): ...
 
-# Compiler hardcodes the qnames `tpy.Task` / `tpy.Waker` / `tpy.Poll`
-# (see `tpyc/type_def_registry.py`, `tpyc/typesys.py`,
-# `tpyc/sema/expressions.py`); registration goes through the implicit
-# `tpy -> _core` import chain so they're available without every
-# consumer pulling `tpystd/coro.hpp`.
-
-@builtin_type("tpy.Task")
-@native("tpy::Task")
-@nocopy
-class Task[T]:
-    """Type-erased async task. Owns a heap-allocated coroutine frame."""
-
-    def cancel(self) -> None: ...
-
-    # Structural Awaitable[T] conformance. The C++ side has the method;
-    # the declaration here lets TPy code call `task.__poll__(...)`
-    # directly (e.g. asyncio.run reads the result this way).
-    def __poll__(self, waker: 'Waker') -> 'Poll[T]': ...
+# Compiler hardcodes the qnames `tpy.Waker` / `tpy.Poll` here.
+# `tpy.Task` is also hardcoded but its class lives in `asyncio._executor`
+# (its body needs tplib's Box / Rc which aren't reachable from this
+# implicit-stdlib layer).
 
 
 @builtin_type("tpy.Waker")

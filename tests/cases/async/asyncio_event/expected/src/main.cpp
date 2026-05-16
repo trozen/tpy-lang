@@ -115,15 +115,15 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
             // print(e_fast.is_set())
             std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n";
             // asyncio.create_task(fast_path_consumer(e_fast))
-            ::tpy::make_user_task<std::monostate>(fast_path_consumer((*e_fast)));
+            ::tpystd::asyncio::create_task<std::monostate>(fast_path_consumer((*e_fast)));
             // e = Event()
             e = ::tpystd::asyncio::Event();
             // print(e.is_set())
             std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
             // asyncio.create_task(consumer(e))
-            ::tpy::make_user_task<std::monostate>(consumer((*e)));
+            ::tpystd::asyncio::create_task<std::monostate>(consumer((*e)));
             // asyncio.create_task(producer(e))
-            ::tpy::make_user_task<std::monostate>(producer((*e)));
+            ::tpystd::asyncio::create_task<std::monostate>(producer((*e)));
             // await asyncio.sleep(0.005)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.005)));
             __state = S_AFTER_AWAIT_0;

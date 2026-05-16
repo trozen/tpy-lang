@@ -936,6 +936,118 @@ gone. Net: 3779 tests pass. (TimerEntry was initially declared
 that base was dropped in a later commit once heapq's signatures
 moved to `Own[T]`.)
 
+### v1.2 step 4 -- type-erasure stack to TPy -- DONE
+
+The entire type-erasure stack now lives in TPy. Deletes ~250 lines of
+hand-written C++ template machinery from `runtime/cpp/include/tpy/async.hpp`;
+replaces it with @dynamic-protocol-driven Adapter codegen plus a TPy
+TaskState + Task implementation built on `Rc[T]` and `Box[AnyTask]`.
+
+What landed (final cutover after the infrastructure prep in 80e9eb99b
+and the master merge bringing the None and narrowed-field-LHS fixes):
+
+- **TPy types** in `lib/tpy/asyncio/_executor.py`:
+  * `@dynamic AsyncFrame[T]` protocol -- `__poll__` + `cancel`. Type-
+    erased frame interface; concrete coro structs are held through
+    `Box[AsyncFrame[T]]` via the codegen-generated Adapter.
+  * `@dynamic AnyTask` protocol -- non-generic; the executor's slot
+    table holds `Box[AnyTask]`.
+  * `class TaskState[T]` -- the shared backing for a `Task[T]`. Owns
+    a `Box[AsyncFrame[T]] | None` frame, `UninitArrayStorage[T, 1]`
+    result cache, exception cache, awaiter waker, plus the
+    done/has_result/has_exc/executor_owned flags.
+  * `class TaskStateView[T]` -- adapter that exposes
+    `Rc[TaskState[T]]` through the non-generic `AnyTask` protocol.
+  * `class Task[T]` -- claims `tpy.Task` via `@builtin_type`,
+    wraps `Rc[TaskState[T]]`. Replaces the @native stub in
+    `tpy._core/_types.py` (removed in the cutover).
+  * Maker helpers: `task_from_coro`, `make_executor_owned_task`,
+    `task_to_any_box`. Plus `_box_coro` cpp_template bridge that
+    handles the Box-with-Adapter wrap at the call site (TPy generics
+    can't yet express `[T, CoroT: AsyncFrame[T]]` bounds).
+  * `_executor_spawn_via_handle` cpp_template -- dispatches into
+    `Executor.spawn` from the now-pure-TPy `asyncio.create_task`
+    (replaces the C++ `executor_ops.spawn` thunk).
+
+- **Codegen**:
+  * `gen_async.py` auto-emits `void cancel() { __cancel_pending = true; }`
+    on every generated coro struct. Required for structural conformance
+    to `@dynamic AsyncFrame[T]`.
+  * `generator.py` bucketed `protocol_reexports` for @dynamic protocols
+    so cross-module references emit `using ::ns::DynProto;` declarations
+    (filtered to non-implicit-stdlib sources to avoid the stdlib stub
+    build's namespace-not-yet-declared issue; static protocols are
+    excluded since their concept-form alias syntax differs).
+
+- **C++ deletions** in `runtime/cpp/include/tpy/async.hpp`
+  (wrapped in `#if 0` blocks during the cutover; can be physically
+  removed in a follow-up cleanup):
+  * `AnyTask`, `TaskState<T>`, `TaskStateImpl<T, CoroT>`, `Task<T>`,
+    `AnyTaskBox`, `detail::EmptyResult`.
+  * `make_user_task`, `make_executor_owned_task`,
+    `make_any_task_for_test`, `task_to_any_box`,
+    `task_poll_cancelled` (the last was already deleted in
+    `99a251c07`).
+  * `ExecutorOps::SpawnFn` field + `spawn_thunk` (no longer
+    needed -- `create_task` calls `Executor.spawn` directly via
+    the cpp_template handle dispatch).
+
+- **Updated** `tpy.coro` to drop the Task import and the
+  cpp_template-based `task_from_coro` (now in `asyncio` as pure TPy).
+  Compiler hardcoding for `tpy.Task` (in
+  `tpyc/type_def_registry.py`, `tpyc/typesys.py`,
+  `tpyc/sema/expressions.py`) is unchanged -- the qname is preserved
+  via `@builtin_type("tpy.Task")` on the new TPy class; only the
+  `cpp_formatter` updated to point to
+  `::tpystd::asyncio::_executor::Task<T>`.
+
+- **Test updates**: 10 tests updated `from tpy.coro import Task` to
+  `from asyncio import Task` and a few added `cancel()` methods to
+  hand-rolled awaitables that previously only had `__cancel_pending`
+  fields. `error_create_task_non_coro` deleted (the sema check no
+  longer fires for the now-TPy `asyncio.create_task`; the equivalent
+  diagnostic could be re-added when sema is updated for the new
+  function shape). `executor_bindings_smoke` removed its
+  `AnyTaskBox` probe (no longer a @native type).
+
+**Layering note**: TaskState / Task / AsyncFrame / AnyTask all live in
+`asyncio/_executor.py` rather than a separate `_task.py`. Splitting
+them across two sibling submodules of asyncio triggered tpyc's
+parent-package auto-include logic (any dotted module reference
+includes the parent's `.hpp` first), creating a cycle:
+`_executor.hpp` would include `asyncio.hpp`, which has `using
+::tpystd::asyncio::_executor::*` declarations referencing a not-yet-
+declared namespace. Putting everything in one sibling means
+asyncio's `__init__.py` has only one sibling import path
+(`from ._executor import ...`), no cycle.
+
+**Known limitations**:
+- Exception storage on `TaskState[T]` slices the dynamic type
+  (caught `BaseException as e` then assigned to `self.exc` field
+  loses the polymorphic type that C++ `std::exception_ptr` preserved).
+  Workaround for the common case: dedicated `exc_was_cancelled: bool`
+  flag, and `__poll__` raises a fresh `CancelledError()` instead of
+  the stored exception. Cancellation through tasks works correctly;
+  other exception types lose their concrete class through Task
+  storage. Tracked as a TPy-side gap (would need a `current_exception`
+  / `exception_ptr` equivalent at the TPy layer).
+- Auto-readonly inference is too aggressive on methods that call
+  non-const methods through `Box[GenericDynProto[T]]` fields. Worked
+  around in `TaskState.cancel_any` and `Task.cancel` via a self-write
+  token (`self.done = self.done`, `self._cancelled = True`) that
+  defeats the inference. A real compiler fix would track method calls
+  through @dynamic-protocol-typed fields for const inference.
+
+What's left in `runtime/cpp/include/tpy/async.hpp`: `Waker`,
+`Poll<T>` (still C++ -- the four specializations need a generic-class
+spec compiler feature to port), `CancelledError`, `ExecutorOps` (now
+just `mark_runnable` + `register_timer`), `ExecutorHandle` +
+`current_executor` thread-local, plus the small bridge helpers
+(`make_executor_handle`, `make_waker`,
+`executor_register_timer_seconds`).
+
+3901 tests pass.
+
 ### Blocked -- stays C++ until compiler features land
 
 These pieces depend on language features TPy doesn't have today.

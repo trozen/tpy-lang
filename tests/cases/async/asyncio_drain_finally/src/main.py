@@ -6,7 +6,7 @@
 # task completes via the cached exception path.
 import asyncio
 from tpy import Int32
-from tpy.coro import Task
+from asyncio import Task
 
 
 async def background() -> None:

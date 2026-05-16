@@ -1,6 +1,4 @@
 outside null? True
-box empty? True
-box empty after reset? True
 sleep_until_steady past deadline: ok
 inside null? False
 after clear: True

@@ -34,7 +34,7 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
             // done: Future[Int32] = Future[Int32]()
             done = ::tpystd::asyncio::Future<int32_t>();
             // t: Task[None] = asyncio.create_task(background(done))
-            t = ::tpy::make_user_task<std::monostate>(background((*done)));
+            t = ::tpystd::asyncio::create_task<std::monostate>(background((*done)));
             // # Drop the handle without awaiting; the executor still drives the task.
             // del t
             { auto __del_sink = std::move(t); }
@@ -88,9 +88,6 @@ void __tpy_init() {
     // # `background_sleep < main_sleep` ordering.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.coro import Task
-    ::tpystd::tpy::__tpy_init();
-    ::tpystd::coro::__tpy_init();
     // main()
     main();
 }

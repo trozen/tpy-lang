@@ -1,12 +1,11 @@
-# v1.1 asyncio-port bindings: ExecutorHandle + current-executor
-# getter/setter/clear, AnyTaskBox, time.sleep_until_steady.
+# asyncio-port bindings: ExecutorHandle + current-executor
+# getter/setter/clear, time.sleep_until_steady.
 # Smoke-checks that the bindings parse, compile, link, and behave,
 # plus that asyncio.run's _ExecutorScope correctly clears the
 # thread-local on teardown (so a stale post-run wake is a silent
 # no-op rather than a stale-pointer dispatch).
 import asyncio
 from asyncio._executor import (
-    AnyTaskBox,
     _clear_current_executor,
     _get_current_executor,
     _set_current_executor,
@@ -28,13 +27,6 @@ async def check_inside() -> None:
     print("after clear:", _get_current_executor().is_null())
     _set_current_executor(h)
     print("after restore:", _get_current_executor().is_null())
-
-
-def check_box() -> None:
-    box = AnyTaskBox()
-    print("box empty?", box.empty())
-    box.reset()
-    print("box empty after reset?", box.empty())
 
 
 def check_sleep() -> None:
@@ -61,7 +53,6 @@ def check_teardown() -> None:
 
 def main() -> None:
     check_outside()
-    check_box()
     check_sleep()
     asyncio.run(check_inside())
     check_teardown()

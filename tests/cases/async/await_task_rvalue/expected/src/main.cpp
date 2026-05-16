@@ -29,7 +29,7 @@ __coro_sub sub() {
     switch (__state) {
     case S_INITIAL: {
             // result = await asyncio.create_task(sub())
-            __sub_0.emplace(std::move(::tpy::make_user_task<int32_t>(sub())));
+            __sub_0.emplace(std::move(::tpystd::asyncio::create_task<int32_t>(sub())));
             __state = S_AFTER_AWAIT_0;
         }
         [[fallthrough]];

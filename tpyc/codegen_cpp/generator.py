@@ -10,7 +10,7 @@ from typing import Callable, TextIO, TYPE_CHECKING
 import io
 import sys as _sys
 
-from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type, bare_name
+from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type, bare_name
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
@@ -1036,6 +1036,7 @@ class CodeGenerator:
         table = self.analyzer.ctx.module_attributes or {}
         func_reexports: list[tuple[str, str, str, object]] = []
         record_reexports: list[tuple[str, str, str, object]] = []
+        protocol_reexports: list[tuple[str, str, str, object]] = []
         enum_reexports: list[tuple[str, str, str, object]] = []
         var_reexports: list[tuple[str, str, str, object]] = []
         for name, cell in table.items():
@@ -1054,12 +1055,21 @@ class CodeGenerator:
                 func_reexports.append(entry)
             elif bd.kind == SymbolKind.RECORD:
                 record_reexports.append(entry)
+            elif bd.kind == SymbolKind.PROTOCOL_DYNAMIC:
+                # @dynamic protocols compile to abstract base classes
+                # (real types), so a `using X = ns::Base;` alias works.
+                # Static protocols compile to C++ concepts, which need
+                # template-form alias syntax incompatible with the
+                # bucketing emit path; consumers reach them via full
+                # qualification instead.
+                protocol_reexports.append(entry)
             elif bd.kind == SymbolKind.ENUM:
                 enum_reexports.append(entry)
             elif bd.kind == SymbolKind.VARIABLE:
                 var_reexports.append(entry)
         func_reexports.sort()
         record_reexports.sort()
+        protocol_reexports.sort()
         enum_reexports.sort()
         var_reexports.sort()
 
@@ -1122,6 +1132,39 @@ class CodeGenerator:
             return einfo is not None and einfo.is_native
 
         self._emit_alias_using_block(hpp, record_reexports, _record_skip)
+
+        # Re-exported protocols (@dynamic generates an abstract base
+        # class with the protocol's clean name; @static protocols
+        # generate a C++ concept. Either way, a `using` declaration
+        # makes the name accessible in the consuming module's scope so
+        # references like `Box[SomeProto]` resolve at the C++ level.
+        # Native marker protocols (NativeIterable, ValueType, etc.)
+        # don't define a concept at the user-facing name and skip the
+        # `using` -- consumers reach them through `tpy::` qualification.
+        def _protocol_skip(info: object, name: str) -> bool:
+            # info here is a ProtocolInfo (per symbol_binding); skip
+            # native marker protocols (NativeIterable, ValueType, ...).
+            # These map to C++ concepts at fixed ::tpy:: qnames and
+            # don't have a TPy-generated using target.
+            if isinstance(info, ProtocolInfo):
+                return info.cpp_concept is not None
+            return False
+
+        # Filter out implicit-stdlib sources: the stdlib stub build
+        # (each module compiled standalone for caching) doesn't have
+        # later-in-chain headers visible yet when the using-declaration
+        # is processed. Tpy._core importing typing.Iterable etc. is the
+        # canonical case -- those names work via full qualification in
+        # downstream emit paths, so skipping the `using` is safe. The
+        # cross-module case that DOES need the `using` is outside-stdlib
+        # (e.g. asyncio importing protocols from a sibling submodule).
+        protocol_reexports_external = [
+            e for e in protocol_reexports
+            if e[1] not in self.ctx.implicit_stdlib_modules
+        ]
+        self._emit_alias_using_block(
+            hpp, protocol_reexports_external, _protocol_skip,
+            skip_cycle_peers=True)
         self._emit_alias_using_block(
             hpp, enum_reexports, _enum_skip, skip_cycle_peers=True)
 

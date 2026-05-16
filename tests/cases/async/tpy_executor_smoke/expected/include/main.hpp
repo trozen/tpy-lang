@@ -9,10 +9,16 @@
 #include "tpystd/asyncio/_executor/_executor.hpp"
 #include <tpy/system.hpp>
 #include <tpy/stdlib/time.hpp>
+#include "tpystd/tplib.hpp"
+#include "tpystd/tplib/box.hpp"
 
 namespace tpyapp::main {
 
+using ::tpystd::asyncio::_executor::_make_any_task_for_test;
+
 using ::tpystd::asyncio::_executor::Executor;
+
+using ::tpystd::asyncio::_executor::AnyTask;
 
 struct CancellableForever;
 
@@ -40,6 +46,9 @@ struct CancellableForever {
 
     // def __poll__(self, waker: Waker) -> Poll[None]:
     ::tpy::Poll<std::monostate> __poll__(::tpy::Waker waker) const;
+
+    // def cancel(self) -> None:
+    void cancel();
     static constexpr std::string_view __tpy_class_name__ = "__main__.CancellableForever";
 };
 
@@ -63,6 +72,7 @@ struct __coro_returns_value {
         : __state(S_INITIAL), __cancel_pending(false), x(std::move(x_)) {}
 
     ::tpy::Poll<::tpy::BigInt> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_returns_value&) {
         return os << "<coroutine returns_value>";
@@ -83,6 +93,7 @@ struct __coro_void_coro {
         : __state(S_INITIAL), __cancel_pending(false) {}
 
     ::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_void_coro&) {
         return os << "<coroutine void_coro>";
@@ -99,6 +110,12 @@ inline ::tpy::Poll<std::monostate> CancellableForever::__poll__(::tpy::Waker wak
     }
     // return poll_pending[None]()
     return ::tpy::Poll<std::monostate>::pending();
+}
+
+// def cancel(self) -> None:
+inline void CancellableForever::cancel() {
+    // self.__cancel_pending = True
+    this->__cancel_pending = true;
 }
 void __tpy_init();
 } // namespace tpyapp::main

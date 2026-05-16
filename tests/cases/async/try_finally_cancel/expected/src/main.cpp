@@ -54,7 +54,7 @@ __coro_coro coro() {
 // def main() -> None:
 void main() {
     // t: Task[Int32] = task_from_coro(coro())
-    ::tpy::Task<int32_t> t = ::tpy::Task<int32_t>::from_coro(coro());
+    ::tpystd::asyncio::_executor::Task<int32_t> t = ::tpystd::asyncio::_executor::task_from_coro<int32_t>(coro());
     // if poll_once(t).is_pending():
     if (::tpystd::coro::poll_once<int32_t>(t).is_pending()) {
         // print("first-poll-pending")
@@ -76,7 +76,7 @@ void __tpy_init() {
 
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
-    // from tpy.coro import Task, task_from_coro, task_poll_cancelled, poll_once
+    // from tpy.coro import task_poll_cancelled, poll_once
     ::tpystd::tpy::__tpy_init();
     ::tpystd::coro::__tpy_init();
     // main()

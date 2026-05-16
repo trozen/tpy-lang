@@ -1,6 +1,7 @@
 import asyncio
 from tpy import Int32
-from tpy.coro import Task, task_from_coro, task_poll_cancelled, poll_once
+from asyncio import Task, task_from_coro
+from tpy.coro import task_poll_cancelled, poll_once
 
 async def yield_once() -> Int32:
     await asyncio.sleep(60.0)

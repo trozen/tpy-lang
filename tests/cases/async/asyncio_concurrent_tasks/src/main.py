@@ -5,7 +5,7 @@
 # await; both sleeps run in parallel.
 import asyncio
 from tpy import Int32
-from tpy.coro import Task
+from asyncio import Task
 
 
 async def doubler(n: Int32, label: str) -> Int32:

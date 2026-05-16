@@ -29,7 +29,7 @@ __coro_sub sub() {
     switch (__state) {
     case S_INITIAL: {
             // t = task_from_coro(sub())
-            t = ::tpy::Task<int32_t>::from_coro(sub());
+            t = ::tpystd::asyncio::_executor::task_from_coro<int32_t>(sub());
             // return await t
             __sub_0 = &((*t));
             __state = S_AFTER_AWAIT_0;
@@ -98,10 +98,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // from tpy.coro import Task, task_from_coro
-    ::tpystd::tpy::__tpy_init();
-    ::tpystd::coro::__tpy_init();
-    // import asyncio
+    // from asyncio import Task, task_from_coro
     ::tpystd::asyncio::__tpy_init();
     // main()
     main();
