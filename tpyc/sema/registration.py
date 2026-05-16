@@ -42,6 +42,7 @@ from ..typesys import (
     C3LinearizationError,
     same_base_type,
     bare_name,
+    contains_type_param,
 )
 from ..module_names import public_module_name
 from ..parse import (
@@ -95,15 +96,6 @@ def _contains_self_type(typ: TpyType) -> bool:
     if isinstance(typ, SelfType):
         return True
     return any(_contains_self_type(inner) for inner in typ.inner_types())
-
-
-def _contains_type_param_ref(typ: TpyType) -> bool:
-    """Check if a type contains TypeParamRef anywhere in its structure."""
-    if isinstance(typ, TypeParamRef):
-        return True
-    return any(_contains_type_param_ref(inner) for inner in typ.inner_types())
-
-
 
 
 def _validate_const_field_default(expr: TpyExpr, loc: object) -> None:
@@ -1716,7 +1708,7 @@ class TypeRegistrar:
                 continue
             for method_sig in proto_info.methods:
                 for pname, ptype in method_sig.params:
-                    if _contains_type_param_ref(ptype):
+                    if contains_type_param(ptype):
                         raise SemanticError(
                             f"Class '{record.name}' cannot directly inherit generic "
                             f"@dynamic protocol '{proto}': method '{method_sig.name}' "
@@ -1873,20 +1865,23 @@ class TypeRegistrar:
         # Auto-derive Send/Sync based on field types.
         # A record is Send if all its fields are Send (safe to move across threads).
         # A record is Sync if all its fields are Sync (safe to share across threads).
-        # TypeParamRef fields are assumed OK -- enforced at C++ instantiation via concepts.
+        # Fields whose type mentions an unresolved type parameter are
+        # assumed OK at registration -- enforced at C++ instantiation
+        # via concepts, and re-checked under concrete type_args by
+        # NominalType.is_send / is_sync at every use site.
         # NOTE: Modules are compiled in dependency order, so parent records from
         # imported modules are already attached to their TypeDef.record payload.
         is_send = all(
-            f.type.is_send() or isinstance(f.type, TypeParamRef)
+            f.type.is_send() or contains_type_param(f.type)
             for f in record_info.fields
         )
         is_sync = all(
-            f.type.is_sync() or isinstance(f.type, TypeParamRef)
+            f.type.is_sync() or contains_type_param(f.type)
             for f in record_info.fields
         )
         for p in record_info.parents:
-            is_send = is_send and p.is_send()
-            is_sync = is_sync and p.is_sync()
+            is_send = is_send and (p.is_send() or contains_type_param(p))
+            is_sync = is_sync and (p.is_sync() or contains_type_param(p))
         record_info.is_send = is_send
         record_info.is_sync = is_sync
 

@@ -286,6 +286,8 @@ def clear_all_compilation_state() -> None:
     _return_exception_names.clear()
     _return_exception_names.update(_BUILTIN_RETURN_EXCEPTIONS)
     _protocol_modules.clear()
+    _evaluating_send.clear()
+    _evaluating_sync.clear()
     clear_dynamic_type_defs()
 
 
@@ -940,24 +942,54 @@ class NominalType(TpyType):
         # TypeDef says list[T] is Send only when T is.
         from tpyc.type_def_registry import type_def_of, resolve_send_sync
         td = type_def_of(self)
-        if td is not None:
-            resolved = resolve_send_sync(td.is_send, self.type_args)
-            if resolved is not None:
-                return resolved
-            if td.record is not None and td.record.is_send:
-                return True
-        return self.is_value_type()
+        if td is None:
+            return self.is_value_type()
+        resolved = resolve_send_sync(td.is_send, self.type_args)
+        if resolved is not None:
+            return resolved
+        rec = td.record
+        if rec is None:
+            return self.is_value_type()
+        if not rec.type_params:
+            return rec.is_send
+        # Generic record: re-walk under use-site type_args. The cycle
+        # guard returns True on re-entry (greatest fixed point) so
+        # self-referential generics like `Tree[T]: children: list[Tree[T]]`
+        # terminate.
+        if self in _evaluating_send:
+            return True
+        _evaluating_send.add(self)
+        try:
+            for sub in _fields_and_parents_under_args(rec, self.type_args):
+                if not (sub.is_send() or contains_type_param(sub)):
+                    return False
+            return True
+        finally:
+            _evaluating_send.discard(self)
 
     def is_sync(self) -> bool:
         from tpyc.type_def_registry import type_def_of, resolve_send_sync
         td = type_def_of(self)
-        if td is not None:
-            resolved = resolve_send_sync(td.is_sync, self.type_args)
-            if resolved is not None:
-                return resolved
-            if td.record is not None and td.record.is_sync:
-                return True
-        return self.is_value_type()
+        if td is None:
+            return self.is_value_type()
+        resolved = resolve_send_sync(td.is_sync, self.type_args)
+        if resolved is not None:
+            return resolved
+        rec = td.record
+        if rec is None:
+            return self.is_value_type()
+        if not rec.type_params:
+            return rec.is_sync
+        if self in _evaluating_sync:
+            return True
+        _evaluating_sync.add(self)
+        try:
+            for sub in _fields_and_parents_under_args(rec, self.type_args):
+                if not (sub.is_sync() or contains_type_param(sub)):
+                    return False
+            return True
+        finally:
+            _evaluating_sync.discard(self)
 
     def get_element_type(self) -> Optional['TpyType']:
         # Per-qname override (e.g. SpanIter[readonly[T]] iterates T, not
@@ -1036,6 +1068,82 @@ def same_base_type(a: 'TpyType', b: 'TpyType') -> bool:
     if isinstance(a, NominalType) and isinstance(b, NominalType):
         return same_nominal_symbol_loose(a, b)
     return a == b
+
+
+def substitute_type_params_structural(
+    typ: TpyType, subst: dict[str, TpyType],
+) -> TpyType:
+    """Replace TypeParamRef nodes in `typ` with values from `subst`.
+
+    Structural walk: handles only TPy-type references; INT-kind
+    TypeParamRefs and Array's int slot pass through unchanged. The sema
+    layer has a more capable `TypeOps.substitute_type_params` in
+    type_ops.py that handles representation choices (e.g. Optional
+    pointer repr); this one is for typesys-internal callers that only
+    need structural replacement.
+    """
+    if isinstance(typ, TypeParamRef):
+        return subst.get(typ.name, typ)
+    # NominalType.type_args can hold raw ints (Array[T, N]); map_inner_types
+    # only walks TpyType entries, so mixed args need direct handling to
+    # preserve the int slots.
+    if type(typ) is NominalType and typ.type_args:
+        new_args: list = []
+        changed = False
+        for arg in typ.type_args:
+            if isinstance(arg, TypeParamRef) and arg.name in subst:
+                new_args.append(subst[arg.name])
+                changed = True
+            elif hasattr(arg, "map_inner_types"):
+                new = substitute_type_params_structural(arg, subst)
+                new_args.append(new)
+                if new is not arg:
+                    changed = True
+            else:
+                new_args.append(arg)
+        if changed:
+            return NominalType(
+                typ.name, tuple(new_args), typ.is_protocol,
+                typ._module_qname, typ.is_dynamic_protocol,
+            )
+        return typ
+    return typ.map_inner_types(
+        lambda t: substitute_type_params_structural(t, subst))
+
+
+# Re-entrancy guards for NominalType.is_send / is_sync. Generic records
+# can recurse into themselves through container fields (e.g.
+# `class Tree[T]: children: list[Tree[T]]`). Re-entry returns True --
+# the greatest-fixed-point answer for a recursive type's Send/Sync
+# property: assume the recursive position is Send/Sync, then validate
+# the rest of the walk. Cleared per compilation via
+# `clear_all_compilation_state`.
+_evaluating_send: set['NominalType'] = set()
+_evaluating_sync: set['NominalType'] = set()
+
+
+def _fields_and_parents_under_args(
+    record: 'RecordInfo', type_args: tuple,
+) -> Iterator[TpyType]:
+    """Yield each field type and each parent type from `record` with
+    `record.type_params -> type_args` substituted.
+
+    Callers apply a Send/Sync predicate per yielded type. The
+    `contains_type_param` allowance at the call site keeps unresolved
+    type parameters conservative -- needed both when the query happens
+    during another generic's registration (so `type_args` is itself
+    `(TypeParamRef(...),)`) and when use-site `type_args` leaves some
+    parameters unbound (sema should reject these but this stays robust).
+    """
+    subst: dict[str, TpyType] = {}
+    if record.type_params and type_args:
+        for name, arg in zip(record.type_params, type_args):
+            if isinstance(arg, TpyType):
+                subst[name] = arg
+    for f in record.fields:
+        yield substitute_type_params_structural(f.type, subst) if subst else f.type
+    for p in record.parents:
+        yield substitute_type_params_structural(p, subst) if subst else p
 
 
 class C3LinearizationError(Exception):
@@ -2378,8 +2486,8 @@ def _contains_self_reference(typ: 'TpyType', name: str) -> bool:
 
 
 # validate_recursive_union_paths now lives in tpyc.cycle_detection so it can
-# share _is_indirecting_type / _substitute_type_params with the wider cycle
-# walker without an inverted typesys -> cycle_detection lazy-import.
+# share _is_indirecting_type with the wider cycle walker without an inverted
+# typesys -> cycle_detection lazy-import.
 
 
 @dataclass(frozen=True)

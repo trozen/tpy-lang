@@ -18,6 +18,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
 
+from .typesys import substitute_type_params_structural
+
 if TYPE_CHECKING:
     from .typesys import NominalType, RecordInfo, TpyType, UnionType
 
@@ -37,46 +39,6 @@ def _is_indirecting_type(typ: TpyType) -> bool:
         return True
     td = type_def_of(typ)
     return td is not None and td.is_indirecting
-
-
-def _substitute_type_params(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
-    """Replace TypeParamRef nodes in `typ` with values from `subst`.
-
-    Lightweight local helper: cycle detection only needs structural
-    substitution to walk a record's fields under concrete type args.
-    INT-kind TypeParamRefs and container sizes (Array's int slot) are
-    passed through unchanged -- only TPy-type references matter for cycle
-    structure. The sema layer has a more capable substitute_type_params
-    in type_ops.py for general-purpose substitution; we keep this private
-    copy because cycle detection runs before sema and shouldn't reach up.
-    """
-    from .typesys import TypeParamRef, NominalType
-    if isinstance(typ, TypeParamRef):
-        return subst.get(typ.name, typ)
-    # NominalType.type_args can hold raw ints (Array[T, N]); map_inner_types
-    # only walks TpyType entries, so mixed args need direct handling to
-    # preserve the int slots.
-    if type(typ) is NominalType and typ.type_args:
-        new_args: list = []
-        changed = False
-        for arg in typ.type_args:
-            if isinstance(arg, TypeParamRef) and arg.name in subst:
-                new_args.append(subst[arg.name])
-                changed = True
-            elif hasattr(arg, "map_inner_types"):
-                new = _substitute_type_params(arg, subst)
-                new_args.append(new)
-                if new is not arg:
-                    changed = True
-            else:
-                new_args.append(arg)
-        if changed:
-            return NominalType(
-                typ.name, tuple(new_args), typ.is_protocol,
-                typ._module_qname, typ.is_dynamic_protocol,
-            )
-        return typ
-    return typ.map_inner_types(lambda t: _substitute_type_params(t, subst))
 
 
 def _collect_type_refs(
@@ -164,7 +126,7 @@ def _walk_record_fields(
     expanding.add(guard_key)
     try:
         for fld in info.fields:
-            field_type = (_substitute_type_params(fld.type, subst)
+            field_type = (substitute_type_params_structural(fld.type, subst)
                           if subst else fld.type)
             _walk(field_type, target_names, inside_indirection,
                   out, expanded_aliases, expanding)
