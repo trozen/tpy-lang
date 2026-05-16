@@ -233,11 +233,14 @@ inline void Event::save_json(std::string_view __path, int32_t indent) const {
         // # User-defined types as @model fields via __json_encode__/__json_decode__.
         // from __future__ import annotations
         __f.write(this->to_json(indent));
+        __ctx_1.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
     } catch (...) {
-        __ctx_1.__exit__();
+        __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_1.__exit__();
 }
 
 inline Event Event::load_json(std::string_view __path) {
@@ -249,11 +252,14 @@ inline Event Event::load_json(std::string_view __path) {
         // # User-defined types as @model fields via __json_encode__/__json_decode__.
         // from __future__ import annotations
         __data = __f.read();
+        __ctx_2.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_2) {
+        __ctx_2.__exit__({}, &__exc_2, {});
+        throw;
     } catch (...) {
-        __ctx_2.__exit__();
+        __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_2.__exit__();
     // from typing import Optional
     return Event::from_json(__data);
 }
@@ -267,11 +273,14 @@ inline std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::try
         // # User-defined types as @model fields via __json_encode__/__json_decode__.
         // from __future__ import annotations
         __data = __f.read();
+        __ctx_3.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_3) {
+        __ctx_3.__exit__({}, &__exc_3, {});
+        throw;
     } catch (...) {
-        __ctx_3.__exit__();
+        __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_3.__exit__();
     // from typing import Optional
     return Event::try_from_json(__data);
 }
@@ -326,11 +335,14 @@ inline void Schedule::save_json(std::string_view __path, int32_t indent) const {
         // # User-defined types as @model fields via __json_encode__/__json_decode__.
         // from __future__ import annotations
         __f.write(this->to_json(indent));
+        __ctx_4.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_4) {
+        __ctx_4.__exit__({}, &__exc_4, {});
+        throw;
     } catch (...) {
-        __ctx_4.__exit__();
+        __ctx_4.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_4.__exit__();
 }
 
 inline Schedule Schedule::load_json(std::string_view __path) {
@@ -342,11 +354,14 @@ inline Schedule Schedule::load_json(std::string_view __path) {
         // # User-defined types as @model fields via __json_encode__/__json_decode__.
         // from __future__ import annotations
         __data = __f.read();
+        __ctx_5.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_5) {
+        __ctx_5.__exit__({}, &__exc_5, {});
+        throw;
     } catch (...) {
-        __ctx_5.__exit__();
+        __ctx_5.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_5.__exit__();
     // from typing import Optional
     return Schedule::from_json(__data);
 }
@@ -360,11 +375,14 @@ inline std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedul
         // # User-defined types as @model fields via __json_encode__/__json_decode__.
         // from __future__ import annotations
         __data = __f.read();
+        __ctx_6.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_6) {
+        __ctx_6.__exit__({}, &__exc_6, {});
+        throw;
     } catch (...) {
-        __ctx_6.__exit__();
+        __ctx_6.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_6.__exit__();
     // from typing import Optional
     return Schedule::try_from_json(__data);
 }

@@ -1,0 +1,4 @@
+enter
+x=1
+exit saw: propagate me
+outer caught: propagate me

@@ -3256,8 +3256,10 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 ### `with` Statement (Context Managers)
 - **Working**: `with expr as var:` -- duck-typed context manager protocol via `__enter__`/`__exit__` methods
   - `__enter__(self) -> T` -- return type determines the `as`-variable type (can differ from the context manager type)
-  - `__exit__(self) -> None` (TPy-native) or `__exit__(self, exc_type, exc_val, exc_tb) -> None` (CPython-compatible; exception params stripped at parse time)
-  - Cleanup via try/catch duplication -- `__exit__()` runs on all paths (normal, exception, early return, break, continue)
+  - `__exit__(self, exc_type, exc_val, exc_tb) -> None | bool` -- CPython-compatible 4-arg shape. `exc_type` and `exc_tb` are `None` in v1.5 (no traceback/type-object machinery); `exc_val` carries the caught exception (`Optional[BaseException]`) on the exceptional path, `None` on normal exit.
+  - **Suppression** (v1.5): `__exit__ -> bool` -- returning `True` suppresses the exception (control falls through past the `with`); returning `False` re-raises. `__exit__ -> None` is cleanup-only (no suppression). `if exc_val is not None:` narrows for binary suppression; class-based dispatch via `isinstance(exc_val, X)` is deferred (the diagnostic points users at the narrowing form).
+  - `exc_val` may be explicitly annotated as `None` for cleanup-only managers (call site passes `{}` instead of `&__exc`); unannotated defaults to `Optional[BaseException]`.
+  - Cleanup via try/catch on every path -- normal fall-through, exception, early return, break, continue. Foreign C++ exceptions (non-`BaseException`) take a best-effort cleanup path with no suppression.
   - `as`-variable is visible after the `with` block (matching CPython scoping)
   - Multiple context managers: `with a() as x, b() as y:` -- nested try/catch blocks, inner exits first (LIFO)
   - Name reuse: `with a() as f: ... with b() as f: ...` -- second block rebinds via pointer-local indirection

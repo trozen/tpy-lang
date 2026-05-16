@@ -30,6 +30,7 @@ from ..typesys import (
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type, AnyType, PtrType, RefType,
     IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span,
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR, try_unwrap_class_constant,
+    is_void_like_type,
     is_classvar_allowed_inner, CLASSVAR_INNER_TYPE_ERROR,
     STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, NONE, TupleType, final_type_str_to_strview,
     make_awaitable,
@@ -1249,6 +1250,78 @@ class TypeRegistrar:
                     f"__copy__ must return {record.name}, got {ret}",
                     copy_loc,
                 )
+
+        # Validate __exit__ signature (v1.5 M1). Parser already enforces the
+        # 3-param shape; sema checks return + param types.
+        #   - return type: `bool` (may suppress) or `None` (cleanup-only).
+        #   - exc_type, exc_tb: `None` (carry no payload in v1.5).
+        #   - exc_val: `None` (cleanup-only) or `Optional[BaseException]`
+        #     (synthesized default for unannotated; lets the body inspect).
+        # Other shapes are rejected so the codegen call-site doesn't need
+        # to handle exotic param types.
+        if "__exit__" in methods:
+            exit_loc = next(
+                (m.loc for m in record.methods if m.name == "__exit__"),
+                record.loc,
+            )
+            # __exit__ is dispatched at a single codegen call site per
+            # `with` item; multiple overloads would force runtime selection
+            # that the call-site shape can't express. Reject up front.
+            if len(methods["__exit__"]) > 1:
+                raise SemanticError(
+                    "__exit__ cannot be overloaded",
+                    exit_loc,
+                )
+            exit_info = methods["__exit__"][0]
+            # Canonical-signature hint appended to every __exit__
+            # validation error so the user sees the complete expected
+            # shape in one diagnostic instead of fixing slots in
+            # round-trips. Return alternatives are spelled `-> bool`
+            # vs `-> None` (not `bool | None`) since the user picks
+            # one shape; the `exc_val: None` opt-out is noted briefly.
+            exit_hint = (
+                " (expected `def __exit__(self, exc_type: None, "
+                "exc_val: BaseException | None, exc_tb: None) -> bool` "
+                "for suppressing managers, or `-> None` for cleanup-only; "
+                "`exc_val: None` is also accepted to opt out of inspection)"
+            )
+            ret = exit_info.return_type
+            if ret != BOOL and not is_void_like_type(ret):
+                raise SemanticError(
+                    f"__exit__ must return bool or None, got {ret}{exit_hint}",
+                    exit_loc,
+                )
+            if len(exit_info.params) == 3:
+                # exc_type (idx 0) and exc_tb (idx 2): must be None.
+                for slot_name, slot_idx in (("exc_type", 0), ("exc_tb", 2)):
+                    pt = exit_info.params[slot_idx].type
+                    if not is_void_like_type(pt):
+                        raise SemanticError(
+                            f"__exit__ {slot_name} must be None, got "
+                            f"{pt}{exit_hint}",
+                            exit_loc,
+                        )
+                # exc_val (idx 1): None (no inspection) or
+                # Optional[BaseException] (the builtin). Use registry
+                # lookup rather than name compare so a user class named
+                # `BaseException` (different qname / different record)
+                # doesn't satisfy this.
+                exc_val_t = exit_info.params[1].type
+                base_exc_record = self.ctx.registry.find_record_by_qname(
+                    qnames.BASE_EXCEPTION)
+                ok = exc_val_t == NONE
+                if (not ok and isinstance(exc_val_t, OptionalType)
+                        and isinstance(exc_val_t.inner, NominalType)
+                        and base_exc_record is not None):
+                    inner_record = self.ctx.registry.find_record(
+                        exc_val_t.inner.name)
+                    ok = inner_record is base_exc_record
+                if not ok:
+                    raise SemanticError(
+                        f"__exit__ exc_val must be None or "
+                        f"Optional[BaseException], got {exc_val_t}{exit_hint}",
+                        exit_loc,
+                    )
 
         # Validate __getattr__ signature (D16 / dynamic attributes Phase 1).
         # Full rejection rules (decorators, async, generators, etc.) come in

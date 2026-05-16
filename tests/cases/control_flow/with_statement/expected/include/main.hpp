@@ -43,7 +43,7 @@ struct Logger {
     Logger& __enter__();
 
     // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-    void __exit__() const;
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
 
     // def log(self, msg: str) -> None:
     void log(std::string_view msg) const;
@@ -67,7 +67,7 @@ struct Connection {
     std::string __enter__() const;
 
     // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-    void __exit__();
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Connection";
 };
 
@@ -86,7 +86,7 @@ inline Logger& Logger::__enter__() {
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-inline void Logger::__exit__() const {
+inline void Logger::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
     // print(f"exit {self.name}")
     std::cout << std::format("exit {}", this->name) << "\n";
 }
@@ -106,7 +106,7 @@ inline std::string Connection::__enter__() const {
 }
 
 // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-inline void Connection::__exit__() {
+inline void Connection::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
     // self.active = False
     this->active = false;
     // print("disconnected")

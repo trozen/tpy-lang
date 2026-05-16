@@ -1,0 +1,7 @@
+-- do_raise=False --
+body fall-through
+exit normal
+after with
+-- do_raise=True --
+exit suppress: boom
+after with

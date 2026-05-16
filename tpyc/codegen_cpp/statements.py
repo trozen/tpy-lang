@@ -2410,35 +2410,38 @@ class StatementGenerator:
             else:
                 out.write(f"{indent}__ctx_{n}.__enter__();\n")
 
-        # Nest try-with-finally blocks: outermost = first ctx; innermost
-        # contains the body. LIFO close: innermost __exit__() runs first.
+        # Nest try-catch blocks outermost-to-innermost; LIFO close so
+        # innermost __exit__ runs first.
         body_terminates = stmts_terminate(stmt.body)
 
-        def make_exit_emit(ctx_n: int) -> Callable[[TextIO, str], None]:
-            def emit(o: TextIO, ind: str) -> None:
-                o.write(f"{ind}__ctx_{ctx_n}.__exit__();\n")
-            return emit
-
-        # Build a chain of nested emit_body callbacks; the innermost is
-        # the actual statement body. Each outer layer wraps the next inner
-        # in a try-with-finally with the corresponding __exit__() as finally.
         def emit_innermost_body(o: TextIO, body_indent: str) -> None:
             for s in stmt.body:
                 self.gen_stmt(o, s)
 
         emit_body: Callable[[TextIO, str], None] = emit_innermost_body
-        for ctx_n in reversed(ctx_ids):
+        layer_terminates = body_terminates
+        for ctx_n, item in zip(reversed(ctx_ids), reversed(stmt.items)):
             inner_emit = emit_body
-            exit_emit = make_exit_emit(ctx_n)
+            can_suppress = item.exit_can_suppress
+            takes_exc_val = item.exit_takes_exc_val
 
-            def make_layer(inner_emit_fn, exit_emit_fn):
+            def make_layer(inner_emit_fn, ctx_n_val, can_suppress_val,
+                           takes_exc_val_val, layer_terminates_val):
                 def layer(o: TextIO, body_indent: str) -> None:
-                    self._emit_try_with_finally(
-                        o, body_indent, inner_emit_fn, exit_emit_fn,
-                        finally_terminates=False,
-                        body_terminates=body_terminates)
+                    self._emit_with_try_catch(
+                        o, body_indent, inner_emit_fn,
+                        ctx_n=ctx_n_val,
+                        can_suppress=can_suppress_val,
+                        takes_exc_val=takes_exc_val_val,
+                        body_terminates=layer_terminates_val)
                 return layer
-            emit_body = make_layer(inner_emit, exit_emit)
+            emit_body = make_layer(inner_emit, ctx_n, can_suppress,
+                                   takes_exc_val, layer_terminates)
+            # Once an inner layer may suppress, the outer layer's body (the
+            # inner try/catch) can fall through even when the Python body
+            # always raises -- so propagate False to outer layers.
+            if can_suppress:
+                layer_terminates = False
 
         emit_body(out, indent)
 
@@ -2723,6 +2726,92 @@ class StatementGenerator:
         else:
             out.write(f"{indent}continue;\n")
         return out.getvalue()
+
+    def _emit_with_try_catch(
+            self,
+            out: TextIO,
+            inner: str,
+            emit_body: Callable[[TextIO, str], None],
+            ctx_n: int,
+            can_suppress: bool,
+            takes_exc_val: bool,
+            body_terminates: bool,
+    ) -> None:
+        """Emit the `with`-specific try/catch shape (v1.5 M1).
+
+        Layout (full, when can_suppress or takes_exc_val):
+            try {
+                <body>
+                __ctx_N.__exit__({}, nullptr, {});  // normal fall-through
+            } catch (::tpy::BaseException& __exc_N) {
+                // can_suppress=True (return type bool):
+                if (!__ctx_N.__exit__({}, &__exc_N, {})) throw;
+                // can_suppress=False (return type None):
+                __ctx_N.__exit__({}, &__exc_N, {});
+                throw;
+            } catch (...) {
+                // Foreign (non-tpy) exception -- best-effort cleanup;
+                // no suppression possible because exc_val typed
+                // Optional[BaseException] can't carry a foreign value.
+                __ctx_N.__exit__({}, nullptr, {});
+                throw;
+            }
+
+        When !can_suppress and !takes_exc_val, the BaseException& catch
+        and the foreign catch would emit byte-identical bodies (both:
+        `__exit__({}, {}, {}); throw;`). Elide the BaseException catch
+        in that case -- cleanup-only managers (the common stdlib shape)
+        emit one catch instead of two.
+
+        Normal-path __exit__ is INSIDE the try (last stmt after the
+        body) so a suppressing catch doesn't double-call it on
+        fall-through. Push a finally frame for return/break/continue
+        through the body (matches `_emit_try_with_finally`'s contract).
+        """
+        exc_null_arg = "nullptr" if takes_exc_val else "{}"
+        exc_obj_arg = f"&__exc_{ctx_n}" if takes_exc_val else "{}"
+        emit_tpy_catch = can_suppress or takes_exc_val
+
+        def emit_normal_exit(o: TextIO, ind: str) -> None:
+            o.write(f"{ind}__ctx_{ctx_n}.__exit__({{}}, {exc_null_arg}, {{}});\n")
+
+        self._push_finally(emit_normal_exit, terminates=False)
+
+        out.write(f"{inner}try {{\n")
+        self.ctx.indent_level += 1
+        emit_body(out, self.ctx.indent())
+        if not body_terminates:
+            emit_normal_exit(out, self.ctx.indent())
+        self.ctx.indent_level -= 1
+
+        # Pop the frame before emitting catches so a nested raise/return
+        # inside __exit__'s body walks outer frames, not back through
+        # itself.
+        if emit_tpy_catch:
+            out.write(f"{inner}}} catch (::tpy::BaseException& __exc_{ctx_n}) {{\n")
+            self.ctx.indent_level += 1
+            self.ctx.finally_stack.pop()
+            catch_ind = self.ctx.indent()
+            if can_suppress:
+                out.write(
+                    f"{catch_ind}if (!__ctx_{ctx_n}.__exit__({{}}, "
+                    f"{exc_obj_arg}, {{}})) throw;\n")
+            else:
+                out.write(
+                    f"{catch_ind}__ctx_{ctx_n}.__exit__({{}}, "
+                    f"{exc_obj_arg}, {{}});\n")
+                out.write(f"{catch_ind}throw;\n")
+            self.ctx.indent_level -= 1
+            out.write(f"{inner}}} catch (...) {{\n")
+        else:
+            out.write(f"{inner}}} catch (...) {{\n")
+            self.ctx.finally_stack.pop()
+        self.ctx.indent_level += 1
+        catch_ind = self.ctx.indent()
+        emit_normal_exit(out, catch_ind)
+        out.write(f"{catch_ind}throw;\n")
+        self.ctx.indent_level -= 1
+        out.write(f"{inner}}}\n")
 
     def _emit_try_with_finally(
             self,

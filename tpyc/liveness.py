@@ -173,9 +173,11 @@ def stmts_terminate(stmts: list[TpyStmt]) -> bool:
         return (stmts_terminate(last.try_body)
                 and all(stmts_terminate(h.body) for h in last.handlers))
     if isinstance(last, TpyWith):
-        # Assumes the context manager's __exit__ never suppresses exceptions
-        # (TPy's codegen for `with` always re-throws via catch(...) { ... throw; }).
-        # If TPy ever supports exception-suppressing __exit__, this needs revisiting.
+        # A suppressing __exit__ can swallow body-raised exceptions and
+        # fall through past the `with`, so body-terminates only implies
+        # with-terminates when every __exit__ returns None.
+        if any(item.exit_can_suppress for item in last.items):
+            return False
         return stmts_terminate(last.body)
     return False
 

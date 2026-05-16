@@ -1,0 +1,8 @@
+enter
+body a=7
+clean exit
+---
+enter
+body b=7
+exception exit: explicit
+outer caught: explicit

@@ -150,11 +150,14 @@ inline void Item::save_json(std::string_view __path, int32_t indent) const {
         // # Test panic on invalid enum value in JSON.
         // from tpy import Int32, try_parse
         __f.write(this->to_json(indent));
+        __ctx_1.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
     } catch (...) {
-        __ctx_1.__exit__();
+        __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_1.__exit__();
 }
 
 inline Item Item::load_json(std::string_view __path) {
@@ -166,11 +169,14 @@ inline Item Item::load_json(std::string_view __path) {
         // # Test panic on invalid enum value in JSON.
         // from tpy import Int32, try_parse
         __data = __f.read();
+        __ctx_2.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_2) {
+        __ctx_2.__exit__({}, &__exc_2, {});
+        throw;
     } catch (...) {
-        __ctx_2.__exit__();
+        __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_2.__exit__();
     // from enum import Enum
     return Item::from_json(__data);
 }
@@ -184,11 +190,14 @@ inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_l
         // # Test panic on invalid enum value in JSON.
         // from tpy import Int32, try_parse
         __data = __f.read();
+        __ctx_3.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_3) {
+        __ctx_3.__exit__({}, &__exc_3, {});
+        throw;
     } catch (...) {
-        __ctx_3.__exit__();
+        __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_3.__exit__();
     // from enum import Enum
     return Item::try_from_json(__data);
 }

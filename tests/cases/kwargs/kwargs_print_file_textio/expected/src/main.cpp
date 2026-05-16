@@ -24,11 +24,14 @@ void main() {
     try {
         // print(r.read(), end="")
         std::cout << r.read();
+        __ctx_1.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
     } catch (...) {
-        __ctx_1.__exit__();
+        __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_1.__exit__();
 }
 
 void __tpy_init() {

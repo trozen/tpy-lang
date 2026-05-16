@@ -2089,8 +2089,8 @@ class Parser:
         params = []
         has_self = not is_staticmethod
         self_annotation = None  # Resolved self type; consumed by sema.method_expansion.
-        # Count non-self params for __exit__ stripping check
         n_non_self = len(node.args.args) - (1 if has_self else 0)
+        is_exit_method = node.name == "__exit__" and has_self and n_non_self == 3
         args_iter = iter(enumerate(node.args.args))
         for i, arg in args_iter:
             if i == 0 and has_self:
@@ -2104,12 +2104,25 @@ class Parser:
                 if arg.annotation is not None:
                     self_annotation = self._parse_type_ref(arg.annotation, type_param_scope)
                 continue
-            # __exit__ exception params (exc_type, exc_val, exc_tb) are stripped --
-            # they are always None in TPy (no general exceptions). This allows
-            # CPython-compatible signatures without requiring type annotations.
-            if node.name == "__exit__" and n_non_self == 3 and has_self:
-                continue
             if arg.annotation is None:
+                if is_exit_method:
+                    # v1.5: __exit__(self, exc_type, exc_val, exc_tb). Positional
+                    # convention; unannotated params get synthesized types.
+                    # exc_type / exc_tb are always None in v1.5 (no traceback or
+                    # type-object machinery); exc_val carries the exception on
+                    # the exceptional path, None on normal exit.
+                    exit_idx = i - 1 if has_self else i
+                    loc = self._loc(arg)
+                    if exit_idx == 1:
+                        synth = TpyUnionRef(
+                            members=(TpyTypeRef("BaseException", (), loc),
+                                     TpyTypeRef("None", (), loc)),
+                            loc=loc,
+                        )
+                    else:
+                        synth = TpyTypeRef("None", (), loc)
+                    params.append((arg.arg, synth))
+                    continue
                 raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
             param_type = self._parse_type_ref(arg.annotation, type_param_scope)
             params.append((arg.arg, param_type))

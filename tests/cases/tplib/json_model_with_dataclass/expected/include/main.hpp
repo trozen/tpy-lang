@@ -154,11 +154,14 @@ inline void Item::save_json(std::string_view __path, int32_t indent) const {
         // # Test @model and @dataclass with field(default_factory=list) in the same module.
         // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
         __f.write(this->to_json(indent));
+        __ctx_1.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
     } catch (...) {
-        __ctx_1.__exit__();
+        __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_1.__exit__();
     // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
     // # registration (Default), which broke default_factory validation.
 }
@@ -172,11 +175,14 @@ inline Item Item::load_json(std::string_view __path) {
         // # Test @model and @dataclass with field(default_factory=list) in the same module.
         // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
         __data = __f.read();
+        __ctx_2.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_2) {
+        __ctx_2.__exit__({}, &__exc_2, {});
+        throw;
     } catch (...) {
-        __ctx_2.__exit__();
+        __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_2.__exit__();
     // # Test @model and @dataclass with field(default_factory=list) in the same module.
     // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
     // # registration (Default), which broke default_factory validation.
@@ -192,11 +198,14 @@ inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_l
         // # Test @model and @dataclass with field(default_factory=list) in the same module.
         // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
         __data = __f.read();
+        __ctx_3.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_3) {
+        __ctx_3.__exit__({}, &__exc_3, {});
+        throw;
     } catch (...) {
-        __ctx_3.__exit__();
+        __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_3.__exit__();
     // # Test @model and @dataclass with field(default_factory=list) in the same module.
     // # Regression: macro_deps pulled stdlib into user deps, skipping marker protocol
     // # registration (Default), which broke default_factory validation.

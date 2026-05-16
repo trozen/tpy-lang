@@ -246,11 +246,14 @@ inline void User::save_json(std::string_view __path, int32_t indent) const {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
         __f.write(this->to_json(indent));
+        __ctx_1.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
     } catch (...) {
-        __ctx_1.__exit__();
+        __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_1.__exit__();
 }
 
 inline User User::load_json(std::string_view __path) {
@@ -262,11 +265,14 @@ inline User User::load_json(std::string_view __path) {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
         __data = __f.read();
+        __ctx_2.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_2) {
+        __ctx_2.__exit__({}, &__exc_2, {});
+        throw;
     } catch (...) {
-        __ctx_2.__exit__();
+        __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_2.__exit__();
     // from typing import Optional
     return User::from_json(__data);
 }
@@ -280,11 +286,14 @@ inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_l
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
         __data = __f.read();
+        __ctx_3.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_3) {
+        __ctx_3.__exit__({}, &__exc_3, {});
+        throw;
     } catch (...) {
-        __ctx_3.__exit__();
+        __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_3.__exit__();
     // from typing import Optional
     return User::try_from_json(__data);
 }
@@ -339,11 +348,14 @@ inline void WithDefault::save_json(std::string_view __path, int32_t indent) cons
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
         __f.write(this->to_json(indent));
+        __ctx_4.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_4) {
+        __ctx_4.__exit__({}, &__exc_4, {});
+        throw;
     } catch (...) {
-        __ctx_4.__exit__();
+        __ctx_4.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_4.__exit__();
 }
 
 inline WithDefault WithDefault::load_json(std::string_view __path) {
@@ -355,11 +367,14 @@ inline WithDefault WithDefault::load_json(std::string_view __path) {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
         __data = __f.read();
+        __ctx_5.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_5) {
+        __ctx_5.__exit__({}, &__exc_5, {});
+        throw;
     } catch (...) {
-        __ctx_5.__exit__();
+        __ctx_5.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_5.__exit__();
     // from typing import Optional
     return WithDefault::from_json(__data);
 }
@@ -373,11 +388,14 @@ inline std::expected<WithDefault, ::tpystd::tplib::json::parser::JsonError> With
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
         __data = __f.read();
+        __ctx_6.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_6) {
+        __ctx_6.__exit__({}, &__exc_6, {});
+        throw;
     } catch (...) {
-        __ctx_6.__exit__();
+        __ctx_6.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_6.__exit__();
     // from typing import Optional
     return WithDefault::try_from_json(__data);
 }
@@ -439,11 +457,14 @@ inline void Base::save_json(std::string_view __path, int32_t indent) const {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
         __f.write(this->to_json(indent));
+        __ctx_7.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_7) {
+        __ctx_7.__exit__({}, &__exc_7, {});
+        throw;
     } catch (...) {
-        __ctx_7.__exit__();
+        __ctx_7.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_7.__exit__();
 }
 
 inline Base Base::load_json(std::string_view __path) {
@@ -455,11 +476,14 @@ inline Base Base::load_json(std::string_view __path) {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
         __data = __f.read();
+        __ctx_8.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_8) {
+        __ctx_8.__exit__({}, &__exc_8, {});
+        throw;
     } catch (...) {
-        __ctx_8.__exit__();
+        __ctx_8.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_8.__exit__();
     // from typing import Optional
     return Base::from_json(__data);
 }
@@ -473,11 +497,14 @@ inline std::expected<Base, ::tpystd::tplib::json::parser::JsonError> Base::try_l
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
         __data = __f.read();
+        __ctx_9.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_9) {
+        __ctx_9.__exit__({}, &__exc_9, {});
+        throw;
     } catch (...) {
-        __ctx_9.__exit__();
+        __ctx_9.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_9.__exit__();
     // from typing import Optional
     return Base::try_from_json(__data);
 }
@@ -541,11 +568,14 @@ inline void Extended::save_json(std::string_view __path, int32_t indent) const {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
         __f.write(this->to_json(indent));
+        __ctx_10.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_10) {
+        __ctx_10.__exit__({}, &__exc_10, {});
+        throw;
     } catch (...) {
-        __ctx_10.__exit__();
+        __ctx_10.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_10.__exit__();
 }
 
 inline Extended Extended::load_json(std::string_view __path) {
@@ -557,11 +587,14 @@ inline Extended Extended::load_json(std::string_view __path) {
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
         __data = __f.read();
+        __ctx_11.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_11) {
+        __ctx_11.__exit__({}, &__exc_11, {});
+        throw;
     } catch (...) {
-        __ctx_11.__exit__();
+        __ctx_11.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_11.__exit__();
     // from typing import Optional
     return Extended::from_json(__data);
 }
@@ -575,11 +608,14 @@ inline std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extende
         // # @model field renaming: alias maps Python field name to JSON key.
         // from tpy import Int32
         __data = __f.read();
+        __ctx_12.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_12) {
+        __ctx_12.__exit__({}, &__exc_12, {});
+        throw;
     } catch (...) {
-        __ctx_12.__exit__();
+        __ctx_12.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_12.__exit__();
     // from typing import Optional
     return Extended::try_from_json(__data);
 }

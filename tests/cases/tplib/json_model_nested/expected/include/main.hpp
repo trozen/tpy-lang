@@ -228,11 +228,14 @@ inline void Address::save_json(std::string_view __path, int32_t indent) const {
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
         __f.write(this->to_json(indent));
+        __ctx_1.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
     } catch (...) {
-        __ctx_1.__exit__();
+        __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_1.__exit__();
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
     // # dict[str, list[T]].
@@ -247,11 +250,14 @@ inline Address Address::load_json(std::string_view __path) {
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
         __data = __f.read();
+        __ctx_2.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_2) {
+        __ctx_2.__exit__({}, &__exc_2, {});
+        throw;
     } catch (...) {
-        __ctx_2.__exit__();
+        __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_2.__exit__();
     // # Test @model macro: all type combos, nesting, and round-trip.
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
@@ -268,11 +274,14 @@ inline std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address:
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
         __data = __f.read();
+        __ctx_3.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_3) {
+        __ctx_3.__exit__({}, &__exc_3, {});
+        throw;
     } catch (...) {
-        __ctx_3.__exit__();
+        __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_3.__exit__();
     // # Test @model macro: all type combos, nesting, and round-trip.
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
@@ -330,11 +339,14 @@ inline void Profile::save_json(std::string_view __path, int32_t indent) const {
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
         __f.write(this->to_json(indent));
+        __ctx_4.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_4) {
+        __ctx_4.__exit__({}, &__exc_4, {});
+        throw;
     } catch (...) {
-        __ctx_4.__exit__();
+        __ctx_4.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_4.__exit__();
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
     // # dict[str, list[T]].
@@ -349,11 +361,14 @@ inline Profile Profile::load_json(std::string_view __path) {
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
         __data = __f.read();
+        __ctx_5.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_5) {
+        __ctx_5.__exit__({}, &__exc_5, {});
+        throw;
     } catch (...) {
-        __ctx_5.__exit__();
+        __ctx_5.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_5.__exit__();
     // # Test @model macro: all type combos, nesting, and round-trip.
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],
@@ -370,11 +385,14 @@ inline std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile:
         // # Test @model macro: all type combos, nesting, and round-trip.
         // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
         __data = __f.read();
+        __ctx_6.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_6) {
+        __ctx_6.__exit__({}, &__exc_6, {});
+        throw;
     } catch (...) {
-        __ctx_6.__exit__();
+        __ctx_6.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_6.__exit__();
     // # Test @model macro: all type combos, nesting, and round-trip.
     // # Covers: str, Int32, float, Float32, bool, BigInt, enum, Optional,
     // # list[T], dict[str, V], tuple, nested @model, list[Model], list[Enum],

@@ -931,6 +931,13 @@ class TpyWithItem:
     loc: SourceLocation | None = None
     # Set by sema: type returned by __enter__()
     enter_type: TpyType | None = None
+    # Set by sema: True iff this ctx-manager's __exit__ returns bool (i.e.
+    # can suppress exceptions). False for None-returning __exit__.
+    exit_can_suppress: bool = False
+    # Set by sema: True iff exc_val is typed as Optional[BaseException]
+    # (i.e. the body inspects exceptions). False when exc_val: None.
+    # Codegen call site passes &__exc / nullptr when True, else {}.
+    exit_takes_exc_val: bool = False
 
 
 @dataclass

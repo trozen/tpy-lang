@@ -1075,7 +1075,9 @@ Done in v1:
 - `asyncio.CancelledError` -- raised at the next suspension point of a cancelled task; thread through `try`/`finally`.
 - `Executor` body (slot table for parked tasks with `(slot_id, generation)` wakers, runnable deque, timer min-heap keyed on steady-clock deadlines) lives in TPy at `lib/tpy/asyncio/_executor.py`; `runtime/cpp/include/tpy/async.hpp` keeps only the FFI shell (thread-local `ExecutorOps` dispatch table + `Waker`/`Poll`/`Task` runtime types + a handful of bridge helpers).
 
-Pending (v1.5): `async with`, `async for`, `gather`, `wait_for`, awaits inside `if`/`while`/`for`/`with` sub-bodies, general `try`/`except` around awaits, partial / nested try-around-await. Sync `with` will gain `__exit__(exc_type, exc, tb)` upgrade so context managers can inspect the exception.
+Pending (v1.5): `async with`, `async for`, `gather`, `wait_for`, awaits inside `if`/`while`/`for`/`with` sub-bodies, general `try`/`except` around awaits, partial / nested try-around-await.
+
+v1.5 M1: SHIPPED. Sync `with` upgraded to CPython-shape `__exit__(self, exc_type, exc_val, exc_tb) -> bool | None`; `bool` return suppresses, `None` is cleanup-only. Class-based exception dispatch via `isinstance(exc_val, X)` is deferred to M2 (blocked on `Optional[BaseException]` slicing -- see `BUGS.md`).
 
 Pending (v2+): I/O reactor (epoll on Linux, kqueue on BSD/macOS, IOCP on Windows), `asyncio.Queue`, async generators, `@error_return` async, `__await__` adaptation, multi-thread executor.
 

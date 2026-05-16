@@ -143,7 +143,7 @@ public:
     }
 
     TextFile& __enter__() { return *this; }
-    void __exit__() { close(); }
+    void __exit__(std::monostate, const BaseException*, std::monostate) { close(); }
 
     friend std::ostream& operator<<(std::ostream& os, const TextFile& f) {
         return os << "<TextIO '" << f.path_ << "'>";
@@ -219,7 +219,7 @@ public:
     }
 
     BinaryFile& __enter__() { return *this; }
-    void __exit__() { close(); }
+    void __exit__(std::monostate, const BaseException*, std::monostate) { close(); }
 
     friend std::ostream& operator<<(std::ostream& os, const BinaryFile& f) {
         return os << "<BinaryIO '" << f.path_ << "'>";

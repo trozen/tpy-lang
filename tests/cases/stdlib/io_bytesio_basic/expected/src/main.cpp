@@ -72,11 +72,14 @@ void context_manager_and_close() {
     try {
         // print("inside:", b.read())
         std::cout << "inside:" << " " << ::tpy::BytesPrinter(b.read()) << "\n";
+        __ctx_1.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
     } catch (...) {
-        __ctx_1.__exit__();
+        __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_1.__exit__();
     // b2 = io.BytesIO(b"x")
     ::tpystd::io::BytesIO b2 = ::tpystd::io::BytesIO(std::vector<uint8_t>{0x78});
     // b2.close()

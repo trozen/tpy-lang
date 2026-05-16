@@ -52,11 +52,14 @@ void main() {
     try {
         // print(f1.read())
         std::cout << f1.read() << "\n";
+        __ctx_1.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
     } catch (...) {
-        __ctx_1.__exit__();
+        __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_1.__exit__();
     // # Append mode
     // a = open(path, "a")
     ::tpy::TextFile a = ::tpy::builtin_open_mode(path, "a");
@@ -70,11 +73,14 @@ void main() {
     try {
         // print(f2.read())
         std::cout << f2.read() << "\n";
+        __ctx_2.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_2) {
+        __ctx_2.__exit__({}, &__exc_2, {});
+        throw;
     } catch (...) {
-        __ctx_2.__exit__();
+        __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_2.__exit__();
 }
 
 void __tpy_init() {

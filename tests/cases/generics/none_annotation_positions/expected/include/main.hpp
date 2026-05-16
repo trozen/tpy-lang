@@ -57,7 +57,7 @@ struct Guard {
     Guard& __enter__();
 
     // def __exit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
-    void __exit__() const;
+    void __exit__(std::monostate exc_type, std::monostate exc_val, std::monostate exc_tb) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Guard";
 };
 
@@ -82,7 +82,7 @@ inline Guard& Guard::__enter__() {
 }
 
 // def __exit__(self, exc_type: None, exc_val: None, exc_tb: None) -> None:
-inline void Guard::__exit__() const {
+inline void Guard::__exit__(std::monostate exc_type, std::monostate exc_val, std::monostate exc_tb) const {
     // print("exit")
     std::cout << "exit" << "\n";
 }

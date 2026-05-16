@@ -1,0 +1,1 @@
+main.py:11: error: class-based exception dispatch is not yet supported in v1.5; use `if e is not None:` for binary suppression

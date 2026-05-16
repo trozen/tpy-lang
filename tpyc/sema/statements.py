@@ -16,7 +16,7 @@ from ..typesys import (
     LiteralType,
     ViewTypeFamily, view_family_for_type,
     PendingGenericInstanceType, contains_fn_type,
-    INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, is_protocol_type, is_protocol_union, final_type_str_to_strview,
+    INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, BOOL, is_protocol_type, is_protocol_union, final_type_str_to_strview,
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR,
     qualify_exception_name, is_return_exception, is_exception_type, error_return_matches,
     FunctionInfo, ParamInfo, RecordInfo,
@@ -1854,6 +1854,17 @@ class StatementAnalyzer:
                 raise self.ctx.error(
                     f"Type '{ctx_type}' cannot be used as a context manager"
                     f" (missing __exit__ method)", err_node)
+
+            # v1.5 M1: tag whether __exit__ may suppress exceptions, and
+            # whether exc_val is typed Optional[BaseException] (vs None).
+            # Registration rejects multi-overload __exit__, so there's
+            # exactly one overload and we read its shape directly.
+            exit_info = exit_overloads[0]
+            item.exit_can_suppress = exit_info.return_type == BOOL
+            item.exit_takes_exc_val = (
+                len(exit_info.params) >= 2
+                and isinstance(exit_info.params[1].type, OptionalType)
+            )
 
             # Get return type of __enter__() -- use the first overload
             enter_info = enter_overloads[0]

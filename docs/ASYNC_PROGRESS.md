@@ -417,6 +417,49 @@ Deferred to v1.x:
 
 ## Future v1.x / v2 work
 
+## v1.5 milestone
+
+### M1 SHIPPED -- Sync `with` upgrade to 4-arg `__exit__`
+
+Prerequisite for `async with` (which inherits the same suppression contract).
+Hard cutover -- no compat shim for the old 1-arg shape.
+
+- Parser (`tpyc/parse/parser.py`): stop stripping the 3 exception params on
+  `__exit__`; unannotated slots get synthesized `TypeRefNode`s --
+  `exc_type` / `exc_tb` -> `None` (`std::monostate`), `exc_val` ->
+  `Optional[BaseException]` (`const BaseException*`).
+- Sema (`tpyc/sema/registration.py`): validate the `__exit__` signature
+  -- return must be `bool` or `None`; `exc_type` / `exc_tb` must be `None`;
+  `exc_val` must be `None` or `Optional[BaseException]`. Per-with-item
+  flags `exit_can_suppress` and `exit_takes_exc_val` flow to codegen +
+  liveness.
+- Sema (`tpyc/sema/calls.py`): `isinstance(exc_val, X)` on
+  `Optional[BaseException]` emits a targeted v1.5 diagnostic pointing at
+  `if exc_val is not None:` (class-based dispatch deferred to M2;
+  exception slicing through `Optional[BaseException]` would make
+  `dynamic_cast`-based isinstance silently wrong).
+- Codegen (`tpyc/codegen_cpp/statements.py::_emit_with_try_catch`):
+  three-way catch -- `catch (BaseException& __exc)` with optional
+  `if (!__exit__(...)) throw;` suppression check (when `__exit__ -> bool`),
+  `catch (...)` for foreign exceptions (best-effort cleanup, always
+  rethrows), plus normal-path `__exit__({}, nullptr, {})` on
+  fall-through / return / break / continue. Call site varies the exc_val
+  arg shape based on the user's annotation (`{}` for `None`,
+  pointer/nullptr for `Optional[BaseException]`).
+- Liveness (`tpyc/liveness.py`): a `with` whose `__exit__` can suppress
+  no longer terminates on body-termination alone -- the bool could be
+  `True` and control would fall through.
+- Runtime (`runtime/cpp/include/tpy/file.hpp`): `TextFile::__exit__` and
+  `BinaryFile::__exit__` now take the typed 3-arg signature.
+- Tests: 5 new `tests/cases/control_flow/with_exit_*` cases covering
+  suppress / no-suppress / normal-path / bad return / isinstance
+  diagnostic. Snapshots regenerated across all `with`-using cases.
+
+Deferred to M2: class-based exception dispatch via
+`isinstance(exc_val, X)`. Requires either fixing exception slicing
+through `Optional[BaseException]` at value-conversion boundaries, or
+restricting dynamic_cast to known-polymorphic sources (catch blocks).
+
 ## v1.x milestone: asyncio runtime TPy port (must precede v1.5)
 
 The v1 asyncio runtime (Executor + run loop + spawn registration + sleep

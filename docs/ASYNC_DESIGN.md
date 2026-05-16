@@ -552,21 +552,23 @@ If a task awaiting a Future is cancelled, the parent's cancel-throw fires before
 
 ---
 
-## Sync `with` upgrade (v1.5 prerequisite)
+## Sync `with` upgrade (v1.5 M1 -- SHIPPED)
 
-For `async with` to support `__aexit__(exc_type, exc_val, exc_tb)` + suppression, sync `with` must support the same on `__exit__`. Currently sync `with` codegen is no-args/no-suppression. The upgrade lands together with `async with` in v1.5 to keep the language consistent.
+For `async with` to support `__aexit__(exc_type, exc_val, exc_tb)` + suppression, sync `with` must support the same on `__exit__`. v1.5 M1 lands the sync side as a hard cutover -- no compat shim. See `docs/ASYNC_PROGRESS.md` "v1.5 M1" for the implementation notes.
 
-### Changes needed
+### What shipped
 
-- **Codegen** for every sync `with` site: wrap body in try/catch, pass `(exc_type, exc_val, exc_tb)` to `__exit__` on the exceptional path, check the bool return to decide whether to suppress.
-- **Sema**: `__exit__` signature changes from `__exit__(self) -> None` to `__exit__(self, exc_type, exc_val, exc_tb) -> bool`. All existing user/stdlib `__exit__` definitions need updating.
-- **Backwards compat**: a stub adapter could let old-shape `__exit__(self)` work for one release; long-term every `__exit__` adopts the new signature.
+- `__exit__(self, exc_type, exc_val, exc_tb) -> bool | None`. `bool` return gates suppression; `None` return is cleanup-only. `exc_type` and `exc_tb` are typed `None` (no traceback / type-object machinery in v1.5). `exc_val` is `Optional[BaseException]` for inspection, or `None` for cleanup-only managers (user opt-out).
+- Codegen emits `catch (BaseException& __exc) { if (!__exit__(...)) throw; }` for suppression-aware managers, `catch (...) { __exit__({}, nullptr, {}); throw; }` for foreign C++ exceptions (no suppression), and the normal-path `__exit__` call on fall-through / return / break / continue.
+- Sema rejects `__exit__` return types other than `bool` / `None`, and exc-param types outside `None` / `Optional[BaseException]`.
+- Liveness: a `with` whose `__exit__` may suppress does not terminate solely on body-termination (the bool could be `True`).
+- All stdlib `__exit__` declarations (file IO, sockets, etc.) are already `-> None` and migrated without body changes.
 
-This is a real chunk of work in its own right -- separate sub-design before v1.5 ships. The benefit is that sync and async `with` semantics match, and language users can write context managers that suppress exceptions either way.
+### Deferred to M2
 
-### Open detail: `type(exc)` and traceback
-
-The desugaring uses `type(exc)` to pass the exception type. TPy doesn't have a runtime-introspectable `type()` for exceptions today; for v1.5 we likely use an internal `__exception_type_token__` (a sentinel value derived from the catch site) instead. Traceback is `None` for v1.5; full Python-style traceback is a future extension.
+- **Class-based exception dispatch via `isinstance(exc_val, X)`.** Today's `isinstance` lowers to `std::holds_alternative<T>(variant)` over union members; `BaseException`-rooted hierarchies need `dynamic_cast` instead. Adding that is tractable, but `Optional[BaseException]` currently slices on value-conversion boundaries (`take(ValueError("x"))` -> `BaseException __tmp = ValueError("x")` -- dynamic type lost). Shipping `dynamic_cast`-based isinstance without fixing the slicing creates a feature that works on catch-sourced `exc_val` but silently fails for user-constructed exceptions -- a footgun. M2 either fixes the slicing first or restricts dynamic_cast to known-polymorphic sources. In v1.5 M1 the diagnostic on `isinstance(exc_val, X)` points users at `if exc_val is not None:` for binary suppression.
+- **`type(exc)` for `exc_type`.** v1.5 keeps `exc_type` typed as `None`. Full Python-style runtime type tokens are a v2 extension.
+- **Traceback.** `exc_tb` typed as `None`. Full traceback machinery is a future extension.
 
 ---
 

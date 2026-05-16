@@ -1,0 +1,6 @@
+outer enter
+inner enter
+body a=10 b=20
+inner suppressing: inner-only
+outer exit (normal)
+after with

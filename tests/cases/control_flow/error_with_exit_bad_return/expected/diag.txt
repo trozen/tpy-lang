@@ -1,0 +1,1 @@
+main.py:8: error: __exit__ must return bool or None, got int (expected `def __exit__(self, exc_type: None, exc_val: BaseException | None, exc_tb: None) -> bool` for suppressing managers, or `-> None` for cleanup-only; `exc_val: None` is also accepted to opt out of inspection)

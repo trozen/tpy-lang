@@ -11,6 +11,7 @@ from typing import Callable, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, OwnType, OptionalType, TupleType, own_tuple_target, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
+    is_exception_type,
     IntLiteralType, resolve_int_literals,
     LiteralType, LiteralValue, LiteralTag, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, is_void_like_type, ParamInfo, ReadonlyType,
@@ -1761,6 +1762,26 @@ class CallAnalyzer:
             # Optional[T] is a nullable union; isinstance narrowing against
             # the non-None inner type is not yet plumbed through. Keep the
             # historical error so users fall back to `x is not None`.
+            inner = effective_type.inner
+            inner_is_exc = (isinstance(inner, NominalType)
+                            and is_exception_type(inner.name, self.ctx.registry))
+            check_is_exc = all(
+                isinstance(ct, NominalType)
+                and is_exception_type(ct.name, self.ctx.registry)
+                for ct in check_types
+            ) if check_types else False
+            if inner_is_exc and check_is_exc:
+                # v1.5 M1: __exit__ exc_val is typed Optional[BaseException], but
+                # class-based dispatch (dynamic_cast on the exception hierarchy)
+                # is deferred to M2 -- exception slicing through Optional[X]
+                # would make per-class isinstance silently wrong. Until M2,
+                # only binary suppression via `if exc_val is not None:` works.
+                raise self.ctx.error(
+                    f"class-based exception dispatch is not yet supported in "
+                    f"v1.5; use `if {first_arg.name} is not None:` for binary "
+                    f"suppression",
+                    expr,
+                )
             raise self.ctx.error(
                 f"isinstance() is only supported on union types, "
                 f"got '{effective_type}'",

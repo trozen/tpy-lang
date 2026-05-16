@@ -1,0 +1,8 @@
+enter
+body sees x=7
+clean exit
+after fall_through
+---
+enter
+clean exit
+got 7

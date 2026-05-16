@@ -12,11 +12,14 @@ void test_basic() {
     try {
         // a.log("hello")
         a.log("hello");
+        __ctx_1.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
     } catch (...) {
-        __ctx_1.__exit__();
+        __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_1.__exit__();
     // print("after with")
     std::cout << "after with" << "\n";
 }
@@ -29,11 +32,14 @@ void test_no_as() {
     try {
         // print("inside B")
         std::cout << "inside B" << "\n";
+        __ctx_2.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_2) {
+        __ctx_2.__exit__({}, &__exc_2, {});
+        throw;
     } catch (...) {
-        __ctx_2.__exit__();
+        __ctx_2.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_2.__exit__();
     // print("after B")
     std::cout << "after B" << "\n";
 }
@@ -46,11 +52,14 @@ void test_enter_returns_different_type() {
     try {
         // print(session)
         std::cout << session << "\n";
+        __ctx_3.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_3) {
+        __ctx_3.__exit__({}, &__exc_3, {});
+        throw;
     } catch (...) {
-        __ctx_3.__exit__();
+        __ctx_3.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_3.__exit__();
     // print("after connection")
     std::cout << "after connection" << "\n";
 }
@@ -68,16 +77,22 @@ void test_multiple_ctx_managers() {
             x.log("first");
             // y.log("second")
             y.log("second");
+            __ctx_5.__exit__({}, nullptr, {});
+        } catch (::tpy::BaseException& __exc_5) {
+            __ctx_5.__exit__({}, &__exc_5, {});
+            throw;
         } catch (...) {
-            __ctx_5.__exit__();
+            __ctx_5.__exit__({}, nullptr, {});
             throw;
         }
-        __ctx_5.__exit__();
+        __ctx_4.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_4) {
+        __ctx_4.__exit__({}, &__exc_4, {});
+        throw;
     } catch (...) {
-        __ctx_4.__exit__();
+        __ctx_4.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_4.__exit__();
     // print("after both")
     std::cout << "after both" << "\n";
 }
@@ -90,11 +105,14 @@ void test_variable_visible_after() {
     try {
         // v.log("inside")
         v.log("inside");
+        __ctx_6.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_6) {
+        __ctx_6.__exit__({}, &__exc_6, {});
+        throw;
     } catch (...) {
-        __ctx_6.__exit__();
+        __ctx_6.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_6.__exit__();
     // v.log("after")
     v.log("after");
 }
@@ -108,10 +126,13 @@ std::string early_return_helper() {
         // r.log("before return")
         r.log("before return");
         // return "result"
-        __ctx_7.__exit__();
+        __ctx_7.__exit__({}, nullptr, {});
         return "result";
+    } catch (::tpy::BaseException& __exc_7) {
+        __ctx_7.__exit__({}, &__exc_7, {});
+        throw;
     } catch (...) {
-        __ctx_7.__exit__();
+        __ctx_7.__exit__({}, nullptr, {});
         throw;
     }
 }
@@ -142,20 +163,26 @@ std::string nested_with_all_return(bool flag) {
             // if flag:
             if (flag) {
                 // return "yes"
-                __ctx_9.__exit__();
-                __ctx_8.__exit__();
+                __ctx_9.__exit__({}, nullptr, {});
+                __ctx_8.__exit__({}, nullptr, {});
                 return "yes";
             }
             // return "no"
-            __ctx_9.__exit__();
-            __ctx_8.__exit__();
+            __ctx_9.__exit__({}, nullptr, {});
+            __ctx_8.__exit__({}, nullptr, {});
             return "no";
+        } catch (::tpy::BaseException& __exc_9) {
+            __ctx_9.__exit__({}, &__exc_9, {});
+            throw;
         } catch (...) {
-            __ctx_9.__exit__();
+            __ctx_9.__exit__({}, nullptr, {});
             throw;
         }
+    } catch (::tpy::BaseException& __exc_8) {
+        __ctx_8.__exit__({}, &__exc_8, {});
+        throw;
     } catch (...) {
-        __ctx_8.__exit__();
+        __ctx_8.__exit__({}, nullptr, {});
         throw;
     }
 }
@@ -180,11 +207,14 @@ void test_body_var_survives_scope() {
         x = 10;
         // y = "hello"
         y = "hello";
+        __ctx_10.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_10) {
+        __ctx_10.__exit__({}, &__exc_10, {});
+        throw;
     } catch (...) {
-        __ctx_10.__exit__();
+        __ctx_10.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_10.__exit__();
     // print(x)
     std::cout << x << "\n";
     // print(y)
@@ -202,11 +232,14 @@ void test_body_record_var_survives_scope() {
         inner = Logger("inner");
         // inner.log("inside")
         inner->log("inside");
+        __ctx_11.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_11) {
+        __ctx_11.__exit__({}, &__exc_11, {});
+        throw;
     } catch (...) {
-        __ctx_11.__exit__();
+        __ctx_11.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_11.__exit__();
     // inner.log("after")
     inner->log("after");
 }
@@ -219,22 +252,28 @@ void test_reuse_with_var_name() {
     try {
         // v.log("first")
         v->log("first");
+        __ctx_12.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_12) {
+        __ctx_12.__exit__({}, &__exc_12, {});
+        throw;
     } catch (...) {
-        __ctx_12.__exit__();
+        __ctx_12.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_12.__exit__();
     // with Logger("V2") as v:
     auto __ctx_13 = Logger("V2");
     v = &(__ctx_13.__enter__());
     try {
         // v.log("second")
         v->log("second");
+        __ctx_13.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_13) {
+        __ctx_13.__exit__({}, &__exc_13, {});
+        throw;
     } catch (...) {
-        __ctx_13.__exit__();
+        __ctx_13.__exit__({}, nullptr, {});
         throw;
     }
-    __ctx_13.__exit__();
     // v.log("after reuse")
     v->log("after reuse");
 }
@@ -252,8 +291,11 @@ void test_exception_in_body() {
                 e.log("before throw");
                 // raise ValueError("boom")
                 throw ::tpy::ValueError("boom");
+            } catch (::tpy::BaseException& __exc_14) {
+                __ctx_14.__exit__({}, &__exc_14, {});
+                throw;
             } catch (...) {
-                __ctx_14.__exit__();
+                __ctx_14.__exit__({}, nullptr, {});
                 throw;
             }
         } catch (const ::tpy::ValueError&) {
@@ -279,12 +321,18 @@ void test_exception_multi() {
                     m1.log("ok");
                     // raise ValueError("multi")
                     throw ::tpy::ValueError("multi");
+                } catch (::tpy::BaseException& __exc_16) {
+                    __ctx_16.__exit__({}, &__exc_16, {});
+                    throw;
                 } catch (...) {
-                    __ctx_16.__exit__();
+                    __ctx_16.__exit__({}, nullptr, {});
                     throw;
                 }
+            } catch (::tpy::BaseException& __exc_15) {
+                __ctx_15.__exit__({}, &__exc_15, {});
+                throw;
             } catch (...) {
-                __ctx_15.__exit__();
+                __ctx_15.__exit__({}, nullptr, {});
                 throw;
             }
         } catch (const ::tpy::ValueError&) {
@@ -305,11 +353,14 @@ void test_with_in_try_finally() {
             try {
                 // print("inside with")
                 std::cout << "inside with" << "\n";
+                __ctx_17.__exit__({}, nullptr, {});
+            } catch (::tpy::BaseException& __exc_17) {
+                __ctx_17.__exit__({}, &__exc_17, {});
+                throw;
             } catch (...) {
-                __ctx_17.__exit__();
+                __ctx_17.__exit__({}, nullptr, {});
                 throw;
             }
-            __ctx_17.__exit__();
         } catch (...) {
             // print("outer finally")
             std::cout << "outer finally" << "\n";
@@ -331,16 +382,19 @@ void test_break_in_with() {
             // if i == 2:
             if ((i == 2)) {
                 // break
-                __ctx_18.__exit__();
+                __ctx_18.__exit__({}, nullptr, {});
                 break;
             }
             // print(i)
             std::cout << i << "\n";
+            __ctx_18.__exit__({}, nullptr, {});
+        } catch (::tpy::BaseException& __exc_18) {
+            __ctx_18.__exit__({}, &__exc_18, {});
+            throw;
         } catch (...) {
-            __ctx_18.__exit__();
+            __ctx_18.__exit__({}, nullptr, {});
             throw;
         }
-        __ctx_18.__exit__();
     }
     // print("after break loop")
     std::cout << "after break loop" << "\n";
@@ -357,16 +411,19 @@ void test_continue_in_with() {
             // if i == 2:
             if ((i == 2)) {
                 // continue
-                __ctx_19.__exit__();
+                __ctx_19.__exit__({}, nullptr, {});
                 continue;
             }
             // print(i)
             std::cout << i << "\n";
+            __ctx_19.__exit__({}, nullptr, {});
+        } catch (::tpy::BaseException& __exc_19) {
+            __ctx_19.__exit__({}, &__exc_19, {});
+            throw;
         } catch (...) {
-            __ctx_19.__exit__();
+            __ctx_19.__exit__({}, nullptr, {});
             throw;
         }
-        __ctx_19.__exit__();
     }
     // print("after continue loop")
     std::cout << "after continue loop" << "\n";

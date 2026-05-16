@@ -1,0 +1,9 @@
+enter S
+using S
+S suppressing: boom
+control reached post-with (suppressed)
+---
+enter S
+using S
+S normal exit
+post-with
