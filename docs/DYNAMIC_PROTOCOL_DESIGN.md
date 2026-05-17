@@ -270,10 +270,15 @@ with unknown lifetime. These require explicit `Box[P]` (or future `Rc[P]`):
 (owning, heap-allocated) and the future `Rc[P]` (shared-owning). It is a
 raw `P*` pointer that dispatches `P`'s methods via the vtable; the caller
 is responsible for keeping the pointee alive. Construct via the usual
-`Ptr[T]` paths (`&obj` via `@cpp_template`, `take_ptr`, or a
-`box.get()`-style accessor). Static (non-`@dynamic`) protocols are
-rejected as `Ptr` element types -- they have no runtime representation
-to dispatch through (`tpyc/sema/type_ops.py:265`).
+`Ptr[T]` paths -- `take_ptr(concrete)` and direct
+record-to-`Ptr[P]` coercion both work for any concrete class
+implementing `P`; `box.get()` etc. also produce a `Ptr[P]` when the box's
+inner type implements `P`. The `Ptr[Subclass] -> Ptr[@dynamic P]` and
+`Subclass -> Ptr[@dynamic P]` coercions are documented in
+`docs/LANGUAGE_FEATURES.md`'s pointer-coercion table. Static
+(non-`@dynamic`) protocols are rejected as `Ptr` element types -- they
+have no runtime representation to dispatch through
+(`tpyc/sema/type_ops.py:265`).
 
 \* `BaseConcrete` here is a concrete class that inherits a `@dynamic` protocol
 (transitively), e.g. `class BaseExc(Throwable)` where `Throwable` is `@dynamic`.

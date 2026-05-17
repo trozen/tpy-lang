@@ -46,6 +46,7 @@ struct Notifier;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+void fire_direct(ExecutorA& exec, int32_t tid);
 void main();
 
 // @nocopy

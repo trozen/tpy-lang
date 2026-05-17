@@ -1,0 +1,1 @@
+main.py:19: error: Cannot take mutable pointer to read-only or temporary value in argument 'p'; use a read-only pointer for read-only access, or assign to a variable first

@@ -909,6 +909,8 @@ Implicit conversions between records and pointers with safety checks:
 |------|-----|-------------|---------------|
 | `T` (record) | `Ptr[T]` | Mutable lvalue, not in return | `&expr` |
 | `T` (record) | `Ptr[readonly[T]]` | Lvalue, not in return | `&expr` |
+| `Child` (record) | `Ptr[Parent]` / `Ptr[readonly[Parent]]` | Lvalue, not in return; `Child` inherits `Parent` (record-to-record) or implements `Parent` (record-to-`@dynamic`-protocol) | `&expr` (C++ implicit base-pointer upcast) |
+| `Ptr[Child]` | `Ptr[Parent]` / `Ptr[readonly[Parent]]` | Same covariance criterion as above; mutable source coerces to either, readonly source only to `Ptr[readonly[Parent]]` (cannot launder const) | `expr` (identity; C++ upcasts implicitly) |
 | `Ptr[T]` | `T` | Null-checked at runtime | `tpy::deref_check(expr)` |
 | `Deref[T]` type | `T` | Via `__deref__()` | `expr.__deref__()` |
 | `Ptr[T]` | `Ptr[readonly[T]]` | - | (implicit) |

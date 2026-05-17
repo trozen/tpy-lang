@@ -145,6 +145,12 @@ def _inner_compat_with_ro_widening(source_inner: TpyType, dest_inner: TpyType) -
     return False
 
 
+def _ptr_readonly_compatible(actual: PtrType, expected: PtrType) -> bool:
+    """True if `actual`'s readonly-ness may flow into `expected` -- a
+    mutable target from a readonly source would launder away the const."""
+    return expected.is_readonly or not actual.is_readonly
+
+
 def _is_natural_union_member(actual: TpyType, a_info, member: TpyType) -> bool:
     """True if `member` is the natural target for `actual` in a union match,
     i.e. selecting it does not require a category-crossing widening.
@@ -667,12 +673,13 @@ class TypeCompatibility:
 
         # Inheritance: Ptr[Child] -> Ptr[Parent] / Ptr[readonly[Parent]]
         # Ptr[readonly[Child]] -> Ptr[readonly[Parent]]
+        # Covers both class-to-class inheritance and `@dynamic` protocol
+        # implementation; C++ upcasts the pointer implicitly at the call
+        # site via virtual inheritance.
         if isinstance(actual, PtrType) and isinstance(actual.inner_pointee, NominalType):
             if isinstance(expected, PtrType) and isinstance(expected.inner_pointee, NominalType):
-                # Mutable Ptr can coerce to both Ptr and Ptr[readonly[...]] parent;
-                # Ptr[readonly[...]] can only coerce to Ptr[readonly[...]] parent
-                if not actual.is_readonly or expected.is_readonly:
-                    if self.ctx.registry.is_subclass_of(actual.inner_pointee, expected.inner_pointee):
+                if _ptr_readonly_compatible(actual, expected):
+                    if self._is_covariant_target(actual.inner_pointee, expected.inner_pointee):
                         return None
 
         # Covariant generic coercion: Box[Child] -> Box[Parent]
@@ -985,13 +992,15 @@ class TypeCompatibility:
         ctx = coercion_ctx or context
         coercion = resolve_coercion(actual, expected, ctx)
         if coercion is None:
-            # Inheritance: Child -> Ptr[Parent] / Ptr[readonly[Parent]] (address-of with upcast)
+            # Inheritance: Child -> Ptr[Parent] / Ptr[readonly[Parent]] (address-of with upcast).
+            # `_is_covariant_target` covers both class inheritance (Child -> Ptr[ParentRecord])
+            # and @dynamic-protocol implementation (Child -> Ptr[@dynamic Protocol]).
             if isinstance(actual, NominalType) and actual.is_user_record:
                 if isinstance(expected, PtrType) and not expected.is_readonly and isinstance(expected.inner_pointee, NominalType):
-                    if self.ctx.registry.is_subclass_of(actual, expected.inner_pointee):
+                    if self._is_covariant_target(actual, expected.inner_pointee):
                         coercion = UPCAST_TO_PTR
                 elif is_readonly_ptr(expected) and isinstance(expected.inner_pointee, NominalType):
-                    if self.ctx.registry.is_subclass_of(actual, expected.inner_pointee):
+                    if self._is_covariant_target(actual, expected.inner_pointee):
                         coercion = UPCAST_TO_CONST_PTR
         if coercion is None:
             # __span__() method coercion: type with __span__() -> Span[T] coerces to Span/Span[readonly[T]]
@@ -1625,8 +1634,14 @@ class TypeCompatibility:
         """
         if isinstance(expr, TpyCoerce):
             return self.is_mutable_lvalue(expr.expr)
-        # Named variables are mutable lvalues
+        # Named variables: mutable unless the binding's type is `readonly[T]`
+        # (parameter declared as `readonly[T]`, or `self` inside a @readonly
+        # method). Without this check, a readonly binding could launder
+        # away its const via `&x` / `take_ptr(x)` / record-to-Ptr upcasts.
         if isinstance(expr, TpyName):
+            expr_type = self.ctx.get_expr_type(expr)
+            if isinstance(expr_type, ReadonlyType):
+                return False
             return True
         # Field access on a mutable lvalue is also mutable
         if isinstance(expr, TpyFieldAccess):
