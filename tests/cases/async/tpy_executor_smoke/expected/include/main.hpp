@@ -15,6 +15,7 @@
 namespace tpyapp::main {
 
 using ::tpystd::asyncio::_executor::_make_any_task_for_test;
+using ::tpystd::asyncio::_executor::_make_waker;
 using ::tpystd::coro::poll_pending;
 
 using ::tpystd::asyncio::_executor::Executor;

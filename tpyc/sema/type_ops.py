@@ -255,10 +255,20 @@ class TypeOperations:
         elif isinstance(typ, PtrType):
             self.validate_type(typ.pointee, allow_type_param_ref, loc)
             if is_protocol_type(typ.pointee):
-                raise SemanticError(
-                    f"Protocol type '{typ.pointee}' cannot be used as a pointer element type",
-                    loc,
-                )
+                # Only static protocols are rejected. @dynamic protocols
+                # carry a runtime vtable, so `Ptr[P]` for @dynamic P is a
+                # well-defined non-owning protocol reference. If
+                # protocol_info_of is None here, the protocol isn't yet
+                # registered (record fields validate before protocols);
+                # defer to validate_record_field_protocols' re-pass,
+                # which runs post-registration and re-fires this check.
+                proto_def = protocol_info_of(typ.pointee)
+                if proto_def is not None and not proto_def.is_dynamic:
+                    raise SemanticError(
+                        f"Static protocol type '{typ.pointee}' cannot be used as a pointer element type "
+                        f"(only @dynamic protocols, which carry a runtime vtable, can)",
+                        loc,
+                    )
         elif (elem_type := typ.get_element_type()) is not None:
             self.validate_type(elem_type, allow_type_param_ref, loc)
             if is_protocol_type(elem_type):

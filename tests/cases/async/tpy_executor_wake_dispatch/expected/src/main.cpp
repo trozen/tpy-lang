@@ -19,7 +19,7 @@ void test_external_wake() {
     // # Externally wake the parked slot via Waker.wake() -- this routes
     // # through the C++ ops table back into Executor.mark_runnable.
     // w = _make_waker(_self_handle(e), sid, 0)
-    ::tpy::Waker w = ::tpy::make_waker(::tpy::make_executor_handle(e), sid, 0);
+    ::tpy::Waker w = ::tpystd::asyncio::_executor::_make_waker(::tpy::make_executor_handle(e), sid, 0);
     // w.wake()
     w.wake();
     // print("after wake, runnable_q:", len(e.runnable_q))
@@ -42,7 +42,7 @@ void test_stale_generation_wake() {
     e.drain_runnable();
     // # Fabricate a waker with a wrong (future) generation.
     // stale = _make_waker(_self_handle(e), sid, 99)
-    ::tpy::Waker stale = ::tpy::make_waker(::tpy::make_executor_handle(e), sid, 99);
+    ::tpy::Waker stale = ::tpystd::asyncio::_executor::_make_waker(::tpy::make_executor_handle(e), sid, 99);
     // stale.wake()
     stale.wake();
     // print("stale wake runnable_q:", len(e.runnable_q))
@@ -68,7 +68,7 @@ void test_timer_drives_to_completion() {
     // while not e.slot_done(sid):
     while ((!(e.slot_done(sid)))) {
         // w = _make_waker(_self_handle(e), sid, 0)
-        ::tpy::Waker w = ::tpy::make_waker(::tpy::make_executor_handle(e), sid, 0);
+        ::tpy::Waker w = ::tpystd::asyncio::_executor::_make_waker(::tpy::make_executor_handle(e), sid, 0);
         // e.register_timer(monotonic() - 0.5, w)
         e.register_timer(((::tpy::stdlib::time::monotonic()) - (0.5)), w);
         // e.wait_for_event()

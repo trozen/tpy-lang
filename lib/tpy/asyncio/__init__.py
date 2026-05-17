@@ -54,7 +54,16 @@ def _run_drain_main_task(box: Own[Box[AnyTask]]) -> None:
 # executor. No-op if no executor is running (so hand-rolled awaitables
 # polled from a test harness without `asyncio.run` don't crash).
 @native("tpy::executor_register_timer_seconds")
-def _register_timer_at(deadline_seconds: float, waker: Waker) -> None: ...
+def _register_timer_at_impl(handle: ExecutorHandle,
+                            deadline_seconds: float,
+                            waker: Waker) -> None: ...
+
+
+def _register_timer_at(deadline_seconds: float, waker: Waker) -> None:
+    handle = _get_current_executor()
+    if handle.is_null():
+        return
+    _register_timer_at_impl(handle, deadline_seconds, waker)
 
 
 class SleepFuture:

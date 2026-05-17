@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def check_outside() -> None:
 void check_outside() {
     // print("outside null?", _get_current_executor().is_null())
-    std::cout << "outside null?" << " " << ::tpy::print_bool(::tpy::current_executor_get().is_null()) << "\n";
+    std::cout << "outside null?" << " " << ::tpy::print_bool(::tpystd::asyncio::_executor::_get_current_executor().is_null()) << "\n";
 }
 
 // async def check_inside() -> None:
@@ -16,20 +16,20 @@ void check_outside() {
     switch (__state) {
     case S_INITIAL: {
             // h = _get_current_executor()
-            h = ::tpy::current_executor_get();
+            h = ::tpystd::asyncio::_executor::_get_current_executor();
             // print("inside null?", h.is_null())
             std::cout << "inside null?" << " " << ::tpy::print_bool(h.is_null()) << "\n";
             // # Manual save/restore round-trip via the public bindings; not
             // # the production path (that's _ExecutorScope.__del__, exercised
             // # by check_teardown below).
             // _clear_current_executor()
-            ::tpy::current_executor_clear();
+            ::tpystd::asyncio::_executor::_clear_current_executor();
             // print("after clear:", _get_current_executor().is_null())
-            std::cout << "after clear:" << " " << ::tpy::print_bool(::tpy::current_executor_get().is_null()) << "\n";
+            std::cout << "after clear:" << " " << ::tpy::print_bool(::tpystd::asyncio::_executor::_get_current_executor().is_null()) << "\n";
             // _set_current_executor(h)
-            ::tpy::current_executor_set(h);
+            ::tpystd::asyncio::_executor::_set_current_executor(h);
             // print("after restore:", _get_current_executor().is_null())
-            std::cout << "after restore:" << " " << ::tpy::print_bool(::tpy::current_executor_get().is_null()) << "\n";
+            std::cout << "after restore:" << " " << ::tpy::print_bool(::tpystd::asyncio::_executor::_get_current_executor().is_null()) << "\n";
             __state = S_DONE;
             return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
@@ -80,14 +80,14 @@ void check_teardown() {
     // asyncio.run(trivial())
     ::tpystd::asyncio::run<std::monostate>(trivial());
     // print("after run, null?", _get_current_executor().is_null())
-    std::cout << "after run, null?" << " " << ::tpy::print_bool(::tpy::current_executor_get().is_null()) << "\n";
+    std::cout << "after run, null?" << " " << ::tpy::print_bool(::tpystd::asyncio::_executor::_get_current_executor().is_null()) << "\n";
     // # A second asyncio.run is allowed because the thread-local was
     // # cleared (re-entry into a running event loop is what gets
     // # rejected; back-to-back runs are fine).
     // asyncio.run(trivial())
     ::tpystd::asyncio::run<std::monostate>(trivial());
     // print("second run completed, null?", _get_current_executor().is_null())
-    std::cout << "second run completed, null?" << " " << ::tpy::print_bool(::tpy::current_executor_get().is_null()) << "\n";
+    std::cout << "second run completed, null?" << " " << ::tpy::print_bool(::tpystd::asyncio::_executor::_get_current_executor().is_null()) << "\n";
 }
 
 // def main() -> None:

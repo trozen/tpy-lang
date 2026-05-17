@@ -7,7 +7,7 @@ Module name borrowed from the design-doc's `Coroutine[T]` terminology
 from .._typing import Protocol
 from .._bootstrap._decorators import Own, dynamic
 from .._builtins._exceptions import CancelledError
-from .._core import Waker, Poll
+from .._core import Waker, Poll, ExecutorHandle
 
 
 # Structural awaitable. Distinct from `typing.Awaitable[T]` (CPython's

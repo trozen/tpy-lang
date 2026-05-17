@@ -15,7 +15,7 @@ from ._types import (
     UInt8, UInt16, UInt32, UInt64,
     Char, String, StrView, FStr,
     # Async runtime primitives. `Task[T]` lives in `asyncio._executor`.
-    Waker, Poll,
+    Waker, Poll, ExecutorHandle,
 )
 from ._bytes_view import BytesView
 from ._containers import Span, Array, Ptr, SpanIter

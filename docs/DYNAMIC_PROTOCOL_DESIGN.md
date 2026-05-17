@@ -257,14 +257,23 @@ def make_pet() -> Box[Pet]:
 Dynamic protocol types cannot be used directly in contexts that require owning storage
 with unknown lifetime. These require explicit `Box[P]` (or future `Rc[P]`):
 
-| Context | Direct `Pet` | `Box[Pet]` | `Optional[BaseConcrete]` * |
-|---------|-------------|------------|--------------------------|
-| Local variable | OK (stack adapter) | OK (heap) | OK init-only (slot retyped to rvalue's class); rebind rejected |
-| Function param | OK (reference) | OK | OK (`const BaseConcrete*` borrow, no-slice temp materialization) |
-| Return value | Only if source outlives caller | OK | Only if source outlives caller; rvalue construction returned is rejected |
-| Record field | No (size unknown) | OK | No (storage form has same lifetime/slicing issue) -- use `Optional[Box[BaseConcrete]]` |
-| `list[Pet]` | No (elements need ownership) | `list[Box[Pet]]` | -- use `list[Box[BaseConcrete]]` |
-| `isinstance(x, Sub)` | Compile-time concept check | Compile-time check on `Box`'s inner | Runtime `dynamic_cast` (Phase 19) |
+| Context | Direct `Pet` | `Ptr[Pet]` (non-owning) | `Box[Pet]` (owning) | `Optional[BaseConcrete]` * |
+|---------|-------------|-------------------------|---------------------|--------------------------|
+| Local variable | OK (stack adapter) | OK (`Pet*`, nullable) | OK (heap) | OK init-only (slot retyped to rvalue's class); rebind rejected |
+| Function param | OK (reference) | OK (`Pet*`, nullable) | OK | OK (`const BaseConcrete*` borrow, no-slice temp materialization) |
+| Return value | Only if source outlives caller | Only if pointee outlives caller | OK | Only if source outlives caller; rvalue construction returned is rejected |
+| Record field | No (size unknown) | OK (`Pet*`, caller manages lifetime) | OK | No (storage form has same lifetime/slicing issue) -- use `Optional[Box[BaseConcrete]]` |
+| `list[Pet]` | No (elements need ownership) | OK (`std::vector<Pet*>`) | `list[Box[Pet]]` | -- use `list[Box[BaseConcrete]]` |
+| `isinstance(x, Sub)` | Compile-time concept check | Compile-time check on `Ptr`'s pointee | Compile-time check on `Box`'s inner | Runtime `dynamic_cast` (Phase 19) |
+
+`Ptr[P]` for a `@dynamic` P is the natural non-owning sibling of `Box[P]`
+(owning, heap-allocated) and the future `Rc[P]` (shared-owning). It is a
+raw `P*` pointer that dispatches `P`'s methods via the vtable; the caller
+is responsible for keeping the pointee alive. Construct via the usual
+`Ptr[T]` paths (`&obj` via `@cpp_template`, `take_ptr`, or a
+`box.get()`-style accessor). Static (non-`@dynamic`) protocols are
+rejected as `Ptr` element types -- they have no runtime representation
+to dispatch through (`tpyc/sema/type_ops.py:265`).
 
 \* `BaseConcrete` here is a concrete class that inherits a `@dynamic` protocol
 (transitively), e.g. `class BaseExc(Throwable)` where `Throwable` is `@dynamic`.

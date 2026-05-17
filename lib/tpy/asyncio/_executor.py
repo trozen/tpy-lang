@@ -1,36 +1,48 @@
 # tpy: cpp_namespace("tpystd::asyncio::_executor")
 # tpy: include("<tpy/async.hpp>")
 # tpy: include("<tpy/stdlib/time.hpp>")
-"""Internal asyncio scaffolding -- the TPy executor + the bindings it
-needs to dispatch into the C++ runtime. Not part of the public asyncio
-API; imported only by `lib/tpy/asyncio/` modules. See
-`docs/ASYNC_PROGRESS.md` for the v1.1 port history.
+"""Internal asyncio scaffolding -- the TPy executor + the small C++
+runtime bridge it still needs. Not part of the public asyncio API;
+imported only by `lib/tpy/asyncio/` modules. See
+`docs/ASYNC_PROGRESS.md` for the port history.
 
-Compiler bindings to the C++ runtime:
+TPy-side:
 
-  * `ExecutorHandle` -- opaque handle to the running executor's
-    `thread_local void*`. Default-constructed handles are null.
+  * `ExecutorHandle` -- opaque `void*` value type defined in
+    `tpy._core._types`. Default-constructs to null; the only @native
+    method is `is_null()` (the C++ struct itself is in
+    `runtime/cpp/include/tpy/async.hpp` and owns the layout).
+  * `_current_executor` -- module-level `ExecutorHandle` global
+    tracking the running executor. Plain (non-thread-local) global;
+    v1 asyncio is single-executor per process. Multi-threaded async
+    (v3+) needs TPy thread-local module globals to mirror the runtime
+    side.
   * `_get_current_executor` / `_set_current_executor` /
-    `_clear_current_executor` -- thin getters/setters around the
-    thread-local, used by `_ExecutorScope` for asyncio.run setup /
-    teardown.
-  * `_executor_scope_teardown` -- atomically clears both the
-    thread-local and the ExecutorOps dispatch table so stale Wakers
-    become silent no-ops.
-  * `AnyTaskBox` -- type-erased owning slot entry; `list[AnyTaskBox]`
-    is the executor's task table. See the C++-side TODO in
-    `runtime/cpp/include/tpy/async.hpp` for when this wrapper goes
-    away (blocked on shared-ownership smart pointer in TPy).
-
-TPy-side classes:
-
+    `_clear_current_executor` -- pure-TPy getters/setters around the
+    module global.
+  * `_executor_scope_teardown` -- pure-TPy function: calls the C++
+    `clear_executor_ops` shim and clears the current-executor global.
+  * `_make_waker` -- pure-TPy factory; constructs a `Waker` via its
+    `@overload @cpp_template` aggregate-init constructor.
   * `Slot` -- the per-task entry. Wraps an `AnyTaskBox` with a
     generation counter (advanced on slot completion to invalidate
     stale wakers) and a runnable flag.
   * `Executor` -- the v1 asyncio executor; runnable-queue + timer-heap
     driver.
-  * `_ExecutorScope` -- RAII guard around `current_executor` +
-    `executor_ops`.
+  * `_ExecutorScope` -- RAII guard around `_current_executor` +
+    `executor_ops` (TPy side clears the global; C++ side clears the
+    ops table).
+
+C++ runtime bridge (remaining surface in `async.hpp`):
+
+  * `Waker` POD struct + ABI-compatible TPy class stub. Layout owned
+    by C++ so the templated thunks can pass Waker by value.
+  * `ExecutorOps` function-pointer dispatch table + per-`ExecT`
+    templated thunks (`mark_runnable_thunk`, `register_timer_thunk`).
+  * `register_executor_ops_from<ExecT>` installer called from
+    `Executor.__init__`.
+  * `clear_executor_ops` / `executor_register_timer_seconds` --
+    thin shims TPy calls into to clear/dispatch through the ops table.
 """
 import heapq
 
@@ -39,7 +51,7 @@ from builtins import BaseException
 from time import monotonic, sleep_until_steady
 from tpy import Int32, Own, ValueType, CancelledError, copy, dynamic, nocopy, readonly
 from tpy.extern import builtin_type, cpp_template, native
-from tpy.coro import Awaitable, Poll, Waker, poll_ready, poll_pending
+from tpy.coro import Awaitable, Poll, Waker, ExecutorHandle, poll_ready, poll_pending
 from tpy.mem import UninitArrayStorage
 from tplib import Box
 from tplib.rc import Rc
@@ -287,47 +299,47 @@ def task_to_any_box[T](task: Task[T]) -> Own[Box[AnyTask]]:
     return Box[AnyTask](TaskStateView[T](task._state.clone()))
 
 
-# --- Executor bindings (original _executor.py content) ------------------
+# --- Current-executor global + ops bridge -------------------------------
 
 
-@native("tpy::ExecutorHandle")
-class ExecutorHandle(ValueType):
-    """Opaque handle to the running executor's thread-local pointer.
-
-    POD value type (8-byte `void* ptr` C++ side), default-constructs
-    to null. The TPy executor port (Phase 2/3) stores its own pointer
-    here via `_set_current_executor` and reads it back via
-    `_get_current_executor`.
-    """
-    def __init__(self) -> None: ...
-
-    @readonly
-    def is_null(self) -> bool: ...
+# Single-process global tracking the running executor's opaque handle.
+# v1 asyncio is single-executor per process; multi-threaded async (v3+)
+# needs TPy thread-local module globals. See TODO.md for the cross-system
+# TLS revert note (mirrors `executor_ops` in async.hpp).
+_current_executor: ExecutorHandle = ExecutorHandle()
 
 
-@native("tpy::current_executor_get")
-def _get_current_executor() -> ExecutorHandle: ...
+def _get_current_executor() -> ExecutorHandle:
+    return _current_executor
 
 
-@native("tpy::current_executor_set")
-def _set_current_executor(handle: ExecutorHandle) -> None: ...
+def _set_current_executor(handle: ExecutorHandle) -> None:
+    global _current_executor
+    _current_executor = handle
 
 
-@native("tpy::current_executor_clear")
-def _clear_current_executor() -> None: ...
+def _clear_current_executor() -> None:
+    global _current_executor
+    _current_executor = ExecutorHandle()
 
 
-@native("tpy::executor_scope_teardown")
-def _executor_scope_teardown() -> None: ...
+# Clears the C++ ExecutorOps dispatch table so stale Wakers become
+# silent no-ops in Waker::wake (the table's mark_runnable becomes null).
+@native("tpy::clear_executor_ops")
+def _clear_executor_ops() -> None: ...
+
+
+def _executor_scope_teardown() -> None:
+    _clear_executor_ops()
+    _clear_current_executor()
 
 
 # Construct a Waker stamped with this executor's handle + task id +
-# generation. The TPy executor's poll_slot calls this when handing a
-# waker to a coroutine; `Waker::wake` dispatches into mark_runnable
-# via the ExecutorOps table.
-@native("tpy::make_waker")
+# generation. `Waker::wake` dispatches into mark_runnable via the
+# ExecutorOps table.
 def _make_waker(handle: ExecutorHandle, task_id: Int32,
-                generation: Int32) -> Waker: ...
+                generation: Int32) -> Waker:
+    return Waker(handle, task_id, generation)
 
 
 # Dispatch into the current TPy `Executor`'s `spawn` method from a TPy
@@ -406,6 +418,14 @@ class Executor:
     timer_heap: list[TimerEntry]
 
     def __init__(self) -> None:
+        # Backstop for `asyncio.run`'s nested-loop check: a non-null
+        # current_executor means a `_ExecutorScope` is already active.
+        # Bare `Executor()` in unit tests is unaffected because those
+        # tests never set the global.
+        if not _get_current_executor().is_null():
+            raise RuntimeError(
+                "Executor: another executor is already running "
+                "(nested asyncio.run or leaked _ExecutorScope)")
         self.slots = []
         self.runnable_q = []
         self.timer_heap = []
@@ -552,19 +572,11 @@ def _make_any_task_for_test[T](coro: Own[Awaitable[T]]) -> Own[Box[AnyTask]]:
 
 @nocopy
 class _ExecutorScope:
-    """RAII guard for the current-executor thread-local + ExecutorOps
-    dispatch table. Writes `executor`'s handle on construction; clears
-    both the thread-local and the ops table on `__del__` so any Waker
-    stamped against this executor that fires after teardown becomes a
-    silent no-op rather than dispatching through a stale `void* exec`.
-
-    v1 asyncio.run doesn't support nesting (the caller already verified
-    the thread-local was null before constructing the scope), so the
-    saved-prev is always null and the clear-on-teardown is equivalent
-    to a save/restore. Nestable-runtime support could grow a
-    `_prev: ExecutorHandle` field freely now -- ExecutorHandle declares
-    `ValueType` and picks up an `is_value_type<ExecutorHandle>` spec via
-    the native-records emission pass.
+    """RAII guard for the current-executor global + ExecutorOps dispatch
+    table. Writes `executor`'s handle on construction; clears both on
+    `__del__` so any Waker stamped against this executor that fires
+    after teardown becomes a silent no-op rather than dispatching
+    through a stale `void* exec`.
     """
 
     def __init__(self, executor: Executor) -> None:

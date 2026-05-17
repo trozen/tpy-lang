@@ -278,6 +278,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `Ptr[T]` | `T*` |
 | `Ptr[readonly[T]]` | `const T*` |
 | `Ptr[None]` / `Ptr[readonly[None]]` | `void*` / `const void*` (preserves the C/C++ opaque-pointer idiom for `@native` interop, despite `None` lowering to `std::monostate` at other type-argument positions) |
+| `Ptr[P]` where `P` is a `@dynamic` protocol | `P*` (pointer to the @dynamic base class). Non-owning polymorphic reference; method calls dispatch through `P`'s vtable. Static (non-`@dynamic`) protocols are rejected as pointer element types -- they have no runtime representation. See `docs/DYNAMIC_PROTOCOL_DESIGN.md` for the owning siblings (`Box[P]` / `Rc[P]`). |
 | `Own[T]` | `T` (by value, for returns/params) |
 | `Box[T]` | TPy class wrapping `Ptr[T]` (heap-allocated owning container); `@nocopy`, explicit `.clone()` to duplicate. Construct via `Box(value)` where `value: Own[T]`. |
 | `Rc[T]` | TPy class wrapping `Ptr[_RcCell[T]]` (strong + weak counts + inline payload heap block); `@nocopy`, explicit `.clone()` to share. Construct via `Rc.new(value)`. |

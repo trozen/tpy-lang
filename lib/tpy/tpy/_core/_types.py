@@ -135,6 +135,19 @@ class AnyFixedUnsigned(Protocol): ...
 # TypeDef entry -- it resolves through the regular generic-class path.
 
 
+@native("tpy::ExecutorHandle")
+class ExecutorHandle(ValueType):
+    """Opaque handle to the running asyncio executor.
+
+    POD value type (8-byte `void* ptr` C++ side), default-constructs
+    to null.
+    """
+    def __init__(self) -> None: ...
+
+    @readonly
+    def is_null(self) -> bool: ...
+
+
 @builtin_type("tpy.Waker")
 @native("tpy::Waker")
 class Waker(ValueType):
@@ -145,9 +158,18 @@ class Waker(ValueType):
     waker.wake() to signal the executor that the parked task is runnable.
 
     POD value type. Late wakes (from a task that completed before wake()
-    fires) are silent no-ops via a generation check.
+    fires) are silent no-ops via a generation check. wake() lives in
+    C++ (`runtime/cpp/include/tpy/async.hpp`) because @native classes
+    can't carry TPy method bodies.
     """
+    @overload
+    @cpp_template("::tpy::Waker{{}}")
     def __init__(self) -> None: ...
+
+    @overload
+    @cpp_template("::tpy::Waker{{({0}), ({1}), ({2})}}")
+    def __init__(self, handle: ExecutorHandle, task_id: Int32,
+                 generation: Int32) -> None: ...
 
     @readonly
     def wake(self) -> None: ...

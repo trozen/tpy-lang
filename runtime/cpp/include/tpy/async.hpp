@@ -40,10 +40,23 @@ struct CancelledError : BaseException {
 };
 
 /**
+ * ExecutorHandle -- opaque value-type handle to the running TPy
+ * `Executor` instance. Stored as `void*` because the concrete type is
+ * generated from TPy code and its C++ class name isn't visible from
+ * async.hpp; the ops thunks registered by
+ * `register_executor_ops_from<ExecT>(self)` cast it back at the call
+ * site. Declared above Waker so Waker can hold one by value.
+ */
+struct ExecutorHandle {
+    void* ptr = nullptr;
+    bool is_null() const noexcept { return ptr == nullptr; }
+};
+
+/**
  * Waker -- a small POD value that lets a parked task be re-scheduled.
  *
- * - exec is an opaque handle to the TPy `Executor` instance the
- *   parked task lives in. Stored as void* because the executor's
+ * - exec is an opaque handle to the TPy `Executor` instance the parked
+ *   task lives in. ExecutorHandle wraps a `void*` because the executor's
  *   concrete C++ type is generated from TPy code (not visible from
  *   async.hpp); dispatch routes through `tpy::executor_ops` set up at
  *   executor construction time.
@@ -53,7 +66,7 @@ struct CancelledError : BaseException {
  *   completed/cancelled tasks are silent no-ops.
  */
 struct Waker {
-    void* exec = nullptr;
+    ExecutorHandle exec{};
     // task_id / generation are int32_t so TPy code can pass them
     // directly to `list[T]` indexing (which requires Int32) without a
     // cast. They are conceptually non-negative slot indices; the signed
@@ -100,18 +113,11 @@ struct ExecutorOps {
     RegisterTimerFn register_timer = nullptr;
 };
 
-// thread_local to match `current_executor` below: a Waker stamped on
-// thread A must not dispatch through thread B's ops table. v1 asyncio
-// is single-threaded per run, but two concurrent `asyncio.run` calls
-// on different threads must not race here.
-inline thread_local ExecutorOps executor_ops{};
-
-// Thread-local pointer to the running executor. Stored as `void*`
-// because the concrete type is the TPy `Executor` class (compiled
-// elsewhere); the ops table thunks know how to cast it back. Declared
-// here (rather than near ExecutorHandle below) so the nested-run guard
-// in `register_executor_ops_from` can reference it.
-inline thread_local void* current_executor = nullptr;
+// Plain (single) global; v1 asyncio is single-executor per process.
+// Multi-threaded async (v3+) needs the TLS revert -- mirrors the
+// `_current_executor` TPy global in `lib/tpy/asyncio/_executor.py`.
+// See TODO.md for the cross-system note.
+inline ExecutorOps executor_ops{};
 
 template <typename ExecT>
 inline void mark_runnable_thunk(void* exec, int32_t task_id,
@@ -127,22 +133,13 @@ inline void register_timer_thunk(void* exec, double deadline_seconds,
 
 /// Register thunks that dispatch into the concrete `ExecT`'s methods.
 /// Called from the TPy Executor's __init__ on each construction; the
-/// thread-local ops table is overwritten with the same values each
-/// time, so repeated calls are idempotent for a fixed `ExecT`. Panics
-/// if a running executor is already installed on this thread (nested
-/// `asyncio.run` or a leaked `_ExecutorScope`); the TPy `asyncio.run`
-/// body rejects this earlier with a `RuntimeError` (matching CPython),
-/// this is the backstop. The check is keyed on `current_executor`
-/// rather than the ops table itself so that raw `Executor()`
-/// construction in unit tests (without a `_ExecutorScope`) is
-/// unaffected -- those tests never set `current_executor`.
+/// ops table is overwritten with the same values each time, so repeated
+/// calls are idempotent for a fixed `ExecT`. The nested-executor
+/// backstop lives in TPy (`Executor.__init__` checks the
+/// `_current_executor` module global) rather than here, so this is a
+/// pure write.
 template <typename ExecT>
 inline void register_executor_ops_from(ExecT&) noexcept {
-    if (current_executor != nullptr) {
-        tpy_panic("register_executor_ops_from: another executor is "
-                  "already running on this thread "
-                  "(nested asyncio.run or leaked _ExecutorScope)");
-    }
     executor_ops.mark_runnable = &mark_runnable_thunk<ExecT>;
     executor_ops.register_timer = &register_timer_thunk<ExecT>;
 }
@@ -153,69 +150,25 @@ inline std::ostream& operator<<(std::ostream& os, const Waker&) {
     return os << "Waker()";
 }
 
-/// Waker::wake dispatches into the running executor via the global
-/// ops table. Three early-out paths:
-///   * `exec == nullptr`: default-constructed Waker, no target.
+/// Waker::wake dispatches into the running executor via the global ops
+/// table. Three early-out paths:
+///   * `exec.is_null()`: default-constructed Waker, no target.
 ///   * `executor_ops.mark_runnable == nullptr`: the executor that
 ///     stamped this Waker has been torn down (`_ExecutorScope.__del__`
-///     clears the ops table on exit). Silent no-op rather than UB on
-///     a stale pointer.
+///     clears the ops table on exit). Silent no-op rather than UB on a
+///     stale pointer.
 ///   * any exception thrown by the underlying `mark_runnable` (e.g.
-///     `std::bad_alloc` from the runnable-queue push): swallowed.
-///     wake() preserves a `noexcept` contract; the most we'd do on
-///     OOM is drop the wake, and the caller can't usefully react to
-///     it anyway.
+///     `std::bad_alloc` from the runnable-queue push): swallowed. wake()
+///     preserves a `noexcept` contract; the most we'd do on OOM is drop
+///     the wake, and the caller can't usefully react to it anyway.
 inline void Waker::wake() const noexcept {
-    if (exec == nullptr) return;
+    if (exec.is_null()) return;
     if (executor_ops.mark_runnable == nullptr) return;
     try {
-        executor_ops.mark_runnable(exec, task_id, generation);
+        executor_ops.mark_runnable(exec.ptr, task_id, generation);
     } catch (...) {
         // Drop the wake; cannot propagate from a noexcept context.
     }
-}
-
-/**
- * ExecutorHandle -- opaque value-type handle to the currently-running
- * TPy `Executor` instance, mirroring Waker's POD shape. Stored as
- * `void*` because the concrete type is generated from TPy code and
- * its C++ class name isn't visible from async.hpp; the ops thunks
- * registered by `register_executor_ops_from<ExecT>(self)` cast it
- * back at the call site.
- */
-struct ExecutorHandle {
-    void* ptr = nullptr;
-    bool is_null() const noexcept { return ptr == nullptr; }
-};
-
-/// Read the current-executor thread-local as an opaque handle. Returns
-/// a null handle if no executor is running.
-inline ExecutorHandle current_executor_get() noexcept {
-    return ExecutorHandle{current_executor};
-}
-
-/// Write the current-executor thread-local. Used by the TPy
-/// `_ExecutorScope` RAII guard around `asyncio.run`.
-inline void current_executor_set(ExecutorHandle h) noexcept {
-    current_executor = h.ptr;
-}
-
-/// Clear the current-executor thread-local. Used by the smoke test's
-/// manual save/restore path; production teardown goes through
-/// `executor_scope_teardown` below.
-inline void current_executor_clear() noexcept {
-    current_executor = nullptr;
-}
-
-/// Tear down everything an `_ExecutorScope` set up: zero the
-/// ExecutorOps dispatch table and clear the current-executor
-/// thread-local. Any Waker stamped against the now-destroyed executor
-/// that fires later (e.g. a held-Future's saved `_waiter`) becomes a
-/// silent no-op in `Waker::wake` because both `executor_ops.mark_runnable`
-/// and `exec` are observed as null.
-inline void executor_scope_teardown() noexcept {
-    executor_ops = ExecutorOps{};
-    current_executor = nullptr;
 }
 
 /// Wrap a reference to any object as an opaque ExecutorHandle. The TPy
@@ -231,31 +184,28 @@ inline ExecutorHandle make_executor_handle(T& obj) noexcept {
         static_cast<const void*>(&obj))};
 }
 
-/// Construct a Waker from an executor handle + task id + generation.
-/// TPy-side bridge used by the TPy `Executor.poll_slot` to stamp
-/// Wakers with a back-pointer to itself without exposing Waker's
-/// individual fields as TPy-mutable. The `exec` pointer is opaque;
-/// `Waker::wake` dispatches via the ops table set up at executor
-/// construction.
-inline Waker make_waker(ExecutorHandle h, int32_t task_id,
-                        int32_t generation) noexcept {
-    Waker w;
-    w.exec = h.ptr;
-    w.task_id = task_id;
-    w.generation = generation;
-    return w;
+/// Clear the ExecutorOps dispatch table. Called from the TPy
+/// `_ExecutorScope.__del__` so any Waker stamped against the now-destroyed
+/// executor that fires later (e.g. a held-Future's saved `_waiter`) becomes
+/// a silent no-op in `Waker::wake` (its `mark_runnable == nullptr` check
+/// catches the empty table).
+inline void clear_executor_ops() noexcept {
+    executor_ops = ExecutorOps{};
 }
 
-/// Bridge for TPy-side awaitables: register a timer with the current
+/// Bridge for TPy-side awaitables: register a timer with the running
 /// executor at a deadline expressed in steady_clock seconds (matching
-/// `time.monotonic()`'s domain). No-op if no executor is running, so
-/// hand-rolled awaitables polled from a test harness without
-/// `asyncio.run` don't crash. Dispatches via the ops table.
-inline void executor_register_timer_seconds(double deadline_seconds,
+/// `time.monotonic()`'s domain). The TPy wrapper `_register_timer_at`
+/// pre-checks `is_null()`, but this shim re-checks defensively so direct
+/// callers from C++ contexts (test harnesses, future native bindings)
+/// can't accidentally dereference a null handle through the function
+/// pointer.
+inline void executor_register_timer_seconds(ExecutorHandle exec_handle,
+                                            double deadline_seconds,
                                             Waker waker) {
-    if (current_executor == nullptr) return;
+    if (exec_handle.is_null()) return;
     if (executor_ops.register_timer == nullptr) return;
-    executor_ops.register_timer(current_executor, deadline_seconds, waker);
+    executor_ops.register_timer(exec_handle.ptr, deadline_seconds, waker);
 }
 
 }  // namespace tpy

@@ -1187,6 +1187,67 @@ What landed:
 
 3928 tests pass.
 
+### v1.2 step 6 -- async.hpp cleanup (TLS removal + structs/helpers to TPy) -- DONE
+
+Follow-up to the Poll port: shrink `runtime/cpp/include/tpy/async.hpp`
+by moving everything that doesn't truly need C++ to TPy, and unblock
+the move by replacing the executor `thread_local` storage with plain
+(single-process) globals. v1 asyncio is single-executor per process,
+so the global trade-off is acceptable; reverting to `thread_local` is
+gated on TPy growing a thread-local module-global facility.
+
+What moved out of `async.hpp`:
+
+- `inline thread_local ExecutorOps executor_ops` -> `inline ExecutorOps
+  executor_ops`. TODO comment in place for the eventual TLS revert.
+- `inline thread_local void* current_executor` -> deleted. Replaced by
+  `_current_executor: ExecutorHandle` module global in
+  `lib/tpy/asyncio/_executor.py`. `_get/_set/_clear_current_executor`
+  are now pure TPy functions reading/writing the global.
+- `executor_scope_teardown` -> TPy function; calls a 3-line
+  `clear_executor_ops()` C++ helper for the ops table reset and
+  clears the TPy global itself.
+- `make_waker` -> deleted. Replaced by an `@overload @cpp_template`
+  multi-arg constructor on the `Waker` TPy class
+  (`::tpy::Waker{{({0}), ({1}), ({2})}}` aggregate init). `_make_waker`
+  in `_executor.py` is now `def ... return Waker(handle, tid, gen)`.
+- Nested-executor backstop (`if (current_executor != nullptr) tpy_panic`
+  in `register_executor_ops_from`) -> moved to `Executor.__init__`
+  as `if not _get_current_executor().is_null(): raise RuntimeError(...)`.
+- `executor_register_timer_seconds` -> C++ helper now takes the handle
+  as an explicit param (no global read); the null-handle check moved
+  to a thin TPy wrapper in `asyncio/__init__.py`.
+
+What changed but stays in C++:
+
+- `Waker.exec` field type: `void*` -> `ExecutorHandle`. Same 8-byte
+  layout; just stronger typing. `Waker::wake()` uses `exec.is_null()`
+  + `exec.ptr` internally.
+- `ExecutorHandle` struct relocated above `Waker` (forward-decl was
+  required for the field type change).
+
+What couldn't move (compiler constraint):
+
+- `Waker.wake()` and `ExecutorHandle.is_null()` bodies -- TPy enforces
+  "methods on @native classes must be stubs"
+  (`tpyc/sema/analyzer.py:1624`). The TPy class can declare
+  `@overload @cpp_template` *constructors* but not method *bodies*.
+  Lifting this would require either letting TPy own the struct
+  emission (and forward-declaring it in `async.hpp` for the thunks) or
+  a new compiler facility. Out of scope for a refactor; would unlock
+  the remaining ~15 lines.
+
+ExecutorHandle was also moved from `asyncio/_executor.py` to
+`lib/tpy/tpy/_core/_types.py` (next to `Waker`) so the Waker
+constructor can take an `ExecutorHandle` parameter at the implicit-
+stdlib layer. Re-exported through `tpy.coro` and the previous import
+sites continue to work.
+
+Result: `async.hpp` 262 -> 212 lines (-50). 3939 tests pass; three
+async snapshots regenerated for the using-decl alias churn
+(`executor_bindings_smoke`, `tpy_executor_smoke`,
+`tpy_executor_wake_dispatch`).
+
 ### Blocked -- stays C++ until compiler features land
 
 These pieces depend on language features TPy doesn't have today.

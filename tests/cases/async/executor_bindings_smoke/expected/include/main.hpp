@@ -12,6 +12,10 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::asyncio::_executor::_clear_current_executor;
+using ::tpystd::asyncio::_executor::_get_current_executor;
+using ::tpystd::asyncio::_executor::_set_current_executor;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_check_inside;

@@ -1,0 +1,1 @@
+main.py:11: error: Static protocol type 'Named' cannot be used as a pointer element type (only @dynamic protocols, which carry a runtime vtable, can)
