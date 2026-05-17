@@ -2144,11 +2144,23 @@ class AnyType(TpyType):
         return True
 
 
-def contains_type_param(t: TpyType) -> bool:
-    """Return True if the type contains any TypeParamRef (recursively)."""
+def contains_type_param(
+    t: TpyType, names: Optional[set[str]] = None,
+) -> bool:
+    """Return True if the type contains any TypeParamRef (recursively).
+
+    If `names` is given, only TypeParamRefs whose name is in `names` count.
+    NominalType is walked via `type_args` directly (not `inner_types()`)
+    so INT-kind TypeParamRefs in `Array[T, N: int]` count.
+    """
     if isinstance(t, TypeParamRef):
-        return True
-    return any(contains_type_param(inner) for inner in t.inner_types())
+        return names is None or t.name in names
+    if isinstance(t, NominalType) and t.type_args:
+        return any(
+            contains_type_param(a, names)
+            for a in t.type_args if isinstance(a, TpyType)
+        )
+    return any(contains_type_param(inner, names) for inner in t.inner_types())
 
 
 def attach_type_param_bounds(t: TpyType, bounds: dict[str, 'NominalType']) -> TpyType:

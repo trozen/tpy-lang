@@ -276,13 +276,6 @@ def _resolve_cpp_template_type_params(
     return dc_replace(fi, cpp_template=template, canonical_fi=fi.root)
 
 
-def _has_type_param_ref(t: TpyType) -> bool:
-    """Check if a type contains an unresolved TypeParamRef (e.g. Span[T], Span[readonly[T]])."""
-    if isinstance(t, TypeParamRef):
-        return True
-    return any(_has_type_param_ref(a) for a in t.inner_types())
-
-
 def _has_type_param_ref_in_params(func: "FunctionInfo") -> bool:
     """Check if a FunctionInfo needs generic type inference.
 
@@ -290,9 +283,9 @@ def _has_type_param_ref_in_params(func: "FunctionInfo") -> bool:
     This covers zero-arg generic functions like unsafe_alloc[T]() -> Ptr[T]
     that infer T from return type context.
     """
-    if any(_has_type_param_ref(p.type) for p in func.params):
+    if any(contains_type_param(p.type) for p in func.params):
         return True
-    return _has_type_param_ref(func.return_type)
+    return contains_type_param(func.return_type)
 
 
 def _partial_substitute(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
@@ -2439,7 +2432,7 @@ class CallAnalyzer:
                     # (e.g. Iterable[T]), verify element type compatibility.
                     # Resolve param type params to get the actual expected
                     # element (e.g. tuple[K,V] for dict, not just V).
-                    if _has_type_param_ref(p_type) and expr.call_type and inferred:
+                    if contains_type_param(p_type) and expr.call_type and inferred:
                         resolved_param = self.type_ops.substitute_type_params(p_type, inferred)
                         expected_elem = builtin_modules.get_iterable_element_type(resolved_param, registry=self.ctx.registry)
                         if isinstance(expected_elem, OwnType):
@@ -2449,7 +2442,7 @@ class CallAnalyzer:
                             if not self.compat.is_type_compatible(arg_elem, expected_elem):
                                 rejected = True
                                 break
-                elif _has_type_param_ref(p_type):
+                elif contains_type_param(p_type):
                     # Can't fully resolve T, but reject clearly incompatible
                     # types. For Span[T]: arg must have an element type, and
                     # if T is known from call_type, element types must match.
@@ -2948,7 +2941,7 @@ class CallAnalyzer:
                 concrete_hint = _partial_substitute(ptype, partial_inferred)
                 if is_callable_type(concrete_hint):
                     has_unresolved = any(
-                        _has_type_param_ref(p) for p in concrete_hint.param_types
+                        contains_type_param(p) for p in concrete_hint.param_types
                     )
                     if not has_unresolved:
                         arg_types[i] = self.expr.analyze_expr_with_hint(
@@ -3537,7 +3530,7 @@ class CallAnalyzer:
                     if func.is_generic() else ptype)
             if not is_callable_type(hint):
                 return None
-            if any(_has_type_param_ref(p) for p in hint.param_types):
+            if any(contains_type_param(p) for p in hint.param_types):
                 # V1 limit: hint param types still have unresolved TPRs.
                 # No way to validate the lambda/ref against this slot.
                 return None

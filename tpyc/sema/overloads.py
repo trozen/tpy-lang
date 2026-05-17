@@ -19,7 +19,7 @@ from ..typesys import (
     OptionalType,
     unwrap_ref_type,
     is_callable_type, is_float_type, is_integer_type, is_any_float_type,
-
+    contains_type_param,
 )
 from ..type_def_registry import (
     is_fixed_int_type, is_big_int_type, is_bool_type,
@@ -97,13 +97,6 @@ def _score(per_arg: tuple[tuple[MatchTier, int], ...]) -> tuple[tuple[int, ...],
         counts[tier.value] += 1
         total_cost += cost
     return (tuple(-c for c in counts[1:]), total_cost)
-
-
-def _contains_type_param_ref(t: TpyType) -> bool:
-    """Check if a type contains any TypeParamRef."""
-    if isinstance(t, TypeParamRef):
-        return True
-    return any(_contains_type_param_ref(inner) for inner in t.inner_types())
 
 
 def _structural_match(arg: TpyType, param: TpyType) -> bool:
@@ -389,7 +382,7 @@ def _classify_generic_param_match(
 ) -> tuple[MatchTier, int]:
     """Tier + widening cost for a generic-overload param with ``TypeParamRef``.
 
-    Must be called only for params where ``_contains_type_param_ref(param_type)``
+    Must be called only for params where ``contains_type_param(param_type)``
     is True and ``infer_type_params_for_function`` has already succeeded for the
     whole overload (guaranteeing this param's own inference consistency).
 
@@ -408,7 +401,7 @@ def _classify_generic_param_match(
         inspect = inspect.wrapped
     if isinstance(inspect, TypeParamRef):
         return (MatchTier.GENERIC_WILDCARD, 0)
-    if is_protocol_type(inspect) and _contains_type_param_ref(inspect):
+    if is_protocol_type(inspect) and contains_type_param(inspect):
         substituted = type_ops.substitute_types(inspect, inferred)
         check_arg = unwrap_ref_type(unwrap_readonly(arg_type))
         if isinstance(check_arg, OwnType):
@@ -656,7 +649,7 @@ def _classify_overload(
     if len(arg_types) < overload.min_args or len(arg_types) > overload.max_args:
         return None
     has_tpr = overload.is_generic() and any(
-        _contains_type_param_ref(p.type) for p in overload.params)
+        contains_type_param(p.type) for p in overload.params)
     inferred: dict[str, TpyType] | None = None
     if has_tpr:
         if type_ops is None:
@@ -668,7 +661,7 @@ def _classify_overload(
             return None
     per_arg: list[tuple[MatchTier, int]] = []
     for arg_t, (_, ptype) in zip(arg_types, overload.params):
-        if has_tpr and _contains_type_param_ref(ptype):
+        if has_tpr and contains_type_param(ptype):
             cell = _classify_generic_param_match(
                 ptype, arg_t, inferred, type_ops, classifier, default_int_type,
             )
@@ -739,7 +732,7 @@ def resolve_overload(
     scored_candidates: list[tuple[tuple[tuple[int, ...], int], FunctionInfo]] = []
     for overload in overloads:
         if type_ops is None and overload.is_generic() and any(
-                _contains_type_param_ref(p.type) for p in overload.params):
+                contains_type_param(p.type) for p in overload.params):
             # Legacy structural-match fallback for generic overloads when the
             # caller hasn't plumbed type_ops (e.g. the error-message-preservation
             # path in calls.py). Kwargs aren't supported on this fallback path

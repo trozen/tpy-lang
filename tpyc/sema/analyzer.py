@@ -15,6 +15,7 @@ from ..typesys import (
     make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType,
     is_integer_type, is_void_like_type,
     _contains_self_reference,
+    contains_type_param,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_docstring, is_super_del_call, is_base_init_call, ParseError
@@ -86,26 +87,6 @@ def _expr_contains_self_method_call(expr: TpyExpr) -> bool:
     if isinstance(args, list):
         return any(_expr_contains_self_method_call(a) for a in args
                    if isinstance(a, TpyExpr))
-    return False
-
-
-def _type_contains_type_param(typ: TpyType) -> bool:
-    """Return True if the type is or transitively contains a TypeParamRef."""
-    if isinstance(typ, TypeParamRef):
-        return True
-    if isinstance(typ, TupleType):
-        return any(_type_contains_type_param(et) for et in typ.element_types)
-    # Cover container types and Optional/Own/Readonly wrappers via their
-    # element-accessor methods -- use a best-effort attribute walk.
-    for attr in ("pointee", "wrapped", "element", "value_type", "key_type", "inner"):
-        sub = getattr(typ, attr, None)
-        if isinstance(sub, TpyType) and _type_contains_type_param(sub):
-            return True
-    elem = getattr(typ, "get_element_type", None)
-    if callable(elem):
-        et = elem()
-        if isinstance(et, TpyType) and _type_contains_type_param(et):
-            return True
     return False
 
 
@@ -2189,7 +2170,7 @@ class SemanticAnalyzer:
                 field_type = field_info.type
                 # In a generic record, fields whose type involves a type parameter
                 # cannot be checked here -- C++ handles the constraint at instantiation.
-                if record.type_params and _type_contains_type_param(field_type):
+                if record.type_params and contains_type_param(field_type):
                     continue
                 if self.protocols._is_default_constructible(field_type):
                     self._warning(

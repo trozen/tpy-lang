@@ -14,6 +14,7 @@ from ..typesys import (
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
     PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, unwrap_qualifiers, is_any_int_type,
     RecordInfo,
+    contains_type_param,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
@@ -47,34 +48,6 @@ if TYPE_CHECKING:
     from ..typesys import PendingGenericInstanceInfo
 
 from .context import _storage_key
-
-
-def _contains_type_param_ref_type(typ: TpyType, param_names: set[str]) -> bool:
-    """Check if a type contains any TypeParamRef matching the given param names."""
-    if isinstance(typ, TypeParamRef):
-        return typ.name in param_names
-    if isinstance(typ, NominalType) and typ.type_args:
-        return any(
-            _contains_type_param_ref_type(a, param_names)
-            for a in typ.type_args if isinstance(a, TpyType)
-        )
-    # Check common wrapper types
-    for attr in ('element_type', 'pointee', 'inner', 'wrapped'):
-        inner = getattr(typ, attr, None)
-        if inner is not None and isinstance(inner, TpyType):
-            if _contains_type_param_ref_type(inner, param_names):
-                return True
-    # TupleType
-    if hasattr(typ, 'element_types'):
-        return any(_contains_type_param_ref_type(e, param_names) for e in typ.element_types)
-    # PendingDictType (DictType NominalType handled above via type_args)
-    if hasattr(typ, 'key_type') and hasattr(typ, 'value_type'):
-        return (_contains_type_param_ref_type(typ.key_type, param_names)
-                or _contains_type_param_ref_type(typ.value_type, param_names))
-    # UnionType
-    if hasattr(typ, 'members'):
-        return any(_contains_type_param_ref_type(m, param_names) for m in typ.members)
-    return False
 
 
 def _unresolved_params_in_type(typ: TpyType, inferred: dict[str, TpyType], param_names: set[str]) -> list[str]:
@@ -235,7 +208,7 @@ class MethodAnalyzer:
             # Identify which args correspond to type-parameter-bearing params
             inferring_indices: list[int] = []
             for i, param in enumerate(overload.params):
-                if _contains_type_param_ref_type(param.type, type_param_names):
+                if contains_type_param(param.type, type_param_names):
                     inferring_indices.append(i)
             if not inferring_indices:
                 continue
@@ -245,7 +218,7 @@ class MethodAnalyzer:
 
             # Infer element type from params that directly carry a type param
             # (T or Own[T]). Params with nested type params like Iterable[Own[T]]
-            # are detected by _contains_type_param_ref_type but not handled here --
+            # are detected by contains_type_param but not handled here --
             # inference from those would need protocol-level element type extraction.
             for i in inferring_indices:
                 arg_type = pre_analyzed[i]
@@ -1401,8 +1374,9 @@ class MethodAnalyzer:
 
         # Analyze arguments and accumulate constraints
         arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+        type_param_names = set(info.type_params)
         for (pname, ptype), arg_type in zip(method.params, arg_types):
-            if not _contains_type_param_ref_type(ptype, set(info.type_params)):
+            if not contains_type_param(ptype, type_param_names):
                 continue
             # Resolve IntLiteralType before binding
             resolved_arg = arg_type
@@ -1446,9 +1420,9 @@ class MethodAnalyzer:
 
         # Not fully resolved yet -- check return type
         return_type = method.return_type
-        if _contains_type_param_ref_type(return_type, set(info.type_params)):
+        if contains_type_param(return_type, type_param_names):
             # Check if we can substitute what we have so far
-            unresolved_in_return = _unresolved_params_in_type(return_type, info.inferred, set(info.type_params))
+            unresolved_in_return = _unresolved_params_in_type(return_type, info.inferred, type_param_names)
             if unresolved_in_return:
                 raise self.ctx.error(
                     f"Cannot determine return type of '{expr.method}' on '{record.name}': "

@@ -17,6 +17,7 @@ from ..typesys import (
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
     unwrap_ref_type, unwrap_qualifiers, RefType, is_dyn_protocol,
     is_callable_type, is_integer_type, is_float_type, is_void_like_type,
+    contains_type_param,
 )
 from ..coercions import resolve_coercion, CoercionContext
 from ..diagnostics import SemanticError, nocopy_container_elem_error
@@ -34,17 +35,6 @@ if TYPE_CHECKING:
     from ..parse import SourceLocation
     from .context import SemanticContext
     from .protocols import ProtocolChecker
-
-
-def _contains_type_param_ref(types: tuple[TpyType, ...]) -> bool:
-    """Check if any type in the tuple contains a TypeParamRef (directly or nested)."""
-    for t in types:
-        if isinstance(t, TypeParamRef):
-            return True
-        inner = t.inner_types()
-        if inner and _contains_type_param_ref(inner):
-            return True
-    return False
 
 
 _HASHABLE = NominalType("Hashable", is_protocol=True)
@@ -501,24 +491,6 @@ class TypeOperations:
         """
         return self.substitute_types(typ, {"Self": actual})
 
-    def is_type_param_ref(self, typ: TpyType) -> bool:
-        """Check if a type is or contains a TypeParamRef."""
-        if isinstance(typ, TypeParamRef):
-            return True
-        if isinstance(typ, PtrType):
-            return self.is_type_param_ref(typ.pointee)
-        if isinstance(typ, OwnType):
-            return self.is_type_param_ref(typ.wrapped)
-        if isinstance(typ, ReadonlyType):
-            return self.is_type_param_ref(typ.wrapped)
-        if is_array(typ):
-            if self.is_type_param_ref(typ.type_args[0]):
-                return True
-            return isinstance(typ.type_args[1], TypeParamRef)
-        if is_list(typ):
-            return self.is_type_param_ref(typ.type_args[0])
-        return False
-
     def is_forwarded_type_param(self, typ: TpyType, type_params: list[str]) -> bool:
         """Check if a type references one of the given type parameters.
 
@@ -620,7 +592,8 @@ class TypeOperations:
         # Protocol with TypeParamRef in type_args (e.g., NativeIterable[T],
         # NativeIterable[tuple[K, V]]) -- TypeParamRefs may be nested
         if is_protocol_type(param_type) and param_type.type_args:
-            if _contains_type_param_ref(param_type.type_args):
+            if any(isinstance(t, TpyType) and contains_type_param(t)
+                   for t in param_type.type_args):
                 return self._match_protocol_type_args_with_inference(param_type, arg_type, inferred)
 
         # PtrType with TypeParamRef pointee (e.g., Ptr[T], Ptr[readonly[T]])

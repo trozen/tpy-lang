@@ -954,14 +954,14 @@ class TypeRegistrar:
                         f"'{pname}' of '{record.name}.{method.name}'",
                         method.loc or record.loc,
                     )
-                if not self.type_ops.is_type_param_ref(ptype):
+                if not contains_type_param(ptype):
                     # Hashable check deferred (see field-validation comment
                     # above): sibling records aren't fully registered yet.
                     self.type_ops.validate_type(
                         ptype, allow_type_param_ref=allow_tpref, loc=record.loc,
                         check_hashable_constraints=False,
                     )
-            if not self.type_ops.is_type_param_ref(method_return):
+            if not contains_type_param(method_return):
                 self.type_ops.validate_type(
                     method_return, allow_type_param_ref=allow_tpref, loc=record.loc,
                     check_hashable_constraints=False,
@@ -1922,13 +1922,13 @@ class TypeRegistrar:
             self.type_ops.validate_type(fld.type, allow_type_param_ref=is_generic, loc=fld.loc)
         for method in record.methods:
             for _, ptype in method.params:
-                if ptype is not None and not self.type_ops.is_type_param_ref(ptype):
+                if ptype is not None and not contains_type_param(ptype):
                     self.type_ops.validate_type(
                         ptype, allow_type_param_ref=is_generic,
                         loc=method.loc or record.loc,
                     )
             if (method.return_type is not None
-                    and not self.type_ops.is_type_param_ref(method.return_type)):
+                    and not contains_type_param(method.return_type)):
                 self.type_ops.validate_type(
                     method.return_type, allow_type_param_ref=is_generic,
                     loc=method.loc or record.loc,
