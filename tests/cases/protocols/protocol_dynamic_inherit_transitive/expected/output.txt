@@ -1,0 +1,3 @@
+[val] v-msg
+[os] o-msg
+[base] b-msg

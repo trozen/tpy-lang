@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, PtrType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
     NoneType, NominalType, AnyType, STR, BYTES, TupleType, VoidType,
-    INT32, BIGINT, FLOAT, is_protocol_type, ALL_FIXED_INTS,
+    INT32, BIGINT, FLOAT, is_protocol_type, polymorphic_subclass_into_optional, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType, LiteralTag,
     is_own_pointer_repr_optional,
     resolve_int_literals,
@@ -923,6 +923,25 @@ class StatementGenerator:
         """C++ type for a rvalue materialization slot."""
         return f"std::optional<{cpp_type}>" if is_opt_field else cpp_type
 
+    @staticmethod
+    def _reject_polymorphic_rvalue_into_optional_local(
+            name: str, target_type: 'OptionalType', sub: 'NominalType', loc) -> None:
+        """Raise a clean error for rvalue construction of a polymorphic
+        subclass into a local Optional[Polymorphic] slot that would slice.
+
+        Fires when the slot is shared across rebinds (init-with-rebind or
+        rebind site) -- the shared `std::optional<Base>` storage can't
+        preserve dynamic type per assignment. The init-only case is handled
+        without rejection by widening the slot to the rvalue's type.
+        """
+        raise CodeGenError(
+            f"rvalue construction of '{sub.name}' into local "
+            f"'{name}: Optional[{target_type.inner.name}]' with rvalue rebind "
+            f"is not yet supported; pass the value directly as an argument "
+            f"or assign to a typed local of type '{sub.name}'.",
+            loc=loc
+        )
+
     def _gen_pointer_local_init(self, name: str, cpp_type: str, init: 'TpyExpr',
                                 target_type: TpyType | None, indent: str) -> str:
         """Generate pointer-local initialization code.
@@ -1056,8 +1075,23 @@ class StatementGenerator:
         slot_opt_cpp = "auto" if cpp_type == "auto" else f"std::optional<{cpp_type}>"
         target = f"{const_pfx}{cpp_type}* {name}"
         if self.ctx.is_rvalue_source(init):
+            # Polymorphic-Optional local: typing the slot at the parent
+            # cpp_type would slice the rvalue's dynamic type. Use the rvalue's
+            # actual class so &slot upcasts to const Base* implicitly. The
+            # shared rebind slot can't be retyped per rvalue, so the rebind
+            # case is rejected at sema-error tier (see TODO.md for the
+            # heap-allocated-slot follow-up).
+            slot_cpp_type = cpp_type
+            sub = polymorphic_subclass_into_optional(
+                target_type, self.ctx.get_expr_type(init),
+                self.ctx.analyzer.registry)
+            if sub is not None:
+                if name in self.ctx.rvalue_reassigned_vars:
+                    self._reject_polymorphic_rvalue_into_optional_local(
+                        name, target_type, sub, init.loc)
+                slot_cpp_type = sub.name
             init_slot = self.ctx.slots.next_slot()
-            slot_type = self._slot_decl_type(cpp_type, is_opt_field)
+            slot_type = self._slot_decl_type(slot_cpp_type, is_opt_field)
             if is_hoisted:
                 self.ctx.pending_hoist_decls.append(f"{hoist_static_kw}{slot_opt_cpp} {init_slot};\n")
                 if name in self.ctx.rvalue_reassigned_vars:
@@ -1198,6 +1232,15 @@ class StatementGenerator:
         hoist_static_kw = "static " if self.ctx.slots.global_scope else ""
         slot_opt_cpp = "auto" if cpp_type == "auto" else f"std::optional<{cpp_type}>"
         if self.ctx.is_rvalue_source(init):
+            # Reject rvalue subclass rebound into Optional[Polymorphic]: the
+            # shared rebind slot can't preserve dynamic type. Mirror of the
+            # init-site check (see TODO.md for the heap-allocated-slot fix).
+            sub = polymorphic_subclass_into_optional(
+                target_type, self.ctx.get_expr_type(init),
+                self.ctx.analyzer.registry)
+            if sub is not None:
+                self._reject_polymorphic_rvalue_into_optional_local(
+                    name, target_type, sub, init.loc)
             rebind_slot = self.ctx.rebind_slots.get(name)
             if rebind_slot:
                 deref = self._ptr_from_rvalue_slot(rebind_slot, init_expr, is_opt_field,

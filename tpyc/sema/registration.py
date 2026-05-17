@@ -2237,6 +2237,12 @@ class TypeRegistrar:
             # Check if any MRO ancestor has this method
             ancestor_with_method = self._find_mro_ancestor_with_method(record_info, method_name)
             if ancestor_with_method:
+                # If this method is part of a @dynamic protocol implemented
+                # (transitively) by any ancestor, codegen emits it as `override`
+                # on a real virtual slot -- not a hide. Suppress the warning.
+                if self._method_is_transitively_dynamic_protocol_member(
+                        record_info, method_name):
+                    continue
                 self.ctx.warning(
                     f"Method '{record.name}.{method_name}' hides "
                     f"'{ancestor_with_method}.{method_name}' -- any "
@@ -2294,6 +2300,24 @@ class TypeRegistrar:
             if anc_rec.get_method(method_name) is not None:
                 return anc_rec.name
         return None
+
+    def _method_is_transitively_dynamic_protocol_member(
+            self, record_info: RecordInfo, method_name: str) -> bool:
+        """True iff method_name appears in a @dynamic protocol implemented by
+        the record or any ancestor (transitively).
+
+        Used to suppress the "method hides ancestor" warning when codegen will
+        emit the method as `override` on a virtual @dynamic-protocol slot.
+        """
+        for info in [record_info, *self.ctx.registry.iter_ancestor_records(record_info)]:
+            for proto in info.implemented_protocols:
+                proto_info = protocol_info_of(proto)
+                if not (proto_info and proto_info.is_dynamic):
+                    continue
+                for sig in self.protocols.collect_protocol_methods(proto.name):
+                    if sig.name == method_name:
+                        return True
+        return False
 
     def _is_inheritable_builtin(self, typ: TpyType) -> bool:
         """Check if a type is a builtin type that can be inherited from."""

@@ -3312,6 +3312,59 @@ def is_protocol_type(typ: TpyType) -> bool:
     return isinstance(typ, NominalType) and typ.is_protocol
 
 
+def is_polymorphic_class_type(typ: TpyType, registry: 'TypeRegistry') -> bool:
+    """True if `typ` is a concrete class that inherits a @dynamic protocol
+    (directly or transitively through any ancestor class).
+
+    Such classes have a real C++ vtable, support dynamic_cast, and require
+    care at value-conversion boundaries to avoid slicing. Result is cached
+    on RecordInfo (the answer is stable post-Phase-1 sema; MRO and
+    implemented_protocols don't change after registration).
+    """
+    from .type_def_registry import protocol_info_of as _protocol_info_of
+    if not isinstance(typ, NominalType) or typ.is_protocol:
+        return False
+    record_info = registry.get_record(typ.name)
+    if record_info is None:
+        return False
+    cached = record_info._is_polymorphic_class
+    if cached is not None:
+        return cached
+    answer = False
+    for info in [record_info, *registry.iter_ancestor_records(record_info)]:
+        for proto in info.implemented_protocols:
+            proto_info = _protocol_info_of(proto)
+            if proto_info is not None and proto_info.is_dynamic:
+                answer = True
+                break
+        if answer:
+            break
+    record_info._is_polymorphic_class = answer
+    return answer
+
+
+def polymorphic_subclass_into_optional(
+    target_type: TpyType, init_type: TpyType | None, registry: 'TypeRegistry'
+) -> 'NominalType | None':
+    """If `target_type` is `Optional[Polymorphic]` and `init_type` is a
+    polymorphic strict subclass of its inner, return `init_type` (the
+    rvalue's actual class). Otherwise return None.
+
+    Centralizes the slicing-risk predicate for Optional[Polymorphic] slots
+    (parameter-passing temp materialization, local init slot, local rebind
+    slot). The caller decides how to react: argument-passing widens the
+    temp to the returned type; local init does the same; local rebind
+    raises because the shared rebind slot can't be retyped per rvalue.
+    """
+    if not (isinstance(target_type, OptionalType)
+            and is_polymorphic_class_type(target_type.inner, registry)
+            and isinstance(init_type, NominalType)
+            and is_polymorphic_class_type(init_type, registry)
+            and init_type != target_type.inner):
+        return None
+    return init_type
+
+
 def is_protocol_union(typ: TpyType) -> bool:
     """Check if a type is a union where all non-None members are static protocols.
 
@@ -3488,6 +3541,7 @@ class RecordInfo:
     parents: list['TpyType'] = field(default_factory=list)  # Direct base classes in source order (equals MRO tail order, enforced by _check_multi_base_order).
     mro_ancestors: list['TpyType'] = field(default_factory=list)  # C3 linearization of ancestors (self excluded), populated by validate_record_inheritance
     implemented_protocols: list['NominalType'] = field(default_factory=list)  # Explicit protocol implementations
+    _is_polymorphic_class: 'Optional[bool]' = None  # Lazy cache for is_polymorphic_class_type; populated on first call
     extends_protocols: list[str] = field(default_factory=list)  # Protocol extensions: ["NativeIterable[T]"]
     native_name: Optional[str] = None  # C++ name for @native/@native_c records (e.g., "SDL_Rect")
     is_native: bool = False       # True for @native or @native_c records
@@ -4396,10 +4450,12 @@ class TypeRegistry:
         return None
 
     def is_subclass_of(self, child: 'TpyType', parent: 'TpyType') -> bool:
-        """Check if child is a subclass of parent (walking the MRO).
+        """Check if child is a strict subclass of parent (walking the MRO).
 
         Compares name + type_args at each level so generic parents are
         matched correctly (e.g. IntContainer -> Container[Int32]).
+        Returns False for child == parent; use `is_subclass_of_or_equal`
+        when same-type should count.
         """
         if not (isinstance(child, NominalType) and child.is_user_record
                 and isinstance(parent, NominalType) and parent.is_user_record):
@@ -4415,6 +4471,11 @@ class TypeRegistry:
             if same_nominal_symbol_loose(ancestor, parent):
                 return True
         return False
+
+    def is_subclass_of_or_equal(self, child: 'TpyType', parent: 'TpyType') -> bool:
+        """True if child is parent or a subclass of parent. Mirrors Python's
+        `isinstance(x, type(x)) is True` and `issubclass(T, T) is True`."""
+        return child == parent or self.is_subclass_of(child, parent)
 
     def is_subclass_of_record(self, child: RecordInfo, parent: RecordInfo) -> bool:
         """Check if child record inherits from parent (by record identity)."""

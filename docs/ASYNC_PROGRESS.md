@@ -435,9 +435,15 @@ Hard cutover -- no compat shim for the old 1-arg shape.
   liveness.
 - Sema (`tpyc/sema/calls.py`): `isinstance(exc_val, X)` on
   `Optional[BaseException]` emits a targeted v1.5 diagnostic pointing at
-  `if exc_val is not None:` (class-based dispatch deferred to M2;
-  exception slicing through `Optional[BaseException]` would make
-  `dynamic_cast`-based isinstance silently wrong).
+  `if exc_val is not None:` for binary suppression. The diagnostic
+  reason was reworded during M2 partial landing: it now reflects the
+  real blocker -- `BaseException` is not `@dynamic`-rooted in TPy, so
+  the polymorphic-class codegen paths don't activate for it. The
+  earlier framing about value-conversion slicing through
+  `Optional[BaseException]` is moot for the planned design (the
+  codegen no-slice fix is in place for user-defined polymorphic
+  hierarchies; once `BaseException` inherits a `Throwable` `@dynamic`
+  protocol, the same path activates and the diagnostic drops out).
 - Codegen (`tpyc/codegen_cpp/statements.py::_emit_with_try_catch`):
   three-way catch -- `catch (BaseException& __exc)` with optional
   `if (!__exit__(...)) throw;` suppression check (when `__exit__ -> bool`),
@@ -455,10 +461,66 @@ Hard cutover -- no compat shim for the old 1-arg shape.
   suppress / no-suppress / normal-path / bad return / isinstance
   diagnostic. Snapshots regenerated across all `with`-using cases.
 
-Deferred to M2: class-based exception dispatch via
-`isinstance(exc_val, X)`. Requires either fixing exception slicing
-through `Optional[BaseException]` at value-conversion boundaries, or
-restricting dynamic_cast to known-polymorphic sources (catch blocks).
+### M2 PARTIAL -- generic rule landed for user code; BaseException case still pending
+
+Originally scoped for v1.5. Design pass landed on a generic rule
+(`Optional[E]` for polymorphic class types `E` is borrow-form;
+`isinstance` lowers to `dynamic_cast`; storage/return positions require
+explicit `Box[E]`), keyed on a `@dynamic`-rooted-hierarchy predicate so
+it isn't a one-off rule for the `BaseException` tree.
+
+**Shipped on this branch** (user-defined polymorphic classes):
+
+- Transitive virtual-override propagation for `@dynamic`-rooted
+  inheritance chains (`tpyc/codegen_cpp/functions.py::_get_dynamic_override_info`
+  walks the MRO via `iter_ancestor_records`; `tpyc/sema/analyzer.py::_dynamic_proto_requires_nonconst`
+  walks the MRO so auto-readonly inference doesn't introduce a
+  const-mismatching signature; `tpyc/sema/registration.py::_check_method_hiding`
+  suppresses the "hides ancestor" warning for methods that are now
+  proper `override`s).
+- `is_polymorphic_class_type(typ, registry)` predicate in `tpyc/typesys.py`:
+  a concrete class is polymorphic iff it (transitively) inherits a
+  `@dynamic` protocol.
+- Codegen no-slice for rvalue construction into `Optional[Polymorphic]`
+  parameters (`tpyc/codegen_cpp/expressions.py::_gen_optional_ptr_arg`):
+  the temp is materialized at the rvalue's actual class type; C++
+  implicit pointer upcast handles the conversion when taking the
+  pointer.
+- `isinstance(opt_var, Subclass)` on `Optional[Polymorphic]` lowers to
+  `dynamic_cast` on the raw pointer (`tpyc/codegen_cpp/expressions.py::_gen_call`
+  isinstance branch); tuple form -> OR of casts. Sema accepts in
+  `tpyc/sema/calls.py::_analyze_isinstance` for both the Optional-source
+  path and the post-`is not None`-narrowed path.
+- Regression tests: `tests/cases/protocols/protocol_dynamic_inherit_transitive`
+  (3-level chain virtual dispatch); `tests/cases/protocols/protocol_dynamic_optional_isinstance`
+  (rvalue construction + isinstance + tuple form + virtual dispatch).
+
+**Still pending for full M2 (the `BaseException` case):**
+
+- The built-in `BaseException` tree is not yet `@dynamic`-rooted in
+  TPy, so `is_polymorphic_class_type` returns False for it and the new
+  paths don't activate. Plumbing it through requires introducing a
+  `Throwable` `@dynamic` protocol in the stdlib and having
+  `BaseException` inherit it (rest of the tree inherits via the new
+  transitive-override propagation). Verify `Box[BaseException]` works
+  end-to-end before pointing the storage-position diagnostic at it.
+  Until that lands, `isinstance(exc_val, X)` in `__exit__` bodies
+  continues to emit the M1 stopgap diagnostic (now reworded:
+  "class-based exception dispatch on `Optional[BaseException]` is not
+  yet supported (BaseException is not @dynamic-rooted)").
+- **Subclass-typed narrowing in the true branch** is intentionally not
+  in this milestone: the isinstance check returns the correct bool and
+  methods inherited from the base class dispatch virtually, but
+  accessing subclass-specific fields would require cast-and-cache
+  codegen (each typed read emits via the cached dynamic_cast result).
+  Follow-up.
+- **Sema rejections at slicing sites** (field declarations and rvalue
+  returns of `Optional[Polymorphic]` with a "use `Box[E]`" diagnostic)
+  not implemented yet -- the codegen no-slice fix handles the
+  parameter-passing case which is what users hit in practice. Stored
+  ownership of polymorphic exceptions is a less common pattern; the
+  diagnostic + `Box[E]` story can land alongside the BaseException
+  refactor.
 
 ## v1.x milestone: asyncio runtime TPy port (must precede v1.5)
 

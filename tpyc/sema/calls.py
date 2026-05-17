@@ -11,7 +11,7 @@ from typing import Callable, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, OwnType, OptionalType, TupleType, own_tuple_target, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
-    is_exception_type,
+    is_exception_type, is_polymorphic_class_type,
     IntLiteralType, resolve_int_literals,
     LiteralType, LiteralValue, LiteralTag, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, is_void_like_type, ParamInfo, ReadonlyType,
@@ -1680,7 +1680,7 @@ class CallAnalyzer:
         reg = self.ctx.registry
         result = False
         for ct in check_types:
-            if var_type == ct or reg.is_subclass_of(var_type, ct):
+            if reg.is_subclass_of_or_equal(var_type, ct):
                 result = True
                 continue
             if reg.is_subclass_of(ct, var_type):
@@ -1741,7 +1741,20 @@ class CallAnalyzer:
         # downstream narrowing / codegen extractions still run.
         narrowed = self.ctx.func.narrowed_types.get(first_arg.name)
         static_fold: bool | None = None
-        if narrowed is not None:
+        # When the variable was declared as Optional[Polymorphic], even after
+        # `is not None` narrowing strips Optional to its inner class type, the
+        # C++ representation remains `const Inner*` -- a pointer to a
+        # polymorphism-intact object. dynamic_cast against a descendant is
+        # sound, so we skip the static fold and let the runtime path lower the
+        # isinstance to a dynamic_cast.
+        declared_param_type = self.expr.narrowing.declared_type_for_name(first_arg.name)
+        declared_unwrapped = (unwrap_readonly(declared_param_type)
+                              if declared_param_type is not None else None)
+        is_opt_polymorphic_source = (
+            isinstance(declared_unwrapped, OptionalType)
+            and is_polymorphic_class_type(declared_unwrapped.inner, self.ctx.registry)
+        )
+        if narrowed is not None and not is_opt_polymorphic_source:
             narrowed_inner = self._isinstance_unwrap(narrowed)
             if not self._is_union_alias(narrowed_inner) and not isinstance(
                     narrowed_inner, (UnionType, OptionalType)):
@@ -1759,10 +1772,41 @@ class CallAnalyzer:
             )
 
         if isinstance(effective_type, OptionalType):
-            # Optional[T] is a nullable union; isinstance narrowing against
-            # the non-None inner type is not yet plumbed through. Keep the
-            # historical error so users fall back to `x is not None`.
             inner = effective_type.inner
+            # Optional[Polymorphic]: class-based dispatch via dynamic_cast.
+            # `inner` is a class type inheriting a @dynamic protocol
+            # transitively, so the C++ representation is `const Inner*` to a
+            # polymorphism-intact object (slicing is prevented at temp
+            # materialization sites by the polymorphic-class branch in
+            # `_gen_optional_ptr_arg`). Check types must be subclasses of
+            # inner so the dynamic_cast is sound and well-typed.
+            if (isinstance(inner, NominalType)
+                    and is_polymorphic_class_type(inner, self.ctx.registry)
+                    and check_types):
+                non_subs = [
+                    ct for ct in check_types
+                    if not (isinstance(ct, NominalType)
+                            and self.ctx.registry.is_subclass_of_or_equal(ct, inner))
+                ]
+                if non_subs:
+                    names = ", ".join(f"'{t}'" for t in non_subs)
+                    raise self.ctx.error(
+                        f"isinstance() check type(s) {names} are not subclasses of "
+                        f"'{inner}' (Optional[{inner}] dispatch)",
+                        expr,
+                    )
+                expr.isinstance_var = first_arg.name
+                expr.isinstance_type = (check_types[0] if len(check_types) == 1
+                                        else make_union(*check_types))
+                return BOOL
+
+            # Optional[BaseException] dispatch: deferred -- BaseException is
+            # polymorphic at the C++ level but is not yet @dynamic-rooted in
+            # TPy, so the slicing-avoiding codegen path doesn't recognize it
+            # and the user can't observe a sound dynamic_cast. Until the
+            # Throwable refactor lands, binary suppression via
+            # `if exc_val is not None:` is the supported form. See
+            # docs/ASYNC_PROGRESS.md v1.5 M2 and BUGS.md.
             inner_is_exc = (isinstance(inner, NominalType)
                             and is_exception_type(inner.name, self.ctx.registry))
             check_is_exc = all(
@@ -1771,15 +1815,10 @@ class CallAnalyzer:
                 for ct in check_types
             ) if check_types else False
             if inner_is_exc and check_is_exc:
-                # v1.5 M1: __exit__ exc_val is typed Optional[BaseException], but
-                # class-based dispatch (dynamic_cast on the exception hierarchy)
-                # is deferred to M2 -- exception slicing through Optional[X]
-                # would make per-class isinstance silently wrong. Until M2,
-                # only binary suppression via `if exc_val is not None:` works.
                 raise self.ctx.error(
-                    f"class-based exception dispatch is not yet supported in "
-                    f"v1.5; use `if {first_arg.name} is not None:` for binary "
-                    f"suppression",
+                    f"class-based exception dispatch on Optional[BaseException] "
+                    f"is not yet supported (BaseException is not @dynamic-rooted); "
+                    f"use `if {first_arg.name} is not None:` for binary suppression",
                     expr,
                 )
             raise self.ctx.error(
@@ -1820,6 +1859,29 @@ class CallAnalyzer:
             return BOOL
 
         if not isinstance(effective_type, UnionType):
+            # Optional[Polymorphic] post-narrowing: source was declared
+            # Optional[Inner] where Inner is polymorphic; `is not None`
+            # narrowing replaced effective_type with Inner, but the C++
+            # representation is still `const Inner*` and dynamic_cast to a
+            # subclass is sound. Route to runtime dispatch.
+            if is_opt_polymorphic_source and check_types:
+                inner = declared_unwrapped.inner
+                non_subs = [
+                    ct for ct in check_types
+                    if not (isinstance(ct, NominalType)
+                            and self.ctx.registry.is_subclass_of_or_equal(ct, inner))
+                ]
+                if non_subs:
+                    names = ", ".join(f"'{t}'" for t in non_subs)
+                    raise self.ctx.error(
+                        f"isinstance() check type(s) {names} are not subclasses of "
+                        f"'{inner}' (Optional[{inner}] dispatch)",
+                        expr,
+                    )
+                expr.isinstance_var = first_arg.name
+                expr.isinstance_type = (check_types[0] if len(check_types) == 1
+                                        else make_union(*check_types))
+                return BOOL
             # Non-union: compile-time evaluate against the static type,
             # walking the inheritance hierarchy. Reuse the narrowed-path
             # fold if it already ran so we don't warn twice.

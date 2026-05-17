@@ -1,0 +1,1 @@
+main.py:32: error: isinstance() check type(s) 'OtherDyn' are not subclasses of 'BaseExc' (Optional[BaseExc] dispatch)

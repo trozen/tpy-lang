@@ -1359,20 +1359,36 @@ class FunctionGenerator:
     def _get_dynamic_override_info(self, record_name: str) -> dict[str, bool]:
         """Get map of method_name -> is_const for methods overriding @dynamic protocol virtuals.
 
-        Collects the full inherited surface (own + ancestor methods) since the C++
-        base class emits pure virtuals for all inherited protocol methods.
+        Walks the MRO so that a record inheriting a @dynamic protocol transitively
+        (via a concrete-class parent) still emits `override` on its method
+        redefinitions, not non-virtual hiding methods. Direct + transitive both
+        contribute -- the C++ base class emits pure virtuals for the inherited
+        protocol slot in either case.
         """
         record_info = self.ctx.analyzer.registry.get_record(record_name)
         if not record_info:
             return {}
         result: dict[str, bool] = {}
-        for proto in record_info.implemented_protocols:
-            proto_info = protocol_info_of(proto)
-            if proto_info and proto_info.is_dynamic:
-                all_methods = self.protocols.collect_concept_methods(proto.name)
-                for method_sig in all_methods:
-                    is_const = method_sig.is_readonly or proto_info.is_readonly
-                    result[method_sig.name] = is_const
+        # Direct implementations on this record, plus all ancestors transitively.
+        infos = [record_info, *self.ctx.analyzer.registry.iter_ancestor_records(record_info)]
+        for info in infos:
+            for proto in info.implemented_protocols:
+                proto_info = protocol_info_of(proto)
+                if proto_info and proto_info.is_dynamic:
+                    all_methods = self.protocols.collect_concept_methods(proto.name)
+                    for method_sig in all_methods:
+                        is_const = method_sig.is_readonly or proto_info.is_readonly
+                        # First-wins (MRO is nearest-first; most-derived
+                        # protocol wins). Diamond hierarchies with conflicting
+                        # const-ness across sibling protocols for the same
+                        # method name are latent -- the first protocol visited
+                        # in MRO order decides the slot's const-ness, which may
+                        # not match a sibling protocol's declaration and would
+                        # silently emit an override that doesn't satisfy that
+                        # sibling's virtual slot. See TODO.md (multi-protocol
+                        # diamond const-merge).
+                        if method_sig.name not in result:
+                            result[method_sig.name] = is_const
         return result
 
     def gen_method_def(self, out: TextIO, method: TpyFunction, record_name: str,

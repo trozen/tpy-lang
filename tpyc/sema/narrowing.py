@@ -270,6 +270,15 @@ class NarrowingTracker:
                 inner = self._optional_inner_type(effective)
                 if is_protocol_type(inner):
                     return {name: inner}, {}
+            # Optional[Polymorphic] isinstance: dispatch works via dynamic_cast
+            # at runtime, but subclass-typed *reads* in the true branch (e.g.
+            # accessing a subclass-only field) would require cast-and-cache
+            # codegen we don't have yet. So we don't narrow the variable's
+            # type in either branch -- the isinstance call still returns the
+            # correct bool, methods inherited from the base class still
+            # dispatch virtually, but subclass-specific field access requires
+            # an explicit cast in user code. Subclass-typed narrowing is a
+            # follow-up to v1.5 M2.
             # Bare-protocol isinstance: narrowing to a *child* protocol
             # (e.g. Iterable[T] -> NativeIterable[T]) lets downstream codegen
             # (for-loop dispatch, `in` operator) see the refined protocol via

@@ -14,7 +14,7 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 5a | Conditional/loop reassignment (hoisted `std::optional` slots) | Done |
 | 6 | Return types (provably long-lived values only) | Done |
 | 7 | `@dynamic` protocol params in record methods/constructors | Done |
-| 8 | `Optional[Pet]` sema rejection | Done |
+| 8 | `Optional[Pet]` sema rejection | Done. **Partially obsolete** after Phase 19 -- the rejection is still in place for the direct-`@dynamic`-protocol case, but the parameter-passing and init-only-local positions are now technically representable via the no-slice + pointer-repr machinery added for Phase 19. Narrowing the rejection to storage / return / rebind positions only is filed in TODO.md. |
 | 9 | Protocol field access through erased type | Future |
 | 10 | Cross-module `@dynamic` protocols | Done |
 | 11 | `@dynamic` extending `@dynamic` (base class inheritance chain) | Done |
@@ -24,6 +24,8 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 15 | `list[Box[P]]` heterogeneous containers | Done |
 | 16 | `Own[P]` as a plain function parameter + return type (with method access on the owned value) | Done. Param/return lower to `std::unique_ptr<P>`; `p.method()` body access emits `p->method()`; concrete-source returns wrap via `std::make_unique<Adapter<P, T>>(...)` (or `std::make_unique<T>(...)` for inheritance conformers). Forward `Own[P] -> Own[P]` returns rely on C++ implicit-move (no `std::move` wrap). |
 | 17 | `Rc[P]` for `@dynamic` P -- shared-ownership erased dyn protocol | Future. Design direction: Rust's `Arc<dyn Trait>` single co-located allocation (refcount header + concrete in one block, drop-fn-in-header for type-erased destruction). Interim workaround: `Rc[Box[P]]` (two allocations: cell + box's pet). See TODO.md. |
+| 18 | Transitive virtual-override propagation through `@dynamic`-rooted inheritance chains | Done. A class inheriting a `@dynamic` protocol via a concrete-class intermediate (e.g. `Throwable -> BaseExc -> ValErr`) now emits `override` on method redefinitions at every level, not just one hop. `_get_dynamic_override_info`, `_dynamic_proto_requires_nonconst`, and `_check_method_hiding` all walk the MRO via `iter_ancestor_records` when consulting `implemented_protocols`. The "method hides ancestor" warning is suppressed for methods that are now proper transitive overrides. |
+| 19 | `Optional[ConcreteRoot]` class dispatch via `isinstance` + `dynamic_cast` | Partial. For `Optional[E]` where `E` is a *concrete class* that transitively inherits a `@dynamic` protocol (e.g. `class BaseExc(Throwable)`, `Optional[BaseExc]`), codegen materializes rvalue temps at the actual class type (no slicing) for arg-passing and init-only locals; `isinstance(opt, Subclass)` lowers to `dynamic_cast` on the pointer; tuple form ORs casts. Subclass-typed narrowing, rvalue rebind, storage/return positions still rejected -- see TODO.md follow-ups. The same surface is *not* yet available for direct `Optional[Pet]` (see Phase 8 note). |
 
 ## Overview
 
@@ -255,13 +257,107 @@ def make_pet() -> Box[Pet]:
 Dynamic protocol types cannot be used directly in contexts that require owning storage
 with unknown lifetime. These require explicit `Box[P]` (or future `Rc[P]`):
 
-| Context | Direct `Pet` | `Box[Pet]` |
-|---------|-------------|------------|
-| Local variable | OK (stack adapter) | OK (heap) |
-| Function param | OK (reference) | OK |
-| Return value | Only if source outlives caller | OK |
-| Record field | No (size unknown) | OK |
-| `list[Pet]` | No (elements need ownership) | `list[Box[Pet]]` |
+| Context | Direct `Pet` | `Box[Pet]` | `Optional[BaseConcrete]` * |
+|---------|-------------|------------|--------------------------|
+| Local variable | OK (stack adapter) | OK (heap) | OK init-only (slot retyped to rvalue's class); rebind rejected |
+| Function param | OK (reference) | OK | OK (`const BaseConcrete*` borrow, no-slice temp materialization) |
+| Return value | Only if source outlives caller | OK | Only if source outlives caller; rvalue construction returned is rejected |
+| Record field | No (size unknown) | OK | No (storage form has same lifetime/slicing issue) -- use `Optional[Box[BaseConcrete]]` |
+| `list[Pet]` | No (elements need ownership) | `list[Box[Pet]]` | -- use `list[Box[BaseConcrete]]` |
+| `isinstance(x, Sub)` | Compile-time concept check | Compile-time check on `Box`'s inner | Runtime `dynamic_cast` (Phase 19) |
+
+\* `BaseConcrete` here is a concrete class that inherits a `@dynamic` protocol
+(transitively), e.g. `class BaseExc(Throwable)` where `Throwable` is `@dynamic`.
+This is a separate surface from `Optional[Pet]` (direct `@dynamic` protocol),
+which is still sema-rejected (see Phase 8). The two columns are complementary:
+direct `@dynamic` protocol types are for structural conformance + Adapter dispatch;
+concrete class roots with a `@dynamic` parent are for class-hierarchy dispatch
+where `isinstance(opt, Subclass)` and `dynamic_cast` work uniformly.
+
+## `Optional[ConcreteRoot]` Class Dispatch (Phase 18 + 19)
+
+When a concrete class transitively inherits a `@dynamic` protocol, the class
+participates in a real C++ inheritance hierarchy with a vtable rooted at the
+`@dynamic` protocol's abstract base. This unlocks `isinstance` + `dynamic_cast`
+dispatch on `Optional[ConcreteRoot]` parameters without changing the
+representation:
+
+```python
+from tpy import dynamic
+from typing import Optional, Protocol
+
+@dynamic
+class Throwable(Protocol):
+    def what(self) -> str: ...
+
+class BaseExc(Throwable):           # concrete class root
+    message: str
+    def __init__(self, msg: str) -> None:
+        self.message = msg
+    def what(self) -> str:
+        return "[base] " + self.message
+
+class ValErr(BaseExc):              # override propagates virtually (Phase 18)
+    def what(self) -> str:
+        return "[val] " + self.message
+
+def classify(e: Optional[BaseExc]) -> str:
+    if e is None:
+        return "<none>"
+    if isinstance(e, ValErr):       # dynamic_cast<const ValErr*>(e) != nullptr
+        return e.what()             # virtual dispatch -> ValErr::what()
+    return e.what()                 # virtual dispatch -> BaseExc::what()
+
+print(classify(ValErr("x")))         # "[val] x"  (rvalue temp materialized as ValErr, not BaseExc)
+```
+
+**Predicate:** `is_polymorphic_class_type(typ, registry)` in `tpyc/typesys.py`.
+Returns True iff `typ` is a `NominalType` for a concrete (non-protocol) class
+whose MRO contains a record with at least one `@dynamic` implemented protocol.
+Cached lazily on `RecordInfo._is_polymorphic_class` (stable after Phase-1 sema).
+
+**Codegen behavior:**
+
+- **Argument passing** (`_gen_optional_ptr_arg`): rvalue temp for an
+  `Optional[BaseExc]` slot is materialized at the rvalue's actual class
+  (`ValErr __tmp = ValErr("x"); take(&__tmp);`), then C++ implicit pointer
+  upcast handles `&__tmp` -> `const BaseExc*`. No slicing.
+- **Init-only local** (`_gen_pointer_local_init`): same fix -- the typed slot
+  uses the rvalue's class.
+- **isinstance lowering** (`_gen_call`): emits
+  `(dynamic_cast<const Sub*>(e_ptr) != nullptr)`; tuple form is OR of casts.
+  Reads `var_decl` (the declared, not narrowed, type) so the gate is sound
+  for the original `Optional[Polymorphic]` declaration.
+- **Sema** (`_analyze_isinstance`): both Optional-direct and
+  post-`is not None`-narrowed paths accept subclass check types; equality is
+  treated as a degenerate subclass via `is_subclass_of_or_equal`.
+
+**What does not work yet:**
+
+- *Subclass-typed narrowing in the true branch.* `if isinstance(e, OsErr): e.code`
+  errors at sema -- the variable's type isn't narrowed because cast-and-cache
+  codegen (emit `dynamic_cast` once into a typed local, route typed reads
+  through it) isn't written yet. Methods inherited from the base do dispatch
+  virtually. Filed in TODO.md.
+- *Rvalue rebind of a polymorphic subclass into a local.* The shared rebind
+  slot can't preserve dynamic type without heap allocation. Sema-time error
+  with a "use parameter-passing or a typed local" hint. Filed in TODO.md as
+  the `Optional[Polymorphic]` heap-slot follow-up.
+- *Storage and rvalue return positions* of `Optional[Polymorphic]`. Field
+  declarations and `return ValErr(...)` in a function returning
+  `Optional[BaseExc]` would dangle. Should be sema-rejected with a "use
+  `Box[E]` for stored ownership" hint -- not yet implemented; tracked in
+  TODO.md.
+- *The built-in `BaseException` tree itself.* `BaseException` is not yet
+  `@dynamic`-rooted in TPy (no `Throwable` protocol in the stdlib), so the
+  predicate returns False and the M1 stopgap diagnostic still fires on
+  `isinstance(exc_val, X)`. The Throwable refactor is filed as the v1.5 M2
+  completion item.
+
+**Relation to direct `Optional[Pet]`:** rejected (Phase 8), with the rejection
+now known to be partially obsolete (parameter and init-only-local positions
+could lower the same way once the rejection is moved out of `validate_type`).
+TODO.md tracks the narrowing.
 
 ## C++ Code Generation
 

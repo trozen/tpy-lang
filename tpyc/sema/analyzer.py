@@ -837,17 +837,24 @@ class SemanticAnalyzer:
         A @dynamic protocol generates C++ pure virtual methods that concrete implementations
         must override with matching (non-const) signatures. The method may be declared in a
         non-dynamic ancestor, but still ends up in the dynamic vtable.
+
+        Walks the MRO so a class inheriting a @dynamic protocol transitively (via a
+        concrete-class parent) still has its overrides pinned to the protocol's
+        const-ness -- otherwise auto-readonly inference would emit a const signature
+        that mismatches the virtual slot.
         """
         visited: set[str] = set()
-        for proto_type in record_info.implemented_protocols:
-            proto_info = protocol_info_of(proto_type)
-            # Only @dynamic protocols generate C++ virtual bases
-            if proto_info is None or not proto_info.is_dynamic:
-                continue
-            # Search this dynamic protocol and ALL its ancestors for method_name,
-            # regardless of whether ancestors are themselves dynamic.
-            if self._proto_hierarchy_has_nonconst(proto_type.name, method_name, visited):
-                return True
+        infos = [record_info, *self.ctx.registry.iter_ancestor_records(record_info)]
+        for info in infos:
+            for proto_type in info.implemented_protocols:
+                proto_info = protocol_info_of(proto_type)
+                # Only @dynamic protocols generate C++ virtual bases
+                if proto_info is None or not proto_info.is_dynamic:
+                    continue
+                # Search this dynamic protocol and ALL its ancestors for method_name,
+                # regardless of whether ancestors are themselves dynamic.
+                if self._proto_hierarchy_has_nonconst(proto_type.name, method_name, visited):
+                    return True
         return False
 
     def _proto_hierarchy_has_nonconst(self, proto_name: str, method_name: str, visited: set[str]) -> bool:

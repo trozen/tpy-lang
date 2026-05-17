@@ -16,7 +16,7 @@ from ..typesys import (
     PendingListType, ListRepeatType,
     TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_own, unwrap_qualifiers, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     TupleType, CallableType,
-    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_any_str_type, is_any_bytes_type, container_to_str_template,
+    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_polymorphic_class_type, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
     is_float_type, is_readonly_span, is_dyn_protocol)
 from ..type_def_registry import (
@@ -299,7 +299,16 @@ class ExpressionGenerator:
             # std::vector{...}), so the temp must match the param's inner
             # type, not the sema expression type (which can differ, e.g.
             # ArrayType for a fixed-size list literal).
-            tmp = self.ctx.temps.create(actual.inner, gen)
+            #
+            # Polymorphic-class slot: materialize the temp at the rvalue's
+            # actual class to preserve dynamic type (C++ implicit pointer
+            # upcast handles &(__tmp) -> const Base*). Otherwise the temp
+            # would slice and downstream dynamic_cast / virtual dispatch
+            # would silently miss.
+            sub = polymorphic_subclass_into_optional(
+                actual, arg_type, self.ctx.analyzer.registry)
+            temp_type = sub if sub is not None else actual.inner
+            tmp = self.ctx.temps.create(temp_type, gen)
             return f"&({tmp})"
         return f"&({gen})"
 
@@ -2409,6 +2418,25 @@ class ExpressionGenerator:
                 check_members = list(expr.isinstance_type.members)
             else:
                 check_members = [expr.isinstance_type]
+            # Optional[Polymorphic] source: var is `const Inner*` (pointer-repr
+            # Optional). Lower isinstance(var, Subclass) to dynamic_cast on the
+            # pointer -- holds_alternative doesn't apply (no variant), and the
+            # underlying object retains its dynamic type because temp
+            # materialization for these slots preserves the rvalue type. Use
+            # the bare variable name (the raw pointer) -- gen_expr_deref would
+            # produce `(*e)` which isn't a pointer.
+            registry = self.ctx.analyzer.registry
+            if (isinstance(var_decl, OptionalType)
+                    and var_decl.uses_pointer_repr()
+                    and is_polymorphic_class_type(var_decl.inner, registry)):
+                ptr_ref = escape_cpp_name(orig_var)
+                checks = [
+                    f"(dynamic_cast<const {self.types.type_to_cpp(m)}*>({ptr_ref}) != nullptr)"
+                    for m in check_members
+                ]
+                if len(checks) == 1:
+                    return checks[0]
+                return "(" + " || ".join(checks) + ")"
             if orig_var in self.ctx.ptr_variant_locals:
                 const_pfx = "const " if orig_var in self.ctx.const_indirect_locals else ""
                 checks = [

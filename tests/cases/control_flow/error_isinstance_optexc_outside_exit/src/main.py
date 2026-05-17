@@ -8,7 +8,7 @@ from typing import Optional
 
 
 def classify(e: Optional[BaseException]) -> None:
-    if isinstance(e, ValueError):  # tpyc: error(/class-based exception dispatch is not yet supported/)
+    if isinstance(e, ValueError):  # tpyc: error(/class-based exception dispatch on Optional\[BaseException\] is not yet supported/)
         print("value")
 
 
