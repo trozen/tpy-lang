@@ -16,7 +16,7 @@ void update(const ::tpy::BigInt& val) {
     // else:
     } else {
         // x = 0
-        x = 0;
+        x = ::tpy::BigInt(0);
     }
 }
 

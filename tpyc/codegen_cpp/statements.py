@@ -48,7 +48,7 @@ from ..type_def_registry import (
 )
 from .expressions import _is_concrete_user_record
 from .functions import default_to_cpp
-from .type_resolution import resolve_stmt_binding_type
+from .type_resolution import resolve_stmt_binding_type, resolve_stmt_type_cascade
 from ..prescan import match_is_none
 from .match import MatchGenerator
 from .gen_async import POLL_VOID_READY_RETURN
@@ -1497,11 +1497,17 @@ class StatementGenerator:
 
         cpp_name = escape_cpp_name(stmt.name)
 
-        # Global-declared vars: emit assignment to the existing global, not a local decl
+        # Global-declared vars: emit assignment to the existing global, not a local decl.
+        # target_type must be the global's *declared* type, not the init expression's
+        # type -- otherwise `None` against a `Ptr[T]` or value-`Optional[T]` global
+        # would lower as the NoneType unit-value (std::monostate{}) instead of nullptr
+        # / std::nullopt.
         if stmt.name in self.ctx.global_declared_vars:
             if not stmt.init:
                 return None
-            var_type = self.ctx.get_expr_type(stmt.init)
+            var_type = resolve_stmt_type_cascade(stmt, self.ctx.analyzer, self.types)
+            if var_type is not None:
+                var_type = unwrap_qualifiers(var_type)
             init_expr = self.expressions.gen_expr(stmt.init, var_type)
             init_expr = self._maybe_wrap_tuple_to_storage(init_expr, var_type, stmt.init)
             target_name = self.ctx.native_global_names.get(stmt.name, stmt.name)
