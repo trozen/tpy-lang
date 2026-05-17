@@ -200,10 +200,6 @@ class TaskState[T]:
             return True
 
     def cancel_any(self) -> None:
-        # Self-mutation token so auto-readonly inference doesn't mark
-        # this method const (which would block the non-const
-        # frame.cancel() call below via the @dynamic Box).
-        self.done = self.done
         if self.done:
             return
         frame = self.frame
@@ -245,19 +241,14 @@ class Task[T]:
     """
 
     _state: Rc[TaskState[T]]
-    # _cancelled exists to defeat auto-readonly inference on cancel()
-    # (same workaround as TaskState.cancel_any).
-    _cancelled: bool
 
     def __init__(self, state: Own[Rc[TaskState[T]]]) -> None:
         self._state = state
-        self._cancelled = False
 
     def __poll__(self, w: Waker) -> Own[Poll[T]]:
         return self._state.get().__poll__(w)
 
     def cancel(self) -> None:
-        self._cancelled = True
         self._state.get().cancel_any()
 
 

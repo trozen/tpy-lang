@@ -52,7 +52,7 @@ from .scope_tracker import ScopeTracker
 from .init_tracker import InitTracker
 from .value_range import ValueRange
 if TYPE_CHECKING:
-    from .context import SemanticContext
+    from .context import SemanticContext, BorrowTracker
     from .type_ops import TypeOperations
     from .compatibility import TypeCompatibility
     from .local_deduction import LocalTypeDeduction
@@ -60,7 +60,7 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
     from .protocols import ProtocolChecker
 
-from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _borrow_storage_root
+from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root
 from .expressions import _collect_body_name_refs, _collect_body_local_defs
 from .local_deduction import collect_pending_source_types
 from tpyc import modules as builtin_modules
@@ -190,9 +190,21 @@ def _root_name_of_expr(expr: TpyExpr) -> str | None:
     return expr.name if isinstance(expr, TpyName) else None
 
 
+def _local_traces_to_self(borrow_tracker: 'BorrowTracker', name: str) -> bool:
+    """True when a local borrow-traces to self or a self.<field> storage key.
+
+    Used to recognize a method call receiver whose root is a local alias of
+    self-owned storage (e.g. ``frame = self.frame; frame.get().cancel()``)
+    so the call's self-mutation flows back through the enclosing method.
+    """
+    ultimate = borrow_tracker.effective_storage_through_borrows(name)
+    return ultimate == "self" or ultimate.startswith("self.")
+
+
 def _is_self_call_deferred(
     expr_obj: TpyExpr, obj_root: str | None,
     loop_var_iterable: dict[str, str],
+    borrow_tracker: 'BorrowTracker',
 ) -> bool:
     """Check if a method call receiver traces to self through field accesses or loop vars.
 
@@ -214,10 +226,16 @@ def _is_self_call_deferred(
     if obj_root is not None:
         # loop_var.method() where loop_var iterates over self.field
         iterable = loop_var_iterable.get(obj_root)
-        if iterable is not None:
-            root = iterable.split(".")[0] if "." in iterable else iterable
-            if root == "self":
-                return True
+        if iterable is not None and _storage_root(iterable) == "self":
+            return True
+        # local.method() where `local = self.<field>` registered a FIELD borrow.
+        # Without this, the call is treated as a regular non-self call and the
+        # callee's self-mutation never propagates back to the enclosing method,
+        # so non-const methods reached through a local alias of a self field
+        # leave self_mutated unset and auto-readonly wrongly marks the method
+        # const. Deferring lets Phase 2 propagate precisely.
+        if _local_traces_to_self(borrow_tracker, obj_root):
+            return True
     return False
 
 

@@ -1113,12 +1113,6 @@ asyncio's `__init__.py` has only one sibling import path
   other exception types lose their concrete class through Task
   storage. Tracked as a TPy-side gap (would need a `current_exception`
   / `exception_ptr` equivalent at the TPy layer).
-- Auto-readonly inference is too aggressive on methods that call
-  non-const methods through `Box[GenericDynProto[T]]` fields. Worked
-  around in `TaskState.cancel_any` and `Task.cancel` via a self-write
-  token (`self.done = self.done`, `self._cancelled = True`) that
-  defeats the inference. A real compiler fix would track method calls
-  through @dynamic-protocol-typed fields for const inference.
 
 What's left in `runtime/cpp/include/tpy/async.hpp`: `Waker`,
 `CancelledError`, `ExecutorOps` (now just `mark_runnable` +

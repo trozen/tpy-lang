@@ -77,6 +77,16 @@ def _storage_key(expr: TpyExpr) -> str | None:
     return None
 
 
+def _storage_root(key: str) -> str:
+    """Strip the field suffix off a dotted storage key ('self.items' -> 'self').
+
+    Inverse of `_storage_key`: callers that need to look up the variable name
+    a dotted key was built from (param-name table, loop-var dict) use this.
+    """
+    dot = key.find(".")
+    return key if dot == -1 else key[:dot]
+
+
 def _borrow_storage_root(expr: TpyExpr) -> str | None:
     """Extract the storage key whose storage is borrowed by this expression.
 
@@ -1024,8 +1034,7 @@ class SemanticContext:
         iterable = self.func.loop_var_iterable.get(name)
         if iterable is not None:
             # Field-path iterables ("c.items") need root extraction for param lookup
-            root = iterable.split(".")[0] if "." in iterable else iterable
-            self.mark_param_mutated(root)
+            self.mark_param_mutated(_storage_root(iterable))
         # 8a.5: trace through element/field/ptr borrows to source param.
         # When v = items[i] (deferred) and v is later written through,
         # mark the ultimate storage root (e.g. items) as mutated.
@@ -1049,8 +1058,7 @@ class SemanticContext:
             self.func.current_struct_mutated_param_names.add(name)
         iterable = self.func.loop_var_iterable.get(name)
         if iterable is not None:
-            root = iterable.split(".")[0] if "." in iterable else iterable
-            self.mark_param_structurally_mutated(root)
+            self.mark_param_structurally_mutated(_storage_root(iterable))
 
     def mark_param_returned(self, name: str) -> None:
         """Mark a parameter as contributing to the return value (8b).
@@ -1067,8 +1075,7 @@ class SemanticContext:
             self.func.current_returned_param_names.add(name)
         iterable = self.func.loop_var_iterable.get(name)
         if iterable is not None:
-            root = iterable.split(".")[0] if "." in iterable else iterable
-            self.mark_param_returned(root)
+            self.mark_param_returned(_storage_root(iterable))
 
     def mark_own_param_consumed(self, name: str) -> None:
         """Mark an Own[T] param as consumed (stored, forwarded, or returned)."""

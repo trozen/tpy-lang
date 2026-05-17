@@ -35,7 +35,7 @@ from .calls import (
     _enrich_literal_types,
     resolve_inferred_type_arg,
 )
-from .statements import _root_name_of_expr, _is_self_call_deferred
+from .statements import _root_name_of_expr, _is_self_call_deferred, _local_traces_to_self
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -785,7 +785,8 @@ class MethodAnalyzer:
                             # enabling readonly inference for methods like __json_encode__
                             # that call non-mutating methods on fields.
                             self_deferred = _is_self_call_deferred(
-                                expr.obj, obj_root, self.ctx.func.loop_var_iterable)
+                                expr.obj, obj_root, self.ctx.func.loop_var_iterable,
+                                self.ctx.func.borrow_tracker)
                             if not self_deferred:
                                 self.ctx.mark_param_mutated(obj_root)
                             # Structural mutation tracked directly (Phase 2 doesn't
@@ -798,12 +799,17 @@ class MethodAnalyzer:
                         # Check for chained method calls rooted at self:
                         # self.get_span().sort() -- sort() is non-readonly and
                         # the span is a mutable view of self's storage.
-                        # Treat as self-mutation conservatively.
+                        # Treat as self-mutation conservatively. A chain rooted
+                        # at a local that borrow-traces to self.<field> (e.g.
+                        # `frame = self.frame; frame.get().mutating_method()`)
+                        # is also a self-mutation since the receiver aliases
+                        # self-owned storage.
                         chain = expr.obj
                         while isinstance(chain, TpyMethodCall):
                             chain = chain.obj
                         chain_root = _root_name_of_expr(chain)
-                        if chain_root == "self":
+                        if chain_root is not None and _local_traces_to_self(
+                                self.ctx.func.borrow_tracker, chain_root):
                             self.ctx.mark_param_mutated("self")
                 return result
 

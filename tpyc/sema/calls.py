@@ -2591,7 +2591,8 @@ class CallAnalyzer:
             else:
                 obj_root = _root_name_of_expr(expr.obj)
                 if obj_root is not None and _is_self_call_deferred(
-                        expr.obj, obj_root, self.ctx.func.loop_var_iterable):
+                        expr.obj, obj_root, self.ctx.func.loop_var_iterable,
+                        self.ctx.func.borrow_tracker):
                     receiver_is_self = True
 
         # Nothing to record if no params flow through and no self-call
