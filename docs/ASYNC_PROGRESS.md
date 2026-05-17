@@ -461,15 +461,15 @@ Hard cutover -- no compat shim for the old 1-arg shape.
   suppress / no-suppress / normal-path / bad return / isinstance
   diagnostic. Snapshots regenerated across all `with`-using cases.
 
-### M2 PARTIAL -- generic rule landed for user code; BaseException case still pending
+### M2 SHIPPED -- class-based `__exit__` dispatch via `isinstance(exc_val, X)`
 
-Originally scoped for v1.5. Design pass landed on a generic rule
-(`Optional[E]` for polymorphic class types `E` is borrow-form;
-`isinstance` lowers to `dynamic_cast`; storage/return positions require
-explicit `Box[E]`), keyed on a `@dynamic`-rooted-hierarchy predicate so
-it isn't a one-off rule for the `BaseException` tree.
+Design pass landed on a generic rule (`Optional[E]` for polymorphic
+class types `E` is borrow-form; `isinstance` lowers to `dynamic_cast`;
+storage/return positions require explicit `Box[E]`), keyed on a
+`@dynamic`-rooted-hierarchy predicate so it isn't a one-off rule for
+the `BaseException` tree.
 
-**Shipped on this branch** (user-defined polymorphic classes):
+**Shipped in two passes** (initial machinery + BaseException activation):
 
 - Transitive virtual-override propagation for `@dynamic`-rooted
   inheritance chains (`tpyc/codegen_cpp/functions.py::_get_dynamic_override_info`
@@ -495,32 +495,42 @@ it isn't a one-off rule for the `BaseException` tree.
   (3-level chain virtual dispatch); `tests/cases/protocols/protocol_dynamic_optional_isinstance`
   (rvalue construction + isinstance + tuple form + virtual dispatch).
 
-**Still pending for full M2 (the `BaseException` case):**
+**Second pass -- BaseException activation:**
 
-- The built-in `BaseException` tree is not yet `@dynamic`-rooted in
-  TPy, so `is_polymorphic_class_type` returns False for it and the new
-  paths don't activate. Plumbing it through requires introducing a
-  `Throwable` `@dynamic` protocol in the stdlib and having
-  `BaseException` inherit it (rest of the tree inherits via the new
-  transitive-override propagation). Verify `Box[BaseException]` works
-  end-to-end before pointing the storage-position diagnostic at it.
-  Until that lands, `isinstance(exc_val, X)` in `__exit__` bodies
-  continues to emit the M1 stopgap diagnostic (now reworded:
-  "class-based exception dispatch on `Optional[BaseException]` is not
-  yet supported (BaseException is not @dynamic-rooted)").
-- **Subclass-typed narrowing in the true branch** is intentionally not
-  in this milestone: the isinstance check returns the correct bool and
-  methods inherited from the base class dispatch virtually, but
-  accessing subclass-specific fields would require cast-and-cache
-  codegen (each typed read emits via the cached dynamic_cast result).
-  Follow-up.
-- **Sema rejections at slicing sites** (field declarations and rvalue
-  returns of `Optional[Polymorphic]` with a "use `Box[E]`" diagnostic)
-  not implemented yet -- the codegen no-slice fix handles the
-  parameter-passing case which is what users hit in practice. Stored
-  ownership of polymorphic exceptions is a less common pattern; the
-  diagnostic + `Box[E]` story can land alongside the BaseException
-  refactor.
+- Added a markerless `@dynamic class Throwable(Protocol): pass` in
+  `lib/tpy/tpy/_core/_types.py`. Pure phylum tag -- no virtual method
+  contract; the polymorphism predicate consumes it to activate the M2
+  dispatch paths. (Originally drafted with a placeholder `__str__`
+  method because the compiler rejected markerless `@dynamic` protocols;
+  the rejection was lifted in the same milestone since markerless is
+  the right shape here -- BaseException is `@native` and routes through
+  Adapter, so virtual method declarations on Throwable were dead C++.)
+- Declared `class BaseException(Throwable)` in `lib/tpy/tpy/_builtins/_exceptions.py`;
+  all exception subclasses inherit through the existing chain. The
+  transitive-override propagation from the first pass handles them
+  automatically -- no per-subclass changes needed.
+- `is_polymorphic_class_type` now returns True for the entire
+  `BaseException` tree. `isinstance(exc_val, ValueError)` in `__exit__`
+  bodies lowers to `dynamic_cast<const ::tpy::ValueError*>(exc_val) != nullptr`
+  and runs correctly. The M1 stopgap diagnostic drops out automatically.
+- Two M1 stopgap error tests converted to positive M2 tests:
+  `tests/cases/control_flow/with_exit_isinstance_class_dispatch` (in
+  `__exit__` body, with suppression behavior end-to-end) and
+  `isinstance_optexc_outside_exit` (Optional[BaseException] parameter
+  in a plain function).
+- Protocol-snapshot test gained a `tpy.Throwable` entry. Stdlib diff
+  is ~10 lines; the heavy lifting was the first pass.
+
+**Remaining v1.5 M2 follow-ups (not blockers):**
+
+- **Subclass-typed narrowing in the true branch** -- `if isinstance(e, OsErr): e.code`
+  still errors at sema because narrowing is intentionally suppressed.
+  Methods inherited from the base dispatch virtually; subclass-specific
+  field access requires cast-and-cache codegen (filed in TODO.md).
+- **Slicing-site sema rejections** for field declarations and rvalue
+  returns of `Optional[Polymorphic]` (filed in TODO.md). Not blocking;
+  the codegen no-slice fix handles the common parameter-passing case
+  which is what users hit in practice.
 
 ## v1.x milestone: asyncio runtime TPy port (must precede v1.5)
 

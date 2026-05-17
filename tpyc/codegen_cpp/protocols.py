@@ -234,12 +234,23 @@ class ProtocolGenerator:
         Match is by short name; type_args are ignored. Cross-instantiation
         mismatches (e.g. assigning `Container[Int32]` into `Container[str]`)
         are already rejected by sema before this helper runs.
+
+        @native records are excluded: their C++ representation is opaque to
+        codegen (the struct is hand-written elsewhere), so even when the TPy
+        declaration claims `class NativeRec(SomeDynProto)`, the C++ struct
+        almost certainly does NOT inherit the codegen-emitted protocol base.
+        Routing through Adapter is the only safe lowering for those types.
+        Example: `BaseException` inherits `Throwable` at the TPy level for
+        polymorphism dispatch on `Optional[BaseException]`, but
+        `::tpy::BaseException` in core.hpp does not inherit `tpystd::tpy::Throwable`.
         """
         proto_name = protocol.name
         if not isinstance(concrete_type, NominalType) or not concrete_type.is_user_record:
             return False
         record_info = self.ctx.analyzer.registry.get_record(concrete_type.name)
         if not record_info:
+            return False
+        if record_info.is_native:
             return False
         for p in record_info.implemented_protocols:
             pi = protocol_info_of(p)
@@ -414,11 +425,20 @@ class ProtocolGenerator:
 
         # Collect all methods including inherited ones
         all_methods = self.collect_concept_methods(protocol.name)
+        all_fields_for_decl = self.collect_concept_fields(protocol.name)
 
         # @dynamic protocols use __{Name}_Concept__ so the clean name is
         # free for the base class struct
         concept_name = (f"__{protocol.name}_Concept__"
                         if protocol.is_dynamic else protocol.name)
+        # Marker (no methods, no fields) -> trivially-satisfied concept.
+        # An empty `requires(T& t) { }` body is ill-formed in C++20 (GCC/Clang
+        # reject it), so emit `= true` instead. Used by markerless @dynamic
+        # protocols that act as phylum tags (e.g. Throwable for the exception
+        # tree's polymorphism predicate).
+        if not all_methods and not all_fields_for_decl:
+            out.write(f"concept {concept_name} = true;\n")
+            return True
         if self.is_protocol_const(protocol.name):
             out.write(f"concept {concept_name} = requires(const T& t) {{\n")
         else:

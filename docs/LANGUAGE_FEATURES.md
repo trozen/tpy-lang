@@ -2341,8 +2341,13 @@ This generates:
 4. **Ref adapter** (`tpy::RefAdapter<Pet, T>`) -- zero-copy wrapper storing `T& inner` by reference
 
 **Object safety rules** -- `@dynamic` protocols must be:
-- **Non-empty**: at least one method required (no marker protocols)
 - **Self-free**: no `Self` type in method params or return types
+
+Markerless `@dynamic` protocols (no methods, no fields) are allowed -- they act as
+phylum tags for the polymorphism predicate that gates `Optional[ConcreteRoot]` class
+dispatch via `isinstance`/`dynamic_cast`. The stdlib's `Throwable` is the canonical
+example: it has no methods and roots the `BaseException` tree so the M2 dispatch
+machinery activates for exception isinstance checks in `__exit__` bodies.
 
 Generic `@dynamic` protocols are supported (e.g., `@dynamic class Container[T](Protocol)`). Each instantiation `Container[Int32]`, `Container[str]` has an independent vtable; the concept, base class, and adapter partial specializations are emitted once as C++ class templates. See `docs/DYNAMIC_PROTOCOL_DESIGN.md` for the codegen shape.
 
@@ -3259,7 +3264,8 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 - **Working**: `with expr as var:` -- duck-typed context manager protocol via `__enter__`/`__exit__` methods
   - `__enter__(self) -> T` -- return type determines the `as`-variable type (can differ from the context manager type)
   - `__exit__(self, exc_type, exc_val, exc_tb) -> None | bool` -- CPython-compatible 4-arg shape. `exc_type` and `exc_tb` are `None` in v1.5 (no traceback/type-object machinery); `exc_val` carries the caught exception (`Optional[BaseException]`) on the exceptional path, `None` on normal exit.
-  - **Suppression** (v1.5 M1): `__exit__ -> bool` -- returning `True` suppresses the exception (control falls through past the `with`); returning `False` re-raises. `__exit__ -> None` is cleanup-only (no suppression). `if exc_val is not None:` narrows for binary suppression. Class-based dispatch via `isinstance(exc_val, X)` on `Optional[BaseException]` is **partially landed**: the generic machinery (transitive virtual-override propagation, `is_polymorphic_class_type` predicate, codegen no-slice for rvalue temps, `isinstance` -> `dynamic_cast` lowering, sema acceptance) is in place and works for user-defined polymorphic classes (a `@dynamic` protocol + concrete-class root + subclasses). The built-in `BaseException` tree itself is not yet `@dynamic`-rooted in TPy, so the M1 stopgap diagnostic still fires on `isinstance(exc_val, X)` (reworded to explain the root cause). Full M2 will land alongside a `Throwable` `@dynamic` protocol in the stdlib that `BaseException` inherits. See `docs/ASYNC_PROGRESS.md` v1.5 M2 section and the TODO.md "v1.5 M2 completion" entry.
+  - **Suppression** (v1.5 M1): `__exit__ -> bool` -- returning `True` suppresses the exception (control falls through past the `with`); returning `False` re-raises. `__exit__ -> None` is cleanup-only (no suppression). `if exc_val is not None:` narrows for binary suppression.
+  - **Class-based dispatch** (v1.5 M2): `isinstance(exc_val, X)` on `Optional[BaseException]` lowers to `dynamic_cast` on the `const BaseException*` pointer that flows into `__exit__`. `BaseException` is `@dynamic`-rooted via the `Throwable` protocol in the stdlib; every exception subclass inherits transitively, so `isinstance(exc_val, ValueError)`, tuple form `isinstance(exc_val, (OSError, RuntimeError))`, and same-type checks all work. Subclass-specific *field* access on a user-defined exception subclass (e.g. `class HttpError(Exception): status: Int32` and then `if isinstance(exc_val, HttpError): exc_val.status`) still errors at sema -- narrowing to the subclass type requires cast-and-cache codegen, filed as a follow-up. See `docs/ASYNC_PROGRESS.md` v1.5 M2 section.
   - `exc_val` may be explicitly annotated as `None` for cleanup-only managers (call site passes `{}` instead of `&__exc`); unannotated defaults to `Optional[BaseException]`.
   - Cleanup via try/catch on every path -- normal fall-through, exception, early return, break, continue. Foreign C++ exceptions (non-`BaseException`) take a best-effort cleanup path with no suppression.
   - `as`-variable is visible after the `with` block (matching CPython scoping)

@@ -1,1 +1,0 @@
-main.py:14: error: class-based exception dispatch on Optional[BaseException] is not yet supported (BaseException is not @dynamic-rooted); use `if exc_val is not None:` for binary suppression

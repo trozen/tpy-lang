@@ -1256,6 +1256,14 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
         type_params=("T",), parent_protocols=(),
         methods=("__iter__",),
     ),
+    # tpy.* @dynamic protocols (tpy._core._types)
+    "tpy.Throwable": dict(
+        name="Throwable", module="tpy",
+        is_dynamic=True, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=(),
+    ),
     # tpy.* structural protocols (tpy._core._types)
     "tpy.coro.Awaitable": dict(
         name="Awaitable", module="tpy.coro",

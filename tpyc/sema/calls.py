@@ -11,7 +11,7 @@ from typing import Callable, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, OwnType, OptionalType, TupleType, own_tuple_target, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
-    is_exception_type, is_polymorphic_class_type,
+    is_polymorphic_class_type,
     IntLiteralType, resolve_int_literals,
     LiteralType, LiteralValue, LiteralTag, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, is_void_like_type, ParamInfo, ReadonlyType,
@@ -1793,27 +1793,6 @@ class CallAnalyzer:
                                         else make_union(*check_types))
                 return BOOL
 
-            # Optional[BaseException] dispatch: deferred -- BaseException is
-            # polymorphic at the C++ level but is not yet @dynamic-rooted in
-            # TPy, so the slicing-avoiding codegen path doesn't recognize it
-            # and the user can't observe a sound dynamic_cast. Until the
-            # Throwable refactor lands, binary suppression via
-            # `if exc_val is not None:` is the supported form. See
-            # docs/ASYNC_PROGRESS.md v1.5 M2 and BUGS.md.
-            inner_is_exc = (isinstance(inner, NominalType)
-                            and is_exception_type(inner.name, self.ctx.registry))
-            check_is_exc = all(
-                isinstance(ct, NominalType)
-                and is_exception_type(ct.name, self.ctx.registry)
-                for ct in check_types
-            ) if check_types else False
-            if inner_is_exc and check_is_exc:
-                raise self.ctx.error(
-                    f"class-based exception dispatch on Optional[BaseException] "
-                    f"is not yet supported (BaseException is not @dynamic-rooted); "
-                    f"use `if {first_arg.name} is not None:` for binary suppression",
-                    expr,
-                )
             raise self.ctx.error(
                 f"isinstance() is only supported on union types, "
                 f"got '{effective_type}'",

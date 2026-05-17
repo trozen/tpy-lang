@@ -2426,11 +2426,13 @@ class TypeRegistrar:
         all_methods = self.protocols.collect_protocol_methods(protocol.name)
         all_fields = self.protocols.collect_protocol_fields(protocol.name)
 
-        if not all_methods and not all_fields:
-            raise SemanticError(
-                f"@dynamic protocol '{protocol.name}' must have at least one method or field",
-                protocol.loc
-            )
+        # Markerless @dynamic protocols (no methods, no fields) are allowed:
+        # they're phylum tags used by the polymorphism predicate to gate
+        # things like `Optional[E]` class dispatch via dynamic_cast. The
+        # emitted C++ shape is an empty abstract base struct with just a
+        # virtual destructor + a trivially-satisfied concept; Adapter and
+        # RefAdapter wrap anything. No actual dispatch goes through the
+        # vtable in the marker case -- it's purely a sema-level tag.
 
         for msig in all_methods:
             if _contains_self_type(msig.return_type):

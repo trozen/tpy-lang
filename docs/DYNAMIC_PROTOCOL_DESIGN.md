@@ -25,7 +25,7 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 16 | `Own[P]` as a plain function parameter + return type (with method access on the owned value) | Done. Param/return lower to `std::unique_ptr<P>`; `p.method()` body access emits `p->method()`; concrete-source returns wrap via `std::make_unique<Adapter<P, T>>(...)` (or `std::make_unique<T>(...)` for inheritance conformers). Forward `Own[P] -> Own[P]` returns rely on C++ implicit-move (no `std::move` wrap). |
 | 17 | `Rc[P]` for `@dynamic` P -- shared-ownership erased dyn protocol | Future. Design direction: Rust's `Arc<dyn Trait>` single co-located allocation (refcount header + concrete in one block, drop-fn-in-header for type-erased destruction). Interim workaround: `Rc[Box[P]]` (two allocations: cell + box's pet). See TODO.md. |
 | 18 | Transitive virtual-override propagation through `@dynamic`-rooted inheritance chains | Done. A class inheriting a `@dynamic` protocol via a concrete-class intermediate (e.g. `Throwable -> BaseExc -> ValErr`) now emits `override` on method redefinitions at every level, not just one hop. `_get_dynamic_override_info`, `_dynamic_proto_requires_nonconst`, and `_check_method_hiding` all walk the MRO via `iter_ancestor_records` when consulting `implemented_protocols`. The "method hides ancestor" warning is suppressed for methods that are now proper transitive overrides. |
-| 19 | `Optional[ConcreteRoot]` class dispatch via `isinstance` + `dynamic_cast` | Partial. For `Optional[E]` where `E` is a *concrete class* that transitively inherits a `@dynamic` protocol (e.g. `class BaseExc(Throwable)`, `Optional[BaseExc]`), codegen materializes rvalue temps at the actual class type (no slicing) for arg-passing and init-only locals; `isinstance(opt, Subclass)` lowers to `dynamic_cast` on the pointer; tuple form ORs casts. Subclass-typed narrowing, rvalue rebind, storage/return positions still rejected -- see TODO.md follow-ups. The same surface is *not* yet available for direct `Optional[Pet]` (see Phase 8 note). |
+| 19 | `Optional[ConcreteRoot]` class dispatch via `isinstance` + `dynamic_cast` | Done. For `Optional[E]` where `E` is a *concrete class* that transitively inherits a `@dynamic` protocol (e.g. `class BaseExc(Throwable)`, `Optional[BaseExc]`), codegen materializes rvalue temps at the actual class type (no slicing) for arg-passing and init-only locals; `isinstance(opt, Subclass)` lowers to `dynamic_cast` on the pointer; tuple form ORs casts. Activated for the built-in `BaseException` tree via a `Throwable` `@dynamic` protocol declared in `tpy._core._types` and inherited by `BaseException`. Subclass-typed narrowing, rvalue rebind, storage/return positions still rejected -- see TODO.md follow-ups. The same surface is *not* yet available for direct `Optional[Pet]` (see Phase 8 note). |
 
 ## Overview
 
@@ -291,34 +291,45 @@ participates in a real C++ inheritance hierarchy with a vtable rooted at the
 dispatch on `Optional[ConcreteRoot]` parameters without changing the
 representation:
 
+User-defined hierarchy example (the rule applies to any concrete class
+that transitively inherits a `@dynamic` protocol; the built-in
+`BaseException` tree activates via the stdlib `Throwable` protocol):
+
 ```python
 from tpy import dynamic
 from typing import Optional, Protocol
 
 @dynamic
-class Throwable(Protocol):
-    def what(self) -> str: ...
+class Audible(Protocol):            # user-defined @dynamic protocol
+    def sound(self) -> str: ...
 
-class BaseExc(Throwable):           # concrete class root
-    message: str
-    def __init__(self, msg: str) -> None:
-        self.message = msg
-    def what(self) -> str:
-        return "[base] " + self.message
+class Animal(Audible):              # concrete class root
+    name: str
+    def __init__(self, name: str) -> None:
+        self.name = name
+    def sound(self) -> str:
+        return "..."
 
-class ValErr(BaseExc):              # override propagates virtually (Phase 18)
-    def what(self) -> str:
-        return "[val] " + self.message
+class Dog(Animal):                  # override propagates virtually (Phase 18)
+    def sound(self) -> str:
+        return self.name + " says woof"
 
-def classify(e: Optional[BaseExc]) -> str:
-    if e is None:
+def greet(a: Optional[Animal]) -> str:
+    if a is None:
         return "<none>"
-    if isinstance(e, ValErr):       # dynamic_cast<const ValErr*>(e) != nullptr
-        return e.what()             # virtual dispatch -> ValErr::what()
-    return e.what()                 # virtual dispatch -> BaseExc::what()
+    if isinstance(a, Dog):          # dynamic_cast<const Dog*>(a) != nullptr
+        return a.sound()            # virtual dispatch -> Dog::sound()
+    return a.sound()                # virtual dispatch -> Animal::sound()
 
-print(classify(ValErr("x")))         # "[val] x"  (rvalue temp materialized as ValErr, not BaseExc)
+print(greet(Dog("Rex")))            # "Rex says woof"  (rvalue temp materialized as Dog, not Animal)
 ```
+
+The same shape activates automatically for the built-in `BaseException`
+tree: `Throwable` (declared in `tpy._core._types`) is the `@dynamic`
+root, `BaseException` is the concrete-class root that inherits it, and
+all exception subclasses (`Exception`, `ValueError`, `OSError`, ...)
+participate via the existing inheritance chain. `isinstance(exc_val, ValueError)`
+inside an `__exit__` body lowers to `dynamic_cast<const ::tpy::ValueError*>(exc_val) != nullptr`.
 
 **Predicate:** `is_polymorphic_class_type(typ, registry)` in `tpyc/typesys.py`.
 Returns True iff `typ` is a `NominalType` for a concrete (non-protocol) class
@@ -357,11 +368,12 @@ Cached lazily on `RecordInfo._is_polymorphic_class` (stable after Phase-1 sema).
   `Optional[BaseExc]` would dangle. Should be sema-rejected with a "use
   `Box[E]` for stored ownership" hint -- not yet implemented; tracked in
   TODO.md.
-- *The built-in `BaseException` tree itself.* `BaseException` is not yet
-  `@dynamic`-rooted in TPy (no `Throwable` protocol in the stdlib), so the
-  predicate returns False and the M1 stopgap diagnostic still fires on
-  `isinstance(exc_val, X)`. The Throwable refactor is filed as the v1.5 M2
-  completion item.
+- *(Activated)* The built-in `BaseException` tree is `@dynamic`-rooted via
+  the `Throwable` protocol in `tpy._core._types`. `isinstance(exc_val, X)`
+  in `__exit__` bodies works for any subclass of `BaseException`
+  (`ValueError`, `OSError`, `RuntimeError`, ...). Tested in
+  `tests/cases/control_flow/with_exit_isinstance_class_dispatch` and
+  `isinstance_optexc_outside_exit`.
 
 **Relation to direct `Optional[Pet]`:** rejected (Phase 8), with the rejection
 now known to be partially obsolete (parameter and init-only-local positions
@@ -481,7 +493,7 @@ Not all protocols can be `@dynamic`. The compiler validates at definition site:
   per-method type param)
 - No `Self` type (deferred -- `Self` support may be added later with restrictions)
 - No static methods (no receiver to dispatch on)
-- Marker protocols cannot be `@dynamic` (no methods to dispatch)
+- Markerless `@dynamic` protocols **are allowed** -- they act as phylum tags for the polymorphism predicate (`is_polymorphic_class_type`) without committing to a virtual method contract. The emitted C++ shape is an empty abstract base struct (`struct X { virtual ~X() = default; };`) and a trivially-satisfied concept (`concept __X_Concept__ = true;`). Used by the stdlib `Throwable` to root the `BaseException` tree. No method dispatch goes through the vtable in this case; the marker is purely a sema-level tag consumed by `Optional[ConcreteRoot]` class dispatch.
 - The type-parameter name `__tpy_Impl` is reserved for the adapter codegen and
   cannot be used by user protocols (rejected at codegen time)
 
@@ -549,7 +561,8 @@ Compiler infrastructure issues (not blocked on `Box[P]`):
 
 1. **`@dynamic` decorator** (done) -- parser recognizes `@dynamic` on protocol classes,
    sema stores `is_dynamic` flag on ProtocolInfo, object-safety validation at definition
-   site (no marker protocols, no Self type; generic `@dynamic` is supported -- see step 12)
+   site (markerless protocols are allowed as phylum tags, no Self type; generic `@dynamic`
+   is supported -- see step 12)
 2. **Abstract base + adapter codegen** (done) -- generate base class (e.g., `struct Pet`),
    `tpy::Adapter<Pet, T>`, and `tpy::RefAdapter<Pet, T>` for each `@dynamic` protocol.
    Base class in user namespace; adapters as partial specializations at global scope.

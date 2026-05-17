@@ -1,7 +1,7 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
 from .._bootstrap._extern import native
-from .._core._types import ReturnException, StrView
+from .._core._types import ReturnException, StrView, Throwable
 
 
 # Python exception hierarchy (maps to ::tpy:: runtime structs in core.hpp).
@@ -9,7 +9,7 @@ from .._core._types import ReturnException, StrView
 # `e = X("msg")` codegen paths, so __init__ stubs don't need their own
 # @native(..., function=True) annotation.
 @native("tpy::BaseException")
-class BaseException:
+class BaseException(Throwable):
     message: str
 
     def __init__(self, message: str = "") -> None: ...

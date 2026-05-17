@@ -6,9 +6,24 @@ from tpy import (
     UInt64, Int32, Float32, Int8, Int16, Int64, UInt8, UInt16, UInt32,
     Char, String, StrView,
 )
-from .._bootstrap._decorators import readonly, pure, nocopy, Own
+from .._bootstrap._decorators import readonly, pure, nocopy, Own, dynamic
 from .._bootstrap._extern import native, cpp_template, builtin_type, value_ptr_coercion
 from ..mem import UninitArrayStorage as _UninitArrayStorage
+
+
+# --- Dynamic protocols (vtable-based runtime dispatch) ---
+
+# Marker root for the exception hierarchy. Makes `BaseException` (and its
+# subclasses) `@dynamic`-rooted via inheritance so the v1.5 M2 codegen paths
+# (no-slice rvalue materialization, isinstance -> dynamic_cast) activate on
+# `Optional[BaseException]` and friends. Markerless: Throwable has no method
+# or field, just a phylum tag. BaseException's existing C++ shape is unchanged;
+# `__str__` and other exception methods are NOT made virtual by Throwable
+# inheritance (BaseException is @native and routes through Adapter, not
+# direct C++ inheritance of the protocol base).
+@dynamic
+class Throwable(Protocol):
+    pass
 
 
 # --- Structural protocols (concept generated from method signatures) ---

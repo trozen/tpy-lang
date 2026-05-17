@@ -1,0 +1,1 @@
+main.py:16: error: isinstance() check type(s) 'NotAnException' are not subclasses of 'BaseException' (Optional[BaseException] dispatch)
