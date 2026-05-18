@@ -844,6 +844,17 @@ class CodeGenContext:
     in_async_coro_body: bool = False
     async_coro_return_cpp: str | None = None  # C++ return type for Poll<T>::ready
     async_coro_done_state: str | None = None  # name of the DONE state enumerator
+    # Pending-return routing inside a CFG-based finally region
+    #: when set, `return v` inside the active case saves `v`
+    # to the slot, sets the flag, walks finally frames up to
+    # `async_pending_return_boundary` (the position in finally_stack
+    # belonging to regions OUTSIDE the CFG-based finally -- they're
+    # walked later by AsyncFinallyExit), then transitions state to
+    # the finally entry. `slot` is None for void async defs.
+    async_pending_return_flag: str | None = None
+    async_pending_return_slot: str | None = None
+    async_pending_return_target_state: str | None = None
+    async_pending_return_boundary: int = 0
 
     # --- for/else, while/else label stack ---
     # When generating a loop with an else clause, the goto label name is

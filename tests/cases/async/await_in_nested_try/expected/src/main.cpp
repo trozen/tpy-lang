@@ -122,32 +122,10 @@ __coro_fail fail() {
         }
     }
     case S_JOIN_2: {
-        try {
-            try {
-                // x = await fail()
-                __sub_0.emplace();
-                __state = S_AFTER_AWAIT_0;
-                continue;
-            } catch (const ::tpy::ValueError&) {
-                try {
-                    // print("inner-handler")
-                    std::cout << "inner-handler" << "\n";
-                    // y = await value(Int32(5))
-                    __sub_1.emplace(5);
-                    __state = S_AFTER_AWAIT_1;
-                    continue;
-                } catch (...) {
-                    this->__finally_1();
-                    throw;
-                }
-            } catch (...) {
-                this->__finally_1();
-                throw;
-            }
-        } catch (...) {
-            this->__finally_0();
-            throw;
-        }
+        // x = await fail()
+        __sub_0.emplace();
+        __state = S_AFTER_AWAIT_0;
+        continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

@@ -82,19 +82,10 @@ __coro_worker worker() {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_1: {
-        try {
-            // await task
-            __sub_1 = &((*task));
-            __state = S_AFTER_AWAIT_1;
-            continue;
-        } catch (const ::tpy::CancelledError&) {
-            // print("caught")
-            std::cout << "caught" << "\n";
-            __state = S_JOIN_0;
-            continue;
-        } catch (...) {
-            throw;
-        }
+        // await task
+        __sub_1 = &((*task));
+        __state = S_AFTER_AWAIT_1;
+        continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

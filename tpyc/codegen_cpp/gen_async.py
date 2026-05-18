@@ -25,10 +25,12 @@ from typing import TYPE_CHECKING
 from ..parse.nodes import (
     TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl, TpyReturn,
     TpyExprStmt, TpyName, TpyExpr, TpyTry, TpyExceptHandler, TpyCall,
-    TpyFieldAccess,
+    TpyFieldAccess, TpyForEach, TpyWith,
+    TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
+    TpyNoneLiteral, TpyCoerce,
 )
 from ..typesys import unwrap_ref_type, unwrap_own, VoidType
-from ..type_def_registry import is_str_type
+from ..type_def_registry import is_str_type, is_str_category
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext
 from . import resumable_cfg as rcfg
 
@@ -419,14 +421,44 @@ class AsyncCoroCodegen:
 
         # Hoisted local fields (mirrors generator behavior).
         if func.generator_locals:
+            owning_str = getattr(
+                func, "_async_with_owning_str_targets", set())
             for lname, ltype in func.generator_locals:
                 ltype_inner = unwrap_ref_type(ltype)
                 cpp_type = self.types.type_to_cpp(ltype_inner)
                 cpp_name = escape_cpp_name(lname)
-                if ltype_inner.is_value_type():
+                if lname in owning_str:
+                    # `with X() as label:` -- `__enter__` returns by
+                    # value; storing the view across suspensions
+                    # would dangle. Use owning storage. See
+                    # `_prescan_async_with_stmts`.
+                    out.write(f"{INDENT}std::string {cpp_name};\n")
+                elif ltype_inner.is_value_type():
                     out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
                 else:
                     out.write(f"{INDENT}std::optional<{cpp_type}> {cpp_name};\n")
+
+        # Synthetic fields for CFG-decomposed for-loops: one
+        # iterator + one __next__-result slot per for-with-await,
+        # stored as std::optional so the C++ type is default-constructible.
+        for fname, ftype in getattr(func, "_async_for_fields", ()) or ():
+            out.write(f"{INDENT}std::optional<{ftype}> {fname};\n")
+
+        # Context-manager fields for CFG-decomposed `with`-with-await
+        # bodies. One std::optional<T> per WithItem.
+        for fname, ftype in getattr(func, "_async_with_fields", ()) or ():
+            out.write(f"{INDENT}std::optional<{ftype}> {fname};\n")
+
+        # In-flight exception slots for CFG-decomposed try-finally-with-
+        # await bodies. std::exception_ptr default-constructs
+        # to null; the catch arm sets it via std::current_exception().
+        # bool pending-return flags need explicit init: NSDMI
+        # = false. Value slots default-init via their own type's ctor.
+        for fname, ftype in getattr(func, "_async_try_finally_fields", ()) or ():
+            if ftype == "bool":
+                out.write(f"{INDENT}{ftype} {fname} = false;\n")
+            else:
+                out.write(f"{INDENT}{ftype} {fname};\n")
 
         # Sub-future fields: one per Yield (suspension_index = field
         # ordinal). Inline mode: optional<__<name>Coro>; Erased: optional
@@ -625,7 +657,16 @@ class AsyncCoroCodegen:
         if cached is not None:
             return cached
         body = self._effective_body(func)
-        builder = rcfg.CFGBuilder(payload_factory=self._make_await_payload)
+        for_uid_map = self._prescan_async_for_loops(func, body)
+        with_uid_map = self._prescan_async_with_stmts(func, body)
+        try_finally_uid_map = self._prescan_async_try_finally(func, body)
+        builder = rcfg.CFGBuilder(
+            payload_factory=self._make_await_payload,
+            for_uid_map=for_uid_map,
+            with_uid_map=with_uid_map,
+            try_finally_uid_map=try_finally_uid_map,
+            func_returns_void=self._is_void_return(func),
+        )
         try:
             cfg = builder.build_async(body)
         except rcfg._CFGNotYetSupported as e:
@@ -635,6 +676,192 @@ class AsyncCoroCodegen:
         func._async_cfg_builder = builder
         func._async_cfg = cfg
         return cfg
+
+    def _prescan_async_for_loops(
+            self, func: TpyFunction,
+            body: list[TpyStmt]) -> dict[int, int]:
+        """Find for-loops whose body contains await. For each, allocate a
+        uid, register frame-field declarations
+        ((__for_itr_N, __for_r_N), via decltype on `::tpy::__iter__`)
+        and register the loop variable as a hoisted local so it persists
+        across suspensions.
+
+        Returns {id(TpyForEach) -> uid} for the CFG builder. Frame fields
+        live on `func._async_for_fields` as `[(name, cpp_type)]` consumed
+        by gen_coro_struct.
+        """
+        cached_map = getattr(func, "_async_for_uid_map", None)
+        if cached_map is not None:
+            return cached_map
+        uid_map: dict[int, int] = {}
+        fields_out: list[tuple[str, str]] = []
+        counter = [0]
+
+        def walk(stmts: list[TpyStmt]) -> None:
+            for s in stmts:
+                if (isinstance(s, TpyForEach)
+                        and rcfg._stmts_have_any_await(s.body)):
+                    cur_uid = counter[0]
+                    counter[0] += 1
+                    iter_t = self.types.get_resolved_type(s.iterable)
+                    if iter_t is None:
+                        raise CodeGenError(
+                            "for-loop iterable has no resolved type "
+                            "(async for-with-await pre-scan)",
+                            loc=s.loc)
+                    src_cpp = self.types.type_to_cpp(unwrap_ref_type(iter_t))
+                    iter_field_type = (
+                        f"std::decay_t<decltype(::tpy::__iter__"
+                        f"(std::declval<{src_cpp}&>()))>")
+                    result_field_type = (
+                        f"decltype(std::declval<{iter_field_type}&>()"
+                        f".__next__())")
+                    uid_map[id(s)] = cur_uid
+                    fields_out.append(
+                        (f"__for_itr_{cur_uid}", iter_field_type))
+                    fields_out.append(
+                        (f"__for_r_{cur_uid}", result_field_type))
+                    elem_t = (unwrap_ref_type(s.elem_type)
+                              if s.elem_type else None)
+                    if elem_t is None:
+                        raise CodeGenError(
+                            "async for-with-await: loop var has no "
+                            "resolved elem_type", loc=s.loc)
+                    if func.generator_locals is None:
+                        func.generator_locals = []
+                    if not any(n == s.var for n, _ in func.generator_locals):
+                        func.generator_locals.append((s.var, elem_t))
+                if hasattr(s, "sub_bodies"):
+                    for b in s.sub_bodies():
+                        walk(b)
+
+        walk(body)
+        func._async_for_uid_map = uid_map
+        func._async_for_fields = fields_out
+        return uid_map
+
+    def _prescan_async_with_stmts(
+            self, func: TpyFunction,
+            body: list[TpyStmt]) -> dict[int, list[int]]:
+        """Find `with` stmts whose body contains await. For each, allocate
+        a ctx_n per WithItem, declare a `__with_ctx_<n>` frame field of
+        the context-manager's C++ type, and register any `as` target
+        names as hoisted locals.
+
+        Returns {id(TpyWith) -> [ctx_n_per_item]}; frame fields land on
+        `func._async_with_fields` as `[(name, cpp_type)]`.
+        """
+        cached_map = getattr(func, "_async_with_uid_map", None)
+        if cached_map is not None:
+            return cached_map
+        uid_map: dict[int, list[int]] = {}
+        fields_out: list[tuple[str, str]] = []
+        counter = [0]
+
+        def walk(stmts: list[TpyStmt]) -> None:
+            for s in stmts:
+                if (isinstance(s, TpyWith)
+                        and rcfg._stmts_have_any_await(s.body)):
+                    per_item: list[int] = []
+                    for item in s.items:
+                        cur_n = counter[0]
+                        counter[0] += 1
+                        per_item.append(cur_n)
+                        ctx_t = self.types.get_resolved_type(item.context_expr)
+                        if ctx_t is None:
+                            raise CodeGenError(
+                                "with-stmt context manager has no resolved "
+                                "type (async with-with-await pre-scan)",
+                                loc=s.loc)
+                        ctx_cpp = self.types.type_to_cpp(unwrap_ref_type(ctx_t))
+                        fields_out.append((f"__with_ctx_{cur_n}", ctx_cpp))
+                        if item.target is not None:
+                            enter_t = (unwrap_ref_type(item.enter_type)
+                                       if item.enter_type else None)
+                            if enter_t is None:
+                                raise CodeGenError(
+                                    "with-stmt target has no resolved "
+                                    "enter_type", loc=s.loc)
+                            if func.generator_locals is None:
+                                func.generator_locals = []
+                            if not any(n == item.target
+                                       for n, _ in func.generator_locals):
+                                func.generator_locals.append(
+                                    (item.target, enter_t))
+                            # For str-typed as-targets, the C++
+                            # `__enter__()` returns `std::string` by
+                            # value but sema's `str` lowers to
+                            # `std::string_view`. Tracking the name
+                            # here promotes the frame field's storage
+                            # type to `std::string` (owning) so the
+                            # field doesn't alias a temporary that
+                            # dies at the assignment's semicolon.
+                            # Resolve PendingStrType / Pending* views
+                            # to their concrete form before checking.
+                            resolved_enter_t = self.types.resolve_type(enter_t)
+                            if is_str_category(resolved_enter_t):
+                                if not hasattr(func, "_async_with_owning_str_targets"):
+                                    func._async_with_owning_str_targets = set()
+                                func._async_with_owning_str_targets.add(
+                                    item.target)
+                    uid_map[id(s)] = per_item
+                if hasattr(s, "sub_bodies"):
+                    for b in s.sub_bodies():
+                        walk(b)
+
+        walk(body)
+        func._async_with_uid_map = uid_map
+        func._async_with_fields = fields_out
+        return uid_map
+
+    def _prescan_async_try_finally(
+            self, func: TpyFunction,
+            body: list[TpyStmt]) -> dict[int, int]:
+        """Find try-stmts whose finally body contains an await. For
+        each, allocate a uid and declare:
+          * `__finally_exc_<n>` -- `std::exception_ptr` (always).
+          * `__finally_pending_<n>` -- `bool` (only when try body or
+             any handler body contains a reachable `return`).
+          * `__finally_ret_<n>` -- function's return type, for the
+             same reason and only when the async def is non-void.
+        Returns {id(TpyTry) -> uid}; field declarations land on
+        `func._async_try_finally_fields`."""
+        cached_map = getattr(func, "_async_try_finally_uid_map", None)
+        if cached_map is not None:
+            return cached_map
+        uid_map: dict[int, int] = {}
+        fields_out: list[tuple[str, str]] = []
+        counter = [0]
+        is_void = self._is_void_return(func)
+        ret_cpp = self._ret_cpp(func) if not is_void else None
+
+        def walk(stmts: list[TpyStmt]) -> None:
+            for s in stmts:
+                if (isinstance(s, TpyTry)
+                        and s.finally_body
+                        and rcfg._stmts_have_any_await(s.finally_body)):
+                    cur_uid = counter[0]
+                    counter[0] += 1
+                    uid_map[id(s)] = cur_uid
+                    fields_out.append(
+                        (f"__finally_exc_{cur_uid}", "std::exception_ptr"))
+                    has_return = (rcfg._stmts_have_any_return(s.try_body)
+                                   or any(rcfg._stmts_have_any_return(h.body)
+                                           for h in s.handlers))
+                    if has_return:
+                        fields_out.append(
+                            (f"__finally_pending_{cur_uid}", "bool"))
+                        if ret_cpp is not None:
+                            fields_out.append(
+                                (f"__finally_ret_{cur_uid}", ret_cpp))
+                if hasattr(s, "sub_bodies"):
+                    for b in s.sub_bodies():
+                        walk(b)
+
+        walk(body)
+        func._async_try_finally_uid_map = uid_map
+        func._async_try_finally_fields = fields_out
+        return uid_map
 
     def _make_await_payload(self, await_node: TpyAwait, host_stmt: TpyStmt,
                              kind, bind_target, return_stmt) -> 'rcfg.AwaitPayload':
@@ -706,6 +933,9 @@ class AsyncCoroCodegen:
             elif isinstance(t, rcfg.Branch):
                 preds[t.then_bb].append(bid)
                 preds[t.else_bb].append(bid)
+            elif isinstance(t, rcfg.AsyncForAdvance):
+                preds[t.has_value_bb].append(bid)
+                preds[t.exhausted_bb].append(bid)
             elif isinstance(t, rcfg.Yield):
                 preds[t.resume_bb].append(bid)
         # Multi-pred (excluding yield-resume, which is already case entry).
@@ -726,6 +956,37 @@ class AsyncCoroCodegen:
                     case_entries[bid] = _StateLabel(_StateKind.JOIN, join_idx)
                     join_idx += 1
                     break
+        # WithRegion suppression targets: any with whose __exit__ may
+        # suppress an exception transitions state directly to
+        # post_with_bb from inside the catch (not a normal CFG edge).
+        # Mark every such post_with_bb as a case entry so the catch's
+        # `__state = ...; continue;` lands on a labeled case.
+        with_post_bbs: set[int] = set()
+        for bb in cfg.blocks.values():
+            for r in bb.region_stack:
+                if (isinstance(r, rcfg.WithRegion)
+                        and r.item.exit_can_suppress):
+                    with_post_bbs.add(r.post_with_bb)
+        for bid in with_post_bbs:
+            if bid not in case_entries:
+                case_entries[bid] = _StateLabel(_StateKind.JOIN, join_idx)
+                join_idx += 1
+        # CFG-based finally entry BBs: the TryRegion's catch-all
+        # transitions state directly to `finally_entry_bb` from inside
+        # the catch (not a normal CFG edge). The Fall on the normal
+        # exit path region-crosses out of the TryRegion which already
+        # makes this BB a case entry, but mark explicitly to cover the
+        # "try body always raises" case (no Fall predecessor).
+        finally_entry_bbs: set[int] = set()
+        for bb in cfg.blocks.values():
+            for r in bb.region_stack:
+                if (isinstance(r, rcfg.TryRegion)
+                        and r.finally_entry_bb is not None):
+                    finally_entry_bbs.add(r.finally_entry_bb)
+        for bid in finally_entry_bbs:
+            if bid not in case_entries:
+                case_entries[bid] = _StateLabel(_StateKind.JOIN, join_idx)
+                join_idx += 1
         cfg._case_entries_cache = case_entries
         return case_entries
 
@@ -754,6 +1015,47 @@ class AsyncCoroCodegen:
         out.write(f"{inner}__builtin_unreachable();\n")
         self.ctx.indent_level = 0
 
+    def _case_is_no_throw(self, cfg: 'rcfg.CFG', entry_bb: int) -> bool:
+        """True iff the case body that starts at `entry_bb` provably
+        cannot throw anything an in-scope handler would catch.
+        Conservative: requires the BB to consist solely of a Yield
+        terminator with literal / simple-name emplace args, with no
+        user stmts and not a resume entry (resume cases emit a cancel
+        check + sub poll that can both throw)."""
+        bb = cfg.blocks[entry_bb]
+        if bb.stmts:
+            return False
+        if cfg.resume_to_yield().get(entry_bb) is not None:
+            return False
+        t = bb.terminator
+        if not isinstance(t, rcfg.Yield):
+            return False
+        return self._payload_args_no_throw(t.payload)
+
+    def _payload_args_no_throw(self,
+                                 payload: 'rcfg.AwaitPayload') -> bool:
+        """True if emitting the Yield's emplace cannot throw."""
+        if payload.mode is rcfg.AwaitMode.BORROWED:
+            return self._expr_is_simple(payload.operand_expr)
+        if payload.mode is rcfg.AwaitMode.ERASED:
+            return self._expr_is_simple(payload.operand_expr)
+        # INLINE: emplace args are the call's args.
+        call = payload.operand_expr
+        if not isinstance(call, TpyCall):
+            return False
+        return all(self._expr_is_simple(a) for a in call.args)
+
+    @staticmethod
+    def _expr_is_simple(expr: TpyExpr) -> bool:
+        """True for literals, bare names, and shallow coercions of
+        either. These can be emitted without invoking constructors /
+        function calls that could throw."""
+        if isinstance(expr, TpyCoerce):
+            return AsyncCoroCodegen._expr_is_simple(expr.expr)
+        return isinstance(expr, (TpyIntLiteral, TpyFloatLiteral,
+                                   TpyStrLiteral, TpyBoolLiteral,
+                                   TpyNoneLiteral, TpyName))
+
     def _emit_case(self, out: "TextIO", cfg: 'rcfg.CFG',
                     entry_bb: int, case_entries: dict[int, _StateLabel],
                     func: TpyFunction) -> None:
@@ -768,37 +1070,57 @@ class AsyncCoroCodegen:
         # Python runs finally after the handler completes.
         pushed_finally = self._push_finally_helpers(
             self._finally_helpers_for_region_stack(bb.region_stack))
+        # Pending-return ctx: when this case is inside the try
+        # body or handler body of a CFG-based finally, install ctx
+        # state so `return` inside the body routes through the
+        # pending-return slot.
+        prev_pending = self._snapshot_pending_return_ctx()
+        pending = self._pending_return_info_for_region_stack(bb.region_stack)
+        if pending is not None:
+            flag, slot, finally_entry_bb, boundary = pending
+            target_label = case_entries[finally_entry_bb].cpp_name()
+            self.ctx.async_pending_return_flag = flag
+            self.ctx.async_pending_return_slot = slot
+            self.ctx.async_pending_return_target_state = target_label
+            self.ctx.async_pending_return_boundary = boundary
         try:
-            # Emit `try {` for each TryRegion. Also collect, per
-            # TryRegion, the list of "inter-region finally helpers" that
-            # sit between THIS TryRegion and the next-inner TryRegion in
-            # the case's region_stack (each ExceptRegion's parent_finally,
-            # plus any FinallyRegion helper). These must run in the
-            # TryRegion's catch-all before its own finally, because they
-            # represent Python-level finallies whose source-level try
-            # frame is no longer in the C++ try stack but is still
-            # logically active until control unwinds past this
-            # TryRegion.
-            tryctx_stack: list[tuple[rcfg.Region, str, tuple[str, ...]]] = []
-            try_indices = [i for i, r in enumerate(bb.region_stack)
-                            if isinstance(r, rcfg.TryRegion)]
-            for j, i in enumerate(try_indices):
+            # Emit `try {` for each TryRegion / WithRegion. For each
+            # TryRegion, collect the list of "inter-region finally
+            # helpers" between THIS TryRegion and the next-inner
+            # try-emitting region (TryRegion or WithRegion): each
+            # ExceptRegion's parent_finally goes in the TryRegion's
+            # catch because its source-level try frame is no longer on
+            # the C++ try stack but is still logically active.
+            # WithRegions inside the gap get their own C++ try and
+            # don't contribute extras.
+            tryctx_stack: list[tuple[rcfg.Region, tuple[str, ...]]] = []
+            # Skip the try/catch wrap entirely for case bodies provably
+            # no-throw (typical setup case: empty stmts + Yield with
+            # literal/name emplace args). The matching live catch sits
+            # on the resume case where the sub-future's poll runs and
+            # CAN throw.
+            no_throw = self._case_is_no_throw(cfg, entry_bb)
+            try_emitting = ([] if no_throw else
+                             [i for i, r in enumerate(bb.region_stack)
+                              if isinstance(r, (rcfg.TryRegion,
+                                                rcfg.WithRegion))])
+            for j, i in enumerate(try_emitting):
                 region = bb.region_stack[i]
-                # Find the next TryRegion (or end of stack); inter-region
-                # entries between i+1 and that index contribute extra
-                # finallies to this TryRegion's catch-all (innermost
-                # first, i.e. reversed source order).
-                next_try = try_indices[j + 1] if j + 1 < len(try_indices) else len(bb.region_stack)
-                extras: list[str] = []
-                for k in range(i + 1, next_try):
-                    mid = bb.region_stack[k]
-                    if isinstance(mid, rcfg.ExceptRegion):
-                        if mid.parent_finally is not None:
-                            extras.append(mid.parent_finally)
-                    # FinallyRegion / WithRegion: future work.
-                extras.reverse()  # innermost-first on the unwind path
+                if isinstance(region, rcfg.TryRegion):
+                    next_emit = (try_emitting[j + 1]
+                                 if j + 1 < len(try_emitting)
+                                 else len(bb.region_stack))
+                    extras: list[str] = []
+                    for k in range(i + 1, next_emit):
+                        mid = bb.region_stack[k]
+                        if isinstance(mid, rcfg.ExceptRegion):
+                            if mid.parent_finally is not None:
+                                extras.append(mid.parent_finally)
+                    extras.reverse()
+                else:
+                    extras = []
                 out.write(f"{body_indent}try {{\n")
-                tryctx_stack.append((region, body_indent, tuple(extras)))
+                tryctx_stack.append((region, tuple(extras)))
                 self.ctx.indent_level += 1
                 body_indent = self.ctx.indent()
 
@@ -807,49 +1129,155 @@ class AsyncCoroCodegen:
             self._emit_case_body(out, cfg, entry_bb, case_entries, func)
 
             # Close regions innermost first.
-            for region, outer_indent, extras in reversed(tryctx_stack):
+            for region, extras in reversed(tryctx_stack):
                 self.ctx.indent_level -= 1
                 body_indent = self.ctx.indent()
                 out.write(f"{body_indent}}}")
-                # Emit handler catches for the inner try.
-                self._emit_try_region_catches(
-                    out, body_indent, region, cfg, case_entries,
-                    entry_bb, func, extras)
+                if isinstance(region, rcfg.TryRegion):
+                    self._emit_try_region_catches(
+                        out, body_indent, region, cfg, case_entries,
+                        entry_bb, func, extras)
+                else:
+                    self._emit_with_region_catches(
+                        out, body_indent, region, case_entries)
                 out.write("\n")
         finally:
             for _ in range(pushed_finally):
                 self.ctx.finally_stack.pop()
+            self._restore_pending_return_ctx(prev_pending)
+
+    def _snapshot_pending_return_ctx(self) -> tuple:
+        return (self.ctx.async_pending_return_flag,
+                self.ctx.async_pending_return_slot,
+                self.ctx.async_pending_return_target_state,
+                self.ctx.async_pending_return_boundary)
+
+    def _restore_pending_return_ctx(self, snap: tuple) -> None:
+        (self.ctx.async_pending_return_flag,
+         self.ctx.async_pending_return_slot,
+         self.ctx.async_pending_return_target_state,
+         self.ctx.async_pending_return_boundary) = snap
 
     def _finally_helpers_for_region_stack(
-            self, region_stack: tuple) -> list[str]:
-        """Compute the finally helper names that should be on
-        ctx.finally_stack while emitting BBs with this region_stack.
-        Each TryRegion contributes its `finally_helper_name`; each
-        ExceptRegion contributes its `parent_finally`. Order: outermost
-        first (so the innermost ends up at the top of the stack)."""
-        helpers: list[str] = []
+            self, region_stack: tuple) -> list:
+        """Compute the finally-emit closures for BBs with this
+        region_stack. Each TryRegion / ExceptRegion contributes its
+        finally helper name (called via `this->name()`); each WithRegion
+        contributes a closure that emits `(*__with_ctx_<n>).__exit__(
+        {}, nullptr/{}, {})`. Order: outermost first (innermost ends up
+        on top of the stack)."""
+        helpers: list = []
         for region in region_stack:
             if isinstance(region, rcfg.TryRegion):
                 if region.finally_helper_name is not None:
-                    helpers.append(region.finally_helper_name)
+                    helpers.append(("helper", region.finally_helper_name))
             elif isinstance(region, rcfg.ExceptRegion):
                 if region.parent_finally is not None:
-                    helpers.append(region.parent_finally)
+                    helpers.append(("helper", region.parent_finally))
+            elif isinstance(region, rcfg.WithRegion):
+                helpers.append(("with", region))
         return helpers
 
-    def _push_finally_helpers(self, helpers: list[str]) -> int:
+    def _pending_return_info_for_region_stack(
+            self, region_stack: tuple) -> 'tuple[str, str | None, int, int] | None':
+        """If a CFG-based finally is active for this region_stack (i.e.
+        a TryRegion with `pending_return_flag` OR an ExceptRegion whose
+        parent had one), return `(flag, slot, finally_entry_bb,
+        boundary)` -- boundary is the count of finally_stack frames
+        contributed by regions OUTSIDE the CFG-based try. Returns None
+        otherwise."""
+        boundary = 0
+        for region in region_stack:
+            if isinstance(region, rcfg.TryRegion):
+                if region.pending_return_flag is not None:
+                    return (region.pending_return_flag,
+                            region.pending_return_slot,
+                            region.finally_entry_bb,
+                            boundary)
+                if region.finally_helper_name is not None:
+                    boundary += 1
+            elif isinstance(region, rcfg.ExceptRegion):
+                if region.parent_pending_return_flag is not None:
+                    return (region.parent_pending_return_flag,
+                            region.parent_pending_return_slot,
+                            region.parent_finally_entry_bb,
+                            boundary)
+                if region.parent_finally is not None:
+                    boundary += 1
+            elif isinstance(region, rcfg.WithRegion):
+                boundary += 1
+        return None
+
+    def _push_finally_helpers(self, helpers: list) -> int:
         """Push FinallyContext entries for each helper. Returns the
         count pushed for matching pop in a `finally:` clause."""
         count = 0
-        for name in helpers:
-            helper_name = name
-            def _emit_finally(o: "TextIO", ind: str, n=helper_name) -> None:
-                o.write(f"{ind}this->{n}();\n")
+        for kind, payload in helpers:
+            if kind == "helper":
+                helper_name = payload
+                def _emit_finally(o: "TextIO", ind: str,
+                                  n=helper_name) -> None:
+                    o.write(f"{ind}this->{n}();\n")
+            else:  # "with"
+                region = payload
+                def _emit_finally(o: "TextIO", ind: str,
+                                  r=region) -> None:
+                    self._emit_async_with_exit(o, ind, r, on_exception=False)
             fctx = FinallyContext(
                 emit_finally=_emit_finally, terminates=False, loop_depth=0)
             self.ctx.finally_stack.append(fctx)
             count += 1
         return count
+
+    def _emit_with_region_catches(self, out: "TextIO", indent: str,
+                                    region: 'rcfg.WithRegion',
+                                    case_entries: dict[int, _StateLabel]
+                                    ) -> None:
+        """Emit `} catch (...) { __exit__(...); throw; }` for a
+        WithRegion at the close of a case body. When
+        `item.exit_can_suppress` is True, a `catch (BaseException&)`
+        clause first calls __exit__ with the exception and, on a True
+        return, transitions to the WithRegion's post_with_bb state
+        (suppressing the exception). The foreign catch-all always
+        cleanup-calls __exit__ with `nullptr` exc and rethrows."""
+        item = region.item
+        n = region.ctx_n
+        can_suppress = item.exit_can_suppress
+        takes_exc_val = item.exit_takes_exc_val
+        emit_tpy_catch = can_suppress or takes_exc_val
+        # post_with_bb is only marked a case entry when this WithRegion
+        # may suppress; without suppression the catch unconditionally
+        # rethrows and never needs the label.
+        post_label = (case_entries[region.post_with_bb].cpp_name()
+                      if can_suppress else None)
+        if emit_tpy_catch:
+            out.write(f" catch (::tpy::BaseException& __exc_{n}) {{\n")
+            self.ctx.indent_level += 1
+            catch_ind = self.ctx.indent()
+            if can_suppress:
+                out.write(
+                    f"{catch_ind}if (!(*__with_ctx_{n}).__exit__("
+                    f"{{}}, &__exc_{n}, {{}})) throw;\n")
+                out.write(f"{catch_ind}__state = {post_label};\n")
+                out.write(f"{catch_ind}continue;\n")
+            else:
+                self._emit_async_with_exit(out, catch_ind, region,
+                                            on_exception=True)
+                out.write(f"{catch_ind}throw;\n")
+            self.ctx.indent_level -= 1
+            out.write(f"{indent}}} catch (...) {{\n")
+        else:
+            out.write(f" catch (...) {{\n")
+        self.ctx.indent_level += 1
+        catch_ind = self.ctx.indent()
+        # Foreign exception (or non-suppressing path): cleanup-only call,
+        # then rethrow. Don't pass &exc since the C++ side hasn't bound
+        # one in this catch arm.
+        out.write(f"{catch_ind}(*__with_ctx_{n}).__exit__({{}}, "
+                  f"{'nullptr' if takes_exc_val else '{}'}, {{}});\n")
+        out.write(f"{catch_ind}throw;\n")
+        self.ctx.indent_level -= 1
+        out.write(f"{indent}}}")
 
     def _emit_try_region_catches(self, out: "TextIO", indent: str,
                                   region: 'rcfg.TryRegion',
@@ -894,8 +1322,13 @@ class AsyncCoroCodegen:
             # Wrap handler body in `try { ... } catch (...) {
             # finallies; throw; }` so a `raise` from inside the
             # handler runs this try's finally (and any inter-region
-            # finallies) before propagating to the outer try.
-            has_throw_unwind = bool(handler_throw_finallies)
+            # finallies) before propagating to the outer try. For
+            # CFG-based finally, the inner catch saves
+            # `std::current_exception()` to the parent's captured-exc
+            # slot and transitions state to its finally entry instead
+            # of plain rethrow -- mirrors the outer catch-all path.
+            cfg_finally = region.captured_exc_field is not None
+            has_throw_unwind = bool(handler_throw_finallies) or cfg_finally
             if has_throw_unwind:
                 out.write(f"{catch_indent}try {{\n")
                 self.ctx.indent_level += 1
@@ -910,7 +1343,7 @@ class AsyncCoroCodegen:
             handler_entry: int | None = None
             if builder is not None:
                 handler_entry = builder.get_handler_entry(region, handler)
-            handler_stack_helpers: list[str] = []
+            handler_stack_helpers: list = []
             if handler_entry is not None:
                 handler_bb = cfg.blocks[handler_entry]
                 handler_stack_helpers = self._finally_helpers_for_region_stack(
@@ -919,6 +1352,20 @@ class AsyncCoroCodegen:
             self._push_finally_helpers(handler_stack_helpers)
             old_except_tier = self.ctx.in_except_tier
             self.ctx.in_except_tier = "throw"
+            # Pending-return ctx for the handler body: a return inside
+            # the handler routes through the parent CFG-based finally's
+            # pending-return slot.
+            prev_pending = self._snapshot_pending_return_ctx()
+            if handler_entry is not None:
+                pending = self._pending_return_info_for_region_stack(
+                    cfg.blocks[handler_entry].region_stack)
+                if pending is not None:
+                    flag, slot, finally_entry_bb, boundary = pending
+                    target_label = case_entries[finally_entry_bb].cpp_name()
+                    self.ctx.async_pending_return_flag = flag
+                    self.ctx.async_pending_return_slot = slot
+                    self.ctx.async_pending_return_target_state = target_label
+                    self.ctx.async_pending_return_boundary = boundary
             try:
                 if handler_entry is not None:
                     self._walk_inline(out, cfg, handler_entry,
@@ -926,6 +1373,7 @@ class AsyncCoroCodegen:
             finally:
                 self.ctx.in_except_tier = old_except_tier
                 self.ctx.finally_stack = old_finally_stack
+                self._restore_pending_return_ctx(prev_pending)
             if has_throw_unwind:
                 self.ctx.indent_level -= 1
                 inner_close = self.ctx.indent()
@@ -934,13 +1382,26 @@ class AsyncCoroCodegen:
                 inner_catch = self.ctx.indent()
                 for helper in handler_throw_finallies:
                     out.write(f"{inner_catch}this->{helper}();\n")
-                out.write(f"{inner_catch}throw;\n")
+                if cfg_finally:
+                    assert region.finally_entry_bb is not None
+                    fe_label = case_entries[region.finally_entry_bb].cpp_name()
+                    out.write(f"{inner_catch}this->{region.captured_exc_field}"
+                              f" = std::current_exception();\n")
+                    out.write(f"{inner_catch}__state = {fe_label};\n")
+                    out.write(f"{inner_catch}continue;\n")
+                else:
+                    out.write(f"{inner_catch}throw;\n")
                 self.ctx.indent_level -= 1
                 out.write(f"{inner_close}}}\n")
             self.ctx.indent_level -= 1
             out.write(f"{indent}}}")
         # Catch-all: reset sub, run inter-region finallies (innermost
-        # first), run this TryRegion's own finally, re-throw.
+        # first). For helper-based finally: call helper, re-throw. For
+        # CFG-based finally: save current exception to the
+        # captured-exc field and transition state to the finally entry
+        # so the finally body runs in the state machine (with possible
+        # suspensions); the saved exception is rethrown by the
+        # AsyncFinallyExit stmt at the finally tail.
         out.write(" catch (...) {\n")
         self.ctx.indent_level += 1
         catch_indent = self.ctx.indent()
@@ -950,9 +1411,17 @@ class AsyncCoroCodegen:
                                   yield_for_case.suspension_index)
         for helper in extra_finallies:
             out.write(f"{catch_indent}this->{helper}();\n")
-        if region.finally_helper_name is not None:
-            out.write(f"{catch_indent}this->{region.finally_helper_name}();\n")
-        out.write(f"{catch_indent}throw;\n")
+        if region.captured_exc_field is not None:
+            assert region.finally_entry_bb is not None
+            label = case_entries[region.finally_entry_bb].cpp_name()
+            out.write(f"{catch_indent}this->{region.captured_exc_field} "
+                      f"= std::current_exception();\n")
+            out.write(f"{catch_indent}__state = {label};\n")
+            out.write(f"{catch_indent}continue;\n")
+        else:
+            if region.finally_helper_name is not None:
+                out.write(f"{catch_indent}this->{region.finally_helper_name}();\n")
+            out.write(f"{catch_indent}throw;\n")
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}")
 
@@ -1010,7 +1479,10 @@ class AsyncCoroCodegen:
                 # try's finally body (Python semantics).
                 if region.parent_finally is not None:
                     out.write(f"{indent}this->{region.parent_finally}();\n")
-            # WithRegion handled when async-with lands.
+            elif isinstance(region, rcfg.WithRegion):
+                # Leaving a with-region normally: __exit__(None, None, None).
+                self._emit_async_with_exit(out, indent, region,
+                                            on_exception=False)
 
     def _walk_inline(self, out: "TextIO", cfg: 'rcfg.CFG',
                      start_bb: int, case_entries: dict[int, _StateLabel],
@@ -1026,7 +1498,14 @@ class AsyncCoroCodegen:
             bb = cfg.blocks[cur]
             # Emit BB statements.
             for stmt in bb.stmts:
-                self.statements.gen_stmt(out, stmt)
+                if isinstance(stmt, rcfg.AsyncForIterSetup):
+                    self._emit_async_for_iter_setup(out, body_indent, stmt)
+                elif isinstance(stmt, rcfg.AsyncWithEnter):
+                    self._emit_async_with_enter(out, body_indent, stmt)
+                elif isinstance(stmt, rcfg.AsyncFinallyExit):
+                    self._emit_async_finally_exit(out, body_indent, stmt)
+                else:
+                    self.statements.gen_stmt(out, stmt)
             t = bb.terminator
             if isinstance(t, rcfg.Yield):
                 # Suspend: store state + emplace sub-future, then
@@ -1081,6 +1560,10 @@ class AsyncCoroCodegen:
                 self.ctx.indent_level -= 1
                 out.write(f"{body_indent}}}\n")
                 return
+            if isinstance(t, rcfg.AsyncForAdvance):
+                self._emit_async_for_advance(
+                    out, body_indent, cfg, t, case_entries, func, from_bb=cur)
+                return
             raise CodeGenError(
                 f"internal: unknown terminator {type(t).__name__}",
                 loc=None)
@@ -1101,6 +1584,128 @@ class AsyncCoroCodegen:
             out.write(f"{body_indent}continue;\n")
         else:
             self._walk_inline(out, cfg, target_bb, case_entries, func)
+
+    def _emit_async_finally_exit(self, out: "TextIO", indent: str,
+                                   stmt: 'rcfg.AsyncFinallyExit') -> None:
+        """Emit the saved-exception rethrow check + deferred-return
+        check at the tail of a CFG-decomposed finally body. Both
+        fields are cleared before extraction so a re-entry to the
+        same try (e.g. in a loop) starts with no carried-over state."""
+        f = stmt.captured_exc_field
+        out.write(f"{indent}if (this->{f}) {{\n")
+        inner = indent + INDENT
+        out.write(f"{inner}std::exception_ptr __tmp = this->{f};\n")
+        out.write(f"{inner}this->{f} = nullptr;\n")
+        out.write(f"{inner}std::rethrow_exception(__tmp);\n")
+        out.write(f"{indent}}}\n")
+        if stmt.pending_return_flag is None:
+            return
+        # Deferred-return path. The flag is cleared first so control
+        # unwinding to an outer CFG-based finally would not re-fire the
+        # return -- though such nesting is currently rejected, this
+        # keeps the slot semantically clean.
+        flag = stmt.pending_return_flag
+        out.write(f"{indent}if (this->{flag}) {{\n")
+        out.write(f"{inner}this->{flag} = false;\n")
+        # Walk any outer helpers (e.g. an enclosing helper-based
+        # finally outside this CFG-based one) before emitting the
+        # actual return. `_emit_finally_chain` handles its own
+        # indent-level save/sync from the `inner` string.
+        self.statements._emit_finally_chain(out, inner)
+        done_state = self.ctx.async_coro_done_state or "S_DONE"
+        out.write(f"{inner}__state = {done_state};\n")
+        slot = stmt.pending_return_slot
+        ret_cpp = self.ctx.async_coro_return_cpp
+        if slot is None or ret_cpp == "void":
+            out.write(f"{inner}{POLL_VOID_READY_RETURN}\n")
+        else:
+            out.write(f"{inner}return ::tpystd::tpy::Poll<{ret_cpp}>::ready"
+                      f"(std::move(this->{slot}));\n")
+        out.write(f"{indent}}}\n")
+
+    def _emit_async_with_enter(self, out: "TextIO", indent: str,
+                                stmt: 'rcfg.AsyncWithEnter') -> None:
+        """Emit the with-stmt setup sequence:
+            __with_ctx_<n> = <context_expr>;
+            <target> = (*__with_ctx_<n>).__enter__();   # if target
+            (*__with_ctx_<n>).__enter__();              # else
+        """
+        ctx_n = stmt.ctx_n
+        item = stmt.item
+        ctx_expr = self.expressions.gen_expr(item.context_expr)
+        out.write(f"{indent}__with_ctx_{ctx_n} = {ctx_expr};\n")
+        if item.target is not None:
+            target = escape_cpp_name(item.target)
+            out.write(f"{indent}{target} = (*__with_ctx_{ctx_n}).__enter__();\n")
+        else:
+            out.write(f"{indent}(*__with_ctx_{ctx_n}).__enter__();\n")
+
+    def _emit_async_with_exit(self, out: "TextIO", indent: str,
+                               region: 'rcfg.WithRegion',
+                               on_exception: bool) -> None:
+        """Emit a single `__exit__` call. `on_exception=True` passes the
+        catch-bound `__exc_<n>` (or `nullptr` when sema marked
+        exit_takes_exc_val=False); otherwise passes the "normal exit"
+        args (all empty / nullptr)."""
+        item = region.item
+        n = region.ctx_n
+        if on_exception and item.exit_takes_exc_val:
+            exc_arg = f"&__exc_{n}"
+        elif item.exit_takes_exc_val:
+            exc_arg = "nullptr"
+        else:
+            exc_arg = "{}"
+        out.write(f"{indent}(*__with_ctx_{n}).__exit__("
+                  f"{{}}, {exc_arg}, {{}});\n")
+
+    def _emit_async_for_iter_setup(self, out: "TextIO", indent: str,
+                                    stmt: 'rcfg.AsyncForIterSetup') -> None:
+        """Initialize the for-loop iterator into its frame slot:
+           __for_itr_<uid> = ::tpy::__iter__(<iterable>);"""
+        iter_cpp = self.expressions.gen_expr(stmt.iterable_expr)
+        out.write(f"{indent}__for_itr_{stmt.uid} = ::tpy::__iter__({iter_cpp});\n")
+
+    def _emit_async_for_advance(self, out: "TextIO", indent: str,
+                                  cfg: 'rcfg.CFG',
+                                  t: 'rcfg.AsyncForAdvance',
+                                  case_entries: dict[int, _StateLabel],
+                                  func: TpyFunction,
+                                  from_bb: int) -> None:
+        """Emit the next()/has-value/bind sequence for an
+        AsyncForAdvance terminator, then transfer control to the body
+        (`has_value_bb`) or loop exit (`exhausted_bb`).
+
+        Both targets are case entries (cond_bb has 2 successors and the
+        body BB is the loop-back target, so it's always multi-pred via
+        the body's Fall back to cond_bb -> body via has_value)."""
+        uid = t.uid
+        stmt = t.stmt
+        # exhausted path -- transition to exit state.
+        out.write(f"{indent}__for_r_{uid} = "
+                  f"(*__for_itr_{uid}).__next__();\n")
+        out.write(f"{indent}if (!(*__for_r_{uid}).has_value()) {{\n")
+        self.ctx.indent_level += 1
+        inner = self.ctx.indent()
+        self._emit_exit_region_finallies(
+            out, inner,
+            cfg.blocks[from_bb].region_stack,
+            cfg.blocks[t.exhausted_bb].region_stack)
+        if t.exhausted_bb in case_entries:
+            out.write(f"{inner}__state = "
+                      f"{case_entries[t.exhausted_bb].cpp_name()};\n")
+            out.write(f"{inner}continue;\n")
+        else:
+            # Exit BB isn't a case entry (shouldn't happen given
+            # _compute_case_entries counts AsyncForAdvance successors,
+            # but stay defensive: walk inline).
+            self._walk_inline(out, cfg, t.exhausted_bb, case_entries, func)
+        self.ctx.indent_level -= 1
+        out.write(f"{indent}}}\n")
+        # has_value path -- bind loop var then continue to body.
+        cpp_var = escape_cpp_name(stmt.var)
+        out.write(f"{indent}{cpp_var} = ::tpy::unwrap_ref(*(*__for_r_{uid}));\n")
+        self._walk_inline_or_jump(
+            out, cfg, t.has_value_bb, case_entries, func, from_bb=from_bb)
 
     def _emit_unreachable_tail(self, out: "TextIO", indent: str,
                                  func: TpyFunction) -> None:
@@ -1179,6 +1784,30 @@ class AsyncCoroCodegen:
         elif payload.kind is rcfg.AwaitKind.RETURN:
             out.write(f"{indent}auto __ret{suspension_index} = {moved};\n")
             self._emit_sub_reset(out, indent, payload, suspension_index)
+            # When a CFG-based finally is active, route the
+            # `return await X` through the pending-return slot + flag
+            # and transition to the finally entry instead of emitting
+            # Poll::ready directly; AsyncFinallyExit at the finally
+            # tail will emit the deferred Poll::ready after the
+            # rethrow check.
+            pending_flag = self.ctx.async_pending_return_flag
+            if pending_flag is not None:
+                pending_slot = self.ctx.async_pending_return_slot
+                target_state = self.ctx.async_pending_return_target_state
+                boundary = self.ctx.async_pending_return_boundary
+                assert target_state is not None
+                if pending_slot is not None and not self._is_void_return(func):
+                    out.write(f"{indent}this->{pending_slot} = "
+                              f"std::move(__ret{suspension_index});\n")
+                else:
+                    out.write(f"{indent}(void)__ret{suspension_index};\n")
+                out.write(f"{indent}this->{pending_flag} = true;\n")
+                terminated = self.statements._emit_finally_chain(
+                    out, indent, stop_at=boundary)
+                if not terminated:
+                    out.write(f"{indent}__state = {target_state};\n")
+                    out.write(f"{indent}continue;\n")
+                return
             self.statements._emit_finally_chain(out, indent)
             if self._is_void_return(func):
                 out.write(f"{indent}(void)__ret{suspension_index};\n")

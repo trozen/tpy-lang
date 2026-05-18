@@ -49,15 +49,10 @@ __coro_sub sub() {
         }
     }
     case S_JOIN_0: {
-        try {
-            // return await sub()
-            __sub_0.emplace();
-            __state = S_AFTER_AWAIT_0;
-            continue;
-        } catch (...) {
-            this->__finally_0();
-            throw;
-        }
+        // return await sub()
+        __sub_0.emplace();
+        __state = S_AFTER_AWAIT_0;
+        continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

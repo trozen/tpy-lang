@@ -55,15 +55,10 @@ __coro_sub sub() {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_1: {
-        try {
-            // await sub()
-            __sub_0.emplace();
-            __state = S_AFTER_AWAIT_0;
-            continue;
-        } catch (...) {
-            this->__finally_0();
-            throw;
-        }
+        // await sub()
+        __sub_0.emplace();
+        __state = S_AFTER_AWAIT_0;
+        continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

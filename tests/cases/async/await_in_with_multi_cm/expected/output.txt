@@ -1,0 +1,5 @@
+enter A
+enter B
+exit B
+exit A
+7

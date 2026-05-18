@@ -106,43 +106,10 @@ __coro_fail_value fail_value() {
         }
     }
     case S_JOIN_2: {
-        try {
-            try {
-                // x = await fail_value()
-                __sub_0.emplace();
-                __state = S_AFTER_AWAIT_0;
-                continue;
-            } catch (const ::tpy::ValueError&) {
-                try {
-                    // print("inner-handler")
-                    std::cout << "inner-handler" << "\n";
-                    // raise RuntimeError("handler-raised")
-                    throw ::tpy::RuntimeError("handler-raised");
-                } catch (...) {
-                    this->__finally_1();
-                    throw;
-                }
-            } catch (...) {
-                this->__finally_1();
-                throw;
-            }
-        } catch (const ::tpy::RuntimeError&) {
-            try {
-                // print("outer-handler")
-                std::cout << "outer-handler" << "\n";
-                // return Int32(42)
-                this->__finally_0();
-                __state = S_DONE;
-                int32_t __tpy_async_ret = 42;
-                return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
-            } catch (...) {
-                this->__finally_0();
-                throw;
-            }
-        } catch (...) {
-            this->__finally_0();
-            throw;
-        }
+        // x = await fail_value()
+        __sub_0.emplace();
+        __state = S_AFTER_AWAIT_0;
+        continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

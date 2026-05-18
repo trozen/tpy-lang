@@ -5536,21 +5536,32 @@ Send/Sync rules for built-in types:
   **Arbitrary `await` placement** (v1.5): `await` is allowed inside
   `if` / `elif` / `else` branches (including nested), `while` loop
   bodies (including with `break` / `continue` from nested if-branches),
-  general `try` / `except` / `finally` blocks (multiple awaits per try
-  body, awaits inside except handlers, nested try/except/finally with
-  correct cleanup ordering). The lowering uses a localized CFG built
-  per async def body (`tpyc/codegen_cpp/resumable_cfg.py`); each
+  sync `for` loop bodies (range, list, any iterable -- v1.5 M3.1),
+  sync `with X:` / `with X as t:` bodies (single or multiple context
+  managers, optional `__exit__` suppression -- v1.5 M3.2),
+  general `try` / `except` / `finally` blocks (multiple awaits per
+  try body, awaits inside except handlers, nested try/except/finally
+  with correct cleanup ordering), and `await` inside `finally` bodies
+  (v1.5 M3.3 + M3.3.1 + M3.3.2 -- in-flight exception saved to a
+  `std::exception_ptr` frame slot; works with `except` handlers; a
+  `return` inside the try body or any handler is parked in a
+  return-value slot and emitted after the finally body completes). The lowering uses a localized CFG
+  built per async def body (`tpyc/codegen_cpp/resumable_cfg.py`); each
   suspension is a CFG yield-edge and the state machine emits
   `while (true) switch (state)` with each resume case body wrapped in
   the source-level try/except/finally stack active at that suspension
   point (replays the region stack inside each case -- the C# Roslyn
   pattern, forced by C++'s prohibition on jumping into try blocks
-  from outside). The CFG infrastructure is shape-neutral and the
-  future generator migration consumes the same module.
-  Currently deferred: sync `for x in xs:` with await in body (needs
-  iter/next desugaring), sync `with X:` with await in body (rare user
-  pattern), await inside `finally` body. Throw-tier exceptions only;
-  including catching `CancelledError`.
+  from outside). `for`-with-await uses the universal `::tpy::__iter__`
+  / `__next__()` path with iterator + next-result stored as
+  `std::optional<decltype(...)>` frame fields (no range-counter
+  peephole inside async functions; peepholes still apply to non-async
+  for-loops). The CFG infrastructure is shape-neutral and the future
+  generator migration consumes the same module.
+  Currently deferred: nesting two `await`-in-`finally` regions (the
+  inner exit would need to forward pending state to the outer
+  slot). Throw-tier exceptions only; including catching
+  `CancelledError`.
   `Task.cancel()` flips a flag that the next poll checks and throws
   `CancelledError`. `asyncio.run(coro)` drives an executor whose body is
   TPy code (`lib/tpy/asyncio/_executor.py` -- slot table for parked
@@ -5584,9 +5595,9 @@ Send/Sync rules for built-in types:
   drained so wrapper-try `finally` blocks run for fire-and-forget
   tasks.
 - **Open (v1.5+)**: `async with`, `async for`, `gather`, `wait_for`,
-  sync `for` and sync `with` with await in body, await inside finally
-  body, executor slot reuse, and reporting when bounded cancellation
-  drain leaves tasks pending.
+  nesting two `await`-in-`finally` regions, await inside a
+  `for`/`while` `else:` clause, executor slot reuse, and reporting
+  when bounded cancellation drain leaves tasks pending.
 
 ---
 

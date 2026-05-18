@@ -73,19 +73,10 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_1: {
-        try {
-            // await t
-            __sub_0 = &((*t));
-            __state = S_AFTER_AWAIT_0;
-            continue;
-        } catch (const ::tpy::CancelledError&) {
-            // print("cancelled")
-            std::cout << "cancelled" << "\n";
-            __state = S_JOIN_0;
-            continue;
-        } catch (...) {
-            throw;
-        }
+        // await t
+        __sub_0 = &((*t));
+        __state = S_AFTER_AWAIT_0;
+        continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

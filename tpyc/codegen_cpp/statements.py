@@ -2708,22 +2708,36 @@ class StatementGenerator:
         return out.getvalue()
 
     def _make_async_return(self, stmt: TpyReturn, indent: str) -> str:
-        """Lower `return v` inside an `async def` body to:
-
-            <walk active finally frames>
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<T>::ready(<v>);
-
-        For void-returning async defs:
-            return ::tpystd::tpy::Poll<std::monostate>::ready(std::monostate{});
-
-        For bare `return`:
-            void -> Poll<std::monostate>::ready(std::monostate{})
-            non-void -> sema rejects elsewhere; here we panic on `{}` to be safe.
-        """
+        """Lower `return v` inside an `async def` body. When a CFG-based
+        finally is active, ctx state routes the return through the
+        pending-return slot: save value + flag, walk finally frames
+        inside the finally's body (above the boundary), transition to
+        the finally entry. AsyncFinallyExit emits the actual Poll::ready
+        at the finally tail. Otherwise emit Poll::ready directly after
+        walking the finally chain."""
         ret_type = unwrap_ref_type(self.ctx.current_return_type)
         done_state = self.ctx.async_coro_done_state or "S_DONE"
         out = io.StringIO()
+        pending_flag = self.ctx.async_pending_return_flag
+        if pending_flag is not None:
+            pending_slot = self.ctx.async_pending_return_slot
+            target_state = self.ctx.async_pending_return_target_state
+            boundary = self.ctx.async_pending_return_boundary
+            assert target_state is not None
+            if pending_slot is not None and stmt.value is not None:
+                ret_cpp = self.ctx.async_coro_return_cpp or "void"
+                expr_cpp = self.expressions.gen_expr_deref(stmt.value)
+                out.write(f"{indent}this->{pending_slot} = {expr_cpp};\n")
+            out.write(f"{indent}this->{pending_flag} = true;\n")
+            # Walk finally frames pushed by regions INSIDE the CFG-
+            # based finally (above the boundary). Frames pushed by
+            # regions outside run later in AsyncFinallyExit.
+            terminated = self._emit_finally_chain(out, indent,
+                                                   stop_at=boundary)
+            if not terminated:
+                out.write(f"{indent}__state = {target_state};\n")
+                out.write(f"{indent}continue;\n")
+            return out.getvalue()
         # Walk enclosing finally chain (try/with around an `await` or just a
         # return inside try/finally). Same machinery as sync _make_return.
         terminated = self._emit_finally_chain(out, indent)

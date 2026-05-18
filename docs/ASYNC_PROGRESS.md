@@ -591,39 +591,60 @@ vardecls.
 **Scheduled follow-ups** (in ASYNC_DESIGN.md roadmap, not v1.5
 composability blockers):
 
-- **M3.1 -- Sync `for x in xs:` with await in body.** Needs a
-  synthesizing desugaring pass that emits `__iter = iter(xs);
-  while True: try: x = next(__iter); except StopIteration: break;
-  body`. `async for` has its own desugaring (uses `__aiter__` /
-  `__anext__`) and doesn't share this code path. Highest user
-  impact of the three follow-ups (covers the common `for url in
-  urls: data = await fetch(url)` pattern).
-- **M3.2 -- Sync `with X:` with await in body.** Needs `WithRegion`
-  emit logic in the CFG emitter (the CFG data type already exists).
-  Runs `__exit__(None, None, None)` on normal exit, `__exit__(
-  exc_type, exc_val, exc_tb)` on throw with suppression branch,
-  context-manager object stored as a frame-hoisted local. Shape
-  parallels the existing sync-with codegen (`_emit_with_try_catch`
-  in `statements.py`) but adapted to the CFG state-machine model.
-- **M3.3 -- `await` inside a `finally` body.** Needs a frame-stored
-  `std::exception_ptr` to preserve the in-flight exception across
-  the suspension (C++ exception state is tied to catch scopes;
-  doesn't survive a return-and-resume). Save on entry to a finally
-  body that contains an await; rethrow after the finally completes
-  if an exception was saved. Interacts with Python's `__context__`
-  chaining (an await inside finally that itself raises becomes the
-  new exception's context).
-- **M3.4 -- Dead-catch elision around no-throw suspend BBs.** Every
-  BB whose region_stack includes a TryRegion currently emits the
-  catch wrap with the handler body inlined, even when the suspend
-  itself is provably non-throwing (zero-arg `__sub_n.emplace()`,
-  literal-only emplace args). The C++ compiler elides the
-  unreachable catch via exception-unwind-table analysis, but the
-  generated source still carries it. Skipping the wrap needs a
-  per-case "can this body throw something an in-scope handler
-  catches" predicate: BB has empty `stmts`, terminator is `Yield`,
-  emplace args are all literals / simple names. Code-size /
-  snapshot-quality polish, not correctness.
+- **M3.1 -- Sync `for x in xs:` with await in body.** SHIPPED. The
+  CFG builder lowers a for-with-await into iter-init / cond-advance /
+  body / exit BBs; the iterator and `__next__` result live in the
+  coro frame as `std::optional<decltype(...)>` slots. Universal
+  `::tpy::__iter__` / `__next__()` path only -- no range-counter
+  peephole inside async functions (peepholes still apply to
+  non-async for-loops). Synthetic `AsyncForIterSetup` leaf-stmt and
+  `AsyncForAdvance` terminator in `resumable_cfg.py`; emit lives in
+  `_emit_async_for_iter_setup` / `_emit_async_for_advance` in
+  `gen_async.py`. `async for` has its own desugaring (`__aiter__` /
+  `__anext__`) and doesn't share this code path.
+- **M3.2 -- Sync `with X:` with await in body.** SHIPPED. CFG
+  decomposes a with-with-await into an AsyncWithEnter setup stmt +
+  WithRegion-wrapped body BBs. Context manager + as-binding live in
+  `__with_ctx_<n>` / `<target>` coro-frame slots
+  (`std::optional<...>`). Each case whose region_stack contains a
+  WithRegion gets `try { ... } catch (::tpy::BaseException&) {
+  ... } catch (...) { __exit__; throw; }` around the body. When
+  `item.exit_can_suppress` is true, the BaseException catch dispatches
+  `__exit__({}, &exc, {})` and -- on a True return -- transitions
+  state to a synthesized `post_with_bb` case label; on False, rethrows.
+  Normal-exit `__exit__({}, nullptr/{}, {})` is emitted by
+  `_emit_exit_region_finallies` when the Fall edge crosses out of the
+  WithRegion. Synthetic `AsyncWithEnter` in `resumable_cfg.py`; emit
+  helpers `_emit_async_with_enter` / `_emit_async_with_exit` /
+  `_emit_with_region_catches` in `gen_async.py`.
+- **M3.3 + M3.3.1 + M3.3.2 -- `await` inside a `finally` body
+  (with handlers, with return-walks-finally).** SHIPPED. The CFG
+  splits a try-finally-with-await into a TryRegion-wrapped try body
+  and a FinallyRegion-only finally body region; each try-body case's
+  catch-all saves `std::current_exception()` to a `__finally_exc_<n>`
+  frame slot and transitions state to the finally entry BB. Handlers
+  share the same machinery (M3.3.1): each handler's inner try/catch
+  saves+transitions to the finally entry on raise; the handler's
+  normal-exit Fall already targets the finally entry. `return` inside
+  the try body or any handler (M3.3.2) parks the value in a
+  `__finally_ret_<n>` frame slot and sets `__finally_pending_<n>`,
+  then walks any finally frames inside the CFG-based finally
+  (boundary tracked via `_pending_return_info_for_region_stack`),
+  then transitions state. The `AsyncFinallyExit` at the finally tail
+  checks the pending flag after the rethrow check and emits the
+  deferred Poll::ready (walking any outer helper-based finallies via
+  `_emit_finally_chain`). One remaining restriction: nesting two
+  CFG-based finally regions (the inner exit would need to forward
+  pending state to an outer slot).
+- **M3.4 -- Dead-catch elision around no-throw suspend BBs.**
+  SHIPPED. `_case_is_no_throw` in `gen_async.py` returns True for a
+  case entry with empty user stmts and a Yield terminator whose
+  emplace args are all literals / simple names (via
+  `_payload_args_no_throw` / `_expr_is_simple`); when True, the
+  per-case try/catch wrap is skipped. The matching live catch sits
+  on the resume case where the sub-future's poll runs, so dropping
+  the dead one is safe. Saves ~10 generated lines per such case in
+  snapshots.
 
 **Known limitations** (lifter semantic bugs in non-statement
 positions, pre-existing but only reachable after M3):

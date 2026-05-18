@@ -1,18 +1,26 @@
-# `await` inside a sync `for` body is deferred to a follow-up
-# milestone. The general await-in-control-flow lift (v1.5 M3) covers
-# if / while / try, but a sync for needs an iter/next desugaring
-# pass (planned). The narrower diagnostic surfaces from the CFG
-# builder at codegen time.
+# Nesting two `await`-in-`finally` regions is deferred (the inner
+# AsyncFinallyExit would need to forward a pending exception or
+# pending return to the outer slot when it itself is inside an
+# outer CFG-based finally region).
 import asyncio
+
 
 async def sub() -> None:
     pass
 
+
 async def caller() -> None:
-    for i in range(3):  # tpyc: error(/for. body needs the for-loop desugaring/)
+    try:
+        try:  # tpyc: error(/nesting two `await`-in-`finally`/)
+            await sub()
+        finally:
+            await sub()
+    finally:
         await sub()
+
 
 def main() -> None:
     asyncio.run(caller())
+
 
 main()

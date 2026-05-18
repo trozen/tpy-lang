@@ -85,19 +85,10 @@ __coro_fail fail() {
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_0: {
-        try {
-            // x = await fail()
-            __sub_0.emplace();
-            __state = S_AFTER_AWAIT_0;
-            continue;
-        } catch (const ::tpy::ValueError&) {
-            // y = await value(Int32(123))
-            __sub_1.emplace(123);
-            __state = S_AFTER_AWAIT_1;
-            continue;
-        } catch (...) {
-            throw;
-        }
+        // x = await fail()
+        __sub_0.emplace();
+        __state = S_AFTER_AWAIT_0;
+        continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

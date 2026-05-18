@@ -1,1 +1,1 @@
-main.py:12: error: await inside a `for` body needs the for-loop desugaring pass (planned follow-up).
+main.py:14: error: nesting two `await`-in-`finally` regions is a planned follow-up.

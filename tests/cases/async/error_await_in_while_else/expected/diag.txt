@@ -1,0 +1,1 @@
+main.py:13: error: await inside a `while`/`else:` clause is a planned follow-up (the break-vs-normal-exit distinction isn't modelled yet).

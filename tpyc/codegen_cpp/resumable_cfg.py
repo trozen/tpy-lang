@@ -101,15 +101,37 @@ class TryRegion:
     """A try/except/finally frame active inside the try body.
 
     `handlers` are the source-level except handlers; emit wraps the
-    case body in `catch (Type& e) { handler.body }` per handler. The
-    finally body is in `finally_helper_name` (member-fn name); the
-    helper is called on every throw / return / fall-through exit.
+    case body in `catch (Type& e) { handler.body }` per handler.
+
+    Two finally shapes:
+      * Helper-based (`finally_helper_name` set): finally body has no
+        awaits and is emitted as a member function `void __finally_<n>()`
+        called on every throw / return / fall-through exit.
+      * CFG-based (`finally_entry_bb` / `captured_exc_field` set):
+        finally body has an await and lives in the main state machine.
+        On exception in the try body, the catch-all saves
+        `std::current_exception()` to the captured-exc frame field and
+        transitions state to `finally_entry_bb`. The finally body ends
+        with an `AsyncFinallyExit` synthetic stmt that rethrows the
+        saved exception (clearing the field) before falling through to
+        the post-try BB. Mutually exclusive with the helper-based shape.
     """
     handlers: tuple[TpyExceptHandler, ...]
-    finally_helper_name: str | None       # None if try has no finally body
+    finally_helper_name: str | None       # None if try has no finally body OR CFG-based
     tier: str                              # "throw" / "return" / "finally_only"
     # Source-level loc for emit diagnostics.
     loc_source: TpyStmt | None = None
+    # CFG-based finally fields (None for helper-based / no finally).
+    finally_entry_bb: int | None = None
+    captured_exc_field: str | None = None
+    # Pending-return slot for CFG-based finally: when set, a `return`
+    # inside the try body or any handler stores its value to
+    # `pending_return_slot` (when non-None -- void async defs leave it
+    # None) and sets `pending_return_flag = true`, then transitions
+    # state to the finally entry BB. AsyncFinallyExit checks the flag
+    # and emits the deferred Poll::ready after the rethrow check.
+    pending_return_flag: str | None = None
+    pending_return_slot: str | None = None
 
 
 @dataclass(frozen=True)
@@ -132,10 +154,21 @@ class ExceptRegion:
     `parent_finally` mirrors the enclosing TryRegion's
     `finally_helper_name` so emit can run the finally body when control
     leaves the handler normally (Python semantics: finally runs after
-    a matched except)."""
+    a matched except).
+
+    `parent_finally_entry_bb` is set instead when the parent try has
+    a CFG-based finally: an exception raised inside the handler body
+    must transition state to that BB (the inner try/catch in the
+    handler emit dispatches this via the TryRegion's
+    `captured_exc_field`). A `return` inside the handler body routes
+    through the same pending-return slot as a return in the try body.
+    """
     handler: TpyExceptHandler
     parent_finally: str | None = None
     loc_source: TpyStmt | None = None
+    parent_finally_entry_bb: int | None = None
+    parent_pending_return_flag: str | None = None
+    parent_pending_return_slot: str | None = None
 
 
 @dataclass(frozen=True)
@@ -144,13 +177,16 @@ class WithRegion:
     a try/catch that runs __exit__ with the exception args and either
     suppresses or re-raises depending on __exit__'s return.
 
-    The with frame is currently "borrow" form -- the context manager
-    object lives in a frame-hoisted local. exit_call_template is a
-    function that, given the exception expr (or None) and indent,
-    returns the C++ line(s) to invoke __exit__.
+    `ctx_n` is the uid used to name both the `__with_ctx_<n>` frame
+    slot (where the context-manager object lives, as
+    `std::optional<T>`) and the `__exc_<n>` BaseException& binding
+    inside the catch wrap. `post_with_bb` is the CFG BB to transition
+    to when __exit__ suppresses an exception (only meaningful when
+    item.exit_can_suppress).
     """
     item: TpyWithItem
-    cm_field_name: str            # frame field holding the cm object
+    ctx_n: int
+    post_with_bb: int
     loc_source: TpyStmt | None = None
 
 
@@ -205,7 +241,77 @@ class Unreachable:
     pass
 
 
-Terminator = Union[Fall, Branch, Yield, ReturnT, RaiseT, Unreachable]
+@dataclass(frozen=True)
+class AsyncForAdvance:
+    """Terminator for the cond/advance BB of a CFG-decomposed for-loop
+    whose body contains await. Emit:
+      __for_r_<uid> = (*__for_itr_<uid>).__next__();
+      if (!(*__for_r_<uid>).has_value()) -> exhausted_bb
+      <loop_var> = ::tpy::unwrap_ref(*(*__for_r_<uid>));
+      -> has_value_bb
+    Two successors mirror Branch so case-entries pred-counting works."""
+    uid: int
+    stmt: TpyForEach
+    has_value_bb: int
+    exhausted_bb: int
+
+
+Terminator = Union[Fall, Branch, Yield, ReturnT, RaiseT, Unreachable,
+                   AsyncForAdvance]
+
+
+# -- Synthetic leaf-stmt types for CFG-lowered for-loops ----------------
+
+@dataclass(frozen=True)
+class AsyncForIterSetup:
+    """Synthetic leaf stmt at the head of a CFG-decomposed for-loop.
+    Emit: `__for_itr_<uid> = ::tpy::__iter__(<iterable_expr>);`"""
+    uid: int
+    iterable_expr: TpyExpr
+
+
+@dataclass(frozen=True)
+class AsyncFinallyExit:
+    """Synthetic leaf stmt at the tail of a CFG-decomposed finally body.
+    Two-stage emit:
+
+      if (this-><captured_exc_field>) {
+          std::exception_ptr __tmp = this-><captured_exc_field>;
+          this-><captured_exc_field> = nullptr;
+          std::rethrow_exception(__tmp);
+      }
+      if (this-><pending_return_flag>) {
+          this-><pending_return_flag> = false;
+          <walk outer finally chain>
+          __state = S_DONE;
+          return Poll<T>::ready(std::move(this-><pending_return_slot>));
+      }
+
+    The first stage rethrows a saved in-flight exception. The
+    second stage emits the deferred Poll::ready when a `return` in the
+    try/handler body set the pending flag. Fields are cleared
+    after extraction so a re-entry to the same try (e.g. inside a
+    loop) doesn't carry over stale state.
+
+    `pending_return_flag` / `pending_return_slot` are None when the
+    try body / handlers contain no reachable `return` (skip stage 2).
+    `pending_return_slot` is None for void async defs even when the
+    flag is set (the deferred return needs no value)."""
+    captured_exc_field: str
+    pending_return_flag: str | None = None
+    pending_return_slot: str | None = None
+
+
+@dataclass(frozen=True)
+class AsyncWithEnter:
+    """Synthetic leaf stmt at the head of a CFG-decomposed `with` body.
+    Emit:
+      __with_ctx_<n> = <context_expr>;
+      (*__with_ctx_<n>).__enter__();     # if target is None
+      <target> = (*__with_ctx_<n>).__enter__();   # otherwise
+    """
+    ctx_n: int
+    item: TpyWithItem
 
 
 # -- Basic block
@@ -301,13 +407,29 @@ class CFGBuilder:
     statements.
     """
 
-    def __init__(self, payload_factory=None) -> None:
+    def __init__(self, payload_factory=None,
+                 for_uid_map: 'dict[int, int] | None' = None,
+                 with_uid_map: 'dict[int, list[int]] | None' = None,
+                 try_finally_uid_map:
+                    'dict[int, int] | None' = None,
+                 func_returns_void: bool = False) -> None:
         """
         `payload_factory(await_node, host_stmt, kind, bind_target,
         return_stmt) -> AwaitPayload` is called for each top-level await
         the builder encounters. The factory fills in mode +
         sub_field_cpp_type, which are async-specific. If None, a
         placeholder payload is created (suitable for testing only).
+
+        `for_uid_map` maps id(TpyForEach) -> uid for for-loops that the
+        caller has pre-scanned and registered with frame fields. Used by
+        `_build_for` to attach the correct uid to AsyncForIterSetup /
+        AsyncForAdvance. Missing entries cause `_build_for` to raise
+        _CFGNotYetSupported (the caller is expected to pre-register every
+        for-with-await loop).
+
+        `with_uid_map` maps id(TpyWith) -> list of ctx_n (one per WithItem,
+        in source order) for with-stmts pre-scanned and registered. Used
+        by `_build_with`. Missing entries cause `_build_with` to raise.
         """
         self._blocks: dict[int, BB] = {}
         self._next_bb_id: int = 0
@@ -318,6 +440,10 @@ class CFGBuilder:
         self._loop_stack: list[_LoopCtx] = []
         self._region_stack: list[Region] = []
         self._payload_factory = payload_factory
+        self._for_uid_map: dict[int, int] = for_uid_map or {}
+        self._with_uid_map: dict[int, list[int]] = with_uid_map or {}
+        self._try_finally_uid_map: dict[int, int] = try_finally_uid_map or {}
+        self._func_returns_void: bool = func_returns_void
         # (id(region), id(handler)) -> handler-entry BB id. Populated
         # by `_record_handler_entry` during try/except construction;
         # read by emitters via `get_handler_entry`.
@@ -537,10 +663,18 @@ class CFGBuilder:
         finally:
             self._loop_stack.pop()
         # `else` clause runs after loop exits normally (no break). We
-        # don't model break-vs-normal-exit distinction yet; reject if
-        # orelse is present and contains a suspension. (Common case:
-        # empty orelse, handled.)
+        # don't model break-vs-normal-exit distinction yet, so reject
+        # if the orelse itself contains an `await`. Empty / non-async
+        # orelse is fine -- those statements run as ordinary leaf code
+        # in the exit BB.
         if stmt.orelse:
+            if _stmts_have_any_await(stmt.orelse):
+                raise _CFGNotYetSupported(
+                    "await inside a `while`/`else:` clause is a "
+                    "planned follow-up (the break-vs-normal-exit "
+                    "distinction isn't modelled yet).",
+                    loc=stmt.loc,
+                )
             orelse_end = self._build_block(exit_bb, stmt.orelse)
             if orelse_end is None:
                 return None
@@ -550,36 +684,168 @@ class CFGBuilder:
     # -- for ------------------------------------------------------------
 
     def _build_for(self, cur: int, stmt: TpyForEach) -> int | None:
-        # v1.5 M3.1 follow-up (see ASYNC_DESIGN.md): a sync `for x in
-        # xs:` with an await in the body needs an iter/next desugaring.
-        # Until that ships, reject at CFG-build time.
-        raise _CFGNotYetSupported(
-            "await inside a `for` body needs the for-loop desugaring "
-            "pass (planned follow-up).",
-            loc=stmt.loc,
-        )
+        # Universal iter/next lowering. The for-loop becomes:
+        #   iter_init -> cond_advance --(has_value)-> body BBs --(fall)-> cond_advance
+        #                            --(exhausted)-> exit
+        # The cond/advance BB carries an AsyncForAdvance terminator
+        # which expands at emit to next() + has_value check + bind.
+        # `else` clause handling mirrors _build_while (no break-vs-normal
+        # distinction yet) -- reject early if the orelse contains await
+        # so the "no registered uid" path doesn't fire spuriously for
+        # for-loops whose body has no await but whose orelse does.
+        if stmt.orelse and _stmts_have_any_await(stmt.orelse):
+            raise _CFGNotYetSupported(
+                "await inside a `for`/`else:` clause is a planned "
+                "follow-up (the break-vs-normal-exit distinction "
+                "isn't modelled yet).",
+                loc=stmt.loc,
+            )
+        uid = self._for_uid_map.get(id(stmt))
+        if uid is None:
+            raise _CFGNotYetSupported(
+                "for-loop with await reached CFG builder without a "
+                "registered uid (internal: pre-scan missed this loop).",
+                loc=stmt.loc,
+            )
+        iter_init_bb = self._new_bb()
+        cond_bb = self._new_bb()
+        body_bb = self._new_bb()
+        exit_bb = self._new_bb()
+        # Fall into iter init.
+        self._finish(cur, Fall(next_bb=iter_init_bb))
+        # iter_init_bb: setup, fall to cond.
+        self._blocks[iter_init_bb].stmts.append(
+            AsyncForIterSetup(uid=uid, iterable_expr=stmt.iterable))
+        self._finish(iter_init_bb, Fall(next_bb=cond_bb))
+        # cond_bb: AsyncForAdvance terminator (advance + branch).
+        self._finish(cond_bb, AsyncForAdvance(
+            uid=uid, stmt=stmt,
+            has_value_bb=body_bb, exhausted_bb=exit_bb))
+        # body: continue=cond_bb, break=exit_bb.
+        self._loop_stack.append(_LoopCtx(
+            continue_bb=cond_bb,
+            break_bb=exit_bb,
+            regions_at_entry=tuple(self._region_stack),
+        ))
+        try:
+            body_end = self._build_block(body_bb, stmt.body)
+            if body_end is not None:
+                self._finish(body_end, Fall(next_bb=cond_bb))
+        finally:
+            self._loop_stack.pop()
+        if stmt.orelse:
+            if _stmts_have_any_await(stmt.orelse):
+                raise _CFGNotYetSupported(
+                    "await inside a `for`/`else:` clause is a "
+                    "planned follow-up (the break-vs-normal-exit "
+                    "distinction isn't modelled yet).",
+                    loc=stmt.loc,
+                )
+            orelse_end = self._build_block(exit_bb, stmt.orelse)
+            if orelse_end is None:
+                return None
+            return orelse_end
+        return exit_bb
 
     # -- try/except/finally ---------------------------------------------
 
     def _build_try(self, cur: int, stmt: TpyTry) -> int | None:
         finally_name: str | None = None
-        if stmt.finally_body:
-            if _stmts_have_any_await(stmt.finally_body):
-                raise _CFGNotYetSupported(
-                    "await inside a `finally` body is a planned follow-up.",
-                    loc=stmt.loc,
-                )
+        finally_entry_bb: int | None = None
+        captured_exc_field: str | None = None
+        pending_return_flag: str | None = None
+        pending_return_slot: str | None = None
+        finally_async = bool(stmt.finally_body) and _stmts_have_any_await(
+            stmt.finally_body)
+        if stmt.finally_body and not finally_async:
             finally_name = f"__finally_{self._next_finally_id}"
             self._next_finally_id += 1
             self._finally_helpers.append((finally_name, list(stmt.finally_body)))
+        elif finally_async:
+            # CFG-based finally. Pre-scan
+            # assigns an exception-slot uid and (if returns are present
+            # anywhere reachable) a pending-return slot. Remaining
+            # restrictions: no return inside the finally body itself
+            # (would need override semantics), and no nesting of two
+            # CFG-based finally regions (the inner AsyncFinallyExit
+            # would need to know about the outer slot for pending-
+            # return forwarding).
+            for r in self._region_stack:
+                if (isinstance(r, TryRegion)
+                        and r.captured_exc_field is not None):
+                    raise _CFGNotYetSupported(
+                        "nesting two `await`-in-`finally` regions is "
+                        "a planned follow-up.",
+                        loc=stmt.loc,
+                    )
+            uid = self._try_finally_uid_map.get(id(stmt))
+            if uid is None:
+                raise _CFGNotYetSupported(
+                    "try-finally-with-await reached CFG builder "
+                    "without a registered exception-slot uid "
+                    "(internal: pre-scan missed it).",
+                    loc=stmt.loc,
+                )
+            captured_exc_field = f"__finally_exc_{uid}"
+            if _stmts_have_any_return(stmt.finally_body):
+                raise _CFGNotYetSupported(
+                    "`return` inside a finally body that itself "
+                    "contains await is a planned follow-up.",
+                    loc=stmt.loc,
+                )
+            # Pending-return slot: allocated only when there's a
+            # reachable `return` inside try-body or any handler-body.
+            # `pending_return_slot` is None for void async defs (the
+            # flag alone suffices).
+            try_has_return = (_stmts_have_any_return(stmt.try_body)
+                               or any(_stmts_have_any_return(h.body)
+                                       for h in stmt.handlers))
+            if try_has_return:
+                pending_return_flag = f"__finally_pending_{uid}"
+                # Void async defs need only the flag (no value to park);
+                # leave `pending_return_slot` None so emit sites can
+                # consult one source of truth (the slot name) instead
+                # of also re-deriving void-ness.
+                if self._func_returns_void:
+                    pending_return_slot = None
+                else:
+                    pending_return_slot = f"__finally_ret_{uid}"
+            else:
+                pending_return_flag = None
+                pending_return_slot = None
+
+        # Pre-allocate finally_entry_bb (CFG-based finally only) so
+        # TryRegion can carry it. The BB must capture FinallyRegion on
+        # its region_stack -- temporarily push/pop the finally_region.
+        finally_region: FinallyRegion | None = None
+        if finally_async:
+            assert captured_exc_field is not None
+            finally_region = FinallyRegion(
+                helper_name=captured_exc_field,
+                loc_source=stmt,
+            )
+            self._region_stack.append(finally_region)
+            finally_entry_bb = self._new_bb()
+            self._region_stack.pop()
+
         try_region = TryRegion(
             handlers=tuple(stmt.handlers),
             finally_helper_name=finally_name,
             tier=stmt.tier or "throw",
             loc_source=stmt,
+            finally_entry_bb=finally_entry_bb,
+            captured_exc_field=captured_exc_field,
+            pending_return_flag=pending_return_flag,
+            pending_return_slot=pending_return_slot,
         )
         # join_bb is outside the try frame.
         join_bb = self._new_bb()
+
+        # Target for normal try-body exit: finally_entry when CFG-based
+        # finally (so finally body runs before reaching join); join
+        # otherwise.
+        normal_exit_target = (finally_entry_bb if finally_async
+                              else join_bb)
 
         # Try body BBs live inside the TryRegion. Push the region BEFORE
         # creating them so their region_stack captures correctly.
@@ -592,9 +858,11 @@ class CFGBuilder:
                 if stmt.else_body:
                     else_end = self._build_block(try_end, stmt.else_body)
                     if else_end is not None:
-                        self._finish(else_end, Fall(next_bb=join_bb))
+                        self._finish(else_end,
+                                      Fall(next_bb=normal_exit_target))
                 else:
-                    self._finish(try_end, Fall(next_bb=join_bb))
+                    self._finish(try_end,
+                                  Fall(next_bb=normal_exit_target))
         finally:
             self._region_stack.pop()
 
@@ -602,10 +870,17 @@ class CFGBuilder:
         # longer active inside the handler (the throw has been caught);
         # the ExceptRegion takes its place so emit knows we're in a
         # handler body (for sub-future reset, exception-binding scope).
+        # When the parent try has a CFG-based finally, the
+        # ExceptRegion also carries the parent's captured_exc /
+        # finally_entry so emit can route raises and returns inside
+        # the handler body through the finally region.
         for handler in stmt.handlers:
             except_region = ExceptRegion(
                 handler=handler,
                 parent_finally=try_region.finally_helper_name,
+                parent_finally_entry_bb=try_region.finally_entry_bb,
+                parent_pending_return_flag=try_region.pending_return_flag,
+                parent_pending_return_slot=try_region.pending_return_slot,
                 loc_source=stmt,
             )
             self._region_stack.append(except_region)
@@ -613,8 +888,34 @@ class CFGBuilder:
                 handler_entry = self._new_bb()
                 handler_end = self._build_block(handler_entry, handler.body)
                 if handler_end is not None:
-                    self._finish(handler_end, Fall(next_bb=join_bb))
+                    # Handler's normal exit: when finally is CFG-based,
+                    # route through finally entry so the finally body
+                    # runs before reaching the post-try join.
+                    self._finish(handler_end,
+                                  Fall(next_bb=normal_exit_target))
                 self._record_handler_entry(try_region, handler, handler_entry)
+            finally:
+                self._region_stack.pop()
+
+        # Finally body (CFG-based path).
+        if finally_async:
+            assert finally_region is not None
+            assert finally_entry_bb is not None
+            assert captured_exc_field is not None
+            self._region_stack.append(finally_region)
+            try:
+                finally_end = self._build_block(
+                    finally_entry_bb, stmt.finally_body)
+                if finally_end is not None:
+                    # Append the AsyncFinallyExit stmt (rethrow check
+                    # + pending-return check) then fall to join.
+                    self._blocks[finally_end].stmts.append(
+                        AsyncFinallyExit(
+                            captured_exc_field=captured_exc_field,
+                            pending_return_flag=pending_return_flag,
+                            pending_return_slot=pending_return_slot,
+                        ))
+                    self._finish(finally_end, Fall(next_bb=join_bb))
             finally:
                 self._region_stack.pop()
 
@@ -635,12 +936,55 @@ class CFGBuilder:
     # -- with -----------------------------------------------------------
 
     def _build_with(self, cur: int, stmt: TpyWith) -> int | None:
-        # Sync `with` containing an await is task 10. The baseline
-        # rejects to preserve current behavior; lifted in that task.
-        raise _CFGNotYetSupported(
-            "await inside a `with` body is a planned follow-up.",
-            loc=stmt.loc,
-        )
+        """Lower a sync `with X as t: body` whose body contains await
+        into a CFG region. The context manager lives in a frame-hoisted
+        field (`__with_ctx_<n>`); the case-emit wraps each case body in
+        try/catch that runs `__exit__` on exception (with optional
+        suppression -> transition to post-with state)."""
+        ctx_ns = self._with_uid_map.get(id(stmt))
+        if ctx_ns is None:
+            raise _CFGNotYetSupported(
+                "with-stmt with await reached CFG builder without "
+                "registered ctx uids (internal: pre-scan missed it).",
+                loc=stmt.loc,
+            )
+        if len(ctx_ns) != len(stmt.items):
+            raise _CFGNotYetSupported(
+                "with-stmt ctx uid count mismatch (internal).",
+                loc=stmt.loc,
+            )
+        post_with_bb = self._new_bb()
+        # For each item, push WithRegion then emit AsyncWithEnter into
+        # the current BB. Items are processed in source order
+        # (outer-most CM enters first).
+        regions: list[WithRegion] = []
+        for item, ctx_n in zip(stmt.items, ctx_ns):
+            region = WithRegion(
+                item=item,
+                ctx_n=ctx_n,
+                post_with_bb=post_with_bb,
+                loc_source=stmt,
+            )
+            self._blocks[cur].stmts.append(
+                AsyncWithEnter(ctx_n=ctx_n, item=item))
+            self._region_stack.append(region)
+            regions.append(region)
+        try:
+            # Body BBs live inside all WithRegions.
+            body_entry = self._new_bb()
+            self._finish(cur, Fall(next_bb=body_entry))
+            body_end = self._build_block(body_entry, stmt.body)
+            if body_end is not None:
+                # Fall out -> exit BB. Region exit (normal __exit__) is
+                # emitted via `_emit_exit_region_finallies` when the
+                # transition crosses out of the With regions.
+                self._finish(body_end, Fall(next_bb=post_with_bb))
+        finally:
+            # Pop regions in reverse so the region_stack is clean
+            # outside this with.
+            for _ in regions:
+                self._region_stack.pop()
+        return post_with_bb
 
     # -- post-construction passes ---------------------------------------
 
@@ -739,6 +1083,20 @@ def _stmt_has_any_await(stmt: TpyStmt) -> bool:
 
 def _stmts_have_any_await(stmts: list[TpyStmt]) -> bool:
     return any(_stmt_has_any_await(s) for s in stmts)
+
+
+def _stmts_have_any_return(stmts: list[TpyStmt]) -> bool:
+    """True if any of `stmts` (recursively through sub_bodies) contains
+    a TpyReturn. Drives the pending-return-slot allocation decision
+    for a CFG-based finally region."""
+    for s in stmts:
+        if isinstance(s, TpyReturn):
+            return True
+        if hasattr(s, "sub_bodies"):
+            for b in s.sub_bodies():
+                if _stmts_have_any_return(b):
+                    return True
+    return False
 
 
 def _stmt_has_unbound_loop_transfer(stmt: TpyStmt) -> bool:
