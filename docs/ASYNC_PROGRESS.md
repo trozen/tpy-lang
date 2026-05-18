@@ -532,6 +532,111 @@ the `BaseException` tree.
   the codegen no-slice fix handles the common parameter-passing case
   which is what users hit in practice.
 
+### M3 SHIPPED -- arbitrary `await` placement via CFG-lite lowering
+
+Lifts the v1 restriction that `await` must be a top-level statement
+(or in the narrow wrapper-try / single-try-except shapes). After M3:
+
+- `await` inside `if` / `elif` / `else` branches (any nesting).
+- `await` inside `while` loop bodies (including `break` / `continue`
+  from nested if-branches within the loop -- the break/continue
+  translate to CFG state transitions, not C++ `break`/`continue` which
+  would exit the state-machine switch).
+- General `try` / `except` / `finally` bodies: multiple awaits per
+  try, awaits inside except handlers, nested try/except/finally with
+  Python-correct finally ordering (inner finally before outer, both
+  run after a matched except, etc.).
+- `await` inside `try` body with explicit `return` walks the active
+  finally chain through `_make_async_return` + `_emit_finally_chain`.
+
+**Architecture**: localized CFG built per async def body, in a new
+shape-neutral module `tpyc/codegen_cpp/resumable_cfg.py`. Generator
+migration consumes the same module later (planned follow-up in
+TODO.md "Migrate generators onto resumable-frame"). The CFG has:
+
+- `BB` (basic block) with `stmts: list[TpyStmt]` (leaf statements --
+  compound statements without suspensions stay as single elements,
+  lazy decomposition) and a `terminator` (`Fall`/`Branch`/`Yield`/
+  `ReturnT`/`RaiseT`/`Unreachable`).
+- `region_stack: tuple[Region, ...]` per BB -- the active
+  try/except/finally/with frames at BB entry. `TryRegion` carries
+  the source-level handlers + `finally_helper_name`; `ExceptRegion`
+  marks handler-body BBs with `parent_finally` so emit can run the
+  outer try's finally on normal handler exit (Python semantics).
+- A `payload_factory` callback lets async-specific metadata (mode,
+  sub_field_cpp_type derived from sema annotations on the
+  `TpyAwait` node) be filled at construction without making the CFG
+  itself async-specific.
+
+**Emit** (`AsyncCoroCodegen._emit_state_machine` and helpers in
+`gen_async.py`): replaces the old linear-region partition. Computes
+case-entry BBs (entry / yield-resume / multi-predecessor /
+region-stack-change) and emits `while (true) switch (state)` with
+each case body wrapped in its region stack reconstructed as nested
+C++ try blocks. The C++ rule "case labels inside try are not
+reachable from outside" forces the try-stack reconstruction per
+case body (C# Roslyn pattern). The old [[fallthrough]] between
+cases is replaced by `state = X; continue;` transitions; the
+catch wrappers reset the per-yield sub-future field on throws.
+`_emit_exit_region_finallies` runs each exited region's finally
+on Fall edges that cross out of a region (normal try-exit path
+where the C++ try doesn't have a language-level finally).
+
+**Compound expressions**: the existing `_lift_awaits_in_stmt` lifter
+now recurses into compound statement bodies (`if`/`while`/`for`/
+`try`/`with`), so awaits buried inside loop-body or branch-body
+expressions are correctly hoisted to preceding `__await_lift_<n>`
+vardecls.
+
+**Scheduled follow-ups** (in ASYNC_DESIGN.md roadmap, not v1.5
+composability blockers):
+
+- **M3.1 -- Sync `for x in xs:` with await in body.** Needs a
+  synthesizing desugaring pass that emits `__iter = iter(xs);
+  while True: try: x = next(__iter); except StopIteration: break;
+  body`. `async for` has its own desugaring (uses `__aiter__` /
+  `__anext__`) and doesn't share this code path. Highest user
+  impact of the three follow-ups (covers the common `for url in
+  urls: data = await fetch(url)` pattern).
+- **M3.2 -- Sync `with X:` with await in body.** Needs `WithRegion`
+  emit logic in the CFG emitter (the CFG data type already exists).
+  Runs `__exit__(None, None, None)` on normal exit, `__exit__(
+  exc_type, exc_val, exc_tb)` on throw with suppression branch,
+  context-manager object stored as a frame-hoisted local. Shape
+  parallels the existing sync-with codegen (`_emit_with_try_catch`
+  in `statements.py`) but adapted to the CFG state-machine model.
+- **M3.3 -- `await` inside a `finally` body.** Needs a frame-stored
+  `std::exception_ptr` to preserve the in-flight exception across
+  the suspension (C++ exception state is tied to catch scopes;
+  doesn't survive a return-and-resume). Save on entry to a finally
+  body that contains an await; rethrow after the finally completes
+  if an exception was saved. Interacts with Python's `__context__`
+  chaining (an await inside finally that itself raises becomes the
+  new exception's context).
+- **M3.4 -- Dead-catch elision around no-throw suspend BBs.** Every
+  BB whose region_stack includes a TryRegion currently emits the
+  catch wrap with the handler body inlined, even when the suspend
+  itself is provably non-throwing (zero-arg `__sub_n.emplace()`,
+  literal-only emplace args). The C++ compiler elides the
+  unreachable catch via exception-unwind-table analysis, but the
+  generated source still carries it. Skipping the wrap needs a
+  per-case "can this body throw something an in-scope handler
+  catches" predicate: BB has empty `stmts`, terminator is `Yield`,
+  emplace args are all literals / simple names. Code-size /
+  snapshot-quality polish, not correctness.
+
+**Known limitations** (lifter semantic bugs in non-statement
+positions, pre-existing but only reachable after M3):
+
+- The await lifter mishandles short-circuit operators (`a or
+  await b()` evaluates both unconditionally), loop conditions
+  (`while await cond():` lifts to a pre-loop vardecl so the
+  condition is evaluated ONCE), and comprehensions. Filed in
+  BUGS.md; correct fix needs structural rewrites (`a or await b`
+  -> ternary, `while await cond()` -> `while True: cond_val =
+  await cond(); if not cond_val: break`). Pre-existing in the
+  lifter; the cases just didn't reach codegen before M3.
+
 ## v1.x milestone: asyncio runtime TPy port (must precede v1.5)
 
 The v1 asyncio runtime (Executor + run loop + spawn registration + sleep

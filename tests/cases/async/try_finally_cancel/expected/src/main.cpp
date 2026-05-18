@@ -6,43 +6,46 @@ namespace tpyapp::main {
 
 // async def coro() -> Int32:
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpy::Waker waker) {
-    switch (__state) {
+    while (true) switch (__state) {
     case S_INITIAL: {
-            try {
-                // await asyncio.sleep(60.0)
-                __sub_0.emplace(std::move(::tpystd::asyncio::sleep(60.0)));
-                __state = S_AFTER_AWAIT_0;
-            } catch (...) {
-                __sub_0.reset();
-                this->__finally_top();
-                throw;
-            }
-        }
-        [[fallthrough]];
+        __state = S_JOIN_0;
+        continue;
+    }
     case S_AFTER_AWAIT_0: {
-            try {
-                if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-                auto __r0 = __sub_0->__poll__(waker);
-                if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
-                (void)std::move(__r0).value();
-                __sub_0.reset();
-                // return Int32(99)
-                this->__finally_top();
-                __state = S_DONE;
-                int32_t __tpy_async_ret = 99;
-                return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
-            } catch (...) {
-                __sub_0.reset();
-                this->__finally_top();
-                throw;
-            }
+        try {
+            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+            auto __r0 = __sub_0->__poll__(waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            // return Int32(99)
+            this->__finally_0();
+            __state = S_DONE;
+            int32_t __tpy_async_ret = 99;
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+        } catch (...) {
+            __sub_0.reset();
+            this->__finally_0();
+            throw;
         }
+    }
+    case S_JOIN_0: {
+        try {
+            // await asyncio.sleep(60.0)
+            __sub_0.emplace(std::move(::tpystd::asyncio::sleep(60.0)));
+            __state = S_AFTER_AWAIT_0;
+            continue;
+        } catch (...) {
+            this->__finally_0();
+            throw;
+        }
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
 }
 
-void __coro_coro::__finally_top() {
+void __coro_coro::__finally_0() {
     // print("cleanup ran")
     std::cout << "cleanup ran" << "\n";
 }

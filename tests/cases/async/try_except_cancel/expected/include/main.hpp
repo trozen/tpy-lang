@@ -53,7 +53,9 @@ struct __coro_main_coro {
         S_INITIAL = 0,
         S_AFTER_AWAIT_0 = 1,
         S_AFTER_AWAIT_1 = 2,
-        S_DONE = 3,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
     };
 
     __coro_main_coro()

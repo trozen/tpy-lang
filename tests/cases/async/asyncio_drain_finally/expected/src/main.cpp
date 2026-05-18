@@ -6,43 +6,50 @@ namespace tpyapp::main {
 
 // async def background() -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_background::__poll__(::tpy::Waker waker) {
-    switch (__state) {
+    while (true) switch (__state) {
     case S_INITIAL: {
-            try {
-                // await asyncio.sleep(60.0)
-                __sub_0.emplace(std::move(::tpystd::asyncio::sleep(60.0)));
-                __state = S_AFTER_AWAIT_0;
-            } catch (...) {
-                __sub_0.reset();
-                this->__finally_top();
-                throw;
-            }
-        }
-        [[fallthrough]];
+        __state = S_JOIN_1;
+        continue;
+    }
     case S_AFTER_AWAIT_0: {
-            try {
-                if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-                auto __r0 = __sub_0->__poll__(waker);
-                if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-                (void)std::move(__r0).value();
-                __sub_0.reset();
-                // print("not reached")
-                std::cout << "not reached" << "\n";
-                this->__finally_top();
-                __state = S_DONE;
-                return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-            } catch (...) {
-                __sub_0.reset();
-                this->__finally_top();
-                throw;
-            }
+        try {
+            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+            auto __r0 = __sub_0->__poll__(waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            // print("not reached")
+            std::cout << "not reached" << "\n";
+            this->__finally_0();
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            this->__finally_0();
+            throw;
         }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_JOIN_1: {
+        try {
+            // await asyncio.sleep(60.0)
+            __sub_0.emplace(std::move(::tpystd::asyncio::sleep(60.0)));
+            __state = S_AFTER_AWAIT_0;
+            continue;
+        } catch (...) {
+            this->__finally_0();
+            throw;
+        }
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
 }
 
-void __coro_background::__finally_top() {
+void __coro_background::__finally_0() {
     // print("background cleanup ran")
     std::cout << "background cleanup ran" << "\n";
 }
@@ -57,15 +64,15 @@ __coro_background background() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // t: Task[None] = asyncio.create_task(background())
-            t = ::tpystd::asyncio::create_task<std::monostate>(background());
-            // del t
-            { auto __del_sink = std::move(t); }
-            // print("main done")
-            std::cout << "main done" << "\n";
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        // t: Task[None] = asyncio.create_task(background())
+        t = ::tpystd::asyncio::create_task<std::monostate>(background());
+        // del t
+        { auto __del_sink = std::move(t); }
+        // print("main done")
+        std::cout << "main done" << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();

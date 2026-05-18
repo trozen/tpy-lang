@@ -9,11 +9,11 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // return x + 100
-            __state = S_DONE;
-            ::tpy::BigInt __tpy_async_ret = ((x) + (::tpy::BigInt(100)));
-            return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
-        }
+        // return x + 100
+        __state = S_DONE;
+        ::tpy::BigInt __tpy_async_ret = ((x) + (::tpy::BigInt(100)));
+        return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
@@ -30,10 +30,10 @@ __coro_returns_value returns_value(::tpy::BigInt x) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // return None
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        // return None
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();

@@ -1,15 +1,15 @@
-# `await` inside an if/while/for/with/try sub-body is not yet supported
-# in v1. The await-lift pre-pass handles awaits in condition/header
-# positions (e.g. `if await cond():`) but not awaits inside loop bodies
-# or branch bodies, which need per-suspension try-stack codegen
-# (deferred to v1.5).
+# `await` inside a sync `for` body is deferred to a follow-up
+# milestone. The general await-in-control-flow lift (v1.5 M3) covers
+# if / while / try, but a sync for needs an iter/next desugaring
+# pass (planned). The narrower diagnostic surfaces from the CFG
+# builder at codegen time.
 import asyncio
 
 async def sub() -> None:
     pass
 
 async def caller() -> None:
-    for i in range(3):  # tpyc: error(/await inside an if\/while\/for\/with\/try sub-body/)
+    for i in range(3):  # tpyc: error(/for. body needs the for-loop desugaring/)
         await sub()
 
 def main() -> None:

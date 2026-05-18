@@ -79,9 +79,15 @@ Adds the patterns most async code actually needs. Built on v1's frame model; no 
 
 | Item | Description |
 |------|-------------|
-| Sync `with` upgrade | `__exit__(exc_type, exc_val, exc_tb)` + `True`-suppresses semantics. Required prerequisite for `async with` parity. See "Sync `with` upgrade" section. |
-| `async with` | With full `__aexit__(exc_type, exc_val, exc_tb)` + suppression semantics. |
-| `async for` | With `__anext__` throwing `StopAsyncIteration` at iteration end. |
+| Sync `with` upgrade | `__exit__(exc_type, exc_val, exc_tb)` + `True`-suppresses semantics. Required prerequisite for `async with` parity. See "Sync `with` upgrade" section. **SHIPPED v1.5 M1.** |
+| Class-based `isinstance(exc_val, X)` | `dynamic_cast`-based polymorphic dispatch on `Optional[BaseException]`. **SHIPPED v1.5 M2.** |
+| Arbitrary `await` placement (if/while/try) | `await` inside `if`/`while`/`try`/`except` bodies via a localized CFG (`tpyc/codegen_cpp/resumable_cfg.py`). Prerequisite for the composability features below. **SHIPPED v1.5 M3.** |
+| Sync `for x in xs:` with await in body | Needs for-loop desugaring (`__iter = iter(xs); while True: try: x = next(__iter); except StopIteration: break; body`). Independent from `async for` (different desugaring). User-impact: the natural `for url in urls: data = await fetch(url)` pattern. **M3.1 follow-up.** |
+| Sync `with X:` with await in body | Needs `WithRegion` codegen in the CFG emitter -- runs `__exit__(None, None, None)` on normal exit, `__exit__(exc_type, exc_val, exc_tb)` on throw with suppression branch. CFG data type already exists. **M3.2 follow-up.** |
+| `await` inside `finally` body | Needs `std::exception_ptr` frame field to preserve the in-flight exception across the suspension (C++ exception state is tied to catch scopes; doesn't survive a return-and-resume). Saves on entry to finally, rethrows after finally completes. **M3.3 follow-up.** |
+| Dead-catch elision around no-throw suspend BBs | Per-case "can this BB throw something an in-scope handler catches" analysis. Today every BB whose region_stack includes a TryRegion emits the catch wrap and inlines the handler body, even when the suspend itself is provably non-throwing (zero-arg emplace, literal-only args). C++ compilers elide the unreachable catch tables, but the generated source still carries them. Code-size polish, not correctness. **M3.4 follow-up.** |
+| `async with` | With full `__aexit__(exc_type, exc_val, exc_tb)` + suppression semantics. Desugars through M3-shipped infrastructure. |
+| `async for` | With `__anext__` throwing `StopAsyncIteration` at iteration end. Desugars through M3-shipped infrastructure. |
 | `gather` | Run multiple coroutines concurrently; cancel-siblings on first failure semantics matching CPython. Result type still under design (see Open Questions). |
 | `wait_for` | Race against a timeout; raises `TimeoutError`. |
 | `StopAsyncIteration`, `TimeoutError` | Exception types. |

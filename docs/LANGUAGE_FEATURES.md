@@ -5533,9 +5533,24 @@ Send/Sync rules for built-in types:
   preserved across a suspension. Awaits in non-statement positions (call
   args, BinOps, conditions) are lifted to preceding `__await_lift_<n>`
   vardecls.
-  `try`/`finally` wrapping the entire async body is supported. A narrow
-  `try: <single top-level await>; except E: ...` shape is supported for
-  throw-tier exceptions, including catching `CancelledError`.
+  **Arbitrary `await` placement** (v1.5): `await` is allowed inside
+  `if` / `elif` / `else` branches (including nested), `while` loop
+  bodies (including with `break` / `continue` from nested if-branches),
+  general `try` / `except` / `finally` blocks (multiple awaits per try
+  body, awaits inside except handlers, nested try/except/finally with
+  correct cleanup ordering). The lowering uses a localized CFG built
+  per async def body (`tpyc/codegen_cpp/resumable_cfg.py`); each
+  suspension is a CFG yield-edge and the state machine emits
+  `while (true) switch (state)` with each resume case body wrapped in
+  the source-level try/except/finally stack active at that suspension
+  point (replays the region stack inside each case -- the C# Roslyn
+  pattern, forced by C++'s prohibition on jumping into try blocks
+  from outside). The CFG infrastructure is shape-neutral and the
+  future generator migration consumes the same module.
+  Currently deferred: sync `for x in xs:` with await in body (needs
+  iter/next desugaring), sync `with X:` with await in body (rare user
+  pattern), await inside `finally` body. Throw-tier exceptions only;
+  including catching `CancelledError`.
   `Task.cancel()` flips a flag that the next poll checks and throws
   `CancelledError`. `asyncio.run(coro)` drives an executor whose body is
   TPy code (`lib/tpy/asyncio/_executor.py` -- slot table for parked
@@ -5569,10 +5584,9 @@ Send/Sync rules for built-in types:
   drained so wrapper-try `finally` blocks run for fire-and-forget
   tasks.
 - **Open (v1.5+)**: `async with`, `async for`, `gather`, `wait_for`,
-  awaits inside if/while/for/with sub-bodies and general try bodies,
-  partial or nested try-around-await, general `except` handlers around
-  arbitrary await regions, executor slot reuse, and reporting when
-  bounded cancellation drain leaves tasks pending.
+  sync `for` and sync `with` with await in body, await inside finally
+  body, executor slot reuse, and reporting when bounded cancellation
+  drain leaves tasks pending.
 
 ---
 

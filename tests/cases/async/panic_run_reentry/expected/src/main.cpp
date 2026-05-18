@@ -9,11 +9,11 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // print("inner start")
-            std::cout << "inner start" << "\n";
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        // print("inner start")
+        std::cout << "inner start" << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
@@ -30,11 +30,11 @@ __coro_inner inner() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // asyncio.run(inner())  # second run while one is already active
-            ::tpystd::asyncio::run<std::monostate>(inner());
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        // asyncio.run(inner())  # second run while one is already active
+        ::tpystd::asyncio::run<std::monostate>(inner());
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();

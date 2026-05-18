@@ -9,11 +9,11 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // print("inside-side-effect")
-            std::cout << "inside-side-effect" << "\n";
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        // print("inside-side-effect")
+        std::cout << "inside-side-effect" << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
@@ -27,24 +27,24 @@ __coro_side_effect side_effect() {
 
 // async def caller() -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_caller::__poll__(::tpy::Waker waker) {
-    switch (__state) {
+    while (true) switch (__state) {
     case S_INITIAL: {
-            // await side_effect()
-            __sub_0.emplace();
-            __state = S_AFTER_AWAIT_0;
-        }
-        [[fallthrough]];
+        // await side_effect()
+        __sub_0.emplace();
+        __state = S_AFTER_AWAIT_0;
+        continue;
+    }
     case S_AFTER_AWAIT_0: {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-            (void)std::move(__r0).value();
-            __sub_0.reset();
-            // print("after-await")
-            std::cout << "after-await" << "\n";
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+        auto __r0 = __sub_0->__poll__(waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        // print("after-await")
+        std::cout << "after-await" << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();

@@ -1,1 +1,1 @@
-main.py:12: error: await inside an if/while/for/with/try sub-body is not yet supported in v1; bind the await to a local before the control-flow statement.
+main.py:12: error: await inside a `for` body needs the for-loop desugaring pass (planned follow-up).

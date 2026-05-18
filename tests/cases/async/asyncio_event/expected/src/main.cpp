@@ -6,26 +6,26 @@ namespace tpyapp::main {
 
 // async def producer(e: Event) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpy::Waker waker) {
-    switch (__state) {
+    while (true) switch (__state) {
     case S_INITIAL: {
-            // await asyncio.sleep(0.001)
-            __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
-            __state = S_AFTER_AWAIT_0;
-        }
-        [[fallthrough]];
+        // await asyncio.sleep(0.001)
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
+        __state = S_AFTER_AWAIT_0;
+        continue;
+    }
     case S_AFTER_AWAIT_0: {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-            (void)std::move(__r0).value();
-            __sub_0.reset();
-            // e.set()
-            e.set();
-            // print("producer set")
-            std::cout << "producer set" << "\n";
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+        auto __r0 = __sub_0->__poll__(waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        // e.set()
+        e.set();
+        // print("producer set")
+        std::cout << "producer set" << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
@@ -39,24 +39,24 @@ __coro_producer producer(::tpystd::asyncio::Event& e) {
 
 // async def consumer(e: Event) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_consumer::__poll__(::tpy::Waker waker) {
-    switch (__state) {
+    while (true) switch (__state) {
     case S_INITIAL: {
-            // await e
-            __sub_0 = &(e);
-            __state = S_AFTER_AWAIT_0;
-        }
-        [[fallthrough]];
+        // await e
+        __sub_0 = &(e);
+        __state = S_AFTER_AWAIT_0;
+        continue;
+    }
     case S_AFTER_AWAIT_0: {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-            (void)std::move(__r0).value();
-            __sub_0 = nullptr;
-            // print("consumer woke")
-            std::cout << "consumer woke" << "\n";
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+        auto __r0 = __sub_0->__poll__(waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0 = nullptr;
+        // print("consumer woke")
+        std::cout << "consumer woke" << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
@@ -70,24 +70,24 @@ __coro_consumer consumer(::tpystd::asyncio::Event& e) {
 
 // async def fast_path_consumer(e: Event) -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_fast_path_consumer::__poll__(::tpy::Waker waker) {
-    switch (__state) {
+    while (true) switch (__state) {
     case S_INITIAL: {
-            // await e
-            __sub_0 = &(e);
-            __state = S_AFTER_AWAIT_0;
-        }
-        [[fallthrough]];
+        // await e
+        __sub_0 = &(e);
+        __state = S_AFTER_AWAIT_0;
+        continue;
+    }
     case S_AFTER_AWAIT_0: {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-            (void)std::move(__r0).value();
-            __sub_0 = nullptr;
-            // print("fast-path woke")
-            std::cout << "fast-path woke" << "\n";
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+        auto __r0 = __sub_0->__poll__(waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0 = nullptr;
+        // print("fast-path woke")
+        std::cout << "fast-path woke" << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
@@ -101,49 +101,49 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
 
 // async def main_coro() -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
-    switch (__state) {
+    while (true) switch (__state) {
     case S_INITIAL: {
-            // e_fast = Event()
-            e_fast = ::tpystd::asyncio::Event();
-            // print(e_fast.is_set())
-            std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n";
-            // # Second set() must be a no-op, not a double-wake.
-            // e_fast.set()
-            (*e_fast).set();
-            // e_fast.set()
-            (*e_fast).set();
-            // print(e_fast.is_set())
-            std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n";
-            // asyncio.create_task(fast_path_consumer(e_fast))
-            ::tpystd::asyncio::create_task<std::monostate>(fast_path_consumer((*e_fast)));
-            // e = Event()
-            e = ::tpystd::asyncio::Event();
-            // print(e.is_set())
-            std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
-            // asyncio.create_task(consumer(e))
-            ::tpystd::asyncio::create_task<std::monostate>(consumer((*e)));
-            // asyncio.create_task(producer(e))
-            ::tpystd::asyncio::create_task<std::monostate>(producer((*e)));
-            // await asyncio.sleep(0.005)
-            __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.005)));
-            __state = S_AFTER_AWAIT_0;
-        }
-        [[fallthrough]];
+        // e_fast = Event()
+        e_fast = ::tpystd::asyncio::Event();
+        // print(e_fast.is_set())
+        std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n";
+        // # Second set() must be a no-op, not a double-wake.
+        // e_fast.set()
+        (*e_fast).set();
+        // e_fast.set()
+        (*e_fast).set();
+        // print(e_fast.is_set())
+        std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n";
+        // asyncio.create_task(fast_path_consumer(e_fast))
+        ::tpystd::asyncio::create_task<std::monostate>(fast_path_consumer((*e_fast)));
+        // e = Event()
+        e = ::tpystd::asyncio::Event();
+        // print(e.is_set())
+        std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
+        // asyncio.create_task(consumer(e))
+        ::tpystd::asyncio::create_task<std::monostate>(consumer((*e)));
+        // asyncio.create_task(producer(e))
+        ::tpystd::asyncio::create_task<std::monostate>(producer((*e)));
+        // await asyncio.sleep(0.005)
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.005)));
+        __state = S_AFTER_AWAIT_0;
+        continue;
+    }
     case S_AFTER_AWAIT_0: {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-            (void)std::move(__r0).value();
-            __sub_0.reset();
-            // print(e.is_set())
-            std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
-            // e.clear()
-            (*e).clear();
-            // print(e.is_set())
-            std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+        auto __r0 = __sub_0->__poll__(waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        // print(e.is_set())
+        std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
+        // e.clear()
+        (*e).clear();
+        // print(e.is_set())
+        std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();

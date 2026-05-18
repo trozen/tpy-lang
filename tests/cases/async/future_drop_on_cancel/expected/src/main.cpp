@@ -6,23 +6,22 @@ namespace tpyapp::main {
 
 // async def waiter(f: Future[Tracked]) -> Tracked:
 ::tpystd::tpy::Poll<Tracked> __coro_waiter::__poll__(::tpy::Waker waker) {
-    switch (__state) {
+    while (true) switch (__state) {
     case S_INITIAL: {
-            // return await f
-            __sub_0 = &(f);
-            __state = S_AFTER_AWAIT_0;
-        }
-        [[fallthrough]];
+        // return await f
+        __sub_0 = &(f);
+        __state = S_AFTER_AWAIT_0;
+        continue;
+    }
     case S_AFTER_AWAIT_0: {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpystd::tpy::Poll<Tracked>::pending();
-            auto __ret0 = std::move(__r0).value();
-            __sub_0 = nullptr;
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<Tracked>::ready(std::move(__ret0));
-            ::tpy::tpy_panic("async def fell through without returning a value");
-        }
+        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+        auto __r0 = __sub_0->__poll__(waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<Tracked>::pending();
+        auto __ret0 = std::move(__r0).value();
+        __sub_0 = nullptr;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<Tracked>::ready(std::move(__ret0));
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
@@ -36,36 +35,58 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
 
 // async def main_coro() -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
-    switch (__state) {
+    while (true) switch (__state) {
     case S_INITIAL: {
-            // f: Future[Tracked] = Future[Tracked]()
-            f = ::tpystd::asyncio::Future<Tracked>();
-            // t = asyncio.create_task(waiter(f))
-            t = ::tpystd::asyncio::create_task<Tracked>(waiter((*f)));
-            // f.set_result(Tracked("payload"))
-            (*f).set_result(Tracked("payload"));
-            // t.cancel()
-            (*t).cancel();
+        // f: Future[Tracked] = Future[Tracked]()
+        f = ::tpystd::asyncio::Future<Tracked>();
+        // t = asyncio.create_task(waiter(f))
+        t = ::tpystd::asyncio::create_task<Tracked>(waiter((*f)));
+        // f.set_result(Tracked("payload"))
+        (*f).set_result(Tracked("payload"));
+        // t.cancel()
+        (*t).cancel();
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_AFTER_AWAIT_0: {
+        try {
+            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+            auto __r0 = __sub_0->__poll__(waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            (void)std::move(__r0).value();
+            __sub_0 = nullptr;
+            __state = S_JOIN_0;
+            continue;
+        } catch (const ::tpy::CancelledError&) {
+            __sub_0 = nullptr;
+            // print("cancelled")
+            std::cout << "cancelled" << "\n";
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            __sub_0 = nullptr;
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_JOIN_1: {
+        try {
             // await t
             __sub_0 = &((*t));
             __state = S_AFTER_AWAIT_0;
+            continue;
+        } catch (const ::tpy::CancelledError&) {
+            // print("cancelled")
+            std::cout << "cancelled" << "\n";
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            throw;
         }
-        [[fallthrough]];
-    case S_AFTER_AWAIT_0: {
-            try {
-                if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-                auto __r0 = __sub_0->__poll__(waker);
-                if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-                (void)std::move(__r0).value();
-                __sub_0 = nullptr;
-            } catch (const ::tpy::CancelledError&) {
-                __sub_0 = nullptr;
-                // print("cancelled")
-                std::cout << "cancelled" << "\n";
-            }
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();

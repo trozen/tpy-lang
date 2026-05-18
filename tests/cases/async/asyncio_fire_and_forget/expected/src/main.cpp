@@ -9,13 +9,13 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // print("background ran")
-            std::cout << "background ran" << "\n";
-            // done.set_result(Int32(0))  # sentinel; only the wake matters
-            done.set_result(0);
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        // print("background ran")
+        std::cout << "background ran" << "\n";
+        // done.set_result(Int32(0))  # sentinel; only the wake matters
+        done.set_result(0);
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
@@ -29,31 +29,31 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
 
 // async def main_coro() -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
-    switch (__state) {
+    while (true) switch (__state) {
     case S_INITIAL: {
-            // done: Future[Int32] = Future[Int32]()
-            done = ::tpystd::asyncio::Future<int32_t>();
-            // t: Task[None] = asyncio.create_task(background(done))
-            t = ::tpystd::asyncio::create_task<std::monostate>(background((*done)));
-            // # Drop the handle without awaiting; the executor still drives the task.
-            // del t
-            { auto __del_sink = std::move(t); }
-            // _ = await done
-            __sub_0 = &((*done));
-            __state = S_AFTER_AWAIT_0;
-        }
-        [[fallthrough]];
+        // done: Future[Int32] = Future[Int32]()
+        done = ::tpystd::asyncio::Future<int32_t>();
+        // t: Task[None] = asyncio.create_task(background(done))
+        t = ::tpystd::asyncio::create_task<std::monostate>(background((*done)));
+        // # Drop the handle without awaiting; the executor still drives the task.
+        // del t
+        { auto __del_sink = std::move(t); }
+        // _ = await done
+        __sub_0 = &((*done));
+        __state = S_AFTER_AWAIT_0;
+        continue;
+    }
     case S_AFTER_AWAIT_0: {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-            _ = std::move(__r0).value();
-            __sub_0 = nullptr;
-            // print("main done")
-            std::cout << "main done" << "\n";
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+        auto __r0 = __sub_0->__poll__(waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        _ = std::move(__r0).value();
+        __sub_0 = nullptr;
+        // print("main done")
+        std::cout << "main done" << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();

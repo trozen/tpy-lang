@@ -15,24 +15,24 @@ void check_outside() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // h = _get_current_executor()
-            h = ::tpystd::asyncio::_executor::_get_current_executor();
-            // print("inside null?", h.is_null())
-            std::cout << "inside null?" << " " << ::tpy::print_bool(h.is_null()) << "\n";
-            // # Manual save/restore round-trip via the public bindings; not
-            // # the production path (that's _ExecutorScope.__del__, exercised
-            // # by check_teardown below).
-            // _clear_current_executor()
-            ::tpystd::asyncio::_executor::_clear_current_executor();
-            // print("after clear:", _get_current_executor().is_null())
-            std::cout << "after clear:" << " " << ::tpy::print_bool(::tpystd::asyncio::_executor::_get_current_executor().is_null()) << "\n";
-            // _set_current_executor(h)
-            ::tpystd::asyncio::_executor::_set_current_executor(h);
-            // print("after restore:", _get_current_executor().is_null())
-            std::cout << "after restore:" << " " << ::tpy::print_bool(::tpystd::asyncio::_executor::_get_current_executor().is_null()) << "\n";
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        // h = _get_current_executor()
+        h = ::tpystd::asyncio::_executor::_get_current_executor();
+        // print("inside null?", h.is_null())
+        std::cout << "inside null?" << " " << ::tpy::print_bool(h.is_null()) << "\n";
+        // # Manual save/restore round-trip via the public bindings; not
+        // # the production path (that's _ExecutorScope.__del__, exercised
+        // # by check_teardown below).
+        // _clear_current_executor()
+        ::tpystd::asyncio::_executor::_clear_current_executor();
+        // print("after clear:", _get_current_executor().is_null())
+        std::cout << "after clear:" << " " << ::tpy::print_bool(::tpystd::asyncio::_executor::_get_current_executor().is_null()) << "\n";
+        // _set_current_executor(h)
+        ::tpystd::asyncio::_executor::_set_current_executor(h);
+        // print("after restore:", _get_current_executor().is_null())
+        std::cout << "after restore:" << " " << ::tpy::print_bool(::tpystd::asyncio::_executor::_get_current_executor().is_null()) << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
@@ -57,10 +57,10 @@ void check_sleep() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // return None
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        // return None
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();

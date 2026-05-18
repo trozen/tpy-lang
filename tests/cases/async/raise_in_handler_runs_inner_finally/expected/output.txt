@@ -1,0 +1,5 @@
+inner-handler
+inner-finally
+outer-handler
+outer-finally
+42

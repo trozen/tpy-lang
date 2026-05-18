@@ -9,11 +9,11 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // return [Int32(10), Int32(20), Int32(30)]
-            __state = S_DONE;
-            std::vector<int32_t> __tpy_async_ret = {10, 20, 30};
-            return ::tpystd::tpy::Poll<std::vector<int32_t>>::ready(std::move(__tpy_async_ret));
-        }
+        // return [Int32(10), Int32(20), Int32(30)]
+        __state = S_DONE;
+        std::vector<int32_t> __tpy_async_ret = {10, 20, 30};
+        return ::tpystd::tpy::Poll<std::vector<int32_t>>::ready(std::move(__tpy_async_ret));
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
@@ -30,11 +30,11 @@ __coro_make_list make_list() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // return Int32(2)
-            __state = S_DONE;
-            int32_t __tpy_async_ret = 2;
-            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
-        }
+        // return Int32(2)
+        __state = S_DONE;
+        int32_t __tpy_async_ret = 2;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
@@ -48,46 +48,46 @@ __coro_get_multiplier get_multiplier() {
 
 // async def caller() -> Int32:
 ::tpystd::tpy::Poll<int32_t> __coro_caller::__poll__(::tpy::Waker waker) {
-    switch (__state) {
+    while (true) switch (__state) {
     case S_INITIAL: {
-            // xs = await make_list()
-            __sub_0.emplace();
-            __state = S_AFTER_AWAIT_0;
-        }
-        [[fallthrough]];
+        // xs = await make_list()
+        __sub_0.emplace();
+        __state = S_AFTER_AWAIT_0;
+        continue;
+    }
     case S_AFTER_AWAIT_0: {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
-            xs.emplace(std::move(__r0).value());
-            __sub_0.reset();
-            // multiplier = await get_multiplier()
-            __sub_1.emplace();
-            __state = S_AFTER_AWAIT_1;
-        }
-        [[fallthrough]];
+        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+        auto __r0 = __sub_0->__poll__(waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        xs.emplace(std::move(__r0).value());
+        __sub_0.reset();
+        // multiplier = await get_multiplier()
+        __sub_1.emplace();
+        __state = S_AFTER_AWAIT_1;
+        continue;
+    }
     case S_AFTER_AWAIT_1: {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r1 = __sub_1->__poll__(waker);
-            if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
-            multiplier = std::move(__r1).value();
-            __sub_1.reset();
-            // total = Int32(0)
-            total = 0;
-            // for x in xs:
-            auto& __obj_0 = (*xs);
-            auto __beg_0 = __obj_0.begin();
-            auto __end_0 = __obj_0.end();
-            for (; __beg_0 != __end_0; ++__beg_0) {
-                int32_t x = *__beg_0;
-                // total = total + x * multiplier
-                total = (::tpy::add_check<int32_t>(total, (::tpy::mul_check<int32_t>(x, multiplier))));
-            }
-            // return total
-            __state = S_DONE;
-            int32_t __tpy_async_ret = total;
-            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+        auto __r1 = __sub_1->__poll__(waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        multiplier = std::move(__r1).value();
+        __sub_1.reset();
+        // total = Int32(0)
+        total = 0;
+        // for x in xs:
+        auto& __obj_0 = (*xs);
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            int32_t x = *__beg_0;
+            // total = total + x * multiplier
+            total = (::tpy::add_check<int32_t>(total, (::tpy::mul_check<int32_t>(x, multiplier))));
         }
+        // return total
+        __state = S_DONE;
+        int32_t __tpy_async_ret = total;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();

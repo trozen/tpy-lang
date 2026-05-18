@@ -6,28 +6,28 @@ namespace tpyapp::main {
 
 // async def doubler(n: Int32, label: str) -> Int32:
 ::tpystd::tpy::Poll<int32_t> __coro_doubler::__poll__(::tpy::Waker waker) {
-    switch (__state) {
+    while (true) switch (__state) {
     case S_INITIAL: {
-            // print(label, "pre")
-            std::cout << label << " " << "pre" << "\n";
-            // await asyncio.sleep(0.001)
-            __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
-            __state = S_AFTER_AWAIT_0;
-        }
-        [[fallthrough]];
+        // print(label, "pre")
+        std::cout << label << " " << "pre" << "\n";
+        // await asyncio.sleep(0.001)
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
+        __state = S_AFTER_AWAIT_0;
+        continue;
+    }
     case S_AFTER_AWAIT_0: {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
-            (void)std::move(__r0).value();
-            __sub_0.reset();
-            // print(label, "post")
-            std::cout << label << " " << "post" << "\n";
-            // return n * Int32(2)
-            __state = S_DONE;
-            int32_t __tpy_async_ret = (::tpy::mul_check<int32_t>(n, 2));
-            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
-        }
+        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+        auto __r0 = __sub_0->__poll__(waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        // print(label, "post")
+        std::cout << label << " " << "post" << "\n";
+        // return n * Int32(2)
+        __state = S_DONE;
+        int32_t __tpy_async_ret = (::tpy::mul_check<int32_t>(n, 2));
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
@@ -41,39 +41,39 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
 
 // async def main_coro() -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
-    switch (__state) {
+    while (true) switch (__state) {
     case S_INITIAL: {
-            // t1: Task[Int32] = asyncio.create_task(doubler(Int32(5), "t1"))
-            t1 = ::tpystd::asyncio::create_task<int32_t>(doubler(5, "t1"));
-            // t2: Task[Int32] = asyncio.create_task(doubler(Int32(7), "t2"))
-            t2 = ::tpystd::asyncio::create_task<int32_t>(doubler(7, "t2"));
-            // a = await t1
-            __sub_0 = &((*t1));
-            __state = S_AFTER_AWAIT_0;
-        }
-        [[fallthrough]];
+        // t1: Task[Int32] = asyncio.create_task(doubler(Int32(5), "t1"))
+        t1 = ::tpystd::asyncio::create_task<int32_t>(doubler(5, "t1"));
+        // t2: Task[Int32] = asyncio.create_task(doubler(Int32(7), "t2"))
+        t2 = ::tpystd::asyncio::create_task<int32_t>(doubler(7, "t2"));
+        // a = await t1
+        __sub_0 = &((*t1));
+        __state = S_AFTER_AWAIT_0;
+        continue;
+    }
     case S_AFTER_AWAIT_0: {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->__poll__(waker);
-            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-            a = std::move(__r0).value();
-            __sub_0 = nullptr;
-            // b = await t2
-            __sub_1 = &((*t2));
-            __state = S_AFTER_AWAIT_1;
-        }
-        [[fallthrough]];
+        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+        auto __r0 = __sub_0->__poll__(waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        a = std::move(__r0).value();
+        __sub_0 = nullptr;
+        // b = await t2
+        __sub_1 = &((*t2));
+        __state = S_AFTER_AWAIT_1;
+        continue;
+    }
     case S_AFTER_AWAIT_1: {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r1 = __sub_1->__poll__(waker);
-            if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-            b = std::move(__r1).value();
-            __sub_1 = nullptr;
-            // print(a + b)
-            std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n";
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+        auto __r1 = __sub_1->__poll__(waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        b = std::move(__r1).value();
+        __sub_1 = nullptr;
+        // print(a + b)
+        std::cout << (::tpy::add_check<int32_t>(a, b)) << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();

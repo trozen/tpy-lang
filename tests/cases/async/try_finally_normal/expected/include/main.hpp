@@ -48,7 +48,9 @@ struct __coro_main_coro {
     enum : int32_t {
         S_INITIAL = 0,
         S_AFTER_AWAIT_0 = 1,
-        S_DONE = 2,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
     };
 
     __coro_main_coro()
@@ -56,7 +58,7 @@ struct __coro_main_coro {
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
-    void __finally_top();
+    void __finally_0();
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";

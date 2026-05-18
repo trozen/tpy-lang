@@ -9,11 +9,11 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // print("sub")
-            std::cout << "sub" << "\n";
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        // print("sub")
+        std::cout << "sub" << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
@@ -27,43 +27,50 @@ __coro_sub sub() {
 
 // async def main_coro() -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
-    switch (__state) {
+    while (true) switch (__state) {
     case S_INITIAL: {
-            try {
-                // await sub()
-                __sub_0.emplace();
-                __state = S_AFTER_AWAIT_0;
-            } catch (...) {
-                __sub_0.reset();
-                this->__finally_top();
-                throw;
-            }
-        }
-        [[fallthrough]];
+        __state = S_JOIN_1;
+        continue;
+    }
     case S_AFTER_AWAIT_0: {
-            try {
-                if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-                auto __r0 = __sub_0->__poll__(waker);
-                if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-                (void)std::move(__r0).value();
-                __sub_0.reset();
-                // print("after-await")
-                std::cout << "after-await" << "\n";
-                this->__finally_top();
-                __state = S_DONE;
-                return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-            } catch (...) {
-                __sub_0.reset();
-                this->__finally_top();
-                throw;
-            }
+        try {
+            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
+            auto __r0 = __sub_0->__poll__(waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            // print("after-await")
+            std::cout << "after-await" << "\n";
+            this->__finally_0();
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            this->__finally_0();
+            throw;
         }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_JOIN_1: {
+        try {
+            // await sub()
+            __sub_0.emplace();
+            __state = S_AFTER_AWAIT_0;
+            continue;
+        } catch (...) {
+            this->__finally_0();
+            throw;
+        }
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
 }
 
-void __coro_main_coro::__finally_top() {
+void __coro_main_coro::__finally_0() {
     // print("finally")
     std::cout << "finally" << "\n";
 }

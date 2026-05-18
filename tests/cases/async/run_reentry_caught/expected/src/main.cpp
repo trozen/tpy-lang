@@ -9,11 +9,11 @@ namespace tpyapp::main {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // print("inner ran -- should not happen")
-            std::cout << "inner ran -- should not happen" << "\n";
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-        }
+        // print("inner ran -- should not happen")
+        std::cout << "inner ran -- should not happen" << "\n";
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();
@@ -30,19 +30,19 @@ __coro_inner inner() {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
-            // try:
-            {
-                try {
-                    // asyncio.run(inner())
-                    ::tpystd::asyncio::run<std::monostate>(inner());
-                } catch (const ::tpy::RuntimeError& e) {
-                    // print("caught:", e)
-                    std::cout << "caught:" << " " << e << "\n";
-                }
+        // try:
+        {
+            try {
+                // asyncio.run(inner())
+                ::tpystd::asyncio::run<std::monostate>(inner());
+            } catch (const ::tpy::RuntimeError& e) {
+                // print("caught:", e)
+                std::cout << "caught:" << " " << e << "\n";
             }
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
         }
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
     __builtin_unreachable();

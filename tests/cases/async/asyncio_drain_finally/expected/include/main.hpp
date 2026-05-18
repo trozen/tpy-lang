@@ -29,7 +29,9 @@ struct __coro_background {
     enum : int32_t {
         S_INITIAL = 0,
         S_AFTER_AWAIT_0 = 1,
-        S_DONE = 2,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
     };
 
     __coro_background()
@@ -37,7 +39,7 @@ struct __coro_background {
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
     void cancel() { __cancel_pending = true; }
-    void __finally_top();
+    void __finally_0();
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_background&) {
         return os << "<coroutine background>";
