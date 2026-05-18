@@ -9,7 +9,7 @@
 
 namespace tpyapp::pkg {
 
-using ::tpyapp::pkg::user::use_pkg;
+namespace helper { struct Boosted; }
 
 using ::tpyapp::pkg::helper::Boosted;
 

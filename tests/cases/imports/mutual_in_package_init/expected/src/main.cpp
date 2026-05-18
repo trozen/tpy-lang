@@ -22,8 +22,10 @@ void __tpy_init() {
     // # shape, so the cpy phase is skipped via no_cpython.txt.
     // from pkg import Boosted
     ::tpyapp::pkg::__tpy_init();
-    // main()
-    main();
+    // # Print the result so a regression that silently misroutes the
+    // # suppressed `use_pkg` re-export surfaces via output.txt comparison.
+    // print(main())
+    std::cout << main() << "\n";
 }
 
 } // namespace tpyapp::main

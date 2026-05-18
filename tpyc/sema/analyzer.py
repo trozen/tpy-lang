@@ -2582,10 +2582,20 @@ class SemanticAnalyzer:
             self.ctx.registry.register_protocol(protocol_info, local_name)
             # Also bind in namespace so it can be resolved as a type
             self.ctx.global_ns.bind_imported_name(local_name, module_name, original_name)
+            # Install with chain-flattened attribution: defining_module
+            # is the *ultimate* definer (protocol_info.module), canonical
+            # name is the protocol's name in that module. Mirrors the
+            # records / enums / functions paths above; the prior
+            # `defining_module=module_name` (immediate import source)
+            # caused chain re-exports through `pkg/__init__.py` to
+            # qualify protocols via the intermediate package, which
+            # broke `RefAdapter` instantiation when the package's own
+            # `using` was suppressed for sibling-cycle reasons.
+            ult_mod = protocol_info.module if protocol_info.module else module_name
             install_binding(
                 self.ctx.module_attributes, local_name,
                 protocol_kind_for(protocol_info.is_dynamic), protocol_info,
-                defining_module=module_name, canonical_name=original_name,
+                defining_module=ult_mod, canonical_name=protocol_info.name,
             )
             return True
 

@@ -5,16 +5,18 @@
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "pkg.hpp"
+#include "pkg/a.hpp"
+#include "pkg/b.hpp"
 
 namespace tpyapp::main {
 
-inline auto& LIMIT = ::tpyapp::pkg::constants::LIMIT;
-inline auto& VERSION = ::tpyapp::pkg::constants::VERSION;
+using ::tpyapp::pkg::a::with_b;
+
+using ::tpyapp::pkg::a::A;
+using ::tpyapp::pkg::b::B;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string banner(std::string_view prefix = ::tpyapp::pkg::constants::VERSION);
-int32_t cap(int32_t n = ::tpyapp::pkg::constants::LIMIT);
 void main();
 
 void __tpy_init();

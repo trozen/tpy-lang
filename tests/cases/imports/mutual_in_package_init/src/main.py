@@ -9,4 +9,6 @@ from tpy import Int32
 def main() -> Int32:
     return Boosted(3).boost()
 
-main()
+# Print the result so a regression that silently misroutes the
+# suppressed `use_pkg` re-export surfaces via output.txt comparison.
+print(main())

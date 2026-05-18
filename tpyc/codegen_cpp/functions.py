@@ -160,9 +160,20 @@ def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
         return "nullptr"
     if isinstance(expr, TpyName):
         # Final[T] module constant in default position (sema validated).
-        # Use `imported_names` (immediate source) instead of the
-        # attribute table so the qname routes through the importer's
-        # `inline auto&` alias rather than the ultimate definer.
+        # For imported names: route through the attribute table's
+        # ultimate definer (bypasses parent-package `inline auto&`
+        # aliases that may not be visible in the sibling-cross-import +
+        # Final-reexport shape, where parent.hpp is pulled into a
+        # sub.hpp via the auto-parent walk before the sub's namespace
+        # has opened). For locally-defined Final globals we still emit
+        # the bare name -- `lookup_qualified` would resolve them to
+        # `current_module` which is `__main__` for the entry module,
+        # mismatching the actual C++ namespace `tpyapp::main`.
+        table = ctx.analyzer.ctx.module_attributes
+        cell = table.get(expr.name) if table else None
+        bd = cell.binding if cell is not None else None
+        if bd is not None and bd.defining_module is not None:
+            return qualified_cpp_name(bd.defining_module, bd.canonical_name)
         imp = ctx.analyzer.imported_names.get(expr.name)
         if imp is not None:
             source_module, original_name = imp

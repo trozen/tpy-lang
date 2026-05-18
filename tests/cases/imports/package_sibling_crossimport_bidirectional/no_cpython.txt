@@ -1,0 +1,4 @@
+Bidirectional sibling cross-import creates a Python-level cycle that
+TPy compiles cleanly (pre-registered skeletons + out-of-line method
+bodies) but CPython rejects at runtime with `ImportError: cannot
+import name from partially initialized module`.

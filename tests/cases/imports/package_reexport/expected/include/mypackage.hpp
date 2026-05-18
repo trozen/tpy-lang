@@ -8,8 +8,6 @@
 
 namespace tpyapp::mypackage {
 
-using ::tpyapp::mypackage::utils::add;
-
 extern int32_t VERSION;
 inline constexpr std::string_view __name__ = "mypackage";
 

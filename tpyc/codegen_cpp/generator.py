@@ -1122,6 +1122,8 @@ class CodeGenerator:
                 # For C-linkage functions, emit an extern "C" re-declaration.
                 # Using/alias re-exports don't work because the C++ name may
                 # differ from the Python name (e.g., @native("SDL_GetTicks", binding="C") def get_ticks).
+                # extern "C" re-decls don't reach into a sub-namespace, so
+                # the sibling-cycle suppression below does not apply here.
                 if func_infos and (func_infos[0].is_native_c or func_infos[0].is_extern_c):
                     self.functions.gen_extern_c_redecl(hpp, func_infos[0])
                     any_written = True
@@ -1131,6 +1133,13 @@ class CodeGenerator:
                     fi.is_decorator_stub or fi.native_name or fi.cpp_template or fi.special_handling
                     for fi in func_infos
                 ):
+                    continue
+                # Sibling cycle: the same shape as the cycle_peers check
+                # above, induced by the parent-walk in
+                # `_write_header_preamble` for descendant submodules.
+                # Skipped only after the extern "C" re-decl branch since
+                # that one doesn't reach into the sub-namespace.
+                if self._is_descendant_submodule(source_module):
                     continue
                 qualified = qualified_cpp_name(source_module, original_name)
                 if local_name == original_name:
@@ -1168,6 +1177,18 @@ class CodeGenerator:
             e for e in record_reexports
             if e[1] not in self.ctx.implicit_stdlib_modules
         ]
+        # When this module is a package re-exporting records/enums from
+        # a descendant submodule, the sub's header pulls in our header
+        # via the parent-walk (`_write_header_preamble`), so the
+        # following `using ::cur::sub::Name;` lines would otherwise
+        # resolve against a not-yet-opened `cur::sub` namespace whenever
+        # the sub is compiled first. Forward-declare those types in
+        # their (relative) sub-namespace so the using-decls resolve at
+        # any include order. Iterate the implicit-stdlib-filtered list
+        # so we don't fwd-decl entries the emit-block will drop anyway.
+        self._emit_sibling_submodule_fwd_decls(
+            hpp, record_reexports_external, enum_reexports,
+            _record_skip, _enum_skip)
         self._emit_alias_using_block(hpp, record_reexports_external, _record_skip)
 
         # Re-exported protocols (@dynamic generates an abstract base
@@ -1195,6 +1216,15 @@ class CodeGenerator:
         # downstream emit paths, so skipping the `using` is safe. The
         # cross-module case that DOES need the `using` is outside-stdlib
         # (e.g. asyncio importing protocols from a sibling submodule).
+        # Descendant-submodule sources are NOT dropped here unlike the
+        # function/variable paths above: a static protocol compiles to
+        # a C++ concept (not forward-declarable), and the parent's own
+        # .cpp emits bare protocol names in function signatures
+        # (e.g. `Box<AnyTask>&&` in asyncio.cpp), relying on this
+        # `using` to bring the name into scope. The cycle would only
+        # actually fire if the source sub-module itself triggers the
+        # parent-walk back via a dotted user-module import; that
+        # narrower shape isn't reproduced in the test corpus today.
         protocol_reexports_external = [
             e for e in protocol_reexports
             if e[1] not in self.ctx.implicit_stdlib_modules
@@ -1211,11 +1241,18 @@ class CodeGenerator:
         #     ModuleVarInfo.native_cpp_name);
         #   - variables sourced from a cycle peer (variables aren't
         #     declared in `<peer>_fwd.hpp`, so a `using` would reach
-        #     into the peer's full header).
+        #     into the peer's full header);
+        #   - variables sourced from a descendant submodule (the sub's
+        #     parent-walk pulls us back in, so the `using` would
+        #     resolve against a not-yet-opened sub namespace whenever
+        #     the sub is compiled first -- mirror of the function path
+        #     above). Safe to drop now that `default_to_cpp` routes
+        #     default-arg references through the defining module.
         if var_reexports:
             any_written = False
             for local_name, source_module, original_name, _info in var_reexports:
-                if source_module in self.ctx.cycle_peers:
+                if (source_module in self.ctx.cycle_peers
+                        or self._is_descendant_submodule(source_module)):
                     continue
                 src_info = self.analyzer.registry.get_module(source_module)
                 if src_info is not None and src_info.is_native_module:
@@ -1225,6 +1262,85 @@ class CodeGenerator:
                 any_written = True
             if any_written:
                 hpp.write("\n")
+
+    def _is_descendant_submodule(self, source_module: str) -> bool:
+        """True when `source_module` is a strict descendant of the
+        current (package) module. Used to identify re-exports that
+        induce a parent<->sub header cycle: the sub's parent-walk
+        emits our header first, so any `using ::cur::sub::Name;`
+        we emit inside our namespace runs while `cur::sub` is mid-
+        parsing and hasn't opened yet.
+        """
+        cur = self.ctx.module_name
+        return source_module.startswith(cur + ".")
+
+    def _emit_sibling_submodule_fwd_decls(
+        self, hpp: TextIO,
+        record_entries: list[tuple[str, str, str, object]],
+        enum_entries: list[tuple[str, str, str, object]],
+        record_skip: Callable[[object, str], bool],
+        enum_skip: Callable[[object, str], bool],
+    ) -> None:
+        """Emit forward declarations of records/enums re-exported from
+        descendant submodules, grouped by relative sub-namespace path.
+        Lives inside our own namespace block, so relative names like
+        `namespace sub { struct X; }` resolve to `cur::sub::X` and
+        satisfy the using-decls emitted just after this block. Skip
+        filters mirror the using-decl emitter so we don't fwd-decl
+        natives, keyword stubs, or nested-name types that the
+        using-decl emitter would also reject.
+        """
+        cur = self.ctx.module_name
+        by_subpath: dict[str, list[str]] = {}
+
+        def add(entry, kind: str, skip_fn: Callable[[object, str], bool]) -> None:
+            local_name, source_module, original_name, info = entry
+            if not self._is_descendant_submodule(source_module):
+                return
+            if "." in local_name or "." in original_name:
+                return
+            if skip_fn(info, original_name):
+                return
+            subpath = source_module[len(cur) + 1:].replace(".", "::")
+            if kind == "record":
+                ri = info if isinstance(info, RecordInfo) else (
+                    self.analyzer.registry.get_record(original_name))
+                if ri is not None and ri.type_params:
+                    # Class template: mirror the full template header from
+                    # `gen_record_template_header` so the forward decl
+                    # agrees with the sub-header's declaration.
+                    header = self.protocols.gen_record_template_header(
+                        ri.type_params, ri.type_param_bounds,
+                        ri.type_param_kinds)
+                    by_subpath.setdefault(subpath, []).append(
+                        f"{header} struct {original_name};")
+                else:
+                    by_subpath.setdefault(subpath, []).append(
+                        f"struct {original_name};")
+            else:
+                # `enum class Name : underlying;` -- underlying must
+                # match the definition. Resolve via the registered
+                # NominalType (same source the `<peer>_fwd.hpp` path
+                # uses in `generate_fwd_header`).
+                et = info if info is not None else (
+                    self.analyzer.registry.get_enum(original_name))
+                einfo = enum_info_of(et) if et is not None else None
+                underlying = (einfo.underlying_type.to_cpp()
+                              if einfo is not None else "int32_t")
+                by_subpath.setdefault(subpath, []).append(
+                    f"enum class {original_name} : {underlying};")
+
+        for entry in record_entries:
+            add(entry, "record", record_skip)
+        for entry in enum_entries:
+            add(entry, "enum", enum_skip)
+
+        if not by_subpath:
+            return
+        for subpath in sorted(by_subpath):
+            decls = " ".join(by_subpath[subpath])
+            hpp.write(f"namespace {subpath} {{ {decls} }}\n")
+        hpp.write("\n")
 
     def _emit_alias_using_block(
         self, hpp: TextIO,

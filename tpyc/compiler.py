@@ -3393,8 +3393,12 @@ class Compiler:
         for name, pinfo in exports.protocols.items():
             if name in table:
                 continue
+            ult_mod = pinfo.module if pinfo.module else None
+            defining = ult_mod if ult_mod and ult_mod != my_name else None
             install_binding(
                 table, name, protocol_kind_for(pinfo.is_dynamic), pinfo,
+                defining_module=defining,
+                canonical_name=(pinfo.name if defining else None),
             )
         for name, etype in exports.enums.items():
             if name in table:

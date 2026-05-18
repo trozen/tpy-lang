@@ -8,6 +8,8 @@
 
 namespace tpyapp::pkg {
 
+namespace sub { struct Point; }
+
 using P = ::tpyapp::pkg::sub::Point;
 
 inline constexpr std::string_view __name__ = "pkg";

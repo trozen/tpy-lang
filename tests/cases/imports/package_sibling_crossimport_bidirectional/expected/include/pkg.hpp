@@ -4,13 +4,16 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
-#include "pkg/colors.hpp"
+#include "pkg/a.hpp"
+#include "pkg/b.hpp"
 
 namespace tpyapp::pkg {
 
-namespace colors { enum class Color : int32_t; }
+namespace a { struct A; }
+namespace b { struct B; }
 
-using C = ::tpyapp::pkg::colors::Color;
+using ::tpyapp::pkg::a::A;
+using ::tpyapp::pkg::b::B;
 
 inline constexpr std::string_view __name__ = "pkg";
 
