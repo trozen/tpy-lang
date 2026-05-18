@@ -12,7 +12,7 @@ void main() {
     storage.init(0, 42);
     // storage.init(UInt32(1), 99)
     storage.init(1, 99);
-    // w = Wrapper[Int32](take_ptr(storage))
+    // w = Wrapper[Int32](storage)
     Wrapper<int32_t> w = Wrapper<int32_t>(&storage);
     // print(w.load_at(UInt32(0)))
     std::cout << w.load_at(0) << "\n";

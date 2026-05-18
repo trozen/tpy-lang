@@ -96,14 +96,14 @@ void test_record_to_ptr() {
     // ptr: Ptr[Point] = pt
     Point* ptr = &pt;
     // print(ptr.x)  # 10
-    std::cout << ::tpy::deref_check(ptr).x << "\n";
+    std::cout << ptr->x << "\n";
     // # Assignment
     // pt2: Point = Point(30, 40)
     Point pt2 = Point(30, 40);
     // ptr = pt2
     ptr = &pt2;
     // print(ptr.x)  # 30
-    std::cout << ::tpy::deref_check(ptr).x << "\n";
+    std::cout << ptr->x << "\n";
     // # Function argument (modifies through pointer)
     // pt3: Point = Point(50, 60)
     Point pt3 = Point(50, 60);
@@ -124,14 +124,14 @@ void test_record_to_const_ptr() {
     // cptr: Ptr[readonly[Point]] = pt
     const Point* cptr = &pt;
     // print(cptr.x)  # 5
-    std::cout << ::tpy::deref_check(cptr).x << "\n";
+    std::cout << cptr->x << "\n";
     // # Assignment
     // pt2: Point = Point(25, 35)
     Point pt2 = Point(25, 35);
     // cptr = pt2
     cptr = &pt2;
     // print(cptr.x)  # 25
-    std::cout << ::tpy::deref_check(cptr).x << "\n";
+    std::cout << cptr->x << "\n";
     // # Function argument
     // pt3: Point = Point(100, 200)
     Point pt3 = Point(100, 200);
@@ -203,7 +203,7 @@ void test_ptr_to_const_ptr() {
     // cptr: Ptr[readonly[Point]] = ptr
     const Point* cptr = ptr;
     // print(cptr.x)  # 3
-    std::cout << ::tpy::deref_check(cptr).x << "\n";
+    std::cout << cptr->x << "\n";
     // # Assignment
     // pt2: Point = Point(5, 6)
     Point pt2 = Point(5, 6);
@@ -212,7 +212,7 @@ void test_ptr_to_const_ptr() {
     // cptr = ptr2
     cptr = ptr2;
     // print(cptr.x)  # 5
-    std::cout << ::tpy::deref_check(cptr).x << "\n";
+    std::cout << cptr->x << "\n";
     // # Function argument
     // pt3: Point = Point(7, 8)
     Point pt3 = Point(7, 8);

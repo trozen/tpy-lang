@@ -1100,6 +1100,16 @@ class TypeCompatibility:
         )
         if coercion is None:
             return expr
+        # Value-to-mutable-Ptr coercions (`record_to_ptr`, `upcast_to_ptr`)
+        # emit `&expr` and require the source storage to stay mutable. Mark
+        # the source roots as mutated so Phase 2 keeps them as `T&` (not
+        # `const T&`) -- same propagation the explicit `take_ptr(x)` path
+        # gets via `value_ptr_coercion` handling in calls.py.
+        if coercion.name in ("record_to_ptr", "upcast_to_ptr"):
+            for name in addr_taken_roots(expr):
+                root = self.ctx.func.borrow_tracker.effective_storage(name)
+                self.ctx.mark_param_mutated(root)
+                self.ctx.mark_loop_var_mutated(root)
         runtime_bigint = False
         if coercion.name == "int_literal_to_fixed_int":
             runtime_bigint = self.is_runtime_bigint_expr(expr)

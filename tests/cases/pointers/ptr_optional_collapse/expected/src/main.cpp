@@ -46,7 +46,7 @@ Node* find(std::vector<Node>& items, const ::tpy::BigInt& target) {
         auto&& it = *__beg_0;
         // if it.val == target:
         if ((it.val == target)) {
-            // p: Ptr[Node] = take_ptr(it)
+            // p: Ptr[Node] = it
             Node* p = &it;
             // return p
             return p;
@@ -85,7 +85,7 @@ Node* find(std::vector<Node>& items, const ::tpy::BigInt& target) {
 std::tuple<Node*, ::tpy::BigInt> first_pair(std::vector<Node>& items) {
     // if len(items) > 0:
     if ((::tpy::__len__(items) > 0)) {
-        // p: Ptr[Node] = take_ptr(items[0])
+        // p: Ptr[Node] = items[0]
         Node* p = &::tpy::__getitem__(items, 0);
         // return (p, items[0].val)
         return std::tuple<Node*, ::tpy::BigInt>{p, ::tpy::__getitem__(items, 0).val};
@@ -111,7 +111,7 @@ void test_collapse_passthrough() {
     std::vector<Node> items = {Node(::tpy::BigInt(1))};
     // print(passthrough(None) is None)
     std::cout << ::tpy::print_bool((passthrough(nullptr) == nullptr)) << "\n";
-    // p1: Ptr[Node] = take_ptr(items[0])
+    // p1: Ptr[Node] = items[0]
     Node* p1 = &::tpy::__getitem__(items, 0);
     // r = passthrough(p1)
     Node* r = passthrough(p1);
@@ -154,7 +154,7 @@ void test_ptr_value_into_optional_return() {
 void test_readonly_variant() {
     // items: list[Node] = [Node(3)]
     std::vector<Node> items = {Node(::tpy::BigInt(3))};
-    // cp: Ptr[readonly[Node]] = take_ptr(items[0])
+    // cp: Ptr[readonly[Node]] = items[0]
     const Node* cp = &::tpy::__getitem__(items, 0);
     // rc = passthrough_ro(cp)
     const Node* rc = passthrough_ro(cp);
@@ -169,7 +169,7 @@ void test_readonly_variant() {
 void test_ptr_into_optional_call_arg() {
     // items: list[Node] = [Node(1)]
     std::vector<Node> items = {Node(::tpy::BigInt(1))};
-    // p: Ptr[Node] = take_ptr(items[0])
+    // p: Ptr[Node] = items[0]
     Node* p = &::tpy::__getitem__(items, 0);
     // print(consume(p))
     std::cout << consume(p) << "\n";
@@ -189,7 +189,7 @@ void test_ptr_into_optional_tuple_slot() {
 void test_mutable_to_readonly_widening() {
     // items: list[Node] = [Node(1)]
     std::vector<Node> items = {Node(::tpy::BigInt(1))};
-    // p: Ptr[Node] = take_ptr(items[0])
+    // p: Ptr[Node] = items[0]
     Node* p = &::tpy::__getitem__(items, 0);
     // print(consume_ro(p))
     std::cout << consume_ro(p) << "\n";

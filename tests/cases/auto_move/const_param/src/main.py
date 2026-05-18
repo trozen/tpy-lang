@@ -23,9 +23,9 @@ def mutate_point(p: Point) -> None:
 def get_ptr(p: Point) -> Ptr[Point]:
     return take_ptr(p)
 
-# take_ptr(items[i]) subscript address-taking: items must stay vector& (not const)
+# items[i] subscript address-taking: items must stay vector& (not const)
 def get_elem_ptr(items: list[Point], i: Int32) -> Ptr[Point]:
-    return take_ptr(items[i])
+    return items[i]
 
 # Optional[Point] coercion: &(p) taken -- must stay Point&
 def to_optional(p: Point) -> Optional[Point]:
@@ -54,7 +54,7 @@ def main() -> None:
 
     pts: list[Point] = [Point(Int32(10), Int32(20)), Point(Int32(30), Int32(40))]
     ptr = get_elem_ptr(pts, Int32(0))
-    print(ptr.__deref__().x)
+    print(ptr.x)
 
     nums: list[Int32] = [Int32(10), Int32(20)]
     print(sum_list(nums))

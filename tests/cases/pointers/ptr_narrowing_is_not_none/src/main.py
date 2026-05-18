@@ -1,5 +1,5 @@
 # Ptr non-null narrowing: skip deref_check after `is not None` guard
-from tpy import Ptr, Int32, readonly, take_ptr
+from tpy import Ptr, Int32, readonly
 
 class Point:
     x: Int32
@@ -58,8 +58,8 @@ def test_merge_no_guarantee(p: Ptr[Point]) -> Int32:
 
 def main() -> None:
     pt = Point(Int32(10), Int32(20))
-    p: Ptr[Point] = take_ptr(pt)
-    cp: Ptr[readonly[Point]] = take_ptr(pt)
+    p: Ptr[Point] = pt
+    cp: Ptr[readonly[Point]] = pt
     print(test_if_not_none(p))
     print(test_is_none_early_return(p))
     print(test_assert(p))

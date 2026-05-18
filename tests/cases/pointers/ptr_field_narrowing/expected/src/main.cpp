@@ -80,7 +80,7 @@ int32_t read_after_container_pass(const Container& c) {
 void main() {
     // n = Node(Int32(42))
     Node n = Node(42);
-    // p: Ptr[Node] = take_ptr(n)
+    // p: Ptr[Node] = n
     Node* p = &n;
     // c = Container(p)
     Container c = Container(p);

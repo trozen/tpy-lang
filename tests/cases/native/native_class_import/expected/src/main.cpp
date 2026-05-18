@@ -11,7 +11,7 @@ void main() {
     ::ns::Vec2 v = ::ns::Vec2(3, 7);
     // print(v.x)
     std::cout << v.x << "\n";
-    // print(vec2_sum(take_ptr(v)))
+    // print(vec2_sum(v))
     std::cout << ::vec2_sum(&v) << "\n";
     // print(v.sum())
     std::cout << v.sum() << "\n";
@@ -19,7 +19,7 @@ void main() {
     ::Rect r = ::Rect{0, 0, 40, 30};
     // print(r.w)
     std::cout << r.w << "\n";
-    // print(rect_area(take_ptr(r)))
+    // print(rect_area(r))
     std::cout << rect_area(&r) << "\n";
     // print(r.area())
     std::cout << r.area() << "\n";

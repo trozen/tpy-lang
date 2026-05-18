@@ -17,22 +17,22 @@ void main() {
     // b: Point = Point(Int32(3), Int32(4))
     Point b = Point(3, 4);
     // # --- Branch: both sides non-null → intersection keeps non-null ---
-    // p: Ptr[Point] = take_ptr(a)
+    // p: Ptr[Point] = a
     Point* p = &a;
     // if a.x > Int32(0):
     if ((a.x > 0)) {
-        // p = take_ptr(b)
+        // p = b
         p = &b;
     // else:
     } else {
-        // p = take_ptr(a)
+        // p = a
         p = &a;
     }
     // # Both branches assign from take_ptr(lvalue), so p is still non-null
     // print(p.x)  # tpyc: ok
     std::cout << p->x << "\n";
     // # --- Branch: one side unknown → intersection clears ---
-    // q: Ptr[Point] = take_ptr(a)
+    // q: Ptr[Point] = a
     Point* q = &a;
     // if a.x > Int32(0):
     if ((a.x > 0)) {
@@ -44,7 +44,7 @@ void main() {
     // print(q.x)  # tpyc: ok
     std::cout << ::tpy::deref_check(q).x << "\n";
     // # --- Loop: non-null before loop, not reassigned inside → preserved ---
-    // r: Ptr[Point] = take_ptr(a)
+    // r: Ptr[Point] = a
     Point* r = &a;
     // i: Int32 = Int32(0)
     int32_t i = 0;
@@ -56,7 +56,7 @@ void main() {
         i = (::tpy::add_check<int32_t>(i, 1));
     }
     // # --- Loop: reassigned from unknown inside → cleared ---
-    // s: Ptr[Point] = take_ptr(a)
+    // s: Ptr[Point] = a
     Point* s = &a;
     // j: Int32 = Int32(0)
     int32_t j = 0;

@@ -153,7 +153,7 @@ void __tpy_init() {
     // global_ptr: Ptr[Point] = local_pt
     global_ptr = &(*local_pt);
     // print(global_ptr.a)
-    std::cout << ::tpy::deref_check(global_ptr).a << "\n";
+    std::cout << global_ptr->a << "\n";
     // print(global_ptr.b)
     std::cout << global_ptr->b << "\n";
     // # Test 9: Int32 += with global default-int value

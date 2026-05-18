@@ -99,7 +99,7 @@ struct SimpleList {
 
     // def __iter__(self) -> Own[StorageIter[T, N]]:
     StorageIter<T, N> __iter__() {
-        // return StorageIter[T, N](take_ptr(self._storage), self._size)
+        // return StorageIter[T, N](self._storage, self._size)
         return StorageIter<T, N>(&this->_storage, this->_size);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.SimpleList";

@@ -24,7 +24,7 @@ void main() {
     // pt: Point = Point(Int32(10), Int32(20))
     Point pt = Point(10, 20);
     // # Local Ptr from lvalue: provably non-null, skip null check
-    // p: Ptr[Point] = take_ptr(pt)
+    // p: Ptr[Point] = pt
     Point* p = &pt;
     // print(p.x)
     std::cout << p->x << "\n";
@@ -33,7 +33,7 @@ void main() {
     // print(p.sum())
     std::cout << p->sum() << "\n";
     // # Local Ptr[readonly[...]] from lvalue: provably non-null, skip null check
-    // cp: Ptr[readonly[Point]] = take_ptr(pt)
+    // cp: Ptr[readonly[Point]] = pt
     const Point* cp = &pt;
     // print(cp.x)
     std::cout << cp->x << "\n";

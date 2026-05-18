@@ -25,7 +25,7 @@ void test_ptr_to_const_ptr() {
     Point* mp = &pt;
     // # Read via mutable pointer
     // print(mp.x)
-    std::cout << ::tpy::deref_check(mp).x << "\n";
+    std::cout << mp->x << "\n";
     // print(mp.y)
     std::cout << mp->y << "\n";
     // # Modify through mutable pointer
@@ -52,10 +52,10 @@ void test_const_ptr_preserves_value() {
     // cp: Ptr[readonly[Point]] = mp
     const Point* cp = mp;
     // print(cp.x)
-    std::cout << ::tpy::deref_check(cp).x << "\n";
+    std::cout << cp->x << "\n";
     // # Modify original via mutable pointer
     // mp.x = 999
-    ::tpy::deref_check(mp).x = 999;
+    mp->x = 999;
     // print(cp.x)
     std::cout << cp->x << "\n";
 }

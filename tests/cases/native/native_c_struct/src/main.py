@@ -1,5 +1,5 @@
 from tpy.extern import native
-from tpy import Int32, Ptr, take_ptr
+from tpy import Int32, Ptr
 
 # @native(binding="C") class -- C struct import (aggregate init syntax)
 @native(binding="C")
@@ -28,12 +28,12 @@ def main() -> None:
     p = Point(Int32(10), Int32(20))
     print(p.x)
     print(p.y)
-    print(point_sum(take_ptr(p)))
+    print(point_sum(p))
     print(p.manhattan())
 
     r = MyRect(Int32(0), Int32(0), Int32(800), Int32(600))
     print(r.w)
-    print(rect_area(take_ptr(r)))
+    print(rect_area(r))
     print(r.area())
 
 main()

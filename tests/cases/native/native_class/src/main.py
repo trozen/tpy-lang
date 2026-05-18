@@ -1,5 +1,5 @@
 from tpy.extern import native
-from tpy import Int32, Float, Ptr, take_ptr
+from tpy import Int32, Float, Ptr
 
 # @native class — C++ class import (constructor call syntax)
 @native
@@ -30,7 +30,7 @@ def main() -> None:
     v = Vec2(Int32(3), Int32(4))
     print(v.x)
     print(v.y)
-    print(vec2_sum(take_ptr(v)))
+    print(vec2_sum(v))
     print(v.sum())
     print(v.dot(Vec2(Int32(1), Int32(2))))
 
@@ -40,7 +40,7 @@ def main() -> None:
 
     c = Color(Int32(100), Int32(150), Int32(200))
     print(c.r)
-    print(color_brightness(take_ptr(c)))
+    print(color_brightness(c))
     print(c.brightness())
 
 main()

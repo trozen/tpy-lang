@@ -16,7 +16,7 @@ void main() {
     ::SDL_Rect r = ::SDL_Rect{0, 0, 800, 600};
     // print(r.w)
     std::cout << r.w << "\n";
-    // print(use_rect(take_ptr(r)))
+    // print(use_rect(r))
     std::cout << use_rect(&r) << "\n";
 }
 

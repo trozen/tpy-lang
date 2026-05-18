@@ -246,6 +246,16 @@ Size is one of `small` (hours-1d), `medium` (1-3d), `large` (~week), `xlarge` (b
 - **[LOW medium]** `v = s[0]` where `s: Span[str]` registers `s` as the str-borrow source, but mutations to the backing container don't invalidate `v` (alias chain).
   `Span[str]` subscript view: `SpanType.subscript_borrows()` is intentionally not overridden because `v = s[0]` registers `s` as the str-borrow source, but mutations to the backing container (`arr[0] = "x"` where `s = Span[str](arr)`) call `mark_str_borrowers_mutated("arr")` -- missing `s`. Fix requires `mark_str_borrowers_mutated` to chase the borrow tracker's alias chain so backing-container mutations also invalidate views borrowed through spans.
 - **[LOW large]** Only built-in view types (Span, Ptr) are tracked as borrows; user-type view tracking needs the field-vs-class annotation design.
+- **[LOW small]** Non-null Ptr provenance survives loop back-edges even when the loop body reassigns the var from an opaque source. Concretely, in `tests/cases/pointers/ptr_non_null_branch/src/main.py` the `s` loop:
+  ```python
+  s: Ptr[Point] = a
+  while j < Int32(3):
+      print(s.x)         # access elided to `s->x` on every iteration
+      s = get_ptr(s)     # opaque return, unknown provenance
+      j = j + Int32(1)
+  print(s.x)             # correctly kept as deref_check after loop
+  ```
+  The access on iteration 2+ reads `s` after it was overwritten by `get_ptr(s)` (opaque to the analyzer), but the analyzer still emits `s->x` instead of `deref_check(s).x`. Post-loop access correctly re-inserts the check, so the bug is localized to the loop body. The likely cause: the non-null tracker treats variables as straight-line flow facts and doesn't widen at loop back-edges the way it does for branch joins. Compare with the correctly-handled cases in the same test: the branch case (`q` at line 32) properly intersects across both arms. Probably lives in `tpyc/sema/flow_facts.py` or wherever non-null facts are propagated across iterations. Not introduced by the value-to-Ptr coercion refactor -- mirrored the prior `take_ptr` shape's behavior in this snapshot. Practically harmless when the body reassignment is the identity (as in this test) but unsound in general.
   View type borrow tracking for user types: currently only built-in view types (Span, Ptr) are tracked as borrows. Likely needed when designing tpy stdlib types. See escape analysis design doc (Future Extensions) for field-level vs class-level annotation tradeoffs.
 - **[LOW medium]** Hoisted `string_view` (or `const auto&`) loop variable still references container memory after the loop; mutation post-loop dangles it.
   Hoisted non-value loop variable as view: `for s in items: ... print(s)` where `s` is `std::string_view` -- the hoisted `s` is a view into the container, not a copy. If the container is mutated between loop exit and use of `s`, the view dangles. Same concern exists with `const auto&` loop vars. Consider emitting a value copy for hoisted non-value loop variables.

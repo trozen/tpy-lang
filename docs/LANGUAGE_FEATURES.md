@@ -152,7 +152,7 @@ def process(data: MyClass) -> None:  # data is passed by reference
     data.value = 42  # modifies original
 ```
 
-**Const reference optimization**: Record and container parameters that are never mutated (no field writes, no mutating method calls, no address-taking via `take_ptr(param)`, no `Optional[T]` coercion, no mutable `Span` coercion) are automatically passed as `const T&` instead of `T&`. This applies transitively via call-graph propagation: if a wrapper only passes a parameter to a non-mutating callee, the wrapper parameter also becomes `const T&`. Protocol-typed parameters (both static template types and `@dynamic` base classes) receive the same optimization: a non-mutated protocol param emits `const T_x&` / `const Base&` instead of `T_x&` / `Base&`. For protocol params, a call to a non-`@readonly` protocol method counts as mutation of the receiver.
+**Const reference optimization**: Record and container parameters that are never mutated (no field writes, no mutating method calls, no address-taking via `take_ptr(param)` or implicit value-to-`Ptr[T]` coercion, no `Optional[T]` coercion, no mutable `Span` coercion) are automatically passed as `const T&` instead of `T&`. This applies transitively via call-graph propagation: if a wrapper only passes a parameter to a non-mutating callee, the wrapper parameter also becomes `const T&`. Protocol-typed parameters (both static template types and `@dynamic` base classes) receive the same optimization: a non-mutated protocol param emits `const T_x&` / `const Base&` instead of `T_x&` / `Base&`. For protocol params, a call to a non-`@readonly` protocol method counts as mutation of the receiver.
 
 **Element-ref deferral**: taking an element reference (`v = items[i]`) does not immediately mark `items` as mutated. The source container is only marked when the borrowed element is actually written through (field write, subscript write, or pass to mutating callee). This allows read-only element-ref patterns to preserve `const T&` for the container param:
 
@@ -921,6 +921,8 @@ Implicit conversions between records and pointers with safety checks:
 - `Span[readonly[T]]`/str elements cannot convert to `Ptr[T]` (read-only source)
 - `Ptr[T]` → `T` includes runtime null check that panics if null
 
+**Borrow + mutation semantics**: every implicit value-to-`Ptr[T]` coercion (the `T (record) -> Ptr[T]` family and the `Child -> Ptr[Parent / @dynamic Protocol]` upcasts) carries the same borrow tracking and mutation signal as an explicit `take_ptr(x)` call: the source storage is registered as a `Ptr` borrow, and (for mutable target) the source root is marked mutated so Phase 2 keeps it as `T&` (not `const T&`). The destination Ptr is also recorded as non-null (since `&lvalue` can't be null), enabling deref-check elision on subsequent field/method accesses.
+
 #### Pointer Constructors (Working)
 
 Explicit constructors for `Ptr[T]` and `Ptr[readonly[T]]`, as an alternative to implicit coercions:
@@ -1017,6 +1019,7 @@ Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref_
 **Null-safety:** Auto-deref through `Ptr[T]`/`Ptr[readonly[T]]` is null-checked at runtime via `tpy::deref_check()`. A null pointer access panics with "null pointer dereference" instead of causing undefined behavior. Pointers with known non-null provenance skip the null check and use direct `->` access. Non-null provenance is established by:
 
 - `take_ptr`: `p = take_ptr(x)` (pointer to a local variable)
+- Direct value-to-`Ptr[T]` coercion: `p: Ptr[T] = x` / `cp: Ptr[readonly[T]] = x` / `bp: Ptr[Parent] = child` (emits `&x` -- same provenance as `take_ptr`)
 - Condition narrowing: `if p is not None:` / `if p is None: return` / `assert p is not None` / `while p is not None:`
 - Field-path narrowing: `if self.ptr_field is not None:` / `if obj.field is not None:` (dotted paths at any depth)
 - Assignment from a known non-null variable

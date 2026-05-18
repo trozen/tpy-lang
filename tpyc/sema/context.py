@@ -31,7 +31,7 @@ from ..namespace import Namespace
 from ..type_def_registry import int_traits_of
 from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
-    TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr,
+    TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr,
     TpyNestedDef,
 )
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
@@ -85,6 +85,37 @@ def _storage_root(key: str) -> str:
     """
     dot = key.find(".")
     return key if dot == -1 else key[:dot]
+
+
+def expr_yields_non_null_ptr(expr: TpyExpr, non_null_vars: set[str]) -> bool:
+    """Whether evaluating `expr` produces a Ptr value with known non-null provenance.
+
+    Three independent sources, all unified here so consumers (local-init,
+    rebind, future return-site / expression-context uses) don't re-enumerate:
+
+    1. Address-taking coercion (`&{e}` -- the `produces_non_null_ptr` flag on
+       the Coercion). Covers `p: Ptr[T] = x` and the inheritance / @dynamic
+       upcasts. A chain of coercions is walked: any non-address-taking outer
+       coercion (e.g. the trivial `Ptr[T] -> Ptr[readonly[T]]`) is transparent
+       and provenance is inherited from the inner expression.
+    2. Ptr-returning call. Either the call's return type is itself Ptr-typed
+       (`take_ptr(x)`, explicit `Ptr(x)` constructor) or the function carries
+       the `@value_ptr_coercion` flag (its Ptr param coerces a T arg via `&`).
+    3. Read from a name that earlier analysis already marked non-null.
+    """
+    while isinstance(expr, TpyCoerce):
+        if expr.coercion.produces_non_null_ptr:
+            return True
+        expr = expr.expr
+    if isinstance(expr, TpyCall) and expr.args:
+        if expr.call_type is not None and expr.call_type.is_pointer():
+            return True
+        fi = expr.resolved_function_info
+        if fi is not None and fi.value_ptr_coercion:
+            return True
+    if isinstance(expr, TpyName):
+        return expr.name in non_null_vars
+    return False
 
 
 def _borrow_storage_root(expr: TpyExpr) -> str | None:

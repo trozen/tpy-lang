@@ -96,9 +96,9 @@ int32_t test_merge_no_guarantee(Point* p) {
 void main() {
     // pt = Point(Int32(10), Int32(20))
     Point pt = Point(10, 20);
-    // p: Ptr[Point] = take_ptr(pt)
+    // p: Ptr[Point] = pt
     Point* p = &pt;
-    // cp: Ptr[readonly[Point]] = take_ptr(pt)
+    // cp: Ptr[readonly[Point]] = pt
     const Point* cp = &pt;
     // print(test_if_not_none(p))
     std::cout << test_if_not_none(p) << "\n";

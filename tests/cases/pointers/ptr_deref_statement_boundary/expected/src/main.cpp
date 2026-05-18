@@ -40,7 +40,7 @@ void assign_first(A* p) {
 void main() {
     // a = A(10, 20)
     A a = A(10, 20);
-    // p: Ptr[A] = take_ptr(a)
+    // p: Ptr[A] = a
     A* p = &a;
     // cross_statement(p)
     cross_statement(p);

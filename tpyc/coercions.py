@@ -155,6 +155,9 @@ class Coercion:
     # promotion in Python arithmetic).
     widening_safe: bool = False
     check_range: Optional[Callable[[TpyType, TpyType], bool]] = None
+    # Address-taking coercions (`&{expr}`) produce a Ptr that is unconditionally
+    # non-null. Consumers can elide the deref null-check, same as for `take_ptr`.
+    produces_non_null_ptr: bool = False
     codegen: Callable[[str, TpyType, TpyType, CoercionContext], str] = lambda expr, _a, _e, _c: expr
 
 
@@ -453,6 +456,7 @@ COERCIONS: list[Coercion] = [
         requires_lvalue=True,
         requires_mutable_lvalue=True,
         forbid_return_local=True,
+        produces_non_null_ptr=True,
         codegen=lambda e, _a, _b, _c: f"&{e}",
     ),
     Coercion(
@@ -465,6 +469,7 @@ COERCIONS: list[Coercion] = [
         ),
         requires_lvalue=True,
         forbid_return_local=True,
+        produces_non_null_ptr=True,
         codegen=lambda e, _a, _b, _c: f"&{e}",
     ),
     Coercion(
@@ -599,6 +604,7 @@ VALUE_TO_PTR = Coercion(
     requires_lvalue=True,
     requires_mutable_lvalue=True,
     forbid_return_local=True,
+    produces_non_null_ptr=True,
     codegen=lambda e, _a, _b, _c: f"&{e}",
 )
 
@@ -612,6 +618,7 @@ UPCAST_TO_PTR = Coercion(
     requires_lvalue=True,
     requires_mutable_lvalue=True,
     forbid_return_local=True,
+    produces_non_null_ptr=True,
     codegen=lambda e, _a, _b, _c: f"&{e}",
 )
 
@@ -640,6 +647,7 @@ UPCAST_TO_CONST_PTR = Coercion(
     to_type=_is(PtrType),
     requires_lvalue=True,
     forbid_return_local=True,
+    produces_non_null_ptr=True,
     codegen=lambda e, _a, _b, _c: f"&{e}",
 )
 

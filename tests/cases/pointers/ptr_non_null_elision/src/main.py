@@ -20,12 +20,12 @@ def read_via_param(p: Ptr[Point]) -> None:
 def main() -> None:
     pt: Point = Point(Int32(10), Int32(20))
     # Local Ptr from lvalue: provably non-null, skip null check
-    p: Ptr[Point] = take_ptr(pt)
+    p: Ptr[Point] = pt
     print(p.x)
     print(p.y)
     print(p.sum())
     # Local Ptr[readonly[...]] from lvalue: provably non-null, skip null check
-    cp: Ptr[readonly[Point]] = take_ptr(pt)
+    cp: Ptr[readonly[Point]] = pt
     print(cp.x)
     # Coercion: Ptr[T] -> Ptr[readonly[T]] preserves non-null provenance
     cp2: Ptr[readonly[Point]] = p

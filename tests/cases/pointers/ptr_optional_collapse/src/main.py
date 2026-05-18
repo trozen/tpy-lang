@@ -2,7 +2,7 @@
 # already nullable. The redundant spelling is warned about (upstream #17) but
 # still compiles to the same lowering. The T | None <-> Ptr[T] boundary
 # coerces in both directions because both lower to T* at C++ level.
-from tpy import Ptr, take_ptr, readonly
+from tpy import Ptr, readonly
 
 
 class Node:
@@ -37,7 +37,7 @@ def first(items: list[Node]) -> Node | None:
 def find(items: list[Node], target: int) -> Node | None:
     for it in items:
         if it.val == target:
-            p: Ptr[Node] = take_ptr(it)
+            p: Ptr[Node] = it
             return p
     return None
 
@@ -59,7 +59,7 @@ def consume_ro(n: readonly[Node] | None) -> int:
 # Ptr[T] flowing into a `T | None` tuple slot.
 def first_pair(items: list[Node]) -> tuple[Node | None, int]:
     if len(items) > 0:
-        p: Ptr[Node] = take_ptr(items[0])
+        p: Ptr[Node] = items[0]
         return (p, items[0].val)
     return (None, 0)
 
@@ -80,7 +80,7 @@ def take_ptr_node(p: Ptr[Node]) -> int:
 def test_collapse_passthrough() -> None:
     items: list[Node] = [Node(1)]
     print(passthrough(None) is None)
-    p1: Ptr[Node] = take_ptr(items[0])
+    p1: Ptr[Node] = items[0]
     r = passthrough(p1)
     if r is not None:
         print(r.val)
@@ -103,7 +103,7 @@ def test_ptr_value_into_optional_return() -> None:
 
 def test_readonly_variant() -> None:
     items: list[Node] = [Node(3)]
-    cp: Ptr[readonly[Node]] = take_ptr(items[0])
+    cp: Ptr[readonly[Node]] = items[0]
     rc = passthrough_ro(cp)
     if rc is not None:
         print(rc.val)
@@ -111,7 +111,7 @@ def test_readonly_variant() -> None:
 
 def test_ptr_into_optional_call_arg() -> None:
     items: list[Node] = [Node(1)]
-    p: Ptr[Node] = take_ptr(items[0])
+    p: Ptr[Node] = items[0]
     print(consume(p))
 
 
@@ -123,7 +123,7 @@ def test_ptr_into_optional_tuple_slot() -> None:
 
 def test_mutable_to_readonly_widening() -> None:
     items: list[Node] = [Node(1)]
-    p: Ptr[Node] = take_ptr(items[0])
+    p: Ptr[Node] = items[0]
     print(consume_ro(p))
 
 

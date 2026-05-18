@@ -1,5 +1,5 @@
 # Test const auto& binding for loop variables that are never mutated
-from tpy import Int32, Ptr, copy, readonly, take_ptr
+from tpy import Int32, Ptr, copy, readonly
 
 class Point:
     x: Int32
@@ -86,7 +86,7 @@ def test_ptr_from_loop_var() -> None:
     """Taking mutable Ptr to loop var -> auto&&."""
     items: list[Point] = [Point(Int32(3), Int32(4))]
     for p in items:
-        ptr: Ptr[Point] = take_ptr(p)
+        ptr: Ptr[Point] = p
         ptr.x = Int32(42)
     print(items[Int32(0)].x)
 

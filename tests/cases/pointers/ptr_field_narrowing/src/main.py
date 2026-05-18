@@ -1,5 +1,5 @@
 # Ptr field-path narrowing: skip deref_check after `self.field is not None`
-from tpy import Ptr, Int32, readonly, copy, take_ptr
+from tpy import Ptr, Int32, readonly, copy
 
 class Node:
     value: Int32
@@ -99,7 +99,7 @@ def read_after_container_pass(c: Container) -> Int32:
 
 def main() -> None:
     n = Node(Int32(42))
-    p: Ptr[Node] = take_ptr(n)
+    p: Ptr[Node] = n
     c = Container(p)
     print(c.read_if_present())
     print(c.call_if_present())

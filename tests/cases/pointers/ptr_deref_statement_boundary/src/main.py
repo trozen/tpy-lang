@@ -3,7 +3,7 @@
 # for arithmetic, and only sequences RHS-before-LHS for whole assignments --
 # eliding a sibling access inside one expression would risk UB if the unchecked
 # side ran first and the pointer was null.
-from tpy import Ptr, Int32, take_ptr
+from tpy import Ptr, Int32
 
 class A:
     x: Int32
@@ -33,7 +33,7 @@ def assign_first(p: Ptr[A]) -> None:
 
 def main() -> None:
     a = A(10, 20)
-    p: Ptr[A] = take_ptr(a)
+    p: Ptr[A] = a
     cross_statement(p)
     within_expression(p)
     assign_first(p)

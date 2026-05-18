@@ -44,7 +44,7 @@ from ..symbol_binding import SymbolKind, lookup_imported
 from ..prescan import ScanResult, scan_reassigned_vars
 from ..liveness import analyze_last_uses
 from ..parse.nodes import VarLinkage
-from .context import addr_taken_roots
+from .context import addr_taken_roots, expr_yields_non_null_ptr
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
@@ -2932,6 +2932,16 @@ class StatementAnalyzer:
                         root = _borrow_storage_root(init_inner.args[0])
                         if root is not None:
                             bt.add_borrow(root, stmt.name, BorrowKind.PTR)
+                # Direct value-to-Ptr coercion (`pp: Ptr[T] = x`): same borrow
+                # semantics as the take_ptr / Ptr(x) explicit forms. The mutation
+                # signal is already propagated in coerce_expr; this block adds
+                # the borrow registration so warn_borrow_* diagnostics fire.
+                if isinstance(stmt.init, TpyCoerce) and stmt.init.coercion.name in (
+                        "record_to_ptr", "record_to_const_ptr",
+                        "upcast_to_ptr", "upcast_to_const_ptr"):
+                    root = _borrow_storage_root(stmt.init.expr)
+                    if root is not None:
+                        bt.add_borrow(root, stmt.name, BorrowKind.PTR)
             elif is_span(var_type):
                 # Span from slicing borrows the source container
                 # (StrView excluded: str is immutable, no mutations to warn about)
@@ -3025,16 +3035,7 @@ class StatementAnalyzer:
                 stmt.name, self.compat.is_safe_to_return_expr(stmt.init))
         # Track non-null pointer provenance for null-check elision
         if stmt.init and isinstance(var_type, PtrType):
-            # Unwrap coercion (e.g. Ptr[T] -> Ptr[readonly[T]]) to find the source expression
-            init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
-            _fi = init_inner.resolved_function_info if isinstance(init_inner, TpyCall) else None
-            is_non_null = (isinstance(init_inner, TpyCall)
-                           and len(init_inner.args) > 0
-                           and ((init_inner.call_type is not None
-                                 and init_inner.call_type.is_pointer())
-                                or (_fi is not None and _fi.value_ptr_coercion)))
-            if not is_non_null and isinstance(init_inner, TpyName):
-                is_non_null = init_inner.name in self.ctx.func.non_null_ptr_vars
+            is_non_null = expr_yields_non_null_ptr(stmt.init, self.ctx.func.non_null_ptr_vars)
             self.init.mark_non_null_ptr(stmt.name, is_non_null)
 
         # Scope escape check for variable declarations (new and reassignment)
@@ -3687,16 +3688,7 @@ class StatementAnalyzer:
                 stmt.target.name, self.compat.is_safe_to_return_expr(stmt.value))
         # Track non-null pointer provenance for null-check elision
         if isinstance(stmt.target, TpyName) and isinstance(target_type, PtrType):
-            # Unwrap coercion (e.g. Ptr[T] -> Ptr[readonly[T]]) to find the source expression
-            val_inner = stmt.value.expr if isinstance(stmt.value, TpyCoerce) else stmt.value
-            _fi = val_inner.resolved_function_info if isinstance(val_inner, TpyCall) else None
-            is_non_null = (isinstance(val_inner, TpyCall)
-                           and len(val_inner.args) > 0
-                           and ((val_inner.call_type is not None
-                                 and val_inner.call_type.is_pointer())
-                                or (_fi is not None and _fi.value_ptr_coercion)))
-            if not is_non_null and isinstance(val_inner, TpyName):
-                is_non_null = val_inner.name in self.ctx.func.non_null_ptr_vars
+            is_non_null = expr_yields_non_null_ptr(stmt.value, self.ctx.func.non_null_ptr_vars)
             self.init.mark_non_null_ptr(stmt.target.name, is_non_null)
 
         # Mark as definitely assigned for plain name targets
