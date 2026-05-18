@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def sub() -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_sub::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_sub::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -26,7 +26,7 @@ __coro_sub sub() {
 }
 
 // async def main_coro() -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __state = S_JOIN_0;

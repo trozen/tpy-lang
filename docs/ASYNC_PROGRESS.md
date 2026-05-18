@@ -1378,6 +1378,73 @@ async snapshots regenerated for the using-decl alias churn
 (`executor_bindings_smoke`, `tpy_executor_smoke`,
 `tpy_executor_wake_dispatch`).
 
+### v1.2 step 7 -- @dynamic Awaker protocol replaces ExecutorOps -- DONE
+
+Pivots the executor dispatch model from a C++ function-pointer ops
+table to TPy's `@dynamic` protocol machinery. `async.hpp` collapses to
+just `CancelledError` (~10 lines). Everything else moves to TPy.
+
+Dispatch shape:
+
+- `@dynamic Awaker` protocol with `mark_runnable(task_id, generation)`
+  lives in `lib/tpy/tpy/coro/__init__.py` (alongside `Waker`). `Awaker`
+  is the dispatch target for `Waker.wake()`.
+- `Waker` is a `ValueType` holding `awaker: Ptr[Awaker]` plus
+  `task_id` / `generation`. `Waker.wake()` dispatches
+  `self.awaker.mark_runnable(...)` directly through the `@dynamic`
+  vtable -- no C++ glue. `Executor` inherits `Awaker` so it provides
+  the vtable slot directly.
+- `_current_executor: Ptr[Executor]` (TPy module global, defined
+  after the `Executor` class so the type spells concrete). Callers
+  (`asyncio.run`, `create_task`, `_register_timer_at`) dispatch
+  `register_timer` / `spawn` as direct method calls on the concrete
+  `Executor` -- no opaque-handle bridge.
+- `_make_waker(handle: Ptr[Awaker], ...)` is pure TPy. The
+  upcast from `Executor` to `Ptr[Awaker]` goes through
+  `_awaker_addr_of` (`@cpp_template` `static_cast<...Awaker*>(&self)`).
+
+What disappeared from C++:
+
+- `ExecutorOps` + `MarkRunnableFn` / `RegisterTimerFn` typedefs.
+- `mark_runnable_thunk<ExecT>` / `register_timer_thunk<ExecT>`
+  templated thunks.
+- `register_executor_ops_from<ExecT>` installer.
+- `executor_ops` plain global + the per-process invariant note.
+- `Waker` POD struct, `Waker::wake()` body, `Waker` operator<<.
+- `ExecutorHandle` struct + `is_null()`.
+- `make_executor_handle<T>`, `clear_executor_ops`,
+  `executor_register_timer_seconds`.
+
+Result: `async.hpp` 212 -> ~10 lines. The "TPy method bodies on @native
+classes" TODO entry from step 6 is superseded -- `Waker` is no longer
+@native, so its `wake()` body is plain TPy.
+
+Sema/codegen fixes required to land this:
+
+1. `tpyc/codegen_cpp/protocols.py::collect_record_types_from_type`:
+   in-module `@builtin_type` records (the new TPy-defined `Waker`)
+   need forward declarations alongside plain user records, so concepts
+   in the same module that reference them have a complete-type
+   declaration available before the concept's emit point.
+2. `tpyc/typesys.py::TypeRegistry.imported_protocol_qualification`
+   + `tpyc/codegen_cpp/generator.py`: per-emit-module loop that
+   registers imported `@dynamic` protocols into `_native_cpp_names`
+   (mirrors the existing record path). Same-module references get
+   the bare name; cross-module references get the qualified C++
+   name. Replaces an earlier `cpp_formatter`-based attempt that
+   broke same-module emission.
+3. Workaround for the mutation-analyzer gap on value->Ptr coercion:
+   `_ExecutorScope.__init__` takes `executor: Ptr[Executor]` (not
+   `executor: Executor`) so the address-take happens at the mutable
+   owned-local call site in `_run_drain_main_task`, not inside a
+   const-ref body. Same shape for `_set_current_executor` /
+   `_get_current_executor` / `_make_waker`. Tracked in TODO.md; will
+   collapse to natural `Executor` / `Awaker` params once the analyzer
+   rule lands.
+
+The follow-on remaining v1.2 cleanup items (timer-heap, etc.) are
+described in the "Blocked" section below.
+
 ### Blocked -- stays C++ until compiler features land
 
 These pieces depend on language features TPy doesn't have today.

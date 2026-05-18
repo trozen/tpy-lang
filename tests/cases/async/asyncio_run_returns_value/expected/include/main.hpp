@@ -6,6 +6,7 @@
 #include "tpystd/typing/_typing.hpp"
 #include "tpystd/coro.hpp"
 #include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
 
@@ -31,7 +32,7 @@ struct __coro_compute {
     __coro_compute()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_compute&) {

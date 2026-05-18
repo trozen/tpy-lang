@@ -6,7 +6,6 @@
 the TPy Executor in `_executor.py`. See `docs/ASYNC_DESIGN.md`.
 """
 from builtins import BaseException, Exception
-from tpy.extern import cpp_template, native
 from tpy import Own, Int32, CancelledError
 from tpy.coro import (
     Waker, Poll, Awaitable,
@@ -18,13 +17,13 @@ from time import monotonic
 from ._executor import (
     Task, AnyTask, AsyncFrame,
     task_from_coro, make_executor_owned_task, task_to_any_box,
-    Executor, ExecutorHandle, _ExecutorScope,
-    _get_current_executor, _executor_spawn_via_handle,
+    Executor, _ExecutorScope,
+    _get_current_executor,
 )
 
 
 def run[T](coro: Own[Awaitable[T]]) -> T:
-    if not _get_current_executor().is_null():
+    if _get_current_executor() is not None:
         raise RuntimeError(
             "asyncio.run() cannot be called from a running event loop")
     task = make_executor_owned_task[T](coro)
@@ -50,20 +49,13 @@ def _run_drain_main_task(box: Own[Box[AnyTask]]) -> None:
             pass
 
 
-# Bridge: register a steady-clock-seconds deadline with the running
-# executor. No-op if no executor is running (so hand-rolled awaitables
-# polled from a test harness without `asyncio.run` don't crash).
-@native("tpy::executor_register_timer_seconds")
-def _register_timer_at_impl(handle: ExecutorHandle,
-                            deadline_seconds: float,
-                            waker: Waker) -> None: ...
-
-
+# No-op if no executor is running, so hand-rolled awaitables polled
+# from a test harness without `asyncio.run` don't crash.
 def _register_timer_at(deadline_seconds: float, waker: Waker) -> None:
     handle = _get_current_executor()
-    if handle.is_null():
+    if handle is None:
         return
-    _register_timer_at_impl(handle, deadline_seconds, waker)
+    handle.register_timer(deadline_seconds, waker)
 
 
 class SleepFuture:
@@ -122,21 +114,14 @@ def sleep(seconds: float) -> Own[Task[None]]:
 # no event loop is running.
 def create_task[T](coro: Own[Awaitable[T]]) -> Own[Task[T]]:
     handle = _get_current_executor()
-    if handle.is_null():
+    if handle is None:
         raise RuntimeError(
             "asyncio.create_task: no running event loop "
             "(call asyncio.run(coro) to drive it)")
     task = make_executor_owned_task[T](coro)
     box = task_to_any_box[T](task)
-    _spawn_on_handle(handle, box)
+    handle.spawn(box)
     return task
-
-
-# Non-template wrapper so the cpp_template's static_cast instantiates
-# here rather than inside generic `create_task<T>` (where C++ template
-# name-lookup trips on the fully qualified Executor namespace).
-def _spawn_on_handle(handle: ExecutorHandle, box: Own[Box[AnyTask]]) -> Int32:
-    return _executor_spawn_via_handle(handle, box)
 
 
 class InvalidStateError(Exception):

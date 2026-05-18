@@ -2771,7 +2771,7 @@ def make_awaitable(awaited_type: 'TpyType') -> 'NominalType':
 # Singleton for the non-generic Waker type. Registered as a value-type
 # nominal so user code can declare `def poll(self, w: Waker) -> Poll[T]`.
 WAKER = NominalType(name="Waker", type_args=(),
-                    _module_qname="tpy.Waker")
+                    _module_qname="tpy.coro.Waker")
 
 
 def make_range(element_type: 'TpyType') -> 'NominalType':
@@ -4241,6 +4241,29 @@ class TypeRegistry:
         if module_info is not None and module_info.is_builtin:
             return None
         return (source_module, record_info.name)
+
+    def imported_protocol_qualification(
+        self, name: str, current_module: str
+    ) -> tuple[str, str] | None:
+        """For a @dynamic protocol imported into the current module:
+        return `(defining_module, canonical_name)`, else None.
+
+        Mirrors `imported_record_qualification` for the protocol side --
+        @dynamic protocols carry a runtime vtable, so cross-module
+        references need the qualified C++ name (the same machinery that
+        registers user records into `_native_cpp_names` per emit-module).
+        Static protocols are skipped: they monomorphize at use sites and
+        never appear as runtime types.
+        """
+        info = self._protocols_by_local_name.get(name)
+        if info is None or not info.is_dynamic or not info.module:
+            return None
+        if info.module == current_module:
+            return None
+        module_info = self.modules.get(info.module)
+        if module_info is not None and module_info.is_builtin:
+            return None
+        return (info.module, info.name)
 
     def imported_enum_qualification(
         self, name: str, current_module: str

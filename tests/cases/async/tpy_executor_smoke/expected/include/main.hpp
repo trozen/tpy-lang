@@ -47,7 +47,7 @@ struct CancellableForever {
     CancellableForever() : __cancel_pending(false) {}
 
     // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
-    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpy::Waker waker) const;
+    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker waker) const;
 
     // def cancel(self) -> None:
     void cancel();
@@ -73,7 +73,7 @@ struct __coro_returns_value {
     __coro_returns_value(::tpy::BigInt x_)
         : __state(S_INITIAL), __cancel_pending(false), x(std::move(x_)) {}
 
-    ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_returns_value&) {
@@ -94,7 +94,7 @@ struct __coro_void_coro {
     __coro_void_coro()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_void_coro&) {
@@ -104,7 +104,7 @@ struct __coro_void_coro {
 
 
 // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
-inline ::tpystd::tpy::Poll<std::monostate> CancellableForever::__poll__(::tpy::Waker waker) const {
+inline ::tpystd::tpy::Poll<std::monostate> CancellableForever::__poll__(::tpystd::coro::Waker waker) const {
     // if self.__cancel_pending:
     if (this->__cancel_pending) {
         // raise CancelledError()

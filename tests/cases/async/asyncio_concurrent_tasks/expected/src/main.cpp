@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def doubler(n: Int32, label: str) -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_doubler::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_doubler::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // print(label, "pre")
@@ -40,7 +40,7 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
 }
 
 // async def main_coro() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // t1: Task[Int32] = asyncio.create_task(doubler(Int32(5), "t1"))

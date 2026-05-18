@@ -143,51 +143,17 @@ class AnyFixedSigned(Protocol): ...
 @native("tpy::AnyFixedUnsigned")
 class AnyFixedUnsigned(Protocol): ...
 
-# Compiler hardcodes the qnames `tpy.Waker` / `tpy.Poll` here.
-# `tpy.Task` claims the same qname namespace but its class lives in
-# `asyncio._executor` (its body needs tplib's Box / Rc which aren't
-# reachable from this implicit-stdlib layer). Task has no static
-# TypeDef entry -- it resolves through the regular generic-class path.
-
-
-@native("tpy::ExecutorHandle")
-class ExecutorHandle(ValueType):
-    """Opaque handle to the running asyncio executor.
-
-    POD value type (8-byte `void* ptr` C++ side), default-constructs
-    to null.
-    """
-    def __init__(self) -> None: ...
-
-    @readonly
-    def is_null(self) -> bool: ...
-
-
-@builtin_type("tpy.Waker")
-@native("tpy::Waker")
-class Waker(ValueType):
-    """Handle that lets a parked task be re-scheduled.
-
-    Awaitables that haven't yet produced a value store the Waker passed
-    to their poll() method; when the underlying event fires, they call
-    waker.wake() to signal the executor that the parked task is runnable.
-
-    POD value type. Late wakes (from a task that completed before wake()
-    fires) are silent no-ops via a generation check. wake() lives in
-    C++ (`runtime/cpp/include/tpy/async.hpp`) because @native classes
-    can't carry TPy method bodies.
-    """
-    @overload
-    @cpp_template("::tpy::Waker{{}}")
-    def __init__(self) -> None: ...
-
-    @overload
-    @cpp_template("::tpy::Waker{{({0}), ({1}), ({2})}}")
-    def __init__(self, handle: ExecutorHandle, task_id: Int32,
-                 generation: Int32) -> None: ...
-
-    @readonly
-    def wake(self) -> None: ...
+# `Poll` lives here (cpp_namespace `tpystd::tpy`) rather than alongside
+# `Awaitable` in `tpy/coro/__init__.py` for codegen-ordering reasons:
+# the `Awaitable[T]` concept's body needs `Poll[T]`'s full type, but
+# codegen emits record full-defs after concepts within the same TU.
+# Keeping Poll in this file gets its full def into `_core/_types.hpp`,
+# which `coro.hpp` already includes. The qname stays `tpy.Poll` because
+# `@builtin_type` can't diverge from the file's actual cpp_namespace
+# without further codegen support; users still import via
+# `from tpy.coro import Poll` (the package re-exports). `Waker` /
+# `Awaker` live in `tpy/coro/__init__.py`. `Task` is
+# `@builtin_type("tpy.Task")` decorated in `asyncio._executor`.
 
 
 @builtin_type("tpy.Poll")

@@ -14,8 +14,11 @@ from ._types import (
     Int8, Int16, Int32, Int64,
     UInt8, UInt16, UInt32, UInt64,
     Char, String, StrView, FStr,
-    # Async runtime primitives. `Task[T]` lives in `asyncio._executor`.
-    Waker, Poll, ExecutorHandle,
+    # `Poll` lives here (qname `tpy.Poll`) for codegen-ordering reasons
+    # though users import it as `tpy.coro.Poll` -- see `_types.py`.
+    # `Waker` / `Awaker` live in `tpy.coro`; `Task[T]` lives in
+    # `asyncio._executor`.
+    Poll,
 )
 from ._bytes_view import BytesView
 from ._containers import Span, Array, Ptr, SpanIter

@@ -789,11 +789,14 @@ def _populate() -> None:
     register(TypeDef("tpy.OwnIter",  TC.ITERATOR, is_value_type=True,
                      cpp_formatter=lambda args: "auto"))
 
-    # Async Waker: re-schedule handle. POD value type. Non-generic.
+    # Async Waker: TPy-owned `ValueType` class in `tpy/coro/__init__.py`.
+    # Static entry required because the `WAKER` singleton in `typesys.py`
+    # is bound at module load (before sema attaches the RecordInfo), so
+    # any pre-sema query of value-ness consults this entry directly.
     register(TypeDef(
-        "tpy.Waker", TC.RECORD, is_value_type=True,
+        "tpy.coro.Waker", TC.RECORD, is_value_type=True,
         is_send=False, is_sync=False,
-        cpp_formatter=lambda args: "::tpy::Waker",
+        cpp_formatter=lambda args: "::tpystd::coro::Waker",
     ))
 
     _populate_factories()
@@ -865,7 +868,7 @@ def _populate_factories() -> None:
         ("tpy.Array",            (TYPE, INT),  lambda t, n: make_array(t, n)),
         ("tpy.Span",             (TYPE,),      lambda t: make_span(t)),
         ("tpy.SpanIter",         (TYPE,),      make_span_iter),
-        ("tpy.Waker",            (),           lambda: WAKER),
+        ("tpy.coro.Waker",       (),           lambda: WAKER),
         ("tpy.Float32",          (),           lambda: FLOAT32),
         ("tpy.Char",             (),           lambda: CHAR),
         ("tpy.String",           (),           lambda: STRING),

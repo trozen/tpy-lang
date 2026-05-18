@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def fail_value() -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_fail_value::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_fail_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -24,7 +24,7 @@ __coro_fail_value fail_value() {
 }
 
 // async def go() -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __state = S_JOIN_1;

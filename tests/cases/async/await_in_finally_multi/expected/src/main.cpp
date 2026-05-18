@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def first() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_first::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_first::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -26,7 +26,7 @@ __coro_first first() {
 }
 
 // async def second() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_second::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_second::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -47,7 +47,7 @@ __coro_second second() {
 }
 
 // async def caller() -> int:
-::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __state = S_JOIN_1;

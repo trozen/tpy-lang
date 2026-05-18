@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def main_coro(f: Future[Int32]) -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // val = await f

@@ -30,7 +30,7 @@ struct __coro_f {
     __coro_f()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpystd::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_f&) {

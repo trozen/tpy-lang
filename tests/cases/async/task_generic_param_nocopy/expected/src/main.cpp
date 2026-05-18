@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def co(x: Int32) -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_co::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_co::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -34,7 +34,7 @@ int32_t task_arity_concrete(const ::tpystd::asyncio::_executor::Task<int32_t>& t
 }
 
 // async def main_coro() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // t = asyncio.create_task(co(Int32(7)))

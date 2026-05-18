@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def producer(e: Event) -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // await asyncio.sleep(0.001)
@@ -38,7 +38,7 @@ __coro_producer producer(::tpystd::asyncio::Event& e) {
 }
 
 // async def consumer(e: Event) -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_consumer::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_consumer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // await e
@@ -69,7 +69,7 @@ __coro_consumer consumer(::tpystd::asyncio::Event& e) {
 }
 
 // async def fast_path_consumer(e: Event) -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_fast_path_consumer::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_fast_path_consumer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // await e
@@ -100,7 +100,7 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
 }
 
 // async def main_coro() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // e_fast = Event()

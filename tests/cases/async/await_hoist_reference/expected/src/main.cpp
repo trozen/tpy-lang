@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def make_list() -> Own[list[Int32]]:
-::tpystd::tpy::Poll<std::vector<int32_t>> __coro_make_list::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<std::vector<int32_t>> __coro_make_list::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -26,7 +26,7 @@ __coro_make_list make_list() {
 }
 
 // async def get_multiplier() -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_get_multiplier::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_get_multiplier::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -47,7 +47,7 @@ __coro_get_multiplier get_multiplier() {
 }
 
 // async def caller() -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_caller::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // xs = await make_list()

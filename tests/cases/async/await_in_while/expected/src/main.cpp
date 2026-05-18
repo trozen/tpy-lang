@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def value(n: int) -> int:
-::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -26,7 +26,7 @@ __coro_value value(::tpy::BigInt n) {
 }
 
 // async def loop_sum(n: int) -> int:
-::tpystd::tpy::Poll<::tpy::BigInt> __coro_loop_sum::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::tpy::BigInt> __coro_loop_sum::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // total = 0

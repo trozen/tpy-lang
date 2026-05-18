@@ -26,7 +26,7 @@ struct Int32One {
 
 
     // def __poll__(self, w: Waker) -> Own[Poll[Int32]]:
-    ::tpystd::tpy::Poll<int32_t> __poll__(::tpy::Waker w) const;
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker w) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Int32One";
 };
 
@@ -40,7 +40,7 @@ struct Nothing {
 
 
     // def __poll__(self, w: Waker) -> Own[Poll[None]]:
-    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpy::Waker w) const;
+    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker w) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Nothing";
 };
 
@@ -51,13 +51,13 @@ inline std::ostream& operator<<(std::ostream& os, const Nothing& obj) {
 
 
 // def __poll__(self, w: Waker) -> Own[Poll[Int32]]:
-inline ::tpystd::tpy::Poll<int32_t> Int32One::__poll__(::tpy::Waker w) const {
+inline ::tpystd::tpy::Poll<int32_t> Int32One::__poll__(::tpystd::coro::Waker w) const {
     // return poll_ready(Int32(1))
     return ::tpystd::coro::poll_ready<int32_t>(1);
 }
 
 // def __poll__(self, w: Waker) -> Own[Poll[None]]:
-inline ::tpystd::tpy::Poll<std::monostate> Nothing::__poll__(::tpy::Waker w) const {
+inline ::tpystd::tpy::Poll<std::monostate> Nothing::__poll__(::tpystd::coro::Waker w) const {
     // return poll_ready_none()
     return ::tpystd::coro::poll_ready_none();
 }

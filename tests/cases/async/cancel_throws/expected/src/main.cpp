@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def yield_once() -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_yield_once::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_yield_once::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // await asyncio.sleep(60.0)

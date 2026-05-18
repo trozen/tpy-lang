@@ -692,19 +692,25 @@ class ProtocolGenerator:
         return f"inner.{method_sig.name}({args_str})"
 
     def collect_record_types_from_type(self, typ: TpyType, result: set[str]) -> None:
-        """Recursively collect all user record type names from a type.
+        """Recursively collect all record type names from a type.
 
         Codegen iterates `TpyProtocol.methods` (parser AST, not rewritten by
         sema's `register_protocol`), so some NominalTypes here are still bare
         parser placeholders (no `_module_qname`, no TypeDef entry). For those,
         `is_user_record` is False; fall back to the record registry directly.
+
+        `@builtin_type` records (e.g. `tpy.coro.Waker`) are included too: when
+        they're TPy-defined in the current module, the forward-decl is
+        required just like a plain user record. The emit step filters by
+        `module_record_names`, so off-module builtin entries are dropped
+        there harmlessly.
         """
         if isinstance(typ, NominalType) and not typ.is_protocol:
             if typ.is_user_record:
                 result.add(typ.name)
             else:
                 info = self.ctx.analyzer.registry.get_record(typ.name)
-                if info is not None and info.builtin_type_key is None:
+                if info is not None:
                     result.add(typ.name)
         for inner in typ.inner_types():
             self.collect_record_types_from_type(inner, result)

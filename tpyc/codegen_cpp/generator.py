@@ -186,6 +186,18 @@ class CodeGenerator:
                 local_name, current_module)
             if qual is not None:
                 register_native_cpp_name(local_name, qualified_cpp_name(*qual))
+        # Cross-module @dynamic protocols (e.g. `Awaker` imported into
+        # `asyncio._executor` from `tpy.coro`) need the same `_native_cpp_names`
+        # qualification as user records: `NominalType.to_cpp()` consults the
+        # map for protocol short names too. Locally-defined @dynamic protocols
+        # skip this registration so same-module references emit the bare name.
+        # Static protocols are excluded -- they monomorphize and never surface
+        # as a runtime C++ type.
+        for local_name, _proto in self.analyzer.registry._protocols_by_local_name.items():
+            qual = self.analyzer.registry.imported_protocol_qualification(
+                local_name, current_module)
+            if qual is not None:
+                register_native_cpp_name(local_name, qualified_cpp_name(*qual))
         # `submod.X` (after `from pkg import submod`) doesn't import X by
         # short name, so the loop above misses it. Walk each registered
         # dep module's exports to register cross-module qualified names.

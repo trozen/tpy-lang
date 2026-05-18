@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def side_effect() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_side_effect::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_side_effect::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -26,7 +26,7 @@ __coro_side_effect side_effect() {
 }
 
 // async def caller() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_caller::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // await side_effect()

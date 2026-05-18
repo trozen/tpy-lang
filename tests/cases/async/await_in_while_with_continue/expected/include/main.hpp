@@ -32,7 +32,7 @@ struct __coro_value {
     __coro_value(::tpy::BigInt n_)
         : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
 
-    ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_value&) {
@@ -60,7 +60,7 @@ struct __coro_go {
     __coro_go(::tpy::BigInt n_)
         : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)) {}
 
-    ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_go&) {

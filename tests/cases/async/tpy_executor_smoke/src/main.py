@@ -1,16 +1,14 @@
-# Phase 2.2/2.3 v1.x asyncio-port: TPy-side Executor class driven
-# directly (no asyncio.run, no C++ Executor involvement). Validates
-# spawn / drain_runnable / run_until / slot_done / has_live_tasks /
-# register_timer / wait_for_event on a coroutine that returns
-# immediately. The wake path (Waker::wake() dispatching into the TPy
-# executor) is deferred to Phase 2.4; tests here use either coroutines
-# that complete on first poll or directly-pushed runnable ids.
+# TPy-side Executor class driven directly (no asyncio.run, no C++
+# Executor involvement). Validates spawn / drain_runnable / run_until /
+# slot_done / has_live_tasks / register_timer / wait_for_event on a
+# coroutine that returns immediately. Tests here use either coroutines
+# that complete on first poll or directly-pushed runnable ids;
+# external wake dispatch is in tpy_executor_wake_dispatch.
 from asyncio._executor import (
     AnyTask,
     Executor,
     _make_any_task_for_test,
     _make_waker,
-    _self_handle,
 )
 from time import monotonic
 from tpy import CancelledError, Own
@@ -78,7 +76,7 @@ def test_timer_fires_immediately() -> None:
     # out-of-range slot id. We're testing the timer-heap mechanics
     # only here.
     e = Executor()
-    w = _make_waker(_self_handle(e), 0, 0)
+    w = _make_waker(e, 0, 0)
     e.register_timer(monotonic() - 0.5, w)
     print("timer count before:", len(e.timer_heap))
     print("wait fired:", e.wait_for_event())

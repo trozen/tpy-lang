@@ -18,8 +18,8 @@ void test_external_wake() {
     std::cout << "slot done:" << " " << ::tpy::print_bool(e.slot_done(sid)) << "\n";
     // # Externally wake the parked slot via Waker.wake() -- this routes
     // # through the C++ ops table back into Executor.mark_runnable.
-    // w = _make_waker(_self_handle(e), sid, 0)
-    ::tpy::Waker w = ::tpystd::asyncio::_executor::_make_waker(::tpy::make_executor_handle(e), sid, 0);
+    // w = _make_waker(e, sid, 0)
+    ::tpystd::coro::Waker w = ::tpystd::asyncio::_executor::_make_waker(&e, sid, 0);
     // w.wake()
     w.wake();
     // print("after wake, runnable_q:", len(e.runnable_q))
@@ -41,8 +41,8 @@ void test_stale_generation_wake() {
     // e.drain_runnable()
     e.drain_runnable();
     // # Fabricate a waker with a wrong (future) generation.
-    // stale = _make_waker(_self_handle(e), sid, 99)
-    ::tpy::Waker stale = ::tpystd::asyncio::_executor::_make_waker(::tpy::make_executor_handle(e), sid, 99);
+    // stale = _make_waker(e, sid, 99)
+    ::tpystd::coro::Waker stale = ::tpystd::asyncio::_executor::_make_waker(&e, sid, 99);
     // stale.wake()
     stale.wake();
     // print("stale wake runnable_q:", len(e.runnable_q))
@@ -67,8 +67,8 @@ void test_timer_drives_to_completion() {
     // # pops it and wakes the slot; drain_runnable polls it.
     // while not e.slot_done(sid):
     while ((!(e.slot_done(sid)))) {
-        // w = _make_waker(_self_handle(e), sid, 0)
-        ::tpy::Waker w = ::tpystd::asyncio::_executor::_make_waker(::tpy::make_executor_handle(e), sid, 0);
+        // w = _make_waker(e, sid, 0)
+        ::tpystd::coro::Waker w = ::tpystd::asyncio::_executor::_make_waker(&e, sid, 0);
         // e.register_timer(monotonic() - 0.5, w)
         e.register_timer(((::tpy::stdlib::time::monotonic()) - (0.5)), w);
         // e.wait_for_event()
@@ -99,16 +99,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Phase 2.4 v1.x asyncio-port: Waker dispatch into the TPy Executor.
-    // # Validates that an externally-held Waker pointing at a parked slot,
-    // # when wake()'d from outside the executor's run loop, correctly
-    // # re-schedules the slot via the ExecutorOps table thunk wired up at
-    // # Executor construction.
+    // # Waker dispatch into the TPy Executor. Validates that an externally-
+    // # held Waker pointing at a parked slot, when wake()'d from outside the
+    // # executor's run loop, correctly re-schedules the slot through the
+    // # @dynamic Awaker vtable into Executor.mark_runnable.
     // from asyncio._executor import (
     // Executor,
     // _make_any_task_for_test,
     // _make_waker,
-    // _self_handle,
     // )
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::asyncio::_executor::__tpy_init();

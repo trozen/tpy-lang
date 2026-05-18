@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def cleanup() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_cleanup::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_cleanup::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -26,7 +26,7 @@ __coro_cleanup cleanup() {
 }
 
 // async def coro() -> int:
-::tpystd::tpy::Poll<::tpy::BigInt> __coro_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::tpy::BigInt> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __state = S_JOIN_1;
@@ -103,7 +103,7 @@ __coro_coro coro() {
 }
 
 // async def main_coro() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // task = asyncio.create_task(coro())

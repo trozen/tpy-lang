@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def compute() -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_compute::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_compute::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {

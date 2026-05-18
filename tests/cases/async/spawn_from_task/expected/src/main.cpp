@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def grandchild() -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_grandchild::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_grandchild::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // await asyncio.sleep(0.001)
@@ -36,7 +36,7 @@ __coro_grandchild grandchild() {
 }
 
 // async def child() -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_child::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_child::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // g: Task[Int32] = asyncio.create_task(grandchild())
@@ -69,7 +69,7 @@ __coro_child child() {
 }
 
 // async def main_coro() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // c: Task[Int32] = asyncio.create_task(child())

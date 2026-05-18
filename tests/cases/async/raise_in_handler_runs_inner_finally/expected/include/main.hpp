@@ -31,7 +31,7 @@ struct __coro_fail_value {
     __coro_fail_value()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpystd::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_fail_value&) {
@@ -58,7 +58,7 @@ struct __coro_go {
     __coro_go()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpystd::tpy::Poll<int32_t> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
     void __finally_0();
     void __finally_1();

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def value(n: int) -> int:
-::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::tpy::BigInt> __coro_value::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -26,7 +26,7 @@ __coro_value value(::tpy::BigInt n) {
 }
 
 // async def caller() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_caller::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0 = Resource("R");

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def waiter(f: Future[Tracked]) -> Tracked:
-::tpystd::tpy::Poll<Tracked> __coro_waiter::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<Tracked> __coro_waiter::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // return await f
@@ -34,7 +34,7 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
 }
 
 // async def main_coro() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // f: Future[Tracked] = Future[Tracked]()

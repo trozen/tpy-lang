@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def worker() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_worker::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_worker::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // await asyncio.sleep(0.5)
@@ -36,7 +36,7 @@ __coro_worker worker() {
 }
 
 // async def main_coro() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // task = asyncio.create_task(worker())

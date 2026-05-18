@@ -1,13 +1,11 @@
-# Phase 2.4 v1.x asyncio-port: Waker dispatch into the TPy Executor.
-# Validates that an externally-held Waker pointing at a parked slot,
-# when wake()'d from outside the executor's run loop, correctly
-# re-schedules the slot via the ExecutorOps table thunk wired up at
-# Executor construction.
+# Waker dispatch into the TPy Executor. Validates that an externally-
+# held Waker pointing at a parked slot, when wake()'d from outside the
+# executor's run loop, correctly re-schedules the slot through the
+# @dynamic Awaker vtable into Executor.mark_runnable.
 from asyncio._executor import (
     Executor,
     _make_any_task_for_test,
     _make_waker,
-    _self_handle,
 )
 from time import monotonic
 from tpy import UInt32, Own
@@ -59,7 +57,7 @@ def test_external_wake() -> None:
 
     # Externally wake the parked slot via Waker.wake() -- this routes
     # through the C++ ops table back into Executor.mark_runnable.
-    w = _make_waker(_self_handle(e), sid, 0)
+    w = _make_waker(e, sid, 0)
     w.wake()
     print("after wake, runnable_q:", len(e.runnable_q))
     e.drain_runnable()
@@ -73,7 +71,7 @@ def test_stale_generation_wake() -> None:
     sid = e.spawn(_make_any_task_for_test(NeverComplete()))
     e.drain_runnable()
     # Fabricate a waker with a wrong (future) generation.
-    stale = _make_waker(_self_handle(e), sid, 99)
+    stale = _make_waker(e, sid, 99)
     stale.wake()
     print("stale wake runnable_q:", len(e.runnable_q))
 
@@ -90,7 +88,7 @@ def test_timer_drives_to_completion() -> None:
     # Loop: each iteration registers a past-deadline timer; wait_for_event
     # pops it and wakes the slot; drain_runnable polls it.
     while not e.slot_done(sid):
-        w = _make_waker(_self_handle(e), sid, 0)
+        w = _make_waker(e, sid, 0)
         e.register_timer(monotonic() - 0.5, w)
         e.wait_for_event()
         e.drain_runnable()

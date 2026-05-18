@@ -5568,9 +5568,15 @@ Send/Sync rules for built-in types:
   `Task.cancel()` flips a flag that the next poll checks and throws
   `CancelledError`. `asyncio.run(coro)` drives an executor whose body is
   TPy code (`lib/tpy/asyncio/_executor.py` -- slot table for parked
-  tasks, runnable deque, timer min-heap) dispatched from C++ via a
-  thread-local `ExecutorOps` function-pointer table in
-  `runtime/cpp/include/tpy/async.hpp`; `Waker` (declared `ValueType` -- 16-byte POD, passed by value through every `__poll__` call) carries an opaque executor pointer plus slot id/generation, and `Waker.wake()` schedules the parked task by id/generation; `asyncio.sleep(s)` is a real
+  tasks, runnable deque, timer min-heap). Dispatch from suspended
+  awaitables back to the executor goes through the `@dynamic Awaker`
+  protocol vtable: `Executor` inherits `Awaker`; `Waker` (a pure-TPy
+  `ValueType` in `tpy.coro` -- 16-byte POD passed by value through
+  every `__poll__` call) carries a non-owning `Ptr[Awaker]` to the
+  running executor plus slot id/generation, and `Waker.wake()`
+  schedules the parked task by id/generation via the protocol vtable.
+  `runtime/cpp/include/tpy/async.hpp` is down to ~34 lines containing
+  only `CancelledError`. `asyncio.sleep(s)` is a real
   wall-clock sleep; `asyncio.create_task(coro)` registers the task with
   the executor for concurrent scheduling and returns an `Own[Task[T]]`
   handle (T inferred from the async def's return type) that shares state

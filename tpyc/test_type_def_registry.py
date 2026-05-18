@@ -75,7 +75,7 @@ def _canonical_instances() -> dict[str, ts.TpyType]:
         "tpy.CopyIter": ts.make_copy_iter(I32),
         "tpy.OwnIter":  ts.make_own_iter(I32),
         "tpy.Ptr":      ts.PtrType(I32),
-        "tpy.Waker":    ts.WAKER,
+        "tpy.coro.Waker": ts.WAKER,
     }
     return cases
 
@@ -1052,7 +1052,7 @@ FACTORY_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "tpy.Array":            ("TYPE", "INT"),
     "tpy.Span":             ("TYPE",),
     "tpy.SpanIter":         ("TYPE",),
-    "tpy.Waker":            (),
+    "tpy.coro.Waker":       (),
     # Structural wrapper
     "tpy.Ptr":              ("TYPE",),
     # Primitive singletons
@@ -1271,6 +1271,13 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
         cpp_concept=None,
         type_params=("T",), parent_protocols=(),
         methods=("__poll__",),
+    ),
+    "tpy.coro.Awaker": dict(
+        name="Awaker", module="tpy.coro",
+        is_dynamic=True, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=(), parent_protocols=(),
+        methods=("mark_runnable",),
     ),
     "tpy.Truthy": dict(
         name="Truthy", module="tpy",

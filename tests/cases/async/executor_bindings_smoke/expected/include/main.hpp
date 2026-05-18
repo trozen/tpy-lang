@@ -32,7 +32,7 @@ void main();
 struct __coro_check_inside {
     int32_t __state;
     bool __cancel_pending;
-    ::tpy::ExecutorHandle h;
+    ::tpystd::asyncio::_executor::Executor* h;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -42,7 +42,7 @@ struct __coro_check_inside {
     __coro_check_inside()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_check_inside&) {
@@ -63,7 +63,7 @@ struct __coro_trivial {
     __coro_trivial()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpy::Waker waker);
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_trivial&) {

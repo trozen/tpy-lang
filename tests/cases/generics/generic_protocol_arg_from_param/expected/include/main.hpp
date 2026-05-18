@@ -29,7 +29,7 @@ struct MyTask {
 
 
     // def __poll__(self, w: Waker) -> Own[Poll[T]]:
-    ::tpystd::tpy::Poll<T> __poll__(::tpy::Waker w) const {
+    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker w) const {
         // return poll_pending()
         return ::tpystd::coro::poll_pending<T>();
     }

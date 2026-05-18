@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def hello() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_hello::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_hello::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {

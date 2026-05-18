@@ -501,7 +501,7 @@ class AsyncCoroCodegen:
         out.write(f"{INDENT}{INDENT}: {', '.join(init_parts)} {{}}\n\n")
 
         # __poll__() forward declaration.
-        out.write(f"{INDENT}{self._poll_ret_cpp(func)} __poll__(::tpy::Waker waker);\n")
+        out.write(f"{INDENT}{self._poll_ret_cpp(func)} __poll__(::tpystd::coro::Waker waker);\n")
         out.write(f"{INDENT}void cancel() {{ __cancel_pending = true; }}\n")
 
         # Finally-helper forward declarations: one per TryRegion with a
@@ -589,7 +589,7 @@ class AsyncCoroCodegen:
 
         self.ctx.emit_source_comment(out, func.loc)
         self._emit_template_header(out, func)
-        out.write(f"{self._poll_ret_cpp(func)} {struct_name}::__poll__(::tpy::Waker waker) {{\n")
+        out.write(f"{self._poll_ret_cpp(func)} {struct_name}::__poll__(::tpystd::coro::Waker waker) {{\n")
         if not has_yields:
             # No awaits: waker unused. Generators emit (void)waker for the
             # same reason; reuse the pattern.

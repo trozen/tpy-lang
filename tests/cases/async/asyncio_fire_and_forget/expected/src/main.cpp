@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def background(done: Future[Int32]) -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_background::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_background::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -28,7 +28,7 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
 }
 
 // async def main_coro() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // done: Future[Int32] = Future[Int32]()

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def producer(f: Future[Int32]) -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_producer::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // await asyncio.sleep(0.001)
@@ -36,7 +36,7 @@ __coro_producer producer(::tpystd::asyncio::Future<int32_t>& f) {
 }
 
 // async def main_coro() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // f: Future[Int32] = Future[Int32]()

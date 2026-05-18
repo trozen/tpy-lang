@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def compute() -> int:
-::tpystd::tpy::Poll<::tpy::BigInt> __coro_compute::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::tpy::BigInt> __coro_compute::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // await asyncio.sleep(0.001)

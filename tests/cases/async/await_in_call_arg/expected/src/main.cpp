@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def get_val() -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_get_val::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_get_val::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -26,7 +26,7 @@ __coro_get_val get_val() {
 }
 
 // async def main_coro() -> None:
-::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // print(await get_val())  # await in argument position

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // async def add_one(x: Int32) -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_add_one::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_add_one::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {
@@ -26,7 +26,7 @@ __coro_add_one add_one(int32_t x) {
 }
 
 // async def caller() -> Int32:
-::tpystd::tpy::Poll<int32_t> __coro_caller::__poll__(::tpy::Waker waker) {
+::tpystd::tpy::Poll<int32_t> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // a = await add_one(Int32(5))

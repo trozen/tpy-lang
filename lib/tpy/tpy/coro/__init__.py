@@ -6,8 +6,64 @@ Module name borrowed from the design-doc's `Coroutine[T]` terminology
 """
 from .._typing import Protocol
 from .._bootstrap._decorators import Own, dynamic
+from .._bootstrap._extern import builtin_type
 from .._builtins._exceptions import CancelledError
-from .._core import Waker, Poll, ExecutorHandle
+from .._core import Poll, Ptr, ValueType, Int32
+
+
+# The dispatch target for `Waker.wake()`. `asyncio.Executor` inherits
+# this protocol; Waker holds a `Ptr[Awaker]` to the running executor and
+# calls `mark_runnable` through the @dynamic vtable. The only concrete
+# implementer today lives in `asyncio._executor`.
+#
+# `register_timer(deadline, Waker)` would form an `Awaker` <-> `Waker`
+# forward-declaration cycle in generated C++ headers if it lived on
+# this protocol; timer registration goes through a direct
+# `Executor.register_timer(...)` call in `asyncio/__init__.py` where
+# the concrete `Ptr[Executor]` handle is available.
+@dynamic
+class Awaker(Protocol):
+    def mark_runnable(self, task_id: Int32, generation: Int32) -> None: ...
+
+
+@builtin_type("tpy.coro.Waker")
+class Waker(ValueType):
+    """Handle that lets a parked task be re-scheduled.
+
+    Awaitables that haven't yet produced a value store the Waker passed
+    to their poll() method; when the underlying event fires, they call
+    waker.wake() to signal the executor that the parked task is runnable.
+
+    Layout: a non-owning `Ptr[Awaker]` to the running executor + a
+    (task_id, generation) slot identifier. Late wakes (from a task that
+    completed before wake() fires) are filtered by the executor's
+    generation check.
+    """
+    awaker: Ptr[Awaker]
+    task_id: Int32
+    generation: Int32
+
+    def __init__(self) -> None:
+        self.awaker = None
+        self.task_id = 0
+        self.generation = 0
+
+    # Not @readonly: wake() doesn't mutate self, but it dispatches into
+    # the awaker's `mark_runnable`, which mutates the executor's runnable
+    # queue. Marking wake() readonly would narrow `self.awaker` to
+    # `Ptr[readonly[Awaker]]` and reject the call.
+    def wake(self) -> None:
+        if self.awaker is None:
+            return
+        try:
+            self.awaker.mark_runnable(self.task_id, self.generation)
+        except BaseException:
+            # Swallow: mark_runnable can raise (e.g. OOM in the
+            # runnable-queue push) and wake() has no useful error
+            # channel. Use-after-free against a torn-down executor is
+            # the caller's invariant -- see `_ExecutorScope` in
+            # `lib/tpy/asyncio/_executor.py`.
+            pass
 
 
 # Structural awaitable. Distinct from `typing.Awaitable[T]` (CPython's
