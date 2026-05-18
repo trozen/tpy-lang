@@ -25,7 +25,8 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 16 | `Own[P]` as a plain function parameter + return type (with method access on the owned value) | Done. Param/return lower to `std::unique_ptr<P>`; `p.method()` body access emits `p->method()`; concrete-source returns wrap via `std::make_unique<Adapter<P, T>>(...)` (or `std::make_unique<T>(...)` for inheritance conformers). Forward `Own[P] -> Own[P]` returns rely on C++ implicit-move (no `std::move` wrap). |
 | 17 | `Rc[P]` for `@dynamic` P -- shared-ownership erased dyn protocol | Future. Design direction: Rust's `Arc<dyn Trait>` single co-located allocation (refcount header + concrete in one block, drop-fn-in-header for type-erased destruction). Interim workaround: `Rc[Box[P]]` (two allocations: cell + box's pet). See TODO.md. |
 | 18 | Transitive virtual-override propagation through `@dynamic`-rooted inheritance chains | Done. A class inheriting a `@dynamic` protocol via a concrete-class intermediate (e.g. `Throwable -> BaseExc -> ValErr`) now emits `override` on method redefinitions at every level, not just one hop. `_get_dynamic_override_info`, `_dynamic_proto_requires_nonconst`, and `_check_method_hiding` all walk the MRO via `iter_ancestor_records` when consulting `implemented_protocols`. The "method hides ancestor" warning is suppressed for methods that are now proper transitive overrides. |
-| 19 | `Optional[ConcreteRoot]` class dispatch via `isinstance` + `dynamic_cast` | Done. For `Optional[E]` where `E` is a *concrete class* that transitively inherits a `@dynamic` protocol (e.g. `class BaseExc(Throwable)`, `Optional[BaseExc]`), codegen materializes rvalue temps at the actual class type (no slicing) for arg-passing and init-only locals; `isinstance(opt, Subclass)` lowers to `dynamic_cast` on the pointer; tuple form ORs casts. Activated for the built-in `BaseException` tree via a `Throwable` `@dynamic` protocol declared in `tpy._core._types` and inherited by `BaseException`. Subclass-typed narrowing, rvalue rebind, storage/return positions still rejected -- see TODO.md follow-ups. The same surface is *not* yet available for direct `Optional[Pet]` (see Phase 8 note). |
+| 19 | `Optional[ConcreteRoot]` class dispatch via `isinstance` + `dynamic_cast` | Done. For `Optional[E]` where `E` is a *concrete class* that transitively inherits a `@dynamic` protocol (e.g. `class BaseExc(Throwable)`, `Optional[BaseExc]`), codegen materializes rvalue temps at the actual class type (no slicing) for arg-passing and init-only locals; `isinstance(opt, Subclass)` lowers to `dynamic_cast` on the pointer; tuple form ORs casts. Activated for the built-in `BaseException` tree via a `Throwable` `@dynamic` protocol declared in `tpy._core._types` and inherited by `BaseException`. Subclass-typed narrowing still missing -- see TODO.md follow-ups. The same surface is *not* yet available for direct `Optional[Pet]` (see Phase 8 note). Owned storage / rvalue return positions are addressed in Phase 20. |
+| 20 | Polymorphic owned storage via `Box[@dynamic Root]`; slicing-site sema rejection; `raise <expr>` -> `__raise__` desugar; built-in exception hierarchy moved to pure TPy | Planned. Activates `Throwable` as a non-markerless `@dynamic` protocol with virtual `clone` and `__raise__`. Exception classes (`BaseException` + subclasses) move from `core.hpp` to `lib/tpy/tpy/_builtins/_exceptions.py`. Codegen auto-emits three overrides on every Throwable implementer -- `clone()` / `__raise__()` / `what()` -- as **Throwable-specific exception-ABI support** (not pure reuse of existing dyn-protocol override emission; the auto-emit fires unconditionally for every Throwable subclass, including those where the user doesn't redeclare the methods, to prevent the silent-slicing footgun for user-defined exception classes). Sema check rejects non-copy-constructible Throwable subclasses (required by auto-emitted `clone` / `__raise__`). `Box[Throwable]` storage becomes the supported form for owning a polymorphic exception across catch boundaries; the slicing-site rejection keys on conversion *shape* (polymorphic borrow / subclass into owned base slot), not destination type alone -- fresh-rvalue construction of the exact base type stays allowed. The `raise <expr>` lowering peels `__deref__` and dispatches to `__raise__` on the resulting Throwable value as a **single unified path** (no fast-path special case for fresh `raise X(...)`; removes divergence risk between two raise forms). The runtime `raise<E>` template is replaced by per-class `raise_X(msg)` helpers forward-declared in `throwable.hpp` and implemented in a TPy stdlib module. Implementation starts with a small end-to-end prototype of the Box-deref + virtual + @readonly chain to verify the readonly composition through `__deref__` works before the broad fix. See [EXCEPTION_DESIGN.md](EXCEPTION_DESIGN.md) E9 for the exception-side details. |
 
 ## Overview
 
@@ -366,13 +367,17 @@ Cached lazily on `RecordInfo._is_polymorphic_class` (stable after Phase-1 sema).
   virtually. Filed in TODO.md.
 - *Rvalue rebind of a polymorphic subclass into a local.* The shared rebind
   slot can't preserve dynamic type without heap allocation. Sema-time error
-  with a "use parameter-passing or a typed local" hint. Filed in TODO.md as
-  the `Optional[Polymorphic]` heap-slot follow-up.
+  with a "use parameter-passing or a typed local" hint. Addressed by
+  Phase 20's slicing-site sema rejection plus the `Box[@dynamic Root]`
+  owned storage path.
 - *Storage and rvalue return positions* of `Optional[Polymorphic]`. Field
   declarations and `return ValErr(...)` in a function returning
-  `Optional[BaseExc]` would dangle. Should be sema-rejected with a "use
-  `Box[E]` for stored ownership" hint -- not yet implemented; tracked in
-  TODO.md.
+  `Optional[BaseExc]` would dangle (storage-form Optional has the same
+  lifetime/slicing issue). Addressed by Phase 20: rejected at sema with a
+  "use `Box[Throwable]` for stored ownership" hint, and `Box[@dynamic Root]`
+  becomes the supported form. For the exception hierarchy specifically,
+  Phase 20 also adds the `raise <expr>` -> `__raise__` desugar so a stored
+  `Box[Throwable]` can be re-raised polymorphically.
 - *(Activated)* The built-in `BaseException` tree is `@dynamic`-rooted via
   the `Throwable` protocol in `tpy._core._types`. `isinstance(exc_val, X)`
   in `__exit__` bodies works for any subclass of `BaseException`
@@ -498,7 +503,7 @@ Not all protocols can be `@dynamic`. The compiler validates at definition site:
   per-method type param)
 - No `Self` type (deferred -- `Self` support may be added later with restrictions)
 - No static methods (no receiver to dispatch on)
-- Markerless `@dynamic` protocols **are allowed** -- they act as phylum tags for the polymorphism predicate (`is_polymorphic_class_type`) without committing to a virtual method contract. The emitted C++ shape is an empty abstract base struct (`struct X { virtual ~X() = default; };`) and a trivially-satisfied concept (`concept __X_Concept__ = true;`). Used by the stdlib `Throwable` to root the `BaseException` tree. No method dispatch goes through the vtable in this case; the marker is purely a sema-level tag consumed by `Optional[ConcreteRoot]` class dispatch.
+- Markerless `@dynamic` protocols **are allowed** -- they act as phylum tags for the polymorphism predicate (`is_polymorphic_class_type`) without committing to a virtual method contract. The emitted C++ shape is an empty abstract base struct (`struct X { virtual ~X() = default; };`) and a trivially-satisfied concept (`concept __X_Concept__ = true;`). No method dispatch goes through the vtable in this case; the marker is purely a sema-level tag consumed by `Optional[ConcreteRoot]` class dispatch. (Note: the stdlib `Throwable` was markerless pre-Phase 20 and is no longer -- Phase 20 gives it virtual `clone` and `__raise__` so it can participate in `Box[Throwable]` storage and the `raise <expr>` desugar. The general "markerless allowed" rule still applies to other protocols that want phylum-only behavior.)
 - The type-parameter name `__tpy_Impl` is reserved for the adapter codegen and
   cannot be used by user protocols (rejected at codegen time)
 

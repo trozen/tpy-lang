@@ -12,6 +12,7 @@
 | E6 | Exception types with data fields, `except E as e` binding | Done |
 | E7 | General C++ exceptions: `try`/`except`/`finally`/`raise` with stack unwinding for non-control-flow errors | Done |
 | E8 | Multiple `except` handlers, bare `except:`, re-raise (`raise` with no argument) | Done |
+| E9 | Polymorphic exception storage via `Box[Throwable]`; pure-TPy exception hierarchy; `raise <expr>` desugar to `__raise__`; slicing-site sema rejection | Planned (see [DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) Phase 20) |
 
 ### Runtime exception migration (panic -> catchable throw)
 
@@ -51,41 +52,53 @@ proven by value-range, etc.).
 
 ### Runtime helper API (`raise<E>` family)
 
-The runtime exposes a single function template `tpy::raise<E>(...)` plus
-two specialized helpers (`raise_assertion_error`, `raise_fixedint_overflow`).
-All sites that surface a Python exception go through these instead of
-`throw E(...)` directly, so the underlying policy can be swapped at compile
-time later without rewriting call sites.
+**Pre-E9** (current): runtime sites that surface a Python exception go through
+`tpy::raise<E>(...)` -- a function template that does `throw E(...)` directly.
+The `raise<E>` template works because every exception class is hand-written
+in `core.hpp` so the C++ ctor is visible at template-instantiation time.
 
-`raise<E>` has two overloads -- a `std::string_view` form and a
-`std::format_string<Args...>` form (compile-time format-string validation):
+**Post-E9**: the exception classes move to TPy code (`lib/tpy/tpy/_builtins/_exceptions.py`),
+so the runtime can't `throw E(...)` directly anymore -- the ctors live in
+TPy-emitted code, not in the runtime headers. The `raise<E>` template is
+replaced by a flat set of per-class forward-declared helpers:
 
 ```cpp
-template<typename E>
-[[noreturn]] inline void raise(std::string_view msg);
-template<typename E, typename T, typename... Rest>
-[[noreturn]] inline void raise(std::format_string<T, Rest...> fmt,
-                               T&& arg, Rest&&... rest);
+// runtime/cpp/include/tpy/throwable.hpp -- declarations only
+namespace tpy {
+[[noreturn]] void raise_value_error(std::string_view msg);
+[[noreturn]] void raise_type_error(std::string_view msg);
+[[noreturn]] void raise_index_error(std::string_view msg);
+[[noreturn]] void raise_key_error(std::string_view msg);
+[[noreturn]] void raise_attribute_error(std::string_view msg);
+[[noreturn]] void raise_os_error(std::string_view msg);
+[[noreturn]] void raise_zero_division_error(std::string_view msg);
+[[noreturn]] void raise_overflow_error(std::string_view msg);
+[[noreturn]] void raise_runtime_error(std::string_view msg);
+[[noreturn]] void raise_assertion_error(std::string_view msg = "assertion failed");
+[[noreturn]] void raise_stop_iteration();
+// ... one per built-in exception class the runtime needs to raise
+}
 ```
 
-The call-site shape disambiguates: 1 arg goes to the `string_view` overload,
-2+ args to the format-string overload. The format string must be a literal
-(consteval); for runtime-built strings, pass a pre-built `std::string` to
-the `string_view` overload (or wrap with `std::format("{}", s)`).
+Definitions live in a TPy stdlib module (`lib/tpy/tpy/_builtins/_raise.py`)
+that gets compiled into every program by the existing stdlib-implicit-into-
+every-binary machinery. Each is a one-liner -- `def raise_value_error(msg: StrView)
+-> Never: raise ValueError(msg)`. The C++ linker resolves the forward
+declarations against the TPy-emitted symbols.
 
-Call sites: `raise<ValueError>("msg")`, `raise<TypeError>("{} bad", x)`, etc.
-The catchable exception classes (`ValueError`, `TypeError`, `KeyError`,
-`IndexError`, `AttributeError`, `OSError`, `FileNotFoundError`,
-`ZeroDivisionError`, `OverflowError`, `ArithmeticError`, `RuntimeError`,
-`NotImplementedError`, `MemoryError`, `AssertionError`, `StopIteration`)
-are all defined in `core.hpp`.
+The format-string overload is dropped from the runtime surface (callers
+build the `std::string` themselves with `std::format` before calling
+`raise_X`). Compile-time format-string validation moves to the call site:
+where the runtime today writes `raise<TypeError>("{} bad", x)`, post-E9 it
+writes `raise_type_error(std::format("{} bad", x))`. One extra std::string
+allocation on the slow path -- negligible against the cost of the throw.
 
-Two specialized helpers stay separate:
+Two helpers stay special:
 
 | Helper | Behavior | Defined in |
 |--------|----------|------------|
-| `raise_assertion_error(msg = "assertion failed")` | Throws `AssertionError`; supplies the no-message default for `assert cond` codegen | `core.hpp` |
-| `raise_fixedint_overflow(msg, ...)` | Currently calls `tpy_panic`; designed for a future policy switch (none/panic/throw) on fixed-int arithmetic overflow | `core.hpp` |
+| `raise_assertion_error(msg = "assertion failed")` | Calls into TPy's `AssertionError` ctor + throw | TPy stdlib (forward-declared in `throwable.hpp`) |
+| `raise_fixedint_overflow(msg, ...)` | Currently calls `tpy_panic`; designed for a future policy switch (none/panic/throw) on fixed-int arithmetic overflow | `core.hpp` (stays C++; doesn't actually throw today) |
 
 For demangled C++ type names in messages (e.g. `tpy::BigInt` instead of
 `N3tpy6BigIntE`), `core.hpp` exposes
@@ -265,11 +278,29 @@ For genuine errors -- I/O failures, invalid arguments, runtime violations -- Tur
 
 ### Exception Hierarchy
 
-Non-`ReturnException` exceptions map to C++ classes that inherit from `std::exception`:
+The exception hierarchy lives in pure TPy code (`lib/tpy/tpy/_builtins/_exceptions.py`).
+The only C++ surface is a thin bridge protocol that inherits `std::exception`:
 
 ```python
-# Built-in (in tpy._builtins._exceptions)
-class BaseException: ...
+# lib/tpy/tpy/_builtins/_exceptions.py
+
+@native("tpy::Throwable")
+@dynamic
+class Throwable(Protocol):
+    """The C++ std::exception bridge + the polymorphism contract used by
+    Box[Throwable] storage and the `raise <expr>` desugar. Codegen auto-emits
+    `clone` and `__raise__` overrides on every implementing class."""
+    @readonly
+    def clone(self) -> Own[Throwable]: ...
+    def __raise__(self) -> Never: ...
+
+class BaseException(Throwable):
+    message: str
+    def __init__(self, message: str = "") -> None:
+        self.message = message
+    def __str__(self) -> StrView:
+        return self.message
+
 class Exception(BaseException): ...
 class ValueError(Exception): ...
 class TypeError(Exception): ...
@@ -278,24 +309,169 @@ class IndexError(Exception): ...
 class KeyError(Exception): ...
 class AttributeError(Exception): ...
 class AssertionError(Exception): ...
-class IOError(Exception): ...
-class FileNotFoundError(IOError): ...
+class OSError(Exception): ...
+class FileNotFoundError(OSError): ...
+# ...
 ```
 
-C++ mapping:
+The C++ side is the entire native surface for the exception hierarchy:
 
 ```cpp
+// runtime/cpp/include/tpy/throwable.hpp
 namespace tpy {
-struct BaseException : std::exception {
-    std::string message;
-    const char* what() const noexcept override { return message.c_str(); }
+struct Throwable : std::exception {
+    virtual ~Throwable() = default;
+    [[noreturn]] virtual void __raise__() const = 0;
+    [[nodiscard]] virtual std::unique_ptr<Throwable> clone() const = 0;
 };
-struct Exception : BaseException {};
-struct ValueError : Exception {};
-struct TypeError : Exception {};
-// ...
 }
 ```
+
+`BaseException` and all subclasses are emitted from TPy codegen as classes
+inheriting `tpy::Throwable` through normal `class X(Throwable)` codegen.
+Codegen also auto-emits three methods on every class transitively implementing
+`Throwable`:
+
+- `__raise__()` -- body is `throw *this`. Throws as the override's static class
+  (the concrete subclass), preserving dynamic type.
+- `clone()` -- body is `std::make_unique<ThisClass>(*this)`. Heap-allocates a
+  polymorphic copy at the concrete type.
+- `what() const noexcept override` -- body returns `message.c_str()` for
+  BaseException-rooted classes (satisfies `std::exception`'s contract).
+
+These are **Throwable-specific compiler support** -- not pure reuse of the
+existing `@dynamic` protocol override emission (which only fires when the user
+redeclares a method). The auto-emit fires unconditionally for every class in
+the Throwable hierarchy, so that user-defined exception classes
+(`class MyError(Exception): ...`) get the right behavior without needing to
+manually implement `clone` / `__raise__` / `what`. This is a deliberate
+exception-ABI helper, named explicitly as such.
+
+Example shape:
+
+```cpp
+struct ValueError : Exception {
+    // ... TPy-emitted fields, ctors, methods ...
+    [[noreturn]] void __raise__() const override { throw *this; }
+    [[nodiscard]] std::unique_ptr<Throwable> clone() const override {
+        return std::make_unique<ValueError>(*this);
+    }
+    // what() inherited from BaseException's override (returns message.c_str()).
+};
+```
+
+### Throwable is the ABI protocol; BaseException is the user extension point (E9)
+
+`Throwable` is the abstract C++ base with the `__raise__` / `clone` / `what`
+virtuals -- the ABI boundary that `Box[Throwable]` storage and the `raise`
+desugar key on. User-defined exception classes inherit `BaseException` (or a
+subclass), never `Throwable` directly. The single direct Throwable implementer
+is `BaseException` itself; all other classes in the hierarchy transitively
+inherit it.
+
+Sema rule: a concrete class implementing Throwable must inherit BaseException,
+*except for the built-in BaseException itself* (which is by definition the root
+direct implementer). The rule is structural -- it applies uniformly to stdlib
+and user code; there's no "trust the stdlib" loophole. Phrased as a check:
+for any concrete class C with `Throwable` transitively in its bases, sema
+verifies either `C is BaseException` (the root case) or `BaseException` is in
+`C`'s MRO. Otherwise rejected:
+
+> Exception class 'X' implements Throwable but does not inherit BaseException;
+> use 'class X(Exception)' or another BaseException subclass as the base.
+> Throwable is the ABI protocol; concrete exception classes extend through
+> BaseException, which provides `message` and the standard `__str__` /
+> `what()` shape.
+
+This is what makes the auto-emit for `what()` safe: every Throwable subclass
+has the `message: str` field (inherited from BaseException), so the
+`message.c_str()` body is always valid.
+
+### Copy-Constructibility Constraint (E9)
+
+Both `throw *this` and `std::make_unique<ThisClass>(*this)` require the
+concrete class to be copy-constructible. C++ throw spec already requires this
+for any thrown exception, but TPy's auto-emit extends the constraint to every
+Throwable subclass -- including those that might never be thrown directly but
+could be stored in `Box[Throwable]` (which uses `clone()`).
+
+Sema check at class registration: any class transitively implementing
+`Throwable` must be copy-constructible. Reuses the existing `is_type_nocopy()`
+predicate -- every field's type is checked. Diagnostic:
+
+> Exception class 'MyError' has non-copy-constructible field 'handle:
+> Box[Resource]'; classes implementing Throwable must be copy-constructible
+> (required by auto-emitted `clone()` and `__raise__()`).
+
+### Polymorphic Storage via `Box[Throwable]` (E9)
+
+Because `Throwable` is a `@dynamic` protocol with a virtual `clone`, the existing
+`Box[@dynamic Protocol]` machinery (Phase 13 of `DYNAMIC_PROTOCOL_DESIGN.md`)
+handles polymorphic exception storage with no special casing:
+
+```python
+class TaskState[T]:
+    exc: Box[Throwable] | None     # equivalently: Box[BaseException] | None
+
+    def grab(self) -> None:
+        try:
+            ...
+        except BaseException as e:
+            self.exc = Box(e.clone())   # explicit clone -> heap copy
+
+    def rethrow(self) -> None:
+        if self.exc is not None:
+            raise self.exc              # desugars to self.exc.__raise__()
+```
+
+Costs are visible at the source level: `e.clone()` is one virtual call + one
+heap allocation; `Box(...)` is the owned wrapper; `raise self.exc` is one
+virtual call into the override.
+
+Fresh-rvalue construction does not need `clone()` -- the Box-covariant path
+heap-allocates the concrete type directly:
+
+```python
+self.exc = Box(ValueError("boom"))   # Box<ValueError> -> Box<Throwable>
+```
+
+### Slicing-Site Sema Rejection (E9)
+
+The rejection fires on the *conversion shape*, not just the destination type.
+Storing a fresh-rvalue of the exact destination type is fine (no slicing
+possible -- static and dynamic types coincide); storing a polymorphic borrow
+or a concrete subclass is rejected (dynamic type could differ from static
+type, leading to silent slicing).
+
+Per-assignment rule:
+
+- **Reject** when:
+  - destination is an owned slot of `is_polymorphic_class_type` T (field,
+    return, rebind, `Own[T]` arg, container element), AND
+  - source is an lvalue / borrow / call result of T or a subclass (catch
+    binding, function param, field access, method return, etc.) -- i.e. a
+    value whose dynamic type can differ from its static type.
+- **Reject** when source is a *concrete subclass* of the destination
+  (existing Own[Base] subclass-coercion rule already covers this).
+- **Allow** when source is a fresh-rvalue of the exact destination type
+  (e.g. `self.exc = BaseException("msg")` where field is `BaseException |
+  None`) -- static and dynamic types coincide, no slicing.
+- **Allow** `self.x = None` (trivially fine).
+
+Diagnostic on the borrow-storing case:
+
+> Cannot store `BaseException` borrow as owned `BaseException` (the dynamic
+> type may be a subclass and would be lost). Use `Box[Throwable]` for owned
+> polymorphic storage: `self.exc = Box(e.clone())`.
+
+Diagnostic on the subclass-storing case (existing message preserved):
+
+> Cannot assign `ValueError` to `BaseException` slot (would slice the dynamic
+> type). Use `Box[Throwable]` for owned polymorphic storage.
+
+Generalizes to any concrete class that inherits a `@dynamic` protocol -- not
+exception-specific. The rule pairs with the broader TODO.md item "Slicing-site
+sema rejections for storage / rvalue-return of Optional[Polymorphic]."
 
 ### `raise` Statement
 
@@ -317,16 +493,39 @@ int32_t parse_int(std::string_view s) {
 }
 ```
 
-`raise <expr>` raises a pre-constructed exception variable or function result:
+`raise <expr>` raises a pre-constructed exception variable or function result.
+After E9 it lowers via the `__raise__` desugar (parallel to the `__len__` /
+`__iter__` dunder-dispatch pattern for `len()` / `iter()`):
 
 ```python
 e = ValueError("bad input")
-raise e                    # raise variable
-raise make_error(42)       # raise function result
-raise factory.create()     # raise method result
+raise e                    # peel __deref__ -> Throwable; calls e.__raise__()
+raise make_error(42)       # same desugar on the call result
+raise self.exc             # Box[Throwable] -- auto-deref then __raise__
 ```
 
-This compiles to `throw <expr>;` in C++. Only throw-tier (non-ReturnException) exceptions are supported -- return-tier exceptions must use the direct `raise E(args)` form.
+Lowering rules (single path; no fast-path special case for fresh
+construction -- one unified codepath removes the divergence risk between
+two forms):
+
+- **`raise <expr>` (any shape, including fresh construction)**: peel
+  `__deref__` until you hit a non-Deref type; if that type implements
+  `Throwable`, emit `<peeled>.__raise__()` (virtual dispatch, throws the
+  dynamic type). For `raise X(args)`, this is `X(args).__raise__()` -- the
+  constructed exception's auto-emitted override does `throw *this`, throwing
+  as the concrete subclass.
+- **Non-Throwable peeled type**: sema rejects with "no `__raise__` method on
+  `<type>`; `raise` requires a Throwable expression."
+
+The one-virtual-call overhead vs the previous `throw X(args)` form is invisible
+against the cost of a thrown exception. If profiling later shows it matters,
+the fresh-construction fast path can be reintroduced as a peephole
+optimization (`raise X(args)` -> `throw X(args)`) -- but only after verifying
+catch matching, finally interaction, source locations, and debug info are
+identical between the two forms.
+
+Only throw-tier (non-ReturnException) exceptions are supported -- return-tier
+exceptions must use the direct `raise E(args)` form.
 
 ### `try`/`except`/`else`/`finally`
 
