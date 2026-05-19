@@ -190,13 +190,29 @@ readable in under a minute. Cover (each in one line or two):
 - Proposed fix (which files / phases, shape of the change)
 - Patch alternative (only if Phase 6 produced one)
 - Adjacent issues surfaced during analysis (brief)
+- Proposed branch (see below)
 
 Do NOT paste large code excerpts, full file lists, or reproduce the
 Phase 2 trace. The user will ask if they want depth.
 
+**Proposed branch line.** Check `git branch --show-current` and pick:
+
+- **On `master`**: propose a new branch off master with a short
+  kebab-case name derived from the bug (e.g. `fix-readonly-deref`,
+  `fix-optional-ptr-coercion`).
+- **On an unrelated branch** (different scope from the approved
+  fix): propose a new branch off master with a fitting name.
+- **On a fitting branch** (already a sensible home for this fix,
+  e.g. finishing in-progress work on the same area): say "current
+  branch `<name>` is a fitting home -- staying put" and skip the
+  new branch.
+
+Don't propose deleting or cleaning up the old branch -- leave that
+to the user.
+
 **Do not start coding.** The user picks the path:
 
-- (a) architectural fix
+- (a) architectural fix (and proposed branch, if any)
 - (b) patch + tracked follow-up in BUGS.md
 - (c) different direction -- e.g. redesign the feature itself if the
   architectural fix is awkward in revealing ways
@@ -212,35 +228,10 @@ itself a signal: the feature may not fit the existing design well. Flag
 this as a design-level question -- do not reflexively force-fit with a
 patch.
 
-## Phase 8: Branch hygiene (after sign-off)
-
-Once the user approves the fix direction (architectural or patch),
-suggest a working branch before touching code. Name the branch for
-the bug being fixed, not the exploration that led there.
-
-1. Check `git branch --show-current`.
-2. Pick the right suggestion:
-   - **On `master`**: propose a new branch off master with a short
-     kebab-case name derived from the bug (e.g.
-     `fix-readonly-deref`, `fix-optional-ptr-coercion`).
-   - **On an unrelated branch** (different scope from the approved
-     fix): propose the new branch off master *plus* `git branch -d
-     <old>` to clean up. `-d` only succeeds when the branch is
-     merged or has no unique commits vs master; if it fails, leave
-     the branch alone -- it has unmerged work the user may still
-     want.
-   - **On a fitting branch** (already a sensible home for this
-     fix, e.g. finishing in-progress work on the same area): say
-     so and skip the rename.
-3. State the proposed branch name and commands; wait for the user
-   to confirm before running them. Do not push, force, or use `-D`.
-
-Example:
-
-```bash
-git checkout -b <new-branch> master
-git branch -d <old-branch> 2>/dev/null || echo "<old-branch> kept (unmerged)"
-```
+Once the user signals (a) or (b), create the proposed branch (if any)
+with `git checkout -b <new-branch> master` and start implementing --
+one approval covers both the fix direction and the branch. Do not
+push, force, or use `-D`.
 
 ## Throughout: track new issues uncovered
 

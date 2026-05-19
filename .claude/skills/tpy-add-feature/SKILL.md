@@ -222,14 +222,29 @@ readable in under a minute. Cover (each in one line or two):
 - Tests + docs plan (brief)
 - Risks (architectural only; brief)
 - Adjacent issues uncovered (brief)
+- Proposed branch (see below)
 
 Do NOT paste large code sketches, exhaustive sibling-survey results,
 or full design-doc-style elaboration. The user will ask if they want
 depth.
 
+**Proposed branch line.** Check `git branch --show-current` and pick:
+
+- **On `master`**: propose a new branch off master with a short
+  kebab-case name derived from the approved scope (e.g.
+  `feat-tuple-unpack`, `extend-optional-narrowing`).
+- **On an unrelated branch** (different scope from the new work):
+  propose a new branch off master with a fitting name.
+- **On a fitting branch** (already a sensible home for this work,
+  e.g. extending an in-progress feature): say "current branch
+  `<name>` is a fitting home -- staying put" and skip the new branch.
+
+Don't propose deleting or cleaning up the old branch -- leave that
+to the user.
+
 **Do not start coding.** The user picks the path:
 
-- (a) proceed with the sketched design
+- (a) proceed with the sketched design (and proposed branch, if any)
 - (b) different design -- e.g. a different phase boundary, a different
   invariant, or a different home for the new behavior
 - (c) more analysis needed before deciding
@@ -240,35 +255,10 @@ back once: a wrong design is much harder to unwind than a wrong fix.
 The cost of one round-trip is much lower than the cost of a feature
 that surfaces later as multiple bugs and a redesign.
 
-## Phase 7: Branch hygiene (after sign-off)
-
-Once the user approves the design, suggest a working branch before
-touching code. Name the branch for the approved feature, not the
-exploration that led there.
-
-1. Check `git branch --show-current`.
-2. Pick the right suggestion:
-   - **On `master`**: propose a new branch off master with a short
-     kebab-case name derived from the approved scope (e.g.
-     `feat-tuple-unpack`, `extend-optional-narrowing`).
-   - **On an unrelated branch** (different scope from the approved
-     work): propose the new branch off master *plus* `git branch -d
-     <old>` to clean up. `-d` only succeeds when the branch is
-     merged or has no unique commits vs master; if it fails, leave
-     the branch alone -- it has unmerged work the user may still
-     want.
-   - **On a fitting branch** (already a sensible home for this
-     work, e.g. extending an in-progress feature): say so and skip
-     the rename.
-3. State the proposed branch name and commands; wait for the user
-   to confirm before running them. Do not push, force, or use `-D`.
-
-Example:
-
-```bash
-git checkout -b <new-branch> master
-git branch -d <old-branch> 2>/dev/null || echo "<old-branch> kept (unmerged)"
-```
+Once the user signals (a), create the proposed branch (if any) with
+`git checkout -b <new-branch> master` and start implementing -- one
+approval covers both the design and the branch. Do not push, force,
+or use `-D`.
 
 ## Throughout: track adjacent issues
 
