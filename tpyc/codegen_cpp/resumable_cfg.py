@@ -65,6 +65,17 @@ class AwaitKind(Enum):
     DISCARD = "discard"
 
 
+class AsyncWithKind(Enum):
+    """Which leg of an `async with` a synthetic yield emits.
+
+    M5's CFG synthesizes two Yield BBs per async-with: one for
+    `await __cm.__aenter__()` and one for `await __cm.__aexit__(...)`.
+    Emit dispatches on this enum rather than re-parsing the AST.
+    """
+    AENTER = "aenter"
+    AEXIT = "aexit"
+
+
 # -- Suspension payloads (the shape-specific part of a yield terminator)
 
 @dataclass(frozen=True)
@@ -80,6 +91,13 @@ class AwaitPayload:
     # The TpyAwait node itself (sema attaches awaited_async_func_name /
     # awaited_task_inner here; emit consults them).
     await_node: TpyAwait
+    # Async-with internal yields: emit takes a special path that
+    # synthesizes `(*__with_ctx_<n>).__aenter__()` or
+    # `(*__with_ctx_<n>).__aexit__({}, nullptr, {})` directly rather
+    # than going through gen_expr on a synthesized AST. Set by
+    # `_build_async_with`; None for ordinary user awaits.
+    async_with_kind: 'AsyncWithKind | None' = None
+    async_with_ctx_n: int | None = None
 
 
 @dataclass(frozen=True)
@@ -303,12 +321,34 @@ class AsyncFinallyExit:
 
 
 @dataclass(frozen=True)
-class AsyncWithEnter:
-    """Synthetic leaf stmt at the head of a CFG-decomposed `with` body.
+class WithEnter:
+    """Synthetic leaf stmt at the head of a CFG-decomposed sync `with`
+    body (sync `with X:` compiled inside an `async def`, M3.2). Real
+    Python `async with` uses its own setup synthetic (see AsyncWithSetup).
     Emit:
       __with_ctx_<n> = <context_expr>;
       (*__with_ctx_<n>).__enter__();     # if target is None
       <target> = (*__with_ctx_<n>).__enter__();   # otherwise
+    """
+    ctx_n: int
+    item: TpyWithItem
+
+
+@dataclass(frozen=True)
+class AsyncWithSetup:
+    """Synthetic leaf stmt at the head of a CFG-decomposed `async with`
+    region (v1.5 M5). Stores the context manager in a frame slot so the
+    subsequent `__aenter__` / `__aexit__` yields can dispatch through it.
+
+    Emit:
+      __with_ctx_<n> = <context_expr>;
+
+    (`__with_ctx_<n>` is the frame-hoisted `std::optional<CM>` field
+    allocated by the prescan; assigning a CM rvalue constructs in
+    place via `operator=`.) The Yield site immediately following
+    emplaces `__sub_<i>` with `(*__with_ctx_<n>, ...)` for the
+    `__aenter__` call; the finally body's Yield does the same for
+    `__aexit__(None, None, None)`.
     """
     ctx_n: int
     item: TpyWithItem
@@ -940,7 +980,15 @@ class CFGBuilder:
         into a CFG region. The context manager lives in a frame-hoisted
         field (`__with_ctx_<n>`); the case-emit wraps each case body in
         try/catch that runs `__exit__` on exception (with optional
-        suppression -> transition to post-with state)."""
+        suppression -> transition to post-with state).
+
+        Async `with` (`stmt.is_async`) routes to a separate path: the
+        `__aenter__` and `__aexit__` calls are themselves suspensions
+        and need Yield BBs, modelled via a synthetic TryRegion whose
+        CFG-based finally body holds the `__aexit__` yield. See
+        `_build_async_with`."""
+        if stmt.is_async:
+            return self._build_async_with(cur, stmt)
         ctx_ns = self._with_uid_map.get(id(stmt))
         if ctx_ns is None:
             raise _CFGNotYetSupported(
@@ -954,7 +1002,7 @@ class CFGBuilder:
                 loc=stmt.loc,
             )
         post_with_bb = self._new_bb()
-        # For each item, push WithRegion then emit AsyncWithEnter into
+        # For each item, push WithRegion then emit WithEnter into
         # the current BB. Items are processed in source order
         # (outer-most CM enters first).
         regions: list[WithRegion] = []
@@ -966,7 +1014,7 @@ class CFGBuilder:
                 loc_source=stmt,
             )
             self._blocks[cur].stmts.append(
-                AsyncWithEnter(ctx_n=ctx_n, item=item))
+                WithEnter(ctx_n=ctx_n, item=item))
             self._region_stack.append(region)
             regions.append(region)
         try:
@@ -985,6 +1033,190 @@ class CFGBuilder:
             for _ in regions:
                 self._region_stack.pop()
         return post_with_bb
+
+    # -- async with -----------------------------------------------------
+
+    def _build_async_with(self, cur: int, stmt: TpyWith) -> int | None:
+        """Lower Python `async with X1 as a, X2 as b: body` (v1.5 M5).
+
+        Each item is decomposed left-to-right into:
+          AsyncWithSetup -> Yield(__aenter__) -> [TryRegion {
+              <recurse to next item, or body>
+          } finally {
+              Yield(__aexit__) ; AsyncFinallyExit
+          }]
+
+        The TryRegion's finally body re-uses the M3.3 CFG-based-finally
+        machinery: a `__finally_exc_<uid>` frame slot saves any in-flight
+        exception via `std::current_exception()`; AsyncFinallyExit at
+        the tail rethrows. `return` inside the body parks the value in
+        `__finally_pending_<uid>` / `__finally_ret_<uid>` and walks
+        through the same finally path (same as M3.3.2).
+
+        v1.5 M5 cleanup-only: `__aexit__` is called with all-None args
+        regardless of whether an exception was caught. Inspecting
+        `exc_val: Optional[BaseException]` is deferred to the
+        polymorphic-exception-storage milestone (E9).
+        """
+        ctx_ns = self._with_uid_map.get(id(stmt))
+        if ctx_ns is None:
+            raise _CFGNotYetSupported(
+                "async-with reached CFG builder without registered "
+                "ctx uids (internal: pre-scan missed it).",
+                loc=stmt.loc,
+            )
+        if len(ctx_ns) != len(stmt.items):
+            raise _CFGNotYetSupported(
+                "async-with ctx uid count mismatch (internal).",
+                loc=stmt.loc,
+            )
+        finally_uid = self._try_finally_uid_map.get(id(stmt))
+        if finally_uid is None:
+            raise _CFGNotYetSupported(
+                "async-with reached CFG builder without registered "
+                "finally-exc uid (internal: pre-scan missed it).",
+                loc=stmt.loc,
+            )
+        # Nested async-with: each item gets its own TryRegion, but the
+        # M3.3 finally machinery only supports one CFG-based finally at
+        # a time (filed in BUGS.md). Reject multi-item async-with for
+        # now -- left-to-right desugaring via the same uid mechanism
+        # would collide. (Parser also supports the workaround:
+        # nested async-with stmts.)
+        if len(stmt.items) != 1:
+            raise _CFGNotYetSupported(
+                "multi-item `async with X as a, Y as b:` is not yet "
+                "supported -- nest two `async with` statements instead",
+                loc=stmt.loc,
+            )
+        # Outer TryRegion can't be inside another CFG-based finally
+        # region (same M3.3 nesting limit).
+        for r in self._region_stack:
+            if (isinstance(r, TryRegion)
+                    and r.captured_exc_field is not None):
+                raise _CFGNotYetSupported(
+                    "`async with` nested inside another `await`-in-"
+                    "finally region is a planned follow-up.",
+                    loc=stmt.loc,
+                )
+
+        item = stmt.items[0]
+        ctx_n = ctx_ns[0]
+        captured_exc_field = f"__finally_exc_{finally_uid}"
+
+        # 1. AsyncWithSetup populates the __with_ctx_<n> frame slot.
+        self._blocks[cur].stmts.append(
+            AsyncWithSetup(ctx_n=ctx_n, item=item))
+
+        # 2. Yield for `__aenter__()`. Synthesize a minimal TpyAwait so
+        # the payload's dataclass invariants hold; emit branches on
+        # `async_with_kind` and never reads the AST. The sub-coro
+        # struct's C++ name is resolved at codegen time by looking up
+        # `_async_with_struct_names[ctx_n]` (populated by the prescan).
+        dummy_await = TpyAwait(value=item.context_expr, loc=stmt.loc)
+        aenter_resume_bb = self._new_bb()
+        aenter_payload = AwaitPayload(
+            mode=AwaitMode.INLINE,
+            sub_field_cpp_type="",  # emit fills this from the CM type
+            operand_expr=item.context_expr,
+            kind=(AwaitKind.ASSIGN if item.target is not None
+                  else AwaitKind.DISCARD),
+            bind_target=item.target,
+            return_stmt=None,
+            host_stmt=stmt,
+            await_node=dummy_await,
+            async_with_kind=AsyncWithKind.AENTER,
+            async_with_ctx_n=ctx_n,
+        )
+        aenter_yield = Yield(
+            payload=aenter_payload,
+            resume_bb=aenter_resume_bb,
+            suspension_index=len(self._yield_sites),
+        )
+        self._finish(cur, aenter_yield)
+        self._yield_sites.append(aenter_yield)
+
+        # 3. Build TryRegion with CFG-based finally. The body is
+        # stmt.body; the finally body holds the __aexit__ Yield +
+        # AsyncFinallyExit.
+        pending_return_flag = None
+        pending_return_slot = None
+        if _stmts_have_any_return(stmt.body):
+            pending_return_flag = f"__finally_pending_{finally_uid}"
+            if not self._func_returns_void:
+                pending_return_slot = f"__finally_ret_{finally_uid}"
+
+        # Build finally body BB (with FinallyRegion on stack).
+        finally_region = FinallyRegion(
+            helper_name=captured_exc_field,
+            loc_source=stmt,
+        )
+        self._region_stack.append(finally_region)
+        finally_entry_bb = self._new_bb()
+        self._region_stack.pop()
+
+        try_region = TryRegion(
+            handlers=(),
+            finally_helper_name=None,
+            tier="throw",
+            loc_source=stmt,
+            finally_entry_bb=finally_entry_bb,
+            captured_exc_field=captured_exc_field,
+            pending_return_flag=pending_return_flag,
+            pending_return_slot=pending_return_slot,
+        )
+        join_bb = self._new_bb()
+
+        # Try body lives inside TryRegion.
+        self._region_stack.append(try_region)
+        try:
+            try_body_entry = self._new_bb()
+            self._finish(aenter_resume_bb, Fall(next_bb=try_body_entry))
+            body_end = self._build_block(try_body_entry, stmt.body)
+            if body_end is not None:
+                self._finish(body_end, Fall(next_bb=finally_entry_bb))
+        finally:
+            self._region_stack.pop()
+
+        # Finally body: Yield for __aexit__ + AsyncFinallyExit + Fall
+        # to join.
+        self._region_stack.append(finally_region)
+        try:
+            dummy_aexit_await = TpyAwait(
+                value=item.context_expr, loc=stmt.loc)
+            aexit_resume_bb = self._new_bb()
+            aexit_payload = AwaitPayload(
+                mode=AwaitMode.INLINE,
+                sub_field_cpp_type="",
+                operand_expr=item.context_expr,
+                kind=AwaitKind.DISCARD,
+                bind_target=None,
+                return_stmt=None,
+                host_stmt=stmt,
+                await_node=dummy_aexit_await,
+                async_with_kind=AsyncWithKind.AEXIT,
+                async_with_ctx_n=ctx_n,
+            )
+            aexit_yield = Yield(
+                payload=aexit_payload,
+                resume_bb=aexit_resume_bb,
+                suspension_index=len(self._yield_sites),
+            )
+            self._finish(finally_entry_bb, aexit_yield)
+            self._yield_sites.append(aexit_yield)
+            # After aexit resume: AsyncFinallyExit (rethrow saved exc if
+            # any, deferred return if pending), then Fall to join.
+            self._blocks[aexit_resume_bb].stmts.append(
+                AsyncFinallyExit(
+                    captured_exc_field=captured_exc_field,
+                    pending_return_flag=pending_return_flag,
+                    pending_return_slot=pending_return_slot,
+                ))
+            self._finish(aexit_resume_bb, Fall(next_bb=join_bb))
+        finally:
+            self._region_stack.pop()
+
+        return join_bb
 
     # -- post-construction passes ---------------------------------------
 
@@ -1057,7 +1289,11 @@ def _classify_await_position(
 
 def _stmt_has_any_await(stmt: TpyStmt) -> bool:
     """Walk a statement (its expression slots and sub_bodies) for any
-    TpyAwait. Used for the lazy-decomposition decision."""
+    TpyAwait. Used for the lazy-decomposition decision. `async with`
+    always counts as containing awaits even when its body has none --
+    the `__aenter__` / `__aexit__` calls are themselves suspensions."""
+    if isinstance(stmt, TpyWith) and stmt.is_async:
+        return True
 
     def walk_expr(e: TpyExpr | None) -> bool:
         if e is None:

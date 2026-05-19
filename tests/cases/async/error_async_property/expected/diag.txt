@@ -1,0 +1,1 @@
+main.py:9: error: async @property is not yet supported on 'value' of 'P'

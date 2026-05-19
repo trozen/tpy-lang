@@ -1,1 +1,0 @@
-main.py:8: error: async methods are not yet supported (method 'fetch' on 'Fetcher')

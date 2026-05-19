@@ -33,6 +33,7 @@ from .nodes import (
     is_base_init_call,
     collect_name_refs,
     collect_top_level_local_names,
+    is_stable_address_lvalue,
 )
 
 from .imports import (

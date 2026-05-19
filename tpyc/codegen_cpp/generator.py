@@ -439,11 +439,21 @@ class CodeGenerator:
             self.functions.gen_function_def(cpp, func)
             cpp.write("\n")
 
-        # Method generator __next__() definitions
+        # Method generator __next__() / async __poll__() definitions
         for record in module.all_records():
             for method in record.methods:
                 if method.is_generator and not self.gen_generators.is_simple_generator(method):
                     self.gen_generators.gen_generator_next(
+                        cpp, method, record_name=record.name)
+                    cpp.write("\n")
+                elif method.is_async and not method.type_params:
+                    # Non-template async methods: poll body lands in .cpp.
+                    # Template async methods have their poll body emitted
+                    # inline next to the struct in the .hpp (see above).
+                    self.gen_async.gen_coro_poll_def(
+                        cpp, method, record_name=record.name)
+                    cpp.write("\n")
+                    self.gen_async.gen_coro_finally_top_def(
                         cpp, method, record_name=record.name)
                     cpp.write("\n")
 
@@ -898,11 +908,15 @@ class CodeGenerator:
             if func.is_async:
                 self.gen_async.gen_coro_forward_decl(hpp, func)
                 emitted_gen_fwd = True
-        # Method generator struct forward declarations (before records)
+        # Method generator/async struct forward declarations (before records)
         for record in module.all_records():
             for method in record.methods:
                 if method.is_generator and not self.gen_generators.is_simple_generator(method):
                     self.gen_generators.gen_generator_forward_decl(
+                        hpp, method, record_name=record.name)
+                    emitted_gen_fwd = True
+                if method.is_async:
+                    self.gen_async.gen_coro_forward_decl(
                         hpp, method, record_name=record.name)
                     emitted_gen_fwd = True
         if emitted_gen_fwd:
@@ -973,6 +987,41 @@ class CodeGenerator:
                     continue
                 self._gen_enum_operator_ostream(hpp, enum)
 
+
+        # Async-method coro struct definitions FIRST (before any free coro
+        # struct that might inline them as `optional<__coro_Class_method>`
+        # sub-future fields -- needs the full type, not just the forward
+        # decl emitted before records). Method factory definitions land
+        # immediately after their struct so the inline factory body sees
+        # the complete coro type.
+        for record in module.all_records():
+            for method in record.methods:
+                if not method.is_async:
+                    continue
+                self.gen_async.gen_coro_struct(
+                    hpp, method, record_name=record.name)
+                hpp.write("\n")
+                # Templates: poll() body must be inline-in-header.
+                if method.type_params:
+                    self.gen_async.gen_coro_poll_def(
+                        hpp, method, record_name=record.name)
+                    hpp.write("\n")
+                    self.gen_async.gen_coro_finally_top_def(
+                        hpp, method, record_name=record.name)
+                    hpp.write("\n")
+                struct_name = self.gen_async.gen_struct_name(method, record.name)
+                cpp_record = escape_cpp_name(record.name.replace(".", "::"))
+                params = self.functions.gen_params(
+                    method.params, method.type_params,
+                    emit_defaults=False, func=method)
+                if method.params:
+                    args = f"*this, {', '.join(escape_cpp_name(p) for p, _ in method.params)}"
+                else:
+                    args = "*this"
+                const_suffix = " const" if method.is_readonly else ""
+                hpp.write(f"inline {struct_name} {cpp_record}::{method.name}({params}){const_suffix} {{\n")
+                hpp.write(f"    return {struct_name}({args});\n")
+                hpp.write(f"}}\n\n")
 
         # Generator struct full definitions (after records, so struct fields
         # and inline __next__() can use fully-defined user types).

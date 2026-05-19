@@ -465,6 +465,17 @@ class RecordGenerator:
                     const_suffix = " const" if method.is_readonly else ""
                     out.write(f"\n{INDENT}{struct_name} {method.name}({params}){const_suffix};\n")
                 continue
+            # Async methods: declaration-only inside the struct; the factory
+            # body and the coro struct land in `generator.py`'s post-struct
+            # emit pass, parallel to generator methods above.
+            if method.is_async:
+                from .gen_async import AsyncCoroCodegen
+                struct_name = AsyncCoroCodegen.gen_struct_name(method, record.name)
+                params = self.functions.gen_params(
+                    method.params, method.type_params, emit_defaults=True)
+                const_suffix = " const" if method.is_readonly else ""
+                out.write(f"\n{INDENT}{struct_name} {method.name}({params}){const_suffix};\n")
+                continue
             # @overload-dispatched methods stay inline-in-struct regardless of
             # body size -- the specialized-method emitters take a `mode` param
             # but it's always "inline" here (small/large split for those would
@@ -645,8 +656,11 @@ class RecordGenerator:
         for method in record.methods:
             if self._skip_method_emission(method):
                 continue
-            # Generators self-emit through GeneratorCodegen elsewhere.
-            if method.is_generator:
+            # Generators / async methods self-emit through GeneratorCodegen /
+            # AsyncCoroCodegen elsewhere (their factory bodies are inline
+            # methods that return the coro/generator struct, emitted next to
+            # the struct definition).
+            if method.is_generator or method.is_async:
                 continue
             # Overload-dispatched methods emit specialized methods inline (one
             # per stub) inside the struct -- not handled here. Track them so

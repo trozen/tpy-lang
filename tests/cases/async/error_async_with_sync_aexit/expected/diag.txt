@@ -1,0 +1,1 @@
+main.py:17: error: `__aexit__` on 'CM' must be `async def` for use in `async with`

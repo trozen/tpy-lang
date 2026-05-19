@@ -1,0 +1,1 @@
+main.py:15: error: `async with` is only allowed inside an `async def` function body

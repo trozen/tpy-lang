@@ -99,7 +99,7 @@ void __tpy_init() {
 
     // # Two context managers in a single `with` stmt, with `await` in
     // # the body (v1.5 M3.2). Verifies that `_build_with` /
-    // # `_prescan_async_with_stmts` handle N items: per-CM frame slot,
+    // # `_prescan_with_stmts` handle N items: per-CM frame slot,
     // # per-CM region wrap, innermost-first __exit__ on normal exit.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();

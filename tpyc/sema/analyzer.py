@@ -1935,8 +1935,10 @@ class SemanticAnalyzer:
             # Shared core: bind params, prescan, analyze body
             scan = self.stmts._prescan_and_analyze_body(method, resolved_params, scope, local_ns)
 
-            # Collect generator local variables for struct field generation
-            if method.is_generator:
+            # Collect generator / async-coro local variables for struct
+            # field generation (locals that may live across yield / await
+            # suspensions are hoisted to the resumable-frame struct).
+            if method.is_generator or method.is_async:
                 param_names = {pname for pname, _ in method.params}
                 locals_dict: dict[str, 'TpyType'] = {}
                 for name, binding in local_ns.all_bindings().items():

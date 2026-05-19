@@ -1849,44 +1849,100 @@ class StatementAnalyzer:
         Checks that each context expression has __enter__ and __exit__ methods.
         Types the as-binding from __enter__ return type. The as-variable is
         visible after the with block (matching CPython semantics).
+
+        `async with` (stmt.is_async): looks for __aenter__ / __aexit__,
+        validates both are async methods, and unwraps the
+        `Awaitable[T]` wrapper that async-method registration applies to
+        their return types. Only allowed inside `async def`.
         """
+        if stmt.is_async:
+            cur = self.ctx.func.current_function
+            if not (isinstance(cur, TpyFunction) and cur.is_async):
+                raise self.ctx.error(
+                    "`async with` is only allowed inside an `async def` "
+                    "function body", stmt)
+
+        enter_method = "__aenter__" if stmt.is_async else "__enter__"
+        exit_method = "__aexit__" if stmt.is_async else "__exit__"
+        kind_label = "async context manager" if stmt.is_async else "context manager"
+
         for item in stmt.items:
             ctx_type = unwrap_own(unwrap_ref_type(self.expr.analyze_expr(item.context_expr)))
 
-            # Look up __enter__ and __exit__ on the context manager type
+            # Look up __[a]enter__ / __[a]exit__ on the context manager type.
             record_info = self.ctx.registry.get_record_for_type(ctx_type)
             err_node = item.context_expr
             if record_info is None:
                 raise self.ctx.error(
-                    f"Type '{ctx_type}' cannot be used as a context manager"
+                    f"Type '{ctx_type}' cannot be used as a {kind_label}"
                     f" (not a record type)", err_node)
 
-            enter_overloads = record_info.methods.get("__enter__")
+            enter_overloads = record_info.methods.get(enter_method)
             if not enter_overloads:
                 raise self.ctx.error(
-                    f"Type '{ctx_type}' cannot be used as a context manager"
-                    f" (missing __enter__ method)", err_node)
+                    f"Type '{ctx_type}' cannot be used as a {kind_label}"
+                    f" (missing {enter_method} method)", err_node)
 
-            exit_overloads = record_info.methods.get("__exit__")
+            exit_overloads = record_info.methods.get(exit_method)
             if not exit_overloads:
                 raise self.ctx.error(
-                    f"Type '{ctx_type}' cannot be used as a context manager"
-                    f" (missing __exit__ method)", err_node)
+                    f"Type '{ctx_type}' cannot be used as a {kind_label}"
+                    f" (missing {exit_method} method)", err_node)
 
-            # v1.5 M1: tag whether __exit__ may suppress exceptions, and
-            # whether exc_val is typed Optional[BaseException] (vs None).
-            # Registration rejects multi-overload __exit__, so there's
-            # exactly one overload and we read its shape directly.
+            # Validate async-ness: in `async with`, both methods must be
+            # `async def`. In sync `with`, neither should be.
+            enter_info = enter_overloads[0]
             exit_info = exit_overloads[0]
-            item.exit_can_suppress = exit_info.return_type == BOOL
+            if stmt.is_async:
+                if not enter_info.is_async:
+                    raise self.ctx.error(
+                        f"`{enter_method}` on '{ctx_type}' must be `async def` "
+                        f"for use in `async with`", err_node)
+                if not exit_info.is_async:
+                    raise self.ctx.error(
+                        f"`{exit_method}` on '{ctx_type}' must be `async def` "
+                        f"for use in `async with`", err_node)
+                # v1.5 M5 limitation: cleanup-only `__aexit__` (all-None
+                # args). Inspecting `exc_val: Optional[BaseException]`
+                # requires polymorphic exception storage across the
+                # suspension (E9 / Phase 20).
+                if len(exit_info.params) >= 2 and isinstance(
+                        exit_info.params[1].type, OptionalType):
+                    raise self.ctx.error(
+                        f"`{exit_method}` with `exc_val: Optional["
+                        f"BaseException]` is not yet supported in "
+                        f"`async with` -- v1.5 M5 only handles "
+                        f"cleanup-only managers. Annotate exc_val as "
+                        f"`None` to discard the exception. Full "
+                        f"polymorphic-exception inspection is tracked "
+                        f"as E9 / Phase 20.", err_node)
+
+            # v1.5 M1: tag whether __exit__ / __aexit__ may suppress
+            # exceptions, and whether exc_val is typed Optional[BaseException]
+            # (vs None). Registration rejects multi-overload `__exit__`;
+            # async methods don't participate in @overload, so each has
+            # exactly one entry.
+            # For async methods, the FunctionInfo return type is wrapped
+            # in `Awaitable[T]` (see registration.py); unwrap one level to
+            # see the user's declared T.
+            exit_ret = exit_info.return_type
+            if (stmt.is_async and isinstance(exit_ret, NominalType)
+                    and exit_ret.qualified_name() == qnames.AWAITABLE
+                    and len(exit_ret.type_args) == 1):
+                exit_ret = exit_ret.type_args[0]
+            item.exit_can_suppress = exit_ret == BOOL
             item.exit_takes_exc_val = (
                 len(exit_info.params) >= 2
                 and isinstance(exit_info.params[1].type, OptionalType)
             )
 
-            # Get return type of __enter__() -- use the first overload
-            enter_info = enter_overloads[0]
+            # Get return type of __[a]enter__() -- use the first overload.
+            # For async, unwrap Awaitable[T] so the as-binding sees T.
             enter_type = unwrap_ref_type(enter_info.return_type)
+            if (stmt.is_async and isinstance(enter_type, NominalType)
+                    and enter_type.qualified_name() == qnames.AWAITABLE
+                    and len(enter_type.type_args) == 1):
+                enter_type = enter_type.type_args[0]
             item.enter_type = enter_type
 
             # Register the as-variable if present

@@ -1,0 +1,4 @@
+aenter
+0
+aexit
+caught: boom

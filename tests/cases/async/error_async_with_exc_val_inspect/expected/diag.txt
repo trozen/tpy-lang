@@ -1,0 +1,1 @@
+main.py:17: error: `__aexit__` with `exc_val: Optional[BaseException]` is not yet supported in `async with` -- v1.5 M5 only handles cleanup-only managers. Annotate exc_val as `None` to discard the exception. Full polymorphic-exception inspection is tracked as E9 / Phase 20.

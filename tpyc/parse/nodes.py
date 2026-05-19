@@ -630,6 +630,10 @@ class TpyAwait(TpyExpr):
       call to a known async def. Codegen emits the sub-coroutine struct
       as a frame field via `std::optional<__<name>Coro>` and constructs
       it in place from the call's args.
+      For async methods, `awaited_method_owner_record` carries the
+      receiver record name so the sub-coro struct can be uniquely named
+      (`__coro_<Record>_<method>`) and emplace passes the receiver as
+      the first arg.
     - `awaited_task_inner`: erased mode -- the operand has type
       `Task[T]`. Codegen emits the sub-future field as
       `std::optional<::tpy::Task<T>>` and moves the operand value in.
@@ -641,6 +645,7 @@ class TpyAwait(TpyExpr):
     """
     value: TpyExpr
     awaited_async_func_name: str | None = field(default=None, kw_only=True)
+    awaited_method_owner_record: str | None = field(default=None, kw_only=True)
     awaited_task_inner: 'TpyType | None' = field(default=None, kw_only=True)
     suspension_index: int | None = field(default=None, kw_only=True)
 
@@ -942,9 +947,15 @@ class TpyWithItem:
 
 @dataclass
 class TpyWith(TpyStmt):
-    """with statement (context managers)."""
+    """with statement (context managers).
+
+    `is_async=True` when this came from Python `async with`; the
+    context managers' `__aenter__` / `__aexit__` are async methods and
+    each call is a suspension point. Only allowed inside `async def`.
+    """
     items: list[TpyWithItem]
     body: list[TpyStmt]
+    is_async: bool = False
 
     def exprs(self) -> list[TpyExpr]:
         return [item.context_expr for item in self.items]
@@ -1538,3 +1549,27 @@ def collect_top_level_local_names(stmts: list[TpyStmt]) -> set[str]:
         elif isinstance(s, TpyTupleUnpack):
             names.update(t for t in s.targets if t is not None)
     return names
+
+
+def is_stable_address_lvalue(expr: TpyExpr) -> bool:
+    """True iff `expr` resolves to a stable lvalue: a bare name (local /
+    parameter / frame field) or a chain of field accesses rooted at a
+    name. Subscripts, calls, binops, conditional / comprehension
+    expressions return temporaries whose address would dangle across
+    an async suspension or a stored borrow.
+
+    Stricter than `sema/compatibility.py::is_lvalue`: subscripts
+    (addressable in C++ but yield container-element temporaries
+    across suspensions) and `TpyCoerce` (sema-only wrapper, doesn't
+    reach codegen) are both excluded.
+
+    Used by:
+      * `sema/expressions.py::analyze_await` to reject
+        `await rvalue.method()` (M4 async-method receiver capture).
+      * `codegen_cpp/gen_async.py::_make_await_payload` to choose
+        BORROWED vs ERASED await mode.
+    """
+    e = expr
+    while isinstance(e, TpyFieldAccess):
+        e = e.obj
+    return isinstance(e, TpyName)

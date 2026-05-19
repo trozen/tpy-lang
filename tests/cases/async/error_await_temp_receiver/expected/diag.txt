@@ -1,0 +1,1 @@
+main.py:18: error: receiver of an awaited async method must be a stable lvalue (a local, parameter, or field chain rooted at one) -- the coro captures it by reference across suspensions, so a temporary would dangle. Bind the receiver to a local first: `r = <expr>; await r.method(...)`

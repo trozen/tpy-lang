@@ -660,6 +660,24 @@ class TypeRegistrar:
             record.fields[:] = remaining
         return class_constants, finality
 
+    def _reject_method_on_generic_class(self, kind: str,
+                                          record: 'TpyRecord',
+                                          method: 'TpyFunction') -> None:
+        """Reject generator / async methods on generic classes with a
+        consistent diagnostic. Both codegen paths (out-of-line generator
+        `__next__`, out-of-line async `__poll__`) currently emit at
+        namespace scope without forwarding the class's template header,
+        so any body reference to the class's type params fails C++
+        build. Lifting either rejection requires the codegen to emit
+        `template <typename T>` ahead of the struct's out-of-line
+        member definitions."""
+        if record.type_params:
+            raise SemanticError(
+                f"{kind} methods on generic classes are not yet supported "
+                f"('{record.name}.{method.name}')",
+                method.loc or record.loc,
+            )
+
     def register_record(self, record: TpyRecord) -> None:
         """Register a record type."""
         is_native = record.linkage != RecordLinkage.DEFAULT
@@ -996,12 +1014,7 @@ class TypeRegistrar:
                         method.loc or record.loc,
                     )
                 method.generator_yield_type = method_return.type_args[0]
-                if record.type_params:
-                    raise SemanticError(
-                        f"Generator methods on generic classes are not yet supported "
-                        f"('{record.name}.{method.name}')",
-                        method.loc or record.loc,
-                    )
+                self._reject_method_on_generic_class("Generator", record, method)
             # For the mutable clone of a auto_readonly pair, skip implicit_readonly so
             # that the mutable clone keeps is_readonly=False. This allows tie-breaking in
             # method resolution to correctly distinguish the two clones based on receiver
@@ -1089,15 +1102,31 @@ class TypeRegistrar:
             if method.kwarg_name is not None and method.kwarg_type is not None:
                 resolved_kwarg_type = self.type_ops.resolve_type(method.kwarg_type)
                 method_param_infos.append(ParamInfo(method.kwarg_name, resolved_kwarg_type))
+            # async def method: callers see Awaitable[T]. Mirrors free async def
+            # (line ~2603); the user's T stays on method.return_type for codegen
+            # and the body-return checker.
+            if method.is_async:
+                # M4 codegen emits the method's coro struct at namespace
+                # scope but doesn't propagate the class's template
+                # header to the out-of-line `__poll__` body, so any
+                # reference to the class's type params would fail C++
+                # build. Same shape as generator methods on generic
+                # classes; share the rejection helper.
+                self._reject_method_on_generic_class("Async", record, method)
+                fi_method_return = make_awaitable(
+                    NONE if isinstance(method_return, VoidType) else method_return)
+            else:
+                fi_method_return = method_return
             func_info = FunctionInfo(
                 name=method.name,
                 params=method_param_infos,
-                return_type=method_return,
+                return_type=fi_method_return,
                 is_readonly=resolved_readonly,
                 is_pure=method.is_pure,
                 is_inline=method.is_inline,
                 is_consuming=method.is_consuming,
                 is_method=True,
+                is_async=method.is_async,
                 is_staticmethod=method.is_staticmethod,
                 is_property_getter=method.is_property_getter,
                 is_property_setter=method.is_property_setter,

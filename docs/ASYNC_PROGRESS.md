@@ -603,7 +603,7 @@ composability blockers):
   `gen_async.py`. `async for` has its own desugaring (`__aiter__` /
   `__anext__`) and doesn't share this code path.
 - **M3.2 -- Sync `with X:` with await in body.** SHIPPED. CFG
-  decomposes a with-with-await into an AsyncWithEnter setup stmt +
+  decomposes a with-with-await into a WithEnter setup stmt +
   WithRegion-wrapped body BBs. Context manager + as-binding live in
   `__with_ctx_<n>` / `<target>` coro-frame slots
   (`std::optional<...>`). Each case whose region_stack contains a
@@ -614,8 +614,8 @@ composability blockers):
   state to a synthesized `post_with_bb` case label; on False, rethrows.
   Normal-exit `__exit__({}, nullptr/{}, {})` is emitted by
   `_emit_exit_region_finallies` when the Fall edge crosses out of the
-  WithRegion. Synthetic `AsyncWithEnter` in `resumable_cfg.py`; emit
-  helpers `_emit_async_with_enter` / `_emit_async_with_exit` /
+  WithRegion. Synthetic `WithEnter` in `resumable_cfg.py`; emit
+  helpers `_emit_with_enter` / `_emit_with_exit` /
   `_emit_with_region_catches` in `gen_async.py`.
 - **M3.3 + M3.3.1 + M3.3.2 -- `await` inside a `finally` body
   (with handlers, with return-walks-finally).** SHIPPED. The CFG
@@ -657,6 +657,175 @@ positions, pre-existing but only reachable after M3):
   -> ternary, `while await cond()` -> `while True: cond_val =
   await cond(); if not cond_val: break`). Pre-existing in the
   lifter; the cases just didn't reach codegen before M3.
+
+### M4 SHIPPED -- async methods on user classes (M5 prerequisite)
+
+Lifts the PR2 parser-level rejection of async methods. v1's
+`docs/ASYNC_DESIGN.md` listed only "user-defined `__await__`" and
+"async + @error_return / @noalloc / yield / @native / @export" as
+exclusions; async methods were a separate restriction in `PR2`
+intended to ship later. M4 ships it because v1.5 M5 (`async with`)
+needs `__aenter__` / `__aexit__` to be `async def` methods.
+
+What ships:
+
+- **Parser**: `_parse_method` accepts `ast.AsyncFunctionDef` items in
+  class bodies, propagating `is_async=True` onto the `TpyFunction`.
+  Mirrors `_parse_def`'s async exclusion checks (no async generators,
+  no `@error_return`, no `@native` / `@export`, no `@staticmethod`,
+  no `@property`).
+- **Sema**: method registration in `register_record` wraps the
+  return type in `Awaitable[T]` for `method.is_async` (parallel to
+  the free async-def wrapping at line ~2603). The await analyzer
+  (`expressions.analyze_await`) now recognizes `TpyMethodCall` to
+  async def via the call's `resolved_function_info`. The receiver's
+  record name is captured on `TpyAwait.awaited_method_owner_record`
+  for codegen's unique sub-coro struct naming.
+- **Codegen**: `AsyncCoroCodegen.gen_struct_name(func, record_name)`
+  returns `__coro_<Record>_<method>` (parallels
+  `GeneratorCodegen.gen_struct_name`'s method shape).
+  `_classify_params(func, record_name)` prepends
+  `__self: <Record>&` (or `const <Record>&` for `@readonly`) so the
+  coro frame captures the receiver. `gen_coro_poll_def` /
+  `gen_coro_finally_top_def` set `ctx.generator_self_ref = "__self"`
+  so body refs to `self.X` rewrite to `this->__self.X`.
+- **Codegen orchestration** (`generator.py`):
+  - Forward decls for async-method coro structs emit BEFORE records
+    (so record method signatures can reference them).
+  - Async-method coro struct + inline factory method definitions
+    emit AFTER records but BEFORE free coro structs (because a free
+    coro that awaits an async method needs the method's coro struct
+    complete to inline as `optional<__coro_Class_method>`).
+  - In-struct declaration of the method itself is
+    `__coro_Class_method method_name(args) const?` -- the body lives
+    out-of-line.
+- **Codegen `_emit_suspend` INLINE mode**: handles
+  `TpyMethodCall` by emplacing with `(receiver_cpp, args...)`,
+  parallel to the free-call shape's `(args...)`.
+- **Tests** (`tests/cases/async/`):
+  - `method_basic` -- canonical case; the old `error_async_method`
+    rejection case repurposed as a positive smoke.
+  - `method_chain` -- async method awaiting another async method on
+    the same instance.
+  - `method_readonly` -- non-mutating method; auto-readonly
+    inference flips `__self` to `const Class&`.
+  - `method_with_sleep` -- async method body containing
+    `await asyncio.sleep(...)` (mixed INLINE + ERASED awaits).
+  - `method_two_classes` -- same method name on two classes;
+    `__coro_A_tag` vs `__coro_B_tag` disambiguates.
+  - `error_async_staticmethod`, `error_async_property` -- parser
+    rejections preserved for the unsupported sub-shapes.
+
+Restrictions still in place (each a separate future item):
+
+- `async @staticmethod` / `async @property`: rejected at parse.
+  Async staticmethods would need a no-self-capture variant; async
+  properties would conflict with the field-access syntax.
+- `async def` in protocols (structural / `@dynamic`): still rejected
+  at parse. Generic `@dynamic` async methods need adapter codegen;
+  filed as a future item.
+- `async def __init__` / `__del__`: rejected at parse (the
+  parser's async-method exclusion checks also catch these via
+  their synthesized return-type contracts).
+- Async methods on generic *classes* (`class Foo[T]: async def m...`):
+  rejected at sema -- the out-of-line coro-struct `__poll__` body
+  doesn't yet receive the class's template header, so any reference
+  to the class's type params would fail C++ build. Parallels the
+  existing rejection for generator methods on generic classes.
+- Generic async *methods* on non-generic classes (`async def m[T](self) -> T`):
+  in scope, works via the existing template-header machinery; no
+  special rejection.
+
+### M5 SHIPPED -- `async with` (cleanup-only)
+
+Lifts the v1 PR2 deferral. `async with X as y: body` lowers via a
+CFG-level synthesis equivalent to:
+
+```python
+__with_ctx_<n> = X
+y = await __with_ctx_<n>.__aenter__()
+try:
+    body
+finally:
+    await __with_ctx_<n>.__aexit__(None, None, None)
+```
+
+The synthesis re-uses the M3.3 CFG-based-finally machinery: an
+`__finally_exc_<uid>` frame slot saves any in-flight exception via
+`std::current_exception()`; AsyncFinallyExit at the tail of the
+finally body rethrows. `return` inside the body parks the value in
+`__finally_pending_<uid>` / `__finally_ret_<uid>` and walks through
+the same finally path (M3.3.2 mechanism).
+
+What landed:
+
+- **Parser** (`tpyc/parse/parser.py`): `ast.AsyncWith` -> `TpyWith` with
+  `is_async=True`. New field on `TpyWith` in `parse/nodes.py`.
+- **Sema** (`tpyc/sema/statements.py::_analyze_with`): async branch
+  validates the stmt is inside `async def`, looks up `__aenter__` /
+  `__aexit__` (not the sync names), checks both are `async def`,
+  unwraps `Awaitable[T]` from their return types so as-binding sees
+  the user's declared T. Per-item flags `exit_can_suppress` /
+  `exit_takes_exc_val` populated for consistency (codegen ignores
+  them in the cleanup-only path).
+- **CFG** (`tpyc/codegen_cpp/resumable_cfg.py::_build_async_with`):
+  synthesizes the AsyncWithSetup leaf-stmt + Yield(aenter) + Yield(aexit)
+  + AsyncFinallyExit. New `AsyncWithSetup` synthetic stmt. AwaitPayload
+  grew `async_with_kind` / `async_with_ctx_n` fields so the synthetic
+  yields can bypass AST-based gen_expr at emit time.
+- **Codegen** (`tpyc/codegen_cpp/gen_async.py`):
+  - `_prescan_with_stmts` now allocates `__with_ctx_<n>` for async-with
+    regardless of body-await content, and pre-computes the aenter/aexit
+    coro struct names per ctx_n into `func._async_with_struct_names`.
+  - `_prescan_async_try_finally` extended to allocate the shared
+    `__finally_exc_<uid>` / `__finally_pending_<uid>` / `__finally_ret_<uid>`
+    frame fields for async-with stmts.
+  - `gen_coro_struct`'s `__sub_<i>` field emit consults
+    `_async_with_struct_names` for the concrete coro struct type when a
+    Yield's payload has `async_with_kind`.
+  - `_emit_suspend` INLINE-mode handles async_with_kind directly:
+    `__sub_<i>.emplace((*__with_ctx_<n>))` for aenter,
+    `__sub_<i>.emplace((*__with_ctx_<n>), monostate, monostate, monostate)`
+    for aexit (cleanup-only call shape).
+  - `_emit_async_with_setup` writes `__with_ctx_<n> = <ctx_expr>;`.
+- **`_stmt_has_any_await`** in `resumable_cfg.py`: returns True for
+  `async with` even when the body has no user awaits, so the CFG
+  builder runs `_build_with` instead of treating the stmt as a leaf.
+
+**v1.5 M5 simplification: cleanup-only `__aexit__`.** `__aexit__` is
+called with `(None, None, None)` regardless of whether an exception
+was caught; the body's exception propagates through the
+`__finally_exc_<n>` rethrow path. `exc_val: Optional[BaseException]`
+on `__aexit__` is rejected at sema with a pointer to E9 / Phase 20
+(polymorphic exception storage via `Box[Throwable]`). This restriction
+holds back full CPython parity but keeps M5 free of cross-suspension
+polymorphic storage work that E9 will solve uniformly.
+
+**Restrictions** (each rejected with a clear diagnostic):
+
+- Multi-item `async with X as a, Y as b:` rejected today. Workaround:
+  nest two separate `async with` statements. The two CFG-based finally
+  regions need to chain pending-return state, which is the same
+  underlying limit M3.3 has.
+- Direct nesting `async with X: async with Y:` in the *same* function
+  body also hits the M3.3 nested-await-in-finally limit. Workaround:
+  factor the inner manager into an `async def` helper called from the
+  outer body. Tracked alongside the M3.3 limit.
+
+**Tests** (`tests/cases/async/`):
+- `with_basic` -- canonical case.
+- `with_raise_propagates` -- body raises; __aexit__ runs; exception
+  propagates out and is caught by an outer try/except.
+- `with_return_in_body` -- `return` inside body walks through
+  __aexit__ then completes the return.
+- `with_nested` -- two `async with` chained via an `async def` helper
+  (workaround for the direct-nesting limit).
+- `error_async_with_outside_async_def` -- sema rejection outside
+  `async def`.
+- `error_async_with_sync_manager` -- rejection when __aenter__ /
+  __aexit__ aren't `async def`.
+- `error_async_with_exc_val_inspect` -- v1.5 M5 limitation diagnostic
+  for `exc_val: Optional[BaseException]`.
 
 ## v1.x milestone: asyncio runtime TPy port (must precede v1.5)
 

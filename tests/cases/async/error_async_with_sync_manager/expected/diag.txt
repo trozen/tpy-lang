@@ -1,0 +1,1 @@
+main.py:15: error: `__aenter__` on 'CM' must be `async def` for use in `async with`

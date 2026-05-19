@@ -1,0 +1,1 @@
+main.py:15: error: Async methods on generic classes are not yet supported ('Box.take')

@@ -25,11 +25,12 @@ from typing import TYPE_CHECKING
 from ..parse.nodes import (
     TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl, TpyReturn,
     TpyExprStmt, TpyName, TpyExpr, TpyTry, TpyExceptHandler, TpyCall,
-    TpyFieldAccess, TpyForEach, TpyWith,
+    TpyMethodCall, TpyFieldAccess, TpyForEach, TpyWith,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyCoerce,
+    is_stable_address_lvalue,
 )
-from ..typesys import unwrap_ref_type, unwrap_own, VoidType
+from ..typesys import NominalType, unwrap_ref_type, unwrap_own, VoidType
 from ..type_def_registry import is_str_type, is_str_category
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext
 from . import resumable_cfg as rcfg
@@ -95,21 +96,34 @@ class AsyncCoroCodegen:
         self.functions = functions
 
     @staticmethod
-    def gen_struct_name(func: TpyFunction) -> str:
-        """Coro struct name: `__coro_<funcname>` (mirrors `__gen_<funcname>`
-        for generator structs)."""
-        return f"__coro_{escape_cpp_name(func.name)}"
+    def gen_struct_name(func: TpyFunction, record_name: str | None = None) -> str:
+        """Coro struct name: `__coro_<funcname>` for free async defs,
+        `__coro_<Record>_<funcname>` for async methods. Mirrors
+        `GeneratorCodegen.gen_struct_name` so async-method codegen
+        parallels generator-method codegen."""
+        return AsyncCoroCodegen._sub_struct_name(func.name, record_name)
 
     @staticmethod
-    def _sub_struct_name(awaited_func_name: str) -> str:
-        """Sub-coroutine struct name for a statically-resolved await
-        (must match `gen_struct_name` for the awaited async def)."""
-        return f"__coro_{escape_cpp_name(awaited_func_name)}"
+    def _sub_struct_name(name: str, owner_record: str | None = None) -> str:
+        """Coro struct name from raw strings: `__coro_<name>` for free
+        async defs, `__coro_<Owner>_<name>` for methods. Single source
+        of truth for `gen_struct_name`, the await payload factory (sub-
+        coroutine of a statically-resolved await), and the async-with
+        prescan (which only has the CM's `NominalType.name`)."""
+        if owner_record:
+            return (f"__coro_{escape_cpp_name(owner_record)}_"
+                    f"{escape_cpp_name(name)}")
+        return f"__coro_{escape_cpp_name(name)}"
 
-    def _classify_params(self, func: TpyFunction) -> list[tuple[str, str, bool]]:
+    def _classify_params(self, func: TpyFunction,
+                          record_name: str | None = None
+                          ) -> list[tuple[str, str, bool]]:
         """Classify async-def params for the coro struct field/ctor shape.
 
-        Returns list of (cpp_name, cpp_type, is_ref).
+        Returns list of (cpp_name, cpp_type, is_ref). When `record_name`
+        is set, prepends `__self: <Record>&` (or `const <Record>&` for
+        @readonly methods) so async methods capture their receiver --
+        parallels `GeneratorCodegen` self-capture.
 
         v1 conservative rule: str passes by string_view (caller's storage,
         same lifetime model as generators -- coros that escape via Task
@@ -117,6 +131,10 @@ class AsyncCoroCodegen:
         across await boundaries within a single asyncio.run).
         """
         out: list[tuple[str, str, bool]] = []
+        if record_name:
+            cpp_record = escape_cpp_name(record_name)
+            const_prefix = "const " if func.is_readonly else ""
+            out.append(("__self", f"{const_prefix}{cpp_record}", True))
         for pname, ptype in func.params:
             cpp_name = escape_cpp_name(pname)
             ptype_inner = unwrap_ref_type(ptype)
@@ -167,8 +185,9 @@ class AsyncCoroCodegen:
 
     # -- Forward declarations -------------------------------------------------
 
-    def gen_coro_forward_decl(self, out: "TextIO", func: TpyFunction) -> bool:
-        struct_name = self.gen_struct_name(func)
+    def gen_coro_forward_decl(self, out: "TextIO", func: TpyFunction,
+                              record_name: str | None = None) -> bool:
+        struct_name = self.gen_struct_name(func, record_name)
         self._emit_template_header(out, func)
         out.write(f"struct {struct_name};\n")
         return True
@@ -397,14 +416,20 @@ class AsyncCoroCodegen:
 
     # -- Struct definition ----------------------------------------------------
 
-    def gen_coro_struct(self, out: "TextIO", func: TpyFunction) -> None:
-        """Emit the full `__FCoro` struct definition."""
-        struct_name = self.gen_struct_name(func)
-        ctor_params = self._classify_params(func)
+    def gen_coro_struct(self, out: "TextIO", func: TpyFunction,
+                         record_name: str | None = None) -> None:
+        """Emit the full `__FCoro` struct definition. When `record_name`
+        is given, the struct captures `__self: <Record>&` and the struct
+        name is `__coro_<Record>_<func>` (mirrors generator-method
+        codegen).
+        """
+        struct_name = self.gen_struct_name(func, record_name)
+        ctor_params = self._classify_params(func, record_name)
         cfg = self._build_cfg(func)
         yields = cfg.yield_sites
 
-        out.write(f"// Async coroutine: {func.name}\n")
+        label = f"{record_name}.{func.name}" if record_name else func.name
+        out.write(f"// Async coroutine: {label}\n")
         self._emit_template_header(out, func)
         out.write(f"struct {struct_name} {{\n")
 
@@ -422,7 +447,7 @@ class AsyncCoroCodegen:
         # Hoisted local fields (mirrors generator behavior).
         if func.generator_locals:
             owning_str = getattr(
-                func, "_async_with_owning_str_targets", set())
+                func, "_with_owning_str_targets", set())
             for lname, ltype in func.generator_locals:
                 ltype_inner = unwrap_ref_type(ltype)
                 cpp_type = self.types.type_to_cpp(ltype_inner)
@@ -431,7 +456,7 @@ class AsyncCoroCodegen:
                     # `with X() as label:` -- `__enter__` returns by
                     # value; storing the view across suspensions
                     # would dangle. Use owning storage. See
-                    # `_prescan_async_with_stmts`.
+                    # `_prescan_with_stmts`.
                     out.write(f"{INDENT}std::string {cpp_name};\n")
                 elif ltype_inner.is_value_type():
                     out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
@@ -446,7 +471,7 @@ class AsyncCoroCodegen:
 
         # Context-manager fields for CFG-decomposed `with`-with-await
         # bodies. One std::optional<T> per WithItem.
-        for fname, ftype in getattr(func, "_async_with_fields", ()) or ():
+        for fname, ftype in getattr(func, "_with_fields", ()) or ():
             out.write(f"{INDENT}std::optional<{ftype}> {fname};\n")
 
         # In-flight exception slots for CFG-decomposed try-finally-with-
@@ -462,14 +487,23 @@ class AsyncCoroCodegen:
 
         # Sub-future fields: one per Yield (suspension_index = field
         # ordinal). Inline mode: optional<__<name>Coro>; Erased: optional
-        # of the value awaitable; Borrowed: raw pointer.
+        # of the value awaitable; Borrowed: raw pointer. Async-with's
+        # synthetic yields override sub_field_cpp_type via the
+        # _async_with_struct_names map (the CM's __aenter__/__aexit__
+        # coro struct, computed at prescan time).
+        struct_names = getattr(func, "_async_with_struct_names", {}) or {}
         for y in yields:
             p = y.payload
+            sub_cpp = p.sub_field_cpp_type
+            if p.async_with_kind is not None and p.async_with_ctx_n is not None:
+                entry = struct_names.get(p.async_with_ctx_n)
+                if entry is not None:
+                    sub_cpp = entry[0] if p.async_with_kind is rcfg.AsyncWithKind.AENTER else entry[1]
             if p.mode is rcfg.AwaitMode.BORROWED:
-                out.write(f"{INDENT}{p.sub_field_cpp_type}* "
+                out.write(f"{INDENT}{sub_cpp}* "
                           f"__sub_{y.suspension_index} = nullptr;\n")
             else:
-                out.write(f"{INDENT}std::optional<{p.sub_field_cpp_type}> "
+                out.write(f"{INDENT}std::optional<{sub_cpp}> "
                           f"__sub_{y.suspension_index};\n")
 
         out.write(f"\n")
@@ -509,9 +543,11 @@ class AsyncCoroCodegen:
         for helper_name, _body in cfg.finally_helpers:
             out.write(f"{INDENT}void {helper_name}();\n")
 
+        repr_label = (f"{record_name}.{func.name}" if record_name
+                      else func.name)
         out.write(f"\n{INDENT}friend std::ostream& operator<<("
                   f"std::ostream& os, const {struct_name}&) {{\n")
-        out.write(f"{INDENT}{INDENT}return os << \"<coroutine {func.name}>\";\n")
+        out.write(f"{INDENT}{INDENT}return os << \"<coroutine {repr_label}>\";\n")
         out.write(f"{INDENT}}}\n")
         out.write(f"}};\n")
 
@@ -533,7 +569,8 @@ class AsyncCoroCodegen:
 
     # -- poll() body ----------------------------------------------------------
 
-    def gen_coro_finally_top_def(self, out: "TextIO", func: TpyFunction) -> None:
+    def gen_coro_finally_top_def(self, out: "TextIO", func: TpyFunction,
+                                   record_name: str | None = None) -> None:
         """Emit member-function bodies for every `__finally_<n>()` helper
         the CFG produced (one per TryRegion with a finally body). No-op
         if the function has no finally bodies.
@@ -541,7 +578,7 @@ class AsyncCoroCodegen:
         cfg = self._build_cfg(func)
         if not cfg.finally_helpers:
             return
-        struct_name = self.gen_struct_name(func)
+        struct_name = self.gen_struct_name(func, record_name)
 
         # Set up field-rewrite ctx once for all helpers (they share the
         # same frame layout).
@@ -554,7 +591,11 @@ class AsyncCoroCodegen:
         self.ctx.generator_field_names = set()
         self.ctx.generator_optional_fields = set()
         self.ctx.generator_for_loop_info = {}
-        self.ctx.generator_self_ref = None
+        if record_name:
+            self.ctx.generator_self_ref = "__self"
+            self.ctx.generator_field_names.add("__self")
+        else:
+            self.ctx.generator_self_ref = None
         for pname, _ in func.params:
             self.ctx.generator_field_names.add(pname)
         if func.generator_locals:
@@ -579,11 +620,14 @@ class AsyncCoroCodegen:
             self.ctx.generator_for_loop_info = old_for_info
             self.ctx.generator_self_ref = old_self_ref
 
-    def gen_coro_poll_def(self, out: "TextIO", func: TpyFunction) -> None:
+    def gen_coro_poll_def(self, out: "TextIO", func: TpyFunction,
+                            record_name: str | None = None) -> None:
         """Emit the `poll()` method body in the .cpp file (or inline-in-hpp
-        for templates -- the caller handles placement).
+        for templates -- the caller handles placement). When `record_name`
+        is given, the struct is `__coro_<Record>_<func>` and the body
+        sees `self.X` as `__self.X` (parallels generator methods).
         """
-        struct_name = self.gen_struct_name(func)
+        struct_name = self.gen_struct_name(func, record_name)
         cfg = self._build_cfg(func)
         has_yields = bool(cfg.yield_sites)
 
@@ -610,7 +654,11 @@ class AsyncCoroCodegen:
         self.ctx.generator_field_names = set()
         self.ctx.generator_optional_fields = set()
         self.ctx.generator_for_loop_info = {}
-        self.ctx.generator_self_ref = None
+        if record_name:
+            self.ctx.generator_self_ref = "__self"
+            self.ctx.generator_field_names.add("__self")
+        else:
+            self.ctx.generator_self_ref = None
 
         self.ctx.in_async_coro_body = True
         self.ctx.async_coro_return_cpp = self._ret_cpp(func)
@@ -658,7 +706,7 @@ class AsyncCoroCodegen:
             return cached
         body = self._effective_body(func)
         for_uid_map = self._prescan_async_for_loops(func, body)
-        with_uid_map = self._prescan_async_with_stmts(func, body)
+        with_uid_map = self._prescan_with_stmts(func, body)
         try_finally_uid_map = self._prescan_async_try_finally(func, body)
         builder = rcfg.CFGBuilder(
             payload_factory=self._make_await_payload,
@@ -740,7 +788,7 @@ class AsyncCoroCodegen:
         func._async_for_fields = fields_out
         return uid_map
 
-    def _prescan_async_with_stmts(
+    def _prescan_with_stmts(
             self, func: TpyFunction,
             body: list[TpyStmt]) -> dict[int, list[int]]:
         """Find `with` stmts whose body contains await. For each, allocate
@@ -749,19 +797,30 @@ class AsyncCoroCodegen:
         names as hoisted locals.
 
         Returns {id(TpyWith) -> [ctx_n_per_item]}; frame fields land on
-        `func._async_with_fields` as `[(name, cpp_type)]`.
+        `func._with_fields` as `[(name, cpp_type)]`.
         """
-        cached_map = getattr(func, "_async_with_uid_map", None)
+        cached_map = getattr(func, "_with_uid_map", None)
         if cached_map is not None:
             return cached_map
         uid_map: dict[int, list[int]] = {}
         fields_out: list[tuple[str, str]] = []
         counter = [0]
 
+        # Async-with sub-coro struct names by ctx_n. Populated alongside
+        # the per-ctx frame field. Emit uses this to size __sub_<i>
+        # slots and to write the inline factory call.
+        struct_names_out: dict[int, tuple[str, str]] = {}
+
         def walk(stmts: list[TpyStmt]) -> None:
             for s in stmts:
+                # Sync `with` only needs the frame slot when its body
+                # contains an await (M3.2). `async with` always needs
+                # one because `__aenter__` / `__aexit__` are themselves
+                # the suspensions, regardless of whether the body has
+                # any other await.
                 if (isinstance(s, TpyWith)
-                        and rcfg._stmts_have_any_await(s.body)):
+                        and (s.is_async
+                             or rcfg._stmts_have_any_await(s.body))):
                     per_item: list[int] = []
                     for item in s.items:
                         cur_n = counter[0]
@@ -775,6 +834,51 @@ class AsyncCoroCodegen:
                                 loc=s.loc)
                         ctx_cpp = self.types.type_to_cpp(unwrap_ref_type(ctx_t))
                         fields_out.append((f"__with_ctx_{cur_n}", ctx_cpp))
+                        # For async-with, compute the qualified C++ names
+                        # of the __aenter__ / __aexit__ coro structs so
+                        # struct-emit and _emit_suspend can look them up
+                        # by ctx_n without needing the types helper at
+                        # the CFG layer.
+                        if s.is_async:
+                            ctx_inner = unwrap_ref_type(ctx_t)
+                            if not isinstance(ctx_inner, NominalType):
+                                raise CodeGenError(
+                                    "async-with context manager type is "
+                                    "not a record (internal)",
+                                    loc=s.loc)
+                            # Build the aenter/aexit sub-coro struct
+                            # names using the canonical struct namer
+                            # (same shape as M4 async-method coro
+                            # structs). The C++ namespace is derived
+                            # from the CM's qualified type by
+                            # stripping any template args first (so
+                            # `::ns::Foo<T>` yields a `::ns::` prefix,
+                            # not `::ns::Foo<T>::`). Type args are
+                            # re-attached as a suffix on the coro
+                            # struct reference -- the struct itself is
+                            # templated over the same T as the CM.
+                            # Note: generic CMs are rejected at sema
+                            # today (see registration.py); type_args
+                            # handling is here so this prescan stays
+                            # robust if that restriction lifts.
+                            ns_prefix = ctx_cpp.split("<", 1)[0]
+                            ns_qual = (ns_prefix.rsplit("::", 1)[0] + "::"
+                                       if "::" in ns_prefix else "")
+                            type_args_suffix = ""
+                            if ctx_inner.type_args:
+                                inner_cpps = [
+                                    self.types.type_to_cpp(ta)
+                                    for ta in ctx_inner.type_args]
+                                type_args_suffix = (
+                                    "<" + ", ".join(inner_cpps) + ">")
+                            aenter_bare = AsyncCoroCodegen._sub_struct_name(
+                                "__aenter__", ctx_inner.name)
+                            aexit_bare = AsyncCoroCodegen._sub_struct_name(
+                                "__aexit__", ctx_inner.name)
+                            struct_names_out[cur_n] = (
+                                f"{ns_qual}{aenter_bare}{type_args_suffix}",
+                                f"{ns_qual}{aexit_bare}{type_args_suffix}",
+                            )
                         if item.target is not None:
                             enter_t = (unwrap_ref_type(item.enter_type)
                                        if item.enter_type else None)
@@ -789,20 +893,23 @@ class AsyncCoroCodegen:
                                 func.generator_locals.append(
                                     (item.target, enter_t))
                             # For str-typed as-targets, the C++
-                            # `__enter__()` returns `std::string` by
-                            # value but sema's `str` lowers to
-                            # `std::string_view`. Tracking the name
-                            # here promotes the frame field's storage
-                            # type to `std::string` (owning) so the
-                            # field doesn't alias a temporary that
-                            # dies at the assignment's semicolon.
-                            # Resolve PendingStrType / Pending* views
-                            # to their concrete form before checking.
+                            # `__enter__()` / `__aenter__()` returns
+                            # `std::string` by value but sema's `str`
+                            # lowers to `std::string_view`. Tracking
+                            # the name here promotes the frame field's
+                            # storage type to `std::string` (owning)
+                            # so the field doesn't alias a temporary
+                            # that dies at the assignment's semicolon.
+                            # Applies to both sync `with` and async
+                            # `with`: the Poll<std::string>::value()
+                            # extraction in async-with's resume case
+                            # produces the same temporary shape as the
+                            # sync __enter__() return.
                             resolved_enter_t = self.types.resolve_type(enter_t)
                             if is_str_category(resolved_enter_t):
-                                if not hasattr(func, "_async_with_owning_str_targets"):
-                                    func._async_with_owning_str_targets = set()
-                                func._async_with_owning_str_targets.add(
+                                if not hasattr(func, "_with_owning_str_targets"):
+                                    func._with_owning_str_targets = set()
+                                func._with_owning_str_targets.add(
                                     item.target)
                     uid_map[id(s)] = per_item
                 if hasattr(s, "sub_bodies"):
@@ -810,8 +917,9 @@ class AsyncCoroCodegen:
                         walk(b)
 
         walk(body)
-        func._async_with_uid_map = uid_map
-        func._async_with_fields = fields_out
+        func._with_uid_map = uid_map
+        func._with_fields = fields_out
+        func._async_with_struct_names = struct_names_out
         return uid_map
 
     def _prescan_async_try_finally(
@@ -854,6 +962,23 @@ class AsyncCoroCodegen:
                         if ret_cpp is not None:
                             fields_out.append(
                                 (f"__finally_ret_{cur_uid}", ret_cpp))
+                # `async with` desugars to a try/finally where the
+                # finally body is `await __cm.__aexit__(...)`. The
+                # synthetic finally needs the same set of frame slots
+                # as a user-written try/finally-with-await; allocate
+                # them in the same shared uid pool here.
+                if isinstance(s, TpyWith) and s.is_async:
+                    cur_uid = counter[0]
+                    counter[0] += 1
+                    uid_map[id(s)] = cur_uid
+                    fields_out.append(
+                        (f"__finally_exc_{cur_uid}", "std::exception_ptr"))
+                    if rcfg._stmts_have_any_return(s.body):
+                        fields_out.append(
+                            (f"__finally_pending_{cur_uid}", "bool"))
+                        if ret_cpp is not None:
+                            fields_out.append(
+                                (f"__finally_ret_{cur_uid}", ret_cpp))
                 if hasattr(s, "sub_bodies"):
                     for b in s.sub_bodies():
                         walk(b)
@@ -869,7 +994,9 @@ class AsyncCoroCodegen:
         from the await's sema annotations."""
         if await_node.awaited_async_func_name is not None:
             mode = rcfg.AwaitMode.INLINE
-            sub_cpp = self._sub_struct_name(await_node.awaited_async_func_name)
+            sub_cpp = self._sub_struct_name(
+                await_node.awaited_async_func_name,
+                await_node.awaited_method_owner_record)
         elif await_node.awaited_task_inner is not None:
             operand_type = self.ctx.get_expr_type(await_node.value)
             if operand_type is None:
@@ -880,7 +1007,7 @@ class AsyncCoroCodegen:
             sub_cpp = self.types.type_to_cpp(operand_inner)
             if operand_inner.is_value_type():
                 mode = rcfg.AwaitMode.ERASED
-            elif self._is_stable_lvalue(await_node.value):
+            elif is_stable_address_lvalue(await_node.value):
                 mode = rcfg.AwaitMode.BORROWED
             else:
                 mode = rcfg.AwaitMode.ERASED
@@ -1035,6 +1162,11 @@ class AsyncCoroCodegen:
     def _payload_args_no_throw(self,
                                  payload: 'rcfg.AwaitPayload') -> bool:
         """True if emitting the Yield's emplace cannot throw."""
+        # Async-with synthetic yields emplace from the CM frame slot
+        # (`*__with_ctx_<n>`) plus monostate literals -- provably
+        # no-throw and never touch the payload's `operand_expr`.
+        if payload.async_with_kind is not None:
+            return True
         if payload.mode is rcfg.AwaitMode.BORROWED:
             return self._expr_is_simple(payload.operand_expr)
         if payload.mode is rcfg.AwaitMode.ERASED:
@@ -1222,7 +1354,7 @@ class AsyncCoroCodegen:
                 region = payload
                 def _emit_finally(o: "TextIO", ind: str,
                                   r=region) -> None:
-                    self._emit_async_with_exit(o, ind, r, on_exception=False)
+                    self._emit_with_exit(o, ind, r, on_exception=False)
             fctx = FinallyContext(
                 emit_finally=_emit_finally, terminates=False, loop_depth=0)
             self.ctx.finally_stack.append(fctx)
@@ -1261,7 +1393,7 @@ class AsyncCoroCodegen:
                 out.write(f"{catch_ind}__state = {post_label};\n")
                 out.write(f"{catch_ind}continue;\n")
             else:
-                self._emit_async_with_exit(out, catch_ind, region,
+                self._emit_with_exit(out, catch_ind, region,
                                             on_exception=True)
                 out.write(f"{catch_ind}throw;\n")
             self.ctx.indent_level -= 1
@@ -1481,7 +1613,7 @@ class AsyncCoroCodegen:
                     out.write(f"{indent}this->{region.parent_finally}();\n")
             elif isinstance(region, rcfg.WithRegion):
                 # Leaving a with-region normally: __exit__(None, None, None).
-                self._emit_async_with_exit(out, indent, region,
+                self._emit_with_exit(out, indent, region,
                                             on_exception=False)
 
     def _walk_inline(self, out: "TextIO", cfg: 'rcfg.CFG',
@@ -1500,8 +1632,10 @@ class AsyncCoroCodegen:
             for stmt in bb.stmts:
                 if isinstance(stmt, rcfg.AsyncForIterSetup):
                     self._emit_async_for_iter_setup(out, body_indent, stmt)
-                elif isinstance(stmt, rcfg.AsyncWithEnter):
-                    self._emit_async_with_enter(out, body_indent, stmt)
+                elif isinstance(stmt, rcfg.WithEnter):
+                    self._emit_with_enter(out, body_indent, stmt)
+                elif isinstance(stmt, rcfg.AsyncWithSetup):
+                    self._emit_async_with_setup(out, body_indent, stmt)
                 elif isinstance(stmt, rcfg.AsyncFinallyExit):
                     self._emit_async_finally_exit(out, body_indent, stmt)
                 else:
@@ -1623,8 +1757,8 @@ class AsyncCoroCodegen:
                       f"(std::move(this->{slot}));\n")
         out.write(f"{indent}}}\n")
 
-    def _emit_async_with_enter(self, out: "TextIO", indent: str,
-                                stmt: 'rcfg.AsyncWithEnter') -> None:
+    def _emit_with_enter(self, out: "TextIO", indent: str,
+                                stmt: 'rcfg.WithEnter') -> None:
         """Emit the with-stmt setup sequence:
             __with_ctx_<n> = <context_expr>;
             <target> = (*__with_ctx_<n>).__enter__();   # if target
@@ -1640,7 +1774,19 @@ class AsyncCoroCodegen:
         else:
             out.write(f"{indent}(*__with_ctx_{ctx_n}).__enter__();\n")
 
-    def _emit_async_with_exit(self, out: "TextIO", indent: str,
+    def _emit_async_with_setup(self, out: "TextIO", indent: str,
+                                 stmt: 'rcfg.AsyncWithSetup') -> None:
+        """Emit the async-with frame-slot population:
+            __with_ctx_<n> = <context_expr>;
+        (Assignment into a `std::optional<CM>` frame field; constructs
+        in place via `operator=`.) Subsequent Yield BBs (aenter/aexit)
+        emplace `__sub_<i>` with `(*__with_ctx_<n>, ...)`."""
+        ctx_n = stmt.ctx_n
+        item = stmt.item
+        ctx_expr = self.expressions.gen_expr(item.context_expr)
+        out.write(f"{indent}__with_ctx_{ctx_n} = {ctx_expr};\n")
+
+    def _emit_with_exit(self, out: "TextIO", indent: str,
                                region: 'rcfg.WithRegion',
                                on_exception: bool) -> None:
         """Emit a single `__exit__` call. `on_exception=True` passes the
@@ -1724,24 +1870,6 @@ class AsyncCoroCodegen:
     @staticmethod
     def _sub_field_name(suspension_index: int) -> str:
         return f"__sub_{suspension_index}"
-
-    @staticmethod
-    def _is_stable_lvalue(operand: TpyExpr) -> bool:
-        """True when the operand resolves to a stable lvalue: a bare
-        name (frame field / local / parameter) or a chain of field
-        accesses rooted at a bare name. Subscripts, calls, binops,
-        conditional/comprehension expressions, etc. return temporaries
-        whose address would dangle across suspensions.
-
-        Stricter than sema's `is_lvalue` (`sema/compatibility.py`):
-        subscripts (addressable in C++ but yield container-element
-        temporaries across suspensions) and `TpyCoerce` (sema-only
-        wrapper, doesn't reach this codegen path) are both excluded.
-        """
-        e = operand
-        while isinstance(e, TpyFieldAccess):
-            e = e.obj
-        return isinstance(e, TpyName)
 
     def _emit_sub_reset(self, out: "TextIO", indent: str,
                         payload: 'rcfg.AwaitPayload',
@@ -1840,13 +1968,35 @@ class AsyncCoroCodegen:
             self.ctx.emit_source_comment(out, payload.host_stmt.loc, indent)
         sub = self._sub_field_name(suspension_index)
         if payload.mode is rcfg.AwaitMode.INLINE:
-            call = payload.operand_expr
-            if not isinstance(call, TpyCall):
-                raise CodeGenError(
-                    "internal: inline-mode await operand is not a call",
-                    loc=None)
-            args = [self.expressions.gen_expr(arg) for arg in call.args]
-            out.write(f"{indent}{sub}.emplace({', '.join(args)});\n")
+            if payload.async_with_kind is not None:
+                # Async-with synthetic yield. Receiver is the CM frame
+                # slot; args differ by kind.
+                ctx_n = payload.async_with_ctx_n
+                recv = f"(*__with_ctx_{ctx_n})"
+                if payload.async_with_kind is rcfg.AsyncWithKind.AENTER:
+                    out.write(f"{indent}{sub}.emplace({recv});\n")
+                else:  # AEXIT -- cleanup-only call with all-None args
+                    out.write(f"{indent}{sub}.emplace({recv}, "
+                              f"::std::monostate{{}}, "
+                              f"::std::monostate{{}}, "
+                              f"::std::monostate{{}});\n")
+            else:
+                call = payload.operand_expr
+                if isinstance(call, TpyCall):
+                    args = [self.expressions.gen_expr(arg) for arg in call.args]
+                    out.write(f"{indent}{sub}.emplace({', '.join(args)});\n")
+                elif isinstance(call, TpyMethodCall):
+                    # async method: the sub-coro struct has __self as
+                    # its first ctor param. Emplace with (receiver,
+                    # args...).
+                    recv_cpp = self.expressions.gen_expr(call.obj)
+                    arg_cpps = [self.expressions.gen_expr(a) for a in call.args]
+                    joined = ", ".join([recv_cpp] + arg_cpps)
+                    out.write(f"{indent}{sub}.emplace({joined});\n")
+                else:
+                    raise CodeGenError(
+                        "internal: inline-mode await operand is not a call",
+                        loc=None)
         elif payload.mode is rcfg.AwaitMode.ERASED:
             operand_cpp = self.expressions.gen_expr(payload.operand_expr)
             out.write(f"{indent}{sub}.emplace(std::move({operand_cpp}));\n")

@@ -5603,10 +5603,29 @@ Send/Sync rules for built-in types:
   At `asyncio.run` exit, remaining spawned tasks are cancelled and
   drained so wrapper-try `finally` blocks run for fire-and-forget
   tasks.
-- **Open (v1.5+)**: `async with`, `async for`, `gather`, `wait_for`,
-  nesting two `await`-in-`finally` regions, await inside a
-  `for`/`while` `else:` clause, executor slot reuse, and reporting
-  when bounded cancellation drain leaves tasks pending.
+- **Working (v1.5 M4)**: async methods on user classes. `async def m(self, ...)`
+  lowers to a per-record coro struct `__coro_<Record>_<method>` with
+  `__self: <Record>&` captured as the first ctor arg (parallels
+  generator-method codegen). The class declares the method with the
+  coro struct as its return type; the inline factory body is
+  `return __coro_Class_method(*this, args)`. `await obj.method(args)`
+  uses INLINE mode with emplace `(obj, args)`. `async @staticmethod`
+  / `async @property` rejected at parse.
+- **Working (v1.5 M5)**: `async with X as y:` for cleanup-only context
+  managers. `__aenter__` / `__aexit__` are async methods; CFG synthesis
+  in `_build_async_with` reuses the M3.3 try-finally-with-await
+  machinery so exception propagation and `return`-walks-aexit work
+  uniformly. v1.5 ships with `exc_val: None` only -- inspecting
+  `Optional[BaseException]` across the suspension requires polymorphic
+  exception storage (E9 / Phase 20). Multi-item `async with X, Y:` and
+  direct nesting are rejected (M3.3 nested-await-in-finally limit);
+  workaround: factor into separate `async def` helpers.
+- **Open (v1.5+)**: `async for`, `gather`, `wait_for`,
+  nesting two `await`-in-`finally` regions (multi-item / nested
+  `async with`), await inside a `for`/`while` `else:` clause,
+  executor slot reuse, reporting when bounded cancellation drain
+  leaves tasks pending, and full `async with` with `__aexit__` exc_val
+  inspection (E9 / Phase 20).
 
 ---
 

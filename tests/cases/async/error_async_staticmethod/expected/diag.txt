@@ -1,0 +1,1 @@
+main.py:9: error: async @staticmethod is not yet supported on 'go' of 'S'

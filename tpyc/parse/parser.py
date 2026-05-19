@@ -1459,10 +1459,6 @@ class Parser:
             elif isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 if is_typed_dict:
                     raise ParseError(f"Methods are not allowed on TypedDict '{node.name}'", item)
-                if isinstance(item, ast.AsyncFunctionDef):
-                    raise ParseError(
-                        f"async methods are not yet supported "
-                        f"(method '{item.name}' on '{node.name}')", item)
                 parsed = self._parse_method(item, node.name, type_param_scope, property_names)
                 if parsed.is_property_getter:
                     property_names.add(parsed.name)
@@ -2212,12 +2208,39 @@ class Parser:
         if node.name == "__next__" and error_return is None:
             error_return = "StopIteration"
 
+        is_async = isinstance(node, ast.AsyncFunctionDef)
+        if is_async:
+            # Mirror the free async def exclusion rules from _parse_def.
+            if is_generator:
+                raise ParseError(
+                    f"async generators (async def + yield) are not yet supported "
+                    f"on async method '{node.name}' of '{class_name}'", node)
+            if error_return is not None:
+                raise ParseError(
+                    f"async def + @error_return is not yet supported on "
+                    f"async method '{node.name}' of '{class_name}'", node)
+            if method_linkage != FunctionLinkage.DEFAULT:
+                display = self._LINKAGE_DISPLAY_NAMES.get(
+                    method_linkage, method_linkage.value)
+                raise ParseError(
+                    f"async def + @{display} is not yet supported on "
+                    f"async method '{node.name}' of '{class_name}'", node)
+            if is_property_getter or is_property_setter:
+                raise ParseError(
+                    f"async @property is not yet supported on "
+                    f"'{node.name}' of '{class_name}'", node)
+            if is_staticmethod:
+                raise ParseError(
+                    f"async @staticmethod is not yet supported on "
+                    f"'{node.name}' of '{class_name}'", node)
+
         method = TpyFunction(
             name=node.name,
             params=params,
             return_type=return_type,
             body=body,
             is_method=True,
+            is_async=is_async,
             is_staticmethod=is_staticmethod,
             is_property_getter=is_property_getter,
             is_property_setter=is_property_setter,
@@ -3096,7 +3119,10 @@ class Parser:
             return self._parse_try(node, loc)
 
         elif isinstance(node, ast.With):
-            return self._parse_with(node, loc)
+            return self._parse_with(node, loc, is_async=False)
+
+        elif isinstance(node, ast.AsyncWith):
+            return self._parse_with(node, loc, is_async=True)
 
         elif isinstance(node, ast.Nonlocal):
             return TpyNonlocal(node.names, loc=loc)
@@ -3162,8 +3188,11 @@ class Parser:
             loc=loc,
         )
 
-    def _parse_with(self, node: ast.With, loc: SourceLocation | None) -> TpyWith:
-        """Parse a with statement."""
+    def _parse_with(self, node: ast.With | ast.AsyncWith,
+                    loc: SourceLocation | None,
+                    is_async: bool) -> TpyWith:
+        """Parse a sync or async with statement."""
+        kw = "async with" if is_async else "with"
         items: list[TpyWithItem] = []
         for item in node.items:
             context_expr = self._parse_expr(item.context_expr)
@@ -3171,13 +3200,13 @@ class Parser:
             if item.optional_vars is not None:
                 if not isinstance(item.optional_vars, ast.Name):
                     raise ParseError(
-                        "'with ... as' target must be a simple variable", node
+                        f"'{kw} ... as' target must be a simple variable", node
                     )
                 target = item.optional_vars.id
             item_loc = self._loc(item.context_expr)
             items.append(TpyWithItem(context_expr, target, loc=item_loc))
         body = self._parse_body(node.body)
-        return TpyWith(items, body, loc=loc)
+        return TpyWith(items, body, is_async=is_async, loc=loc)
 
     def _parse_nested_def(self, node: ast.FunctionDef, loc: SourceLocation | None) -> TpyNestedDef:
         """Parse a nested function definition inside a function body."""

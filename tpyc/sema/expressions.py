@@ -32,6 +32,7 @@ from ..parse import (
     TpyBoolLiteral,
     TpyNoneLiteral, TpyName, TpyBinOp, TpyChainedCompare, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyFunction,
+    is_stable_address_lvalue,
     TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression, TpyComprehensionGenerator,
     TpySlice, TpySubscript, TpyCoerce,
@@ -54,6 +55,7 @@ from ..namespace import BindingKind, NameBinding
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
+from .. import qnames
 from .context import is_body_like_scope
 from .narrowing import NarrowingTracker
 from .numeric_lattice import widen_numeric_types
@@ -2107,6 +2109,48 @@ class ExpressionAnalyzer:
         #     (structural Awaitable -- supports user-written awaitables
         #     alongside hand-written awaiter types).
         operand_type = self.analyze_expr(operand)
+
+        # Method-call shape: a direct call to an async def method. The
+        # free-function probe above only matches bare-name calls, so
+        # `await obj.method()` lands here. After analyze_expr, the method
+        # call carries `resolved_function_info` -- if that's an async def,
+        # treat it like the inline shape. The receiver's record name is
+        # captured on the await node so codegen can name the sub-coro
+        # struct uniquely (`__coro_<Record>_<method>`) and emplace passes
+        # the receiver as the first ctor arg.
+        if isinstance(operand, TpyMethodCall):
+            mfi = operand.resolved_function_info
+            if mfi is not None and mfi.is_async:
+                # The coro struct captures the receiver as `<Class>&`
+                # for the duration of polling. Binding that reference
+                # to a temporary (rvalue receiver) leaves __self
+                # dangling at the emplace expression's semicolon.
+                # Require the receiver to be a stable lvalue: a bare
+                # name or a chain of field accesses rooted at a name.
+                # Mirrors `AsyncCoroCodegen._is_stable_lvalue` in
+                # codegen.
+                if not is_stable_address_lvalue(operand.obj):
+                    raise self.ctx.error(
+                        "receiver of an awaited async method must be "
+                        "a stable lvalue (a local, parameter, or "
+                        "field chain rooted at one) -- the coro "
+                        "captures it by reference across "
+                        "suspensions, so a temporary would dangle. "
+                        "Bind the receiver to a local first: "
+                        "`r = <expr>; await r.method(...)`",
+                        operand)
+                expr.awaited_async_func_name = mfi.name
+                owner_record = self._method_call_receiver_record(operand)
+                if owner_record is not None:
+                    expr.awaited_method_owner_record = owner_record
+                ret = unwrap_ref_type(mfi.return_type) if mfi.return_type else None
+                if (ret is not None
+                        and isinstance(ret, NominalType)
+                        and ret.qualified_name() == qnames.AWAITABLE
+                        and len(ret.type_args) == 1):
+                    return ret.type_args[0]
+                if ret is not None:
+                    return ret
         # An Own[Task[T]] rvalue (e.g. `await asyncio.create_task(...)`)
         # is a valid await operand -- strip the Own[] before structural
         # matching so the inner Task[T] / Awaitable conformance check fires.
@@ -2173,12 +2217,28 @@ class ExpressionAnalyzer:
                 return inner
         return None
 
+    def _method_call_receiver_record(self, call) -> str | None:
+        """For a TpyMethodCall whose receiver resolves to a known record,
+        return the record's name. Used to name async-method coro structs
+        uniquely (`__coro_<Record>_<method>`) so concrete-method async
+        defs don't collide with same-named free functions or methods on
+        sibling records."""
+        recv_type = self.ctx.get_expr_type(call.obj)
+        if recv_type is None:
+            return None
+        inner = unwrap_own(unwrap_ref_type(recv_type))
+        if isinstance(inner, NominalType):
+            return inner.name
+        return None
+
     def _resolve_call_to_async_def(self, operand) -> 'FunctionInfo | None':
         """If operand is a direct TpyCall whose target is a known async def,
         return its FunctionInfo. Otherwise return None.
 
-        Free-function calls only for v1 (method calls land when async methods
-        do, in v3+). Looks up via the analyzer's registry.
+        Free-function call shape only -- method calls (`await obj.m()`)
+        are detected after `analyze_expr` populates the
+        `TpyMethodCall.resolved_function_info` field; that branch lives
+        in `analyze_await` above.
         """
         from ..parse.nodes import TpyCall
         if not isinstance(operand, TpyCall):
