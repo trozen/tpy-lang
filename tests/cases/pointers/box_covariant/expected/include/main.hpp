@@ -11,6 +11,7 @@ namespace tpyapp::main {
 
 using ::tpystd::tplib::box::Box;
 
+struct Shape;
 // @dynamic
 // class Shape(Protocol):
 template<typename T>

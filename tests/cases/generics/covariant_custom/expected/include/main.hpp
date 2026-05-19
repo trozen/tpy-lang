@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+struct Animal;
 // @dynamic
 // class Animal(Protocol):
 template<typename T>

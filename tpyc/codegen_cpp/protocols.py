@@ -411,6 +411,14 @@ class ProtocolGenerator:
         protocol_info = self.ctx.analyzer.registry.scan_by_short_name(protocol.name)
         if protocol_info and protocol_info.cpp_concept:
             return False
+        # For @dynamic protocols, forward-declare the abstract base struct so
+        # the concept can mention the protocol's own type in method signatures
+        # (e.g. `clone(self) -> Own[Self]` lowering to `std::unique_ptr<Proto>`
+        # inside a convertible_to constraint). The base struct is fully defined
+        # by gen_dynamic_base_class below; concept constraints only require
+        # the type to be complete at instantiation time.
+        if protocol.is_dynamic:
+            self.emit_dynamic_base_forward_decl(out, protocol)
         self.ctx.emit_preceding_comments(out, protocol.loc)
         self.ctx.emit_source_comment(out, protocol.loc)
         # Build template params: T (checked type) + one for each protocol type param
@@ -568,8 +576,25 @@ class ProtocolGenerator:
         out.write(f"{INDENT}virtual ~{base_name}() = default;\n")
         out.write("};\n")
 
+    @staticmethod
+    def emit_dynamic_base_forward_decl(out: TextIO, protocol: TpyProtocol) -> None:
+        """Write `[template<...>] struct {Proto};` for a @dynamic protocol.
+
+        Two call sites: the concept declaration in this module (so the concept
+        body can name the protocol's own base struct inside a `convertible_to`
+        constraint) and the cycle-peer `_fwd.hpp` header (so peer translation
+        units can refer to the base by name without including the full header).
+        """
+        cpp_name = protocol.name.replace(".", "::")
+        if protocol.type_params:
+            tparams = ", ".join(f"typename {tp}" for tp in protocol.type_params)
+            out.write(f"template<{tparams}> struct {cpp_name};\n")
+        else:
+            out.write(f"struct {cpp_name};\n")
+
     def gen_dynamic_adapter_specs(self, out: TextIO, protocol: TpyProtocol,
-                                  module_namespace: str) -> None:
+                                  module_namespace: str,
+                                  user_type_names: set[str] | None = None) -> None:
         """Generate ::tpy::Adapter and ::tpy::RefAdapter partial specializations.
 
         Emitted at global scope (outside user namespace), following the EnumUtil
@@ -581,6 +606,13 @@ class ProtocolGenerator:
         Impl`, which desugars to `requires Concept<Impl, args>` -- matching
         the concept signature `template<typename T_checked, typename _T0,
         ...>` emitted by gen_concept_decl.
+
+        ``user_type_names`` is the set of record/protocol short names declared
+        in the current module; the adapter overrides qualify any bare
+        occurrence of these names with ``module_namespace::`` so they resolve
+        from inside the ``tpy::`` namespace (where the user namespace's
+        injected names are not visible, and for generic protocols the
+        dependent base class is not searched by unqualified lookup).
         """
         protocol_info = self.ctx.analyzer.registry.scan_by_short_name(protocol.name)
         if protocol_info is None:
@@ -629,7 +661,8 @@ class ProtocolGenerator:
         out.write(f"{INDENT}{impl} inner;\n")
         out.write(f"{INDENT}template<typename... Args>\n")
         out.write(f"{INDENT}Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {{}}\n")
-        self._gen_adapter_overrides(out, all_methods, protocol_info)
+        self._gen_adapter_overrides(out, all_methods, protocol_info,
+                                    module_namespace, user_type_names)
         out.write("};\n\n")
 
         # -- Ref adapter (for lvalue call-site args, zero-copy) --
@@ -637,11 +670,14 @@ class ProtocolGenerator:
         out.write(f"struct tpy::RefAdapter<{qbase}, {impl}> : {qbase} {{\n")
         out.write(f"{INDENT}{impl}& inner;\n")
         out.write(f"{INDENT}RefAdapter({impl}& ref) : inner(ref) {{}}\n")
-        self._gen_adapter_overrides(out, all_methods, protocol_info)
+        self._gen_adapter_overrides(out, all_methods, protocol_info,
+                                    module_namespace, user_type_names)
         out.write("};\n")
 
     def _gen_adapter_overrides(self, out: TextIO, all_methods: list[MethodSignature],
-                               protocol_info: 'ProtocolInfo') -> None:
+                               protocol_info: 'ProtocolInfo',
+                               module_namespace: str = "",
+                               user_type_names: set[str] | None = None) -> None:
         """Emit method override bodies shared by owning and ref adapters."""
         for method_sig in all_methods:
             ret_cpp = self._dynamic_return_type(method_sig)
@@ -654,7 +690,31 @@ class ProtocolGenerator:
             # explicit construction handles the conversion.
             if is_str_type(method_sig.return_type):
                 call_expr = f"std::string({call_expr})"
+            if user_type_names and module_namespace:
+                ret_cpp = self._qualify_user_types(ret_cpp, module_namespace, user_type_names)
+                params_cpp = self._qualify_user_types(params_cpp, module_namespace, user_type_names)
             out.write(f"{INDENT}{ret_cpp} {method_sig.name}({params_cpp}){const_qual} override {{ {ret_kw}{call_expr}; }}\n")
+
+    @staticmethod
+    def _qualify_user_types(cpp_str: str, module_namespace: str,
+                            user_type_names: set[str]) -> str:
+        """Prefix bare occurrences of ``user_type_names`` with ``module_namespace::``.
+
+        Used for adapter override return/parameter types, which are rendered
+        inside ``tpy::`` and cannot rely on either the user namespace's scope
+        or (for generic protocols) the dependent base class's injected names.
+        The lookbehind skips names that already follow ``::`` or another
+        identifier character, leaving fully qualified or substring matches
+        untouched.
+        """
+        import re
+        for name in user_type_names:
+            cpp_str = re.sub(
+                rf'(?<![:\w]){re.escape(name)}(?!\w)',
+                f'{module_namespace}::{name}',
+                cpp_str,
+            )
+        return cpp_str
 
     def _is_readonly_method(self, method_sig: MethodSignature, protocol_info: 'ProtocolInfo') -> bool:
         from ..typesys import ProtocolInfo as _PI

@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+struct Greeter;
 // @dynamic
 // class Greeter(Protocol):
 template<typename T>

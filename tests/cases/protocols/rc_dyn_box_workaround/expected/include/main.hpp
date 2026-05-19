@@ -13,6 +13,7 @@ namespace tpyapp::main {
 using ::tpystd::tplib::box::Box;
 using ::tpystd::tplib::rc::Rc;
 
+struct Pet;
 // @dynamic
 // class Pet(Protocol):
 template<typename T>

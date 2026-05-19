@@ -10,6 +10,7 @@ namespace tpyapp::main {
 
 using ::tpyapp::pet::Pet;
 
+struct NamedPet;
 // @dynamic
 // class NamedPet(Pet, Protocol):
 template<typename T>

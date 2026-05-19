@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+struct Counter;
 // @dynamic
 // class Counter(Protocol):
 template<typename T>

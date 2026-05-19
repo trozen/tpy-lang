@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+struct Describable;
 // @dynamic
 // class Describable(Protocol):
 template<typename T>
@@ -19,6 +20,7 @@ struct Describable {
     virtual ~Describable() = default;
 };
 
+struct Noise;
 // @dynamic
 // class Noise(Protocol):
 template<typename T>

@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+template<typename T> struct Source;
 // @dynamic
 // class Source[T](Protocol):
 template<typename T, typename _T0>
@@ -20,6 +21,7 @@ struct Source {
     virtual ~Source() = default;
 };
 
+template<typename T> struct Counter;
 // @dynamic
 // class Counter[T](Source[T], Protocol):
 template<typename T, typename _T0>

@@ -11,6 +11,7 @@ namespace tpyapp::main {
 
 using ::tpystd::tplib::box::Box;
 
+struct Pet;
 // @dynamic
 // class Pet(Protocol):
 template<typename T>
@@ -23,6 +24,7 @@ struct Pet {
     virtual ~Pet() = default;
 };
 
+struct NamedPet;
 // @dynamic
 // class NamedPet(Pet, Protocol):
 template<typename T>

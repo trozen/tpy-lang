@@ -20,6 +20,7 @@ concept Resizable = requires(T& t) {
     { t.resize(std::declval<int32_t>()) } -> std::convertible_to<void>;
 };
 
+struct Shape;
 // @dynamic
 // class Shape(Protocol):
 template<typename T>

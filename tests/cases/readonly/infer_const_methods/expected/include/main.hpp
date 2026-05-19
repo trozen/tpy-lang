@@ -17,6 +17,7 @@ concept HasValue = requires(T& t) {
     { t.value() } -> std::convertible_to<int32_t>;
 };
 
+struct DynValued;
 // @dynamic
 // class DynValued(HasValue, Protocol):
 template<typename T>

@@ -13,6 +13,7 @@ concept HasName = requires(T& t) {
     { t.name() } -> std::convertible_to<std::string_view>;
 };
 
+struct DynNamed;
 // @dynamic
 // class DynNamed(HasName, Protocol):
 template<typename T>

@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+struct Pet;
 // @dynamic
 // class Pet(Protocol):
 template<typename T>
@@ -19,6 +20,7 @@ struct Pet {
     virtual ~Pet() = default;
 };
 
+struct NamedPet;
 // @dynamic
 // class NamedPet(Pet, Protocol):
 template<typename T>

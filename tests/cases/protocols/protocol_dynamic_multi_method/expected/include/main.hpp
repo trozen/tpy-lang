@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+struct Shape;
 // @dynamic
 // class Shape(Protocol):
 template<typename T>

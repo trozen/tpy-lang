@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+struct Pet;
 // @dynamic
 // class Pet(Protocol):
 template<typename T>

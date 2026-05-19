@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+struct Named;
 // @dynamic
 // class Named(Protocol):
 template<typename T>

@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+struct Speaker;
 // @dynamic
 // class Speaker(Protocol):
 template<typename T>

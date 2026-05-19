@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+struct Throwable;
 // @dynamic
 // class Throwable(Protocol):
 template<typename T>

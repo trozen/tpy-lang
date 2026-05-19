@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+struct Awaker;
 // @dynamic
 // class Awaker(Protocol):
 template<typename T>

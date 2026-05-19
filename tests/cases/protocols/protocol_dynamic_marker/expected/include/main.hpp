@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+struct Tagged;
 // @dynamic
 // class Tagged(Protocol):  # tpyc: ok -- markerless @dynamic phylum tag
 template<typename T>

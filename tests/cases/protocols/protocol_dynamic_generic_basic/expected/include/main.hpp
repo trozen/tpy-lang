@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+template<typename T> struct Container;
 // @dynamic
 // class Container[T](Protocol):
 template<typename T, typename _T0>

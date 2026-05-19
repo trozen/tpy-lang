@@ -7,6 +7,7 @@
 
 namespace tpyapp::main {
 
+struct Describable;
 // @dynamic
 // class Describable(Protocol):
 template<typename T>

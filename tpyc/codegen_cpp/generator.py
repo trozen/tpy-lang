@@ -1433,8 +1433,11 @@ class CodeGenerator:
                                     dynamic_protocols: list) -> None:
         """Generate ::tpy::Adapter/RefAdapter partial specializations (global scope)."""
         ns = module_to_cpp_namespace(self.ctx.module_name)
+        # User-namespace type names that must be qualified inside `tpy::`
+        # adapter overrides; see ProtocolGenerator._qualify_user_types.
+        user_type_names = {r.name for r in module.records} | {p.name for p in module.protocols}
         for protocol in dynamic_protocols:
-            self.protocols.gen_dynamic_adapter_specs(out, protocol, ns)
+            self.protocols.gen_dynamic_adapter_specs(out, protocol, ns, user_type_names)
             out.write("\n")
 
     def _gen_enum_util_decls_for(self, out: TextIO, enums: list) -> None:
@@ -1866,8 +1869,7 @@ class CodeGenerator:
             # constraint must include the full peer header (a complete-
             # type position for the completeness-graph reject gate).
             if protocol.is_dynamic:
-                cpp_name = protocol.name.replace(".", "::")
-                out_buf.write(f"struct {cpp_name};\n")
+                ProtocolGenerator.emit_dynamic_base_forward_decl(out_buf, protocol)
         out_buf.write(f"\n}} // namespace {ns}\n")
         return out_buf.getvalue()
 
