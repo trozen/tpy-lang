@@ -41,6 +41,7 @@ from ..parse import (
     TpyNestedDef,
     collect_name_refs,
 )
+from .. import qnames
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type, is_fstr_type,
@@ -2092,7 +2093,6 @@ class ExpressionAnalyzer:
             expr.awaited_async_func_name = async_fi.name
             # async_fi.return_type is Awaitable[T]; the user-visible await
             # result is T (the protocol's type arg).
-            from .. import qnames
             ret = unwrap_ref_type(async_fi.return_type)
             if (isinstance(ret, NominalType)
                     and ret.qualified_name() == qnames.AWAITABLE
@@ -2164,7 +2164,7 @@ class ExpressionAnalyzer:
                 continue
             ret = unwrap_own(ret_outer)
             if (isinstance(ret, NominalType)
-                    and ret._module_qname == "tpy.Poll"
+                    and ret._module_qname == qnames.POLL
                     and len(ret.type_args) == 1):
                 inner = ret.type_args[0]
                 # Substitute T -> typ.type_args[i] when inner is a TypeParamRef.

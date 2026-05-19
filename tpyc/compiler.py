@@ -45,7 +45,7 @@ from .typesys import (
     clear_all_compilation_state,
 )
 from .type_def_registry import protocol_info_of, enum_info_of
-from .module_names import public_module_name
+from .module_names import module_from_qname, public_module_name
 from .macro_loader import MacroRegistry, is_macro_module_source
 from .symbol_binding import (
     BindingCell, SymbolKind, install_binding, protocol_kind_for,
@@ -1887,6 +1887,17 @@ class Compiler:
         offender (deterministic order over modules + record name +
         field name)."""
 
+        def _scc_peer_module(qname: str | None, current_module: str) -> str | None:
+            """Module of an SCC peer for `qname`, or None if `qname` is
+            missing or resolves outside the SCC. Closes over `scc` and
+            the loop-bound `registry`."""
+            if not qname:
+                return None
+            module = module_from_qname(qname, registry)
+            if module is None or module == current_module or module not in scc:
+                return None
+            return module
+
         def _find_complete_required_peer(
             typ, current_module: str,
             _seen: set[int] | None = None,
@@ -1940,11 +1951,9 @@ class Compiler:
             # NominalType: user record, builtin container, or protocol.
             if isinstance(typ, NominalType):
                 if typ.is_user_record:
-                    qname = typ._module_qname
-                    if qname:
-                        module = qname.rsplit('.', 1)[0]
-                        if module != current_module and module in scc:
-                            return (module, typ.name)
+                    module = _scc_peer_module(typ._module_qname, current_module)
+                    if module is not None:
+                        return (module, typ.name)
                     # Generic-record instantiation: a non-cycle-peer
                     # record parameterized over a cycle-peer arg
                     # (e.g. `Box[B]`) still needs the peer's complete
@@ -1961,11 +1970,9 @@ class Compiler:
                 if typ.is_protocol and not typ.is_dynamic_protocol:
                     # Static protocol used as a type: template constraint
                     # needs complete concept.
-                    qname = typ._module_qname
-                    if qname:
-                        module = qname.rsplit('.', 1)[0]
-                        if module != current_module and module in scc:
-                            return (module, typ.name)
+                    module = _scc_peer_module(typ._module_qname, current_module)
+                    if module is not None:
+                        return (module, typ.name)
                     return None
                 # Builtin container (list / dict / set / Array / ...):
                 # walk args looking for cycle-peer references.
@@ -1989,11 +1996,8 @@ class Compiler:
                 # Concrete inheritance from a peer in the same SCC.
                 for parent in record_info.parents:
                     if isinstance(parent, NominalType) and parent.is_user_record:
-                        qn = parent._module_qname
-                        if not qn:
-                            continue
-                        parent_mod = qn.rsplit('.', 1)[0]
-                        if parent_mod != member and parent_mod in scc:
+                        parent_mod = _scc_peer_module(parent._module_qname, member)
+                        if parent_mod is not None:
                             cycle_repr = " <-> ".join(sorted(scc))
                             # RecordInfo carries no source location; pin
                             # to the first cross-cycle import in this

@@ -1,10 +1,41 @@
-"""Module-name normalization helpers.
-
-Leaf utility module: no other tpyc imports, so it can be imported
-freely from parser, sema, typesys, and codegen without creating
-cycles.
-"""
+"""Module-name normalization helpers."""
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .typesys import TypeRegistry
+
+
+def module_from_qname(qname: str, registry: TypeRegistry) -> str | None:
+    """Return the module whose generated header declares the named
+    symbol, used to drive `#include` emission and cross-module lookups.
+
+    A `@builtin_type` record's qname is a TPy-side label that need not
+    match its defining file: `Poll` is tagged `tpy.coro.Poll` but
+    declared in `tpy/_core/_types.py`. Prefix-walking the qname to
+    `tpy.coro` would route includes through the wrong header. For
+    records, consult the registry's qname indexes directly and return
+    `RecordInfo.module`. The two indexes (`_qname_index` for builtins,
+    `_user_qname_index` for user records) are accessed in preference to
+    the public `find_record_by_qname` because its short-name fallback
+    walks every module's records dict (O(workspace size)), wrong for a
+    helper that runs on every nominal type during reach analysis.
+
+    Falls back to a prefix walk for enums, protocols, parser
+    placeholders, and any other qname not in the record indexes.
+    """
+    record = registry._qname_index.get(qname) or registry._user_qname_index.get(qname)
+    if record is not None and record.module:
+        return record.module
+    parts = qname.split(".")
+    for i in range(len(parts) - 1, 0, -1):
+        candidate = ".".join(parts[:i])
+        if registry.get_module(candidate) is not None:
+            return candidate
+    if len(parts) >= 2:
+        return parts[0]
+    return None
 
 
 def public_module_name(module_name: str, cpp_namespace: str | None = None) -> str:

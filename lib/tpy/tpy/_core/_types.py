@@ -143,20 +143,20 @@ class AnyFixedSigned(Protocol): ...
 @native("tpy::AnyFixedUnsigned")
 class AnyFixedUnsigned(Protocol): ...
 
-# `Poll` lives here (cpp_namespace `tpystd::tpy`) rather than alongside
-# `Awaitable` in `tpy/coro/__init__.py` for codegen-ordering reasons:
-# the `Awaitable[T]` concept's body needs `Poll[T]`'s full type, but
-# codegen emits record full-defs after concepts within the same TU.
-# Keeping Poll in this file gets its full def into `_core/_types.hpp`,
-# which `coro.hpp` already includes. The qname stays `tpy.Poll` because
-# `@builtin_type` can't diverge from the file's actual cpp_namespace
-# without further codegen support; users still import via
-# `from tpy.coro import Poll` (the package re-exports). `Waker` /
-# `Awaker` live in `tpy/coro/__init__.py`. `Task` is
+# `Poll`'s body lives in this file (cpp_namespace `tpystd::tpy`) rather
+# than alongside `Awaitable` in `tpy/coro/__init__.py` for codegen-
+# ordering reasons: the `Awaitable[T]` concept's body needs `Poll[T]`'s
+# full type, but codegen emits record full-defs after concepts within
+# the same TU. Keeping the body here gets the full def into
+# `_core/_types.hpp`, which `coro.hpp` already includes. The TPy qname
+# is `tpy.coro.Poll` -- decoupled from the file's cpp_namespace -- so
+# users see the same qname they import from (`from tpy.coro import
+# Poll`). The C++ symbol is `::tpystd::tpy::Poll<T>` regardless.
+# `Waker` / `Awaker` live in `tpy/coro/__init__.py`. `Task` is
 # `@builtin_type("tpy.Task")` decorated in `asyncio._executor`.
 
 
-@builtin_type("tpy.Poll")
+@builtin_type("tpy.coro.Poll")
 @nocopy
 class Poll[T]:
     """Result of polling an Awaitable: Pending or Ready[T].

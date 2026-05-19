@@ -308,13 +308,19 @@ Top-level analyzers (one module each):
 `reach_analysis` runs after body analysis as a small post-pass that
 scans the analyzed module for cross-module `NominalType._module_qname`
 references and stores the set of reached defining modules on
-`SemanticContext.reached`. Codegen consumes this to drive transitive
-`# tpy: include(...)` propagation through native records: when a
-consumer reaches a native record only via a field/method chain (and
-not via a direct import), the chain of native-module headers it
-depends on is emitted into the consumer header. Native-to-native
-chains are followed explicitly in codegen since natives have no
-`.hpp` to chain through.
+`SemanticContext.reached`. The qname-to-module mapping goes through
+`module_from_qname` in `tpyc/module_names.py`: registered records
+return `RecordInfo.module` directly (so a `@builtin_type` record whose
+qname diverges from its defining file's `cpp_namespace` -- e.g.
+`Poll`, qname `tpy.coro.Poll`, body in `tpy/_core/_types.py` -- still
+routes through the correct header); unregistered qnames fall back to
+a prefix walk over registered modules. Codegen consumes the reached
+set to drive transitive `# tpy: include(...)` propagation through
+native records: when a consumer reaches a native record only via a
+field/method chain (and not via a direct import), the chain of
+native-module headers it depends on is emitted into the consumer
+header. Native-to-native chains are followed explicitly in codegen
+since natives have no `.hpp` to chain through.
 
 ### Circular imports
 

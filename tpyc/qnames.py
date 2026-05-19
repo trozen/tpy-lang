@@ -87,6 +87,7 @@ SEQUENCE = "typing.Sequence"
 
 # -- tpy.coro / asyncio --
 AWAITABLE = "tpy.coro.Awaitable"
+POLL = "tpy.coro.Poll"
 ASYNCIO_RUN = "asyncio.run"
 ASYNCIO_CREATE_TASK = "asyncio.create_task"
 

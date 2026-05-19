@@ -1277,7 +1277,9 @@ What landed:
   uses an aliased `from ..mem import UninitArrayStorage as
   _UninitArrayStorage` to keep the name out of `_types.py`'s public
   surface (it still leaks into the implicit-stdlib qname scope -- see
-  BUGS.md entry).
+  BUGS.md entry). (Later retagged to `@builtin_type("tpy.coro.Poll")`
+  on the `builtin-qname-decouple` branch; body stays in `_types.py`,
+  C++ symbol unchanged.)
 - **`tpy.coro` factories** (`poll_ready` / `poll_pending` /
   `poll_ready_none`) lost their `@cpp_template` shells and became
   pure-TPy functions that delegate to `Poll[T].ready` / `Poll[T].pending`.

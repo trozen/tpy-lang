@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..module_names import module_from_qname
 from ..parse.nodes import (
     TpyFunction,
     TpyModule,
@@ -62,7 +63,7 @@ def compute_reached_symbols(
         if isinstance(t, NominalType):
             qname = t._module_qname
             if qname:
-                add_module(_module_from_qname(qname, registry))
+                add_module(module_from_qname(qname, registry))
             if t.type_args:
                 for arg in t.type_args:
                     visit_type(arg)
@@ -158,23 +159,6 @@ def compute_reached_symbols(
     visit_body(module.top_level_stmts)
 
     return reached
-
-
-def _module_from_qname(qname: str, registry) -> str | None:
-    """Extract the defining module from a qualified name. Walks back through
-    dots until a registered module is found, so nested names like
-    `pkg.sub.Outer.Inner` resolve to `pkg.sub` (the longest matching prefix)."""
-    parts = qname.split(".")
-    for i in range(len(parts) - 1, 0, -1):
-        candidate = ".".join(parts[:i])
-        if registry.get_module(candidate) is not None:
-            return candidate
-    # Fallback for types whose enclosing module isn't (yet) in the registry --
-    # treat the first dotted component as the module. Builtin modules are
-    # filtered downstream by the is_builtin check in add_module.
-    if len(parts) >= 2:
-        return parts[0]
-    return None
 
 
 def _iter_typed_children(node) -> list[TpyType]:

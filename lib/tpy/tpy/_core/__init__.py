@@ -14,10 +14,8 @@ from ._types import (
     Int8, Int16, Int32, Int64,
     UInt8, UInt16, UInt32, UInt64,
     Char, String, StrView, FStr,
-    # `Poll` lives here (qname `tpy.Poll`) for codegen-ordering reasons
-    # though users import it as `tpy.coro.Poll` -- see `_types.py`.
-    # `Waker` / `Awaker` live in `tpy.coro`; `Task[T]` lives in
-    # `asyncio._executor`.
+    # `Poll`'s body lives here for codegen-ordering reasons (see
+    # `_types.py`); its qname is `tpy.coro.Poll`.
     Poll,
 )
 from ._bytes_view import BytesView
