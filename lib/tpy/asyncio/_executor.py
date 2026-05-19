@@ -259,7 +259,7 @@ def task_to_any_box[T](task: Task[T]) -> Own[Box[AnyTask]]:
 # --- Awaker-side helpers (call sites inside Executor) -------------------
 
 
-def _make_waker(handle: Ptr[Awaker], task_id: Int32,
+def _make_waker(handle: Awaker, task_id: Int32,
                 generation: Int32) -> Waker:
     w = Waker()
     w.awaker = handle
@@ -502,7 +502,7 @@ class _ExecutorScope:
     Awaker handle.
     """
 
-    def __init__(self, executor: Ptr[Executor]) -> None:
+    def __init__(self, executor: Executor) -> None:
         _set_current_executor(executor)
 
     def __del__(self) -> None:

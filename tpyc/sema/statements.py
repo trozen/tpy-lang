@@ -3702,8 +3702,13 @@ class StatementAnalyzer:
                     target_type = dict_info.value_type
                     self.ctx.set_expr_type(stmt.target, target_type)
 
+        # Field / container element targets store the value (storage form);
+        # the `T -> Optional[T]` address-take that fires for borrow-form
+        # destinations doesn't apply here.
+        target_is_storage = isinstance(stmt.target, (TpyFieldAccess, TpySubscript))
         stmt.value = self.compat.coerce_expr(stmt.value, value_type, target_type, "assignment",
-                                              coercion_ctx=CoercionContext.ASSIGN)
+                                              coercion_ctx=CoercionContext.ASSIGN,
+                                              target_is_storage_form=target_is_storage)
         # Annotate tuple literal element capture modes
         if isinstance(stmt.value, TpyTupleLiteral):
             tuple_target = own_tuple_target(target_type)

@@ -302,11 +302,22 @@ class RecordGenerator:
                           and self._all_fields_default_constructible(record)
                           and not del_suppresses_default_ctor(record_info)):
                         out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
+                # Ctor params that the body mutates (typically via value->Ptr
+                # coercion at a callee site or assignment to a Ptr storage)
+                # must drop the perf-default `const T&` -- the address-take
+                # produces `T*`, not `const T*`. Regular methods plumb this
+                # through gen_params; constructors used to skip it because
+                # ctors must accept temporaries, but a mutated param can't
+                # accept a temporary anyway (sema's requires_mutable_lvalue
+                # rejects the rvalue call before reaching codegen).
+                init_mp = self.functions._get_method_mutated_params(
+                    record.init_method, record.name)
                 if proto_params or has_dynamic:
                     cpp_params = self.functions.gen_params_with_protocols(
                         record.init_method.params,
                         record.init_method.type_params,
                         const_params=True,
+                        mutated_params=init_mp,
                         defaults=init_defaults,
                         emit_defaults=True,
                     )
@@ -323,6 +334,7 @@ class RecordGenerator:
                         record.init_method.params,
                         record.init_method.type_params,
                         const_params=True,
+                        mutated_params=init_mp,
                         addr_escapes_params=init_ae,
                         defaults=init_defaults,
                         emit_defaults=True,

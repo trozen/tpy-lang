@@ -14,7 +14,7 @@ from ..typesys import (
     LiteralType, LiteralValue, LiteralTag, FLOAT, make_list, make_dict, make_set,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NominalType, TypeParamRef, NoneType, AnyType, OptionalType, UnionType,
-    is_protocol_type, unwrap_own, unwrap_readonly, unwrap_optional_own,
+    is_protocol_type, is_dyn_protocol, unwrap_own, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     CallableType, is_fn_type, RefType, unwrap_ref_type,
     is_callable_type, is_integer_type, is_any_float_type, is_readonly_span)
@@ -218,7 +218,8 @@ class TypeCompatibility:
         loc: SourceLocation | None = None,
         source_expr: TpyExpr | None = None,
         is_return: bool = False,
-        coercion_ctx: CoercionContext | None = None
+        coercion_ctx: CoercionContext | None = None,
+        target_is_storage_form: bool = False,
     ) -> Optional[Coercion]:
         """Check if actual type is compatible with expected type.
 
@@ -240,7 +241,7 @@ class TypeCompatibility:
                 self.ctx.set_expr_type(source_expr, new_actual)
             else:
                 self._maybe_raise_literal_local_range(source_expr, actual, expected, context)
-        result = self._check_compat(actual, expected, context, loc, source_expr, is_return, coercion_ctx)
+        result = self._check_compat(actual, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
         if isinstance(result, CompatError):
             # Surface where a previously retro-widened local's type got
             # pinned, so the user sees why a non-default type appears in
@@ -290,11 +291,17 @@ class TypeCompatibility:
         loc: SourceLocation | None = None,
         source_expr: TpyExpr | None = None,
         is_return: bool = False,
-        coercion_ctx: CoercionContext | None = None
+        coercion_ctx: CoercionContext | None = None,
+        target_is_storage_form: bool = False,
     ) -> CompatResult:
         """Core type compatibility check.
 
         Returns Coercion or None on success, CompatError on failure.
+
+        target_is_storage_form: True when the destination is a field or
+        container element (value-storage form). Used to suppress address-
+        take mutation marking that only applies to borrow-form destinations
+        (params/locals/returns); storage-form assignments copy the value.
         """
         # Resolve NominalType self-references from recursive union members.
         # e.g. NominalType("Tree") -> UnionType, and also inside containers:
@@ -335,7 +342,7 @@ class TypeCompatibility:
                     self.ctx.set_expr_type(source_expr, resolved)
                 return self._check_compat(
                     resolved, expected, context, loc, source_expr,
-                    is_return, coercion_ctx)
+                    is_return, coercion_ctx, target_is_storage_form)
             return CompatError(
                 f"Type mismatch in {context}: '{actual.record_name}' has unresolved type "
                 f"arguments; call a constraining method first or add explicit type arguments",
@@ -348,19 +355,19 @@ class TypeCompatibility:
         if isinstance(expected, RefType):
             return self._check_compat(
                 unwrap_ref_type(actual), expected.wrapped, context, loc,
-                source_expr, is_return, coercion_ctx)
+                source_expr, is_return, coercion_ctx, target_is_storage_form)
         # Strip Ref from actual too (Ref[T] is compatible with T)
         if isinstance(actual, RefType):
             return self._check_compat(
                 actual.wrapped, expected, context, loc,
-                source_expr, is_return, coercion_ctx)
+                source_expr, is_return, coercion_ctx, target_is_storage_form)
 
         # readonly[T] -> readonly[T]: unwrap and check inner types
         # T -> readonly[T]: always OK (adding const is safe)
         if isinstance(expected, ReadonlyType):
             actual_inner = unwrap_readonly(actual)
             return self._check_compat(
-                actual_inner, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx
+                actual_inner, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form
             )
 
         # readonly[T] -> T: error for non-value types (stripping const is unsafe)
@@ -385,7 +392,7 @@ class TypeCompatibility:
                         loc,
                     )
             return self._check_compat(
-                actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx
+                actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form
             )
 
         # None -> Optional[T] / Ptr[T] / Ptr[readonly[T]]: always compatible
@@ -459,7 +466,7 @@ class TypeCompatibility:
         # Union[A, B] -> Union[A, B, C]: each actual member must match some expected member
         if isinstance(actual, UnionType) and isinstance(expected, UnionType):
             for member in actual.members:
-                result = self._check_compat(member, expected, context, loc, source_expr, is_return, coercion_ctx)
+                result = self._check_compat(member, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
                 if isinstance(result, CompatError):
                     return result
             return None
@@ -475,13 +482,13 @@ class TypeCompatibility:
             for member in expected.members:
                 if not _is_natural_union_member(actual_unwrapped, a_info, member):
                     continue
-                result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx)
+                result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
                 if not isinstance(result, CompatError):
                     return result
             for member in expected.members:
                 if _is_natural_union_member(actual_unwrapped, a_info, member):
                     continue
-                result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx)
+                result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
                 if not isinstance(result, CompatError):
                     return result
             return CompatError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
@@ -502,11 +509,15 @@ class TypeCompatibility:
                     return None
             # For pointer-repr Optional[T], codegen takes &(source) when source is a
             # non-value record (not already Optional/Ptr). Mark source params as needing
-            # T& so &(param) stays valid (not const T&).
+            # T& so &(param) stays valid (not const T&). Skip when the destination
+            # is in storage form (field / container element) -- the Optional there
+            # lowers to std::optional<T> (value-storage) and the assignment is a
+            # copy; no address-take happens, so the source's const-ness is fine.
             if (expected.uses_pointer_repr()
                     and source_expr is not None
                     and not actual_inner.is_value_type()
-                    and not isinstance(actual_inner, (OptionalType, PtrType, NoneType))):
+                    and not isinstance(actual_inner, (OptionalType, PtrType, NoneType))
+                    and not target_is_storage_form):
                 self._mark_addr_taken(source_expr)
             # Ptr[T] -> T | None (pointer-repr): byte-identical T* at C++ level.
             # Per-context idiom: Ptr[T] for storage, T | None for nullable returns.
@@ -525,7 +536,7 @@ class TypeCompatibility:
                     whole = resolve_coercion(actual_inner, expected, ctx_for_coerce)
                     if whole is not None:
                         return whole
-            result = self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx)
+            result = self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
             # Rewrap inner-mismatch errors with the declared Optional types so
             # the diagnostic reads `expected str | None, got StrView | None`
             # rather than the truncated `expected str, got StrView | None`.
@@ -768,11 +779,11 @@ class TypeCompatibility:
                     and actual.name != expected.wrapped.name):
                 return CompatError(
                     f"Type mismatch in {context}: expected {expected.wrapped}, got {actual}", loc)
-            return self._check_compat(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx)
+            return self._check_compat(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
 
         # Allow Own[T] -> T coercion (receiving an owned value)
         if isinstance(actual, OwnType):
-            return self._check_compat(actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx)
+            return self._check_compat(actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
 
         # Tuple-to-tuple: same length, element-wise compatible
         if isinstance(actual, TupleType) and isinstance(expected, TupleType):
@@ -785,7 +796,7 @@ class TypeCompatibility:
                 result = self._check_compat(
                     a, e, f"{context} (tuple element {i})", loc,
                     source_expr=source_expr, is_return=is_return,
-                    coercion_ctx=coercion_ctx
+                    coercion_ctx=coercion_ctx, target_is_storage_form=target_is_storage_form
                 )
                 if isinstance(result, CompatError):
                     return result
@@ -853,10 +864,13 @@ class TypeCompatibility:
                     return CompatError(
                         f"Type mismatch in {context}: expected {e_elem}, got {actual.element_type}", loc)
                 else:
-                    # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64)
+                    # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64).
+                    # Container element slot is storage form -- no address-take
+                    # mark should fire even if the inner type is pointer-repr Optional.
                     result = self._check_compat(
                         actual.element_type, e_elem,
-                        context, loc, source_expr, is_return, coercion_ctx
+                        context, loc, source_expr, is_return, coercion_ctx,
+                        target_is_storage_form=True,
                     )
                     if not isinstance(result, CompatError):
                         return None  # element coercion is a probe, not propagated
@@ -995,12 +1009,23 @@ class TypeCompatibility:
             # Inheritance: Child -> Ptr[Parent] / Ptr[readonly[Parent]] (address-of with upcast).
             # `_is_covariant_target` covers both class inheritance (Child -> Ptr[ParentRecord])
             # and @dynamic-protocol implementation (Child -> Ptr[@dynamic Protocol]).
-            if isinstance(actual, NominalType) and actual.is_user_record:
+            #
+            # Also accepts `actual` being a @dynamic protocol value (lowered as
+            # `Base&` already): `&handle` produces `Base*` natively, matching
+            # `Ptr[same protocol]`. Identity is the common case (`P -> Ptr[P]`
+            # inside a function that took the protocol value as a param);
+            # protocol-to-parent-protocol upcasts also work via the existing
+            # covariance check.
+            actual_is_addr_taker = (
+                isinstance(actual, NominalType)
+                and (actual.is_user_record or is_dyn_protocol(actual))
+            )
+            if actual_is_addr_taker:
                 if isinstance(expected, PtrType) and not expected.is_readonly and isinstance(expected.inner_pointee, NominalType):
-                    if self._is_covariant_target(actual, expected.inner_pointee):
+                    if actual == expected.inner_pointee or self._is_covariant_target(actual, expected.inner_pointee):
                         coercion = UPCAST_TO_PTR
                 elif is_readonly_ptr(expected) and isinstance(expected.inner_pointee, NominalType):
-                    if self._is_covariant_target(actual, expected.inner_pointee):
+                    if actual == expected.inner_pointee or self._is_covariant_target(actual, expected.inner_pointee):
                         coercion = UPCAST_TO_CONST_PTR
         if coercion is None:
             # __span__() method coercion: type with __span__() -> Span[T] coerces to Span/Span[readonly[T]]
@@ -1088,15 +1113,22 @@ class TypeCompatibility:
 
     def coerce_expr(
         self, expr: TpyExpr, actual: TpyType, expected: TpyType, context: str,
-        coercion_ctx: CoercionContext, is_return: bool = False
+        coercion_ctx: CoercionContext, is_return: bool = False,
+        target_is_storage_form: bool = False,
     ) -> TpyExpr:
-        """Wrap expr in a coercion node if a conversion is needed."""
+        """Wrap expr in a coercion node if a conversion is needed.
+
+        target_is_storage_form: see _check_compat docstring. Set by callers
+        that know the destination is a field / container element so the
+        pointer-repr-Optional address-take mark is suppressed.
+        """
         coercion = self.check_type_compatible(
             actual, expected, context,
             getattr(expr, "loc", None),
             source_expr=expr,
             is_return=is_return,
-            coercion_ctx=coercion_ctx
+            coercion_ctx=coercion_ctx,
+            target_is_storage_form=target_is_storage_form,
         )
         if coercion is None:
             return expr
@@ -1401,8 +1433,11 @@ class TypeCompatibility:
             # Resolve NominalType("Expr") -> union type alias (recursive only)
             e_resolved = self._resolve_recursive_refs(e_arg) if isinstance(e_arg, NominalType) else e_arg
             if isinstance(e_resolved, UnionType) and self.ctx.is_recursive_union(e_resolved):
+                # Container type-arg slot is storage form (the container stores
+                # values, no address-take fires for pointer-repr Optional).
                 result = self._check_compat(
                     a_arg, e_resolved, context, loc, None, is_return, coercion_ctx,
+                    target_is_storage_form=True,
                 )
                 if isinstance(result, CompatError):
                     return False

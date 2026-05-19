@@ -104,7 +104,7 @@ void test_timer_fires_immediately() {
     // e = Executor()
     ::tpystd::asyncio::_executor::Executor e = ::tpystd::asyncio::_executor::Executor();
     // w = _make_waker(e, 0, 0)
-    ::tpystd::coro::Waker w = ::tpystd::asyncio::_executor::_make_waker(&e, 0, 0);
+    ::tpystd::coro::Waker w = ::tpystd::asyncio::_executor::_make_waker(e, 0, 0);
     // e.register_timer(monotonic() - 0.5, w)
     e.register_timer(((::tpy::stdlib::time::monotonic()) - (0.5)), w);
     // print("timer count before:", len(e.timer_heap))
