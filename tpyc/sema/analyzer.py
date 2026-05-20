@@ -48,7 +48,7 @@ from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
 from ..cycle_detection import detect_type_cycles
 from ..parse import SourceLocation, is_parser_keyword
-from ..type_def_registry import is_str_type, is_str_view_type, protocol_info_of, enum_info_of
+from ..type_def_registry import is_str_type, is_str_view_type, enum_info_of
 from ..parse.resolve_refs import (
     _walk_body, _merged_method_scope, _record_scope,
     promote_bare_nominals,
@@ -830,17 +830,11 @@ class SemanticAnalyzer:
         that mismatches the virtual slot.
         """
         visited: set[str] = set()
-        infos = [record_info, *self.ctx.registry.iter_ancestor_records(record_info)]
-        for info in infos:
-            for proto_type in info.implemented_protocols:
-                proto_info = protocol_info_of(proto_type)
-                # Only @dynamic protocols generate C++ virtual bases
-                if proto_info is None or not proto_info.is_dynamic:
-                    continue
-                # Search this dynamic protocol and ALL its ancestors for method_name,
-                # regardless of whether ancestors are themselves dynamic.
-                if self._proto_hierarchy_has_nonconst(proto_type.name, method_name, visited):
-                    return True
+        for proto_type, _ in self.ctx.registry.iter_dynamic_protocols(record_info):
+            # Search this dynamic protocol and ALL its ancestors for method_name,
+            # regardless of whether ancestors are themselves dynamic.
+            if self._proto_hierarchy_has_nonconst(proto_type.name, method_name, visited):
+                return True
         return False
 
     def _proto_hierarchy_has_nonconst(self, proto_name: str, method_name: str, visited: set[str]) -> bool:

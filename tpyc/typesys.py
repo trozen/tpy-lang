@@ -3333,7 +3333,6 @@ def is_polymorphic_class_type(typ: TpyType, registry: 'TypeRegistry') -> bool:
     on RecordInfo (the answer is stable post-Phase-1 sema; MRO and
     implemented_protocols don't change after registration).
     """
-    from .type_def_registry import protocol_info_of as _protocol_info_of
     if not isinstance(typ, NominalType) or typ.is_protocol:
         return False
     record_info = registry.get_record(typ.name)
@@ -3342,15 +3341,7 @@ def is_polymorphic_class_type(typ: TpyType, registry: 'TypeRegistry') -> bool:
     cached = record_info._is_polymorphic_class
     if cached is not None:
         return cached
-    answer = False
-    for info in [record_info, *registry.iter_ancestor_records(record_info)]:
-        for proto in info.implemented_protocols:
-            proto_info = _protocol_info_of(proto)
-            if proto_info is not None and proto_info.is_dynamic:
-                answer = True
-                break
-        if answer:
-            break
+    answer = any(registry.iter_dynamic_protocols(record_info))
     record_info._is_polymorphic_class = answer
     return answer
 
@@ -4425,6 +4416,23 @@ class TypeRegistry:
                 rec = self.get_record_for_type(anc)
                 if rec is not None:
                     yield rec
+
+    def iter_dynamic_protocols(
+        self, record: RecordInfo,
+    ) -> Iterator[tuple['NominalType', 'ProtocolInfo']]:
+        """Yield ``(proto, proto_info)`` for every ``@dynamic`` protocol
+        ``record`` or its MRO ancestor records declare in
+        ``implemented_protocols``. No dedupe; consumers that care (e.g.
+        ``_get_dynamic_override_info``'s first-wins map) dedupe at
+        their own granularity. Diamond inheritance is rejected at sema
+        so a protocol reachable via multiple MRO paths is rare.
+        """
+        from .type_def_registry import protocol_info_of
+        for owner in (record, *self.iter_ancestor_records(record)):
+            for proto in owner.implemented_protocols:
+                proto_info = protocol_info_of(proto)
+                if proto_info is not None and proto_info.is_dynamic:
+                    yield proto, proto_info
 
     def find_class_constant_owner(self, record: RecordInfo, field_name: str) -> 'RecordInfo | None':
         """Return the record that declares `field_name` as a class constant,

@@ -1380,26 +1380,17 @@ class FunctionGenerator:
         if not record_info:
             return {}
         result: dict[str, bool] = {}
-        # Direct implementations on this record, plus all ancestors transitively.
-        infos = [record_info, *self.ctx.analyzer.registry.iter_ancestor_records(record_info)]
-        for info in infos:
-            for proto in info.implemented_protocols:
-                proto_info = protocol_info_of(proto)
-                if proto_info and proto_info.is_dynamic:
-                    all_methods = self.protocols.collect_concept_methods(proto.name)
-                    for method_sig in all_methods:
-                        is_const = method_sig.is_readonly or proto_info.is_readonly
-                        # First-wins (MRO is nearest-first; most-derived
-                        # protocol wins). Diamond hierarchies with conflicting
-                        # const-ness across sibling protocols for the same
-                        # method name are latent -- the first protocol visited
-                        # in MRO order decides the slot's const-ness, which may
-                        # not match a sibling protocol's declaration and would
-                        # silently emit an override that doesn't satisfy that
-                        # sibling's virtual slot. See TODO.md (multi-protocol
-                        # diamond const-merge).
-                        if method_sig.name not in result:
-                            result[method_sig.name] = is_const
+        for proto, proto_info in self.ctx.analyzer.registry.iter_dynamic_protocols(record_info):
+            for method_sig in self.protocols.collect_concept_methods(proto.name):
+                # First-wins (MRO is nearest-first; most-derived protocol
+                # decides the slot's const-ness). Diamond hierarchies with
+                # conflicting const-ness across sibling protocols for the
+                # same method name are latent -- the first visited may not
+                # match a sibling's declaration and would silently emit an
+                # override that doesn't satisfy the sibling's virtual slot.
+                # See TODO.md (multi-protocol diamond const-merge).
+                if method_sig.name not in result:
+                    result[method_sig.name] = method_sig.is_readonly or proto_info.is_readonly
         return result
 
     def gen_method_def(self, out: TextIO, method: TpyFunction, record_name: str,

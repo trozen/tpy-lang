@@ -1685,6 +1685,35 @@ class CallAnalyzer:
                 )
         return result
 
+    def _validate_polymorphic_subclass_dispatch(
+        self,
+        inner: 'TpyType',
+        check_types: list['TpyType'],
+        var_name: str,
+        expr: TpyCall,
+    ) -> TpyType:
+        """Validate isinstance() check types against an Optional[Polymorphic]
+        inner class and set up runtime dispatch. Shared between the
+        Optional-source and post-narrowing branches of ``_analyze_isinstance``
+        so both stay in lockstep.
+        """
+        non_subs = [
+            ct for ct in check_types
+            if not (isinstance(ct, NominalType)
+                    and self.ctx.registry.is_subclass_of_or_equal(ct, inner))
+        ]
+        if non_subs:
+            names = ", ".join(f"'{t}'" for t in non_subs)
+            raise self.ctx.error(
+                f"isinstance() check type(s) {names} are not subclasses of "
+                f"'{inner}' (Optional[{inner}] dispatch)",
+                expr,
+            )
+        expr.isinstance_var = var_name
+        expr.isinstance_type = (check_types[0] if len(check_types) == 1
+                                else make_union(*check_types))
+        return BOOL
+
     def _analyze_isinstance(self, expr: TpyCall) -> TpyType:
         """Analyze isinstance(x, T) for union type narrowing or protocol checks.
 
@@ -1776,22 +1805,8 @@ class CallAnalyzer:
             if (isinstance(inner, NominalType)
                     and is_polymorphic_class_type(inner, self.ctx.registry)
                     and check_types):
-                non_subs = [
-                    ct for ct in check_types
-                    if not (isinstance(ct, NominalType)
-                            and self.ctx.registry.is_subclass_of_or_equal(ct, inner))
-                ]
-                if non_subs:
-                    names = ", ".join(f"'{t}'" for t in non_subs)
-                    raise self.ctx.error(
-                        f"isinstance() check type(s) {names} are not subclasses of "
-                        f"'{inner}' (Optional[{inner}] dispatch)",
-                        expr,
-                    )
-                expr.isinstance_var = first_arg.name
-                expr.isinstance_type = (check_types[0] if len(check_types) == 1
-                                        else make_union(*check_types))
-                return BOOL
+                return self._validate_polymorphic_subclass_dispatch(
+                    inner, check_types, first_arg.name, expr)
 
             raise self.ctx.error(
                 f"isinstance() is only supported on union types, "
@@ -1837,23 +1852,8 @@ class CallAnalyzer:
             # representation is still `const Inner*` and dynamic_cast to a
             # subclass is sound. Route to runtime dispatch.
             if is_opt_polymorphic_source and check_types:
-                inner = declared_unwrapped.inner
-                non_subs = [
-                    ct for ct in check_types
-                    if not (isinstance(ct, NominalType)
-                            and self.ctx.registry.is_subclass_of_or_equal(ct, inner))
-                ]
-                if non_subs:
-                    names = ", ".join(f"'{t}'" for t in non_subs)
-                    raise self.ctx.error(
-                        f"isinstance() check type(s) {names} are not subclasses of "
-                        f"'{inner}' (Optional[{inner}] dispatch)",
-                        expr,
-                    )
-                expr.isinstance_var = first_arg.name
-                expr.isinstance_type = (check_types[0] if len(check_types) == 1
-                                        else make_union(*check_types))
-                return BOOL
+                return self._validate_polymorphic_subclass_dispatch(
+                    declared_unwrapped.inner, check_types, first_arg.name, expr)
             # Non-union: compile-time evaluate against the static type,
             # walking the inheritance hierarchy. Reuse the narrowed-path
             # fold if it already ran so we don't warn twice.

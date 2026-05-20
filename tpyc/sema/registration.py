@@ -2351,14 +2351,10 @@ class TypeRegistrar:
         Used to suppress the "method hides ancestor" warning when codegen will
         emit the method as `override` on a virtual @dynamic-protocol slot.
         """
-        for info in [record_info, *self.ctx.registry.iter_ancestor_records(record_info)]:
-            for proto in info.implemented_protocols:
-                proto_info = protocol_info_of(proto)
-                if not (proto_info and proto_info.is_dynamic):
-                    continue
-                for sig in self.protocols.collect_protocol_methods(proto.name):
-                    if sig.name == method_name:
-                        return True
+        for proto, _ in self.ctx.registry.iter_dynamic_protocols(record_info):
+            for sig in self.protocols.collect_protocol_methods(proto.name):
+                if sig.name == method_name:
+                    return True
         return False
 
     def _is_inheritable_builtin(self, typ: TpyType) -> bool:
