@@ -1,0 +1,1 @@
+main.py:9: error: Throwable subclass 'CustomError' cannot define '__raise__': the Throwable ABI methods (clone/__raise__/what) are codegen-emitted automatically and a user override would collide. Remove this method to let the auto-emit provide it.

@@ -1,0 +1,1 @@
+main.py:19: error: cannot raise expression of type 'Own[Box[Point]]'; its __deref__ target 'Point' is not Throwable

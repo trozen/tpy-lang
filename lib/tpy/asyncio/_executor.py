@@ -17,7 +17,7 @@ import heapq
 from typing import Protocol
 from builtins import BaseException
 from time import monotonic, sleep_until_steady
-from tpy import Int32, Own, Ptr, CancelledError, copy, dynamic, nocopy, readonly
+from tpy import Int32, Own, Ptr, Throwable, dynamic, nocopy, readonly
 from tpy.extern import builtin_type, cpp_template
 from tpy.coro import Awaitable, Awaker, Poll, Waker, poll_ready, poll_pending
 from tpy.mem import UninitArrayStorage
@@ -64,27 +64,19 @@ class TaskState[T]:
 
     frame: Box[AsyncFrame[T]] | None
     result: UninitArrayStorage[T, 1]
-    exc: BaseException | None
-    # Storing the caught BaseException slices the dynamic type, so
-    # __poll__ can't recover the concrete subclass for `except`
-    # matching. Carry a dedicated flag for CancelledError (the common
-    # case) and raise a fresh instance on retrieval. See BUGS.md.
-    exc_was_cancelled: bool
+    exc: Box[Throwable] | None
     awaiter: Waker
     done: bool
     has_result: bool
-    has_exc: bool
     executor_owned: bool
 
     def __init__(self, frame: Own[Box[AsyncFrame[T]]]) -> None:
         self.frame = frame
         self.result = UninitArrayStorage[T, 1]()
         self.exc = None
-        self.exc_was_cancelled = False
         self.awaiter = Waker()
         self.done = False
         self.has_result = False
-        self.has_exc = False
         self.executor_owned = False
 
     def __del__(self) -> None:
@@ -96,12 +88,8 @@ class TaskState[T]:
     # for executor-owned tasks, parks (the executor's poll_any drives).
     def __poll__(self, w: Waker) -> Own[Poll[T]]:
         if self.done:
-            if self.has_exc:
-                if self.exc_was_cancelled:
-                    raise CancelledError()
-                exc = self.exc
-                if exc is None:
-                    raise RuntimeError("Task: done state inconsistent")
+            exc = self.exc
+            if exc is not None:
                 raise exc
             if not self.has_result:
                 raise RuntimeError(
@@ -120,18 +108,9 @@ class TaskState[T]:
             if p.is_ready():
                 self.done = True
             return p
-        except CancelledError:
-            self.done = True
-            self.has_exc = True
-            self.exc_was_cancelled = True
-            raise
         except BaseException as e:
             self.done = True
-            self.has_exc = True
-            # Explicit copy: acknowledges that `e`'s dynamic type is
-            # sliced into the BaseException slot (separate concern from
-            # whether we want a copy; tracked in BUGS.md).
-            self.exc = copy(e)
+            self.exc = Box(e.clone())
             raise
 
     # AnyTask interface: drives the frame and caches result/exc. Used
@@ -151,19 +130,9 @@ class TaskState[T]:
                 self.awaiter.wake()
                 return True
             return False
-        except CancelledError:
-            self.done = True
-            self.has_exc = True
-            self.exc_was_cancelled = True
-            self.awaiter.wake()
-            return True
         except BaseException as e:
             self.done = True
-            self.has_exc = True
-            # Explicit copy: acknowledges that `e`'s dynamic type is
-            # sliced into the BaseException slot (separate concern from
-            # whether we want a copy; tracked in BUGS.md).
-            self.exc = copy(e)
+            self.exc = Box(e.clone())
             self.awaiter.wake()
             return True
 

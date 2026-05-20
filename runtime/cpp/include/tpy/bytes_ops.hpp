@@ -110,12 +110,12 @@ inline std::string __repr__(const Bytes& b) { return __str__(BytesView{b}); }
 // -- Construction -----------------------------------------------------------
 
 inline Bytes bytes_from_size(int32_t n) {
-    if (n < 0) raise<ValueError>("negative count");
+    if (n < 0) raise_value_error("negative count");
     return Bytes(static_cast<size_t>(n), 0);
 }
 
 inline uint8_t int_to_byte(int32_t v) {
-    if (v < 0 || v > 255) raise<ValueError>("bytes must be in range(0, 256)");
+    if (v < 0 || v > 255) raise_value_error("bytes must be in range(0, 256)");
     return static_cast<uint8_t>(v);
 }
 
@@ -258,7 +258,7 @@ inline Bytes bytes_replace(BytesView s, BytesView old_sub, BytesView new_sub) {
 }
 
 inline std::vector<Bytes> bytes_split(BytesView s, BytesView sep) {
-    if (sep.empty()) raise<ValueError>("empty separator");
+    if (sep.empty()) raise_value_error("empty separator");
     std::vector<Bytes> result;
     size_t pos = 0;
     while (pos + sep.size() <= s.size()) {
@@ -431,7 +431,7 @@ inline void bytearray_setitem(Bytes& b, int32_t index, int32_t value) {
 }
 
 inline uint8_t bytearray_pop(Bytes& b) {
-    if (b.empty()) raise<IndexError>("pop from empty bytearray");
+    if (b.empty()) raise_index_error("pop from empty bytearray");
     uint8_t val = b.back();
     b.pop_back();
     return val;
@@ -458,7 +458,7 @@ inline void bytearray_insert(Bytes& b, int32_t index, int32_t value) {
 
 inline void bytearray_remove(Bytes& b, uint8_t value) {
     auto it = std::find(b.begin(), b.end(), value);
-    if (it == b.end()) raise<ValueError>("value not found in bytearray");
+    if (it == b.end()) raise_value_error("value not found in bytearray");
     b.erase(it);
 }
 

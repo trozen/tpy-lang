@@ -38,7 +38,7 @@ inline double time_time() {
  */
 inline void time_sleep(double seconds) {
     if (seconds < 0) {
-        raise<ValueError>("sleep length must be non-negative");
+        raise_value_error("sleep length must be non-negative");
     }
     auto duration = std::chrono::duration<double>(seconds);
     std::this_thread::sleep_for(duration);

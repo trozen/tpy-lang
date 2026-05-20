@@ -64,7 +64,7 @@ void range_check_overflow(T start, T stop, T step) {
 // so the message lives in one place.
 template<typename T>
 inline void range_check_step_nonzero(T step) {
-    if (step == T{}) raise<ValueError>("range() arg 3 must not be zero");
+    if (step == T{}) raise_value_error("range() arg 3 must not be zero");
 }
 
 template<typename T>

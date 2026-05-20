@@ -13,17 +13,31 @@ from ..mem import UninitArrayStorage as _UninitArrayStorage
 
 # --- Dynamic protocols (vtable-based runtime dispatch) ---
 
-# Marker root for the exception hierarchy. Makes `BaseException` (and its
-# subclasses) `@dynamic`-rooted via inheritance so the v1.5 M2 codegen paths
-# (no-slice rvalue materialization, isinstance -> dynamic_cast) activate on
-# `Optional[BaseException]` and friends. Markerless: Throwable has no method
-# or field, just a phylum tag. BaseException's existing C++ shape is unchanged;
-# `__str__` and other exception methods are NOT made virtual by Throwable
-# inheritance (BaseException is @native and routes through Adapter, not
-# direct C++ inheritance of the protocol base).
+# ABI root for the exception hierarchy. Two virtual methods support
+# polymorphic exception storage (Phase 20):
+#   clone()    -- heap-allocated polymorphic copy at the concrete type;
+#                 paired with Box(e.clone()) for Box[Throwable] storage.
+#   __raise__() -- re-raises *self as the dynamic type, used by the
+#                 `raise <expr>` desugar (Stage 3) so a stored exception
+#                 preserves its concrete subclass through C++ unwinding.
+# `@native + @dynamic` together: the abstract base class is hand-written
+# in runtime/cpp/include/tpy/throwable.hpp as `::tpy::Throwable`. TPy
+# resolves `Throwable` to that C++ name and treats the protocol as
+# @dynamic for the polymorphism predicate (is_polymorphic_class_type)
+# and inheritance-based conformance. Codegen suppresses concept /
+# abstract-base / Adapter emission when both decorators are set.
+# `BaseException` and subclasses inherit Throwable directly; the
+# TPY_THROWABLE_VIRTUALS macro (in throwable.hpp, applied across
+# core.hpp / async.hpp) emits the two overrides on every native
+# exception class.
+@native("tpy::Throwable")
 @dynamic
 class Throwable(Protocol):
-    pass
+    @readonly
+    def clone(self) -> Own[Throwable]: ...
+
+    @readonly
+    def __raise__(self) -> None: ...
 
 
 # --- Structural protocols (concept generated from method signatures) ---

@@ -1,5 +1,6 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
+from .._bootstrap._decorators import readonly, Own
 from .._bootstrap._extern import native
 from .._core._types import ReturnException, StrView, Throwable
 
@@ -8,6 +9,11 @@ from .._core._types import ReturnException, StrView, Throwable
 # The class-level @native is sufficient for both `raise X("msg")` and
 # `e = X("msg")` codegen paths, so __init__ stubs don't need their own
 # @native(..., function=True) annotation.
+#
+# `clone` / `__raise__` are Throwable protocol overrides; the C++ overrides
+# come from TPY_THROWABLE_VIRTUALS in `runtime/cpp/include/tpy/throwable.hpp`
+# applied to every native subclass. Declared once on BaseException so the
+# whole hierarchy inherits the sema-level method visibility.
 @native("tpy::BaseException")
 class BaseException(Throwable):
     message: str
@@ -15,6 +21,12 @@ class BaseException(Throwable):
     def __init__(self, message: str = "") -> None: ...
 
     def __str__(self) -> StrView: ...
+
+    @readonly
+    def clone(self) -> Own[Throwable]: ...
+
+    @readonly
+    def __raise__(self) -> None: ...
 
 @native("tpy::Exception")
 class Exception(BaseException):

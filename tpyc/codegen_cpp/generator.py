@@ -193,7 +193,17 @@ class CodeGenerator:
         # skip this registration so same-module references emit the bare name.
         # Static protocols are excluded -- they monomorphize and never surface
         # as a runtime C++ type.
-        for local_name, _proto in self.analyzer.registry._protocols_by_local_name.items():
+        for local_name, proto_info in self.analyzer.registry._protocols_by_local_name.items():
+            # @native + @dynamic protocols (e.g. `Throwable` which lives in
+            # runtime/cpp/include/tpy/throwable.hpp as ::tpy::Throwable) get
+            # their cpp_concept name as the C++ rendering, both for the
+            # defining module and for any module that imports them. The
+            # imported_protocol_qualification path would otherwise route
+            # through the codegen-emitted namespace (`tpystd::tpy::Throwable`)
+            # which doesn't exist for @native+@dynamic protocols.
+            if proto_info is not None and proto_info.cpp_concept and proto_info.is_dynamic:
+                register_native_cpp_name(local_name, proto_info.cpp_concept)
+                continue
             qual = self.analyzer.registry.imported_protocol_qualification(
                 local_name, current_module)
             if qual is not None:

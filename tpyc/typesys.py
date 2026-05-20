@@ -3551,6 +3551,11 @@ class RecordInfo:
     # tpyc.type_def_registry.is_subtype.
     transitive_supertypes: frozenset[str] = field(default_factory=frozenset)
     _is_polymorphic_class: 'Optional[bool]' = None  # Lazy cache for is_polymorphic_class_type; populated on first call
+    # Phase 20: materialized at validate_record_inheritance time so both
+    # sema (slicing-rule, conformance check) and codegen (auto-emit) read
+    # one source of truth instead of re-walking the MRO each time.
+    implements_throwable: bool = False
+    inherits_base_exception: bool = False
     extends_protocols: list[str] = field(default_factory=list)  # Protocol extensions: ["NativeIterable[T]"]
     native_name: Optional[str] = None  # C++ name for @native/@native_c records (e.g., "SDL_Rect")
     is_native: bool = False       # True for @native or @native_c records

@@ -1,0 +1,3 @@
+Box[T] auto-deref to a virtual method call is a TPy-only shortcut;
+CPython's Box stub doesn't passthrough attribute access (same as
+sibling dyn_box_deref / dyn_box_record_field).

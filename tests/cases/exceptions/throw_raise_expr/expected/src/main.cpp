@@ -18,7 +18,7 @@ void test_raise_variable() {
             // e = AppError(10)
             AppError e = AppError(10);
             // raise e
-            throw e;
+            e.__raise__();
         } catch (const AppError& caught) {
             // print(caught.code)
             std::cout << caught.code << "\n";
@@ -38,7 +38,7 @@ void test_raise_reassigned() {
             // e = AppError(2)
             e = &*(__slot_2 = AppError(2));
             // raise e
-            throw (*e);
+            (*e).__raise__();
         } catch (const AppError& caught) {
             // print(caught.code)
             std::cout << caught.code << "\n";
@@ -54,7 +54,7 @@ void test_raise_different_types() {
             // e = OtherError("first")
             OtherError e = OtherError("first");
             // raise e
-            throw e;
+            e.__raise__();
         } catch (const OtherError& caught) {
             // print(caught.tag)
             std::cout << caught.tag << "\n";
@@ -68,7 +68,7 @@ void test_raise_function_result() {
     {
         try {
             // raise make_error(7)
-            throw make_error(7);
+            make_error(7).__raise__();
         } catch (const AppError& caught) {
             // print(caught.code)
             std::cout << caught.code << "\n";

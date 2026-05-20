@@ -277,7 +277,7 @@ inline void check_any_cast(const Any& a) {
         ::tpy::tpy_panic("use of empty/moved-from Any");
     }
     if (a.value.type() != typeid(T)) {
-        ::tpy::raise<TypeError>("Any holds {}, cannot cast to {}",
+        ::tpy::raise_type_error("Any holds {}, cannot cast to {}",
                                 a.ops->type_name(),
                                 ::tpy::type_name<T>());
     }
@@ -343,7 +343,7 @@ inline std::uint64_t any_hash(const Any& a) {
         std::string name = (a.ops != nullptr)
             ? a.ops->type_name()
             : ::tpy::demangle_type_name(a.value.type().name());
-        ::tpy::raise<TypeError>("unhashable type: '{}'", name);
+        ::tpy::raise_type_error("unhashable type: '{}'", name);
     }
     return a.ops->hash(a.value);
 }

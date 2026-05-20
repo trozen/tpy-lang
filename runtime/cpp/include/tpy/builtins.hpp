@@ -29,7 +29,7 @@ namespace tpy {
 inline std::string input_line() {
     std::string line;
     if (!std::getline(std::cin, line)) {
-        raise<ValueError>("unexpected end of input");
+        raise_value_error("unexpected end of input");
     }
     return line;
 }
@@ -39,7 +39,7 @@ inline std::string input_line() {
 // ord(s: str) -- throws TypeError if len(s) != 1, matching CPython.
 inline int32_t ord_str(std::string_view s) {
     if (s.size() != 1) {
-        raise<TypeError>("ord() expected a character, but string of length {} found",
+        raise_type_error("ord() expected a character, but string of length {} found",
                          s.size());
     }
     return static_cast<int32_t>(static_cast<unsigned char>(s[0]));
@@ -48,7 +48,7 @@ inline int32_t ord_str(std::string_view s) {
 // Char(s: str) -- extract single character, throws TypeError if len(s) != 1.
 inline char char_from_str(std::string_view s) {
     if (s.size() != 1) {
-        raise<TypeError>("Char() expected a character, but string of length {} found",
+        raise_type_error("Char() expected a character, but string of length {} found",
                          s.size());
     }
     return s[0];
@@ -141,7 +141,7 @@ inline BigInt round_bigint(const BigInt& x, int32_t ndigits) {
 
 // divmod(float, float) -> tuple[float, float]  (Python semantics)
 inline std::tuple<double, double> divmod_float(double a, double b) {
-    if (b == 0.0) raise<ZeroDivisionError>("float divmod()");
+    if (b == 0.0) raise_zero_division_error("float divmod()");
     double q = std::floor(a / b);
     double r = a - q * b;
     return {q, r};
@@ -150,7 +150,7 @@ inline std::tuple<double, double> divmod_float(double a, double b) {
 // divmod(fixed_int, fixed_int) -> tuple[T, T]  (Python floor division + mod)
 template<typename T>
 std::tuple<T, T> divmod_fixed(T a, T b) {
-    if (b == 0) raise<ZeroDivisionError>("integer division or modulo by zero");
+    if (b == 0) raise_zero_division_error("integer division or modulo by zero");
     if constexpr (std::is_signed_v<T>) {
         if (a == std::numeric_limits<T>::min() && b == static_cast<T>(-1)) {
             raise_fixedint_overflow("{} overflow in division", fixed_int_name<T>());

@@ -1470,12 +1470,48 @@ class StatementAnalyzer:
         self.init.mark_terminated()
 
     def _analyze_raise_expr(self, stmt: TpyRaise) -> None:
-        """Analyze 'raise <expr>' where expr is a general expression."""
+        """Analyze 'raise <expr>' where expr is a general expression.
+
+        Phase 20 Stage 3: accepts a `Box[Throwable]` (or any other type
+        implementing the `Deref` protocol whose peeled type is Throwable)
+        in addition to plain Exception subclasses. Codegen lowers via
+        `<expr>.__raise__()` which auto-derefs through Box's vtable.
+        """
         func = self.ctx.func.current_function
         if not isinstance(func, TpyFunction):
             raise self.ctx.error(
                 "'raise' can only be used inside a function", stmt)
         expr_type = self.expr.analyze_expr(stmt.raise_expr)
+        # Peel __deref__ until we hit a non-Deref type. Box[Throwable]
+        # peels once to Throwable; an Optional[Box[T]] field already
+        # narrows the Optional away before this point. Stores the depth on
+        # the AST so codegen can insert the matching `.__deref__()` chain.
+        peeled_source = unwrap_qualifiers(expr_type)
+        depth = 0
+        while True:
+            next_peeled = self.expr.get_deref_target_type(peeled_source)
+            if next_peeled is None:
+                break
+            depth += 1
+            peeled_source = unwrap_qualifiers(next_peeled)
+            if depth > 8:
+                raise self.ctx.error(
+                    f"raise expression __deref__ chain exceeds 8 levels",
+                    stmt)
+        if depth > 0:
+            stmt.deref_depth = depth
+            t = peeled_source
+            if isinstance(t, NominalType) and t.is_protocol and t.qualified_name() == "tpy.Throwable":
+                self.init.mark_terminated()
+                return
+            if isinstance(t, NominalType) and not t.is_protocol:
+                if is_exception_type(t.name, self.ctx.registry):
+                    self.init.mark_terminated()
+                    return
+            raise self.ctx.error(
+                f"cannot raise expression of type '{expr_type}'; "
+                f"its __deref__ target '{t}' is not Throwable",
+                stmt)
         type_name = self._raise_expr_type_name(expr_type, stmt)
         if is_return_exception(
                 qualify_exception_name(type_name, self.ctx.registry, self.ctx.module_name)):

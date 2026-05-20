@@ -85,7 +85,7 @@ template<typename K, typename V, typename KeyArg>
 V dict_pop(ordered_map<K, V>& m, const KeyArg& key) {
     auto it = m.find(K(key));
     if (it == m.items_end()) {
-        raise<KeyError>("KeyError");
+        raise_key_error("KeyError");
     }
     V result = std::move((*it).second);
     m.erase(it);

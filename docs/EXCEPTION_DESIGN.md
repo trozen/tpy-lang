@@ -12,7 +12,7 @@
 | E6 | Exception types with data fields, `except E as e` binding | Done |
 | E7 | General C++ exceptions: `try`/`except`/`finally`/`raise` with stack unwinding for non-control-flow errors | Done |
 | E8 | Multiple `except` handlers, bare `except:`, re-raise (`raise` with no argument) | Done |
-| E9 | Polymorphic exception storage via `Box[Throwable]`; pure-TPy exception hierarchy; `raise <expr>` desugar to `__raise__`; slicing-site sema rejection | Planned (see [DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) Phase 20) |
+| E9 | Polymorphic exception storage via `Box[Throwable]`; pure-TPy exception hierarchy; `raise <expr>` desugar to `__raise__`; slicing-site sema rejection | Partial -- `Box[Throwable]` storage, `raise <expr>` desugar, slicing-site sema rejection, and per-class `raise_X(msg)` runtime helpers all shipped. Pure-TPy hierarchy migration deferred (see [DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) Phase 20 row and [TODO.md](../TODO.md) "Phase 20 follow-up" entry). |
 
 ### Runtime exception migration (panic -> catchable throw)
 

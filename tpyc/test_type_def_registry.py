@@ -1260,9 +1260,9 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
     "tpy.Throwable": dict(
         name="Throwable", module="tpy",
         is_dynamic=True, is_marker=False, is_readonly=False,
-        cpp_concept=None,
+        cpp_concept="::tpy::Throwable",
         type_params=(), parent_protocols=(),
-        methods=(),
+        methods=("__raise__", "clone"),
     ),
     # tpy.* structural protocols (tpy._core._types)
     "tpy.coro.Awaitable": dict(

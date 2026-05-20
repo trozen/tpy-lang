@@ -1,0 +1,3 @@
+Box auto-deref to virtual method dispatch is a TPy-only shortcut; the
+CPython Box stub doesn't passthrough attribute access. Also, the
+post-Phase-20 BaseException stub doesn't expose clone() in CPython.

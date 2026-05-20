@@ -1788,6 +1788,17 @@ class TypeRegistrar:
                 record.loc,
             ) from exc
 
+        # Phase 20 Stage 2c: Throwable conformance rules.
+        # (1) Concrete Throwable implementers must inherit builtins.BaseException
+        #     (BaseException itself is the only direct Throwable implementer; it
+        #     provides the `message` field that codegen's auto-emitted `what()`
+        #     reads). (2) Throwable implementers must be copy-constructible at
+        #     the C++ level (auto-emitted `clone()` / `__raise__()` do
+        #     `make_unique<This>(*this)` / `throw *this`). Both checks are
+        #     qname-keyed so user code with a locally-named `Throwable` /
+        #     `BaseException` does not collide with the compiler-known rule.
+        self._check_throwable_conformance(record, record_info)
+
         # Mirror Python's MRO-based ctor inheritance: 'class B(A): pass' should
         # accept whatever A() does; mixins (`class C(Base, Mixin): pass`) work
         # the same way when Mixin contributes no __init__.
@@ -1931,6 +1942,69 @@ class TypeRegistrar:
             if proto_info is not None:
                 supertypes.update(proto_info.transitive_supertypes)
         record_info.transitive_supertypes = frozenset(supertypes)
+
+    def _check_throwable_conformance(self, record: TpyRecord, record_info: 'RecordInfo') -> None:
+        """Materialize Throwable-implementer facts on RecordInfo and apply
+        the Phase 20 sema rules. Sets `implements_throwable` /
+        `inherits_base_exception` so codegen (auto-emit) and downstream
+        sema sites read one source of truth instead of re-walking the MRO.
+        """
+        # Single pass over [self, *ancestors] collecting both qname matches.
+        implements_throwable = False
+        inherits_base_exception = False
+        for info in [record_info, *self.ctx.registry.iter_ancestor_records(record_info)]:
+            for proto in info.implemented_protocols:
+                if isinstance(proto, NominalType) and proto.qualified_name() == qnames.THROWABLE:
+                    implements_throwable = True
+                    break
+            if info is not record_info and info.qualified_name() == qnames.BASE_EXCEPTION:
+                inherits_base_exception = True
+            if implements_throwable and inherits_base_exception:
+                break
+        record_info.implements_throwable = implements_throwable
+        record_info.inherits_base_exception = inherits_base_exception
+        if not implements_throwable:
+            return
+        qname = record_info.qualified_name()
+        # BaseException itself is the unique root direct implementer.
+        if qname != qnames.BASE_EXCEPTION and not inherits_base_exception:
+            raise SemanticError(
+                f"Exception class '{record.name}' implements Throwable but does "
+                f"not inherit BaseException; use 'class {record.name}(Exception)' "
+                f"or another BaseException subclass as the base. Throwable is "
+                f"the ABI protocol; concrete exception classes extend through "
+                f"BaseException, which provides `message` and the standard "
+                f"`__str__` / `what()` shape.",
+                record.loc,
+            )
+        # Auto-emitted clone() / __raise__() need a usable copy ctor.
+        record_type = NominalType(
+            record.name, (), False, qname, False,
+        )
+        if self.ctx.is_type_non_copyable(record_type):
+            raise SemanticError(
+                f"Exception class '{record.name}' is not copy-constructible; "
+                f"classes implementing Throwable must be copy-constructible "
+                f"(required by auto-emitted `clone()` and `__raise__()`). "
+                f"Remove any @nocopy / __del__ on the class or its fields, or "
+                f"do not inherit from BaseException.",
+                record.loc,
+            )
+        # User overrides of the auto-emitted ABI methods would silently
+        # produce a C++ redefinition; @native classes are exempt (codegen
+        # skips their structs entirely, the runtime macro provides the
+        # overrides).
+        if not record_info.is_native:
+            for method in record.methods:
+                if method.name in qnames.THROWABLE_ABI_METHODS:
+                    raise SemanticError(
+                        f"Throwable subclass '{record.name}' cannot define "
+                        f"'{method.name}': the Throwable ABI methods "
+                        f"(clone/__raise__/what) are codegen-emitted "
+                        f"automatically and a user override would collide. "
+                        f"Remove this method to let the auto-emit provide it.",
+                        method.loc or record.loc,
+                    )
 
     def validate_method_error_returns(self, record: TpyRecord) -> None:
         """Validate @error_return(E) on methods references a ReturnException type.

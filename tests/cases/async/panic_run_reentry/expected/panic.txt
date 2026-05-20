@@ -1,1 +1,1 @@
-TurboPython panic: uncaught tpy::BaseException: asyncio.run() cannot be called from a running event loop
+TurboPython panic: uncaught tpy::RuntimeError: asyncio.run() cannot be called from a running event loop

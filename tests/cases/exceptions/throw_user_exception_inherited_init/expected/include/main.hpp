@@ -20,6 +20,10 @@ void main();
 struct MyError : ::tpy::Exception {
 
     using ::tpy::Exception::Exception;
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<MyError>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyError";
 };
 
@@ -33,6 +37,10 @@ inline std::ostream& operator<<(std::ostream& os, const MyError& obj) {
 struct Outer : MyError {
 
     using MyError::MyError;
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<Outer>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 

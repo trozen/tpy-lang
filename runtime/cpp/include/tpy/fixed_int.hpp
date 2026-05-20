@@ -137,7 +137,7 @@ constexpr T mod_floor(T a, T b) {
 template<typename T>
 constexpr T div_check(T a, T b) {
     if (b == 0) [[unlikely]] {
-        raise<ZeroDivisionError>("integer division or modulo by zero");
+        raise_zero_division_error("integer division or modulo by zero");
     }
     return div_floor(a, b);
 }
@@ -145,7 +145,7 @@ constexpr T div_check(T a, T b) {
 template<typename T>
 constexpr T mod_check(T a, T b) {
     if (b == 0) [[unlikely]] {
-        raise<ZeroDivisionError>("integer modulo by zero");
+        raise_zero_division_error("integer modulo by zero");
     }
     return mod_floor(a, b);
 }
@@ -163,7 +163,7 @@ template<typename T>
 constexpr T lshift_check(T a, T b) {
     if constexpr (std::is_signed_v<T>) {
         if (b < 0) {
-            raise<ValueError>("negative shift count");
+            raise_value_error("negative shift count");
         }
     }
     constexpr int bits = sizeof(T) * 8;
@@ -182,7 +182,7 @@ template<typename T>
 constexpr T rshift_check(T a, T b) {
     if constexpr (std::is_signed_v<T>) {
         if (b < 0) {
-            raise<ValueError>("negative shift count");
+            raise_value_error("negative shift count");
         }
     }
     constexpr int bits = sizeof(T) * 8;
@@ -236,10 +236,10 @@ constexpr To int_cast_check(From v) {
 template<typename T>
 T from_float_check(double v) {
     if (std::isnan(v)) {
-        raise<ValueError>("cannot convert float NaN to integer");
+        raise_value_error("cannot convert float NaN to integer");
     }
     if (std::isinf(v)) {
-        raise<OverflowError>("cannot convert float infinity to integer");
+        raise_overflow_error("cannot convert float infinity to integer");
     }
     v = std::trunc(v);
     if constexpr (sizeof(T) <= 4) {
@@ -280,7 +280,7 @@ T from_str_check(std::string_view s) {
     auto type_name = fixed_int_name<T>();
 
     if (start >= end) {
-        raise<ValueError>("invalid literal for {}() with base 10: '{}'", type_name, s);
+        raise_value_error("invalid literal for {}() with base 10: '{}'", type_name, s);
     }
 
     std::string trimmed(s.substr(start, end - start));
@@ -290,7 +290,7 @@ T from_str_check(std::string_view s) {
     if constexpr (std::is_signed_v<T>) {
         long long result = std::strtoll(trimmed.c_str(), &endptr, 10);
         if (endptr != trimmed.c_str() + trimmed.size()) {
-            raise<ValueError>("invalid literal for {}() with base 10: '{}'", type_name, s);
+            raise_value_error("invalid literal for {}() with base 10: '{}'", type_name, s);
         }
         if (errno == ERANGE || result < static_cast<long long>(std::numeric_limits<T>::min())
                             || result > static_cast<long long>(std::numeric_limits<T>::max())) {
@@ -305,7 +305,7 @@ T from_str_check(std::string_view s) {
         }
         unsigned long long result = std::strtoull(trimmed.c_str(), &endptr, 10);
         if (endptr != trimmed.c_str() + trimmed.size()) {
-            raise<ValueError>("invalid literal for {}() with base 10: '{}'", type_name, s);
+            raise_value_error("invalid literal for {}() with base 10: '{}'", type_name, s);
         }
         if (errno == ERANGE || result > static_cast<unsigned long long>(std::numeric_limits<T>::max())) {
             raise_fixedint_overflow("{} overflow: value out of range for '{}'", type_name, s);

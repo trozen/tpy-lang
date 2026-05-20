@@ -6,7 +6,7 @@
 the TPy Executor in `_executor.py`. See `docs/ASYNC_DESIGN.md`.
 """
 from builtins import BaseException, Exception
-from tpy import Own, Int32, CancelledError
+from tpy import Own, Int32, CancelledError, Throwable
 from tpy.coro import (
     Waker, Poll, Awaitable,
     poll_ready, poll_pending, poll_ready_none,
@@ -146,7 +146,7 @@ class Future[T]:
     _done: bool
     _has_waiter: bool
     _has_result: bool
-    _exception: BaseException | None
+    _exception: Box[Throwable] | None
     _waiter: Waker
     _result: UninitArrayStorage[T, 1]
 
@@ -179,10 +179,10 @@ class Future[T]:
             self._waiter.wake()
             self._has_waiter = False
 
-    def set_exception(self, exc: Own[BaseException]) -> None:
+    def set_exception(self, exc: Own[Throwable]) -> None:
         if self._done:
             raise InvalidStateError("Future already done")
-        self._exception = exc
+        self._exception = Box(exc)
         self._done = True
         if self._has_waiter:
             self._waiter.wake()

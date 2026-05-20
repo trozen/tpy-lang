@@ -19,6 +19,10 @@ void main();
 struct NotFound : ::tpy::Exception {
 
     using ::tpy::Exception::Exception;
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<NotFound>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.NotFound";
 };
 
@@ -35,6 +39,10 @@ struct BadKey : ::tpy::Exception {
     // def __init__(self, key: str) -> None:
     BadKey() = default;
     explicit BadKey(std::string_view key) : key(key) {}
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<BadKey>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.BadKey";
 };
 

@@ -30,6 +30,10 @@ void test_as_binding();
 struct E : ::tpy::Exception {
 
     using ::tpy::Exception::Exception;
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<E>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.E";
 };
 
@@ -46,6 +50,10 @@ struct ParseErr : ::tpy::Exception {
     // def __init__(self, code: int) -> None:
     ParseErr() = default;
     explicit ParseErr(const ::tpy::BigInt& code) : code(code) {}
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<ParseErr>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.ParseErr";
 };
 

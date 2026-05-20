@@ -1,0 +1,1 @@
+main.py:8: error: Exception class 'Direct' implements Throwable but does not inherit BaseException; use 'class Direct(Exception)' or another BaseException subclass as the base. Throwable is the ABI protocol; concrete exception classes extend through BaseException, which provides `message` and the standard `__str__` / `what()` shape.

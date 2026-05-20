@@ -169,7 +169,20 @@ class ProtocolGenerator:
         args (inside a nested template emission) this is the bare name `T`,
         so the same helper covers both call-site instantiations
         (`Awaitable<int32_t>`) and nested-template references (`Awaitable<T>`).
+
+        For protocols that are both @dynamic and @native (cpp_concept set),
+        the C++ class name comes from the @native annotation -- the abstract
+        base lives in a runtime header rather than codegen output. Used by
+        Throwable (`@native("tpy::Throwable") @dynamic`) to bridge to
+        `runtime/cpp/include/tpy/throwable.hpp::tpy::Throwable`.
         """
+        protocol_info = protocol_info_of(protocol)
+        if protocol_info and protocol_info.cpp_concept:
+            base = protocol_info.cpp_concept
+            if protocol.type_args:
+                args_cpp = ", ".join(t.to_cpp() for t in protocol.type_args)
+                return f"{base}<{args_cpp}>"
+            return base
         name = protocol.name
         qual = lookup_imported(
             self.ctx.analyzer.ctx.module_attributes, name,
@@ -610,6 +623,13 @@ class ProtocolGenerator:
         """
         protocol_info = self.ctx.analyzer.registry.scan_by_short_name(protocol.name)
         if protocol_info is None:
+            return
+        # @native + @dynamic: the runtime owns the abstract base and there
+        # is no codegen-emitted concept, so Adapter/RefAdapter specializations
+        # cannot be expressed here. Inheritance-only conformance covers the
+        # use case (Throwable: every concrete subclass inherits BaseException
+        # which inherits the runtime ::tpy::Throwable directly).
+        if protocol_info.cpp_concept:
             return
 
         all_methods = self.collect_concept_methods(protocol.name)

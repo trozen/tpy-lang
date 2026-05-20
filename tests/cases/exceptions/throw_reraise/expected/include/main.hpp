@@ -23,6 +23,10 @@ struct MyError : ::tpy::Exception {
     // def __init__(self, code: Int32) -> None:
     MyError() = default;
     explicit MyError(int32_t code) : code(code) {}
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<MyError>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyError";
 };
 

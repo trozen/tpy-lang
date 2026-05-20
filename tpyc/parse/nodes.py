@@ -902,6 +902,7 @@ class TpyRaise(TpyStmt):
     args: list[TpyExpr] = field(default_factory=list)  # constructor arguments
     raise_expr: TpyExpr | None = None  # expression form: raise <expr> (throw-tier only)
     is_call_form: bool = False  # raise Name() vs raise Name (set by parser)
+    deref_depth: int = 0  # Set by sema: __deref__ steps to peel before calling __raise__ (Phase 20)
 
 
 @dataclass

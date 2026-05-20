@@ -19,6 +19,10 @@ struct MyError : ::tpy::Exception {
     // code: Int32
     int32_t code;
 
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<MyError>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyError";
 };
 

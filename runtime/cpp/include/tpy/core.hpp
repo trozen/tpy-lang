@@ -24,12 +24,15 @@
 #include <utility>
 #include <variant>
 
+#include "throwable.hpp"
 #include "type_traits.hpp"
 
 namespace tpy {
 
-// Python exception hierarchy -- inherits from std::exception for C++ throw/catch.
-struct BaseException : std::exception {
+// Python exception hierarchy. Inherits Throwable -> std::exception so
+// `except as e` borrows route through the Throwable vtable for clone()
+// and __raise__() while plain C++ throw/catch still works.
+struct BaseException : ::tpy::Throwable {
     std::string message;
     BaseException() = default;
     explicit BaseException(std::string msg) : message(std::move(msg)) {}
@@ -40,24 +43,25 @@ struct BaseException : std::exception {
     const char* what() const noexcept override { return message.c_str(); }
     std::string_view __str__() const { return message; }
     friend std::ostream& operator<<(std::ostream& os, const BaseException& e) { return os << e.message; }
+    TPY_THROWABLE_VIRTUALS(BaseException)
 };
-struct Exception : BaseException { using BaseException::BaseException; };
-struct ValueError : Exception { using Exception::Exception; };
-struct OSError : Exception { using Exception::Exception; };
-struct FileNotFoundError : OSError { using OSError::OSError; };
-struct AttributeError : Exception { using Exception::Exception; };
-struct AssertionError : Exception { using Exception::Exception; };
-struct IndexError : Exception { using Exception::Exception; };
-struct KeyError : Exception { using Exception::Exception; };
-struct ArithmeticError : Exception { using Exception::Exception; };
-struct ZeroDivisionError : ArithmeticError { using ArithmeticError::ArithmeticError; };
-struct OverflowError : ArithmeticError { using ArithmeticError::ArithmeticError; };
-struct TypeError : Exception { using Exception::Exception; };
-struct NotImplementedError : Exception { using Exception::Exception; };
-struct RuntimeError : Exception { using Exception::Exception; };
-struct MemoryError : Exception { using Exception::Exception; };
-struct StopIteration : Exception {};
-struct StopAsyncIteration : Exception { using Exception::Exception; };
+struct Exception : BaseException { using BaseException::BaseException; TPY_THROWABLE_VIRTUALS(Exception) };
+struct ValueError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(ValueError) };
+struct OSError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(OSError) };
+struct FileNotFoundError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(FileNotFoundError) };
+struct AttributeError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(AttributeError) };
+struct AssertionError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(AssertionError) };
+struct IndexError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(IndexError) };
+struct KeyError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(KeyError) };
+struct ArithmeticError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(ArithmeticError) };
+struct ZeroDivisionError : ArithmeticError { using ArithmeticError::ArithmeticError; TPY_THROWABLE_VIRTUALS(ZeroDivisionError) };
+struct OverflowError : ArithmeticError { using ArithmeticError::ArithmeticError; TPY_THROWABLE_VIRTUALS(OverflowError) };
+struct TypeError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(TypeError) };
+struct NotImplementedError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(NotImplementedError) };
+struct RuntimeError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(RuntimeError) };
+struct MemoryError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(MemoryError) };
+struct StopIteration : Exception { TPY_THROWABLE_VIRTUALS(StopIteration) };
+struct StopAsyncIteration : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(StopAsyncIteration) };
 
 // Forward decl: raise_fixedint_overflow (below) calls tpy_panic, whose
 // definition lives later in this header.
@@ -103,6 +107,41 @@ template<typename T, typename... Rest>
 [[noreturn]] inline void raise_assertion_error(std::format_string<T, Rest...> fmt, T&& arg,
                                                Rest&&... rest) {
     raise<AssertionError>(fmt, std::forward<T>(arg), std::forward<Rest>(rest)...);
+}
+
+// Per-class raise helpers (Phase 20 Stage 4b). Decouple every runtime
+// throw site from `raise<E>` (which is template-instantiated against the
+// concrete C++ class) so that Stage 4c can move the exception classes
+// out of core.hpp without rewriting every call site. After Stage 4c
+// these helpers move to `lib/tpy/tpy/_builtins/_raise.py` and the
+// forward declarations relocate to throwable.hpp; their bodies become
+// TPy-defined `raise X(msg)` one-liners resolved at link time.
+#define TPY_DEFINE_RAISE_HELPER(name, ExceptionClass)                              \
+    [[noreturn]] inline void name(std::string_view msg) {                          \
+        raise<ExceptionClass>(msg);                                                \
+    }                                                                              \
+    template<typename T, typename... Rest>                                         \
+    [[noreturn]] inline void name(std::format_string<T, Rest...> fmt, T&& arg,     \
+                                  Rest&&... rest) {                                \
+        raise<ExceptionClass>(fmt, std::forward<T>(arg), std::forward<Rest>(rest)...); \
+    }
+
+TPY_DEFINE_RAISE_HELPER(raise_value_error,           ValueError)
+TPY_DEFINE_RAISE_HELPER(raise_type_error,            TypeError)
+TPY_DEFINE_RAISE_HELPER(raise_index_error,           IndexError)
+TPY_DEFINE_RAISE_HELPER(raise_key_error,             KeyError)
+TPY_DEFINE_RAISE_HELPER(raise_attribute_error,       AttributeError)
+TPY_DEFINE_RAISE_HELPER(raise_arithmetic_error,      ArithmeticError)
+TPY_DEFINE_RAISE_HELPER(raise_zero_division_error,   ZeroDivisionError)
+TPY_DEFINE_RAISE_HELPER(raise_overflow_error,        OverflowError)
+TPY_DEFINE_RAISE_HELPER(raise_os_error,              OSError)
+TPY_DEFINE_RAISE_HELPER(raise_file_not_found_error,  FileNotFoundError)
+TPY_DEFINE_RAISE_HELPER(raise_runtime_error,         RuntimeError)
+TPY_DEFINE_RAISE_HELPER(raise_not_implemented_error, NotImplementedError)
+TPY_DEFINE_RAISE_HELPER(raise_memory_error,          MemoryError)
+
+[[noreturn]] inline void raise_stop_iteration() {
+    throw StopIteration{};
 }
 
 // Fixed-width integer arithmetic overflow. CPython promotes to unbounded
@@ -278,7 +317,7 @@ const T& deref_optional_check(const std::optional<T>& opt) {
 template <typename T>
 T& typed_dict_field_check(std::optional<T>& opt) {
     if (!opt.has_value()) {
-        raise<KeyError>("KeyError");
+        raise_key_error("KeyError");
     }
     return *opt;
 }
@@ -286,7 +325,7 @@ T& typed_dict_field_check(std::optional<T>& opt) {
 template <typename T>
 const T& typed_dict_field_check(const std::optional<T>& opt) {
     if (!opt.has_value()) {
-        raise<KeyError>("KeyError");
+        raise_key_error("KeyError");
     }
     return *opt;
 }
@@ -406,7 +445,7 @@ own_return_t<T> transfer_ownership(T* p) {
  * zero divisor to match Python semantics.
  */
 inline constexpr double truediv(double a, double b) {
-    if (b == 0.0) raise<ZeroDivisionError>("float division by zero");
+    if (b == 0.0) raise_zero_division_error("float division by zero");
     return a / b;
 }
 
@@ -425,7 +464,7 @@ inline constexpr double truediv(double a, double b) {
 #endif
 
 inline constexpr double floordiv(double a, double b) {
-    if (b == 0.0) raise<ZeroDivisionError>("float floor division by zero");
+    if (b == 0.0) raise_zero_division_error("float floor division by zero");
 #if TPY_CMATH_CONSTEXPR
     return std::floor(a / b);
 #else
@@ -440,7 +479,7 @@ inline constexpr double floordiv(double a, double b) {
 }
 
 inline constexpr double fmod(double a, double b) {
-    if (b == 0.0) raise<ZeroDivisionError>("float modulo");
+    if (b == 0.0) raise_zero_division_error("float modulo");
     // Python's `%` uses floor semantics (sign-of-divisor) where C's std::fmod
     // uses truncation (sign-of-dividend). Compute the truncated remainder,
     // shift toward the divisor when the signs disagree, and on zero results
@@ -466,12 +505,12 @@ inline constexpr double fmod(double a, double b) {
 
 // Float32 arithmetic helpers
 inline constexpr float truediv_f32(float a, float b) {
-    if (b == 0.0f) raise<ZeroDivisionError>("float division by zero");
+    if (b == 0.0f) raise_zero_division_error("float division by zero");
     return a / b;
 }
 
 inline constexpr float floordiv_f32(float a, float b) {
-    if (b == 0.0f) raise<ZeroDivisionError>("float floor division by zero");
+    if (b == 0.0f) raise_zero_division_error("float floor division by zero");
 #if TPY_CMATH_CONSTEXPR
     return std::floor(a / b);
 #else
@@ -486,7 +525,7 @@ inline constexpr float floordiv_f32(float a, float b) {
 }
 
 inline constexpr float fmod_f32(float a, float b) {
-    if (b == 0.0f) raise<ZeroDivisionError>("float modulo");
+    if (b == 0.0f) raise_zero_division_error("float modulo");
     // Python's `%` uses floor semantics (sign-of-divisor); see fmod above.
 #if TPY_CMATH_CONSTEXPR
     float m = std::fmod(a, b);

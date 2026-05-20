@@ -1673,8 +1673,15 @@ class Parser:
             raise ParseError(
                 f"Unsupported decorator '@{dec_name}' on protocol '{node.name}'. "
                 f"Only @dynamic (from tpy) and @native (from tpy.extern) are allowed on protocols", dec)
-        if is_dynamic and cpp_concept is not None:
-            raise ParseError("@dynamic and @native cannot be combined on a protocol", node)
+        # @dynamic + @native together is meaningful for runtime-defined
+        # abstract bases: the C++ class (named by @native) provides the
+        # vtable, and TPy treats the protocol as @dynamic for the
+        # polymorphism predicate (is_polymorphic_class_type) and
+        # inheritance-based conformance. Codegen suppresses concept /
+        # abstract-base / Adapter emission in this case and uses the
+        # @native name wherever the protocol's C++ type is needed.
+        # Used by `Throwable` in lib/tpy/tpy/_core/_types.py to bridge
+        # to runtime/cpp/include/tpy/throwable.hpp::tpy::Throwable.
 
         # Extract type parameters from Python 3.12+ syntax: class Foo[T](Protocol):
         # Note: Protocols don't support INT type params (only TYPE).

@@ -17,7 +17,8 @@ from ..typesys import (
     is_protocol_type, is_dyn_protocol, unwrap_own, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     CallableType, is_fn_type, RefType, unwrap_ref_type,
-    is_callable_type, is_integer_type, is_any_float_type, is_readonly_span)
+    is_callable_type, is_integer_type, is_any_float_type, is_readonly_span,
+    is_polymorphic_class_type)
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
@@ -213,6 +214,90 @@ class TypeCompatibility:
         """Non-raising check: is actual assignable to expected?"""
         return not isinstance(self._check_compat(actual, expected, ""), CompatError)
 
+    def _check_polymorphic_slicing(
+        self,
+        actual: TpyType,
+        expected: TpyType,
+        source_expr: TpyExpr | None,
+        context: str,
+        loc: SourceLocation | None,
+    ) -> None:
+        """Reject the Phase-20 slicing shape: a borrow of a polymorphic class
+        being stored into an owned slot of the same (or strict-subclass-of)
+        type. Without this rejection the dynamic type is silently dropped
+        when the value is copied into the slot. Recommended fix points at
+        `Box[Throwable]` (or `Box[Polymorphic]` for non-exception bases).
+
+        Allowed shapes (no slicing risk):
+          - fresh-rvalue constructor call of the exact destination type
+          - `None` assigned to an Optional slot
+          - any non-polymorphic destination
+        """
+        if source_expr is None:
+            return
+        # Own[T] source carries move semantics -- the rvalue's dynamic type
+        # transfers fully to the destination. Skip the borrow-shape check.
+        if isinstance(actual, OwnType):
+            return
+        # Unwrap to find the owned slot's inner concrete type, if any.
+        target_inner = expected
+        if isinstance(target_inner, OwnType):
+            target_inner = target_inner.wrapped
+        if isinstance(target_inner, OptionalType):
+            target_inner = target_inner.inner
+        if not isinstance(target_inner, NominalType):
+            return
+        if not is_polymorphic_class_type(target_inner, self.ctx.registry):
+            return
+        # Fresh-rvalue construction (TpyCall with a class-name func). The
+        # rvalue's dynamic type matches its static type at the construction
+        # site, so codegen's Phase-18/19 subclass-into-Optional machinery
+        # can materialize the temp at the concrete class with no slicing.
+        # Covers both exact-type construction and concrete-subclass
+        # construction of a polymorphic root.
+        if isinstance(source_expr, TpyCall) and isinstance(source_expr.func, TpyName):
+            if self.ctx.registry.get_record(source_expr.func.name) is not None:
+                return
+        # None into Optional -- trivially fine.
+        if isinstance(source_expr, TpyNoneLiteral):
+            return
+        # Source is a borrow-shape: name, attribute, method call, function
+        # call result. The dynamic type could differ from the static type
+        # (caught exception, field of a base-class-typed slot, ...).
+        is_borrow_shape = isinstance(
+            source_expr,
+            (TpyName, TpyFieldAccess, TpyMethodCall, TpyCall),
+        )
+        if not is_borrow_shape:
+            return
+        # The actual type must itself be a polymorphic class (or Optional[Poly])
+        # for slicing to be possible. Strip qualifiers + Optional + Ref.
+        src_inner = actual
+        for _ in range(4):
+            if isinstance(src_inner, RefType):
+                src_inner = src_inner.wrapped
+            elif isinstance(src_inner, OwnType):
+                src_inner = src_inner.wrapped
+            elif isinstance(src_inner, ReadonlyType):
+                src_inner = src_inner.wrapped
+            elif isinstance(src_inner, OptionalType):
+                src_inner = src_inner.inner
+            else:
+                break
+        if not isinstance(src_inner, NominalType):
+            return
+        if not is_polymorphic_class_type(src_inner, self.ctx.registry):
+            return
+        raise SemanticError(
+            f"cannot store '{src_inner.name}' borrow as owned "
+            f"'{target_inner.name}' in {context} -- the dynamic type may "
+            f"be a subclass and would be lost (slicing). Use "
+            f"`Box[Throwable]` (or `Box[{target_inner.name}]` for "
+            f"non-exception roots) for owned polymorphic storage: "
+            f"`slot = Box(e.clone())`.",
+            loc,
+        )
+
     def check_type_compatible(
         self, actual: TpyType, expected: TpyType, context: str,
         loc: SourceLocation | None = None,
@@ -227,6 +312,12 @@ class TypeCompatibility:
         Returns a Coercion if a conversion should be applied at codegen time,
         or None if compatible with no coercion needed.
         """
+        # Phase 20 Stage 5a: reject the slicing shape -- storing a borrow
+        # of a polymorphic class into an owned slot of the same type would
+        # silently drop the dynamic type. Fires before _check_compat so the
+        # user sees a targeted "use Box[Throwable]" diagnostic rather than
+        # a generic type mismatch.
+        self._check_polymorphic_slicing(actual, expected, source_expr, context, loc)
         # check_type_compatible raises on failure, so all callers are
         # commit points -- safe to apply the retro-widen side effect here
         # without leaking it into overload probes (which use _check_compat

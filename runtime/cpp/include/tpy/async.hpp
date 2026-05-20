@@ -22,6 +22,7 @@ namespace tpy {
 struct CancelledError : BaseException {
     CancelledError() : BaseException("CancelledError") {}
     using BaseException::BaseException;
+    TPY_THROWABLE_VIRTUALS(CancelledError)
 };
 
 }  // namespace tpy

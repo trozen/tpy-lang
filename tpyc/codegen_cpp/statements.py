@@ -2566,7 +2566,18 @@ class StatementGenerator:
         out.write(f"{indent}}};\n")
 
     def _gen_raise(self, stmt: TpyRaise, indent: str) -> str:
-        """Generate a raise statement (return-tier, throw-tier, or bare re-raise)."""
+        """Generate a raise statement (return-tier, throw-tier, or bare re-raise).
+
+        Phase 20 Stage 3: throw-tier `raise <expr>` / `raise X(args)` lower
+        to `<expr>.__raise__()` / `X(args).__raise__()` so the dynamic type
+        is preserved through the Throwable vtable. Single path -- no
+        fast-path special case for fresh construction; the macro-emitted
+        (and Stage 4 codegen-emitted) override does `throw *this` at the
+        concrete class, producing the same C++ throw the pre-Stage-3 path
+        emitted directly. Bare `raise;` re-raise and return-tier (`raise E`
+        inside an @error_return function for a ReturnException E) are
+        unchanged.
+        """
         # Bare raise (re-raise)
         if stmt.exception_type is None and stmt.raise_expr is None:
             if self.ctx.in_except_tier == "return":
@@ -2575,25 +2586,41 @@ class StatementGenerator:
                         f"std::move(*{self.ctx.try_except_err_opt}))")
                 return self._make_return(indent, expr)
             else:
-                # Throw-tier re-raise
+                # Throw-tier re-raise: no expression to peel; C++ rethrows
+                # the active exception via its dynamic type already.
                 return f"{indent}throw;\n"
 
-        # Expression raise (throw-tier only)
+        # Expression raise (throw-tier only): desugar to `<peeled>.__raise__()`.
+        # `stmt.deref_depth` (set by sema's `_analyze_raise_expr`) is the
+        # number of `.__deref__()` steps to insert before the virtual call,
+        # so a `raise box` where `box: Box[Throwable]` lowers to
+        # `box.__deref__().__raise__()` and dispatch lands on Throwable.
+        # Virtual dispatch through __raise__() preserves the dynamic type
+        # for borrow-shape sources (catch bindings, polymorphic-base
+        # parameters, abstract Throwable through Box). A direct `throw expr`
+        # peephole would slice in those cases.
         if stmt.raise_expr is not None:
             expr = self.expressions.gen_expr_deref(stmt.raise_expr)
-            return f"{indent}throw {expr};\n"
+            deref_chain = ".__deref__()" * stmt.deref_depth
+            return f"{indent}{expr}{deref_chain}.__raise__();\n"
 
         cpp_type = error_return_to_cpp(stmt.exception_type, self.ctx.analyzer.ctx.module_name, self.ctx.analyzer.registry)
         is_cf = is_return_exception(stmt.exception_type)
 
         if is_cf:
-            # Return-tier: return std::unexpected
+            # Return-tier: return std::unexpected (no Throwable interaction).
             if stmt.args:
                 args = ", ".join(self.expressions.gen_expr(a) for a in stmt.args)
                 return self._make_return(indent, f"::tpy::make_unexpected({cpp_type}({args}))")
             return self._make_return(indent, f"::tpy::make_unexpected({cpp_type}{{}})")
         else:
-            # Throw-tier: C++ throw
+            # Throw-tier constructor form `raise X(args)`. Fresh construction
+            # of the exact class -- the static and dynamic types coincide,
+            # so a direct `throw X(args)` is mechanically equivalent to
+            # `X(args).__raise__()` (whose macro override is `throw *this`).
+            # Peephole optimization documented in EXCEPTION_DESIGN.md:520+
+            # -- keeps generated C++ idiomatic and avoids the extra inlined
+            # virtual call in stack traces / debug info.
             if stmt.args:
                 args = ", ".join(self.expressions.gen_expr(a) for a in stmt.args)
                 return f"{indent}throw {cpp_type}({args});\n"

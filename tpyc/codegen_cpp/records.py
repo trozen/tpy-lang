@@ -25,6 +25,7 @@ from ..parse import (
 )
 from ..namespace import Namespace
 
+from .. import qnames
 from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, escape_cpp_name
 from .functions import factory_default_to_cpp
 from ..type_def_registry import (
@@ -152,6 +153,20 @@ class RecordGenerator:
             if parent_rec is not None and parent_rec.is_nocopy:
                 return None  # parent nocopy, not a field
         return None
+
+    def _needs_throwable_auto_emit(self, record_info: 'RecordInfo') -> bool:
+        """True iff codegen should auto-emit clone()/__raise__()/what() on this
+        record. Reads the `implements_throwable` fact materialized at sema
+        registration time. @native records and `builtins.BaseException` are
+        skipped -- their overrides come from `TPY_THROWABLE_VIRTUALS` in the
+        runtime header (Stage 4c retires the macro and folds BaseException
+        into the auto-emit path).
+        """
+        if record_info.is_native:
+            return False
+        if record_info.qualified_name() == qnames.BASE_EXCEPTION:
+            return False
+        return record_info.implements_throwable
 
     def _is_native(self, record_or_name) -> bool:
         """Check if a record/type is a native import (no C++ generation needed)."""
@@ -549,6 +564,32 @@ class RecordGenerator:
         # matching `__name__`) rather than codegen's which uses the file
         # basename.
         record_info = self.ctx.analyzer.registry.get_record(record.name)
+
+        # Phase 20: auto-emit Throwable ABI overrides on every user-defined
+        # Throwable subclass. Stage 4's spec move auto-emits these
+        # unconditionally on every Throwable subclass; Stage 2 forward-ports
+        # the auto-emit for user-defined classes so the headline invariant
+        # (BUGS.md exception-slicing) holds for user code too.
+        # `what()` is emitted only on the BaseException-rooted leaves (i.e.
+        # not on BaseException itself, which still lives in core.hpp pre-
+        # Stage-4c); the override reads the `message` field that BaseException
+        # provides. Stage 4c moves the whole hierarchy to TPy and the
+        # auto-emit path becomes the only definer of these methods.
+        if record_info and self._needs_throwable_auto_emit(record_info):
+            out.write(
+                f"\n{INDENT}[[nodiscard]] std::unique_ptr<::tpy::Throwable> "
+                f"clone() const override {{ "
+                f"return std::make_unique<{cpp_rec_name}>(*this); }}\n"
+            )
+            out.write(
+                f"{INDENT}[[noreturn]] void __raise__() const override "
+                f"{{ throw *this; }}\n"
+            )
+            out.write(
+                f"{INDENT}const char* what() const noexcept override "
+                f"{{ return this->message.c_str(); }}\n"
+            )
+
         has_str_repr = self._record_has_str_repr(record_info)
         python_module = self.ctx.analyzer.ctx.module_name
         qualified_name = f"{python_module}.{record.name}"

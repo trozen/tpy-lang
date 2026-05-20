@@ -1,0 +1,2 @@
+Box auto-deref + clone()/__raise__() are TPy-only mechanics; see sibling
+box_throwable_preserves_dynamic_type for the same exclusion rationale.

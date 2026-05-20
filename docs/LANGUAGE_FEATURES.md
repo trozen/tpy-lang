@@ -5486,6 +5486,22 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - Built-in exceptions: `ValueError(message)`, `OSError(message)`, `FileNotFoundError(message)` with `message: str` field
   - User-defined throw exceptions: `class MyError(Exception)` with optional `__init__` + data fields
   - Tier separation enforced: ReturnException and non-ReturnException types cannot be mixed in same `try`/`except`
+- **Working**: Polymorphic exception storage via `Box[Throwable]` (Phase 20)
+  - `Throwable` is the ABI protocol all exceptions implement (declared in `tpy._core._types` as `@native + @dynamic`, bridged to `::tpy::Throwable` in the runtime header)
+  - User-facing pattern: `self.exc: Box[Throwable] | None` stores a caught exception, preserving its dynamic subclass through the cycle
+    ```python
+    try:
+        risky_call()
+    except BaseException as e:
+        self.exc = Box(e.clone())
+    # ... later ...
+    if self.exc is not None:
+        raise self.exc   # rethrows as the original concrete subclass
+    ```
+  - `e.clone()` returns `Own[Throwable]` (heap-allocated polymorphic copy at the concrete type); `Box(...)` wraps it into an owned slot
+  - `raise <expr>` lowers through the Throwable vtable's `__raise__()` virtual override (`throw *this` at the concrete subclass). For Box-wrapped expressions, codegen auto-inserts `.__deref__()` so `raise self.exc` works directly. `raise X(args)` keeps the idiomatic `throw X(args)` form via a fresh-construction peephole (mechanically equivalent — the macro-emitted `__raise__()` body does `throw *this`)
+  - Slicing-site sema rejection: storing a polymorphic-exception borrow into an owned slot of the same (or strict-subclass-of) type is rejected at compile time, with a diagnostic pointing at `Box[Throwable]`. Fresh constructor calls, `Own[T]` moves, and `None` are allowed
+  - Throwable subclass requirements (sema-enforced): must inherit `BaseException` (or descend through one); must be copy-constructible (auto-emitted `clone()` + `__raise__()` need a usable copy ctor); cannot user-define `clone()`/`__raise__()`/`what()` (codegen auto-emits these on every concrete Throwable subclass; user override would collide at the C++ level)
 - **Open**: Warning when exceptions are used for control flow (e.g., `try: Color(99) except ValueError` to test validity) -- prefer safe alternatives like `try_parse()`
 
 ---

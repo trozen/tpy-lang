@@ -107,6 +107,13 @@ SYNC = "tpy.Sync"
 DEFAULT = "tpy.Default"
 COVARIANT = "tpy.Covariant"
 RETURN_EXCEPTION = "tpy.ReturnException"
+THROWABLE = "tpy.Throwable"
+# Phase 20: methods auto-emitted by codegen on every concrete Throwable
+# subclass (clone returns a heap-allocated polymorphic copy at the
+# concrete type, __raise__ throws *this, what reads the message field).
+# Sema rejects user-defined overrides of these names on Throwable
+# subclasses to prevent a C++ redefinition collision.
+THROWABLE_ABI_METHODS = ("clone", "__raise__", "what")
 HASHABLE = "tpy.Hashable"
 COMPARABLE = "tpy.Comparable"
 EQUATABLE = "tpy.Equatable"

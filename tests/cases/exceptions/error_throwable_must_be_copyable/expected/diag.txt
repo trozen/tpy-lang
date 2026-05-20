@@ -1,0 +1,1 @@
+main.py:17: error: Exception class 'BadError' is not copy-constructible; classes implementing Throwable must be copy-constructible (required by auto-emitted `clone()` and `__raise__()`). Remove any @nocopy / __del__ on the class or its fields, or do not inherit from BaseException.

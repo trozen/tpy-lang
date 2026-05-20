@@ -234,7 +234,7 @@ public:
     // Shift operators (Python semantics: arbitrary precision)
     BigInt operator<<(int32_t shift) const {
         if (shift < 0) {
-            raise<ValueError>("negative shift count");
+            raise_value_error("negative shift count");
         }
         if (shift == 0 || signum() == 0) {
             return *this;
@@ -245,7 +245,7 @@ public:
 
     BigInt operator>>(int32_t shift) const {
         if (shift < 0) {
-            raise<ValueError>("negative shift count");
+            raise_value_error("negative shift count");
         }
         if (shift == 0 || signum() == 0) {
             return *this;
@@ -295,7 +295,7 @@ public:
 
         uint64_t e = 0;
         if (!exp.to_uint64_checked(e)) {
-            raise<OverflowError>("exponent too large");
+            raise_overflow_error("exponent too large");
         }
 
         BigInt base = *this;
@@ -561,10 +561,10 @@ public:
     // Static factory methods for conversions
     static BigInt from_float(double v) {
         if (std::isnan(v)) {
-            raise<ValueError>("cannot convert float NaN to integer");
+            raise_value_error("cannot convert float NaN to integer");
         }
         if (std::isinf(v)) {
-            raise<OverflowError>("cannot convert float infinity to integer");
+            raise_overflow_error("cannot convert float infinity to integer");
         }
         if (v == 0.0) {
             return BigInt(0);
@@ -618,7 +618,7 @@ public:
             --end;
         }
         if (start >= end) {
-            raise<ValueError>("invalid literal for int() with base 10: '{}'", s);
+            raise_value_error("invalid literal for int() with base 10: '{}'", s);
         }
 
         std::string_view trimmed = s.substr(start, end - start);
@@ -633,14 +633,14 @@ public:
         }
 
         if (idx >= trimmed.size()) {
-            raise<ValueError>("invalid literal for int() with base 10: '{}'", s);
+            raise_value_error("invalid literal for int() with base 10: '{}'", s);
         }
 
         std::vector<uint64_t> mag;
         for (size_t i = idx; i < trimmed.size(); ++i) {
             unsigned char ch = static_cast<unsigned char>(trimmed[i]);
             if (!std::isdigit(ch)) {
-                raise<ValueError>("invalid literal for int() with base 10: '{}'", s);
+                raise_value_error("invalid literal for int() with base 10: '{}'", s);
             }
             mul_small_inplace(mag, 10);
             add_small_inplace(mag, static_cast<uint32_t>(ch - '0'));
@@ -651,7 +651,7 @@ public:
 
     std::tuple<BigInt, BigInt> floor_divmod(const BigInt& rhs) const {
         if (rhs.signum() == 0) {
-            raise<ZeroDivisionError>("integer division or modulo by zero");
+            raise_zero_division_error("integer division or modulo by zero");
         }
         if (signum() == 0) {
             return {BigInt(0), BigInt(0)};
@@ -1255,7 +1255,7 @@ private:
 
     BigInt floor_div(const BigInt& rhs) const {
         if (rhs.signum() == 0) {
-            raise<ZeroDivisionError>("integer division or modulo by zero");
+            raise_zero_division_error("integer division or modulo by zero");
         }
         if (signum() == 0) {
             return BigInt(0);
@@ -1285,7 +1285,7 @@ private:
 
     BigInt floor_mod(const BigInt& rhs) const {
         if (rhs.signum() == 0) {
-            raise<ZeroDivisionError>("integer modulo by zero");
+            raise_zero_division_error("integer modulo by zero");
         }
         if (signum() == 0) {
             return BigInt(0);
