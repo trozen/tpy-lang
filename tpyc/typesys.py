@@ -3553,6 +3553,12 @@ class RecordInfo:
     parents: list['TpyType'] = field(default_factory=list)  # Direct base classes in source order (equals MRO tail order, enforced by _check_multi_base_order).
     mro_ancestors: list['TpyType'] = field(default_factory=list)  # C3 linearization of ancestors (self excluded), populated by validate_record_inheritance
     implemented_protocols: list['NominalType'] = field(default_factory=list)  # Explicit protocol implementations
+    # Short names of every protocol this record implements directly OR
+    # transitively via parent-protocol chains. Populated once by sema
+    # after implemented_protocols is finalized; never mutated afterward.
+    # Single source of truth for record-implements-protocol queries; see
+    # tpyc.type_def_registry.is_subtype.
+    transitive_supertypes: frozenset[str] = field(default_factory=frozenset)
     _is_polymorphic_class: 'Optional[bool]' = None  # Lazy cache for is_polymorphic_class_type; populated on first call
     extends_protocols: list[str] = field(default_factory=list)  # Protocol extensions: ["NativeIterable[T]"]
     native_name: Optional[str] = None  # C++ name for @native/@native_c records (e.g., "SDL_Rect")
@@ -3964,6 +3970,12 @@ class ProtocolInfo:
     is_readonly: bool = False  # All methods are read-only (safe for readonly[T] args)
     is_dynamic: bool = False  # Supports runtime dispatch via base/adapter
     module: str = ""  # Module that defines this protocol (e.g. "typing", "tpy")
+    # Short names of every protocol reachable via repeated parent_protocols
+    # walks (self excluded). Populated once by sema after all protocols in
+    # the module are registered; never mutated afterward. The single source
+    # of truth for nominal protocol-to-protocol subtyping queries; see
+    # tpyc.type_def_registry.is_subtype.
+    transitive_supertypes: frozenset[str] = field(default_factory=frozenset)
 
 
 @dataclass

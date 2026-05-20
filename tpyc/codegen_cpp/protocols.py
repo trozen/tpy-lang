@@ -16,7 +16,7 @@ from ..typesys import (
 )
 from ..parse import TpyProtocol, TpyRecord
 from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, qualified_cpp_name
-from ..type_def_registry import is_str_type, protocol_info_of
+from ..type_def_registry import is_str_type, protocol_info_of, is_subtype
 from ..symbol_binding import lookup_imported, SymbolKind
 
 if TYPE_CHECKING:
@@ -194,22 +194,6 @@ class ProtocolGenerator:
         base = self.get_dynamic_base_name(protocol)
         return f"::tpy::RefAdapter<{base}, {concrete_cpp}>"
 
-    def _protocol_inherits_from(self, protocol_name: str, ancestor_name: str) -> bool:
-        """Check if protocol_name transitively inherits from ancestor_name."""
-        visited: set[str] = set()
-        stack = [protocol_name]
-        while stack:
-            name = stack.pop()
-            if name == ancestor_name:
-                return True
-            if name in visited:
-                continue
-            visited.add(name)
-            info = self.ctx.analyzer.registry.scan_by_short_name(name)
-            if info:
-                stack.extend(p.name for p in info.parent_protocols)
-        return False
-
     def dyn_protocol_forward_ok(self, source: TpyType, target: TpyType) -> bool:
         """True if `source` (@dynamic protocol) can be forwarded as `target`
         (@dynamic protocol) without an Adapter wrap -- same protocol (joint
@@ -221,7 +205,9 @@ class ProtocolGenerator:
         if (source.qualified_name() == target.qualified_name()
                 and source.type_args == target.type_args):
             return True
-        return self._protocol_inherits_from(source.name, target.name)
+        return is_subtype(
+            self.ctx.analyzer.registry.scan_by_short_name(source.name), target.name
+        )
 
     def directly_implements_dynamic(self, concrete_type: TpyType, protocol: NominalType) -> bool:
         """Check if concrete_type inherits a @dynamic protocol (directly or transitively).
@@ -235,6 +221,17 @@ class ProtocolGenerator:
         mismatches (e.g. assigning `Container[Int32]` into `Container[str]`)
         are already rejected by sema before this helper runs.
 
+        The ``is_dynamic`` filter is applied at the IMPLEMENTED-protocol level
+        (chain root), not at the target. A non-@dynamic protocol contributes no
+        C++ base, so a chain rooted in a non-@dynamic implemented protocol
+        cannot make ``concrete_type`` C++-inherit anything -- even if a
+        @dynamic ancestor sits further up the chain. This differs from
+        ``sema/type_ops._inherits_protocol`` (which filters on the target,
+        not the root); the closure cached on ``RecordInfo.transitive_supertypes``
+        encodes the unfiltered closure used by the latter, so this helper keeps
+        an explicit per-element walk and uses ``is_subtype`` only for the
+        per-protocol ancestor step.
+
         @native records are excluded: their C++ representation is opaque to
         codegen (the struct is hand-written elsewhere), so even when the TPy
         declaration claims `class NativeRec(SomeDynProto)`, the C++ struct
@@ -244,21 +241,18 @@ class ProtocolGenerator:
         polymorphism dispatch on `Optional[BaseException]`, but
         `::tpy::BaseException` in core.hpp does not inherit `tpystd::tpy::Throwable`.
         """
-        proto_name = protocol.name
         if not isinstance(concrete_type, NominalType) or not concrete_type.is_user_record:
             return False
         record_info = self.ctx.analyzer.registry.get_record(concrete_type.name)
-        if not record_info:
+        if record_info is None or record_info.is_native:
             return False
-        if record_info.is_native:
-            return False
+        proto_name = protocol.name
         for p in record_info.implemented_protocols:
             pi = protocol_info_of(p)
-            if pi and pi.is_dynamic:
-                if p.name == proto_name:
-                    return True
-                if self._protocol_inherits_from(p.name, proto_name):
-                    return True
+            if pi is None or not pi.is_dynamic:
+                continue
+            if p.name == proto_name or is_subtype(pi, proto_name):
+                return True
         return False
 
     def gen_record_template_header(

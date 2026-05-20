@@ -499,6 +499,11 @@ class SemanticAnalyzer:
         # Register protocols (two phases to allow forward references)
         for protocol in module.protocols:
             self.registrar.register_protocol(protocol)
+        # Populate ProtocolInfo.transitive_supertypes (single source of
+        # truth for subtype queries) before any record-side closure or
+        # subtype-using check reads it.
+        for protocol in module.protocols:
+            self.registrar.finalize_protocol_closure(protocol)
         for protocol in module.protocols:
             self.registrar.validate_protocol_parents(protocol)
 

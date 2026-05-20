@@ -30,7 +30,7 @@ from .. import qnames
 from ..type_def_registry import (
     is_copy_iter, is_own_iter, is_set, is_dict, is_array, is_span, is_list,
     is_fixed_int_type, is_big_int_type, is_char_type, is_str_category,
-    is_enum_type, protocol_info_of,
+    is_enum_type, protocol_info_of, is_subtype,
 )
 from ..typesys import is_numeric_type
 from .bound_check import find_method_class_param_bound_violation
@@ -764,24 +764,19 @@ class ProtocolChecker:
 
         return list(fields_by_name.values())
 
-    def protocol_inherits_from(self, protocol_name: str, ancestor_name: str, visited: set[str] | None = None) -> bool:
-        """Check if a protocol inherits from another protocol (directly or indirectly)."""
-        if visited is None:
-            visited = set()
-        if protocol_name in visited:
-            return False
+    def protocol_inherits_from(self, protocol_name: str, ancestor_name: str) -> bool:
+        """Check if a protocol inherits from another protocol (directly or
+        indirectly), or is the same protocol.
+
+        Thin reflexive layer over the registry-level ``is_subtype`` kernel;
+        ``is_subtype`` itself is strict (ancestor-only), and conformance
+        callers want ``P inherits P`` to be true.
+        """
         if protocol_name == ancestor_name:
             return True
-        visited.add(protocol_name)
-
-        protocol_info = self.ctx.registry.scan_by_short_name(protocol_name)
-        if protocol_info is None:
-            return False
-
-        for parent in protocol_info.parent_protocols:
-            if self.protocol_inherits_from(parent.name, ancestor_name, visited):
-                return True
-        return False
+        return is_subtype(
+            self.ctx.registry.scan_by_short_name(protocol_name), ancestor_name
+        )
 
     def get_protocol_method_signature(
         self,

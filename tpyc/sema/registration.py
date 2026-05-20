@@ -1919,6 +1919,19 @@ class TypeRegistrar:
         record_info.is_send = is_send
         record_info.is_sync = is_sync
 
+        # Record-side closure for type_def_registry.is_subtype. Scope is
+        # DIRECT implemented protocols + their parent chains; protocols
+        # inherited via MRO ancestor records are intentionally NOT
+        # included (codegen's is_polymorphic_class_type walks MRO
+        # separately for the bases-have-vtable question).
+        supertypes: set[str] = set()
+        for proto in record_info.implemented_protocols:
+            supertypes.add(proto.name)
+            proto_info = protocol_info_of(proto)
+            if proto_info is not None:
+                supertypes.update(proto_info.transitive_supertypes)
+        record_info.transitive_supertypes = frozenset(supertypes)
+
     def validate_method_error_returns(self, record: TpyRecord) -> None:
         """Validate @error_return(E) on methods references a ReturnException type.
 
@@ -2417,6 +2430,34 @@ class TypeRegistrar:
             TypeCategory.PROTOCOL,
             protocol=info,
         )
+
+    def finalize_protocol_closure(self, protocol: TpyProtocol) -> None:
+        """Populate ``ProtocolInfo.transitive_supertypes`` for one protocol.
+
+        Must run after every protocol in the current module is registered
+        so in-module parents resolve via ``scan_by_short_name``; cross-
+        module parents resolve too because modules are compiled in
+        topological order. The ``visited`` guard makes a malformed
+        cycle in ``parent_protocols`` (rejected elsewhere in sema, but
+        cheap to defend here) terminate instead of hang.
+        """
+        info = self.ctx.registry.scan_by_short_name(protocol.name)
+        if info is None:
+            return
+        ancestors: set[str] = set()
+        visited: set[str] = set()
+        stack: list[str] = [p.name for p in info.parent_protocols]
+        while stack:
+            name = stack.pop()
+            if name in visited:
+                continue
+            visited.add(name)
+            ancestors.add(name)
+            parent_info = self.ctx.registry.scan_by_short_name(name)
+            if parent_info is None:
+                continue
+            stack.extend(p.name for p in parent_info.parent_protocols)
+        info.transitive_supertypes = frozenset(ancestors)
 
     def validate_protocol_parents(self, protocol: TpyProtocol) -> None:
         """Validate that all parent protocols are actual protocols.

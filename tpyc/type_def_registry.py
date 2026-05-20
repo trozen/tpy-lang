@@ -495,6 +495,27 @@ def protocol_info_of(t: "TpyType") -> Optional["ProtocolInfo"]:
     return td.protocol if td is not None else None
 
 
+def is_subtype(sub: "RecordInfo | ProtocolInfo | None", supertype_name: str) -> bool:
+    """Return True if ``sub`` is a nominal subtype of the protocol named
+    ``supertype_name``.
+
+    The single source of truth for nominal subtype queries. Membership is
+    a set lookup against ``sub.transitive_supertypes`` (populated once at
+    registration; see sema/registration.py). Filters callers may want on
+    top -- ``is_dynamic`` on the matching protocol, ``is_native`` on the
+    record, structural conformance via collected methods -- are layered
+    at the call site, not baked into the cache.
+
+    Same-name match: a protocol is its own subtype only if you treat
+    ``supertype_name == sub.name`` explicitly; this helper returns False
+    in that case so the kernel stays pure ancestor lookup. Callers that
+    want reflexivity should check ``sub.name == supertype_name`` first.
+    """
+    if sub is None:
+        return False
+    return supertype_name in sub.transitive_supertypes
+
+
 def enum_info_of(t: "TpyType") -> Optional[EnumInfo]:
     """Return the EnumInfo payload attached to this type's TypeDef, if any.
 

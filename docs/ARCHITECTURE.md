@@ -189,6 +189,16 @@ names in `TpyProtocol.parent_protocols`, `except`-clause exception types,
 current analyzer's module-local alias table. It is the only short-name
 protocol lookup path; there is no parallel payload dict.
 
+Nominal subtyping is decided through one helper: `is_subtype(info,
+supertype_name)`. `ProtocolInfo` and `RecordInfo` both carry a
+`transitive_supertypes: frozenset[str]` populated once during sema
+registration (protocol closures over `parent_protocols`, then record
+closures over `implemented_protocols` and the protocol closures already
+in the registry). All record-implements-protocol and protocol-inherits-
+protocol queries route through `is_subtype`; per-call filters such as
+`is_dynamic` on the matching protocol or `is_native` on the record live
+at the call site, not in the cache.
+
 Static entries (primitives, builtin generics, `tpy.Ptr` under
 `TypeCategory.STRUCTURAL_WRAPPER`) are populated once at module load
 via `_populate()` + `_populate_factories()`. Dynamic entries

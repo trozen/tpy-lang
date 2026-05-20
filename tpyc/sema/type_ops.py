@@ -25,7 +25,7 @@ from .. import qnames
 from ..type_def_registry import (
     is_copy_iter, is_own_iter, is_array, is_span, is_list, is_dict, is_set,
     is_enum_type,
-    get_type_def, find_factory_by_simple_name, protocol_info_of,
+    get_type_def, find_factory_by_simple_name, protocol_info_of, is_subtype,
 )
 from ..parse import TpyFunction
 from tpyc import modules as builtin_modules
@@ -1147,29 +1147,22 @@ class TypeOperations:
         that needs explicit heap wrapping). Same-named non-@dynamic protocols
         don't match -- only @dynamic protocols are relevant to the LHS-hint path.
 
-        Near-duplicate of codegen's `directly_implements_dynamic` -- worth
-        unifying via a registry-level helper (tracked in TODO.md).
+        @native records are excluded: their C++ struct is hand-written and
+        almost certainly does not inherit the codegen-emitted protocol base
+        (see ``codegen_cpp.protocols.directly_implements_dynamic`` for the
+        full reasoning). Routing through Adapter is the only safe lowering,
+        so this helper must agree with codegen's branching to avoid sema
+        keeping a native T that codegen would later refuse.
         """
         if not isinstance(concrete, NominalType) or not concrete.is_user_record:
             return False
         record_info = self.ctx.registry.get_record(concrete.name)
-        if record_info is None:
+        if record_info is None or record_info.is_native:
             return False
-        proto_name = protocol.name
-        seen: set[str] = set()
-        stack = list(record_info.implemented_protocols)
-        while stack:
-            p = stack.pop()
-            if p.name in seen:
-                continue
-            seen.add(p.name)
-            pi = protocol_info_of(p)
-            if pi is None:
-                continue
-            if pi.is_dynamic and p.name == proto_name:
-                return True
-            stack.extend(pi.parent_protocols)
-        return False
+        if not is_subtype(record_info, protocol.name):
+            return False
+        proto_info = protocol_info_of(protocol)
+        return proto_info is not None and proto_info.is_dynamic
 
     def match_generic_constructor(
         self, params: list, arg_types: list[TpyType]
