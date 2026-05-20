@@ -3065,7 +3065,16 @@ class Parser:
             orelse = self._parse_body(node.orelse)
             return TpyWhile(cond, body, orelse=orelse, loc=loc)
 
-        elif isinstance(node, ast.For):
+        elif isinstance(node, (ast.For, ast.AsyncFor)):
+            is_async = isinstance(node, ast.AsyncFor)
+            if is_async and node.orelse:
+                raise ParseError(
+                    "`else:` clause on `async for` is not supported "
+                    "(break-vs-normal-exit distinction is not modelled "
+                    "for async loops; same restriction as `await` in "
+                    "`for`/`else:`)",
+                    node,
+                )
             orelse = self._parse_body(node.orelse)
             if isinstance(node.target, ast.Tuple):
                 for elt in node.target.elts:
@@ -3086,13 +3095,13 @@ class Parser:
                     value=TpyName(synth_var, loc=loc),
                     loc=loc,
                 )
-                return TpyForEach(synth_var, iterable, [unpack] + body, orelse=orelse, loc=loc, is_tuple_unpack=True)
+                return TpyForEach(synth_var, iterable, [unpack] + body, orelse=orelse, loc=loc, is_tuple_unpack=True, is_async=is_async)
             if not isinstance(node.target, ast.Name):
                 raise ParseError("For loop target must be a simple variable", node)
             var = node.target.id
             body = self._parse_body(node.body)
             iterable = self._parse_expr(node.iter)
-            return TpyForEach(var, iterable, body, orelse=orelse, loc=loc)
+            return TpyForEach(var, iterable, body, orelse=orelse, loc=loc, is_async=is_async)
 
         elif isinstance(node, ast.Pass):
             return TpyPassStmt(loc=loc)

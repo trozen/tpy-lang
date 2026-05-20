@@ -156,7 +156,7 @@ Examples of the policy in action:
 | [`pickle`](#pickle) | P2 | Blocked | 0% | -- | Needs dynamic type info + `io` |
 | [`shelve`](#shelve) | P3 | Blocked | 0% | -- | Needs pickle |
 | [`inspect`](#inspect) | P2 | Blocked | 0% | -- | Needs runtime type/func introspection |
-| [`asyncio`](#asyncio) | P1 | Partial | ~15% | pure | v1: `run`/`sleep`/`create_task`/`Task[T]`/`Future[T]`/`Event`/`CancelledError` + thread-local executor with slot table, runnable deque, timer min-heap, cancel-drain at run-end. Missing: `async with`/`async for`/`gather`/`wait_for` (v1.5); I/O reactor (v2); multi-thread (v3+) |
+| [`asyncio`](#asyncio) | P1 | Partial | ~25% | pure | v1: `run`/`sleep`/`create_task`/`Task[T]`/`Future[T]`/`Event`/`CancelledError` + thread-local executor with slot table, runnable deque, timer min-heap, cancel-drain at run-end. v1.5 M5+M6: `async with` (cleanup-only), `async for` + `StopAsyncIteration`. Missing: `gather`/`wait_for` (v1.5); I/O reactor (v2); multi-thread (v3+) |
 | [`threading`](#threading) | P1 | Blocked | 0% | -- | Needs threading primitives |
 | [`multiprocessing`](#multiprocessing) | P2 | Blocked | 0% | -- | Needs process spawning + IPC |
 | [`subprocess`](#subprocess) | P1 | Blocked | 0% | -- | Needs process spawning |
@@ -1075,7 +1075,9 @@ Done in v1:
 - `asyncio.CancelledError` -- raised at the next suspension point of a cancelled task; thread through `try`/`finally`.
 - `Executor` body (slot table for parked tasks with `(slot_id, generation)` wakers, runnable deque, timer min-heap keyed on steady-clock deadlines) lives in TPy at `lib/tpy/asyncio/_executor.py`. `Executor` inherits the `@dynamic Awaker` protocol; `Waker.wake()` dispatches through that vtable. `runtime/cpp/include/tpy/async.hpp` is down to ~34 lines containing only `CancelledError` -- no more FFI dispatch shell.
 
-Pending (v1.5): `async with`, `async for`, `gather`, `wait_for`, awaits inside `if`/`while`/`for`/`with` sub-bodies, general `try`/`except` around awaits, partial / nested try-around-await.
+v1.5 M3-M6: SHIPPED. Awaits inside arbitrary control flow (`if`/`while`/`for`/`with` sub-bodies + `try`/`except`/`finally` around awaits) via a localized CFG (`tpyc/codegen_cpp/resumable_cfg.py`). `async with` (cleanup-only) and `async for` (with `StopAsyncIteration`) shipped on top of the same machinery. See `docs/ASYNC_PROGRESS.md` for the milestone-by-milestone summary.
+
+Pending (v1.5): `gather`, `wait_for`, partial / nested try-around-await (see BUGS.md for the specific CFG-build limits).
 
 v1.5 M1: SHIPPED. Sync `with` upgraded to CPython-shape `__exit__(self, exc_type, exc_val, exc_tb) -> bool | None`; `bool` return suppresses, `None` is cleanup-only. Class-based exception dispatch via `isinstance(exc_val, X)` is deferred to M2 (blocked on `Optional[BaseException]` slicing -- see `BUGS.md`).
 

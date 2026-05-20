@@ -1,0 +1,1 @@
+main.py:19: error: `__aiter__` on 'BadIterable' must be a sync `def` (returns the async iterator); only `__anext__` is `async def`

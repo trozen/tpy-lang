@@ -827,6 +827,118 @@ polymorphic storage work that E9 will solve uniformly.
 - `error_async_with_exc_val_inspect` -- v1.5 M5 limitation diagnostic
   for `exc_val: Optional[BaseException]`.
 
+### M6 SHIPPED -- `async for`
+
+`async for y in ait: body` lowers to the Python desugaring
+
+```python
+__aiter = ait.__aiter__()
+while True:
+    try:
+        y = await __aiter.__anext__()
+    except StopAsyncIteration:
+        break
+    body
+```
+
+The codegen reuses M3.1's frame-resident iterator slot
+(`__for_itr_<uid>`) and the existing try/except CFG machinery. The
+new bits are concentrated in one builder method and a small handful
+of emit-side branches.
+
+What landed:
+
+- **Parser** (`tpyc/parse/parser.py`): `ast.AsyncFor` parsed alongside
+  `ast.For`. New `TpyForEach.is_async` flag (parse/nodes.py). The
+  tuple-unpack branch is shared with sync `for`, so
+  `async for (a, b) in pairs:` works for free via the existing
+  `__for_tup_<n>` synthetic-var rewrite. `else:` clause on `async for`
+  is rejected at parse time -- same restriction as `await` in
+  `for`/`while` `else:` (the break-vs-normal-exit distinction is not
+  modelled).
+- **Sema** (`tpyc/sema/statements.py::_analyze_async_for`): validates
+  the loop is inside `async def`; resolves `<iterable>.__aiter__()`
+  (must be a sync `def`); resolves the returned aiter's `__anext__()`
+  (must be `async def`); unwraps `Awaitable[T]` and sets the loop var's
+  `elem_type=T`. Body analysis runs through the standard `loop_scope` /
+  `loop_var` machinery so liveness, init tracking, and scope
+  propagation are unchanged from sync for.
+- **CFG** (`tpyc/codegen_cpp/resumable_cfg.py::_build_async_for`):
+  synthesizes the `AsyncForIterSetup(is_async=True)` leaf-stmt + a
+  Yield for `await __aiter.__anext__()` wrapped in a TryRegion. The
+  synthesized handler's exception_type is `"StopAsyncIteration"` and
+  its body is a single `TpyBreak`; `_build_block` routes the break
+  through the loop's `break_bb` so the catch emits as
+  `catch (const ::tpy::StopAsyncIteration&) { __state = <exit>;
+  continue; }`. The TryRegion is on the region stack only while
+  building cond_bb / resume_bb / handler_entry -- body_bb is created
+  outside the push, so a body-side `StopAsyncIteration` propagates
+  instead of being silently caught.
+- **Codegen** (`tpyc/codegen_cpp/gen_async.py`):
+  - `_prescan_async_for_loops`: triggers on `is_async OR body_has_await`.
+    For async-for, the frame field type is
+    `decltype(std::declval<IT&>().__aiter__())` and a new
+    `func._async_for_struct_names[uid]` map records the C++ name of
+    the `__anext__` sub-coro struct (computed via
+    `_anext_sub_struct_name`).
+  - `_emit_async_for_iter_setup`: branches on `is_async` to emit either
+    `__for_itr_<uid> = (<iterable>).__aiter__();` or the existing
+    `::tpy::__iter__(...)` setup.
+  - `AwaitPayload.async_for_uid` carries the loop's uid through the
+    Yield; the struct-fields emit and `_emit_suspend` INLINE-mode
+    branch on it to override the sub-coro type and emit
+    `__sub_<i>.emplace(*__for_itr_<uid>);`.
+- **Runtime** (`runtime/cpp/include/tpy/core.hpp`): new
+  `struct StopAsyncIteration : Exception { using Exception::Exception; };`
+  next to `StopIteration`. Distinct type (not a `StopIteration` alias)
+  so user `except` clauses can filter precisely.
+- **Stdlib** (`lib/tpy/tpy/_builtins/_exceptions.py`,
+  `_builtins/__init__.py`, `lib/tpy/builtins.py`): `StopAsyncIteration`
+  added as a `@native("tpy::StopAsyncIteration")` `Exception` subclass
+  with a `__init__(self, message: str = "")` stub, re-exported through
+  the builtins chain. CPython already provides it natively, so no
+  `lib/cpy/` stub needed.
+- **`_stmt_has_any_await`** in `resumable_cfg.py`: returns True for
+  `async for` even when the body has no user awaits, mirroring the
+  `async with` short-circuit. Without this, an `async for` wrapped in a
+  try/except whose body has no other awaits would not trigger CFG
+  decomposition of the surrounding try, and sema would correctly mark
+  the loop as async-for but codegen would silently emit the sync-for
+  path with the wrong iterator protocol -- a foot-gun caught by the
+  body-raises-StopAsyncIteration test.
+
+**Restrictions** (each rejected with a clear diagnostic):
+
+- `else:` clause on `async for` -- parser rejects with a pointer to
+  the same break-vs-normal-exit limit as await-in-for-else.
+- `async for` outside `async def` -- sema rejects.
+- `__aiter__` declared `async def` -- sema rejects (Python 3.5.2+
+  semantics: `__aiter__` is sync, only `__anext__` is async).
+- `__anext__` not declared `async def` -- sema rejects.
+- `__anext__` whose return type is not `Awaitable[T]` -- sema rejects.
+
+**Tests** (`tests/cases/async/`):
+
+- `async_for_basic` -- canonical case (Counts iterable, Counter
+  iterator that raises `StopAsyncIteration` at end).
+- `async_for_break` -- `break` inside body exits the loop without
+  polling `__anext__` again.
+- `async_for_continue` -- `continue` skips and re-enters the advance.
+- `async_for_body_await` -- body contains an additional `await` that
+  composes with the `__anext__` Yield (two suspensions per iteration).
+- `async_for_tuple_unpack` -- `async for k, sq in pairs:` via the
+  parser's existing tuple-unpack rewrite.
+- `async_for_body_raises_stop` -- body-side `raise StopAsyncIteration`
+  propagates to an outer `except` rather than being silently caught
+  by the loop's auto-handler (regression test for the
+  TryRegion-scoping fix).
+- `stop_async_iteration_builtin` -- `raise StopAsyncIteration("msg")`
+  and `except StopAsyncIteration as e:` round-trip outside of any
+  async context.
+- `error_async_for_else` -- parser rejection of `else:` clause.
+- `error_async_for_outside_async` -- sema rejection of `async for`
+  outside `async def`.
+
 ## v1.x milestone: asyncio runtime TPy port (must precede v1.5)
 
 The v1 asyncio runtime (Executor + run loop + spawn registration + sleep

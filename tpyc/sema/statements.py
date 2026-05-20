@@ -1031,6 +1031,9 @@ class StatementAnalyzer:
             for s in stmt.orelse:
                 self.analyze_stmt(s)
         elif isinstance(stmt, TpyForEach):
+            if stmt.is_async:
+                self._analyze_async_for(stmt)
+                return
             # Check for enum iteration: `for c in Color`
             enum_type = self._resolve_enum_iterable(stmt)
             if enum_type is not None:
@@ -1842,6 +1845,124 @@ class StatementAnalyzer:
             self.ctx.func.current_consumed_own_params = consumed_then
         else:
             self.ctx.func.current_consumed_own_params = consumed_then & consumed_else
+
+    def _analyze_async_for(self, stmt: TpyForEach) -> None:
+        """Analyze `async for x in ait: <body>` (v1.5 M6).
+
+        Resolves `<ait>.__aiter__()` (sync method, returns the async
+        iterator) and the iterator's `__anext__()` (async method, returns
+        `Awaitable[T]`); unwraps T as the loop var's element type.
+        Only allowed inside `async def`.
+        """
+        cur = self.ctx.func.current_function
+        if not (isinstance(cur, TpyFunction) and cur.is_async):
+            raise self.ctx.error(
+                "`async for` is only allowed inside an `async def` "
+                "function body", stmt)
+
+        iterable_type = self.expr.analyze_expr(stmt.iterable)
+        iterable_inner = unwrap_own(unwrap_ref_type(iterable_type))
+
+        record_info = self.ctx.registry.get_record_for_type(iterable_inner)
+        if record_info is None:
+            raise self.ctx.error(
+                f"Type '{iterable_inner}' cannot be used as an async "
+                f"iterable (not a record type)", stmt.iterable)
+
+        aiter_overloads = record_info.methods.get("__aiter__")
+        if not aiter_overloads:
+            raise self.ctx.error(
+                f"Type '{iterable_inner}' cannot be used as an async "
+                f"iterable (missing __aiter__ method)", stmt.iterable)
+        aiter_info = aiter_overloads[0]
+        if aiter_info.is_async:
+            raise self.ctx.error(
+                f"`__aiter__` on '{iterable_inner}' must be a sync "
+                f"`def` (returns the async iterator); only `__anext__` "
+                f"is `async def`", stmt.iterable)
+
+        aiter_type = unwrap_own(unwrap_ref_type(aiter_info.return_type))
+        if not isinstance(aiter_type, NominalType):
+            raise self.ctx.error(
+                f"`__aiter__` on '{iterable_inner}' returns "
+                f"'{aiter_type}', which is not a record type and cannot "
+                f"provide `__anext__`", stmt.iterable)
+        aiter_record = self.ctx.registry.get_record_for_type(aiter_type)
+        if aiter_record is None:
+            raise self.ctx.error(
+                f"`__aiter__` on '{iterable_inner}' returns "
+                f"'{aiter_type}', which is not a record type and cannot "
+                f"provide `__anext__`", stmt.iterable)
+        # Codegen reads this to find the __anext__ sub-coro struct name
+        # without re-walking the registry.
+        stmt.async_aiter_type = aiter_type
+
+        anext_overloads = aiter_record.methods.get("__anext__")
+        if not anext_overloads:
+            raise self.ctx.error(
+                f"Async iterator '{aiter_type}' is missing `__anext__` "
+                f"method", stmt.iterable)
+        anext_info = anext_overloads[0]
+        if not anext_info.is_async:
+            raise self.ctx.error(
+                f"`__anext__` on '{aiter_type}' must be `async def` "
+                f"for use in `async for`", stmt.iterable)
+
+        anext_ret = unwrap_ref_type(anext_info.return_type)
+        if (isinstance(anext_ret, NominalType)
+                and anext_ret.qualified_name() == qnames.AWAITABLE
+                and len(anext_ret.type_args) == 1):
+            elem_type = anext_ret.type_args[0]
+        else:
+            raise self.ctx.error(
+                f"`__anext__` on '{aiter_type}' must return "
+                f"`Awaitable[T]` (got '{anext_ret}')", stmt.iterable)
+
+        elem_type = self._infer_new_local_type(
+            stmt.var, elem_type, None, None,
+            line=(stmt.loc.line if stmt.loc else None),
+        )
+        stmt.elem_type = make_ref(elem_type)
+        self._record_for_loop_var_type(stmt, elem_type)
+
+        before = self.init.save()
+        consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
+        ns_types_before = self._save_ns_var_types()
+        with self.scopes.loop_scope() as inner_scope:
+            self.init.apply_loop_entry_facts(before)
+            self.ctx.func.mutated_loop_vars.discard(stmt.var)
+            self.ctx.func.consumed_loop_vars.discard(stmt.var)
+            # Register an ITER borrow on a named iterable so structural
+            # mutations of it inside the loop body generate conflict
+            # warnings (e.g. `async for x in items: items.append(...)`).
+            # Limited to TpyName today: __aiter__ returns the aiter by
+            # value into a frame slot, so call/field-access iterables
+            # don't share storage with the loop var (unlike sync for,
+            # where the iterator references the iterable's storage).
+            if isinstance(stmt.iterable, TpyName):
+                bt = self.ctx.func.borrow_tracker
+                bt.add_borrow(stmt.iterable.name, "__for_iter", BorrowKind.ITER)
+                self.ctx.func.loop_var_iterable[stmt.var] = stmt.iterable.name
+                # Protocol-typed or generic-typed iterables: `__aiter__`
+                # is called on the param and may mutate self, so the
+                # generated signature must be `T&` not `const T&`.
+                # Concrete-typed iterables: the analyzer infers
+                # mutability from the call itself, so no extra hint
+                # needed here.
+                inner = unwrap_ref_type(unwrap_readonly(iterable_type))
+                if isinstance(inner, TypeParamRef) or is_protocol_type(inner):
+                    self.ctx.mark_param_mutated(stmt.iterable.name)
+            with self.scopes.loop_var(inner_scope, stmt.var, elem_type,
+                                       inner_scope.depth, is_foreach=True):
+                for s in stmt.body:
+                    self.analyze_stmt(s)
+        self.init.apply_loop_exit_facts(before)
+        # Loop body might not execute; consumption inside isn't definite.
+        self.ctx.func.current_consumed_own_params = consumed_before_loop
+        self._restore_ns_var_types(ns_types_before)
+        self._sync_promoted_var_types()
+        self._propagate_for_loop_scope(stmt, inner_scope, elem_type)
+        # `async for` parser already rejects orelse; nothing to analyze.
 
     def _analyze_with(self, stmt: TpyWith) -> None:
         """Analyze a with statement (context managers).

@@ -855,6 +855,8 @@ class TpyForEach(TpyStmt):
     const_loop_var: bool = False  # set by sema: loop var is never mutated, safe for const auto&
     hoist_loop_var: bool = False  # set by sema: loop var used after loop, needs pre-declaration
     consuming_iter_fi: 'FunctionInfo | None' = None  # set by sema: consuming __iter__ overload at last use
+    is_async: bool = False  # Set by parser: `async for` (lowers to __aiter__/await __anext__ inside async def)
+    async_aiter_type: 'NominalType | None' = None  # set by sema for async-for: resolved aiter record (return of __aiter__())
 
     def exprs(self) -> list[TpyExpr]:
         return [self.iterable]

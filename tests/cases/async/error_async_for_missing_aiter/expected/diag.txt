@@ -1,0 +1,1 @@
+main.py:14: error: Type 'NotIterable' cannot be used as an async iterable (missing __aiter__ method)

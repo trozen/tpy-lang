@@ -5455,7 +5455,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - `@error_return(E)` requires E to be a `ReturnException` type: `class MyError(Exception, ReturnException): pass`
   - `ReturnException` is a marker protocol that splits exception types into return (zero-cost) vs throw (C++ exceptions) categories
   - `StopIteration` is a built-in `ReturnException` type; user-defined types opt in via `ReturnException` marker
-  - `BaseException`/`Exception`/`ValueError`/`OSError`/`FileNotFoundError`/`AttributeError`/`AssertionError`/`IndexError`/`KeyError`/`TypeError`/`NotImplementedError`/`ArithmeticError`/`ZeroDivisionError`/`OverflowError`/`RuntimeError`/`MemoryError` are throw-tier; `StopIteration` is `ReturnException` (return-tier, used via `std::expected<T, E>`). All defined as `@native` classes in `lib/tpy/_builtins/_exceptions.py`, mapping to `::tpy::` runtime structs (inherit from `std::exception`). `ArithmeticError` is the parent of `ZeroDivisionError` and `OverflowError`, matching CPython's hierarchy
+  - `BaseException`/`Exception`/`ValueError`/`OSError`/`FileNotFoundError`/`AttributeError`/`AssertionError`/`IndexError`/`KeyError`/`TypeError`/`NotImplementedError`/`ArithmeticError`/`ZeroDivisionError`/`OverflowError`/`RuntimeError`/`MemoryError`/`StopAsyncIteration`/`CancelledError` are throw-tier; `StopIteration` is `ReturnException` (return-tier, used via `std::expected<T, E>`). All defined as `@native` classes in `lib/tpy/_builtins/_exceptions.py`, mapping to `::tpy::` runtime structs (inherit from `std::exception`). `ArithmeticError` is the parent of `ZeroDivisionError` and `OverflowError`, matching CPython's hierarchy. `CancelledError` inherits `BaseException` directly (not `Exception`) so `except Exception` does not silently swallow it. `StopAsyncIteration` is the loop-termination signal for `async for`.
   - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`; `raise E(args)` passes constructor arguments
   - Callers must use `try/except E` or be `@error_return(E)` themselves (auto-propagation)
   - `try/except/else` supported; `except E as e` binds the error value for field access
@@ -5621,12 +5621,25 @@ Send/Sync rules for built-in types:
   exception storage (E9 / Phase 20). Multi-item `async with X, Y:` and
   direct nesting are rejected (M3.3 nested-await-in-finally limit);
   workaround: factor into separate `async def` helpers.
-- **Open (v1.5+)**: `async for`, `gather`, `wait_for`,
+- **Working (v1.5 M6)**: `async for y in ait: body`. Lowers to
+  `__aiter_<uid> = ait.__aiter__()` setup + a Yield for
+  `await __aiter.__anext__()` wrapped in a synthesized TryRegion +
+  ExceptRegion catching `StopAsyncIteration` whose handler is `break`.
+  Body lives outside the TryRegion so a body-side StopAsyncIteration
+  propagates rather than silently exiting the loop. Reuses M3.1's
+  `__for_itr_<uid>` frame field (the `AsyncForIterSetup` synthetic
+  takes an `is_async` flag selecting `.__aiter__()` vs
+  `::tpy::__iter__()`). Tuple unpacking `async for (a, b) in pairs:`
+  works via the parser's existing `__for_tup_<n>` rewrite. `else:`
+  clause is parser-rejected (same restriction as `await` in
+  `for`/`while`/`else:`). `StopAsyncIteration` shipped as a builtin
+  exception in the same milestone.
+- **Open (v1.5+)**: `gather`, `wait_for`,
   nesting two `await`-in-`finally` regions (multi-item / nested
   `async with`), await inside a `for`/`while` `else:` clause,
-  executor slot reuse, reporting when bounded cancellation drain
-  leaves tasks pending, and full `async with` with `__aexit__` exc_val
-  inspection (E9 / Phase 20).
+  `async for ... else:`, executor slot reuse, reporting when bounded
+  cancellation drain leaves tasks pending, and full `async with` with
+  `__aexit__` exc_val inspection (E9 / Phase 20).
 
 ---
 

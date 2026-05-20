@@ -1,0 +1,1 @@
+main.py:19: error: `else:` clause on `async for` is not supported (break-vs-normal-exit distinction is not modelled for async loops; same restriction as `await` in `for`/`else:`)

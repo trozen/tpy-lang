@@ -57,6 +57,7 @@ struct NotImplementedError : Exception { using Exception::Exception; };
 struct RuntimeError : Exception { using Exception::Exception; };
 struct MemoryError : Exception { using Exception::Exception; };
 struct StopIteration : Exception {};
+struct StopAsyncIteration : Exception { using Exception::Exception; };
 
 // Forward decl: raise_fixedint_overflow (below) calls tpy_panic, whose
 // definition lives later in this header.

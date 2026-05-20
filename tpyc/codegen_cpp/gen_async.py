@@ -492,6 +492,7 @@ class AsyncCoroCodegen:
         # _async_with_struct_names map (the CM's __aenter__/__aexit__
         # coro struct, computed at prescan time).
         struct_names = getattr(func, "_async_with_struct_names", {}) or {}
+        for_struct_names = getattr(func, "_async_for_struct_names", {}) or {}
         for y in yields:
             p = y.payload
             sub_cpp = p.sub_field_cpp_type
@@ -499,6 +500,10 @@ class AsyncCoroCodegen:
                 entry = struct_names.get(p.async_with_ctx_n)
                 if entry is not None:
                     sub_cpp = entry[0] if p.async_with_kind is rcfg.AsyncWithKind.AENTER else entry[1]
+            elif p.async_for_uid is not None:
+                entry = for_struct_names.get(p.async_for_uid)
+                if entry is not None:
+                    sub_cpp = entry
             if p.mode is rcfg.AwaitMode.BORROWED:
                 out.write(f"{INDENT}{sub_cpp}* "
                           f"__sub_{y.suspension_index} = nullptr;\n")
@@ -728,11 +733,22 @@ class AsyncCoroCodegen:
     def _prescan_async_for_loops(
             self, func: TpyFunction,
             body: list[TpyStmt]) -> dict[int, int]:
-        """Find for-loops whose body contains await. For each, allocate a
-        uid, register frame-field declarations
-        ((__for_itr_N, __for_r_N), via decltype on `::tpy::__iter__`)
+        """Find for-loops whose body contains await OR are `async for`
+        (M6). For each, allocate a uid, register frame-field declarations
         and register the loop variable as a hoisted local so it persists
         across suspensions.
+
+        Sync for-with-await (M3.1): two slots,
+        `(__for_itr_N: decltype(::tpy::__iter__(it)),
+          __for_r_N: decltype(itr.__next__()))`.
+
+        Async-for (M6): one slot,
+        `__for_itr_N: decltype(it.__aiter__())`. No `__for_r_N` slot --
+        the advance is a Yield(await __anext__()) and the unwrapped
+        value goes straight to the loop var via the standard resume-bind
+        path. Also populates `func._async_for_struct_names[uid]` with
+        the C++ name of the `__anext__` sub-coro struct so the Yield
+        emit can size `__sub_<i>` and emplace it.
 
         Returns {id(TpyForEach) -> uid} for the CFG builder. Frame fields
         live on `func._async_for_fields` as `[(name, cpp_type)]` consumed
@@ -743,12 +759,13 @@ class AsyncCoroCodegen:
             return cached_map
         uid_map: dict[int, int] = {}
         fields_out: list[tuple[str, str]] = []
+        struct_names_out: dict[int, str] = {}
         counter = [0]
 
         def walk(stmts: list[TpyStmt]) -> None:
             for s in stmts:
-                if (isinstance(s, TpyForEach)
-                        and rcfg._stmts_have_any_await(s.body)):
+                if isinstance(s, TpyForEach) and (
+                        s.is_async or rcfg._stmts_have_any_await(s.body)):
                     cur_uid = counter[0]
                     counter[0] += 1
                     iter_t = self.types.get_resolved_type(s.iterable)
@@ -758,17 +775,31 @@ class AsyncCoroCodegen:
                             "(async for-with-await pre-scan)",
                             loc=s.loc)
                     src_cpp = self.types.type_to_cpp(unwrap_ref_type(iter_t))
-                    iter_field_type = (
-                        f"std::decay_t<decltype(::tpy::__iter__"
-                        f"(std::declval<{src_cpp}&>()))>")
-                    result_field_type = (
-                        f"decltype(std::declval<{iter_field_type}&>()"
-                        f".__next__())")
                     uid_map[id(s)] = cur_uid
-                    fields_out.append(
-                        (f"__for_itr_{cur_uid}", iter_field_type))
-                    fields_out.append(
-                        (f"__for_r_{cur_uid}", result_field_type))
+                    if s.is_async:
+                        iter_field_type = (
+                            f"std::decay_t<decltype(std::declval<"
+                            f"{src_cpp}&>().__aiter__())>")
+                        fields_out.append(
+                            (f"__for_itr_{cur_uid}", iter_field_type))
+                        if s.async_aiter_type is None:
+                            raise CodeGenError(
+                                "async-for missing resolved aiter type "
+                                "(internal: sema didn't populate "
+                                "stmt.async_aiter_type)", loc=s.loc)
+                        struct_names_out[cur_uid] = self._sub_struct_qualname(
+                            s.async_aiter_type, "__anext__")
+                    else:
+                        iter_field_type = (
+                            f"std::decay_t<decltype(::tpy::__iter__"
+                            f"(std::declval<{src_cpp}&>()))>")
+                        result_field_type = (
+                            f"decltype(std::declval<{iter_field_type}&>()"
+                            f".__next__())")
+                        fields_out.append(
+                            (f"__for_itr_{cur_uid}", iter_field_type))
+                        fields_out.append(
+                            (f"__for_r_{cur_uid}", result_field_type))
                     elem_t = (unwrap_ref_type(s.elem_type)
                               if s.elem_type else None)
                     if elem_t is None:
@@ -786,7 +817,26 @@ class AsyncCoroCodegen:
         walk(body)
         func._async_for_uid_map = uid_map
         func._async_for_fields = fields_out
+        func._async_for_struct_names = struct_names_out
         return uid_map
+
+    def _sub_struct_qualname(self, owner: NominalType, method: str) -> str:
+        """Build the C++ name of the sub-coro struct generated for an
+        async method `method` on record `owner`. Strips template args
+        from `owner`'s C++ name to derive the enclosing namespace, then
+        re-attaches them as a suffix on the templated sub-struct."""
+        owner_cpp = self.types.type_to_cpp(owner)
+        ns_prefix = owner_cpp.split("<", 1)[0]
+        ns_qual = (ns_prefix.rsplit("::", 1)[0] + "::"
+                   if "::" in ns_prefix else "")
+        type_args_suffix = ""
+        if owner.type_args:
+            inner_cpps = [self.types.type_to_cpp(ta)
+                          for ta in owner.type_args]
+            type_args_suffix = "<" + ", ".join(inner_cpps) + ">"
+        bare = AsyncCoroCodegen._sub_struct_name(method, owner.name)
+        return f"{ns_qual}{bare}{type_args_suffix}"
+
 
     def _prescan_with_stmts(
             self, func: TpyFunction,
@@ -857,27 +907,12 @@ class AsyncCoroCodegen:
                             # re-attached as a suffix on the coro
                             # struct reference -- the struct itself is
                             # templated over the same T as the CM.
-                            # Note: generic CMs are rejected at sema
-                            # today (see registration.py); type_args
-                            # handling is here so this prescan stays
-                            # robust if that restriction lifts.
-                            ns_prefix = ctx_cpp.split("<", 1)[0]
-                            ns_qual = (ns_prefix.rsplit("::", 1)[0] + "::"
-                                       if "::" in ns_prefix else "")
-                            type_args_suffix = ""
-                            if ctx_inner.type_args:
-                                inner_cpps = [
-                                    self.types.type_to_cpp(ta)
-                                    for ta in ctx_inner.type_args]
-                                type_args_suffix = (
-                                    "<" + ", ".join(inner_cpps) + ">")
-                            aenter_bare = AsyncCoroCodegen._sub_struct_name(
-                                "__aenter__", ctx_inner.name)
-                            aexit_bare = AsyncCoroCodegen._sub_struct_name(
-                                "__aexit__", ctx_inner.name)
+                            # Generic CMs are rejected at sema today (see
+                            # registration.py); the helper handles type_args
+                            # so this prescan stays robust if that lifts.
                             struct_names_out[cur_n] = (
-                                f"{ns_qual}{aenter_bare}{type_args_suffix}",
-                                f"{ns_qual}{aexit_bare}{type_args_suffix}",
+                                self._sub_struct_qualname(ctx_inner, "__aenter__"),
+                                self._sub_struct_qualname(ctx_inner, "__aexit__"),
                             )
                         if item.target is not None:
                             enter_t = (unwrap_ref_type(item.enter_type)
@@ -1806,10 +1841,16 @@ class AsyncCoroCodegen:
 
     def _emit_async_for_iter_setup(self, out: "TextIO", indent: str,
                                     stmt: 'rcfg.AsyncForIterSetup') -> None:
-        """Initialize the for-loop iterator into its frame slot:
-           __for_itr_<uid> = ::tpy::__iter__(<iterable>);"""
+        """Initialize the for-loop iterator into its frame slot.
+        Sync (M3.1):   __for_itr_<uid> = ::tpy::__iter__(<iterable>);
+        Async (M6):    __for_itr_<uid> = (<iterable>).__aiter__();
+        """
         iter_cpp = self.expressions.gen_expr(stmt.iterable_expr)
-        out.write(f"{indent}__for_itr_{stmt.uid} = ::tpy::__iter__({iter_cpp});\n")
+        if stmt.is_async:
+            out.write(f"{indent}__for_itr_{stmt.uid} = "
+                      f"({iter_cpp}).__aiter__();\n")
+        else:
+            out.write(f"{indent}__for_itr_{stmt.uid} = ::tpy::__iter__({iter_cpp});\n")
 
     def _emit_async_for_advance(self, out: "TextIO", indent: str,
                                   cfg: 'rcfg.CFG',
@@ -1980,6 +2021,9 @@ class AsyncCoroCodegen:
                               f"::std::monostate{{}}, "
                               f"::std::monostate{{}}, "
                               f"::std::monostate{{}});\n")
+            elif payload.async_for_uid is not None:
+                uid = payload.async_for_uid
+                out.write(f"{indent}{sub}.emplace(*__for_itr_{uid});\n")
             else:
                 call = payload.operand_expr
                 if isinstance(call, TpyCall):

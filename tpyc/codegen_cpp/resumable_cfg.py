@@ -98,6 +98,11 @@ class AwaitPayload:
     # `_build_async_with`; None for ordinary user awaits.
     async_with_kind: 'AsyncWithKind | None' = None
     async_with_ctx_n: int | None = None
+    # Set by `_build_async_for` so emit can synthesize
+    # `__sub_<i>.emplace(*__for_itr_<uid>)` and look up the sub-coro
+    # struct name via `func._async_for_struct_names`. None for
+    # ordinary user awaits.
+    async_for_uid: int | None = None
 
 
 @dataclass(frozen=True)
@@ -283,9 +288,16 @@ Terminator = Union[Fall, Branch, Yield, ReturnT, RaiseT, Unreachable,
 @dataclass(frozen=True)
 class AsyncForIterSetup:
     """Synthetic leaf stmt at the head of a CFG-decomposed for-loop.
-    Emit: `__for_itr_<uid> = ::tpy::__iter__(<iterable_expr>);`"""
+
+    Sync (`is_async=False`, v1.5 M3.1) emits:
+      `__for_itr_<uid> = ::tpy::__iter__(<iterable_expr>);`
+    Async (`is_async=True`, v1.5 M6) emits:
+      `__for_itr_<uid> = (<iterable_expr>).__aiter__();`
+    The frame field name is shared since only one of the two paths is
+    active per uid."""
     uid: int
     iterable_expr: TpyExpr
+    is_async: bool = False
 
 
 @dataclass(frozen=True)
@@ -583,7 +595,7 @@ class CFGBuilder:
             if _stmt_has_any_await(stmt):
                 return self._build_while(cur, stmt)
         elif isinstance(stmt, TpyForEach):
-            if _stmt_has_any_await(stmt):
+            if stmt.is_async or _stmt_has_any_await(stmt):
                 return self._build_for(cur, stmt)
         elif isinstance(stmt, TpyTry):
             if _stmt_has_any_await(stmt) or force_loop_decomp:
@@ -724,6 +736,8 @@ class CFGBuilder:
     # -- for ------------------------------------------------------------
 
     def _build_for(self, cur: int, stmt: TpyForEach) -> int | None:
+        if stmt.is_async:
+            return self._build_async_for(cur, stmt)
         # Universal iter/next lowering. The for-loop becomes:
         #   iter_init -> cond_advance --(has_value)-> body BBs --(fall)-> cond_advance
         #                            --(exhausted)-> exit
@@ -785,6 +799,127 @@ class CFGBuilder:
             if orelse_end is None:
                 return None
             return orelse_end
+        return exit_bb
+
+    def _build_async_for(self, cur: int, stmt: TpyForEach) -> int | None:
+        """Lower `async for y in ait: <body>` (v1.5 M6).
+
+        Shape:
+          iter_init_bb (AsyncForIterSetup(is_async=True))
+            -> TryRegion[ExceptRegion(StopAsyncIteration -> break)] {
+                 cond_bb: Yield(await __aiter.__anext__(), bind y)
+                 resume_bb: (binds y, falls out of try)
+               }
+            (pop TryRegion)
+            body_bb: <user body>, Fall -> cond_bb
+            handler -> exit_bb (via the loop's break_bb)
+
+        The TryRegion wraps ONLY the cond/resume pair, NOT the body.
+        A StopAsyncIteration from the body must propagate up like any
+        other exception, so the body's case bodies must not be wrapped
+        in the auto-catch.
+
+        Parser rejects `else:` on async-for, so no orelse handling here.
+        """
+        uid = self._for_uid_map.get(id(stmt))
+        if uid is None:
+            raise _CFGNotYetSupported(
+                "async-for reached CFG builder without a registered "
+                "uid (internal: pre-scan missed this loop).",
+                loc=stmt.loc,
+            )
+        # body_bb / exit_bb are created OUTSIDE the TryRegion push so a
+        # StopAsyncIteration thrown from the body propagates rather than
+        # being silently caught by the loop's auto-handler. iter_init_bb
+        # likewise stays outside (the __aiter__ call shouldn't throw
+        # StopAsyncIteration, and a try region around it would distort
+        # the case structure). cond_bb / resume_bb / handler body BB are
+        # created below INSIDE the push so the emitter wraps their case
+        # bodies in `catch (StopAsyncIteration&)`.
+        iter_init_bb = self._new_bb()
+        body_bb = self._new_bb()
+        exit_bb = self._new_bb()
+
+        self._finish(cur, Fall(next_bb=iter_init_bb))
+        self._blocks[iter_init_bb].stmts.append(
+            AsyncForIterSetup(uid=uid, iterable_expr=stmt.iterable,
+                              is_async=True))
+
+        # The handler body is a synthesized TpyBreak -- _build_block
+        # routes it through _loop_stack to the loop's break_bb, so
+        # _loop_stack must be active while the handler is built.
+        handler = TpyExceptHandler(
+            exception_type="StopAsyncIteration",
+            binding=None,
+            body=[TpyBreak(loc=stmt.loc)],
+            loc=stmt.loc,
+        )
+        try_region = TryRegion(
+            handlers=(handler,),
+            finally_helper_name=None,
+            tier="throw",
+            loc_source=stmt,
+        )
+
+        self._region_stack.append(try_region)
+        cond_bb = self._new_bb()
+        resume_bb = self._new_bb()
+        self._loop_stack.append(_LoopCtx(
+            continue_bb=cond_bb,
+            break_bb=exit_bb,
+            regions_at_entry=tuple(self._region_stack),
+        ))
+        try:
+            self._finish(iter_init_bb, Fall(next_bb=cond_bb))
+            dummy_await = TpyAwait(value=stmt.iterable, loc=stmt.loc)
+            payload = AwaitPayload(
+                mode=AwaitMode.INLINE,
+                sub_field_cpp_type="",  # filled in by struct emit
+                operand_expr=stmt.iterable,
+                kind=AwaitKind.ASSIGN,
+                bind_target=stmt.var,
+                return_stmt=None,
+                host_stmt=stmt,
+                await_node=dummy_await,
+                async_for_uid=uid,
+            )
+            yield_term = Yield(
+                payload=payload,
+                resume_bb=resume_bb,
+                suspension_index=len(self._yield_sites),
+            )
+            self._finish(cond_bb, yield_term)
+            self._yield_sites.append(yield_term)
+            # Build the synthesized except handler body (single TpyBreak)
+            # while the TryRegion is still on the stack so the
+            # ExceptRegion has the right parent.
+            except_region = ExceptRegion(
+                handler=handler,
+                parent_finally=None,
+                loc_source=stmt,
+            )
+            self._region_stack.append(except_region)
+            try:
+                handler_entry = self._new_bb()
+                handler_end = self._build_block(handler_entry, handler.body)
+                assert handler_end is None  # TpyBreak terminates
+                self._record_handler_entry(try_region, handler, handler_entry)
+            finally:
+                self._region_stack.pop()
+        finally:
+            self._region_stack.pop()
+
+        # body_bb sits outside the TryRegion -- a user `await` in the
+        # body whose result throws StopAsyncIteration propagates up
+        # rather than being silently swallowed.
+        self._finish(resume_bb, Fall(next_bb=body_bb))
+        try:
+            body_end = self._build_block(body_bb, stmt.body)
+            if body_end is not None:
+                self._finish(body_end, Fall(next_bb=cond_bb))
+        finally:
+            self._loop_stack.pop()
+
         return exit_bb
 
     # -- try/except/finally ---------------------------------------------
@@ -1290,9 +1425,12 @@ def _classify_await_position(
 def _stmt_has_any_await(stmt: TpyStmt) -> bool:
     """Walk a statement (its expression slots and sub_bodies) for any
     TpyAwait. Used for the lazy-decomposition decision. `async with`
-    always counts as containing awaits even when its body has none --
-    the `__aenter__` / `__aexit__` calls are themselves suspensions."""
+    and `async for` always count as containing awaits even when their
+    bodies have none -- the `__aenter__` / `__aexit__` / `__anext__`
+    calls are themselves suspensions."""
     if isinstance(stmt, TpyWith) and stmt.is_async:
+        return True
+    if isinstance(stmt, TpyForEach) and stmt.is_async:
         return True
 
     def walk_expr(e: TpyExpr | None) -> bool:

@@ -79,6 +79,10 @@ class MemoryError(Exception):
 @native("tpy::StopIteration")
 class StopIteration(Exception, ReturnException): ...
 
+@native("tpy::StopAsyncIteration")
+class StopAsyncIteration(Exception):
+    def __init__(self, message: str = "") -> None: ...
+
 # CancelledError inherits BaseException directly (not Exception) so
 # `except Exception` does not silently swallow it -- matches CPython 3.8+.
 # Code that wants cleanup-then-propagate on cancellation should use

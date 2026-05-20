@@ -1,0 +1,1 @@
+main.py:43: warning: Mutation of 'src' while iterating over it ('push' invalidates the iterator)
