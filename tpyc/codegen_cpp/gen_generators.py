@@ -850,27 +850,25 @@ class GeneratorCodegen:
     def _gen_generator_body(self, out: TextIO, func: TpyFunction, indent: str,
                             record_name: str | None = None) -> None:
         """Generate the function body inside __next__() with generator context."""
-        # Save and set generator context
+        # `pointer_locals` is owned by gen_body (reset + repopulated
+        # there), so it's intentionally absent from this save/restore.
         old_in_gen = self.ctx.in_generator_body
         old_field_names = self.ctx.generator_field_names
         old_optional_fields = self.ctx.generator_optional_fields
-        old_pointer_optional_fields = self.ctx.generator_pointer_repr_optional_fields
         old_for_info = self.ctx.generator_for_loop_info
         old_self_ref = self.ctx.generator_self_ref
 
         self.ctx.in_generator_body = True
         self.ctx.generator_field_names = set()
         self.ctx.generator_optional_fields = set()
-        self.ctx.generator_pointer_repr_optional_fields = set()
         if record_name:
             self.ctx.generator_self_ref = "__self"
             self.ctx.generator_field_names.add("__self")
         for pname, _ in func.params:
             self.ctx.generator_field_names.add(pname)
         if func.generator_locals:
-            for lname, ltype in func.generator_locals:
+            for lname, _ltype in func.generator_locals:
                 self.ctx.generator_field_names.add(lname)
-                self.ctx.classify_generator_local_storage_form(lname, ltype)
         # Add synthetic for-loop field names (all optional)
         for info in self.ctx.generator_for_loop_info.values():
             for field_name, _ in info.fields:
@@ -892,7 +890,6 @@ class GeneratorCodegen:
         self.ctx.in_generator_body = old_in_gen
         self.ctx.generator_field_names = old_field_names
         self.ctx.generator_optional_fields = old_optional_fields
-        self.ctx.generator_pointer_repr_optional_fields = old_pointer_optional_fields
         self.ctx.generator_for_loop_info = old_for_info
         self.ctx.generator_self_ref = old_self_ref
 

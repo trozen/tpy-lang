@@ -829,15 +829,6 @@ class CodeGenContext:
     generator_field_names: set[str] = field(default_factory=set)
     # Fields stored as std::optional (non-value locals + synthetic for-loop fields)
     generator_optional_fields: set[str] = field(default_factory=set)
-    # Subset of generator_field_names whose slot is a raw pointer (T*),
-    # not std::optional<...>. Bare nullptr serves as both "uninitialized"
-    # and "None", so the outer std::optional<...> wrapper is skipped and
-    # reads do NOT peel with (*name). Holds two shapes:
-    #   - pointer-repr Optional[NonValue] locals (T* slot)
-    #   - non-Optional non-value for-loop iter vars whose source is a
-    #     stable NativeIterable container (T* alias into the container
-    #     element; populated via GeneratorForInfo.pointer_form_loop_var)
-    generator_pointer_repr_optional_fields: set[str] = field(default_factory=set)
     # For-loops with yields in state machine generators: keyed by id(TpyForEach)
     # Values are GeneratorForInfo (not imported here to avoid circular dep)
     generator_for_loop_info: dict[int, object] = field(default_factory=dict)
@@ -1698,36 +1689,47 @@ class CodeGenContext:
                     return module_info.variables[original_name].is_pointer
         return False
 
-    def classify_generator_local_storage_form(
-            self, lname: str, ltype: 'TpyType') -> None:
-        """Add `lname` to the right generator-frame storage-form set.
+    def setup_resumable_frame_locals(self, func: 'TpyFunction') -> None:
+        """Populate `pointer_locals` and `generator_optional_fields` for
+        a resumable-frame body (generator __next__ or async __poll__).
 
-        Shared by gen_async and gen_generators body prescans. Three
-        outcomes:
+        For each local in `func.generator_locals`:
           - value type: not tracked (frame slot is `T name;`, no peel)
-          - pointer-form (pointer-repr Optional OR for-loop iter var
-            with a stable lvalue source): tracked in
-            `generator_pointer_repr_optional_fields`
-          - other non-value: tracked in `generator_optional_fields`
+          - pointer-form (pointer-repr Optional[NonValue] OR a for-loop
+            iter var with a stable lvalue source): added to
+            `pointer_locals` -- same dispatch as sync pointer-locals
+          - other non-value: added to `generator_optional_fields`
             (frame slot is `std::optional<T> name;`, reads via `(*name)`)
 
-        The pointer-form iter-var set is derived from
-        `self.generator_for_loop_info` (populated by the caller's
-        `_prescan_for_loops`), so the caller need only supply
-        `(lname, ltype)` for each local.
+        Caller's contract: `pointer_locals` and `generator_optional_fields`
+        are cleared at body entry and restored on exit (matches the
+        existing `generator_*` save/restore dance). `generator_for_loop_info`
+        must already be populated.
         """
-        ltype_inner = unwrap_ref_type(ltype)
-        if ltype_inner.is_value_type():
-            return
-        if (isinstance(ltype_inner, OptionalType)
-                and ltype_inner.uses_pointer_repr()):
-            self.generator_pointer_repr_optional_fields.add(lname)
-            return
+        # Pointer-form iter vars are seeded up-front so the for-loop
+        # emit path doesn't need to mutate `pointer_locals` mid-emission.
+        # Only the sync generator path populates `generator_for_loop_info`
+        # today; async coros use the CFG-based for-loop path and the
+        # dict stays empty, making this loop a no-op for them.
         for info in self.generator_for_loop_info.values():
-            if getattr(info, "pointer_form_loop_var", None) == lname:
-                self.generator_pointer_repr_optional_fields.add(lname)
-                return
-        self.generator_optional_fields.add(lname)
+            iter_var = getattr(info, "pointer_form_loop_var", None)
+            if iter_var is not None:
+                self.pointer_locals.add(iter_var)
+
+        if not func.generator_locals:
+            return
+
+        for lname, ltype in func.generator_locals:
+            ltype_inner = unwrap_ref_type(ltype)
+            if ltype_inner.is_value_type():
+                continue
+            if (isinstance(ltype_inner, OptionalType)
+                    and ltype_inner.uses_pointer_repr()):
+                self.pointer_locals.add(lname)
+                continue
+            if lname in self.pointer_locals:
+                continue
+            self.generator_optional_fields.add(lname)
 
     def is_already_pointer_source(self, expr: TpyExpr) -> bool:
         """True when `expr` renders as a `T*` value with no further lifting.

@@ -209,6 +209,7 @@ class StatementGenerator:
         if func.generator_locals:
             for lname, ltype in func.generator_locals:
                 self.ctx.var_types[lname] = ltype
+            self.ctx.setup_resumable_frame_locals(func)
         self.ctx.current_ns = local_ns
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
@@ -1476,13 +1477,10 @@ class StatementGenerator:
         if self.ctx.in_generator_body and stmt.name in self.ctx.generator_field_names:
             self.ctx.declared_vars.add(stmt.name)
             self.ctx.local_scope_names.add(stmt.name)
-            if stmt.name in self.ctx.generator_pointer_repr_optional_fields:
-                # Frame slot stores `T*` directly; mark as a pointer-local
-                # so reads/writes (arrow access, &(value) on assign,
-                # nullptr for None) flow through the same paths as a
-                # sync pointer-local. The mutation lives here because
-                # `gen_body`'s reset_scope clears `pointer_locals`.
-                self.ctx.pointer_locals.add(stmt.name)
+            if stmt.name in self.ctx.pointer_locals:
+                # Frame slot stores `T*` directly; reads/writes (arrow
+                # access, &(value) on assign, nullptr for None) flow
+                # through the same paths as a sync pointer-local.
                 if stmt.init:
                     target_type = self.ctx.var_types.get(stmt.name)
                     inner = (target_type.inner
@@ -3496,7 +3494,6 @@ class StatementGenerator:
             # a frame optional<T>. Preserves CPython aliasing across
             # yield/resume; the iter var follows the same pointer-local
             # dispatch as sync pointer-locals downstream.
-            self.ctx.pointer_locals.add(stmt.var)
             out.write(f"{inner}{cpp_var} = &(*({it})++);\n")
         else:
             out.write(f"{inner}{cpp_var} = *({it})++;\n")

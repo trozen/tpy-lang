@@ -17,6 +17,7 @@ Implementation status:
 """
 from __future__ import annotations
 
+import contextlib
 import copy
 from dataclasses import dataclass, fields, is_dataclass
 from enum import IntEnum
@@ -582,6 +583,48 @@ class AsyncCoroCodegen:
 
     # -- poll() body ----------------------------------------------------------
 
+    @contextlib.contextmanager
+    def _resumable_frame_ctx(self, func: TpyFunction, record_name: str | None):
+        """Set up + tear down resumable-frame ctx state for an async body.
+
+        Async bodies bypass `gen_body`, so this is also where
+        `pointer_locals` gets reset -- without it, the previous
+        function's pointer-locals leak into this one's body emission.
+        """
+        old_in_gen = self.ctx.in_generator_body
+        old_field_names = self.ctx.generator_field_names
+        old_optional_fields = self.ctx.generator_optional_fields
+        old_pointer_locals = self.ctx.pointer_locals
+        old_for_info = self.ctx.generator_for_loop_info
+        old_self_ref = self.ctx.generator_self_ref
+
+        self.ctx.in_generator_body = True
+        self.ctx.generator_field_names = set()
+        self.ctx.generator_optional_fields = set()
+        self.ctx.pointer_locals = set()
+        self.ctx.generator_for_loop_info = {}
+        if record_name:
+            self.ctx.generator_self_ref = "__self"
+            self.ctx.generator_field_names.add("__self")
+        else:
+            self.ctx.generator_self_ref = None
+        for pname, _ in func.params:
+            self.ctx.generator_field_names.add(pname)
+        if func.generator_locals:
+            for lname, _ltype in func.generator_locals:
+                self.ctx.generator_field_names.add(lname)
+        self.ctx.setup_resumable_frame_locals(func)
+
+        try:
+            yield
+        finally:
+            self.ctx.in_generator_body = old_in_gen
+            self.ctx.generator_field_names = old_field_names
+            self.ctx.generator_optional_fields = old_optional_fields
+            self.ctx.pointer_locals = old_pointer_locals
+            self.ctx.generator_for_loop_info = old_for_info
+            self.ctx.generator_self_ref = old_self_ref
+
     def gen_coro_finally_top_def(self, out: "TextIO", func: TpyFunction,
                                    record_name: str | None = None) -> None:
         """Emit member-function bodies for every `__finally_<n>()` helper
@@ -593,32 +636,7 @@ class AsyncCoroCodegen:
             return
         struct_name = self.gen_struct_name(func, record_name)
 
-        # Set up field-rewrite ctx once for all helpers (they share the
-        # same frame layout).
-        old_in_gen = self.ctx.in_generator_body
-        old_field_names = self.ctx.generator_field_names
-        old_optional_fields = self.ctx.generator_optional_fields
-        old_pointer_optional_fields = self.ctx.generator_pointer_repr_optional_fields
-        old_self_ref = self.ctx.generator_self_ref
-        old_for_info = self.ctx.generator_for_loop_info
-        self.ctx.in_generator_body = True
-        self.ctx.generator_field_names = set()
-        self.ctx.generator_optional_fields = set()
-        self.ctx.generator_pointer_repr_optional_fields = set()
-        self.ctx.generator_for_loop_info = {}
-        if record_name:
-            self.ctx.generator_self_ref = "__self"
-            self.ctx.generator_field_names.add("__self")
-        else:
-            self.ctx.generator_self_ref = None
-        for pname, _ in func.params:
-            self.ctx.generator_field_names.add(pname)
-        if func.generator_locals:
-            for lname, ltype in func.generator_locals:
-                self.ctx.generator_field_names.add(lname)
-                self.ctx.classify_generator_local_storage_form(lname, ltype)
-
-        try:
+        with self._resumable_frame_ctx(func, record_name):
             for helper_name, body_stmts in cfg.finally_helpers:
                 self._emit_template_header(out, func)
                 out.write(f"void {struct_name}::{helper_name}() {{\n")
@@ -627,13 +645,6 @@ class AsyncCoroCodegen:
                     self.statements.gen_stmt(out, stmt)
                 self.ctx.indent_level = 0
                 out.write(f"}}\n")
-        finally:
-            self.ctx.in_generator_body = old_in_gen
-            self.ctx.generator_field_names = old_field_names
-            self.ctx.generator_optional_fields = old_optional_fields
-            self.ctx.generator_pointer_repr_optional_fields = old_pointer_optional_fields
-            self.ctx.generator_for_loop_info = old_for_info
-            self.ctx.generator_self_ref = old_self_ref
 
     def gen_coro_poll_def(self, out: "TextIO", func: TpyFunction,
                             record_name: str | None = None) -> None:
@@ -654,58 +665,24 @@ class AsyncCoroCodegen:
             # same reason; reuse the pattern.
             out.write(f"{INDENT}(void)waker;\n")
 
-        # Set up async-coro context (reuses generator field-rewrite path
-        # plus async-specific return rewrite).
-        old_in_gen = self.ctx.in_generator_body
-        old_field_names = self.ctx.generator_field_names
-        old_optional_fields = self.ctx.generator_optional_fields
-        old_pointer_optional_fields = self.ctx.generator_pointer_repr_optional_fields
-        old_for_info = self.ctx.generator_for_loop_info
-        old_self_ref = self.ctx.generator_self_ref
+        # Async return-rewrite needs the C++ Poll<T> type and DONE
+        # state label so `return v` lowers correctly inside the state
+        # machine.
         old_in_async = getattr(self.ctx, "in_async_coro_body", False)
         old_async_ret_cpp = getattr(self.ctx, "async_coro_return_cpp", None)
         old_async_done_label = getattr(self.ctx, "async_coro_done_state", None)
 
-        self.ctx.in_generator_body = True
-        self.ctx.generator_field_names = set()
-        self.ctx.generator_optional_fields = set()
-        self.ctx.generator_pointer_repr_optional_fields = set()
-        self.ctx.generator_for_loop_info = {}
-        if record_name:
-            self.ctx.generator_self_ref = "__self"
-            self.ctx.generator_field_names.add("__self")
-        else:
-            self.ctx.generator_self_ref = None
-
-        self.ctx.in_async_coro_body = True
-        self.ctx.async_coro_return_cpp = self._ret_cpp(func)
-        self.ctx.async_coro_done_state = "S_DONE"
-
-        # Populate field-rewrite sets: params + hoisted locals are frame fields.
-        for pname, _ in func.params:
-            self.ctx.generator_field_names.add(pname)
-        if func.generator_locals:
-            for lname, ltype in func.generator_locals:
-                self.ctx.generator_field_names.add(lname)
-                self.ctx.classify_generator_local_storage_form(lname, ltype)
-
-        # Save current_return_type so statements.py's TpyReturn handler
-        # sees the right context.
-        self.ctx.current_return_type = func.return_type
-
-        try:
-            # Emit while(true) switch + each case body via the CFG.
-            self._emit_state_machine(out, func, cfg)
-        finally:
-            self.ctx.in_generator_body = old_in_gen
-            self.ctx.generator_field_names = old_field_names
-            self.ctx.generator_optional_fields = old_optional_fields
-            self.ctx.generator_pointer_repr_optional_fields = old_pointer_optional_fields
-            self.ctx.generator_for_loop_info = old_for_info
-            self.ctx.generator_self_ref = old_self_ref
-            self.ctx.in_async_coro_body = old_in_async
-            self.ctx.async_coro_return_cpp = old_async_ret_cpp
-            self.ctx.async_coro_done_state = old_async_done_label
+        with self._resumable_frame_ctx(func, record_name):
+            self.ctx.in_async_coro_body = True
+            self.ctx.async_coro_return_cpp = self._ret_cpp(func)
+            self.ctx.async_coro_done_state = "S_DONE"
+            self.ctx.current_return_type = func.return_type
+            try:
+                self._emit_state_machine(out, func, cfg)
+            finally:
+                self.ctx.in_async_coro_body = old_in_async
+                self.ctx.async_coro_return_cpp = old_async_ret_cpp
+                self.ctx.async_coro_done_state = old_async_done_label
 
         out.write(f"}}\n")
 
