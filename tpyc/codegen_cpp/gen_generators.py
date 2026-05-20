@@ -9,7 +9,7 @@ from ..parse.nodes import (
     TpyFunction, TpyYield, TpyStmt, TpyWhile, TpyForEach, TpyReturn, TpyVarDecl,
     TpyCall, TpyName, TpyExpr,
 )
-from ..typesys import IntLiteralType, TypeParamRef, TupleType, is_protocol_type, unwrap_ref_type
+from ..typesys import IntLiteralType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_ref_type
 from ..type_def_registry import is_str_type
 from tpyc import modules as builtin_modules
 from .context import INDENT, escape_cpp_name
@@ -21,6 +21,13 @@ class GeneratorForInfo:
     uid: int
     strategy: str  # "range" | "begin_end" | "next" | "iter_next"
     fields: list[tuple[str, str]]  # (field_name, cpp_type_string) for struct fields
+    # Loop variable name when the iter source yields stable lvalue references
+    # (begin_end over a NativeIterable container of non-value elements). The
+    # variable's frame slot is emitted as `T*` (pointer-form), not
+    # `std::optional<T>` (value-copy), so `for it in items: ... prev = it`
+    # preserves CPython aliasing semantics across yield/resume instead of
+    # copying the element into the frame. None when copy-storage is used.
+    pointer_form_loop_var: str | None = None
 
 
 def _collect_yield_stmts(stmts: list[TpyStmt]) -> list[TpyYield]:
@@ -575,7 +582,26 @@ class GeneratorCodegen:
             # If iterable is not a named variable (param or local), need a source field
             if not self._is_named_generator_field(stmt.iterable):
                 fields.insert(0, (f"__for_src_{uid}", container_cpp))
-            return GeneratorForInfo(uid=uid, strategy="begin_end", fields=fields)
+            # Non-value element type with stable lvalue source: the loop var
+            # becomes T* (aliasing the container element) instead of
+            # std::optional<T> (value-copy). Preserves CPython aliasing
+            # semantics across yield/resume.
+            # ReadonlyType elements need a `const T*` slot (not plain `T*`);
+            # the current emission path only emits the latter, so readonly
+            # elements fall back to value-storage to avoid a
+            # const-correctness violation when taking `&(*iter)`.
+            elem_for_form = unwrap_ref_type(native_elem) if native_elem else None
+            pointer_form_var = (
+                stmt.var
+                if (elem_for_form is not None
+                    and not elem_for_form.is_value_type()
+                    and not isinstance(elem_for_form, ReadonlyType))
+                else None
+            )
+            return GeneratorForInfo(
+                uid=uid, strategy="begin_end", fields=fields,
+                pointer_form_loop_var=pointer_form_var,
+            )
 
         # Universal default: ::tpy::__iter__() + __next__() loop.
         # Handles Iterable[T]/NativeIterable[T] protocol params, user types
@@ -588,6 +614,23 @@ class GeneratorCodegen:
             (f"__for_r_{uid}", result_field_type),
         ]
         return GeneratorForInfo(uid=uid, strategy="iter_next", fields=fields)
+
+    @staticmethod
+    def _pointer_form_loop_vars(
+            for_loop_info: dict[int, 'GeneratorForInfo']) -> set[str]:
+        """Names of for-loop iter vars that should be pointer-form (T*).
+
+        Shared by `gen_generator_struct` (frame field emission) and
+        `_gen_generator_body` (body prescan). Driven by
+        `GeneratorForInfo.pointer_form_loop_var` (set in
+        `_analyze_for_strategy` for begin_end iterables with non-value
+        elements).
+        """
+        return {
+            info.pointer_form_loop_var
+            for info in for_loop_info.values()
+            if info.pointer_form_loop_var is not None
+        }
 
     def _is_named_generator_field(self, expr: TpyExpr) -> bool:
         """Check if expression is a named variable that's stable across yields.
@@ -700,15 +743,32 @@ class GeneratorCodegen:
                 out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
 
         # Local variable fields
+        pointer_form_loop_vars = self._pointer_form_loop_vars(for_loop_info)
         if func.generator_locals:
             for lname, ltype in func.generator_locals:
-                cpp_type = self.types.type_to_cpp(ltype)
                 cpp_name = escape_cpp_name(lname)
-                if ltype.is_value_type():
+                ltype_inner = unwrap_ref_type(ltype)
+                if ltype_inner.is_value_type():
                     # Value types: leave uninitialized
+                    cpp_type = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
+                elif (isinstance(ltype_inner, OptionalType)
+                        and ltype_inner.uses_pointer_repr()):
+                    # Pointer-repr Optional: bare `T* = nullptr` aliases
+                    # the source and uses nullptr as both "uninitialized"
+                    # and "None"; no outer `std::optional<...>` wrap.
+                    inner_cpp = self.types.type_to_cpp(ltype_inner.inner)
+                    out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
+                elif lname in pointer_form_loop_vars:
+                    # Stable-lvalue iter source: alias the container
+                    # element via `T*` instead of copying into an
+                    # `std::optional<T>` slot that gets overwritten each
+                    # iteration (would break `prev = it` aliasing across
+                    # yields). See GeneratorForInfo.pointer_form_loop_var.
+                    inner_cpp = self.types.type_to_cpp(ltype_inner)
+                    out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
                 else:
-                    # Non-value types: std::optional (no premature construction)
+                    cpp_type = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}std::optional<{cpp_type}> {cpp_name};\n")
 
         # Synthetic fields for for-loops containing yields (always optional)
@@ -794,12 +854,14 @@ class GeneratorCodegen:
         old_in_gen = self.ctx.in_generator_body
         old_field_names = self.ctx.generator_field_names
         old_optional_fields = self.ctx.generator_optional_fields
+        old_pointer_optional_fields = self.ctx.generator_pointer_repr_optional_fields
         old_for_info = self.ctx.generator_for_loop_info
         old_self_ref = self.ctx.generator_self_ref
 
         self.ctx.in_generator_body = True
         self.ctx.generator_field_names = set()
         self.ctx.generator_optional_fields = set()
+        self.ctx.generator_pointer_repr_optional_fields = set()
         if record_name:
             self.ctx.generator_self_ref = "__self"
             self.ctx.generator_field_names.add("__self")
@@ -808,8 +870,7 @@ class GeneratorCodegen:
         if func.generator_locals:
             for lname, ltype in func.generator_locals:
                 self.ctx.generator_field_names.add(lname)
-                if not ltype.is_value_type():
-                    self.ctx.generator_optional_fields.add(lname)
+                self.ctx.classify_generator_local_storage_form(lname, ltype)
         # Add synthetic for-loop field names (all optional)
         for info in self.ctx.generator_for_loop_info.values():
             for field_name, _ in info.fields:
@@ -831,6 +892,7 @@ class GeneratorCodegen:
         self.ctx.in_generator_body = old_in_gen
         self.ctx.generator_field_names = old_field_names
         self.ctx.generator_optional_fields = old_optional_fields
+        self.ctx.generator_pointer_repr_optional_fields = old_pointer_optional_fields
         self.ctx.generator_for_loop_info = old_for_info
         self.ctx.generator_self_ref = old_self_ref
 

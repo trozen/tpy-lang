@@ -284,7 +284,7 @@ The compiler-internal abstraction shared by `async def` lowering (and, eventuall
 |-----------|-------------|
 | State integer | Discriminates which suspension point to resume from. `S_INITIAL = 0`, `S_<n>` for each suspension in source order, `S_DONE`. |
 | Captured params | Frame fields per the capture rules above. |
-| Hoisted locals | Any local live across at least one suspension is hoisted to a frame field. |
+| Hoisted locals | Any local live across at least one suspension is hoisted to a frame field. Value-type locals emit as plain `T`; non-value locals as `std::optional<T>` (engaged on first assignment) -- EXCEPT pointer-repr `Optional[NonValue]` locals (`T \| None` where `T` is a reference type), which emit as `T*` initialized to `nullptr`. `nullptr` doubles as "uninitialized" and "None", avoiding a `std::optional<std::optional<T>>` double-wrap that breaks for `@nocopy T` (deleted inner copy ctor) and would otherwise be a hidden value-copy diverging from CPython aliasing semantics. |
 | Expression result slots | When `await x` appears in a non-statement position, each await's intermediate result is a frame field. The lowering breaks compound expressions into a sequence of "compute -> await -> store result" steps. |
 | Sub-future fields | Each `await x` allocates a frame field of `x`'s type, wrapped in `std::optional<>` so it can be destroyed in place after `Ready` *or* after a caught exception (see Frame Cleanup). Distinct awaits at non-overlapping suspension intervals can share a single field via `std::variant` (see Open Questions). |
 | `cancel_pending` flag | Set by `Task.cancel()`; checked at every suspension's resume point (inside the appropriate try wrappers). |

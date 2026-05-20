@@ -12,30 +12,30 @@ std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen::__next__() {
         default: goto __done;
     }
     // prev: P | None = None
-    prev = std::optional<P>{};
+    prev = nullptr;
     // for it in items:
     __for_it_0 = (items).begin();
     __for_end_0 = (items).end();
     while (*__for_it_0 != *__for_end_0) {
-        it = *(*__for_it_0)++;
+        it = &(*(*__for_it_0)++);
         // yield (prev, it)
         __state = 1;
-        return std::tuple<P*, P*>{::tpy::optional_to_ptr((*prev)), &((*it))};
+        return std::tuple<P*, P*>{prev, it};
         __resume_1:;
         // # Sentinel: x == 0 means "reset prev"; otherwise carry forward.
         // if it.x == Int32(0):
-        if (((*it).x == 0)) {
+        if ((it->x == 0)) {
             // prev = None
-            prev = std::optional<P>{};
+            prev = nullptr;
         // else:
         } else {
             // prev = it
-            prev = (*it);
+            prev = it;
         }
     }
     // yield (prev, None)
     __state = 2;
-    return std::tuple<P*, P*>{::tpy::optional_to_ptr((*prev)), nullptr};
+    return std::tuple<P*, P*>{prev, nullptr};
     __resume_2:;
     __done:
     __state = -1;

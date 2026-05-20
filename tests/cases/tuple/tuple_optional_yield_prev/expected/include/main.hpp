@@ -37,8 +37,8 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 struct __gen_gen {
     int __state;
     std::vector<P>& items;
-    std::optional<std::optional<P>> prev;
-    std::optional<P> it;
+    P* prev = nullptr;
+    P* it = nullptr;
     std::optional<decltype(std::declval<std::vector<P>&>().begin())> __for_it_0;
     std::optional<decltype(std::declval<std::vector<P>&>().begin())> __for_end_0;
 

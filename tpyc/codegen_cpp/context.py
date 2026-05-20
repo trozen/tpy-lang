@@ -829,6 +829,15 @@ class CodeGenContext:
     generator_field_names: set[str] = field(default_factory=set)
     # Fields stored as std::optional (non-value locals + synthetic for-loop fields)
     generator_optional_fields: set[str] = field(default_factory=set)
+    # Subset of generator_field_names whose slot is a raw pointer (T*),
+    # not std::optional<...>. Bare nullptr serves as both "uninitialized"
+    # and "None", so the outer std::optional<...> wrapper is skipped and
+    # reads do NOT peel with (*name). Holds two shapes:
+    #   - pointer-repr Optional[NonValue] locals (T* slot)
+    #   - non-Optional non-value for-loop iter vars whose source is a
+    #     stable NativeIterable container (T* alias into the container
+    #     element; populated via GeneratorForInfo.pointer_form_loop_var)
+    generator_pointer_repr_optional_fields: set[str] = field(default_factory=set)
     # For-loops with yields in state machine generators: keyed by id(TpyForEach)
     # Values are GeneratorForInfo (not imported here to avoid circular dep)
     generator_for_loop_info: dict[int, object] = field(default_factory=dict)
@@ -1433,7 +1442,7 @@ class CodeGenContext:
         Optional field: `optional_to_ptr` at borrow sites, double-deref
         at narrowing sites, `ptr_to_optional` at assignments.
 
-        Covers four source shapes that produce the same C++ shape:
+        Covers three source shapes that produce the same C++ shape:
 
           * TpyFieldAccess on a storage-form Optional[T] field of a
             record (`obj.maybe_p` where the field is stored as
@@ -1449,12 +1458,6 @@ class CodeGenContext:
             Optional. Routed through the classifier rather than direct
             set lookup so all name-keyed shape dispatch goes through one
             place; the backing set is `storage_form_optional_locals`.
-          * TpyName referring to a generator-promoted Optional[T] local
-            (state-machine field declared as
-            `std::optional<std::optional<T>>`; gen_expr's TpyName handler
-            already emits `(*prev)` to deref the outer init-tracking
-            optional, leaving the inner storage form as the rendered
-            lvalue).
 
         Note: `optional_locals` names (`Own[OptionalType[P_ref]]` params
         rendered as `std::optional<P>&&`) are NOT included. They share
@@ -1485,11 +1488,6 @@ class CodeGenContext:
         if isinstance(expr, TpyName):
             if self.local_cpp_form(expr.name) is LocalCppForm.STORAGE_OPTIONAL:
                 return True
-            if (self.in_generator_body
-                    and expr.name in self.generator_optional_fields):
-                var_type = self.var_types.get(expr.name)
-                return (isinstance(var_type, OptionalType)
-                        and var_type.uses_pointer_repr())
         return False
 
     def _is_pointer_global(self, expr: TpyExpr) -> bool:
@@ -1699,6 +1697,37 @@ class CodeGenContext:
                 if module_info and original_name in module_info.variables:
                     return module_info.variables[original_name].is_pointer
         return False
+
+    def classify_generator_local_storage_form(
+            self, lname: str, ltype: 'TpyType') -> None:
+        """Add `lname` to the right generator-frame storage-form set.
+
+        Shared by gen_async and gen_generators body prescans. Three
+        outcomes:
+          - value type: not tracked (frame slot is `T name;`, no peel)
+          - pointer-form (pointer-repr Optional OR for-loop iter var
+            with a stable lvalue source): tracked in
+            `generator_pointer_repr_optional_fields`
+          - other non-value: tracked in `generator_optional_fields`
+            (frame slot is `std::optional<T> name;`, reads via `(*name)`)
+
+        The pointer-form iter-var set is derived from
+        `self.generator_for_loop_info` (populated by the caller's
+        `_prescan_for_loops`), so the caller need only supply
+        `(lname, ltype)` for each local.
+        """
+        ltype_inner = unwrap_ref_type(ltype)
+        if ltype_inner.is_value_type():
+            return
+        if (isinstance(ltype_inner, OptionalType)
+                and ltype_inner.uses_pointer_repr()):
+            self.generator_pointer_repr_optional_fields.add(lname)
+            return
+        for info in self.generator_for_loop_info.values():
+            if getattr(info, "pointer_form_loop_var", None) == lname:
+                self.generator_pointer_repr_optional_fields.add(lname)
+                return
+        self.generator_optional_fields.add(lname)
 
     def is_already_pointer_source(self, expr: TpyExpr) -> bool:
         """True when `expr` renders as a `T*` value with no further lifting.

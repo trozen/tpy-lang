@@ -30,7 +30,7 @@ from ..parse.nodes import (
     TpyNoneLiteral, TpyCoerce,
     is_stable_address_lvalue,
 )
-from ..typesys import NominalType, unwrap_ref_type, unwrap_own, VoidType
+from ..typesys import NominalType, OptionalType, unwrap_ref_type, unwrap_own, VoidType
 from ..type_def_registry import is_str_type, is_str_category
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext
 from . import resumable_cfg as rcfg
@@ -450,7 +450,6 @@ class AsyncCoroCodegen:
                 func, "_with_owning_str_targets", set())
             for lname, ltype in func.generator_locals:
                 ltype_inner = unwrap_ref_type(ltype)
-                cpp_type = self.types.type_to_cpp(ltype_inner)
                 cpp_name = escape_cpp_name(lname)
                 if lname in owning_str:
                     # `with X() as label:` -- `__enter__` returns by
@@ -459,8 +458,17 @@ class AsyncCoroCodegen:
                     # `_prescan_with_stmts`.
                     out.write(f"{INDENT}std::string {cpp_name};\n")
                 elif ltype_inner.is_value_type():
+                    cpp_type = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
+                elif (isinstance(ltype_inner, OptionalType)
+                        and ltype_inner.uses_pointer_repr()):
+                    # Pointer-repr Optional: bare `T* = nullptr` aliases
+                    # the source and uses nullptr as both "uninitialized"
+                    # and "None"; no outer `std::optional<...>` wrap.
+                    inner_cpp = self.types.type_to_cpp(ltype_inner.inner)
+                    out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
                 else:
+                    cpp_type = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}std::optional<{cpp_type}> {cpp_name};\n")
 
         # Synthetic fields for CFG-decomposed for-loops: one
@@ -590,11 +598,13 @@ class AsyncCoroCodegen:
         old_in_gen = self.ctx.in_generator_body
         old_field_names = self.ctx.generator_field_names
         old_optional_fields = self.ctx.generator_optional_fields
+        old_pointer_optional_fields = self.ctx.generator_pointer_repr_optional_fields
         old_self_ref = self.ctx.generator_self_ref
         old_for_info = self.ctx.generator_for_loop_info
         self.ctx.in_generator_body = True
         self.ctx.generator_field_names = set()
         self.ctx.generator_optional_fields = set()
+        self.ctx.generator_pointer_repr_optional_fields = set()
         self.ctx.generator_for_loop_info = {}
         if record_name:
             self.ctx.generator_self_ref = "__self"
@@ -606,8 +616,7 @@ class AsyncCoroCodegen:
         if func.generator_locals:
             for lname, ltype in func.generator_locals:
                 self.ctx.generator_field_names.add(lname)
-                if not unwrap_ref_type(ltype).is_value_type():
-                    self.ctx.generator_optional_fields.add(lname)
+                self.ctx.classify_generator_local_storage_form(lname, ltype)
 
         try:
             for helper_name, body_stmts in cfg.finally_helpers:
@@ -622,6 +631,7 @@ class AsyncCoroCodegen:
             self.ctx.in_generator_body = old_in_gen
             self.ctx.generator_field_names = old_field_names
             self.ctx.generator_optional_fields = old_optional_fields
+            self.ctx.generator_pointer_repr_optional_fields = old_pointer_optional_fields
             self.ctx.generator_for_loop_info = old_for_info
             self.ctx.generator_self_ref = old_self_ref
 
@@ -649,6 +659,7 @@ class AsyncCoroCodegen:
         old_in_gen = self.ctx.in_generator_body
         old_field_names = self.ctx.generator_field_names
         old_optional_fields = self.ctx.generator_optional_fields
+        old_pointer_optional_fields = self.ctx.generator_pointer_repr_optional_fields
         old_for_info = self.ctx.generator_for_loop_info
         old_self_ref = self.ctx.generator_self_ref
         old_in_async = getattr(self.ctx, "in_async_coro_body", False)
@@ -658,6 +669,7 @@ class AsyncCoroCodegen:
         self.ctx.in_generator_body = True
         self.ctx.generator_field_names = set()
         self.ctx.generator_optional_fields = set()
+        self.ctx.generator_pointer_repr_optional_fields = set()
         self.ctx.generator_for_loop_info = {}
         if record_name:
             self.ctx.generator_self_ref = "__self"
@@ -675,8 +687,7 @@ class AsyncCoroCodegen:
         if func.generator_locals:
             for lname, ltype in func.generator_locals:
                 self.ctx.generator_field_names.add(lname)
-                if not unwrap_ref_type(ltype).is_value_type():
-                    self.ctx.generator_optional_fields.add(lname)
+                self.ctx.classify_generator_local_storage_form(lname, ltype)
 
         # Save current_return_type so statements.py's TpyReturn handler
         # sees the right context.
@@ -689,6 +700,7 @@ class AsyncCoroCodegen:
             self.ctx.in_generator_body = old_in_gen
             self.ctx.generator_field_names = old_field_names
             self.ctx.generator_optional_fields = old_optional_fields
+            self.ctx.generator_pointer_repr_optional_fields = old_pointer_optional_fields
             self.ctx.generator_for_loop_info = old_for_info
             self.ctx.generator_self_ref = old_self_ref
             self.ctx.in_async_coro_body = old_in_async

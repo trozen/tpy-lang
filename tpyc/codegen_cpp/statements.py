@@ -1476,21 +1476,24 @@ class StatementGenerator:
         if self.ctx.in_generator_body and stmt.name in self.ctx.generator_field_names:
             self.ctx.declared_vars.add(stmt.name)
             self.ctx.local_scope_names.add(stmt.name)
+            if stmt.name in self.ctx.generator_pointer_repr_optional_fields:
+                # Frame slot stores `T*` directly; mark as a pointer-local
+                # so reads/writes (arrow access, &(value) on assign,
+                # nullptr for None) flow through the same paths as a
+                # sync pointer-local. The mutation lives here because
+                # `gen_body`'s reset_scope clears `pointer_locals`.
+                self.ctx.pointer_locals.add(stmt.name)
+                if stmt.init:
+                    target_type = self.ctx.var_types.get(stmt.name)
+                    inner = (target_type.inner
+                             if isinstance(target_type, OptionalType)
+                             else target_type)
+                    cpp_type = self.types.type_to_cpp(inner) if inner else "auto"
+                    return self._gen_pointer_local_rebind(
+                        stmt.name, cpp_type, stmt.init, target_type, indent)
+                return None
             if stmt.init:
                 cpp_name = escape_cpp_name(stmt.name)
-                # Generator Optional[T] field stores std::optional<std::optional<T>>:
-                # outer = init-tracking, inner = the T | None storage form. A None
-                # init must engage the outer with a default-constructed (nullopt)
-                # inner -- assigning bare `nullptr` would be a type error and
-                # `std::nullopt` would set the outer to nullopt instead of
-                # engaging it.
-                if (stmt.name in self.ctx.generator_optional_fields
-                        and isinstance(stmt.init, TpyNoneLiteral)):
-                    var_type = self.ctx.var_types.get(stmt.name)
-                    if (isinstance(var_type, OptionalType)
-                            and var_type.uses_pointer_repr()):
-                        inner_cpp = var_type.to_cpp()
-                        return f"{indent}{cpp_name} = {inner_cpp}{{}};\n"
                 init_expr = self.expressions.gen_expr(stmt.init)
                 return f"{indent}{cpp_name} = {init_expr};\n"
             return None
@@ -3461,7 +3464,15 @@ class StatementGenerator:
         out.write(f"{indent}while ({it} != {end}) {{\n")
 
         inner = indent + INDENT
-        out.write(f"{inner}{cpp_var} = *({it})++;\n")
+        if info.pointer_form_loop_var == stmt.var:
+            # Alias the container element (T*) rather than copying into
+            # a frame optional<T>. Preserves CPython aliasing across
+            # yield/resume; the iter var follows the same pointer-local
+            # dispatch as sync pointer-locals downstream.
+            self.ctx.pointer_locals.add(stmt.var)
+            out.write(f"{inner}{cpp_var} = &(*({it})++);\n")
+        else:
+            out.write(f"{inner}{cpp_var} = *({it})++;\n")
 
         self._gen_generator_loop_body(out, stmt, indent)
 
