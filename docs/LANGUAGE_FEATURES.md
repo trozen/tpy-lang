@@ -5650,6 +5650,23 @@ Send/Sync rules for built-in types:
   clause is parser-rejected (same restriction as `await` in
   `for`/`while`/`else:`). `StopAsyncIteration` shipped as a builtin
   exception in the same milestone.
+- **Working (v1.5 M7)**: generic async free functions and methods.
+  `async def f[T](x: T) -> T:` and `async def m[T](self, x: T) -> T:`
+  on a non-generic class both work with T inferred from arguments at
+  the await site. Every await on a direct call to an async def --
+  free function or method -- now carries the substituted return type
+  and inferred type-args mapping of the callee on the await node
+  (rather than re-deriving from the callee's registry FunctionInfo).
+  The sub-coro frame field is qualified with `<T_substituted>` and
+  the awaited-value slot uses the substituted type. Generic
+  TypeParamRef params use `::tpy::param_val_or_ref_t<T>` (ctor) and
+  `::tpy::val_or_ref_t<T>` (field) so a value-typed T stores by
+  value and an object-typed T stores by reference -- same
+  trait-based pattern non-async generic codegen uses. Unblocks
+  generic asyncio helpers (`wait_for`, `gather`, ...). Async methods
+  on generic *classes* remain rejected (the out-of-line coro-struct
+  `__poll__` body would need the class's template header and a
+  combined arg list).
 - **Open (v1.5+)**: `gather`, `wait_for`,
   nesting two `await`-in-`finally` regions (multi-item / nested
   `async with`), await inside a `for`/`while` `else:` clause,

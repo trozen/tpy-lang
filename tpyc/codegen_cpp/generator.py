@@ -1019,7 +1019,9 @@ class CodeGenerator:
                     self.gen_async.gen_coro_finally_top_def(
                         hpp, method, record_name=record.name)
                     hpp.write("\n")
-                struct_name = self.gen_async.gen_struct_name(method, record.name)
+                # Templated factory body too: zero-arg generic async defs
+                # would otherwise fall off CTAD.
+                struct_name = self.gen_async._struct_name_templated(method, record.name)
                 cpp_record = escape_cpp_name(record.name.replace(".", "::"))
                 params = self.functions.gen_params(
                     method.params, method.type_params,
@@ -1029,6 +1031,7 @@ class CodeGenerator:
                 else:
                     args = "*this"
                 const_suffix = " const" if method.is_readonly else ""
+                self.gen_async._emit_template_header(hpp, method)
                 hpp.write(f"inline {struct_name} {cpp_record}::{method.name}({params}){const_suffix} {{\n")
                 hpp.write(f"    return {struct_name}({args});\n")
                 hpp.write(f"}}\n\n")
@@ -1121,6 +1124,11 @@ class CodeGenerator:
                     hpp.write("\n")
                     emitted_func_decl = True
                 continue  # Complex generators: factory emitted in source file
+            if func.is_async:
+                # Async defs go through AsyncCoroCodegen.gen_factory_forward_decl
+                # earlier in the pipeline; gen_function_decl would otherwise
+                # emit a stray sync template stub for generic async defs.
+                continue
             if self.functions.gen_function_decl(hpp, func):
                 emitted_func_decl = True
 

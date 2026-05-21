@@ -1,0 +1,4 @@
+Box[T].get() returns a tpy._Ptr in CPython mode (not the unwrapped value),
+which the print() rendering exposes. The test's purpose is the TPy
+codegen path for non-value-type generic async params; CPython
+behavior of Box.get() is outside scope.

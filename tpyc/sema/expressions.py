@@ -2090,17 +2090,17 @@ class ExpressionAnalyzer:
         operand = expr.value
         async_fi = self._resolve_call_to_async_def(operand)
         if async_fi is not None:
-            # Recursively analyze the operand call (validates arg types).
+            # Recursively analyze the operand call (validates arg types and,
+            # for generic async defs, infers and substitutes type args into
+            # the operand's `resolved_function_info`).
             self.analyze_expr(operand)
             expr.awaited_async_func_name = async_fi.name
-            # async_fi.return_type is Awaitable[T]; the user-visible await
-            # result is T (the protocol's type arg).
-            ret = unwrap_ref_type(async_fi.return_type)
-            if (isinstance(ret, NominalType)
-                    and ret.qualified_name() == qnames.AWAITABLE
-                    and len(ret.type_args) == 1):
-                return ret.type_args[0]
-            return ret
+            # Prefer the operand's substituted FunctionInfo's return type;
+            # for generic async defs, `async_fi.return_type` from the
+            # registry still carries unsubstituted TypeParamRefs.
+            resolved_fi = getattr(operand, "resolved_function_info", None)
+            source_fi = resolved_fi if resolved_fi is not None else async_fi
+            return self._unwrap_awaitable_return(source_fi.return_type)
 
         # Type-erased path: analyze operand. Supported v1 erased forms:
         #   - tpy.Task[T]            (heap-erased coroutine frame)
@@ -2110,25 +2110,17 @@ class ExpressionAnalyzer:
         #     alongside hand-written awaiter types).
         operand_type = self.analyze_expr(operand)
 
-        # Method-call shape: a direct call to an async def method. The
-        # free-function probe above only matches bare-name calls, so
-        # `await obj.method()` lands here. After analyze_expr, the method
-        # call carries `resolved_function_info` -- if that's an async def,
-        # treat it like the inline shape. The receiver's record name is
-        # captured on the await node so codegen can name the sub-coro
-        # struct uniquely (`__coro_<Record>_<method>`) and emplace passes
-        # the receiver as the first ctor arg.
+        # Method-call shape: `await obj.method()`. The free-function probe
+        # above only matches bare-name calls; method calls land here. After
+        # analyze_expr, the method call carries `resolved_function_info`;
+        # treat an async one like the inline shape.
         if isinstance(operand, TpyMethodCall):
             mfi = operand.resolved_function_info
             if mfi is not None and mfi.is_async:
-                # The coro struct captures the receiver as `<Class>&`
-                # for the duration of polling. Binding that reference
-                # to a temporary (rvalue receiver) leaves __self
-                # dangling at the emplace expression's semicolon.
-                # Require the receiver to be a stable lvalue: a bare
-                # name or a chain of field accesses rooted at a name.
-                # Mirrors `AsyncCoroCodegen._is_stable_lvalue` in
-                # codegen.
+                # Receiver must be a stable lvalue: the coro captures it as
+                # `<Class>&` across polls, so a temporary would dangle at
+                # the emplace expression's semicolon. Mirrors
+                # `AsyncCoroCodegen._is_stable_lvalue` in codegen.
                 if not is_stable_address_lvalue(operand.obj):
                     raise self.ctx.error(
                         "receiver of an awaited async method must be "
@@ -2140,17 +2132,11 @@ class ExpressionAnalyzer:
                         "`r = <expr>; await r.method(...)`",
                         operand)
                 expr.awaited_async_func_name = mfi.name
-                owner_record = self._method_call_receiver_record(operand)
-                if owner_record is not None:
-                    expr.awaited_method_owner_record = owner_record
-                ret = unwrap_ref_type(mfi.return_type) if mfi.return_type else None
-                if (ret is not None
-                        and isinstance(ret, NominalType)
-                        and ret.qualified_name() == qnames.AWAITABLE
-                        and len(ret.type_args) == 1):
-                    return ret.type_args[0]
-                if ret is not None:
-                    return ret
+                owner_type = self._method_call_receiver_type(operand)
+                if owner_type is not None:
+                    expr.awaited_method_owner_type = owner_type
+                if mfi.return_type is not None:
+                    return self._unwrap_awaitable_return(mfi.return_type)
         # An Own[Task[T]] rvalue (e.g. `await asyncio.create_task(...)`)
         # is a valid await operand -- strip the Own[] before structural
         # matching so the inner Task[T] / Awaitable conformance check fires.
@@ -2166,6 +2152,15 @@ class ExpressionAnalyzer:
             "Task[T] / Future[T], or a value of a type with a "
             "`__poll__(self, waker: Waker) -> Own[Poll[T]]` method",
             expr)
+
+    def _unwrap_awaitable_return(self, ret_type: 'TpyType') -> 'TpyType':
+        """Strip `Awaitable[T]` wrapping from an async def's return type."""
+        ret = unwrap_ref_type(ret_type)
+        if (isinstance(ret, NominalType)
+                and ret.qualified_name() == qnames.AWAITABLE
+                and len(ret.type_args) == 1):
+            return ret.type_args[0]
+        return ret
 
     def _extract_awaitable_inner(self, typ) -> 'TpyType | None':
         """Return the awaited type T if `typ` conforms to Awaitable[T],
@@ -2217,18 +2212,19 @@ class ExpressionAnalyzer:
                 return inner
         return None
 
-    def _method_call_receiver_record(self, call) -> str | None:
+    def _method_call_receiver_type(self, call) -> 'NominalType | None':
         """For a TpyMethodCall whose receiver resolves to a known record,
-        return the record's name. Used to name async-method coro structs
-        uniquely (`__coro_<Record>_<method>`) so concrete-method async
-        defs don't collide with same-named free functions or methods on
-        sibling records."""
+        return the receiver's NominalType (carrying class-level
+        type_args). Used to name and qualify async-method coro structs
+        as `__coro_<Record>_<method>` plus a `<owner_type_args>` suffix
+        for receivers with non-empty class-level type args.
+        """
         recv_type = self.ctx.get_expr_type(call.obj)
         if recv_type is None:
             return None
         inner = unwrap_own(unwrap_ref_type(recv_type))
         if isinstance(inner, NominalType):
-            return inner.name
+            return inner
         return None
 
     def _resolve_call_to_async_def(self, operand) -> 'FunctionInfo | None':

@@ -1257,6 +1257,8 @@ class TypeOperations:
             is_consuming=method.is_consuming,
             is_method=method.is_method,
             is_staticmethod=method.is_staticmethod,
+            # is_async is invariant under type-arg substitution.
+            is_async=method.is_async,
             is_builtin_function=method.is_builtin_function,
             type_params=method.type_params,
             type_param_bounds=substituted_bounds if substituted_bounds else method.type_param_bounds,

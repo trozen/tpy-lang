@@ -497,11 +497,15 @@ class RecordGenerator:
             # emit pass, parallel to generator methods above.
             if method.is_async:
                 from .gen_async import AsyncCoroCodegen
-                struct_name = AsyncCoroCodegen.gen_struct_name(method, record.name)
+                struct_name = AsyncCoroCodegen._struct_name_templated(method, record.name)
                 params = self.functions.gen_params(
                     method.params, method.type_params, emit_defaults=True)
                 const_suffix = " const" if method.is_readonly else ""
-                out.write(f"\n{INDENT}{struct_name} {method.name}({params}){const_suffix};\n")
+                out.write("\n")
+                if method.type_params:
+                    tparams = ", ".join(f"typename {tp}" for tp in method.type_params)
+                    out.write(f"{INDENT}template <{tparams}>\n")
+                out.write(f"{INDENT}{struct_name} {method.name}({params}){const_suffix};\n")
                 continue
             # @overload-dispatched methods stay inline-in-struct regardless of
             # body size -- the specialized-method emitters take a `mode` param

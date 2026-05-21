@@ -733,8 +733,10 @@ Restrictions still in place (each a separate future item):
   to the class's type params would fail C++ build. Parallels the
   existing rejection for generator methods on generic classes.
 - Generic async *methods* on non-generic classes (`async def m[T](self) -> T`):
-  in scope, works via the existing template-header machinery; no
-  special rejection.
+  works end-to-end as of M7 (see below). Generic async methods on
+  *generic classes* (`class Foo[T]: async def m...`) remain rejected
+  (out-of-line `__poll__` body doesn't yet receive the class's
+  template header).
 
 ### M5 SHIPPED -- `async with` (cleanup-only)
 
@@ -938,6 +940,103 @@ What landed:
 - `error_async_for_else` -- parser rejection of `else:` clause.
 - `error_async_for_outside_async` -- sema rejection of `async for`
   outside `async def`.
+
+### M7 SHIPPED -- generic async free functions and methods
+
+Required to unblock generic asyncio helpers (`wait_for`, `gather`, ...).
+Before M7, two failure modes blocked any `async def f[T](...) -> T`:
+
+  (a) `return result` from a generic async def: the awaited-value slot
+  in the caller's coro struct was emitted with the unsubstituted T,
+  because the await's analyzed type came from the registry's
+  un-substituted FunctionInfo rather than the operand call's
+  resolved (substituted) FunctionInfo.
+
+  (b) `result = await generic_async_fn(arg)`: the sub-coro frame field
+  emitted as `std::optional<__coro_<name>>` without template args, so
+  C++ rejected the type-name as referring to a class-template-id.
+
+Root cause: the existing await-resolution path stored only the function
+*name* on the await node; sema's substituted return type and the
+inferred type-arg mapping never left the operand call. Methods
+accidentally worked because `mfi = operand.resolved_function_info`
+threaded the right info through the method-call branch -- but only
+because sema chased it down, not because the invariant was articulated.
+
+Invariant established: every await on a direct call to an async def --
+free function or method -- carries the substituted return type and
+the inferred type-args mapping of the callee. Codegen consults the
+mapping to qualify the sub-coro struct field type and the awaited-value
+slot from the await node, never from the operand call.
+
+Concrete changes:
+
+- **AST** (`tpyc/parse/nodes.py::TpyAwait`): two new fields,
+  `awaited_resolved_return_type` (substituted return type, used for
+  the awaited-value slot) and `awaited_inferred_type_args` (inferred
+  type args, used to qualify the sub-coro struct name). Promoted
+  `awaited_method_owner_record: str` to
+  `awaited_method_owner_type: NominalType` so the receiver's class
+  type_args flow uniformly through the same mechanism.
+- **Sema** (`tpyc/sema/expressions.py::_analyze_await`): the
+  free-function path now reads return type and type-args from
+  `operand.resolved_function_info` / `operand.inferred_type_args`
+  (mirroring the method path), instead of re-deriving from the
+  unsubstituted registry FunctionInfo.
+- **Codegen** (`tpyc/codegen_cpp/gen_async.py`):
+  - `_sub_struct_qualname` extended to optionally take inferred type
+    args; the free-function inline-await path now produces
+    `__coro_<name><T_sub>` instead of bare `__coro_<name>`.
+  - Callee-side emit fixed: forward decl, out-of-line `__poll__`
+    qualifier, factory return type, factory body, and friend
+    `operator<<` all now carry the template-arg suffix when the
+    callee is generic.
+  - `_classify_params` introduces a `TYPE_PARAM` storage form for
+    TypeParamRef params: field is `::tpy::val_or_ref_t<T>`, ctor
+    param is `::tpy::param_val_or_ref_t<T>`, init is a direct
+    bind/copy (no `std::move`). Same trait-based pattern the
+    non-async generic codegen uses, so a value-typed T (e.g. Int32)
+    stores by value and an object-typed T stores by reference.
+- **Sync stub guard** (`tpyc/codegen_cpp/generator.py`): added an
+  early-continue for `func.is_async` in the function-decl loop --
+  parallels the existing generator-decl skip -- so generic async
+  defs no longer emit a stray sync `val_or_ref_t<T>` stub alongside
+  the coro factory.
+
+Method-side parity: generic async methods on non-generic classes also
+work after M7. The original symptom -- the await failing with "operand
+must be a direct call to an async def ..." -- traced to a single bug
+in `tpyc/sema/type_ops.py::substitute_method_type_params`, which
+dropped `is_async` (along with several other flags) when reconstructing
+the substituted `FunctionInfo`. Adding `is_async=method.is_async` to
+that constructor unblocks the method path; the new fields on `TpyAwait`
+and the unified `_sub_struct_qualname` then carry the substitution
+through codegen the same way the free-function path does. Two
+additional sites also needed the template-args propagation:
+
+- `tpyc/codegen_cpp/records.py::gen_record_method_def` -- the in-class
+  forward declaration for an async method now emits a `template <...>`
+  header before the declaration and uses the templated struct name
+  when the method has its own type params.
+- `tpyc/codegen_cpp/generator.py` -- the out-of-class factory
+  definition (`inline __coro_<Class>_<method>(...) <Class>::<method>(...) { ... }`)
+  similarly emits the template header and uses the templated struct
+  name.
+
+Tests added (`tests/cases/async/`):
+
+- `generic_async_free_func` -- basic happy path.
+- `generic_async_free_func_multi_T` -- two type params.
+- `generic_async_free_func_nocopy` -- generic over `Box[T]` (`@nocopy`)
+  to exercise the non-value TypeParamRef storage form.
+- `generic_async_method` -- generic async method on a non-generic
+  class (`async def m[T](self, x: T) -> T`), plus a method that also
+  references `self.field` to confirm the receiver capture +
+  type-param substitution compose.
+
+Out of scope (still rejected): async methods on generic *classes* --
+the out-of-line coro-struct `__poll__` body would need the class's
+template header and a combined arg list.
 
 ## v1.x milestone: asyncio runtime TPy port (must precede v1.5)
 

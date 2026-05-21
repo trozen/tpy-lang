@@ -31,7 +31,7 @@ from ..parse.nodes import (
     TpyNoneLiteral, TpyCoerce,
     is_stable_address_lvalue,
 )
-from ..typesys import NominalType, OptionalType, unwrap_ref_type, unwrap_own, VoidType
+from ..typesys import NominalType, OptionalType, TypeParamRef, unwrap_ref_type, unwrap_own, VoidType
 from ..type_def_registry import is_str_type, is_str_category
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext
 from . import resumable_cfg as rcfg
@@ -44,6 +44,64 @@ if TYPE_CHECKING:
     from .expressions import ExpressionGenerator
     from .statements import StatementGenerator
     from .functions import FunctionGenerator
+
+
+class _CoroParamKind(IntEnum):
+    """Storage form for a coro-struct captured param.
+
+    REF: non-value type bound by reference; field is `T&`, ctor takes `T&`,
+        init binds the reference. Caller must keep the source alive across
+        polls.
+    VALUE: value type (or string view) stored by value; field is `T`,
+        ctor takes `T x_` and the init moves into the field.
+    TYPE_PARAM: TypeParamRef param whose value-vs-reference resolution
+        happens at instantiation; field is `::tpy::val_or_ref_t<T>` (T for
+        value types, T& for object types), ctor takes
+        `::tpy::param_val_or_ref_t<T>` (const T& or T&), init directly
+        binds/copies. No std::move (the param is already a reference).
+    """
+    REF = 0
+    VALUE = 1
+    TYPE_PARAM = 2
+
+
+@dataclass(frozen=True)
+class _CoroParam:
+    cpp_name: str
+    field_type: str  # type spelling for the frame-field declaration
+    ctor_param_type: str  # type spelling for the constructor's parameter
+    kind: _CoroParamKind
+
+    def field_decl(self) -> str:
+        if self.kind is _CoroParamKind.REF:
+            return f"{self.field_type}& {self.cpp_name}"
+        return f"{self.field_type} {self.cpp_name}"
+
+    def factory_param_decl(self) -> str:
+        # Factory function signature param: same C++ type as the ctor's
+        # param (matters for TYPE_PARAM, where it's `param_val_or_ref_t<T>`
+        # rather than the field's `val_or_ref_t<T>`), but with the bare
+        # name -- the factory body forwards by bare name.
+        if self.kind is _CoroParamKind.REF:
+            return f"{self.ctor_param_type}& {self.cpp_name}"
+        return f"{self.ctor_param_type} {self.cpp_name}"
+
+    def ctor_param_decl(self) -> str:
+        if self.kind is _CoroParamKind.REF:
+            return f"{self.ctor_param_type}& {self.cpp_name}"
+        # VALUE / TYPE_PARAM: `_` suffix disambiguates from the field name
+        # in the init list.
+        return f"{self.ctor_param_type} {self.cpp_name}_"
+
+    def ctor_init(self) -> str:
+        if self.kind is _CoroParamKind.REF:
+            return f"{self.cpp_name}({self.cpp_name})"
+        if self.kind is _CoroParamKind.TYPE_PARAM:
+            # `param_val_or_ref_t<T>` is already a reference type; std::move
+            # on it yields an rvalue that won't bind to the field type for
+            # non-value Ts. Direct bind/copy is uniformly correct.
+            return f"{self.cpp_name}({self.cpp_name}_)"
+        return f"{self.cpp_name}(std::move({self.cpp_name}_))"
 
 
 class _StateKind(IntEnum):
@@ -118,33 +176,76 @@ class AsyncCoroCodegen:
 
     def _classify_params(self, func: TpyFunction,
                           record_name: str | None = None
-                          ) -> list[tuple[str, str, bool]]:
+                          ) -> list[_CoroParam]:
         """Classify async-def params for the coro struct field/ctor shape.
 
-        Returns list of (cpp_name, cpp_type, is_ref). When `record_name`
-        is set, prepends `__self: <Record>&` (or `const <Record>&` for
-        @readonly methods) so async methods capture their receiver --
-        parallels `GeneratorCodegen` self-capture.
+        Returns a list of `_CoroParam` records, one per captured param.
+        When `record_name` is set, prepends `__self: <Record>&` (or
+        `const <Record>&` for @readonly methods) so async methods
+        capture their receiver -- parallels `GeneratorCodegen`
+        self-capture.
 
-        v1 conservative rule: str passes by string_view (caller's storage,
-        same lifetime model as generators -- coros that escape via Task
-        will need to copy out, but until that lands the borrow holds
-        across await boundaries within a single asyncio.run).
+        Generic params (`T` as TypeParamRef) use the
+        `param_val_or_ref_t<T>` / `val_or_ref_t<T>` trait so each
+        instantiation picks the right value-vs-reference shape -- a
+        value-typed T (e.g. Int32) stores by value (so literal /
+        rvalue call-site args don't dangle), while an object-typed T
+        stores by reference (matching Python semantics and the
+        non-template ref path).
+
+        v1 conservative rule for str: passes by string_view (caller's
+        storage, same lifetime model as generators -- coros that
+        escape via Task will need to copy out, but until that lands
+        the borrow holds across await boundaries within a single
+        asyncio.run).
         """
-        out: list[tuple[str, str, bool]] = []
+        out: list[_CoroParam] = []
         if record_name:
             cpp_record = escape_cpp_name(record_name)
             const_prefix = "const " if func.is_readonly else ""
-            out.append(("__self", f"{const_prefix}{cpp_record}", True))
+            recv_type = f"{const_prefix}{cpp_record}"
+            out.append(_CoroParam(
+                cpp_name="__self",
+                field_type=recv_type,
+                ctor_param_type=recv_type,
+                kind=_CoroParamKind.REF,
+            ))
         for pname, ptype in func.params:
             cpp_name = escape_cpp_name(pname)
             ptype_inner = unwrap_ref_type(ptype)
             if is_str_type(ptype_inner):
-                out.append((cpp_name, "std::string_view", False))
+                out.append(_CoroParam(
+                    cpp_name=cpp_name,
+                    field_type="std::string_view",
+                    ctor_param_type="std::string_view",
+                    kind=_CoroParamKind.VALUE,
+                ))
+            elif isinstance(ptype_inner, TypeParamRef):
+                # to_cpp_return / to_cpp_param_type already encode the
+                # val_or_ref_t<T> / param_val_or_ref_t<T> traits (and
+                # collapse to std::size_t for INT-kind params).
+                out.append(_CoroParam(
+                    cpp_name=cpp_name,
+                    field_type=ptype_inner.to_cpp_return(),
+                    ctor_param_type=ptype_inner.to_cpp_param_type(),
+                    kind=_CoroParamKind.TYPE_PARAM,
+                ))
             else:
                 cpp_type = self.types.type_to_cpp(ptype_inner)
-                is_ref = not ptype_inner.is_value_type()
-                out.append((cpp_name, cpp_type, is_ref))
+                if ptype_inner.is_value_type():
+                    out.append(_CoroParam(
+                        cpp_name=cpp_name,
+                        field_type=cpp_type,
+                        ctor_param_type=cpp_type,
+                        kind=_CoroParamKind.VALUE,
+                    ))
+                else:
+                    out.append(_CoroParam(
+                        cpp_name=cpp_name,
+                        field_type=cpp_type,
+                        ctor_param_type=cpp_type,
+                        kind=_CoroParamKind.REF,
+                    ))
         return out
 
     def _emit_template_header(self, out: "TextIO", func: TpyFunction) -> bool:
@@ -154,14 +255,23 @@ class AsyncCoroCodegen:
         out.write(f"template <{params}>\n")
         return True
 
+    @staticmethod
+    def _struct_name_templated(func: TpyFunction,
+                                record_name: str | None = None) -> str:
+        """Return the coro struct name suffixed with `<T1, T2, ...>` when the
+        function is generic, else the bare name. Use this whenever the
+        struct name appears in a type-name position (return types,
+        out-of-line method qualifiers, parameter types) -- C++ rejects
+        the injected-class-name there. The bare `gen_struct_name` is
+        still correct inside the struct body (constructors) and for
+        forward decls (`struct X;`)."""
+        bare = AsyncCoroCodegen.gen_struct_name(func, record_name)
+        if not func.type_params:
+            return bare
+        return f"{bare}<{', '.join(func.type_params)}>"
+
     def _emit_params_decl(self, func: TpyFunction) -> str:
-        parts: list[str] = []
-        for cpp_name, cpp_type, is_ref in self._classify_params(func):
-            if is_ref:
-                parts.append(f"{cpp_type}& {cpp_name}")
-            else:
-                parts.append(f"{cpp_type} {cpp_name}")
-        return ", ".join(parts)
+        return ", ".join(p.factory_param_decl() for p in self._classify_params(func))
 
     def _ret_cpp(self, func: TpyFunction) -> str:
         return self.types.type_to_cpp(unwrap_ref_type(func.return_type))
@@ -194,10 +304,10 @@ class AsyncCoroCodegen:
         return True
 
     def gen_factory_forward_decl(self, out: "TextIO", func: TpyFunction) -> bool:
-        struct_name = self.gen_struct_name(func)
+        return_type_name = self._struct_name_templated(func)
         self._emit_template_header(out, func)
         params = self._emit_params_decl(func)
-        out.write(f"{struct_name} {escape_cpp_name(func.name)}({params});\n")
+        out.write(f"{return_type_name} {escape_cpp_name(func.name)}({params});\n")
         return True
 
     # -- Body partitioning ----------------------------------------------------
@@ -439,11 +549,8 @@ class AsyncCoroCodegen:
         out.write(f"{INDENT}bool __cancel_pending;\n")
 
         # Captured param fields
-        for cpp_name, cpp_type, is_ref in ctor_params:
-            if is_ref:
-                out.write(f"{INDENT}{cpp_type}& {cpp_name};\n")
-            else:
-                out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
+        for p in ctor_params:
+            out.write(f"{INDENT}{p.field_decl()};\n")
 
         # Hoisted local fields (mirrors generator behavior).
         if func.generator_locals:
@@ -535,16 +642,9 @@ class AsyncCoroCodegen:
         out.write(f"{INDENT}}};\n\n")
 
         # Constructor.
-        ctor_param_list = ", ".join(
-            f"{cpp_type}& {cpp_name}" if is_ref else f"{cpp_type} {cpp_name}_"
-            for cpp_name, cpp_type, is_ref in ctor_params
-        )
+        ctor_param_list = ", ".join(p.ctor_param_decl() for p in ctor_params)
         init_parts = ["__state(S_INITIAL)", "__cancel_pending(false)"]
-        for cpp_name, _, is_ref in ctor_params:
-            if is_ref:
-                init_parts.append(f"{cpp_name}({cpp_name})")
-            else:
-                init_parts.append(f"{cpp_name}(std::move({cpp_name}_))")
+        init_parts.extend(p.ctor_init() for p in ctor_params)
         out.write(f"{INDENT}{struct_name}({ctor_param_list})\n")
         out.write(f"{INDENT}{INDENT}: {', '.join(init_parts)} {{}}\n\n")
 
@@ -559,8 +659,9 @@ class AsyncCoroCodegen:
 
         repr_label = (f"{record_name}.{func.name}" if record_name
                       else func.name)
+        param_struct_name = self._struct_name_templated(func, record_name)
         out.write(f"\n{INDENT}friend std::ostream& operator<<("
-                  f"std::ostream& os, const {struct_name}&) {{\n")
+                  f"std::ostream& os, const {param_struct_name}&) {{\n")
         out.write(f"{INDENT}{INDENT}return os << \"<coroutine {repr_label}>\";\n")
         out.write(f"{INDENT}}}\n")
         out.write(f"}};\n")
@@ -568,8 +669,11 @@ class AsyncCoroCodegen:
     # -- Factory function -----------------------------------------------------
 
     def gen_factory(self, out: "TextIO", func: TpyFunction) -> None:
-        """Emit the factory function: `__FCoro f(args) { return __FCoro(args); }`."""
-        struct_name = self.gen_struct_name(func)
+        """Emit the factory function: `__FCoro f(args) { return __FCoro(args); }`.
+
+        Uses the templated struct name explicitly so zero-param generic
+        async defs (no ctor args for CTAD to deduce T from) compile."""
+        struct_name = self._struct_name_templated(func)
         self.ctx.emit_source_comment(out, func.loc)
         self._emit_template_header(out, func)
         params = self._emit_params_decl(func)
@@ -634,7 +738,7 @@ class AsyncCoroCodegen:
         cfg = self._build_cfg(func)
         if not cfg.finally_helpers:
             return
-        struct_name = self.gen_struct_name(func, record_name)
+        struct_name = self._struct_name_templated(func, record_name)
 
         with self._resumable_frame_ctx(func, record_name):
             for helper_name, body_stmts in cfg.finally_helpers:
@@ -653,7 +757,7 @@ class AsyncCoroCodegen:
         is given, the struct is `__coro_<Record>_<func>` and the body
         sees `self.X` as `__self.X` (parallels generator methods).
         """
-        struct_name = self.gen_struct_name(func, record_name)
+        struct_name = self._struct_name_templated(func, record_name)
         cfg = self._build_cfg(func)
         has_yields = bool(cfg.yield_sites)
 
@@ -809,22 +913,44 @@ class AsyncCoroCodegen:
         func._async_for_struct_names = struct_names_out
         return uid_map
 
-    def _sub_struct_qualname(self, owner: NominalType, method: str) -> str:
-        """Build the C++ name of the sub-coro struct generated for an
-        async method `method` on record `owner`. Strips template args
-        from `owner`'s C++ name to derive the enclosing namespace, then
-        re-attaches them as a suffix on the templated sub-struct."""
-        owner_cpp = self.types.type_to_cpp(owner)
-        ns_prefix = owner_cpp.split("<", 1)[0]
-        ns_qual = (ns_prefix.rsplit("::", 1)[0] + "::"
-                   if "::" in ns_prefix else "")
-        type_args_suffix = ""
-        if owner.type_args:
+    def _sub_struct_qualname(
+            self, owner: 'NominalType | None', method: str,
+            inferred_type_args: 'tuple[TpyType, ...] | None' = None) -> str:
+        """Build the C++ name of the sub-coro struct generated for a
+        statically-resolved await (free function or method).
+
+        Free function (owner=None): `__coro_<name>[<inferred_args>]`.
+        Method on non-generic class: `<ns>::__coro_<Record>_<name>
+            [<inferred_args>]`.
+        Method on generic class: `<ns>::__coro_<Record>_<name>
+            <owner_type_args>`. (The class-generic + method-generic
+            case is currently rejected at sema, so owner_type_args and
+            inferred_type_args are not composed today.)
+        """
+        ns_qual = ""
+        owner_name = None
+        owner_args_suffix = ""
+        if owner is not None:
+            owner_cpp = self.types.type_to_cpp(owner)
+            ns_prefix = owner_cpp.split("<", 1)[0]
+            ns_qual = (ns_prefix.rsplit("::", 1)[0] + "::"
+                       if "::" in ns_prefix else "")
+            owner_name = owner.name
+            if owner.type_args:
+                inner_cpps = [self.types.type_to_cpp(ta)
+                              for ta in owner.type_args]
+                owner_args_suffix = "<" + ", ".join(inner_cpps) + ">"
+        bare = AsyncCoroCodegen._sub_struct_name(method, owner_name)
+        # Only append the method's/function's own inferred type args when
+        # the owner is non-generic: composing owner_type_args with method
+        # inferred_type_args onto one sub-coro template needs an agreed
+        # arg order that sema doesn't establish today.
+        own_args_suffix = ""
+        if inferred_type_args and not (owner is not None and owner.type_args):
             inner_cpps = [self.types.type_to_cpp(ta)
-                          for ta in owner.type_args]
-            type_args_suffix = "<" + ", ".join(inner_cpps) + ">"
-        bare = AsyncCoroCodegen._sub_struct_name(method, owner.name)
-        return f"{ns_qual}{bare}{type_args_suffix}"
+                          for ta in inferred_type_args]
+            own_args_suffix = "<" + ", ".join(inner_cpps) + ">"
+        return f"{ns_qual}{bare}{owner_args_suffix}{own_args_suffix}"
 
 
     def _prescan_with_stmts(
@@ -1018,9 +1144,12 @@ class AsyncCoroCodegen:
         from the await's sema annotations."""
         if await_node.awaited_async_func_name is not None:
             mode = rcfg.AwaitMode.INLINE
-            sub_cpp = self._sub_struct_name(
+            inferred_type_args = getattr(
+                await_node.value, "inferred_type_args", None)
+            sub_cpp = self._sub_struct_qualname(
+                await_node.awaited_method_owner_type,
                 await_node.awaited_async_func_name,
-                await_node.awaited_method_owner_record)
+                inferred_type_args)
         elif await_node.awaited_task_inner is not None:
             operand_type = self.ctx.get_expr_type(await_node.value)
             if operand_type is None:

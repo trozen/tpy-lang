@@ -630,14 +630,20 @@ class TpyAwait(TpyExpr):
       call to a known async def. Codegen emits the sub-coroutine struct
       as a frame field via `std::optional<__<name>Coro>` and constructs
       it in place from the call's args.
-      For async methods, `awaited_method_owner_record` carries the
-      receiver record name so the sub-coro struct can be uniquely named
-      (`__coro_<Record>_<method>`) and emplace passes the receiver as
-      the first arg.
+      For async methods, `awaited_method_owner_type` carries the
+      receiver's NominalType (including its type args) so the sub-coro
+      struct can be uniquely named (`__coro_<Record>_<method>`) and
+      qualified with the receiver's class-level template args.
     - `awaited_task_inner`: erased mode -- the operand has type
       `Task[T]`. Codegen emits the sub-future field as
       `std::optional<::tpy::Task<T>>` and moves the operand value in.
     Exactly one is set on a successfully-analyzed TpyAwait.
+
+    For generic async defs (`async def f[T](...) -> T`), codegen reads
+    the inferred type args off the operand call node directly
+    (`value.inferred_type_args`) to qualify the sub-coro struct name as
+    `__coro_<name><A, B>`. The await expression's substituted result
+    type is recorded via the standard expression-type table.
 
     `suspension_index` is the ordinal (in source order) within the
     enclosing async def, used to name __sub_<i> fields and
@@ -645,7 +651,7 @@ class TpyAwait(TpyExpr):
     """
     value: TpyExpr
     awaited_async_func_name: str | None = field(default=None, kw_only=True)
-    awaited_method_owner_record: str | None = field(default=None, kw_only=True)
+    awaited_method_owner_type: 'NominalType | None' = field(default=None, kw_only=True)
     awaited_task_inner: 'TpyType | None' = field(default=None, kw_only=True)
     suspension_index: int | None = field(default=None, kw_only=True)
 
