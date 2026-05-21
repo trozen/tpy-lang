@@ -1,33 +1,44 @@
-# Smoke test: @readonly async method body setup runs (`compute_body_const_sets`
-# threading `const_ref_params={'self'}` through `setup_body_scope`). No
-# behavioral-delta guard -- const_ref_params consumers in async bodies are
-# unreachable today (generator-body for-loop bypasses const-source detection;
-# var-decl bypass short-circuits const-aware dispatch). The reachable case
-# (reference-type self.field iteration) is blocked by a separate filed bug.
+# Regression: guards two fixes that interlock at the same emit site.
+# (1) `compute_body_const_sets` populates `const_ref_params={'self'}`
+#     for @readonly async methods so `iteration_yields_const` fires for
+#     `self.field` -> loop var binds as `const auto& it` (const ref).
+# (2) `frame_field_shadows` suppresses the `(*it)` peel that would
+#     otherwise misfire because sema added `it` to `generator_locals`
+#     while codegen emits it as a C++-scoped local.
+# Both fixes are required for this body to compile and emit correct
+# const code; the `const auto& it = *__beg_0;` line in the snapshot is
+# the load-bearing assertion.
 import asyncio
 from tpy import Int32, readonly
 
 
-class Counter:
-    items: list[Int32]
+class Item:
+    n: Int32
+
+    def __init__(self, n: Int32) -> None:
+        self.n = n
+
+
+class Container:
+    items: list[Item]
 
     def __init__(self) -> None:
         self.items = []
-        self.items.append(1)
-        self.items.append(2)
-        self.items.append(3)
+        self.items.append(Item(1))
+        self.items.append(Item(2))
+        self.items.append(Item(3))
 
     @readonly
     async def total(self) -> Int32:
         s: Int32 = 0
         await asyncio.sleep(0)
-        for v in self.items:
-            s += v
+        for it in self.items:
+            s += it.n
         return s
 
 
 async def driver() -> None:
-    c = Counter()
+    c = Container()
     print(await c.total())
 
 

@@ -11,13 +11,14 @@
 namespace tpyapp::main {
 
 struct Item;
-struct Container;
+struct CM;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __coro_total;
 struct __coro_driver;
-struct __coro_Container_total;
 
+__coro_total total();
 __coro_driver driver();
 
 // class Item:
@@ -36,37 +37,33 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     return os;
 }
 
-// class Container:
-struct Container {
-    // items: list[Item]
-    std::vector<Item> items;
+// class CM:
+struct CM {
+    // item: Item
+    Item item;
 
-    // def __init__(self) -> None:
-    Container() : items(std::vector<Item>{}) {
-        // self.items.append(Item(1))
-        this->items.push_back(Item(1));
-        // self.items.append(Item(2))
-        this->items.push_back(Item(2));
-        // self.items.append(Item(3))
-        this->items.push_back(Item(3));
-    }
+    // def __init__(self, n: Int32) -> None:
+    CM() = default;
+    explicit CM(int32_t n) : item(Item(n)) {}
 
-    __coro_Container_total total() const;
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
+    // def __enter__(self) -> Item:
+    Item& __enter__();
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.CM";
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
-    ::tpy::print_object_default(os, "Container", obj);
+inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
+    ::tpy::print_object_default(os, "CM", obj);
     return os;
 }
 
-// Async coroutine: Container.total
-struct __coro_Container_total {
+// Async coroutine: total
+struct __coro_total {
     int32_t __state;
     bool __cancel_pending;
-    const Container& __self;
     int32_t s;
-    ::tpy::frame_slot<Item> it;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -75,28 +72,23 @@ struct __coro_Container_total {
         S_DONE = 2,
     };
 
-    __coro_Container_total(const Container& __self)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self) {}
+    __coro_total()
+        : __state(S_INITIAL), __cancel_pending(false) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __coro_Container_total&) {
-        return os << "<coroutine Container.total>";
+    friend std::ostream& operator<<(std::ostream& os, const __coro_total&) {
+        return os << "<coroutine total>";
     }
 };
-
-inline __coro_Container_total Container::total() const {
-    return __coro_Container_total(*this);
-}
 
 // Async coroutine: driver
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
-    ::tpy::frame_slot<Container> c;
     int32_t __await_lift_0;
-    std::optional<__coro_Container_total> __sub_0;
+    std::optional<__coro_total> __sub_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -115,5 +107,16 @@ struct __coro_driver {
     }
 };
 
+
+// def __enter__(self) -> Item:
+inline Item& CM::__enter__() {
+    // return self.item
+    return this->item;
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+inline void CM::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
+    // pass
+}
 void __tpy_init();
 } // namespace tpyapp::main

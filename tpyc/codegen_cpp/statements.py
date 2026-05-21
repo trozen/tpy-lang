@@ -2417,6 +2417,10 @@ class StatementGenerator:
                 self.ctx.declared_vars.add(name)
                 self.ctx.local_scope_names.add(name)
                 self.ctx.var_types[name] = target_type
+                if not already_declared:
+                    # Fresh C++-local declaration outlives this stmt
+                    # (Python scoping); no paired discard needed.
+                    self.ctx.register_frame_field_shadow(name)
                 if already_declared:
                     out.write(f"{indent}{cpp_name} = {get_expr};\n")
                 elif stmt.is_ref[i]:
@@ -2521,6 +2525,9 @@ class StatementGenerator:
                         out.write(f"{indent}auto {name} = __ctx_{n}.__enter__();\n")
                     else:
                         out.write(f"{indent}auto& {name} = __ctx_{n}.__enter__();\n")
+                        # `auto& name = ...` outlives the with stmt
+                        # (Python scoping); no paired discard needed.
+                        self.ctx.register_frame_field_shadow(name)
 
                 if not already_declared:
                     self.ctx.declared_vars.add(name)
@@ -4273,6 +4280,14 @@ class StatementGenerator:
         was_declared = stmt.var in self.ctx.declared_vars
         self.ctx.local_scope_names.add(stmt.var)
         self.ctx.declared_vars.add(stmt.var)
+        # For-loop iter var is a C++-scoped binding; register a shadow
+        # for the loop body so a paired discard at body exit cleanly
+        # reverses just this site's addition. Skip for hoisted / pre-
+        # declared vars -- their C++ shape was decided elsewhere.
+        loop_shadows_frame_field = (
+            not stmt.hoist_loop_var
+            and not was_declared
+            and self.ctx.register_frame_field_shadow(stmt.var))
         if elem_type:
             self.ctx.var_types[stmt.var] = elem_type
         self.ctx.register_loop_var_storage_form(stmt.var, elem_type, stmt.iterable)
@@ -4307,6 +4322,8 @@ class StatementGenerator:
             self.ctx.const_storage_form_tuple_locals.discard(stmt.var)
             self.ctx.storage_form_optional_locals.discard(stmt.var)
             self.ctx.const_storage_form_optional_locals.discard(stmt.var)
+        if loop_shadows_frame_field:
+            self.ctx.frame_field_shadows.discard(stmt.var)
         self.ctx.current_ns = old_ns
 
         out.write(f"{indent}}}\n")

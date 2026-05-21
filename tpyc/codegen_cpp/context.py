@@ -580,7 +580,12 @@ class LocalScopeSnap:
 
     Note: hoisted_vars and branch_hoisted_vars are NOT snapshotted -- they are
     function-scoped accumulators. A stale entry from a prior branch's nested if
-    causes unnecessary hoisting but not incorrect code.
+    causes unnecessary hoisting but not incorrect code. Similarly,
+    frame_field_shadows is NOT snapshotted -- entries are either discarded by
+    the emit site that introduced them (for-loop iter var, scoped to the loop
+    body) or persist to function exit where `reset_scope` clears them (with-as
+    / tuple-unpack, which outlive their source statement in Python scoping).
+    Both lifetimes are correct relative to branch-snapshot boundaries.
     """
     declared_vars: set[str]
     var_types: dict[str, TpyType]
@@ -721,6 +726,17 @@ class CodeGenContext:
     # source (mirror of const_storage_form_tuple_locals -- when the producing
     # iteration yields const optional<T>&, the lift must produce const T*).
     const_storage_form_optional_locals: set[str] = field(default_factory=set)
+    # Names where codegen has emitted a C++-scoped local declaration in the
+    # current scope that shadows a putative frame field of the same name.
+    # Sema treats every function-level local as a potential frame field
+    # (added to func.generator_locals -> generator_optional_fields), but
+    # for-loop iter vars on loops without internal yield/await are emitted
+    # as `auto&& it = *__beg_n` C++ locals instead. Body-emit consults this
+    # set to suppress the `(*name)` peel that would otherwise apply to a
+    # putative storage-form-optional frame field. NOT in LocalScopeSnap --
+    # the set is body-emit scoped; entries are added and discarded around
+    # the emit site that introduced the shadow.
+    frame_field_shadows: set[str] = field(default_factory=set)
 
     # --- Pointer-variant locals (non-value union variables) ---
     # Variables that are std::variant<T*...> instead of std::variant<T...>.
@@ -1070,6 +1086,7 @@ class CodeGenContext:
         self.hoisted_vars = set()
         self.branch_hoisted_vars = set()
         self.comp_local_names = set()
+        self.frame_field_shadows = set()
         self.pending_hoist_decls = []
         self.current_ns = None
         self.indent_level = 0
@@ -1610,6 +1627,25 @@ class CodeGenContext:
             return (iterable.name in self.const_indirect_locals
                     or iterable.name in self.const_ref_params)
         return False
+
+    def register_frame_field_shadow(self, name: str) -> bool:
+        """Mark `name` as a C++-local shadow of a frame field for the
+        rest of the current scope. Body-emit consults `frame_field_shadows`
+        to suppress the `(*name)` peel that would otherwise apply to a
+        `generator_optional_fields` member. No-op outside a resumable
+        body or if `name` is already shadowed.
+
+        Returns True iff this call added the entry. Callers whose
+        C++-local binding is block-scoped (e.g. for-loop iter var) use
+        the return value to gate a paired discard at scope exit; callers
+        whose binding outlives its source statement (with-as, tuple-
+        unpack -- Python scoping) ignore the return and rely on
+        `reset_scope` to clear the set at function exit.
+        """
+        if not self.in_generator_body or name in self.frame_field_shadows:
+            return False
+        self.frame_field_shadows.add(name)
+        return True
 
     def register_loop_var_storage_form(self, name: str, elem_type: 'TpyType | None',
                                         iterable: 'TpyExpr',

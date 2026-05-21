@@ -79,16 +79,15 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # Regression: guards two fixes that interlock at the same emit site.
-    // # (1) `compute_body_const_sets` populates `const_ref_params={'self'}`
-    // #     for @readonly async methods so `iteration_yields_const` fires for
-    // #     `self.field` -> loop var binds as `const auto& it` (const ref).
-    // # (2) `frame_field_shadows` suppresses the `(*it)` peel that would
-    // #     otherwise misfire because sema added `it` to `generator_locals`
-    // #     while codegen emits it as a C++-scoped local.
-    // # Both fixes are required for this body to compile and emit correct
-    // # const code; the `const auto& it = *__beg_0;` line in the snapshot is
-    // # the load-bearing assertion.
+    // # Regression: async coro body iterates a list[Item] (reference-type
+    // # elements) with no internal await in the loop. The iter var is emitted
+    // # as a C++ local (`const auto& it = *__beg_0;`), but sema added it to
+    // # `func.generator_locals`, which puts it in `generator_optional_fields`
+    // # via `setup_resumable_frame_locals`. Body-emit then misapplied the
+    // # `(*it)` peel meant for std::optional-storage frame fields, breaking
+    // # the C++ build. Fix: the for-loop emit registers the iter var in
+    // # `frame_field_shadows` for the loop body's duration; body-emit
+    // # suppresses the peel when a name is in that set.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
     // asyncio.run(driver())
