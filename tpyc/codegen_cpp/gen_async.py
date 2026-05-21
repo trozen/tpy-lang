@@ -144,6 +144,15 @@ POLL_VOID_READY_RETURN = (
 )
 
 
+def _same_elements(a: list, b: list) -> bool:
+    """True iff `a` and `b` have identical length and element-by-element
+    identity. Used by the async lift pre-pass to decide whether a
+    sub-body actually changed -- distinct list objects with all-`is`
+    elements are treated as unchanged so the parent stmt's id stays
+    stable."""
+    return len(a) == len(b) and all(x is y for x, y in zip(a, b))
+
+
 class AsyncCoroCodegen:
     """Generates C++ code for `async def` functions as state-machine structs."""
 
@@ -387,17 +396,17 @@ class AsyncCoroCodegen:
             return stmt
         if not is_dataclass(stmt):
             return stmt
-        # Compute per-field lifted sub-bodies. Track whether any field
-        # actually changed; if none did, return the original stmt.
+        # Preserve the original stmt object (and its id) when sub-body
+        # lifting produced no actual changes -- any analyzer-side
+        # id(stmt)-keyed dict (e.g. if_branch_decls) would otherwise be
+        # orphaned by a spurious clone.
         replacements: dict[str, list[TpyStmt]] = {}
         for f in fields(stmt):
             v = getattr(stmt, f.name, None)
             if isinstance(v, list) and v and isinstance(v[0], TpyStmt):
                 lifted = self._lift_nested_awaits(func, v)
-                # `lifted` is always a NEW list returned by
-                # _lift_nested_awaits, so use it directly (cheap to
-                # reassign even if contents are the same references).
-                replacements[f.name] = lifted
+                if not _same_elements(lifted, v):
+                    replacements[f.name] = lifted
         # TpyTry: handlers list isn't TpyStmt-typed but each handler
         # carries its own body. Build new handler instances if any
         # handler body needed lifting.
@@ -407,7 +416,7 @@ class AsyncCoroCodegen:
             any_changed = False
             for h in stmt.handlers:
                 lifted_body = self._lift_nested_awaits(func, h.body) if h.body else h.body
-                if lifted_body is not h.body and lifted_body != h.body:
+                if not _same_elements(lifted_body, h.body):
                     rebuilt.append(TpyExceptHandler(
                         exception_type=h.exception_type,
                         binding=h.binding,
