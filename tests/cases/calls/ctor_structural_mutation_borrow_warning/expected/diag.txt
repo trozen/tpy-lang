@@ -1,0 +1,1 @@
+main.py:30: warning: Passing borrowed container 'items' to non-readonly parameter 'xs' (function may invalidate references)

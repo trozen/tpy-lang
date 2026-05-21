@@ -40,7 +40,7 @@ void main() {
     // pts[1] = s  # tpyc: warning(/copies Point into container/)
     ::tpy::__setitem__(pts, 1, s);
     // # Warning: field-to-field copy (field access is a reference)
-    // h2 = Holder(pt)  # tpyc: warning(/borrowed container/)
+    // h2 = Holder(pt)
     Holder h2 = Holder(pt);
     // h.p = h2.p  # tpyc: warning(/copies Point into field/)
     h.p = h2.p;

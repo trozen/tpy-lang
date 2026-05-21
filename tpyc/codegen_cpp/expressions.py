@@ -2694,6 +2694,7 @@ class ExpressionGenerator:
                 return self.builtins.gen_call_from_fi(ctor, None, gen_args)
             # Look up resolved init params for auto-move on Own[T] params
             init_params = []
+            ctor_mutated: frozenset[int] = frozenset()
             call_type = expr.call_type
             record_name = call_type.name if isinstance(call_type, NominalType) else None
             if record_name:
@@ -2702,6 +2703,8 @@ class ExpressionGenerator:
                     init_info = rec_info.get_method("__init__")
                     if init_info and expr.resolved_function_info:
                         init_params = expr.resolved_function_info.params
+                        ctor_mutated = (expr.resolved_function_info.mutated_params
+                                         or frozenset())
             gen_args = []
             for i, a in enumerate(expr.args):
                 ptype = init_params[i].type if i < len(init_params) else None
@@ -2725,6 +2728,26 @@ class ExpressionGenerator:
                 opt_arg = self._gen_optional_ptr_arg(a, ptype)
                 if opt_arg is not None:
                     gen_args.append(opt_arg)
+                    continue
+                # Rvalue arg to a mutated ctor param (lowers as `T&`)
+                # needs a named temp at the call site -- C++ can't bind
+                # rvalue to non-const lvalue ref. Free-function and
+                # method paths already do this; this is the parallel
+                # case for ctor calls.
+                if (ptype is not None
+                        and i in ctor_mutated
+                        and ptype.is_ref_param()
+                        and self.ctx.is_temporary_expr(a)):
+                    init_expr = self.gen_expr(a, ptype)
+                    temp_type = ptype
+                    if isinstance(ptype, NominalType) and ptype.is_user_record:
+                        arg_type = self.ctx.get_expr_type(a)
+                        if (isinstance(arg_type, NominalType) and arg_type.is_user_record
+                                and arg_type != ptype
+                                and self.ctx.analyzer.registry.is_subclass_of(arg_type, ptype)):
+                            temp_type = arg_type
+                    temp_name = self.ctx.temps.create(temp_type, init_expr)
+                    gen_args.append(temp_name)
                     continue
                 # None literals need param type for nullptr vs std::nullopt;
                 # array literals need call_type for nested brace generation.
@@ -2758,6 +2781,9 @@ class ExpressionGenerator:
             # TypedDict/native records without __init__: use init_params for type hints
             if not init_params and record_info.init_params:
                 init_params = [ParamInfo(n, t) for n, t, _ in record_info.init_params]
+            ctor_mutated: frozenset[int] = frozenset()
+            if ctor_fi:
+                ctor_mutated = ctor_fi.mutated_params or frozenset()
             gen_args = []
             for i, a in enumerate(expr.args):
                 ptype = init_params[i].type if i < len(init_params) else None
@@ -2781,6 +2807,24 @@ class ExpressionGenerator:
                     gen_args.append(opt_arg)
                 elif (union_arg := self._gen_union_arg(a, ptype)) is not None:
                     gen_args.append(union_arg)
+                elif (ptype is not None
+                        and i in ctor_mutated
+                        and ptype.is_ref_param()
+                        and self.ctx.is_temporary_expr(a)):
+                    # Rvalue arg to a mutated ctor param (lowers as `T&`)
+                    # needs a named temp at the call site -- C++ can't bind
+                    # rvalue to non-const lvalue ref. Free-function and
+                    # method paths already do this; this is the parallel
+                    # case for ctor calls.
+                    init_expr = self.gen_expr(a, ptype)
+                    temp_type = ptype
+                    if isinstance(ptype, NominalType) and ptype.is_user_record:
+                        arg_type = self.ctx.get_expr_type(a)
+                        if (isinstance(arg_type, NominalType) and arg_type.is_user_record
+                                and arg_type != ptype
+                                and self.ctx.analyzer.registry.is_subclass_of(arg_type, ptype)):
+                            temp_type = arg_type
+                    gen_args.append(self.ctx.temps.create(temp_type, init_expr))
                 else:
                     gen_args.append(self.gen_call_arg(a, ptype))
             args = ", ".join(gen_args)

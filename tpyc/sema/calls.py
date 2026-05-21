@@ -695,6 +695,13 @@ class CallAnalyzer:
                 return_type=return_type,
                 is_readonly=False,
                 is_constructor=True,
+                # Carry mutation facts so `_check_borrow_arg_conflicts`
+                # reads them off `expr.resolved_function_info` -- without
+                # this, ctor calls see `mutated_params=None` and emit
+                # false-positive "borrowed container" warnings even when
+                # the ctor provably doesn't structurally mutate the arg.
+                mutated_params=resolved_ctor.mutated_params,
+                structural_mutated_params=resolved_ctor.structural_mutated_params,
                 canonical_fi=ctor.root,
             )
             self._check_borrow_arg_conflicts(expr)

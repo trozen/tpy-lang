@@ -2750,7 +2750,8 @@ class ExpressionAnalyzer:
                 )
             expr.element_expr = self.compat.coerce_expr(
                 expr.element_expr, result_elem_type, expected_elem,
-                f"{kind} comprehension element", coercion_ctx=CoercionContext.INIT)
+                f"{kind} comprehension element", coercion_ctx=CoercionContext.INIT,
+                target_is_storage_form=True)
             result_elem_type = expected_elem
 
         if kind == "set":
@@ -2855,12 +2856,14 @@ class ExpressionAnalyzer:
         if expected_key is not None and key_type != expected_key:
             expr.key_expr = self.compat.coerce_expr(
                 expr.key_expr, key_type, expected_key,
-                "dict comprehension key", coercion_ctx=CoercionContext.INIT)
+                "dict comprehension key", coercion_ctx=CoercionContext.INIT,
+                target_is_storage_form=True)
             key_type = expected_key
         if expected_value is not None and value_type != expected_value:
             expr.value_expr = self.compat.coerce_expr(
                 expr.value_expr, value_type, expected_value,
-                "dict comprehension value", coercion_ctx=CoercionContext.INIT)
+                "dict comprehension value", coercion_ctx=CoercionContext.INIT,
+                target_is_storage_form=True)
             value_type = expected_value
 
         self.type_ops.validate_hashable_container_elem(key_type, "dict key", expr.loc)

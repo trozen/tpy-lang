@@ -3506,7 +3506,8 @@ class StatementAnalyzer:
 
         value_type = self.expr.analyze_expr_with_hint(stmt.value, rhs_hint)
         stmt.value = self.compat.coerce_expr(stmt.value, value_type, _value_param_type, "slice assignment",
-                                             coercion_ctx=CoercionContext.ASSIGN)
+                                             coercion_ctx=CoercionContext.ASSIGN,
+                                             target_is_storage_form=True)
 
         # Mutation tracking
         root = _root_name_of_expr(stmt.target)
@@ -4164,6 +4165,7 @@ class StatementAnalyzer:
             self.compat.check_type_compatible(
                 result_type, target_type,
                 f"'{op}=' to {_format_aug_target(target)}", loc=stmt.loc,
+                target_is_storage_form=True,
             )
 
     def _is_non_owned_var_copy(self, expr: TpyExpr, target_type: TpyType) -> bool:

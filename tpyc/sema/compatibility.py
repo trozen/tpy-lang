@@ -1112,11 +1112,21 @@ class TypeCompatibility:
                 and (actual.is_user_record or is_dyn_protocol(actual))
             )
             if actual_is_addr_taker:
+                # Identity shortcut (actual == inner_pointee) only fires for
+                # @dynamic protocol values: their `Base&`-style lowering needs
+                # the value->Ptr path without going through resolve_coercion
+                # (no `protocol_to_ptr` rule exists). User-record identity is
+                # handled by the named `record_to_ptr` rule in resolve_coercion;
+                # gating the shortcut keeps the coercion AST name stable so
+                # downstream code can rely on it.
+                actual_is_dyn = is_dyn_protocol(actual)
                 if isinstance(expected, PtrType) and not expected.is_readonly and isinstance(expected.inner_pointee, NominalType):
-                    if actual == expected.inner_pointee or self._is_covariant_target(actual, expected.inner_pointee):
+                    if ((actual_is_dyn and actual == expected.inner_pointee)
+                            or self._is_covariant_target(actual, expected.inner_pointee)):
                         coercion = UPCAST_TO_PTR
                 elif is_readonly_ptr(expected) and isinstance(expected.inner_pointee, NominalType):
-                    if actual == expected.inner_pointee or self._is_covariant_target(actual, expected.inner_pointee):
+                    if ((actual_is_dyn and actual == expected.inner_pointee)
+                            or self._is_covariant_target(actual, expected.inner_pointee)):
                         coercion = UPCAST_TO_CONST_PTR
         if coercion is None:
             # __span__() method coercion: type with __span__() -> Span[T] coerces to Span/Span[readonly[T]]
@@ -1186,8 +1196,13 @@ class TypeCompatibility:
                     f"assign to a variable first",
                     loc
                 )
-            # Mutable Span from a lvalue container (e.g. Array -> Span[T]) requires
-            # non-const source; codegen calls as_mut_span(). Mark source param as T&.
+            # Mutable Span from a lvalue container (e.g. Array -> Span[T])
+            # requires non-const source; codegen calls as_mut_span().
+            # Mark source param as T&. Unlike the pointer-repr Optional
+            # storage-form gate above, this mark applies even for
+            # storage-form Span destinations -- the assignment still
+            # emits as_mut_span(source), which can't bind to a const
+            # source.
             if (is_span(expected) and not is_readonly_span(expected)
                     and source_expr is not None):
                 self._mark_addr_taken(source_expr)

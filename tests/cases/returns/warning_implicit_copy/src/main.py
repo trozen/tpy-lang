@@ -41,7 +41,7 @@ def main() -> None:
     pts[1] = s  # tpyc: warning(/copies Point into container/)
 
     # Warning: field-to-field copy (field access is a reference)
-    h2 = Holder(pt)  # tpyc: warning(/borrowed container/)
+    h2 = Holder(pt)
     h.p = h2.p  # tpyc: warning(/copies Point into field/)
 
     # Warning: subscript-to-field copy (subscript is a reference)
