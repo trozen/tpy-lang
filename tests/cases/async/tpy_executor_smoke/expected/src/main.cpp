@@ -194,7 +194,6 @@ void __tpy_init() {
     ::tpystd::asyncio::_executor::__tpy_init();
     // from time import monotonic
     // from tpy.coro import Poll, Waker, poll_pending
-    ::tpystd::tpy::__tpy_init();
     ::tpystd::coro::__tpy_init();
     // main()
     main();

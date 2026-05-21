@@ -81,7 +81,6 @@ void __tpy_init() {
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
     // from tpy.coro import task_poll_cancelled, poll_once
-    ::tpystd::tpy::__tpy_init();
     ::tpystd::coro::__tpy_init();
     // main()
     main();

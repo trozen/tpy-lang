@@ -29,7 +29,6 @@ void __tpy_init() {
     // # pre-fix for the void-payload case); this exercises the generic-T=None
     // # path through the `Own[T]` parameter slot.
     // from tpy.coro import Poll, poll_ready
-    ::tpystd::tpy::__tpy_init();
     ::tpystd::coro::__tpy_init();
     // main()
     main();

@@ -4036,6 +4036,12 @@ class ModuleInfo:
                 name in self.protocols or name in self.enums or
                 name in self.type_aliases or name in self.variables)
 
+    @property
+    def has_runtime_init(self) -> bool:
+        # Hardcoded builtins (sys, etc.) have no .cpp; native_module files
+        # compile to declarations only. Both lack a __tpy_init symbol.
+        return not self.is_builtin and not self.is_native_module
+
 
 class TypeRegistry:
     """Registry of all known types and symbols."""

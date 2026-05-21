@@ -74,7 +74,6 @@ void __tpy_init() {
     // # Standalone `await sub()` -- result is discarded; sub runs for its
     // # side effects.
     // from tpy.coro import poll_once
-    ::tpystd::tpy::__tpy_init();
     ::tpystd::coro::__tpy_init();
     // main()
     main();

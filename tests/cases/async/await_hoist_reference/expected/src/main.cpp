@@ -112,7 +112,6 @@ void __tpy_init() {
     initialized = true;
 
     // from tpy.coro import poll_once
-    ::tpystd::tpy::__tpy_init();
     ::tpystd::coro::__tpy_init();
     // main()
     main();

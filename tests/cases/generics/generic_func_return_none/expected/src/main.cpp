@@ -22,7 +22,6 @@ void __tpy_init() {
     initialized = true;
 
     // from tpy.coro import Awaitable, Poll, Waker, poll_once, poll_ready, poll_ready_none
-    ::tpystd::tpy::__tpy_init();
     ::tpystd::coro::__tpy_init();
     // main()
     main();

@@ -1,0 +1,2 @@
+leaf_a.py:8: warning: ALL_CAPS variable 'VAL_A' without Final annotation; use Final[Int32] if this is a constant
+leaf_b.py:8: warning: ALL_CAPS variable 'VAL_B' without Final annotation; use Final[Int32] if this is a constant

@@ -557,10 +557,9 @@ class StatementGenerator:
         elif isinstance(stmt, TpyRaise):
             return self._gen_raise(stmt, indent)
         elif isinstance(stmt, TpyImport):
-            # Only emit __tpy_init() for user modules that have runtime init.
-            # Skip builtins (no .cpp) and native_module (binding-only, no .cpp).
-            module_info = self.ctx.analyzer.registry.get_module(stmt.module_name)
-            skip_init = module_info and (module_info.is_builtin or module_info.is_native_module)
+            registry = self.ctx.analyzer.registry
+            module_info = registry.get_module(stmt.module_name)
+            has_init = module_info is None or module_info.has_runtime_init
             result = ""
             if (module_info is not None
                     and module_info.is_native_module
@@ -572,7 +571,7 @@ class StatementGenerator:
                         continue
                     result += f"{indent}{qualified_cpp_name(reached, '__tpy_init')}();\n"
                     self.ctx.emitted_tpy_inits.add(reached)
-            if stmt.module_name in self.ctx.user_module_imports and not skip_init:
+            if stmt.module_name in self.ctx.user_module_imports and has_init:
                 # For dotted imports, emit parent package inits first (Python semantics)
                 # e.g., "mypackage.utils" -> init mypackage first, then mypackage.utils
                 parts = stmt.module_name.split('.')
@@ -580,9 +579,18 @@ class StatementGenerator:
                     parent_pkg = '.'.join(parts[:i])
                     if parent_pkg == self.ctx.module_name:
                         continue  # don't self-init
-                    if parent_pkg in self.ctx.all_user_modules and parent_pkg not in self.ctx.emitted_tpy_inits:
-                        result += f"{indent}{qualified_cpp_name(parent_pkg, '__tpy_init')}();\n"
+                    if parent_pkg not in self.ctx.all_user_modules:
+                        continue
+                    if parent_pkg in self.ctx.emitted_tpy_inits:
+                        continue
+                    parent_info = registry.get_module(parent_pkg)
+                    if parent_info is not None and not parent_info.has_runtime_init:
+                        # Native/builtin packages have no __tpy_init symbol;
+                        # mark visited so sibling submodules don't retry.
                         self.ctx.emitted_tpy_inits.add(parent_pkg)
+                        continue
+                    result += f"{indent}{qualified_cpp_name(parent_pkg, '__tpy_init')}();\n"
+                    self.ctx.emitted_tpy_inits.add(parent_pkg)
                 # Then init the submodule itself (skip self-init)
                 if stmt.module_name != self.ctx.module_name and stmt.module_name not in self.ctx.emitted_tpy_inits:
                     result += f"{indent}{qualified_cpp_name(stmt.module_name, '__tpy_init')}();\n"
@@ -615,7 +623,7 @@ class StatementGenerator:
             if ult_mod in seen:
                 continue
             ult_info = registry.get_module(ult_mod)
-            if ult_info is None or ult_info.is_builtin or ult_info.is_native_module:
+            if ult_info is None or not ult_info.has_runtime_init:
                 continue
             seen.add(ult_mod)
             order.append(ult_mod)

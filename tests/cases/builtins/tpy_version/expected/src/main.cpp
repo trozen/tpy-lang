@@ -56,7 +56,6 @@ void __tpy_init() {
     // # state is printed so the output is stable across version bumps and
     // # identical across the two runtimes.
     // from tpy.version import __version__, version_info, is_compiled
-    ::tpystd::tpy::__tpy_init();
     ::tpystd::tpy::version::__tpy_init();
     // main()
     main();

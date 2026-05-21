@@ -28,7 +28,6 @@ void __tpy_init() {
     // # that precedence, sema would fire "Type mismatch in assignment:
     // # expected Poll, got Poll" with differing `_module_qname`.
     // from tpy.coro import Poll
-    ::tpystd::tpy::__tpy_init();
     ::tpystd::coro::__tpy_init();
     // main()
     main();

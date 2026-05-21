@@ -36,7 +36,6 @@ void __tpy_init() {
     // from asyncio import Event
     ::tpystd::asyncio::__tpy_init();
     // from tpy.coro import poll_once
-    ::tpystd::tpy::__tpy_init();
     ::tpystd::coro::__tpy_init();
     // main()
     main();
