@@ -30,6 +30,7 @@ from ..type_def_registry import (
     is_bool_type, is_dict, is_set, is_bytes_view_type, is_str_view_type,
 )
 from ..symbol_binding import lookup_imported, SymbolKind
+from ..compilation_context import get_current_compiler
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
@@ -160,27 +161,17 @@ def escape_cpp_char(value: str) -> str:
                  .replace('\x00', '\\000'))
 
 
-# Namespace map: module_name -> C++ namespace (set by Compiler before codegen)
-_namespace_map: dict[str, str] = {}
-# Include path map: module_name -> header path (derived from namespace or explicit override)
-_include_path_map: dict[str, str] = {}
-
-
-def set_namespace_map(ns_map: dict[str, str]) -> None:
-    """Set the module-to-namespace mapping for codegen."""
-    global _namespace_map
-    _namespace_map = ns_map
-
-
-def set_include_path_map(ip_map: dict[str, str]) -> None:
-    """Set the module-to-include-path mapping for codegen."""
-    global _include_path_map
-    _include_path_map = ip_map
-
-
 def get_include_path(module_name: str) -> str | None:
-    """Get the include path override for a module, or None for default."""
-    return _include_path_map.get(module_name)
+    """Get the include path override for a module, or None for default.
+
+    Returns None when no compilation is active (matches the previous
+    empty-default-dict behavior for callers like BuildLayout's pure
+    path-shape tests).
+    """
+    compiler = get_current_compiler()
+    if compiler is None:
+        return None
+    return compiler.include_path_map.get(module_name)
 
 
 def module_to_include_path(module_name: str) -> str:
@@ -194,13 +185,6 @@ def module_to_include_path(module_name: str) -> str:
     return '/'.join(parts[:-1]) + f"/{parts[-1]}.hpp"
 
 
-def clear_namespace_map() -> None:
-    """Clear the namespace and include path maps (called between compilations)."""
-    global _namespace_map, _include_path_map
-    _namespace_map = {}
-    _include_path_map = {}
-
-
 # Mapping from Python dunder methods to C++ binary operators.
 # Both __truediv__ and __floordiv__ map to / in C++: for integer types, C++ /
 # is truncating division (like Python //); user types should implement the
@@ -211,15 +195,17 @@ def module_to_cpp_namespace(module_name: str) -> str:
     Checks the namespace map first (for # tpy: namespace overrides),
     falls back to "tpyapp::{module_name}".
     """
-    if module_name in _namespace_map:
-        return _namespace_map[module_name]
+    compiler = get_current_compiler()
+    if compiler is not None and module_name in compiler.namespace_map:
+        return compiler.namespace_map[module_name]
     return f"tpyapp::{module_name.replace('.', '::')}"
 
 
 def module_has_cpp_namespace_override(module_name: str) -> bool:
     """True if `module_name` has an explicit `# tpy: cpp_namespace` directive
     (i.e. its C++ namespace differs from the default `tpyapp::<module>`)."""
-    return module_name in _namespace_map
+    compiler = get_current_compiler()
+    return compiler is not None and module_name in compiler.namespace_map
 
 
 def qualified_cpp_name(module_name: str, name: str) -> str:

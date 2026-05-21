@@ -35,6 +35,7 @@ from tpyc.typesys import ALL_FIXED_INTS
 from tpyc.parse.parser import _FIXED_INT_NAMES as PARSER_FIXED_INT_NAMES
 from tpyc.codegen_cpp.statements import StatementGenerator
 from tpyc.macro_api import _FIXED_INT_NAMES as MACRO_FIXED_INT_NAMES
+from tpyc.compilation_context import activate_compiler
 
 
 # Map qname -> a concrete TpyType instance with canonical args.
@@ -982,7 +983,10 @@ def test_record_and_protocol_attach_during_compile():
     compiler = Compiler.from_source(source,
                                     lib_dirs=[get_lib_dir() / "tpy"])
     compiler.compile()
-    td = get_type_def("__main__.Greeter")
+    # Keep the compilation's dynamic_type_defs slice visible while we
+    # inspect the registry post-compile.
+    with activate_compiler(compiler):
+        td = get_type_def("__main__.Greeter")
     assert td is not None, (
         "TypeDef for '__main__.Greeter' should exist after sema registers the protocol."
     )
@@ -1504,14 +1508,21 @@ def _protocol_registry(_protocol_snapshot_compiled):
     """Per-test fixture: recompile the snapshot source so the TypeDef
     registry is populated inside the test's `clear_all_compilation_state`
     window. The module-scoped fixture above is retained for any future
-    callers that legitimately want the pre-clear state."""
+    callers that legitimately want the pre-clear state.
+
+    The fixture keeps the recompiled Compiler active for the test body
+    so reads of `compiler.dynamic_type_defs` (via `get_type_def` etc.)
+    see this compilation's slice, not the conftest fake context's empty
+    one.
+    """
     from tpyc import get_lib_dir
     from tpyc.compiler import Compiler
     compiler = Compiler.from_source(
         _PROTOCOL_SNAPSHOT_SOURCE, lib_dirs=[get_lib_dir() / "tpy"]
     )
     compiler.compile()
-    return compiler
+    with activate_compiler(compiler):
+        yield compiler
 
 
 def test_protocol_snapshot_covers_every_compiled_protocol(_protocol_registry):
@@ -1519,8 +1530,16 @@ def test_protocol_snapshot_covers_every_compiled_protocol(_protocol_registry):
     have a PROTOCOL_SNAPSHOT entry (and vice versa). Guards against silent
     drift: a new stdlib protocol without a snapshot entry, or a snapshot
     entry pointing at a qname the registration path no longer creates."""
+    # PROTOCOL TypeDefs live in two places: pre-existing static entries
+    # whose payload was attached during compile (mostly @builtin_type
+    # stub protocols), and purely-dynamic entries on the active
+    # compiler's `dynamic_type_defs`. Both contribute.
     live = {
         qn for qn, td in _type_defs.items()
+        if td.category is TypeCategory.PROTOCOL and td.protocol is not None
+    }
+    live |= {
+        qn for qn, td in _protocol_registry.dynamic_type_defs.items()
         if td.category is TypeCategory.PROTOCOL and td.protocol is not None
     }
     missing = live - set(PROTOCOL_SNAPSHOT)

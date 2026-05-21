@@ -33,16 +33,17 @@ from .frontend_diagnostics import FrontendDiagnostic, FrontendDiagnosticCategory
 from .frontend_ir import lower_module
 from .type_def_registry import (
     get_type_def as _get_type_def,
-    attach_dynamic_type_def, TypeCategory,
+    attach_dynamic_type_def, TypeCategory, TypeDef as _TypeDef,
 )
 from .codegen_cpp import CodeGenerator, CodeGenOptions
-from .codegen_cpp.context import qualified_cpp_name, set_namespace_map, set_include_path_map, get_include_path, clear_namespace_map, module_to_include_path
+from .codegen_cpp.context import qualified_cpp_name, get_include_path, module_to_include_path
+from .compilation_context import activate_compiler
 from .typesys import (
     TpyType, INT32, INT64, BIGINT, VOID, NominalType,
     RecordInfo, FunctionInfo, ProtocolInfo,
     OwnType, OptionalType, UnionType, TupleType, PtrType, RefType, ReadonlyType,
     is_fn_type, unwrap_ref_type, is_protocol_type, is_protocol_union,
-    clear_all_compilation_state,
+    clear_all_compilation_state, BUILTIN_RETURN_EXCEPTIONS,
 )
 from .type_def_registry import protocol_info_of, enum_info_of
 from .module_names import module_from_qname, public_module_name
@@ -1090,6 +1091,21 @@ class Compiler:
         # private backing module is.  Populated lazily on first call
         # and invalidated by re-entering `_init_shared`.
         self._public_to_raw_cache: dict[str, list[str]] | None = None
+        # Per-compilation state read via `tpyc/compilation_context.py`.
+        # `return_exception_names` is pre-seeded so callers that ask before
+        # user code registers (e.g. `_funcs.py` referencing `StopIteration`
+        # before `_exceptions.py` is analyzed) still see the builtin set.
+        # `dynamic_type_defs` only holds qnames not in the static
+        # `_type_defs`; payload mutations to static entries are tracked
+        # separately at module level in `_dynamic_attached_qnames`.
+        self.namespace_map: dict[str, str] = {}
+        self.include_path_map: dict[str, str] = {}
+        self.return_exception_names: set[str] = set(BUILTIN_RETURN_EXCEPTIONS)
+        self.protocol_modules: dict[str, str] = {}
+        self.union_alias_names: dict[tuple[TpyType, ...], str] = {}
+        self.native_cpp_names: dict[str, str] = {}
+        self.dynamic_type_defs: dict[str, _TypeDef] = {}
+        self.dynamic_created_qnames: set[str] = set()
 
     @classmethod
     def from_source(
@@ -1135,8 +1151,24 @@ class Compiler:
             ParseError: If parsing fails.
             SemanticError: If semantic analysis fails.
         """
+        with activate_compiler(self):
+            return self._compile_impl()
+
+    def _compile_impl(self) -> list[CompiledModule]:
+        # Reset per-compilation maps in case `compile()` is called twice on
+        # the same instance. `clear_all_compilation_state` resets the
+        # remaining module-level globals plus the dynamic TypeDef slice.
+        # Note: a full second `compile()` is not supported today --
+        # `_init_shared` state (`modules`, `compile_order`, `diagnostics`,
+        # `_cycle_peers`, ...) also accumulates -- but the per-compilation
+        # maps below are the part this branch's migration introduced.
+        self.namespace_map = {}
+        self.include_path_map = {}
+        self.native_cpp_names = {}
+        self.union_alias_names = {}
+        self.protocol_modules = {}
+        self.return_exception_names = set(BUILTIN_RETURN_EXCEPTIONS)
         clear_all_compilation_state()
-        clear_namespace_map()  # separate from clear_all_compilation_state (lives in codegen)
 
         if self._source_input is not None:
             source, entry_name = self._source_input
@@ -1168,8 +1200,8 @@ class Compiler:
 
             self._apply_native_namespace_prefix()
             ns_map = self._build_namespace_map()
-            set_namespace_map(ns_map)
-            set_include_path_map(self._build_include_path_map(ns_map))
+            self.namespace_map = ns_map
+            self.include_path_map = self._build_include_path_map(ns_map)
             # Workspace-wide two-pass sema. Pre-populate compiled.exports
             # with skeletons for cross-module bind_imports to find;
             # then resolve types per module; then finalize decls per
@@ -1225,8 +1257,8 @@ class Compiler:
 
         # 4. Build namespace and include path maps from # tpy: directives
         ns_map = self._build_namespace_map()
-        set_namespace_map(ns_map)
-        set_include_path_map(self._build_include_path_map(ns_map))
+        self.namespace_map = ns_map
+        self.include_path_map = self._build_include_path_map(ns_map)
 
         # 5. Workspace-wide two-pass sema (cyclic-import support).
         # First pre-populate every module's `compiled.exports` with
@@ -3585,6 +3617,13 @@ class Compiler:
             Tuple of (hpp_path, cpp_path). cpp_path is None for native_module modules
             (no .cpp is generated for binding-only modules).
         """
+        with activate_compiler(self):
+            return self._generate_code_impl(compiled, output_dir, entry_module_name, options, flat)
+
+    def _generate_code_impl(self, compiled: CompiledModule, output_dir: Path,
+                            entry_module_name: str | None,
+                            options: CodeGenOptions | None,
+                            flat: bool) -> tuple[Path, Path | None] | tuple[None, None]:
         self._check_no_errors(compiled)
         mod_name = compiled.name
 
@@ -3638,17 +3677,18 @@ class Compiler:
     def generate_code_to_strings(self, compiled: CompiledModule,
                                   options: CodeGenOptions | None = None) -> tuple[str, str]:
         """Generate C++ code and return as strings (no file I/O)."""
-        self._check_no_errors(compiled)
-        assert compiled.analyzer is not None
-        codegen = CodeGenerator(compiled.analyzer, options)
-        actual_user_modules = set(self.modules.keys())
-        implicit_stdlib = self._implicit_stdlib_set()
-        return codegen.generate(
-            compiled.ast, compiled.name,
-            is_entry_point=compiled.is_entry_point,
-            actual_user_modules=actual_user_modules,
-            implicit_stdlib_modules=implicit_stdlib,
-        )
+        with activate_compiler(self):
+            self._check_no_errors(compiled)
+            assert compiled.analyzer is not None
+            codegen = CodeGenerator(compiled.analyzer, options)
+            actual_user_modules = set(self.modules.keys())
+            implicit_stdlib = self._implicit_stdlib_set()
+            return codegen.generate(
+                compiled.ast, compiled.name,
+                is_entry_point=compiled.is_entry_point,
+                actual_user_modules=actual_user_modules,
+                implicit_stdlib_modules=implicit_stdlib,
+            )
 
     def _propagate_package_directives(self) -> None:
         """Reserved for future package-level directive propagation.

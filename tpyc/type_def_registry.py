@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
+from .compilation_context import get_current_compiler, require_current_compiler
+
 if TYPE_CHECKING:
     from tpyc.typesys import TpyType, RecordInfo, ProtocolInfo, TypeParamKind
 
@@ -220,14 +222,43 @@ class TypeDef:
 
 _type_defs: dict[str, TypeDef] = {}
 
-# Qnames whose TypeDef was created or mutated by a dynamic attachment
-# (sema-time `attach_dynamic_type_def`). On `clear_dynamic_type_defs()`
-# purely-dynamic TypeDefs are removed and pre-existing static ones get
-# their record/protocol payload reset. This keeps the static registry
-# (populated once at module load by `_populate()`) independent from per-
-# compilation state, without requiring two separate dicts.
-_dynamic_created_qnames: set[str] = set()
+# Dynamic per-compilation slice splits two ways:
+#
+#   compiler.dynamic_type_defs: dict[str, TypeDef]
+#   compiler.dynamic_created_qnames: set[str]
+#       Purely-dynamic TypeDefs (user `user_mod.Widget`, etc.) whose
+#       qname doesn't appear in the static `_type_defs`. Per-compilation:
+#       created on first attach, rolled back wholesale at
+#       `clear_dynamic_type_defs()` (which the next compilation calls).
+#
+#   _dynamic_attached_qnames: set[str]  (module-level, below)
+#       Qnames in the STATIC `_type_defs` whose record/protocol/enum
+#       payload was mutated by some compilation (e.g. `builtins.list`
+#       whose @builtin_type stub produces a RecordInfo). The tracker is
+#       module-level because the mutation itself targets the shared
+#       static dict and survives the originating compiler. Payload
+#       reset on the next `clear_dynamic_type_defs()` call.
+#
+# This keeps the static registry (populated once at module load by
+# `_populate()`) independent from per-compilation state. The mutation of
+# the static TypeDef on attach is a known shared-state weakness left
+# from the pre-Compiler-instance design; addressed when sema stops
+# writing payloads back into the static registry (a separate cleanup
+# tracked in `docs/IR_DESIGN.md`).
 _dynamic_attached_qnames: set[str] = set()
+
+# Read-only sentinels for "no active compilation" lookups, mirroring the
+# previous module-global empty-default behavior so unit tests that exercise
+# the static registry without spinning up a Compiler still work.
+_EMPTY_DYNAMIC_TYPE_DEFS: dict[str, TypeDef] = {}
+
+
+def _dynamic_type_defs_view() -> dict[str, TypeDef]:
+    """Return the active compiler's dynamic_type_defs, or an empty dict."""
+    compiler = get_current_compiler()
+    if compiler is None:
+        return _EMPTY_DYNAMIC_TYPE_DEFS
+    return compiler.dynamic_type_defs
 
 
 def register(td: TypeDef) -> None:
@@ -237,7 +268,10 @@ def register(td: TypeDef) -> None:
 
 
 def get_type_def(qname: str) -> Optional[TypeDef]:
-    return _type_defs.get(qname)
+    td = _type_defs.get(qname)
+    if td is not None:
+        return td
+    return _dynamic_type_defs_view().get(qname)
 
 
 def attach_dynamic_type_def(
@@ -264,12 +298,18 @@ def attach_dynamic_type_def(
 
     Returns the TypeDef for convenience.
     """
-    td = _type_defs.get(qname)
+    compiler = require_current_compiler()
     # `record` is typed Optional[RecordInfo] for production callers, but a
     # handful of registry unit tests pass an opaque sentinel (`object()`) to
     # exercise dict-level behavior without constructing a full RecordInfo --
     # tolerate that by treating a missing attribute as "not indirecting".
     record_is_indirecting = bool(getattr(record, "is_indirecting", False))
+    # Order: static first (preserve mutation of pre-existing builtin
+    # TypeDefs), then per-compiler dynamic (subsequent attaches in the
+    # same compile hit the existing dynamic entry).
+    td = _type_defs.get(qname)
+    if td is None:
+        td = compiler.dynamic_type_defs.get(qname)
     if td is None:
         td = TypeDef(
             qname=qname, category=category,
@@ -277,8 +317,8 @@ def attach_dynamic_type_def(
             is_value_type=(is_value_type if is_value_type is not None else False),
             is_indirecting=record_is_indirecting,
         )
-        _type_defs[qname] = td
-        _dynamic_created_qnames.add(qname)
+        compiler.dynamic_type_defs[qname] = td
+        compiler.dynamic_created_qnames.add(qname)
     else:
         if record is not None:
             td.record = record
@@ -291,16 +331,24 @@ def attach_dynamic_type_def(
             td.protocol = protocol
         if enum is not None:
             td.enum = enum
-        _dynamic_attached_qnames.add(qname)
+        if qname in _type_defs:
+            _dynamic_attached_qnames.add(qname)
     return td
 
 
 def clear_dynamic_type_defs() -> None:
     """Reset dynamic attachments. Called from `clear_all_compilation_state`
     so per-compilation RECORD/PROTOCOL/ENUM TypeDefs don't bleed across runs."""
-    for qname in _dynamic_created_qnames:
-        _type_defs.pop(qname, None)
-    _dynamic_created_qnames.clear()
+    compiler = get_current_compiler()
+    if compiler is not None:
+        # Per-compiler dynamic TypeDefs go away entirely.
+        compiler.dynamic_type_defs.clear()
+        compiler.dynamic_created_qnames.clear()
+    # Pre-existing static TypeDefs that any compilation mutated need
+    # their payloads reset so the next compilation starts clean. The
+    # tracker is module-level (the mutation outlived its originating
+    # Compiler instance) so this cleanup runs regardless of whether
+    # a compiler is currently active.
     for qname in _dynamic_attached_qnames:
         td = _type_defs.get(qname)
         if td is not None:
@@ -330,7 +378,12 @@ def type_def_of(t: "TpyType") -> Optional[TypeDef]:
     if t is None or not hasattr(t, "qualified_name"):
         return None
     qn = t.qualified_name()
-    return _type_defs.get(qn) if qn else None
+    if not qn:
+        return None
+    td = _type_defs.get(qn)
+    if td is not None:
+        return td
+    return _dynamic_type_defs_view().get(qn)
 
 
 def find_factory_by_simple_name(name: str) -> Optional[TypeDef]:

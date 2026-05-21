@@ -6,6 +6,7 @@ import pytest
 
 from . import get_lib_dir, get_runtime_dir
 from .compiler import Compiler, BuildLayout
+from .compilation_context import activate_compiler
 from .diagnostics import SemanticError
 from .typesys import (
     INT32, INT64, BIGINT, BOOL, FLOAT, STR, STRVIEW, CHAR, VOID,
@@ -88,6 +89,7 @@ class TestCompilerFromSource:
             assert mod.ast.directives.native_module
             _, cpp = compiler.generate_code_to_strings(mod)
             assert cpp == ""
+
 
 
 class TestCodegenRegression:
@@ -240,8 +242,9 @@ class TestSendSyncRecordDerivation:
         compiler = Compiler.from_source(source, lib_dirs=_STDLIB_DIRS)
         compiler.compile()
         point_type = NominalType("Point", (), _module_qname="__main__.Point")
-        assert point_type.is_send()
-        assert point_type.is_sync()
+        with activate_compiler(compiler):
+            assert point_type.is_send()
+            assert point_type.is_sync()
 
     def test_record_with_ptr_field_not_send(self, tmp_path):
         source = (
@@ -265,8 +268,9 @@ class TestSendSyncRecordDerivation:
         compiler = Compiler(src_file, lib_dirs=[get_lib_dir() / "tpy"])
         compiler.compile()
         holder_type = NominalType("Holder", (), _module_qname="__main__.Holder")
-        assert not holder_type.is_send()
-        assert not holder_type.is_sync()
+        with activate_compiler(compiler):
+            assert not holder_type.is_send()
+            assert not holder_type.is_sync()
 
     def test_record_with_list_field_send_not_sync(self):
         source = (
@@ -285,8 +289,9 @@ class TestSendSyncRecordDerivation:
         compiler = Compiler.from_source(source, lib_dirs=lib_dirs)
         compiler.compile()
         container_type = NominalType("Container", (), _module_qname="__main__.Container")
-        assert container_type.is_send()
-        assert not container_type.is_sync()
+        with activate_compiler(compiler):
+            assert container_type.is_send()
+            assert not container_type.is_sync()
 
 
 class TestBuildLayout:

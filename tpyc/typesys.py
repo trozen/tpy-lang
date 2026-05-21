@@ -16,6 +16,7 @@ from enum import Enum
 from typing import Any, Callable, Iterator, Optional, TYPE_CHECKING
 
 from .module_names import public_module_name
+from .compilation_context import get_current_compiler, require_current_compiler
 
 if TYPE_CHECKING:
     from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral, TypeRefNode
@@ -137,15 +138,28 @@ def error_return_to_cpp(name: str, current_module: str | None,
     return name
 
 
-# Native C++ name mapping for @native/@native_c records.
-# Maps Python class name -> C++ name (e.g., "Rect" -> "SDL_Rect").
-# Used by NominalType.to_cpp() so composite types like Ptr[Rect] resolve correctly.
-# NOTE: Global mutable state -- safe because the compilation pipeline is sequential
-# (each CodeGenerator.generate() call clears and repopulates before use).
-# Would need to move into CodeGenContext if codegen ever runs concurrently.
-_native_cpp_names: dict[str, str] = {}
-_union_alias_names: dict[tuple['TpyType', ...], str] = {}
-_protocol_modules: dict[str, str] = {}  # protocol_name -> module_name
+# Per-compilation maps for type-name resolution
+# (`Compiler.native_cpp_names` / `union_alias_names` / `protocol_modules`)
+# live on the active `Compiler` (see `tpyc/compilation_context.py`).
+# Readers below use `get_current_compiler()` with an empty-default
+# fallback so the type system stays usable from contexts without an
+# active compiler (e.g. REPL display, isolated unit tests).
+
+_EMPTY_NATIVE_CPP_NAMES: dict[str, str] = {}
+
+
+def _native_cpp_names_view() -> dict[str, str]:
+    """Read-side accessor for the active compiler's native_cpp_names dict.
+
+    Returns an empty dict when no compilation is active so that
+    `NominalType.to_cpp()` outside a compile context still works (no
+    overrides => bare `self.name`), matching the previous module-global
+    empty-default behavior.
+    """
+    compiler = get_current_compiler()
+    if compiler is None:
+        return _EMPTY_NATIVE_CPP_NAMES
+    return compiler.native_cpp_names
 
 
 def ensure_qualified(name: str) -> str:
@@ -164,25 +178,25 @@ def ensure_qualified(name: str) -> str:
 
 def register_native_cpp_name(py_name: str, cpp_name: str) -> None:
     """Register a mapping from a Python class name to its native C++ name."""
-    _native_cpp_names[py_name] = ensure_qualified(cpp_name)
+    require_current_compiler().native_cpp_names[py_name] = ensure_qualified(cpp_name)
 
 
 def register_union_alias(members: tuple['TpyType', ...], alias_name: str) -> None:
     """Register a union type -> alias name mapping for codegen."""
-    _union_alias_names[members] = alias_name
+    require_current_compiler().union_alias_names[members] = alias_name
 
 
-# Builtins that are always ReturnException. Pre-seeded because _funcs.py
-# (which uses @error_return(StopIteration)) may be compiled before
-# _exceptions.py registers StopIteration as ReturnException.
+# Builtins that are always ReturnException. Pre-seeded into each
+# Compiler.return_exception_names because _funcs.py (which uses
+# @error_return(StopIteration)) may be compiled before _exceptions.py
+# registers StopIteration as ReturnException.
 # Stored as bare names -- is_return_exception strips module prefixes.
-_BUILTIN_RETURN_EXCEPTIONS: frozenset[str] = frozenset({"StopIteration"})
-_return_exception_names: set[str] = set(_BUILTIN_RETURN_EXCEPTIONS)
+BUILTIN_RETURN_EXCEPTIONS: frozenset[str] = frozenset({"StopIteration"})
 
 
 def register_return_exception(name: str) -> None:
     """Register an exception type as ReturnException (return-only, used with @error_return)."""
-    _return_exception_names.add(name)
+    require_current_compiler().return_exception_names.add(name)
 
 
 def error_return_matches(a: str | None, b: str | None) -> bool:
@@ -204,7 +218,11 @@ def is_return_exception(name: str) -> bool:
     names -- extracts the bare name for matching since a ReturnException type
     is ReturnException regardless of which module references it.
     """
-    return bare_name(name) in _return_exception_names
+    compiler = get_current_compiler()
+    bare = bare_name(name)
+    if compiler is None:
+        return bare in BUILTIN_RETURN_EXCEPTIONS
+    return bare in compiler.return_exception_names
 
 
 def is_exception_type(name: str, registry: 'TypeRegistry') -> bool:
@@ -239,13 +257,17 @@ def register_protocol_module(protocol_name: str, module_name: str) -> None:
     Private submodule paths are mapped to their public parent
     (e.g. "tpy._core._types" -> "tpy", "tpy._builtins._list" -> "tpy").
     """
-    if protocol_name not in _protocol_modules:
-        _protocol_modules[protocol_name] = public_module_name(module_name)
+    proto_modules = require_current_compiler().protocol_modules
+    if protocol_name not in proto_modules:
+        proto_modules[protocol_name] = public_module_name(module_name)
 
 
 def get_protocol_qname(protocol_name: str) -> str | None:
     """Get the qualified name for a protocol from the global registry."""
-    mod = _protocol_modules.get(protocol_name)
+    compiler = get_current_compiler()
+    if compiler is None:
+        return None
+    mod = compiler.protocol_modules.get(protocol_name)
     if mod:
         return f"{mod}.{protocol_name}"
     return None
@@ -255,13 +277,13 @@ def impl_proto_matches_name(impl_proto: 'NominalType', protocol_name: str,
                             target_qname: str | None = None) -> bool:
     """Check if an implemented protocol matches a target by qualified name.
 
-    Uses qualified_name() on impl_proto and the _protocol_modules registry
+    Uses qualified_name() on impl_proto and `Compiler.protocol_modules`
     to avoid false matches with user protocols that shadow builtin names.
     Falls back to short name if qualified names aren't available.
 
     Args:
         target_qname: Pre-computed qualified name for the target protocol.
-            If None, computed from protocol_name via _protocol_modules.
+            If None, computed from protocol_name via `Compiler.protocol_modules`.
     """
     impl_qname = impl_proto.qualified_name()
     if impl_qname:
@@ -274,18 +296,15 @@ def impl_proto_matches_name(impl_proto: 'NominalType', protocol_name: str,
 
 def clear_codegen_state() -> None:
     """Clear per-module codegen state (called before each module's codegen)."""
-    _native_cpp_names.clear()
-    _union_alias_names.clear()
+    compiler = get_current_compiler()
+    if compiler is not None:
+        compiler.native_cpp_names.clear()
+        compiler.union_alias_names.clear()
 
 
 def clear_all_compilation_state() -> None:
     """Full reset for a new compilation (called once per tpyc invocation)."""
     from tpyc.type_def_registry import clear_dynamic_type_defs
-    _native_cpp_names.clear()
-    _union_alias_names.clear()
-    _return_exception_names.clear()
-    _return_exception_names.update(_BUILTIN_RETURN_EXCEPTIONS)
-    _protocol_modules.clear()
     _evaluating_send.clear()
     _evaluating_sync.clear()
     clear_dynamic_type_defs()
@@ -877,7 +896,7 @@ class NominalType(TpyType):
 
     def to_cpp_base_name(self) -> str:
         """Return the C++ name without type arguments."""
-        return _native_cpp_names.get(self.name, self.name)
+        return _native_cpp_names_view().get(self.name, self.name)
 
     def to_cpp(self) -> str:
         if self.is_protocol and not self.is_dynamic_protocol:
@@ -892,11 +911,12 @@ class NominalType(TpyType):
             return td.cpp_formatter(self.type_args)
         if td is not None and td.is_compile_time_only:
             raise TypeError(f"{self.name} is compile-time only and has no C++ representation")
-        # Check for native C++ name mapping. `_native_cpp_names` is populated
-        # during codegen setup -- includes @native records, imported records,
-        # AND @builtin_type-with-body records (registered via the
-        # `record_info.builtin_type_key` loop in codegen_cpp/generator.py).
-        cpp_name = _native_cpp_names.get(self.name, self.name)
+        # Check for native C++ name mapping. `Compiler.native_cpp_names`
+        # is populated during codegen setup -- includes @native records,
+        # imported records, AND @builtin_type-with-body records
+        # (registered via the `record_info.builtin_type_key` loop in
+        # codegen_cpp/generator.py).
+        cpp_name = _native_cpp_names_view().get(self.name, self.name)
         if self.type_args:
             args = ", ".join(
                 t.to_cpp() if isinstance(t, TpyType) else str(t)
@@ -918,9 +938,11 @@ class NominalType(TpyType):
         if self._module_qname:
             return self._module_qname
         if self.is_protocol:
-            mod = _protocol_modules.get(self.name)
-            if mod:
-                return f"{mod}.{self.name}"
+            compiler = get_current_compiler()
+            if compiler is not None:
+                mod = compiler.protocol_modules.get(self.name)
+                if mod:
+                    return f"{mod}.{self.name}"
         return None
 
     def is_value_type(self) -> bool:
@@ -2383,9 +2405,11 @@ class UnionType(TpyType):
     members: tuple[TpyType, ...]
 
     def to_cpp(self) -> str:
-        alias = _union_alias_names.get(self.members)
-        if alias is not None:
-            return alias
+        compiler = get_current_compiler()
+        if compiler is not None:
+            alias = compiler.union_alias_names.get(self.members)
+            if alias is not None:
+                return alias
         cpp_members = [
             "std::monostate" if is_void_like_type(m) else m.to_cpp()
             for m in self.members
@@ -4265,7 +4289,7 @@ class TypeRegistry:
         Mirrors `imported_record_qualification` for the protocol side --
         @dynamic protocols carry a runtime vtable, so cross-module
         references need the qualified C++ name (the same machinery that
-        registers user records into `_native_cpp_names` per emit-module).
+        registers user records into `Compiler.native_cpp_names` per emit-module).
         Static protocols are skipped: they monomorphize at use sites and
         never appear as runtime types.
         """

@@ -14,11 +14,11 @@ from ..typesys import (
     unwrap_readonly, is_protocol_type, resolve_int_literals,
     is_integer_type, is_float_type, is_void_like_type,
     INT32, BIGINT, FLOAT, FLOAT32, STR, BYTES,
-    _union_alias_names,
 )
 from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral, TpyIfExpr
 from ..sema.context import PENDING_CONTAINER_TYPES
 from .context import qualified_cpp_name, enum_cpp_name
+from ..compilation_context import get_current_compiler
 from ..type_def_registry import (
     is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_float64_type, is_float32_type,
@@ -323,7 +323,7 @@ class TypeResolver:
             # Native records use their native C++ name directly (globally visible)
             record_info = self.ctx.analyzer.registry.get_record_for_type(typ)
             if record_info and record_info.is_native:
-                return typ.to_cpp()  # to_cpp() already resolves via _native_cpp_names
+                return typ.to_cpp()  # to_cpp() already resolves via Compiler.native_cpp_names
             # Cross-module user record: qualify to the declaring module (canonical identity).
             # Use the type-aware variant so records reachable only via an inferred
             # cross-module return type (e.g. `import mod; p = mod.f()` where
@@ -350,7 +350,7 @@ class TypeResolver:
             spelled = enum_cpp_name(typ, cur_module)
             # Only return early if the helper produced something other
             # than the bare local name (otherwise let the normal type
-            # rendering path continue, which uses _native_cpp_names).
+            # rendering path continue, which uses Compiler.native_cpp_names).
             if spelled != typ.name:
                 return spelled
         # Tuple types: qualify element types for imported members
@@ -359,7 +359,8 @@ class TypeResolver:
             return f"std::tuple<{args}>"
         # Union types: use alias name if registered, otherwise qualify member names
         if isinstance(typ, UnionType):
-            alias = _union_alias_names.get(typ.members)
+            compiler = get_current_compiler()
+            alias = compiler.union_alias_names.get(typ.members) if compiler is not None else None
             if alias is not None:
                 return alias
             cpp_members = [

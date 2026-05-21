@@ -10,7 +10,8 @@ from typing import Callable, TextIO, TYPE_CHECKING
 import io
 import sys as _sys
 
-from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, _native_cpp_names, is_void_like_type, bare_name
+from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name
+from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
@@ -41,7 +42,7 @@ def _emits_own_cpp(typ: NominalType) -> bool:
     td = type_def_of(typ)
     if td is not None and (td.cpp_formatter is not None or td.is_compile_time_only):
         return True
-    return typ.name in _native_cpp_names
+    return typ.name in require_current_compiler().native_cpp_names
 
 # Maps user-facing platform names to sys.platform prefixes (also in compiler.py)
 _PLATFORM_MAP = {"windows": "win32", "linux": "linux", "macos": "darwin"}
@@ -146,6 +147,7 @@ class CodeGenerator:
         # Must include both own records and imported records so NominalType.to_cpp()
         # resolves correctly in all type positions (Ptr[Rect] -> SDL_Rect*, etc.)
         clear_codegen_state()
+        native_cpp_names = require_current_compiler().native_cpp_names
         for record in module.records:
             record_info = self.analyzer.registry.get_record(record.name)
             if record_info and record_info.is_native and record_info.native_name:
@@ -163,14 +165,14 @@ class CodeGenerator:
             if einfo is not None and einfo.native_name:
                 register_native_cpp_name(enum.name, einfo.native_name)
         # Register nested type names: "Outer.Inner" -> "Outer::Inner" for C++ qualified access.
-        # Use _native_cpp_names directly to avoid ensure_qualified adding "::" prefix
+        # Write the map directly to avoid ensure_qualified adding "::" prefix
         # (these are module-local types, not cross-module references).
         for record in module.all_records():
             if "." in record.name:
-                _native_cpp_names[record.name] = record.name.replace(".", "::")
+                native_cpp_names[record.name] = record.name.replace(".", "::")
         for enum in module.all_enums():
             if "." in enum.name:
-                _native_cpp_names[enum.name] = enum.name.replace(".", "::")
+                native_cpp_names[enum.name] = enum.name.replace(".", "::")
         # Register C++ names for imported records/enums using their canonical
         # (declaring-module) qname. NominalType.to_cpp() consults these when it
         # has no qname-based formatter on hand. Iterate the full record/enum
@@ -187,7 +189,7 @@ class CodeGenerator:
             if qual is not None:
                 register_native_cpp_name(local_name, qualified_cpp_name(*qual))
         # Cross-module @dynamic protocols (e.g. `Awaker` imported into
-        # `asyncio._executor` from `tpy.coro`) need the same `_native_cpp_names`
+        # `asyncio._executor` from `tpy.coro`) need the same `native_cpp_names`
         # qualification as user records: `NominalType.to_cpp()` consults the
         # map for protocol short names too. Locally-defined @dynamic protocols
         # skip this registration so same-module references emit the bare name.
@@ -234,7 +236,7 @@ class CodeGenerator:
             if dep_module.name == current_module:
                 continue
             for short, record_info in dep_module.records.items():
-                if short in _native_cpp_names:
+                if short in native_cpp_names:
                     continue
                 if short in local_short_record_names:
                     continue
