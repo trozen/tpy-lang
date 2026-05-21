@@ -46,7 +46,7 @@ struct __coro_worker {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> task;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> task;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
     ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_1 = nullptr;
 

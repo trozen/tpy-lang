@@ -9,9 +9,9 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {
         // a = A()
-        a = A();
+        a.emplace(A());
         // b = B()
-        b = B();
+        b.emplace(B());
         // print(await a.tag())
         __sub_0.emplace((*a));
         __state = S_AFTER_AWAIT_0;

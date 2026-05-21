@@ -69,7 +69,7 @@ inline __coro_Worker_run Worker::run() const {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<Worker> w;
+    ::tpy::frame_slot<Worker> w;
     std::string msg;
     std::optional<__coro_Worker_run> __sub_0;
 

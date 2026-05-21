@@ -30,7 +30,7 @@ __coro_background background() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // t: Task[None] = asyncio.create_task(background())
-        t = ::tpystd::asyncio::create_task<std::monostate>(background());
+        t.emplace(::tpystd::asyncio::create_task<std::monostate>(background()));
         // await t
         __sub_0 = &((*t));
         __state = S_AFTER_AWAIT_0;

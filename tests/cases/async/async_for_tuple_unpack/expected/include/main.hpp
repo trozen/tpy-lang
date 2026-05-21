@@ -122,7 +122,7 @@ struct __coro_sum_squares {
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<Pairs> p;
+    ::tpy::frame_slot<Pairs> p;
     ::tpy::BigInt __await_lift_0;
     std::optional<__coro_sum_squares> __sub_0;
 

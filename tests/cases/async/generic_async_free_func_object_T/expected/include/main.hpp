@@ -98,7 +98,7 @@ __coro_increment<T> increment(::tpy::param_val_or_ref_t<T> x) {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<Counter> c;
+    ::tpy::frame_slot<Counter> c;
     int32_t _;
     std::optional<__coro_increment<Counter>> __sub_0;
 

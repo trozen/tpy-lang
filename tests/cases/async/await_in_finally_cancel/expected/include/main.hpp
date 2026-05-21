@@ -77,7 +77,7 @@ struct __coro_coro {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpystd::asyncio::_executor::Task<::tpy::BigInt>> task;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<::tpy::BigInt>> task;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
     ::tpystd::asyncio::_executor::Task<::tpy::BigInt>* __sub_1 = nullptr;
 

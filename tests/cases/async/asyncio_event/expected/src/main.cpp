@@ -104,7 +104,7 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // e_fast = Event()
-        e_fast = ::tpystd::asyncio::Event();
+        e_fast.emplace(::tpystd::asyncio::Event());
         // print(e_fast.is_set())
         std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n";
         // # Second set() must be a no-op, not a double-wake.
@@ -117,7 +117,7 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
         // asyncio.create_task(fast_path_consumer(e_fast))
         ::tpystd::asyncio::create_task<std::monostate>(fast_path_consumer((*e_fast)));
         // e = Event()
-        e = ::tpystd::asyncio::Event();
+        e.emplace(::tpystd::asyncio::Event());
         // print(e.is_set())
         std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
         // asyncio.create_task(consumer(e))

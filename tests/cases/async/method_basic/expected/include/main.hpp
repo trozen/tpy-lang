@@ -67,7 +67,7 @@ inline __coro_Adder_add Adder::add(int32_t x) const {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<Adder> a;
+    ::tpy::frame_slot<Adder> a;
     int32_t r;
     std::optional<__coro_Adder_add> __sub_0;
 

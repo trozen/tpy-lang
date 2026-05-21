@@ -113,7 +113,7 @@ struct __coro_first_above {
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<Counts> c;
+    ::tpy::frame_slot<Counts> c;
     ::tpy::BigInt __await_lift_0;
     std::optional<__coro_first_above> __sub_0;
 

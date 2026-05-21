@@ -77,7 +77,7 @@ inline __coro_Counter_total Counter::total() const {
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<Counter> c;
+    ::tpy::frame_slot<Counter> c;
     int32_t __await_lift_0;
     std::optional<__coro_Counter_total> __sub_0;
 

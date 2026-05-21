@@ -66,7 +66,7 @@ inline __coro_Reporter_describe Reporter::describe() const {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<Reporter> r;
+    ::tpy::frame_slot<Reporter> r;
     ::tpy::BigInt __await_lift_0;
     std::optional<__coro_Reporter_describe> __sub_0;
 

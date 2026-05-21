@@ -93,7 +93,7 @@ __coro_second second(int32_t n) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // items: list[P] = []
-        items = {};
+        items.emplace(std::vector<P>{});
         // items.append(P(42))
         (*items).push_back(P(42));
         // print(await first(items, 0))

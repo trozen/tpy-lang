@@ -65,7 +65,7 @@ __coro_background background() {
     switch (__state) {
     case S_INITIAL: {
         // t: Task[None] = asyncio.create_task(background())
-        t = ::tpystd::asyncio::create_task<std::monostate>(background());
+        t.emplace(::tpystd::asyncio::create_task<std::monostate>(background()));
         // del t
         { auto __del_sink = std::move(t); }
         // print("main done")

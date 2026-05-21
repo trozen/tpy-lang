@@ -102,8 +102,8 @@ inline __coro_B_tag B::tag() const {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<A> a;
-    std::optional<B> b;
+    ::tpy::frame_slot<A> a;
+    ::tpy::frame_slot<B> b;
     std::string __await_lift_0;
     std::string __await_lift_1;
     std::optional<__coro_A_tag> __sub_0;

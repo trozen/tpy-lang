@@ -9,7 +9,7 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {
         // a = Adder(10)
-        a = Adder(10);
+        a.emplace(Adder(10));
         // r = await a.add(5)
         __sub_0.emplace((*a), 5);
         __state = S_AFTER_AWAIT_0;

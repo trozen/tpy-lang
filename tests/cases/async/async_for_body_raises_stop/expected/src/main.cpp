@@ -127,7 +127,7 @@ __coro_runner runner(Counts& c) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // c = Counts(5)
-        c = Counts(::tpy::BigInt(5));
+        c.emplace(Counts(::tpy::BigInt(5)));
         // print(await runner(c))
         __sub_0.emplace((*c));
         __state = S_AFTER_AWAIT_0;

@@ -47,7 +47,7 @@ struct __coro_producer {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpystd::asyncio::Future<std::monostate>> fut;
+    ::tpy::frame_slot<::tpystd::asyncio::Future<std::monostate>> fut;
     ::tpystd::asyncio::Future<std::monostate>* __sub_0 = nullptr;
 
     enum : int32_t {

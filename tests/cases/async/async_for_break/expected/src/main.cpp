@@ -78,7 +78,7 @@ __coro_first_above first_above(Counts& c, ::tpy::BigInt threshold) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // c = Counts()
-        c = Counts();
+        c.emplace(Counts());
         // print(await first_above(c, 5))
         __sub_0.emplace((*c), ::tpy::BigInt(5));
         __state = S_AFTER_AWAIT_0;

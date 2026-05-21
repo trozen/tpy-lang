@@ -9,7 +9,7 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {
         // r = Reporter(42)
-        r = Reporter(::tpy::BigInt(42));
+        r.emplace(Reporter(::tpy::BigInt(42)));
         // print(await r.describe())
         __sub_0.emplace((*r));
         __state = S_AFTER_AWAIT_0;

@@ -38,9 +38,9 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // f: Future[Tracked] = Future[Tracked]()
-        f = ::tpystd::asyncio::Future<Tracked>();
+        f.emplace(::tpystd::asyncio::Future<Tracked>());
         // t = asyncio.create_task(waiter(f))
-        t = ::tpystd::asyncio::create_task<Tracked>(waiter((*f)));
+        t.emplace(::tpystd::asyncio::create_task<Tracked>(waiter((*f))));
         // f.set_result(Tracked("payload"))
         (*f).set_result(Tracked("payload"));
         // t.cancel()

@@ -9,7 +9,7 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {
         // c = Counter()
-        c = Counter();
+        c.emplace(Counter());
         // print(await c.total())
         __sub_0.emplace((*c));
         __state = S_AFTER_AWAIT_0;

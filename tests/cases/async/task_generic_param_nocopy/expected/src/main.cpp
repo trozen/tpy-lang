@@ -38,7 +38,7 @@ int32_t task_arity_concrete(const ::tpystd::asyncio::_executor::Task<int32_t>& t
     while (true) switch (__state) {
     case S_INITIAL: {
         // t = asyncio.create_task(co(Int32(7)))
-        t = ::tpystd::asyncio::create_task<int32_t>(co(7));
+        t.emplace(::tpystd::asyncio::create_task<int32_t>(co(7)));
         // _ = task_arity_concrete(t)
         _ = task_arity_concrete((*t));
         // _ = task_arity_generic[Int32](t)

@@ -120,7 +120,7 @@ struct __coro_runner {
 struct __coro_main {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<Counts> c;
+    ::tpy::frame_slot<Counts> c;
     std::string __await_lift_0;
     std::optional<__coro_runner> __sub_0;
 

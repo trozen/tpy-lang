@@ -67,7 +67,7 @@ struct __coro_takes_optional {
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<std::vector<P>> items;
+    ::tpy::frame_slot<std::vector<P>> items;
     int32_t __await_lift_0;
     int32_t __await_lift_1;
     int32_t __await_lift_2;

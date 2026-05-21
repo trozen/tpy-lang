@@ -50,7 +50,7 @@ struct __coro_sub {
 struct __coro_caller {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpystd::asyncio::_executor::Task<int32_t>> t;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;
 
     enum : int32_t {

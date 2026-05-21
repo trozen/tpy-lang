@@ -9,7 +9,7 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {
         // c = Container("hi")
-        c = Container("hi");
+        c.emplace(Container("hi"));
         // a = await c.echo(Int32(7))  # tpyc: type(Int32)
         __sub_0.emplace((*c), 7);
         __state = S_AFTER_AWAIT_0;

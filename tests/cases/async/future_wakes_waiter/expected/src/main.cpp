@@ -40,7 +40,7 @@ __coro_producer producer(::tpystd::asyncio::Future<int32_t>& f) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // f: Future[Int32] = Future[Int32]()
-        f = ::tpystd::asyncio::Future<int32_t>();
+        f.emplace(::tpystd::asyncio::Future<int32_t>());
         // asyncio.create_task(producer(f))
         ::tpystd::asyncio::create_task<std::monostate>(producer((*f)));
         // result = await f

@@ -242,7 +242,7 @@ This collapses OQ2 and OQ3 into the same machinery: OQ2's `Send[T]` wrapper and 
 | `Own[T]` params (move-in, owned storage) | `T` by value | -- |
 | `str` params (`std::string_view` -- non-owning view) | `std::string_view` | `gen_async.py:280`, `gen_generators.py:678` |
 | `String` params (`std::string` -- owned string, from `lib/tpy/tpy/_core/_types.py:1511`) | `String` by value | -- |
-| Hoisted non-value locals across await/yield | `std::optional<T>` | `gen_async.py:664`, `gen_generators.py:702` |
+| Hoisted non-value locals across await/yield | `tpy::frame_slot<T>` | `gen_async.py:664`, `gen_generators.py:702` |
 | Borrowed async awaitables | raw pointer | `gen_async.py:679` |
 | Value-type params (`Int32`, `bool`, `float`, `Char`, ...) | `T` by value | -- |
 | Simple-generator lambda captures of non-value params | reference | `gen_generators.py:614` |
@@ -251,7 +251,7 @@ The Send rule walks whatever slot shape is actually emitted:
 
 - Reference slots (`T&`, raw pointer) are non-Send -- alias originating-thread memory.
 - `std::string_view` slots are non-Send (borrow originating-thread storage) but Sync (read-only view) -- matches the StrView row in the rules table.
-- `std::optional<T>` slots reduce to T's Send-ness (owned storage).
+- `tpy::frame_slot<T>` slots reduce to T's Send-ness (owned storage).
 - Value-type slots and `T`-by-value slots are Send iff `T` is Send.
 
 Consequence: most async/generator/closure functions today take borrow-form params and produce non-Send frames. To make a coroutine sendable, the user takes ownership of every borrowed param: `async def fetch(host: String, buf: Own[list[int]])` -- `String` is the owned-string type (`std::string`), distinct from `str` (`std::string_view`); `Own[list[int]]` moves the list in. Matches Rust's `move ||` closure pattern. The cost only fires at Phase 5 enforcement sites; single-thread async (v1, v1.5) is unaffected.

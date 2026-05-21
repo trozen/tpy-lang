@@ -48,8 +48,8 @@ struct __coro_background {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpystd::asyncio::Future<int32_t>> done;
-    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> t;
+    ::tpy::frame_slot<::tpystd::asyncio::Future<int32_t>> done;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> t;
     int32_t _;
     ::tpystd::asyncio::Future<int32_t>* __sub_0 = nullptr;
 

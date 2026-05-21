@@ -100,7 +100,7 @@ struct __coro_second {
 struct __coro_driver {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<std::vector<P>> items;
+    ::tpy::frame_slot<std::vector<P>> items;
     int32_t __await_lift_0;
     int32_t __await_lift_1;
     std::optional<__coro_first> __sub_0;

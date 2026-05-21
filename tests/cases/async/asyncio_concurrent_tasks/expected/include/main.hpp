@@ -50,8 +50,8 @@ struct __coro_doubler {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpystd::asyncio::_executor::Task<int32_t>> t1;
-    std::optional<::tpystd::asyncio::_executor::Task<int32_t>> t2;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t1;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> t2;
     int32_t a;
     int32_t b;
     ::tpystd::asyncio::_executor::Task<int32_t>* __sub_0 = nullptr;

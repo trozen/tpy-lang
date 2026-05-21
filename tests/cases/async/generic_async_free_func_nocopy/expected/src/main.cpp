@@ -9,7 +9,7 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {
         // box = Box(Int32(99))
-        box = ::tpystd::tplib::box::Box<int32_t>(99);
+        box.emplace(::tpystd::tplib::box::Box<int32_t>(99));
         // result = await unwrap(box)  # tpyc: type(Int32)
         __sub_0.emplace((*box));
         __state = S_AFTER_AWAIT_0;

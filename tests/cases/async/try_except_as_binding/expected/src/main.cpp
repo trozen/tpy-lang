@@ -38,7 +38,7 @@ __coro_worker worker() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // task = asyncio.create_task(worker())
-        task = ::tpystd::asyncio::create_task<std::monostate>(worker());
+        task.emplace(::tpystd::asyncio::create_task<std::monostate>(worker()));
         // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_AFTER_AWAIT_0;
@@ -70,7 +70,7 @@ __coro_worker worker() {
             // # `e` is intentionally referenced (not just bound) so the
             // # generated C++ doesn't optimize the binding away.
             // _ = e
-            _ = e;
+            _.emplace(e);
             // print("caught")
             std::cout << "caught" << "\n";
             __state = S_JOIN_0;

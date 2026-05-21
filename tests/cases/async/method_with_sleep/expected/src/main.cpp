@@ -9,7 +9,7 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {
         // w = Worker("alice")
-        w = Worker("alice");
+        w.emplace(Worker("alice"));
         // msg = await w.run()
         __sub_0.emplace((*w));
         __state = S_AFTER_AWAIT_0;

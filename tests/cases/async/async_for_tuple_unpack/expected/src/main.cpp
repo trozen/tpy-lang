@@ -77,7 +77,7 @@ __coro_sum_squares sum_squares(Pairs& p) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // p = Pairs(4)
-        p = Pairs(::tpy::BigInt(4));
+        p.emplace(Pairs(::tpy::BigInt(4)));
         // print(await sum_squares(p))
         __sub_0.emplace((*p));
         __state = S_AFTER_AWAIT_0;

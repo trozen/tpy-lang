@@ -98,7 +98,7 @@ inline __coro_Math_quad_base Math::quad_base() const {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<Math> m;
+    ::tpy::frame_slot<Math> m;
     int32_t q;
     std::optional<__coro_Math_quad_base> __sub_0;
 

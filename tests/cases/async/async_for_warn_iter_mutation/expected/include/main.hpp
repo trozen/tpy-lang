@@ -95,7 +95,7 @@ inline __coro_SrcIter___anext__ SrcIter::__anext__() {
 struct __coro_runner {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<Source> src;
+    ::tpy::frame_slot<Source> src;
     ::tpy::BigInt x;
     std::optional<std::decay_t<decltype(std::declval<Source&>().__aiter__())>> __for_itr_0;
     std::optional<__coro_SrcIter___anext__> __sub_0;

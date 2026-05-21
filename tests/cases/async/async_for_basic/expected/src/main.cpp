@@ -73,7 +73,7 @@ __coro_total total(Counts& c) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // c = Counts(4)
-        c = Counts(::tpy::BigInt(4));
+        c.emplace(Counts(::tpy::BigInt(4)));
         // print(await total(c))
         __sub_0.emplace((*c));
         __state = S_AFTER_AWAIT_0;

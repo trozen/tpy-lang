@@ -66,7 +66,7 @@ inline __coro_Counter_bump Counter::bump(int32_t by) {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<Counter> c;
+    ::tpy::frame_slot<Counter> c;
     int32_t __await_lift_0;
     int32_t __await_lift_1;
     std::optional<__coro_Counter_bump> __sub_0;

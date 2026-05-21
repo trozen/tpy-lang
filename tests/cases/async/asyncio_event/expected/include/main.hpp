@@ -101,8 +101,8 @@ struct __coro_fast_path_consumer {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpystd::asyncio::Event> e_fast;
-    std::optional<::tpystd::asyncio::Event> e;
+    ::tpy::frame_slot<::tpystd::asyncio::Event> e_fast;
+    ::tpy::frame_slot<::tpystd::asyncio::Event> e;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {

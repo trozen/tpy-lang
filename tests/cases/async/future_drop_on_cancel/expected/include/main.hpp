@@ -86,8 +86,8 @@ struct __coro_waiter {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpystd::asyncio::Future<Tracked>> f;
-    std::optional<::tpystd::asyncio::_executor::Task<Tracked>> t;
+    ::tpy::frame_slot<::tpystd::asyncio::Future<Tracked>> f;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<Tracked>> t;
     ::tpystd::asyncio::_executor::Task<Tracked>* __sub_0 = nullptr;
 
     enum : int32_t {

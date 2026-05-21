@@ -67,7 +67,7 @@ struct __coro_get_multiplier {
 struct __coro_caller {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<std::vector<int32_t>> xs;
+    ::tpy::frame_slot<std::vector<int32_t>> xs;
     int32_t multiplier;
     int32_t total;
     int32_t x;

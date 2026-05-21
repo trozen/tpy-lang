@@ -51,7 +51,7 @@ struct __coro_background {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> t;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> t;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -771,8 +771,10 @@ class GeneratorCodegen:
                     inner_cpp = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
                 else:
+                    # Non-value, non-pointer-form local: uninitialized
+                    # storage with explicit emplace on first write.
                     cpp_type = self.types.type_to_cpp(ltype_inner)
-                    out.write(f"{INDENT}std::optional<{cpp_type}> {cpp_name};\n")
+                    out.write(f"{INDENT}::tpy::frame_slot<{cpp_type}> {cpp_name};\n")
 
         # Synthetic fields for for-loops containing yields (always optional)
         if for_loop_info:
@@ -858,12 +860,14 @@ class GeneratorCodegen:
         old_in_gen = self.ctx.in_generator_body
         old_field_names = self.ctx.generator_field_names
         old_optional_fields = self.ctx.generator_optional_fields
+        old_frame_slot_locals = self.ctx.generator_frame_slot_locals
         old_for_info = self.ctx.generator_for_loop_info
         old_self_ref = self.ctx.generator_self_ref
 
         self.ctx.in_generator_body = True
         self.ctx.generator_field_names = set()
         self.ctx.generator_optional_fields = set()
+        self.ctx.generator_frame_slot_locals = set()
         if record_name:
             self.ctx.generator_self_ref = "__self"
             self.ctx.generator_field_names.add("__self")
@@ -893,6 +897,7 @@ class GeneratorCodegen:
         self.ctx.in_generator_body = old_in_gen
         self.ctx.generator_field_names = old_field_names
         self.ctx.generator_optional_fields = old_optional_fields
+        self.ctx.generator_frame_slot_locals = old_frame_slot_locals
         self.ctx.generator_for_loop_info = old_for_info
         self.ctx.generator_self_ref = old_self_ref
 

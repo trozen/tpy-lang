@@ -73,7 +73,7 @@ __coro_unwrap<T> unwrap(::tpystd::tplib::box::Box<T>& b) {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpystd::tplib::box::Box<int32_t>> box;
+    ::tpy::frame_slot<::tpystd::tplib::box::Box<int32_t>> box;
     int32_t result;
     std::optional<__coro_unwrap<int32_t>> __sub_0;
 

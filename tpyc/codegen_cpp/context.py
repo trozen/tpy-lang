@@ -827,8 +827,17 @@ class CodeGenContext:
     # --- Generator function codegen ---
     in_generator_body: bool = False
     generator_field_names: set[str] = field(default_factory=set)
-    # Fields stored as std::optional (non-value locals + synthetic for-loop fields)
+    # Fields read through an outer wrap (`(*name)` deref) -- the union
+    # of user locals stored as `tpy::frame_slot<T>` and synthetic for-
+    # loop / async-with / async-for / try-finally fields still stored
+    # as `std::optional<T>`. Read sites can use the same `(*name)`
+    # access for both.
     generator_optional_fields: set[str] = field(default_factory=set)
+    # Subset of generator_optional_fields whose C++ slot is the new
+    # `tpy::frame_slot<T>` (user locals from `func.generator_locals`,
+    # non-value, non-pointer-form). Writes here must go through
+    # `.emplace(value)` -- the helper has no operator= for arbitrary T.
+    generator_frame_slot_locals: set[str] = field(default_factory=set)
     # For-loops with yields in state machine generators: keyed by id(TpyForEach)
     # Values are GeneratorForInfo (not imported here to avoid circular dep)
     generator_for_loop_info: dict[int, object] = field(default_factory=dict)
@@ -1690,21 +1699,23 @@ class CodeGenContext:
         return False
 
     def setup_resumable_frame_locals(self, func: 'TpyFunction') -> None:
-        """Populate `pointer_locals` and `generator_optional_fields` for
-        a resumable-frame body (generator __next__ or async __poll__).
+        """Populate `pointer_locals`, `generator_optional_fields`, and
+        `generator_frame_slot_locals` for a resumable-frame body
+        (generator __next__ or async __poll__).
 
         For each local in `func.generator_locals`:
           - value type: not tracked (frame slot is `T name;`, no peel)
           - pointer-form (pointer-repr Optional[NonValue] OR a for-loop
             iter var with a stable lvalue source): added to
             `pointer_locals` -- same dispatch as sync pointer-locals
-          - other non-value: added to `generator_optional_fields`
-            (frame slot is `std::optional<T> name;`, reads via `(*name)`)
+          - other non-value: added to both `generator_optional_fields`
+            and `generator_frame_slot_locals` (frame slot is
+            `tpy::frame_slot<T> name;`, reads via `(*name)`,
+            writes via `.emplace(value)`)
 
-        Caller's contract: `pointer_locals` and `generator_optional_fields`
-        are cleared at body entry and restored on exit (matches the
-        existing `generator_*` save/restore dance). `generator_for_loop_info`
-        must already be populated.
+        Caller's contract: all three sets are cleared at body entry and
+        restored on exit (matches the existing `generator_*` save/restore
+        dance). `generator_for_loop_info` must already be populated.
         """
         # Pointer-form iter vars are seeded up-front so the for-loop
         # emit path doesn't need to mutate `pointer_locals` mid-emission.
@@ -1730,6 +1741,12 @@ class CodeGenContext:
             if lname in self.pointer_locals:
                 continue
             self.generator_optional_fields.add(lname)
+            # User-local non-pointer-form non-value frame fields are
+            # backed by `tpy::frame_slot<T>` (see
+            # gen_generators.py:_gen_generator_struct field-decl path).
+            # Writes route through `.emplace(...)`; reads share the
+            # `(*name)` access with the legacy `std::optional<T>` path.
+            self.generator_frame_slot_locals.add(lname)
 
     def is_already_pointer_source(self, expr: TpyExpr) -> bool:
         """True when `expr` renders as a `T*` value with no further lifting.

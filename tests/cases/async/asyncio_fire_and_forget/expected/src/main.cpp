@@ -32,9 +32,9 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // done: Future[Int32] = Future[Int32]()
-        done = ::tpystd::asyncio::Future<int32_t>();
+        done.emplace(::tpystd::asyncio::Future<int32_t>());
         // t: Task[None] = asyncio.create_task(background(done))
-        t = ::tpystd::asyncio::create_task<std::monostate>(background((*done)));
+        t.emplace(::tpystd::asyncio::create_task<std::monostate>(background((*done))));
         // # Drop the handle without awaiting; the executor still drives the task.
         // del t
         { auto __del_sink = std::move(t); }

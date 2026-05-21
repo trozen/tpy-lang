@@ -30,7 +30,7 @@ __coro_sub sub() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // t: Task[Int32] = asyncio.create_task(sub())
-        t = ::tpystd::asyncio::create_task<int32_t>(sub());
+        t.emplace(::tpystd::asyncio::create_task<int32_t>(sub()));
         // val = await t
         __sub_0 = &((*t));
         __state = S_AFTER_AWAIT_0;

@@ -66,7 +66,7 @@ __coro_pick pick(std::vector<P>& items, int32_t i, bool drop) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // items: list[P] = []
-        items = {};
+        items.emplace(std::vector<P>{});
         // items.append(P(10))
         (*items).push_back(P(10));
         // items.append(P(20))

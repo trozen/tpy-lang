@@ -140,7 +140,7 @@ inline __coro_Container_labeled<T> Container::labeled(::tpy::param_val_or_ref_t<
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<Container> c;
+    ::tpy::frame_slot<Container> c;
     int32_t a;
     std::string b;
     std::tuple<std::string, int32_t> p;

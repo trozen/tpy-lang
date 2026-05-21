@@ -9,7 +9,7 @@ namespace tpyapp::main {
     while (true) switch (__state) {
     case S_INITIAL: {
         // m = Math(7)
-        m = Math(7);
+        m.emplace(Math(7));
         // q = await m.quad_base()
         __sub_0.emplace((*m));
         __state = S_AFTER_AWAIT_0;

@@ -1475,6 +1475,25 @@ class StatementGenerator:
             return expr
         return f"::tpy::tuple_to_pointer<{unwrapped.to_cpp_return()}>({expr})"
 
+    def _wrap_brace_init_for_emplace(self, init_expr: str,
+                                       target_type: TpyType | None) -> str:
+        """Prefix a brace-init expression with its C++ type so it can flow
+        through `frame_slot<T>::emplace(args...)` template-parameter
+        deduction.
+
+        Brace-enclosed initializer lists have no deduced type in C++ --
+        `.emplace({})` and `.emplace({1, 2, 3})` both fail to bind to
+        `template<typename... Args> emplace(Args&&...)`. Wrapping as
+        `T{...}` gives the list a concrete prvalue type whose
+        construction is then forwarded (with mandatory copy elision)
+        into the slot's storage.
+        """
+        if not init_expr.startswith("{") or target_type is None:
+            return init_expr
+        unwrapped = unwrap_readonly(unwrap_ref_type(target_type))
+        cpp_type = self.types.type_to_cpp(unwrapped)
+        return f"{cpp_type}{init_expr}"
+
     def _maybe_wrap_tuple_to_storage(self, expr: str, target_type: TpyType | None,
                                        source: TpyExpr | None = None) -> str:
         """Wrap a pointer-form tuple expression with tuple_to_storage if the
@@ -1524,6 +1543,13 @@ class StatementGenerator:
             if stmt.init:
                 cpp_name = escape_cpp_name(stmt.name)
                 init_expr = self.expressions.gen_expr(stmt.init)
+                if stmt.name in self.ctx.generator_frame_slot_locals:
+                    # frame_slot<T> has no operator= for arbitrary T;
+                    # writes route through emplace, which also destroys
+                    # any prior payload before constructing the new one.
+                    init_expr = self._wrap_brace_init_for_emplace(
+                        init_expr, self.ctx.var_types.get(stmt.name))
+                    return f"{indent}{cpp_name}.emplace({init_expr});\n"
                 return f"{indent}{cpp_name} = {init_expr};\n"
             return None
 
@@ -1772,6 +1798,18 @@ class StatementGenerator:
             target_type = self.ctx.var_types.get(stmt.target.name)
             cpp_type = self.types.type_to_cpp(target_type) if target_type else "auto"
             return self._gen_pointer_local_rebind(stmt.target.name, cpp_type, stmt.value, target_type, indent)
+
+        # Generator frame_slot rebinding: re-emplace (destroys old
+        # payload if alive, constructs fresh). Mirrors the var-decl
+        # path; the helper has no operator= for arbitrary T.
+        if (isinstance(stmt.target, TpyName)
+                and stmt.target.name in self.ctx.generator_frame_slot_locals):
+            cpp_name = escape_cpp_name(stmt.target.name)
+            target_type = self.ctx.var_types.get(stmt.target.name)
+            value = self.expressions.gen_expr_deref(stmt.value, target_type)
+            value = self.expressions._maybe_move(stmt.value, value)
+            value = self._wrap_brace_init_for_emplace(value, target_type)
+            return f"{indent}{cpp_name}.emplace({value});\n"
 
         # Property setter: delegate to normal method call codegen
         if isinstance(stmt.target, TpyFieldAccess) and stmt.target.property_setter_call is not None:

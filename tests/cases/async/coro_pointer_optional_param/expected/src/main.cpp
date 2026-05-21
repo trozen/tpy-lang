@@ -37,7 +37,7 @@ __coro_takes_optional takes_optional(P* p) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // items: list[P] = []
-        items = {};
+        items.emplace(std::vector<P>{});
         // items.append(P(42))
         (*items).push_back(P(42));
         // items.append(P(7))

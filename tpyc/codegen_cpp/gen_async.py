@@ -593,7 +593,7 @@ class AsyncCoroCodegen:
                     out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
                 else:
                     cpp_type = self.types.type_to_cpp(ltype_inner)
-                    out.write(f"{INDENT}std::optional<{cpp_type}> {cpp_name};\n")
+                    out.write(f"{INDENT}::tpy::frame_slot<{cpp_type}> {cpp_name};\n")
 
         # Synthetic fields for CFG-decomposed for-loops: one
         # iterator + one __next__-result slot per for-with-await,
@@ -716,6 +716,7 @@ class AsyncCoroCodegen:
         old_in_gen = self.ctx.in_generator_body
         old_field_names = self.ctx.generator_field_names
         old_optional_fields = self.ctx.generator_optional_fields
+        old_frame_slot_locals = self.ctx.generator_frame_slot_locals
         old_for_info = self.ctx.generator_for_loop_info
         old_self_ref = self.ctx.generator_self_ref
 
@@ -724,6 +725,7 @@ class AsyncCoroCodegen:
         # `generator_for_loop_info` and writes to `generator_optional_fields`.
         self.ctx.generator_field_names = set()
         self.ctx.generator_optional_fields = set()
+        self.ctx.generator_frame_slot_locals = set()
         self.ctx.generator_for_loop_info = {}
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
@@ -755,6 +757,7 @@ class AsyncCoroCodegen:
             self.ctx.in_generator_body = old_in_gen
             self.ctx.generator_field_names = old_field_names
             self.ctx.generator_optional_fields = old_optional_fields
+            self.ctx.generator_frame_slot_locals = old_frame_slot_locals
             self.ctx.generator_for_loop_info = old_for_info
             self.ctx.generator_self_ref = old_self_ref
 
