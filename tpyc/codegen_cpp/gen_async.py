@@ -23,6 +23,7 @@ from dataclasses import dataclass, fields, is_dataclass
 from enum import IntEnum
 from typing import TYPE_CHECKING
 
+from ..namespace import Namespace
 from ..parse.nodes import (
     TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl, TpyReturn,
     TpyExprStmt, TpyName, TpyExpr, TpyTry, TpyExceptHandler, TpyCall,
@@ -31,7 +32,7 @@ from ..parse.nodes import (
     TpyNoneLiteral, TpyCoerce,
     is_stable_address_lvalue,
 )
-from ..typesys import NominalType, OptionalType, TypeParamRef, unwrap_ref_type, unwrap_own, VoidType
+from ..typesys import NominalType, OptionalType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType
 from ..type_def_registry import is_str_type, is_str_category
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext
 from . import resumable_cfg as rcfg
@@ -54,6 +55,10 @@ class _CoroParamKind(IntEnum):
         polls.
     VALUE: value type (or string view) stored by value; field is `T`,
         ctor takes `T x_` and the init moves into the field.
+    POINTER: pointer-form Optional[NonValue] param; field is `T*` (or
+        `const T*`), ctor takes the same. Init is a direct copy -- raw
+        pointers are trivially copyable, so std::move would just add
+        noise.
     TYPE_PARAM: TypeParamRef param whose value-vs-reference resolution
         happens at instantiation; field is `::tpy::val_or_ref_t<T>` (T for
         value types, T& for object types), ctor takes
@@ -62,7 +67,8 @@ class _CoroParamKind(IntEnum):
     """
     REF = 0
     VALUE = 1
-    TYPE_PARAM = 2
+    POINTER = 2
+    TYPE_PARAM = 3
 
 
 @dataclass(frozen=True)
@@ -89,17 +95,18 @@ class _CoroParam:
     def ctor_param_decl(self) -> str:
         if self.kind is _CoroParamKind.REF:
             return f"{self.ctor_param_type}& {self.cpp_name}"
-        # VALUE / TYPE_PARAM: `_` suffix disambiguates from the field name
-        # in the init list.
+        # VALUE / POINTER / TYPE_PARAM: `_` suffix disambiguates from the
+        # field name in the init list.
         return f"{self.ctor_param_type} {self.cpp_name}_"
 
     def ctor_init(self) -> str:
         if self.kind is _CoroParamKind.REF:
             return f"{self.cpp_name}({self.cpp_name})"
-        if self.kind is _CoroParamKind.TYPE_PARAM:
-            # `param_val_or_ref_t<T>` is already a reference type; std::move
-            # on it yields an rvalue that won't bind to the field type for
-            # non-value Ts. Direct bind/copy is uniformly correct.
+        if self.kind in (_CoroParamKind.POINTER, _CoroParamKind.TYPE_PARAM):
+            # POINTER: raw pointer, trivially copyable -- std::move is noise.
+            # TYPE_PARAM: `param_val_or_ref_t<T>` is already a reference type;
+            # std::move on it yields an rvalue that won't bind to the field
+            # type for non-value Ts. Direct bind/copy is uniformly correct.
             return f"{self.cpp_name}({self.cpp_name}_)"
         return f"{self.cpp_name}(std::move({self.cpp_name}_))"
 
@@ -213,6 +220,7 @@ class AsyncCoroCodegen:
         for pname, ptype in func.params:
             cpp_name = escape_cpp_name(pname)
             ptype_inner = unwrap_ref_type(ptype)
+            actual = unwrap_readonly(ptype_inner)
             if is_str_type(ptype_inner):
                 out.append(_CoroParam(
                     cpp_name=cpp_name,
@@ -229,6 +237,14 @@ class AsyncCoroCodegen:
                     field_type=ptype_inner.to_cpp_return(),
                     ctor_param_type=ptype_inner.to_cpp_param_type(),
                     kind=_CoroParamKind.TYPE_PARAM,
+                ))
+            elif isinstance(actual, OptionalType) and actual.uses_pointer_repr():
+                cpp_type = ptype_inner.to_cpp_param_type()
+                out.append(_CoroParam(
+                    cpp_name=cpp_name,
+                    field_type=cpp_type,
+                    ctor_param_type=cpp_type,
+                    kind=_CoroParamKind.POINTER,
                 ))
             else:
                 cpp_type = self.types.type_to_cpp(ptype_inner)
@@ -691,22 +707,37 @@ class AsyncCoroCodegen:
     def _resumable_frame_ctx(self, func: TpyFunction, record_name: str | None):
         """Set up + tear down resumable-frame ctx state for an async body.
 
-        Async bodies bypass `gen_body`, so this is also where
-        `pointer_locals` gets reset -- without it, the previous
-        function's pointer-locals leak into this one's body emission.
+        Routes through `StatementGenerator.setup_body_scope` so async bodies
+        get the same per-scope state setup as sync (reassigned_vars,
+        aliased_vars, movable_locals, etc. populated from sema scan).
+        Layers the resumable-frame fields (`generator_field_names`,
+        `generator_self_ref`, etc.) plus `in_generator_body=True` on top.
         """
         old_in_gen = self.ctx.in_generator_body
         old_field_names = self.ctx.generator_field_names
         old_optional_fields = self.ctx.generator_optional_fields
-        old_pointer_locals = self.ctx.pointer_locals
         old_for_info = self.ctx.generator_for_loop_info
         old_self_ref = self.ctx.generator_self_ref
 
-        self.ctx.in_generator_body = True
+        # Reset frame-specific fields before setup_body_scope, since the
+        # `setup_resumable_frame_locals` call inside it reads
+        # `generator_for_loop_info` and writes to `generator_optional_fields`.
         self.ctx.generator_field_names = set()
         self.ctx.generator_optional_fields = set()
-        self.ctx.pointer_locals = set()
         self.ctx.generator_for_loop_info = {}
+
+        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
+        for pname, ptype in func.params:
+            local_ns.bind_variable(pname, ptype)
+
+        crp, dcbp = self.functions.compute_body_const_sets(func, record_name)
+        self.statements.setup_body_scope(
+            func.params, func.return_type, func, local_ns,
+            indent_level=1, is_method=bool(record_name),
+            const_ref_params=crp, deep_const_borrow_params=dcbp,
+        )
+
+        self.ctx.in_generator_body = True
         if record_name:
             self.ctx.generator_self_ref = "__self"
             self.ctx.generator_field_names.add("__self")
@@ -717,7 +748,6 @@ class AsyncCoroCodegen:
         if func.generator_locals:
             for lname, _ltype in func.generator_locals:
                 self.ctx.generator_field_names.add(lname)
-        self.ctx.setup_resumable_frame_locals(func)
 
         try:
             yield
@@ -725,7 +755,6 @@ class AsyncCoroCodegen:
             self.ctx.in_generator_body = old_in_gen
             self.ctx.generator_field_names = old_field_names
             self.ctx.generator_optional_fields = old_optional_fields
-            self.ctx.pointer_locals = old_pointer_locals
             self.ctx.generator_for_loop_info = old_for_info
             self.ctx.generator_self_ref = old_self_ref
 
@@ -2030,6 +2059,23 @@ class AsyncCoroCodegen:
     def _sub_field_name(suspension_index: int) -> str:
         return f"__sub_{suspension_index}"
 
+    def _gen_coro_emplace_arg(self, arg: 'TpyExpr', arg_index: int,
+                                call: 'TpyCall | TpyMethodCall') -> str:
+        """Generate one arg for `__sub_N.emplace(...)` constructing a
+        sub-coroutine. Mirrors the param-type-driven coercions sync call
+        codegen applies in `_gen_call`: today, the pointer-form
+        Optional[NonValue] lift (P -> &P) needed when the callee's
+        param is the new `T*` shape.
+        """
+        fi = call.resolved_function_info
+        if fi is None or arg_index >= len(fi.params):
+            return self.expressions.gen_expr(arg)
+        ptype = fi.params[arg_index].type
+        opt_arg = self.expressions._gen_optional_ptr_arg(arg, ptype)
+        if opt_arg is not None:
+            return opt_arg
+        return self.expressions.gen_expr(arg, ptype)
+
     def _emit_sub_reset(self, out: "TextIO", indent: str,
                         payload: 'rcfg.AwaitPayload',
                         suspension_index: int) -> None:
@@ -2145,14 +2191,16 @@ class AsyncCoroCodegen:
             else:
                 call = payload.operand_expr
                 if isinstance(call, TpyCall):
-                    args = [self.expressions.gen_expr(arg) for arg in call.args]
+                    args = [self._gen_coro_emplace_arg(arg, i, call)
+                            for i, arg in enumerate(call.args)]
                     out.write(f"{indent}{sub}.emplace({', '.join(args)});\n")
                 elif isinstance(call, TpyMethodCall):
                     # async method: the sub-coro struct has __self as
                     # its first ctor param. Emplace with (receiver,
                     # args...).
                     recv_cpp = self.expressions.gen_expr(call.obj)
-                    arg_cpps = [self.expressions.gen_expr(a) for a in call.args]
+                    arg_cpps = [self._gen_coro_emplace_arg(a, i, call)
+                                for i, a in enumerate(call.args)]
                     joined = ", ".join([recv_cpp] + arg_cpps)
                     out.write(f"{indent}{sub}.emplace({joined});\n")
                 else:

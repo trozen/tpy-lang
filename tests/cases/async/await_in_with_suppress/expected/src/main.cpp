@@ -54,7 +54,7 @@ __coro_value value(::tpy::BigInt n) {
     }
     case S_JOIN_0: {
         // x = await value(2)
-        __sub_0.emplace(2);
+        __sub_0.emplace(::tpy::BigInt(2));
         __state = S_AFTER_AWAIT_0;
         continue;
     }

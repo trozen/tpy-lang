@@ -123,7 +123,7 @@ __coro_cleanup cleanup() {
     }
     case S_JOIN_3: {
         // x = await value(7)
-        __sub_0.emplace(7);
+        __sub_0.emplace(::tpy::BigInt(7));
         __state = S_AFTER_AWAIT_0;
         continue;
     }

@@ -52,7 +52,7 @@ __coro_value value(::tpy::BigInt n) {
     case S_JOIN_0: {
         if ((::tpy::BigInt(i) < n)) {
             // total = total + await value(1)
-            __sub_0.emplace(1);
+            __sub_0.emplace(::tpy::BigInt(1));
             __state = S_AFTER_AWAIT_0;
             continue;
         } else {

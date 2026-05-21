@@ -31,12 +31,12 @@ __coro_value value(::tpy::BigInt n) {
     case S_INITIAL: {
         if (cond) {
             // x = await value(10)
-            __sub_0.emplace(10);
+            __sub_0.emplace(::tpy::BigInt(10));
             __state = S_AFTER_AWAIT_0;
             continue;
         } else {
             // x = await value(20)
-            __sub_1.emplace(20);
+            __sub_1.emplace(::tpy::BigInt(20));
             __state = S_AFTER_AWAIT_1;
             continue;
         }

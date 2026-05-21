@@ -636,6 +636,32 @@ class FunctionGenerator:
                 deep.add(pname)
         return const_ref, deep
 
+    def compute_body_const_sets(
+        self, func: TpyFunction, record_name: str | None
+    ) -> tuple[set[str], set[str]]:
+        """Compute (const_ref_params, deep_const_borrow_params) for a function
+        or record method body."""
+        rp = self._get_reassigned_params(func)
+        if record_name is None:
+            mp = self._get_func_mutated_params(func)
+            ae = self._get_func_addr_escapes(func)
+            use_const_params = func.is_readonly
+        else:
+            mp = self._get_method_mutated_params(func, record_name)
+            ae = self._get_method_addr_escapes(func, record_name)
+            # Inplace dunders take const params even though they mutate self;
+            # auto_readonly_params_resolved means the parser clone already
+            # marked params with ReadonlyType, so don't blanket-apply.
+            use_const_params = ((func.is_readonly and not func.auto_readonly_params_resolved)
+                                or func.name in CONST_PARAMS_METHODS)
+        crp, dcbp = self._build_param_const_sets(
+            func.params, mp, rp, use_const_params, addr_escapes_params=ae)
+        # `_build_param_const_sets` only looks at `func.params`; `self` isn't
+        # in there, so the readonly-self add lives at the caller.
+        if func.is_readonly and record_name is not None:
+            crp.add("self")
+        return crp, dcbp
+
     def _get_reassigned_params(self, func: TpyFunction) -> set[str] | None:
         """Get the set of param names reassigned in the function body, or None."""
         scan = self.ctx.analyzer.function_scan_results.get(id(func))

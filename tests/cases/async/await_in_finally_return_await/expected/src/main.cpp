@@ -95,7 +95,7 @@ __coro_cleanup cleanup() {
     }
     case S_JOIN_1: {
         // return await value(42)
-        __sub_0.emplace(42);
+        __sub_0.emplace(::tpy::BigInt(42));
         __state = S_AFTER_AWAIT_0;
         continue;
     }

@@ -32,24 +32,24 @@ __coro_value value(::tpy::BigInt n) {
         if (a) {
             if (b) {
                 // x = await value(11)
-                __sub_0.emplace(11);
+                __sub_0.emplace(::tpy::BigInt(11));
                 __state = S_AFTER_AWAIT_0;
                 continue;
             } else {
                 // x = await value(10)
-                __sub_1.emplace(10);
+                __sub_1.emplace(::tpy::BigInt(10));
                 __state = S_AFTER_AWAIT_1;
                 continue;
             }
         } else {
             if (b) {
                 // x = await value(1)
-                __sub_2.emplace(1);
+                __sub_2.emplace(::tpy::BigInt(1));
                 __state = S_AFTER_AWAIT_2;
                 continue;
             } else {
                 // x = await value(0)
-                __sub_3.emplace(0);
+                __sub_3.emplace(::tpy::BigInt(0));
                 __state = S_AFTER_AWAIT_3;
                 continue;
             }

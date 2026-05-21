@@ -111,17 +111,19 @@ class StatementGenerator:
             out.write(f"{hoist_indent}{decl}")
         out.write(body_buf.getvalue())
 
-    def gen_body(self, out: TextIO, body: list[TpyStmt],
-                 params: list[tuple[str, TpyType]], return_type: TpyType,
-                 func: TpyFunction, local_ns: Namespace,
-                 indent_level: int = 1, is_method: bool = False,
-                 record_type_param_bounds: dict[str, TpyType] | None = None,
-                 const_ref_params: set[str] | None = None,
-                 deep_const_borrow_params: set[str] | None = None) -> None:
-        """Generate the body of a function or method.
+    def setup_body_scope(self, params: list[tuple[str, TpyType]],
+                         return_type: TpyType, func: TpyFunction,
+                         local_ns: Namespace, indent_level: int = 1,
+                         is_method: bool = False,
+                         record_type_param_bounds: dict[str, TpyType] | None = None,
+                         const_ref_params: set[str] | None = None,
+                         deep_const_borrow_params: set[str] | None = None) -> 'ScanResult | None':
+        """Reset per-scope ctx state and repopulate it for the given function.
 
-        Handles scope setup, body buffering, hoist-decl prepending, and cleanup.
-        Shared by gen_function_def() and _gen_method().
+        Shared by gen_body (sync + simple-gen + multi-yield-gen) and async
+        body emission (`_resumable_frame_ctx`). Returns the scan result so
+        callers can use it for body-emission-specific work
+        (reassigned-param copies, etc.).
         """
         self.ctx.reset_scope()
         # Apply literal overload facts (injected by _gen_literal_specialized_function,
@@ -228,6 +230,27 @@ class StatementGenerator:
             self.ctx.current_type_param_bounds.update(func.type_param_bounds)
         if is_method:
             self.ctx.in_method = True
+        return scan
+
+    def gen_body(self, out: TextIO, body: list[TpyStmt],
+                 params: list[tuple[str, TpyType]], return_type: TpyType,
+                 func: TpyFunction, local_ns: Namespace,
+                 indent_level: int = 1, is_method: bool = False,
+                 record_type_param_bounds: dict[str, TpyType] | None = None,
+                 const_ref_params: set[str] | None = None,
+                 deep_const_borrow_params: set[str] | None = None) -> None:
+        """Generate the body of a function or method.
+
+        Handles scope setup, body buffering, hoist-decl prepending, and cleanup.
+        Shared by gen_function_def() and _gen_method().
+        """
+        scan = self.setup_body_scope(
+            params, return_type, func, local_ns,
+            indent_level=indent_level, is_method=is_method,
+            record_type_param_bounds=record_type_param_bounds,
+            const_ref_params=const_ref_params,
+            deep_const_borrow_params=deep_const_borrow_params,
+        )
 
         # Emit mutable local copies for reassigned const-ref params (BigInt, str)
         # so internal reassignment doesn't change the function signature.
