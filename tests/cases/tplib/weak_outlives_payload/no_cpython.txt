@@ -1,1 +1,0 @@
-Tests deterministic destructor ordering when the last strong reference is consumed. CPython GC timing diverges from RAII.

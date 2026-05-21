@@ -6,21 +6,19 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Inheritance path conformer wrapped in Box[Pet], then shared via Rc.
     // b1: Box[Pet] = Box(Parrot("Polly"))
     ::tpystd::tplib::box::Box<Pet> b1 = ::tpystd::tplib::box::Box<Parrot>(Parrot("Polly"));
     // r1: Rc[Box[Pet]] = Rc.new(b1)
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r1 = Rc<::tpystd::tplib::box::Box<Pet>>::new_(std::move(b1));
-    // r1_share = r1.clone()  # share refcount; both handles point at the same Box[Pet]
+    // r1_share = r1.clone()
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r1_share = r1.clone();
-    // # Structural path conformer.
     // b2: Box[Pet] = Box(Dog("Rex"))
     ::tpystd::tplib::box::Box<Pet> b2 = ::tpystd::tplib::box::Box<Pet>(std::make_unique<::tpy::Adapter<Pet, Dog>>(Dog("Rex")));
     // r2: Rc[Box[Pet]] = Rc.new(b2)
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r2 = Rc<::tpystd::tplib::box::Box<Pet>>::new_(std::move(b2));
-    // print(r1.get().get().name())        # Rc -> Box -> Pet, virtual dispatch
+    // print(r1.get().get().name())
     std::cout << r1.get().get().name() << "\n";
-    // print(r1_share.get().get().name())  # same data through cloned Rc
+    // print(r1_share.get().get().name())
     std::cout << r1_share.get().get().name() << "\n";
     // print(r2.get().get().name())
     std::cout << r2.get().get().name() << "\n";

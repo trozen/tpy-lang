@@ -1,1 +1,0 @@
-Tests deterministic Rc cycle-leak behavior. CPython has a cycle-collecting GC that would eventually reclaim the cyclic pair; TPy's Rc has no Weak[T] companion yet and intentionally leaks. Output diverges by design.

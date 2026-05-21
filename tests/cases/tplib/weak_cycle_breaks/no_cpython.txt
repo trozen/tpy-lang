@@ -1,1 +1,0 @@
-Tests deterministic destructor ordering for the Weak cycle-break. CPython's cycle-collecting GC also handles this, but timing diverges from RAII.

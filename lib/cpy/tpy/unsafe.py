@@ -63,6 +63,15 @@ class _HeapSlot:
     def __hash__(self):
         return hash(object.__getattribute__(self, '_value'))
 
+    def __str__(self):
+        return str(object.__getattribute__(self, '_value'))
+
+    def __repr__(self):
+        return repr(object.__getattribute__(self, '_value'))
+
+    def __format__(self, spec):
+        return format(object.__getattribute__(self, '_value'), spec)
+
 
 class _HeapArray:
     """Multi-element heap storage. Delegates attribute access to element 0."""

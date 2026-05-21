@@ -1,2 +1,0 @@
-b.get() returns Ptr[str]; under TPy auto-deref unwraps for ostream, under
-CPython _Ptr.__str__ shows the wrapper repr.

@@ -1,1 +1,0 @@
-CPython doesn't simulate the Deref protocol, so `r.x` auto-deref is TPy-only. CPython users must call `r.get().x` explicitly.

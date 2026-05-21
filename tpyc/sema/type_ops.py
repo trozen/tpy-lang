@@ -1022,6 +1022,13 @@ class TypeOperations:
                 exp = expected_return_type.wrapped if isinstance(expected_return_type, OwnType) else expected_return_type
                 self.match_type_with_inference(ret, exp, inferred)
 
+        # LHS-hint @dynamic-protocol preference for function-call inference;
+        # mirrors the equivalent block in `infer_type_params_for_record`.
+        if expected_return_type is not None and func.return_type is not None:
+            self._apply_lhs_hint_to_function_return(
+                func.return_type, expected_return_type, inferred
+            )
+
         # Resolve pending types for codegen.
         for k, v in list(inferred.items()):
             if isinstance(v, IntLiteralType):
@@ -1111,33 +1118,54 @@ class TypeOperations:
             if tp not in inferred:
                 return None
 
-        # LHS-hint preference: when the hint's type-arg is @dynamic and the
-        # arg-inferred T doesn't inherit it, switch T to the hint so the
-        # call-site wrapping rule fires (structural conformer -> Adapter).
-        # When the arg DOES inherit, keep T=arg and let Covariant[T] uplift
-        # -- otherwise generic records using raw unsafe_alloc + unsafe_init
-        # (e.g. Tagged in covariant_custom) would break since unsafe_alloc
-        # can't allocate sizeof(abstract_base).
+        # LHS-hint @dynamic-protocol preference (structural conformer -> Adapter
+        # wrap at call site). See `_apply_dyn_hint_at_position` for the gate.
         if expected_type is not None:
-            exp = expected_type.wrapped if isinstance(expected_type, OwnType) else expected_type
-            exp = unwrap_readonly(exp)
+            exp = unwrap_qualifiers(expected_type)
             if (isinstance(exp, NominalType)
                     and exp.qualified_name() == record.qualified_name()
                     and len(exp.type_args) == len(record.type_params)):
-                for i, tp in enumerate(record.type_params):
-                    hint_t = exp.type_args[i]
-                    inferred_t = inferred[tp]
-                    if not (isinstance(hint_t, NominalType) and is_dyn_protocol(hint_t)):
-                        continue
-                    if isinstance(inferred_t, NominalType) and is_dyn_protocol(inferred_t):
-                        continue
-                    # Skip if the inferred concrete inherits the hint protocol --
-                    # the existing Covariant[T] path handles it.
-                    if self._inherits_protocol(inferred_t, hint_t):
-                        continue
-                    inferred[tp] = hint_t
+                for tp, hint_t in zip(record.type_params, exp.type_args):
+                    self._apply_dyn_hint_at_position(tp, hint_t, inferred)
 
         return inferred
+
+    def _apply_dyn_hint_at_position(
+        self, tp_name: str, hint_t: TpyType, inferred: dict[str, TpyType]
+    ) -> None:
+        # Skip if the inferred concrete inherits the hint protocol -- Covariant[T]
+        # uplift handles it. Otherwise generic records that allocate with raw
+        # unsafe_alloc (e.g. Tagged in covariant_custom) would break since
+        # unsafe_alloc can't allocate sizeof(abstract_base).
+        if tp_name not in inferred:
+            return
+        if not (isinstance(hint_t, NominalType) and is_dyn_protocol(hint_t)):
+            return
+        inferred_t = inferred[tp_name]
+        if isinstance(inferred_t, NominalType) and is_dyn_protocol(inferred_t):
+            return
+        if self._inherits_protocol(inferred_t, hint_t):
+            return
+        inferred[tp_name] = hint_t
+
+    def _apply_lhs_hint_to_function_return(
+        self, ret_pattern: TpyType, hint: TpyType, inferred: dict[str, TpyType]
+    ) -> None:
+        # Recurse so nested generics (e.g. `Own[List[Wrapper[T]]]`) get the
+        # switch too, not just the top-level wrapper.
+        ret_pattern = unwrap_qualifiers(ret_pattern)
+        hint = unwrap_qualifiers(hint)
+        if not (isinstance(ret_pattern, NominalType) and isinstance(hint, NominalType)):
+            return
+        if ret_pattern.qualified_name() != hint.qualified_name():
+            return
+        if len(ret_pattern.type_args) != len(hint.type_args):
+            return
+        for r_arg, h_arg in zip(ret_pattern.type_args, hint.type_args):
+            if isinstance(r_arg, TypeParamRef):
+                self._apply_dyn_hint_at_position(r_arg.name, h_arg, inferred)
+            else:
+                self._apply_lhs_hint_to_function_return(r_arg, h_arg, inferred)
 
     def _inherits_protocol(self, concrete: TpyType, protocol: NominalType) -> bool:
         """Return True if `concrete` transitively implements a @dynamic protocol matching `protocol`.

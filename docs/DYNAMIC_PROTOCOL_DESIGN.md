@@ -23,7 +23,7 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 14 | Record fields typed as `@dynamic` protocol via `Box[P]` | Done |
 | 15 | `list[Box[P]]` heterogeneous containers | Done |
 | 16 | `Own[P]` as a plain function parameter + return type (with method access on the owned value) | Done. Param/return lower to `std::unique_ptr<P>`; `p.method()` body access emits `p->method()`; concrete-source returns wrap via `std::make_unique<Adapter<P, T>>(...)` (or `std::make_unique<T>(...)` for inheritance conformers). Forward `Own[P] -> Own[P]` returns rely on C++ implicit-move (no `std::move` wrap). |
-| 17 | `Rc[P]` for `@dynamic` P -- shared-ownership erased dyn protocol | Future. Design direction: Rust's `Arc<dyn Trait>` single co-located allocation (refcount header + concrete in one block, drop-fn-in-header for type-erased destruction). Interim workaround: `Rc[Box[P]]` (two allocations: cell + box's pet). See TODO.md. |
+| 17 | `Rc[P]` for `@dynamic` P -- shared-ownership erased dyn protocol | Done (two-allocation shape). `Rc[T]` carries `Ptr[_RcCell]` (non-generic `{strong, weak}` refcount block) + `Ptr[T]` (separately heap-allocated payload). `Rc.new(value: Own[T])` heap-allocates the cell, releases ownership of the payload via `unsafe_take`, and stores both pointers. Polymorphic destruction: `unsafe_release(self._payload)` routes through `tpy::heap_release`'s `std::has_virtual_destructor_v<T>` branch -- `delete p` goes through `P`'s auto-emitted virtual destructor in the vtable for the correct dynamic-type cleanup. For structural conformers, Layer 1 LHS-hint preference (extended to `infer_type_params_for_function`) switches arg-inferred `T=ConcreteU` to `T=P`, allowing Phase 16's call-site Adapter wrapping to fire. For inheritance conformers, Covariant[T]'s converting ctor handles `Rc[ConcreteU] -> Rc[P]` directly. Cost vs single-allocation ideal: one extra `operator new` per `Rc.new`; this is the standard `std::shared_ptr` default. Single-allocation `make_shared`-style migration tracked in TODO.md ("Single-allocation `Rc[@dynamic P]`") behind bound-based U->T coercion. |
 | 18 | Transitive virtual-override propagation through `@dynamic`-rooted inheritance chains | Done. A class inheriting a `@dynamic` protocol via a concrete-class intermediate (e.g. `Throwable -> BaseExc -> ValErr`) now emits `override` on method redefinitions at every level, not just one hop. `_get_dynamic_override_info`, `_dynamic_proto_requires_nonconst`, and `_check_method_hiding` all walk the MRO via `iter_ancestor_records` when consulting `implemented_protocols`. The "method hides ancestor" warning is suppressed for methods that are now proper transitive overrides. |
 | 19 | `Optional[ConcreteRoot]` class dispatch via `isinstance` + `dynamic_cast` | Done. For `Optional[E]` where `E` is a *concrete class* that transitively inherits a `@dynamic` protocol (e.g. `class BaseExc(Throwable)`, `Optional[BaseExc]`), codegen materializes rvalue temps at the actual class type (no slicing) for arg-passing and init-only locals; `isinstance(opt, Subclass)` lowers to `dynamic_cast` on the pointer; tuple form ORs casts. Activated for the built-in `BaseException` tree via a `Throwable` `@dynamic` protocol declared in `tpy._core._types` and inherited by `BaseException`. Subclass-typed narrowing still missing -- see TODO.md follow-ups. The same surface is *not* yet available for direct `Optional[Pet]` (see Phase 8 note). Owned storage / rvalue return positions are addressed in Phase 20. |
 | 20 | Polymorphic owned storage via `Box[@dynamic Root]`; slicing-site sema rejection; `raise <expr>` -> `__raise__` desugar; built-in exception hierarchy moved to pure TPy | Partial -- Stage 4c (pure-TPy hierarchy) deferred; see [TODO.md](../TODO.md) "Phase 20 follow-up" entry for the four design walls. **Shipped:** `Throwable` activated as `@native + @dynamic` (runtime-provided abstract base at `::tpy::Throwable`); `Box[Throwable]` storage with auto-deref through Box's `__deref__`; codegen auto-emits `clone()` / `__raise__()` / `what()` on every concrete Throwable subclass (user redeclaration of any of the three is rejected at sema to prevent C++ redefinition collisions); slicing-site rejection at `tpyc/sema/compatibility.py::_check_polymorphic_slicing` keyed on conversion shape (borrow-into-owned-polymorphic-slot), with carve-outs for `Own[T]` moves, fresh-rvalue constructor calls, and `None`; sema rules enforce BaseException-inheritance and copy-constructibility on Throwable implementers (qname-keyed against `tpy.Throwable` / `builtins.BaseException`); `raise <expr>` desugars to `<expr>.<deref-chain>.__raise__()` with `TpyRaise.deref_depth` set by sema's peel-loop, while `raise X(args)` keeps the idiomatic `throw X(args)` form via a fresh-construction peephole (mechanically equivalent for static-type-known construction); runtime `raise<E>(...)` template replaced by per-class `raise_X(msg)` helpers in `core.hpp`. **Deferred to Stage 4c:** moving the 17 native exception classes from `core.hpp`/`async.hpp` to pure TPy, retiring the `TPY_THROWABLE_VIRTUALS` macro, and relocating the `raise_X` helpers from inline-in-`core.hpp` to forward-decls in `throwable.hpp` + definitions in `lib/tpy/tpy/_builtins/_raise.py`. See [EXCEPTION_DESIGN.md](EXCEPTION_DESIGN.md) E9 for the exception-side details. |
@@ -256,7 +256,7 @@ def make_pet() -> Box[Pet]:
 ## What Requires Explicit Wrapping
 
 Dynamic protocol types cannot be used directly in contexts that require owning storage
-with unknown lifetime. These require explicit `Box[P]` (or future `Rc[P]`):
+with unknown lifetime. These require explicit `Box[P]` or `Rc[P]`:
 
 | Context | Direct `Pet` | `Ptr[Pet]` (non-owning) | `Box[Pet]` (owning) | `Optional[BaseConcrete]` * |
 |---------|-------------|-------------------------|---------------------|--------------------------|
@@ -268,7 +268,8 @@ with unknown lifetime. These require explicit `Box[P]` (or future `Rc[P]`):
 | `isinstance(x, Sub)` | Compile-time concept check | Compile-time check on `Ptr`'s pointee | Compile-time check on `Box`'s inner | Runtime `dynamic_cast` (Phase 19) |
 
 `Ptr[P]` for a `@dynamic` P is the natural non-owning sibling of `Box[P]`
-(owning, heap-allocated) and the future `Rc[P]` (shared-owning). It is a
+(owning, heap-allocated) and `Rc[P]` (shared-owning, two heap allocations
+for cell + payload). It is a
 raw `P*` pointer that dispatches `P`'s methods via the vtable; the caller
 is responsible for keeping the pointee alive. Construct via the usual
 `Ptr[T]` paths -- `take_ptr(concrete)` and direct
@@ -562,10 +563,14 @@ Compiler infrastructure issues (not blocked on `Box[P]`):
 - **`Self` type in `@dynamic`** -- may be supported with restrictions (e.g., `Self` in
   return position only, behind `Box`).
 - **Multiple protocol conformance** -- `pet: Pet & Drawable` for intersection types.
-- **`Rc[P]`** -- shared-ownership dynamic value for reference-counted sharing.
-  Design direction locked to Rust's `Arc<dyn Trait>` single co-located allocation
-  (refcount header + concrete in one block, drop-fn pointer in header). Interim
-  workaround: `Rc[Box[P]]`. See TODO.md.
+- **Single-allocation `Rc[P]`** -- today's `Rc[@dynamic P]` works via two heap
+  allocations (refcount cell + payload, like `std::shared_ptr` default). The
+  `make_shared`-style single-allocation variant requires bound-based `U: T`
+  subtype coercion in sema so the body of a `[U](value: Own[U]) -> Own[Rc[T]]`
+  factory can construct `Rc[T]` from `_RcCell[U]` storage. See TODO.md
+  "Single-allocation `Rc[@dynamic P]`".
+- **`Arc[T]`** -- atomic-refcount sibling of `Rc[T]` for multi-threaded sharing.
+  Same shape; refcount ops become atomic CAS loops.
 
 ## Implementation Steps
 

@@ -1,1 +1,0 @@
-main.py:53: error: Type mismatch in variable 'r': expected Rc[Pet], got Rc[Parrot]

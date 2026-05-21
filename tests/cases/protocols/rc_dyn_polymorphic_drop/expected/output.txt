@@ -1,0 +1,5 @@
+before make_rc
+Parrot(Polly) ctor
+Polly
+~Parrot(Polly)
+after make_rc

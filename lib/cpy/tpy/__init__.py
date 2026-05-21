@@ -179,6 +179,15 @@ class _Ptr(Generic[T]):
         else:
             setattr(self._obj, name, value)
 
+    def __str__(self):
+        return str(self._obj)
+
+    def __repr__(self):
+        return repr(self._obj)
+
+    def __format__(self, spec):
+        return format(self._obj, spec)
+
     def __eq__(self, other):
         if isinstance(other, _Ptr):
             return self._obj == other._obj
@@ -236,6 +245,15 @@ class _ConstPtr(Generic[T]):
 
     def __index__(self):
         return int(self._obj)
+
+    def __str__(self):
+        return str(self._obj)
+
+    def __repr__(self):
+        return repr(self._obj)
+
+    def __format__(self, spec):
+        return format(self._obj, spec)
 
     def __deepcopy__(self, memo):
         return _ConstPtr(self._obj)
