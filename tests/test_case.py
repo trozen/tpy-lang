@@ -322,20 +322,19 @@ def test_case(case_dir, main_src, request):
                 compare_only=True,
             )
 
-        # Warn when cpy re-ran due to per-case main fingerprint mismatch
-        # (cpy passed, but next run will re-execute until fingerprint is refreshed).
+        # Warn when the per-case main fingerprint is stale. The next non-
+        # forced run will re-execute cpy until it's refreshed.
         # Skip the warning when only the session-level cpy_stubs hash was stale --
         # that's already surfaced once at session start, no need to repeat per case.
         if (
             ran_cpy
             and not UPDATE_EXPECTED
-            and not force_exec
             and cpy_stubs_unchanged
             and not main_unchanged
         ):
             warnings.warn(
                 f"Test '{case_dir.name}': main fingerprint stale -- "
-                f"cpy re-ran and passed, but next invocation will re-execute. "
+                f"the next non-forced run will re-execute cpy. "
                 f"Refresh via update_snapshots.py -k {case_dir.name}",
                 stacklevel=1,
             )
