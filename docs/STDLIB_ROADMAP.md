@@ -156,7 +156,7 @@ Examples of the policy in action:
 | [`pickle`](#pickle) | P2 | Blocked | 0% | -- | Needs dynamic type info + `io` |
 | [`shelve`](#shelve) | P3 | Blocked | 0% | -- | Needs pickle |
 | [`inspect`](#inspect) | P2 | Blocked | 0% | -- | Needs runtime type/func introspection |
-| [`asyncio`](#asyncio) | P1 | Partial | ~25% | pure | v1: `run`/`sleep`/`create_task`/`Task[T]`/`Future[T]`/`Event`/`CancelledError` + thread-local executor with slot table, runnable deque, timer min-heap, cancel-drain at run-end. v1.5 M5+M6: `async with` (cleanup-only), `async for` + `StopAsyncIteration`. Missing: `gather`/`wait_for` (v1.5); I/O reactor (v2); multi-thread (v3+) |
+| [`asyncio`](#asyncio) | P1 | Partial | ~30% | pure | v1: `run`/`sleep`/`create_task`/`Task[T]`/`Future[T]`/`Event`/`CancelledError` + thread-local executor with slot table, runnable deque, timer min-heap, cancel-drain at run-end. v1.5 M5+M6: `async with` (cleanup-only), `async for` + `StopAsyncIteration`. v1.5 M8: `wait_for`/`TimeoutError`. Missing: `gather` (v1.5); I/O reactor (v2); multi-thread (v3+) |
 | [`threading`](#threading) | P1 | Blocked | 0% | -- | Needs threading primitives |
 | [`multiprocessing`](#multiprocessing) | P2 | Blocked | 0% | -- | Needs process spawning + IPC |
 | [`subprocess`](#subprocess) | P1 | Blocked | 0% | -- | Needs process spawning |
@@ -328,7 +328,8 @@ helper-API surface.
 | `UnicodeError` and subtypes | Missing | TPy has few encoding-panic sites today |
 | `SystemExit`, `KeyboardInterrupt`, `GeneratorExit` | Missing | Control-flow exceptions; need signal/runtime support |
 | `SystemError` | Missing | Internal-interpreter notion not directly applicable |
-| `EOFError`, `PermissionError`, `TimeoutError` | Missing | I/O error hierarchy follow-ups |
+| `EOFError`, `PermissionError` | Missing | I/O error hierarchy follow-ups |
+| `TimeoutError` | Done | Built-in re-export of `tpy::TimeoutError` (inherits `Exception`); raised by `asyncio.wait_for` |
 
 **Sentinels**
 
@@ -1073,11 +1074,13 @@ Done in v1:
 - `asyncio.Future[T]` -- single-awaiter manual-completion awaitable (`set_result(value)` / `set_exception(exc)` / `done()`); ownership-transfer API on `set_result` so nocopy types flow through. `Future[None]` is currently unusable (void-payload template substitution issue, BUGS.md); use `Event` for no-payload completion signals.
 - `asyncio.Event` -- boolean completion signal (`set` / `clear` / `is_set` / directly awaitable). The no-payload analog of `Future[T]`. CPython parity for the API surface; TPy diverges in that `await event` works directly (CPython requires `await event.wait()`) because TPy can't yet define `async def` methods on classes. Single-awaiter v1.
 - `asyncio.CancelledError` -- raised at the next suspension point of a cancelled task; thread through `try`/`finally`.
-- `Executor` body (slot table for parked tasks with `(slot_id, generation)` wakers, runnable deque, timer min-heap keyed on steady-clock deadlines) lives in TPy at `lib/tpy/asyncio/_executor.py`. `Executor` inherits the `@dynamic Awaker` protocol; `Waker.wake()` dispatches through that vtable. `runtime/cpp/include/tpy/async.hpp` is down to ~34 lines containing only `CancelledError` -- no more FFI dispatch shell.
+- `Executor` body (slot table for parked tasks with `(slot_id, generation)` wakers, runnable deque, timer min-heap keyed on steady-clock deadlines) lives in TPy at `lib/tpy/asyncio/_executor.py`. `Executor` inherits the `@dynamic Awaker` protocol; `Waker.wake()` dispatches through that vtable. `runtime/cpp/include/tpy/async.hpp` carries two pieces: `CancelledError` and the `poll_with_cancel` resume-case helper template (M8) -- no FFI dispatch shell.
 
 v1.5 M3-M6: SHIPPED. Awaits inside arbitrary control flow (`if`/`while`/`for`/`with` sub-bodies + `try`/`except`/`finally` around awaits) via a localized CFG (`tpyc/codegen_cpp/resumable_cfg.py`). `async with` (cleanup-only) and `async for` (with `StopAsyncIteration`) shipped on top of the same machinery. See `docs/ASYNC_PROGRESS.md` for the milestone-by-milestone summary.
 
-Pending (v1.5): `gather`, `wait_for`, partial / nested try-around-await (see BUGS.md for the specific CFG-build limits).
+v1.5 M8: SHIPPED. `asyncio.wait_for(coro, timeout) -> T` (`async def` free function) + built-in `TimeoutError`. Pumps inner cleanup through `finally`-with-await on deadline; outer cancellation propagates through to the inner coroutine (the auto-emitted resume-case cancel-check now calls `cancel()` on the in-flight sub-coro before polling, so the inner observes `CancelledError` at its suspension point and can run cleanup before the cancellation surfaces). The async-def codegen path was extended in M8 to handle `Own[Awaitable[T]]`-shaped params via a deduced `T_<pname>` extra template arg with the protocol concept constraint, mirroring the existing non-async pattern. Caller-side sub-coro field declarations use `std::remove_cvref_t<decltype(arg)>` to deduce the concrete coro type without sema knowing it.
+
+Pending (v1.5): `gather`, partial / nested try-around-await (see BUGS.md for the specific CFG-build limits).
 
 v1.5 M1: SHIPPED. Sync `with` upgraded to CPython-shape `__exit__(self, exc_type, exc_val, exc_tb) -> bool | None`; `bool` return suppresses, `None` is cleanup-only. Class-based exception dispatch via `isinstance(exc_val, X)` is deferred to M2 (blocked on `Optional[BaseException]` slicing -- see `BUGS.md`).
 

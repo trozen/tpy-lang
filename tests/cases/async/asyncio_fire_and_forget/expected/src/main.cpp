@@ -44,8 +44,7 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
         continue;
     }
     case S_AFTER_AWAIT_0: {
-        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-        auto __r0 = __sub_0->__poll__(waker);
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         _ = std::move(__r0).value();
         __sub_0 = nullptr;

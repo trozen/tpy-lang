@@ -1,0 +1,1 @@
+main.py:12: error: async def param 'coro': multi-protocol or optional-protocol shape is not yet supported in async-def coro codegen (only single required protocols like `Own[Awaitable[T]]`)

@@ -56,8 +56,7 @@ __coro_value value(::tpy::BigInt n) {
         }
     }
     case S_AFTER_AWAIT_0: {
-        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-        auto __r0 = __sub_0->__poll__(waker);
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         x = std::move(__r0).value();
         __sub_0.reset();
@@ -65,8 +64,7 @@ __coro_value value(::tpy::BigInt n) {
         continue;
     }
     case S_AFTER_AWAIT_1: {
-        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-        auto __r1 = __sub_1->__poll__(waker);
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         x = std::move(__r1).value();
         __sub_1.reset();
@@ -74,8 +72,7 @@ __coro_value value(::tpy::BigInt n) {
         continue;
     }
     case S_AFTER_AWAIT_2: {
-        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-        auto __r2 = __sub_2->__poll__(waker);
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         x = std::move(__r2).value();
         __sub_2.reset();
@@ -83,8 +80,7 @@ __coro_value value(::tpy::BigInt n) {
         continue;
     }
     case S_AFTER_AWAIT_3: {
-        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-        auto __r3 = __sub_3->__poll__(waker);
+        auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         x = std::move(__r3).value();
         __sub_3.reset();

@@ -62,6 +62,7 @@ struct RuntimeError : Exception { using Exception::Exception; TPY_THROWABLE_VIRT
 struct MemoryError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(MemoryError) };
 struct StopIteration : Exception { TPY_THROWABLE_VIRTUALS(StopIteration) };
 struct StopAsyncIteration : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(StopAsyncIteration) };
+struct TimeoutError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(TimeoutError) };
 
 // Forward decl: raise_fixedint_overflow (below) calls tpy_panic, whose
 // definition lives later in this header.

@@ -16,8 +16,7 @@ namespace tpyapp::main {
         continue;
     }
     case S_AFTER_AWAIT_0: {
-        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-        auto __r0 = __sub_0->__poll__(waker);
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
@@ -53,8 +52,7 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
         continue;
     }
     case S_AFTER_AWAIT_0: {
-        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-        auto __r0 = __sub_0->__poll__(waker);
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a = std::move(__r0).value();
         __sub_0 = nullptr;
@@ -64,8 +62,7 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
         continue;
     }
     case S_AFTER_AWAIT_1: {
-        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-        auto __r1 = __sub_1->__poll__(waker);
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         b = std::move(__r1).value();
         __sub_1 = nullptr;

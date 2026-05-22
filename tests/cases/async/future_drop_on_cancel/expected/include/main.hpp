@@ -14,6 +14,7 @@ using ::tpystd::asyncio::Future;
 
 struct Tracked;
 
+extern std::vector<std::string>* dropped;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_waiter;
@@ -47,8 +48,9 @@ struct Tracked {
 
     ~Tracked() {
         if (!this->__tpy_owned_) return;
-        // print("drop:", self.label)
-        std::cout << "drop:" << " " << this->label << "\n";
+        // dropped.append(self.label)
+        std::string __tmp_1{this->label};
+        dropped->push_back(std::move(__tmp_1));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tracked";
 };

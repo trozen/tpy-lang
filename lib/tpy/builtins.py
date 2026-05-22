@@ -5,7 +5,7 @@ from tpy._builtins import (
     AttributeError, AssertionError, IndexError, KeyError,
     ArithmeticError, ZeroDivisionError, OverflowError,
     TypeError, NotImplementedError, RuntimeError, MemoryError, StopIteration,
-    StopAsyncIteration,
+    StopAsyncIteration, TimeoutError,
     Range, range,
     len, repr, hash, chr, ord, abs, min, max, pow, divmod, next, iter, round, print, input, isinstance, getattr, setattr, delattr, hasattr,
     all, any, sum, sorted, bin, hex, oct, enumerate, reversed, zip, map, filter,
@@ -33,6 +33,6 @@ __all__ = [
     "print", "input", "isinstance", "getattr", "setattr", "delattr", "hasattr",
     "all", "any", "sum", "sorted", "bin", "hex", "oct", "enumerate", "reversed", "zip",
     "map", "filter",
-    "StopIteration", "StopAsyncIteration",
+    "StopIteration", "StopAsyncIteration", "TimeoutError",
     "TextIO", "BinaryIO", "open", "open_text", "open_binary",
 ]

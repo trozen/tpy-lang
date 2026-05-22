@@ -31,15 +31,22 @@ from tplib.rc import Rc
 # BUGS.md.
 
 
-# Type-erased async frame for Task storage. @dynamic so concrete coro
-# structs are held through Box[AsyncFrame[T]] without tracking each
-# generated CoroT statically. Distinct from `tpy.coro.Awaitable[T]`:
-# Awaitable is the structural shape for await-sites and user-defined
-# awaitables; AsyncFrame adds the cancel() precondition required by
-# the task machinery. gen_async.py auto-emits cancel() on every
-# generated coro struct so structural conformance picks it up.
+# Cancellable awaitable -- the @dynamic protocol every consumer of
+# asyncio's cancellation machinery accepts (`run`, `create_task`,
+# `wait_for`, `Task[T]` storage, ...). Distinct from
+# `tpy.coro.Awaitable[T]`: Awaitable is the structural shape for
+# `await` sites + user-defined awaitables that don't promise
+# cancellation; Cancellable adds the `cancel()` precondition that
+# lets the task layer deliver a `CancelledError` at the awaitee's
+# next suspension. gen_async.py auto-emits cancel() on every coro
+# struct, so any compiled `async def` conforms automatically.
+#
+# Lives here (not in `tpy.coro`) because @dynamic protocols depend on
+# `tplib.Adapter`, which is loaded after the implicit-stdlib chain
+# that `tpy.coro` participates in. Re-exported from `asyncio` for
+# user-facing API typing.
 @dynamic
-class AsyncFrame[T](Protocol):
+class Cancellable[T](Protocol):
     def __poll__(self, waker: Waker) -> Own[Poll[T]]: ...
     def cancel(self) -> None: ...
 
@@ -57,12 +64,12 @@ class AnyTask(Protocol):
 class TaskState[T]:
     """Shared backing for a `Task[T]`.
 
-    Owns a `Box[AsyncFrame[T]]` (the type-erased coroutine frame) and
+    Owns a `Box[Cancellable[T]]` (the type-erased coroutine frame) and
     caches result/exception once the frame completes. Single-awaiter
     for v1: a second `__poll__` after Ready panics.
     """
 
-    frame: Box[AsyncFrame[T]] | None
+    frame: Box[Cancellable[T]] | None
     result: UninitArrayStorage[T, 1]
     exc: Box[Throwable] | None
     awaiter: Waker
@@ -70,7 +77,7 @@ class TaskState[T]:
     has_result: bool
     executor_owned: bool
 
-    def __init__(self, frame: Own[Box[AsyncFrame[T]]]) -> None:
+    def __init__(self, frame: Own[Box[Cancellable[T]]]) -> None:
         self.frame = frame
         self.result = UninitArrayStorage[T, 1]()
         self.exc = None
@@ -187,16 +194,23 @@ class Task[T]:
         self._state.get().cancel_any()
 
 
-# Wrap a concrete coro in `Box[AsyncFrame[T]]`. `decltype({0})`
+# Wrap a concrete coro in `Box[Cancellable[T]]`. `decltype({0})`
 # recovers the concrete CoroT at the call site so the Adapter
-# specialization picks up the right inner type.
+# specialization picks up the right inner type. The TPy-level
+# signature claims `Own[Awaitable[T]]` (the broader structural
+# protocol used at every call site), but the cpp_template body
+# downcasts to `Cancellable[T]` -- safe because every coro frame
+# auto-emits `cancel()`, even though sema can't see that promise
+# through the structural Awaitable shape. The "right" fix is a
+# sema-level rule that lets async-def call results conform to
+# `Cancellable[T]`; until then this template is the bypass.
 @cpp_template(
-    "::tpystd::tplib::box::Box<::tpystd::asyncio::_executor::AsyncFrame<{T}>>("
+    "::tpystd::tplib::box::Box<::tpystd::asyncio::_executor::Cancellable<{T}>>("
     "std::make_unique<::tpy::Adapter<"
-    "::tpystd::asyncio::_executor::AsyncFrame<{T}>, "
+    "::tpystd::asyncio::_executor::Cancellable<{T}>, "
     "std::remove_cvref_t<decltype({0})>>>(std::move({0})))"
 )
-def _box_coro[T](coro: Own[Awaitable[T]]) -> Own[Box[AsyncFrame[T]]]: ...
+def _box_coro[T](coro: Own[Awaitable[T]]) -> Own[Box[Cancellable[T]]]: ...
 
 
 def task_from_coro[T](coro: Own[Awaitable[T]]) -> Own[Task[T]]:

@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from .types import TypeResolver
     from .expressions import ExpressionGenerator
     from .functions import FunctionGenerator, MethodEmitMode
+    from .gen_async import AsyncCoroCodegen
     from .gen_generators import GeneratorCodegen
     from .protocols import ProtocolGenerator
 
@@ -78,6 +79,7 @@ class RecordGenerator:
         self.expressions = expressions
         self.functions = functions
         self.gen_generators: GeneratorCodegen  # Set by CodeGenerator after init
+        self.gen_async: AsyncCoroCodegen  # Set by CodeGenerator after init
 
     def sort_records_by_inheritance(self, records: list[TpyRecord]) -> list[TpyRecord]:
         """Sort records so parent classes come before children.
@@ -496,15 +498,12 @@ class RecordGenerator:
             # body and the coro struct land in `generator.py`'s post-struct
             # emit pass, parallel to generator methods above.
             if method.is_async:
-                from .gen_async import AsyncCoroCodegen
-                struct_name = AsyncCoroCodegen._struct_name_templated(method, record.name)
+                struct_name = self.gen_async._struct_name_templated(method, record.name)
                 params = self.functions.gen_params(
                     method.params, method.type_params, emit_defaults=True)
                 const_suffix = " const" if method.is_readonly else ""
                 out.write("\n")
-                if method.type_params:
-                    tparams = ", ".join(f"typename {tp}" for tp in method.type_params)
-                    out.write(f"{INDENT}template <{tparams}>\n")
+                self.gen_async._emit_template_header(out, method, indent=INDENT)
                 out.write(f"{INDENT}{struct_name} {method.name}({params}){const_suffix};\n")
                 continue
             # @overload-dispatched methods stay inline-in-struct regardless of

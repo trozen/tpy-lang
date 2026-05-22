@@ -127,26 +127,35 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
     imports = _discover_stdlib_imports()
     stub_src.write_text("\n".join(f"import {m}" for m in imports) + "\n")
 
+    from tpyc.compilation_context import activate_compiler
+
     compiler = Compiler(stub_src, default_int="Int32", lib_dirs=DEFAULT_LIB_DIRS)
     compiled_modules = compiler.compile()
     entry = next(m for m in compiled_modules if m.is_entry_point)
 
     build_dir = cache_dir / "build"
     build_dir.mkdir()
-    for mod in compiled_modules:
-        compiler.generate_code(mod, build_dir, entry_module_name=entry.name,
-                               options=TEST_CODEGEN_OPTIONS)
+    # `generate_code` and `layout.cpp_path` both consult the active
+    # compiler's `include_path_map` to honor `# tpy: include` overrides
+    # (e.g. lib/tpy/re.py -> `tpystd/re.hpp`). The path comparison below
+    # needs the same override resolution as the writer used, so both
+    # passes happen under the same `activate_compiler` block.
+    with activate_compiler(compiler):
+        for mod in compiled_modules:
+            compiler.generate_code(mod, build_dir,
+                                   entry_module_name=entry.name,
+                                   options=TEST_CODEGEN_OPTIONS)
 
-    layout = BuildLayout(build_dir, entry.name, build_variant="debug")
+        layout = BuildLayout(build_dir, entry.name, build_variant="debug")
 
-    # Collect non-local (stdlib) .cpp files
-    stdlib_cpps: list[Path] = []
-    for mod in compiled_modules:
-        if mod.is_entry_point:
-            continue
-        cpp = layout.cpp_path(mod.name)
-        if cpp.exists():
-            stdlib_cpps.append(cpp)
+        # Collect non-local (stdlib) .cpp files
+        stdlib_cpps: list[Path] = []
+        for mod in compiled_modules:
+            if mod.is_entry_point:
+                continue
+            cpp = layout.cpp_path(mod.name)
+            if cpp.exists():
+                stdlib_cpps.append(cpp)
 
     if not stdlib_cpps:
         return _StdlibCache(objects=[], cpp_relpaths=set())

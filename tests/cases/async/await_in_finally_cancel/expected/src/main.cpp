@@ -34,8 +34,7 @@ __coro_cleanup cleanup() {
     }
     case S_AFTER_AWAIT_0: {
         try {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r0 = __sub_0->__poll__(waker);
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
             (void)std::move(__r0).value();
             __sub_0.reset();
@@ -52,8 +51,7 @@ __coro_cleanup cleanup() {
         }
     }
     case S_AFTER_AWAIT_1: {
-        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-        auto __r1 = __sub_1->__poll__(waker);
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
@@ -114,8 +112,7 @@ __coro_coro coro() {
         continue;
     }
     case S_AFTER_AWAIT_0: {
-        if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-        auto __r0 = __sub_0->__poll__(waker);
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
@@ -126,8 +123,7 @@ __coro_coro coro() {
     }
     case S_AFTER_AWAIT_1: {
         try {
-            if (__cancel_pending) { __cancel_pending = false; throw ::tpy::CancelledError(); }
-            auto __r1 = __sub_1->__poll__(waker);
+            auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
             (void)std::move(__r1).value();
             __sub_1 = nullptr;

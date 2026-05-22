@@ -5668,6 +5668,29 @@ Send/Sync rules for built-in types:
   on generic *classes* remain rejected (the out-of-line coro-struct
   `__poll__` body would need the class's template header and a
   combined arg list).
+- **Working (v1.5 M8)**: `asyncio.wait_for(coro, timeout)` -- race a
+  coroutine against a steady-clock deadline. Returns the coroutine's
+  value on success; on deadline expiry cancels the inner, pumps any
+  `finally`-with-await cleanup, then raises `TimeoutError` (a
+  built-in re-export of `tpy::TimeoutError`). Non-positive timeout
+  triggers expiry on the first poll (matches CPython). Outer-cancel
+  of a `wait_for` task propagates through to the inner coroutine
+  (the resume-case cancel-check calls `cancel()` on the in-flight
+  sub-coro before polling, so the inner observes `CancelledError`
+  at its suspension point and can run `finally`-with-await cleanup).
+  Implementation: hand-written `_WaitForFuture[T]` awaitable holds
+  the inner as `Box[AsyncFrame[T]]`.
+- **Working (v1.5 M8)**: `Own[Awaitable[T]]`-shaped (static-protocol)
+  params on `async def` generic free functions and methods. The
+  param's concrete type is deduced as an extra template arg
+  `T_<pname>` with the protocol concept constraint (mirroring the
+  non-async `gen_params_with_protocols` pattern); the frame field
+  stores by value, the ctor takes `T_<pname>&&` and moves in, and
+  the factory forwards via `std::move`. Caller-side sub-coro field
+  declarations use `std::remove_cvref_t<decltype(arg)>` so the
+  concrete deduced type doesn't need spelling at the await site.
+  Unblocks `wait_for` and any future generic asyncio helper taking
+  an awaitable param.
 - **Working**: Pointer-form `T | None` (pointer-repr Optional) async
   coroutine parameters. Factory signature and frame slot emit as
   `T*` / `const T*` (mirroring sync's `const T*` parameter shape);
@@ -5675,7 +5698,7 @@ Send/Sync rules for built-in types:
   `emplace(...)` call site by the same coercion sync uses. Same
   `nullptr`-doubles-as-uninitialized-and-None convention as the
   matching hoisted-locals row in the generator section above.
-- **Open (v1.5+)**: `gather`, `wait_for`,
+- **Open (v1.5+)**: `gather`,
   nesting two `await`-in-`finally` regions (multi-item / nested
   `async with`), await inside a `for`/`while` `else:` clause,
   `async for ... else:`, executor slot reuse, reporting when bounded

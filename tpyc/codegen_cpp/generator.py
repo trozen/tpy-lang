@@ -116,6 +116,7 @@ class CodeGenerator:
         from .gen_async import AsyncCoroCodegen
         self.gen_async = AsyncCoroCodegen(
             self.ctx, self.types, self.expressions, self.statements, self.functions)
+        self.records.gen_async = self.gen_async
 
     def generate(self, module: TpyModule, module_name: str = "generated",
                  is_entry_point: bool = True,
@@ -1028,10 +1029,8 @@ class CodeGenerator:
                 params = self.functions.gen_params(
                     method.params, method.type_params,
                     emit_defaults=False, func=method)
-                if method.params:
-                    args = f"*this, {', '.join(escape_cpp_name(p) for p, _ in method.params)}"
-                else:
-                    args = "*this"
+                args = self.gen_async._factory_args_forwarded(
+                    method, receiver=(record.name, "*this"))
                 const_suffix = " const" if method.is_readonly else ""
                 self.gen_async._emit_template_header(hpp, method)
                 hpp.write(f"inline {struct_name} {cpp_record}::{method.name}({params}){const_suffix} {{\n")

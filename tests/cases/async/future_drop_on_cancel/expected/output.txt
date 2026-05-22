@@ -1,2 +1,3 @@
 cancelled
-drop: payload
+dropped: payload
+count: 1

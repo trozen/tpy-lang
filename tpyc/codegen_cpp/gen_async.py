@@ -34,7 +34,7 @@ from ..parse.nodes import (
 )
 from ..typesys import NominalType, OptionalType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType
 from ..type_def_registry import is_str_type, is_str_category
-from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext
+from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
 from . import resumable_cfg as rcfg
 
 
@@ -64,11 +64,18 @@ class _CoroParamKind(IntEnum):
         value types, T& for object types), ctor takes
         `::tpy::param_val_or_ref_t<T>` (const T& or T&), init directly
         binds/copies. No std::move (the param is already a reference).
+    STATIC_PROTOCOL: static-protocol-typed param (e.g. `Own[Awaitable[T]]`)
+        whose concrete type is deduced as an extra template arg `T_<pname>`
+        with a concept constraint -- mirrors `gen_params_with_protocols`
+        in `functions.py`. Field stores by value (the concrete deduced
+        type); ctor takes `T_<pname>&&` (forwarding ref) and moves in;
+        the factory forwards the same way.
     """
     REF = 0
     VALUE = 1
     POINTER = 2
     TYPE_PARAM = 3
+    STATIC_PROTOCOL = 4
 
 
 @dataclass(frozen=True)
@@ -90,11 +97,15 @@ class _CoroParam:
         # name -- the factory body forwards by bare name.
         if self.kind is _CoroParamKind.REF:
             return f"{self.ctor_param_type}& {self.cpp_name}"
+        if self.kind is _CoroParamKind.STATIC_PROTOCOL:
+            return f"{self.ctor_param_type}&& {self.cpp_name}"
         return f"{self.ctor_param_type} {self.cpp_name}"
 
     def ctor_param_decl(self) -> str:
         if self.kind is _CoroParamKind.REF:
             return f"{self.ctor_param_type}& {self.cpp_name}"
+        if self.kind is _CoroParamKind.STATIC_PROTOCOL:
+            return f"{self.ctor_param_type}&& {self.cpp_name}_"
         # VALUE / POINTER / TYPE_PARAM: `_` suffix disambiguates from the
         # field name in the init list.
         return f"{self.ctor_param_type} {self.cpp_name}_"
@@ -247,6 +258,30 @@ class AsyncCoroCodegen:
                     ctor_param_type=ptype_inner.to_cpp_param_type(),
                     kind=_CoroParamKind.TYPE_PARAM,
                 ))
+            elif self.functions.protocols.is_static_protocol_param(ptype):
+                # Static-protocol param (e.g. `Own[Awaitable[T]]`): the
+                # concrete operand type is deduced as an extra template
+                # arg `T_<pname>` with a concept constraint, declared in
+                # `_emit_template_header`. Field stores by value;
+                # ctor/factory forward via T_<pname>&&. Checked before
+                # the OptionalType-pointer-repr branch below so
+                # `Own[Awaitable[T]] | None` doesn't get mis-routed to
+                # POINTER -- `_protocol_template_parts` will reject the
+                # nullable shape with a clear diagnostic.
+                #
+                # `T_{pname}` (raw, not escaped) keeps the template-arg
+                # name aligned with `_protocol_template_parts` (which
+                # declares the template arg) -- `_struct_name_templated`
+                # reads the same field back to spell instantiations.
+                # Using `cpp_name` here would diverge when `pname`
+                # collides with a C++ keyword (e.g. `class` -> `class_`).
+                template_arg = f"T_{pname}"
+                out.append(_CoroParam(
+                    cpp_name=cpp_name,
+                    field_type=template_arg,
+                    ctor_param_type=template_arg,
+                    kind=_CoroParamKind.STATIC_PROTOCOL,
+                ))
             elif isinstance(actual, OptionalType) and actual.uses_pointer_repr():
                 cpp_type = ptype_inner.to_cpp_param_type()
                 out.append(_CoroParam(
@@ -273,15 +308,50 @@ class AsyncCoroCodegen:
                     ))
         return out
 
-    def _emit_template_header(self, out: "TextIO", func: TpyFunction) -> bool:
-        if not func.type_params:
+    def _protocol_template_parts(self, func: TpyFunction) -> list[str]:
+        """Return template-header parts for any static-protocol-typed
+        params on `func`. Each part has the form `<Concept> T_<pname>`
+        (or `<Concept><type_args> T_<pname>` when the protocol is
+        generic). Mirrors `gen_combined_template_header` in protocols.py
+        for the single-required-protocol case; multi-protocol / nullable
+        shapes are deferred until a concrete need surfaces.
+        """
+        parts: list[str] = []
+        for pname, ptype in func.params:
+            if not self.functions.protocols.is_static_protocol_param(ptype):
+                continue
+            infos = self.functions.protocols.get_all_protocol_params(
+                [(pname, ptype)])
+            if not infos:
+                continue
+            info = infos[0]
+            if len(info.protocols) != 1 or info.has_none:
+                raise CodeGenError(
+                    f"async def param {pname!r}: multi-protocol or "
+                    "optional-protocol shape is not yet supported in "
+                    "async-def coro codegen (only single required "
+                    "protocols like `Own[Awaitable[T]]`)",
+                    loc=func.loc)
+            proto = info.protocols[0]
+            concept_name = self.functions.protocols.get_concept_name(proto)
+            if proto.type_args:
+                targs = ", ".join(t.to_cpp() for t in proto.type_args)
+                parts.append(f"{concept_name}<{targs}> T_{pname}")
+            else:
+                parts.append(f"{concept_name} T_{pname}")
+        return parts
+
+    def _emit_template_header(self, out: "TextIO", func: TpyFunction,
+                                *, indent: str = "") -> bool:
+        proto_parts = self._protocol_template_parts(func)
+        if not func.type_params and not proto_parts:
             return False
-        params = ", ".join(f"typename {tp}" for tp in func.type_params)
-        out.write(f"template <{params}>\n")
+        parts = [f"typename {tp}" for tp in func.type_params]
+        parts.extend(proto_parts)
+        out.write(f"{indent}template <{', '.join(parts)}>\n")
         return True
 
-    @staticmethod
-    def _struct_name_templated(func: TpyFunction,
+    def _struct_name_templated(self, func: TpyFunction,
                                 record_name: str | None = None) -> str:
         """Return the coro struct name suffixed with `<T1, T2, ...>` when the
         function is generic, else the bare name. Use this whenever the
@@ -289,11 +359,19 @@ class AsyncCoroCodegen:
         out-of-line method qualifiers, parameter types) -- C++ rejects
         the injected-class-name there. The bare `gen_struct_name` is
         still correct inside the struct body (constructors) and for
-        forward decls (`struct X;`)."""
+        forward decls (`struct X;`).
+
+        For functions whose params include static protocols, the
+        per-param `T_<pname>` template args are appended after the
+        explicit `[T1, T2, ...]` type-param list, in param order.
+        """
         bare = AsyncCoroCodegen.gen_struct_name(func, record_name)
-        if not func.type_params:
+        extras = [p.field_type for p in self._classify_params(func, record_name)
+                  if p.kind is _CoroParamKind.STATIC_PROTOCOL]
+        all_args = list(func.type_params) + extras
+        if not all_args:
             return bare
-        return f"{bare}<{', '.join(func.type_params)}>"
+        return f"{bare}<{', '.join(all_args)}>"
 
     def _emit_params_decl(self, func: TpyFunction) -> str:
         return ", ".join(p.factory_param_decl() for p in self._classify_params(func))
@@ -703,12 +781,38 @@ class AsyncCoroCodegen:
         self._emit_template_header(out, func)
         params = self._emit_params_decl(func)
         out.write(f"{struct_name} {escape_cpp_name(func.name)}({params}) {{\n")
-        if func.params:
-            args = ", ".join(escape_cpp_name(pname) for pname, _ in func.params)
-            out.write(f"{INDENT}return {struct_name}({args});\n")
-        else:
-            out.write(f"{INDENT}return {struct_name}();\n")
+        args = self._factory_args_forwarded(func)
+        out.write(f"{INDENT}return {struct_name}({args});\n")
         out.write(f"}}\n")
+
+    def _factory_args_forwarded(
+            self, func: TpyFunction,
+            *, receiver: tuple[str, str] | None = None) -> str:
+        """Format the arg list for a coro-struct factory call.
+
+        Static-protocol params (`Own[Awaitable[T]]` etc.) take a
+        forwarding-ref `T_<pname>&&` -- which, inside the factory body,
+        is an lvalue -- so the call to the struct ctor (also `T_<pname>&&`)
+        must wrap the name in `std::move(...)` to bind. Other kinds pass
+        by bare name.
+
+        `receiver=(record_name, recv_expr)` supports async methods: the
+        receiver is prepended to the arg list as `recv_expr` (typically
+        `"*this"`), and `__self` is filtered out of the classified
+        params so it isn't double-emitted. None for free async fns.
+        """
+        record_name, recv_expr = receiver if receiver is not None else (None, None)
+        parts: list[str] = []
+        if recv_expr is not None:
+            parts.append(recv_expr)
+        for cparam in self._classify_params(func, record_name):
+            if cparam.cpp_name == "__self":
+                continue
+            if cparam.kind is _CoroParamKind.STATIC_PROTOCOL:
+                parts.append(f"std::move({cparam.cpp_name})")
+            else:
+                parts.append(cparam.cpp_name)
+        return ", ".join(parts)
 
     # -- poll() body ----------------------------------------------------------
 
@@ -728,6 +832,7 @@ class AsyncCoroCodegen:
         old_frame_slot_locals = self.ctx.generator_frame_slot_locals
         old_for_info = self.ctx.generator_for_loop_info
         old_self_ref = self.ctx.generator_self_ref
+        old_movable_locals = self.ctx.movable_locals
 
         # Reset frame-specific fields before setup_body_scope, since the
         # `setup_resumable_frame_locals` call inside it reads
@@ -749,6 +854,17 @@ class AsyncCoroCodegen:
         )
 
         self.ctx.in_generator_body = True
+        # Belt-and-suspenders: `setup_body_scope` registers Own[T] params
+        # as movable when `T.is_value_type()` is False, which already
+        # covers most static-protocol shapes. Static-protocol frame
+        # fields (e.g. `coro: Own[Awaitable[T]]` stored as the deduced
+        # `T_coro`) are move-only by construction; force-register them
+        # so the call-arg generator emits `std::move(coro)` rather than
+        # a copy-into-temp + move, independent of how the protocol's
+        # `is_value_type` resolves.
+        for cparam in self._classify_params(func, record_name):
+            if cparam.kind is _CoroParamKind.STATIC_PROTOCOL:
+                self.ctx.movable_locals.add(cparam.cpp_name)
         if record_name:
             self.ctx.generator_self_ref = "__self"
             self.ctx.generator_field_names.add("__self")
@@ -769,6 +885,7 @@ class AsyncCoroCodegen:
             self.ctx.generator_frame_slot_locals = old_frame_slot_locals
             self.ctx.generator_for_loop_info = old_for_info
             self.ctx.generator_self_ref = old_self_ref
+            self.ctx.movable_locals = old_movable_locals
 
     def gen_coro_finally_top_def(self, out: "TextIO", func: TpyFunction,
                                    record_name: str | None = None) -> None:
@@ -956,17 +1073,26 @@ class AsyncCoroCodegen:
 
     def _sub_struct_qualname(
             self, owner: 'NominalType | None', method: str,
-            inferred_type_args: 'tuple[TpyType, ...] | None' = None) -> str:
+            inferred_type_args: 'tuple[TpyType, ...] | None' = None,
+            *, module_qual: str | None = None,
+            extra_template_args: 'list[str] | None' = None) -> str:
         """Build the C++ name of the sub-coro struct generated for a
         statically-resolved await (free function or method).
 
-        Free function (owner=None): `__coro_<name>[<inferred_args>]`.
+        Free function (owner=None, same module): `__coro_<name>[<inferred_args>]`.
+        Free function (owner=None, cross-module via module_qual):
+            `<callee_ns>::__coro_<name>[<inferred_args>]`.
         Method on non-generic class: `<ns>::__coro_<Record>_<name>
             [<inferred_args>]`.
         Method on generic class: `<ns>::__coro_<Record>_<name>
             <owner_type_args>`. (The class-generic + method-generic
             case is currently rejected at sema, so owner_type_args and
             inferred_type_args are not composed today.)
+
+        `extra_template_args` appends concrete C++ types (typically
+        `std::remove_cvref_t<decltype(arg)>`) for each static-protocol
+        param on the callee -- these correspond to the `T_<pname>`
+        template args declared on the callee's struct.
         """
         ns_qual = ""
         owner_name = None
@@ -981,17 +1107,61 @@ class AsyncCoroCodegen:
                 inner_cpps = [self.types.type_to_cpp(ta)
                               for ta in owner.type_args]
                 owner_args_suffix = "<" + ", ".join(inner_cpps) + ">"
+        elif module_qual is not None:
+            # Cross-module free-function await: qualify with the
+            # callee module's C++ namespace.
+            ns_qual = f"::{module_to_cpp_namespace(module_qual)}::"
         bare = AsyncCoroCodegen._sub_struct_name(method, owner_name)
-        # Only append the method's/function's own inferred type args when
-        # the owner is non-generic: composing owner_type_args with method
-        # inferred_type_args onto one sub-coro template needs an agreed
-        # arg order that sema doesn't establish today.
-        own_args_suffix = ""
+        # Combined template-arg list: callee's explicit `[T1, ...]` from
+        # the call's inferred substitution, followed by any
+        # `T_<pname>` extras deduced from static-protocol args.
+        all_args: list[str] = []
         if inferred_type_args and not (owner is not None and owner.type_args):
-            inner_cpps = [self.types.type_to_cpp(ta)
-                          for ta in inferred_type_args]
-            own_args_suffix = "<" + ", ".join(inner_cpps) + ">"
-        return f"{ns_qual}{bare}{owner_args_suffix}{own_args_suffix}"
+            all_args.extend(self.types.type_to_cpp(ta)
+                             for ta in inferred_type_args)
+        if extra_template_args:
+            all_args.extend(extra_template_args)
+        suffix = ("<" + ", ".join(all_args) + ">") if all_args else ""
+        return f"{ns_qual}{bare}{owner_args_suffix}{suffix}"
+
+    def _extra_template_args_for_await(self, call: TpyExpr) -> list[str]:
+        """Compute the per-static-protocol `T_<pname>` template-arg
+        spellings for the sub-coro struct of an inline await.
+
+        Each callee static-protocol param gets one extra template arg
+        on the struct (see `_protocol_template_parts`); at the call
+        site that arg is the concrete type of the corresponding
+        argument, spelled as `std::remove_cvref_t<decltype(<arg>)>` so
+        the compiler deduces it without us having to spell it.
+        Temps queued by gen_expr are discarded -- decltype doesn't
+        evaluate, and the same arg's gen_expr will re-run at emplace
+        time when the temps are actually needed.
+        """
+        if not isinstance(call, (TpyCall, TpyMethodCall)):
+            return []
+        fi = call.resolved_function_info
+        if fi is None or not fi.params:
+            return []
+        if not any(
+                self.functions.protocols.is_static_protocol_param(p.type)
+                for p in fi.params):
+            return []
+        out: list[str] = []
+        checkpoint = self.ctx.temps.checkpoint()
+        for i, pinfo in enumerate(fi.params):
+            if not self.functions.protocols.is_static_protocol_param(pinfo.type):
+                continue
+            if i >= len(call.args):
+                # Defensive: callee param without a corresponding arg
+                # at the call site (defaults aren't supported on async
+                # static-protocol params today; bail rather than emit
+                # a malformed template arg).
+                self.ctx.temps.rollback_to(checkpoint)
+                return []
+            arg_cpp = self.expressions.gen_expr(call.args[i])
+            out.append(f"std::remove_cvref_t<decltype({arg_cpp})>")
+        self.ctx.temps.rollback_to(checkpoint)
+        return out
 
 
     def _prescan_with_stmts(
@@ -1187,10 +1357,23 @@ class AsyncCoroCodegen:
             mode = rcfg.AwaitMode.INLINE
             inferred_type_args = getattr(
                 await_node.value, "inferred_type_args", None)
+            # Cross-module free-function await spelled `mod.func(...)`:
+            # operand is a TpyMethodCall whose receiver is the module
+            # (no class owner). Use the module qualifier to namespace
+            # the sub-coro struct name.
+            module_qual = None
+            if (isinstance(await_node.value, TpyMethodCall)
+                    and await_node.awaited_method_owner_type is None):
+                module_qual = (await_node.value.user_module_call
+                               or await_node.value.builtin_module_call)
+            extra_template_args = self._extra_template_args_for_await(
+                await_node.value)
             sub_cpp = self._sub_struct_qualname(
                 await_node.awaited_method_owner_type,
                 await_node.awaited_async_func_name,
-                inferred_type_args)
+                inferred_type_args,
+                module_qual=module_qual,
+                extra_template_args=extra_template_args)
         elif await_node.awaited_task_inner is not None:
             operand_type = self.ctx.get_expr_type(await_node.value)
             if operand_type is None:
@@ -1876,6 +2059,7 @@ class AsyncCoroCodegen:
                 continue
             if isinstance(t, rcfg.Branch):
                 cond_cpp = self.expressions.gen_expr(t.cond)
+                self.ctx.temps.flush(out, body_indent)
                 out.write(f"{body_indent}if ({cond_cpp}) {{\n")
                 self.ctx.indent_level += 1
                 self._walk_inline_or_jump(out, cfg, t.then_bb, case_entries,
@@ -1961,6 +2145,7 @@ class AsyncCoroCodegen:
         ctx_n = stmt.ctx_n
         item = stmt.item
         ctx_expr = self.expressions.gen_expr(item.context_expr)
+        self.ctx.temps.flush(out, indent)
         out.write(f"{indent}__with_ctx_{ctx_n} = {ctx_expr};\n")
         if item.target is not None:
             target = escape_cpp_name(item.target)
@@ -1978,6 +2163,7 @@ class AsyncCoroCodegen:
         ctx_n = stmt.ctx_n
         item = stmt.item
         ctx_expr = self.expressions.gen_expr(item.context_expr)
+        self.ctx.temps.flush(out, indent)
         out.write(f"{indent}__with_ctx_{ctx_n} = {ctx_expr};\n")
 
     def _emit_with_exit(self, out: "TextIO", indent: str,
@@ -2005,6 +2191,7 @@ class AsyncCoroCodegen:
         Async (M6):    __for_itr_<uid> = (<iterable>).__aiter__();
         """
         iter_cpp = self.expressions.gen_expr(stmt.iterable_expr)
+        self.ctx.temps.flush(out, indent)
         if stmt.is_async:
             out.write(f"{indent}__for_itr_{stmt.uid} = "
                       f"({iter_cpp}).__aiter__();\n")
@@ -2075,9 +2262,14 @@ class AsyncCoroCodegen:
                                 call: 'TpyCall | TpyMethodCall') -> str:
         """Generate one arg for `__sub_N.emplace(...)` constructing a
         sub-coroutine. Mirrors the param-type-driven coercions sync call
-        codegen applies in `_gen_call`: today, the pointer-form
-        Optional[NonValue] lift (P -> &P) needed when the callee's
-        param is the new `T*` shape.
+        codegen applies in `_gen_call`: pointer-form `Optional[NonValue]`
+        lift (P -> &P) when the callee param is the `T*` shape, plus
+        the full `Own[T]` move-out machinery (`std::move(name)` for
+        last-use movable lvalues bound to `Own[T]` params) via
+        `gen_call_arg`. Without the latter, an async-def calling a
+        callee with an `Own[T]` param (e.g. `await wait_for(coro, ...)`
+        with `coro: Own[Awaitable[T]]`) would emit a bare name and the
+        forwarding-ref ctor param would refuse to bind to the lvalue.
         """
         fi = call.resolved_function_info
         if fi is None or arg_index >= len(fi.params):
@@ -2086,7 +2278,7 @@ class AsyncCoroCodegen:
         opt_arg = self.expressions._gen_optional_ptr_arg(arg, ptype)
         if opt_arg is not None:
             return opt_arg
-        return self.expressions.gen_expr(arg, ptype)
+        return self.expressions.gen_call_arg(arg, ptype)
 
     def _emit_sub_reset(self, out: "TextIO", indent: str,
                         payload: 'rcfg.AwaitPayload',
@@ -2111,11 +2303,15 @@ class AsyncCoroCodegen:
         case body (walks finally chain and returns Ready)."""
         ret_cpp = self._poll_ret_cpp(func)
         sub = self._sub_field_name(suspension_index)
-        out.write(f"{indent}if (__cancel_pending) {{ "
-                  f"__cancel_pending = false; "
-                  f"throw ::tpy::CancelledError(); }}\n")
+        # `::tpy::poll_with_cancel` propagates the outer's cancel into
+        # the in-flight sub before polling (so the sub observes the
+        # cancel at its own suspension point and can run
+        # `finally`-with-await cleanup) and throws CancelledError if
+        # the sub races past the cancel. See runtime/cpp/include/tpy/
+        # async.hpp for the full semantics.
         out.write(f"{indent}auto __r{suspension_index} = "
-                  f"{sub}->__poll__(waker);\n")
+                  f"::tpy::poll_with_cancel({sub}, __cancel_pending, "
+                  f"waker);\n")
         out.write(f"{indent}if (__r{suspension_index}.is_pending()) "
                   f"return {ret_cpp}::pending();\n")
         moved = f"std::move(__r{suspension_index}).value()"
@@ -2205,25 +2401,38 @@ class AsyncCoroCodegen:
                 if isinstance(call, TpyCall):
                     args = [self._gen_coro_emplace_arg(arg, i, call)
                             for i, arg in enumerate(call.args)]
+                    self.ctx.temps.flush(out, indent)
                     out.write(f"{indent}{sub}.emplace({', '.join(args)});\n")
                 elif isinstance(call, TpyMethodCall):
-                    # async method: the sub-coro struct has __self as
-                    # its first ctor param. Emplace with (receiver,
-                    # args...).
-                    recv_cpp = self.expressions.gen_expr(call.obj)
-                    arg_cpps = [self._gen_coro_emplace_arg(a, i, call)
+                    is_module_call = (call.user_module_call is not None
+                                      or call.builtin_module_call is not None)
+                    if is_module_call:
+                        # `module.func(...)` -- receiver is a namespace,
+                        # not a value, so the sub-coro ctor takes only
+                        # the function args.
+                        args = [self._gen_coro_emplace_arg(a, i, call)
                                 for i, a in enumerate(call.args)]
-                    joined = ", ".join([recv_cpp] + arg_cpps)
-                    out.write(f"{indent}{sub}.emplace({joined});\n")
+                        self.ctx.temps.flush(out, indent)
+                        out.write(f"{indent}{sub}.emplace({', '.join(args)});\n")
+                    else:
+                        # Bound async method: prepend receiver as __self ctor arg.
+                        recv_cpp = self.expressions.gen_expr(call.obj)
+                        arg_cpps = [self._gen_coro_emplace_arg(a, i, call)
+                                    for i, a in enumerate(call.args)]
+                        self.ctx.temps.flush(out, indent)
+                        joined = ", ".join([recv_cpp] + arg_cpps)
+                        out.write(f"{indent}{sub}.emplace({joined});\n")
                 else:
                     raise CodeGenError(
                         "internal: inline-mode await operand is not a call",
                         loc=None)
         elif payload.mode is rcfg.AwaitMode.ERASED:
             operand_cpp = self.expressions.gen_expr(payload.operand_expr)
+            self.ctx.temps.flush(out, indent)
             out.write(f"{indent}{sub}.emplace(std::move({operand_cpp}));\n")
         elif payload.mode is rcfg.AwaitMode.BORROWED:
             operand_cpp = self.expressions.gen_expr(payload.operand_expr)
+            self.ctx.temps.flush(out, indent)
             out.write(f"{indent}{sub} = &({operand_cpp});\n")
         else:
             raise CodeGenError(f"unknown await mode {payload.mode!r}",

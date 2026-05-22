@@ -5,8 +5,8 @@
 `CancelledError`. Lowers to `runtime/cpp/include/tpy/async.hpp` and
 the TPy Executor in `_executor.py`. See `docs/ASYNC_DESIGN.md`.
 """
-from builtins import BaseException, Exception
-from tpy import Own, Int32, CancelledError, Throwable
+from builtins import BaseException, Exception, TimeoutError
+from tpy import Own, Int32, CancelledError, Throwable, nocopy
 from tpy.coro import (
     Waker, Poll, Awaitable,
     poll_ready, poll_pending, poll_ready_none,
@@ -15,10 +15,11 @@ from tpy.mem import UninitArrayStorage
 from tplib import Box
 from time import monotonic
 from ._executor import (
-    Task, AnyTask, AsyncFrame,
+    Task, AnyTask, Cancellable,
     task_from_coro, make_executor_owned_task, task_to_any_box,
     Executor, _ExecutorScope,
     _get_current_executor,
+    _box_coro,
 )
 
 
@@ -62,27 +63,27 @@ class SleepFuture:
     """Awaits a steady-clock deadline. Registers a timer with the
     current executor on first poll and returns Pending until the
     deadline elapses; conforms to the Awaitable[None] shape (poll +
-    `__cancel_pending` field that the runtime's `Task::cancel` flips).
+    `_cancel_pending` field that the runtime's `Task::cancel` flips).
     """
 
     deadline: float
     registered: bool
-    __cancel_pending: bool
+    _cancel_pending: bool
 
     def __init__(self, seconds: float) -> None:
         self.deadline = monotonic() + seconds
         self.registered = False
-        self.__cancel_pending = False
+        self._cancel_pending = False
 
-    # Required for structural conformance to `@dynamic AsyncFrame[T]`
+    # Required for structural conformance to `@dynamic Cancellable[T]`
     # (in `asyncio._executor`). Mirrors the codegen-emitted `cancel()` on
     # every generated coro struct.
     def cancel(self) -> None:
-        self.__cancel_pending = True
+        self._cancel_pending = True
 
     def __poll__(self, waker: Waker) -> Own[Poll[None]]:
-        if self.__cancel_pending:
-            self.__cancel_pending = False
+        if self._cancel_pending:
+            self._cancel_pending = False
             # TODO: cancelling a registered SleepFuture leaves its timer
             # entry in the executor's timer_heap + _timer_wakers. The
             # generation guard makes the eventual wake a silent no-op,
@@ -122,6 +123,94 @@ def create_task[T](coro: Own[Awaitable[T]]) -> Own[Task[T]]:
     box = task_to_any_box[T](task)
     handle.spawn(box)
     return task
+
+
+@nocopy
+class _WaitForFuture[T]:
+    """Drives an inner Cancellable[T] against a steady-clock deadline.
+
+    Registers a one-shot timer with the current executor on first
+    poll. When the deadline elapses, propagates `cancel()` to the
+    inner frame and keeps polling it until it returns -- translating
+    the resulting `CancelledError` into `TimeoutError`. An external
+    cancel (outer task cancellation) propagates to the inner unchanged
+    and re-raises `CancelledError`. The deadline timer can fire after
+    the inner already completed; the generation guard in
+    `Executor.mark_runnable` swallows the late wake.
+    """
+
+    _inner: Box[Cancellable[T]]
+    _deadline: float
+    _registered: bool
+    _cleanup: bool
+    _timed_out: bool
+    _cancel_pending: bool
+
+    def __init__(self, coro: Own[Awaitable[T]], timeout: float) -> None:
+        # `_box_coro` wraps the structural `Awaitable[T]` coro in the
+        # @dynamic `Box[Cancellable[T]]` form. The conversion is the
+        # sema-bypass shim documented in `_executor.py:_box_coro` --
+        # static `Awaitable[T]` doesn't promise `cancel`, but every
+        # concrete coro frame the compiler emits provides one, and
+        # `_box_coro` recovers the concrete type via C++ `decltype`
+        # to construct the Adapter directly.
+        self._inner = _box_coro[T](coro)
+        self._deadline = monotonic() + timeout
+        self._registered = False
+        self._cleanup = False
+        self._timed_out = False
+        self._cancel_pending = False
+
+    # Required for `@dynamic Cancellable[T]` conformance. Flips the
+    # cancel flag; the next __poll__ propagates to the inner. Matches
+    # the SleepFuture / Future / Event pattern.
+    def cancel(self) -> None:
+        self._cancel_pending = True
+
+    def __poll__(self, waker: Waker) -> Own[Poll[T]]:
+        # Outer cancel wins over a pending timeout. Mark cleanup so
+        # an in-flight inner cancel observed below re-raises as
+        # CancelledError, not TimeoutError.
+        if self._cancel_pending and not self._cleanup:
+            self._cancel_pending = False
+            self._cleanup = True
+            self._inner.get().cancel()
+
+        if not self._registered:
+            _register_timer_at(self._deadline, waker)
+            self._registered = True
+
+        # Deadline elapsed and we have not started cleanup yet:
+        # propagate cancel to the inner and pump it until it returns.
+        # A non-positive timeout takes this branch on the first poll.
+        if not self._cleanup and monotonic() >= self._deadline:
+            self._cleanup = True
+            self._timed_out = True
+            self._inner.get().cancel()
+
+        try:
+            return self._inner.get().__poll__(waker)
+        except CancelledError:
+            if self._timed_out:
+                raise TimeoutError()
+            raise
+
+
+# Await `coro` with a steady-clock deadline of `timeout` seconds.
+# Returns the coroutine's value if it completes before the deadline.
+# Otherwise propagates `cancel()` to the coroutine, pumps it until it
+# observes the cancellation, then raises `TimeoutError`. A non-
+# positive `timeout` triggers the deadline on the first poll (matches
+# CPython).
+#
+# Outer cancellation of a task awaiting `wait_for` propagates through
+# to the inner coroutine: the resume-case cancel-check (in every
+# async-def coro frame) calls `cancel()` on the in-flight sub-coro
+# before polling, so the inner observes `CancelledError` at its
+# suspension point and can run `finally`-with-await cleanup before
+# the cancellation surfaces to the caller.
+async def wait_for[T](coro: Own[Awaitable[T]], timeout: float) -> T:
+    return await _WaitForFuture[T](coro, timeout)
 
 
 class InvalidStateError(Exception):
@@ -188,7 +277,7 @@ class Future[T]:
             self._waiter.wake()
             self._has_waiter = False
 
-    # Required for structural conformance to `@dynamic AsyncFrame[T]`
+    # Required for structural conformance to `@dynamic Cancellable[T]`
     # (in `asyncio._executor`). Future cancellation is task-level: the
     # awaiting Task throws CancelledError before re-polling the Future,
     # so the Future itself has no inner state to flip. This is the
@@ -250,7 +339,7 @@ class Event:
     def clear(self) -> None:
         self._is_set = False
 
-    # Required for structural conformance to `@dynamic AsyncFrame[T]`
+    # Required for structural conformance to `@dynamic Cancellable[T]`
     # (in `asyncio._executor`). Event cancellation is task-level (see
     # Future.cancel above for the rationale); body is a no-op.
     def cancel(self) -> None:
