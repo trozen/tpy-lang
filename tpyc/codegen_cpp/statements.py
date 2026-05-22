@@ -1892,6 +1892,14 @@ class StatementGenerator:
                 else:
                     value = self.expressions._maybe_move(stmt.value, value)
                 return f"{indent}{target} = {value};\n"
+            # bytes field (std::vector<uint8_t>) from bytes-view source
+            # (std::span<const uint8_t>): vector has no span-assign overload,
+            # so copy via the runtime helper. Mirrors the MIL-path conversion
+            # in records.py::_extract_field_inits.
+            if is_bytes_type(target_type) and self._is_bytes_view_source(stmt.value):
+                target = self.expressions.gen_expr(stmt.target)
+                value = self.expressions.gen_expr(stmt.value, target_type)
+                return f"{indent}{target} = ::tpy::bytes_copy({value});\n"
             # Ptr[T] field: storage-form Optional source needs optional_to_ptr
             # lift to mirror the storage-form-to-borrow-form bridge already
             # done for OptionalType destinations above.

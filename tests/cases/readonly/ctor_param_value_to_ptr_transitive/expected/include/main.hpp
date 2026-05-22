@@ -38,9 +38,11 @@ struct Holder {
 
     // def __init__(self, node: Node) -> None:
     Holder() = default;
-    explicit Holder(Node& node) : started(true) {
+    explicit Holder(Node& node) {
         // helper(node)
         helper(node);
+        // self.started = True
+        this->started = true;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };

@@ -21,9 +21,11 @@ struct Base {
     bool __tpy_owned_ = true;
 
     // def __init__(self, value: Int32):
-    explicit Base(int32_t value) : _ptr(static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))))) {
+    explicit Base(int32_t value) {
         // print("Base.init", value)
         std::cout << "Base.init" << " " << value << "\n";
+        // self._ptr = unsafe_alloc()
+        this->_ptr = static_cast<int32_t*>(::operator new(sizeof(int32_t), std::align_val_t(alignof(int32_t))));
         // unsafe_init(self._ptr, value)
         ::new(static_cast<void*>(this->_ptr)) int32_t(value);
     }

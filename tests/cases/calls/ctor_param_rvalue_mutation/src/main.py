@@ -18,17 +18,22 @@ def take_mut(p: Ptr[Node]) -> None:
 
 
 class Sink:
+    captured: int
+
     def __init__(self, n: Node) -> None:
-        # Mutating use of the param -- without this, the param would
-        # const-infer to `const Node&` and the rvalue-binding question
-        # wouldn't arise. With this, the param lowers as `Node&` and
-        # the call site must synthesize a temp.
+        # Mutating use of the param. Two effects:
+        # (1) the param const-infers to `Node&` (was `const Node&`), so the
+        #     call site must synthesize a temp to bind the rvalue Node(1).
+        # (2) `self.captured = n.value` AFTER the side-effecting call must
+        #     read the post-mutation value (99) -- the MIL hoist must stop
+        #     at `take_mut(n)`, not pull the field assign ahead of it.
         take_mut(n)
+        self.captured = n.value
 
 
 def main() -> None:
-    _ = Sink(Node(1))
-    print("ok")
+    s = Sink(Node(1))
+    print(s.captured)
 
 
 main()

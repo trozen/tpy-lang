@@ -33,6 +33,7 @@ from .nodes import (
     is_base_init_call,
     collect_name_refs,
     collect_top_level_local_names,
+    expr_reads_self_field,
     is_stable_address_lvalue,
 )
 
@@ -72,6 +73,7 @@ __all__ = [
     "is_base_init_call",
     "collect_name_refs",
     "collect_top_level_local_names",
+    "expr_reads_self_field",
     # imports
     "is_parser_keyword", "_IMPLICIT_MODULES",
     "get_builtins_exports", "get_typing_exports", "get_tpy_exports",

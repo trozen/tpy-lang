@@ -59,9 +59,11 @@ struct Parrot : Pet {
     bool __tpy_owned_ = true;
 
     // def __init__(self, label: str) -> None:
-    explicit Parrot(std::string_view label) : label(label) {
+    explicit Parrot(std::string_view label) {
         // print(f"Parrot({label}) ctor")
         std::cout << std::format("Parrot({}) ctor", label) << "\n";
+        // self.label = label
+        this->label = label;
     }
     Parrot(const Parrot&) = delete;
     Parrot& operator=(const Parrot&) = delete;

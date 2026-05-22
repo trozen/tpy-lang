@@ -22,7 +22,7 @@ struct Packet {
     std::vector<uint8_t> data;
 
     // def __init__(self, data: bytes) -> None:
-    explicit Packet(std::span<const uint8_t> data) : data(std::vector<uint8_t>(data.begin(), data.end())) {}
+    explicit Packet(std::span<const uint8_t> data) : data(::tpy::bytes_copy(data)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.Packet";
 };
 
@@ -39,7 +39,7 @@ struct MultiField {
     std::vector<uint8_t> payload;
 
     // def __init__(self, name: str, payload: bytes) -> None:
-    explicit MultiField(std::string_view name, std::span<const uint8_t> payload) : name(name), payload(std::vector<uint8_t>(payload.begin(), payload.end())) {}
+    explicit MultiField(std::string_view name, std::span<const uint8_t> payload) : name(name), payload(::tpy::bytes_copy(payload)) {}
     static constexpr std::string_view __tpy_class_name__ = "__main__.MultiField";
 };
 

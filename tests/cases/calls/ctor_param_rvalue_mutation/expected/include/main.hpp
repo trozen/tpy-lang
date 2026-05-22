@@ -33,16 +33,22 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 
 // class Sink:
 struct Sink {
+    // captured: int
+    ::tpy::BigInt captured;
 
     // def __init__(self, n: Node) -> None:
     Sink() = default;
     explicit Sink(Node& n) {
-        // # Mutating use of the param -- without this, the param would
-        // # const-infer to `const Node&` and the rvalue-binding question
-        // # wouldn't arise. With this, the param lowers as `Node&` and
-        // # the call site must synthesize a temp.
+        // # Mutating use of the param. Two effects:
+        // # (1) the param const-infers to `Node&` (was `const Node&`), so the
+        // #     call site must synthesize a temp to bind the rvalue Node(1).
+        // # (2) `self.captured = n.value` AFTER the side-effecting call must
+        // #     read the post-mutation value (99) -- the MIL hoist must stop
+        // #     at `take_mut(n)`, not pull the field assign ahead of it.
         // take_mut(n)
         take_mut(&n);
+        // self.captured = n.value
+        this->captured = n.value;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
 };

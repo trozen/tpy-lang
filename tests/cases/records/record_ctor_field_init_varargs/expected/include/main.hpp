@@ -63,13 +63,15 @@ struct Triangle {
 
     // def __init__(self, p1x: int, p1y: int, p2x: int, p2y: int, name: str) -> None:
     Triangle() = default;
-    explicit Triangle(const ::tpy::BigInt& p1x, const ::tpy::BigInt& p1y, const ::tpy::BigInt& p2x, const ::tpy::BigInt& p2y, std::string_view name) : label(name) {
+    explicit Triangle(const ::tpy::BigInt& p1x, const ::tpy::BigInt& p1y, const ::tpy::BigInt& p2x, const ::tpy::BigInt& p2y, std::string_view name) {
         // self.a = math.hypot(float(p1x), float(p1y))
-        std::array<double, 2> __tmp_5{static_cast<double>(p1x), static_cast<double>(p1y)};
-        this->a = ::tpystd::math::hypot(::tpy::varargs<double>(__tmp_5));
+        std::array<double, 2> __tmp_4{static_cast<double>(p1x), static_cast<double>(p1y)};
+        this->a = ::tpystd::math::hypot(::tpy::varargs<double>(__tmp_4));
+        // self.label = name
+        this->label = name;
         // self.b = math.hypot(float(p2x), float(p2y))
-        std::array<double, 2> __tmp_6{static_cast<double>(p2x), static_cast<double>(p2y)};
-        this->b = ::tpystd::math::hypot(::tpy::varargs<double>(__tmp_6));
+        std::array<double, 2> __tmp_5{static_cast<double>(p2x), static_cast<double>(p2y)};
+        this->b = ::tpystd::math::hypot(::tpy::varargs<double>(__tmp_5));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Triangle";
 };

@@ -4,19 +4,14 @@
 namespace tpyapp::main {
 
 
-// def take_mut(p: Ptr[Node]) -> None:
-void take_mut(Node* p) {
-    // p.value = 99
-    ::tpy::deref_check(p).value = ::tpy::BigInt(99);
-}
-
 // def main() -> None:
 void main() {
-    // s = Sink(Node(1))
-    Node __tmp_1 = Node(::tpy::BigInt(1));
-    Sink s = Sink(__tmp_1);
-    // print(s.captured)
-    std::cout << s.captured << "\n";
+    // t = Tagged("Rex")
+    Tagged t = Tagged("Rex");
+    // print(t.name)
+    std::cout << t.name << "\n";
+    // print(t.name_len)   # expected: 3 (post-mutation), not 0 (default-init)
+    std::cout << t.name_len << "\n";
 }
 
 void __tpy_init() {

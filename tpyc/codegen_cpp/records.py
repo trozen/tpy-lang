@@ -20,8 +20,9 @@ from ..typesys import (
 from ..parse import (
     TpyRecord, TpyEnum, TpyFunction, TpyStmt, TpyExprStmt, TpyAssign,
     TpyMethodCall, TpyFieldAccess, TpyName, TpyCoerce, TpyNestedDef,
-    is_docstring, is_super_del_call,
-    is_base_init_call, collect_name_refs, collect_top_level_local_names,
+    TpyPassStmt, SourceLocation,
+    is_docstring, is_super_del_call, is_base_init_call,
+    collect_name_refs, collect_top_level_local_names, expr_reads_self_field,
 )
 from ..namespace import Namespace
 
@@ -1052,147 +1053,188 @@ class RecordGenerator:
         try:
             inits = []
             hoisted_ids: set[int] = set()
+            # MIL runs as a block BEFORE the constructor body, so hoisting a
+            # `self.f = expr` past a side-effecting body statement reorders
+            # the expr's evaluation. Hoist the leading chain of `self.f = expr`
+            # assignments (skipping super().__init__, docstrings, pass); any
+            # non-`self.f = expr` body statement breaks the chain hard.
+            #
+            # Inherited-field assigns (`self.base_field = expr`) are a special
+            # case: they always go to the body (the base ctor owns the MIL
+            # slot) but they only mutate `self.base_field`, nothing else. So
+            # the chain stays alive past them, with the constraint that any
+            # subsequent own-field MIL hoist whose RHS reads `self.base_field`
+            # (or calls a method on self, which could read anything) must
+            # demote to keep source order.
+            chain_broken = False
+            body_written_self_fields: set[str] = set()
+
+            def demote(field_name: str, loc: SourceLocation | None, reason: str) -> None:
+                nonlocal chain_broken
+                chain_broken = True
+                self._reject_nondef_ctor_field_in_body(
+                    field_name, own_field_names, field_types, loc, reason)
+
             for stmt in init_method.body:
-                if isinstance(stmt, TpyAssign):
-                    if isinstance(stmt.target, TpyFieldAccess):
-                        if isinstance(stmt.target.obj, TpyName) and stmt.target.obj.name == "self":
-                            field_name = stmt.target.field
-                            source_expr = stmt.value
-                            while isinstance(source_expr, TpyCoerce):
-                                source_expr = source_expr.expr
-                            # Skip if value is a nested def (lambda defined in body)
-                            if isinstance(source_expr, TpyName) and source_expr.name in nested_def_names:
-                                continue
-                            # Skip if a bare-name RHS isn't a constructor param.
-                            # Conservative historical check -- catches `self.x = tmp`
-                            # where tmp is a local. The deeper walk below handles
-                            # compound RHS like `self._x = OwnedBar(tmp)`.
-                            blocked_by_bare_name = (
-                                isinstance(source_expr, TpyName)
-                                and source_expr.name not in param_names
-                            )
-                            blocked_by_body_local = bool(collect_name_refs(stmt.value) & local_names)
-                            if blocked_by_bare_name or blocked_by_body_local:
-                                # Fields whose type has a suppressed default ctor
-                                # have no default state; a body-assignment for
-                                # them would default-init the field in the MIL
-                                # to an uncompilable state and produce a cryptic
-                                # C++ error. Reject cleanly here with guidance.
-                                if field_name in own_field_names:
-                                    fld_rec = self.ctx.analyzer.registry.get_record_for_type(field_types[field_name])
-                                    if fld_rec is not None and del_suppresses_default_ctor(fld_rec):
-                                        raise CodeGenError(
-                                            f"field '{field_name}' of non-default-constructible "
-                                            f"type '{fld_rec.name}' must be initialized before any "
-                                            f"local variable is bound in this constructor. The "
-                                            f"assigned expression references a local defined earlier "
-                                            f"in the body; the field has no default constructor, so "
-                                            f"the initializer cannot run later than the member "
-                                            f"initializer list.\n"
-                                            f"  Constructor order: super().__init__() -> field "
-                                            f"assignments (self.x = ...) -> other logic.\n"
-                                            f"  To pre-compute arguments, move the logic into a "
-                                            f"@staticmethod on '{fld_rec.name}'. Two shapes work: "
-                                            f"(a) factory returning Own[Self] -- "
-                                            f"`self.{field_name} = {fld_rec.name}.factory(ctor_params)`; "
-                                            f"(b) helper returning a raw Ptr[T] called from "
-                                            f"'{fld_rec.name}.__init__' -- takes high-level args and "
-                                            f"assigns via `self.{field_name} = {fld_rec.name}(high_level_args)`",
-                                            stmt.loc
-                                        )
-                                continue
-                            # Only add to member init list if it's this class's own field
-                            if field_name in own_field_names:
-                                fld_type = field_types[field_name]
-                                # Unwrap copy() in member init -- init list copies implicitly
-                                source = self.ctx.unwrap_copy(stmt.value)
-                                # A member-initializer-list expression has no place
-                                # to declare temps; if `gen_expr` registers any,
-                                # demote the assignment to the body where the next
-                                # `temps.flush` can emit them.
-                                checkpoint = self.ctx.temps.checkpoint()
-                                value = self.expressions.gen_expr(source, fld_type)
-                                if self.ctx.temps.rollback_to(checkpoint):
-                                    # Fields with a suppressed default ctor have no
-                                    # default state, so body-assignment would default-
-                                    # init the field in the MIL to an uncompilable
-                                    # state. Reject cleanly here -- mirrors the
-                                    # bare-name guard above.
-                                    fld_rec = self.ctx.analyzer.registry.get_record_for_type(fld_type)
-                                    if fld_rec is not None and del_suppresses_default_ctor(fld_rec):
-                                        raise CodeGenError(
-                                            f"field '{field_name}' of non-default-constructible "
-                                            f"type '{fld_rec.name}' has no default constructor "
-                                            f"and its initializer expression requires a codegen "
-                                            f"temporary that cannot be declared in the member "
-                                            f"initializer list. Refactor the RHS so it does not "
-                                            f"need an intermediate (e.g. avoid varargs calls), "
-                                            f"or move the construction into a @staticmethod "
-                                            f"factory returning Own[Self]: "
-                                            f"`self.{field_name} = {fld_rec.name}.factory(...)`",
-                                            stmt.loc
-                                        )
-                                    continue
-                                # bytes param (span<const uint8_t>) -> field (vector<uint8_t>):
-                                # construct from iterators since vector has no span constructor.
-                                if (is_bytes_type(fld_type)
-                                        and isinstance(source_expr, TpyName)
-                                        and source_expr.name in param_names):
-                                    for pname, ptype in init_method.params:
-                                        if pname == source_expr.name and is_bytes_type(ptype):
-                                            value = f"std::vector<uint8_t>({value}.begin(), {value}.end())"
-                                            break
-                                # Auto-move Own[T] params at last use in member init list.
-                                inner = source
-                                while isinstance(inner, TpyCoerce):
-                                    inner = inner.expr
-                                if (isinstance(inner, TpyName)
-                                        and id(inner) in self.ctx.analyzer.ctx.all_last_uses):
-                                    for pname, ptype in init_method.params:
-                                        if pname == inner.name and isinstance(unwrap_readonly(ptype), OwnType):
-                                            value = f"std::move({value})"
-                                            break
-                                # T* sources need conversion to std::optional<T>; field access (std::optional<T>) doesn't.
-                                # OwnType(OptionalType) params are std::optional<T>&& -- already optional, no conversion.
-                                if isinstance(fld_type, OptionalType) and fld_type.uses_pointer_repr():
-                                    # Check if the source param is Own[Optional[T]] -- then the C++ param
-                                    # is std::optional<T>&& and no ptr_to_optional is needed.
-                                    source_is_own_optional = False
-                                    if isinstance(source, TpyName):
-                                        for pname, ptype in init_method.params:
-                                            if pname == source.name and isinstance(ptype, OwnType):
-                                                source_is_own_optional = True
-                                                break
-                                    if not source_is_own_optional and not isinstance(source, TpyFieldAccess):
-                                        raw_val_type = self.ctx.get_expr_type(stmt.value)
-                                        val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
-                                        if isinstance(val_type, OptionalType):
-                                            if not (isinstance(val_type.inner, OwnType)):
-                                                value = f"::tpy::ptr_to_optional({value})"
-                                # Tuple field stores std::optional<T>; the param is T*.
-                                # Lift element-wise. Storage-form sources (field,
-                                # subscript, global, storage-form local) already
-                                # match the field shape and skip the wrap.
-                                if (isinstance(fld_type, TupleType)
-                                        and fld_type.has_pointer_repr_optional_element()
-                                        and not self.ctx.is_storage_form_source(source)):
-                                    fld_cpp = self.types.type_to_cpp(fld_type)
-                                    value = f"::tpy::tuple_to_storage<{fld_cpp}>({value})"
-                                # Pointer-variant param -> value-variant field: deref+copy.
-                                # The param is variant<T*...> but the field stores variant<T...>.
-                                # Skip when the source is a bare alternative value
-                                # (constructor, field access of a value-variant field,
-                                # etc.) -- the variant constructs from it directly,
-                                # and to_value_variant would fail template deduction.
-                                if (self.ctx.is_ptr_variant_union(fld_type)
-                                        and self.ctx.is_ptr_variant_source(source)):
-                                    val_cpp = self.types.type_to_cpp(fld_type)
-                                    value = f"::tpy::to_value_variant<{val_cpp}>({value})"
-                                inits.append((field_name, value))
-                                hoisted_ids.add(id(stmt))
+                if (is_base_init_call(stmt) or is_docstring(stmt)
+                        or isinstance(stmt, TpyPassStmt)):
+                    continue
+                if not (isinstance(stmt, TpyAssign)
+                        and isinstance(stmt.target, TpyFieldAccess)
+                        and isinstance(stmt.target.obj, TpyName)
+                        and stmt.target.obj.name == "self"):
+                    chain_broken = True
+                    continue
+                field_name = stmt.target.field
+                source_expr = stmt.value
+                while isinstance(source_expr, TpyCoerce):
+                    source_expr = source_expr.expr
+                if chain_broken:
+                    demote(field_name, stmt.loc,
+                           "a prior statement in the constructor body would "
+                           "run before this initializer")
+                    continue
+                if isinstance(source_expr, TpyName) and source_expr.name in nested_def_names:
+                    demote(field_name, stmt.loc,
+                           "the assigned value is a function defined in the body")
+                    continue
+                # Bare-name RHS not in params, or any reference to a body-local:
+                # the value isn't in scope at MIL time.
+                blocked_by_bare_name = (
+                    isinstance(source_expr, TpyName)
+                    and source_expr.name not in param_names
+                )
+                blocked_by_body_local = bool(
+                    local_names and (collect_name_refs(stmt.value) & local_names))
+                if blocked_by_bare_name or blocked_by_body_local:
+                    demote(field_name, stmt.loc,
+                           "the assigned expression references a local defined "
+                           "earlier in the body")
+                    continue
+                # Inherited field: the base ctor owns the MIL slot, so we
+                # write through the body but the chain stays alive.
+                if field_name not in own_field_names:
+                    body_written_self_fields.add(field_name)
+                    continue
+                if expr_reads_self_field(stmt.value, body_written_self_fields):
+                    demote(field_name, stmt.loc,
+                           "the initializer reads a `self.<field>` written by an "
+                           "earlier inherited-field assignment in the body")
+                    continue
+                fld_type = field_types[field_name]
+                # Unwrap copy() in member init -- init list copies implicitly
+                source = self.ctx.unwrap_copy(stmt.value)
+                # A member-initializer-list expression has no place to declare
+                # temps; if `gen_expr` registers any, demote the assignment to
+                # the body where the next `temps.flush` can emit them.
+                checkpoint = self.ctx.temps.checkpoint()
+                value = self.expressions.gen_expr(source, fld_type)
+                if self.ctx.temps.rollback_to(checkpoint):
+                    demote(field_name, stmt.loc,
+                           "the initializer expression requires a codegen "
+                           "temporary that cannot be declared in the member "
+                           "initializer list (e.g. a varargs call). Refactor "
+                           "the RHS so it does not need an intermediate")
+                    continue
+                # bytes param (span<const uint8_t>) -> field (vector<uint8_t>):
+                # vector has no span constructor, route through the runtime
+                # helper (parallel to the body-assign path in statements.py).
+                if (is_bytes_type(fld_type)
+                        and isinstance(source_expr, TpyName)
+                        and source_expr.name in param_names):
+                    for pname, ptype in init_method.params:
+                        if pname == source_expr.name and is_bytes_type(ptype):
+                            value = f"::tpy::bytes_copy({value})"
+                            break
+                # Auto-move Own[T] params at last use in member init list.
+                inner = source
+                while isinstance(inner, TpyCoerce):
+                    inner = inner.expr
+                if (isinstance(inner, TpyName)
+                        and id(inner) in self.ctx.analyzer.ctx.all_last_uses):
+                    for pname, ptype in init_method.params:
+                        if pname == inner.name and isinstance(unwrap_readonly(ptype), OwnType):
+                            value = f"std::move({value})"
+                            break
+                # T* sources need conversion to std::optional<T>; field access (std::optional<T>) doesn't.
+                # OwnType(OptionalType) params are std::optional<T>&& -- already optional, no conversion.
+                if isinstance(fld_type, OptionalType) and fld_type.uses_pointer_repr():
+                    # Check if the source param is Own[Optional[T]] -- then the C++ param
+                    # is std::optional<T>&& and no ptr_to_optional is needed.
+                    source_is_own_optional = False
+                    if isinstance(source, TpyName):
+                        for pname, ptype in init_method.params:
+                            if pname == source.name and isinstance(ptype, OwnType):
+                                source_is_own_optional = True
+                                break
+                    if not source_is_own_optional and not isinstance(source, TpyFieldAccess):
+                        raw_val_type = self.ctx.get_expr_type(stmt.value)
+                        val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
+                        if isinstance(val_type, OptionalType):
+                            if not (isinstance(val_type.inner, OwnType)):
+                                value = f"::tpy::ptr_to_optional({value})"
+                # Tuple field stores std::optional<T>; the param is T*.
+                # Lift element-wise. Storage-form sources (field, subscript,
+                # global, storage-form local) already match the field shape
+                # and skip the wrap.
+                if (isinstance(fld_type, TupleType)
+                        and fld_type.has_pointer_repr_optional_element()
+                        and not self.ctx.is_storage_form_source(source)):
+                    fld_cpp = self.types.type_to_cpp(fld_type)
+                    value = f"::tpy::tuple_to_storage<{fld_cpp}>({value})"
+                # Pointer-variant param -> value-variant field: deref+copy.
+                # The param is variant<T*...> but the field stores variant<T...>.
+                # Skip when the source is a bare alternative value (constructor,
+                # field access of a value-variant field, etc.) -- the variant
+                # constructs from it directly, and to_value_variant would fail
+                # template deduction.
+                if (self.ctx.is_ptr_variant_union(fld_type)
+                        and self.ctx.is_ptr_variant_source(source)):
+                    val_cpp = self.types.type_to_cpp(fld_type)
+                    value = f"::tpy::to_value_variant<{val_cpp}>({value})"
+                inits.append((field_name, value))
+                hoisted_ids.add(id(stmt))
             return inits, hoisted_ids
         finally:
             self.ctx.movable_locals = saved_movable
+
+    def _reject_nondef_ctor_field_in_body(
+        self, field_name: str, own_field_names: set[str],
+        field_types: dict[str, TpyType], loc: SourceLocation | None,
+        reason: str,
+    ) -> None:
+        """Raise a CodeGenError when a `self.field = expr` that codegen has
+        demoted to the constructor body targets an own field whose type has
+        a suppressed default ctor (`@nocopy` with `__del__`, etc.). Such a
+        field has no default state, so the C++ MIL would implicitly
+        default-init it to an uncompilable state. The diagnostic guides the
+        user to refactor toward a leading MIL chain (or a @staticmethod
+        factory) before the C++ compiler emits something cryptic.
+        """
+        if field_name not in own_field_names:
+            return
+        fld_type = field_types[field_name]
+        fld_rec = self.ctx.analyzer.registry.get_record_for_type(fld_type)
+        if fld_rec is None or not del_suppresses_default_ctor(fld_rec):
+            return
+        raise CodeGenError(
+            f"field '{field_name}' of non-default-constructible type "
+            f"'{fld_rec.name}' must be initialized before any local "
+            f"variable is bound or any other statement runs in this "
+            f"constructor: {reason}. The field has no default constructor, "
+            f"so the initializer cannot run later than the member "
+            f"initializer list.\n"
+            f"  Constructor order: super().__init__() -> field assignments "
+            f"(self.x = ...) -> other logic.\n"
+            f"  To pre-compute arguments, move the logic into a "
+            f"@staticmethod on '{fld_rec.name}'. Two shapes work: "
+            f"(a) factory returning Own[Self] -- "
+            f"`self.{field_name} = {fld_rec.name}.factory(ctor_params)`; "
+            f"(b) helper returning a raw Ptr[T] called from "
+            f"'{fld_rec.name}.__init__' -- takes high-level args and "
+            f"assigns via `self.{field_name} = {fld_rec.name}(high_level_args)`",
+            loc,
+        )
 
     def _all_fields_default_constructible(self, record: TpyRecord) -> bool:
         """Check if all own fields and the parent (if any) are C++-default-constructible.

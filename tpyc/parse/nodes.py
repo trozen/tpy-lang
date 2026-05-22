@@ -1539,6 +1539,31 @@ def collect_name_refs(expr: TpyExpr) -> set[str]:
     return names
 
 
+def expr_reads_self_field(expr: TpyExpr, fields: set[str]) -> bool:
+    """True if `expr` reads `self.X` for any X in `fields`, or makes any
+    `self.method(...)` call while `fields` is non-empty (methods can read
+    arbitrary fields, so we treat them conservatively).
+
+    Intended for ordering checks between an own-field MIL hoist and prior
+    body writes to `self.*`. Not a general-purpose aliasing oracle -- the
+    method-call rule is over-conservative for that one use case.
+    """
+    if not fields:
+        return False
+    stack: list[TpyExpr] = [expr]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, TpyFieldAccess):
+            if isinstance(node.obj, TpyName) and node.obj.name == "self":
+                if node.field in fields:
+                    return True
+        elif isinstance(node, TpyMethodCall):
+            if isinstance(node.obj, TpyName) and node.obj.name == "self":
+                return True
+        stack.extend(node.children())
+    return False
+
+
 def collect_top_level_local_names(stmts: list[TpyStmt]) -> set[str]:
     """Collect names bound by top-level statements in a function body.
 
