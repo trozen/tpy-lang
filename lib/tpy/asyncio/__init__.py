@@ -168,11 +168,17 @@ class _WaitForFuture[T]:
         self._cancel_pending = True
 
     def __poll__(self, waker: Waker) -> Own[Poll[T]]:
+        # Consume the cancel signal up front so a re-cancel arriving
+        # after `_cleanup=True` doesn't accumulate (cleanup is already
+        # in flight; the second cancel adds nothing). Mirrors the
+        # "consumed each poll" invariant SleepFuture maintains.
+        was_canceling = self._cancel_pending
+        self._cancel_pending = False
+
         # Outer cancel wins over a pending timeout. Mark cleanup so
         # an in-flight inner cancel observed below re-raises as
         # CancelledError, not TimeoutError.
-        if self._cancel_pending and not self._cleanup:
-            self._cancel_pending = False
+        if was_canceling and not self._cleanup:
             self._cleanup = True
             self._inner.get().cancel()
 
