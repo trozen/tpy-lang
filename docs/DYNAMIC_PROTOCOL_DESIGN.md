@@ -25,7 +25,7 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 16 | `Own[P]` as a plain function parameter + return type (with method access on the owned value) | Done. Param/return lower to `std::unique_ptr<P>`; `p.method()` body access emits `p->method()`; concrete-source returns wrap via `std::make_unique<Adapter<P, T>>(...)` (or `std::make_unique<T>(...)` for inheritance conformers). Forward `Own[P] -> Own[P]` returns rely on C++ implicit-move (no `std::move` wrap). |
 | 17 | `Rc[P]` for `@dynamic` P -- shared-ownership erased dyn protocol | Done (two-allocation shape). `Rc[T]` carries `Ptr[_RcCell]` (non-generic `{strong, weak}` refcount block) + `Ptr[T]` (separately heap-allocated payload). `Rc.new(value: Own[T])` heap-allocates the cell, releases ownership of the payload via `unsafe_take`, and stores both pointers. Polymorphic destruction: `unsafe_release(self._payload)` routes through `tpy::heap_release`'s `std::has_virtual_destructor_v<T>` branch -- `delete p` goes through `P`'s auto-emitted virtual destructor in the vtable for the correct dynamic-type cleanup. For structural conformers, Layer 1 LHS-hint preference (extended to `infer_type_params_for_function`) switches arg-inferred `T=ConcreteU` to `T=P`, allowing Phase 16's call-site Adapter wrapping to fire. For inheritance conformers, Covariant[T]'s converting ctor handles `Rc[ConcreteU] -> Rc[P]` directly. Cost vs single-allocation ideal: one extra `operator new` per `Rc.new`; this is the standard `std::shared_ptr` default. Single-allocation `make_shared`-style migration tracked in TODO.md ("Single-allocation `Rc[@dynamic P]`") behind bound-based U->T coercion. |
 | 18 | Transitive virtual-override propagation through `@dynamic`-rooted inheritance chains | Done. A class inheriting a `@dynamic` protocol via a concrete-class intermediate (e.g. `Throwable -> BaseExc -> ValErr`) now emits `override` on method redefinitions at every level, not just one hop. `_get_dynamic_override_info`, `_dynamic_proto_requires_nonconst`, and `_check_method_hiding` all walk the MRO via `iter_ancestor_records` when consulting `implemented_protocols`. The "method hides ancestor" warning is suppressed for methods that are now proper transitive overrides. |
-| 19 | `Optional[ConcreteRoot]` class dispatch via `isinstance` + `dynamic_cast` | Done. For `Optional[E]` where `E` is a *concrete class* that transitively inherits a `@dynamic` protocol (e.g. `class BaseExc(Throwable)`, `Optional[BaseExc]`), codegen materializes rvalue temps at the actual class type (no slicing) for arg-passing and init-only locals; `isinstance(opt, Subclass)` lowers to `dynamic_cast` on the pointer; tuple form ORs casts. Activated for the built-in `BaseException` tree via a `Throwable` `@dynamic` protocol declared in `tpy._core._types` and inherited by `BaseException`. Subclass-typed narrowing still missing -- see TODO.md follow-ups. The same surface is *not* yet available for direct `Optional[Pet]` (see Phase 8 note). Owned storage / rvalue return positions are addressed in Phase 20. |
+| 19 | `Optional[ConcreteRoot]` class dispatch via `isinstance` + `dynamic_cast` | Done. For `Optional[E]` where `E` is a *concrete class* that transitively inherits a `@dynamic` protocol (e.g. `class BaseExc(Throwable)`, `Optional[BaseExc]`), codegen materializes rvalue temps at the actual class type (no slicing) for arg-passing and init-only locals; `isinstance(opt, Subclass)` lowers to `dynamic_cast` on the pointer; tuple form ORs casts. Activated for the built-in `BaseException` tree via a `Throwable` `@dynamic` protocol declared in `tpy._core._types` and inherited by `BaseException`. **Subclass-typed narrowing** in the isinstance true branch is supported: codegen emits `Sub& __var = *dynamic_cast<Sub*>(var);` once at branch entry (cast-and-cache); subsequent reads of the variable in that branch route through the typed reference, enabling subclass-only field access like `if isinstance(e, OsErr): e.code`. Const-ness of the cast matches the source pointer (`const Sub&` for readonly-borrow params). The same surface is *not* yet available for direct `Optional[Pet]` (see Phase 8 note). Owned storage / rvalue return positions are addressed in Phase 20. |
 | 20 | Polymorphic owned storage via `Box[@dynamic Root]`; slicing-site sema rejection; `raise <expr>` -> `__raise__` desugar; built-in exception hierarchy moved to pure TPy | Partial -- Stage 4c (pure-TPy hierarchy) deferred; see [TODO.md](../TODO.md) "Phase 20 follow-up" entry for the four design walls. **Shipped:** `Throwable` activated as `@native + @dynamic` (runtime-provided abstract base at `::tpy::Throwable`); `Box[Throwable]` storage with auto-deref through Box's `__deref__`; codegen auto-emits `clone()` / `__raise__()` / `what()` on every concrete Throwable subclass (user redeclaration of any of the three is rejected at sema to prevent C++ redefinition collisions); slicing-site rejection at `tpyc/sema/compatibility.py::_check_polymorphic_slicing` keyed on conversion shape (borrow-into-owned-polymorphic-slot), with carve-outs for `Own[T]` moves, fresh-rvalue constructor calls, and `None`; sema rules enforce BaseException-inheritance and copy-constructibility on Throwable implementers (qname-keyed against `tpy.Throwable` / `builtins.BaseException`); `raise <expr>` desugars to `<expr>.<deref-chain>.__raise__()` with `TpyRaise.deref_depth` set by sema's peel-loop, while `raise X(args)` keeps the idiomatic `throw X(args)` form via a fresh-construction peephole (mechanically equivalent for static-type-known construction); runtime `raise<E>(...)` template replaced by per-class `raise_X(msg)` helpers in `core.hpp`. **Deferred to Stage 4c:** moving the 17 native exception classes from `core.hpp`/`async.hpp` to pure TPy, retiring the `TPY_THROWABLE_VIRTUALS` macro, and relocating the `raise_X` helpers from inline-in-`core.hpp` to forward-decls in `throwable.hpp` + definitions in `lib/tpy/tpy/_builtins/_raise.py`. See [EXCEPTION_DESIGN.md](EXCEPTION_DESIGN.md) E9 for the exception-side details. |
 
 ## Overview
@@ -355,17 +355,25 @@ Cached lazily on `RecordInfo._is_polymorphic_class` (stable after Phase-1 sema).
   `(dynamic_cast<const Sub*>(e_ptr) != nullptr)`; tuple form is OR of casts.
   Reads `var_decl` (the declared, not narrowed, type) so the gate is sound
   for the original `Optional[Polymorphic]` declaration.
-- **Sema** (`_analyze_isinstance`): both Optional-direct and
-  post-`is not None`-narrowed paths accept subclass check types; equality is
-  treated as a degenerate subclass via `is_subclass_of_or_equal`.
+- **Cast-and-cache narrowing** (`_emit_isinstance_extractions`): for
+  `if isinstance(var, Sub):` with a strict subclass `Sub`, emits
+  `(const) Sub& __var = *dynamic_cast<(const) Sub*>(var);` once at branch
+  entry; subsequent reads of `var` route through `__var`. Const-ness
+  matches the source (`deep_const_borrow_params` / `const_ref_params`).
+  Skipped when `narrowed_type == source_inner` (identity from `is not None`,
+  no cast needed) and for tuple form (no single subclass).
+- **Sema** (`_analyze_isinstance` + `_isinstance_facts`): both Optional-direct
+  and post-`is not None`-narrowed paths accept subclass check types and
+  produce a strict-subclass narrowing fact for the true branch; equality is
+  treated as a degenerate subclass via `is_subclass_of_or_equal`. The
+  `polymorphic_source_inner` helper (`tpyc/typesys.py`) centralizes the
+  "polymorphic-class source?" predicate used at all four sites (sema narrowing,
+  fact filter, codegen bool-check, cast-and-cache extraction); it unwraps
+  `readonly` so `readonly[Optional[Polymorphic]]` params dispatch correctly
+  (regression-tested by `isinstance_readonly_opt_poly`).
 
 **What does not work yet:**
 
-- *Subclass-typed narrowing in the true branch.* `if isinstance(e, OsErr): e.code`
-  errors at sema -- the variable's type isn't narrowed because cast-and-cache
-  codegen (emit `dynamic_cast` once into a typed local, route typed reads
-  through it) isn't written yet. Methods inherited from the base do dispatch
-  virtually. Filed in TODO.md.
 - *Rvalue rebind of a polymorphic subclass into a local.* The shared rebind
   slot can't preserve dynamic type without heap allocation. Sema-time error
   with a "use parameter-passing or a typed local" hint. Addressed by
@@ -383,8 +391,10 @@ Cached lazily on `RecordInfo._is_polymorphic_class` (stable after Phase-1 sema).
   the `Throwable` protocol in `tpy._core._types`. `isinstance(exc_val, X)`
   in `__exit__` bodies works for any subclass of `BaseException`
   (`ValueError`, `OSError`, `RuntimeError`, ...). Tested in
-  `tests/cases/control_flow/with_exit_isinstance_class_dispatch` and
-  `isinstance_optexc_outside_exit`.
+  `tests/cases/control_flow/with_exit_isinstance_class_dispatch`,
+  `isinstance_optexc_outside_exit`, `isinstance_optexc_subclass_field_read`
+  (subclass-only field read), and `isinstance_readonly_opt_poly` (readonly
+  param + tuple form).
 
 **Relation to direct `Optional[Pet]`:** rejected (Phase 8), with the rejection
 now known to be partially obsolete (parameter and init-only-local positions

@@ -687,6 +687,11 @@ class CodeGenContext:
     # _gen_optional_ptr_arg, the var-decl and rebind paths in statements.py).
     optional_locals: set[str] = field(default_factory=set)
     const_indirect_locals: set[str] = field(default_factory=set)
+    # Pre-bound polymorphic-isinstance cast locals for the C++17 if-init form
+    # (var -> ptr local name). Populated by `_gen_if` before emitting the
+    # condition; the isinstance bool-check and cast-and-cache extraction both
+    # consult this map and reuse the local instead of re-emitting dynamic_cast.
+    isinstance_init_locals: dict[str, str] = field(default_factory=dict)
     # Locals whose tuple type contains pointer-repr Optional but whose C++
     # representation is the storage form (std::tuple<std::optional<T>, ...>):
     # for-loop variables iterating storage-form containers, and locals

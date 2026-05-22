@@ -48,7 +48,7 @@ struct OsErr;
 inline constexpr std::string_view __name__ = "__main__";
 
 std::string classify(BaseExc* e);
-std::string classify_direct(const BaseExc* e);
+std::string classify_direct(BaseExc* e);
 void main();
 
 // class BaseExc(Throwable):

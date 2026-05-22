@@ -1,0 +1,3 @@
+<none>
+event
+click(3,7) -> click

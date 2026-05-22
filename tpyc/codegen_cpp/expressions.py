@@ -16,7 +16,7 @@ from ..typesys import (
     PendingListType, ListRepeatType,
     TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_own, unwrap_qualifiers, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     TupleType, CallableType,
-    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_polymorphic_class_type, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
+    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, polymorphic_source_inner, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
     is_float_type, is_readonly_span, is_dyn_protocol)
 from ..type_def_registry import (
@@ -2423,18 +2423,22 @@ class ExpressionGenerator:
                 check_members = list(expr.isinstance_type.members)
             else:
                 check_members = [expr.isinstance_type]
-            # Optional[Polymorphic] source: var is `const Inner*` (pointer-repr
-            # Optional). Lower isinstance(var, Subclass) to dynamic_cast on the
-            # pointer -- holds_alternative doesn't apply (no variant), and the
-            # underlying object retains its dynamic type because temp
-            # materialization for these slots preserves the rvalue type. Use
-            # the bare variable name (the raw pointer) -- gen_expr_deref would
-            # produce `(*e)` which isn't a pointer.
+            # Polymorphic-class source (Optional[Polymorphic] or readonly-
+            # wrapped form, both pointer-repr). Lower isinstance(var, Subclass)
+            # to dynamic_cast on the pointer -- holds_alternative doesn't apply
+            # (no variant) and the underlying object retains its dynamic type
+            # because temp materialization for these slots preserves the rvalue
+            # type. Use the bare variable name (the raw pointer) -- gen_expr_deref
+            # would produce `(*e)` which isn't a pointer.
             registry = self.ctx.analyzer.registry
-            if (isinstance(var_decl, OptionalType)
-                    and var_decl.uses_pointer_repr()
-                    and is_polymorphic_class_type(var_decl.inner, registry)):
+            if polymorphic_source_inner(var_decl, registry) is not None:
                 ptr_ref = escape_cpp_name(orig_var)
+                # If `_gen_if` pre-bound the cast via C++17 if-init, the
+                # single-member bool check reduces to a null check on the
+                # local -- the dynamic_cast already happened in the if-init.
+                init_local = self.ctx.isinstance_init_locals.get(orig_var)
+                if init_local is not None and len(check_members) == 1:
+                    return f"({init_local} != nullptr)"
                 checks = [
                     f"(dynamic_cast<const {self.types.type_to_cpp(m)}*>({ptr_ref}) != nullptr)"
                     for m in check_members

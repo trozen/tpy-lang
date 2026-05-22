@@ -3370,6 +3370,28 @@ def is_polymorphic_class_type(typ: TpyType, registry: 'TypeRegistry') -> bool:
     return answer
 
 
+def polymorphic_source_inner(
+    declared: 'TpyType | None', registry: 'TypeRegistry'
+) -> 'NominalType | None':
+    """If `declared` is a polymorphic-class-typed source -- either
+    `Optional[Polymorphic]` (pointer-repr) or a bare polymorphic
+    `NominalType` -- return the polymorphic root class. Returns None
+    otherwise. Centralizes the predicate used by the isinstance narrowing
+    fact filter (sema) and the cast-and-cache extraction (codegen)."""
+    if declared is None:
+        return None
+    unwrapped = unwrap_readonly(declared)
+    if (isinstance(unwrapped, OptionalType)
+            and unwrapped.uses_pointer_repr()
+            and isinstance(unwrapped.inner, NominalType)
+            and is_polymorphic_class_type(unwrapped.inner, registry)):
+        return unwrapped.inner
+    if (isinstance(unwrapped, NominalType)
+            and is_polymorphic_class_type(unwrapped, registry)):
+        return unwrapped
+    return None
+
+
 def polymorphic_subclass_into_optional(
     target_type: TpyType, init_type: TpyType | None, registry: 'TypeRegistry'
 ) -> 'NominalType | None':

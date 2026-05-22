@@ -523,10 +523,6 @@ the `BaseException` tree.
 
 **Remaining v1.5 M2 follow-ups (not blockers):**
 
-- **Subclass-typed narrowing in the true branch** -- `if isinstance(e, OsErr): e.code`
-  still errors at sema because narrowing is intentionally suppressed.
-  Methods inherited from the base dispatch virtually; subclass-specific
-  field access requires cast-and-cache codegen (filed in TODO.md).
 - **Slicing-site sema rejections** for field declarations and rvalue
   returns of `Optional[Polymorphic]` (filed in TODO.md). Not blocking;
   the codegen no-slice fix handles the common parameter-passing case

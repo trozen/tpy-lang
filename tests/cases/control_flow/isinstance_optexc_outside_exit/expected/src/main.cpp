@@ -12,9 +12,9 @@ std::string classify(const ::tpy::BaseException* e) {
         return "<none>";
     }
     // if isinstance(e, ValueError):  # tpyc: ok
-    if ((dynamic_cast<const ::tpy::ValueError*>(e) != nullptr)) {
+    if (const ::tpy::ValueError* __e_ptr = dynamic_cast<const ::tpy::ValueError*>(e); (__e_ptr != nullptr)) {
         // return "VE: " + str(e)
-        return (::tpy::str_concat("VE: ", std::string(::tpy::__str__((*e)))));
+        return (::tpy::str_concat("VE: ", std::string(::tpy::__str__((*__e_ptr)))));
     }
     // if isinstance(e, (OSError, RuntimeError)):  # tpyc: ok
     if (((dynamic_cast<const ::tpy::OSError*>(e) != nullptr) || (dynamic_cast<const ::tpy::RuntimeError*>(e) != nullptr))) {
@@ -22,7 +22,7 @@ std::string classify(const ::tpy::BaseException* e) {
         return (::tpy::str_concat("OS/RE: ", std::string(::tpy::__str__((*e)))));
     }
     // if isinstance(e, CancelledError):  # tpyc: ok -- direct BaseException subclass
-    if ((dynamic_cast<const ::tpy::CancelledError*>(e) != nullptr)) {
+    if (const ::tpy::CancelledError* __e_ptr = dynamic_cast<const ::tpy::CancelledError*>(e); (__e_ptr != nullptr)) {
         // return "CANCELLED"
         return "CANCELLED";
     }

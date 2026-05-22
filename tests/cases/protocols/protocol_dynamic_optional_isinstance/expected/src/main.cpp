@@ -12,11 +12,13 @@ std::string classify(BaseExc* e) {
         return "<none>";
     }
     // if isinstance(e, ValErr):  # tpyc: ok
-    if ((dynamic_cast<const ValErr*>(e) != nullptr)) {
-        // return "VAL: " + e.what()
-        return (::tpy::str_concat("VAL: ", e->what()));
+    if (ValErr* __e_ptr = dynamic_cast<ValErr*>(e); (__e_ptr != nullptr)) {
+        // narrowed = e  # tpyc: type(ValErr)
+        ValErr& narrowed = (*__e_ptr);
+        // return "VAL: " + narrowed.what()
+        return (::tpy::str_concat("VAL: ", narrowed.what()));
     }
-    // if isinstance(e, (OsErr, ValErr)):  # tpyc: ok -- tuple form
+    // if isinstance(e, (OsErr, ValErr)):  # tpyc: ok -- tuple form (no narrowing)
     if (((dynamic_cast<const OsErr*>(e) != nullptr) || (dynamic_cast<const ValErr*>(e) != nullptr))) {
         // return "OS-or-VAL: " + e.what()
         return (::tpy::str_concat("OS-or-VAL: ", e->what()));
@@ -26,13 +28,15 @@ std::string classify(BaseExc* e) {
 }
 
 // def classify_direct(e: Optional[BaseExc]) -> str:
-std::string classify_direct(const BaseExc* e) {
+std::string classify_direct(BaseExc* e) {
     // # Optional-source isinstance path (no preceding `is None` narrowing) --
     // # exercises _analyze_isinstance's Optional-direct branch.
     // if isinstance(e, ValErr):  # tpyc: ok
-    if ((dynamic_cast<const ValErr*>(e) != nullptr)) {
-        // return "DIRECT-VAL"
-        return "DIRECT-VAL";
+    if (ValErr* __e_ptr = dynamic_cast<ValErr*>(e); (__e_ptr != nullptr)) {
+        // narrowed = e  # tpyc: type(ValErr)
+        ValErr& narrowed = (*__e_ptr);
+        // return "DIRECT-VAL: " + narrowed.what()
+        return (::tpy::str_concat("DIRECT-VAL: ", narrowed.what()));
     }
     // if isinstance(e, BaseExc):  # tpyc: ok -- always-True boundary on non-None
     if ((dynamic_cast<const BaseExc*>(e) != nullptr)) {

@@ -67,16 +67,16 @@ bool Suppress::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc
     // # Deep-chain dispatch: FileNotFoundError sits three levels under
     // # BaseException. Hits before the broader OSError arm.
     // if isinstance(exc_val, FileNotFoundError):  # tpyc: ok
-    if ((dynamic_cast<const ::tpy::FileNotFoundError*>(exc_val) != nullptr)) {
+    if (const ::tpy::FileNotFoundError* __exc_val_ptr = dynamic_cast<const ::tpy::FileNotFoundError*>(exc_val); (__exc_val_ptr != nullptr)) {
         // print("FNFE: " + str(exc_val))
-        std::cout << (::tpy::str_concat("FNFE: ", std::string(::tpy::__str__((*exc_val))))) << "\n";
+        std::cout << (::tpy::str_concat("FNFE: ", std::string(::tpy::__str__((*__exc_val_ptr))))) << "\n";
         // return True
         return true;
     }
     // if isinstance(exc_val, OSError):  # tpyc: ok
-    if ((dynamic_cast<const ::tpy::OSError*>(exc_val) != nullptr)) {
+    if (const ::tpy::OSError* __exc_val_ptr = dynamic_cast<const ::tpy::OSError*>(exc_val); (__exc_val_ptr != nullptr)) {
         // print("OS: " + str(exc_val))
-        std::cout << (::tpy::str_concat("OS: ", std::string(::tpy::__str__((*exc_val))))) << "\n";
+        std::cout << (::tpy::str_concat("OS: ", std::string(::tpy::__str__((*__exc_val_ptr))))) << "\n";
         // return True
         return true;
     }

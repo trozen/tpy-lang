@@ -38,7 +38,8 @@ def classify(r: Optional[Root]) -> str:
     if r is None:
         return "<none>"
     if isinstance(r, Sub):  # tpyc: ok -- dynamic_cast through Tagged-rooted chain
-        return "sub:" + r.name
+        narrowed = r  # tpyc: type(Sub)
+        return f"sub:{narrowed.name}:{narrowed.extra}"
     return "root:" + r.name
 
 

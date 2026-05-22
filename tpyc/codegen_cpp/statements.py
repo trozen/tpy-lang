@@ -12,7 +12,8 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, PtrType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
     NoneType, NominalType, AnyType, STR, BYTES, TupleType, VoidType,
-    INT32, BIGINT, FLOAT, is_protocol_type, polymorphic_subclass_into_optional, ALL_FIXED_INTS,
+    INT32, BIGINT, FLOAT, is_protocol_type,
+    polymorphic_source_inner, polymorphic_subclass_into_optional, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType, LiteralTag,
     is_own_pointer_repr_optional,
     resolve_int_literals,
@@ -2220,6 +2221,42 @@ class StatementGenerator:
         return (isinstance(declared, OptionalType) and not declared.uses_pointer_repr())
 
 
+    def _is_const_borrow_source(self, var_name: str, var_decl: 'TpyType | None') -> bool:
+        return (isinstance(var_decl, ReadonlyType)
+                or var_name in self.ctx.deep_const_borrow_params
+                or var_name in self.ctx.const_ref_params)
+
+    def _build_isinstance_init_clause(
+        self, type_facts: dict[str, TpyType] | None,
+    ) -> tuple[str, list[str]]:
+        # Single-fact only -- multi-fact branches would need a tuple of
+        # pre-bound locals, which the C++17 if-init form can't express cleanly;
+        # those fall through to the per-extraction dynamic_cast.
+        if not type_facts:
+            return "", []
+        registry = self.ctx.analyzer.registry
+        candidates: list[tuple[str, NominalType, TpyType]] = []
+        for var_name, ty in type_facts.items():
+            if not isinstance(ty, NominalType):
+                continue
+            var_decl = self.ctx.lookup_var_type(var_name)
+            source_inner = polymorphic_source_inner(var_decl, registry)
+            if source_inner is None or source_inner == ty:
+                continue
+            candidates.append((var_name, ty, var_decl))
+        if len(candidates) != 1:
+            return "", []
+        var_name, narrowed_type, var_decl = candidates[0]
+        cpp_type = self.types.type_to_cpp(narrowed_type)
+        const_pfx = "const " if self._is_const_borrow_source(var_name, var_decl) else ""
+        ptr_local = f"__{var_name}_ptr"
+        init_expr = (
+            f"{const_pfx}{cpp_type}* {ptr_local} = "
+            f"dynamic_cast<{const_pfx}{cpp_type}*>({escape_cpp_name(var_name)})"
+        )
+        self.ctx.isinstance_init_locals[var_name] = ptr_local
+        return f"{init_expr}; ", [var_name]
+
     def _emit_isinstance_extractions(
         self, out: TextIO, type_facts: dict[str, TpyType], indent_extra: int = 1,
     ) -> dict[str, str | None]:
@@ -2254,10 +2291,36 @@ class StatementGenerator:
             if var_name in self.ctx.overload_param_types:
                 continue
             cpp_type = self.types.type_to_cpp(narrowed_type)
+            var_decl = self.ctx.lookup_var_type(var_name)
+            # Polymorphic source + strict-subclass narrowed_type: cast-and-cache
+            # extraction. Identity narrowing (`is not None`) keeps the same class
+            # and is gated out by source_inner != narrowed_type.
+            source_inner = polymorphic_source_inner(var_decl, self.ctx.analyzer.registry)
+            if (source_inner is not None
+                    and isinstance(narrowed_type, NominalType)
+                    and source_inner != narrowed_type):
+                # If `_gen_if` pre-bound the cast via C++17 if-init, route reads
+                # through `(*__var_ptr)` directly -- no need for a separate
+                # reference local that just aliases the deref. Compiler sees the
+                # same object either way. For assert/while paths that don't go
+                # through if-init, emit the fresh cast into a reference local.
+                init_local = self.ctx.isinstance_init_locals.get(var_name)
+                if init_local is not None:
+                    saved[var_name] = self.ctx.narrowed_vars.get(var_name)
+                    self.ctx.narrowed_vars[var_name] = f"(*{init_local})"
+                    continue
+                local_name = f"__{var_name}"
+                cast_const = "const " if self._is_const_borrow_source(var_name, var_decl) else ""
+                out.write(
+                    f"{inner_indent}{cast_const}{cpp_type}& {local_name} = "
+                    f"*dynamic_cast<{cast_const}{cpp_type}*>({escape_cpp_name(var_name)});\n"
+                )
+                saved[var_name] = self.ctx.narrowed_vars.get(var_name)
+                self.ctx.narrowed_vars[var_name] = local_name
+                continue
             # Any narrowing (D15): the source variable is a tpy::Any cell;
             # the narrowed binding is a `const T&` borrow into its
             # contents. The outer Any survives unchanged.
-            var_decl = self.ctx.lookup_var_type(var_name)
             if isinstance(var_decl, AnyType):
                 local_name = f"__{var_name}"
                 if self.ctx.is_indirect_name(TpyName(var_name)):
@@ -3772,6 +3835,7 @@ class StatementGenerator:
 
         # Emit if / else if / else chain
         for i, node in enumerate(chain):
+            init_vars: list[str] = []
             # Nullable protocol param narrowing: replace runtime `x != nullptr`
             # with compile-time `if constexpr (!std::same_as<T_x, nullptr_t>)`.
             # The pointer is guaranteed non-null for real types (call site passes &expr),
@@ -3803,15 +3867,29 @@ class StatementGenerator:
                     out.write(f"{indent}}}\n")
                     return
             else:
+                # C++17 if-init for polymorphic isinstance: pre-bind the cast
+                # local so the condition + the cast-and-cache extraction share
+                # one dynamic_cast. Skip for the fallback-elif path (recursive
+                # _gen_if below) -- the init local would never be emitted but
+                # downstream readers would still consult isinstance_init_locals.
+                will_emit_inline = (
+                    i == 0
+                    or (not self.ctx.temps._pending and not self.ctx.temps._pending_named)
+                )
+                if will_emit_inline:
+                    init_clause, init_vars = self._build_isinstance_init_clause(
+                        node.then_type_facts)
+                else:
+                    init_clause = ""
                 cond = self.expressions.gen_truthy_expr(node.condition)
                 is_constexpr = self._is_protocol_isinstance_condition(node.condition)
                 if_kw = "if constexpr" if is_constexpr else "if"
                 if i == 0:
                     self.ctx.temps.flush(out, indent)
-                    out.write(f"{indent}{if_kw} ({cond}) {{\n")
+                    out.write(f"{indent}{if_kw} ({init_clause}{cond}) {{\n")
                 elif not self.ctx.temps._pending and not self.ctx.temps._pending_named:
                     else_kw = "else if constexpr" if is_constexpr else "else if"
-                    out.write(f"{indent}}} {else_kw} ({cond}) {{\n")
+                    out.write(f"{indent}}} {else_kw} ({init_clause}{cond}) {{\n")
                 else:
                     # Elif condition produced temp/walrus vars -- can't use flat
                     # else-if. Regular temps are discarded and regenerated by
@@ -3842,6 +3920,8 @@ class StatementGenerator:
             self.ctx.restore_protocol_narrowings(proto_snap)
             self.ctx.restore_literal_facts(lit_snap)
             self.ctx.restore_local_scope(br_snap)
+            for _iv in init_vars:
+                self.ctx.isinstance_init_locals.pop(_iv, None)
 
         # Final else branch (from the last node in the chain)
         last = chain[-1]

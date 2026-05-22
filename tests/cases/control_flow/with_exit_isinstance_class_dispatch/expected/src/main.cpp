@@ -76,9 +76,9 @@ bool SuppressVE::__exit__(std::monostate exc_type, const ::tpy::BaseException* e
         return false;
     }
     // if isinstance(exc_val, ValueError):  # tpyc: ok
-    if ((dynamic_cast<const ::tpy::ValueError*>(exc_val) != nullptr)) {
+    if (const ::tpy::ValueError* __exc_val_ptr = dynamic_cast<const ::tpy::ValueError*>(exc_val); (__exc_val_ptr != nullptr)) {
         // print("suppressed VE: " + str(exc_val))
-        std::cout << (::tpy::str_concat("suppressed VE: ", std::string(::tpy::__str__((*exc_val))))) << "\n";
+        std::cout << (::tpy::str_concat("suppressed VE: ", std::string(::tpy::__str__((*__exc_val_ptr))))) << "\n";
         // return True
         return true;
     }

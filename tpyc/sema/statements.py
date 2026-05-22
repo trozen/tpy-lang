@@ -22,7 +22,7 @@ from ..typesys import (
     FunctionInfo, ParamInfo, RecordInfo,
     make_ref, unwrap_ref_type, RefType, param_has_mutable_borrow_surface,
     is_integer_type, is_any_int_type, is_numeric_type, is_readonly_span,
-    is_float_type, is_any_float_type,
+    is_float_type, is_any_float_type, polymorphic_source_inner,
     resolve_int_literals,
     bare_name)
 from ..parse import (
@@ -1360,13 +1360,17 @@ class StatementAnalyzer:
     def _filter_union_codegen_facts(
         self, facts: dict[str, TpyType],
     ) -> dict[str, TpyType]:
-        """Keep union-origin, Literal, and protocol narrowing facts for codegen.
+        """Keep narrowing facts that drive codegen extraction.
 
         Optional narrowing is handled implicitly by std::optional in C++,
         so only UnionType variables need explicit std::get<T> extraction.
         LiteralType facts are passed through for dead branch elimination.
         Protocol facts (e.g. Iterable[T] -> NativeIterable[T] via isinstance)
         feed protocol_narrowings so downstream dispatch sees the refined type.
+        Polymorphic-class facts (e.g. isinstance(opt_exc, OSError) where
+        opt_exc: Optional[BaseException]) drive cast-and-cache codegen so
+        subclass-typed reads in the true branch route through a dynamic_cast'd
+        local rather than the base pointer.
         """
         def _peel(t: TpyType) -> TpyType:
             # Strip Own / readonly so Own[A|B] params surface as UnionType
@@ -1376,11 +1380,22 @@ class StatementAnalyzer:
             if isinstance(t, OwnType):
                 t = unwrap_readonly(t.wrapped)
             return t
+
+        def _polymorphic_subclass_fact(name: str, ty: TpyType) -> bool:
+            # Strict subclass only -- `is not None` narrowing keeps the source's
+            # inner class and needs no cast-and-cache.
+            source_inner = polymorphic_source_inner(
+                _peel(self.narrowing.declared_type_for_name(name)), self.ctx.registry)
+            return (source_inner is not None
+                    and isinstance(ty, NominalType)
+                    and ty != source_inner)
+
         return {
             name: ty for name, ty in facts.items()
             if (isinstance(_peel(self.narrowing.declared_type_for_name(name)), (UnionType, AnyType))
                 or isinstance(ty, LiteralType)
-                or is_protocol_type(ty))
+                or is_protocol_type(ty)
+                or _polymorphic_subclass_fact(name, ty))
         }
 
     def _analyze_raise(self, stmt: TpyRaise) -> None:

@@ -2,6 +2,6 @@ VAL: [val] v1
 OS-or-VAL: [os] o1
 BASE: [base] b1
 <none>
-DIRECT-VAL
+DIRECT-VAL: [val] d1
 DIRECT-BASE
 DIRECT-NONE

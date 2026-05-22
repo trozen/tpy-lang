@@ -44,8 +44,9 @@ def classify(e: Optional[BaseExc]) -> str:
     if e is None:
         return "<none>"
     if isinstance(e, ValErr):  # tpyc: ok
-        return "VAL: " + e.what()
-    if isinstance(e, (OsErr, ValErr)):  # tpyc: ok -- tuple form
+        narrowed = e  # tpyc: type(ValErr)
+        return "VAL: " + narrowed.what()
+    if isinstance(e, (OsErr, ValErr)):  # tpyc: ok -- tuple form (no narrowing)
         return "OS-or-VAL: " + e.what()
     return "BASE: " + e.what()
 
@@ -54,7 +55,8 @@ def classify_direct(e: Optional[BaseExc]) -> str:
     # Optional-source isinstance path (no preceding `is None` narrowing) --
     # exercises _analyze_isinstance's Optional-direct branch.
     if isinstance(e, ValErr):  # tpyc: ok
-        return "DIRECT-VAL"
+        narrowed = e  # tpyc: type(ValErr)
+        return "DIRECT-VAL: " + narrowed.what()
     if isinstance(e, BaseExc):  # tpyc: ok -- always-True boundary on non-None
         return "DIRECT-BASE"
     return "DIRECT-NONE"

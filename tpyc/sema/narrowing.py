@@ -11,7 +11,8 @@ from ..typesys import (
     TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NominalType,
     TypeParamRef, IntLiteralType, AnyType,
     ReadonlyType, UnionType, unwrap_readonly, unwrap_qualifiers, unwrap_ref_type, make_union, union_none_narrow,
-    is_protocol_type, LiteralType, LiteralValue, is_any_int_type,
+    is_protocol_type, polymorphic_source_inner,
+    LiteralType, LiteralValue, is_any_int_type,
 
 )
 from ..parse import (
@@ -270,15 +271,13 @@ class NarrowingTracker:
                 inner = self._optional_inner_type(effective)
                 if is_protocol_type(inner):
                     return {name: inner}, {}
-            # Optional[Polymorphic] isinstance: dispatch works via dynamic_cast
-            # at runtime, but subclass-typed *reads* in the true branch (e.g.
-            # accessing a subclass-only field) would require cast-and-cache
-            # codegen we don't have yet. So we don't narrow the variable's
-            # type in either branch -- the isinstance call still returns the
-            # correct bool, methods inherited from the base class still
-            # dispatch virtually, but subclass-specific field access requires
-            # an explicit cast in user code. Subclass-typed narrowing is a
-            # follow-up to v1.5 M2.
+            # Optional[Polymorphic class] or post-`is not None`-narrowed
+            # polymorphic class: isinstance(x, Subclass) narrows to Subclass.
+            # Codegen emits a dynamic_cast'd reference at branch entry and
+            # routes downstream reads through it (cast-and-cache).
+            if (polymorphic_source_inner(effective, self.ctx.registry) is not None
+                    and isinstance(check_type, NominalType)):
+                return {name: check_type}, {}
             # Bare-protocol isinstance: narrowing to a *child* protocol
             # (e.g. Iterable[T] -> NativeIterable[T]) lets downstream codegen
             # (for-loop dispatch, `in` operator) see the refined protocol via
