@@ -1,0 +1,1 @@
+main.py:32: error: Type mismatch in variable 'r': expected Rc[Box[Box[Pet]]], got Rc[Box[Box[Dog]]]

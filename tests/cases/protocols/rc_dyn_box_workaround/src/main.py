@@ -1,9 +1,6 @@
 # Rc[Box[Pet]] two-level composition: Box owns the dyn-protocol payload,
 # Rc shares the Box. Three heap allocations total.
-#
-# The Box[Pet] LHS hint doesn't propagate through Rc.new's nested-generic
-# inference, so the Box must be constructed on its own line with an
-# explicit annotation; see `error_rc_box_pet_nested`.
+# Intermediate-local form; nested-call form lives in rc_box_pet_nested.
 from typing import Protocol
 from tpy import dynamic
 from tplib import Box, Rc

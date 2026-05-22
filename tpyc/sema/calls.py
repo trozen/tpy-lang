@@ -46,6 +46,7 @@ from .overloads import (
     _scalar_widening_cost,
 )
 from .statements import _root_name_of_expr, _is_self_call_deferred
+from .type_ops import partial_substitute, seeded_arg_hint
 from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo, _is_static_str
 from ..macro_loader import expand_call_macro
 
@@ -286,13 +287,6 @@ def _has_type_param_ref_in_params(func: "FunctionInfo") -> bool:
     if any(contains_type_param(p.type) for p in func.params):
         return True
     return contains_type_param(func.return_type)
-
-
-def _partial_substitute(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
-    """Substitute known type params, preserve unknown TypeParamRefs as-is."""
-    if isinstance(typ, TypeParamRef):
-        return subst.get(typ.name, typ)
-    return typ.map_inner_types(lambda t: _partial_substitute(t, subst))
 
 
 @dataclass
@@ -2885,7 +2879,10 @@ class CallAnalyzer:
             )
             self.type_ops.validate_type(type_arg, allow_type_param_ref=in_generic, loc=expr.loc, allow_forward_ref=False)
 
-    def _infer_arg_types(self, expr: TpyCall, func: FunctionInfo) -> list[TpyType]:
+    def _infer_arg_types(
+        self, expr: TpyCall, func: FunctionInfo,
+        seed_subst: dict[str, TpyType] | None = None,
+    ) -> list[TpyType]:
         """Analyze args for type param inference, with two-phase for Fn/Callable params.
 
         When a generic function has Fn/Callable params (e.g. map[T,U](fn: Fn[[T],U], ...)),
@@ -2893,23 +2890,37 @@ class CallAnalyzer:
         1. Analyze non-Fn args first to get types for partial type param inference.
         2. Substitute inferred params into the Fn type to build concrete hints.
         3. Analyze the Fn args with those hints.
+
+        ``seed_subst`` is an LHS-hint-derived pre-binding of type params (from
+        matching the LHS hint against ``func.return_type``). When present, each
+        arg is analyzed with the seeded ptype as ``expr_type_hint`` on its
+        first pass -- this lets nested generic constructor calls see the outer
+        LHS hint before arg-driven inference has any evidence.
         """
+        def _analyze_arg(idx: int, arg: TpyExpr) -> TpyType:
+            hint = seeded_arg_hint(func.params, idx, seed_subst or {})
+            if hint is not None:
+                return self.expr.analyze_expr_with_hint(arg, hint)
+            return self.expr.analyze_expr(arg)
+
         # Quick check: if no Fn/Callable params, analyze all args directly
         fn_positions: set[int] = set()
         for i, (_, ptype) in enumerate(func.params):
             if is_callable_type(unwrap_ref_type(ptype)):
                 fn_positions.add(i)
         if not fn_positions:
-            return [self.expr.analyze_expr(arg) for arg in expr.args]
+            return [_analyze_arg(i, arg) for i, arg in enumerate(expr.args)]
 
-        # Phase 1: analyze non-Fn args
+        # Phase 1: analyze non-Fn args (seeded per-arg hint when available)
         arg_types: list[TpyType | None] = [None] * len(expr.args)
         for i, arg in enumerate(expr.args):
             if i not in fn_positions:
-                arg_types[i] = self.expr.analyze_expr(arg)
+                arg_types[i] = _analyze_arg(i, arg)
 
-        # Phase 2: partial inference from known args, then resolve Fn args
-        partial_inferred: dict[str, TpyType] = {}
+        # Phase 2: partial inference from known args, then resolve Fn args.
+        # Start from the seed so Fn args see seeded type params even before
+        # any non-Fn evidence binds them.
+        partial_inferred: dict[str, TpyType] = dict(seed_subst) if seed_subst else {}
         for (_, ptype), arg_type in zip(func.params, arg_types):
             if arg_type is not None:
                 self.type_ops.match_type_with_inference(ptype, arg_type, partial_inferred)
@@ -2925,7 +2936,7 @@ class CallAnalyzer:
                 if i >= len(func.params) or i >= len(expr.args):
                     continue
                 ptype = unwrap_ref_type(func.params[i].type)
-                concrete_hint = _partial_substitute(ptype, partial_inferred)
+                concrete_hint = partial_substitute(ptype, partial_inferred)
                 if is_callable_type(concrete_hint):
                     has_unresolved = any(
                         contains_type_param(p) for p in concrete_hint.param_types
@@ -3513,7 +3524,7 @@ class CallAnalyzer:
         # Per-Fn-slot trial.
         for slot in fn_slots:
             ptype = unwrap_ref_type(func.params[slot.param_index].type)
-            hint = (_partial_substitute(ptype, partial_inferred)
+            hint = (partial_substitute(ptype, partial_inferred)
                     if func.is_generic() else ptype)
             if not is_callable_type(hint):
                 return None
@@ -4213,16 +4224,31 @@ class CallAnalyzer:
                 expr
             )
 
-        # Get type substitution from explicit args or inference
+        # Get type substitution from explicit args or inference. The LHS-hint
+        # seed is only useful on paths that actually re-analyze args with a
+        # contextual hint, so it's computed lazily inside the branches that
+        # need it -- skipping it for the fully-explicit type-args path avoids
+        # the side-effecting match_type_with_inference walk against any
+        # special-cased call (e.g. ``tpy.unsafe.unsafe_cast``) whose return
+        # type is not a true predictor of its argument types.
         if expr.type_args:
             self._validate_explicit_type_args(expr, len(func.type_params))
 
             if len(expr.type_args) == len(func.type_params) and None not in expr.type_args:
-                # Full explicit -- existing path
+                # Full explicit -- existing path; seed unused here.
                 type_subst = dict(zip(func.type_params, expr.type_args))
             else:
-                # Partial explicit -- infer remaining from args + context
-                arg_types = self._infer_arg_types(expr, func)
+                # Partial explicit -- infer remaining from args + context.
+                # Explicit positional type args override the seed at those
+                # positions; merge them in before propagating into per-arg hints.
+                seed_subst = self.type_ops.seed_subst_from_return_hint(
+                    func, self.ctx.expr_type_hint
+                )
+                merged_seed = dict(seed_subst)
+                for tp, ta in zip(func.type_params, expr.type_args):
+                    if ta is not None:
+                        merged_seed[tp] = ta
+                arg_types = self._infer_arg_types(expr, func, seed_subst=merged_seed)
                 type_subst = self.type_ops.infer_type_params_for_function(
                     func, arg_types, self.protocols.type_conforms_to_protocol,
                     expected_return_type=self.ctx.expr_type_hint,
@@ -4240,8 +4266,15 @@ class CallAnalyzer:
                 lambda msg: self.ctx.error(msg, expr),
             )
         else:
-            # Infer from arguments
-            arg_types = self._infer_arg_types(expr, func)
+            # Infer from arguments (seeded with LHS hint for nested-call hints).
+            # Lets nested generic calls (e.g. `Rc.new(Box(Dog(...)))` with LHS
+            # `Rc[Box[Pet]]`) see the seeded ptype as their first-pass hint --
+            # the inner call's record-construction LHS-hint logic then picks up
+            # T=Pet before arg-driven inference would have settled on T=Dog.
+            seed_subst = self.type_ops.seed_subst_from_return_hint(
+                func, self.ctx.expr_type_hint
+            )
+            arg_types = self._infer_arg_types(expr, func, seed_subst=seed_subst)
             type_subst = self.type_ops.infer_type_params_for_function(
                 func, arg_types, self.protocols.type_conforms_to_protocol,
                 expected_return_type=self.ctx.expr_type_hint,

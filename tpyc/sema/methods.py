@@ -35,6 +35,7 @@ from .calls import (
     _enrich_literal_types,
     resolve_inferred_type_arg,
 )
+from .type_ops import seeded_arg_hint
 from .statements import _root_name_of_expr, _is_self_call_deferred, _local_traces_to_self
 
 if TYPE_CHECKING:
@@ -1790,7 +1791,10 @@ class MethodAnalyzer:
         if class_subst:
             partial_func = self.type_ops.substitute_method_type_params(partial_func, class_subst)
 
-        # Infer new params from arguments or explicit type args
+        # Infer new params from arguments or explicit type args. The LHS-hint
+        # seed is only useful on paths that actually re-analyze args with a
+        # contextual hint, so it (and the closure that consumes it) lives
+        # inside the inference branches that need it.
         has_wildcards = expr.type_args and None in expr.type_args
         if expr.type_args:
             if len(expr.type_args) != len(new_params):
@@ -1799,30 +1803,20 @@ class MethodAnalyzer:
                     f"got {len(expr.type_args)}",
                     expr)
             if not has_wildcards:
+                # Full explicit -- no seed needed.
                 method_subst = dict(zip(new_params, expr.type_args))
             else:
-                arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-                method_subst = self.type_ops.infer_type_params_for_function(
-                    partial_func, arg_types, self.protocols.type_conforms_to_protocol,
-                    expected_return_type=self.ctx.expr_type_hint,
+                # Partial explicit -- seed + explicit positional args drive
+                # the per-arg hint; wildcards leave the seed binding in place.
+                method_subst = self._infer_method_subst_with_seed(
+                    expr, partial_func, method_info, new_params,
                     explicit_type_args=expr.type_args,
                 )
-                if method_subst is None:
-                    raise self.ctx.error(
-                        f"Cannot infer type arguments for method '{method_info.name}'. "
-                        f"Specify explicitly: .{method_info.name}[{', '.join(new_params)}](...)",
-                        expr)
         else:
-            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-            method_subst = self.type_ops.infer_type_params_for_function(
-                partial_func, arg_types, self.protocols.type_conforms_to_protocol,
-                expected_return_type=self.ctx.expr_type_hint,
+            method_subst = self._infer_method_subst_with_seed(
+                expr, partial_func, method_info, new_params,
+                explicit_type_args=None,
             )
-            if method_subst is None:
-                raise self.ctx.error(
-                    f"Cannot infer type arguments for method '{method_info.name}'. "
-                    f"Specify explicitly: .{method_info.name}[{', '.join(new_params)}](...)",
-                    expr)
 
         # Validate bounds for new params (inference checks bounds internally,
         # but explicit type args bypass inference)
@@ -1846,6 +1840,59 @@ class MethodAnalyzer:
         full_subst.update(method_subst)
 
         return self._resolve_and_check_args(expr, [method_info], full_subst)
+
+    def _infer_method_subst_with_seed(
+        self,
+        expr: TpyMethodCall,
+        partial_func: FunctionInfo,
+        method_info: FunctionInfo,
+        new_params: list[str],
+        explicit_type_args: tuple['TpyType | None', ...] | None,
+    ) -> dict[str, TpyType]:
+        """Analyze args with an LHS-hint seed and run method-param inference.
+
+        Shared by the pure-inference and partial-explicit (wildcard) branches
+        of ``_analyze_generic_method_call``. The seed is computed against the
+        already class-substituted ``partial_func.return_type``; explicit
+        positional type args (when present) overlay the seed at their
+        positions.
+        """
+        seed_subst = self.type_ops.seed_subst_from_return_hint(
+            partial_func, self.ctx.expr_type_hint
+        )
+        merged_seed = dict(seed_subst)
+        if explicit_type_args is not None:
+            for tp, ta in zip(new_params, explicit_type_args):
+                if ta is not None:
+                    merged_seed[tp] = ta
+
+        # Default-arg capture freezes ``partial_func`` and ``merged_seed`` at
+        # def-time so this closure isn't sensitive to later rebinding.
+        def _analyze_args(
+            _pf: FunctionInfo = partial_func,
+            _seed: dict[str, TpyType] = merged_seed,
+        ) -> list[TpyType]:
+            out: list[TpyType] = []
+            for i, arg in enumerate(expr.args):
+                hint = seeded_arg_hint(_pf.params, i, _seed)
+                if hint is not None:
+                    out.append(self.expr.analyze_expr_with_hint(arg, hint))
+                else:
+                    out.append(self.expr.analyze_expr(arg))
+            return out
+
+        arg_types = _analyze_args()
+        method_subst = self.type_ops.infer_type_params_for_function(
+            partial_func, arg_types, self.protocols.type_conforms_to_protocol,
+            expected_return_type=self.ctx.expr_type_hint,
+            explicit_type_args=explicit_type_args,
+        )
+        if method_subst is None:
+            raise self.ctx.error(
+                f"Cannot infer type arguments for method '{method_info.name}'. "
+                f"Specify explicitly: .{method_info.name}[{', '.join(new_params)}](...)",
+                expr)
+        return method_subst
 
     def _is_protocol_method_readonly(self, protocol_name: str, method_name: str) -> bool:
         """Check if a protocol method is readonly (per-method or protocol-level).

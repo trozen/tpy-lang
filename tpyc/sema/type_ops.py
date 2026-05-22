@@ -41,6 +41,89 @@ _HASHABLE = NominalType("Hashable", is_protocol=True)
 _EQUATABLE = NominalType("Equatable", is_protocol=True)
 
 
+def partial_substitute(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
+    """Substitute known type params, preserve unknown TypeParamRefs as-is."""
+    if isinstance(typ, TypeParamRef):
+        return subst.get(typ.name, typ)
+    return typ.map_inner_types(lambda t: partial_substitute(t, subst))
+
+
+def seeded_arg_hint(
+    params: list[ParamInfo], idx: int, subst: dict[str, TpyType],
+) -> TpyType | None:
+    """Per-arg ``expr_type_hint`` from a seeded type-param substitution.
+
+    Resolves the param the call argument at position ``idx`` targets, then
+    substitutes ``subst`` and strips Own/Readonly/Ref qualifiers so the hint
+    arrives in a shape that the various ``analyze_expr_with_hint`` consumers
+    can consume directly (the lambda branch's ``is_callable_type`` check, the
+    list/dict literal branches, and the constructor LHS-hint preference all
+    expect the bare inner type).
+
+    Variadic positions: every arg at or beyond the ``*args`` slot maps to
+    the variadic param's element type (with the ``Span[readonly[T]]``
+    packing stripped), mirroring how ``infer_type_params_for_function``
+    matches variadic args.
+
+    Returns None when the substitution leaves unbound ``TypeParamRef``s
+    (an incomplete hint), when there's no valid target param for the index,
+    or when the substitution is empty. Caller dispatches on None to fall
+    back to hint-less arg analysis.
+    """
+    if not subst:
+        return None
+    if idx < len(params):
+        target = params[idx]
+    elif params and params[-1].is_variadic:
+        target = params[-1]
+    else:
+        return None
+
+    ptype = unwrap_ref_type(target.type)
+    if target.is_variadic and is_span(ptype):
+        # *args: T was lowered to Span[readonly[T]]; expose the element.
+        ptype = unwrap_readonly(ptype.type_args[0])
+    hint = partial_substitute(ptype, subst)
+    # Strip Own / Readonly so consumers that don't unwrap themselves
+    # (e.g. lambda's is_callable_type check) still see the inner shape.
+    if isinstance(hint, OwnType):
+        hint = hint.wrapped
+    if isinstance(hint, ReadonlyType):
+        hint = hint.wrapped
+    if contains_type_param(hint):
+        return None
+    return hint
+
+
+def _is_useful_seed_binding(t: object) -> bool:
+    """True iff ``t`` is a meaningful pre-binding for an LHS-hint seed.
+
+    Filtered out:
+    - "No info" placeholders (None/Void/Unknown from reassignment-narrowing
+      LHS like ``x = None; x = f(...)``).
+    - Transient pending markers (PendingViewType / PendingListType, which
+      ``infer_type_params_for_function`` resolves post-arg-inference anyway).
+    - Bare TypeParamRef from an enclosing generic scope: ``seeded_arg_hint``
+      itself rejects hints containing TPRefs, but the same binding also
+      flows into ``partial_inferred`` in ``_infer_arg_types``' Fn-bearing
+      branch -- there it could be compared against concrete arg types and
+      silently reject arg-derived evidence.
+    - Plain ``int`` values from INT-kind type-param bindings (e.g. Array's
+      ``N`` matched against a concrete length): ``partial_substitute``
+      ignores INT-kind params (``map_inner_types`` filters them out), so
+      they never substitute into per-arg hints, but they would still leak
+      into ``partial_inferred`` and conflict with arg-derived ``N`` during
+      Phase-2 array matching.
+    """
+    if isinstance(t, int):  # int-kind binding (Array[T, N])
+        return False
+    return not isinstance(
+        t,
+        (NoneType, VoidType, UnknownElementType, PendingViewType, PendingListType,
+         TypeParamRef),
+    )
+
+
 class TypeOperations:
     """Type validation, substitution, and inference operations."""
 
@@ -1166,6 +1249,41 @@ class TypeOperations:
                 self._apply_dyn_hint_at_position(r_arg.name, h_arg, inferred)
             else:
                 self._apply_lhs_hint_to_function_return(r_arg, h_arg, inferred)
+
+    def seed_subst_from_return_hint(
+        self, func: FunctionInfo, expected_return_type: TpyType | None,
+    ) -> dict[str, TpyType]:
+        """Pre-bind type params by matching ``expected_return_type`` against
+        ``func.return_type``. Used to give nested generic call args a hint
+        that reflects the LHS-derived outer type before arg-driven inference
+        has any evidence to contribute.
+
+        The seed is best-effort: bindings to "no info" placeholders
+        (None/Void/Unknown -- typically from reassignment-narrowing LHS
+        like ``x = None; x = f(...)``) are dropped so they don't steer
+        downstream arg analysis toward the wrong type. Arg-derived
+        inference still has the final say.
+        """
+        if expected_return_type is None or func.return_type is None:
+            return {}
+        if not func.type_params:
+            return {}
+        # Strip Own/Readonly/Ref qualifiers from both sides so the match
+        # mirrors ``_apply_lhs_hint_to_function_return``; otherwise a
+        # ``readonly[Container[T]]`` LHS hint (e.g. from a
+        # ``@readonly_propagate`` clone) would silently fail to seed.
+        ret = unwrap_qualifiers(func.return_type)
+        exp = unwrap_qualifiers(expected_return_type)
+        # ``match_type_with_inference`` mutates ``tmp`` as it walks, even on
+        # branches that ultimately return False (the tuple/record loops
+        # short-circuit via ``all(...)`` after writing earlier bindings).
+        # Commit only when the overall match succeeds so a structurally-shaped
+        # but inner-mismatched LHS hint can't leak partial seed bindings into
+        # downstream arg analysis.
+        tmp: dict[str, TpyType] = {}
+        if not self.match_type_with_inference(ret, exp, tmp):
+            return {}
+        return {k: v for k, v in tmp.items() if _is_useful_seed_binding(v)}
 
     def _inherits_protocol(self, concrete: TpyType, protocol: NominalType) -> bool:
         """Return True if `concrete` transitively implements a @dynamic protocol matching `protocol`.
