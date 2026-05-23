@@ -12,10 +12,11 @@ from ..typesys import (
     TpyType, TypeRegistry, NominalType, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
     NoneType, INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
     FunctionInfo, ParamInfo, is_any_str_type, BIGINT, FLOAT,
-    make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType,
+    make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType, PtrType,
     is_integer_type, is_void_like_type,
     _contains_self_reference,
     contains_type_param,
+    del_suppresses_default_ctor,
 )
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_docstring, is_super_del_call, is_base_init_call, ParseError
@@ -48,7 +49,10 @@ from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
 from ..cycle_detection import detect_type_cycles
 from ..parse import SourceLocation, is_parser_keyword
-from ..type_def_registry import is_str_type, is_str_view_type, enum_info_of
+from ..type_def_registry import (
+    is_str_type, is_str_view_type, enum_info_of,
+    is_array, is_enum_type, is_list, is_dict, is_set, is_span,
+)
 from ..parse.resolve_refs import (
     _walk_body, _merged_method_scope, _record_scope,
     promote_bare_nominals,
@@ -1979,6 +1983,15 @@ class SemanticAnalyzer:
                             self.ctx.func.super_init_call
                         )
 
+            # Require an explicit base-init call (super().__init__(...) or
+            # Base.__init__(self, ...)) when the single user-record base has
+            # no synthesizable default constructor. Otherwise the C++ MIL
+            # would try to implicit-default-construct the base subobject and
+            # the build fails with a cryptic "no matching function for call
+            # to Base::Base()" error from inside the subclass ctor.
+            if method.name == "__init__":
+                self._require_super_init_for_non_default_base(method, record)
+
             # Validate __del__ methods
             if method.name == "__del__":
                 record_info = self.ctx.registry.get_record(record.name)
@@ -2238,6 +2251,164 @@ class SemanticAnalyzer:
         for f in record_info.fields:
             result[f.name] = f
         return result
+
+    def _require_super_init_for_non_default_base(
+        self, method: TpyFunction, record: TpyRecord,
+    ) -> None:
+        """Reject `class Child(Base): def __init__(self, ...): ...` without an
+        explicit base-init call when Base's C++ default constructor would be
+        implicitly deleted -- C++ would otherwise fail to synthesize the
+        base subobject default-construction in the child's MIL.
+        `super().__init__(...)` and `Base.__init__(self, ...)` are both
+        accepted (mirrors `is_base_init_call`). Multi-base inheritance is
+        already covered by `validate_multi_base_init_calls`.
+
+        The predicate matches the codegen-level "would `Base() = default;`
+        succeed?" not the user-level "is Base default-constructible from
+        TPy?". A base with a required-arg `__init__` but all-default-ctor
+        fields synthesizes `Base()` fine at C++ level (leaves fields
+        default-initialized), so it does NOT trigger the rule.
+        """
+        record_info = self.ctx.registry.get_record(record.name)
+        if record_info is None or record_info.is_native:
+            return
+        if len(record_info.parents) != 1:
+            return
+        parent = record_info.parents[0]
+        if not isinstance(parent, NominalType) or parent.is_protocol:
+            return
+        parent_rec = self.ctx.registry.get_record_for_type(parent)
+        if parent_rec is None or parent_rec.is_native or parent_rec.builtin_type_key:
+            return
+        if not self._record_default_ctor_is_deleted(parent_rec):
+            return
+        # Accept either super().__init__(...) or Base.__init__(self, ...).
+        if self.ctx.func.super_init_call is not None:
+            return
+        for stmt in method.body:
+            if is_base_init_call(stmt):
+                return
+        reason = self._explain_default_ctor_deletion(parent_rec)
+        raise self._error(
+            f"'{record.name}.__init__' must call 'super().__init__(...)' "
+            f"(or '{parent_rec.name}.__init__(self, ...)') as its first "
+            f"statement: '{parent_rec.name}' cannot be constructed without "
+            f"arguments ({reason}), so the inherited fields are left "
+            f"uninitialized.",
+            method,
+        )
+
+    def _explain_default_ctor_deletion(self, rec: 'RecordInfo') -> str:
+        """Produce a one-clause user-facing explanation of why `rec` cannot
+        be constructed without arguments. Walks the same chain as
+        `_record_default_ctor_is_deleted` and reports the FIRST source it
+        finds, so the message attributes the actual cause (a specific
+        field on `rec` itself, or on an ancestor) rather than blaming
+        `rec` generically.
+        """
+        if del_suppresses_default_ctor(rec):
+            return (f"'{rec.name}' has '__del__' and required '__init__' "
+                    f"parameters")
+        for fld in rec.fields:
+            if self._field_type_blocks_default_ctor(fld.type):
+                return (f"field '{fld.name}' has type '{str(fld.type)}', "
+                        f"which itself cannot be constructed without "
+                        f"arguments")
+        for p in rec.parents:
+            if not isinstance(p, NominalType) or p.is_protocol:
+                continue
+            p_rec = self.ctx.registry.get_record_for_type(p)
+            if p_rec is None or p_rec.is_native or p_rec.builtin_type_key:
+                continue
+            if self._record_default_ctor_is_deleted(p_rec):
+                inner = self._explain_default_ctor_deletion(p_rec)
+                return (f"ancestor '{p_rec.name}' (inherited by "
+                        f"'{rec.name}') has the same restriction: {inner}")
+        return "a field or ancestor has no zero-argument constructor"
+
+    def _record_default_ctor_is_deleted(
+        self, rec: 'RecordInfo', _visited: set[str] | None = None,
+    ) -> bool:
+        """True if the C++ `Base() = default;` for this user record would
+        be implicitly deleted -- either codegen explicitly suppresses it
+        (via `del_suppresses_default_ctor`) or some field / ancestor's
+        type lacks a C++ default ctor.
+
+        Mirrors codegen's `_all_fields_default_constructible` but inverted
+        (returns True when default-ctor is unavailable). `_visited` guards
+        cyclic shapes (parent reachable via own generic instantiation,
+        mutual-import edge cases).
+        """
+        if _visited is None:
+            _visited = set()
+        if rec.name in _visited:
+            return False
+        _visited = _visited | {rec.name}
+        if del_suppresses_default_ctor(rec):
+            return True
+        for fld in rec.fields:
+            if self._field_type_blocks_default_ctor(fld.type, _visited):
+                return True
+        # Route parents through the field-type predicate so generic
+        # parents (e.g. `class C(Box[Int32])`) dispatch through the
+        # `type_args` branch and consult the base template's
+        # `del_suppresses_default_ctor`.
+        for p in rec.parents:
+            if self._field_type_blocks_default_ctor(p, _visited):
+                return True
+        return False
+
+    def _field_type_blocks_default_ctor(
+        self, typ: TpyType, _visited: set[str] | None = None,
+    ) -> bool:
+        """True if a field of this type forces the enclosing record's C++
+        default ctor to be deleted. Mirrors codegen's
+        `_fld_type_cpp_default_constructible` in `codegen_cpp/records.py`
+        (this is the inverse).
+        """
+        typ = unwrap_readonly(typ)
+        # Storage-form Own[T] field stores T inline; the wrapped type's
+        # default-ctor is what matters.
+        if isinstance(typ, OwnType):
+            return self._field_type_blocks_default_ctor(typ.wrapped, _visited)
+        # Shapes with usable C++ default ctors regardless of T.
+        if isinstance(typ, (OptionalType, PtrType)):
+            return False
+        if is_enum_type(typ):
+            return False
+        if is_list(typ) or is_dict(typ) or is_set(typ) or is_span(typ):
+            return False
+        # Tuple / Array: default-ctorable iff every element is.
+        if isinstance(typ, TupleType):
+            return any(self._field_type_blocks_default_ctor(et, _visited)
+                       for et in typ.element_types)
+        if is_array(typ):
+            elem = typ.get_element_type()
+            return elem is not None and self._field_type_blocks_default_ctor(elem, _visited)
+        # Union field lowers to std::variant<...>; codegen's
+        # `_fld_type_cpp_default_constructible` does not special-case
+        # UnionType and falls through to `_is_default_constructible`
+        # which also returns False for it -- so codegen never emits
+        # `Outer() = default;` for a class with a union field. Mirror
+        # that: every union field blocks the enclosing default ctor.
+        # (Optional[T] is OptionalType, not UnionType, and stays
+        # default-ctorable via the OptionalType branch above.)
+        if isinstance(typ, UnionType):
+            return True
+        if isinstance(typ, NominalType) and not typ.is_protocol:
+            # Generic instantiation: codegen emits `= default;` for the
+            # template unless the base template itself suppresses default
+            # construction (Box/Rc/Weak, __del__-shapes). Mirror that.
+            if typ.type_args:
+                base_rec = self.ctx.registry.get_record(typ.name)
+                if base_rec is None:
+                    return False
+                return del_suppresses_default_ctor(base_rec)
+            rec = self.ctx.registry.get_record_for_type(typ)
+            if rec is None or rec.builtin_type_key or rec.is_native:
+                return False
+            return self._record_default_ctor_is_deleted(rec, _visited)
+        return False
 
     def _type_has_del_or_nocopy(self, field_type: TpyType) -> bool:
         """Check if a type (or any ancestor in its MRO) has __del__ or is @nocopy."""
