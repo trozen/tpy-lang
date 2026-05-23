@@ -48,27 +48,53 @@ def partial_substitute(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
     return typ.map_inner_types(lambda t: partial_substitute(t, subst))
 
 
+def post_substitute_hint(
+    ptype: TpyType, subst: dict[str, TpyType],
+) -> TpyType | None:
+    """Substitute ``subst`` into ``ptype`` and unwrap to a usable hint shape.
+
+    Strips Own/Readonly/Ref (via ``unwrap_qualifiers``) AND OptionalType so
+    the hint reaches consumers (lambda ``is_callable_type`` check, literal
+    branches, constructor LHS-hint preference) in a directly-usable inner
+    shape -- an ``Optional[T]`` param accepts a bare T arg, so the hint that
+    survives substitution should expose T to the inner record/function's seed.
+
+    Returns None when the substitution is empty or leaves any unbound
+    ``TypeParamRef`` -- callers fall back to hint-less analysis in that case.
+
+    Shared between ``seeded_arg_hint`` (function/method call args, indexed
+    via ``ParamInfo``) and ``_analyze_record_constructor``'s inline
+    arg-seeding loop (indexed via ``record.init_params`` 3-tuples) so that
+    qualifier-stripping rules stay symmetric across the two sites.
+    """
+    if not subst:
+        return None
+    hint = partial_substitute(ptype, subst)
+    hint = unwrap_qualifiers(hint)
+    if isinstance(hint, OptionalType):
+        hint = hint.inner
+        hint = unwrap_qualifiers(hint)
+    if contains_type_param(hint):
+        return None
+    return hint
+
+
 def seeded_arg_hint(
     params: list[ParamInfo], idx: int, subst: dict[str, TpyType],
 ) -> TpyType | None:
     """Per-arg ``expr_type_hint`` from a seeded type-param substitution.
 
     Resolves the param the call argument at position ``idx`` targets, then
-    substitutes ``subst`` and strips Own/Readonly/Ref qualifiers so the hint
-    arrives in a shape that the various ``analyze_expr_with_hint`` consumers
-    can consume directly (the lambda branch's ``is_callable_type`` check, the
-    list/dict literal branches, and the constructor LHS-hint preference all
-    expect the bare inner type).
+    delegates to ``post_substitute_hint`` for the substitute+unwrap step.
 
     Variadic positions: every arg at or beyond the ``*args`` slot maps to
     the variadic param's element type (with the ``Span[readonly[T]]``
     packing stripped), mirroring how ``infer_type_params_for_function``
     matches variadic args.
 
-    Returns None when the substitution leaves unbound ``TypeParamRef``s
-    (an incomplete hint), when there's no valid target param for the index,
-    or when the substitution is empty. Caller dispatches on None to fall
-    back to hint-less arg analysis.
+    Returns None when there's no valid target param for the index, or when
+    ``post_substitute_hint`` rejects the result. Caller dispatches on None
+    to fall back to hint-less arg analysis.
     """
     if not subst:
         return None
@@ -83,16 +109,7 @@ def seeded_arg_hint(
     if target.is_variadic and is_span(ptype):
         # *args: T was lowered to Span[readonly[T]]; expose the element.
         ptype = unwrap_readonly(ptype.type_args[0])
-    hint = partial_substitute(ptype, subst)
-    # Strip Own / Readonly so consumers that don't unwrap themselves
-    # (e.g. lambda's is_callable_type check) still see the inner shape.
-    if isinstance(hint, OwnType):
-        hint = hint.wrapped
-    if isinstance(hint, ReadonlyType):
-        hint = hint.wrapped
-    if contains_type_param(hint):
-        return None
-    return hint
+    return post_substitute_hint(ptype, subst)
 
 
 def _is_useful_seed_binding(t: object) -> bool:
@@ -114,13 +131,18 @@ def _is_useful_seed_binding(t: object) -> bool:
       they never substitute into per-arg hints, but they would still leak
       into ``partial_inferred`` and conflict with arg-derived ``N`` during
       Phase-2 array matching.
+    - ``IntLiteralType`` / ``FloatLiteralType`` literal markers: like the
+      pending types, these are transient seed values that
+      ``infer_type_params_for_function`` resolves post-arg-inference (to
+      the default int/float type). Leaving them in the seed would pin a
+      type param to a literal type before arg evidence widens it.
     """
     if isinstance(t, int):  # int-kind binding (Array[T, N])
         return False
     return not isinstance(
         t,
         (NoneType, VoidType, UnknownElementType, PendingViewType, PendingListType,
-         TypeParamRef),
+         TypeParamRef, IntLiteralType, FloatLiteralType),
     )
 
 
@@ -1250,6 +1272,33 @@ class TypeOperations:
             else:
                 self._apply_lhs_hint_to_function_return(r_arg, h_arg, inferred)
 
+    def _seed_subst(
+        self, pattern: TpyType, hint: TpyType,
+    ) -> dict[str, TpyType]:
+        """Match a TPRef-bearing ``pattern`` against ``hint`` and return the
+        useful inferred bindings.
+
+        Internal helper shared by ``seed_subst_from_return_hint`` (function /
+        method calls; pattern = ``func.return_type``) and
+        ``seed_subst_from_record_pattern`` (record constructors; pattern =
+        ``NominalType(record.name, [TypeParamRef(tp) for tp ...])``).
+
+        Strips Own/Readonly/Ref qualifiers from both sides (mirrors
+        ``_apply_lhs_hint_to_function_return``) so a ``readonly[Container[T]]``
+        LHS hint or an ``Own[Container[T]]`` return type still seeds correctly.
+        ``match_type_with_inference`` mutates its accumulator even on branches
+        that ultimately return False, so the match runs into a temporary dict
+        and the bindings are committed only on overall success -- prevents a
+        structurally-shaped but inner-mismatched LHS hint from leaking partial
+        seed bindings.
+        """
+        p = unwrap_qualifiers(pattern)
+        h = unwrap_qualifiers(hint)
+        tmp: dict[str, TpyType] = {}
+        if not self.match_type_with_inference(p, h, tmp):
+            return {}
+        return {k: v for k, v in tmp.items() if _is_useful_seed_binding(v)}
+
     def seed_subst_from_return_hint(
         self, func: FunctionInfo, expected_return_type: TpyType | None,
     ) -> dict[str, TpyType]:
@@ -1257,33 +1306,47 @@ class TypeOperations:
         ``func.return_type``. Used to give nested generic call args a hint
         that reflects the LHS-derived outer type before arg-driven inference
         has any evidence to contribute.
-
-        The seed is best-effort: bindings to "no info" placeholders
-        (None/Void/Unknown -- typically from reassignment-narrowing LHS
-        like ``x = None; x = f(...)``) are dropped so they don't steer
-        downstream arg analysis toward the wrong type. Arg-derived
-        inference still has the final say.
         """
         if expected_return_type is None or func.return_type is None:
             return {}
         if not func.type_params:
             return {}
-        # Strip Own/Readonly/Ref qualifiers from both sides so the match
-        # mirrors ``_apply_lhs_hint_to_function_return``; otherwise a
-        # ``readonly[Container[T]]`` LHS hint (e.g. from a
-        # ``@readonly_propagate`` clone) would silently fail to seed.
-        ret = unwrap_qualifiers(func.return_type)
-        exp = unwrap_qualifiers(expected_return_type)
-        # ``match_type_with_inference`` mutates ``tmp`` as it walks, even on
-        # branches that ultimately return False (the tuple/record loops
-        # short-circuit via ``all(...)`` after writing earlier bindings).
-        # Commit only when the overall match succeeds so a structurally-shaped
-        # but inner-mismatched LHS hint can't leak partial seed bindings into
-        # downstream arg analysis.
-        tmp: dict[str, TpyType] = {}
-        if not self.match_type_with_inference(ret, exp, tmp):
+        return self._seed_subst(func.return_type, expected_return_type)
+
+    def seed_subst_from_record_pattern(
+        self, record: RecordInfo, expected_type: TpyType | None,
+    ) -> dict[str, TpyType]:
+        """Pre-bind type params by matching ``expected_type`` against a
+        ``NominalType(record.name, [TypeParamRef(tp) ...])`` pattern.
+
+        Record-constructor analogue of ``seed_subst_from_return_hint``: gives
+        constructor args a contextual hint reflecting the LHS-derived outer
+        type before arg-driven inference has any evidence to contribute.
+        Lets nested generic chains like ``Rc.new(Box(Box(Dog(...))))`` resolve
+        through the inner Box's args, not just the outer Rc.new's.
+        """
+        if expected_type is None or not record.type_params:
             return {}
-        return {k: v for k, v in tmp.items() if _is_useful_seed_binding(v)}
+        # Carry kind + bound on each TPRef so the seed pattern matches the
+        # record's actual type-param shape: INT-kind params (e.g. Array's N)
+        # pair against integer values in ``_match_array_with_inference``, and
+        # bounded type params surface the bound for downstream consumers
+        # that inspect TPRef.bound.
+        type_param_kinds = record.type_param_kinds or [TypeParamKind.TYPE] * len(record.type_params)
+        pattern_args: tuple[TpyType, ...] = tuple(
+            TypeParamRef(
+                tp,
+                bound=record.type_param_bounds.get(tp),
+                kind=type_param_kinds[i],
+            )
+            for i, tp in enumerate(record.type_params)
+        )
+        pattern = NominalType(
+            record.name,
+            pattern_args,
+            _module_qname=record.qualified_name(),
+        )
+        return self._seed_subst(pattern, expected_type)
 
     def _inherits_protocol(self, concrete: TpyType, protocol: NominalType) -> bool:
         """Return True if `concrete` transitively implements a @dynamic protocol matching `protocol`.

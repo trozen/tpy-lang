@@ -46,7 +46,7 @@ from .overloads import (
     _scalar_widening_cost,
 )
 from .statements import _root_name_of_expr, _is_self_call_deferred
-from .type_ops import partial_substitute, seeded_arg_hint
+from .type_ops import partial_substitute, post_substitute_hint, seeded_arg_hint
 from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo, _is_static_str
 from ..macro_loader import expand_call_macro
 
@@ -4557,7 +4557,48 @@ class CallAnalyzer:
                             loc=expr.loc, allow_forward_ref=False)
                 wildcard_type_args = expr.type_args
             if record.has_init:
-                arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+                # Arity check up-front so the diagnostic matches what the
+                # function-call path emits (`expects N got M`) instead of
+                # the inscrutable 'Cannot infer type arguments' that
+                # `infer_type_params_for_record` returns on arity mismatch.
+                min_args = _init_params_min_args(record.init_params)
+                max_args = len(record.init_params)
+                if len(expr.args) < min_args or len(expr.args) > max_args:
+                    raise self.ctx.error(
+                        arity_error_msg(f"{record.name}()", min_args, max_args, len(expr.args)),
+                        expr
+                    )
+
+                # Seed type-param bindings from the LHS hint vs the record
+                # pattern so nested generic-constructor chains see a
+                # contextual hint on their first analysis pass -- symmetric
+                # to the function/method-call seeding in
+                # `_analyze_generic_function_call`. Wildcard explicit type
+                # args overlay the seed at their positions; concrete explicit
+                # type args take priority over both.
+                seed_subst = self.type_ops.seed_subst_from_record_pattern(
+                    record, self.ctx.expr_type_hint
+                )
+                # Always copy so the loop below can't accidentally mutate the
+                # dict that ``seed_subst_from_record_pattern`` returned;
+                # mirrors the function-call path at line 4247.
+                merged_seed = dict(seed_subst)
+                if wildcard_type_args:
+                    for tp, ta in zip(record.type_params, wildcard_type_args):
+                        if ta is not None:
+                            merged_seed[tp] = ta
+
+                arg_types: list[TpyType] = []
+                for i, arg in enumerate(expr.args):
+                    hint: TpyType | None = None
+                    if i < len(record.init_params):
+                        _, ptype, _ = record.init_params[i]
+                        hint = post_substitute_hint(unwrap_ref_type(ptype), merged_seed)
+                    if hint is not None:
+                        arg_types.append(self.expr.analyze_expr_with_hint(arg, hint))
+                    else:
+                        arg_types.append(self.expr.analyze_expr(arg))
+
                 inferred = self.type_ops.infer_type_params_for_record(
                     record, arg_types, expected_type=self.ctx.expr_type_hint,
                     explicit_type_args=wildcard_type_args,
@@ -4605,14 +4646,17 @@ class CallAnalyzer:
                         for tp, arg in zip(record.type_params, wildcard_type_args):
                             if arg is not None:
                                 inferred[tp] = arg
-                    exp = self.ctx.expr_type_hint
-                    if exp is not None:
-                        if isinstance(exp, OwnType):
-                            exp = exp.wrapped
-                        record_pattern = NominalType(record.name, tuple(
-                            TypeParamRef(tp) for tp in record.type_params
-                        ), _module_qname=record.qualified_name())
-                        self.type_ops.match_type_with_inference(record_pattern, exp, inferred)
+                    # Route LHS-hint matching through the shared helper so
+                    # the no-__init__ branch uses the same qualifier-strip
+                    # (Own/Readonly/Ref via unwrap_qualifiers) and useful-
+                    # binding filter as the has_init=True seed path.
+                    # Explicit wildcard args (already in `inferred`) take
+                    # precedence over the LHS-derived seed at their slots.
+                    seeded = self.type_ops.seed_subst_from_record_pattern(
+                        record, self.ctx.expr_type_hint
+                    )
+                    for tp, val in seeded.items():
+                        inferred.setdefault(tp, val)
                     if all(tp in inferred for tp in record.type_params):
                         # Validate type parameter bounds
                         for param_name, type_arg in inferred.items():

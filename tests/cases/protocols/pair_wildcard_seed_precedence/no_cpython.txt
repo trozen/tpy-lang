@@ -1,0 +1,1 @@
+Wildcard `_` in type-args is a tpyc-specific sentinel; CPython resolves it as a name and raises NameError.
