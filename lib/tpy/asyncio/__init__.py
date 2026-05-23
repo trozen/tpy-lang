@@ -219,6 +219,164 @@ async def wait_for[T](coro: Own[Awaitable[T]], timeout: float) -> T:
     return await _WaitForFuture[T](coro, timeout)
 
 
+@nocopy
+class _GatherFuture[T]:
+    """Drives N already-spawned `Task[T]`s concurrently and harvests
+    their results in input order.
+
+    Each `__poll__` cycle polls every still-unsettled task with the
+    awaiter's waker. When a sub-task completes, its TaskState wakes
+    that waker, scheduling another gather poll. On the first failure
+    (or outer cancel), transitions to cleanup mode: propagates
+    `cancel()` to remaining sub-tasks and discards their values as
+    they settle. Re-raises the first exception once every sub-task
+    has settled.
+
+    v1.5 limitation: sub-tasks are executor-owned (built via
+    `create_task`). `cancel()` flips the in-flight frame's
+    `__cancel_pending` flag but does NOT mark the slot runnable, so a
+    sub-task parked on a sleep / Future observes its cancel only at
+    its next scheduled wake. Cleanup completes correctly, just not
+    instantly. CPython's gather uses the equivalent of a runnable-
+    after-cancel hook on `Task`; matching that latency needs a slot-
+    id plumbing on `Task[T]` and is tracked as a follow-up.
+    """
+
+    _tasks: list[Task[T]]
+    _completion_indices: list[Int32]
+    _completion_boxes: list[Box[T]]
+    _settled: list[bool]
+    _exc: Box[Throwable] | None
+    _completed: Int32
+    _cleanup: bool
+    _cancel_pending: bool
+
+    def __init__(self, tasks: list[Task[T]]) -> None:
+        # tasks is borrowed from the caller. Rc-clone each Task into
+        # our owned list so the future is self-contained -- avoids the
+        # codegen gap on passing a named-local Own[list[T]] arg into a
+        # sub-coro emplace (cheap: each clone is one refcount bump on
+        # the underlying TaskState).
+        self._tasks = []
+        self._completion_indices = []
+        self._completion_boxes = []
+        self._settled = []
+        self._exc = None
+        self._completed = 0
+        self._cleanup = False
+        self._cancel_pending = False
+        for t in tasks:
+            self._tasks.append(t.clone())
+            self._settled.append(False)
+
+    # Required for structural conformance to `@dynamic Cancellable[T]`.
+    # Mirrors the SleepFuture / _WaitForFuture pattern: just flips the
+    # signal; the next __poll__ propagates to sub-tasks.
+    def cancel(self) -> None:
+        self._cancel_pending = True
+
+    def __poll__(self, waker: Waker) -> Own[Poll[list[T]]]:
+        # Empty gather is trivially complete on every poll, including
+        # the first one after an outer cancel. Matches CPython's
+        # "gather() with no args returns []".
+        n = len(self._tasks)
+        if n == 0:
+            empty: list[T] = []
+            return poll_ready(empty)
+
+        # Consume cancel signal up front so a re-cancel arriving after
+        # cleanup is already in flight doesn't accumulate (mirrors
+        # _WaitForFuture). Propagate cancel into sub-tasks now; defer
+        # claiming `_exc` until AFTER the per-task loop so a freshly
+        # observable inner exception this cycle wins over the cancel
+        # (avoids silently dropping a real failure under racing-cancel).
+        was_canceling = self._cancel_pending
+        self._cancel_pending = False
+        if was_canceling and not self._cleanup:
+            self._cleanup = True
+            self._propagate_cancel()
+
+        # Poll every unsettled task with the shared waker. Multiple
+        # wakes between polls coalesce at the executor (one runnable
+        # flag per slot), so the O(N) re-poll per cycle is bounded.
+        i: Int32 = 0
+        while i < n:
+            if not self._settled[i]:
+                try:
+                    p = self._tasks[i].__poll__(waker)
+                    if p.is_ready():
+                        self._settled[i] = True
+                        self._completed += 1
+                        if self._cleanup:
+                            # Cleanup mode: discard value; `p` drops
+                            # at end of block and the destructor
+                            # disposes the contained T.
+                            pass
+                        else:
+                            self._completion_indices.append(i)
+                            self._completion_boxes.append(Box(p.value()))
+                except BaseException as e:
+                    self._settled[i] = True
+                    self._completed += 1
+                    if self._exc is None:
+                        self._exc = Box(e.clone())
+                    if not self._cleanup:
+                        self._cleanup = True
+                        self._propagate_cancel()
+            i += 1
+
+        # Outer-cancel fallback: only claim `_exc` for CancelledError
+        # if nothing real fired this cycle (or any prior one).
+        if was_canceling and self._exc is None:
+            self._exc = Box(CancelledError())
+
+        if self._completed < n:
+            return poll_pending()
+
+        if self._exc is not None:
+            raise self._exc
+
+        # All sub-tasks succeeded. Reorder completions into input
+        # order. O(n^2) walk -- n is typically small (handful of
+        # concurrent operations); fine for v1.5.
+        result: list[T] = []
+        orig_i: Int32 = 0
+        while orig_i < n:
+            k: Int32 = 0
+            kn = len(self._completion_indices)
+            while k < kn:
+                if self._completion_indices[k] == orig_i:
+                    box = self._completion_boxes.pop(k)
+                    self._completion_indices.pop(k)
+                    result.append(box.take())
+                    break
+                k += 1
+            orig_i += 1
+        return poll_ready(result)
+
+    def _propagate_cancel(self) -> None:
+        i: Int32 = 0
+        n = len(self._tasks)
+        while i < n:
+            if not self._settled[i]:
+                self._tasks[i].cancel()
+            i += 1
+
+
+# Run `tasks` concurrently and return their results in input order.
+# On the first sub-task exception (or outer cancellation), propagates
+# `cancel()` to the remaining sub-tasks, waits for them to settle, then
+# re-raises the first exception encountered.
+#
+# TPy-specific helper -- not in CPython. The name `gather` is reserved
+# for the future CPython-compatible variadic-tuple form
+# `gather(c1, c2, c3) -> tuple[T1, T2, T3]` once variadic generics land
+# (TODO.md). Until then, `gather_list` is the homogeneous-only
+# entrypoint: all tasks must share return type `T`.
+async def gather_list[T](tasks: list[Task[T]]) -> list[T]:
+    return await _GatherFuture[T](tasks)
+
+
 class InvalidStateError(Exception):
     """Raised when set_result / set_exception is called on a Future
     that is already done."""

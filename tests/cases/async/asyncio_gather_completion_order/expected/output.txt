@@ -1,0 +1,4 @@
+fast done
+slow done
+result[0]: 100
+result[1]: 200

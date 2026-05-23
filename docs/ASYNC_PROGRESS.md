@@ -1034,6 +1034,79 @@ Out of scope (still rejected): async methods on generic *classes* --
 the out-of-line coro-struct `__poll__` body would need the class's
 template header and a combined arg list.
 
+### M8 SHIPPED -- `asyncio.wait_for` + `TimeoutError` + outer-cancel propagation
+
+`async def wait_for[T](coro: Own[Awaitable[T]], timeout: float) -> T`
+races the inner coroutine against a steady-clock deadline. On expiry,
+cancels the inner and pumps it through `finally`-with-await cleanup
+before raising `TimeoutError`. Outer cancel of a `wait_for` task
+propagates through to the inner via the resume cancel-check (auto-
+emitted in every async-def coro frame). `TimeoutError` re-exported
+from `builtins`; the C++ side is `tpy::TimeoutError` inheriting
+`Exception`. Implementation: hand-written `_WaitForFuture[T]` holds
+the inner as `Box[Cancellable[T]]` via `_box_coro[T]`.
+
+### M9 SHIPPED -- `asyncio.gather_list` (homogeneous list shape)
+
+`async def gather_list[T](tasks: list[Task[T]]) -> list[T]` runs N
+already-spawned tasks concurrently and harvests their results in input
+order. Mirrors `wait_for`'s template: hand-written `_GatherFuture[T]`
+wrapped by a thin `async def`. On the first sub-task exception (or
+outer cancel) gather_list transitions to cleanup mode, calls `cancel()`
+on the still-pending siblings, then re-raises the first exception
+observed once every task has settled.
+
+**API surface.** TPy-specific name -- not in CPython. Homogeneous-only:
+all tasks share return type `T`. The name `gather` is deliberately
+reserved for the future CPython-compatible variadic-tuple form
+`gather(c1, c2, c3) -> tuple[T1, T2, T3]` once variadic generics land
+(TODO.md). Naming the v1.5 helper differently from `gather` keeps the
+call-site spelling honest: a user who writes `await gather(t1, t2)`
+sees "no such function" instead of an obscure type error against the
+list-arg shape, and the future variadic-tuple form can ship without a
+breaking rename or two-name overload. (Even after variadic generics
+exist, async-def `*args` calls need the codegen fix in BUGS.md before
+a vararg-shape `gather` can ship.)
+
+**Mechanism.** `_GatherFuture[T]` Rc-clones each input task into an
+owned `list[Task[T]]` via the new `Task[T].clone()` method (a one-line
+refcount-bump). Per-cycle, polls every unsettled task with the
+awaiter's shared waker; completed values are stored in parallel
+`_completion_indices` / `_completion_boxes` lists in completion order,
+then reordered into input order via an O(n^2) walk at the end (n is
+typically small). First exception encountered stays as `_exc: Box[Throwable] | None`;
+subsequent failures are observed but not stored. Cleanup-mode polls
+still drain remaining tasks so the future doesn't return with sub-tasks
+in flight.
+
+**Test cases** (`tests/cases/async/asyncio_gather_*`):
+
+- `basic` -- three tasks, results in input order.
+- `empty` -- `gather_list([])` returns `[]` immediately.
+- `single` -- N=1 degenerate path.
+- `completion_order` -- slow/fast interleave; result order matches input.
+- `inner_raises` -- first failure cancels still-pending siblings;
+  gather_list re-raises. The cancelled sibling observes its
+  `__cancel_pending` flag inside its sleep wake (sleep's resume cancel-
+  check propagates).
+- `outer_cancel` -- gather_list raises `CancelledError` to its caller
+  when its owning task is cancelled (current v1.5 limitation: sub-
+  tasks may complete normally before cancel reaches them; see follow-up).
+- `in_finally` -- gather_list inside a `finally` clause, exercising the
+  M3.3 await-in-finally CFG lowering.
+
+All gather_list tests carry `no_cpython.txt` because gather_list is
+TPy-specific (no CPython equivalent under that name).
+
+**Cancel-observation latency follow-up (NOT shipped).** `Task.cancel()`
+flips the in-flight frame's `__cancel_pending` flag but does NOT mark
+the slot runnable, so outer-cancel observation inside a sub-task waits
+on the sub-task's next natural wake (timer / IO event). Same gap
+affects `wait_for_outer_cancel`. Closing it needs slot-id plumbing on
+`Task[T]` + a generation-free `mark_runnable_no_gen` helper on
+`Executor`. ~20 lines but a separate change since it improves
+cancellation semantics broadly, not just gather.
+
 ## v1.x milestone: asyncio runtime TPy port (must precede v1.5)
 
 The v1 asyncio runtime (Executor + run loop + spawn registration + sleep

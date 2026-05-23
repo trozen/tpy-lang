@@ -5681,7 +5681,7 @@ Send/Sync rules for built-in types:
   sub-coro before polling, so the inner observes `CancelledError`
   at its suspension point and can run `finally`-with-await cleanup).
   Implementation: hand-written `_WaitForFuture[T]` awaitable holds
-  the inner as `Box[AsyncFrame[T]]`.
+  the inner as `Box[Cancellable[T]]`.
 - **Working (v1.5 M8)**: `Own[Awaitable[T]]`-shaped (static-protocol)
   params on `async def` generic free functions and methods. The
   param's concrete type is deduced as an extra template arg
@@ -5700,12 +5700,32 @@ Send/Sync rules for built-in types:
   `emplace(...)` call site by the same coercion sync uses. Same
   `nullptr`-doubles-as-uninitialized-and-None convention as the
   matching hoisted-locals row in the generator section above.
-- **Open (v1.5+)**: `gather`,
-  nesting two `await`-in-`finally` regions (multi-item / nested
-  `async with`), await inside a `for`/`while` `else:` clause,
-  `async for ... else:`, executor slot reuse, reporting when bounded
-  cancellation drain leaves tasks pending, and full `async with` with
-  `__aexit__` exc_val inspection (E9 / Phase 20).
+- **Working (v1.5 M9)**: `asyncio.gather_list(tasks)` -- run N already-
+  spawned tasks concurrently and harvest their results in input order.
+  Homogeneous shape: `gather_list(tasks: list[Task[T]]) -> list[T]`
+  (all tasks share return type `T`). User pre-spawns each via
+  `asyncio.create_task`; gather_list Rc-clones the handles into a
+  self-contained `_GatherFuture[T]`. On the first sub-task exception
+  (or outer cancel) gather_list enters cleanup mode, calls `cancel()`
+  on the still-pending siblings, waits for them to settle, then re-
+  raises the first exception observed. TPy-specific helper -- not in
+  CPython; the name `gather` is reserved for the future variadic-tuple
+  shape `gather(c1, c2, c3) -> tuple[T1, T2, T3]` (needs variadic
+  generics; tracked in TODO.md), which will land alongside the list
+  shape rather than replace it. Implementation:
+  `lib/tpy/asyncio/__init__.py:_GatherFuture` (Rc-clones tasks,
+  parallel completion-order lists, O(n^2) reorder at end);
+  `lib/tpy/asyncio/_executor.py` grows `Task[T].clone()`. Outer-
+  cancel observation inside still-running sub-tasks is bounded by
+  the sub-task's next natural wake (timer / IO event); a follow-up
+  TODO to plumb slot-id through `Task` so `Task.cancel()` can
+  `mark_runnable` would close that latency.
+- **Open (v1.5+)**: nesting two `await`-in-`finally` regions
+  (multi-item / nested `async with`), await inside a `for`/`while`
+  `else:` clause, `async for ... else:`, executor slot reuse,
+  reporting when bounded cancellation drain leaves tasks pending,
+  and full `async with` with `__aexit__` exc_val inspection (E9 /
+  Phase 20).
 
 ---
 

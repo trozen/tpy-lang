@@ -156,7 +156,7 @@ Examples of the policy in action:
 | [`pickle`](#pickle) | P2 | Blocked | 0% | -- | Needs dynamic type info + `io` |
 | [`shelve`](#shelve) | P3 | Blocked | 0% | -- | Needs pickle |
 | [`inspect`](#inspect) | P2 | Blocked | 0% | -- | Needs runtime type/func introspection |
-| [`asyncio`](#asyncio) | P1 | Partial | ~30% | pure | v1: `run`/`sleep`/`create_task`/`Task[T]`/`Future[T]`/`Event`/`CancelledError` + thread-local executor with slot table, runnable deque, timer min-heap, cancel-drain at run-end. v1.5 M5+M6: `async with` (cleanup-only), `async for` + `StopAsyncIteration`. v1.5 M8: `wait_for`/`TimeoutError`. Missing: `gather` (v1.5); I/O reactor (v2); multi-thread (v3+) |
+| [`asyncio`](#asyncio) | P1 | Partial | ~35% | pure | v1: `run`/`sleep`/`create_task`/`Task[T]`/`Future[T]`/`Event`/`CancelledError` + thread-local executor with slot table, runnable deque, timer min-heap, cancel-drain at run-end. v1.5 M5+M6: `async with` (cleanup-only), `async for` + `StopAsyncIteration`. v1.5 M8: `wait_for`/`TimeoutError`. v1.5 M9: `gather_list` (TPy-specific homogeneous-list shape; `gather` reserved for the future variadic-tuple form). Missing: CPython-shape variadic `gather` (needs variadic generics + async-def `*args` codegen); I/O reactor (v2); multi-thread (v3+) |
 | [`threading`](#threading) | P1 | Blocked | 0% | -- | Needs threading primitives |
 | [`multiprocessing`](#multiprocessing) | P2 | Blocked | 0% | -- | Needs process spawning + IPC |
 | [`subprocess`](#subprocess) | P1 | Blocked | 0% | -- | Needs process spawning |
@@ -1080,7 +1080,9 @@ v1.5 M3-M6: SHIPPED. Awaits inside arbitrary control flow (`if`/`while`/`for`/`w
 
 v1.5 M8: SHIPPED. `asyncio.wait_for(coro, timeout) -> T` (`async def` free function) + built-in `TimeoutError`. Pumps inner cleanup through `finally`-with-await on deadline; outer cancellation propagates through to the inner coroutine (the auto-emitted resume-case cancel-check now calls `cancel()` on the in-flight sub-coro before polling, so the inner observes `CancelledError` at its suspension point and can run cleanup before the cancellation surfaces). The async-def codegen path was extended in M8 to handle `Own[Awaitable[T]]`-shaped params via a deduced `T_<pname>` extra template arg with the protocol concept constraint, mirroring the existing non-async pattern. Caller-side sub-coro field declarations use `std::remove_cvref_t<decltype(arg)>` to deduce the concrete coro type without sema knowing it.
 
-Pending (v1.5): `gather`, partial / nested try-around-await (see BUGS.md for the specific CFG-build limits).
+v1.5 M9: SHIPPED. `asyncio.gather_list(tasks: list[Task[T]]) -> list[T]` -- homogeneous-list shape that runs N already-spawned tasks concurrently and collects their results in input order. On the first sub-task failure (or outer cancel) propagates `cancel()` to siblings, drains to settlement, then re-raises the first exception observed. `gather_list` is a TPy-specific name; `gather` is deliberately reserved for the future CPython-compatible variadic-tuple shape `gather(c1, c2, c3) -> tuple[T1, T2, T3]` (blocked on variadic generics + the async-def `*args` codegen gap; see TODO.md / BUGS.md). Implementation: hand-written `_GatherFuture[T]` Rc-clones each task handle into an owned list via a new `Task[T].clone()` method.
+
+Pending (v1.5): CPython-shape variadic `gather`, partial / nested try-around-await (see BUGS.md for the specific CFG-build limits).
 
 v1.5 M1: SHIPPED. Sync `with` upgraded to CPython-shape `__exit__(self, exc_type, exc_val, exc_tb) -> bool | None`; `bool` return suppresses, `None` is cleanup-only. Class-based exception dispatch via `isinstance(exc_val, X)` is deferred to M2 (blocked on `Optional[BaseException]` slicing -- see `BUGS.md`).
 

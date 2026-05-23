@@ -1,0 +1,5 @@
+inner-try
+cleanup a
+cleanup b
+finally-done
+caught: inner-fail

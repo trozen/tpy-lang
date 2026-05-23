@@ -193,6 +193,24 @@ class Task[T]:
     def cancel(self) -> None:
         self._state.get().cancel_any()
 
+    # Cheap duplication: Task is an Rc handle into the shared TaskState,
+    # so clone() just bumps the refcount. Used by asyncio.gather_list to
+    # take owned task handles without consuming the caller's list.
+    #
+    # WARNING (v1.5): the clone aliases the SAME TaskState as `self`.
+    # TaskState is single-awaiter (one `awaiter: Waker` slot, one cached
+    # result slot consumed on first __poll__ that observes Ready). Two
+    # live handles must not be awaited concurrently and must not both
+    # consume the result -- only one consumer survives, the other's
+    # poll panics or its waker is overwritten. Likewise `cancel()` on
+    # either handle propagates through the shared TaskState to BOTH.
+    # `gather_list` is the only safe internal user today (it drives the
+    # clone exclusively; the user is expected to drop their reference
+    # to the original `tasks[i]` once they've passed the list in). A
+    # multi-awaiter TaskState is filed in TODO.md.
+    def clone(self) -> Own[Task[T]]:
+        return Task[T](self._state.clone())
+
 
 # Wrap a concrete coro in `Box[Cancellable[T]]`. `decltype({0})`
 # recovers the concrete CoroT at the call site so the Adapter
