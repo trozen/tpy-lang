@@ -32,6 +32,7 @@ from ..parse.nodes import (
     TpyBoolLiteral,
     TpyBreak,
     TpyCall,
+    TpyContinue,
     TpyEnum,
     TpyExprStmt,
     TpyFieldAccess,
@@ -71,10 +72,12 @@ from .nodes import (
     BinOp,
     BinOpKind,
     BoolLit,
+    Break,
     Call,
     CallableType,
     CmpOpKind,
     Compare,
+    Continue,
     Enum,
     EnumValue,
     ExprStmt,
@@ -507,6 +510,10 @@ def _lower_stmt(
             if value is None:
                 return None
         return TpyReturn(value=value, loc=loc)
+    if isinstance(stmt, Break):
+        return TpyBreak(loc=loc)
+    if isinstance(stmt, Continue):
+        return TpyContinue(loc=loc)
     if isinstance(stmt, Raise):
         value = None
         if stmt.value is not None:

@@ -498,8 +498,25 @@ class Match:
     loc: Loc | None = None
 
 
+@dataclass
+class Break:
+    """`break` -- exit the innermost enclosing loop. Loop nesting is
+    determined by the lowered TpyModule's structure, the same way
+    Python source `break` resolves."""
+    kind: str = field(default="Break", init=False)
+    loc: Loc | None = None
+
+
+@dataclass
+class Continue:
+    """`continue` -- skip to the next iteration of the innermost
+    enclosing loop."""
+    kind: str = field(default="Continue", init=False)
+    loc: Loc | None = None
+
+
 Stmt = Union[ExprStmt, VarDecl, Assign, If, While, RepeatUntil,
-             ForRange, ForEach, Match, Return, Raise]
+             ForRange, ForEach, Match, Return, Raise, Break, Continue]
 
 
 # --- Enum declarations ---------------------------------------------------
