@@ -11,7 +11,7 @@ from typing import Callable, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, OwnType, OptionalType, TupleType, own_tuple_target, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
-    is_polymorphic_class_type,
+    is_polymorphic_class_type, polymorphic_source_inner,
     IntLiteralType, resolve_int_literals,
     LiteralType, LiteralValue, LiteralTag, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, is_void_like_type, ParamInfo, ReadonlyType,
@@ -1693,10 +1693,11 @@ class CallAnalyzer:
         var_name: str,
         expr: TpyCall,
     ) -> TpyType:
-        """Validate isinstance() check types against an Optional[Polymorphic]
-        inner class and set up runtime dispatch. Shared between the
-        Optional-source and post-narrowing branches of ``_analyze_isinstance``
-        so both stay in lockstep.
+        """Validate isinstance() check types against a polymorphic-class
+        source's inner root and set up runtime dispatch. Shared between the
+        `Optional[Polymorphic]`, bare polymorphic, and post-`is None`
+        narrowing branches of ``_analyze_isinstance`` so they stay in
+        lockstep.
         """
         non_subs = [
             ct for ct in check_types
@@ -1707,7 +1708,7 @@ class CallAnalyzer:
             names = ", ".join(f"'{t}'" for t in non_subs)
             raise self.ctx.error(
                 f"isinstance() check type(s) {names} are not subclasses of "
-                f"'{inner}' (Optional[{inner}] dispatch)",
+                f"'{inner}'",
                 expr,
             )
         expr.isinstance_var = var_name
@@ -1764,20 +1765,24 @@ class CallAnalyzer:
         # downstream narrowing / codegen extractions still run.
         narrowed = self.ctx.func.narrowed_types.get(first_arg.name)
         static_fold: bool | None = None
-        # When the variable was declared as Optional[Polymorphic], even after
-        # `is not None` narrowing strips Optional to its inner class type, the
-        # C++ representation remains `const Inner*` -- a pointer to a
-        # polymorphism-intact object. dynamic_cast against a descendant is
-        # sound, so we skip the static fold and let the runtime path lower the
-        # isinstance to a dynamic_cast.
+        # When the variable was declared as a polymorphic-class source --
+        # `Optional[Polymorphic]` (lowered to `T*`) or a bare polymorphic
+        # class (lowered to `T&`) -- the runtime object retains its dynamic
+        # type and dynamic_cast against a descendant is sound. Skip the
+        # static fold so the runtime path lowers isinstance to a dynamic_cast.
+        # Even after `is not None` narrowing strips Optional to its inner
+        # class type, the C++ representation remains polymorphism-intact.
         declared_param_type = self.expr.narrowing.declared_type_for_name(first_arg.name)
-        declared_unwrapped = (unwrap_readonly(declared_param_type)
-                              if declared_param_type is not None else None)
-        is_opt_polymorphic_source = (
-            isinstance(declared_unwrapped, OptionalType)
-            and is_polymorphic_class_type(declared_unwrapped.inner, self.ctx.registry)
-        )
-        if narrowed is not None and not is_opt_polymorphic_source:
+        polymorphic_source = polymorphic_source_inner(
+            declared_param_type, self.ctx.registry)
+        # `self` lowers to `this` (a pointer to the current class) in methods,
+        # but codegen's `lookup_var_type('self')` doesn't surface that type, so
+        # the polymorphic-dispatch path can't compute the cast input. Until the
+        # codegen self-binding lookup is wired through, route self through the
+        # static-fold path (preserving the pre-branch behavior). See BUGS.md.
+        if first_arg.name == "self":
+            polymorphic_source = None
+        if narrowed is not None and polymorphic_source is None:
             narrowed_inner = self._isinstance_unwrap(narrowed)
             if not self._is_union_alias(narrowed_inner) and not isinstance(
                     narrowed_inner, (UnionType, OptionalType)):
@@ -1847,14 +1852,13 @@ class CallAnalyzer:
             return BOOL
 
         if not isinstance(effective_type, UnionType):
-            # Optional[Polymorphic] post-narrowing: source was declared
-            # Optional[Inner] where Inner is polymorphic; `is not None`
-            # narrowing replaced effective_type with Inner, but the C++
-            # representation is still `const Inner*` and dynamic_cast to a
-            # subclass is sound. Route to runtime dispatch.
-            if is_opt_polymorphic_source and check_types:
+            # Polymorphic source post-narrowing: source was declared as a
+            # polymorphic class (`Optional[Inner]` or bare `Inner`); the
+            # C++ representation is `const Inner*` or `const Inner&` and
+            # dynamic_cast to a subclass is sound. Route to runtime dispatch.
+            if polymorphic_source is not None and check_types:
                 return self._validate_polymorphic_subclass_dispatch(
-                    declared_unwrapped.inner, check_types, first_arg.name, expr)
+                    polymorphic_source, check_types, first_arg.name, expr)
             # Non-union: compile-time evaluate against the static type,
             # walking the inheritance hierarchy. Reuse the narrowed-path
             # fold if it already ran so we don't warn twice.

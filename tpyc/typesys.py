@@ -3392,6 +3392,19 @@ def polymorphic_source_inner(
     return None
 
 
+def polymorphic_source_is_pointer(declared: 'TpyType | None') -> bool:
+    """True if a polymorphic-class source is pointer-shaped at the C++ level
+    (`Optional[Polymorphic]` lowered to `T*`), False for bare polymorphic
+    sources lowered to `T&`. Callers should first confirm the source IS
+    polymorphic via `polymorphic_source_inner`. Drives the `&var` vs `var`
+    cast-input choice in dynamic_cast emission."""
+    if declared is None:
+        return False
+    unwrapped = unwrap_readonly(declared)
+    return (isinstance(unwrapped, OptionalType)
+            and unwrapped.uses_pointer_repr())
+
+
 def polymorphic_subclass_into_optional(
     target_type: TpyType, init_type: TpyType | None, registry: 'TypeRegistry'
 ) -> 'NominalType | None':

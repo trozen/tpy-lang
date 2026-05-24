@@ -13,7 +13,7 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
     NoneType, NominalType, AnyType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type,
-    polymorphic_source_inner, polymorphic_subclass_into_optional, ALL_FIXED_INTS,
+    polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType, LiteralTag,
     is_own_pointer_repr_optional,
     resolve_int_literals,
@@ -2250,9 +2250,10 @@ class StatementGenerator:
         cpp_type = self.types.type_to_cpp(narrowed_type)
         const_pfx = "const " if self._is_const_borrow_source(var_name, var_decl) else ""
         ptr_local = f"__{var_name}_ptr"
+        cast_arg = self.ctx.polymorphic_cast_arg(var_name, var_decl)
         init_expr = (
             f"{const_pfx}{cpp_type}* {ptr_local} = "
-            f"dynamic_cast<{const_pfx}{cpp_type}*>({escape_cpp_name(var_name)})"
+            f"dynamic_cast<{const_pfx}{cpp_type}*>({cast_arg})"
         )
         self.ctx.isinstance_init_locals[var_name] = ptr_local
         return f"{init_expr}; ", [var_name]
@@ -2311,9 +2312,10 @@ class StatementGenerator:
                     continue
                 local_name = f"__{var_name}"
                 cast_const = "const " if self._is_const_borrow_source(var_name, var_decl) else ""
+                cast_arg = self.ctx.polymorphic_cast_arg(var_name, var_decl)
                 out.write(
                     f"{inner_indent}{cast_const}{cpp_type}& {local_name} = "
-                    f"*dynamic_cast<{cast_const}{cpp_type}*>({escape_cpp_name(var_name)});\n"
+                    f"*dynamic_cast<{cast_const}{cpp_type}*>({cast_arg});\n"
                 )
                 saved[var_name] = self.ctx.narrowed_vars.get(var_name)
                 self.ctx.narrowed_vars[var_name] = local_name

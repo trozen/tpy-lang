@@ -1,0 +1,11 @@
+DOG: woof from rex
+pet: whiskers
+mammal: rex
+mammal: whiskers
+other: tweety
+CONST-DOG: woof from rex
+const-pet: whiskers
+ASSERT: woof from rex
+True
+False
+False

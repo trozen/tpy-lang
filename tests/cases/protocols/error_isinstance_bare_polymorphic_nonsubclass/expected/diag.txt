@@ -1,0 +1,1 @@
+main.py:26: error: isinstance() check type(s) 'OtherDyn' are not subclasses of 'Pet'

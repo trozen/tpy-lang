@@ -16,7 +16,7 @@ from ..typesys import (
     PendingListType, ListRepeatType,
     TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_own, unwrap_qualifiers, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     TupleType, CallableType,
-    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, polymorphic_source_inner, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
+    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
     is_float_type, is_readonly_span, is_dyn_protocol)
 from ..type_def_registry import (
@@ -2172,6 +2172,27 @@ class ExpressionGenerator:
                     f"std::any_cast<const {cpp_type}&>({var_ref}.value)"
                 )
                 continue
+            # Polymorphic source: emit `(*static_cast<Sub*>(<src>))` instead
+            # of `std::get<Sub>(...)` -- the source isn't a variant. The `&&`
+            # LHS already validated the cast via `dynamic_cast<Sub*>(<src>)
+            # != nullptr`, so static_cast is well-defined (the standard
+            # guarantees static_cast gives the same glvalue dynamic_cast
+            # would, without a runtime check). Avoids gcc's
+            # `-Wnonnull-compare` complaint on a second dynamic_cast of the
+            # same operand inside the same expression.
+            var_decl = self.ctx.lookup_var_type(var_name)
+            registry = self.ctx.analyzer.registry
+            if (polymorphic_source_inner(var_decl, registry) is not None
+                    and isinstance(narrowed_type, NominalType)):
+                is_const_src = (isinstance(var_decl, ReadonlyType)
+                                or var_name in self.ctx.deep_const_borrow_params
+                                or var_name in self.ctx.const_ref_params)
+                const_pfx = "const " if is_const_src else ""
+                cast_arg = self.ctx.polymorphic_cast_arg(var_name, var_decl)
+                result[var_name] = (
+                    f"(*static_cast<{const_pfx}{cpp_type}*>({cast_arg}))"
+                )
+                continue
             # Pointer-variant unions: *std::get<T*>(var) or *std::get<const T*>(var)
             if var_name in self.ctx.ptr_variant_locals:
                 const_pfx = "const " if var_name in self.ctx.const_indirect_locals else ""
@@ -2423,24 +2444,31 @@ class ExpressionGenerator:
                 check_members = list(expr.isinstance_type.members)
             else:
                 check_members = [expr.isinstance_type]
-            # Polymorphic-class source (Optional[Polymorphic] or readonly-
-            # wrapped form, both pointer-repr). Lower isinstance(var, Subclass)
-            # to dynamic_cast on the pointer -- holds_alternative doesn't apply
-            # (no variant) and the underlying object retains its dynamic type
-            # because temp materialization for these slots preserves the rvalue
-            # type. Use the bare variable name (the raw pointer) -- gen_expr_deref
-            # would produce `(*e)` which isn't a pointer.
+            # Polymorphic-class source. Two shapes:
+            # - Optional[Polymorphic] (pointer-repr): variable IS the pointer,
+            #   `dynamic_cast<Sub*>(var)`.
+            # - Bare polymorphic (reference): variable is `T&`, need
+            #   `dynamic_cast<Sub*>(&var)`.
+            # Lower isinstance(var, Subclass) to dynamic_cast -- holds_alternative
+            # doesn't apply (no variant) and the underlying object retains its
+            # dynamic type because temp materialization for these slots
+            # preserves the rvalue type. Use the bare variable name --
+            # gen_expr_deref would produce `(*e)` which isn't useful here.
             registry = self.ctx.analyzer.registry
             if polymorphic_source_inner(var_decl, registry) is not None:
-                ptr_ref = escape_cpp_name(orig_var)
+                ptr_ref = self.ctx.polymorphic_cast_arg(orig_var, var_decl)
                 # If `_gen_if` pre-bound the cast via C++17 if-init, the
                 # single-member bool check reduces to a null check on the
                 # local -- the dynamic_cast already happened in the if-init.
                 init_local = self.ctx.isinstance_init_locals.get(orig_var)
                 if init_local is not None and len(check_members) == 1:
                     return f"({init_local} != nullptr)"
+                is_const_src = (isinstance(var_decl, ReadonlyType)
+                                or orig_var in self.ctx.deep_const_borrow_params
+                                or orig_var in self.ctx.const_ref_params)
+                const_pfx = "const " if is_const_src else ""
                 checks = [
-                    f"(dynamic_cast<const {self.types.type_to_cpp(m)}*>({ptr_ref}) != nullptr)"
+                    f"(dynamic_cast<{const_pfx}{self.types.type_to_cpp(m)}*>({ptr_ref}) != nullptr)"
                     for m in check_members
                 ]
                 if len(checks) == 1:

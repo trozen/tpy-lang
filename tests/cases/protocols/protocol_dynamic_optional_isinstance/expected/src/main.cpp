@@ -19,7 +19,7 @@ std::string classify(BaseExc* e) {
         return (::tpy::str_concat("VAL: ", narrowed.what()));
     }
     // if isinstance(e, (OsErr, ValErr)):  # tpyc: ok -- tuple form (no narrowing)
-    if (((dynamic_cast<const OsErr*>(e) != nullptr) || (dynamic_cast<const ValErr*>(e) != nullptr))) {
+    if (((dynamic_cast<OsErr*>(e) != nullptr) || (dynamic_cast<ValErr*>(e) != nullptr))) {
         // return "OS-or-VAL: " + e.what()
         return (::tpy::str_concat("OS-or-VAL: ", e->what()));
     }
@@ -39,7 +39,7 @@ std::string classify_direct(BaseExc* e) {
         return (::tpy::str_concat("DIRECT-VAL: ", narrowed.what()));
     }
     // if isinstance(e, BaseExc):  # tpyc: ok -- always-True boundary on non-None
-    if ((dynamic_cast<const BaseExc*>(e) != nullptr)) {
+    if ((dynamic_cast<BaseExc*>(e) != nullptr)) {
         // return "DIRECT-BASE"
         return "DIRECT-BASE";
     }

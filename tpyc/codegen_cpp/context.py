@@ -15,7 +15,7 @@ from ..typesys import (
     IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo, ModuleInfo,
     is_protocol_type, unwrap_readonly, unwrap_qualifiers, ensure_qualified, unwrap_ref_type,
     is_union_or_optional_type, is_own_pointer_repr_optional,
-
+    polymorphic_source_is_pointer,
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -1696,6 +1696,31 @@ class CodeGenContext:
         `std::variant<A*, B*>` slot.
         """
         return self.local_cpp_form(name) is LocalCppForm.VALUE_VARIANT
+
+    def polymorphic_cast_arg(self, var_name: str, var_decl: 'TpyType | None') -> str:
+        """C++ expression to use as the input to dynamic_cast<Sub*>(...)
+        when narrowing the polymorphic source `var_name`.
+
+        Polymorphic isinstance/dynamic_cast needs a pointer input; the right
+        prefix depends on the variable's C++ binding shape, which depends on
+        both the declared type and the binding kind:
+          - `self` in a method -> `this` (already a pointer)
+          - pointer-globals, pointer-locals, imported pointers
+            (`is_indirect_name`) -> the bare name (already a pointer)
+          - declared `Optional[Polymorphic]` (pointer-repr) param -> the bare
+            name (the C++ binding is `T*`)
+          - bare polymorphic param (`T&`) or anything else not above
+            -> `&name` (take the address)
+        """
+        name_expr = TpyName(var_name)
+        if var_name == "self" and self.is_indirect_name(name_expr):
+            return "this"
+        escaped = escape_cpp_name(var_name)
+        if self.is_indirect_name(name_expr):
+            return escaped
+        if polymorphic_source_is_pointer(var_decl):
+            return escaped
+        return f"&{escaped}"
 
     def is_indirect_name(self, expr: TpyExpr) -> bool:
         """Check if expression needs indirect access (-> / deref).
