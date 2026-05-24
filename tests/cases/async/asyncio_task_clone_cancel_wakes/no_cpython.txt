@@ -1,0 +1,2 @@
+`Task.clone()` is a TPy-specific method (Rc-bump on shared TaskState).
+CPython's Task has no such method -- handles are not duplicable there.

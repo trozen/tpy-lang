@@ -183,15 +183,37 @@ class Task[T]:
     """
 
     _state: Rc[TaskState[T]]
+    # Default-constructed (null awaker) for non-executor-owned tasks
+    # (`task_from_coro`); reassigned by `create_task` to a Waker stamped
+    # with the spawn slot's (slot_id, generation). `cancel()` calls
+    # `wake()` on it so the slot is marked runnable promptly -- the
+    # in-flight frame observes the cancel flag on its next poll instead
+    # of waiting on a timer / IO wake. Wake on a null-awaker Waker is a
+    # safe no-op (see Waker.wake in tpy.coro), so the non-executor-
+    # owned case stays unchanged.
+    #
+    # Lifetime: this Waker holds a raw `Ptr[Awaker]` into the running
+    # `Executor`. A Task[T] handle that survives `asyncio.run`'s scope
+    # and is later cancel()'d will dispatch through a dangling pointer
+    # -- same invariant `_ExecutorScope` (below) documents for every
+    # other stamped Waker. v1 asyncio.run drains spawned tasks during
+    # teardown to make this case unreachable in practice.
+    _waker: Waker
 
     def __init__(self, state: Own[Rc[TaskState[T]]]) -> None:
         self._state = state
+        self._waker = Waker()
 
     def __poll__(self, w: Waker) -> Own[Poll[T]]:
         return self._state.get().__poll__(w)
 
     def cancel(self) -> None:
         self._state.get().cancel_any()
+        # Wake routes through the @dynamic Awaker vtable to the
+        # executor's mark_runnable. The generation guard there filters
+        # late wakes against a completed slot, so this is safe even
+        # after the underlying task has already finished.
+        self._waker.wake()
 
     # Cheap duplication: Task is an Rc handle into the shared TaskState,
     # so clone() just bumps the refcount. Used by asyncio.gather_list to
@@ -203,13 +225,20 @@ class Task[T]:
     # live handles must not be awaited concurrently and must not both
     # consume the result -- only one consumer survives, the other's
     # poll panics or its waker is overwritten. Likewise `cancel()` on
-    # either handle propagates through the shared TaskState to BOTH.
-    # `gather_list` is the only safe internal user today (it drives the
-    # clone exclusively; the user is expected to drop their reference
-    # to the original `tasks[i]` once they've passed the list in). A
-    # multi-awaiter TaskState is filed in TODO.md.
+    # either handle propagates through the shared TaskState to BOTH;
+    # the clone ALSO inherits the parent's stamped `_waker` (see field
+    # comment above), so cancel-via-clone marks the same executor slot
+    # runnable -- load-bearing for `gather_list._propagate_cancel`,
+    # which cancels its Rc-cloned tasks and relies on the wake landing
+    # on the user's original spawn slot. `gather_list` is the only
+    # safe internal user today (it drives the clone exclusively; the
+    # user is expected to drop their reference to the original
+    # `tasks[i]` once they've passed the list in). A multi-awaiter
+    # TaskState is filed in TODO.md.
     def clone(self) -> Own[Task[T]]:
-        return Task[T](self._state.clone())
+        t = Task[T](self._state.clone())
+        t._waker = self._waker
+        return t
 
 
 # Wrap a concrete coro in `Box[Cancellable[T]]`. `decltype({0})`
@@ -346,6 +375,15 @@ class Executor(Awaker):
 
     def register_timer(self, deadline_seconds: float, waker: Waker) -> None:
         heapq.heappush(self.timer_heap, TimerEntry(deadline_seconds, waker))
+
+    # Mint a Waker stamped with the given slot identity. Used by
+    # `asyncio.create_task` to stash a wake-handle on the Task so its
+    # `cancel()` can mark the slot runnable promptly. Lives on Executor
+    # rather than as a free function so the call site can pass a
+    # method receiver instead of trying to coerce `Ptr[Executor]` to
+    # the `Awaker` protocol param of `_make_waker`.
+    def make_waker_for_slot(self, slot_id: Int32, generation: Int32) -> Waker:
+        return _make_waker(self, slot_id, generation)
 
     def spawn(self, box: Own[Box[AnyTask]]) -> Int32:
         new_id = len(self.slots)

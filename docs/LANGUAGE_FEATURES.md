@@ -5716,10 +5716,12 @@ Send/Sync rules for built-in types:
   `lib/tpy/asyncio/__init__.py:_GatherFuture` (Rc-clones tasks,
   parallel completion-order lists, O(n^2) reorder at end);
   `lib/tpy/asyncio/_executor.py` grows `Task[T].clone()`. Outer-
-  cancel observation inside still-running sub-tasks is bounded by
-  the sub-task's next natural wake (timer / IO event); a follow-up
-  TODO to plumb slot-id through `Task` so `Task.cancel()` can
-  `mark_runnable` would close that latency.
+  cancel observation in still-running sub-tasks is prompt (since the
+  cancel-runnable-mark hook landed): `create_task` stamps a `Waker`
+  for the slot onto the Task at spawn time, and `Task.cancel()`
+  fires `waker.wake()` so the slot is scheduled for an immediate
+  poll. The in-flight frame observes its `__cancel_pending` on the
+  next executor cycle instead of waiting on a timer / IO wake.
 - **Open (v1.5+)**: nesting two `await`-in-`finally` regions
   (multi-item / nested `async with`), await inside a `for`/`while`
   `else:` clause, `async for ... else:`, executor slot reuse,

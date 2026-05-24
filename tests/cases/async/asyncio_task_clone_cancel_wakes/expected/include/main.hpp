@@ -12,17 +12,15 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-struct __coro_slow;
-struct __coro_gather_helper;
+struct __coro_waiter;
 struct __coro_main_coro;
 
-__coro_slow slow();
-__coro_gather_helper gather_helper();
+__coro_waiter waiter();
 __coro_main_coro main_coro();
 void main();
 
-// Async coroutine: slow
-struct __coro_slow {
+// Async coroutine: waiter
+struct __coro_waiter {
     int32_t __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
@@ -31,41 +29,18 @@ struct __coro_slow {
         S_INITIAL = 0,
         S_AFTER_AWAIT_0 = 1,
         S_JOIN_0 = 2,
-        S_DONE = 3,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
     };
 
-    __coro_slow()
+    __coro_waiter()
         : __state(S_INITIAL), __cancel_pending(false) {}
 
-    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __coro_slow&) {
-        return os << "<coroutine slow>";
-    }
-};
-
-// Async coroutine: gather_helper
-struct __coro_gather_helper {
-    int32_t __state;
-    bool __cancel_pending;
-    ::tpy::frame_slot<std::vector<::tpystd::asyncio::_executor::Task<int32_t>>> tasks;
-    std::optional<::tpystd::asyncio::__coro_gather_list<int32_t>> __sub_0;
-
-    enum : int32_t {
-        S_INITIAL = 0,
-        S_AFTER_AWAIT_0 = 1,
-        S_DONE = 2,
-    };
-
-    __coro_gather_helper()
-        : __state(S_INITIAL), __cancel_pending(false) {}
-
-    ::tpystd::tpy::Poll<std::vector<int32_t>> __poll__(::tpystd::coro::Waker waker);
-    void cancel() { __cancel_pending = true; }
-
-    friend std::ostream& operator<<(std::ostream& os, const __coro_gather_helper&) {
-        return os << "<coroutine gather_helper>";
+    friend std::ostream& operator<<(std::ostream& os, const __coro_waiter&) {
+        return os << "<coroutine waiter>";
     }
 };
 
@@ -73,10 +48,10 @@ struct __coro_gather_helper {
 struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
-    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::vector<int32_t>>> gtask;
-    ::tpy::frame_slot<std::vector<int32_t>> results;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> task;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> dup;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
-    ::tpystd::asyncio::_executor::Task<std::vector<int32_t>>* __sub_1 = nullptr;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_1 = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,

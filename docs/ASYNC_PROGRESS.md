@@ -1090,22 +1090,58 @@ in flight.
   `__cancel_pending` flag inside its sleep wake (sleep's resume cancel-
   check propagates).
 - `outer_cancel` -- gather_list raises `CancelledError` to its caller
-  when its owning task is cancelled (current v1.5 limitation: sub-
-  tasks may complete normally before cancel reaches them; see follow-up).
+  when its owning task is cancelled; with the M10 cancel-runnable-mark
+  hook, sub-tasks observe the propagated cancel on their next poll
+  and exit via CancelledError before completing their sleep.
 - `in_finally` -- gather_list inside a `finally` clause, exercising the
   M3.3 await-in-finally CFG lowering.
 
 All gather_list tests carry `no_cpython.txt` because gather_list is
 TPy-specific (no CPython equivalent under that name).
 
-**Cancel-observation latency follow-up (NOT shipped).** `Task.cancel()`
-flips the in-flight frame's `__cancel_pending` flag but does NOT mark
-the slot runnable, so outer-cancel observation inside a sub-task waits
-on the sub-task's next natural wake (timer / IO event). Same gap
-affects `wait_for_outer_cancel`. Closing it needs slot-id plumbing on
-`Task[T]` + a generation-free `mark_runnable_no_gen` helper on
-`Executor`. ~20 lines but a separate change since it improves
-cancellation semantics broadly, not just gather.
+### M10 SHIPPED -- `Task.cancel()` runnable-mark hook
+
+`Task.cancel()` now schedules the cancelled slot for immediate poll
+instead of relying on a natural wake (timer / IO event). The fix
+applies broadly -- improves `wait_for_outer_cancel`, `gather_list`'s
+outer-cancel propagation, and any future user code that cancels a
+task parked on a non-self-waking awaitable.
+
+**Mechanism.** `Task[T]` grows a `_waker: Waker` field (default-
+constructed as a null-awaker Waker; wake() on a null awaker is a
+safe no-op). `asyncio.create_task` stamps the Task's Waker via a
+new `Executor.make_waker_for_slot(slot_id, generation)` method --
+generation is 0 at spawn time, so the standard `Waker.wake` ->
+`Awaker.mark_runnable` dispatch with its generation guard cleanly
+handles late wakes against a completed slot. `Task.cancel()` calls
+`self._waker.wake()` after the existing `cancel_any()`. Non-
+executor-owned tasks (built via `task_from_coro`) leave the default
+null-awaker Waker untouched; their cancel path is unchanged.
+
+`Task.clone()` propagates the parent's Waker to the clone so both
+handles share the same wake target -- consistent with the existing
+Rc-shared TaskState design.
+
+The approach uses the existing `Awaker` vtable + generation guard
+rather than adding a parallel `mark_runnable_no_gen` helper. This
+keeps `Executor`'s API surface narrow and avoids the
+forward-declaration trap that biting a `Ptr[Executor]` method call
+out of `Task.cancel`'s inline (template) body would hit (Executor
+is declared after Task in `_executor.py`; routing through
+`Waker.wake` -> `@dynamic Awaker.mark_runnable` defers the lookup
+to instantiation time via the vtable).
+
+**Test coverage.** New `tests/cases/async/asyncio_cancel_unblocks_future_wait`:
+a sub-task awaits `asyncio.sleep(100.0)` (a deliberately long sleep
+with no natural wake on test timescales); outer cancel arrives;
+test completes in milliseconds and exits with CancelledError
+propagated through. Pre-hook, the test would hang for 100 seconds
+or hit the executor's "no progress possible" panic.
+
+Existing tests `asyncio_wait_for_outer_cancel`, `asyncio_gather_outer_cancel`,
+and `asyncio_wait_for_in_finally` continue to pass with the same
+output but much faster runtime (the snapshots are output-keyed, not
+runtime-keyed, so no snapshot regen was needed).
 
 ## v1.x milestone: asyncio runtime TPy port (must precede v1.5)
 

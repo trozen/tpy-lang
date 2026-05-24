@@ -121,7 +121,18 @@ def create_task[T](coro: Own[Awaitable[T]]) -> Own[Task[T]]:
             "(call asyncio.run(coro) to drive it)")
     task = make_executor_owned_task[T](coro)
     box = task_to_any_box[T](task)
-    handle.spawn(box)
+    slot_id = handle.spawn(box)
+    # Stamp a Waker for the slot onto the Task so `Task.cancel()` can
+    # mark the slot runnable promptly. Read the freshly-spawned slot's
+    # generation directly rather than hardcoding 0, so this stays
+    # correct if `Slot.__init__` ever changes its starting generation
+    # (e.g. for slot recycling). If the slot completes (generation
+    # bumps) before cancel fires, Waker.wake's generation guard
+    # silently drops the wake. Non-executor-owned tasks (built via
+    # `task_from_coro`) keep the default null-awaker Waker assigned in
+    # Task.__init__, and wake() is a safe no-op on those.
+    task._waker = handle.make_waker_for_slot(
+        slot_id, handle.slots[slot_id].generation)
     return task
 
 
@@ -232,14 +243,15 @@ class _GatherFuture[T]:
     they settle. Re-raises the first exception once every sub-task
     has settled.
 
-    v1.5 limitation: sub-tasks are executor-owned (built via
-    `create_task`). `cancel()` flips the in-flight frame's
-    `__cancel_pending` flag but does NOT mark the slot runnable, so a
-    sub-task parked on a sleep / Future observes its cancel only at
-    its next scheduled wake. Cleanup completes correctly, just not
-    instantly. CPython's gather uses the equivalent of a runnable-
-    after-cancel hook on `Task`; matching that latency needs a slot-
-    id plumbing on `Task[T]` and is tracked as a follow-up.
+    Cancel propagation is prompt for `create_task`-built sub-tasks:
+    `Task.cancel()` (since M10) fires a per-Task `Waker` stamped at
+    `create_task` time, marking the slot runnable so the in-flight
+    frame observes its `__cancel_pending` on its next poll rather
+    than waiting on a natural wake. Sub-tasks built via
+    `task_from_coro` (not registered with the executor) carry the
+    default null-awaker Waker, so cancel-wake is a no-op for them and
+    observation reverts to the sub-task's next natural progress --
+    the same latency that pre-M10 gather had.
     """
 
     _tasks: list[Task[T]]
