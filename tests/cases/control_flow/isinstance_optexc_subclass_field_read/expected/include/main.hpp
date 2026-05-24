@@ -24,21 +24,6 @@ struct Eventful {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Eventful> : std::true_type {};
 
-template<tpyapp::main::__Eventful_Concept__ T>
-struct tpy::Adapter<tpyapp::main::Eventful, T> : tpyapp::main::Eventful {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string kind() override { return std::string(inner.kind()); }
-};
-
-template<tpyapp::main::__Eventful_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::Eventful, T> : tpyapp::main::Eventful {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    std::string kind() override { return std::string(inner.kind()); }
-};
-
 namespace tpyapp::main {
 
 struct Event;
@@ -87,6 +72,25 @@ inline std::ostream& operator<<(std::ostream& os, const ClickEvent& obj) {
     ::tpy::print_object_default(os, "ClickEvent", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Eventful_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Eventful, T> : tpyapp::main::Eventful {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string kind() override { return std::string(inner.kind()); }
+};
+
+template<tpyapp::main::__Eventful_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Eventful, T> : tpyapp::main::Eventful {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    std::string kind() override { return std::string(inner.kind()); }
+};
+
+namespace tpyapp::main {
 
 
 // def kind(self) -> str:

@@ -41,7 +41,7 @@ void main() {
     // f.set_result(Int32(99))
     f.set_result(99);
     // asyncio.run(main_coro(f))
-    ::tpystd::asyncio::run<std::monostate>(main_coro(f));
+    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro(f))>>>(main_coro(f)));
 }
 
 void __tpy_init() {

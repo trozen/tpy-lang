@@ -24,21 +24,6 @@ struct Named {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Named> : std::true_type {};
 
-template<tpyapp::main::__Named_Concept__ T>
-struct tpy::Adapter<tpyapp::main::Named, T> : tpyapp::main::Named {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string name() override { return std::string(inner.name()); }
-};
-
-template<tpyapp::main::__Named_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::Named, T> : tpyapp::main::Named {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    std::string name() override { return std::string(inner.name()); }
-};
-
 namespace tpyapp::main {
 
 struct Dog;
@@ -128,6 +113,25 @@ inline std::ostream& operator<<(std::ostream& os, const Fish& obj) {
     ::tpy::print_object_default(os, "Fish", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Named_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Named, T> : tpyapp::main::Named {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string name() override { return std::string(inner.name()); }
+};
+
+template<tpyapp::main::__Named_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Named, T> : tpyapp::main::Named {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    std::string name() override { return std::string(inner.name()); }
+};
+
+namespace tpyapp::main {
 
 
 // def name(self) -> StrView:

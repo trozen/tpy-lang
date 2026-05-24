@@ -24,21 +24,6 @@ struct Speaker {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Speaker> : std::true_type {};
 
-template<tpyapp::main::__Speaker_Concept__ T>
-struct tpy::Adapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string speak() override { return std::string(inner.speak()); }
-};
-
-template<tpyapp::main::__Speaker_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    std::string speak() override { return std::string(inner.speak()); }
-};
-
 namespace tpyapp::main {
 
 struct Dog;
@@ -62,6 +47,25 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     ::tpy::print_object_default(os, "Dog", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Speaker_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string speak() override { return std::string(inner.speak()); }
+};
+
+template<tpyapp::main::__Speaker_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    std::string speak() override { return std::string(inner.speak()); }
+};
+
+namespace tpyapp::main {
 
 
 // @override

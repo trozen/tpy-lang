@@ -55,7 +55,7 @@ struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
     ::tpy::BigInt v;
-    std::optional<::tpystd::asyncio::__coro_wait_for<::tpy::BigInt, std::remove_cvref_t<decltype(slow())>>> __sub_0;
+    std::optional<::tpystd::asyncio::__coro_wait_for<::tpy::BigInt>> __sub_0;
 
     enum : int32_t {
         S_INITIAL = 0,

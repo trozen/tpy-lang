@@ -30,7 +30,7 @@ __coro_sub sub() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // result = await asyncio.create_task(sub())
-        __sub_0.emplace(std::move(::tpystd::asyncio::create_task<int32_t>(sub())));
+        __sub_0.emplace(std::move(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(sub())>>>(sub()))));
         __state = S_AFTER_AWAIT_0;
         continue;
     }
@@ -58,7 +58,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(main_coro());
+    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
 }
 
 void __tpy_init() {

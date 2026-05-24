@@ -28,23 +28,6 @@ struct Container {
 template<typename T>
 struct tpy::is_dyn_protocol_base<tpyapp::main::Container<T>> : std::true_type {};
 
-template<typename T, tpyapp::main::__Container_Concept__<T> __tpy_Impl>
-struct tpy::Adapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::Container<T> {
-    __tpy_Impl inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T get() override { return inner.get(); }
-    void set(::tpy::param_val_or_ref_t<T> val) override { inner.set(val); }
-};
-
-template<typename T, tpyapp::main::__Container_Concept__<T> __tpy_Impl>
-struct tpy::RefAdapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::Container<T> {
-    __tpy_Impl& inner;
-    RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T get() override { return inner.get(); }
-    void set(::tpy::param_val_or_ref_t<T> val) override { inner.set(val); }
-};
-
 namespace tpyapp::main {
 
 struct Box;
@@ -99,6 +82,27 @@ inline std::ostream& operator<<(std::ostream& os, const Ratio& obj) {
     ::tpy::print_object_default(os, "Ratio", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<typename T, tpyapp::main::__Container_Concept__<T> __tpy_Impl>
+struct tpy::Adapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::Container<T> {
+    __tpy_Impl inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    T get() override { return inner.get(); }
+    void set(::tpy::param_val_or_ref_t<T> val) override { inner.set(val); }
+};
+
+template<typename T, tpyapp::main::__Container_Concept__<T> __tpy_Impl>
+struct tpy::RefAdapter<tpyapp::main::Container<T>, __tpy_Impl> : tpyapp::main::Container<T> {
+    __tpy_Impl& inner;
+    RefAdapter(__tpy_Impl& ref) : inner(ref) {}
+    T get() override { return inner.get(); }
+    void set(::tpy::param_val_or_ref_t<T> val) override { inner.set(val); }
+};
+
+namespace tpyapp::main {
 
 
 // def get(self) -> Int32:

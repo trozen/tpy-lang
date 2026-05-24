@@ -80,7 +80,7 @@ __coro_go go(::tpy::BigInt n) {
 // def main() -> None:
 void main() {
     // print(asyncio.run(go(10)))
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(go(::tpy::BigInt(10))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(go(::tpy::BigInt(10)))>>>(go(::tpy::BigInt(10)))) << "\n";
 }
 
 void __tpy_init() {

@@ -28,21 +28,6 @@ struct Mutating {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Mutating> : std::true_type {};
 
-template<tpyapp::main::__Mutating_Concept__ T>
-struct tpy::Adapter<tpyapp::main::Mutating, T> : tpyapp::main::Mutating {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    void do_mutate() override { inner.do_mutate(); }
-};
-
-template<tpyapp::main::__Mutating_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::Mutating, T> : tpyapp::main::Mutating {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    void do_mutate() override { inner.do_mutate(); }
-};
-
 namespace tpyapp::main {
 
 struct Inner;
@@ -120,6 +105,25 @@ inline std::ostream& operator<<(std::ostream& os, const S& obj) {
     ::tpy::print_object_default(os, "S", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Mutating_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Mutating, T> : tpyapp::main::Mutating {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    void do_mutate() override { inner.do_mutate(); }
+};
+
+template<tpyapp::main::__Mutating_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Mutating, T> : tpyapp::main::Mutating {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    void do_mutate() override { inner.do_mutate(); }
+};
+
+namespace tpyapp::main {
 
 
 // def bump(self) -> None:

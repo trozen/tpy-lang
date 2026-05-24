@@ -30,21 +30,6 @@ struct Pet {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Pet> : std::true_type {};
 
-template<tpyapp::main::__Pet_Concept__ T>
-struct tpy::Adapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string name() override { return std::string(inner.name()); }
-};
-
-template<tpyapp::main::__Pet_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    std::string name() override { return std::string(inner.name()); }
-};
-
 namespace tpyapp::main {
 
 struct Parrot;
@@ -91,6 +76,25 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     ::tpy::print_object_default(os, "Dog", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Pet_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string name() override { return std::string(inner.name()); }
+};
+
+template<tpyapp::main::__Pet_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    std::string name() override { return std::string(inner.name()); }
+};
+
+namespace tpyapp::main {
 
 
 // def name(self) -> str:

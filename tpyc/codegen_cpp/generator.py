@@ -825,20 +825,36 @@ class CodeGenerator:
                 continue
             self._gen_enum_decl(hpp, enum)
 
-        # Dynamic protocol adapter specs and EnumUtil specs must be at global scope.
-        # Only emit EnumUtil for top-level enums here; nested enums need
-        # their parent struct defined first (emitted after record definitions).
-        # @native enums still get EnumUtil (reflection across the binding
-        # boundary) but no operator<< -- that's emitted by the user if
-        # needed, and TPy's print/repr paths route through __repr__ via
-        # the runtime template gated on EnumUtil presence.
+        # Top-level EnumUtil specs must be at global scope. Nested enums
+        # need their parent struct defined first (emitted after record
+        # definitions). @native enums still get EnumUtil (reflection
+        # across the binding boundary) but no operator<< -- that's
+        # emitted by the user if needed, and TPy's print/repr paths
+        # route through __repr__ via the runtime template gated on
+        # EnumUtil presence.
+        #
+        # The `tpy::is_dyn_protocol_base<P>` trait specializations for
+        # @dynamic protocols are emitted here too. They have to come
+        # before any in-module code that triggers an implicit
+        # instantiation of the primary template (which happens whenever
+        # `Box<P>`, `Adapter<P, T>`, etc. is referenced -- inline record
+        # method bodies emitted later in the same header are the
+        # typical culprits). Specializing after that point is a hard
+        # C++ error ("specialization after instantiation").
+        #
+        # The full Adapter / RefAdapter specs are deferred until after
+        # records (see below): their override bodies pass protocol-
+        # method parameter types (e.g. `Waker`) by value, so those
+        # types must be complete at the spec definition site.
         dynamic_protocols = [p for p in module.protocols if p.is_dynamic]
         top_enums = module.enums
-        if dynamic_protocols or top_enums:
+        if top_enums or dynamic_protocols:
             ns = module_to_cpp_namespace(self.ctx.module_name)
             hpp.write(f"}} // namespace {ns}\n\n")
-            self._gen_dynamic_adapter_specs(hpp, module, dynamic_protocols)
-            self._gen_enum_util_decls_for(hpp, top_enums)
+            for protocol in dynamic_protocols:
+                self.protocols.gen_dyn_protocol_base_trait(hpp, protocol, ns)
+            if top_enums:
+                self._gen_enum_util_decls_for(hpp, top_enums)
             hpp.write(f"namespace {ns} {{\n\n")
             for enum in top_enums:
                 if enum.is_native:
@@ -983,6 +999,19 @@ class CodeGenerator:
             self.functions.gen_function_forward_decl(hpp, func)
         if deferred_fwd_funcs:
             hpp.write("\n")
+
+        # Dynamic protocol Adapter / RefAdapter specs at global scope.
+        # Emitted here (rather than right after the protocol forward
+        # decl) so that all value-type records referenced by protocol
+        # method signatures are complete -- the Adapter override body
+        # passes those types by value, which a function definition
+        # requires complete. Subsequent in-module use sites (templated
+        # method bodies emitted further down) see the spec.
+        if dynamic_protocols:
+            ns = module_to_cpp_namespace(self.ctx.module_name)
+            hpp.write(f"}} // namespace {ns}\n\n")
+            self._gen_dynamic_adapter_specs(hpp, module, dynamic_protocols)
+            hpp.write(f"namespace {ns} {{\n\n")
 
         # EnumUtil + operator<< for nested enums (must come after parent struct definitions)
         nested_enums = [e for e in module.all_enums() if "." in e.name]

@@ -19,7 +19,7 @@ from builtins import BaseException
 from time import monotonic, sleep_until_steady
 from tpy import Int32, Own, Ptr, Throwable, dynamic, nocopy, readonly
 from tpy.extern import builtin_type, cpp_template
-from tpy.coro import Awaitable, Awaker, Poll, Waker, poll_ready, poll_pending
+from tpy.coro import Awaker, Cancellable, Poll, Waker, poll_ready, poll_pending
 from tpy.mem import UninitArrayStorage
 from tplib import Box
 from tplib.rc import Rc
@@ -31,24 +31,8 @@ from tplib.rc import Rc
 # BUGS.md.
 
 
-# Cancellable awaitable -- the @dynamic protocol every consumer of
-# asyncio's cancellation machinery accepts (`run`, `create_task`,
-# `wait_for`, `Task[T]` storage, ...). Distinct from
-# `tpy.coro.Awaitable[T]`: Awaitable is the structural shape for
-# `await` sites + user-defined awaitables that don't promise
-# cancellation; Cancellable adds the `cancel()` precondition that
-# lets the task layer deliver a `CancelledError` at the awaitee's
-# next suspension. gen_async.py auto-emits cancel() on every coro
-# struct, so any compiled `async def` conforms automatically.
-#
-# Lives here (not in `tpy.coro`) because @dynamic protocols depend on
-# `tplib.Adapter`, which is loaded after the implicit-stdlib chain
-# that `tpy.coro` participates in. Re-exported from `asyncio` for
-# user-facing API typing.
-@dynamic
-class Cancellable[T](Protocol):
-    def __poll__(self, waker: Waker) -> Own[Poll[T]]: ...
-    def cancel(self) -> None: ...
+# `Cancellable[T]` (`__poll__` + `cancel`) lives in `tpy.coro` now;
+# we re-export it from `asyncio` for user-facing API typing.
 
 
 # T-erased view of a task for the executor's slot table. TaskState[T]
@@ -241,40 +225,21 @@ class Task[T]:
         return t
 
 
-# Wrap a concrete coro in `Box[Cancellable[T]]`. `decltype({0})`
-# recovers the concrete CoroT at the call site so the Adapter
-# specialization picks up the right inner type. The TPy-level
-# signature claims `Own[Awaitable[T]]` (the broader structural
-# protocol used at every call site), but the cpp_template body
-# downcasts to `Cancellable[T]` -- safe because every coro frame
-# auto-emits `cancel()`, even though sema can't see that promise
-# through the structural Awaitable shape. The "right" fix is a
-# sema-level rule that lets async-def call results conform to
-# `Cancellable[T]`; until then this template is the bypass.
-@cpp_template(
-    "::tpystd::tplib::box::Box<::tpystd::asyncio::_executor::Cancellable<{T}>>("
-    "std::make_unique<::tpy::Adapter<"
-    "::tpystd::asyncio::_executor::Cancellable<{T}>, "
-    "std::remove_cvref_t<decltype({0})>>>(std::move({0})))"
-)
-def _box_coro[T](coro: Own[Awaitable[T]]) -> Own[Box[Cancellable[T]]]: ...
-
-
-def task_from_coro[T](coro: Own[Awaitable[T]]) -> Own[Task[T]]:
+def task_from_coro[T](coro: Own[Cancellable[T]]) -> Own[Task[T]]:
     """Box an awaitable into a heap-allocated Task[T] without
     registering with an executor (no `asyncio.run` required).
     """
     return _build_task[T](coro, False)
 
 
-def make_executor_owned_task[T](coro: Own[Awaitable[T]]) -> Own[Task[T]]:
+def make_executor_owned_task[T](coro: Own[Cancellable[T]]) -> Own[Task[T]]:
     """Build a Task[T] flagged `executor_owned=True` (ready to be
     spawned via the executor's slot table)."""
     return _build_task[T](coro, True)
 
 
-def _build_task[T](coro: Own[Awaitable[T]], executor_owned: bool) -> Own[Task[T]]:
-    frame = _box_coro[T](coro)
+def _build_task[T](coro: Own[Cancellable[T]], executor_owned: bool) -> Own[Task[T]]:
+    frame = Box[Cancellable[T]](coro)
     state = TaskState[T](frame)
     state.executor_owned = executor_owned
     return Task[T](Rc.new(state))
@@ -523,7 +488,7 @@ def _clear_current_executor() -> None:
 
 # Test-only Box[AnyTask] factory: builds a TaskState[T] without
 # executor registration so tests can drive the executor directly.
-def _make_any_task_for_test[T](coro: Own[Awaitable[T]]) -> Own[Box[AnyTask]]:
+def _make_any_task_for_test[T](coro: Own[Cancellable[T]]) -> Own[Box[AnyTask]]:
     task = make_executor_owned_task[T](coro)
     return task_to_any_box[T](task)
 

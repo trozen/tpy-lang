@@ -191,11 +191,26 @@ class ProtocolGenerator:
             source_module, original_name = qual
             base = qualified_cpp_name(source_module, original_name)
         else:
-            base = name
+            base = self._qualify_protocol_via_qname(protocol) or name
         if protocol.type_args:
             args_cpp = ", ".join(t.to_cpp() for t in protocol.type_args)
             return f"{base}<{args_cpp}>"
         return base
+
+    def _qualify_protocol_via_qname(self, protocol: NominalType) -> str | None:
+        """Fallback qualification for protocols not bound in the current
+        module's attributes -- e.g. implicit-stdlib protocols referenced
+        only through a sema-synthesized type like `Cancellable[T]`
+        constructed by `make_cancellable` for async-def returns. Skips
+        when the protocol lives in the current module (the bare local
+        name is correct there)."""
+        qname = protocol._module_qname
+        if not qname or "." not in qname:
+            return None
+        source_module, original_name = qname.rsplit(".", 1)
+        if source_module == self.ctx.analyzer.ctx.module_name:
+            return None
+        return qualified_cpp_name(source_module, original_name)
 
     def get_dynamic_adapter_type(self, protocol: NominalType, concrete_cpp: str) -> str:
         """Get the full C++ type for an owning adapter: ::tpy::Adapter<Base, Concrete>."""
@@ -599,6 +614,33 @@ class ProtocolGenerator:
         else:
             out.write(f"struct {cpp_name};\n")
 
+    def gen_dyn_protocol_base_trait(self, out: TextIO, protocol: TpyProtocol,
+                                    module_namespace: str) -> None:
+        """Generate the ``tpy::is_dyn_protocol_base<P>`` specialization only.
+
+        Split from ``gen_dynamic_adapter_specs`` so it can be emitted early
+        (right after the protocol forward decl, before any in-module use that
+        would implicitly instantiate the primary template via ``Box<P>``,
+        ``Adapter<P, T>``, etc.). The full Adapter / RefAdapter specs are
+        emitted later (see ``gen_dynamic_adapter_specs``) so their override
+        bodies see complete value types referenced in protocol method
+        signatures.
+        """
+        protocol_info = self.ctx.analyzer.registry.scan_by_short_name(protocol.name)
+        if protocol_info is None:
+            return
+        if protocol_info.cpp_concept:
+            return
+        qbase_name = f"{module_namespace}::{protocol.name}"
+        if protocol.type_params:
+            tparam_refs = ", ".join(protocol.type_params)
+            qbase = f"{qbase_name}<{tparam_refs}>"
+            tparam_only = "template<" + ", ".join(f"typename {tp}" for tp in protocol.type_params) + ">"
+            out.write(f"{tparam_only}\n")
+            out.write(f"struct tpy::is_dyn_protocol_base<{qbase}> : std::true_type {{}};\n\n")
+        else:
+            out.write(f"template<> struct tpy::is_dyn_protocol_base<{qbase_name}> : std::true_type {{}};\n\n")
+
     def gen_dynamic_adapter_specs(self, out: TextIO, protocol: TpyProtocol,
                                   module_namespace: str,
                                   user_type_names: set[str] | None = None) -> None:
@@ -620,6 +662,11 @@ class ProtocolGenerator:
         from inside the ``tpy::`` namespace (where the user namespace's
         injected names are not visible, and for generic protocols the
         dependent base class is not searched by unqualified lookup).
+
+        The ``tpy::is_dyn_protocol_base<P>`` trait specialization is emitted
+        separately by ``gen_dyn_protocol_base_trait`` (called earlier so
+        in-module uses of ``Box<P>`` resolve the trait correctly before the
+        Adapter spec lands).
         """
         protocol_info = self.ctx.analyzer.registry.scan_by_short_name(protocol.name)
         if protocol_info is None:
@@ -657,17 +704,6 @@ class ProtocolGenerator:
             impl = _ADAPTER_IMPL_NON_GENERIC
             template_header = f"template<{qconcept} {impl}>"
             qbase = qbase_name
-
-        # is_dyn_protocol_base specialization. Specialized as a template
-        # (partial for generic protocols, full otherwise) so a forward-
-        # declared T still resolves to the false_type primary -- recursive
-        # type aliases don't need T complete to evaluate own_param_t<T>.
-        if protocol.type_params:
-            tparam_only = "template<" + ", ".join(f"typename {tp}" for tp in protocol.type_params) + ">"
-            out.write(f"{tparam_only}\n")
-            out.write(f"struct tpy::is_dyn_protocol_base<{qbase}> : std::true_type {{}};\n\n")
-        else:
-            out.write(f"template<> struct tpy::is_dyn_protocol_base<{qbase}> : std::true_type {{}};\n\n")
 
         # -- Owning adapter (for locals and rvalue call-site args) --
         out.write(f"{template_header}\n")

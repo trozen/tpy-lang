@@ -24,21 +24,6 @@ struct Awaker {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Awaker> : std::true_type {};
 
-template<tpyapp::main::__Awaker_Concept__ T>
-struct tpy::Adapter<tpyapp::main::Awaker, T> : tpyapp::main::Awaker {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    void mark(int32_t task_id) override { inner.mark(task_id); }
-};
-
-template<tpyapp::main::__Awaker_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::Awaker, T> : tpyapp::main::Awaker {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    void mark(int32_t task_id) override { inner.mark(task_id); }
-};
-
 namespace tpyapp::main {
 
 struct Holder;
@@ -90,6 +75,25 @@ inline std::ostream& operator<<(std::ostream& os, const Executor& obj) {
     ::tpy::print_object_default(os, "Executor", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Awaker_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Awaker, T> : tpyapp::main::Awaker {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    void mark(int32_t task_id) override { inner.mark(task_id); }
+};
+
+template<tpyapp::main::__Awaker_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Awaker, T> : tpyapp::main::Awaker {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    void mark(int32_t task_id) override { inner.mark(task_id); }
+};
+
+namespace tpyapp::main {
 
 
 // def mark(self, task_id: Int32) -> None:

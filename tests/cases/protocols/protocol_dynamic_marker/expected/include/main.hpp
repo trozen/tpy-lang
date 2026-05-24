@@ -21,19 +21,6 @@ struct Tagged {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Tagged> : std::true_type {};
 
-template<tpyapp::main::__Tagged_Concept__ T>
-struct tpy::Adapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-};
-
-template<tpyapp::main::__Tagged_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-};
-
 namespace tpyapp::main {
 
 struct Root;
@@ -75,6 +62,23 @@ inline std::ostream& operator<<(std::ostream& os, const Sub& obj) {
     ::tpy::print_object_default(os, "Sub", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Tagged_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+};
+
+template<tpyapp::main::__Tagged_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+};
+
+namespace tpyapp::main {
 
 void __tpy_init();
 } // namespace tpyapp::main

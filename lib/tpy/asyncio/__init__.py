@@ -8,22 +8,21 @@ the TPy Executor in `_executor.py`. See `docs/ASYNC_DESIGN.md`.
 from builtins import BaseException, Exception, TimeoutError
 from tpy import Own, Int32, CancelledError, Throwable, nocopy
 from tpy.coro import (
-    Waker, Poll, Awaitable,
+    Waker, Poll, Cancellable,
     poll_ready, poll_pending, poll_ready_none,
 )
 from tpy.mem import UninitArrayStorage
 from tplib import Box
 from time import monotonic
 from ._executor import (
-    Task, AnyTask, Cancellable,
+    Task, AnyTask,
     task_from_coro, make_executor_owned_task, task_to_any_box,
     Executor, _ExecutorScope,
     _get_current_executor,
-    _box_coro,
 )
 
 
-def run[T](coro: Own[Awaitable[T]]) -> T:
+def run[T](coro: Own[Cancellable[T]]) -> T:
     if _get_current_executor() is not None:
         raise RuntimeError(
             "asyncio.run() cannot be called from a running event loop")
@@ -76,7 +75,7 @@ class SleepFuture:
         self._cancel_pending = False
 
     # Required for structural conformance to `@dynamic Cancellable[T]`
-    # (in `asyncio._executor`). Mirrors the codegen-emitted `cancel()` on
+    # (in `tpy.coro`). Mirrors the codegen-emitted `cancel()` on
     # every generated coro struct.
     def cancel(self) -> None:
         self._cancel_pending = True
@@ -113,7 +112,7 @@ def sleep(seconds: float) -> Own[Task[None]]:
 # handle. The task is registered with the executor's slot table so
 # it runs concurrently with the spawning task. Raises RuntimeError if
 # no event loop is running.
-def create_task[T](coro: Own[Awaitable[T]]) -> Own[Task[T]]:
+def create_task[T](coro: Own[Cancellable[T]]) -> Own[Task[T]]:
     handle = _get_current_executor()
     if handle is None:
         raise RuntimeError(
@@ -157,15 +156,8 @@ class _WaitForFuture[T]:
     _timed_out: bool
     _cancel_pending: bool
 
-    def __init__(self, coro: Own[Awaitable[T]], timeout: float) -> None:
-        # `_box_coro` wraps the structural `Awaitable[T]` coro in the
-        # @dynamic `Box[Cancellable[T]]` form. The conversion is the
-        # sema-bypass shim documented in `_executor.py:_box_coro` --
-        # static `Awaitable[T]` doesn't promise `cancel`, but every
-        # concrete coro frame the compiler emits provides one, and
-        # `_box_coro` recovers the concrete type via C++ `decltype`
-        # to construct the Adapter directly.
-        self._inner = _box_coro[T](coro)
+    def __init__(self, coro: Own[Cancellable[T]], timeout: float) -> None:
+        self._inner = Box[Cancellable[T]](coro)
         self._deadline = monotonic() + timeout
         self._registered = False
         self._cleanup = False
@@ -226,7 +218,7 @@ class _WaitForFuture[T]:
 # before polling, so the inner observes `CancelledError` at its
 # suspension point and can run `finally`-with-await cleanup before
 # the cancellation surfaces to the caller.
-async def wait_for[T](coro: Own[Awaitable[T]], timeout: float) -> T:
+async def wait_for[T](coro: Own[Cancellable[T]], timeout: float) -> T:
     return await _WaitForFuture[T](coro, timeout)
 
 
@@ -454,7 +446,7 @@ class Future[T]:
             self._has_waiter = False
 
     # Required for structural conformance to `@dynamic Cancellable[T]`
-    # (in `asyncio._executor`). Future cancellation is task-level: the
+    # (in `tpy.coro`). Future cancellation is task-level: the
     # awaiting Task throws CancelledError before re-polling the Future,
     # so the Future itself has no inner state to flip. This is the
     # protocol hook called via the type-erased Adapter; the body is
@@ -516,7 +508,7 @@ class Event:
         self._is_set = False
 
     # Required for structural conformance to `@dynamic Cancellable[T]`
-    # (in `asyncio._executor`). Event cancellation is task-level (see
+    # (in `tpy.coro`). Event cancellation is task-level (see
     # Future.cancel above for the rationale); body is a no-op.
     def cancel(self) -> None:
         pass

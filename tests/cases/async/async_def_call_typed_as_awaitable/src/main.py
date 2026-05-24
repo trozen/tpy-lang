@@ -1,6 +1,7 @@
 # Regression: `f()` for `async def f() -> T` is sema-typed as
-# `Awaitable[T]`, so passing it to a generic helper expecting
-# `Awaitable[T]` infers T from the protocol arg's poll return type.
+# `Cancellable[T]`, which structurally extends `Awaitable[T]` via
+# `__poll__`, so passing the call result to a generic helper expecting
+# `Awaitable[T]` still infers T from the protocol arg's poll return type.
 from tpy import Int32
 from tpy.coro import poll_once
 

@@ -115,13 +115,13 @@ __coro_deep deep(bool a, bool b) {
 // def main() -> None:
 void main() {
     // print(asyncio.run(deep(True, True)))
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(deep(true, true)) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(deep(true, true))>>>(deep(true, true))) << "\n";
     // print(asyncio.run(deep(True, False)))
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(deep(true, false)) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(deep(true, false))>>>(deep(true, false))) << "\n";
     // print(asyncio.run(deep(False, True)))
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(deep(false, true)) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(deep(false, true))>>>(deep(false, true))) << "\n";
     // print(asyncio.run(deep(False, False)))
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(deep(false, false)) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(deep(false, false))>>>(deep(false, false))) << "\n";
 }
 
 void __tpy_init() {

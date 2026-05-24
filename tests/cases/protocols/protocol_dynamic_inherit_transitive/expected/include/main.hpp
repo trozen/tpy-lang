@@ -24,21 +24,6 @@ struct Throwable {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Throwable> : std::true_type {};
 
-template<tpyapp::main::__Throwable_Concept__ T>
-struct tpy::Adapter<tpyapp::main::Throwable, T> : tpyapp::main::Throwable {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string what() override { return std::string(inner.what()); }
-};
-
-template<tpyapp::main::__Throwable_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::Throwable, T> : tpyapp::main::Throwable {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    std::string what() override { return std::string(inner.what()); }
-};
-
 namespace tpyapp::main {
 
 struct BaseExc;
@@ -102,6 +87,25 @@ inline std::ostream& operator<<(std::ostream& os, const OsErr& obj) {
     ::tpy::print_object_default(os, "OsErr", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Throwable_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Throwable, T> : tpyapp::main::Throwable {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string what() override { return std::string(inner.what()); }
+};
+
+template<tpyapp::main::__Throwable_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Throwable, T> : tpyapp::main::Throwable {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    std::string what() override { return std::string(inner.what()); }
+};
+
+namespace tpyapp::main {
 
 
 // def what(self) -> str:

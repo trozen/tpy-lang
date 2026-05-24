@@ -34,6 +34,7 @@ from ..typesys import (
     is_classvar_allowed_inner, CLASSVAR_INNER_TYPE_ERROR,
     STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, NONE, TupleType, final_type_str_to_strview,
     make_awaitable,
+    make_cancellable,
     register_return_exception, is_return_exception,
     attach_type_param_bounds,
     has_auto_readonly, has_auto_own,
@@ -1102,9 +1103,10 @@ class TypeRegistrar:
             if method.kwarg_name is not None and method.kwarg_type is not None:
                 resolved_kwarg_type = self.type_ops.resolve_type(method.kwarg_type)
                 method_param_infos.append(ParamInfo(method.kwarg_name, resolved_kwarg_type))
-            # async def method: callers see Awaitable[T]. Mirrors free async def
+            # async def method: callers see Cancellable[T]. Mirrors free async def
             # (line ~2603); the user's T stays on method.return_type for codegen
-            # and the body-return checker.
+            # and the body-return checker. Cancellable structurally extends
+            # Awaitable, so `await` / `async for` / `async with` still match.
             if method.is_async:
                 # M4 codegen emits the method's coro struct at namespace
                 # scope but doesn't propagate the class's template
@@ -1113,7 +1115,7 @@ class TypeRegistrar:
                 # build. Same shape as generator methods on generic
                 # classes; share the rejection helper.
                 self._reject_method_on_generic_class("Async", record, method)
-                fi_method_return = make_awaitable(
+                fi_method_return = make_cancellable(
                     NONE if isinstance(method_return, VoidType) else method_return)
             else:
                 fi_method_return = method_return
@@ -2734,19 +2736,22 @@ class TypeRegistrar:
                             )
             param_infos.append(ParamInfo(func.kwarg_name, resolved_kwarg_type))
 
-        # async def f() -> T: callers see Awaitable[T] (mirrors how
+        # async def f() -> T: callers see Cancellable[T] (mirrors how
         # generators surface as Iterator[T]). The user's T stays on the
         # AST node (`func.return_type` at line 2531 below) so codegen and
         # the body-return checker keep seeing T; the FunctionInfo carries
-        # Awaitable[T] so structural matching at call sites (poll_once(f()),
-        # `await f()`, etc.) works through the protocol machinery.
+        # Cancellable[T] so structural matching at call sites
+        # (`create_task(f())`, `wait_for(f())`, etc.) honors the
+        # cancellability that gen_async.py auto-emits on every coro
+        # frame. Awaitable-only consumers (`await`, `async for`,
+        # `async with`) still match via Cancellable's `__poll__` member.
         if func.is_async:
             # `async def f() -> None` resolves the function return type
-            # to VoidType (top-level return-shape), but Awaitable[T] is a
-            # type-arg position where None lowers to NoneType. Convert at
-            # the boundary so `t: Task[None] = create_task(f())` matches.
+            # to VoidType (top-level return-shape), but Cancellable[T] is
+            # a type-arg position where None lowers to NoneType. Convert
+            # at the boundary so `t: Task[None] = create_task(f())` matches.
             inner = NONE if isinstance(resolved_return, VoidType) else resolved_return
-            fi_return_type = make_awaitable(inner)
+            fi_return_type = make_cancellable(inner)
         else:
             fi_return_type = resolved_return
         info = FunctionInfo(

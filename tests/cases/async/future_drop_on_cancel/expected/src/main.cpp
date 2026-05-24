@@ -41,7 +41,7 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
         // f: Future[Tracked] = Future[Tracked]()
         f.emplace(::tpystd::asyncio::Future<Tracked>());
         // t = asyncio.create_task(waiter(f))
-        t.emplace(::tpystd::asyncio::create_task<Tracked>(waiter((*f))));
+        t.emplace(::tpystd::asyncio::create_task<Tracked>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<Tracked>, std::remove_cvref_t<decltype(waiter((*f)))>>>(waiter((*f)))));
         // f.set_result(Tracked("payload"))
         (*f).set_result(Tracked("payload"));
         // t.cancel()
@@ -92,7 +92,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(main_coro());
+    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
     // # By here every coroutine frame has torn down. Tracked must have
     // # dropped exactly once.
     // if "payload" in dropped:

@@ -31,21 +31,6 @@ concept Mid = requires(T& t) {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::DynBase> : std::true_type {};
 
-template<tpyapp::main::__DynBase_Concept__ T>
-struct tpy::Adapter<tpyapp::main::DynBase, T> : tpyapp::main::DynBase {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string base_method() override { return std::string(inner.base_method()); }
-};
-
-template<tpyapp::main::__DynBase_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::DynBase, T> : tpyapp::main::DynBase {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    std::string base_method() override { return std::string(inner.base_method()); }
-};
-
 namespace tpyapp::main {
 
 struct Impl;
@@ -71,6 +56,25 @@ inline std::ostream& operator<<(std::ostream& os, const Impl& obj) {
     ::tpy::print_object_default(os, "Impl", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__DynBase_Concept__ T>
+struct tpy::Adapter<tpyapp::main::DynBase, T> : tpyapp::main::DynBase {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string base_method() override { return std::string(inner.base_method()); }
+};
+
+template<tpyapp::main::__DynBase_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::DynBase, T> : tpyapp::main::DynBase {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    std::string base_method() override { return std::string(inner.base_method()); }
+};
+
+namespace tpyapp::main {
 
 
 // def base_method(self) -> str:

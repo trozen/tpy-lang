@@ -76,9 +76,23 @@ class Awaitable[T](Protocol):
     def __poll__(self, waker: Waker) -> Own[Poll[T]]: ...
 
 
-# `AsyncFrame[T]` / `AnyTask` (@dynamic protocols used by the task
-# machinery) live in `asyncio._executor` -- they sit on tplib, which
-# isn't reachable from this implicit-stdlib module.
+# Cancellable awaitable -- the @dynamic protocol every consumer of
+# asyncio's cancellation machinery accepts (`run`, `create_task`,
+# `wait_for`, `Task[T]` storage, ...). Structurally extends `Awaitable`
+# with a `cancel()` precondition that lets the task layer deliver a
+# `CancelledError` at the awaitee's next suspension. gen_async.py
+# auto-emits cancel() on every coro struct, so any compiled `async def`
+# conforms automatically. Re-exported from `asyncio` for user-facing
+# API typing.
+@dynamic
+class Cancellable[T](Protocol):
+    def __poll__(self, waker: Waker) -> Own[Poll[T]]: ...
+    def cancel(self) -> None: ...
+
+
+# `AnyTask` (@dynamic protocol used by the task machinery) lives in
+# `asyncio._executor` -- it sits on tplib, which isn't reachable from
+# this implicit-stdlib module.
 
 
 def poll_ready[T](value: Own[T]) -> Own[Poll[T]]:

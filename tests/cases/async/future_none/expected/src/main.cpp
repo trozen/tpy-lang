@@ -32,7 +32,7 @@ __coro_producer producer(::tpystd::asyncio::Future<std::monostate>& fut) {
         // fut: Future[None] = Future[None]()
         fut.emplace(::tpystd::asyncio::Future<std::monostate>());
         // asyncio.create_task(producer(fut))
-        ::tpystd::asyncio::create_task<std::monostate>(producer((*fut)));
+        ::tpystd::asyncio::create_task<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(producer((*fut)))>>>(producer((*fut))));
         // await fut
         __sub_0 = &((*fut));
         __state = S_AFTER_AWAIT_0;
@@ -62,7 +62,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(main_coro());
+    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
 }
 
 void __tpy_init() {

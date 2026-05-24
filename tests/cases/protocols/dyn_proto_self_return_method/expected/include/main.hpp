@@ -30,23 +30,6 @@ struct Cloneable {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Cloneable> : std::true_type {};
 
-template<tpyapp::main::__Cloneable_Concept__ T>
-struct tpy::Adapter<tpyapp::main::Cloneable, T> : tpyapp::main::Cloneable {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::unique_ptr<tpyapp::main::Cloneable> replicate() const override { return inner.replicate(); }
-    std::string name() const override { return std::string(inner.name()); }
-};
-
-template<tpyapp::main::__Cloneable_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::Cloneable, T> : tpyapp::main::Cloneable {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    std::unique_ptr<tpyapp::main::Cloneable> replicate() const override { return inner.replicate(); }
-    std::string name() const override { return std::string(inner.name()); }
-};
-
 namespace tpyapp::main {
 
 struct Dog;
@@ -73,6 +56,27 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     ::tpy::print_object_default(os, "Dog", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Cloneable_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Cloneable, T> : tpyapp::main::Cloneable {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::unique_ptr<tpyapp::main::Cloneable> replicate() const override { return inner.replicate(); }
+    std::string name() const override { return std::string(inner.name()); }
+};
+
+template<tpyapp::main::__Cloneable_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Cloneable, T> : tpyapp::main::Cloneable {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    std::unique_ptr<tpyapp::main::Cloneable> replicate() const override { return inner.replicate(); }
+    std::string name() const override { return std::string(inner.name()); }
+};
+
+namespace tpyapp::main {
 
 
 // @readonly

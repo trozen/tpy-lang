@@ -32,21 +32,6 @@ enum class K : int32_t {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::pkg::b::Greeter> : std::true_type {};
 
-template<tpyapp::pkg::b::__Greeter_Concept__ T>
-struct tpy::Adapter<tpyapp::pkg::b::Greeter, T> : tpyapp::pkg::b::Greeter {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    int32_t greet() override { return inner.greet(); }
-};
-
-template<tpyapp::pkg::b::__Greeter_Concept__ T>
-struct tpy::RefAdapter<tpyapp::pkg::b::Greeter, T> : tpyapp::pkg::b::Greeter {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    int32_t greet() override { return inner.greet(); }
-};
-
 template<>
 struct tpy::EnumUtil<::tpyapp::pkg::b::K> {
     static constexpr std::string_view type_name = "K";
@@ -90,6 +75,25 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
     ::tpy::print_object_default(os, "B", obj);
     return os;
 }
+
+} // namespace tpyapp::pkg::b
+
+template<tpyapp::pkg::b::__Greeter_Concept__ T>
+struct tpy::Adapter<tpyapp::pkg::b::Greeter, T> : tpyapp::pkg::b::Greeter {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    int32_t greet() override { return inner.greet(); }
+};
+
+template<tpyapp::pkg::b::__Greeter_Concept__ T>
+struct tpy::RefAdapter<tpyapp::pkg::b::Greeter, T> : tpyapp::pkg::b::Greeter {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    int32_t greet() override { return inner.greet(); }
+};
+
+namespace tpyapp::pkg::b {
 
 
 // def greet(self) -> Int32:

@@ -32,6 +32,10 @@ class Awaitable(metaclass=_AwaitableMeta):
     """Subscriptable stub; no static-protocol enforcement under CPython."""
 
 
+class Cancellable(metaclass=_AwaitableMeta):
+    """Subscriptable stub; no static-protocol enforcement under CPython."""
+
+
 import inspect as _inspect
 
 

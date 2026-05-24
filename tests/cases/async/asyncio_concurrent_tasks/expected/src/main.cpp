@@ -43,9 +43,9 @@ __coro_doubler doubler(int32_t n, std::string_view label) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // t1: Task[Int32] = asyncio.create_task(doubler(Int32(5), "t1"))
-        t1.emplace(::tpystd::asyncio::create_task<int32_t>(doubler(5, "t1")));
+        t1.emplace(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(doubler(5, "t1"))>>>(doubler(5, "t1"))));
         // t2: Task[Int32] = asyncio.create_task(doubler(Int32(7), "t2"))
-        t2.emplace(::tpystd::asyncio::create_task<int32_t>(doubler(7, "t2")));
+        t2.emplace(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(doubler(7, "t2"))>>>(doubler(7, "t2"))));
         // a = await t1
         __sub_0 = &((*t1));
         __state = S_AFTER_AWAIT_0;
@@ -85,7 +85,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(main_coro());
+    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
 }
 
 void __tpy_init() {

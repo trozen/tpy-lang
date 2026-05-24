@@ -2154,10 +2154,13 @@ class ExpressionAnalyzer:
             expr)
 
     def _unwrap_awaitable_return(self, ret_type: 'TpyType') -> 'TpyType':
-        """Strip `Awaitable[T]` wrapping from an async def's return type."""
+        """Strip `Awaitable[T]` / `Cancellable[T]` wrapping from an async
+        def's return type. Cancellable is the post-registration shape of
+        every async-def call result; Awaitable is the shape user types
+        with just `__poll__` declare. Both unwrap to `T` for `await`."""
         ret = unwrap_ref_type(ret_type)
         if (isinstance(ret, NominalType)
-                and ret.qualified_name() == qnames.AWAITABLE
+                and ret.qualified_name() in (qnames.AWAITABLE, qnames.CANCELLABLE)
                 and len(ret.type_args) == 1):
             return ret.type_args[0]
         return ret

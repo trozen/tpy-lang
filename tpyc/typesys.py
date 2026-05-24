@@ -2782,14 +2782,30 @@ def make_own_iter(element_type: 'TpyType') -> 'NominalType':
 
 def make_awaitable(awaited_type: 'TpyType') -> 'NominalType':
     """Factory for the structural protocol Awaitable[T] (tpy.coro.Awaitable).
-    Used as the sema-visible return type of `async def f() -> T` so that
-    callers expecting `Awaitable[T]` can match the call result; codegen
-    still emits a concrete `__coro_<funcname>` struct (mirrors generator
-    `Iterator[T]` return + concrete `__gen_<funcname>` factory)."""
+    Used at sites that need the bare `__poll__`-shaped protocol -- e.g.
+    `__anext__` / `__aenter__` / `__aexit__` return-type unwrapping where
+    user types might legitimately implement just `__poll__`. The result
+    type of an `async def` call is `Cancellable[T]` instead (see
+    `make_cancellable`), which is a structural extension of Awaitable."""
     from tpyc import qnames
     return NominalType(name="Awaitable", type_args=(awaited_type,),
                        is_protocol=True,
                        _module_qname=qnames.AWAITABLE)
+
+
+def make_cancellable(awaited_type: 'TpyType') -> 'NominalType':
+    """Factory for the @dynamic protocol Cancellable[T] (tpy.coro.Cancellable).
+    Used as the sema-visible return type of `async def f() -> T` so that
+    callers expecting `Own[Cancellable[T]]` (e.g. `create_task`,
+    `wait_for`) can match the call result; codegen still emits a concrete
+    `__coro_<funcname>` struct that auto-implements `cancel()` (mirrors
+    generator `Iterator[T]` return + concrete `__gen_<funcname>` factory).
+    Cancellable structurally extends Awaitable via its `__poll__` member,
+    so `await coro` and other Awaitable-consumer sites continue to work."""
+    from tpyc import qnames
+    return NominalType(name="Cancellable", type_args=(awaited_type,),
+                       is_protocol=True,
+                       _module_qname=qnames.CANCELLABLE)
 
 
 # Singleton for the non-generic Waker type. Registered as a value-type

@@ -823,12 +823,40 @@ class ExpressionGenerator:
             return self.gen_call_arg(arg, OwnType(protocol))
         arg_expr = self.gen_expr_deref(arg, arg_type)
         arg_expr = self._maybe_move(arg, arg_expr)
+        # Async-def call results: sema views them as `Cancellable[T]` (the
+        # registered FunctionInfo return type), but the C++ value is the
+        # concrete `__coro_<funcname>` struct returned by the factory.
+        # Render the concrete impl via `decltype(arg_expr)` -- same trick
+        # the retired `_box_coro` cpp_template used, just inlined here so
+        # any Adapter-wrap site benefits. `arg_expr` appears twice in C++
+        # source (once in `decltype`, unevaluated; once in `make_unique`,
+        # evaluated) for a single runtime evaluation.
+        if self._is_async_call_with_protocol_return(arg, arg_type):
+            target_cpp = self.protocols.get_dynamic_adapter_type(
+                protocol, f"std::remove_cvref_t<decltype({arg_expr})>")
+            return f"std::make_unique<{target_cpp}>({arg_expr})"
         concrete_cpp = self.types.type_to_cpp(arg_type)
         if self.protocols.directly_implements_dynamic(arg_type, protocol):
             target_cpp = concrete_cpp
         else:
             target_cpp = self.protocols.get_dynamic_adapter_type(protocol, concrete_cpp)
         return f"std::make_unique<{target_cpp}>({arg_expr})"
+
+    def _is_async_call_with_protocol_return(self, arg: TpyExpr, arg_type: TpyType) -> bool:
+        """True if `arg` is a call to an `async def` whose sema return type
+        is the structural Cancellable / Awaitable wrap. The wrap is set in
+        registration.py for async-def signatures; the actual C++ value is
+        the concrete coro factory struct (`__coro_<funcname>`), so any
+        Adapter wrap at the call site must recover the concrete type via
+        `decltype` instead of reading the protocol type from sema."""
+        if not isinstance(arg, (TpyCall, TpyMethodCall)):
+            return False
+        fi = arg.resolved_function_info
+        if fi is None or not fi.is_async:
+            return False
+        if not isinstance(arg_type, NominalType):
+            return False
+        return arg_type.qualified_name() in (qnames.CANCELLABLE, qnames.AWAITABLE)
 
     def _gen_covariant_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
         """If ptype requires covariant conversion, return the wrapped arg. Otherwise None."""

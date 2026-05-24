@@ -78,14 +78,14 @@ void check_teardown() {
     // # `_ExecutorScope.__del__` has cleared it. Direct evidence that the
     // # RAII teardown ran.
     // asyncio.run(trivial())
-    ::tpystd::asyncio::run<std::monostate>(trivial());
+    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(trivial())>>>(trivial()));
     // print("after run, null?", (_get_current_executor() is None))
     std::cout << "after run, null?" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n";
     // # A second asyncio.run is allowed because `_current_executor` was
     // # cleared (re-entry into a running event loop is what gets
     // # rejected; back-to-back runs are fine).
     // asyncio.run(trivial())
-    ::tpystd::asyncio::run<std::monostate>(trivial());
+    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(trivial())>>>(trivial()));
     // print("second run completed, null?", (_get_current_executor() is None))
     std::cout << "second run completed, null?" << " " << ::tpy::print_bool((::tpystd::asyncio::_executor::_get_current_executor() == nullptr)) << "\n";
 }
@@ -97,7 +97,7 @@ void main() {
     // check_sleep()
     check_sleep();
     // asyncio.run(check_inside())
-    ::tpystd::asyncio::run<std::monostate>(check_inside());
+    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(check_inside())>>>(check_inside()));
     // check_teardown()
     check_teardown();
 }

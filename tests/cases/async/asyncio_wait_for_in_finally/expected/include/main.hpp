@@ -51,7 +51,7 @@ struct __coro_go {
     ::tpy::BigInt v;
     std::exception_ptr __finally_exc_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
-    std::optional<::tpystd::asyncio::__coro_wait_for<::tpy::BigInt, std::remove_cvref_t<decltype(quick())>>> __sub_1;
+    std::optional<::tpystd::asyncio::__coro_wait_for<::tpy::BigInt>> __sub_1;
 
     enum : int32_t {
         S_INITIAL = 0,

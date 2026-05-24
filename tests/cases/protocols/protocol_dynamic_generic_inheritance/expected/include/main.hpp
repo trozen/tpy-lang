@@ -41,40 +41,8 @@ struct Counter : Source<T> {
 template<typename T>
 struct tpy::is_dyn_protocol_base<tpyapp::main::Source<T>> : std::true_type {};
 
-template<typename T, tpyapp::main::__Source_Concept__<T> __tpy_Impl>
-struct tpy::Adapter<tpyapp::main::Source<T>, __tpy_Impl> : tpyapp::main::Source<T> {
-    __tpy_Impl inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    T get() override { return inner.get(); }
-};
-
-template<typename T, tpyapp::main::__Source_Concept__<T> __tpy_Impl>
-struct tpy::RefAdapter<tpyapp::main::Source<T>, __tpy_Impl> : tpyapp::main::Source<T> {
-    __tpy_Impl& inner;
-    RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    T get() override { return inner.get(); }
-};
-
 template<typename T>
 struct tpy::is_dyn_protocol_base<tpyapp::main::Counter<T>> : std::true_type {};
-
-template<typename T, tpyapp::main::__Counter_Concept__<T> __tpy_Impl>
-struct tpy::Adapter<tpyapp::main::Counter<T>, __tpy_Impl> : tpyapp::main::Counter<T> {
-    __tpy_Impl inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    void bump() override { inner.bump(); }
-    T get() override { return inner.get(); }
-};
-
-template<typename T, tpyapp::main::__Counter_Concept__<T> __tpy_Impl>
-struct tpy::RefAdapter<tpyapp::main::Counter<T>, __tpy_Impl> : tpyapp::main::Counter<T> {
-    __tpy_Impl& inner;
-    RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    void bump() override { inner.bump(); }
-    T get() override { return inner.get(); }
-};
 
 namespace tpyapp::main {
 
@@ -105,6 +73,42 @@ inline std::ostream& operator<<(std::ostream& os, const IntCounter& obj) {
     ::tpy::print_object_default(os, "IntCounter", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<typename T, tpyapp::main::__Source_Concept__<T> __tpy_Impl>
+struct tpy::Adapter<tpyapp::main::Source<T>, __tpy_Impl> : tpyapp::main::Source<T> {
+    __tpy_Impl inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    T get() override { return inner.get(); }
+};
+
+template<typename T, tpyapp::main::__Source_Concept__<T> __tpy_Impl>
+struct tpy::RefAdapter<tpyapp::main::Source<T>, __tpy_Impl> : tpyapp::main::Source<T> {
+    __tpy_Impl& inner;
+    RefAdapter(__tpy_Impl& ref) : inner(ref) {}
+    T get() override { return inner.get(); }
+};
+
+template<typename T, tpyapp::main::__Counter_Concept__<T> __tpy_Impl>
+struct tpy::Adapter<tpyapp::main::Counter<T>, __tpy_Impl> : tpyapp::main::Counter<T> {
+    __tpy_Impl inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    void bump() override { inner.bump(); }
+    T get() override { return inner.get(); }
+};
+
+template<typename T, tpyapp::main::__Counter_Concept__<T> __tpy_Impl>
+struct tpy::RefAdapter<tpyapp::main::Counter<T>, __tpy_Impl> : tpyapp::main::Counter<T> {
+    __tpy_Impl& inner;
+    RefAdapter(__tpy_Impl& ref) : inner(ref) {}
+    void bump() override { inner.bump(); }
+    T get() override { return inner.get(); }
+};
+
+namespace tpyapp::main {
 
 
 // def get(self) -> Int32:

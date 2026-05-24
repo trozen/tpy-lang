@@ -1961,7 +1961,7 @@ class StatementAnalyzer:
 
         anext_ret = unwrap_ref_type(anext_info.return_type)
         if (isinstance(anext_ret, NominalType)
-                and anext_ret.qualified_name() == qnames.AWAITABLE
+                and anext_ret.qualified_name() in (qnames.AWAITABLE, qnames.CANCELLABLE)
                 and len(anext_ret.type_args) == 1):
             elem_type = anext_ret.type_args[0]
         else:
@@ -2095,11 +2095,12 @@ class StatementAnalyzer:
             # async methods don't participate in @overload, so each has
             # exactly one entry.
             # For async methods, the FunctionInfo return type is wrapped
-            # in `Awaitable[T]` (see registration.py); unwrap one level to
+            # in `Cancellable[T]` for async-def results (or `Awaitable[T]`
+            # for user types with bare `__poll__`); unwrap one level to
             # see the user's declared T.
             exit_ret = exit_info.return_type
             if (stmt.is_async and isinstance(exit_ret, NominalType)
-                    and exit_ret.qualified_name() == qnames.AWAITABLE
+                    and exit_ret.qualified_name() in (qnames.AWAITABLE, qnames.CANCELLABLE)
                     and len(exit_ret.type_args) == 1):
                 exit_ret = exit_ret.type_args[0]
             item.exit_can_suppress = exit_ret == BOOL
@@ -2109,10 +2110,11 @@ class StatementAnalyzer:
             )
 
             # Get return type of __[a]enter__() -- use the first overload.
-            # For async, unwrap Awaitable[T] so the as-binding sees T.
+            # For async, unwrap Awaitable[T] / Cancellable[T] so the
+            # as-binding sees T.
             enter_type = unwrap_ref_type(enter_info.return_type)
             if (stmt.is_async and isinstance(enter_type, NominalType)
-                    and enter_type.qualified_name() == qnames.AWAITABLE
+                    and enter_type.qualified_name() in (qnames.AWAITABLE, qnames.CANCELLABLE)
                     and len(enter_type.type_args) == 1):
                 enter_type = enter_type.type_args[0]
             item.enter_type = enter_type

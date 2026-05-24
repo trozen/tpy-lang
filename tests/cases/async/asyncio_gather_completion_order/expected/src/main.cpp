@@ -70,9 +70,9 @@ __coro_fast fast(::tpystd::asyncio::Event& start) {
         // tasks: list[asyncio.Task[Int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         // tasks.append(asyncio.create_task(slow(start)))
-        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(slow((*start))));
+        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(slow((*start)))>>>(slow((*start)))));
         // tasks.append(asyncio.create_task(fast(start)))
-        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(fast((*start))));
+        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(fast((*start)))>>>(fast((*start)))));
         // results = await asyncio.gather_list(tasks)
         __sub_0.emplace((*tasks));
         __state = S_AFTER_AWAIT_0;
@@ -104,7 +104,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(main_coro());
+    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
 }
 
 void __tpy_init() {

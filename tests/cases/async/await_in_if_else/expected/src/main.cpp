@@ -77,9 +77,9 @@ __coro_pick pick(bool cond) {
 // def main() -> None:
 void main() {
     // print(asyncio.run(pick(True)))
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(pick(true)) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(pick(true))>>>(pick(true))) << "\n";
     // print(asyncio.run(pick(False)))
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(pick(false)) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(pick(false))>>>(pick(false))) << "\n";
 }
 
 void __tpy_init() {

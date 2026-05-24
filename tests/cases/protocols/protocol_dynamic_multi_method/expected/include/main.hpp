@@ -28,25 +28,6 @@ struct Shape {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Shape> : std::true_type {};
 
-template<tpyapp::main::__Shape_Concept__ T>
-struct tpy::Adapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    double area() override { return inner.area(); }
-    std::string name() override { return std::string(inner.name()); }
-    void scale(double factor) override { inner.scale(factor); }
-};
-
-template<tpyapp::main::__Shape_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    double area() override { return inner.area(); }
-    std::string name() override { return std::string(inner.name()); }
-    void scale(double factor) override { inner.scale(factor); }
-};
-
 namespace tpyapp::main {
 
 struct Circle;
@@ -79,6 +60,29 @@ inline std::ostream& operator<<(std::ostream& os, const Circle& obj) {
     ::tpy::print_object_default(os, "Circle", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Shape_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    double area() override { return inner.area(); }
+    std::string name() override { return std::string(inner.name()); }
+    void scale(double factor) override { inner.scale(factor); }
+};
+
+template<tpyapp::main::__Shape_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    double area() override { return inner.area(); }
+    std::string name() override { return std::string(inner.name()); }
+    void scale(double factor) override { inner.scale(factor); }
+};
+
+namespace tpyapp::main {
 
 
 // def area(self) -> float:

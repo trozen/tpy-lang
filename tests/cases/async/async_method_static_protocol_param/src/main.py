@@ -1,5 +1,5 @@
 # Regression: async method on a non-generic class taking an
-# `Own[Awaitable[T]]`-shaped (static-protocol) param. Two codegen
+# `Own[Cancellable[T]]`-shaped (static-protocol) param. Two codegen
 # sites that previously emitted wrong C++ for this shape:
 #   - In-struct template header (records.py) must include the
 #     `T_<pname>` extra for the deduced sub-coro type.
@@ -11,11 +11,11 @@
 # both fixed code paths end-to-end.
 import asyncio
 from tpy import Own
-from tpy.coro import Awaitable
+from tpy.coro import Cancellable
 
 
 class Runner:
-    async def with_timeout[T](self, coro: Own[Awaitable[T]],
+    async def with_timeout[T](self, coro: Own[Cancellable[T]],
                               timeout: float) -> T:
         return await asyncio.wait_for(coro, timeout)
 

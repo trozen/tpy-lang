@@ -24,21 +24,6 @@ struct Greeter {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Greeter> : std::true_type {};
 
-template<tpyapp::main::__Greeter_Concept__ T>
-struct tpy::Adapter<tpyapp::main::Greeter, T> : tpyapp::main::Greeter {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string greet() override { return std::string(inner.greet()); }
-};
-
-template<tpyapp::main::__Greeter_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::Greeter, T> : tpyapp::main::Greeter {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    std::string greet() override { return std::string(inner.greet()); }
-};
-
 namespace tpyapp::main {
 
 template<typename T> struct Tagged;
@@ -81,6 +66,25 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
     ::tpy::print_object_default(os, "Owner", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Greeter_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Greeter, T> : tpyapp::main::Greeter {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string greet() override { return std::string(inner.greet()); }
+};
+
+template<tpyapp::main::__Greeter_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Greeter, T> : tpyapp::main::Greeter {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    std::string greet() override { return std::string(inner.greet()); }
+};
+
+namespace tpyapp::main {
 
 void __tpy_init();
 } // namespace tpyapp::main

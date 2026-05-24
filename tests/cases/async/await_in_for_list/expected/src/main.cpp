@@ -74,7 +74,7 @@ __coro_total_of total_of(std::vector<::tpy::BigInt>& xs) {
 void main() {
     // print(asyncio.run(total_of([1, 2, 3])))
     std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 3};
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(total_of(__tmp_1)) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(total_of(__tmp_1))>>>(total_of(__tmp_1))) << "\n";
 }
 
 void __tpy_init() {

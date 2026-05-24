@@ -16,7 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_inner;
 struct __coro_main_coro;
-template <typename T, ::tpystd::coro::Awaitable<T> T_coro>
+template <typename T>
 struct __coro_Runner_with_timeout;
 
 __coro_inner inner();
@@ -27,8 +27,8 @@ void main();
 struct Runner {
 
 
-    template <typename T, ::tpystd::coro::Awaitable<T> T_coro>
-    __coro_Runner_with_timeout<T, T_coro> with_timeout(T&& coro, double timeout) const;
+    template <typename T>
+    __coro_Runner_with_timeout<T> with_timeout(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro, double timeout) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Runner";
 };
 
@@ -38,14 +38,14 @@ inline std::ostream& operator<<(std::ostream& os, const Runner& obj) {
 }
 
 // Async coroutine: Runner.with_timeout
-template <typename T, ::tpystd::coro::Awaitable<T> T_coro>
+template <typename T>
 struct __coro_Runner_with_timeout {
     int32_t __state;
     bool __cancel_pending;
     const Runner& __self;
-    T_coro coro;
+    std::unique_ptr<::tpystd::coro::Cancellable<T>> coro;
     double timeout;
-    std::optional<::tpystd::asyncio::__coro_wait_for<T, std::remove_cvref_t<decltype(coro)>>> __sub_0;
+    std::optional<::tpystd::asyncio::__coro_wait_for<T>> __sub_0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -53,21 +53,21 @@ struct __coro_Runner_with_timeout {
         S_DONE = 2,
     };
 
-    __coro_Runner_with_timeout(const Runner& __self, T_coro&& coro_, double timeout_)
+    __coro_Runner_with_timeout(const Runner& __self, std::unique_ptr<::tpystd::coro::Cancellable<T>>&& coro_, double timeout_)
         : __state(S_INITIAL), __cancel_pending(false), __self(__self), coro(std::move(coro_)), timeout(std::move(timeout_)) {}
 
     ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __coro_Runner_with_timeout<T, T_coro>&) {
+    friend std::ostream& operator<<(std::ostream& os, const __coro_Runner_with_timeout<T>&) {
         return os << "<coroutine Runner.with_timeout>";
     }
 };
 
-// async def with_timeout[T](self, coro: Own[Awaitable[T]],
+// async def with_timeout[T](self, coro: Own[Cancellable[T]],
 // timeout: float) -> T:
-template <typename T, ::tpystd::coro::Awaitable<T> T_coro>
-::tpystd::tpy::Poll<T> __coro_Runner_with_timeout<T, T_coro>::__poll__(::tpystd::coro::Waker waker) {
+template <typename T>
+::tpystd::tpy::Poll<T> __coro_Runner_with_timeout<T>::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // return await asyncio.wait_for(coro, timeout)
@@ -89,9 +89,9 @@ template <typename T, ::tpystd::coro::Awaitable<T> T_coro>
 }
 
 
-template <typename T, ::tpystd::coro::Awaitable<T> T_coro>
-inline __coro_Runner_with_timeout<T, T_coro> Runner::with_timeout(T&& coro, double timeout) const {
-    return __coro_Runner_with_timeout<T, T_coro>(*this, std::move(coro), timeout);
+template <typename T>
+inline __coro_Runner_with_timeout<T> Runner::with_timeout(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro, double timeout) const {
+    return __coro_Runner_with_timeout<T>(*this, std::move(coro), timeout);
 }
 
 // Async coroutine: inner
@@ -123,7 +123,7 @@ struct __coro_main_coro {
     bool __cancel_pending;
     ::tpy::frame_slot<Runner> r;
     ::tpy::BigInt v;
-    std::optional<__coro_Runner_with_timeout<::tpy::BigInt, std::remove_cvref_t<decltype(inner())>>> __sub_0;
+    std::optional<__coro_Runner_with_timeout<::tpy::BigInt>> __sub_0;
 
     enum : int32_t {
         S_INITIAL = 0,

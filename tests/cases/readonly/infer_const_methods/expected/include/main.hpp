@@ -34,21 +34,6 @@ struct DynValued {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::DynValued> : std::true_type {};
 
-template<tpyapp::main::__DynValued_Concept__ T>
-struct tpy::Adapter<tpyapp::main::DynValued, T> : tpyapp::main::DynValued {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    int32_t value() override { return inner.value(); }
-};
-
-template<tpyapp::main::__DynValued_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::DynValued, T> : tpyapp::main::DynValued {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    int32_t value() override { return inner.value(); }
-};
-
 namespace tpyapp::main {
 
 struct Counter;
@@ -228,6 +213,25 @@ inline std::ostream& operator<<(std::ostream& os, const Valued& obj) {
     ::tpy::print_object_default(os, "Valued", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__DynValued_Concept__ T>
+struct tpy::Adapter<tpyapp::main::DynValued, T> : tpyapp::main::DynValued {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    int32_t value() override { return inner.value(); }
+};
+
+template<tpyapp::main::__DynValued_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::DynValued, T> : tpyapp::main::DynValued {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    int32_t value() override { return inner.value(); }
+};
+
+namespace tpyapp::main {
 
 
 // def increment(self) -> None:        # mutates self -- must NOT be const

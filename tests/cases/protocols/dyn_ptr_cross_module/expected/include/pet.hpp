@@ -26,6 +26,12 @@ struct Counter {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::pet::Counter> : std::true_type {};
 
+namespace tpyapp::pet {
+
+inline constexpr std::string_view __name__ = "pet";
+
+} // namespace tpyapp::pet
+
 template<tpyapp::pet::__Counter_Concept__ T>
 struct tpy::Adapter<tpyapp::pet::Counter, T> : tpyapp::pet::Counter {
     T inner;
@@ -44,8 +50,6 @@ struct tpy::RefAdapter<tpyapp::pet::Counter, T> : tpyapp::pet::Counter {
 };
 
 namespace tpyapp::pet {
-
-inline constexpr std::string_view __name__ = "pet";
 
 void __tpy_init();
 } // namespace tpyapp::pet

@@ -1283,6 +1283,13 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
         type_params=(), parent_protocols=(),
         methods=("mark_runnable",),
     ),
+    "tpy.coro.Cancellable": dict(
+        name="Cancellable", module="tpy.coro",
+        is_dynamic=True, is_marker=False, is_readonly=False,
+        cpp_concept=None,
+        type_params=("T",), parent_protocols=(),
+        methods=("__poll__", "cancel"),
+    ),
     "tpy.Truthy": dict(
         name="Truthy", module="tpy",
         is_dynamic=False, is_marker=False, is_readonly=False,
@@ -1482,7 +1489,7 @@ from tpy import (
     Default, ReturnException, Covariant,
     AnyFixedInt, AnyFixedSigned, AnyFixedUnsigned,
 )
-from tpy.coro import Awaitable
+from tpy.coro import Awaitable, Cancellable
 """
 
 

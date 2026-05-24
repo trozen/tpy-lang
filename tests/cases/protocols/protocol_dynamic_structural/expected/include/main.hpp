@@ -24,21 +24,6 @@ struct Pet {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Pet> : std::true_type {};
 
-template<tpyapp::main::__Pet_Concept__ T>
-struct tpy::Adapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string make_noise() override { return std::string(inner.make_noise()); }
-};
-
-template<tpyapp::main::__Pet_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    std::string make_noise() override { return std::string(inner.make_noise()); }
-};
-
 namespace tpyapp::main {
 
 struct Parrot;
@@ -62,6 +47,25 @@ inline std::ostream& operator<<(std::ostream& os, const Parrot& obj) {
     ::tpy::print_object_default(os, "Parrot", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Pet_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string make_noise() override { return std::string(inner.make_noise()); }
+};
+
+template<tpyapp::main::__Pet_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Pet, T> : tpyapp::main::Pet {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    std::string make_noise() override { return std::string(inner.make_noise()); }
+};
+
+namespace tpyapp::main {
 
 
 // def make_noise(self) -> str:

@@ -26,23 +26,6 @@ struct Counter {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Counter> : std::true_type {};
 
-template<tpyapp::main::__Counter_Concept__ T>
-struct tpy::Adapter<tpyapp::main::Counter, T> : tpyapp::main::Counter {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    void increment() override { inner.increment(); }
-    int32_t value() override { return inner.value(); }
-};
-
-template<tpyapp::main::__Counter_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::Counter, T> : tpyapp::main::Counter {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    void increment() override { inner.increment(); }
-    int32_t value() override { return inner.value(); }
-};
-
 namespace tpyapp::main {
 
 struct MyCounter;
@@ -96,6 +79,27 @@ inline std::ostream& operator<<(std::ostream& os, const Tally& obj) {
     ::tpy::print_object_default(os, "Tally", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Counter_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Counter, T> : tpyapp::main::Counter {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    void increment() override { inner.increment(); }
+    int32_t value() override { return inner.value(); }
+};
+
+template<tpyapp::main::__Counter_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Counter, T> : tpyapp::main::Counter {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    void increment() override { inner.increment(); }
+    int32_t value() override { return inner.value(); }
+};
+
+namespace tpyapp::main {
 
 
 // def increment(self) -> None:

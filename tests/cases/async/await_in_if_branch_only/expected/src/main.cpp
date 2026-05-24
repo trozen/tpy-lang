@@ -69,9 +69,9 @@ __coro_maybe maybe(bool cond) {
 // def main() -> None:
 void main() {
     // print(asyncio.run(maybe(True)))
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(maybe(true)) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(maybe(true))>>>(maybe(true))) << "\n";
     // print(asyncio.run(maybe(False)))
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(maybe(false)) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(maybe(false))>>>(maybe(false))) << "\n";
 }
 
 void __tpy_init() {

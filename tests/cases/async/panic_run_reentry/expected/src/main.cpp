@@ -31,7 +31,7 @@ __coro_inner inner() {
     switch (__state) {
     case S_INITIAL: {
         // asyncio.run(inner())  # second run while one is already active
-        ::tpystd::asyncio::run<std::monostate>(inner());
+        ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(inner())>>>(inner()));
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -49,7 +49,7 @@ __coro_outer outer() {
 // def main() -> None:
 void main() {
     // asyncio.run(outer())
-    ::tpystd::asyncio::run<std::monostate>(outer());
+    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(outer())>>>(outer()));
 }
 
 void __tpy_init() {

@@ -5615,9 +5615,12 @@ Send/Sync rules for built-in types:
   `await event.wait()`.
   `tpy.coro.poll_once(aw)` is a synchronous one-step driver useful for
   tests and non-asyncio contexts; sema-types `f()` (for `async def f`)
-  as `Awaitable[T]` so generic helpers expecting `Awaitable[T]` accept
-  coroutine calls directly (mirrors how generators surface as
-  `Iterator[T]`).
+  as `Cancellable[T]` (a `@dynamic` protocol with `__poll__` + `cancel`,
+  defined in `tpy.coro` alongside `Awaitable`) so the cancellable-API
+  consumers (`run` / `create_task` / `wait_for`) accept coroutine calls
+  directly. Awaitable-only consumers (`await`, `poll_once`, structural
+  `Awaitable[T]`-typed params) still match via Cancellable's `__poll__`
+  member; this mirrors how generators surface as `Iterator[T]`.
   Sema rejects user-defined `__await__` and bare-coroutine drops. See
   `docs/ASYNC_DESIGN.md` and `docs/ASYNC_PROGRESS.md`.
   At `asyncio.run` exit, remaining spawned tasks are cancelled and
@@ -5691,8 +5694,11 @@ Send/Sync rules for built-in types:
   the factory forwards via `std::move`. Caller-side sub-coro field
   declarations use `std::remove_cvref_t<decltype(arg)>` so the
   concrete deduced type doesn't need spelling at the await site.
-  Unblocks `wait_for` and any future generic asyncio helper taking
-  an awaitable param.
+  Remains the path for user-defined awaitable protocols; asyncio's
+  own cancellable APIs (`run` / `create_task` / `wait_for`) have
+  since moved to `Own[Cancellable[T]]` (@dynamic) via the
+  `OWNED_VALUE` `_CoroParamKind` -- different codegen path, same
+  user surface.
 - **Working**: Pointer-form `T | None` (pointer-repr Optional) async
   coroutine parameters. Factory signature and frame slot emit as
   `T*` / `const T*` (mirroring sync's `const T*` parameter shape);

@@ -87,7 +87,7 @@ __coro_first_match first_match() {
 // def main() -> None:
 void main() {
     // print(asyncio.run(first_match()))
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(first_match()) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(first_match())>>>(first_match())) << "\n";
 }
 
 void __tpy_init() {

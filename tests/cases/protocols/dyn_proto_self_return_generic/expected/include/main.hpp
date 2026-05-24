@@ -32,23 +32,6 @@ struct Cloneable {
 template<typename T>
 struct tpy::is_dyn_protocol_base<tpyapp::main::Cloneable<T>> : std::true_type {};
 
-template<typename T, tpyapp::main::__Cloneable_Concept__<T> __tpy_Impl>
-struct tpy::Adapter<tpyapp::main::Cloneable<T>, __tpy_Impl> : tpyapp::main::Cloneable<T> {
-    __tpy_Impl inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::unique_ptr<tpyapp::main::Cloneable<T>> replicate() const override { return inner.replicate(); }
-    T value() const override { return inner.value(); }
-};
-
-template<typename T, tpyapp::main::__Cloneable_Concept__<T> __tpy_Impl>
-struct tpy::RefAdapter<tpyapp::main::Cloneable<T>, __tpy_Impl> : tpyapp::main::Cloneable<T> {
-    __tpy_Impl& inner;
-    RefAdapter(__tpy_Impl& ref) : inner(ref) {}
-    std::unique_ptr<tpyapp::main::Cloneable<T>> replicate() const override { return inner.replicate(); }
-    T value() const override { return inner.value(); }
-};
-
 namespace tpyapp::main {
 
 struct IntBox;
@@ -80,6 +63,27 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
     ::tpy::print_object_default(os, "IntBox", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<typename T, tpyapp::main::__Cloneable_Concept__<T> __tpy_Impl>
+struct tpy::Adapter<tpyapp::main::Cloneable<T>, __tpy_Impl> : tpyapp::main::Cloneable<T> {
+    __tpy_Impl inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::unique_ptr<tpyapp::main::Cloneable<T>> replicate() const override { return inner.replicate(); }
+    T value() const override { return inner.value(); }
+};
+
+template<typename T, tpyapp::main::__Cloneable_Concept__<T> __tpy_Impl>
+struct tpy::RefAdapter<tpyapp::main::Cloneable<T>, __tpy_Impl> : tpyapp::main::Cloneable<T> {
+    __tpy_Impl& inner;
+    RefAdapter(__tpy_Impl& ref) : inner(ref) {}
+    std::unique_ptr<tpyapp::main::Cloneable<T>> replicate() const override { return inner.replicate(); }
+    T value() const override { return inner.value(); }
+};
+
+namespace tpyapp::main {
 
 
 // @readonly

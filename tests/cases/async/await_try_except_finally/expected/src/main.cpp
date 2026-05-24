@@ -213,9 +213,9 @@ __coro_go go(bool should_fail) {
 // def main() -> None:
 void main() {
     // print(asyncio.run(go(False)))
-    std::cout << ::tpystd::asyncio::run<int32_t>(go(false)) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(go(false))>>>(go(false))) << "\n";
     // print(asyncio.run(go(True)))
-    std::cout << ::tpystd::asyncio::run<int32_t>(go(true)) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(go(true))>>>(go(true))) << "\n";
 }
 
 void __tpy_init() {

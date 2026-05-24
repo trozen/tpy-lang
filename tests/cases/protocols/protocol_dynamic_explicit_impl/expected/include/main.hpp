@@ -26,23 +26,6 @@ struct Describable {
 
 template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Describable> : std::true_type {};
 
-template<tpyapp::main::__Describable_Concept__ T>
-struct tpy::Adapter<tpyapp::main::Describable, T> : tpyapp::main::Describable {
-    T inner;
-    template<typename... Args>
-    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
-    std::string describe() override { return std::string(inner.describe()); }
-    int32_t id() override { return inner.id(); }
-};
-
-template<tpyapp::main::__Describable_Concept__ T>
-struct tpy::RefAdapter<tpyapp::main::Describable, T> : tpyapp::main::Describable {
-    T& inner;
-    RefAdapter(T& ref) : inner(ref) {}
-    std::string describe() override { return std::string(inner.describe()); }
-    int32_t id() override { return inner.id(); }
-};
-
 namespace tpyapp::main {
 
 struct Item;
@@ -74,6 +57,27 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     ::tpy::print_object_default(os, "Item", obj);
     return os;
 }
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Describable_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Describable, T> : tpyapp::main::Describable {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string describe() override { return std::string(inner.describe()); }
+    int32_t id() override { return inner.id(); }
+};
+
+template<tpyapp::main::__Describable_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Describable, T> : tpyapp::main::Describable {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    std::string describe() override { return std::string(inner.describe()); }
+    int32_t id() override { return inner.id(); }
+};
+
+namespace tpyapp::main {
 
 
 // def describe(self) -> str:

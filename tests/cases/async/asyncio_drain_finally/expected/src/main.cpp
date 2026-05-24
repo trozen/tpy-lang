@@ -64,7 +64,7 @@ __coro_background background() {
     switch (__state) {
     case S_INITIAL: {
         // t: Task[None] = asyncio.create_task(background())
-        t.emplace(::tpystd::asyncio::create_task<std::monostate>(background()));
+        t.emplace(::tpystd::asyncio::create_task<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(background())>>>(background())));
         // del t
         { auto __del_sink = std::move(t); }
         // print("main done")
@@ -86,7 +86,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(main_coro());
+    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
 }
 
 void __tpy_init() {

@@ -132,7 +132,7 @@ void __tpy_init() {
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
     // asyncio.run(main())
-    ::tpystd::asyncio::run<std::monostate>(main());
+    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main())>>>(main()));
 }
 
 } // namespace tpyapp::main

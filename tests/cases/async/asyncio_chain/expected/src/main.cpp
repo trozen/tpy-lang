@@ -98,7 +98,7 @@ __coro_main main() {
 // def entry() -> None:
 void entry() {
     // asyncio.run(main())
-    ::tpystd::asyncio::run<std::monostate>(main());
+    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main())>>>(main()));
 }
 
 void __tpy_init() {

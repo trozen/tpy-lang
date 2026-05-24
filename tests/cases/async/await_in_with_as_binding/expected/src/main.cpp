@@ -77,7 +77,7 @@ __coro_caller caller() {
 // def main() -> None:
 void main() {
     // asyncio.run(caller())
-    ::tpystd::asyncio::run<std::monostate>(caller());
+    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(caller())>>>(caller()));
 }
 
 void __tpy_init() {

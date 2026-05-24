@@ -48,7 +48,7 @@ struct __coro_slow {
 struct __coro_zero_timeout {
     int32_t __state;
     bool __cancel_pending;
-    std::optional<::tpystd::asyncio::__coro_wait_for<::tpy::BigInt, std::remove_cvref_t<decltype(slow())>>> __sub_0;
+    std::optional<::tpystd::asyncio::__coro_wait_for<::tpy::BigInt>> __sub_0;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -124,7 +124,7 @@ __coro_go go() {
 // def main() -> None:
 void main() {
     // print(asyncio.run(go()))
-    std::cout << ::tpystd::asyncio::run<int32_t>(go()) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(go())>>>(go())) << "\n";
 }
 
 void __tpy_init() {

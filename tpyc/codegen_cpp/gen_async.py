@@ -32,7 +32,7 @@ from ..parse.nodes import (
     TpyNoneLiteral, TpyCoerce,
     is_stable_address_lvalue,
 )
-from ..typesys import NominalType, OptionalType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType
+from ..typesys import NominalType, OptionalType, OwnType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType
 from ..type_def_registry import is_str_type, is_str_category
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
 from . import resumable_cfg as rcfg
@@ -70,12 +70,19 @@ class _CoroParamKind(IntEnum):
         in `functions.py`. Field stores by value (the concrete deduced
         type); ctor takes `T_<pname>&&` (forwarding ref) and moves in;
         the factory forwards the same way.
+    OWNED_VALUE: `Own[T]` non-value, non-static-protocol type (e.g.
+        `Own[Cancellable[T]]` -- a @dynamic protocol, so the C++ shape is
+        `unique_ptr<P>`, not a deduced template arg). Field stores by
+        value; ctor takes `T&&` and moves in; the factory forwards via
+        `std::move(name)`. Parallels STATIC_PROTOCOL minus the
+        template-arg dance.
     """
     REF = 0
     VALUE = 1
     POINTER = 2
     TYPE_PARAM = 3
     STATIC_PROTOCOL = 4
+    OWNED_VALUE = 5
 
 
 @dataclass(frozen=True)
@@ -99,12 +106,16 @@ class _CoroParam:
             return f"{self.ctor_param_type}& {self.cpp_name}"
         if self.kind is _CoroParamKind.STATIC_PROTOCOL:
             return f"{self.ctor_param_type}&& {self.cpp_name}"
+        if self.kind is _CoroParamKind.OWNED_VALUE:
+            return f"{self.ctor_param_type} {self.cpp_name}"
         return f"{self.ctor_param_type} {self.cpp_name}"
 
     def ctor_param_decl(self) -> str:
         if self.kind is _CoroParamKind.REF:
             return f"{self.ctor_param_type}& {self.cpp_name}"
         if self.kind is _CoroParamKind.STATIC_PROTOCOL:
+            return f"{self.ctor_param_type}&& {self.cpp_name}_"
+        if self.kind is _CoroParamKind.OWNED_VALUE:
             return f"{self.ctor_param_type}&& {self.cpp_name}_"
         # VALUE / POINTER / TYPE_PARAM: `_` suffix disambiguates from the
         # field name in the init list.
@@ -292,7 +303,24 @@ class AsyncCoroCodegen:
                 ))
             else:
                 cpp_type = self.types.type_to_cpp(ptype_inner)
-                if ptype_inner.is_value_type():
+                if isinstance(ptype_inner, OwnType):
+                    # Owned non-value (e.g. `Own[Cancellable[T]]` -- a
+                    # @dynamic protocol whose C++ shape is unique_ptr<P>,
+                    # so the param can't be re-bound through REF and the
+                    # factory can't forward by bare name without
+                    # tripping the deleted copy ctor). Store by value;
+                    # ctor moves in; factory moves out. Checked before
+                    # `is_value_type()` because `OwnType.is_value_type()`
+                    # returns True (Own[T] uses T&& at param boundaries
+                    # so it's value-like for *most* purposes) but the
+                    # move-only semantics still need explicit forwarding.
+                    out.append(_CoroParam(
+                        cpp_name=cpp_name,
+                        field_type=cpp_type,
+                        ctor_param_type=cpp_type,
+                        kind=_CoroParamKind.OWNED_VALUE,
+                    ))
+                elif ptype_inner.is_value_type():
                     out.append(_CoroParam(
                         cpp_name=cpp_name,
                         field_type=cpp_type,
@@ -808,7 +836,8 @@ class AsyncCoroCodegen:
         for cparam in self._classify_params(func, record_name):
             if cparam.cpp_name == "__self":
                 continue
-            if cparam.kind is _CoroParamKind.STATIC_PROTOCOL:
+            if cparam.kind in (_CoroParamKind.STATIC_PROTOCOL,
+                               _CoroParamKind.OWNED_VALUE):
                 parts.append(f"std::move({cparam.cpp_name})")
             else:
                 parts.append(cparam.cpp_name)
@@ -863,7 +892,8 @@ class AsyncCoroCodegen:
         # a copy-into-temp + move, independent of how the protocol's
         # `is_value_type` resolves.
         for cparam in self._classify_params(func, record_name):
-            if cparam.kind is _CoroParamKind.STATIC_PROTOCOL:
+            if cparam.kind in (_CoroParamKind.STATIC_PROTOCOL,
+                               _CoroParamKind.OWNED_VALUE):
                 self.ctx.movable_locals.add(cparam.cpp_name)
         if record_name:
             self.ctx.generator_self_ref = "__self"
@@ -2263,13 +2293,12 @@ class AsyncCoroCodegen:
         """Generate one arg for `__sub_N.emplace(...)` constructing a
         sub-coroutine. Mirrors the param-type-driven coercions sync call
         codegen applies in `_gen_call`: pointer-form `Optional[NonValue]`
-        lift (P -> &P) when the callee param is the `T*` shape, plus
-        the full `Own[T]` move-out machinery (`std::move(name)` for
-        last-use movable lvalues bound to `Own[T]` params) via
-        `gen_call_arg`. Without the latter, an async-def calling a
-        callee with an `Own[T]` param (e.g. `await wait_for(coro, ...)`
-        with `coro: Own[Awaitable[T]]`) would emit a bare name and the
-        forwarding-ref ctor param would refuse to bind to the lvalue.
+        lift (P -> &P) when the callee param is the `T*` shape, the
+        @dynamic-protocol Adapter wrap when the callee takes `Own[P]`
+        (needed for `await wait_for(coro, ...)` so the concrete coro
+        gets boxed into `unique_ptr<Cancellable<T>>`), plus the full
+        `Own[T]` move-out machinery (`std::move(name)` for last-use
+        movable lvalues bound to `Own[T]` params) via `gen_call_arg`.
         """
         fi = call.resolved_function_info
         if fi is None or arg_index >= len(fi.params):
@@ -2278,6 +2307,9 @@ class AsyncCoroCodegen:
         opt_arg = self.expressions._gen_optional_ptr_arg(arg, ptype)
         if opt_arg is not None:
             return opt_arg
+        dynamic_arg = self.expressions._gen_dynamic_protocol_arg(arg, ptype)
+        if dynamic_arg is not None:
+            return dynamic_arg
         return self.expressions.gen_call_arg(arg, ptype)
 
     def _emit_sub_reset(self, out: "TextIO", indent: str,
