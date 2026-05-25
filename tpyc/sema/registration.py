@@ -1730,6 +1730,13 @@ class TypeRegistrar:
         # Update RecordInfo with classified bases.
         record_info.parents = parents_collected
         record_info.implemented_protocols = implemented_protocols
+        # Invalidate the lazy `_is_polymorphic_class` cache: it may have
+        # been computed during early validation (register_record's
+        # validate_type call) when `implemented_protocols` was empty,
+        # cementing a False answer for what's actually a polymorphic
+        # class. Now that the protocol list is final, force recomputation
+        # on next access.
+        record_info._is_polymorphic_class = None
 
         # Direct C++ inheritance of a generic @dynamic protocol whose methods
         # have TypeParamRef in parameter position would emit overrides that

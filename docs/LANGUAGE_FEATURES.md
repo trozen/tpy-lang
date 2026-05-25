@@ -2451,6 +2451,8 @@ def bad() -> Pet:
 
 **`Optional[Pet]` rejection** -- `Optional` of a `@dynamic` protocol is a sema error in params, locals, and record fields. Heap-owned dynamic values now have `Box[P]`; the supported optional shape is `Box[Pet] | None` (a nullable owning slot), not bare `Optional[Pet]`.
 
+**`Own[Optional[Polymorphic]]` rejection** -- `Own[Optional[E]]` where `E` is a concrete class that inherits a `@dynamic` protocol (e.g. `Own[Optional[BaseException]]`) is a sema error in params, return types, and record fields. The Own-Optional slot is laid out for the base class alone, so storing a derived instance would slice the dynamic type, and `isinstance` dispatch on the slot has no valid lowering today. Use `Optional[E]` (borrowed pointer that may be None) or `Box[E]` (owned, polymorphism-preserving) instead. Diagnostic is emitted from `tpyc/sema/type_ops.py::validate_type` so all four positions report the same message via one helper. The broader "polymorphic + wrappers + isinstance" landscape (including this rejection's eventual lifting) is tracked in TODO.md.
+
 **`Box[P]` for `@dynamic` P -- heap-owned erased dynamic-protocol values.** `Box[Pet]` accepts any conformer (inheritance or structural) and stores it through the C++ abstract base:
 - **Inheritance path:** `Box[Pet](Parrot(...))` where `Parrot(Pet): ...` emits `std::unique_ptr<Pet>(new Parrot{...})`. Trivial pointer upcast through Parrot's inherited vtable.
 - **Structural path:** `Box[Pet](Dog(...))` where `Dog` has the required methods but doesn't inherit Pet emits `std::unique_ptr<Pet>(new tpy::Adapter<Pet, Dog>{...})`. The Adapter wraps Dog and routes virtual calls.

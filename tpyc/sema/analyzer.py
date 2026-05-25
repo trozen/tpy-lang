@@ -485,16 +485,19 @@ class SemanticAnalyzer:
         for protocol in module.protocols:
             self.registrar.validate_protocol_parents(protocol)
 
-        # Re-validate record field types now that protocols are registered.
-        # Optional[@dynamic] / container-element / union-protocol checks rely
-        # on protocol_info_of, which only resolves once protocols are in the
-        # registry -- earlier in register_record they silently pass.
-        for record in module.all_records():
-            self.registrar.validate_record_field_protocols(record)
-
-        # Validate inheritance relationships (after all records and protocols are registered)
+        # Validate inheritance relationships (after all records and protocols
+        # are registered). Sets `implemented_protocols` / MRO on each record.
         for record in module.all_records():
             self.registrar.validate_record_inheritance(record)
+
+        # Re-validate record field types now that protocols are registered AND
+        # inheritance is finalized. Optional[@dynamic] / container-element /
+        # union-protocol checks rely on protocol_info_of, which only resolves
+        # once protocols are in the registry; the Own[Optional[Polymorphic]]
+        # check needs implemented_protocols/MRO populated. Runs after
+        # inheritance so both prerequisites hold.
+        for record in module.all_records():
+            self.registrar.validate_record_field_protocols(record)
 
         # Validate @error_return(E) on methods (ReturnException markers are now set)
         for record in module.all_records():

@@ -16,6 +16,7 @@ from ..typesys import (
     NoneType, VoidType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
     unwrap_ref_type, unwrap_qualifiers, RefType, is_dyn_protocol,
+    is_polymorphic_class_type,
     is_callable_type, is_integer_type, is_float_type, is_void_like_type,
     contains_type_param,
 )
@@ -353,6 +354,44 @@ class TypeOperations:
                         )
             for member in typ.members:
                 self.validate_type(member, allow_type_param_ref, loc)
+        elif isinstance(typ, RefType):
+            # Ref-wrapped param/return types -- recurse into the underlying
+            # type. Without this branch, validate_type silently bottoms out
+            # at the `get_element_type()` fallback (Ref forwards element
+            # extraction to the wrapped, which returns None for class /
+            # Own / Optional / etc.), bypassing all checks on method params.
+            self.validate_type(typ.wrapped, allow_type_param_ref, loc,
+                               allow_forward_ref=allow_forward_ref,
+                               check_hashable_constraints=check_hashable_constraints)
+        elif isinstance(typ, OwnType):
+            self.validate_type(typ.wrapped, allow_type_param_ref, loc)
+            # Reject `Own[Optional[Polymorphic]]`: an Own-Optional slot of
+            # a polymorphic class is laid out for the base only, so a
+            # derived value stored into it would slice, and isinstance
+            # dispatch has no valid pointer lowering. `is_polymorphic_class_type`
+            # returns False for unregistered records (forward-ref case),
+            # so this gate naturally defers to the post-registration
+            # revalidation pass like the Optional[@dynamic] check above.
+            opt = unwrap_readonly(typ.wrapped)
+            if isinstance(opt, OptionalType):
+                opt_inner = unwrap_readonly(opt.inner)
+            else:
+                opt_inner = None
+            if (isinstance(opt, OptionalType)
+                    and isinstance(opt_inner, NominalType)
+                    and is_polymorphic_class_type(opt_inner, self.ctx.registry)):
+                cls = opt_inner.name
+                raise SemanticError(
+                    f"`Own[Optional[{cls}]]` is not yet supported: an "
+                    f"Own-Optional slot of a polymorphic class is laid "
+                    f"out for `{cls}` only, so storing a derived class "
+                    f"into it would slice the dynamic type and isinstance "
+                    f"dispatch on the slot has no valid lowering today. "
+                    f"Use `Optional[{cls}]` (borrowed pointer that may "
+                    f"be None) or `Box[{cls}]` (owned, polymorphism-"
+                    f"preserving) instead.",
+                    loc,
+                )
         elif isinstance(typ, ReadonlyType):
             self.validate_type(typ.wrapped, allow_type_param_ref, loc)
         elif isinstance(typ, AutoReadonlyType):

@@ -2642,6 +2642,25 @@ class StatementAnalyzer:
         # Validate the type annotation if present
         # Allow TypeParamRef inside generic functions or generic record methods
         if stmt.type:
+            # Own[T] / readonly[T] are only valid for parameters and return
+            # types, not variables. Run these context-specific rejections
+            # BEFORE validate_type so a richer-context diagnostic wins over
+            # the generic shape rejection (e.g. `Own[Optional[Polymorphic]]`
+            # at a local should surface "Own[T] not allowed as variable",
+            # not "use Optional[T] or Box[T]" -- the user can't use either
+            # in a local context either).
+            if isinstance(stmt.type, OwnType):
+                raise self.ctx.error(
+                    f"Own[{stmt.type.wrapped}] cannot be used as a variable type. "
+                    f"Use '{stmt.type.wrapped}' instead (Own[T] is for parameters and return types only)",
+                    stmt
+                )
+            if isinstance(stmt.type, ReadonlyType):
+                raise self.ctx.error(
+                    f"readonly[{stmt.type.wrapped}] cannot be used as a variable type. "
+                    f"Readonly on locals is deduced from initialization",
+                    stmt
+                )
             try:
                 in_generic = bool(
                     (isinstance(self.ctx.func.current_function, TpyFunction) and self.ctx.func.current_function.type_params)
@@ -2650,22 +2669,6 @@ class StatementAnalyzer:
                 self.type_ops.validate_type(stmt.type, allow_type_param_ref=in_generic, loc=stmt.loc, allow_forward_ref=False)
             except SemanticError as e:
                 raise self.ctx.error(str(e), stmt)
-
-        # Own[T] is only valid for function parameters and return types, not variables
-        if stmt.type and isinstance(stmt.type, OwnType):
-            raise self.ctx.error(
-                f"Own[{stmt.type.wrapped}] cannot be used as a variable type. "
-                f"Use '{stmt.type.wrapped}' instead (Own[T] is for parameters and return types only)",
-                stmt
-            )
-
-        # readonly[T] is only valid for function parameters, not variables
-        if stmt.type and isinstance(stmt.type, ReadonlyType):
-            raise self.ctx.error(
-                f"readonly[{stmt.type.wrapped}] cannot be used as a variable type. "
-                f"Readonly on locals is deduced from initialization",
-                stmt
-            )
 
         # Fn[...] is only valid in parameter position
         if stmt.type and contains_fn_type(stmt.type):
