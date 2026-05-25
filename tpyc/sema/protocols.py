@@ -272,6 +272,17 @@ class ProtocolChecker:
             bound = self.type_ops.get_type_param_bound(actual.name)
             if bound is not None and is_protocol_type(bound):
                 return self.classify_protocol_conformance(bound, protocol)
+            # No protocol-typed bound to delegate to. Stop here rather than
+            # fall through: the downstream marker arm runs `not predicate(T)`
+            # for markers like Copyable, where the predicate's conservative
+            # "no info -> False" returns silently flip to "conforms" through
+            # the negation. A type variable without an explicit bound can be
+            # instantiated with anything, so we cannot conclude conformance.
+            # User-visible consequence: shadow bounds (Box[T].clone[T: Copyable])
+            # called from inside an enclosing generic require the enclosing
+            # scope to propagate the bound (e.g. class C[T: Copyable] or
+            # def m[T: Copyable]).
+            return None
 
         # Stringable: Python semantics dictate every type has __str__ via the
         # object.__str__ default that falls back to __repr__. The C++ runtime
@@ -303,11 +314,22 @@ class ProtocolChecker:
 
         # Marker protocols require explicit extends declaration
         if protocol_info.is_marker:
+            qname = protocol.qualified_name()
             # ValueType: any type with value semantics conforms implicitly
-            if protocol.qualified_name() == "tpy.ValueType" and actual.is_value_type():
+            if qname == qnames.VALUE_TYPE and actual.is_value_type():
                 return ProtocolConformanceKind.EXPLICIT
+            # Copyable: any type whose C++ representation is copy-constructible
+            # (i.e. not @nocopy, has no __del__, and -- transitively -- has no
+            # @nocopy field or parent). Mirrors what the runtime concept checks.
+            # Authoritative -- a user-declared `extends Copyable` on a record
+            # whose copy ctor is deleted by codegen (has_del / @nocopy / nested
+            # non-copyable) does not grant conformance, because the generated
+            # C++ would still reject any Copyable<T>-constrained use.
+            if qname == qnames.COPYABLE:
+                return (ProtocolConformanceKind.EXPLICIT
+                        if not self.ctx.is_type_non_copyable(actual) else None)
             # Default: types that support default construction
-            if protocol.qualified_name() == "tpy.Default" and self._is_default_constructible(actual):
+            if qname == qnames.DEFAULT and self._is_default_constructible(actual):
                 return ProtocolConformanceKind.EXPLICIT
             return (ProtocolConformanceKind.EXPLICIT
                     if self._check_record_extends(actual, protocol) else None)

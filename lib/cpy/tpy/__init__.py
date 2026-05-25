@@ -635,6 +635,11 @@ class ValueType(_Protocol):
     pass
 
 
+class Copyable(_Protocol):
+    """Marker for types whose payload can be copy-constructed."""
+    pass
+
+
 class Default(_Protocol):
     """Marker for types that support default construction."""
     pass

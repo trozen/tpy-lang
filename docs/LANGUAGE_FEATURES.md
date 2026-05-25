@@ -2465,7 +2465,7 @@ The same wrapping rule fires anywhere a `Own[P]` parameter receives a concrete c
 - `box.get()`, `box.__init__`, `box.__del__` -- work for any P.
 - `box.set(value)` -- works for abstract P via `tpy::heap_replace<T>` (concrete branch: in-place destroy + placement-new; abstract branch: free + take).
 - `box.take()` -- works for abstract P via `tpy::transfer_ownership<T>` (returns `own_return_t<T>`, which is `unique_ptr<P>` for abstract P).
-- `box.clone()` -- **broken for abstract P**: its body does `Box(self.get())`, an implicit borrow->Own copy of P, which is impossible (no usable copy ctor on abstract P). Fails ugly at C++ compile time today. Tracked in `BUGS.md`; the principled fix needs a `Copyable` per-method bound (tracked in `TODO.md`).
+- `box.clone()` -- gated on `T: Copyable` (per-method shadow bound). Abstract `@dynamic` P doesn't conform to Copyable (no usable copy ctor), so `Box[Pet].clone()` is rejected at sema with a clean diagnostic (`Method 'clone' requires type parameter 'T' to satisfy 'Copyable'`).
 - `box.__eq__` / `__lt__` etc. -- require `T: Equatable` / `T: Comparable`; abstract P doesn't satisfy these, so the methods are unavailable for `Box[Pet]`.
 
 **`Own[P]` plain function params and returns work end-to-end.** For abstract `@dynamic P`, `Own[P]` lowers to `std::unique_ptr<P>` at both the parameter and return slots; member access on the param renders as `p->method()`, and returning a concrete conformer wraps it as `std::make_unique<Adapter<P, Concrete>>(...)` (or `std::make_unique<Concrete>(...)` for inheritance conformers). This includes methods *on the protocol itself* whose return type names the protocol -- e.g. `def replicate(self) -> Own[P]` (or `Own[P[T]]` for a generic `@dynamic P[T]`); the abstract-base struct is forward-declared before its concept so the `unique_ptr<P>` constraint resolves, and adapter overrides reference the protocol via its module-qualified name to bypass dependent-base name lookup in the `tpy::` namespace.
@@ -2576,6 +2576,26 @@ class ArrayList[T, N: int]:
 A per-method bound on a shadowed class type param is interpreted as **"this method is only callable when the class type satisfies the bound"** -- i.e. `ArrayList[NotDefault]` cannot call `append_default`. Sema enforces the rule at every dispatch site (direct method calls, operators including comparisons/arithmetic/augmented assignment/unary, `in`/`not in`, `hash()`, and any protocol-conformance check), producing a diagnostic like `Method 'append_default' requires type parameter 'T' to satisfy 'Default', but 'NotDefault' does not conform`. The C++ output also carries the same rule as a `requires` clause, but users always see the TPy diagnostic before any C++ error.
 
 **`T()` deprecation warning:** Using `T()` for default construction of type parameters emits a warning recommending `make_default()` instead, since `T()` is not supported in CPython.
+
+#### Working: `Copyable` Marker Protocol
+
+The `Copyable` marker protocol declares that a type's C++ representation is copy-constructible. It maps to the C++ `Copyable` concept (`std::is_copy_constructible_v<T>`).
+
+**Implicit conformance** -- any type that is not `@nocopy`, does not define `__del__` (or inherit one), and does not contain a `@nocopy` field, conforms automatically. A class defining `__copy__` is treated as Copyable even if it would otherwise be rejected (the `__copy__` escape hatch overrides the `@nocopy` / `__del__` / nested-`@nocopy` propagation rules), mirroring how every "copies X into Y" diagnostic in the compiler reads `__copy__`.
+
+The primary use is as a **per-method shadow bound** on generic types whose methods are only valid when `T` is copyable. The canonical example is `tplib.Box[T].clone`:
+
+```python
+@nocopy
+class Box[T](Deref[T], Covariant[T]):
+    ...
+
+    @readonly
+    def clone[T: Copyable](self) -> Own[Box[T]]:
+        return Box(self.get())
+```
+
+`Box[Rc[Int32]].clone()` is rejected with a TPy diagnostic (`Method 'clone' requires type parameter 'T' to satisfy 'Copyable', but 'Rc[Int32]' does not conform`) instead of the cryptic C++ template error the compiler used to surface from `box.hpp`. `Rc[T]` itself does **not** need the bound on its `clone()`, because Rc just bumps a refcount and never touches T's copy constructor.
 
 #### Working: `NativeIterable[T]` (C++ range-for optimization marker)
 

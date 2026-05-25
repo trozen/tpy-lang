@@ -1,0 +1,1 @@
+main.py:28: error: Method 'clone' requires type parameter 'T' to satisfy 'Copyable', but 'Pet' does not conform

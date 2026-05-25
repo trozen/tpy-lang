@@ -1,0 +1,1 @@
+main.py:12: error: Class 'Bad' declares implementation of protocol 'Copyable' but does not satisfy the protocol requirements

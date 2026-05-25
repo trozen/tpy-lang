@@ -1,0 +1,1 @@
+main.py:28: error: Method 'duplicate' requires type parameter 'T' to satisfy 'Copyable', but 'MoveOnly' does not conform

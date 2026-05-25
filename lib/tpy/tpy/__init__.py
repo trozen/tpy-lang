@@ -14,7 +14,7 @@ from ._core import (
     Deref, Spannable, Writable, Readable, BinaryWritable, BinaryReadable,
     Seekable, Closable,
     # Marker protocols
-    NativeIterable, NativeRangeConstructible, ValueType, Send, Sync,
+    NativeIterable, NativeRangeConstructible, ValueType, Copyable, Send, Sync,
     Default, Covariant, ReturnException,
     # Fixed-width integer constraint protocols
     AnyFixedInt, AnyFixedSigned, AnyFixedUnsigned,
@@ -66,7 +66,7 @@ __all__ = [
     "Seekable", "Closable", "Default",
     # Marker protocols
     "NativeIterable", "NativeRangeConstructible",
-    "ValueType", "Send", "Sync", "Covariant", "ReturnException",
+    "ValueType", "Copyable", "Send", "Sync", "Covariant", "ReturnException",
     # Fixed-width integer constraint protocols
     "AnyFixedInt", "AnyFixedSigned", "AnyFixedUnsigned",
     # Functions

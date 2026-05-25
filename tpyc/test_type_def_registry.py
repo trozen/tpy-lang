@@ -1420,6 +1420,13 @@ PROTOCOL_SNAPSHOT: dict[str, dict] = {
         type_params=(), parent_protocols=(),
         methods=(),
     ),
+    "tpy.Copyable": dict(
+        name="Copyable", module="tpy",
+        is_dynamic=False, is_marker=True, is_readonly=False,
+        cpp_concept="::tpy::Copyable",
+        type_params=(), parent_protocols=(),
+        methods=(),
+    ),
     "tpy.Send": dict(
         name="Send", module="tpy",
         is_dynamic=False, is_marker=True, is_readonly=False,

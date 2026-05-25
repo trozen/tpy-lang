@@ -1,0 +1,1 @@
+main.py:21: error: Method 'clone' requires type parameter 'T' to satisfy 'Copyable', but 'T' does not conform

@@ -559,14 +559,14 @@ Compiler infrastructure issues (not blocked on `Box[P]`):
 - **Protocol fields on `@dynamic`** -- field access on protocol-typed variables fails
   in sema ("Cannot access field"). Virtual getters are generated in the base class but
   sema doesn't resolve field access through the erased type.
-- **`Box[P].set` / `take` now work for abstract P**; **`clone` still broken.**
+- **`Box[P].set` / `take` / `clone` all work for abstract P.**
   `set` was rewritten to use `tpy::heap_replace` (in-place reconstruct for concrete
   T, free+take for abstract). `take` was rewritten to use `tpy::transfer_ownership`
-  (with the new `own_return_t<T>` return-shape alias). `clone` still fails ugly at
-  C++ compile time because its body does an implicit borrow->Own copy of T, which
-  is impossible for abstract P; the principled fix needs a per-method `Copyable`
-  bound (TODO.md) or per-instantiation deferred-diagnostic replay. See BUGS.md for
-  the full picture.
+  (with the new `own_return_t<T>` return-shape alias). `clone` carries a
+  per-method `T: Copyable` shadow bound; abstract `@dynamic` P does not conform
+  to Copyable (no usable copy ctor at the C++ level), so `Box[Pet].clone()` is
+  rejected at sema with a clean diagnostic
+  (`Method 'clone' requires type parameter 'T' to satisfy 'Copyable'`).
 
 ## Future Extensions
 
