@@ -1,0 +1,9 @@
+dog: woof from rex
+cat: purr from whiskers
+pet: plain
+mammal: rex
+mammal: whiskers
+other: plain
+ASSERT: woof from rex
+MUT-DOG: woof from rex!
+MUT-PET: plain?

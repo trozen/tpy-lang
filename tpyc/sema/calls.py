@@ -1775,13 +1775,49 @@ class CallAnalyzer:
         declared_param_type = self.expr.narrowing.declared_type_for_name(first_arg.name)
         polymorphic_source = polymorphic_source_inner(
             declared_param_type, self.ctx.registry)
-        # `self` lowers to `this` (a pointer to the current class) in methods,
-        # but codegen's `lookup_var_type('self')` doesn't surface that type, so
-        # the polymorphic-dispatch path can't compute the cast input. Until the
-        # codegen self-binding lookup is wired through, route self through the
-        # static-fold path (preserving the pre-branch behavior). See BUGS.md.
-        if first_arg.name == "self":
-            polymorphic_source = None
+        # Reject `isinstance(self, Sub)` in contexts where codegen can't
+        # support it correctly yet:
+        #   - `__init__` / `__del__`: during construction/destruction the
+        #     dynamic type of 'self' is the enclosing class (not the derived
+        #     class), so the check would always be False at runtime --
+        #     silently diverging from CPython. The transitive case
+        #     (isinstance(self) inside a method called from __init__/__del__)
+        #     is not detected here; see TODO.md.
+        #   - generator methods (`def f(self) -> Iterator[T]: yield ...`):
+        #     the generator frame captures `__self: const T&`, and the
+        #     state-machine `goto`-based dispatch doesn't compose with the
+        #     C++17 if-init form codegen uses for polymorphic dispatch.
+        #     Filed in BUGS.md.
+        if (first_arg.name == "self"
+                and polymorphic_source is not None
+                and isinstance(self.ctx.func.current_function, TpyFunction)):
+            cur = self.ctx.func.current_function
+            if cur.name in ("__init__", "__del__"):
+                ctor_or_dtor = cur.name
+                raise self.ctx.error(
+                    f"isinstance(self, ...) is not supported inside "
+                    f"'{ctor_or_dtor}': during construction or destruction "
+                    f"the dynamic type of 'self' is the enclosing class, "
+                    f"not the derived class being constructed or destroyed, "
+                    f"so the check would always be False at runtime. This "
+                    f"rule applies to the entire call graph reachable from "
+                    f"'{ctor_or_dtor}', not just the body itself: a regular "
+                    f"method that does isinstance(self, ...) and is called "
+                    f"from here has the same problem (TPy does not "
+                    f"currently detect this transitive case). Move the "
+                    f"check into a method called after construction "
+                    f"completes.",
+                    expr,
+                )
+            if cur.is_generator and not cur.is_async:
+                raise self.ctx.error(
+                    "isinstance(self, ...) is not yet supported inside a "
+                    "generator method body. Move the check into a regular "
+                    "method called from the generator, or factor the "
+                    "subclass-specific iteration into a separate method on "
+                    "the subclass.",
+                    expr,
+                )
         if narrowed is not None and polymorphic_source is None:
             narrowed_inner = self._isinstance_unwrap(narrowed)
             if not self._is_union_alias(narrowed_inner) and not isinstance(

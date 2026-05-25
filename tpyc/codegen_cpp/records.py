@@ -375,7 +375,8 @@ class RecordGenerator:
                 self.functions.gen_body(out, non_init_stmts, record.init_method.params,
                                          record.init_method.return_type, record.init_method,
                                          local_ns, indent_level=2, is_method=True,
-                                         record_type_param_bounds=record.type_param_bounds or None)
+                                         record_type_param_bounds=record.type_param_bounds or None,
+                                         owning_record_name=record.name)
                 out.write(f"{INDENT}}}\n")
             else:
                 out.write(" {}\n")
@@ -889,7 +890,8 @@ class RecordGenerator:
             local_ns.bind_variable("self", NominalType(name))
             self.functions.gen_body(out, body_stmts, [], del_method.return_type,
                                     del_method, local_ns, indent_level=2, is_method=True,
-                                    record_type_param_bounds=record.type_param_bounds or None)
+                                    record_type_param_bounds=record.type_param_bounds or None,
+                                    owning_record_name=name)
         out.write(f"{INDENT}}}\n")
 
     def _gen_covariant_converting_ctor(self, out: TextIO, record: TpyRecord) -> None:

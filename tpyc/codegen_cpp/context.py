@@ -648,6 +648,11 @@ class CodeGenContext:
     in_method: bool = False
     in_consuming_method: bool = False
     in_property_getter: bool = False
+    # The NominalType of the record whose method is currently being emitted.
+    # Set by records.py / functions.py around method bodies and read by
+    # `lookup_var_type` so `self` resolves to the enclosing class type --
+    # enables `isinstance(self, Sub)` polymorphic-dispatch routing in codegen.
+    current_method_record_type: 'TpyType | None' = None
     current_return_type: TpyType | None = None
     # Generator yield type. Set at generator-body entry points (state-machine
     # __next__, simple-for/simple-while inline lambdas) and read by all yield
@@ -1391,12 +1396,19 @@ class CodeGenContext:
         """Resolve a variable's declared type in any visible scope.
 
         Function-locals and parameters live in `var_types`; module-level
-        globals are bound on the analyzer's `global_ns`. Returns None when
-        the name isn't found in either.
+        globals are bound on the analyzer's `global_ns`. `self` inside a
+        method body resolves to the enclosing record's type via
+        `current_method_record_type`. Returns None when the name isn't
+        found anywhere.
         """
         typ = self.var_types.get(var_name)
         if typ is not None:
             return typ
+        if (var_name == "self"
+                and self.in_method
+                and "self" not in self.current_func_params
+                and self.current_method_record_type is not None):
+            return self.current_method_record_type
         global_ns = self.analyzer.ctx.global_ns
         if global_ns is not None:
             binding = global_ns.lookup(var_name)
@@ -1702,9 +1714,12 @@ class CodeGenContext:
         when narrowing the polymorphic source `var_name`.
 
         Polymorphic isinstance/dynamic_cast needs a pointer input; the right
-        prefix depends on the variable's C++ binding shape, which depends on
-        both the declared type and the binding kind:
-          - `self` in a method -> `this` (already a pointer)
+        prefix depends on the variable's C++ binding shape:
+          - `self` inside a generator/async body -> `&{generator_self_ref}`
+            (the body sees self via `__self: T&` for async/multi-yield or
+            `(*this)` for simple generators -- both yield `T*` when address-
+            of'd; the `&(*this)` form is folded by the optimizer)
+          - `self` in a regular method -> `this` (already a pointer)
           - pointer-globals, pointer-locals, imported pointers
             (`is_indirect_name`) -> the bare name (already a pointer)
           - declared `Optional[Polymorphic]` (pointer-repr) param -> the bare
@@ -1713,6 +1728,13 @@ class CodeGenContext:
             -> `&name` (take the address)
         """
         name_expr = TpyName(var_name)
+        if var_name == "self" and self.generator_self_ref is not None:
+            # In simple-generator bodies generator_self_ref is `(*this)`;
+            # &(*this) == this. In async/multi-yield bodies it's `__self`
+            # (a T& field on the frame struct); &__self gives T*.
+            if self.generator_self_ref == "(*this)":
+                return "this"
+            return f"&{self.generator_self_ref}"
         if var_name == "self" and self.is_indirect_name(name_expr):
             return "this"
         escaped = escape_cpp_name(var_name)

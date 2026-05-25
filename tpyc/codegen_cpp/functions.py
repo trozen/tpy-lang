@@ -1657,7 +1657,8 @@ class FunctionGenerator:
                                  method, local_ns, indent_level=body_indent_level, is_method=True,
                                  record_type_param_bounds=record_type_param_bounds,
                                  const_ref_params=method_crp,
-                                 deep_const_borrow_params=method_dcbp)
+                                 deep_const_borrow_params=method_dcbp,
+                                 owning_record_name=record_name if not static else None)
         self.ctx.in_consuming_method = prev_consuming
 
         out.write(f"{sig_indent}}}\n")

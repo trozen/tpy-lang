@@ -862,6 +862,8 @@ class AsyncCoroCodegen:
         old_for_info = self.ctx.generator_for_loop_info
         old_self_ref = self.ctx.generator_self_ref
         old_movable_locals = self.ctx.movable_locals
+        old_in_method = self.ctx.in_method
+        old_method_record = self.ctx.current_method_record_type
 
         # Reset frame-specific fields before setup_body_scope, since the
         # `setup_resumable_frame_locals` call inside it reads
@@ -880,6 +882,7 @@ class AsyncCoroCodegen:
             func.params, func.return_type, func, local_ns,
             indent_level=1, is_method=bool(record_name),
             const_ref_params=crp, deep_const_borrow_params=dcbp,
+            owning_record_name=record_name,
         )
 
         self.ctx.in_generator_body = True
@@ -916,6 +919,8 @@ class AsyncCoroCodegen:
             self.ctx.generator_for_loop_info = old_for_info
             self.ctx.generator_self_ref = old_self_ref
             self.ctx.movable_locals = old_movable_locals
+            self.ctx.in_method = old_in_method
+            self.ctx.current_method_record_type = old_method_record
 
     def gen_coro_finally_top_def(self, out: "TextIO", func: TpyFunction,
                                    record_name: str | None = None) -> None:

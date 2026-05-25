@@ -36,6 +36,7 @@ from ..namespace import Namespace
 from ..symbol_binding import SymbolKind
 from ..sema.context import PENDING_CONTAINER_TYPES
 from ..sema.literal_utils import literal_value_from_expr
+from ..sema.registration import build_record_self_type
 from ..typesys import view_family_for_type
 from ..diagnostics import SemanticError
 from ..liveness import stmts_terminate
@@ -118,7 +119,8 @@ class StatementGenerator:
                          is_method: bool = False,
                          record_type_param_bounds: dict[str, TpyType] | None = None,
                          const_ref_params: set[str] | None = None,
-                         deep_const_borrow_params: set[str] | None = None) -> 'ScanResult | None':
+                         deep_const_borrow_params: set[str] | None = None,
+                         owning_record_name: str | None = None) -> 'ScanResult | None':
         """Reset per-scope ctx state and repopulate it for the given function.
 
         Shared by gen_body (sync + simple-gen + multi-yield-gen) and async
@@ -231,6 +233,21 @@ class StatementGenerator:
             self.ctx.current_type_param_bounds.update(func.type_param_bounds)
         if is_method:
             self.ctx.in_method = True
+            # `self` resolves to the enclosing record's type during the body
+            # so `lookup_var_type('self')` can drive `isinstance(self, Sub)`
+            # polymorphic dispatch. None for static methods (no self). Use
+            # `build_record_self_type` so the NominalType carries the proper
+            # qname + generic type-param refs, matching how sema constructs
+            # self's type -- avoids future cross-module short-name collision
+            # risk if polymorphic-source predicates ever route through qname
+            # equality.
+            if owning_record_name is not None:
+                rec_info = self.ctx.analyzer.registry.get_record(owning_record_name)
+                if rec_info is not None:
+                    self.ctx.current_method_record_type = build_record_self_type(
+                        rec_info, qname=rec_info.qualified_name())
+                else:
+                    self.ctx.current_method_record_type = NominalType(owning_record_name)
         return scan
 
     def gen_body(self, out: TextIO, body: list[TpyStmt],
@@ -239,7 +256,8 @@ class StatementGenerator:
                  indent_level: int = 1, is_method: bool = False,
                  record_type_param_bounds: dict[str, TpyType] | None = None,
                  const_ref_params: set[str] | None = None,
-                 deep_const_borrow_params: set[str] | None = None) -> None:
+                 deep_const_borrow_params: set[str] | None = None,
+                 owning_record_name: str | None = None) -> None:
         """Generate the body of a function or method.
 
         Handles scope setup, body buffering, hoist-decl prepending, and cleanup.
@@ -251,6 +269,7 @@ class StatementGenerator:
             record_type_param_bounds=record_type_param_bounds,
             const_ref_params=const_ref_params,
             deep_const_borrow_params=deep_const_borrow_params,
+            owning_record_name=owning_record_name,
         )
 
         # Emit mutable local copies for reassigned const-ref params (BigInt, str)
@@ -323,6 +342,7 @@ class StatementGenerator:
 
         if is_method:
             self.ctx.in_method = False
+            self.ctx.current_method_record_type = None
         self.ctx.local_scope_names = set()
         self.ctx.indent_level = 0
         self.ctx.current_ns = None
