@@ -14,8 +14,17 @@ from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType,
 from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
-from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
-from .resumable_cfg import ResumableShape
+from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith
+from .resumable_cfg import (
+    ResumableShape, _stmts_have_suspending_compound,
+    _stmts_have_tuple_unpack_for_with_suspension,
+)
+
+# Compound kinds whose resumable (generator) lowering isn't ready yet, used
+# by the generator eligibility gate. `try`/`with` -> Phase E (the exception/
+# finally emit is still await-specific). `if`/`while` (D1) and `for` (D2,
+# including `for`/`while`-`else` in D3) are handled.
+GEN_DEFERRED_SUSPENDING_COMPOUNDS: tuple[type, ...] = (TpyTry, TpyWith)
 
 from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_char, escape_cpp_name
 from .types import TypeResolver
@@ -118,6 +127,9 @@ class CodeGenerator:
         self.gen_async = AsyncCoroCodegen(
             self.ctx, self.types, self.expressions, self.statements, self.functions)
         self.records.gen_async = self.gen_async
+        # The resumable for-loop emit reuses the legacy strategy analysis
+        # (`_analyze_for_strategy`) so range/begin_end peepholes match.
+        self.gen_async.gen_generators = self.gen_generators
 
     def generate(self, module: TpyModule, module_name: str = "generated",
                  is_entry_point: bool = True,
@@ -512,15 +524,32 @@ class CodeGenerator:
         return hpp.getvalue(), cpp.getvalue()
 
     def _resumable_generator_eligible(self, func: "TpyFunction") -> bool:
-        """First-cut gate for routing a generator through the resumable
-        (async) state-machine emitter (`gen_async`) rather than
-        `gen_generators.py`. Deliberately narrow while the migrated path
-        is validated: free function, non-generic, no params, a non-tuple
-        yield element type, a flat body of leaf statements only (no
-        compound / nested-body statement), and not a simple-peephole
-        generator. Everything outside this set stays on the legacy path.
+        """Gate for routing a generator through the resumable (async)
+        state-machine emitter (`gen_async`) rather than
+        `gen_generators.py`. Eligible: free function, non-generic, a
+        non-tuple yield element type, not a simple-peephole generator, no
+        `for` loop carrying a suspension (deferred to a later phase), and a
+        body shape the resumable CFG accepts (verified by trial-building it
+        -- see `_try_build_cfg`). Parameters are captured into the coro
+        frame via the same `_classify_params` machinery async coroutines
+        use (value by value, str as string_view, reference types by `T&`,
+        `Own[T]` moved in, pointer-repr `Optional` as `T*`), matching the
+        legacy generator capture shape. Everything outside this set stays
+        on the legacy path.
+
+        The decision is memoized on the func: the gate is consulted from
+        several orchestration passes, and a trial CFG build per call would
+        be wasteful (and, for rejected shapes, repeated).
         """
-        if not func.is_generator or func.type_params or func.params:
+        cached = getattr(func, "_resumable_gen_eligible", None)
+        if cached is not None:
+            return cached
+        result = self._compute_resumable_generator_eligible(func)
+        func._resumable_gen_eligible = result
+        return result
+
+    def _compute_resumable_generator_eligible(self, func: "TpyFunction") -> bool:
+        if not func.is_generator or func.type_params:
             return False
         if self.gen_generators.is_simple_generator(func):
             return False
@@ -534,15 +563,28 @@ class CodeGenerator:
         yt = func.generator_yield_type
         if yt is None or isinstance(unwrap_ref_type(yt), TupleType):
             return False
-        # Allowlist by structure: every top-level statement must be a leaf
-        # (no nested body). A statement with a sub-body is a compound
-        # (if/while/for/try/with/match/...) that the resumable CFG either
-        # can't decompose or this phase doesn't yet handle -- and a `yield`
-        # hidden inside one (e.g. a `match` case) would be mis-lowered onto
-        # legacy goto state numbers that collide with the resumable enum.
-        # Rejecting any compound keeps those on the legacy path and is
-        # robust against compound statement kinds not enumerated here.
-        return all(not s.sub_bodies() for s in func.body)
+        # Phase D1 handles `if`/`while` generators. Defer compound kinds
+        # whose resumable lowering isn't ready: `for` (peephole/tuple-unpack
+        # parity, D2) and `try`/`with` (the exception/finally emit is still
+        # await-specific, E). A deferred compound that carries no suspension
+        # is plain leaf code and stays eligible.
+        if _stmts_have_suspending_compound(
+                func.body, GEN_DEFERRED_SUSPENDING_COMPOUNDS):
+            return False
+        # Tuple-unpack for-loops carrying a suspension: the resumable emit
+        # binds only the synthetic `__for_tup` loop var, not the
+        # destructured targets, so a target read across a yield reads a
+        # stale frame field. Keep these on the legacy path (which binds the
+        # targets as frame-field assignments) until the resumable path emits
+        # the unpack targets into the frame. (D2 follow-up.)
+        if _stmts_have_tuple_unpack_for_with_suspension(func.body):
+            return False
+        # Trial-build the CFG. The builder rejects shapes it can't yet
+        # lower (loop-`else` with a suspension, await bound to a field, a
+        # suspension inside an undecomposable leaf like `match`) by raising
+        # `_CFGNotYetSupported`; those stay on the legacy path. Success
+        # caches the CFG on the func so the emit pass reuses it.
+        return self.gen_async._try_build_cfg(func) is not None
 
     def _generate_protocol_ordering(self, hpp: TextIO, module: TpyModule,
                                     global_decls: list, final_decls: list,

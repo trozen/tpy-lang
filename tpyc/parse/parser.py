@@ -3076,10 +3076,10 @@ class Parser:
             is_async = isinstance(node, ast.AsyncFor)
             if is_async and node.orelse:
                 raise ParseError(
-                    "`else:` clause on `async for` is not supported "
-                    "(break-vs-normal-exit distinction is not modelled "
-                    "for async loops; same restriction as `await` in "
-                    "`for`/`else:`)",
+                    "`else:` clause on `async for` is not supported yet "
+                    "(the `__anext__`-driven async-for advance doesn't model "
+                    "break-vs-normal-exit; sync `for`/`while`-`else` with a "
+                    "suspension is supported)",
                     node,
                 )
             orelse = self._parse_body(node.orelse)

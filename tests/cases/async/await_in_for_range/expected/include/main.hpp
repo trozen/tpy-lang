@@ -48,8 +48,8 @@ struct __coro_sum_n {
     ::tpy::BigInt total;
     ::tpy::BigInt i;
     ::tpy::BigInt __await_lift_0;
-    std::optional<std::decay_t<decltype(::tpy::__iter__(std::declval<::tpy::Range<::tpy::BigInt>&>()))>> __for_itr_0;
-    std::optional<decltype(std::declval<std::decay_t<decltype(::tpy::__iter__(std::declval<::tpy::Range<::tpy::BigInt>&>()))>&>().__next__())> __for_r_0;
+    std::optional<::tpy::BigInt> __for_i_0;
+    std::optional<::tpy::BigInt> __for_stop_0;
     std::optional<__coro_value> __sub_0;
 
     enum : int32_t {

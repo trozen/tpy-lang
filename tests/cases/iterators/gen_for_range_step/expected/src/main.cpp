@@ -4,35 +4,43 @@
 namespace tpyapp::main {
 
 
+// def countdown(start: Int32) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_countdown::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield 999
+        __state = S_RESUME_0;
+        return 999;
     }
-    // yield 999
-    __state = 1;
-    return 999;
-    __resume_1:;
-    // for i in range(start, 0, -1):
-    __for_i_0 = static_cast<int32_t>(start);
-    __for_stop_0 = static_cast<int32_t>(0);
-    __for_step_0 = static_cast<int32_t>(-1);
-    ::tpy::range_check_overflow<int32_t>(*__for_i_0, *__for_stop_0, *__for_step_0);
-    while (*__for_i_0 > *__for_stop_0) {
-        i = *__for_i_0;
-        *__for_i_0 += *__for_step_0;
+    case S_RESUME_0: {
+        __for_i_0 = static_cast<int32_t>(start);
+        __for_stop_0 = static_cast<int32_t>(0);
+        __for_step_0 = static_cast<int32_t>(-1);
+        ::tpy::range_check_overflow<int32_t>(*__for_i_0, *__for_stop_0, *__for_step_0);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) > (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        i = (*__for_i_0);
+        (*__for_i_0) += (*__for_step_0);
         // yield i
-        __state = 2;
+        __state = S_RESUME_1;
         return i;
-        __resume_2:;
     }
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+// def countdown(start: Int32) -> Iterator[Int32]:
 __gen_countdown countdown(int32_t start) {
     return __gen_countdown(start);
 }

@@ -16,18 +16,27 @@ void main();
 
 // Generator: filtered
 struct __gen_filtered {
-    int __state;
+    int32_t __state;
     std::vector<int32_t>& items;
     int32_t limit;
     int32_t x;
     std::optional<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_it_0;
     std::optional<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_end_0;
 
-    __gen_filtered(std::vector<int32_t>& items, int32_t limit_)
-        : __state(0), items(items), limit(limit_) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
 
-    __gen_filtered& __iter__() { return *this; }
+    __gen_filtered(std::vector<int32_t>& items, int32_t limit_)
+        : __state(S_INITIAL), items(items), limit(std::move(limit_)) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_filtered& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_filtered&) {
         return os << "<generator filtered>";

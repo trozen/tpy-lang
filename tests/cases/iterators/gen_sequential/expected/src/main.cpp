@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def triple() -> Iterator[Int32]:
-std::expected<int32_t, ::tpy::StopIteration> __coro_triple::__next__() {
+std::expected<int32_t, ::tpy::StopIteration> __gen_triple::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // yield 10
@@ -32,8 +32,8 @@ std::expected<int32_t, ::tpy::StopIteration> __coro_triple::__next__() {
 }
 
 // def triple() -> Iterator[Int32]:
-__coro_triple triple() {
-    return __coro_triple();
+__gen_triple triple() {
+    return __gen_triple();
 }
 
 // def main():

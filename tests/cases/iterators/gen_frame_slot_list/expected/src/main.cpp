@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def gen() -> Iterator[Int32]:
-std::expected<int32_t, ::tpy::StopIteration> __coro_gen::__next__() {
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // history: list[Int32] = []
@@ -37,8 +37,8 @@ std::expected<int32_t, ::tpy::StopIteration> __coro_gen::__next__() {
 }
 
 // def gen() -> Iterator[Int32]:
-__coro_gen gen() {
-    return __coro_gen();
+__gen_gen gen() {
+    return __gen_gen();
 }
 
 // def main() -> None:

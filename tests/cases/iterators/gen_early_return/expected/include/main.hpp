@@ -16,15 +16,22 @@ void main();
 
 // Generator: maybe_count
 struct __gen_maybe_count {
-    int __state;
+    int32_t __state;
     int32_t n;
     int32_t i;
 
-    __gen_maybe_count(int32_t n_)
-        : __state(0), n(n_) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
 
-    __gen_maybe_count& __iter__() { return *this; }
+    __gen_maybe_count(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_maybe_count& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_maybe_count&) {
         return os << "<generator maybe_count>";

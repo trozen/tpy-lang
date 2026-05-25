@@ -16,18 +16,26 @@ void main();
 
 // Generator: countdown
 struct __gen_countdown {
-    int __state;
+    int32_t __state;
     int32_t start;
     int32_t i;
     std::optional<int32_t> __for_i_0;
     std::optional<int32_t> __for_stop_0;
     std::optional<int32_t> __for_step_0;
 
-    __gen_countdown(int32_t start_)
-        : __state(0), start(start_) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
 
-    __gen_countdown& __iter__() { return *this; }
+    __gen_countdown(int32_t start_)
+        : __state(S_INITIAL), start(std::move(start_)) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_countdown& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_countdown&) {
         return os << "<generator countdown>";

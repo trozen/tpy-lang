@@ -4,32 +4,40 @@
 namespace tpyapp::main {
 
 
+// def doubled(items: list[Int32]) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield 0
+        __state = S_RESUME_0;
+        return 0;
     }
-    // yield 0
-    __state = 1;
-    return 0;
-    __resume_1:;
-    // for x in items:
-    __for_it_0 = (items).begin();
-    __for_end_0 = (items).end();
-    while (*__for_it_0 != *__for_end_0) {
-        x = *(*__for_it_0)++;
+    case S_RESUME_0: {
+        __for_it_0 = (items).begin();
+        __for_end_0 = (items).end();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = *((*__for_it_0))++;
         // yield x * 2
-        __state = 2;
+        __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(x, 2));
-        __resume_2:;
     }
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+// def doubled(items: list[Int32]) -> Iterator[Int32]:
 __gen_doubled doubled(std::vector<int32_t>& items) {
     return __gen_doubled(items);
 }

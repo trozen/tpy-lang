@@ -4,32 +4,40 @@
 namespace tpyapp::main {
 
 
+// def squares_plus(n: Int32) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_squares_plus::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield -1
+        __state = S_RESUME_0;
+        return -1;
     }
-    // yield -1
-    __state = 1;
-    return -1;
-    __resume_1:;
-    // for i in range(n):
-    __for_i_0 = int32_t(0);
-    __for_stop_0 = static_cast<int32_t>(n);
-    while (*__for_i_0 < *__for_stop_0) {
-        i = (*__for_i_0)++;
+    case S_RESUME_0: {
+        __for_i_0 = int32_t(0);
+        __for_stop_0 = static_cast<int32_t>(n);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        i = ((*__for_i_0))++;
         // yield i * i
-        __state = 2;
+        __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(i, i));
-        __resume_2:;
     }
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+// def squares_plus(n: Int32) -> Iterator[Int32]:
 __gen_squares_plus squares_plus(int32_t n) {
     return __gen_squares_plus(n);
 }

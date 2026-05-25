@@ -1,0 +1,4 @@
+The lib/cpy Box stub models `.get()` as a `_Ptr` proxy, so `b.get() * 2`
+is invalid under CPython (TypeError on `_Ptr * int`). The TPy behavior
+(Own move-in + value access) is what this case exercises; CPython parity
+isn't meaningful for the Box value-access semantics here.

@@ -32,8 +32,9 @@ from ..parse.nodes import (
     TpyNoneLiteral, TpyCoerce,
     is_stable_address_lvalue,
 )
-from ..typesys import NominalType, OptionalType, OwnType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType
-from ..type_def_registry import is_str_type, is_str_category
+from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType
+from .gen_generators import GeneratorForInfo
+from ..type_def_registry import is_str_type, is_str_category, is_big_int_type
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
 from . import resumable_cfg as rcfg
 
@@ -193,6 +194,9 @@ class AsyncCoroCodegen:
         self.expressions = expressions
         self.statements = statements
         self.functions = functions
+        # Set by CodeGenerator after init; the resumable for-loop emit reuses
+        # the legacy strategy analysis (`_analyze_for_strategy`).
+        self.gen_generators: GeneratorCodegen
         # Resumable-shape discriminator read by the `_resumable_*` policy
         # seams. ASYNC (await -> __poll__ -> Poll<T>) is the default; the
         # generator migration sets GENERATOR (yield -> __next__ ->
@@ -213,25 +217,30 @@ class AsyncCoroCodegen:
     def _is_generator_shape(self) -> bool:
         return self._shape is rcfg.ResumableShape.GENERATOR
 
-    @staticmethod
-    def gen_struct_name(func: TpyFunction, record_name: str | None = None) -> str:
-        """Coro struct name: `__coro_<funcname>` for free async defs,
-        `__coro_<Record>_<funcname>` for async methods. Mirrors
-        `GeneratorCodegen.gen_struct_name` so async-method codegen
-        parallels generator-method codegen."""
-        return AsyncCoroCodegen._sub_struct_name(func.name, record_name)
+    def gen_struct_name(self, func: TpyFunction,
+                        record_name: str | None = None) -> str:
+        """Resumable-frame struct name for the CURRENT function. Shape-aware:
+        `__gen_<funcname>` (/ `__gen_<Record>_<funcname>`) for the generator
+        shape, `__coro_<funcname>` (/ `__coro_<Record>_<funcname>`) for the
+        async shape -- so the struct name reflects what it is (the
+        `operator<<` repr and the legacy `GeneratorCodegen.gen_struct_name`
+        use the same `__gen_` convention). Awaited-callee sub-coro structs
+        are named via `_sub_struct_name` (always `__coro_`)."""
+        prefix = "__gen_" if self._is_generator_shape() else "__coro_"
+        return AsyncCoroCodegen._sub_struct_name(func.name, record_name, prefix)
 
     @staticmethod
-    def _sub_struct_name(name: str, owner_record: str | None = None) -> str:
-        """Coro struct name from raw strings: `__coro_<name>` for free
-        async defs, `__coro_<Owner>_<name>` for methods. Single source
+    def _sub_struct_name(name: str, owner_record: str | None = None,
+                         prefix: str = "__coro_") -> str:
+        """Resumable-frame struct name from raw strings: `<prefix><name>` for
+        free functions, `<prefix><Owner>_<name>` for methods. Single source
         of truth for `gen_struct_name`, the await payload factory (sub-
-        coroutine of a statically-resolved await), and the async-with
-        prescan (which only has the CM's `NominalType.name`)."""
+        coroutine of a statically-resolved await -- always `__coro_`), and
+        the async-with prescan (which only has the CM's `NominalType.name`)."""
         if owner_record:
-            return (f"__coro_{escape_cpp_name(owner_record)}_"
+            return (f"{prefix}{escape_cpp_name(owner_record)}_"
                     f"{escape_cpp_name(name)}")
-        return f"__coro_{escape_cpp_name(name)}"
+        return f"{prefix}{escape_cpp_name(name)}"
 
     def _classify_params(self, func: TpyFunction,
                           record_name: str | None = None
@@ -414,7 +423,7 @@ class AsyncCoroCodegen:
         per-param `T_<pname>` template args are appended after the
         explicit `[T1, T2, ...]` type-param list, in param order.
         """
-        bare = AsyncCoroCodegen.gen_struct_name(func, record_name)
+        bare = self.gen_struct_name(func, record_name)
         extras = [p.field_type for p in self._classify_params(func, record_name)
                   if p.kind is _CoroParamKind.STATIC_PROTOCOL]
         all_args = list(func.type_params) + extras
@@ -710,6 +719,12 @@ class AsyncCoroCodegen:
         if func.generator_locals:
             owning_str = getattr(
                 func, "_with_owning_str_targets", set())
+            pointer_form_loop_vars = {
+                info.pointer_form_loop_var
+                for info in (
+                    getattr(func, "_async_for_loop_info", None) or {}).values()
+                if info.pointer_form_loop_var is not None
+            }
             for lname, ltype in func.generator_locals:
                 ltype_inner = unwrap_ref_type(ltype)
                 cpp_name = escape_cpp_name(lname)
@@ -728,6 +743,14 @@ class AsyncCoroCodegen:
                     # the source and uses nullptr as both "uninitialized"
                     # and "None"; no outer `std::optional<...>` wrap.
                     inner_cpp = self.types.type_to_cpp(ltype_inner.inner)
+                    out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
+                elif lname in pointer_form_loop_vars:
+                    # Non-value for-loop var with a stable source: alias the
+                    # container element via `T*` rather than copying into a
+                    # `frame_slot<T>` (preserves aliasing across resume and
+                    # works for @nocopy / move-only elements). Bound by
+                    # address in `_emit_async_for_advance`.
+                    inner_cpp = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
                 else:
                     cpp_type = self.types.type_to_cpp(ltype_inner)
@@ -872,7 +895,12 @@ class AsyncCoroCodegen:
         self.ctx.generator_field_names = set()
         self.ctx.generator_optional_fields = set()
         self.ctx.generator_frame_slot_locals = set()
-        self.ctx.generator_for_loop_info = {}
+        # Populated by `_prescan_async_for_loops`; carries
+        # `pointer_form_loop_var` so `setup_resumable_frame_locals` (called
+        # inside `setup_body_scope` below) seeds non-value loop vars into
+        # `pointer_locals`. Empty for bodies with no CFG-decomposed for-loop.
+        self.ctx.generator_for_loop_info = (
+            getattr(func, "_async_for_loop_info", None) or {})
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         for pname, ptype in func.params:
@@ -1131,34 +1159,58 @@ class AsyncCoroCodegen:
     # CFG-based state-machine emitter (replaces _emit_switch_body).
     # =====================================================================
 
-    def _build_cfg(self, func: TpyFunction) -> 'rcfg.CFG':
+    def _build_cfg(self, func: TpyFunction,
+                   *, convert_errors: bool = True) -> 'rcfg.CFG':
         """Apply the await-lift pre-pass, then build the CFG. The CFG
         builder handles any wrapping try/finally uniformly with all
         other compound statements -- no special unwrap-and-rewrap pass
-        is needed."""
+        is needed.
+
+        With `convert_errors=True` (default, used by the async/generator
+        emit path) a `_CFGNotYetSupported` is turned into a `CodeGenError`
+        at the offending location. The generator eligibility gate passes
+        `convert_errors=False` (via `_try_build_cfg`) so it can catch the
+        raw rejection and fall back to the legacy path instead of failing
+        the compile."""
         cached = getattr(func, "_async_cfg", None)
         if cached is not None:
             return cached
         body = self._effective_body(func)
-        for_uid_map = self._prescan_async_for_loops(func, body)
-        with_uid_map = self._prescan_with_stmts(func, body)
-        try_finally_uid_map = self._prescan_async_try_finally(func, body)
-        builder = rcfg.CFGBuilder(
-            payload_factory=self._make_await_payload,
-            for_uid_map=for_uid_map,
-            with_uid_map=with_uid_map,
-            try_finally_uid_map=try_finally_uid_map,
-            func_returns_void=self._is_void_return(func),
-        )
         try:
+            for_uid_map = self._prescan_async_for_loops(func, body)
+            with_uid_map = self._prescan_with_stmts(func, body)
+            try_finally_uid_map = self._prescan_async_try_finally(func, body)
+            builder = rcfg.CFGBuilder(
+                payload_factory=self._make_await_payload,
+                for_uid_map=for_uid_map,
+                with_uid_map=with_uid_map,
+                try_finally_uid_map=try_finally_uid_map,
+                func_returns_void=self._is_void_return(func),
+            )
             cfg = builder.build_async(body)
         except rcfg._CFGNotYetSupported as e:
-            raise CodeGenError(e.msg, loc=e.loc)
+            if convert_errors:
+                raise CodeGenError(e.msg, loc=e.loc)
+            raise
         # Stash the builder so callers (emit) can look up handler
         # entries via builder.get_handler_entry().
         func._async_cfg_builder = builder
         func._async_cfg = cfg
         return cfg
+
+    def _try_build_cfg(self, func: TpyFunction) -> 'rcfg.CFG | None':
+        """Trial-build the CFG for the generator eligibility gate. Returns
+        the CFG on success (cached on the func, so the subsequent emit pass
+        reuses it) or None if the builder rejects the shape
+        (`_CFGNotYetSupported`: loop-`else` with a suspension, await bound
+        to a field, a suspension inside an undecomposable leaf like `match`,
+        ...). The caller falls back to the legacy generator path. Unlike
+        `_build_cfg` this does not convert the rejection into a compile
+        error."""
+        try:
+            return self._build_cfg(func, convert_errors=False)
+        except rcfg._CFGNotYetSupported:
+            return None
 
     def _prescan_async_for_loops(
             self, func: TpyFunction,
@@ -1190,23 +1242,39 @@ class AsyncCoroCodegen:
         uid_map: dict[int, int] = {}
         fields_out: list[tuple[str, str]] = []
         struct_names_out: dict[int, str] = {}
+        # {id(TpyForEach) -> GeneratorForInfo}: carries pointer_form_loop_var
+        # so `setup_resumable_frame_locals` + the struct field emit render a
+        # non-value loop var as an aliasing `T*` rather than a `frame_slot<T>`
+        # value copy. Mirrors the legacy struct-path `_prescan_for_loops`.
+        for_loop_info: dict[int, GeneratorForInfo] = {}
+        info_by_uid: dict[int, GeneratorForInfo] = {}
         counter = [0]
+        # Loop-var hoists are accumulated here and applied to
+        # func.generator_locals only after the walk completes -- if the walk
+        # raises `_CFGNotYetSupported` mid-way (an unsupported for-loop
+        # shape) the func falls back to the legacy emitter, which must not
+        # inherit partially-appended loop-var entries (they would emit as
+        # duplicate frame fields alongside the legacy for-loop fields).
+        local_hoists: list[tuple[str, "TpyType"]] = []
 
         def walk(stmts: list[TpyStmt]) -> None:
             for s in stmts:
                 if isinstance(s, TpyForEach) and (
-                        s.is_async or rcfg._stmts_have_any_suspension(s.body)):
+                        s.is_async
+                        or rcfg._stmts_have_any_suspension(s.body)
+                        or rcfg._stmts_have_any_suspension(s.orelse)):
                     cur_uid = counter[0]
                     counter[0] += 1
-                    iter_t = self.types.get_resolved_type(s.iterable)
-                    if iter_t is None:
-                        raise CodeGenError(
-                            "for-loop iterable has no resolved type "
-                            "(async for-with-await pre-scan)",
-                            loc=s.loc)
-                    src_cpp = self.types.type_to_cpp(unwrap_ref_type(iter_t))
                     uid_map[id(s)] = cur_uid
                     if s.is_async:
+                        # async-for (M6): one `__aiter__` iterator slot; the
+                        # advance is a Yield(await __anext__), not a strategy.
+                        iter_t = self.types.get_resolved_type(s.iterable)
+                        if iter_t is None:
+                            raise CodeGenError(
+                                "for-loop iterable has no resolved type "
+                                "(async for pre-scan)", loc=s.loc)
+                        src_cpp = self.types.type_to_cpp(unwrap_ref_type(iter_t))
                         iter_field_type = (
                             f"std::decay_t<decltype(std::declval<"
                             f"{src_cpp}&>().__aiter__())>")
@@ -1219,35 +1287,50 @@ class AsyncCoroCodegen:
                                 "stmt.async_aiter_type)", loc=s.loc)
                         struct_names_out[cur_uid] = self._sub_struct_qualname(
                             s.async_aiter_type, "__anext__")
+                        info = GeneratorForInfo(
+                            uid=cur_uid, strategy="async_for", fields=[])
                     else:
-                        iter_field_type = (
-                            f"std::decay_t<decltype(::tpy::__iter__"
-                            f"(std::declval<{src_cpp}&>()))>")
-                        result_field_type = (
-                            f"decltype(std::declval<{iter_field_type}&>()"
-                            f".__next__())")
-                        fields_out.append(
-                            (f"__for_itr_{cur_uid}", iter_field_type))
-                        fields_out.append(
-                            (f"__for_r_{cur_uid}", result_field_type))
+                        # Sync for-loop: reuse the legacy strategy analysis so
+                        # range / begin_end peepholes (a plain counter / begin-
+                        # end iterators) carry over instead of the slower
+                        # universal `__iter__`/`__next__` shape. The std::
+                        # optional-wrapped frame fields it returns match what
+                        # gen_coro_struct emits.
+                        info = self.gen_generators._analyze_for_strategy(
+                            s, cur_uid)
+                        if info is None:
+                            raise rcfg._CFGNotYetSupported(
+                                "yield inside this for-loop shape is not yet "
+                                "supported on the resumable path.", loc=s.loc)
+                        fields_out.extend(info.fields)
+                    for_loop_info[id(s)] = info
+                    info_by_uid[cur_uid] = info
                     elem_t = (unwrap_ref_type(s.elem_type)
                               if s.elem_type else None)
                     if elem_t is None:
                         raise CodeGenError(
-                            "async for-with-await: loop var has no "
+                            "for-with-suspension: loop var has no "
                             "resolved elem_type", loc=s.loc)
-                    if func.generator_locals is None:
-                        func.generator_locals = []
-                    if not any(n == s.var for n, _ in func.generator_locals):
-                        func.generator_locals.append((s.var, elem_t))
+                    local_hoists.append((s.var, elem_t))
                 if hasattr(s, "sub_bodies"):
                     for b in s.sub_bodies():
                         walk(b)
 
         walk(body)
+        # Walk succeeded: commit the loop-var hoists.
+        if local_hoists:
+            if func.generator_locals is None:
+                func.generator_locals = []
+            existing = {n for n, _ in func.generator_locals}
+            for name, elem_t in local_hoists:
+                if name not in existing:
+                    func.generator_locals.append((name, elem_t))
+                    existing.add(name)
         func._async_for_uid_map = uid_map
         func._async_for_fields = fields_out
         func._async_for_struct_names = struct_names_out
+        func._async_for_loop_info = for_loop_info
+        func._async_for_info_by_uid = info_by_uid
         return uid_map
 
     def _sub_struct_qualname(
@@ -2193,7 +2276,7 @@ class AsyncCoroCodegen:
             # Emit BB statements.
             for stmt in bb.stmts:
                 if isinstance(stmt, rcfg.AsyncForIterSetup):
-                    self._emit_async_for_iter_setup(out, body_indent, stmt)
+                    self._emit_async_for_iter_setup(out, body_indent, stmt, func)
                 elif isinstance(stmt, rcfg.WithEnter):
                     self._emit_with_enter(out, body_indent, stmt)
                 elif isinstance(stmt, rcfg.AsyncWithSetup):
@@ -2360,19 +2443,146 @@ class AsyncCoroCodegen:
         out.write(f"{indent}(*__with_ctx_{n}).__exit__("
                   f"{{}}, {exc_arg}, {{}});\n")
 
-    def _emit_async_for_iter_setup(self, out: "TextIO", indent: str,
-                                    stmt: 'rcfg.AsyncForIterSetup') -> None:
-        """Initialize the for-loop iterator into its frame slot.
-        Sync (M3.1):   __for_itr_<uid> = ::tpy::__iter__(<iterable>);
-        Async (M6):    __for_itr_<uid> = (<iterable>).__aiter__();
-        """
-        iter_cpp = self.expressions.gen_expr(stmt.iterable_expr)
+    def _for_info(self, func: TpyFunction, uid: int) -> 'GeneratorForInfo | None':
+        return (getattr(func, "_async_for_info_by_uid", None) or {}).get(uid)
+
+    def _for_src_access(self, out: "TextIO", indent: str,
+                        iterable_expr: 'TpyExpr', uid: int,
+                        info: 'GeneratorForInfo') -> str:
+        """Resolve the for-loop source expression for the begin_end / next
+        strategies. When the iterable is a temporary (the pre-scan allocated
+        `__for_src_<uid>`), store it once here and return the stored access;
+        otherwise return the (re-evaluable) named expression."""
+        src_cpp = self.expressions.gen_expr(iterable_expr)
         self.ctx.temps.flush(out, indent)
+        if any(fn == f"__for_src_{uid}" for fn, _ in info.fields):
+            out.write(f"{indent}__for_src_{uid} = {src_cpp};\n")
+            return f"(*__for_src_{uid})"
+        return src_cpp
+
+    def _emit_async_for_iter_setup(self, out: "TextIO", indent: str,
+                                    stmt: 'rcfg.AsyncForIterSetup',
+                                    func: TpyFunction) -> None:
+        """Initialize for-loop iteration state into the frame, per strategy
+        (mirrors the legacy `_gen_generator_for_*` peephole init so range /
+        begin_end generators keep their fast shape):
+          async_for: `__for_itr = (it).__aiter__()`
+          range:     `__for_i`/`__for_stop`[/`__for_step`] counters
+          begin_end: `[__for_src;] __for_it = src.begin(); __for_end = ...end()`
+          next:      `[__for_src;]` (the source IS the iterator)
+          iter_next: `__for_itr = ::tpy::__iter__(src)`
+        """
+        uid = stmt.uid
         if stmt.is_async:
-            out.write(f"{indent}__for_itr_{stmt.uid} = "
-                      f"({iter_cpp}).__aiter__();\n")
+            iter_cpp = self.expressions.gen_expr(stmt.iterable_expr)
+            self.ctx.temps.flush(out, indent)
+            out.write(f"{indent}__for_itr_{uid} = ({iter_cpp}).__aiter__();\n")
+            return
+        info = self._for_info(func, uid)
+        strat = info.strategy if info else "iter_next"
+        if strat == "range":
+            self._emit_for_range_setup(out, indent, stmt, uid)
+        elif strat == "begin_end":
+            src = self._for_src_access(out, indent, stmt.iterable_expr, uid, info)
+            out.write(f"{indent}__for_it_{uid} = ({src}).begin();\n")
+            out.write(f"{indent}__for_end_{uid} = ({src}).end();\n")
+        elif strat == "next":
+            # Source IS the iterator; just stash a temporary if needed.
+            self._for_src_access(out, indent, stmt.iterable_expr, uid, info)
+        else:  # iter_next (universal)
+            iter_cpp = self.expressions.gen_expr(stmt.iterable_expr)
+            self.ctx.temps.flush(out, indent)
+            out.write(f"{indent}__for_itr_{uid} = ::tpy::__iter__({iter_cpp});\n")
+
+    def _emit_for_range_setup(self, out: "TextIO", indent: str,
+                              stmt: 'rcfg.AsyncForIterSetup', uid: int) -> None:
+        """range() counter init into the frame counters. Mirrors
+        `StatementGenerator._gen_generator_for_range` (init half)."""
+        range_call = stmt.iterable_expr
+        elem_type = stmt.elem_type
+        if elem_type and isinstance(elem_type, IntLiteralType):
+            elem_type = self.ctx.analyzer.ctx.default_int_type
+        cpp_elem = self.types.type_to_cpp(elem_type) if elem_type else "int32_t"
+        gen_args = self.statements.builtins.gen_range_args(range_call)
+        self.ctx.temps.flush(out, indent)
+        nargs = len(gen_args)
+        ci, st = f"__for_i_{uid}", f"__for_stop_{uid}"
+        if nargs == 1:
+            out.write(f"{indent}{ci} = {cpp_elem}(0);\n")
+            out.write(f"{indent}{st} = static_cast<{cpp_elem}>({gen_args[0]});\n")
         else:
-            out.write(f"{indent}__for_itr_{stmt.uid} = ::tpy::__iter__({iter_cpp});\n")
+            out.write(f"{indent}{ci} = static_cast<{cpp_elem}>({gen_args[0]});\n")
+            out.write(f"{indent}{st} = static_cast<{cpp_elem}>({gen_args[1]});\n")
+        if nargs == 3:
+            sp = f"__for_step_{uid}"
+            out.write(f"{indent}{sp} = static_cast<{cpp_elem}>({gen_args[2]});\n")
+            if self.statements._extract_int_literal(range_call.args[2]) is None:
+                out.write(f"{indent}::tpy::range_check_step_nonzero(*{sp});\n")
+            if not is_big_int_type(elem_type):
+                self.statements._gen_range_overflow_check(
+                    out, indent, f"*{ci}", f"*{st}", f"*{sp}", elem_type)
+
+    def _for_advance_parts(self, func: TpyFunction,
+                           t: 'rcfg.AsyncForAdvance') -> tuple[str, str, list[str]]:
+        """Return (pre, exhausted_test, bind_post) for the AsyncForAdvance,
+        per strategy. `pre` runs before the exhaustion test; the loop exits
+        when `exhausted_test` is true; `bind_post` is the list of statements
+        that bind the loop var (and advance the cursor) on the live path."""
+        uid = t.uid
+        stmt = t.stmt
+        info = self._for_info(func, uid)
+        strat = info.strategy if info else "iter_next"
+        cpp_var = escape_cpp_name(stmt.var)
+        if strat == "range":
+            ci, st = f"(*__for_i_{uid})", f"(*__for_stop_{uid})"
+            range_call = stmt.iterable
+            nargs = len(range_call.args)
+            if nargs == 3:
+                sp = f"(*__for_step_{uid})"
+                step_lit = self.statements._extract_int_literal(range_call.args[2])
+                if step_lit is not None and step_lit > 0:
+                    cont = f"{ci} < {st}"
+                elif step_lit is not None and step_lit < 0:
+                    cont = f"{ci} > {st}"
+                else:
+                    cont = f"({sp} > 0 ? {ci} < {st} : {ci} > {st})"
+                bind_post = [f"{cpp_var} = {ci};", f"{ci} += {sp};"]
+            else:
+                cont = f"{ci} < {st}"
+                bind_post = [f"{cpp_var} = ({ci})++;"]
+            return ("", f"!({cont})", bind_post)
+        if strat == "begin_end":
+            it, end = f"(*__for_it_{uid})", f"(*__for_end_{uid})"
+            if info.pointer_form_loop_var == stmt.var:
+                bind_post = [f"{cpp_var} = &(*({it})++);"]
+            else:
+                bind_post = [f"{cpp_var} = *({it})++;"]
+            return ("", f"{it} == {end}", bind_post)
+        # next / iter_next: __next__() into __for_r, exhaust on !has_value.
+        r = f"(*__for_r_{uid})"
+        if strat == "next":
+            src = self._for_src_expr(stmt, uid, info)
+            pre = f"__for_r_{uid} = {src}.__next__();"
+        else:  # iter_next
+            pre = f"__for_r_{uid} = (*__for_itr_{uid}).__next__();"
+        elem = f"::tpy::unwrap_ref(*{r})"
+        # Bind form mirrors the loop var's frame storage shape (D2a):
+        # pointer-form `T*` (alias), frame_slot `.emplace`, or value assign.
+        if info is not None and info.pointer_form_loop_var == stmt.var:
+            bind_post = [f"{cpp_var} = &({elem});"]
+        elif stmt.var in self.ctx.generator_frame_slot_locals:
+            bind_post = [f"{cpp_var}.emplace({elem});"]
+        else:
+            bind_post = [f"{cpp_var} = {elem};"]
+        return (pre, f"!{r}.has_value()", bind_post)
+
+    def _for_src_expr(self, stmt: 'TpyForEach', uid: int,
+                      info: 'GeneratorForInfo') -> str:
+        """The iterator source for the `next` strategy advance: the stored
+        `__for_src` (temporary) or the re-referencable named expression."""
+        if any(fn == f"__for_src_{uid}" for fn, _ in info.fields):
+            return f"(*__for_src_{uid})"
+        return self.expressions.gen_expr(stmt.iterable)
 
     def _emit_async_for_advance(self, out: "TextIO", indent: str,
                                   cfg: 'rcfg.CFG',
@@ -2380,19 +2590,13 @@ class AsyncCoroCodegen:
                                   case_entries: dict[int, _StateLabel],
                                   func: TpyFunction,
                                   from_bb: int) -> None:
-        """Emit the next()/has-value/bind sequence for an
-        AsyncForAdvance terminator, then transfer control to the body
-        (`has_value_bb`) or loop exit (`exhausted_bb`).
-
-        Both targets are case entries (cond_bb has 2 successors and the
-        body BB is the loop-back target, so it's always multi-pred via
-        the body's Fall back to cond_bb -> body via has_value)."""
-        uid = t.uid
-        stmt = t.stmt
-        # exhausted path -- transition to exit state.
-        out.write(f"{indent}__for_r_{uid} = "
-                  f"(*__for_itr_{uid}).__next__();\n")
-        out.write(f"{indent}if (!(*__for_r_{uid}).has_value()) {{\n")
+        """Emit the per-iteration advance for an AsyncForAdvance terminator
+        (strategy-specific check + bind), then transfer to the body
+        (`has_value_bb`) or loop exit (`exhausted_bb`)."""
+        pre, exhausted_test, bind_post = self._for_advance_parts(func, t)
+        if pre:
+            out.write(f"{indent}{pre}\n")
+        out.write(f"{indent}if ({exhausted_test}) {{\n")
         self.ctx.indent_level += 1
         inner = self.ctx.indent()
         self._emit_exit_region_finallies(
@@ -2410,9 +2614,9 @@ class AsyncCoroCodegen:
             self._walk_inline(out, cfg, t.exhausted_bb, case_entries, func)
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}\n")
-        # has_value path -- bind loop var then continue to body.
-        cpp_var = escape_cpp_name(stmt.var)
-        out.write(f"{indent}{cpp_var} = ::tpy::unwrap_ref(*(*__for_r_{uid}));\n")
+        # has_value path -- bind loop var (and advance the cursor) then body.
+        for line in bind_post:
+            out.write(f"{indent}{line}\n")
         self._walk_inline_or_jump(
             out, cfg, t.has_value_bb, case_entries, func, from_bb=from_bb)
 

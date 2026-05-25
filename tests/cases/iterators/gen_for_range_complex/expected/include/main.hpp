@@ -16,17 +16,25 @@ void main();
 
 // Generator: squares_plus
 struct __gen_squares_plus {
-    int __state;
+    int32_t __state;
     int32_t n;
     int32_t i;
     std::optional<int32_t> __for_i_0;
     std::optional<int32_t> __for_stop_0;
 
-    __gen_squares_plus(int32_t n_)
-        : __state(0), n(n_) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
 
-    __gen_squares_plus& __iter__() { return *this; }
+    __gen_squares_plus(int32_t n_)
+        : __state(S_INITIAL), n(std::move(n_)) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_squares_plus& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_squares_plus&) {
         return os << "<generator squares_plus>";

@@ -16,17 +16,25 @@ void main();
 
 // Generator: doubled
 struct __gen_doubled {
-    int __state;
+    int32_t __state;
     std::vector<int32_t>& items;
     int32_t x;
     std::optional<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_it_0;
     std::optional<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_end_0;
 
-    __gen_doubled(std::vector<int32_t>& items)
-        : __state(0), items(items) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
 
-    __gen_doubled& __iter__() { return *this; }
+    __gen_doubled(std::vector<int32_t>& items)
+        : __state(S_INITIAL), items(items) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_doubled& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_doubled&) {
         return os << "<generator doubled>";

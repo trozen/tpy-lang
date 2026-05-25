@@ -4,33 +4,43 @@
 namespace tpyapp::main {
 
 
+// def maybe_count(n: Int32) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_maybe_count::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // if n <= 0:
+        if ((n <= 0)) {
+            // return
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        // i: Int32 = 0
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
     }
-    // if n <= 0:
-    if ((n <= 0)) {
-        // return
-        goto __done;
-    }
-    // i: Int32 = 0
-    i = 0;
-    // while i < n:
-    while ((i < n)) {
-        // yield i
-        __state = 1;
-        return i;
-        __resume_1:;
+    case S_RESUME_0: {
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
     }
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_JOIN_0: {
+        if ((i < n)) {
+            // yield i
+            __state = S_RESUME_0;
+            return i;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+// def maybe_count(n: Int32) -> Iterator[Int32]:
 __gen_maybe_count maybe_count(int32_t n) {
     return __gen_maybe_count(n);
 }

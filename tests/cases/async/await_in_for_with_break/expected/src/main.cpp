@@ -31,7 +31,8 @@ __coro_value value(::tpy::BigInt n) {
     case S_INITIAL: {
         // total = 0
         total = 0;
-        __for_itr_0 = ::tpy::__iter__(::tpy::Range<int32_t>(10));
+        __for_i_0 = int32_t(0);
+        __for_stop_0 = static_cast<int32_t>(10);
         __state = S_JOIN_0;
         continue;
     }
@@ -46,12 +47,11 @@ __coro_value value(::tpy::BigInt n) {
         continue;
     }
     case S_JOIN_0: {
-        __for_r_0 = (*__for_itr_0).__next__();
-        if (!(*__for_r_0).has_value()) {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_JOIN_1;
             continue;
         }
-        i = ::tpy::unwrap_ref(*(*__for_r_0));
+        i = ((*__for_i_0))++;
         if ((i == 3)) {
             __state = S_JOIN_0;
             continue;

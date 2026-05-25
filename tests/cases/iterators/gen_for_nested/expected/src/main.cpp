@@ -4,38 +4,51 @@
 namespace tpyapp::main {
 
 
+// def matrix(rows: list[Int32], cols: list[Int32]) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield -1
+        __state = S_RESUME_0;
+        return -1;
     }
-    // yield -1
-    __state = 1;
-    return -1;
-    __resume_1:;
-    // for r in rows:
-    __for_it_0 = (rows).begin();
-    __for_end_0 = (rows).end();
-    while (*__for_it_0 != *__for_end_0) {
-        r = *(*__for_it_0)++;
-        // for c in cols:
+    case S_RESUME_0: {
+        __for_it_0 = (rows).begin();
+        __for_end_0 = (rows).end();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        r = *((*__for_it_0))++;
         __for_it_1 = (cols).begin();
         __for_end_1 = (cols).end();
-        while (*__for_it_1 != *__for_end_1) {
-            c = *(*__for_it_1)++;
-            // yield r * 10 + c
-            __state = 2;
-            return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(r, 10)), c));
-            __resume_2:;
-        }
+        __state = S_JOIN_1;
+        continue;
     }
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_JOIN_1: {
+        if ((*__for_it_1) == (*__for_end_1)) {
+            __state = S_JOIN_0;
+            continue;
+        }
+        c = *((*__for_it_1))++;
+        // yield r * 10 + c
+        __state = S_RESUME_1;
+        return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(r, 10)), c));
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+// def matrix(rows: list[Int32], cols: list[Int32]) -> Iterator[Int32]:
 __gen_matrix matrix(std::vector<int32_t>& rows, std::vector<int32_t>& cols) {
     return __gen_matrix(rows, cols);
 }

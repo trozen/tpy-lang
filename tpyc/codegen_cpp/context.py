@@ -1801,9 +1801,10 @@ class CodeGenContext:
         """
         # Pointer-form iter vars are seeded up-front so the for-loop
         # emit path doesn't need to mutate `pointer_locals` mid-emission.
-        # Only the sync generator path populates `generator_for_loop_info`
-        # today; async coros use the CFG-based for-loop path and the
-        # dict stays empty, making this loop a no-op for them.
+        # Both the legacy struct path and the resumable for-loop emit
+        # (`gen_async._prescan_async_for_loops`) populate
+        # `generator_for_loop_info`; bodies with no for-loop leave it empty
+        # (the loop is then a no-op).
         for info in self.generator_for_loop_info.values():
             iter_var = getattr(info, "pointer_form_loop_var", None)
             if iter_var is not None:

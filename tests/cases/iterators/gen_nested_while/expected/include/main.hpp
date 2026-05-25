@@ -16,15 +16,23 @@ void main();
 
 // Generator: matrix
 struct __gen_matrix {
-    int __state;
+    int32_t __state;
     int32_t i;
     int32_t j;
 
-    __gen_matrix()
-        : __state(0) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
 
-    __gen_matrix& __iter__() { return *this; }
+    __gen_matrix()
+        : __state(S_INITIAL) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_matrix& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_matrix&) {
         return os << "<generator matrix>";

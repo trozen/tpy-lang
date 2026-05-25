@@ -9,13 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-struct __coro_counts;
+struct __gen_counts;
 
-__coro_counts counts();
+__gen_counts counts();
 void main();
 
 // Generator: counts
-struct __coro_counts {
+struct __gen_counts {
     int32_t __state;
     int32_t n;
 
@@ -27,13 +27,13 @@ struct __coro_counts {
         S_DONE = 4,
     };
 
-    __coro_counts()
+    __gen_counts()
         : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
-    __coro_counts& __iter__() { return *this; }
+    __gen_counts& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __coro_counts&) {
+    friend std::ostream& operator<<(std::ostream& os, const __gen_counts&) {
         return os << "<generator counts>";
     }
 };

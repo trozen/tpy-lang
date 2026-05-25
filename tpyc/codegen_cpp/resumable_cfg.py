@@ -316,6 +316,9 @@ class AsyncForIterSetup:
     uid: int
     iterable_expr: TpyExpr
     is_async: bool = False
+    # Loop element type, used by the range strategy's counter init (the
+    # emitter needs the C++ element type for the counter/stop casts).
+    elem_type: 'TpyType | None' = None
 
 
 @dataclass(frozen=True)
@@ -624,7 +627,21 @@ class CFGBuilder:
         elif isinstance(stmt, TpyWith):
             if _stmt_has_any_suspension(stmt) or force_loop_decomp:
                 return self._build_with(cur, stmt)
-        # Leaf statement (or compound without suspensions).
+        # Leaf statement (or compound without suspensions). If a statement
+        # reaches this point STILL containing a suspension, it's a compound
+        # kind the builder doesn't decompose (today: `match`). Appending it
+        # as a leaf would emit the nested `await`/`yield` as straight-line
+        # code -- silently wrong for async, and for a generator it would
+        # collide with the resumable state enum. Refuse so the generator
+        # trial-build gate routes such functions to the legacy path (and
+        # async surfaces a clear error instead of a miscompile).
+        if _stmt_has_any_suspension(stmt):
+            raise _CFGNotYetSupported(
+                "a suspension (`await`/`yield`) inside this statement is "
+                "not yet supported by the resumable lowering (the statement "
+                "kind is not decomposed by the CFG builder).",
+                loc=getattr(stmt, "loc", None),
+            )
         self._blocks[cur].stmts.append(stmt)
         return cur
 
@@ -739,13 +756,19 @@ class CFGBuilder:
     def _build_while(self, cur: int, stmt: TpyWhile) -> int | None:
         check_bb = self._new_bb()
         body_bb = self._new_bb()
+        # `exit_bb` is the NORMAL-exit target (condition false). When there
+        # is an `else` clause it runs there; `break` instead targets a
+        # separate `after_bb` that skips the else (Python loop-else
+        # semantics). With no else, `after_bb` IS `exit_bb` (no extra BB,
+        # so non-else loops are structurally unchanged).
         exit_bb = self._new_bb()
         self._finish(cur, Fall(next_bb=check_bb))
         self._finish(check_bb, Branch(cond=stmt.condition, then_bb=body_bb,
                                        else_bb=exit_bb))
+        after_bb = self._new_bb() if stmt.orelse else exit_bb
         self._loop_stack.append(_LoopCtx(
             continue_bb=check_bb,
-            break_bb=exit_bb,
+            break_bb=after_bb,
             regions_at_entry=tuple(self._region_stack),
         ))
         try:
@@ -754,23 +777,14 @@ class CFGBuilder:
                 self._finish(body_end, Fall(next_bb=check_bb))
         finally:
             self._loop_stack.pop()
-        # `else` clause runs after loop exits normally (no break). We
-        # don't model break-vs-normal-exit distinction yet, so reject
-        # if the orelse itself contains a suspension. Empty / no-suspension
-        # orelse is fine -- those statements run as ordinary leaf code
-        # in the exit BB.
         if stmt.orelse:
-            if _stmts_have_any_suspension(stmt.orelse):
-                raise _CFGNotYetSupported(
-                    "a suspension (`await`/`yield`) inside a "
-                    "`while`/`else:` clause is a planned follow-up (the "
-                    "break-vs-normal-exit distinction isn't modelled yet).",
-                    loc=stmt.loc,
-                )
-            orelse_end = self._build_block(exit_bb, stmt.orelse)
-            if orelse_end is None:
-                return None
-            return orelse_end
+            # else runs on the normal-exit edge, then falls to after_bb;
+            # break edges (-> after_bb) skip it. The else body is a regular
+            # region so it may itself contain suspensions.
+            else_end = self._build_block(exit_bb, stmt.orelse)
+            if else_end is not None:
+                self._finish(else_end, Fall(next_bb=after_bb))
+            return after_bb
         return exit_bb
 
     # -- for ------------------------------------------------------------
@@ -783,18 +797,6 @@ class CFGBuilder:
         #                            --(exhausted)-> exit
         # The cond/advance BB carries an AsyncForAdvance terminator
         # which expands at emit to next() + has_value check + bind.
-        # `else` clause handling mirrors _build_while (no break-vs-normal
-        # distinction yet) -- reject early if the orelse contains a
-        # suspension so the "no registered uid" path doesn't fire
-        # spuriously for for-loops whose body has no suspension but whose
-        # orelse does.
-        if stmt.orelse and _stmts_have_any_suspension(stmt.orelse):
-            raise _CFGNotYetSupported(
-                "a suspension (`await`/`yield`) inside a `for`/`else:` "
-                "clause is a planned follow-up (the break-vs-normal-exit "
-                "distinction isn't modelled yet).",
-                loc=stmt.loc,
-            )
         uid = self._for_uid_map.get(id(stmt))
         if uid is None:
             raise _CFGNotYetSupported(
@@ -805,21 +807,26 @@ class CFGBuilder:
         iter_init_bb = self._new_bb()
         cond_bb = self._new_bb()
         body_bb = self._new_bb()
+        # `exit_bb` is the EXHAUSTED (normal-exit) target; the `else` clause
+        # runs there. `break` targets `after_bb` (skips else). No else ->
+        # after_bb IS exit_bb (non-else for-loops unchanged).
         exit_bb = self._new_bb()
         # Fall into iter init.
         self._finish(cur, Fall(next_bb=iter_init_bb))
         # iter_init_bb: setup, fall to cond.
         self._blocks[iter_init_bb].stmts.append(
-            AsyncForIterSetup(uid=uid, iterable_expr=stmt.iterable))
+            AsyncForIterSetup(uid=uid, iterable_expr=stmt.iterable,
+                              elem_type=stmt.elem_type))
         self._finish(iter_init_bb, Fall(next_bb=cond_bb))
         # cond_bb: AsyncForAdvance terminator (advance + branch).
         self._finish(cond_bb, AsyncForAdvance(
             uid=uid, stmt=stmt,
             has_value_bb=body_bb, exhausted_bb=exit_bb))
-        # body: continue=cond_bb, break=exit_bb.
+        after_bb = self._new_bb() if stmt.orelse else exit_bb
+        # body: continue=cond_bb, break=after_bb (skips the else).
         self._loop_stack.append(_LoopCtx(
             continue_bb=cond_bb,
-            break_bb=exit_bb,
+            break_bb=after_bb,
             regions_at_entry=tuple(self._region_stack),
         ))
         try:
@@ -829,17 +836,10 @@ class CFGBuilder:
         finally:
             self._loop_stack.pop()
         if stmt.orelse:
-            if _stmts_have_any_suspension(stmt.orelse):
-                raise _CFGNotYetSupported(
-                    "a suspension (`await`/`yield`) inside a "
-                    "`for`/`else:` clause is a planned follow-up (the "
-                    "break-vs-normal-exit distinction isn't modelled yet).",
-                    loc=stmt.loc,
-                )
-            orelse_end = self._build_block(exit_bb, stmt.orelse)
-            if orelse_end is None:
-                return None
-            return orelse_end
+            else_end = self._build_block(exit_bb, stmt.orelse)
+            if else_end is not None:
+                self._finish(else_end, Fall(next_bb=after_bb))
+            return after_bb
         return exit_bb
 
     def _build_async_for(self, cur: int, stmt: TpyForEach) -> int | None:
@@ -1502,6 +1502,49 @@ def _stmt_has_any_suspension(stmt: TpyStmt) -> bool:
 
 def _stmts_have_any_suspension(stmts: list[TpyStmt]) -> bool:
     return any(_stmt_has_any_suspension(s) for s in stmts)
+
+
+def _stmts_have_suspending_compound(
+        stmts: list[TpyStmt], kinds: tuple[type, ...]) -> bool:
+    """True if any statement in `stmts` (recursively) whose type is in
+    `kinds` carries a suspension -- i.e. it contains an `await`/`yield` or
+    is an `async for`/`async with`. The generator eligibility gate uses
+    this to defer compound kinds whose resumable lowering isn't ready yet:
+    `for` loops (the CFG's universal iter/next lowering still needs to be
+    reconciled with the legacy range/begin-end peepholes and tuple-unpack
+    frame fields) and `try`/`with` (the exception/finally emit path is
+    still await-specific -- it resets sub-futures and reads `payload.mode`,
+    neither of which a generator yield site carries). A statement of one of
+    these kinds with no suspension is plain leaf code and does not count."""
+    for s in stmts:
+        if isinstance(s, kinds) and _stmt_has_any_suspension(s):
+            return True
+        if hasattr(s, "sub_bodies"):
+            for body in s.sub_bodies():
+                if _stmts_have_suspending_compound(body, kinds):
+                    return True
+    return False
+
+
+def _stmts_have_tuple_unpack_for_with_suspension(stmts: list[TpyStmt]) -> bool:
+    """True if any `for a, b in ...` (tuple-unpack) loop in `stmts`
+    (recursively) carries a suspension. The resumable for-loop emit binds
+    only the synthetic `__for_tup_<n>` loop var into the frame; the
+    destructured targets (`a`, `b`) are emitted as ordinary unpack
+    statements, so a target read across a `yield`/`await` does not persist
+    (it reads a never-assigned frame field -> garbage). The generator gate
+    defers these to the legacy path -- which binds the targets as frame-
+    field assignments -- until the resumable path emits the unpack targets
+    into the frame too."""
+    for s in stmts:
+        if (isinstance(s, TpyForEach) and s.is_tuple_unpack
+                and _stmt_has_any_suspension(s)):
+            return True
+        if hasattr(s, "sub_bodies"):
+            for body in s.sub_bodies():
+                if _stmts_have_tuple_unpack_for_with_suspension(body):
+                    return True
+    return False
 
 
 def _stmts_have_any_return(stmts: list[TpyStmt]) -> bool:

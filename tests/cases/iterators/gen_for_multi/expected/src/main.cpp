@@ -4,53 +4,66 @@
 namespace tpyapp::main {
 
 
+// def multi(items: list[Int32], n: Int32) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        case 3: goto __resume_3;
-        case 4: goto __resume_4;
-        case 5: goto __resume_5;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield -1
+        __state = S_RESUME_0;
+        return -1;
     }
-    // yield -1
-    __state = 1;
-    return -1;
-    __resume_1:;
-    // for x in items:
-    __for_it_0 = (items).begin();
-    __for_end_0 = (items).end();
-    while (*__for_it_0 != *__for_end_0) {
-        x = *(*__for_it_0)++;
+    case S_RESUME_0: {
+        __for_it_0 = (items).begin();
+        __for_end_0 = (items).end();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_2: {
+        __for_i_1 = int32_t(0);
+        __for_stop_1 = static_cast<int32_t>(n);
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_3: {
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_4: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            // yield -2
+            __state = S_RESUME_2;
+            return -2;
+        }
+        x = *((*__for_it_0))++;
         // yield x * 10
-        __state = 2;
+        __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(x, 10));
-        __resume_2:;
     }
-    // yield -2
-    __state = 3;
-    return -2;
-    __resume_3:;
-    // for i in range(n):
-    __for_i_1 = int32_t(0);
-    __for_stop_1 = static_cast<int32_t>(n);
-    while (*__for_i_1 < *__for_stop_1) {
-        i = (*__for_i_1)++;
+    case S_JOIN_1: {
+        if (!((*__for_i_1) < (*__for_stop_1))) {
+            // yield -3
+            __state = S_RESUME_4;
+            return -3;
+        }
+        i = ((*__for_i_1))++;
         // yield i * i
-        __state = 4;
+        __state = S_RESUME_3;
         return (::tpy::mul_check<int32_t>(i, i));
-        __resume_4:;
     }
-    // yield -3
-    __state = 5;
-    return -3;
-    __resume_5:;
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+// def multi(items: list[Int32], n: Int32) -> Iterator[Int32]:
 __gen_multi multi(std::vector<int32_t>& items, int32_t n) {
     return __gen_multi(items, n);
 }

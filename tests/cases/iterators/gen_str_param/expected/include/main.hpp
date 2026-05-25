@@ -16,14 +16,21 @@ void main();
 
 // Generator: greetings
 struct __gen_greetings {
-    int __state;
+    int32_t __state;
     std::string_view name;
 
-    __gen_greetings(std::string_view name_)
-        : __state(0), name(name_) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
 
-    __gen_greetings& __iter__() { return *this; }
+    __gen_greetings(std::string_view name_)
+        : __state(S_INITIAL), name(std::move(name_)) {}
+
     std::expected<std::string, ::tpy::StopIteration> __next__();
+    __gen_greetings& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_greetings&) {
         return os << "<generator greetings>";

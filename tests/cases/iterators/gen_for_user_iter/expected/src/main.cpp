@@ -4,33 +4,40 @@
 namespace tpyapp::main {
 
 
+// def doubled_range(r: NumberRange) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_doubled_range::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield -1
+        __state = S_RESUME_0;
+        return -1;
     }
-    // yield -1
-    __state = 1;
-    return -1;
-    __resume_1:;
-    // for x in r:
-    __for_itr_0 = ::tpy::__iter__(r);
-    for (;;) {
+    case S_RESUME_0: {
+        __for_itr_0 = ::tpy::__iter__(r);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
         __for_r_0 = (*__for_itr_0).__next__();
-        if (!(*__for_r_0).has_value()) break;
+        if (!(*__for_r_0).has_value()) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
         x = ::tpy::unwrap_ref(*(*__for_r_0));
         // yield x * 2
-        __state = 2;
+        __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(x, 2));
-        __resume_2:;
     }
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+// def doubled_range(r: NumberRange) -> Iterator[Int32]:
 __gen_doubled_range doubled_range(NumberRange& r) {
     return __gen_doubled_range(r);
 }

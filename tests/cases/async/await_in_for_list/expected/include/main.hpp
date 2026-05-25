@@ -48,8 +48,8 @@ struct __coro_total_of {
     ::tpy::BigInt total;
     ::tpy::BigInt x;
     ::tpy::BigInt __await_lift_0;
-    std::optional<std::decay_t<decltype(::tpy::__iter__(std::declval<std::vector<::tpy::BigInt>&>()))>> __for_itr_0;
-    std::optional<decltype(std::declval<std::decay_t<decltype(::tpy::__iter__(std::declval<std::vector<::tpy::BigInt>&>()))>&>().__next__())> __for_r_0;
+    std::optional<decltype(std::declval<std::vector<::tpy::BigInt>&>().begin())> __for_it_0;
+    std::optional<decltype(std::declval<std::vector<::tpy::BigInt>&>().begin())> __for_end_0;
     std::optional<__coro_value> __sub_0;
 
     enum : int32_t {

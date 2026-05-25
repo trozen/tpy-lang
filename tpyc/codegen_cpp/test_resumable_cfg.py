@@ -15,7 +15,10 @@ from ..parse import Parser
 from .resumable_cfg import (
     CFGBuilder, YieldPayload, AwaitPayload,
     _stmt_has_any_suspension, _CFGNotYetSupported,
+    _stmts_have_suspending_compound,
+    _stmts_have_tuple_unpack_for_with_suspension,
 )
+from .generator import GEN_DEFERRED_SUSPENDING_COMPOUNDS
 
 
 def _gen_body(src: str):
@@ -95,73 +98,144 @@ class TestSuspensionPredicate:
         assert whiles and _stmt_has_any_suspension(whiles[0]) is False
 
 
-class TestLoopElseStillRejected:
-    # Regression guard for the known for/while-else blocker (BUGS.md:26):
-    # the CFG does not model break-vs-normal-exit, so a suspension inside
-    # the else clause is rejected -- now via the generic predicate, for
-    # `yield` too, not just `await`. Phase D of the migration lifts this.
-    def test_yield_in_for_else_rejected(self):
-        with pytest.raises(_CFGNotYetSupported):
-            _build(
-                "from typing import Iterator\n"
-                "from tpy import Int32\n"
-                "def g(xs: list[Int32]) -> Iterator[Int32]:\n"
-                "    for x in xs:\n"
-                "        yield x\n"
-                "    else:\n"
-                "        yield -1\n"
-            )
+class TestLoopElseSupported:
+    # Phase D3: the CFG now models break-vs-normal-exit via distinct edges
+    # (else runs on the normal-exit edge; `break` targets a separate
+    # after-BB that skips it), so a suspension inside a loop `else` is
+    # supported instead of rejected. These build the CFG and assert both
+    # the body and else yields are recorded.
+    def test_yield_in_while_else_builds(self):
+        cfg = _build(
+            "from typing import Iterator\n"
+            "from tpy import Int32\n"
+            "def g(n: Int32) -> Iterator[Int32]:\n"
+            "    while n > 0:\n"
+            "        yield n\n"
+            "        n -= 1\n"
+            "    else:\n"
+            "        yield -1\n"
+        )
+        # one yield in the body, one in the else clause.
+        assert len(cfg.yield_sites) == 2
 
-    def test_yield_in_while_else_rejected(self):
-        with pytest.raises(_CFGNotYetSupported):
-            _build(
-                "from typing import Iterator\n"
-                "from tpy import Int32\n"
-                "def g(n: Int32) -> Iterator[Int32]:\n"
-                "    while n > 0:\n"
-                "        yield n\n"
-                "        n -= 1\n"
-                "    else:\n"
-                "        yield -1\n"
-            )
-
-
-class TestResumableGateStructuralSignal:
-    # The resumable-generator eligibility gate
-    # (generator.py::_resumable_generator_eligible) routes a generator onto
-    # the resumable emitter only if its body is entirely leaf statements:
-    # `all(not s.sub_bodies() for s in func.body)`. A `match` (or any
-    # compound) wrapping a `yield` must be seen as a nested body so the
-    # generator stays on the legacy path -- routing it to the resumable
-    # emitter silently drops post-compound yields (BUGS.md). These guard
-    # the load-bearing `sub_bodies()` signal the gate keys on.
-    def test_match_body_is_compound_so_gate_rejects(self):
+    def test_yield_in_for_else_builds(self):
+        # for-loops need a registered uid (normally from the gen_async
+        # pre-scan); supply one so the builder reaches the else handling.
         body = _gen_body(
             "from typing import Iterator\n"
             "from tpy import Int32\n"
-            "def g() -> Iterator[Int32]:\n"
+            "def g(xs: list[Int32]) -> Iterator[Int32]:\n"
+            "    for x in xs:\n"
+            "        yield x\n"
+            "    else:\n"
+            "        yield -1\n"
+        )
+        for_stmt = body[0]
+        cfg = CFGBuilder(for_uid_map={id(for_stmt): 0}).build_async(body)
+        assert len(cfg.yield_sites) == 2
+
+
+class TestUndecomposedLeafSuspensionRejected:
+    # The generator eligibility gate trial-builds the CFG and falls back to
+    # the legacy path when the builder raises. A compound the builder does
+    # NOT decompose (today: `match`) that hides a `yield`/`await` must raise
+    # `_CFGNotYetSupported` rather than be appended as a leaf -- otherwise
+    # the nested suspension would be emitted as straight-line code and the
+    # post-compound yields silently dropped (BUGS.md). This guards the
+    # leaf-append check in `_build_stmt`.
+    def test_yield_in_match_rejected(self):
+        with pytest.raises(_CFGNotYetSupported):
+            _build(
+                "from typing import Iterator\n"
+                "from tpy import Int32\n"
+                "def g() -> Iterator[Int32]:\n"
+                "    yield 1\n"
+                "    sel = 2\n"
+                "    match sel:\n"
+                "        case 2:\n"
+                "            yield 99\n"
+                "        case _:\n"
+                "            yield 0\n"
+                "    yield 3\n"
+            )
+
+    def test_match_without_suspension_is_plain_leaf(self):
+        # A `match` with no `yield` inside is ordinary straight-line code
+        # between suspensions -- the builder appends it as a leaf and the
+        # CFG builds cleanly.
+        cfg = _build(
+            "from typing import Iterator\n"
+            "from tpy import Int32\n"
+            "def g(sel: Int32) -> Iterator[Int32]:\n"
             "    yield 1\n"
-            "    sel = 2\n"
             "    match sel:\n"
             "        case 2:\n"
-            "            yield 99\n"
+            "            print(99)\n"
             "        case _:\n"
-            "            yield 0\n"
+            "            print(0)\n"
             "    yield 3\n"
         )
-        # The `match` is a nested-body statement -> gate predicate is False.
-        assert any(s.sub_bodies() for s in body)
-        assert not all(not s.sub_bodies() for s in body)
+        assert len(cfg.yield_sites) == 2
 
-    def test_linear_body_is_all_leaves_so_gate_accepts(self):
+
+class TestDeferredCompoundDetection:
+    # Phase D1 routed `if`/`while` generators onto the resumable emitter and
+    # D2 added `for`; `try`/`with` are still deferred to E. The gate keys that
+    # deferral on
+    # `_stmts_have_suspending_compound(body, GEN_DEFERRED_SUSPENDING_COMPOUNDS)`:
+    # True only when a deferred compound kind actually carries a suspension.
+    def _body(self, header: str, body_src: str):
+        return _gen_body(
+            "from typing import Iterator\n"
+            "from tpy import Int32\n"
+            f"def g(xs: list[Int32]) -> Iterator[Int32]:\n{body_src}"
+        )
+
+    def test_for_with_yield_is_not_deferred(self):
+        # `for` was deferred in D1, handled in D2 -- no longer in the set.
+        body = self._body("", "    for x in xs:\n        yield x\n")
+        assert not _stmts_have_suspending_compound(
+            body, GEN_DEFERRED_SUSPENDING_COMPOUNDS)
+
+    def test_try_with_yield_is_deferred(self):
+        body = self._body(
+            "", "    try:\n        yield xs[0]\n    finally:\n        print(1)\n")
+        assert _stmts_have_suspending_compound(
+            body, GEN_DEFERRED_SUSPENDING_COMPOUNDS)
+
+    def test_if_while_with_yield_not_deferred(self):
+        body = self._body(
+            "",
+            "    if xs:\n        yield xs[0]\n"
+            "    n = 0\n"
+            "    while n < 3:\n        yield n\n        n += 1\n")
+        assert not _stmts_have_suspending_compound(
+            body, GEN_DEFERRED_SUSPENDING_COMPOUNDS)
+
+    def test_yield_free_for_not_deferred(self):
+        # A `for` with no suspension is plain leaf code -> not deferred.
+        body = self._body(
+            "",
+            "    total = 0\n    for x in xs:\n        total += x\n    yield total\n")
+        assert not _stmts_have_suspending_compound(
+            body, GEN_DEFERRED_SUSPENDING_COMPOUNDS)
+
+    def test_tuple_unpack_for_with_yield_is_deferred(self):
+        # A `for a, b in ...` carrying a yield is deferred to the legacy
+        # path (the resumable emit doesn't frame-store the unpack targets).
         body = _gen_body(
             "from typing import Iterator\n"
             "from tpy import Int32\n"
-            "def g() -> Iterator[Int32]:\n"
-            "    n = 10\n"
-            "    yield n\n"
-            "    yield n * 2\n"
-            "    return\n"
-        )
-        # No nested-body statement -> gate predicate is True.
-        assert all(not s.sub_bodies() for s in body)
+            "def g(ps: list[tuple[Int32, Int32]]) -> Iterator[Int32]:\n"
+            "    for a, b in ps:\n        yield a + b\n")
+        assert _stmts_have_tuple_unpack_for_with_suspension(body)
+
+    def test_plain_unpack_free_for_not_deferred(self):
+        # A non-tuple-unpack `for` with a yield is NOT caught by the
+        # tuple-unpack predicate (it routes to the resumable path).
+        body = _gen_body(
+            "from typing import Iterator\n"
+            "from tpy import Int32\n"
+            "def g(xs: list[Int32]) -> Iterator[Int32]:\n"
+            "    for x in xs:\n        yield x\n")
+        assert not _stmts_have_tuple_unpack_for_with_suspension(body)

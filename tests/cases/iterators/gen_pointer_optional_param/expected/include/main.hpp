@@ -40,18 +40,27 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 // Generator: gen_n_times
 struct __gen_gen_n_times {
-    int __state;
+    int32_t __state;
     P* p;
     int32_t n;
     int32_t _;
     std::optional<int32_t> __for_i_0;
     std::optional<int32_t> __for_stop_0;
 
-    __gen_gen_n_times(P* p_, int32_t n_)
-        : __state(0), p(p_), n(n_) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
 
-    __gen_gen_n_times& __iter__() { return *this; }
+    __gen_gen_n_times(P* p_, int32_t n_)
+        : __state(S_INITIAL), p(p_), n(std::move(n_)) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_n_times& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen_n_times&) {
         return os << "<generator gen_n_times>";

@@ -4,35 +4,50 @@
 namespace tpyapp::main {
 
 
+// def matrix() -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // i: Int32 = 0
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
     }
-    // i: Int32 = 0
-    i = 0;
-    // while i < 3:
-    while ((i < 3)) {
-        // j: Int32 = 0
-        j = 0;
-        // while j < 2:
-        while ((j < 2)) {
-            // yield i * 10 + j
-            __state = 1;
-            return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 10)), j));
-            __resume_1:;
-            // j += 1
-            j = ::tpy::add_check<int32_t>(j, 1);
+    case S_RESUME_0: {
+        // j += 1
+        j = ::tpy::add_check<int32_t>(j, 1);
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < 3)) {
+            // j: Int32 = 0
+            j = 0;
+            __state = S_JOIN_1;
+            continue;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        // i += 1
-        i = ::tpy::add_check<int32_t>(i, 1);
     }
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_JOIN_1: {
+        if ((j < 2)) {
+            // yield i * 10 + j
+            __state = S_RESUME_0;
+            return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 10)), j));
+        } else {
+            // i += 1
+            i = ::tpy::add_check<int32_t>(i, 1);
+            __state = S_JOIN_0;
+            continue;
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+// def matrix() -> Iterator[Int32]:
 __gen_matrix matrix() {
     return __gen_matrix();
 }

@@ -80,9 +80,102 @@
     (goto-crossing); reference-type brace-literal yields (`yield [1,2]`)
     don't compile (shared yield-return emit).
 - **Phase C DONE** (smallest eligible generators run on the resumable
-  frame). Next: **Phase D** -- widen the gate (loops incl. the for/while-
-  else `__loop_broke` fix + for-loop peephole parity, tuple-unpack
-  frame-field handling), then try/finally, then params/generics.
+  frame).
+- **Params widening DONE** (done before loops as the lower-risk next
+  step). Dropped the no-params gate restriction: free, non-generic,
+  flat-leaf-body, non-tuple-yield generators **with parameters** now route
+  through the resumable emitter, captured via the async `_classify_params`
+  machinery (value by value, str as string_view, reference by `T&`,
+  `Own[T]` moved in, pointer-repr `Optional` as `T*`) -- shapes match the
+  legacy capture for value/str/ref/pointer, and `Own[T]` move-in is
+  correct (handles move-only types the legacy by-value-copy capture
+  could not). Borrow diagnostics (e.g. escaping-StrView dangle) are
+  sema-level and preserved across the flip. 2 existing generators flipped
+  (`gen_str_param`, `gen_str_temp_dangle`) with byte-identical output +
+  diagnostics; new cases `gen_resumable_param_{value,ref,own}` (own is
+  TPy-only: the cpy Box stub proxies `.get()`). Generics still excluded
+  (Phase F).
+- **Phase D1 DONE** (`if`/`while` generators). The eligibility gate was
+  rebuilt around a **trial CFG build**: `gen_async._try_build_cfg(func)`
+  attempts `_build_cfg` with `convert_errors=False` and returns None on
+  `_CFGNotYetSupported` (caller falls back to legacy); success caches the
+  CFG so emit reuses it. The decision is memoized on the func
+  (`_resumable_gen_eligible`), consulted from 4 orchestration passes.
+  Closed the silent-`match` gap: `_build_stmt` now raises
+  `_CFGNotYetSupported` when a statement reaches the leaf-append path
+  STILL carrying a suspension (an undecomposed compound like `match`), so
+  the trial-build gate is uniformly safe (and async gets a clear error
+  instead of a miscompile). `for`/`try`/`with` carrying a suspension are
+  deferred via `_stmts_have_suspending_compound(body,
+  GEN_DEFERRED_SUSPENDING_COMPOUNDS)`. 3 existing generators flipped
+  (`gen_conditional`, `gen_early_return`, `gen_nested_while`) with
+  byte-identical runtime output (codegen-shape-only snapshot churn); new
+  cases `gen_resumable_{if,while}`. CFG unit tests updated (12).
+  **Scope correction:** the original "Phase D approach" note below lumped
+  `try`/`with` into D1; that was wrong -- `try`/`with` generators crash on
+  the resumable path (`'YieldPayload' has no attribute 'mode'` in the
+  await-specific exception/finally emit: `_emit_sub_reset` /
+  `_emit_try_region_catches`) and stay on legacy. They are genuine Phase E
+  work (matching the original "Revised sequence"). They are pre-existing-
+  broken on legacy too (goto-into-try), so deferral is not a regression --
+  Phase E is what fixes them.
+- **Phase D2 DONE** (`for`-loop generators). Split into D2a (correctness)
+  + D2b (perf), gated by a benchmark.
+  - **D2a:** routed `for`-with-`yield` generators onto the resumable path.
+    Two correctness fixes the universal lowering lacked: (1) non-value
+    (non-readonly) loop vars now alias the element via `T*` (pointer-form
+    frame field + address-bind) instead of a `frame_slot<T>` value copy
+    (which deletes `operator=` -> a compile error); readonly elements use
+    `frame_slot.emplace`. (2) temporary/rvalue native-container iterables
+    are stored in a `__for_src` frame field so the borrowing iterator
+    doesn't dangle. **Tuple-unpack for-loops are NOT yet handled and are
+    gate-excluded to the legacy path** (`_stmts_have_tuple_unpack_for_with_suspension`):
+    the resumable emit binds only the synthetic `__for_tup` loop var into
+    the frame, not the destructured targets, so an unpack target read across
+    a `yield` would read a stale frame field. This was caught by
+    `/code-review` (the initial D2 incorrectly routed them to the resumable
+    path -- the existing tuple-unpack tests passed only because they never
+    read an unpack target after a suspension; regression test
+    `gen_tuple_unpack_use_after_yield` added). Frame-storing the unpack
+    targets is a D2 follow-up (tracked in TODO.md). Filed a pre-existing
+    simple-generator temp-iterable dangle in BUGS.md.
+  - **Benchmark (the "measure" step):** at `-O3`, universal lowering was
+    3.1x slower than the legacy peephole for `range` and 1.75x for native
+    containers -- the "concrete iterator inlines away the overhead"
+    hypothesis was wrong. Decided D2b is warranted.
+  - **D2b:** ported the legacy strategy analysis (`_analyze_for_strategy`,
+    reused via a `gen_async.gen_generators` ref) into the resumable
+    for-loop emit: a `GeneratorForInfo` per loop drives strategy-specific
+    frame fields + setup/advance (range counter, begin/end, next,
+    iter_next). Restored the peephole perf (range 0.42s->0.22s, list
+    0.39s->0.22s == legacy parity; the residual range gap vs legacy goto is
+    the resumable state-machine structure cost, inherent to the migration).
+    Also speeds async sync-`for` loops (shared emit) -- 4 async snapshots
+    churned (`await_in_for_{range,list,with_break,with_else}`) + the 10 D2a
+    iterator flips, all output/diagnostics-identical, regenerated. New
+    cases `gen_resumable_for_{nonvalue,temp}`.
+- **Phase D3 DONE** (for/while-`else` with a suspension). No `__loop_broke`
+  flag was needed: the CFG models break-vs-normal-exit with distinct edges.
+  `_build_while`/`_build_for` now run the `else` body on the normal-exit
+  edge (cond-false / exhausted) and route `break` to a separate `after_bb`
+  that skips it; with no `else`, `after_bb` IS the exit BB so non-else
+  loops are structurally unchanged. Removed the
+  `_stmts_have_any_suspension(orelse)` rejections. This also fixed a latent
+  "break runs the else" bug (the old code built `orelse` into the break
+  target) -- untriggered before because no decomposed-loop test combined
+  `else` + `break`. `gen_for_else` now routes to the resumable path
+  (break-skips-else verified identical); `gen_for_else_tuple_unpack` stays
+  on legacy (tuple-unpack is gate-excluded -- see D2 status); the two
+  async `error_await_in_*_else` rejection cases became valid and were
+  converted to positive tests `await_in_{for,while}_else`; new generator
+  case `gen_resumable_while_else`. `await_in_for_with_else` structure
+  churned (output unchanged). CFG unit `TestLoopElseStillRejected` ->
+  `TestLoopElseSupported`.
+- Next: **E** try/except/finally generators (the await-specific
+  exception/finally emit -- `_emit_sub_reset` / `_emit_try_region_catches`
+  reading `payload.mode` -- must become `YieldPayload`-aware; wire
+  `gen_coro_finally_top_def` into the generator orchestration), then
+  generics + retire the gate + extract base (F), then new surface (G).
 - **Phase D/E prerequisites (surfaced by /tpy-review):**
   - Borrow-form yield slot: `_resumable_ret_type_cpp` currently uses
     storage form (`type_to_cpp`), correct only for non-tuple yields; emit
@@ -96,7 +189,63 @@
   - De-async-ify the shared plumbing: rename `_build_cfg` ->
     `_build_resumable_cfg` and make the `_prescan_async_*` /
     `_async_*`-named caches shape-neutral (they run for generators too).
-- Phases D-G: not started.
+  - **Unify resumable frame fields on `frame_slot` (cleanup, behavior-
+    neutral).** The synthetic for-loop fields (`__for_itr`/`__for_r`/
+    `__for_src`/range counters/`__for_it`/`__for_end`) and the `with`-fields
+    (`_with_fields`) are emitted as `std::optional<T>` in `gen_coro_struct`,
+    while hoisted user locals use `tpy::frame_slot<T>` -- whose own header
+    calls it *the* generator/coro frame-field type. Same memory (both carry
+    an `alive_`/engaged bool) so it's purely consistency + the debug
+    no-read-before-write panic; no perf/correctness change. Convert the
+    field decls to `frame_slot<T>` and every `__for_x = ...` / `with`-field
+    write to `.emplace(...)` (reads / `++` / `+=` stay). Note: shared with
+    async, so it churns the async for/with snapshots too -- do it as its
+    own focused commit, not folded into a feature phase. (Separately, the
+    real frame-size win -- bare storage for default-constructible field
+    types, dropping the bool -- needs a `std::conditional` wrapper; tracked
+    in TODO.md.)
+- Phase D (D1+D2+D3) DONE; Phases E-G not started.
+
+## Phase D approach (planned -- resume here)
+
+Widen the gate from "flat leaf-only body" to "control flow the CFG can
+handle." **Gate mechanism: trial CFG build** -- attempt `_build_cfg(func)`;
+if it raises `_CFGNotYetSupported` (loop-`else`, nested-await-in-finally),
+fall back to the legacy path. This auto-tracks the CFG's real limits
+instead of a hand-maintained denylist, and the built CFG is cached so emit
+reuses it. **Gap to close first:** the CFG *silently* mishandles `match`
+(a leaf with a hidden yield) rather than raising -- teach it to raise
+`_CFGNotYetSupported` on a suspension inside an undecomposable leaf so the
+trial-build gate is uniformly safe (then the explicit `match` exclusion
+can drop). Keep the non-generic / non-tuple-yield / non-simple checks.
+
+Sub-sequencing (each regression-free):
+- **D1 -- `if` / `while` (peephole-free). DONE.** No peephole concern; the
+  CFG already decomposes them (async M3.x). Gate = trial-build succeeds AND
+  no `for`/`try`/`with` carrying a suspension (recursively) AND existing
+  checks. ~~try/with~~ were in the original D1 list but moved to E: their
+  resumable exception/finally emit is still await-specific and crashes on a
+  `YieldPayload` (see the scope-correction note in Status). Widens to the
+  common control-flow generators with zero perf risk.
+- **D2 -- `for` loops. DONE.** The peephole fork was RESOLVED by
+  measurement: the user chose "land D2a, benchmark, then decide D2b", and
+  the benchmark (universal 3.1x slower for range / 1.75x for containers)
+  selected option (i) -- port the peepholes. D2a landed the correctness
+  fixes (pointer-form non-value loop var; temp-iterable `__for_src`);
+  tuple-unpack for-loops are gate-excluded to legacy (a `/code-review`
+  follow-up -- the resumable emit doesn't frame-store unpack targets yet).
+  D2b ported the legacy `_analyze_for_strategy`
+  into the resumable for-loop emit (strategy-specific fields + setup/advance)
+  -- restored peephole perf and also sped async sync-`for` loops. See the
+  Status section above for the full record.
+- **D3 -- for/while-`else`. DONE.** No `__loop_broke` flag needed -- the
+  CFG models break-vs-normal-exit with distinct edges (else on the
+  normal-exit edge; `break` -> a separate after-BB that skips it).
+  Benefits async too (lifted the await-in-loop-else rejection). See Status.
+
+Carry forward the Phase D/E prerequisites listed above (borrow-form yield
+slot for tuple yields; wire `gen_coro_finally_top_def` before try/with;
+de-async-ify `_build_cfg` -> `_build_resumable_cfg`).
 
 ## Goal
 

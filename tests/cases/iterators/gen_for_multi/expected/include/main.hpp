@@ -16,7 +16,7 @@ void main();
 
 // Generator: multi
 struct __gen_multi {
-    int __state;
+    int32_t __state;
     std::vector<int32_t>& items;
     int32_t n;
     int32_t x;
@@ -26,11 +26,23 @@ struct __gen_multi {
     std::optional<int32_t> __for_i_1;
     std::optional<int32_t> __for_stop_1;
 
-    __gen_multi(std::vector<int32_t>& items, int32_t n_)
-        : __state(0), items(items), n(n_) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_RESUME_3 = 4,
+        S_RESUME_4 = 5,
+        S_JOIN_0 = 6,
+        S_JOIN_1 = 7,
+        S_DONE = 8,
+    };
 
-    __gen_multi& __iter__() { return *this; }
+    __gen_multi(std::vector<int32_t>& items, int32_t n_)
+        : __state(S_INITIAL), items(items), n(std::move(n_)) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_multi& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_multi&) {
         return os << "<generator multi>";

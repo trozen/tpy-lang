@@ -9,13 +9,13 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-struct __coro_gen3;
+struct __gen_gen3;
 
-__coro_gen3 gen3();
+__gen_gen3 gen3();
 void main();
 
 // Generator: gen3
-struct __coro_gen3 {
+struct __gen_gen3 {
     int32_t __state;
 
     enum : int32_t {
@@ -26,13 +26,13 @@ struct __coro_gen3 {
         S_DONE = 4,
     };
 
-    __coro_gen3()
+    __gen_gen3()
         : __state(S_INITIAL) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
-    __coro_gen3& __iter__() { return *this; }
+    __gen_gen3& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __coro_gen3&) {
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen3&) {
         return os << "<generator gen3>";
     }
 };

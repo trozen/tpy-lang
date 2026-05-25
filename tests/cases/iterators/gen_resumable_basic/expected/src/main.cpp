@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def counts() -> Iterator[Int32]:
-std::expected<int32_t, ::tpy::StopIteration> __coro_counts::__next__() {
+std::expected<int32_t, ::tpy::StopIteration> __gen_counts::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // n = 10
@@ -36,8 +36,8 @@ std::expected<int32_t, ::tpy::StopIteration> __coro_counts::__next__() {
 }
 
 // def counts() -> Iterator[Int32]:
-__coro_counts counts() {
-    return __coro_counts();
+__gen_counts counts() {
+    return __gen_counts();
 }
 
 // def main() -> None:

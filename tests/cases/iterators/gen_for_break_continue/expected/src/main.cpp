@@ -4,42 +4,54 @@
 namespace tpyapp::main {
 
 
+// def filtered(items: list[Int32], limit: Int32) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_filtered::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield -1
+        __state = S_RESUME_0;
+        return -1;
     }
-    // yield -1
-    __state = 1;
-    return -1;
-    __resume_1:;
-    // for x in items:
-    __for_it_0 = (items).begin();
-    __for_end_0 = (items).end();
-    while (*__for_it_0 != *__for_end_0) {
-        x = *(*__for_it_0)++;
-        // if x < 0:
-        if ((x < 0)) {
-            // continue
+    case S_RESUME_0: {
+        __for_it_0 = (items).begin();
+        __for_end_0 = (items).end();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_JOIN_1;
             continue;
         }
-        // if x >= limit:
-        if ((x >= limit)) {
-            // break
-            break;
+        x = *((*__for_it_0))++;
+        if ((x < 0)) {
+            __state = S_JOIN_0;
+            continue;
+        } else {
+            if ((x >= limit)) {
+                __state = S_JOIN_1;
+                continue;
+            } else {
+                // yield x * 2
+                __state = S_RESUME_1;
+                return (::tpy::mul_check<int32_t>(x, 2));
+            }
         }
-        // yield x * 2
-        __state = 2;
-        return (::tpy::mul_check<int32_t>(x, 2));
-        __resume_2:;
     }
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_JOIN_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+// def filtered(items: list[Int32], limit: Int32) -> Iterator[Int32]:
 __gen_filtered filtered(std::vector<int32_t>& items, int32_t limit) {
     return __gen_filtered(items, limit);
 }

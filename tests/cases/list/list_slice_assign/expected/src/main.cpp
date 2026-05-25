@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def gen_values() -> Iterator[Int32]:
-std::expected<int32_t, ::tpy::StopIteration> __coro_gen_values::__next__() {
+std::expected<int32_t, ::tpy::StopIteration> __gen_gen_values::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // yield 10
@@ -27,8 +27,8 @@ std::expected<int32_t, ::tpy::StopIteration> __coro_gen_values::__next__() {
 }
 
 // def gen_values() -> Iterator[Int32]:
-__coro_gen_values gen_values() {
-    return __coro_gen_values();
+__gen_gen_values gen_values() {
+    return __gen_gen_values();
 }
 
 // def main() -> None:

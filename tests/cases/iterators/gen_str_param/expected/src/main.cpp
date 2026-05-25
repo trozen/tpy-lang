@@ -4,26 +4,29 @@
 namespace tpyapp::main {
 
 
+// def greetings(name: str) -> Iterator[str]:
 std::expected<std::string, ::tpy::StopIteration> __gen_greetings::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield "hello " + name
+        __state = S_RESUME_0;
+        return (::tpy::str_concat("hello ", name));
     }
-    // yield "hello " + name
-    __state = 1;
-    return (::tpy::str_concat("hello ", name));
-    __resume_1:;
-    // yield "goodbye " + name
-    __state = 2;
-    return (::tpy::str_concat("goodbye ", name));
-    __resume_2:;
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_RESUME_0: {
+        // yield "goodbye " + name
+        __state = S_RESUME_1;
+        return (::tpy::str_concat("goodbye ", name));
+    }
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+// def greetings(name: str) -> Iterator[str]:
 __gen_greetings greetings(std::string_view name) {
     return __gen_greetings(name);
 }

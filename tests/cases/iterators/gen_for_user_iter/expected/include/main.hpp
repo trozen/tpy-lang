@@ -63,17 +63,25 @@ inline std::ostream& operator<<(std::ostream& os, const NumberRange& obj) {
 
 // Generator: doubled_range
 struct __gen_doubled_range {
-    int __state;
+    int32_t __state;
     NumberRange& r;
     int32_t x;
     std::optional<std::decay_t<decltype(::tpy::__iter__(std::declval<NumberRange&>()))>> __for_itr_0;
     std::optional<decltype(std::declval<std::decay_t<decltype(::tpy::__iter__(std::declval<NumberRange&>()))>&>().__next__())> __for_r_0;
 
-    __gen_doubled_range(NumberRange& r)
-        : __state(0), r(r) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
 
-    __gen_doubled_range& __iter__() { return *this; }
+    __gen_doubled_range(NumberRange& r)
+        : __state(S_INITIAL), r(r) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_doubled_range& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_doubled_range&) {
         return os << "<generator doubled_range>";

@@ -4,31 +4,46 @@
 namespace tpyapp::main {
 
 
+// def evens(n: Int32) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // i: Int32 = 0
+        i = 0;
+        __state = S_JOIN_0;
+        continue;
     }
-    // i: Int32 = 0
-    i = 0;
-    // while i < n:
-    while ((i < n)) {
-        // if i % 2 == 0:
-        if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
-            // yield i
-            __state = 1;
-            return i;
-            __resume_1:;
+    case S_RESUME_0: {
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((i < n)) {
+            if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
+                // yield i
+                __state = S_RESUME_0;
+                return i;
+            } else {
+                __state = S_JOIN_1;
+                continue;
+            }
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
+    }
+    case S_JOIN_1: {
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
     }
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+// def evens(n: Int32) -> Iterator[Int32]:
 __gen_evens evens(int32_t n) {
     return __gen_evens(n);
 }

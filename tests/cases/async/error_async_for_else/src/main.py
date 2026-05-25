@@ -1,6 +1,7 @@
-# `else:` clause on `async for` is rejected at parse time. Same
-# restriction as `await` in `for ... else:` / `while ... else:` --
-# the break-vs-normal-exit distinction is not modelled for async loops.
+# `else:` clause on `async for` is rejected at parse time. Sync
+# `for`/`while`-`else` with a suspension IS supported (the CFG models
+# break-vs-normal-exit), but the `__anext__`-driven async-for advance
+# doesn't yet route its normal-exit edge through an else region.
 import asyncio
 from tpy import Own
 
