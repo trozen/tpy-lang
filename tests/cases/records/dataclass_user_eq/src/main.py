@@ -7,7 +7,7 @@ from tpy import Int32
 class Point:
     x: Int32
     y: Int32
-    def __eq__(self, other: Self) -> bool:  # tpyc: warning(/will not generate __eq__/)
+    def __eq__(self, other: Self) -> bool:  # tpyc: ok
         return self.x == other.x
 
 def main() -> None:

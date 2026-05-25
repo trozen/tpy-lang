@@ -1094,11 +1094,17 @@ class ClassInfo:
         self,
         record: TpyRecord,
         ctx: SemanticContext,
+        macro_origin: str | None = None,
     ) -> None:
         self._record = record
         self._ctx = ctx
         self._added_methods: list[TpyFunction] = []
         self._match_args: list[str] | None = None
+        # Name of the macro currently expanding through this ClassInfo
+        # (e.g. "dataclass", "model"). Stamped on every TpyFunction passed
+        # to `add_method` so diagnostics can attribute the synthesis to a
+        # specific decorator without each call site repeating the name.
+        self._macro_origin: str | None = macro_origin
 
         # Populate read-only views
         self.name: str = record.name
@@ -1207,7 +1213,17 @@ class ClassInfo:
     # -- Mutation methods --
 
     def add_method(self, func: TpyFunction) -> None:
-        """Add a method from a TpyFunction AST node (power user API)."""
+        """Add a method from a TpyFunction AST node (power user API).
+
+        ``is_macro_generated`` is always set True -- any method added
+        via this API is by definition macro-generated. ``macro_origin``
+        is inherited from the currently-expanding macro (set by the
+        dispatcher when invoking the macro function), so individual
+        synthesis sites don't need to repeat the macro name.
+        """
+        func.is_macro_generated = True
+        if self._macro_origin is not None and func.macro_origin is None:
+            func.macro_origin = self._macro_origin
         self._added_methods.append(func)
 
     def add_method_from_source(self, source: str) -> None:
@@ -1229,7 +1245,9 @@ class ClassInfo:
         fresh ClassInfo bound to the same record; mutations are written
         back via the deferred-pass runner.
         """
-        self._record.pending_deferred_macros.append(callback)
+        # Snapshot the origin so the deferred pass attributes the
+        # callback's mutations to the macro that registered it.
+        self._record.pending_deferred_macros.append((self._macro_origin, callback))
 
     # TODO: property getter+setter emission from macros.
     # FragmentParser parses fragments one at a time, so the setter's

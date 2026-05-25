@@ -665,7 +665,7 @@ def _build_default_init(
         ))
     func = TpyFunction(
         name="__init__", params=params, return_type=VOID, body=body,
-        is_method=True,
+        is_method=True, is_macro_generated=True, macro_origin="builder-trace",
     )
     func.loc = loc
     return func

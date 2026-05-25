@@ -24,7 +24,7 @@ struct Point {
     Point() = default;
     explicit Point(int32_t x, int32_t y) : x(x), y(y) {}
 
-    // def __eq__(self, other: Self) -> bool:  # tpyc: warning(/will not generate __eq__/)
+    // def __eq__(self, other: Self) -> bool:  # tpyc: ok
     bool __eq__(const Point& other) const;
 
     std::string __repr__() const;
@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 
-// def __eq__(self, other: Self) -> bool:  # tpyc: warning(/will not generate __eq__/)
+// def __eq__(self, other: Self) -> bool:  # tpyc: ok
 inline bool Point::__eq__(const Point& other) const {
     // return self.x == other.x
     return (this->x == other.x);

@@ -1243,6 +1243,16 @@ class TpyFunction:
     generator_locals: 'list[tuple[str, TpyType]] | None' = None  # Set by sema: local vars for struct fields
     is_async: bool = False  # Set by parser: `async def`. Lowered to a state-machine
                             # struct conforming to Awaitable[T] in PR 3 (codegen).
+    # Set by `ClassInfo.add_method` for any function added through the macro
+    # API. Lets sema diagnostics distinguish synthesized methods (e.g.
+    # @dataclass __init__) from user-written ones, so messages can point the
+    # user at the macro/decorator rather than at code they didn't write.
+    is_macro_generated: bool = False
+    # Optional name of the macro/decorator that produced this function
+    # (e.g. "dataclass", "model", "total_ordering"). Set by macro modules
+    # when calling `ClassInfo.add_method(..., macro_origin=...)`. Used by
+    # diagnostics to name the responsible decorator in user-facing messages.
+    macro_origin: str | None = None
     skip_codegen: bool = False  # Set by sema: @inline function, body inlined at call sites
     # Preserves the self annotation for methods (e.g. OwnType(SelfType),
     # AutoOwnType(SelfType), AutoReadonlyType(SelfType)).  Between parse
@@ -1547,6 +1557,10 @@ def expr_reads_self_field(expr: TpyExpr, fields: set[str]) -> bool:
     Intended for ordering checks between an own-field MIL hoist and prior
     body writes to `self.*`. Not a general-purpose aliasing oracle -- the
     method-call rule is over-conservative for that one use case.
+
+    See also `expr_contains_self_method_call` -- the method-only variant
+    (no field-name set, filters out static-method calls). Pick that one
+    when you only care whether any instance method on self was invoked.
     """
     if not fields:
         return False
@@ -1559,6 +1573,29 @@ def expr_reads_self_field(expr: TpyExpr, fields: set[str]) -> bool:
                     return True
         elif isinstance(node, TpyMethodCall):
             if isinstance(node.obj, TpyName) and node.obj.name == "self":
+                return True
+        stack.extend(node.children())
+    return False
+
+
+def expr_contains_self_method_call(expr: TpyExpr) -> bool:
+    """True if `expr` contains any non-static `self.method(...)` call.
+
+    Used by __init__ analysis to flag method calls in field-init RHS that
+    might observe still-uninitialized fields.
+
+    See also `expr_reads_self_field` -- combines field-read detection
+    (for a caller-supplied set of field names) with method-call
+    detection. Pick that one when you also need to know if specific
+    self.X reads occur, not just method calls.
+    """
+    stack: list[TpyExpr] = [expr]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, TpyMethodCall):
+            if (isinstance(node.obj, TpyName)
+                    and node.obj.name == "self"
+                    and not node.is_static_call):
                 return True
         stack.extend(node.children())
     return False

@@ -25,6 +25,7 @@ from .registration import build_record_self_type, _vararg_span_type
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef,
+    expr_contains_self_method_call,
 )
 from .expressions import _collect_body_name_refs
 
@@ -65,33 +66,6 @@ from ..symbol_binding import (
 )
 
 
-
-
-def _expr_contains_self_method_call(expr: TpyExpr) -> bool:
-    """Check if an expression contains a non-static self.method() call.
-
-    Best-effort recursive walk -- covers common expression shapes.
-    """
-    if isinstance(expr, TpyMethodCall):
-        if (isinstance(expr.obj, TpyName)
-                and expr.obj.name == "self"
-                and not expr.is_static_call):
-            return True
-        if _expr_contains_self_method_call(expr.obj):
-            return True
-        return any(_expr_contains_self_method_call(a) for a in expr.args)
-    # Walk sub-expressions generically via common attribute names
-    for attr in ("left", "right", "operand", "obj", "expr",
-                 "condition", "then_expr", "else_expr", "index"):
-        sub = getattr(expr, attr, None)
-        if isinstance(sub, TpyExpr):
-            if _expr_contains_self_method_call(sub):
-                return True
-    args = getattr(expr, "args", None)
-    if isinstance(args, list):
-        return any(_expr_contains_self_method_call(a) for a in args
-                   if isinstance(a, TpyExpr))
-    return False
 
 
 def _body_has_raise(stmts: list[TpyStmt], exception_type: str) -> bool:
@@ -2143,7 +2117,7 @@ class SemanticAnalyzer:
                 field_name = stmt.target.field
                 # Warn if RHS calls self.method() while fields are still uninitialized
                 uninit = set(own_fields.keys()) - init_section_fields
-                if uninit and _expr_contains_self_method_call(stmt.value):
+                if uninit and expr_contains_self_method_call(stmt.value):
                     self._warning(
                         f"instance method called in __init__ before all fields are initialized; "
                         f"the method may access uninitialized fields",
@@ -2289,6 +2263,18 @@ class SemanticAnalyzer:
             if is_base_init_call(stmt):
                 return
         reason = self._explain_default_ctor_deletion(parent_rec)
+        if method.is_macro_generated:
+            origin = (f"'@{method.macro_origin}'" if method.macro_origin
+                      else "a macro")
+            raise self._error(
+                f"the '__init__' synthesized by {origin} for '{record.name}' "
+                f"does not initialize parent class '{parent_rec.name}', but "
+                f"'{parent_rec.name}' cannot be constructed without arguments "
+                f"({reason}). Either give '{parent_rec.name}' a zero-argument "
+                f"form, or write an explicit '__init__' on '{record.name}' "
+                f"that calls 'super().__init__(...)'.",
+                method,
+            )
         raise self._error(
             f"'{record.name}.__init__' must call 'super().__init__(...)' "
             f"(or '{parent_rec.name}.__init__(self, ...)') as its first "
@@ -2298,22 +2284,31 @@ class SemanticAnalyzer:
             method,
         )
 
-    def _explain_default_ctor_deletion(self, rec: 'RecordInfo') -> str:
+    def _explain_default_ctor_deletion(
+        self, rec: 'RecordInfo', _visited: set[str] | None = None,
+    ) -> str:
         """Produce a one-clause user-facing explanation of why `rec` cannot
         be constructed without arguments. Walks the same chain as
         `_record_default_ctor_is_deleted` and reports the FIRST source it
         finds, so the message attributes the actual cause (a specific
         field on `rec` itself, or on an ancestor) rather than blaming
-        `rec` generically.
+        `rec` generically. `_visited` mirrors the cycle guard in
+        `_record_default_ctor_is_deleted`.
         """
+        if _visited is None:
+            _visited = set()
+        if rec.name in _visited:
+            return f"'{rec.name}' (cycle in ancestor/field chain)"
+        _visited = _visited | {rec.name}
         if del_suppresses_default_ctor(rec):
             return (f"'{rec.name}' has '__del__' and required '__init__' "
                     f"parameters")
         for fld in rec.fields:
             if self._field_type_blocks_default_ctor(fld.type):
-                return (f"field '{fld.name}' has type '{str(fld.type)}', "
-                        f"which itself cannot be constructed without "
-                        f"arguments")
+                inner = self._explain_field_type_blocks_default_ctor(
+                    fld.type, _visited)
+                return (f"field '{fld.name}' has type '{str(fld.type)}' "
+                        f"({inner})")
         for p in rec.parents:
             if not isinstance(p, NominalType) or p.is_protocol:
                 continue
@@ -2321,7 +2316,7 @@ class SemanticAnalyzer:
             if p_rec is None or p_rec.is_native or p_rec.builtin_type_key:
                 continue
             if self._record_default_ctor_is_deleted(p_rec):
-                inner = self._explain_default_ctor_deletion(p_rec)
+                inner = self._explain_default_ctor_deletion(p_rec, _visited)
                 return (f"ancestor '{p_rec.name}' (inherited by "
                         f"'{rec.name}') has the same restriction: {inner}")
         return "a field or ancestor has no zero-argument constructor"
@@ -2409,6 +2404,46 @@ class SemanticAnalyzer:
                 return False
             return self._record_default_ctor_is_deleted(rec, _visited)
         return False
+
+    def _explain_field_type_blocks_default_ctor(
+        self, typ: TpyType, _visited: set[str] | None = None,
+    ) -> str:
+        """Mirror of `_field_type_blocks_default_ctor`: name the cause for
+        the user instead of just returning bool. Caller has already
+        verified that the predicate is True for this type. `_visited`
+        threads through to `_explain_default_ctor_deletion` to guard
+        against cyclic ancestor/field chains.
+        """
+        typ = unwrap_readonly(typ)
+        if isinstance(typ, OwnType):
+            return self._explain_field_type_blocks_default_ctor(
+                typ.wrapped, _visited)
+        if isinstance(typ, TupleType):
+            for i, et in enumerate(typ.element_types):
+                if self._field_type_blocks_default_ctor(et):
+                    inner = self._explain_field_type_blocks_default_ctor(
+                        et, _visited)
+                    return f"tuple element {i} ({inner})"
+            return "a tuple element cannot be constructed without arguments"
+        if is_array(typ):
+            elem = typ.get_element_type()
+            if elem is not None:
+                inner = self._explain_field_type_blocks_default_ctor(
+                    elem, _visited)
+                return f"array element type ({inner})"
+            return "the array element type cannot be constructed without arguments"
+        if isinstance(typ, UnionType):
+            return "union fields have no default in C++"
+        if isinstance(typ, NominalType) and not typ.is_protocol:
+            if typ.type_args:
+                base_rec = self.ctx.registry.get_record(typ.name)
+                if base_rec is not None and del_suppresses_default_ctor(base_rec):
+                    return (f"'{typ.name}' has '__del__' and required "
+                            f"'__init__' parameters")
+            rec = self.ctx.registry.get_record_for_type(typ)
+            if rec is not None and not rec.builtin_type_key and not rec.is_native:
+                return self._explain_default_ctor_deletion(rec, _visited)
+        return "the type has no zero-argument constructor"
 
     def _type_has_del_or_nocopy(self, field_type: TpyType) -> bool:
         """Check if a type (or any ancestor in its MRO) has __del__ or is @nocopy."""

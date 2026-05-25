@@ -6,7 +6,7 @@ from tpy import Int32
 class Point:
     x: Int32
     y: Int32
-    def __init__(self, x: Int32, y: Int32) -> None:  # tpyc: warning(/will not generate __init__/)
+    def __init__(self, x: Int32, y: Int32) -> None:  # tpyc: ok
         self.x = x * 2
         self.y = y
 

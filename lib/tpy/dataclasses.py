@@ -55,14 +55,9 @@ def dataclass(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> N
     all_fields = parent_fields + cls.fields
     has_parent = len(parent_fields) > 0
 
-    # Synthesize __init__
-    if cls.has_method("__init__"):
-        cls.warning(
-            f"@dataclass class '{cls.name}' has an explicit __init__; "
-            f"@dataclass will not generate __init__",
-            loc=cls.get_method_loc("__init__"),
-        )
-    else:
+    # Synthesize __init__ (silently skipped when the user wrote one --
+    # matches CPython, which also defers to an explicit __init__).
+    if not cls.has_method("__init__"):
         if not all_fields:
             raise MacroError(
                 f"@dataclass class '{cls.name}' must have at least one field annotation"
@@ -71,18 +66,11 @@ def dataclass(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> N
         init_fn = build_init(cls, parent_fields, cls.fields)
         cls.add_method(init_fn)
 
-    # Synthesize __eq__
-    if all_fields:
-        if cls.has_method("__eq__"):
-            cls.warning(
-                f"@dataclass class '{cls.name}' has an explicit __eq__; "
-                f"@dataclass will not generate __eq__",
-                loc=cls.get_method_loc("__eq__"),
-            )
-        else:
-            eq_fn = build_eq(cls, all_fields)
-            eq_fn.hides_parent = has_parent
-            cls.add_method(eq_fn)
+    # Synthesize __eq__ (silently skipped when the user wrote one).
+    if all_fields and not cls.has_method("__eq__"):
+        eq_fn = build_eq(cls, all_fields)
+        eq_fn.hides_parent = has_parent
+        cls.add_method(eq_fn)
 
     # Generate __repr__
     if all_fields and not cls.has_method("__repr__"):

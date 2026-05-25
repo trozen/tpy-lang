@@ -95,7 +95,7 @@ def _apply_class_macros(record: 'TpyRecord', ctx: 'SemanticContext') -> None:
                     qname = f"{ult_mod}.{ult_name}"
         if macro_fn is None:
             raise SemanticError(f"Unknown macro '{qname}'", record.loc)
-        cls_info = ClassInfo(record, ctx)
+        cls_info = ClassInfo(record, ctx, macro_origin=func_name)
         # Call macro-module functions in field defaults (e.g. `field()` -> Field).
         for fld in cls_info.fields:
             if fld.default_expr is not None and isinstance(fld.default_expr, (TpyCall, TpyMethodCall)):
@@ -123,8 +123,8 @@ def _apply_deferred_class_macros(
     from ..macro_api import MacroError
     callbacks = list(record.pending_deferred_macros)
     record.pending_deferred_macros.clear()
-    for callback in callbacks:
-        cls_info = ClassInfo(record, ctx)
+    for origin, callback in callbacks:
+        cls_info = ClassInfo(record, ctx, macro_origin=origin)
         try:
             callback(cls_info)
         except MacroError as e:
