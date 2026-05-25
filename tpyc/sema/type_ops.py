@@ -11,7 +11,7 @@ from typing import Literal, TYPE_CHECKING
 from ..typesys import (
     TpyType, TypeParamRef, NominalType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType,
     make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
-    TupleType,
+    TupleType, FinalType, ClassVarType,
     IntLiteralType, FloatLiteralType, TypeParamKind, BIGINT, UnknownElementType,
     NoneType, VoidType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
@@ -232,6 +232,23 @@ class TypeOperations:
             loc: Optional source location for error messages.
             allow_forward_ref: If True, unknown NominalType records are allowed (for class registration).
         """
+        # Closure-captured recurse helper: every internal recursive call uses
+        # this so the four contextual params (`allow_type_param_ref`, `loc`,
+        # `allow_forward_ref`, `check_hashable_constraints`) propagate
+        # automatically into nested wrapper / container / tuple branches.
+        # Manual kwarg-forwarding at each site was a recurring source of
+        # flag-drop bugs (`Own[set[Forward]]` field false-rejecting because
+        # the OwnType recursion reset `check_hashable_constraints=False`
+        # back to the default True). The closure makes the drop structurally
+        # impossible -- adding a new wrapper branch in the future cannot
+        # forget to forward.
+        def _recurse(inner: TpyType) -> None:
+            self.validate_type(
+                inner, allow_type_param_ref, loc,
+                allow_forward_ref=allow_forward_ref,
+                check_hashable_constraints=check_hashable_constraints,
+            )
+
         if isinstance(typ, TypeParamRef):
             if not allow_type_param_ref:
                 raise SemanticError(f"Type parameter '{typ.name}' used outside of generic context", loc)
@@ -272,7 +289,11 @@ class TypeOperations:
                             f"got {len(typ.type_args)}",
                             loc,
                         )
-                    self.validate_record_type_args(typ, record_info, allow_type_param_ref, loc)
+                    self.validate_record_type_args(
+                        typ, record_info, allow_type_param_ref, loc,
+                        allow_forward_ref=allow_forward_ref,
+                        check_hashable_constraints=check_hashable_constraints,
+                    )
                 elif record_info.is_generic():
                     raise SemanticError(
                         f"Generic record '{typ.name}' requires type arguments: "
@@ -302,12 +323,21 @@ class TypeOperations:
                     )
             elif self.ctx.registry.get_enum(typ.name) is not None:
                 pass  # imported enum -- NominalType will be resolved to EnumType
+            elif self.ctx.registry.get_type_alias(typ.name) is not None:
+                # Type alias name. Recursive aliases like
+                # `type Tree = int | list[Tree]` leave a bare
+                # NominalType("Tree") placeholder inside the body that
+                # resolve_type expands but validate_type still encounters
+                # during deep recursion -- accept it as a known alias
+                # without further validation (the alias's body is itself
+                # validated when registered).
+                pass
             elif not allow_forward_ref:
                 raise SemanticError(f"Unknown type: {typ.name}", loc)
             # Container element validation (containers are NominalType + TypeDef)
             elem_type = typ.get_element_type()
             if elem_type is not None:
-                self.validate_type(elem_type, allow_type_param_ref, loc)
+                _recurse(elem_type)
                 if is_protocol_type(elem_type):
                     raise SemanticError(
                         f"Protocol type '{elem_type}' cannot be used as a container element type",
@@ -324,7 +354,7 @@ class TypeOperations:
                     kind = "dict key" if is_dict(typ) else "set element"
                     self.validate_hashable_container_elem(key_or_elem, kind, loc)
         elif isinstance(typ, OptionalType):
-            self.validate_type(typ.inner, allow_type_param_ref, loc)
+            _recurse(typ.inner)
             if is_protocol_type(typ.inner):
                 proto_def = protocol_info_of(typ.inner)
                 if proto_def and proto_def.is_dynamic:
@@ -353,18 +383,25 @@ class TypeOperations:
                             loc,
                         )
             for member in typ.members:
-                self.validate_type(member, allow_type_param_ref, loc)
+                _recurse(member)
         elif isinstance(typ, RefType):
             # Ref-wrapped param/return types -- recurse into the underlying
             # type. Without this branch, validate_type silently bottoms out
             # at the `get_element_type()` fallback (Ref forwards element
             # extraction to the wrapped, which returns None for class /
             # Own / Optional / etc.), bypassing all checks on method params.
-            self.validate_type(typ.wrapped, allow_type_param_ref, loc,
-                               allow_forward_ref=allow_forward_ref,
-                               check_hashable_constraints=check_hashable_constraints)
+            _recurse(typ.wrapped)
+        elif isinstance(typ, TupleType):
+            # Recurse element-wise. Without this branch, tuple element types
+            # (e.g. `Own[Optional[Polymorphic]]` nested in `tuple[..., ...]`)
+            # bypass every recursive rejection in this function, because
+            # `TupleType.get_element_type()` returns None and the
+            # `NominalType` container-element fallback at the tail of
+            # this elif chain never fires for tuples.
+            for member in typ.element_types:
+                _recurse(member)
         elif isinstance(typ, OwnType):
-            self.validate_type(typ.wrapped, allow_type_param_ref, loc)
+            _recurse(typ.wrapped)
             # Reject `Own[Optional[Polymorphic]]`: an Own-Optional slot of
             # a polymorphic class is laid out for the base only, so a
             # derived value stored into it would slice, and isinstance
@@ -393,11 +430,24 @@ class TypeOperations:
                     loc,
                 )
         elif isinstance(typ, ReadonlyType):
-            self.validate_type(typ.wrapped, allow_type_param_ref, loc)
+            _recurse(typ.wrapped)
         elif isinstance(typ, AutoReadonlyType):
-            self.validate_type(typ.wrapped, allow_type_param_ref, loc)
+            _recurse(typ.wrapped)
+        elif isinstance(typ, AutoOwnType):
+            # auto_own[T] is stripped before sema body analysis, but
+            # registration may still call validate_type on a freshly-parsed
+            # return type before the strip pass runs. Mirror the AutoReadonly
+            # branch so any pre-strip residue is still validated.
+            _recurse(typ.wrapped)
+        elif isinstance(typ, (FinalType, ClassVarType)):
+            # `Final[T]` / `ClassVar[T]` annotations. These are stripped
+            # during sema body analysis, but variable type annotations are
+            # validated BEFORE the strip (see `statements.py::_analyze_var_decl`),
+            # so an unrecognized `Final[Unknown]` would otherwise fall
+            # through to the tail `get_element_type` fallback as a no-op.
+            _recurse(typ.wrapped)
         elif isinstance(typ, PtrType):
-            self.validate_type(typ.pointee, allow_type_param_ref, loc)
+            _recurse(typ.pointee)
             if is_protocol_type(typ.pointee):
                 # Only static protocols are rejected. @dynamic protocols
                 # carry a runtime vtable, so `Ptr[P]` for @dynamic P is a
@@ -414,7 +464,7 @@ class TypeOperations:
                         loc,
                     )
         elif (elem_type := typ.get_element_type()) is not None:
-            self.validate_type(elem_type, allow_type_param_ref, loc)
+            _recurse(elem_type)
             if is_protocol_type(elem_type):
                 raise SemanticError(
                     f"Protocol type '{elem_type}' cannot be used as a container element type",
@@ -481,6 +531,7 @@ class TypeOperations:
     def validate_record_type_args(
         self, typ: NominalType, record_info: RecordInfo, allow_type_param_ref: bool = False,
         loc: SourceLocation | None = None,
+        allow_forward_ref: bool = True, check_hashable_constraints: bool = True,
     ) -> None:
         """Validate that type arguments match their expected kinds (TYPE vs INT).
 
@@ -489,12 +540,24 @@ class TypeOperations:
             record_info: The RecordInfo with type_param_kinds.
             allow_type_param_ref: If True, allow TypeParamRef as valid types.
             loc: Optional source location for error messages.
+            allow_forward_ref / check_hashable_constraints: forwarded to the
+                recursive `validate_type` calls so wrapper-form type args
+                (`MyGeneric[set[Forward]]`) honor the outer caller's deferral.
         """
+        # Same closure pattern as `validate_type` -- one binding so flag
+        # forwarding can't drift across the two recursive type-arg sites.
+        def _recurse(inner: TpyType) -> None:
+            self.validate_type(
+                inner, allow_type_param_ref, loc,
+                allow_forward_ref=allow_forward_ref,
+                check_hashable_constraints=check_hashable_constraints,
+            )
+
         if not record_info.type_param_kinds:
             # Legacy: no kinds specified, assume all TYPE
             for arg in typ.type_args:
                 if isinstance(arg, TpyType):
-                    self.validate_type(arg, allow_type_param_ref, loc)
+                    _recurse(arg)
                 else:
                     raise SemanticError(
                         f"Record '{typ.name}' does not accept integer type arguments",
@@ -524,7 +587,7 @@ class TypeOperations:
                         loc,
                     )
                 if isinstance(arg, TpyType):
-                    self.validate_type(arg, allow_type_param_ref, loc)
+                    _recurse(arg)
                 else:
                     raise SemanticError(
                         f"Invalid type argument for '{param_name}' of '{typ.name}': {arg}",

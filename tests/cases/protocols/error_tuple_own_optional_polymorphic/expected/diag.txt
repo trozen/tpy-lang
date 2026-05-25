@@ -1,0 +1,1 @@
+main.py:22: error: `Own[Optional[Pet]]` is not yet supported: an Own-Optional slot of a polymorphic class is laid out for `Pet` only, so storing a derived class into it would slice the dynamic type and isinstance dispatch on the slot has no valid lowering today. Use `Optional[Pet]` (borrowed pointer that may be None) or `Box[Pet]` (owned, polymorphism-preserving) instead.

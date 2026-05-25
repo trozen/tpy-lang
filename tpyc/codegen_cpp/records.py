@@ -11,6 +11,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, OptionalType, OwnType, ReadonlyType,
+    AutoReadonlyType, AutoOwnType, FinalType, ClassVarType,
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, UnionType,
     unwrap_readonly, unwrap_optional_own,
     get_covariant_params, PtrType,
@@ -33,6 +34,7 @@ from ..type_def_registry import (
     is_span_iter, is_array,
     is_big_int_type, is_bytes_type, int_traits_of,
     is_enum_type, enum_info_of, protocol_info_of,
+    is_set, is_dict,
 )
 
 if TYPE_CHECKING:
@@ -85,7 +87,11 @@ class RecordGenerator:
     def sort_records_by_inheritance(self, records: list[TpyRecord]) -> list[TpyRecord]:
         """Sort records so parent classes come before children.
 
-        Uses topological sort based on inheritance relationships.
+        Uses topological sort based on inheritance relationships AND
+        hashed-container-element relationships: a record `Holder` with a
+        field `Own[set[Point]]` must emit AFTER `Point` so that
+        `std::hash<Point>` (emitted right after Point's struct def) is
+        available when `Holder`'s struct uses `ordered_set<Point>`.
         Native records are excluded (no C++ struct generation needed).
         """
         # Filter out native records -- they don't generate C++ structs
@@ -103,6 +109,18 @@ class RecordGenerator:
                 if (isinstance(p, NominalType) and p.is_user_record
                         and p.name in record_by_name):
                     dependencies[record.name].add(p.name)
+            # Hashed-container element dependency: walk each field's type
+            # peeling wrappers, collect user-record key types from any
+            # nested set/dict so std::hash<K> is emitted before this
+            # record's struct uses ordered_set<K> / ordered_map<K, V>.
+            for fld in record_info.fields:
+                if fld.type is None:
+                    continue
+                hash_deps: set[str] = set()
+                self._collect_hash_key_records(fld.type, hash_deps)
+                for dep in hash_deps:
+                    if dep in record_by_name and dep != record.name:
+                        dependencies[record.name].add(dep)
 
         # Topological sort (Kahn's algorithm)
         result = []
@@ -127,6 +145,61 @@ class RecordGenerator:
                 result.append(record)
 
         return result
+
+    def _collect_hash_key_records(self, typ: TpyType, deps: set[str]) -> None:
+        """Walk a type peeling wrappers; for every `set[K]` / `dict[K, V]`
+        found, collect K's user-record name into `deps` so the topo sort
+        can emit K's struct (and its `std::hash<K>` specialization) before
+        the record using the container.
+        """
+        if isinstance(typ, (OwnType, ReadonlyType, AutoReadonlyType,
+                            AutoOwnType, FinalType, ClassVarType)):
+            self._collect_hash_key_records(typ.wrapped, deps)
+            return
+        if isinstance(typ, PtrType):
+            self._collect_hash_key_records(typ.pointee, deps)
+            return
+        if isinstance(typ, OptionalType):
+            self._collect_hash_key_records(typ.inner, deps)
+            return
+        if isinstance(typ, UnionType):
+            for member in typ.members:
+                self._collect_hash_key_records(member, deps)
+            return
+        if isinstance(typ, TupleType):
+            for member in typ.element_types:
+                self._collect_hash_key_records(member, deps)
+            return
+        if isinstance(typ, NominalType):
+            if (is_set(typ) or is_dict(typ)) and typ.type_args:
+                key = typ.type_args[0]
+                if isinstance(key, TpyType):
+                    key_name = self._user_record_name(key)
+                    if key_name is not None:
+                        deps.add(key_name)
+                    self._collect_hash_key_records(key, deps)
+                for val in typ.type_args[1:]:
+                    if isinstance(val, TpyType):
+                        self._collect_hash_key_records(val, deps)
+                return
+            for arg in typ.type_args:
+                if isinstance(arg, TpyType):
+                    self._collect_hash_key_records(arg, deps)
+
+    def _user_record_name(self, typ: TpyType) -> str | None:
+        """Peel wrappers from `typ` and return the underlying user-record
+        name if any, else None. Used by hash-element dependency walking.
+        """
+        if isinstance(typ, (OwnType, ReadonlyType, AutoReadonlyType,
+                            AutoOwnType, FinalType, ClassVarType)):
+            return self._user_record_name(typ.wrapped)
+        if isinstance(typ, PtrType):
+            return self._user_record_name(typ.pointee)
+        if isinstance(typ, OptionalType):
+            return self._user_record_name(typ.inner)
+        if isinstance(typ, NominalType) and typ.is_user_record:
+            return typ.name
+        return None
 
     def _is_field_type_nocopy(self, typ: TpyType) -> bool:
         """Check if a field type is nocopy (for comment generation)."""
