@@ -3171,7 +3171,10 @@ class CallAnalyzer:
             seed_subst = self.type_ops.seed_subst_from_return_hint(
                 fn_generic, self.ctx.expr_type_hint
             )
-            if expr.type_args and len(expr.type_args) == len(fn_generic.type_params):
+            if expr.type_args:
+                # Partial-explicit allowed: zip's shorter-of-two semantics +
+                # the ``ta is not None`` guard handle wildcards and short
+                # lists. Validation of over-long lists happens elsewhere.
                 merged_seed = dict(seed_subst)
                 for tp, ta in zip(fn_generic.type_params, expr.type_args):
                     if ta is not None:
@@ -3969,6 +3972,20 @@ class CallAnalyzer:
     ) -> TpyType:
         """Analyze a call to a user-defined function (single or @overload group)."""
         if len(func_infos) > 1:
+            # Pre-validate explicit type-arg arity against the max type-param
+            # count across generic overloads. Without this, an over-long list
+            # like `f[A, B, C]` on an overload set whose max type_params is 2
+            # gets every candidate rejected by `infer_type_params_for_function`
+            # (len > type_params returns None), the structural-match fallback
+            # at line 3893 catches each candidate's `_validate_explicit_type_args`
+            # raise and continues, and the user sees "No matching @overload"
+            # instead of the specific "too many type arguments" error.
+            # Mirrors the builtin overload path at calls.py:3815.
+            if expr.type_args:
+                generic = [f for f in func_infos if f.is_generic()]
+                if generic:
+                    max_tp = max(len(f.type_params) for f in generic)
+                    self._validate_explicit_type_args(expr, max_tp)
             try:
                 result = self._resolve_call_overloads(
                     expr, func_infos,

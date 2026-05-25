@@ -1415,6 +1415,18 @@ class TypeOperations:
         """
         if lhs_hint is None:
             return None
+        # Arity gate: skip candidates that can't actually accept ``n_args``
+        # positional args. Otherwise an arity-mismatched-but-LHS-matching
+        # candidate could be the sole contributor in the probe's
+        # single-LHS-matching gate -- biasing arg analysis toward a
+        # candidate that ``resolve_overload`` will reject anyway.
+        # Conservative direction: ``func.max_args`` includes keyword-only
+        # params (it's ``len(self.params)``), while ``n_args`` is positional
+        # only. The gate may over-admit a candidate with required keyword-
+        # only params -- safe because ``resolve_overload`` still catches it,
+        # the probe just wastes work building a hint that ends up unused.
+        if n_args > func.max_args or n_args < func.min_args:
+            return None
         if func.type_params:
             seed = self.seed_subst_from_return_hint(func, lhs_hint)
             if not seed:
@@ -1600,6 +1612,12 @@ class TypeOperations:
             value_ptr_coercion=method.value_ptr_coercion,
             error_return_type=method.error_return_type,
             qualified_name=method.qualified_name,
+            # Propagate so post-substitution ``min_args`` correctly excludes
+            # the ``**kw`` slot from the positional count (the property
+            # filters via ``not (self.kwarg_name and p.name == self.kwarg_name)``).
+            # Without this, the arity gate at ``candidate_arg_hints`` and any
+            # other downstream consumer reads an inflated min_args.
+            kwarg_name=method.kwarg_name,
             # Preserve analysis-derived facts -- indices are positional (unaffected by
             # type substitution) and needed by call-site borrow/mutation checks.
             return_borrows_from=method.return_borrows_from,
