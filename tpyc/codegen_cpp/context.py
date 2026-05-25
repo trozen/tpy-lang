@@ -865,6 +865,14 @@ class CodeGenContext:
     in_async_coro_body: bool = False
     async_coro_return_cpp: str | None = None  # C++ return type for Poll<T>::ready
     async_coro_done_state: str | None = None  # name of the DONE state enumerator
+    # Generator body lowered onto the resumable frame (yield -> __next__ ->
+    # expected<T, StopIteration>). Distinct from in_generator_body, which is
+    # the legacy goto-label generator codegen: there a bare `return` emits
+    # `goto __done`, but the resumable while/switch has no such label, so a
+    # bare `return` / fall-off-end lowers to `__state = S_DONE; return
+    # make_unexpected(StopIteration{})` instead (see statements.py).
+    in_generator_resumable_body: bool = False
+    generator_resumable_done_state: str | None = None
     # Pending-return routing inside a CFG-based finally region
     #: when set, `return v` inside the active case saves `v`
     # to the slot, sets the flag, walks finally frames up to

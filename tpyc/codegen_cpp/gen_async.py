@@ -151,7 +151,9 @@ class _StateLabel:
         if self.kind is _StateKind.INITIAL:
             return "S_INITIAL"
         if self.kind is _StateKind.RESUME:
-            return f"S_AFTER_AWAIT_{self.idx}"
+            # Resume point after suspension `idx`. Shape-neutral name: the
+            # same emitter serves both `await` and `yield` suspensions.
+            return f"S_RESUME_{self.idx}"
         return f"S_JOIN_{self.idx}"
 
 
@@ -191,6 +193,25 @@ class AsyncCoroCodegen:
         self.expressions = expressions
         self.statements = statements
         self.functions = functions
+        # Resumable-shape discriminator read by the `_resumable_*` policy
+        # seams. ASYNC (await -> __poll__ -> Poll<T>) is the default; the
+        # generator migration sets GENERATOR (yield -> __next__ ->
+        # expected<T, StopIteration>) transiently via `_resumable_shape`.
+        self._shape: rcfg.ResumableShape = rcfg.ResumableShape.ASYNC
+
+    @contextlib.contextmanager
+    def _resumable_shape(self, shape: 'rcfg.ResumableShape'):
+        """Temporarily select the resumable shape (async / generator) the
+        policy seams emit for, restoring the prior shape on exit."""
+        prev = self._shape
+        self._shape = shape
+        try:
+            yield
+        finally:
+            self._shape = prev
+
+    def _is_generator_shape(self) -> bool:
+        return self._shape is rcfg.ResumableShape.GENERATOR
 
     @staticmethod
     def gen_struct_name(func: TpyFunction, record_name: str | None = None) -> str:
@@ -671,13 +692,15 @@ class AsyncCoroCodegen:
         yields = cfg.yield_sites
 
         label = f"{record_name}.{func.name}" if record_name else func.name
-        out.write(f"// Async coroutine: {label}\n")
+        kind = "Generator" if self._is_generator_shape() else "Async coroutine"
+        out.write(f"// {kind}: {label}\n")
         self._emit_template_header(out, func)
         out.write(f"struct {struct_name} {{\n")
 
-        # State + cancel flag
+        # State integer (shared) + per-shape extra state (async adds the
+        # cancel flag).
         out.write(f"{INDENT}int32_t __state;\n")
-        out.write(f"{INDENT}bool __cancel_pending;\n")
+        self._emit_resumable_extra_state_fields(out)
 
         # Captured param fields
         for p in ctor_params:
@@ -732,35 +755,11 @@ class AsyncCoroCodegen:
             else:
                 out.write(f"{INDENT}{ftype} {fname};\n")
 
-        # Sub-future fields: one per Yield (suspension_index = field
-        # ordinal). Inline mode: optional<__<name>Coro>; Erased: optional
-        # of the value awaitable; Borrowed: raw pointer. Async-with's
-        # synthetic yields override sub_field_cpp_type via the
-        # _async_with_struct_names map (the CM's __aenter__/__aexit__
-        # coro struct, computed at prescan time).
-        struct_names = getattr(func, "_async_with_struct_names", {}) or {}
-        for_struct_names = getattr(func, "_async_for_struct_names", {}) or {}
-        for y in yields:
-            p = y.payload
-            sub_cpp = p.sub_field_cpp_type
-            if p.async_with_kind is not None and p.async_with_ctx_n is not None:
-                entry = struct_names.get(p.async_with_ctx_n)
-                if entry is not None:
-                    sub_cpp = entry[0] if p.async_with_kind is rcfg.AsyncWithKind.AENTER else entry[1]
-            elif p.async_for_uid is not None:
-                entry = for_struct_names.get(p.async_for_uid)
-                if entry is not None:
-                    sub_cpp = entry
-            if p.mode is rcfg.AwaitMode.BORROWED:
-                out.write(f"{INDENT}{sub_cpp}* "
-                          f"__sub_{y.suspension_index} = nullptr;\n")
-            else:
-                out.write(f"{INDENT}std::optional<{sub_cpp}> "
-                          f"__sub_{y.suspension_index};\n")
+        self._emit_resumable_sub_future_fields(out, func, yields)
 
         out.write(f"\n")
 
-        # State enum: S_INITIAL, S_AFTER_AWAIT_<i>, S_JOIN_<n>, S_DONE.
+        # State enum: S_INITIAL, S_RESUME_<i>, S_JOIN_<n>, S_DONE.
         # State numbering matches _compute_case_entries' assignment.
         case_entries = self._compute_case_entries(cfg)
         ordered = sorted(case_entries.items(), key=lambda kv: kv[1])
@@ -774,14 +773,14 @@ class AsyncCoroCodegen:
 
         # Constructor.
         ctor_param_list = ", ".join(p.ctor_param_decl() for p in ctor_params)
-        init_parts = ["__state(S_INITIAL)", "__cancel_pending(false)"]
+        init_parts = ["__state(S_INITIAL)", *self._resumable_extra_ctor_inits()]
         init_parts.extend(p.ctor_init() for p in ctor_params)
         out.write(f"{INDENT}{struct_name}({ctor_param_list})\n")
         out.write(f"{INDENT}{INDENT}: {', '.join(init_parts)} {{}}\n\n")
 
-        # __poll__() forward declaration.
-        out.write(f"{INDENT}{self._poll_ret_cpp(func)} __poll__(::tpystd::coro::Waker waker);\n")
-        out.write(f"{INDENT}void cancel() {{ __cancel_pending = true; }}\n")
+        # Body-method forward declaration + per-shape extra methods.
+        out.write(f"{INDENT}{self._resumable_body_method_fwd_decl(func)};\n")
+        self._emit_resumable_extra_methods(out, struct_name)
 
         # Finally-helper forward declarations: one per TryRegion with a
         # finally body.
@@ -790,10 +789,12 @@ class AsyncCoroCodegen:
 
         repr_label = (f"{record_name}.{func.name}" if record_name
                       else func.name)
+        repr_kind = "generator" if self._is_generator_shape() else "coroutine"
         param_struct_name = self._struct_name_templated(func, record_name)
         out.write(f"\n{INDENT}friend std::ostream& operator<<("
                   f"std::ostream& os, const {param_struct_name}&) {{\n")
-        out.write(f"{INDENT}{INDENT}return os << \"<coroutine {repr_label}>\";\n")
+        out.write(f"{INDENT}{INDENT}return os << "
+                  f"\"<{repr_kind} {repr_label}>\";\n")
         out.write(f"{INDENT}}}\n")
         out.write(f"}};\n")
 
@@ -943,6 +944,164 @@ class AsyncCoroCodegen:
                 self.ctx.indent_level = 0
                 out.write(f"}}\n")
 
+    # =====================================================================
+    # Resumable-shape policy seam. These methods isolate the decisions
+    # that differ between the async (`await` -> `__poll__`) shape and the
+    # future generator (`yield` -> `__next__`) shape so the generator
+    # migration can plug in without forking the state-machine emitter.
+    # Each seam branches on `self._shape`; async output must stay
+    # byte-identical (async never enters the generator branch).
+    # =====================================================================
+
+    def _resumable_ret_type_cpp(self, func: TpyFunction) -> str:
+        """The frame body method's return type. Async: `Poll<T>`.
+        Generator: `std::expected<T_elem, ::tpy::StopIteration>` where
+        T_elem is the yield element type. (Storage-form/tuple-yield
+        parity with gen_generators' `cpp_iter_slot` is a later-phase
+        refinement; value-typed elements resolve identically here.)"""
+        if self._is_generator_shape():
+            elem_cpp = self.types.type_to_cpp(func.generator_yield_type)
+            return f"std::expected<{elem_cpp}, ::tpy::StopIteration>"
+        return self._poll_ret_cpp(func)
+
+    def _resumable_body_method_decl(self, func: TpyFunction,
+                                    struct_name: str) -> str:
+        """Full declarator of the frame's body method: return type +
+        qualified name + params. Async: `Poll<T> <struct>::__poll__(Waker
+        waker)`. Generator: `expected<T, StopIteration> <struct>::__next__()`
+        (no waker)."""
+        if self._is_generator_shape():
+            return (f"{self._resumable_ret_type_cpp(func)} "
+                    f"{struct_name}::__next__()")
+        return (f"{self._poll_ret_cpp(func)} {struct_name}::__poll__("
+                f"::tpystd::coro::Waker waker)")
+
+    def _emit_resumable_body_prelude(self, out: "TextIO",
+                                     has_suspensions: bool) -> None:
+        """Per-shape body prelude. Async silences the unused `waker`
+        param when the frame has no suspensions; the generator shape has
+        no waker param, so it emits nothing."""
+        if self._is_generator_shape():
+            return
+        if not has_suspensions:
+            out.write(f"{INDENT}(void)waker;\n")
+
+    def _emit_resumable_done_case(self, out: "TextIO", inner: str) -> None:
+        """The terminal `S_DONE` switch case. Async panics on a re-poll
+        after Ready; the generator returns `StopIteration` (a repeat
+        `__next__()` after exhaustion is well-defined in Python)."""
+        if self._is_generator_shape():
+            out.write(f"{inner}case S_DONE: return "
+                      f"::tpy::make_unexpected(::tpy::StopIteration{{}});\n")
+            return
+        out.write(f"{inner}case S_DONE: "
+                  f"::tpy::tpy_panic(\"poll after Ready\");\n")
+
+    @contextlib.contextmanager
+    def _resumable_return_lowering(self, func: TpyFunction):
+        """Configure how a source-level `return` lowers inside the frame
+        body, then restore (policy seam). Async: the statement emitter
+        consults `ctx.in_async_coro_body` to rewrite `return v` into
+        `__state = S_DONE; return Poll::ready(v)`. The generator shape
+        lowers a bare `return` to the StopIteration/done path and rejects
+        return-with-value."""
+        if self._is_generator_shape():
+            old_in_gen = self.ctx.in_generator_resumable_body
+            old_done = self.ctx.generator_resumable_done_state
+            old_yt = self.ctx.current_yield_type
+            self.ctx.in_generator_resumable_body = True
+            self.ctx.generator_resumable_done_state = "S_DONE"
+            self.ctx.current_yield_type = func.generator_yield_type
+            try:
+                yield
+            finally:
+                self.ctx.in_generator_resumable_body = old_in_gen
+                self.ctx.generator_resumable_done_state = old_done
+                self.ctx.current_yield_type = old_yt
+            return
+        old_in_async = getattr(self.ctx, "in_async_coro_body", False)
+        old_async_ret_cpp = getattr(self.ctx, "async_coro_return_cpp", None)
+        old_async_done_label = getattr(self.ctx, "async_coro_done_state", None)
+        self.ctx.in_async_coro_body = True
+        self.ctx.async_coro_return_cpp = self._ret_cpp(func)
+        self.ctx.async_coro_done_state = "S_DONE"
+        self.ctx.current_return_type = func.return_type
+        try:
+            yield
+        finally:
+            self.ctx.in_async_coro_body = old_in_async
+            self.ctx.async_coro_return_cpp = old_async_ret_cpp
+            self.ctx.async_coro_done_state = old_async_done_label
+
+    def _emit_resumable_extra_state_fields(self, out: "TextIO") -> None:
+        """Per-shape state fields beyond the shared `int32_t __state`.
+        Async adds the cancellation flag; the generator shape adds
+        nothing."""
+        if self._is_generator_shape():
+            return
+        out.write(f"{INDENT}bool __cancel_pending;\n")
+
+    def _resumable_extra_ctor_inits(self) -> list[str]:
+        """Per-shape ctor member-init entries beyond `__state(S_INITIAL)`.
+        Async initializes the cancel flag; the generator shape adds none.
+        """
+        if self._is_generator_shape():
+            return []
+        return ["__cancel_pending(false)"]
+
+    def _emit_resumable_sub_future_fields(
+            self, out: "TextIO", func: TpyFunction,
+            yields: 'list[rcfg.Yield]') -> None:
+        """Sub-future frame fields -- async-only (policy seam). One per
+        Yield (suspension_index = field ordinal): Inline ->
+        optional<sub-coro struct>, Erased -> optional<value awaitable>,
+        Borrowed -> raw pointer. Async-with's synthetic yields override
+        sub_field_cpp_type via the _async_with_struct_names map (the CM's
+        __aenter__/__aexit__ coro struct, computed at prescan time). The
+        generator shape stores nothing at a `yield`, so it emits nothing.
+        """
+        if self._is_generator_shape():
+            return
+        struct_names = getattr(func, "_async_with_struct_names", {}) or {}
+        for_struct_names = getattr(func, "_async_for_struct_names", {}) or {}
+        for y in yields:
+            p = y.payload
+            sub_cpp = p.sub_field_cpp_type
+            if p.async_with_kind is not None and p.async_with_ctx_n is not None:
+                entry = struct_names.get(p.async_with_ctx_n)
+                if entry is not None:
+                    sub_cpp = entry[0] if p.async_with_kind is rcfg.AsyncWithKind.AENTER else entry[1]
+            elif p.async_for_uid is not None:
+                entry = for_struct_names.get(p.async_for_uid)
+                if entry is not None:
+                    sub_cpp = entry
+            if p.mode is rcfg.AwaitMode.BORROWED:
+                out.write(f"{INDENT}{sub_cpp}* "
+                          f"__sub_{y.suspension_index} = nullptr;\n")
+            else:
+                out.write(f"{INDENT}std::optional<{sub_cpp}> "
+                          f"__sub_{y.suspension_index};\n")
+
+    def _resumable_body_method_fwd_decl(self, func: TpyFunction) -> str:
+        """In-struct forward declaration of the body method (unqualified).
+        Async: `Poll<T> __poll__(Waker waker)`. Generator:
+        `expected<T, StopIteration> __next__()`."""
+        if self._is_generator_shape():
+            return f"{self._resumable_ret_type_cpp(func)} __next__()"
+        return (f"{self._poll_ret_cpp(func)} "
+                f"__poll__(::tpystd::coro::Waker waker)")
+
+    def _emit_resumable_extra_methods(self, out: "TextIO",
+                                      struct_name: str) -> None:
+        """Per-shape inline methods on the frame struct. Async emits
+        `cancel()`; the generator emits `__iter__()` (returns `*this`, so
+        the frame is its own iterator -- parallels gen_generators)."""
+        if self._is_generator_shape():
+            out.write(f"{INDENT}{struct_name}& __iter__() "
+                      f"{{ return *this; }}\n")
+            return
+        out.write(f"{INDENT}void cancel() {{ __cancel_pending = true; }}\n")
+
     def gen_coro_poll_def(self, out: "TextIO", func: TpyFunction,
                             record_name: str | None = None) -> None:
         """Emit the `poll()` method body in the .cpp file (or inline-in-hpp
@@ -956,30 +1115,15 @@ class AsyncCoroCodegen:
 
         self.ctx.emit_source_comment(out, func.loc)
         self._emit_template_header(out, func)
-        out.write(f"{self._poll_ret_cpp(func)} {struct_name}::__poll__(::tpystd::coro::Waker waker) {{\n")
-        if not has_yields:
-            # No awaits: waker unused. Generators emit (void)waker for the
-            # same reason; reuse the pattern.
-            out.write(f"{INDENT}(void)waker;\n")
+        out.write(f"{self._resumable_body_method_decl(func, struct_name)} {{\n")
+        self._emit_resumable_body_prelude(out, has_yields)
 
-        # Async return-rewrite needs the C++ Poll<T> type and DONE
-        # state label so `return v` lowers correctly inside the state
-        # machine.
-        old_in_async = getattr(self.ctx, "in_async_coro_body", False)
-        old_async_ret_cpp = getattr(self.ctx, "async_coro_return_cpp", None)
-        old_async_done_label = getattr(self.ctx, "async_coro_done_state", None)
-
+        # Return-rewrite setup (the C++ Poll<T> type and DONE state
+        # label so `return v` lowers correctly inside the state machine)
+        # is the resumable-shape policy's responsibility.
         with self._resumable_frame_ctx(func, record_name):
-            self.ctx.in_async_coro_body = True
-            self.ctx.async_coro_return_cpp = self._ret_cpp(func)
-            self.ctx.async_coro_done_state = "S_DONE"
-            self.ctx.current_return_type = func.return_type
-            try:
+            with self._resumable_return_lowering(func):
                 self._emit_state_machine(out, func, cfg)
-            finally:
-                self.ctx.in_async_coro_body = old_in_async
-                self.ctx.async_coro_return_cpp = old_async_ret_cpp
-                self.ctx.async_coro_done_state = old_async_done_label
 
         out.write(f"}}\n")
 
@@ -1051,7 +1195,7 @@ class AsyncCoroCodegen:
         def walk(stmts: list[TpyStmt]) -> None:
             for s in stmts:
                 if isinstance(s, TpyForEach) and (
-                        s.is_async or rcfg._stmts_have_any_await(s.body)):
+                        s.is_async or rcfg._stmts_have_any_suspension(s.body)):
                     cur_uid = counter[0]
                     counter[0] += 1
                     iter_t = self.types.get_resolved_type(s.iterable)
@@ -1231,7 +1375,7 @@ class AsyncCoroCodegen:
                 # any other await.
                 if (isinstance(s, TpyWith)
                         and (s.is_async
-                             or rcfg._stmts_have_any_await(s.body))):
+                             or rcfg._stmts_have_any_suspension(s.body))):
                     per_item: list[int] = []
                     for item in s.items:
                         cur_n = counter[0]
@@ -1343,7 +1487,7 @@ class AsyncCoroCodegen:
             for s in stmts:
                 if (isinstance(s, TpyTry)
                         and s.finally_body
-                        and rcfg._stmts_have_any_await(s.finally_body)):
+                        and rcfg._stmts_have_any_suspension(s.finally_body)):
                     cur_uid = counter[0]
                     counter[0] += 1
                     uid_map[id(s)] = cur_uid
@@ -1445,7 +1589,7 @@ class AsyncCoroCodegen:
 
         Rules: a BB is a case entry iff it is
         - the entry BB (S_INITIAL),
-        - the resume_bb of a Yield (S_AFTER_AWAIT_<i>),
+        - the resume_bb of a Yield (S_RESUME_<i>),
         - reached via Fall/Branch by 2+ predecessors (multi-pred join), or
         - reached via Fall/Branch from a predecessor with a different
           region_stack (region-crossing edge).
@@ -1549,7 +1693,7 @@ class AsyncCoroCodegen:
             self._emit_case(out, cfg, bb_id, case_entries, func)
             self.ctx.indent_level = 1
             out.write(f"{inner}}}\n")
-        out.write(f"{inner}case S_DONE: ::tpy::tpy_panic(\"poll after Ready\");\n")
+        self._emit_resumable_done_case(out, inner)
         out.write(f"{inner}}}\n")
         out.write(f"{inner}__builtin_unreachable();\n")
         self.ctx.indent_level = 0
@@ -1572,8 +1716,13 @@ class AsyncCoroCodegen:
         return self._payload_args_no_throw(t.payload)
 
     def _payload_args_no_throw(self,
-                                 payload: 'rcfg.AwaitPayload') -> bool:
-        """True if emitting the Yield's emplace cannot throw."""
+                                 payload: 'rcfg.SuspensionPayload') -> bool:
+        """True if emitting the Yield cannot throw. For a generator yield,
+        the emitted action is `return <value>;` -- no-throw iff the value
+        is a literal / simple name."""
+        if isinstance(payload, rcfg.YieldPayload):
+            return (payload.value_expr is None
+                    or self._expr_is_simple(payload.value_expr))
         # Async-with synthetic yields emplace from the CM frame slot
         # (`*__with_ctx_<n>`) plus monostate literals -- provably
         # no-throw and never touch the payload's `operand_expr`.
@@ -1985,9 +2134,10 @@ class AsyncCoroCodegen:
         resume step (if entry_bb is a yield-resume), then walks BBs
         inline until a terminator exits the case."""
         body_indent = self.ctx.indent()
-        # Resume step.
+        # Resume step. Generators have no sub-future to poll and bind
+        # nothing back in, so their resume case is a bare continuation.
         y = self._yield_at_resume(cfg, entry_bb)
-        if y is not None:
+        if y is not None and not self._is_generator_shape():
             self._emit_resume_core(out, body_indent, y.payload,
                                     y.suspension_index, func)
             if y.payload.kind is rcfg.AwaitKind.RETURN:
@@ -2054,16 +2204,7 @@ class AsyncCoroCodegen:
                     self.statements.gen_stmt(out, stmt)
             t = bb.terminator
             if isinstance(t, rcfg.Yield):
-                # Suspend: store state + emplace sub-future, then
-                # continue to re-enter the switch at the new state.
-                # The resume case's poll() will return Pending iff the
-                # sub-future is genuinely not-yet-ready. Continuing
-                # (rather than returning Pending unconditionally)
-                # matches the original [[fallthrough]] behavior: a
-                # synchronous Ready sub-future completes in one poll.
-                self._emit_suspend(out, body_indent, t.payload,
-                                    t.suspension_index, func)
-                out.write(f"{body_indent}continue;\n")
+                self._emit_yield_terminator(out, body_indent, t, func)
                 return
             if isinstance(t, rcfg.ReturnT):
                 # gen_stmt routes a TpyReturn inside async-coro context
@@ -2278,8 +2419,16 @@ class AsyncCoroCodegen:
     def _emit_unreachable_tail(self, out: "TextIO", indent: str,
                                  func: TpyFunction) -> None:
         """Tail emission for a BB whose end is statically unreachable
-        (no explicit return/raise). For void async defs, emit Ready(unit);
+        (no explicit return/raise). Generators that fall off the end stop
+        iterating (StopIteration). For void async defs, emit Ready(unit);
         otherwise panic."""
+        if self._is_generator_shape():
+            # Fell off the end of the generator body -> StopIteration.
+            self.statements._emit_finally_chain(out, indent)
+            out.write(f"{indent}__state = S_DONE;\n")
+            out.write(f"{indent}return ::tpy::make_unexpected("
+                      f"::tpy::StopIteration{{}});\n")
+            return
         if self._is_void_return(func):
             # Walk any active finally frames before returning.
             self.statements._emit_finally_chain(out, indent)
@@ -2403,6 +2552,43 @@ class AsyncCoroCodegen:
             raise CodeGenError(f"unknown await kind {payload.kind!r}",
                                loc=None)
         self._emit_sub_reset(out, indent, payload, suspension_index)
+
+    def _emit_yield_terminator(self, out: "TextIO", indent: str,
+                               t: 'rcfg.Yield', func: TpyFunction) -> None:
+        """Emit the full suspend action for a Yield terminator (policy
+        seam). Async stores the sub-future + advances state, then
+        `continue`s to re-enter the switch at the new state -- the resume
+        case's poll() returns Pending iff the sub-future is genuinely
+        not-yet-ready; continuing (rather than returning Pending
+        unconditionally) lets a synchronously-ready sub-future complete
+        in one poll. The generator shape emits the yielded value +
+        advances state + returns the value to the caller (the next
+        `__next__()` call resumes at the new state)."""
+        if self._is_generator_shape():
+            self._emit_generator_yield(out, indent, t)
+            return
+        self._emit_suspend(out, indent, t.payload, t.suspension_index, func)
+        out.write(f"{indent}continue;\n")
+
+    def _emit_generator_yield(self, out: "TextIO", indent: str,
+                              t: 'rcfg.Yield') -> None:
+        """Generator suspension: compute the yielded value, advance to the
+        resume state, and return it to the caller. The next `__next__()`
+        call re-enters the switch at the resume state, whose case header
+        is a no-op (no poll/bind) and simply continues after the yield."""
+        payload = t.payload
+        assert isinstance(payload, rcfg.YieldPayload), \
+            "generator shape requires a YieldPayload terminator"
+        ys = payload.yield_stmt
+        assert ys is not None, \
+            "YieldPayload built from a generator body always carries yield_stmt"
+        if ys.loc is not None:
+            self.ctx.emit_source_comment(out, ys.loc, indent)
+        yield_expr = self.statements.gen_yield_value(ys)
+        self.ctx.temps.flush(out, indent)
+        resume = _StateLabel(_StateKind.RESUME, t.suspension_index).cpp_name()
+        out.write(f"{indent}__state = {resume};\n")
+        out.write(f"{indent}return {yield_expr};\n")
 
     def _emit_suspend(self, out: "TextIO", indent: str,
                       payload: 'rcfg.AwaitPayload',

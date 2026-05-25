@@ -14,7 +14,7 @@ namespace tpyapp::main {
         __state = S_JOIN_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
@@ -35,7 +35,7 @@ namespace tpyapp::main {
         try {
             // async for x in c:
             __sub_0.emplace(*__for_itr_0);
-            __state = S_AFTER_AWAIT_0;
+            __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::StopAsyncIteration&) {
             __state = S_JOIN_2;
@@ -80,10 +80,10 @@ __coro_sum_evens sum_evens(Counts& c) {
         c.emplace(Counts(::tpy::BigInt(6)));
         // print(await sum_evens(c))
         __sub_0.emplace((*c));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

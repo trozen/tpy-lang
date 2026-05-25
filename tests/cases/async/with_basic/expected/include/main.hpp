@@ -101,8 +101,8 @@ struct __coro_main_coro {
 
     enum : int32_t {
         S_INITIAL = 0,
-        S_AFTER_AWAIT_0 = 1,
-        S_AFTER_AWAIT_1 = 2,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
         S_JOIN_0 = 3,
         S_JOIN_1 = 4,
         S_JOIN_2 = 5,

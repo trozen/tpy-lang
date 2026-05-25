@@ -9,22 +9,30 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-struct __gen_triple;
+struct __coro_triple;
 
-__gen_triple triple();
+__coro_triple triple();
 void main();
 
 // Generator: triple
-struct __gen_triple {
-    int __state;
+struct __coro_triple {
+    int32_t __state;
 
-    __gen_triple()
-        : __state(0) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
+    };
 
-    __gen_triple& __iter__() { return *this; }
+    __coro_triple()
+        : __state(S_INITIAL) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __coro_triple& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __gen_triple&) {
+    friend std::ostream& operator<<(std::ostream& os, const __coro_triple&) {
         return os << "<generator triple>";
     }
 };

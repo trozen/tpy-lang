@@ -9,39 +9,54 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-struct __gen_gen_a;
-struct __gen_gen_b;
+struct __coro_gen_a;
+struct __coro_gen_b;
 
-__gen_gen_a gen_a();
-__gen_gen_b gen_b();
+__coro_gen_a gen_a();
+__coro_gen_b gen_b();
 void main();
 
 // Generator: gen_a
-struct __gen_gen_a {
-    int __state;
+struct __coro_gen_a {
+    int32_t __state;
 
-    __gen_gen_a()
-        : __state(0) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
 
-    __gen_gen_a& __iter__() { return *this; }
+    __coro_gen_a()
+        : __state(S_INITIAL) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __coro_gen_a& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_a&) {
+    friend std::ostream& operator<<(std::ostream& os, const __coro_gen_a&) {
         return os << "<generator gen_a>";
     }
 };
 
 // Generator: gen_b
-struct __gen_gen_b {
-    int __state;
+struct __coro_gen_b {
+    int32_t __state;
 
-    __gen_gen_b()
-        : __state(0) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
+    };
 
-    __gen_gen_b& __iter__() { return *this; }
+    __coro_gen_b()
+        : __state(S_INITIAL) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __coro_gen_b& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_b&) {
+    friend std::ostream& operator<<(std::ostream& os, const __coro_gen_b&) {
         return os << "<generator gen_b>";
     }
 };

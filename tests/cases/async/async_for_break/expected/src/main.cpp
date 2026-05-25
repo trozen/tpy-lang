@@ -14,7 +14,7 @@ namespace tpyapp::main {
         __state = S_JOIN_1;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
@@ -41,7 +41,7 @@ namespace tpyapp::main {
         try {
             // async for x in c:
             __sub_0.emplace(*__for_itr_0);
-            __state = S_AFTER_AWAIT_0;
+            __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::StopAsyncIteration&) {
             __state = S_JOIN_0;
@@ -80,10 +80,10 @@ __coro_first_above first_above(Counts& c, ::tpy::BigInt threshold) {
         c.emplace(Counts());
         // print(await first_above(c, 5))
         __sub_0.emplace((*c), ::tpy::BigInt(5));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

@@ -10,10 +10,10 @@ namespace tpyapp::main {
     case S_INITIAL: {
         // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -42,10 +42,10 @@ __coro_inner inner() {
         r.emplace(Runner());
         // v = await r.with_timeout(inner(), 5.0)
         __sub_0.emplace((*r), std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(inner())>>>(inner()), 5.0);
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v = std::move(__r0).value();

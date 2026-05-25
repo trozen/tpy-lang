@@ -452,8 +452,12 @@ class StatementGenerator:
         elif isinstance(stmt, TpyReturn):
             if self.ctx.in_async_coro_body:
                 return self._make_async_return(stmt, indent)
+            if self.ctx.in_generator_resumable_body:
+                # Generator on the resumable frame: bare return / end ->
+                # StopIteration done, via the while/switch (no __done label).
+                return self._make_generator_resumable_return(stmt, indent)
             if self.ctx.in_generator_body:
-                # Bare return in generator -> StopIteration
+                # Bare return in legacy goto-style generator -> StopIteration
                 return f"{indent}goto __done;\n"
             if stmt.value:
                 ret_type = self.ctx.current_return_type
@@ -2960,6 +2964,24 @@ class StatementGenerator:
                 out.write(
                     f"{indent}return ::tpystd::tpy::Poll<{ret_cpp}>::ready("
                     f"std::move({tmp}));\n")
+        return out.getvalue()
+
+    def _make_generator_resumable_return(self, stmt: TpyReturn,
+                                         indent: str) -> str:
+        """Lower a `return` inside a generator body lowered onto the
+        resumable frame. Generators reject return-with-value (sema), so
+        this is always a bare `return` meaning "stop iteration": walk the
+        enclosing finally chain, then (if not already terminated) set the
+        done state and return StopIteration. Parallels _make_async_return
+        but with the generator's `expected<T, StopIteration>` done shape."""
+        out = io.StringIO()
+        terminated = self._emit_finally_chain(out, indent)
+        if terminated:
+            return out.getvalue()
+        done_state = self.ctx.generator_resumable_done_state or "S_DONE"
+        out.write(f"{indent}__state = {done_state};\n")
+        out.write(f"{indent}return ::tpy::make_unexpected("
+                  f"::tpy::StopIteration{{}});\n")
         return out.getvalue()
 
     def _make_break_continue(self, indent: str, *, is_break: bool) -> str:

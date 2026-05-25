@@ -12,10 +12,10 @@ namespace tpyapp::main {
         c.emplace(Container("hi"));
         // a = await c.echo(Int32(7))  # tpyc: type(Int32)
         __sub_0.emplace((*c), 7);
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         a = std::move(__r0).value();
@@ -24,10 +24,10 @@ namespace tpyapp::main {
         std::cout << a << "\n";
         // b = await c.echo("world")  # tpyc: type(str)
         __sub_1.emplace((*c), "world");
-        __state = S_AFTER_AWAIT_1;
+        __state = S_RESUME_1;
         continue;
     }
-    case S_AFTER_AWAIT_1: {
+    case S_RESUME_1: {
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         b = std::move(__r1).value();
@@ -36,10 +36,10 @@ namespace tpyapp::main {
         std::cout << b << "\n";
         // p = await c.labeled(Int32(42))  # tpyc: type(/tuple\[str, Int32\]/)
         __sub_2.emplace((*c), 42);
-        __state = S_AFTER_AWAIT_2;
+        __state = S_RESUME_2;
         continue;
     }
-    case S_AFTER_AWAIT_2: {
+    case S_RESUME_2: {
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         p = std::move(__r2).value();

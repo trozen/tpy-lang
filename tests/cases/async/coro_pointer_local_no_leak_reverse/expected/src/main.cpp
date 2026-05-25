@@ -23,10 +23,10 @@ P* maybe_p(std::vector<P>& items, int32_t i) {
         x = (::tpy::add_check<int32_t>(n, 1));
         // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -55,10 +55,10 @@ __coro_first first(int32_t n) {
         x = maybe_p(items, i);
         // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -96,10 +96,10 @@ __coro_second second(std::vector<P>& items, int32_t i) {
         (*items).push_back(P(42));
         // print(await first(10))
         __sub_0.emplace(10);
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -108,10 +108,10 @@ __coro_second second(std::vector<P>& items, int32_t i) {
         std::cout << __await_lift_0 << "\n";
         // print(await second(items, 0))
         __sub_1.emplace((*items), 0);
-        __state = S_AFTER_AWAIT_1;
+        __state = S_RESUME_1;
         continue;
     }
-    case S_AFTER_AWAIT_1: {
+    case S_RESUME_1: {
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_1 = std::move(__r1).value();

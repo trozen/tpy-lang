@@ -53,7 +53,7 @@ __coro_fail fail() {
         __state = S_JOIN_2;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
@@ -64,12 +64,12 @@ __coro_fail fail() {
             if (should_fail) {
                 // b = await fail()
                 __sub_1.emplace();
-                __state = S_AFTER_AWAIT_1;
+                __state = S_RESUME_1;
                 continue;
             } else {
                 // b = await value(Int32(2))
                 __sub_2.emplace(2);
-                __state = S_AFTER_AWAIT_2;
+                __state = S_RESUME_2;
                 continue;
             }
         } catch (const ::tpy::ValueError&) {
@@ -90,7 +90,7 @@ __coro_fail fail() {
             throw;
         }
     }
-    case S_AFTER_AWAIT_1: {
+    case S_RESUME_1: {
         try {
             auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
@@ -118,7 +118,7 @@ __coro_fail fail() {
             throw;
         }
     }
-    case S_AFTER_AWAIT_2: {
+    case S_RESUME_2: {
         try {
             auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
             if (__r2.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
@@ -177,7 +177,7 @@ __coro_fail fail() {
         try {
             // a = await value(Int32(1))
             __sub_0.emplace(1);
-            __state = S_AFTER_AWAIT_0;
+            __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError&) {
             try {

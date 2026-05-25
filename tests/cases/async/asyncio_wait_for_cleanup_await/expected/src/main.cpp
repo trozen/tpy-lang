@@ -11,7 +11,7 @@ namespace tpyapp::main {
         __state = S_JOIN_1;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
@@ -29,7 +29,7 @@ namespace tpyapp::main {
             continue;
         }
     }
-    case S_AFTER_AWAIT_1: {
+    case S_RESUME_1: {
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r1).value();
@@ -56,7 +56,7 @@ namespace tpyapp::main {
         try {
             // await asyncio.sleep(1.0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(1.0)));
-            __state = S_AFTER_AWAIT_0;
+            __state = S_RESUME_0;
             continue;
         } catch (...) {
             this->__finally_exc_0 = std::current_exception();
@@ -67,7 +67,7 @@ namespace tpyapp::main {
     case S_JOIN_2: {
         // await asyncio.sleep(0.001)
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
-        __state = S_AFTER_AWAIT_1;
+        __state = S_RESUME_1;
         continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -88,7 +88,7 @@ __coro_slow slow() {
         __state = S_JOIN_1;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -119,7 +119,7 @@ __coro_slow slow() {
         try {
             // v = await asyncio.wait_for(slow(), 0.01)
             __sub_0.emplace(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(slow())>>>(slow()), 0.01);
-            __state = S_AFTER_AWAIT_0;
+            __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::TimeoutError&) {
             // print("timed-out")

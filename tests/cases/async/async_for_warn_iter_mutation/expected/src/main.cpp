@@ -14,7 +14,7 @@ namespace tpyapp::main {
         __state = S_JOIN_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -35,7 +35,7 @@ namespace tpyapp::main {
         try {
             // async for x in src:
             __sub_0.emplace(*__for_itr_0);
-            __state = S_AFTER_AWAIT_0;
+            __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::StopAsyncIteration&) {
             __state = S_JOIN_2;

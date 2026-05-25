@@ -4,38 +4,41 @@
 namespace tpyapp::main {
 
 
-std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+// def gen() -> Iterator[Int32]:
+std::expected<int32_t, ::tpy::StopIteration> __coro_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // history: list[Int32] = []
+        history.emplace(std::vector<int32_t>{});
+        // history.append(1)
+        (*history).push_back(1);
+        // history.append(2)
+        (*history).push_back(2);
+        // history.append(3)
+        (*history).push_back(3);
+        // yield len(history)
+        __state = S_RESUME_0;
+        return ::tpy::__len__((*history));
     }
-    // history: list[Int32] = []
-    history.emplace(std::vector<int32_t>{});
-    // history.append(1)
-    (*history).push_back(1);
-    // history.append(2)
-    (*history).push_back(2);
-    // history.append(3)
-    (*history).push_back(3);
-    // yield len(history)
-    __state = 1;
-    return ::tpy::__len__((*history));
-    __resume_1:;
-    // history.append(4)
-    (*history).push_back(4);
-    // yield len(history)
-    __state = 2;
-    return ::tpy::__len__((*history));
-    __resume_2:;
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_RESUME_0: {
+        // history.append(4)
+        (*history).push_back(4);
+        // yield len(history)
+        __state = S_RESUME_1;
+        return ::tpy::__len__((*history));
+    }
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
-__gen_gen gen() {
-    return __gen_gen();
+// def gen() -> Iterator[Int32]:
+__coro_gen gen() {
+    return __coro_gen();
 }
 
 // def main() -> None:

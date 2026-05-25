@@ -51,7 +51,7 @@ __coro_fail fail() {
         __state = S_JOIN_1;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         try {
             try {
                 auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
@@ -71,7 +71,7 @@ __coro_fail fail() {
                     std::cout << "inner-handler" << "\n";
                     // y = await value(Int32(5))
                     __sub_1.emplace(5);
-                    __state = S_AFTER_AWAIT_1;
+                    __state = S_RESUME_1;
                     continue;
                 } catch (...) {
                     this->__finally_1();
@@ -88,7 +88,7 @@ __coro_fail fail() {
             throw;
         }
     }
-    case S_AFTER_AWAIT_1: {
+    case S_RESUME_1: {
         try {
             auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
@@ -122,7 +122,7 @@ __coro_fail fail() {
     case S_JOIN_2: {
         // x = await fail()
         __sub_0.emplace();
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

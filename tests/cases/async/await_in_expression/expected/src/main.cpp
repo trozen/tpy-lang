@@ -31,20 +31,20 @@ __coro_add_one add_one(int32_t x) {
     case S_INITIAL: {
         // return await add_one(Int32(5)) + await add_one(Int32(10))
         __sub_0.emplace(5);
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         __await_lift_0 = std::move(__r0).value();
         __sub_0.reset();
         // return await add_one(Int32(5)) + await add_one(Int32(10))
         __sub_1.emplace(10);
-        __state = S_AFTER_AWAIT_1;
+        __state = S_RESUME_1;
         continue;
     }
-    case S_AFTER_AWAIT_1: {
+    case S_RESUME_1: {
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         __await_lift_1 = std::move(__r1).value();
@@ -72,10 +72,10 @@ __coro_caller caller() {
     case S_INITIAL: {
         // val = await caller()
         __sub_0.emplace();
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         val = std::move(__r0).value();

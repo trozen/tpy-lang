@@ -167,7 +167,7 @@ struct __FCoro {
     void __finally_outer();  // each unique source-level finally body
     void __finally_inner();  // emitted once, called from each case
 
-    enum { S_INITIAL = 0, S_AFTER_AWAIT_0 = 1, ..., S_DONE = K };
+    enum { S_INITIAL = 0, S_RESUME_0 = 1, ..., S_DONE = K };
 
     __FCoro(/* captured params per design "Parameter capture" rules */);
 
@@ -183,7 +183,7 @@ struct __FCoro {
                 throw;
             }
             [[fallthrough]];
-        case S_AFTER_AWAIT_0: {
+        case S_RESUME_0: {
             try {
                 if (__cancel_pending) { __cancel_pending = false; throw tpy::CancelledError(); }
                 auto r = __sub_0->poll(waker);
@@ -191,7 +191,7 @@ struct __FCoro {
                 // bind result, reset sub-future, advance state, fall through
                 <result_var> = std::move(r).value();
                 __sub_0.reset();
-                __state = S_AFTER_AWAIT_1;  // or S_DONE
+                __state = S_RESUME_1;  // or S_DONE
                 // body between this and next suspension
             } catch (...) {
                 __sub_0.reset();
@@ -786,7 +786,7 @@ What landed:
     `__sub_<i>.emplace((*__with_ctx_<n>), monostate, monostate, monostate)`
     for aexit (cleanup-only call shape).
   - `_emit_async_with_setup` writes `__with_ctx_<n> = <ctx_expr>;`.
-- **`_stmt_has_any_await`** in `resumable_cfg.py`: returns True for
+- **`_stmt_has_any_suspension`** in `resumable_cfg.py`: returns True for
   `async with` even when the body has no user awaits, so the CFG
   builder runs `_build_with` instead of treating the stmt as a leaf.
 
@@ -896,7 +896,7 @@ What landed:
   with a `__init__(self, message: str = "")` stub, re-exported through
   the builtins chain. CPython already provides it natively, so no
   `lib/cpy/` stub needed.
-- **`_stmt_has_any_await`** in `resumable_cfg.py`: returns True for
+- **`_stmt_has_any_suspension`** in `resumable_cfg.py`: returns True for
   `async for` even when the body has no user awaits, mirroring the
   `async with` short-circuit. Without this, an `async for` wrapped in a
   try/except whose body has no other awaits would not trigger CFG

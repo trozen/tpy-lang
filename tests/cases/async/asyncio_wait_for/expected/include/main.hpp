@@ -27,7 +27,7 @@ struct __coro_compute {
 
     enum : int32_t {
         S_INITIAL = 0,
-        S_AFTER_AWAIT_0 = 1,
+        S_RESUME_0 = 1,
         S_DONE = 2,
     };
 
@@ -51,7 +51,7 @@ struct __coro_main_coro {
 
     enum : int32_t {
         S_INITIAL = 0,
-        S_AFTER_AWAIT_0 = 1,
+        S_RESUME_0 = 1,
         S_DONE = 2,
     };
 

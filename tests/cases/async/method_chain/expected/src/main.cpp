@@ -12,10 +12,10 @@ namespace tpyapp::main {
         m.emplace(Math(7));
         // q = await m.quad_base()
         __sub_0.emplace((*m));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         q = std::move(__r0).value();
@@ -58,10 +58,10 @@ __coro_main_coro main_coro() {
     case S_INITIAL: {
         // d = await self.double_base()
         __sub_0.emplace(__self);
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         d = std::move(__r0).value();

@@ -9,22 +9,29 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-struct __gen_gen_values;
+struct __coro_gen_values;
 
-__gen_gen_values gen_values();
+__coro_gen_values gen_values();
 void main();
 
 // Generator: gen_values
-struct __gen_gen_values {
-    int __state;
+struct __coro_gen_values {
+    int32_t __state;
 
-    __gen_gen_values()
-        : __state(0) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
 
-    __gen_gen_values& __iter__() { return *this; }
+    __coro_gen_values()
+        : __state(S_INITIAL) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __coro_gen_values& __iter__() { return *this; }
 
-    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_values&) {
+    friend std::ostream& operator<<(std::ostream& os, const __coro_gen_values&) {
         return os << "<generator gen_values>";
     }
 };

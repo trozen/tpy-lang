@@ -53,7 +53,7 @@ __coro_cleanup cleanup() {
         __state = S_JOIN_1;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
@@ -70,7 +70,7 @@ __coro_cleanup cleanup() {
             continue;
         }
     }
-    case S_AFTER_AWAIT_1: {
+    case S_RESUME_1: {
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r1).value();
@@ -94,13 +94,13 @@ __coro_cleanup cleanup() {
     case S_JOIN_1: {
         // return await value(42)
         __sub_0.emplace(::tpy::BigInt(42));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
     case S_JOIN_2: {
         // await cleanup()
         __sub_1.emplace();
-        __state = S_AFTER_AWAIT_1;
+        __state = S_RESUME_1;
         continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

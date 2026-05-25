@@ -31,10 +31,10 @@ __coro_sub sub() {
     case S_INITIAL: {
         // return await sub()
         __sub_0.emplace();
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         auto __ret0 = std::move(__r0).value();

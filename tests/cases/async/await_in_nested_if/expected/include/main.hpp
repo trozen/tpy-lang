@@ -54,10 +54,10 @@ struct __coro_deep {
 
     enum : int32_t {
         S_INITIAL = 0,
-        S_AFTER_AWAIT_0 = 1,
-        S_AFTER_AWAIT_1 = 2,
-        S_AFTER_AWAIT_2 = 3,
-        S_AFTER_AWAIT_3 = 4,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_RESUME_3 = 4,
         S_JOIN_0 = 5,
         S_JOIN_1 = 6,
         S_JOIN_2 = 7,

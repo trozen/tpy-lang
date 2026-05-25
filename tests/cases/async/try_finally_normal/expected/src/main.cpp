@@ -32,7 +32,7 @@ __coro_sub sub() {
         __state = S_JOIN_1;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -56,7 +56,7 @@ __coro_sub sub() {
     case S_JOIN_1: {
         // await sub()
         __sub_0.emplace();
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

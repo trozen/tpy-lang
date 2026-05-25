@@ -49,7 +49,7 @@ struct __coro_Runner_with_timeout {
 
     enum : int32_t {
         S_INITIAL = 0,
-        S_AFTER_AWAIT_0 = 1,
+        S_RESUME_0 = 1,
         S_DONE = 2,
     };
 
@@ -72,10 +72,10 @@ template <typename T>
     case S_INITIAL: {
         // return await asyncio.wait_for(coro, timeout)
         __sub_0.emplace(std::move(coro), timeout);
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<T>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -102,7 +102,7 @@ struct __coro_inner {
 
     enum : int32_t {
         S_INITIAL = 0,
-        S_AFTER_AWAIT_0 = 1,
+        S_RESUME_0 = 1,
         S_DONE = 2,
     };
 
@@ -127,7 +127,7 @@ struct __coro_main_coro {
 
     enum : int32_t {
         S_INITIAL = 0,
-        S_AFTER_AWAIT_0 = 1,
+        S_RESUME_0 = 1,
         S_DONE = 2,
     };
 

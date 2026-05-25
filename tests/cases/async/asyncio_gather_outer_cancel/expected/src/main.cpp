@@ -11,7 +11,7 @@ namespace tpyapp::main {
         __state = S_JOIN_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
@@ -38,7 +38,7 @@ namespace tpyapp::main {
         try {
             // await asyncio.sleep(0.005)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.005)));
-            __state = S_AFTER_AWAIT_0;
+            __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::CancelledError&) {
             // print("slow cancelled")
@@ -72,10 +72,10 @@ __coro_slow slow() {
         (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(slow())>>>(slow())));
         // return await asyncio.gather_list(tasks)
         __sub_0.emplace((*tasks));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::vector<int32_t>>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -102,10 +102,10 @@ __coro_gather_helper gather_helper() {
         gtask.emplace(::tpystd::asyncio::create_task<std::vector<int32_t>>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::vector<int32_t>>, std::remove_cvref_t<decltype(gather_helper())>>>(gather_helper())));
         // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -115,7 +115,7 @@ __coro_gather_helper gather_helper() {
         __state = S_JOIN_1;
         continue;
     }
-    case S_AFTER_AWAIT_1: {
+    case S_RESUME_1: {
         try {
             auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -143,7 +143,7 @@ __coro_gather_helper gather_helper() {
     case S_JOIN_1: {
         // results = await gtask
         __sub_1 = &((*gtask));
-        __state = S_AFTER_AWAIT_1;
+        __state = S_RESUME_1;
         continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

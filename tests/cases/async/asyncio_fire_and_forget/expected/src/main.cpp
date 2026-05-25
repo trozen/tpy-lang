@@ -40,10 +40,10 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
         { auto __del_sink = std::move(t); }
         // _ = await done
         __sub_0 = &((*done));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         _ = std::move(__r0).value();

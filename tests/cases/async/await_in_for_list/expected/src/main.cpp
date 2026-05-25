@@ -35,7 +35,7 @@ __coro_value value(::tpy::BigInt n) {
         __state = S_JOIN_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         __await_lift_0 = std::move(__r0).value();
@@ -56,7 +56,7 @@ __coro_value value(::tpy::BigInt n) {
         x = ::tpy::unwrap_ref(*(*__for_r_0));
         // total = total + await value(x)
         __sub_0.emplace(x);
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

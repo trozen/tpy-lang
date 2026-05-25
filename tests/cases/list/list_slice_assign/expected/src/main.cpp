@@ -4,28 +4,31 @@
 namespace tpyapp::main {
 
 
-std::expected<int32_t, ::tpy::StopIteration> __gen_gen_values::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+// def gen_values() -> Iterator[Int32]:
+std::expected<int32_t, ::tpy::StopIteration> __coro_gen_values::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield 10
+        __state = S_RESUME_0;
+        return 10;
     }
-    // yield 10
-    __state = 1;
-    return 10;
-    __resume_1:;
-    // yield 20
-    __state = 2;
-    return 20;
-    __resume_2:;
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_RESUME_0: {
+        // yield 20
+        __state = S_RESUME_1;
+        return 20;
+    }
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
-__gen_gen_values gen_values() {
-    return __gen_gen_values();
+// def gen_values() -> Iterator[Int32]:
+__coro_gen_values gen_values() {
+    return __coro_gen_values();
 }
 
 // def main() -> None:

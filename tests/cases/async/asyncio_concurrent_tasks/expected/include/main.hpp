@@ -31,7 +31,7 @@ struct __coro_doubler {
 
     enum : int32_t {
         S_INITIAL = 0,
-        S_AFTER_AWAIT_0 = 1,
+        S_RESUME_0 = 1,
         S_DONE = 2,
     };
 
@@ -59,8 +59,8 @@ struct __coro_main_coro {
 
     enum : int32_t {
         S_INITIAL = 0,
-        S_AFTER_AWAIT_0 = 1,
-        S_AFTER_AWAIT_1 = 2,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
         S_DONE = 3,
     };
 

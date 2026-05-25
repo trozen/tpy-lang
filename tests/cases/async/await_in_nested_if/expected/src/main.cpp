@@ -33,29 +33,29 @@ __coro_value value(::tpy::BigInt n) {
             if (b) {
                 // x = await value(11)
                 __sub_0.emplace(::tpy::BigInt(11));
-                __state = S_AFTER_AWAIT_0;
+                __state = S_RESUME_0;
                 continue;
             } else {
                 // x = await value(10)
                 __sub_1.emplace(::tpy::BigInt(10));
-                __state = S_AFTER_AWAIT_1;
+                __state = S_RESUME_1;
                 continue;
             }
         } else {
             if (b) {
                 // x = await value(1)
                 __sub_2.emplace(::tpy::BigInt(1));
-                __state = S_AFTER_AWAIT_2;
+                __state = S_RESUME_2;
                 continue;
             } else {
                 // x = await value(0)
                 __sub_3.emplace(::tpy::BigInt(0));
-                __state = S_AFTER_AWAIT_3;
+                __state = S_RESUME_3;
                 continue;
             }
         }
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         x = std::move(__r0).value();
@@ -63,7 +63,7 @@ __coro_value value(::tpy::BigInt n) {
         __state = S_JOIN_1;
         continue;
     }
-    case S_AFTER_AWAIT_1: {
+    case S_RESUME_1: {
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         x = std::move(__r1).value();
@@ -71,7 +71,7 @@ __coro_value value(::tpy::BigInt n) {
         __state = S_JOIN_1;
         continue;
     }
-    case S_AFTER_AWAIT_2: {
+    case S_RESUME_2: {
         auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         x = std::move(__r2).value();
@@ -79,7 +79,7 @@ __coro_value value(::tpy::BigInt n) {
         __state = S_JOIN_2;
         continue;
     }
-    case S_AFTER_AWAIT_3: {
+    case S_RESUME_3: {
         auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         x = std::move(__r3).value();

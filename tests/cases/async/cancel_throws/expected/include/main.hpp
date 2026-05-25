@@ -31,7 +31,7 @@ struct __coro_yield_once {
 
     enum : int32_t {
         S_INITIAL = 0,
-        S_AFTER_AWAIT_0 = 1,
+        S_RESUME_0 = 1,
         S_DONE = 2,
     };
 

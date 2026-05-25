@@ -10,10 +10,10 @@ namespace tpyapp::main {
     case S_INITIAL: {
         // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
@@ -41,7 +41,7 @@ __coro_quick quick() {
         __state = S_JOIN_2;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -56,7 +56,7 @@ __coro_quick quick() {
             continue;
         }
     }
-    case S_AFTER_AWAIT_1: {
+    case S_RESUME_1: {
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         v = std::move(__r1).value();
@@ -74,7 +74,7 @@ __coro_quick quick() {
     case S_JOIN_0: {
         // v = await asyncio.wait_for(quick(), 5.0)
         __sub_1.emplace(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(quick())>>>(quick()), 5.0);
-        __state = S_AFTER_AWAIT_1;
+        __state = S_RESUME_1;
         continue;
     }
     case S_JOIN_1: {
@@ -85,7 +85,7 @@ __coro_quick quick() {
         try {
             // await asyncio.sleep(60.0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(60.0)));
-            __state = S_AFTER_AWAIT_0;
+            __state = S_RESUME_0;
             continue;
         } catch (...) {
             this->__finally_exc_0 = std::current_exception();
@@ -112,10 +112,10 @@ __coro_go go() {
         task.emplace(::tpystd::asyncio::create_task<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(go())>>>(go())));
         // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -125,7 +125,7 @@ __coro_go go() {
         __state = S_JOIN_1;
         continue;
     }
-    case S_AFTER_AWAIT_1: {
+    case S_RESUME_1: {
         try {
             auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -151,7 +151,7 @@ __coro_go go() {
     case S_JOIN_1: {
         // await task
         __sub_1 = &((*task));
-        __state = S_AFTER_AWAIT_1;
+        __state = S_RESUME_1;
         continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

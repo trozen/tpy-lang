@@ -12,10 +12,10 @@ std::vector<std::string>* dropped{};
     case S_INITIAL: {
         // return await f
         __sub_0 = &(f);
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<Tracked>::pending();
         auto __ret0 = std::move(__r0).value();
@@ -49,7 +49,7 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
         __state = S_JOIN_1;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         try {
             auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
@@ -75,7 +75,7 @@ __coro_waiter waiter(::tpystd::asyncio::Future<Tracked>& f) {
     case S_JOIN_1: {
         // await t
         __sub_0 = &((*t));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

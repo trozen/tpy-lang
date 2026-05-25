@@ -10,11 +10,12 @@ from typing import Callable, TextIO, TYPE_CHECKING
 import io
 import sys as _sys
 
-from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name
+from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, TupleType, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, unwrap_ref_type, bare_name
 from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives
+from .resumable_cfg import ResumableShape
 
 from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_char, escape_cpp_name
 from .types import TypeResolver
@@ -427,7 +428,16 @@ class CodeGenerator:
             if func.skip_codegen:
                 continue
             if func.is_generator:
-                if not self.gen_generators.is_simple_generator(func):
+                if self._resumable_generator_eligible(func):
+                    # Migrated path: generator lowered onto the resumable
+                    # frame. Eligible generators are non-template, so the
+                    # __next__ body + factory land in the .cpp.
+                    with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
+                        self.gen_async.gen_coro_poll_def(cpp, func)
+                        cpp.write("\n")
+                        self.gen_async.gen_factory(cpp, func)
+                        cpp.write("\n")
+                elif not self.gen_generators.is_simple_generator(func):
                     self.gen_generators.gen_generator_next(cpp, func)
                     cpp.write("\n")
                     self.gen_generators.gen_generator_factory(cpp, func)
@@ -500,6 +510,39 @@ class CodeGenerator:
         self._write_header_epilogue(hpp)
 
         return hpp.getvalue(), cpp.getvalue()
+
+    def _resumable_generator_eligible(self, func: "TpyFunction") -> bool:
+        """First-cut gate for routing a generator through the resumable
+        (async) state-machine emitter (`gen_async`) rather than
+        `gen_generators.py`. Deliberately narrow while the migrated path
+        is validated: free function, non-generic, no params, a non-tuple
+        yield element type, a flat body of leaf statements only (no
+        compound / nested-body statement), and not a simple-peephole
+        generator. Everything outside this set stays on the legacy path.
+        """
+        if not func.is_generator or func.type_params or func.params:
+            return False
+        if self.gen_generators.is_simple_generator(func):
+            return False
+        # The resumable `__next__` return type uses storage form
+        # (`type_to_cpp`). That matches gen_generators' iterator slot
+        # (`_iter_slot_for_yield` returns the bare cpp type) for every
+        # NON-tuple yield, but a TUPLE yield needs the borrow-form slot
+        # (`std::tuple<T&, ...>` / `std::tuple<P*, ...>`). Until the
+        # resumable path emits the borrow-form slot (later phase), keep
+        # tuple-yielding generators on the legacy path.
+        yt = func.generator_yield_type
+        if yt is None or isinstance(unwrap_ref_type(yt), TupleType):
+            return False
+        # Allowlist by structure: every top-level statement must be a leaf
+        # (no nested body). A statement with a sub-body is a compound
+        # (if/while/for/try/with/match/...) that the resumable CFG either
+        # can't decompose or this phase doesn't yet handle -- and a `yield`
+        # hidden inside one (e.g. a `match` case) would be mis-lowered onto
+        # legacy goto state numbers that collide with the resumable enum.
+        # Rejecting any compound keeps those on the legacy path and is
+        # robust against compound statement kinds not enumerated here.
+        return all(not s.sub_bodies() for s in func.body)
 
     def _generate_protocol_ordering(self, hpp: TextIO, module: TpyModule,
                                     global_decls: list, final_decls: list,
@@ -932,7 +975,11 @@ class CodeGenerator:
             if func.skip_codegen:
                 continue
             if func.is_generator and not self.gen_generators.is_simple_generator(func):
-                self.gen_generators.gen_generator_forward_decl(hpp, func)
+                if self._resumable_generator_eligible(func):
+                    with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
+                        self.gen_async.gen_coro_forward_decl(hpp, func)
+                else:
+                    self.gen_generators.gen_generator_forward_decl(hpp, func)
                 emitted_gen_fwd = True
             if func.is_async:
                 self.gen_async.gen_coro_forward_decl(hpp, func)
@@ -963,7 +1010,11 @@ class CodeGenerator:
             if func.is_generator:
                 if self.gen_generators.is_simple_generator(func):
                     continue  # Simple generators are inline -- no forward decl
-                if self.gen_generators.gen_generator_factory_forward_decl(hpp, func):
+                if self._resumable_generator_eligible(func):
+                    with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
+                        if self.gen_async.gen_factory_forward_decl(hpp, func):
+                            emitted_fwd_func = True
+                elif self.gen_generators.gen_generator_factory_forward_decl(hpp, func):
                     emitted_fwd_func = True
             elif func.is_async:
                 if self.gen_async.gen_factory_forward_decl(hpp, func):
@@ -1072,7 +1123,11 @@ class CodeGenerator:
             if func.skip_codegen:
                 continue
             if func.is_generator and not self.gen_generators.is_simple_generator(func):
-                self.gen_generators.gen_generator_struct(hpp, func)
+                if self._resumable_generator_eligible(func):
+                    with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
+                        self.gen_async.gen_coro_struct(hpp, func)
+                else:
+                    self.gen_generators.gen_generator_struct(hpp, func)
                 hpp.write("\n")
             if func.is_async:
                 self.gen_async.gen_coro_struct(hpp, func)

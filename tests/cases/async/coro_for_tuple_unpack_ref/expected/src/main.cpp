@@ -12,10 +12,10 @@ namespace tpyapp::main {
         s = 0;
         // await asyncio.sleep(0)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
@@ -61,10 +61,10 @@ __coro_total total(std::vector<std::tuple<Item, Item>>& pairs) {
         (*pairs).push_back(::tpy::tuple_value_to_borrow<std::tuple<Item&, Item&>>(std::tuple<Item, Item>{Item(10), Item(20)}));
         // print(await total(pairs))
         __sub_0.emplace((*pairs));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_0 = std::move(__r0).value();

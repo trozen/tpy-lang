@@ -14,7 +14,7 @@ rewriter does for the same reason.
 
 This module owns:
 - Basic-block + terminator + region data types.
-- The CFG builder that walks an async def body.
+- The CFG builder that walks a resumable (async def / generator) body.
 - (Future task) Conservative cross-suspension liveness.
 - (Future task) State assignment.
 
@@ -22,8 +22,12 @@ Emission is in `gen_async.py` (and, later, `gen_generators.py`); the
 CFG itself is shape-neutral.
 
 Generator migration plan: SuspensionPayload is a tagged union with two
-variants today -- AwaitPayload (async, implemented) and YieldPayload
-(generator, stub). The builder dispatches on which node it encounters.
+variants -- AwaitPayload (async) and YieldPayload (generator). The
+builder dispatches on the node it encounters: a top-level `await` shape
+produces an AwaitPayload, a `yield` statement produces a YieldPayload,
+and the decomposition predicate (`_stmt_has_any_suspension`) treats both
+uniformly. The generator emitter that consumes YieldPayload is the next
+migration step.
 """
 from __future__ import annotations
 
@@ -35,8 +39,21 @@ from ..parse.nodes import (
     TpyAssign, TpyAwait, TpyBreak, TpyContinue, TpyExceptHandler,
     TpyExpr, TpyExprStmt, TpyForEach, TpyIf, TpyName,
     TpyRaise, TpyReturn, TpyStmt, TpyTry, TpyVarDecl, TpyWhile, TpyWith,
-    TpyWithItem,
+    TpyWithItem, TpyYield,
 )
+
+
+# -- Resumable-frame shape: which state machine the emitter produces.
+
+class ResumableShape(Enum):
+    """Which resumable-frame shape the emitter (`gen_async.py`) produces.
+
+    ASYNC -- `async def`: `await` -> `__poll__(Waker) -> Poll<T>`.
+    GENERATOR -- generator: `yield` -> `__next__() -> expected<T,
+        StopIteration>`.
+    """
+    ASYNC = "async"
+    GENERATOR = "generator"
 
 
 # -- AwaitPayload-specific enums (kept here so resumable_cfg owns the
@@ -107,11 +124,12 @@ class AwaitPayload:
 
 @dataclass(frozen=True)
 class YieldPayload:
-    """A generator suspension. Stub for the future generator migration.
-
-    Populated when the same CFG is built from a generator function body.
-    """
+    """A generator suspension. Held inside a Yield terminator when the CFG
+    is built from a generator body."""
     value_expr: TpyExpr | None    # the yielded expression (None for bare yield)
+    # The source `yield` statement, so emit can reuse the statement
+    # generator's `gen_yield_value` (storage->borrow bridging etc.).
+    yield_stmt: 'TpyYield | None' = None
 
 
 SuspensionPayload = Union[AwaitPayload, YieldPayload]
@@ -579,6 +597,9 @@ class CFGBuilder:
         # Statements that may host a top-level await.
         if self._stmt_has_top_level_await(stmt):
             return self._build_top_level_await_stmt(cur, stmt)
+        # A `yield` is a generator suspension at statement position.
+        if isinstance(stmt, TpyYield):
+            return self._build_yield_stmt(cur, stmt)
         # A non-loop compound (if/try/with) inside a decomposed loop
         # must be decomposed if it contains break/continue targeting
         # the outer loop -- otherwise the break/continue would become
@@ -589,19 +610,19 @@ class CFGBuilder:
         # Compound statements: decompose if they contain a nested
         # suspension OR an unbound break/continue inside a loop.
         if isinstance(stmt, TpyIf):
-            if _stmt_has_any_await(stmt) or force_loop_decomp:
+            if _stmt_has_any_suspension(stmt) or force_loop_decomp:
                 return self._build_if(cur, stmt)
         elif isinstance(stmt, TpyWhile):
-            if _stmt_has_any_await(stmt):
+            if _stmt_has_any_suspension(stmt):
                 return self._build_while(cur, stmt)
         elif isinstance(stmt, TpyForEach):
-            if stmt.is_async or _stmt_has_any_await(stmt):
+            if stmt.is_async or _stmt_has_any_suspension(stmt):
                 return self._build_for(cur, stmt)
         elif isinstance(stmt, TpyTry):
-            if _stmt_has_any_await(stmt) or force_loop_decomp:
+            if _stmt_has_any_suspension(stmt) or force_loop_decomp:
                 return self._build_try(cur, stmt)
         elif isinstance(stmt, TpyWith):
-            if _stmt_has_any_await(stmt) or force_loop_decomp:
+            if _stmt_has_any_suspension(stmt) or force_loop_decomp:
                 return self._build_with(cur, stmt)
         # Leaf statement (or compound without suspensions).
         self._blocks[cur].stmts.append(stmt)
@@ -648,6 +669,25 @@ class CFGBuilder:
         if kind is AwaitKind.RETURN:
             self._finish(resume_bb, ReturnT(value=None, return_stmt=return_stmt))
             return None
+        return resume_bb
+
+    def _build_yield_stmt(self, cur: int, stmt: TpyYield) -> int | None:
+        """Convert a `yield` statement into a Yield terminator. Unlike an
+        `await`, a yield pushes its value OUT to the caller and resumes
+        in place -- there is no sub-future to poll and (until `send()`)
+        no value bound back in, so the resume BB simply continues after
+        the yield. The generator emitter reads `value_expr` / `yield_stmt`
+        off the payload to produce the yielded value."""
+        payload = YieldPayload(value_expr=stmt.value, yield_stmt=stmt)
+        suspension_idx = len(self._yield_sites)
+        resume_bb = self._new_bb()
+        terminator = Yield(
+            payload=payload,
+            resume_bb=resume_bb,
+            suspension_index=suspension_idx,
+        )
+        self._finish(cur, terminator)
+        self._yield_sites.append(terminator)
         return resume_bb
 
     def _build_return(self, cur: int, stmt: TpyReturn) -> int | None:
@@ -716,15 +756,15 @@ class CFGBuilder:
             self._loop_stack.pop()
         # `else` clause runs after loop exits normally (no break). We
         # don't model break-vs-normal-exit distinction yet, so reject
-        # if the orelse itself contains an `await`. Empty / non-async
+        # if the orelse itself contains a suspension. Empty / no-suspension
         # orelse is fine -- those statements run as ordinary leaf code
         # in the exit BB.
         if stmt.orelse:
-            if _stmts_have_any_await(stmt.orelse):
+            if _stmts_have_any_suspension(stmt.orelse):
                 raise _CFGNotYetSupported(
-                    "await inside a `while`/`else:` clause is a "
-                    "planned follow-up (the break-vs-normal-exit "
-                    "distinction isn't modelled yet).",
+                    "a suspension (`await`/`yield`) inside a "
+                    "`while`/`else:` clause is a planned follow-up (the "
+                    "break-vs-normal-exit distinction isn't modelled yet).",
                     loc=stmt.loc,
                 )
             orelse_end = self._build_block(exit_bb, stmt.orelse)
@@ -744,14 +784,15 @@ class CFGBuilder:
         # The cond/advance BB carries an AsyncForAdvance terminator
         # which expands at emit to next() + has_value check + bind.
         # `else` clause handling mirrors _build_while (no break-vs-normal
-        # distinction yet) -- reject early if the orelse contains await
-        # so the "no registered uid" path doesn't fire spuriously for
-        # for-loops whose body has no await but whose orelse does.
-        if stmt.orelse and _stmts_have_any_await(stmt.orelse):
+        # distinction yet) -- reject early if the orelse contains a
+        # suspension so the "no registered uid" path doesn't fire
+        # spuriously for for-loops whose body has no suspension but whose
+        # orelse does.
+        if stmt.orelse and _stmts_have_any_suspension(stmt.orelse):
             raise _CFGNotYetSupported(
-                "await inside a `for`/`else:` clause is a planned "
-                "follow-up (the break-vs-normal-exit distinction "
-                "isn't modelled yet).",
+                "a suspension (`await`/`yield`) inside a `for`/`else:` "
+                "clause is a planned follow-up (the break-vs-normal-exit "
+                "distinction isn't modelled yet).",
                 loc=stmt.loc,
             )
         uid = self._for_uid_map.get(id(stmt))
@@ -788,11 +829,11 @@ class CFGBuilder:
         finally:
             self._loop_stack.pop()
         if stmt.orelse:
-            if _stmts_have_any_await(stmt.orelse):
+            if _stmts_have_any_suspension(stmt.orelse):
                 raise _CFGNotYetSupported(
-                    "await inside a `for`/`else:` clause is a "
-                    "planned follow-up (the break-vs-normal-exit "
-                    "distinction isn't modelled yet).",
+                    "a suspension (`await`/`yield`) inside a "
+                    "`for`/`else:` clause is a planned follow-up (the "
+                    "break-vs-normal-exit distinction isn't modelled yet).",
                     loc=stmt.loc,
                 )
             orelse_end = self._build_block(exit_bb, stmt.orelse)
@@ -930,7 +971,7 @@ class CFGBuilder:
         captured_exc_field: str | None = None
         pending_return_flag: str | None = None
         pending_return_slot: str | None = None
-        finally_async = bool(stmt.finally_body) and _stmts_have_any_await(
+        finally_async = bool(stmt.finally_body) and _stmts_have_any_suspension(
             stmt.finally_body)
         if stmt.finally_body and not finally_async:
             finally_name = f"__finally_{self._next_finally_id}"
@@ -1422,12 +1463,16 @@ def _classify_await_position(
     )
 
 
-def _stmt_has_any_await(stmt: TpyStmt) -> bool:
+def _stmt_has_any_suspension(stmt: TpyStmt) -> bool:
     """Walk a statement (its expression slots and sub_bodies) for any
-    TpyAwait. Used for the lazy-decomposition decision. `async with`
-    and `async for` always count as containing awaits even when their
-    bodies have none -- the `__aenter__` / `__aexit__` / `__anext__`
-    calls are themselves suspensions."""
+    suspension point -- a `TpyAwait` (async) or a `TpyYield` (generator).
+    Used for the lazy-decomposition decision: a compound statement is
+    only lowered to a CFG region if it contains a suspension. `async
+    with` and `async for` always count even when their bodies have none
+    -- the `__aenter__` / `__aexit__` / `__anext__` calls are themselves
+    suspensions."""
+    if isinstance(stmt, TpyYield):
+        return True
     if isinstance(stmt, TpyWith) and stmt.is_async:
         return True
     if isinstance(stmt, TpyForEach) and stmt.is_async:
@@ -1450,13 +1495,13 @@ def _stmt_has_any_await(stmt: TpyStmt) -> bool:
     if hasattr(stmt, "sub_bodies"):
         for body in stmt.sub_bodies():
             for s in body:
-                if _stmt_has_any_await(s):
+                if _stmt_has_any_suspension(s):
                     return True
     return False
 
 
-def _stmts_have_any_await(stmts: list[TpyStmt]) -> bool:
-    return any(_stmt_has_any_await(s) for s in stmts)
+def _stmts_have_any_suspension(stmts: list[TpyStmt]) -> bool:
+    return any(_stmt_has_any_suspension(s) for s in stmts)
 
 
 def _stmts_have_any_return(stmts: list[TpyStmt]) -> bool:

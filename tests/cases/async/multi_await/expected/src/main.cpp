@@ -31,20 +31,20 @@ __coro_add_one add_one(int32_t x) {
     case S_INITIAL: {
         // a = await add_one(Int32(5))
         __sub_0.emplace(5);
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         a = std::move(__r0).value();
         __sub_0.reset();
         // b = await add_one(a)
         __sub_1.emplace(a);
-        __state = S_AFTER_AWAIT_1;
+        __state = S_RESUME_1;
         continue;
     }
-    case S_AFTER_AWAIT_1: {
+    case S_RESUME_1: {
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         b = std::move(__r1).value();

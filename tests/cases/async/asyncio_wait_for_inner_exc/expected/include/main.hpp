@@ -27,7 +27,7 @@ struct __coro_fails {
 
     enum : int32_t {
         S_INITIAL = 0,
-        S_AFTER_AWAIT_0 = 1,
+        S_RESUME_0 = 1,
         S_DONE = 2,
     };
 
@@ -51,7 +51,7 @@ struct __coro_main_coro {
 
     enum : int32_t {
         S_INITIAL = 0,
-        S_AFTER_AWAIT_0 = 1,
+        S_RESUME_0 = 1,
         S_JOIN_0 = 2,
         S_JOIN_1 = 3,
         S_DONE = 4,

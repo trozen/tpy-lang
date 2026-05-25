@@ -4,33 +4,36 @@
 namespace tpyapp::main {
 
 
-std::expected<int32_t, ::tpy::StopIteration> __gen_triple::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        case 3: goto __resume_3;
-        default: goto __done;
+// def triple() -> Iterator[Int32]:
+std::expected<int32_t, ::tpy::StopIteration> __coro_triple::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield 10
+        __state = S_RESUME_0;
+        return 10;
     }
-    // yield 10
-    __state = 1;
-    return 10;
-    __resume_1:;
-    // yield 20
-    __state = 2;
-    return 20;
-    __resume_2:;
-    // yield 30
-    __state = 3;
-    return 30;
-    __resume_3:;
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_RESUME_0: {
+        // yield 20
+        __state = S_RESUME_1;
+        return 20;
+    }
+    case S_RESUME_1: {
+        // yield 30
+        __state = S_RESUME_2;
+        return 30;
+    }
+    case S_RESUME_2: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
-__gen_triple triple() {
-    return __gen_triple();
+// def triple() -> Iterator[Int32]:
+__coro_triple triple() {
+    return __coro_triple();
 }
 
 // def main():

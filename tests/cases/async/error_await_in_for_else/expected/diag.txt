@@ -1,1 +1,1 @@
-main.py:12: error: await inside a `for`/`else:` clause is a planned follow-up (the break-vs-normal-exit distinction isn't modelled yet).
+main.py:12: error: a suspension (`await`/`yield`) inside a `for`/`else:` clause is a planned follow-up (the break-vs-normal-exit distinction isn't modelled yet).

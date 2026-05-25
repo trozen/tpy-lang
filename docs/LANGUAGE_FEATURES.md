@@ -2735,7 +2735,7 @@ for (;;) {
 | 5. `__span__` protocol | **Working** | `__span__() -> Span[T]` for implicit Span coercion; iteration requires `__iter__()` |
 | 5b. `Spannable[T]` protocol | **Working** | Readonly protocol for types with `__span__()`, for-loop and ReadOnlySpan coercion |
 | 6. Generator expressions | **Working** | `(expr for x in iterable)` → lazy `make_generator` wrapper, satisfies `Iterable[T]` |
-| 7. Generator functions | **Working** | `yield` in functions and methods -> state-machine struct or lambda wrapper implementing `Iterator[T]`. Simple generators use `make_generator` + lambda; complex generators use struct with switch/goto dispatch. Generator methods supported (`__iter__`, custom methods). |
+| 7. Generator functions | **Working** | `yield` in functions and methods -> state-machine struct or lambda wrapper implementing `Iterator[T]`. Simple generators use `make_generator` + lambda; complex generators use a struct (switch/goto dispatch on the legacy path; a subset -- free, non-generic, no-param, non-tuple-yield, with a flat leaf-only body (no compound statement) -- are being migrated onto the shared resumable-frame `while/switch` emitter, see `docs/GENERATOR_RESUMABLE_MIGRATION_PLAN.md`). Generator methods supported (`__iter__`, custom methods). |
 | 8. Iterator combinators | **Working** | `enumerate()`, `zip()`, `reversed()`, `map()`, `filter()`. `map` supports 1-5 iterables. `filter(None, iterable)` for truthiness filtering |
 
 See [docs/ITERATOR_DESIGN.md](ITERATOR_DESIGN.md) for the full iterator design document.

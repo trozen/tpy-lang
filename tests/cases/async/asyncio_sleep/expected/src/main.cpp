@@ -12,10 +12,10 @@ namespace tpyapp::main {
         std::cout << "first" << "\n";
         // await asyncio.sleep(0.05)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.05)));
-        __state = S_AFTER_AWAIT_0;
+        __state = S_RESUME_0;
         continue;
     }
-    case S_AFTER_AWAIT_0: {
+    case S_RESUME_0: {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
@@ -24,10 +24,10 @@ namespace tpyapp::main {
         std::cout << "second" << "\n";
         // await asyncio.sleep(0.05)
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(0.05)));
-        __state = S_AFTER_AWAIT_1;
+        __state = S_RESUME_1;
         continue;
     }
-    case S_AFTER_AWAIT_1: {
+    case S_RESUME_1: {
         auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();

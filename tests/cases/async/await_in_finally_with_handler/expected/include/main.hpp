@@ -48,7 +48,7 @@ struct __coro_caller {
 
     enum : int32_t {
         S_INITIAL = 0,
-        S_AFTER_AWAIT_0 = 1,
+        S_RESUME_0 = 1,
         S_JOIN_0 = 2,
         S_JOIN_1 = 3,
         S_JOIN_2 = 4,
