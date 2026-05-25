@@ -372,13 +372,35 @@ class _GatherFuture[T]:
 # `cancel()` to the remaining sub-tasks, waits for them to settle, then
 # re-raises the first exception encountered.
 #
-# TPy-specific helper -- not in CPython. The name `gather` is reserved
-# for the future CPython-compatible variadic-tuple form
-# `gather(c1, c2, c3) -> tuple[T1, T2, T3]` once variadic generics land
-# (TODO.md). Until then, `gather_list` is the homogeneous-only
-# entrypoint: all tasks must share return type `T`.
+# Two homogeneous entrypoints share the same `_GatherFuture[T]` engine:
+#  - `gather(*tasks)` -- variadic-positional form.
+#  - `gather_list(tasks)` -- list-shaped form.
+# Both require all tasks to share return type `T`. The CPython-shape
+# heterogeneous variadic form `gather[*Ts](*coros) -> tuple[*Ts]`
+# remains deferred (needs variadic generics + the async-def `*args`
+# codegen fix; see TODO.md / BUGS.md).
 async def gather_list[T](tasks: list[Task[T]]) -> list[T]:
     return await _GatherFuture[T](tasks)
+
+
+def gather[T](*tasks: Task[T]) -> Own[_GatherFuture[T]]:
+    # Sync factory returning the awaitable as Own[...] -- same shape as
+    # the hand-written `_WaitForFuture(coro, timeout)` / `SleepFuture(t)`
+    # awaitables, not the executor-registered `create_task` (gather does
+    # not spawn on the executor; the caller awaits the returned future
+    # directly). Each Task is Rc-cloned into an owned list so the
+    # awaitable is self-contained across the await point. _GatherFuture
+    # also re-clones internally; both bumps are O(1) refcount-only,
+    # kept for code simplicity.
+    #
+    # The explicit `for ... append` loop (not a list comprehension) is
+    # deliberate: iterating `tpy::varargs<Task[T]>` (non-value generic
+    # vararg) goes through codegen surface that BUGS.md notes as
+    # fragile in the comp/slicing form. Keep this shape.
+    task_list: list[Task[T]] = []
+    for t in tasks:
+        task_list.append(t.clone())
+    return _GatherFuture[T](task_list)
 
 
 class InvalidStateError(Exception):

@@ -200,8 +200,9 @@ class Task[T]:
         self._waker.wake()
 
     # Cheap duplication: Task is an Rc handle into the shared TaskState,
-    # so clone() just bumps the refcount. Used by asyncio.gather_list to
-    # take owned task handles without consuming the caller's list.
+    # so clone() just bumps the refcount. Used by asyncio.gather and
+    # asyncio.gather_list to take owned task handles without consuming
+    # the caller's list/varargs.
     #
     # WARNING (v1.5): the clone aliases the SAME TaskState as `self`.
     # TaskState is single-awaiter (one `awaiter: Waker` slot, one cached
@@ -212,13 +213,14 @@ class Task[T]:
     # either handle propagates through the shared TaskState to BOTH;
     # the clone ALSO inherits the parent's stamped `_waker` (see field
     # comment above), so cancel-via-clone marks the same executor slot
-    # runnable -- load-bearing for `gather_list._propagate_cancel`,
+    # runnable -- load-bearing for `_GatherFuture._propagate_cancel`,
     # which cancels its Rc-cloned tasks and relies on the wake landing
-    # on the user's original spawn slot. `gather_list` is the only
-    # safe internal user today (it drives the clone exclusively; the
-    # user is expected to drop their reference to the original
-    # `tasks[i]` once they've passed the list in). A multi-awaiter
-    # TaskState is filed in TODO.md.
+    # on the user's original spawn slot. `gather` and `gather_list` are
+    # the only safe internal users today: each drives its clones
+    # exclusively, and the user is expected to drop their original
+    # `tasks[i]` (gather_list) or stop using each positional Task arg
+    # (gather) once they've handed off to either entrypoint. A multi-
+    # awaiter TaskState is filed in TODO.md.
     def clone(self) -> Own[Task[T]]:
         t = Task[T](self._state.clone())
         t._waker = self._waker

@@ -1,4 +1,4 @@
-`asyncio.gather_list` is a TPy-specific helper -- not in CPython. The
-name `gather` is reserved for the future CPython-compatible variadic-
-tuple form `gather(c1, c2, c3) -> tuple[T1, T2, T3]` once variadic
-generics land.
+`asyncio.gather_list` is a TPy-specific helper -- not in CPython.
+CPython's `gather` is heterogeneous-tuple-shaped; TPy ships two
+homogeneous shapes (`gather(*tasks)` variadic-positional and
+`gather_list(tasks)` list) sharing the same `_GatherFuture[T]` engine.

@@ -1046,27 +1046,33 @@ from `builtins`; the C++ side is `tpy::TimeoutError` inheriting
 `Exception`. Implementation: hand-written `_WaitForFuture[T]` holds
 the inner as `Box[Cancellable[T]]` via `_box_coro[T]`.
 
-### M9 SHIPPED -- `asyncio.gather_list` (homogeneous list shape)
+### M9 SHIPPED -- `asyncio.gather` (homogeneous, two call shapes)
 
-`async def gather_list[T](tasks: list[Task[T]]) -> list[T]` runs N
-already-spawned tasks concurrently and harvests their results in input
-order. Mirrors `wait_for`'s template: hand-written `_GatherFuture[T]`
-wrapped by a thin `async def`. On the first sub-task exception (or
-outer cancel) gather_list transitions to cleanup mode, calls `cancel()`
-on the still-pending siblings, then re-raises the first exception
-observed once every task has settled.
+Two entrypoints share one `_GatherFuture[T]` engine:
 
-**API surface.** TPy-specific name -- not in CPython. Homogeneous-only:
-all tasks share return type `T`. The name `gather` is deliberately
-reserved for the future CPython-compatible variadic-tuple form
-`gather(c1, c2, c3) -> tuple[T1, T2, T3]` once variadic generics land
-(TODO.md). Naming the v1.5 helper differently from `gather` keeps the
-call-site spelling honest: a user who writes `await gather(t1, t2)`
-sees "no such function" instead of an obscure type error against the
-list-arg shape, and the future variadic-tuple form can ship without a
-breaking rename or two-name overload. (Even after variadic generics
-exist, async-def `*args` calls need the codegen fix in BUGS.md before
-a vararg-shape `gather` can ship.)
+- `async def gather_list[T](tasks: list[Task[T]]) -> list[T]` -- list-
+  shaped form; a thin `async def` over `_GatherFuture[T]`.
+- `def gather[T](*tasks: Task[T]) -> Own[_GatherFuture[T]]` -- variadic-
+  positional homogeneous form; a sync factory returning the awaitable
+  as `Own[...]` (same pattern as `await create_task(coro)` returning
+  a `Task[T]`). Each Task is Rc-cloned into an owned list before
+  constructing the future, so the awaitable is self-contained across
+  the await point. After `await`, the user observes a `list[T]` of
+  results in input order. Sync def -- not async def -- so the
+  variadic intentionally sidesteps the async-def `*args` codegen
+  gap in BUGS.md.
+
+Mirrors `wait_for`'s template: hand-written `_GatherFuture[T]` does
+the actual work. On the first sub-task exception (or outer cancel)
+gather transitions to cleanup mode, calls `cancel()` on the still-
+pending siblings, then re-raises the first exception observed once
+every task has settled.
+
+**API surface.** Both shapes are TPy-only -- CPython's `gather` is
+heterogeneous-tuple-shaped (`gather(c1, c2, c3) -> tuple[T1, T2, T3]`),
+which requires variadic generics to express in TPy. The heterogeneous
+form remains deferred (TODO.md); under TPy today both `gather(*tasks)`
+and `gather_list(tasks)` require all tasks to share return type `T`.
 
 **Mechanism.** `_GatherFuture[T]` Rc-clones each input task into an
 owned `list[Task[T]]` via the new `Task[T].clone()` method (a one-line
@@ -1096,8 +1102,15 @@ in flight.
 - `in_finally` -- gather_list inside a `finally` clause, exercising the
   M3.3 await-in-finally CFG lowering.
 
-All gather_list tests carry `no_cpython.txt` because gather_list is
-TPy-specific (no CPython equivalent under that name).
+All `gather_list_*` tests carry `no_cpython.txt` because `gather_list`
+is TPy-only. The sibling `asyncio_gather_varargs` test exercises the
+variadic-positional form (multi-arg and single-arg shapes) and runs
+under both TPy and CPython (CPython's `asyncio.gather(*coros)` accepts
+the equivalent call shape and returns a list of results). The empty
+case (`n == 0`) is covered separately by `asyncio_gather_empty` via
+`gather_list`; the `*unpack` form (`gather(*list_of_tasks)`) is
+currently blocked by a sema dispatch gap on `TpyStarUnpack` into
+generic reference-element varargs (see `BUGS.md`).
 
 ### M10 SHIPPED -- `Task.cancel()` runnable-mark hook
 

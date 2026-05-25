@@ -2187,7 +2187,7 @@ class ExpressionAnalyzer:
         # Pick the first overload whose return type is Poll[T] for some T.
         # Substitute the record's class-level type params with typ.type_args
         # so `Future[Int32]` returns Int32, not the type-var T.
-        from ..typesys import unwrap_ref_type, TypeParamRef
+        from ..typesys import unwrap_ref_type
         type_subst: dict[str, _TpyType] = {}
         if record_info.type_params and len(typ.type_args) == len(record_info.type_params):
             for tp, arg in zip(record_info.type_params, typ.type_args):
@@ -2208,11 +2208,10 @@ class ExpressionAnalyzer:
             if (isinstance(ret, NominalType)
                     and ret._module_qname == qnames.POLL
                     and len(ret.type_args) == 1):
-                inner = ret.type_args[0]
-                # Substitute T -> typ.type_args[i] when inner is a TypeParamRef.
-                if isinstance(inner, TypeParamRef) and inner.name in type_subst:
-                    return type_subst[inner.name]
-                return inner
+                # Recursively substitute T -> typ.type_args[i] -- handles
+                # both bare TypeParamRef and nested shapes like list[T],
+                # tuple[T, U], etc.
+                return _substitute_type_params(ret.type_args[0], type_subst)
         return None
 
     def _method_call_receiver_type(self, call) -> 'NominalType | None':

@@ -5728,19 +5728,23 @@ Send/Sync rules for built-in types:
   `emplace(...)` call site by the same coercion sync uses. Same
   `nullptr`-doubles-as-uninitialized-and-None convention as the
   matching hoisted-locals row in the generator section above.
-- **Working (v1.5 M9)**: `asyncio.gather_list(tasks)` -- run N already-
-  spawned tasks concurrently and harvest their results in input order.
-  Homogeneous shape: `gather_list(tasks: list[Task[T]]) -> list[T]`
-  (all tasks share return type `T`). User pre-spawns each via
-  `asyncio.create_task`; gather_list Rc-clones the handles into a
-  self-contained `_GatherFuture[T]`. On the first sub-task exception
-  (or outer cancel) gather_list enters cleanup mode, calls `cancel()`
+- **Working (v1.5 M9)**: `asyncio.gather(*tasks)` (variadic-positional)
+  and `asyncio.gather_list(tasks)` (list-shaped) -- two homogeneous
+  entrypoints over one `_GatherFuture[T]` engine. Both run N already-
+  spawned tasks concurrently and harvest their results in input order;
+  all tasks must share return type `T`. `gather(*tasks)` is a sync
+  factory returning the `_GatherFuture[T]` awaitable directly (same
+  pattern as `await create_task(coro)`); `gather_list(tasks)` is a thin
+  `async def` wrapper for callers who already have a list. Each Task is
+  Rc-cloned into the future's owned list so the awaitable is self-
+  contained across the await point. On the first sub-task exception
+  (or outer cancel) the future enters cleanup mode, calls `cancel()`
   on the still-pending siblings, waits for them to settle, then re-
-  raises the first exception observed. TPy-specific helper -- not in
-  CPython; the name `gather` is reserved for the future variadic-tuple
-  shape `gather(c1, c2, c3) -> tuple[T1, T2, T3]` (needs variadic
-  generics; tracked in TODO.md), which will land alongside the list
-  shape rather than replace it. Implementation:
+  raises the first exception observed. Both shapes are TPy-only --
+  CPython's `gather` is heterogeneous-tuple-shaped (`gather(c1, c2, c3)
+  -> tuple[T1, T2, T3]`); that form needs variadic generics + the
+  async-def `*args` codegen fix in BUGS.md and remains deferred
+  (TODO.md). Implementation:
   `lib/tpy/asyncio/__init__.py:_GatherFuture` (Rc-clones tasks,
   parallel completion-order lists, O(n^2) reorder at end);
   `lib/tpy/asyncio/_executor.py` grows `Task[T].clone()`. Outer-
