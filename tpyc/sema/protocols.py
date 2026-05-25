@@ -328,9 +328,15 @@ class ProtocolChecker:
             if qname == qnames.COPYABLE:
                 return (ProtocolConformanceKind.EXPLICIT
                         if not self.ctx.is_type_non_copyable(actual) else None)
-            # Default: types that support default construction
-            if qname == qnames.DEFAULT and self._is_default_constructible(actual):
-                return ProtocolConformanceKind.EXPLICIT
+            # Default: types that support default construction. Authoritative --
+            # a user-declared `extends Default` on a record whose `__init__` has
+            # required parameters (or whose default ctor codegen suppresses --
+            # see `del_suppresses_default_ctor`) does not grant conformance,
+            # because the generated `T{}` would fail to compile. Mirrors the
+            # Copyable arm's same-shape fix.
+            if qname == qnames.DEFAULT:
+                return (ProtocolConformanceKind.EXPLICIT
+                        if self._is_default_constructible(actual) else None)
             return (ProtocolConformanceKind.EXPLICIT
                     if self._check_record_extends(actual, protocol) else None)
 

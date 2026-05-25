@@ -1,0 +1,1 @@
+main.py:11: error: Class 'Bad' declares implementation of protocol 'Default' but does not satisfy the protocol requirements
