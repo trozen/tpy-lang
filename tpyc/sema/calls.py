@@ -3162,9 +3162,24 @@ class CallAnalyzer:
         fn_generic = fn_bearing_supplied[0][0] if fn_bearing_supplied else None
 
         if fn_generic is not None:
-            arg_types = self._infer_arg_types(expr, fn_generic)
+            # Seed Fn-bearing candidate with the LHS hint so nested-generic args
+            # see the seeded ptype on first analysis (matches the non-overloaded
+            # path in `_analyze_generic_function_call`). Explicit positional
+            # type args override the seed at their positions, mirroring the
+            # partial-explicit merge in `_analyze_generic_function_call`'s
+            # explicit-type-args branch (search for ``merged_seed = dict(seed_subst)``).
+            seed_subst = self.type_ops.seed_subst_from_return_hint(
+                fn_generic, self.ctx.expr_type_hint
+            )
+            if expr.type_args and len(expr.type_args) == len(fn_generic.type_params):
+                merged_seed = dict(seed_subst)
+                for tp, ta in zip(fn_generic.type_params, expr.type_args):
+                    if ta is not None:
+                        merged_seed[tp] = ta
+                seed_subst = merged_seed
+            arg_types = self._infer_arg_types(expr, fn_generic, seed_subst=seed_subst)
         else:
-            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+            arg_types = self._probe_analyze_args(expr, func_infos)
 
         if strip_ref_own:
             arg_types = [unwrap_own(unwrap_ref_type(t)) for t in arg_types]
@@ -3238,6 +3253,74 @@ class CallAnalyzer:
             kwarg_types=kwarg_types,
             contextual_callable_used=contextual,
         )
+
+    def _probe_analyze_args(
+        self,
+        expr: TpyCall,
+        func_infos: list[FunctionInfo],
+    ) -> list[TpyType]:
+        """Pre-analyze overload-candidate args with an LHS-derived per-arg hint.
+
+        Mirrors the seed logic in ``_analyze_generic_function_call`` so nested
+        generic-call/record-ctor args see the seeded ptype on their *first*
+        analysis pass -- without seeding here, the inner call's analyze_expr
+        caches a hint-naive type that the post-selection retry then can't
+        refresh (the cache short-circuit at the top of
+        ``_analyze_generic_function_call`` / ``_analyze_record_constructor``
+        returns the cached value verbatim).
+
+        For each arg position, picks the per-arg hint from the first candidate
+        whose return shape matches the LHS hint (generic: via seed; already-
+        substituted: via direct return-type match). Behavior change for
+        ambiguous overloads: arg analysis is now biased toward candidates
+        whose return matches the LHS -- aligns with the user's intent
+        (``r: T = wrap(...)`` should prefer the wrap overload returning
+        T-shape).
+        """
+        lhs_hint = self.ctx.expr_type_hint
+        if lhs_hint is None:
+            return [self.expr.analyze_expr(arg) for arg in expr.args]
+
+        n = len(expr.args)
+        candidate_hints = [
+            self.type_ops.candidate_arg_hints(f, n, lhs_hint) for f in func_infos
+        ]
+        # Require a single LHS-matching candidate to avoid cross-candidate
+        # hint mixing. With 2+ matching candidates, per-position "first
+        # non-None wins" would splice hints across overloads, and an inner
+        # generic-ctor/call arg analyzed under one candidate's hint would
+        # cache the wrong T -- a type the post-selection cache short-circuit
+        # at ``_analyze_record_constructor`` / ``_analyze_generic_function_call``
+        # can't refresh. ``candidate_arg_hints`` returns None for non-matching
+        # candidates, so the count below tracks LHS-matchers specifically (a
+        # candidate that matches LHS but has all-None per-arg hints still
+        # counts -- otherwise a different LHS-matching candidate could win
+        # resolve_overload and find its winner's hint shape unseeded).
+        matching = [c for c in candidate_hints if c is not None]
+        chosen: list[TpyType | None] = (
+            list(matching[0]) if len(matching) == 1 else [None] * n
+        )
+        arg_types: list[TpyType] = []
+        for i, arg in enumerate(expr.args):
+            hint = chosen[i]
+            # Drop Callable hints when the arg is a TpyName or TpyLambda:
+            # ``analyze_expr_with_hint`` would route through
+            # ``_try_resolve_function_ref`` (TpyName) or
+            # ``_analyze_lambda_with_fn_hint`` (TpyLambda) and mutate AST
+            # state on the arg node (``is_function_ref`` / inferred lambda
+            # signature) BEFORE the overload winner is known. The mutation
+            # persists past the probe and would mislead codegen if the
+            # selected overload differs from the seed source. Lambdas
+            # supplied to 2+ Fn-bearing candidates already route through
+            # regime C's per-candidate trial, so dropping the hint here
+            # doesn't break legitimate body-type inference.
+            if hint is not None and is_callable_type(hint) and isinstance(arg, (TpyName, TpyLambda)):
+                hint = None
+            if hint is not None:
+                arg_types.append(self.expr.analyze_expr_with_hint(arg, hint))
+            else:
+                arg_types.append(self.expr.analyze_expr(arg))
+        return arg_types
 
     def _is_function_binding(self, expr: TpyName) -> bool:
         """True iff ``expr`` resolves to a function (local FUNCTION binding,

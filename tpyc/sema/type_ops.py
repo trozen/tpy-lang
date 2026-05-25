@@ -1348,6 +1348,88 @@ class TypeOperations:
         )
         return self._seed_subst(pattern, expected_type)
 
+    def candidate_arg_hints(
+        self, func: FunctionInfo, n_args: int, lhs_hint: TpyType | None,
+    ) -> list[TpyType | None] | None:
+        """Per-arg ``expr_type_hint`` from one overload candidate + the LHS hint.
+
+        Probe-time helper for overload pre-analysis: lets nested generic-call
+        and record-ctor args see a hint on their first analysis pass, so the
+        cache short-circuit at the top of ``_analyze_generic_function_call`` /
+        ``_analyze_record_constructor`` doesn't lock in a hint-naive type that
+        the post-selection retry can't refresh.
+
+        Returns:
+        - ``None`` when the candidate's return shape does NOT match ``lhs_hint``.
+          Callers exclude these candidates from the LHS-matching count.
+        - a list of length ``n_args`` when the candidate matches. Per-position
+          entries may still be ``None`` when no useful hint can be derived
+          (e.g. a generic candidate whose seed binds only return-type-only
+          TPRefs, leaving every param's hint reduced via ``post_substitute_hint``
+          to None).
+
+        This split lets ``_probe_analyze_args`` / ``_probe_analyze_method_args``
+        distinguish "doesn't LHS-match" from "matches but has no useful per-arg
+        hint" -- a conflation that would otherwise let a non-contributing
+        LHS-matching candidate slip past the single-LHS-matching gate and
+        leave the seed candidate's hint cached against a different winner.
+        """
+        if lhs_hint is None:
+            return None
+        if func.type_params:
+            seed = self.seed_subst_from_return_hint(func, lhs_hint)
+            if not seed:
+                return None
+            return [seeded_arg_hint(func.params, i, seed) for i in range(n_args)]
+        # Non-generic / substituted candidate. Gate on a structural match
+        # between return type and LHS hint so we only bias toward LHS-aligned
+        # overloads. Direction: ``lhs_hint`` is param-side, ``return_type`` is
+        # arg-side -- asks "can the return fit into the LHS slot?". The
+        # opposite direction is wrong because ``match_type_with_inference``
+        # only unwraps ``Optional[T]`` on the param side, which would falsely
+        # accept a candidate returning ``Optional[Foo]`` as matching
+        # ``lhs_hint = Foo`` and bias arg analysis toward the wrong overload.
+        if func.return_type is None:
+            return None
+        # Guard: when ``lhs_hint`` contains a ``TypeParamRef`` (e.g. the call
+        # site is inside a generic function body whose return ``T`` is the
+        # local's annotation), the matcher's param-side TPRef branch would
+        # unconditionally bind-and-accept, falsely matching every candidate.
+        # The generic branch above is defended via ``_is_useful_seed_binding``'s
+        # TPRef filter; mirror the defense here for the non-generic branch.
+        lhs_unwrapped = unwrap_qualifiers(lhs_hint)
+        if contains_type_param(lhs_unwrapped):
+            return None
+        if not self.match_type_with_inference(
+            lhs_unwrapped,
+            unwrap_qualifiers(func.return_type),
+            {},
+        ):
+            return None
+        out: list[TpyType | None] = []
+        for i in range(n_args):
+            # Mirrors ``seeded_arg_hint``: trailing args beyond fixed positional
+            # slots target the variadic param's element type.
+            if i < len(func.params):
+                target = func.params[i]
+            elif func.params and func.params[-1].is_variadic:
+                target = func.params[-1]
+            else:
+                out.append(None)
+                continue
+            ptype = unwrap_ref_type(target.type)
+            if target.is_variadic and is_span(ptype):
+                ptype = unwrap_readonly(ptype.type_args[0])
+            hint = unwrap_qualifiers(ptype)
+            # Mirror ``post_substitute_hint``: an ``Optional[T]`` param accepts
+            # a bare T arg, so the seeded hint exposes the inner T to the
+            # inner ctor / call's seed instead of forcing it to match the
+            # Optional shape.
+            if isinstance(hint, OptionalType):
+                hint = unwrap_qualifiers(hint.inner)
+            out.append(hint)
+        return out
+
     def _inherits_protocol(self, concrete: TpyType, protocol: NominalType) -> bool:
         """Return True if `concrete` transitively implements a @dynamic protocol matching `protocol`.
 

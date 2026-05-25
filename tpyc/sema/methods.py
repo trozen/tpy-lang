@@ -13,11 +13,13 @@ from ..typesys import (
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
     PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, unwrap_qualifiers, is_any_int_type,
+    is_callable_type,
     RecordInfo,
     contains_type_param,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
+    TpyLambda,
     is_docstring,
     TpyFString, TpyExpr,
     is_super_del_call,
@@ -244,6 +246,55 @@ class MethodAnalyzer:
             return obj_type
         return None
 
+    def _probe_analyze_method_args(
+        self,
+        expr: TpyMethodCall,
+        resolved_overloads: list[FunctionInfo],
+    ) -> list[TpyType]:
+        """Pre-analyze overload-candidate method args with an LHS-derived hint.
+
+        Method-call sibling of ``CallAnalyzer._probe_analyze_args``: each
+        substituted candidate's per-position hint comes from
+        ``TypeOperations.candidate_arg_hints``; the first non-None hint at
+        each position drives the arg's first analysis.
+
+        Without this, the inner generic-call / record-ctor arg would cache
+        a hint-naive type during probe pre-analysis, and the post-selection
+        ``_check_and_coerce_args`` would re-use that cached type verbatim
+        (the cache short-circuit at the top of
+        ``_analyze_generic_function_call`` / ``_analyze_record_constructor``
+        prevents the re-analysis from refreshing it).
+        """
+        lhs_hint = self.ctx.expr_type_hint
+        if lhs_hint is None:
+            return [self.expr.analyze_expr(arg) for arg in expr.args]
+
+        n = len(expr.args)
+        candidate_hints = [
+            self.type_ops.candidate_arg_hints(f, n, lhs_hint) for f in resolved_overloads
+        ]
+        # Require a single LHS-matching candidate (see
+        # CallAnalyzer._probe_analyze_args for the cross-candidate-mixing
+        # rationale). ``candidate_arg_hints`` returns None for non-matching
+        # candidates; the count tracks LHS-matchers, not hint-contributors.
+        matching = [c for c in candidate_hints if c is not None]
+        chosen: list[TpyType | None] = (
+            list(matching[0]) if len(matching) == 1 else [None] * n
+        )
+        arg_types: list[TpyType] = []
+        for i, arg in enumerate(expr.args):
+            hint = chosen[i]
+            # See CallAnalyzer._probe_analyze_args for the (TpyName | TpyLambda)
+            # + Callable filter rationale: avoid mutating AST state on the arg
+            # node before overload selection.
+            if hint is not None and is_callable_type(hint) and isinstance(arg, (TpyName, TpyLambda)):
+                hint = None
+            if hint is not None:
+                arg_types.append(self.expr.analyze_expr_with_hint(arg, hint))
+            else:
+                arg_types.append(self.expr.analyze_expr(arg))
+        return arg_types
+
     def _check_args_or_pack_varargs(
         self, expr: TpyMethodCall,
         resolved: FunctionInfo,
@@ -341,14 +392,14 @@ class MethodAnalyzer:
                     expr.args, unresolved, type_subst, self.type_ops,
                     lambda msg: self.ctx.error(msg, expr))
         else:
-            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
-            kwarg_types: dict[str, TpyType] | None = None
-            if expr.kwargs:
-                kwarg_types = {k: self.expr.analyze_expr(v) for k, v in expr.kwargs.items()}
             resolved_overloads = [
                 self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
                 for m in overloads
             ]
+            arg_types = self._probe_analyze_method_args(expr, resolved_overloads)
+            kwarg_types: dict[str, TpyType] | None = None
+            if expr.kwargs:
+                kwarg_types = {k: self.expr.analyze_expr(v) for k, v in expr.kwargs.items()}
             enriched_types = _enrich_literal_types(arg_types, expr.args, resolved_overloads)
             try:
                 resolved = resolve_overload(
