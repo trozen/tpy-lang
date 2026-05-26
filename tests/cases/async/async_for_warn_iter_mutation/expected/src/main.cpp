@@ -10,7 +10,7 @@ namespace tpyapp::main {
     case S_INITIAL: {
         // src = Source(3)
         src.emplace(Source(::tpy::BigInt(3)));
-        __for_itr_0 = ((*src)).__aiter__();
+        __for_itr_0.emplace(((*src)).__aiter__());
         __state = S_JOIN_0;
         continue;
     }

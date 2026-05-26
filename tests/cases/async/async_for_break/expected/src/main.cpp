@@ -10,7 +10,7 @@ namespace tpyapp::main {
     case S_INITIAL: {
         // result = -1
         result = -1;
-        __for_itr_0 = (c).__aiter__();
+        __for_itr_0.emplace((c).__aiter__());
         __state = S_JOIN_1;
         continue;
     }

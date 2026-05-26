@@ -26,6 +26,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_values::__next__() {
     __builtin_unreachable();
 }
 
+
 // def gen_values() -> Iterator[Int32]:
 __gen_gen_values gen_values() {
     return __gen_gen_values();

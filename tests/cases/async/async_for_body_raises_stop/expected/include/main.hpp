@@ -92,7 +92,7 @@ struct __coro_runner {
     bool __cancel_pending;
     Counts& c;
     ::tpy::BigInt x;
-    std::optional<std::decay_t<decltype(std::declval<Counts&>().__aiter__())>> __for_itr_0;
+    ::tpy::frame_slot<std::decay_t<decltype(std::declval<Counts&>().__aiter__())>> __for_itr_0;
     std::optional<__coro_Counter___anext__> __sub_0;
 
     enum : int32_t {

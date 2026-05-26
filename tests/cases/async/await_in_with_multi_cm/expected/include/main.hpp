@@ -69,8 +69,8 @@ struct __coro_caller {
     int32_t __state;
     bool __cancel_pending;
     ::tpy::BigInt x;
-    std::optional<Tracer> __with_ctx_0;
-    std::optional<Tracer> __with_ctx_1;
+    ::tpy::frame_slot<Tracer> __with_ctx_0;
+    ::tpy::frame_slot<Tracer> __with_ctx_1;
     std::optional<__coro_value> __sub_0;
 
     enum : int32_t {

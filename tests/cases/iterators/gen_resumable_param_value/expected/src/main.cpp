@@ -31,6 +31,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_scaled::__next__() {
     __builtin_unreachable();
 }
 
+
 // def scaled(n: Int32) -> Iterator[Int32]:
 __gen_scaled scaled(int32_t n) {
     return __gen_scaled(n);

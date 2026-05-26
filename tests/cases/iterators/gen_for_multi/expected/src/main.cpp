@@ -13,8 +13,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
         return -1;
     }
     case S_RESUME_0: {
-        __for_it_0 = (items).begin();
-        __for_end_0 = (items).end();
+        __for_it_0.emplace((items).begin());
+        __for_end_0.emplace((items).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -23,8 +23,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
         continue;
     }
     case S_RESUME_2: {
-        __for_i_1 = int32_t(0);
-        __for_stop_1 = static_cast<int32_t>(n);
+        __for_i_1.emplace(int32_t(0));
+        __for_stop_1.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_1;
         continue;
     }
@@ -62,6 +62,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
     }
     __builtin_unreachable();
 }
+
 
 // def multi(items: list[Int32], n: Int32) -> Iterator[Int32]:
 __gen_multi multi(std::vector<int32_t>& items, int32_t n) {

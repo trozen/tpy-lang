@@ -50,6 +50,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_sign_stream::__next__() {
     __builtin_unreachable();
 }
 
+
 // def sign_stream(n: Int32) -> Iterator[Int32]:
 __gen_sign_stream sign_stream(int32_t n) {
     return __gen_sign_stream(n);

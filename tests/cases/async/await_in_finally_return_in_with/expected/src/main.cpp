@@ -109,7 +109,7 @@ __coro_cleanup cleanup() {
     }
     case S_JOIN_2: {
         try {
-            __with_ctx_0 = Tracer("with");
+            __with_ctx_0.emplace(Tracer("with"));
             (*__with_ctx_0).__enter__();
             __state = S_JOIN_3;
             continue;

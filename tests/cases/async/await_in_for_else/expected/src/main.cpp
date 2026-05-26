@@ -29,8 +29,8 @@ __coro_tick tick(std::string_view label) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_drive::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        __for_i_0 = int32_t(0);
-        __for_stop_0 = static_cast<int32_t>(3);
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(3));
         __state = S_JOIN_0;
         continue;
     }

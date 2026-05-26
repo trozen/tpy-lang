@@ -35,6 +35,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_counts::__next__() {
     __builtin_unreachable();
 }
 
+
 // def counts() -> Iterator[Int32]:
 __gen_counts counts() {
     return __gen_counts();

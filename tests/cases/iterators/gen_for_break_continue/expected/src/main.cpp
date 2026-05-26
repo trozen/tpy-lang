@@ -13,8 +13,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_filtered::__next__() {
         return -1;
     }
     case S_RESUME_0: {
-        __for_it_0 = (items).begin();
-        __for_end_0 = (items).end();
+        __for_it_0.emplace((items).begin());
+        __for_end_0.emplace((items).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -50,6 +50,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_filtered::__next__() {
     }
     __builtin_unreachable();
 }
+
 
 // def filtered(items: list[Int32], limit: Int32) -> Iterator[Int32]:
 __gen_filtered filtered(std::vector<int32_t>& items, int32_t limit) {

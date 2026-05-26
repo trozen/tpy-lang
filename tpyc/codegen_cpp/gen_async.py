@@ -33,7 +33,7 @@ from ..parse.nodes import (
     is_stable_address_lvalue,
 )
 from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType
-from .gen_generators import GeneratorForInfo
+from .gen_generators import GeneratorCodegen, GeneratorForInfo
 from ..type_def_registry import is_str_type, is_str_category, is_big_int_type
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
 from . import resumable_cfg as rcfg
@@ -697,7 +697,7 @@ class AsyncCoroCodegen:
         """
         struct_name = self.gen_struct_name(func, record_name)
         ctor_params = self._classify_params(func, record_name)
-        cfg = self._build_cfg(func)
+        cfg = self._build_resumable_cfg(func)
         yields = cfg.yield_sites
 
         label = f"{record_name}.{func.name}" if record_name else func.name
@@ -722,7 +722,7 @@ class AsyncCoroCodegen:
             pointer_form_loop_vars = {
                 info.pointer_form_loop_var
                 for info in (
-                    getattr(func, "_async_for_loop_info", None) or {}).values()
+                    getattr(func, "_resumable_for_loop_info", None) or {}).values()
                 if info.pointer_form_loop_var is not None
             }
             for lname, ltype in func.generator_locals:
@@ -758,21 +758,22 @@ class AsyncCoroCodegen:
 
         # Synthetic fields for CFG-decomposed for-loops: one
         # iterator + one __next__-result slot per for-with-await,
-        # stored as std::optional so the C++ type is default-constructible.
-        for fname, ftype in getattr(func, "_async_for_fields", ()) or ():
-            out.write(f"{INDENT}std::optional<{ftype}> {fname};\n")
+        # stored as frame_slot<T> -- same memory shape as the hoisted
+        # user-local fields, so the whole frame uses one slot type.
+        for fname, ftype in getattr(func, "_resumable_for_fields", ()) or ():
+            out.write(f"{INDENT}::tpy::frame_slot<{ftype}> {fname};\n")
 
         # Context-manager fields for CFG-decomposed `with`-with-await
-        # bodies. One std::optional<T> per WithItem.
+        # bodies. One frame_slot<T> per WithItem.
         for fname, ftype in getattr(func, "_with_fields", ()) or ():
-            out.write(f"{INDENT}std::optional<{ftype}> {fname};\n")
+            out.write(f"{INDENT}::tpy::frame_slot<{ftype}> {fname};\n")
 
         # In-flight exception slots for CFG-decomposed try-finally-with-
         # await bodies. std::exception_ptr default-constructs
         # to null; the catch arm sets it via std::current_exception().
         # bool pending-return flags need explicit init: NSDMI
         # = false. Value slots default-init via their own type's ctor.
-        for fname, ftype in getattr(func, "_async_try_finally_fields", ()) or ():
+        for fname, ftype in getattr(func, "_resumable_try_finally_fields", ()) or ():
             if ftype == "bool":
                 out.write(f"{INDENT}{ftype} {fname} = false;\n")
             else:
@@ -895,12 +896,12 @@ class AsyncCoroCodegen:
         self.ctx.generator_field_names = set()
         self.ctx.generator_optional_fields = set()
         self.ctx.generator_frame_slot_locals = set()
-        # Populated by `_prescan_async_for_loops`; carries
+        # Populated by `_prescan_resumable_for_loops`; carries
         # `pointer_form_loop_var` so `setup_resumable_frame_locals` (called
         # inside `setup_body_scope` below) seeds non-value loop vars into
         # `pointer_locals`. Empty for bodies with no CFG-decomposed for-loop.
         self.ctx.generator_for_loop_info = (
-            getattr(func, "_async_for_loop_info", None) or {})
+            getattr(func, "_resumable_for_loop_info", None) or {})
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         for pname, ptype in func.params:
@@ -957,7 +958,7 @@ class AsyncCoroCodegen:
         the CFG produced (one per TryRegion with a finally body). No-op
         if the function has no finally bodies.
         """
-        cfg = self._build_cfg(func)
+        cfg = self._build_resumable_cfg(func)
         if not cfg.finally_helpers:
             return
         struct_name = self._struct_name_templated(func, record_name)
@@ -983,13 +984,19 @@ class AsyncCoroCodegen:
 
     def _resumable_ret_type_cpp(self, func: TpyFunction) -> str:
         """The frame body method's return type. Async: `Poll<T>`.
-        Generator: `std::expected<T_elem, ::tpy::StopIteration>` where
-        T_elem is the yield element type. (Storage-form/tuple-yield
-        parity with gen_generators' `cpp_iter_slot` is a later-phase
-        refinement; value-typed elements resolve identically here.)"""
+        Generator: `std::expected<T_slot, ::tpy::StopIteration>` where
+        T_slot is the iterator slot type from
+        `gen_generators._iter_slot_for_yield` -- borrow form
+        (`std::tuple<T&, ...>` / `std::tuple<P*, ...>`) for tuple yields,
+        bare cpp type otherwise. `gen_yield_value` already bridges
+        storage-form sources into the borrow-form slot when
+        `ctx.current_yield_type` is set (done by
+        `_resumable_return_lowering`)."""
         if self._is_generator_shape():
-            elem_cpp = self.types.type_to_cpp(func.generator_yield_type)
-            return f"std::expected<{elem_cpp}, ::tpy::StopIteration>"
+            yt = func.generator_yield_type
+            elem_cpp = self.types.type_to_cpp(yt)
+            slot_cpp = GeneratorCodegen._iter_slot_for_yield(yt, elem_cpp)
+            return f"std::expected<{slot_cpp}, ::tpy::StopIteration>"
         return self._poll_ret_cpp(func)
 
     def _resumable_body_method_decl(self, func: TpyFunction,
@@ -1138,7 +1145,7 @@ class AsyncCoroCodegen:
         sees `self.X` as `__self.X` (parallels generator methods).
         """
         struct_name = self._struct_name_templated(func, record_name)
-        cfg = self._build_cfg(func)
+        cfg = self._build_resumable_cfg(func)
         has_yields = bool(cfg.yield_sites)
 
         self.ctx.emit_source_comment(out, func.loc)
@@ -1159,7 +1166,7 @@ class AsyncCoroCodegen:
     # CFG-based state-machine emitter (replaces _emit_switch_body).
     # =====================================================================
 
-    def _build_cfg(self, func: TpyFunction,
+    def _build_resumable_cfg(self, func: TpyFunction,
                    *, convert_errors: bool = True) -> 'rcfg.CFG':
         """Apply the await-lift pre-pass, then build the CFG. The CFG
         builder handles any wrapping try/finally uniformly with all
@@ -1169,17 +1176,17 @@ class AsyncCoroCodegen:
         With `convert_errors=True` (default, used by the async/generator
         emit path) a `_CFGNotYetSupported` is turned into a `CodeGenError`
         at the offending location. The generator eligibility gate passes
-        `convert_errors=False` (via `_try_build_cfg`) so it can catch the
+        `convert_errors=False` (via `_try_build_resumable_cfg`) so it can catch the
         raw rejection and fall back to the legacy path instead of failing
         the compile."""
-        cached = getattr(func, "_async_cfg", None)
+        cached = getattr(func, "_resumable_cfg", None)
         if cached is not None:
             return cached
         body = self._effective_body(func)
         try:
-            for_uid_map = self._prescan_async_for_loops(func, body)
+            for_uid_map = self._prescan_resumable_for_loops(func, body)
             with_uid_map = self._prescan_with_stmts(func, body)
-            try_finally_uid_map = self._prescan_async_try_finally(func, body)
+            try_finally_uid_map = self._prescan_resumable_try_finally(func, body)
             builder = rcfg.CFGBuilder(
                 payload_factory=self._make_await_payload,
                 for_uid_map=for_uid_map,
@@ -1187,32 +1194,32 @@ class AsyncCoroCodegen:
                 try_finally_uid_map=try_finally_uid_map,
                 func_returns_void=self._is_void_return(func),
             )
-            cfg = builder.build_async(body)
+            cfg = builder.build(body)
         except rcfg._CFGNotYetSupported as e:
             if convert_errors:
                 raise CodeGenError(e.msg, loc=e.loc)
             raise
         # Stash the builder so callers (emit) can look up handler
         # entries via builder.get_handler_entry().
-        func._async_cfg_builder = builder
-        func._async_cfg = cfg
+        func._resumable_cfg_builder = builder
+        func._resumable_cfg = cfg
         return cfg
 
-    def _try_build_cfg(self, func: TpyFunction) -> 'rcfg.CFG | None':
+    def _try_build_resumable_cfg(self, func: TpyFunction) -> 'rcfg.CFG | None':
         """Trial-build the CFG for the generator eligibility gate. Returns
         the CFG on success (cached on the func, so the subsequent emit pass
         reuses it) or None if the builder rejects the shape
         (`_CFGNotYetSupported`: loop-`else` with a suspension, await bound
         to a field, a suspension inside an undecomposable leaf like `match`,
         ...). The caller falls back to the legacy generator path. Unlike
-        `_build_cfg` this does not convert the rejection into a compile
+        `_build_resumable_cfg` this does not convert the rejection into a compile
         error."""
         try:
-            return self._build_cfg(func, convert_errors=False)
+            return self._build_resumable_cfg(func, convert_errors=False)
         except rcfg._CFGNotYetSupported:
             return None
 
-    def _prescan_async_for_loops(
+    def _prescan_resumable_for_loops(
             self, func: TpyFunction,
             body: list[TpyStmt]) -> dict[int, int]:
         """Find for-loops whose body contains await OR are `async for`
@@ -1233,10 +1240,10 @@ class AsyncCoroCodegen:
         emit can size `__sub_<i>` and emplace it.
 
         Returns {id(TpyForEach) -> uid} for the CFG builder. Frame fields
-        live on `func._async_for_fields` as `[(name, cpp_type)]` consumed
+        live on `func._resumable_for_fields` as `[(name, cpp_type)]` consumed
         by gen_coro_struct.
         """
-        cached_map = getattr(func, "_async_for_uid_map", None)
+        cached_map = getattr(func, "_resumable_for_uid_map", None)
         if cached_map is not None:
             return cached_map
         uid_map: dict[int, int] = {}
@@ -1293,9 +1300,9 @@ class AsyncCoroCodegen:
                         # Sync for-loop: reuse the legacy strategy analysis so
                         # range / begin_end peepholes (a plain counter / begin-
                         # end iterators) carry over instead of the slower
-                        # universal `__iter__`/`__next__` shape. The std::
-                        # optional-wrapped frame fields it returns match what
-                        # gen_coro_struct emits.
+                        # universal `__iter__`/`__next__` shape. The fields it
+                        # returns are emitted as `tpy::frame_slot<T>` in
+                        # gen_coro_struct (matching hoisted user locals).
                         info = self.gen_generators._analyze_for_strategy(
                             s, cur_uid)
                         if info is None:
@@ -1326,11 +1333,11 @@ class AsyncCoroCodegen:
                 if name not in existing:
                     func.generator_locals.append((name, elem_t))
                     existing.add(name)
-        func._async_for_uid_map = uid_map
-        func._async_for_fields = fields_out
+        func._resumable_for_uid_map = uid_map
+        func._resumable_for_fields = fields_out
         func._async_for_struct_names = struct_names_out
-        func._async_for_loop_info = for_loop_info
-        func._async_for_info_by_uid = info_by_uid
+        func._resumable_for_loop_info = for_loop_info
+        func._resumable_for_info_by_uid = info_by_uid
         return uid_map
 
     def _sub_struct_qualname(
@@ -1545,7 +1552,7 @@ class AsyncCoroCodegen:
         func._async_with_struct_names = struct_names_out
         return uid_map
 
-    def _prescan_async_try_finally(
+    def _prescan_resumable_try_finally(
             self, func: TpyFunction,
             body: list[TpyStmt]) -> dict[int, int]:
         """Find try-stmts whose finally body contains an await. For
@@ -1556,8 +1563,8 @@ class AsyncCoroCodegen:
           * `__finally_ret_<n>` -- function's return type, for the
              same reason and only when the async def is non-void.
         Returns {id(TpyTry) -> uid}; field declarations land on
-        `func._async_try_finally_fields`."""
-        cached_map = getattr(func, "_async_try_finally_uid_map", None)
+        `func._resumable_try_finally_fields`."""
+        cached_map = getattr(func, "_resumable_try_finally_uid_map", None)
         if cached_map is not None:
             return cached_map
         uid_map: dict[int, int] = {}
@@ -1607,8 +1614,8 @@ class AsyncCoroCodegen:
                         walk(b)
 
         walk(body)
-        func._async_try_finally_uid_map = uid_map
-        func._async_try_finally_fields = fields_out
+        func._resumable_try_finally_uid_map = uid_map
+        func._resumable_try_finally_fields = fields_out
         return uid_map
 
     def _make_await_payload(self, await_node: TpyAwait, host_stmt: TpyStmt,
@@ -2078,7 +2085,7 @@ class AsyncCoroCodegen:
         each handler's body, if the handler completes normally is the
         Fall-edge case handled by `_emit_exit_region_finallies`; the
         throw escape is what we cover here)."""
-        builder = getattr(func, "_async_cfg_builder", None)
+        builder = getattr(func, "_resumable_cfg_builder", None)
         yield_for_case = self._yield_at_resume(cfg, case_entry_bb)
         # Helpers to invoke on throw from inside the handler body
         # (innermost first): each extra_finally + this region's own
@@ -2397,7 +2404,7 @@ class AsyncCoroCodegen:
     def _emit_with_enter(self, out: "TextIO", indent: str,
                                 stmt: 'rcfg.WithEnter') -> None:
         """Emit the with-stmt setup sequence:
-            __with_ctx_<n> = <context_expr>;
+            __with_ctx_<n>.emplace(<context_expr>);
             <target> = (*__with_ctx_<n>).__enter__();   # if target
             (*__with_ctx_<n>).__enter__();              # else
         """
@@ -2405,7 +2412,7 @@ class AsyncCoroCodegen:
         item = stmt.item
         ctx_expr = self.expressions.gen_expr(item.context_expr)
         self.ctx.temps.flush(out, indent)
-        out.write(f"{indent}__with_ctx_{ctx_n} = {ctx_expr};\n")
+        out.write(f"{indent}__with_ctx_{ctx_n}.emplace({ctx_expr});\n")
         if item.target is not None:
             target = escape_cpp_name(item.target)
             out.write(f"{indent}{target} = (*__with_ctx_{ctx_n}).__enter__();\n")
@@ -2415,15 +2422,16 @@ class AsyncCoroCodegen:
     def _emit_async_with_setup(self, out: "TextIO", indent: str,
                                  stmt: 'rcfg.AsyncWithSetup') -> None:
         """Emit the async-with frame-slot population:
-            __with_ctx_<n> = <context_expr>;
-        (Assignment into a `std::optional<CM>` frame field; constructs
-        in place via `operator=`.) Subsequent Yield BBs (aenter/aexit)
-        emplace `__sub_<i>` with `(*__with_ctx_<n>, ...)`."""
+            __with_ctx_<n>.emplace(<context_expr>);
+        (Construction into a `tpy::frame_slot<CM>` frame field;
+        `frame_slot::operator=` is deleted, so writes go through
+        `.emplace(...)`.) Subsequent Yield BBs (aenter/aexit) emplace
+        `__sub_<i>` with `(*__with_ctx_<n>, ...)`."""
         ctx_n = stmt.ctx_n
         item = stmt.item
         ctx_expr = self.expressions.gen_expr(item.context_expr)
         self.ctx.temps.flush(out, indent)
-        out.write(f"{indent}__with_ctx_{ctx_n} = {ctx_expr};\n")
+        out.write(f"{indent}__with_ctx_{ctx_n}.emplace({ctx_expr});\n")
 
     def _emit_with_exit(self, out: "TextIO", indent: str,
                                region: 'rcfg.WithRegion',
@@ -2444,7 +2452,7 @@ class AsyncCoroCodegen:
                   f"{{}}, {exc_arg}, {{}});\n")
 
     def _for_info(self, func: TpyFunction, uid: int) -> 'GeneratorForInfo | None':
-        return (getattr(func, "_async_for_info_by_uid", None) or {}).get(uid)
+        return (getattr(func, "_resumable_for_info_by_uid", None) or {}).get(uid)
 
     def _for_src_access(self, out: "TextIO", indent: str,
                         iterable_expr: 'TpyExpr', uid: int,
@@ -2456,7 +2464,7 @@ class AsyncCoroCodegen:
         src_cpp = self.expressions.gen_expr(iterable_expr)
         self.ctx.temps.flush(out, indent)
         if any(fn == f"__for_src_{uid}" for fn, _ in info.fields):
-            out.write(f"{indent}__for_src_{uid} = {src_cpp};\n")
+            out.write(f"{indent}__for_src_{uid}.emplace({src_cpp});\n")
             return f"(*__for_src_{uid})"
         return src_cpp
 
@@ -2466,17 +2474,17 @@ class AsyncCoroCodegen:
         """Initialize for-loop iteration state into the frame, per strategy
         (mirrors the legacy `_gen_generator_for_*` peephole init so range /
         begin_end generators keep their fast shape):
-          async_for: `__for_itr = (it).__aiter__()`
+          async_for: `__for_itr.emplace((it).__aiter__())`
           range:     `__for_i`/`__for_stop`[/`__for_step`] counters
-          begin_end: `[__for_src;] __for_it = src.begin(); __for_end = ...end()`
-          next:      `[__for_src;]` (the source IS the iterator)
-          iter_next: `__for_itr = ::tpy::__iter__(src)`
+          begin_end: `[__for_src.emplace(...);] __for_it.emplace(src.begin()); __for_end.emplace(...end())`
+          next:      `[__for_src.emplace(...);]` (the source IS the iterator)
+          iter_next: `__for_itr.emplace(::tpy::__iter__(src))`
         """
         uid = stmt.uid
         if stmt.is_async:
             iter_cpp = self.expressions.gen_expr(stmt.iterable_expr)
             self.ctx.temps.flush(out, indent)
-            out.write(f"{indent}__for_itr_{uid} = ({iter_cpp}).__aiter__();\n")
+            out.write(f"{indent}__for_itr_{uid}.emplace(({iter_cpp}).__aiter__());\n")
             return
         info = self._for_info(func, uid)
         strat = info.strategy if info else "iter_next"
@@ -2484,15 +2492,15 @@ class AsyncCoroCodegen:
             self._emit_for_range_setup(out, indent, stmt, uid)
         elif strat == "begin_end":
             src = self._for_src_access(out, indent, stmt.iterable_expr, uid, info)
-            out.write(f"{indent}__for_it_{uid} = ({src}).begin();\n")
-            out.write(f"{indent}__for_end_{uid} = ({src}).end();\n")
+            out.write(f"{indent}__for_it_{uid}.emplace(({src}).begin());\n")
+            out.write(f"{indent}__for_end_{uid}.emplace(({src}).end());\n")
         elif strat == "next":
             # Source IS the iterator; just stash a temporary if needed.
             self._for_src_access(out, indent, stmt.iterable_expr, uid, info)
         else:  # iter_next (universal)
             iter_cpp = self.expressions.gen_expr(stmt.iterable_expr)
             self.ctx.temps.flush(out, indent)
-            out.write(f"{indent}__for_itr_{uid} = ::tpy::__iter__({iter_cpp});\n")
+            out.write(f"{indent}__for_itr_{uid}.emplace(::tpy::__iter__({iter_cpp}));\n")
 
     def _emit_for_range_setup(self, out: "TextIO", indent: str,
                               stmt: 'rcfg.AsyncForIterSetup', uid: int) -> None:
@@ -2508,14 +2516,14 @@ class AsyncCoroCodegen:
         nargs = len(gen_args)
         ci, st = f"__for_i_{uid}", f"__for_stop_{uid}"
         if nargs == 1:
-            out.write(f"{indent}{ci} = {cpp_elem}(0);\n")
-            out.write(f"{indent}{st} = static_cast<{cpp_elem}>({gen_args[0]});\n")
+            out.write(f"{indent}{ci}.emplace({cpp_elem}(0));\n")
+            out.write(f"{indent}{st}.emplace(static_cast<{cpp_elem}>({gen_args[0]}));\n")
         else:
-            out.write(f"{indent}{ci} = static_cast<{cpp_elem}>({gen_args[0]});\n")
-            out.write(f"{indent}{st} = static_cast<{cpp_elem}>({gen_args[1]});\n")
+            out.write(f"{indent}{ci}.emplace(static_cast<{cpp_elem}>({gen_args[0]}));\n")
+            out.write(f"{indent}{st}.emplace(static_cast<{cpp_elem}>({gen_args[1]}));\n")
         if nargs == 3:
             sp = f"__for_step_{uid}"
-            out.write(f"{indent}{sp} = static_cast<{cpp_elem}>({gen_args[2]});\n")
+            out.write(f"{indent}{sp}.emplace(static_cast<{cpp_elem}>({gen_args[2]}));\n")
             if self.statements._extract_int_literal(range_call.args[2]) is None:
                 out.write(f"{indent}::tpy::range_check_step_nonzero(*{sp});\n")
             if not is_big_int_type(elem_type):
@@ -2562,9 +2570,9 @@ class AsyncCoroCodegen:
         r = f"(*__for_r_{uid})"
         if strat == "next":
             src = self._for_src_expr(stmt, uid, info)
-            pre = f"__for_r_{uid} = {src}.__next__();"
+            pre = f"__for_r_{uid}.emplace({src}.__next__());"
         else:  # iter_next
-            pre = f"__for_r_{uid} = (*__for_itr_{uid}).__next__();"
+            pre = f"__for_r_{uid}.emplace((*__for_itr_{uid}).__next__());"
         elem = f"::tpy::unwrap_ref(*{r})"
         # Bind form mirrors the loop var's frame storage shape (D2a):
         # pointer-form `T*` (alias), frame_slot `.emplace`, or value assign.

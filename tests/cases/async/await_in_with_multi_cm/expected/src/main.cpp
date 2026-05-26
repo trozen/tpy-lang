@@ -29,9 +29,9 @@ __coro_value value(::tpy::BigInt n) {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        __with_ctx_0 = Tracer("A");
+        __with_ctx_0.emplace(Tracer("A"));
         (*__with_ctx_0).__enter__();
-        __with_ctx_1 = Tracer("B");
+        __with_ctx_1.emplace(Tracer("B"));
         (*__with_ctx_1).__enter__();
         __state = S_JOIN_1;
         continue;

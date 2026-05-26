@@ -16,7 +16,7 @@ Source make() {
     case S_INITIAL: {
         // s = 0
         s = 0;
-        __for_itr_0 = (make()).__aiter__();
+        __for_itr_0.emplace((make()).__aiter__());
         __state = S_JOIN_0;
         continue;
     }

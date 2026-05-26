@@ -19,9 +19,9 @@ void main();
 struct __gen_gen {
     int32_t __state;
     int32_t x;
-    std::optional<std::vector<int32_t>> __for_src_0;
-    std::optional<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_it_0;
-    std::optional<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_end_0;
+    ::tpy::frame_slot<std::vector<int32_t>> __for_src_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_it_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

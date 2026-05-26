@@ -29,7 +29,7 @@ __coro_value value(::tpy::BigInt n) {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        __with_ctx_0 = Tracer("outer");
+        __with_ctx_0.emplace(Tracer("outer"));
         (*__with_ctx_0).__enter__();
         __state = S_JOIN_1;
         continue;

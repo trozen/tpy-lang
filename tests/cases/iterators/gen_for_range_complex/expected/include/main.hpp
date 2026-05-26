@@ -19,8 +19,8 @@ struct __gen_squares_plus {
     int32_t __state;
     int32_t n;
     int32_t i;
-    std::optional<int32_t> __for_i_0;
-    std::optional<int32_t> __for_stop_0;
+    ::tpy::frame_slot<int32_t> __for_i_0;
+    ::tpy::frame_slot<int32_t> __for_stop_0;
 
     enum : int32_t {
         S_INITIAL = 0,

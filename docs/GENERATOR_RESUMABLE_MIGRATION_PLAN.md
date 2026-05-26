@@ -177,47 +177,86 @@
   `gen_coro_finally_top_def` into the generator orchestration), then
   generics + retire the gate + extract base (F), then new surface (G).
 - **Phase D/E prerequisites (surfaced by /tpy-review):**
-  - Borrow-form yield slot: `_resumable_ret_type_cpp` currently uses
-    storage form (`type_to_cpp`), correct only for non-tuple yields; emit
-    the borrow-form iterator slot (parity with gen_generators'
-    `_iter_slot_for_yield`) so the gate's non-tuple-yield restriction can
-    be lifted.
+  - Borrow-form yield slot **DONE**: `_resumable_ret_type_cpp` now
+    routes through `gen_generators._iter_slot_for_yield` -- borrow form
+    (`std::tuple<T&, ...>` / `std::tuple<P*, ...>`) for tuple yields,
+    bare cpp type otherwise. The gate's tuple-yield restriction in
+    `_compute_resumable_generator_eligible` was dropped (the `yt is None`
+    guard stays). `gen_yield_value` already bridges storage-form sources
+    into the borrow-form slot via `_maybe_wrap_tuple_to_pointer` (gated on
+    `ctx.current_yield_type`, set by `_resumable_return_lowering`), so no
+    callsite changes were needed. One existing test flipped from the
+    legacy struct path: `tuple_optional_yield_prev` (multi-yield
+    `tuple[P|None, P|None]` generator) -- output byte-identical, snapshot
+    regenerated. Other tuple-yield tests stayed where they were: simple
+    peephole (`gen_ref`, `gen_ref_range`, `gen_ref_while`,
+    `tuple_optional_yield_mutate`) or generic-excluded (`gen_ref_compose`,
+    `gen_generic*`). New regression `gen_resumable_tuple_yield` locks
+    down a while+if/else multi-yield `tuple[P|None, P|None]` on the
+    resumable path. Full suite 4189 passed.
   - Wire `gen_coro_finally_top_def` into the generator orchestration
-    slot in `generator.py` before widening the gate to try/with
-    (Phase E) -- finally helpers aren't emitted on the generator path
-    today (latent; gate excludes try/with).
-  - De-async-ify the shared plumbing: rename `_build_cfg` ->
-    `_build_resumable_cfg` and make the `_prescan_async_*` /
-    `_async_*`-named caches shape-neutral (they run for generators too).
-  - **Unify resumable frame fields on `frame_slot` (cleanup, behavior-
-    neutral).** The synthetic for-loop fields (`__for_itr`/`__for_r`/
-    `__for_src`/range counters/`__for_it`/`__for_end`) and the `with`-fields
-    (`_with_fields`) are emitted as `std::optional<T>` in `gen_coro_struct`,
-    while hoisted user locals use `tpy::frame_slot<T>` -- whose own header
-    calls it *the* generator/coro frame-field type. Same memory (both carry
-    an `alive_`/engaged bool) so it's purely consistency + the debug
-    no-read-before-write panic; no perf/correctness change. Convert the
-    field decls to `frame_slot<T>` and every `__for_x = ...` / `with`-field
-    write to `.emplace(...)` (reads / `++` / `+=` stay). Note: shared with
-    async, so it churns the async for/with snapshots too -- do it as its
-    own focused commit, not folded into a feature phase. (Separately, the
-    real frame-size win -- bare storage for default-constructible field
-    types, dropping the bool -- needs a `std::conditional` wrapper; tracked
-    in TODO.md.)
+    slot in `generator.py` **DONE**: the resumable-generator branch
+    (the `if self._resumable_generator_eligible(func):` arm) now calls
+    `gen_coro_finally_top_def` between `gen_coro_poll_def` and
+    `gen_factory`, mirroring the async-coro slot exactly. Latent today
+    -- the eligibility gate still excludes try/with so the CFG produces
+    no finally helpers, and the method early-returns; Phase E activates
+    it without further wiring. The unconditional trailing `cpp.write("\n")`
+    added a blank line per eligible-generator main.cpp (33 snapshots
+    regenerated, behavior-neutral). The stray-blank quirk is shared with
+    async and was filed in TODO.md as a paired cleanup with the
+    `frame_slot` unification.
+  - De-async-ify the shared plumbing **DONE**: `_build_cfg` /
+    `_try_build_cfg` -> `_build_resumable_cfg` / `_try_build_resumable_cfg`;
+    `_prescan_async_for_loops` / `_prescan_async_try_finally` ->
+    `_prescan_resumable_for_loops` / `_prescan_resumable_try_finally`;
+    `CFGBuilder.build_async` -> `CFGBuilder.build`; the shape-neutral
+    func-level caches `func._async_{cfg,cfg_builder,for_uid_map,
+    for_fields,for_loop_info,for_info_by_uid,try_finally_uid_map,
+    try_finally_fields}` -> `_resumable_*`. Kept `_async_`-named: the
+    genuinely async-only `_build_async_for` / `_build_async_with` CFG
+    builders (handle the `async for` / `async with` AST shapes),
+    `_emit_async_for_*` / `_emit_async_with_*`, `func._async_for_struct_names`
+    / `_async_with_struct_names` (sub-coro struct names),
+    `func._async_lifted_body` / `_async_next_lift_id` (await-arg lifting),
+    and the `ctx.in_async_coro_body` / `ctx.async_coro_{return_cpp,done_state}`
+    flag set (merging those with the parallel
+    `ctx.in_generator_resumable_body` / `generator_resumable_done_state`
+    is a separate ctx-flag refactor, out of scope here). Behavior-neutral;
+    full suite 4188 passed.
+  - Unify resumable frame fields on `frame_slot` **DONE**: the synthetic
+    for-loop fields (`__for_itr`/`__for_r`/`__for_src`/range counters
+    `__for_i`/`__for_stop`/`__for_step`/`__for_it`/`__for_end`) and the
+    `with`-fields (`__with_ctx_<n>`) now emit as `::tpy::frame_slot<T>`
+    (matching hoisted user locals), with every write flipping to
+    `.emplace(expr)`. Reads stay (both `std::optional<T>` and
+    `frame_slot<T>` expose `operator*`/`operator->`/`has_value()`). Same
+    memory layout (both carry the engaged bool) so the change is purely
+    consistency + the frame_slot debug no-read-before-write panic; no
+    perf/correctness delta. 36 snapshots regenerated (18 unique cases x
+    hpp + cpp pairs, 126 inserts / 126 deletes -- perfectly balanced
+    swaps): every async-for-with-suspension test, every async-with-with-
+    suspension test, every resumable generator with a for-loop. Frame-
+    size win (bare storage for default-constructible field types,
+    dropping the bool) needs the `std::conditional` `frame_field<T>`
+    wrapper and stays a separate item in TODO.md.
 - Phase D (D1+D2+D3) DONE; Phases E-G not started.
 
-## Phase D approach (planned -- resume here)
+## Phase D approach (DONE -- historical record)
 
-Widen the gate from "flat leaf-only body" to "control flow the CFG can
-handle." **Gate mechanism: trial CFG build** -- attempt `_build_cfg(func)`;
-if it raises `_CFGNotYetSupported` (loop-`else`, nested-await-in-finally),
-fall back to the legacy path. This auto-tracks the CFG's real limits
-instead of a hand-maintained denylist, and the built CFG is cached so emit
-reuses it. **Gap to close first:** the CFG *silently* mishandles `match`
-(a leaf with a hidden yield) rather than raising -- teach it to raise
-`_CFGNotYetSupported` on a suspension inside an undecomposable leaf so the
-trial-build gate is uniformly safe (then the explicit `match` exclusion
-can drop). Keep the non-generic / non-tuple-yield / non-simple checks.
+Widened the gate from "flat leaf-only body" to "control flow the CFG can
+handle." **Gate mechanism: trial CFG build** -- attempt
+`_build_resumable_cfg(func)`; if it raises `_CFGNotYetSupported`
+(loop-`else`, nested-await-in-finally), fall back to the legacy path.
+Auto-tracks the CFG's real limits instead of a hand-maintained denylist,
+and the built CFG is cached so emit reuses it. **Gap closed first:** the
+CFG silently mishandled `match` (a leaf with a hidden yield) rather than
+raising -- the builder now raises `_CFGNotYetSupported` on a suspension
+inside an undecomposable leaf so the trial-build gate is uniformly safe
+(the explicit `match` exclusion is gone). Remaining gate checks:
+non-generic (Phase F) / non-simple-peephole (kept by design) /
+non-tuple-unpack-for-loop (D2 follow-up). The non-tuple-yield restriction
+was dropped by the borrow-form yield slot prerequisite.
 
 Sub-sequencing (each regression-free):
 - **D1 -- `if` / `while` (peephole-free). DONE.** No peephole concern; the
@@ -243,9 +282,11 @@ Sub-sequencing (each regression-free):
   normal-exit edge; `break` -> a separate after-BB that skips it).
   Benefits async too (lifted the await-in-loop-else rejection). See Status.
 
-Carry forward the Phase D/E prerequisites listed above (borrow-form yield
-slot for tuple yields; wire `gen_coro_finally_top_def` before try/with;
-de-async-ify `_build_cfg` -> `_build_resumable_cfg`).
+All three Phase D/E prerequisites listed above have shipped (borrow-form
+yield slot; `gen_coro_finally_top_def` wired into the generator
+orchestration -- latent today; `_build_cfg` -> `_build_resumable_cfg`
+de-async-ify pass; frame_slot unification of synthetic fields). Phase E
+(try/except/finally generators) is the next step.
 
 ## Goal
 

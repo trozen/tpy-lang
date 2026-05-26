@@ -13,8 +13,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
         return -1;
     }
     case S_RESUME_0: {
-        __for_it_0 = (rows).begin();
-        __for_end_0 = (rows).end();
+        __for_it_0.emplace((rows).begin());
+        __for_end_0.emplace((rows).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -28,8 +28,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         r = *((*__for_it_0))++;
-        __for_it_1 = (cols).begin();
-        __for_end_1 = (cols).end();
+        __for_it_1.emplace((cols).begin());
+        __for_end_1.emplace((cols).end());
         __state = S_JOIN_1;
         continue;
     }
@@ -47,6 +47,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
     }
     __builtin_unreachable();
 }
+
 
 // def matrix(rows: list[Int32], cols: list[Int32]) -> Iterator[Int32]:
 __gen_matrix matrix(std::vector<int32_t>& rows, std::vector<int32_t>& cols) {

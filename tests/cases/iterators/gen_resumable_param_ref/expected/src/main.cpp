@@ -26,6 +26,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_first_two::__next__() {
     __builtin_unreachable();
 }
 
+
 // def first_two(xs: list[Int32]) -> Iterator[Int32]:
 __gen_first_two first_two(std::vector<int32_t>& xs) {
     return __gen_first_two(xs);

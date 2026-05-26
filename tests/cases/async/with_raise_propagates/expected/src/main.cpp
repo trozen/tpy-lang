@@ -60,7 +60,7 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            __with_ctx_0 = CM();
+            __with_ctx_0.emplace(CM());
             // async with CM() as v:
             __sub_0.emplace((*__with_ctx_0));
             __state = S_RESUME_0;

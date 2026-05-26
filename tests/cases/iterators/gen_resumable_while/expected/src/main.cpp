@@ -39,6 +39,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_countdown::__next__() {
     __builtin_unreachable();
 }
 
+
 // def countdown(n: Int32) -> Iterator[Int32]:
 __gen_countdown countdown(int32_t n) {
     return __gen_countdown(n);

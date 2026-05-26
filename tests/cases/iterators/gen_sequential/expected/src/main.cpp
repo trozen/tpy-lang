@@ -31,6 +31,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_triple::__next__() {
     __builtin_unreachable();
 }
 
+
 // def triple() -> Iterator[Int32]:
 __gen_triple triple() {
     return __gen_triple();

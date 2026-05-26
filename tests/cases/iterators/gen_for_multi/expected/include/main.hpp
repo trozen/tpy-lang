@@ -21,10 +21,10 @@ struct __gen_multi {
     int32_t n;
     int32_t x;
     int32_t i;
-    std::optional<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_it_0;
-    std::optional<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_end_0;
-    std::optional<int32_t> __for_i_1;
-    std::optional<int32_t> __for_stop_1;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_it_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_end_0;
+    ::tpy::frame_slot<int32_t> __for_i_1;
+    ::tpy::frame_slot<int32_t> __for_stop_1;
 
     enum : int32_t {
         S_INITIAL = 0,

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_inner::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        __with_ctx_0 = CM();
+        __with_ctx_0.emplace(CM());
         // async with CM() as v:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<::std::monostate> __coro_inner::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        __with_ctx_0 = CM("inner");
+        __with_ctx_0.emplace(CM("inner"));
         // async with CM("inner") as b:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;
@@ -72,7 +72,7 @@ __coro_inner inner() {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        __with_ctx_0 = CM("outer");
+        __with_ctx_0.emplace(CM("outer"));
         // async with CM("outer") as a:
         __sub_0.emplace((*__with_ctx_0));
         __state = S_RESUME_0;

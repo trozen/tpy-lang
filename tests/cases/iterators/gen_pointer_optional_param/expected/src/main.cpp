@@ -8,8 +8,8 @@ namespace tpyapp::main {
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen_n_times::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        __for_i_0 = int32_t(0);
-        __for_stop_0 = static_cast<int32_t>(n);
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;
         continue;
     }
@@ -45,6 +45,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_n_times::__next__() {
     }
     __builtin_unreachable();
 }
+
 
 // def gen_n_times(p: P | None, n: Int32) -> Iterator[Int32]:
 __gen_gen_n_times gen_n_times(P* p, int32_t n) {

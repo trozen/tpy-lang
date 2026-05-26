@@ -53,6 +53,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     __builtin_unreachable();
 }
 
+
 // def gen(n: Int32, brk: Int32) -> Iterator[Int32]:
 __gen_gen gen(int32_t n, int32_t brk) {
     return __gen_gen(n, brk);

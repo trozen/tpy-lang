@@ -43,6 +43,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_evens::__next__() {
     __builtin_unreachable();
 }
 
+
 // def evens(n: Int32) -> Iterator[Int32]:
 __gen_evens evens(int32_t n) {
     return __gen_evens(n);

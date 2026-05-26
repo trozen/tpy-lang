@@ -70,7 +70,7 @@ struct __coro_caller {
     bool __cancel_pending;
     ::tpy::BigInt x;
     std::string s;
-    std::optional<Suppressor> __with_ctx_0;
+    ::tpy::frame_slot<Suppressor> __with_ctx_0;
     std::optional<__coro_value> __sub_0;
 
     enum : int32_t {

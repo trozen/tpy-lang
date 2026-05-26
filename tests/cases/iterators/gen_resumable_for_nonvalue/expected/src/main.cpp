@@ -8,8 +8,8 @@ namespace tpyapp::main {
 std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        __for_it_0 = (items).begin();
-        __for_end_0 = (items).end();
+        __for_it_0.emplace((items).begin());
+        __for_end_0.emplace((items).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -36,6 +36,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_doubled::__next__() {
     }
     __builtin_unreachable();
 }
+
 
 // def doubled(items: list[Node]) -> Iterator[Int32]:
 __gen_doubled doubled(std::vector<Node>& items) {

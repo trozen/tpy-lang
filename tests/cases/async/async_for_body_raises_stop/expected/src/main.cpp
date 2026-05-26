@@ -63,7 +63,7 @@ namespace tpyapp::main {
     }
     case S_JOIN_1: {
         try {
-            __for_itr_0 = (c).__aiter__();
+            __for_itr_0.emplace((c).__aiter__());
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::StopAsyncIteration& e) {

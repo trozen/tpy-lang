@@ -4,24 +4,18 @@
 namespace tpyapp::main {
 
 
+// def gen(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
 std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // prev: P | None = None
+        prev = nullptr;
+        __for_it_0.emplace((items).begin());
+        __for_end_0.emplace((items).end());
+        __state = S_JOIN_0;
+        continue;
     }
-    // prev: P | None = None
-    prev = nullptr;
-    // for it in items:
-    __for_it_0 = (items).begin();
-    __for_end_0 = (items).end();
-    while (*__for_it_0 != *__for_end_0) {
-        it = &(*(*__for_it_0)++);
-        // yield (prev, it)
-        __state = 1;
-        return std::tuple<P*, P*>{prev, it};
-        __resume_1:;
+    case S_RESUME_0: {
         // # Sentinel: x == 0 means "reset prev"; otherwise carry forward.
         // if it.x == Int32(0):
         if ((it->x == 0)) {
@@ -32,16 +26,31 @@ std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __gen_gen::__next__() {
             // prev = it
             prev = it;
         }
+        __state = S_JOIN_0;
+        continue;
     }
-    // yield (prev, None)
-    __state = 2;
-    return std::tuple<P*, P*>{prev, nullptr};
-    __resume_2:;
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            // yield (prev, None)
+            __state = S_RESUME_1;
+            return std::tuple<P*, P*>{prev, nullptr};
+        }
+        it = &(*((*__for_it_0))++);
+        // yield (prev, it)
+        __state = S_RESUME_0;
+        return std::tuple<P*, P*>{prev, it};
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+
+// def gen(items: list[P]) -> Iterator[tuple[P | None, P | None]]:
 __gen_gen gen(std::vector<P>& items) {
     return __gen_gen(items);
 }

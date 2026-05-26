@@ -13,8 +13,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_squares_plus::__next__() {
         return -1;
     }
     case S_RESUME_0: {
-        __for_i_0 = int32_t(0);
-        __for_stop_0 = static_cast<int32_t>(n);
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(n));
         __state = S_JOIN_0;
         continue;
     }
@@ -36,6 +36,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_squares_plus::__next__() {
     }
     __builtin_unreachable();
 }
+
 
 // def squares_plus(n: Int32) -> Iterator[Int32]:
 __gen_squares_plus squares_plus(int32_t n) {

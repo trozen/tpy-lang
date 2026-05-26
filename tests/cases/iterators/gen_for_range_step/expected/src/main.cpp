@@ -13,9 +13,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_countdown::__next__() {
         return 999;
     }
     case S_RESUME_0: {
-        __for_i_0 = static_cast<int32_t>(start);
-        __for_stop_0 = static_cast<int32_t>(0);
-        __for_step_0 = static_cast<int32_t>(-1);
+        __for_i_0.emplace(static_cast<int32_t>(start));
+        __for_stop_0.emplace(static_cast<int32_t>(0));
+        __for_step_0.emplace(static_cast<int32_t>(-1));
         ::tpy::range_check_overflow<int32_t>(*__for_i_0, *__for_stop_0, *__for_step_0);
         __state = S_JOIN_0;
         continue;
@@ -39,6 +39,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_countdown::__next__() {
     }
     __builtin_unreachable();
 }
+
 
 // def countdown(start: Int32) -> Iterator[Int32]:
 __gen_countdown countdown(int32_t start) {

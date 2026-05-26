@@ -35,18 +35,26 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 
 // Generator: gen
 struct __gen_gen {
-    int __state;
+    int32_t __state;
     std::vector<P>& items;
     P* prev = nullptr;
     P* it = nullptr;
-    std::optional<decltype(std::declval<std::vector<P>&>().begin())> __for_it_0;
-    std::optional<decltype(std::declval<std::vector<P>&>().begin())> __for_end_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<P>&>().begin())> __for_it_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<P>&>().begin())> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
 
     __gen_gen(std::vector<P>& items)
-        : __state(0), items(items) {}
+        : __state(S_INITIAL), items(items) {}
 
-    __gen_gen& __iter__() { return *this; }
     std::expected<std::tuple<P*, P*>, ::tpy::StopIteration> __next__();
+    __gen_gen& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
         return os << "<generator gen>";

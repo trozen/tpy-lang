@@ -26,6 +26,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_greetings::__next__() {
     __builtin_unreachable();
 }
 
+
 // def greetings(name: str) -> Iterator[str]:
 __gen_greetings greetings(std::string_view name) {
     return __gen_greetings(name);

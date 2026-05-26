@@ -92,7 +92,7 @@ struct __coro_caller {
     int32_t __state;
     bool __cancel_pending;
     ::tpy::BigInt x;
-    std::optional<Tracer> __with_ctx_0;
+    ::tpy::frame_slot<Tracer> __with_ctx_0;
     std::exception_ptr __finally_exc_0;
     bool __finally_pending_0 = false;
     ::tpy::BigInt __finally_ret_0;

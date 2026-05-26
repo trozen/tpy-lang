@@ -19,9 +19,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         return 0;
     }
     case S_RESUME_0: {
-        __for_src_0 = make();
-        __for_it_0 = ((*__for_src_0)).begin();
-        __for_end_0 = ((*__for_src_0)).end();
+        __for_src_0.emplace(make());
+        __for_it_0.emplace(((*__for_src_0)).begin());
+        __for_end_0.emplace(((*__for_src_0)).end());
         __state = S_JOIN_0;
         continue;
     }
@@ -48,6 +48,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     __builtin_unreachable();
 }
+
 
 // def gen() -> Iterator[Int32]:
 __gen_gen gen() {

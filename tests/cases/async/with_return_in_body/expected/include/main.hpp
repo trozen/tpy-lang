@@ -96,7 +96,7 @@ struct __coro_inner {
     int32_t __state;
     bool __cancel_pending;
     ::tpy::BigInt v;
-    std::optional<CM> __with_ctx_0;
+    ::tpy::frame_slot<CM> __with_ctx_0;
     std::exception_ptr __finally_exc_0;
     bool __finally_pending_0 = false;
     ::tpy::BigInt __finally_ret_0;

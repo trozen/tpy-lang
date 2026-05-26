@@ -101,7 +101,7 @@ struct __coro_inner {
     int32_t __state;
     bool __cancel_pending;
     std::string b;
-    std::optional<CM> __with_ctx_0;
+    ::tpy::frame_slot<CM> __with_ctx_0;
     std::exception_ptr __finally_exc_0;
     std::optional<__coro_CM___aenter__> __sub_0;
     std::optional<__coro_CM___aexit__> __sub_1;
@@ -132,7 +132,7 @@ struct __coro_main_coro {
     int32_t __state;
     bool __cancel_pending;
     std::string a;
-    std::optional<CM> __with_ctx_0;
+    ::tpy::frame_slot<CM> __with_ctx_0;
     std::exception_ptr __finally_exc_0;
     std::optional<__coro_CM___aenter__> __sub_0;
     std::optional<__coro_inner> __sub_1;

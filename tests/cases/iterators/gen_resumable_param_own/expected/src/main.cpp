@@ -26,6 +26,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_drain::__next__() {
     __builtin_unreachable();
 }
 
+
 // def drain(b: Own[Box[Int32]]) -> Iterator[Int32]:
 __gen_drain drain(::tpystd::tplib::box::Box<int32_t> b) {
     return __gen_drain(std::move(b));

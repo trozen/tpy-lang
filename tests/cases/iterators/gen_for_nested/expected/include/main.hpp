@@ -21,10 +21,10 @@ struct __gen_matrix {
     std::vector<int32_t>& cols;
     int32_t c;
     int32_t r;
-    std::optional<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_it_0;
-    std::optional<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_end_0;
-    std::optional<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_it_1;
-    std::optional<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_end_1;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_it_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_end_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_it_1;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_end_1;
 
     enum : int32_t {
         S_INITIAL = 0,

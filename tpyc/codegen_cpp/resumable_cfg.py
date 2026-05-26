@@ -472,7 +472,7 @@ class CFGBuilder:
 
     Usage:
         builder = CFGBuilder()
-        cfg = builder.build_async(func_body)
+        cfg = builder.build(func_body)
 
     The builder maintains a "current BB" while walking statements.
     Compound statements that contain suspensions branch the CFG;
@@ -524,8 +524,10 @@ class CFGBuilder:
 
     # -- Public entry point ---------------------------------------------
 
-    def build_async(self, body: list[TpyStmt]) -> CFG:
-        """Build a CFG from an async def's body statement list."""
+    def build(self, body: list[TpyStmt]) -> CFG:
+        """Build a CFG from a resumable function body (async def or
+        generator). Shape-neutral: a `yield` is a suspension point
+        alongside `await`."""
         entry = self._new_bb()
         end = self._build_block(entry, body)
         # If the body fell off the end without a terminator, mark the

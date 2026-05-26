@@ -30,7 +30,7 @@ def _gen_body(src: str):
 
 
 def _build(src: str):
-    return CFGBuilder().build_async(_gen_body(src))
+    return CFGBuilder().build(_gen_body(src))
 
 
 class TestYieldDispatch:
@@ -131,7 +131,7 @@ class TestLoopElseSupported:
             "        yield -1\n"
         )
         for_stmt = body[0]
-        cfg = CFGBuilder(for_uid_map={id(for_stmt): 0}).build_async(body)
+        cfg = CFGBuilder(for_uid_map={id(for_stmt): 0}).build(body)
         assert len(cfg.yield_sites) == 2
 
 

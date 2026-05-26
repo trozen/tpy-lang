@@ -775,7 +775,7 @@ What landed:
   - `_prescan_with_stmts` now allocates `__with_ctx_<n>` for async-with
     regardless of body-await content, and pre-computes the aenter/aexit
     coro struct names per ctx_n into `func._async_with_struct_names`.
-  - `_prescan_async_try_finally` extended to allocate the shared
+  - `_prescan_resumable_try_finally` (renamed from `_prescan_async_try_finally` by the generator -> resumable-frame de-async-ify pass) extended to allocate the shared
     `__finally_exc_<uid>` / `__finally_pending_<uid>` / `__finally_ret_<uid>`
     frame fields for async-with stmts.
   - `gen_coro_struct`'s `__sub_<i>` field emit consults
@@ -873,7 +873,7 @@ What landed:
   outside the push, so a body-side `StopAsyncIteration` propagates
   instead of being silently caught.
 - **Codegen** (`tpyc/codegen_cpp/gen_async.py`):
-  - `_prescan_async_for_loops`: triggers on `is_async OR body_has_await`.
+  - `_prescan_resumable_for_loops` (renamed from `_prescan_async_for_loops` by the generator -> resumable-frame de-async-ify pass): triggers on `is_async OR body_has_await OR body_has_yield`.
     For async-for, the frame field type is
     `decltype(std::declval<IT&>().__aiter__())` and a new
     `func._async_for_struct_names[uid]` map records the C++ name of

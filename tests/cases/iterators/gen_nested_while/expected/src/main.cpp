@@ -47,6 +47,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_matrix::__next__() {
     __builtin_unreachable();
 }
 
+
 // def matrix() -> Iterator[Int32]:
 __gen_matrix matrix() {
     return __gen_matrix();

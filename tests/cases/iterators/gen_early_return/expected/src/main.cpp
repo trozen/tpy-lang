@@ -40,6 +40,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_maybe_count::__next__() {
     __builtin_unreachable();
 }
 
+
 // def maybe_count(n: Int32) -> Iterator[Int32]:
 __gen_maybe_count maybe_count(int32_t n) {
     return __gen_maybe_count(n);

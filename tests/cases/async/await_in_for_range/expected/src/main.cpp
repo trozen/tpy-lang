@@ -31,8 +31,8 @@ __coro_value value(::tpy::BigInt n) {
     case S_INITIAL: {
         // total = 0
         total = 0;
-        __for_i_0 = ::tpy::BigInt(0);
-        __for_stop_0 = static_cast<::tpy::BigInt>(n);
+        __for_i_0.emplace(::tpy::BigInt(0));
+        __for_stop_0.emplace(static_cast<::tpy::BigInt>(n));
         __state = S_JOIN_0;
         continue;
     }
