@@ -44,6 +44,8 @@ from ..typesys import (
     same_base_type,
     bare_name,
     contains_type_param,
+    unwrap_readonly,
+    unwrap_ref_type,
 )
 from ..module_names import public_module_name
 from ..parse import (
@@ -679,6 +681,33 @@ class TypeRegistrar:
                 method.loc or record.loc,
             )
 
+    def _validate_generator_yield_copyable(self, yield_type: TpyType, loc) -> None:
+        """Reject a generator that would yield a non-copyable value.
+
+        A generator stores each yielded value by value in its iterator slot
+        (`std::expected<T, StopIteration>` on the resumable path,
+        `std::optional<T>` on the legacy peephole) and `__next__()` hands out
+        a copy. A non-copyable yield type (`@nocopy`, a record with `__del__`,
+        or one that transitively contains either) would hit a deleted copy
+        constructor in the generated C++ -- on BOTH codegen paths, so routing
+        to the legacy path is no escape. Tuple yields are exempt: their slot is
+        borrow form (`std::tuple<T&, ...>` / `<T*, ...>`), so the elements are
+        referenced, not copied."""
+        if isinstance(unwrap_ref_type(unwrap_readonly(yield_type)), TupleType):
+            return
+        if not self.ctx.is_type_non_copyable(yield_type):
+            return
+        reason = (self.ctx.nocopy_reason(yield_type)
+                  if self.ctx.is_type_nocopy(yield_type)
+                  else f"non-copyable type '{yield_type}'")
+        raise SemanticError(
+            f"Generator cannot yield {reason}: each yielded value is stored by "
+            f"value and handed out as a copy by __next__(), which requires a "
+            f"copy constructor. Yield a copyable type, or a tuple whose "
+            f"elements are yielded by reference.",
+            loc,
+        )
+
     def register_record(self, record: TpyRecord) -> None:
         """Register a record type."""
         is_native = record.linkage != RecordLinkage.DEFAULT
@@ -1015,6 +1044,8 @@ class TypeRegistrar:
                         method.loc or record.loc,
                     )
                 method.generator_yield_type = method_return.type_args[0]
+                self._validate_generator_yield_copyable(
+                    method.generator_yield_type, method.loc or record.loc)
                 self._reject_method_on_generic_class("Generator", record, method)
             # For the mutable clone of a auto_readonly pair, skip implicit_readonly so
             # that the mutable clone keeps is_readonly=False. This allows tie-breaking in
@@ -2665,6 +2696,8 @@ class TypeRegistrar:
                         func.loc
                     )
                 func.generator_yield_type = resolved_return.type_args[0]
+                self._validate_generator_yield_copyable(
+                    func.generator_yield_type, func.loc)
             else:
                 pi = protocol_info_of(resolved_return)
                 is_native_stub = func.is_stub and (func.native_name or func.cpp_template)

@@ -480,8 +480,14 @@ class GeneratorCodegen:
         Non-tuple yields stay value form because `to_cpp_return()` on a bare
         non-value type expands to `T&` directly, and std::optional<T&> is
         ill-formed pre-C++26.
+
+        A `readonly[tuple[...]]` yield must peel the ReadonlyType wrapper
+        before the tuple check (`unwrap_ref_type` only strips RefType), else
+        the slot collapses to value form and copies the elements;
+        `to_cpp_return()` on the readonly tuple still yields the const-borrow
+        form (`std::tuple<const T&, ...>`).
         """
-        unwrapped = unwrap_ref_type(elem_type)
+        unwrapped = unwrap_ref_type(unwrap_readonly(elem_type))
         if not isinstance(unwrapped, TupleType):
             return cpp_elem
         return elem_type.to_cpp_return()

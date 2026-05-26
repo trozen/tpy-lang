@@ -4850,6 +4850,17 @@ class ExpressionGenerator:
 
     def _gen_tuple_literal(self, expr: TpyTupleLiteral, target_type: TpyType | None) -> str:
         """Generate tuple literal code."""
+        # A `readonly[tuple[...]]` target (e.g. a `readonly[tuple[P, P]]`
+        # return / yield slot) wraps the TupleType; peel it so the borrow-form
+        # element slots below are still discovered. Without this the literal
+        # falls back to value-form elements that bind dangling const-refs into
+        # the caller's `std::tuple<const P&, ...>` slot. The readonly-ness is
+        # carried into slot selection so non-value element slots become
+        # const-ref (`const T&`) -- the elements may read from a const source
+        # (a readonly-borrowed container) that a non-const `T&` slot can't bind.
+        target_readonly = isinstance(target_type, ReadonlyType)
+        if target_readonly:
+            target_type = target_type.wrapped
         # Own[tuple[...]] returns a value tuple whose non-value elements
         # are implicitly Own slots. Sema's `own_tuple_target()` synthesizes
         # the matching tuple shape and sets elem_capture=VALUE for those
@@ -4898,7 +4909,8 @@ class ExpressionGenerator:
             slot_info = self._tuple_literal_slot_info(
                 resolved_elem_types, expr,
                 in_storage_context=in_storage_context,
-                target_provided=target_tuple is not None)
+                target_provided=target_tuple is not None,
+                target_readonly=target_readonly)
             cpp_type = f"std::tuple<{', '.join(p for _, p in slot_info)}>"
         else:
             slot_info = None
@@ -5000,6 +5012,7 @@ class ExpressionGenerator:
         expr: TpyTupleLiteral,
         in_storage_context: bool = False,
         target_provided: bool = False,
+        target_readonly: bool = False,
     ) -> list[tuple['TupleElemCapture', str]]:
         """Per-slot (mode, dest_cpp_part) for a tuple literal.
 
@@ -5049,6 +5062,11 @@ class ExpressionGenerator:
                     mode = TupleElemCapture.REF
             else:
                 mode = TupleElemCapture.VALUE
+            # A readonly tuple target hands out const borrows: a borrow-form
+            # element slot becomes const-ref (`const T&` / `const T*`) so it
+            # binds from a const source. VALUE elements stay by-value.
+            if target_readonly and mode == TupleElemCapture.REF:
+                mode = TupleElemCapture.CONST_REF
             # VALUE capture is the storage form (sema annotates VALUE for
             # field-context tuples). Other modes follow the slot's return
             # form: T* / const T* for pointer-repr Optional.

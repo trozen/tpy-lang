@@ -265,7 +265,7 @@
     size win (bare storage for default-constructible field types,
     dropping the bool) needs the `std::conditional` `frame_field<T>`
     wrapper and stays a separate item in TODO.md.
-- Phase D (D1+D2+D3) DONE; Phases E-G not started.
+- Phases D (D1+D2+D3) and E DONE; Phases F-G not started.
 
 ## Phase D approach (DONE -- historical record)
 

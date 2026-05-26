@@ -1010,17 +1010,13 @@ class AsyncCoroCodegen:
         struct_name = self._struct_name_templated(func, record_name)
 
         with self._resumable_frame_ctx(func, record_name):
-            is_gen = self._is_generator_shape()
             for helper_name, body_stmts in cfg.finally_helpers:
                 self._emit_template_header(out, func)
                 out.write(f"void {struct_name}::{helper_name}() {{\n")
                 self.ctx.indent_level = 1
-                old_in_helper = self.ctx.in_generator_finally_helper
-                if is_gen:
-                    self.ctx.in_generator_finally_helper = True
-                for stmt in body_stmts:
-                    self.statements.gen_stmt(out, stmt)
-                self.ctx.in_generator_finally_helper = old_in_helper
+                with self._generator_finally_helper_scope():
+                    for stmt in body_stmts:
+                        self.statements.gen_stmt(out, stmt)
                 self.ctx.indent_level = 0
                 out.write(f"}}\n")
 
@@ -1119,6 +1115,32 @@ class AsyncCoroCodegen:
             self.ctx.async_coro_return_cpp = old_async_ret_cpp
             self.ctx.async_coro_done_state = old_async_done_label
 
+    @contextlib.contextmanager
+    def _generator_finally_helper_scope(self):
+        """While emitting a `__finally_<n>()` helper body of a generator,
+        `ctx.in_generator_finally_helper` makes `return` lower to
+        `this->__finally_stop = true; return;` (void) instead of `goto __done`.
+        No-op for the async shape (helpers there return Poll)."""
+        old_in_helper = self.ctx.in_generator_finally_helper
+        if self._is_generator_shape():
+            self.ctx.in_generator_finally_helper = True
+        try:
+            yield
+        finally:
+            self.ctx.in_generator_finally_helper = old_in_helper
+
+    @contextlib.contextmanager
+    def _generator_finally_stop_scope(self, has_finally_stop: bool):
+        """While emitting a generator state-machine body, expose whether any
+        finally helper contains a `return` (so the helper call sites append the
+        `if (this->__finally_stop) return StopIteration;` check), then restore."""
+        old_has_finally_stop = self.ctx.generator_has_finally_stop
+        self.ctx.generator_has_finally_stop = has_finally_stop
+        try:
+            yield
+        finally:
+            self.ctx.generator_has_finally_stop = old_has_finally_stop
+
     def _emit_resumable_extra_state_fields(self, out: "TextIO") -> None:
         """Per-shape state fields beyond the shared `int32_t __state`.
         Async adds the cancellation flag; the generator shape adds
@@ -1210,12 +1232,10 @@ class AsyncCoroCodegen:
         has_finally_stop = (
             self._is_generator_shape()
             and any(_stmts_have_return(body) for _, body in cfg.finally_helpers))
-        old_has_finally_stop = self.ctx.generator_has_finally_stop
-        self.ctx.generator_has_finally_stop = has_finally_stop
-        with self._resumable_frame_ctx(func, record_name):
-            with self._resumable_return_lowering(func):
-                self._emit_state_machine(out, func, cfg)
-        self.ctx.generator_has_finally_stop = old_has_finally_stop
+        with self._generator_finally_stop_scope(has_finally_stop):
+            with self._resumable_frame_ctx(func, record_name):
+                with self._resumable_return_lowering(func):
+                    self._emit_state_machine(out, func, cfg)
 
         out.write(f"}}\n")
 
@@ -2522,7 +2542,15 @@ class AsyncCoroCodegen:
         out.write(f"{indent}__with_ctx_{ctx_n}.emplace({ctx_expr});\n")
         if item.target is not None:
             target = escape_cpp_name(item.target)
-            out.write(f"{indent}{target} = (*__with_ctx_{ctx_n}).__enter__();\n")
+            enter_call = f"(*__with_ctx_{ctx_n}).__enter__()"
+            if item.target in self.ctx.generator_frame_slot_locals:
+                # A non-value `as`-target hoisted across a yield is backed by
+                # `tpy::frame_slot<T>` (deleted operator=); construct via
+                # emplace, mirroring the var-decl / reassign frame-slot paths.
+                # Pointer-form Optional targets stay `T*` and bind with `=`.
+                out.write(f"{indent}{target}.emplace({enter_call});\n")
+            else:
+                out.write(f"{indent}{target} = {enter_call};\n")
         else:
             out.write(f"{indent}(*__with_ctx_{ctx_n}).__enter__();\n")
 
