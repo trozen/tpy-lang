@@ -22,7 +22,7 @@ from ..typesys import (
     FunctionInfo, ParamInfo, RecordInfo,
     make_ref, unwrap_ref_type, RefType, param_has_mutable_borrow_surface,
     is_integer_type, is_any_int_type, is_numeric_type, is_readonly_span,
-    is_float_type, is_any_float_type, polymorphic_source_inner,
+    is_float_type, is_any_float_type, is_polymorphic_subclass_fact,
     resolve_int_literals,
     bare_name)
 from ..parse import (
@@ -1383,12 +1383,11 @@ class StatementAnalyzer:
 
         def _polymorphic_subclass_fact(name: str, ty: TpyType) -> bool:
             # Strict subclass only -- `is not None` narrowing keeps the source's
-            # inner class and needs no cast-and-cache.
-            source_inner = polymorphic_source_inner(
-                _peel(self.narrowing.declared_type_for_name(name)), self.ctx.registry)
-            return (source_inner is not None
-                    and isinstance(ty, NominalType)
-                    and ty != source_inner)
+            # inner class and is gated out by the shared predicate. `_peel` strips
+            # Own/readonly so `Own[A | B]` params surface their inner shape.
+            return is_polymorphic_subclass_fact(
+                _peel(self.narrowing.declared_type_for_name(name)),
+                ty, self.ctx.registry)
 
         return {
             name: ty for name, ty in facts.items()

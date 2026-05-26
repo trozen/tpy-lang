@@ -558,9 +558,14 @@ class LocalScopeSnap:
     """Snapshot of the C++ local-variable declaration state inside a function body.
 
     Covers every field that tracks which locals exist and what C++ representation
-    they use (pointer-local, const-indirect, movable, rebind slot). Used to restore
-    scope between if/else branches so that declarations inside one branch don't
-    bleed into sibling branches.
+    they use (pointer-local, const-indirect, movable, rebind slot), plus the
+    two isinstance-narrowing maps -- `narrowed_vars` (per-source-variable
+    alias bindings) and `declared_persistent_aliases` (the scope-global set of
+    persistent alias names, used by `_fresh_alias_local` for collision
+    avoidance). Both maps reference C++ locals that live only within the
+    block that declared them, so they must be revoked when the surrounding
+    C++ block closes. Used to restore scope between if/else branches so that
+    declarations inside one branch don't bleed into sibling branches.
 
     If a new "what locals exist" field is added to CodeGenContext, add it here too.
 
@@ -589,6 +594,8 @@ class LocalScopeSnap:
     rebind_slots: dict[str, str]
     plain_rebind_slots: set[str]
     assign_narrowed_types: dict[str, 'TpyType']
+    narrowed_vars: dict[str, str]
+    declared_persistent_aliases: set[str]
 
 
 @dataclass
@@ -1102,6 +1109,14 @@ class CodeGenContext:
         self.current_type_param_bounds = {}
         self.in_method = False
         self.narrowed_vars = {}
+        # All persistent cast-and-cache aliases declared in the current C++
+        # scope. narrowed_vars holds only the *most recent* alias per source
+        # variable, so it loses earlier aliases after a bump (`__p` -> `__p_2`
+        # rewrites narrowed_vars[p] and the `__p` declaration becomes
+        # untracked even though it's still live). This set retains every
+        # emitted alias name in the current scope so `_fresh_alias_local`'s
+        # collision check spans the full history.
+        self.declared_persistent_aliases: set[str] = set()
         self.protocol_narrowings = {}
         self.assign_narrowed_types = {}
         self.literal_facts = {}
@@ -1140,6 +1155,8 @@ class CodeGenContext:
             rebind_slots=dict(self.rebind_slots),
             plain_rebind_slots=self.plain_rebind_slots.copy(),
             assign_narrowed_types=dict(self.assign_narrowed_types),
+            narrowed_vars=dict(self.narrowed_vars),
+            declared_persistent_aliases=self.declared_persistent_aliases.copy(),
         )
 
     def restore_local_scope(self, snap: LocalScopeSnap) -> None:
@@ -1160,6 +1177,8 @@ class CodeGenContext:
         self.rebind_slots = dict(snap.rebind_slots)
         self.plain_rebind_slots = snap.plain_rebind_slots.copy()
         self.assign_narrowed_types = dict(snap.assign_narrowed_types)
+        self.narrowed_vars = dict(snap.narrowed_vars)
+        self.declared_persistent_aliases = snap.declared_persistent_aliases.copy()
 
     def restore_narrowed_vars(self, saved: dict[str, str | None]) -> None:
         """Restore narrowed_vars after a branch block."""

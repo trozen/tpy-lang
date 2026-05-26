@@ -13,7 +13,8 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
     NoneType, NominalType, AnyType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type,
-    polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, ALL_FIXED_INTS,
+    polymorphic_source_is_pointer, polymorphic_subclass_into_optional,
+    is_polymorphic_subclass_fact, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType, LiteralTag,
     is_own_pointer_repr_optional,
     resolve_int_literals,
@@ -2261,12 +2262,10 @@ class StatementGenerator:
         registry = self.ctx.analyzer.registry
         candidates: list[tuple[str, NominalType, TpyType]] = []
         for var_name, ty in type_facts.items():
-            if not isinstance(ty, NominalType):
-                continue
             var_decl = self.ctx.lookup_var_type(var_name)
-            source_inner = polymorphic_source_inner(var_decl, registry)
-            if source_inner is None or source_inner == ty:
+            if not is_polymorphic_subclass_fact(var_decl, ty, registry):
                 continue
+            assert isinstance(ty, NominalType)  # gated by the predicate
             candidates.append((var_name, ty, var_decl))
         if len(candidates) != 1:
             return "", []
@@ -2282,15 +2281,46 @@ class StatementGenerator:
         self.ctx.isinstance_init_locals[var_name] = ptr_local
         return f"{init_expr}; ", [var_name]
 
+    def _fresh_alias_local(self, var_name: str, *, persistent: bool) -> str:
+        # Default is `__{var_name}`. `persistent` is True when the emit is at
+        # the same C++ scope as the caller (assert, early-return) -- where a
+        # prior alias declared in the same lexical scope would collide. False
+        # when the caller opened a fresh `{...}` block (if-body, while-body):
+        # shadowing the outer alias is fine and produces cleaner names.
+        #
+        # Collision check spans the scope-global `declared_persistent_aliases`
+        # set rather than `narrowed_vars` (which only holds the most-recent
+        # alias per source variable -- earlier aliases like `__p` become
+        # invisible after a bump to `__p_2` even though their C++ declaration
+        # is still live). The caller records the chosen name in the set; the
+        # set is part of LocalScopeSnap so it tracks C++ lexical scope.
+        base = f"__{var_name}"
+        if not persistent:
+            return base
+        in_use = self.ctx.declared_persistent_aliases
+        if base not in in_use:
+            return base
+        n = 2
+        while f"{base}_{n}" in in_use:
+            n += 1
+        return f"{base}_{n}"
+
     def _emit_isinstance_extractions(
-        self, out: TextIO, type_facts: dict[str, TpyType], indent_extra: int = 1,
+        self, out: TextIO, type_facts: dict[str, TpyType],
+        *, indent_extra: int = 1, persistent: bool = False,
     ) -> dict[str, str | None]:
         """Emit std::get extractions for isinstance-narrowed variables.
 
         Returns saved narrowed_vars entries for later restoration.
         Only emits extraction when the fact is a concrete (non-union) type.
-        indent_extra controls how many indent levels past the current level to emit at:
-        1 (default) for inside an if-block, 0 for after an assert at the current level.
+        `indent_extra` controls how many indent levels past the current level
+        to emit at: 1 (default) inside an if-block / while-block, 0 after an
+        assert or at the implicit-else of an early-returning if.
+        `persistent` is True when the alias must outlive the caller's emit
+        block (assert / early-return): the alias-name picker bumps the suffix
+        if a prior alias of the same shape is in scope. False when the caller
+        opened a fresh `{...}` block (if-body / while-body / else-body) --
+        shadowing the outer alias is fine.
         """
         saved: dict[str, str | None] = {}
         if not type_facts:
@@ -2318,12 +2348,10 @@ class StatementGenerator:
             cpp_type = self.types.type_to_cpp(narrowed_type)
             var_decl = self.ctx.lookup_var_type(var_name)
             # Polymorphic source + strict-subclass narrowed_type: cast-and-cache
-            # extraction. Identity narrowing (`is not None`) keeps the same class
-            # and is gated out by source_inner != narrowed_type.
-            source_inner = polymorphic_source_inner(var_decl, self.ctx.analyzer.registry)
-            if (source_inner is not None
-                    and isinstance(narrowed_type, NominalType)
-                    and source_inner != narrowed_type):
+            # extraction. Identity narrowing (`is not None`) keeps the same
+            # class and is gated out by the predicate.
+            if is_polymorphic_subclass_fact(
+                    var_decl, narrowed_type, self.ctx.analyzer.registry):
                 # If `_gen_if` pre-bound the cast via C++17 if-init, route reads
                 # through `(*__var_ptr)` directly -- no need for a separate
                 # reference local that just aliases the deref. Compiler sees the
@@ -2334,7 +2362,7 @@ class StatementGenerator:
                     saved[var_name] = self.ctx.narrowed_vars.get(var_name)
                     self.ctx.narrowed_vars[var_name] = f"(*{init_local})"
                     continue
-                local_name = f"__{var_name}"
+                local_name = self._fresh_alias_local(var_name, persistent=persistent)
                 cast_const = "const " if self._is_const_borrow_source(var_name, var_decl) else ""
                 cast_arg = self.ctx.polymorphic_cast_arg(var_name, var_decl)
                 out.write(
@@ -2343,12 +2371,14 @@ class StatementGenerator:
                 )
                 saved[var_name] = self.ctx.narrowed_vars.get(var_name)
                 self.ctx.narrowed_vars[var_name] = local_name
+                if persistent:
+                    self.ctx.declared_persistent_aliases.add(local_name)
                 continue
             # Any narrowing (D15): the source variable is a tpy::Any cell;
             # the narrowed binding is a `const T&` borrow into its
             # contents. The outer Any survives unchanged.
             if isinstance(var_decl, AnyType):
-                local_name = f"__{var_name}"
+                local_name = self._fresh_alias_local(var_name, persistent=persistent)
                 if self.ctx.is_indirect_name(TpyName(var_name)):
                     var_ref = f"(*{var_name})"
                 else:
@@ -2359,6 +2389,8 @@ class StatementGenerator:
                 )
                 saved[var_name] = self.ctx.narrowed_vars.get(var_name)
                 self.ctx.narrowed_vars[var_name] = local_name
+                if persistent:
+                    self.ctx.declared_persistent_aliases.add(local_name)
                 continue
             # std::get needs the underlying variant. Previously-extracted T&
             # aliases in narrowed_vars (from outer if-branch narrowing, match
@@ -2368,7 +2400,7 @@ class StatementGenerator:
                 var_ref = f"(*{var_name})"
             else:
                 var_ref = var_name
-            local_name = f"__{var_name}"
+            local_name = self._fresh_alias_local(var_name, persistent=persistent)
             # Value-type union params are const&, so std::get yields const T&.
             # Non-value union params and locals are mutable.
             var_decl_type = self.ctx.var_types.get(var_name)
@@ -2386,6 +2418,8 @@ class StatementGenerator:
                 out.write(f"{inner_indent}{qualifier} {local_name} = std::get<{cpp_type}>({get_ref});\n")
             saved[var_name] = self.ctx.narrowed_vars.get(var_name)
             self.ctx.narrowed_vars[var_name] = local_name
+            if persistent:
+                self.ctx.declared_persistent_aliases.add(local_name)
         return saved
 
 
@@ -2638,8 +2672,16 @@ class StatementGenerator:
         body_terminates = stmts_terminate(stmt.body)
 
         def emit_innermost_body(o: TextIO, body_indent: str) -> None:
+            # Persistent isinstance aliases emitted inside the with-body
+            # (assert / early-return) declare references in the try-block's
+            # C++ scope; restore narrowed_vars + the alias-name set after
+            # the body so post-with reads don't reference out-of-scope locals.
+            narrowed_saved = dict(self.ctx.narrowed_vars)
+            alias_saved = self.ctx.declared_persistent_aliases.copy()
             for s in stmt.body:
                 self.gen_stmt(o, s)
+            self.ctx.narrowed_vars = narrowed_saved
+            self.ctx.declared_persistent_aliases = alias_saved
 
         emit_body: Callable[[TextIO, str], None] = emit_innermost_body
         layer_terminates = body_terminates
@@ -3170,8 +3212,16 @@ class StatementGenerator:
         emit_finally, terminates = self._make_try_finally_emit(stmt)
 
         def emit_body(o: TextIO, body_indent: str) -> None:
+            # Persistent isinstance aliases declared inside the try body
+            # live in the C++ `try { ... }` scope; restore narrowed_vars +
+            # the alias-name set after the body so the catch/finally and
+            # post-try code don't reference out-of-scope locals.
+            narrowed_saved = dict(self.ctx.narrowed_vars)
+            alias_saved = self.ctx.declared_persistent_aliases.copy()
             for s in stmt.try_body:
                 self.gen_stmt(o, s)
+            self.ctx.narrowed_vars = narrowed_saved
+            self.ctx.declared_persistent_aliases = alias_saved
 
         self._emit_try_with_finally(
             out, inner, emit_body, emit_finally,
@@ -3289,11 +3339,19 @@ class StatementGenerator:
             after_else_label = ""
 
         def emit_try_except(o: TextIO, body_indent: str) -> None:
+            # Each `{...}` block (try body, each handler body, else body) is
+            # its own C++ scope. Persistent isinstance aliases declared inside
+            # one block aren't visible in siblings, so restore narrowed_vars +
+            # the alias-name set between blocks.
+            outer_narrowed = dict(self.ctx.narrowed_vars)
+            outer_aliases = self.ctx.declared_persistent_aliases.copy()
             o.write(f"{body_indent}try {{\n")
             self.ctx.indent_level += 1
             for s in stmt.try_body:
                 self.gen_stmt(o, s)
             self.ctx.indent_level -= 1
+            self.ctx.narrowed_vars = dict(outer_narrowed)
+            self.ctx.declared_persistent_aliases = outer_aliases.copy()
             o.write(f"{body_indent}}}")
 
             prev_except_tier = self.ctx.in_except_tier
@@ -3307,6 +3365,8 @@ class StatementGenerator:
                     o.write(f"{self.ctx.indent()}goto {after_else_label};\n")
                 self.ctx.in_except_tier = prev_except_tier
                 self.ctx.indent_level -= 1
+                self.ctx.narrowed_vars = dict(outer_narrowed)
+                self.ctx.declared_persistent_aliases = outer_aliases.copy()
                 o.write(f"{body_indent}}}")
 
             o.write("\n")
@@ -3315,6 +3375,8 @@ class StatementGenerator:
                 o.write(f"{body_indent}// else:\n")
                 for s in stmt.else_body:
                     self.gen_stmt(o, s)
+                self.ctx.narrowed_vars = dict(outer_narrowed)
+                self.ctx.declared_persistent_aliases = outer_aliases.copy()
                 o.write(f"{body_indent}{after_else_label}:;\n")
 
         if has_finally:
@@ -3827,7 +3889,8 @@ class StatementGenerator:
         # Emit std::get<T> extractions for isinstance-narrowed union variables.
         # Unlike if-branch narrowing, assert narrowing persists for the rest of scope,
         # so we do NOT call ctx.restore_narrowed_vars.
-        self._emit_isinstance_extractions(out, stmt.then_type_facts, indent_extra=0)
+        self._emit_isinstance_extractions(
+            out, stmt.then_type_facts, indent_extra=0, persistent=True)
 
 
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str,
@@ -3999,27 +4062,39 @@ class StatementGenerator:
 
         out.write(f"{indent}}}\n")
 
-        # Early-return narrowing for recursive unions: when the then-body
-        # terminates (return/raise) and there's no else block, code after the
-        # if is implicitly the else branch. Emit else_type_facts extractions
-        # at the outer scope (like assert narrowing).
-        # Limited to recursive unions because general unions may have sequential
-        # isinstance checks on the same variable, and the extraction would
-        # shadow the original variant for subsequent checks.
+        # Early-return narrowing: when the then-body terminates (return/raise)
+        # and there's no else block, code after the if is implicitly the else
+        # branch. Emit else_type_facts extractions at the outer scope (like
+        # assert narrowing).
+        #
+        # Restricted to two fact shapes for which the post-guard extraction is
+        # safe in the face of later isinstance checks against the same source:
+        #
+        # - Recursive-union facts: std::get<T> extraction caches the narrowed
+        #   value but the original variant survives in var_decl, so a later
+        #   isinstance still dispatches against the right alternative.
+        # - Polymorphic-class facts (Optional[Polymorphic] / bare Polymorphic):
+        #   dynamic_cast cast-and-cache aliases a reference local; later
+        #   isinstance reads var_decl (the declared source), not the alias.
+        #
+        # General (non-recursive) unions are excluded -- sequential isinstance
+        # checks on the same variable would shadow the original variant.
         if (emit_post_narrowing
                 and not last.else_body and last.else_type_facts
                 and self._has_concrete_isinstance_facts(last.else_type_facts)
                 and not self._is_protocol_isinstance_condition(last.condition)):
             then_body = last.then_body
             if then_body and isinstance(then_body[-1], (TpyReturn, TpyRaise)):
-                # Only emit for recursive union variables
-                recursive_facts = {
+                registry = self.ctx.analyzer.registry
+                post_facts = {
                     k: v for k, v in last.else_type_facts.items()
                     if self.ctx.is_recursive_union(self.ctx.var_types.get(k))
+                       or is_polymorphic_subclass_fact(
+                           self.ctx.lookup_var_type(k), v, registry)
                 }
-                if recursive_facts:
+                if post_facts:
                     self._emit_isinstance_extractions(
-                        out, recursive_facts, indent_extra=0)
+                        out, post_facts, indent_extra=0, persistent=True)
 
     def _check_overload_return_type(self, stmt: TpyReturn, stub_ret: TpyType) -> bool:
         """Validate that a return expression's type is compatible with the stub's return type.
@@ -4367,7 +4442,17 @@ class StatementGenerator:
 
         lit_snap = self.ctx.save_literal_facts()
         proto_snap = self.ctx.save_protocol_narrowings()
-        saved = self._emit_isinstance_extractions(out, stmt.then_type_facts)
+        # Snapshot narrowed_vars + declared_persistent_aliases before the body.
+        # Persistent narrowings made INSIDE the body (assert isinstance /
+        # `if not isinstance(...): return` in the body) would otherwise leak
+        # past the closing brace, leaving these maps pointing at C++ aliases
+        # whose declarations went out of scope. The full-dict restore at body
+        # exit also reverts the condition-level extractions emitted for
+        # `while isinstance(...)`, so no separate restore_narrowed_vars is
+        # needed for the condition narrowings.
+        body_narrowed_snap = dict(self.ctx.narrowed_vars)
+        body_alias_snap = self.ctx.declared_persistent_aliases.copy()
+        self._emit_isinstance_extractions(out, stmt.then_type_facts)
 
         self.ctx.indent_level += 1
         for s in stmt.body:
@@ -4375,7 +4460,8 @@ class StatementGenerator:
         self.ctx.emit_block_trailing_comments(out, stmt.body, self.ctx.indent())
         self.ctx.indent_level -= 1
 
-        self.ctx.restore_narrowed_vars(saved)
+        self.ctx.narrowed_vars = body_narrowed_snap
+        self.ctx.declared_persistent_aliases = body_alias_snap
         self.ctx.restore_protocol_narrowings(proto_snap)
         self.ctx.restore_literal_facts(lit_snap)
         out.write(f"{indent}}}\n")
@@ -4784,6 +4870,13 @@ class StatementGenerator:
         Dispatch is handled by _gen_for_each_loop; see its docstring for
         the full dispatch order.
         """
+        # Snapshot narrowed_vars + declared_persistent_aliases so persistent
+        # narrowings inside the loop body (e.g. `if not isinstance(x, T): return`
+        # followed by reads of x in the body, or `assert isinstance`) don't
+        # leak past the body's C++ `{...}` -- the alias declarations live
+        # only inside the loop block.
+        body_narrowed_snap = dict(self.ctx.narrowed_vars)
+        body_alias_snap = self.ctx.declared_persistent_aliases.copy()
         # Generator body: lower for-loops with yields to while-loops
         if self.ctx.in_generator_body and id(stmt) in self.ctx.generator_for_loop_info:
             has_else = bool(stmt.orelse)
@@ -4796,6 +4889,8 @@ class StatementGenerator:
             self._gen_generator_for_loop(out, stmt, indent)
 
             self.ctx.loop_else_labels.pop()
+            self.ctx.narrowed_vars = body_narrowed_snap
+            self.ctx.declared_persistent_aliases = body_alias_snap
             if has_else:
                 self.ctx.emit_else_comment(out, stmt.orelse, indent)
                 out.write(f"{indent}{{\n")
@@ -4816,6 +4911,8 @@ class StatementGenerator:
         self.ctx.loop_else_labels.append(label)
 
         self._gen_for_each_loop(out, stmt, indent)
+        self.ctx.narrowed_vars = body_narrowed_snap
+        self.ctx.declared_persistent_aliases = body_alias_snap
         self.ctx.loop_else_labels.pop()
 
         if has_else:

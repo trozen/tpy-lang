@@ -3408,6 +3408,23 @@ def polymorphic_source_inner(
     return None
 
 
+def is_polymorphic_subclass_fact(
+    var_decl: 'TpyType | None', narrowed: 'TpyType', registry: 'TypeRegistry'
+) -> bool:
+    """True when `narrowed` is a strict polymorphic subclass narrowing of
+    `var_decl`. Composed predicate: `var_decl` is a polymorphic-class source
+    (via `polymorphic_source_inner`), `narrowed` is a `NominalType`, and the
+    narrowed class is distinct from the declared root (identity narrowings
+    like `is not None` are gated out). Centralizes the check used at the
+    isinstance fact filter (sema), the if-init cast pre-bind (codegen),
+    the post-guard cast-and-cache (codegen), and the early-return
+    post-guard fact filter (codegen)."""
+    if not isinstance(narrowed, NominalType):
+        return False
+    source_inner = polymorphic_source_inner(var_decl, registry)
+    return source_inner is not None and source_inner != narrowed
+
+
 def polymorphic_source_is_pointer(declared: 'TpyType | None') -> bool:
     """True if a polymorphic-class source is pointer-shaped at the C++ level
     (`Optional[Polymorphic]` lowered to `T*`), False for bare polymorphic

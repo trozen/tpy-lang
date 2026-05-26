@@ -1,0 +1,34 @@
+woof from rex
+woof from rex
+DOG: woof from rex
+non-dog
+non-dog
+pet: whiskers
+woof from rex
+caught: expected Dog
+non-dog
+DOG: woof from rex
+WATCH: ALERT from rex-watch
+non-dog
+dog only
+watch only
+guard: PATROL by guard-rex
+ASSERT-WATCH: ALERT from rex-watch
+ASSERT-DOG: woof from rex
+ASSERT-EARLY-WATCH: ALERT from rex-watch
+none-or-non-dog
+p non-dog
+p dog: woof from rex
+p watch / q non-dog
+p watch / q dog: woof from rex
+for done: woof from rex / rex
+non-dog in for
+loop done: rex
+non-dog in loop
+TRY-DOG: woof from rex
+EXC: whiskers
+case1 dog: woof from rex
+case1 non-dog
+case2 dog2: woof from rex
+default: whiskers
+WITH-DOG: woof from rex / pet: rex
