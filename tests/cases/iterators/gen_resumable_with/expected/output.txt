@@ -1,0 +1,5 @@
+enter g
+10
+20
+30
+exit g

@@ -1,0 +1,10 @@
+--- gen_with_outer_return_in_finally ---
+enter outer
+1
+exit outer
+--- gen_nested_with_return_in_finally ---
+enter outer
+enter inner
+1
+exit inner
+exit outer

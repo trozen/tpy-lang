@@ -179,11 +179,10 @@ class TestUndecomposedLeafSuspensionRejected:
 
 
 class TestDeferredCompoundDetection:
-    # Phase D1 routed `if`/`while` generators onto the resumable emitter and
-    # D2 added `for`; `try`/`with` are still deferred to E. The gate keys that
-    # deferral on
-    # `_stmts_have_suspending_compound(body, GEN_DEFERRED_SUSPENDING_COMPOUNDS)`:
-    # True only when a deferred compound kind actually carries a suspension.
+    # Phase D1 routed `if`/`while` generators onto the resumable emitter;
+    # D2 added `for`; E added `try`/`with`. GEN_DEFERRED_SUSPENDING_COMPOUNDS
+    # is now empty -- no compound kind is deferred. Tests confirm the
+    # predicate returns False for every handled kind.
     def _body(self, header: str, body_src: str):
         return _gen_body(
             "from typing import Iterator\n"
@@ -192,15 +191,15 @@ class TestDeferredCompoundDetection:
         )
 
     def test_for_with_yield_is_not_deferred(self):
-        # `for` was deferred in D1, handled in D2 -- no longer in the set.
         body = self._body("", "    for x in xs:\n        yield x\n")
         assert not _stmts_have_suspending_compound(
             body, GEN_DEFERRED_SUSPENDING_COMPOUNDS)
 
-    def test_try_with_yield_is_deferred(self):
+    def test_try_with_yield_is_not_deferred(self):
+        # Phase E: try/with are now handled on the resumable path.
         body = self._body(
             "", "    try:\n        yield xs[0]\n    finally:\n        print(1)\n")
-        assert _stmts_have_suspending_compound(
+        assert not _stmts_have_suspending_compound(
             body, GEN_DEFERRED_SUSPENDING_COMPOUNDS)
 
     def test_if_while_with_yield_not_deferred(self):

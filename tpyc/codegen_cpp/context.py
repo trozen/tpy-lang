@@ -880,6 +880,14 @@ class CodeGenContext:
     # make_unexpected(StopIteration{})` instead (see statements.py).
     in_generator_resumable_body: bool = False
     generator_resumable_done_state: str | None = None
+    # Set when emitting a helper-based finally body for a generator on the
+    # resumable frame. `return` here sets `this->__finally_stop = true` and
+    # void-returns; callers check the flag and emit StopIteration.
+    in_generator_finally_helper: bool = False
+    # True iff the current generator's struct has a `__finally_stop` field
+    # (i.e. at least one helper-based finally body contains a `return`).
+    # Controls whether _emit_finally_helper_call appends the stop check.
+    generator_has_finally_stop: bool = False
     # Pending-return routing inside a CFG-based finally region
     #: when set, `return v` inside the active case saves `v`
     # to the slot, sets the flag, walks finally frames up to

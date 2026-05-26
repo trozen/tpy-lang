@@ -21,10 +21,9 @@ from .resumable_cfg import (
 )
 
 # Compound kinds whose resumable (generator) lowering isn't ready yet, used
-# by the generator eligibility gate. `try`/`with` -> Phase E (the exception/
-# finally emit is still await-specific). `if`/`while` (D1) and `for` (D2,
-# including `for`/`while`-`else` in D3) are handled.
-GEN_DEFERRED_SUSPENDING_COMPOUNDS: tuple[type, ...] = (TpyTry, TpyWith)
+# by the generator eligibility gate. `if`/`while` (D1), `for` (D2,
+# including `for`/`while`-`else` in D3), and `try`/`with` (E) are handled.
+GEN_DEFERRED_SUSPENDING_COMPOUNDS: tuple[type, ...] = ()
 
 from .context import CodeGenContext, CodeGenOptions, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_char, escape_cpp_name
 from .types import TypeResolver
@@ -572,11 +571,9 @@ class CodeGenerator:
             return False
         if func.generator_yield_type is None:
             return False
-        # Phase D handled `if`/`while`/`for` generators. The remaining
-        # deferred compound kinds carrying a suspension are `try`/`with`
-        # (the exception/finally emit is still await-specific, Phase E).
-        # A deferred compound that carries no suspension is plain leaf
-        # code and stays eligible.
+        # GEN_DEFERRED_SUSPENDING_COMPOUNDS is now empty (Phase E migrated
+        # try/with/finally onto the resumable path). All generators with
+        # suspending compounds are now eligible for the resumable frame.
         if _stmts_have_suspending_compound(
                 func.body, GEN_DEFERRED_SUSPENDING_COMPOUNDS):
             return False

@@ -39,6 +39,39 @@ from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, modu
 from . import resumable_cfg as rcfg
 
 
+def _stmts_have_return(stmts: "list[TpyStmt]") -> bool:
+    """Recursively check whether any TpyReturn appears in a statement list."""
+    for stmt in stmts:
+        if isinstance(stmt, TpyReturn):
+            return True
+        if hasattr(stmt, "sub_bodies"):
+            for body in stmt.sub_bodies():
+                if _stmts_have_return(body):
+                    return True
+    return False
+
+
+def _regions_have_pending_cleanup(regions: tuple) -> bool:
+    """Return True if any region in the tuple will emit cleanup code.
+
+    Used by _emit_exit_region_finallies to decide whether to defer the
+    __finally_stop check: if the destination region stack still has pending
+    cleanup (with.__exit__ or finally helpers), the stop-check must wait
+    until those later states have run their cleanup."""
+    for r in regions:
+        if isinstance(r, rcfg.WithRegion):
+            return True
+        if isinstance(r, rcfg.FinallyRegion):
+            # BBs inside a CFG-based finally body: the finally body itself
+            # is the pending cleanup; don't stop before it runs.
+            return True
+        if isinstance(r, rcfg.TryRegion) and r.finally_helper_name is not None:
+            return True
+        if isinstance(r, rcfg.ExceptRegion) and r.parent_finally is not None:
+            return True
+    return False
+
+
 if TYPE_CHECKING:
     from io import TextIO
     from .context import CodeGenContext
@@ -773,13 +806,26 @@ class AsyncCoroCodegen:
         # to null; the catch arm sets it via std::current_exception().
         # bool pending-return flags need explicit init: NSDMI
         # = false. Value slots default-init via their own type's ctor.
+        is_gen = self._is_generator_shape()
         for fname, ftype in getattr(func, "_resumable_try_finally_fields", ()) or ():
+            # Generators always return StopIteration; no pending-return value
+            # slot is needed. The field may be allocated by the prescan when
+            # the trial build ran under the async shape -- skip it here.
+            if is_gen and fname.startswith("__finally_ret_"):
+                continue
             if ftype == "bool":
                 out.write(f"{INDENT}{ftype} {fname} = false;\n")
             else:
                 out.write(f"{INDENT}{ftype} {fname};\n")
 
         self._emit_resumable_sub_future_fields(out, func, yields)
+
+        # Generators with helper-based finallies that contain a `return` need a
+        # stop flag: the helper sets it so `__next__()` emits StopIteration
+        # instead of re-throwing (Python: `return` in `finally` suppresses exc).
+        if is_gen and any(_stmts_have_return(body)
+                          for _, body in cfg.finally_helpers):
+            out.write(f"{INDENT}bool __finally_stop = false;\n")
 
         out.write(f"\n")
 
@@ -964,12 +1010,17 @@ class AsyncCoroCodegen:
         struct_name = self._struct_name_templated(func, record_name)
 
         with self._resumable_frame_ctx(func, record_name):
+            is_gen = self._is_generator_shape()
             for helper_name, body_stmts in cfg.finally_helpers:
                 self._emit_template_header(out, func)
                 out.write(f"void {struct_name}::{helper_name}() {{\n")
                 self.ctx.indent_level = 1
+                old_in_helper = self.ctx.in_generator_finally_helper
+                if is_gen:
+                    self.ctx.in_generator_finally_helper = True
                 for stmt in body_stmts:
                     self.statements.gen_stmt(out, stmt)
+                self.ctx.in_generator_finally_helper = old_in_helper
                 self.ctx.indent_level = 0
                 out.write(f"}}\n")
 
@@ -1156,9 +1207,15 @@ class AsyncCoroCodegen:
         # Return-rewrite setup (the C++ Poll<T> type and DONE state
         # label so `return v` lowers correctly inside the state machine)
         # is the resumable-shape policy's responsibility.
+        has_finally_stop = (
+            self._is_generator_shape()
+            and any(_stmts_have_return(body) for _, body in cfg.finally_helpers))
+        old_has_finally_stop = self.ctx.generator_has_finally_stop
+        self.ctx.generator_has_finally_stop = has_finally_stop
         with self._resumable_frame_ctx(func, record_name):
             with self._resumable_return_lowering(func):
                 self._emit_state_machine(out, func, cfg)
+        self.ctx.generator_has_finally_stop = old_has_finally_stop
 
         out.write(f"}}\n")
 
@@ -1589,7 +1646,9 @@ class AsyncCoroCodegen:
                     if has_return:
                         fields_out.append(
                             (f"__finally_pending_{cur_uid}", "bool"))
-                        if ret_cpp is not None:
+                        # Generator pending returns are always StopIteration;
+                        # no value slot needed (_ret_cpp would give Iterator[T]).
+                        if ret_cpp is not None and not self._is_generator_shape():
                             fields_out.append(
                                 (f"__finally_ret_{cur_uid}", ret_cpp))
                 # `async with` desugars to a try/finally where the
@@ -1991,6 +2050,32 @@ class AsyncCoroCodegen:
                 boundary += 1
         return None
 
+    def _emit_finally_helper_call(self, out: "TextIO", indent: str,
+                                    helper_name: str) -> None:
+        """Emit `this->helper_name();`.
+
+        The stop-check (`if __finally_stop`) is NOT emitted here. Callers
+        that need to act on __finally_stop (e.g. to suppress a rethrow or
+        skip a state transition) call _emit_generator_stop_check AFTER all
+        cleanup for the current exit event has run, so that outer region
+        cleanup (with.__exit__, outer finallies) is never skipped."""
+        out.write(f"{indent}this->{helper_name}();\n")
+
+    def _emit_generator_stop_check(self, out: "TextIO", indent: str) -> None:
+        """Emit `if (this->__finally_stop) { return StopIteration; }`.
+
+        Only emitted when in generator shape and the struct has __finally_stop.
+        Call AFTER all cleanup for an exit event (region loop, catch handler)
+        has run, so outer cleanups are never skipped by an early return."""
+        if not (self._is_generator_shape() and self.ctx.generator_has_finally_stop):
+            return
+        done_state = self.ctx.generator_resumable_done_state or "S_DONE"
+        out.write(f"{indent}if (this->__finally_stop) {{\n")
+        out.write(f"{indent}{INDENT}__state = {done_state};\n")
+        out.write(f"{indent}{INDENT}return ::tpy::make_unexpected("
+                  f"::tpy::StopIteration{{}});\n")
+        out.write(f"{indent}}}\n")
+
     def _push_finally_helpers(self, helpers: list) -> int:
         """Push FinallyContext entries for each helper. Returns the
         count pushed for matching pop in a `finally:` clause."""
@@ -2000,7 +2085,7 @@ class AsyncCoroCodegen:
                 helper_name = payload
                 def _emit_finally(o: "TextIO", ind: str,
                                   n=helper_name) -> None:
-                    o.write(f"{ind}this->{n}();\n")
+                    self._emit_finally_helper_call(o, ind, n)
             else:  # "with"
                 region = payload
                 def _emit_finally(o: "TextIO", ind: str,
@@ -2098,7 +2183,9 @@ class AsyncCoroCodegen:
             self.ctx.indent_level += 1
             catch_indent = self.ctx.indent()
             # Reset the in-flight sub-future first action in catch.
-            if yield_for_case is not None:
+            # Generators have no sub-futures; only reset for async shape.
+            if (yield_for_case is not None
+                    and isinstance(yield_for_case.payload, rcfg.AwaitPayload)):
                 self._emit_sub_reset(out, catch_indent,
                                       yield_for_case.payload,
                                       yield_for_case.suspension_index)
@@ -2164,7 +2251,7 @@ class AsyncCoroCodegen:
                 self.ctx.indent_level += 1
                 inner_catch = self.ctx.indent()
                 for helper in handler_throw_finallies:
-                    out.write(f"{inner_catch}this->{helper}();\n")
+                    self._emit_finally_helper_call(out, inner_catch, helper)
                 if cfg_finally:
                     assert region.finally_entry_bb is not None
                     fe_label = case_entries[region.finally_entry_bb].cpp_name()
@@ -2173,6 +2260,7 @@ class AsyncCoroCodegen:
                     out.write(f"{inner_catch}__state = {fe_label};\n")
                     out.write(f"{inner_catch}continue;\n")
                 else:
+                    self._emit_generator_stop_check(out, inner_catch)
                     out.write(f"{inner_catch}throw;\n")
                 self.ctx.indent_level -= 1
                 out.write(f"{inner_close}}}\n")
@@ -2188,12 +2276,13 @@ class AsyncCoroCodegen:
         out.write(" catch (...) {\n")
         self.ctx.indent_level += 1
         catch_indent = self.ctx.indent()
-        if yield_for_case is not None:
+        if (yield_for_case is not None
+                and isinstance(yield_for_case.payload, rcfg.AwaitPayload)):
             self._emit_sub_reset(out, catch_indent,
                                   yield_for_case.payload,
                                   yield_for_case.suspension_index)
         for helper in extra_finallies:
-            out.write(f"{catch_indent}this->{helper}();\n")
+            self._emit_finally_helper_call(out, catch_indent, helper)
         if region.captured_exc_field is not None:
             assert region.finally_entry_bb is not None
             label = case_entries[region.finally_entry_bb].cpp_name()
@@ -2203,7 +2292,11 @@ class AsyncCoroCodegen:
             out.write(f"{catch_indent}continue;\n")
         else:
             if region.finally_helper_name is not None:
-                out.write(f"{catch_indent}this->{region.finally_helper_name}();\n")
+                self._emit_finally_helper_call(
+                    out, catch_indent, region.finally_helper_name)
+            # All cleanup done; Python `return` in finally suppresses the
+            # exception (return StopIteration rather than rethrowing).
+            self._emit_generator_stop_check(out, catch_indent)
             out.write(f"{catch_indent}throw;\n")
         self.ctx.indent_level -= 1
         out.write(f"{indent}}}")
@@ -2257,16 +2350,24 @@ class AsyncCoroCodegen:
         for region in reversed(exited):
             if isinstance(region, rcfg.TryRegion):
                 if region.finally_helper_name is not None:
-                    out.write(f"{indent}this->{region.finally_helper_name}();\n")
+                    self._emit_finally_helper_call(
+                        out, indent, region.finally_helper_name)
             elif isinstance(region, rcfg.ExceptRegion):
                 # Leaving an except handler normally: run the parent
                 # try's finally body (Python semantics).
                 if region.parent_finally is not None:
-                    out.write(f"{indent}this->{region.parent_finally}();\n")
+                    self._emit_finally_helper_call(
+                        out, indent, region.parent_finally)
             elif isinstance(region, rcfg.WithRegion):
                 # Leaving a with-region normally: __exit__(None, None, None).
                 self._emit_with_exit(out, indent, region,
                                             on_exception=False)
+        # Emit stop-check only when to_regions has no pending cleanup of its
+        # own. If to_regions still has with/__exit__ or finally helpers, the
+        # state machine will run those in subsequent states; the stop-check
+        # in those later transitions fires after ALL cleanup is done.
+        if not _regions_have_pending_cleanup(to_regions):
+            self._emit_generator_stop_check(out, indent)
 
     def _walk_inline(self, out: "TextIO", cfg: 'rcfg.CFG',
                      start_bb: int, case_entries: dict[int, _StateLabel],
@@ -2390,15 +2491,21 @@ class AsyncCoroCodegen:
         # actual return. `_emit_finally_chain` handles its own
         # indent-level save/sync from the `inner` string.
         self.statements._emit_finally_chain(out, inner)
-        done_state = self.ctx.async_coro_done_state or "S_DONE"
-        out.write(f"{inner}__state = {done_state};\n")
-        slot = stmt.pending_return_slot
-        ret_cpp = self.ctx.async_coro_return_cpp
-        if slot is None or ret_cpp == "void":
-            out.write(f"{inner}{POLL_VOID_READY_RETURN}\n")
+        if self._is_generator_shape():
+            done_state = self.ctx.generator_resumable_done_state or "S_DONE"
+            out.write(f"{inner}__state = {done_state};\n")
+            out.write(f"{inner}return ::tpy::make_unexpected("
+                      f"::tpy::StopIteration{{}});\n")
         else:
-            out.write(f"{inner}return ::tpystd::tpy::Poll<{ret_cpp}>::ready"
-                      f"(std::move(this->{slot}));\n")
+            done_state = self.ctx.async_coro_done_state or "S_DONE"
+            out.write(f"{inner}__state = {done_state};\n")
+            slot = stmt.pending_return_slot
+            ret_cpp = self.ctx.async_coro_return_cpp
+            if slot is None or ret_cpp == "void":
+                out.write(f"{inner}{POLL_VOID_READY_RETURN}\n")
+            else:
+                out.write(f"{inner}return ::tpystd::tpy::Poll<{ret_cpp}>::ready"
+                          f"(std::move(this->{slot}));\n")
         out.write(f"{indent}}}\n")
 
     def _emit_with_enter(self, out: "TextIO", indent: str,

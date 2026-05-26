@@ -171,11 +171,36 @@
   case `gen_resumable_while_else`. `await_in_for_with_else` structure
   churned (output unchanged). CFG unit `TestLoopElseStillRejected` ->
   `TestLoopElseSupported`.
-- Next: **E** try/except/finally generators (the await-specific
-  exception/finally emit -- `_emit_sub_reset` / `_emit_try_region_catches`
-  reading `payload.mode` -- must become `YieldPayload`-aware; wire
-  `gen_coro_finally_top_def` into the generator orchestration), then
-  generics + retire the gate + extract base (F), then new surface (G).
+- **Phase E DONE** (`try`/`except`/`finally` and `with` generators).
+  Three fixes:
+  - **Fix 1** (`_emit_try_region_catches`, 2 sites): `_emit_sub_reset` is
+    now guarded by `isinstance(payload, AwaitPayload)` -- generators have
+    no sub-futures, so the reset is a no-op for generator shape.
+  - **Fix 2** (`gen_coro_struct` field emit): `__finally_ret_<n>` fields
+    are skipped for generator shape (the prescan runs during the trial
+    build under the async shape and would allocate the field with the wrong
+    type; the field is suppressed at struct-emit time instead).
+  - **Fix 3** (`generator.py`): `GEN_DEFERRED_SUSPENDING_COMPOUNDS` is now
+    empty -- both `TpyTry` and `TpyWith` are handled by the resumable path.
+  - **E2 (yield in finally)**: `_make_generator_resumable_return` now
+    checks `ctx.async_pending_return_flag`; when a CFG-based finally is
+    active, it sets the pending flag and transitions to the finally entry
+    (mirroring `_make_async_return`). `_emit_async_finally_exit` has a
+    generator branch that emits `make_unexpected(StopIteration)` instead
+    of `Poll::ready`. New tests: `gen_resumable_try_except`,
+    `gen_resumable_try_finally`, `gen_resumable_with`,
+    `gen_resumable_yield_in_finally`. Async byte-identical (152/152).
+  - **E3 (`return` in helper-based finally)**: `gen_coro_finally_top_def`
+    sets `ctx.in_generator_finally_helper = True` for generator shape so
+    `return` emits `this->__finally_stop = true; return;` (void) instead of
+    `goto __done;`. Every helper call site uses `_emit_finally_helper_call`
+    which, when `ctx.generator_has_finally_stop` is set, appends a
+    `if (this->__finally_stop)` check that returns StopIteration -- correctly
+    suppressing any pending exception (Python: `return` in `finally` wins).
+    `__finally_stop` is a struct field added only when at least one helper body
+    contains a `return` (via `_stmts_have_return` scan). New test:
+    `gen_resumable_return_in_finally`. Full suite 4194 passed.
+- Next: **F** generics + retire the legacy path + extract shared base (F), then new surface (G).
 - **Phase D/E prerequisites (surfaced by /tpy-review):**
   - Borrow-form yield slot **DONE**: `_resumable_ret_type_cpp` now
     routes through `gen_generators._iter_slot_for_yield` -- borrow form

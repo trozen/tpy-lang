@@ -457,6 +457,13 @@ class StatementGenerator:
                 # Generator on the resumable frame: bare return / end ->
                 # StopIteration done, via the while/switch (no __done label).
                 return self._make_generator_resumable_return(stmt, indent)
+            if self.ctx.in_generator_finally_helper:
+                # return inside a helper-based finally body: set the stop flag
+                # and void-return; __next__() checks __finally_stop after the
+                # helper call and emits StopIteration (Python: return in finally
+                # suppresses any pending exception).
+                return (f"{indent}this->__finally_stop = true;\n"
+                        f"{indent}return;\n")
             if self.ctx.in_generator_body:
                 # Bare return in legacy goto-style generator -> StopIteration
                 return f"{indent}goto __done;\n"
@@ -3015,8 +3022,26 @@ class StatementGenerator:
         this is always a bare `return` meaning "stop iteration": walk the
         enclosing finally chain, then (if not already terminated) set the
         done state and return StopIteration. Parallels _make_async_return
-        but with the generator's `expected<T, StopIteration>` done shape."""
+        but with the generator's `expected<T, StopIteration>` done shape.
+
+        When a CFG-based finally is active (ctx.async_pending_return_flag),
+        the return is deferred: set the pending flag, walk finallies inside
+        the boundary, transition the state machine to the finally entry.
+        The finally tail will emit StopIteration once it completes."""
         out = io.StringIO()
+        pending_flag = self.ctx.async_pending_return_flag
+        if pending_flag is not None:
+            # CFG-based finally (yield-in-finally): defer the StopIteration.
+            target_state = self.ctx.async_pending_return_target_state
+            boundary = self.ctx.async_pending_return_boundary
+            assert target_state is not None
+            # No return-value slot for generators (always StopIteration).
+            out.write(f"{indent}this->{pending_flag} = true;\n")
+            terminated = self._emit_finally_chain(out, indent, stop_at=boundary)
+            if not terminated:
+                out.write(f"{indent}__state = {target_state};\n")
+                out.write(f"{indent}continue;\n")
+            return out.getvalue()
         terminated = self._emit_finally_chain(out, indent)
         if terminated:
             return out.getvalue()

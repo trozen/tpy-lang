@@ -1510,14 +1510,12 @@ def _stmts_have_suspending_compound(
         stmts: list[TpyStmt], kinds: tuple[type, ...]) -> bool:
     """True if any statement in `stmts` (recursively) whose type is in
     `kinds` carries a suspension -- i.e. it contains an `await`/`yield` or
-    is an `async for`/`async with`. The generator eligibility gate uses
-    this to defer compound kinds whose resumable lowering isn't ready yet:
-    `for` loops (the CFG's universal iter/next lowering still needs to be
-    reconciled with the legacy range/begin-end peepholes and tuple-unpack
-    frame fields) and `try`/`with` (the exception/finally emit path is
-    still await-specific -- it resets sub-futures and reads `payload.mode`,
-    neither of which a generator yield site carries). A statement of one of
-    these kinds with no suspension is plain leaf code and does not count."""
+    is an `async for`/`async with`. The generator eligibility gate passes an
+    empty `kinds` tuple (GEN_DEFERRED_SUSPENDING_COMPOUNDS = ()), so this
+    always returns False for generators now that Phase E is complete. The
+    function is kept because async still uses it for async-specific gating.
+    A statement of one of the given kinds with no suspension is plain leaf
+    code and does not count."""
     for s in stmts:
         if isinstance(s, kinds) and _stmt_has_any_suspension(s):
             return True
