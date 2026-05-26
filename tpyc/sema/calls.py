@@ -10,7 +10,7 @@ from dataclasses import dataclass, replace as dc_replace
 from typing import Callable, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NominalType, OwnType, OptionalType, TupleType, own_tuple_target, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
+    TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, own_tuple_target, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
     is_polymorphic_class_type, polymorphic_source_inner,
     IntLiteralType, resolve_int_literals,
     LiteralType, LiteralValue, LiteralTag, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
@@ -730,9 +730,14 @@ class CallAnalyzer:
                 record = self.ctx.registry.get_record_for_type(alias_type)
                 if record and record.builtin_type_key and record.get_method_overloads("__init__"):
                     return self._analyze_record_constructor(expr, record)
+                # `expanded_str()` (not str()) so the suggestion shows the
+                # structural form rather than the rejected alias name.
+                suggestion = (alias_type.expanded_str()
+                              if isinstance(alias_type, UnionType)
+                              else str(alias_type))
                 raise self.ctx.error(
                     f"Type alias '{expr.func_name}' is not callable. "
-                    f"Use {alias_type} directly, or let the type be inferred from an annotation",
+                    f"Use {suggestion} directly, or let the type be inferred from an annotation",
                     expr
                 )
 
@@ -1644,12 +1649,15 @@ class CallAnalyzer:
         return inner
 
     def _is_union_alias(self, typ: TpyType) -> bool:
-        """True if a NominalType stands in for a union alias (recursive or
-        cross-module)."""
+        """True if a placeholder type stands in for a union alias.
+
+        Covers two cases: parser-emitted `AliasRef` self-references inside
+        a recursive alias body, and bare NominalType forward-references
+        to a same-module alias that resolves to a union/optional shape."""
+        if isinstance(typ, AliasRef):
+            return True
         if not (isinstance(typ, NominalType) and not typ.is_protocol):
             return False
-        if typ.name in self.ctx.recursive_union_names:
-            return True
         alias = self.ctx.registry.get_type_alias(typ.name)
         return isinstance(alias, (UnionType, OptionalType))
 

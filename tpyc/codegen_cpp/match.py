@@ -14,6 +14,7 @@ from ..typesys import (
     LiteralType,
     unwrap_readonly, is_any_str_type,
 )
+from .variant_access import VariantAccess
 from ..parse import (
     TpyStmt, TpyExpr, TpyFieldAccess, TpyName, TpyMatch, TpyMatchCase, TpyPattern,
     TpySubscript, TpyWildcardPattern, TpyCapturePattern, TpyClassPattern,
@@ -228,9 +229,8 @@ class MatchGenerator:
         """Generate switch (__match_subject.index()) for union subjects."""
         inner = INDENT * (self.ctx.indent_level + 1)
         is_ptr_var = self._subject_is_ptr_variant(stmt.subject, subject_type)
-        # Recursive union wrapper: access .data for variant operations
-        data_sfx = ".value" if self.ctx.is_recursive_union(subject_type) else ""
-        out.write(f"{indent}switch (__match_subject{data_sfx}.index()) {{\n")
+        va = VariantAccess("__match_subject", subject_type, is_ptr_variant=is_ptr_var)
+        out.write(f"{indent}switch ({va.index_expr()}) {{\n")
 
         for i, case in enumerate(stmt.cases):
             self.ctx.emit_source_comment(out, case.loc, indent)
@@ -243,14 +243,11 @@ class MatchGenerator:
                 case_var: str | None = None
                 if pattern.keywords or case.type_facts:
                     case_var = f"__case_{i}"
-                    get_expr = f"*std::get<{idx}>(__match_subject{data_sfx})" if is_ptr_var else f"std::get<{idx}>(__match_subject{data_sfx})"
-                    out.write(f"{inner}auto& {case_var} = {get_expr};\n")
+                    out.write(f"{inner}auto& {case_var} = {va.get_by_index(idx)};\n")
                 if pattern.keywords:
                     self._gen_match_field_bindings(out, pattern, case_var, inner)
-                fallback = (f"*std::get<{idx}>(__match_subject{data_sfx})" if is_ptr_var
-                            else f"std::get<{idx}>(__match_subject{data_sfx})")
                 self._emit_binding(out, as_name, as_raw_name,
-                                   case_var or fallback, inner)
+                                   case_var or va.get_by_index(idx), inner)
                 # Narrowing
                 saved_narrow: dict[str, str | None] = {}
                 if case.type_facts:
@@ -300,8 +297,7 @@ class MatchGenerator:
                         idx = self._variant_index(subject_type, alt.resolved_type)
                         out.write(f"{indent}case {idx}: {{\n")
                         case_var = f"__case_{i}_{j}"
-                        get_expr = f"*std::get<{idx}>(__match_subject{data_sfx})" if is_ptr_var else f"std::get<{idx}>(__match_subject{data_sfx})"
-                        out.write(f"{inner}auto& {case_var} = {get_expr};\n")
+                        out.write(f"{inner}auto& {case_var} = {va.get_by_index(idx)};\n")
                         if alt.keywords:
                             self._gen_match_field_bindings(out, alt, case_var, inner)
                         saved = self._apply_narrowing(case.type_facts, case_var)
@@ -615,11 +611,11 @@ class MatchGenerator:
         inner = INDENT * (self.ctx.indent_level + 1)
         inner2 = INDENT * (self.ctx.indent_level + 2)
         is_ptr_var = self._subject_is_ptr_variant(stmt.subject, subject_type)
+        va = VariantAccess("__match_subject", subject_type, is_ptr_variant=is_ptr_var)
         # Variant indices come from the wrapper struct's std::variant ordering;
         # for narrowed recursive unions this is wider than subject_type.members.
-        is_recursive, full_members_opt = self.ctx.recursive_union_info(subject_type)
-        data_sfx = ".value" if is_recursive else ""
-        full_members = full_members_opt or subject_type.members
+        wrapper = subject_type.wrapper_info()
+        full_members = wrapper.full_members if wrapper is not None else subject_type.members
 
         # Collect arms per variant type index.
         # Each entry: (case, pattern_for_this_type, as_name, as_raw_name)
@@ -688,7 +684,7 @@ class MatchGenerator:
                 if default_arms is None:
                     default_arms = arms
 
-        out.write(f"{indent}switch (__match_subject{data_sfx}.index()) {{\n")
+        out.write(f"{indent}switch ({va.index_expr()}) {{\n")
 
         for idx in range(len(full_members)):
             if idx in default_indices:
@@ -707,9 +703,7 @@ class MatchGenerator:
             )
             case_var = f"__case_{idx}"
             if needs_extraction:
-                get_expr = (f"*std::get<{idx}>(__match_subject{data_sfx})" if is_ptr_var
-                            else f"std::get<{idx}>(__match_subject{data_sfx})")
-                out.write(f"{inner}auto& {case_var} = {get_expr};\n")
+                out.write(f"{inner}auto& {case_var} = {va.get_by_index(idx)};\n")
 
             use_scope = len(arms) > 1
             for arm_case, arm_pattern, as_name, as_raw_name in arms:
@@ -1849,10 +1843,8 @@ class MatchGenerator:
         resolved against the alias's full member tuple so they match the
         wrapper struct's variant ordering.
         """
-        members = (
-            self.ctx.recursive_union_full_members(union_type)
-            or union_type.members
-        )
+        wrapper = union_type.wrapper_info()
+        members = wrapper.full_members if wrapper is not None else union_type.members
         for i, m in enumerate(members):
             if m == member_type:
                 return i

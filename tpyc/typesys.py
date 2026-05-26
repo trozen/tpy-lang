@@ -342,6 +342,19 @@ class TpyType:
         """Return the fully qualified type name for module lookup, or None if not a module type."""
         return None
 
+    def wrapper_info(self) -> Optional["RecursiveUnionInfo"]:
+        """Return the wrapper-struct identity if this type is a recursive
+        union alias body, else None. Overridden by `UnionType`. Defaulted
+        here on the base so call sites can use it without a type guard
+        (`typ.wrapper_info()` works for any TpyType)."""
+        return None
+
+    def needs_wrapper(self) -> bool:
+        """True if this type's C++ form requires a wrapper struct
+        (recursive union alias). Defaulted on the base; overridden by
+        `UnionType`."""
+        return False
+
     def _nominal_td(self) -> Optional["TypeDef"]:
         """Return TypeDef for NominalType instances only.
 
@@ -2396,6 +2409,69 @@ def strip_template_repr(t: TpyType) -> TpyType:
 
 
 @dataclass(frozen=True)
+class RecursiveUnionInfo:
+    """Identity of a recursive union alias.
+
+    Recursive aliases (`type Tree = int | list[Tree]`) cannot be plain
+    `using` aliases in C++ because the alias name must already be a
+    complete type when its own body is parsed. Codegen emits a wrapper
+    struct instead, and this record carries the wrapper identity:
+    the alias short name, the canonical member tuple, and the defining
+    module's name.
+    """
+    name: str  # alias short name (e.g. "JsonValue")
+    full_members: tuple[TpyType, ...]  # canonical wrapper-struct variant ordering
+    origin: str  # defining module name
+
+
+@dataclass(frozen=True)
+class AliasRef(TpyType):
+    """Explicit forward reference to a type alias.
+
+    Used by the parser for self-references inside a recursive alias body
+    (`type Tree = int | list[Tree]` — the inner `Tree` becomes an
+    `AliasRef("Tree", module=...)` because the alias isn't yet in the
+    registry when its own body is parsed). Replacing the prior
+    "bare NominalType" placeholder makes downstream placeholder
+    detection a type-level `isinstance` check instead of a
+    name-set membership check against `recursive_union_names`.
+
+    Resolution: callers that need the underlying type look it up via
+    `registry.get_type_alias(name)` (current-module aliases) or via
+    the source module's `type_aliases` (cross-module aliases). The
+    C++ rendering is the alias name -- recursive aliases emit a
+    wrapper struct named identically.
+    """
+    name: str  # alias short name (e.g. "Tree")
+    module: Optional[str] = None  # defining module; None for current-module local
+
+    def to_cpp(self) -> str:
+        # Recursive-alias wrapper struct shares the alias's short name.
+        # Cross-module references go through the per-compilation
+        # native_cpp_names map (populated for imports during codegen),
+        # which already routes the name to the qualified C++ form.
+        return _native_cpp_names_view().get(self.name, self.name)
+
+    # Conservative defaults matching the prior bare-NominalType
+    # placeholder behavior. The wrapper struct itself is value-type,
+    # but reporting False here keeps `UnionType.is_value_type()` /
+    # `uses_pointer_repr()` aggregating exactly as before, so codegen
+    # branching (and the `needs_wrapper()` override that already
+    # special-cases recursive unions) is unchanged.
+    def is_value_type(self) -> bool:
+        return False
+
+    def is_send(self) -> bool:
+        return False
+
+    def is_sync(self) -> bool:
+        return False
+
+    def __str__(self) -> str:
+        return self.name
+
+
+@dataclass(frozen=True)
 class UnionType(TpyType):
     """Union of multiple types: A | B | C -> std::variant<A, B, C>.
 
@@ -2403,6 +2479,31 @@ class UnionType(TpyType):
     NoneType is always first if present (maps to std::monostate).
     """
     members: tuple[TpyType, ...]
+
+    def wrapper_info(self) -> 'RecursiveUnionInfo | None':
+        """Return the wrapper-struct identity if this union needs a C++
+        wrapper (recursive alias), else None. Reads the active compiler's
+        canonical `union_wrapper_index`; returns None outside a
+        compilation context. Looks up by full members and, when None is
+        a direct member, by the non-None subset so a narrowed-by-None
+        type still resolves to the same wrapper."""
+        compiler = get_current_compiler()
+        if compiler is None:
+            return None
+        index = compiler.union_wrapper_index
+        if not index:
+            return None
+        info = index.get(self.members)
+        if info is not None:
+            return info
+        if self.has_none_member():
+            non_none = tuple(m for m in self.members if not is_void_like_type(m))
+            return index.get(non_none)
+        return None
+
+    def needs_wrapper(self) -> bool:
+        """True if this union requires a C++ wrapper struct (recursive alias)."""
+        return self.wrapper_info() is not None
 
     def to_cpp(self) -> str:
         compiler = get_current_compiler()
@@ -2422,7 +2523,7 @@ class UnionType(TpyType):
     def is_value_type(self) -> bool:
         # Note: recursive union aliases (type Tree = int | list[Tree]) have
         # non-value members but their C++ wrapper struct IS a value type.
-        # Codegen handles this via ctx.is_recursive_union() overrides.
+        # Codegen handles this via UnionType.needs_wrapper() overrides.
         return all(m.is_value_type() for m in self.members)
 
     def is_send(self) -> bool:
@@ -2498,6 +2599,24 @@ class UnionType(TpyType):
         return False
 
     def __str__(self) -> str:
+        # Prefer the user-spelled alias name when this union body matches
+        # a registered type alias (`Shape = Circle | Rect` -> "Shape"
+        # instead of "Circle | Rect"). Falls back to the expanded form
+        # outside a compilation context or for unnamed unions.
+        compiler = get_current_compiler()
+        if compiler is not None:
+            display = compiler.union_display_names.get(self.members)
+            if display is not None:
+                return display
+        return self.expanded_str()
+
+    def expanded_str(self) -> str:
+        """Always render as `A | B | ...`, ignoring any registered alias name.
+
+        For diagnostics that suggest the structural form as an alternative
+        ("Use `A | B` directly") -- using `str()` there would print the
+        rejected alias name, contradicting the suggestion.
+        """
         parts = [
             "None" if is_void_like_type(m) else str(m)
             for m in self.members
@@ -2512,14 +2631,13 @@ class UnionType(TpyType):
 
 
 def _contains_self_reference(typ: 'TpyType', name: str) -> bool:
-    """Check if a type tree contains a NominalType self-reference to the given name.
+    """Check if a type tree contains an AliasRef self-reference to the given name.
 
-    Walks an alias body where self-references are bare parser placeholders
-    (no _module_qname). Matches on name + non-protocol shape; excludes
-    already-resolved types which carry a qname.
+    Walks an alias body where self-references are emitted by the parser
+    as `AliasRef` placeholders. Plain NominalTypes are never confused
+    with the placeholder.
     """
-    if (isinstance(typ, NominalType) and typ.name == name
-            and not typ.is_protocol and not typ._module_qname):
+    if isinstance(typ, AliasRef) and typ.name == name:
         return True
     return any(_contains_self_reference(inner, name) for inner in typ.inner_types())
 

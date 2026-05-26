@@ -326,11 +326,9 @@ class CodeGenerator:
         self.ctx.implicit_stdlib_modules = implicit_stdlib_modules or set()
         self.ctx.top_level_decls = dict(self.analyzer.ctx.top_level_decls)
         self.ctx.macro_dep_modules = set(self.analyzer.ctx.macro_dep_modules)
-        self.ctx.init_recursive_unions(
-            module.recursive_union_names,
-            module.type_aliases,
-            imported_modules=self.analyzer.registry.modules,
-        )
+        # Recursive-union wrapper metadata is populated during sema
+        # (see analyzer._register_union_wrappers); codegen just reads
+        # it via UnionType.wrapper_info() / UnionType.needs_wrapper().
         # Register recursive union aliases so record field rendering resolves
         # e.g. Box[UnionType(Lit, BinOp)] -> Box<Expr>. Local aliases use the
         # unqualified name; imported aliases are qualified to the defining
@@ -411,7 +409,7 @@ class CodeGenerator:
         self.ctx.pointer_globals = {
             name for name, typ in seen_globals.items()
             if typ and not typ.is_value_type()
-            and not self.ctx.is_recursive_union(typ)
+            and not typ.needs_wrapper()
             and name not in self.ctx.native_global_names
             and name not in self.ctx.final_globals
         }
@@ -421,7 +419,7 @@ class CodeGenerator:
             if bd.kind != SymbolKind.VARIABLE or bd.defining_module is None:
                 continue
             binding = self.ctx.analyzer.global_ns.lookup_local(name)
-            if binding and binding.type and not binding.type.is_value_type() and not self.ctx.is_recursive_union(binding.type):
+            if binding and binding.type and not binding.type.is_value_type() and not binding.type.needs_wrapper():
                 self.ctx.pointer_globals.add(name)
         # Generate protocol ordering and forward declarations
         self._generate_protocol_ordering(hpp, module, global_decls, final_decls, seen_globals)

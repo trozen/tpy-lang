@@ -9,8 +9,9 @@ from dataclasses import replace as dc_replace
 from typing import Optional
 
 from ..typesys import (
-    TpyType, TypeRegistry, NominalType, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
+    TpyType, TypeRegistry, NominalType, AliasRef, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
     NoneType, INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
+    RecursiveUnionInfo,
     FunctionInfo, ParamInfo, is_any_str_type, BIGINT, FLOAT,
     make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType, PtrType,
     is_integer_type, is_void_like_type,
@@ -18,6 +19,7 @@ from ..typesys import (
     contains_type_param,
     del_suppresses_default_ctor,
 )
+from ..compilation_context import get_current_compiler
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_docstring, is_super_del_call, is_base_init_call, ParseError
 from ..parse.nodes import RecordLinkage
@@ -310,12 +312,18 @@ class SemanticAnalyzer:
         )
         self._completed_phase = completed
 
-    def analyze(self, module: TpyModule, module_name: str = "__main__") -> None:
+    def analyze(self, module: TpyModule, module_name: str = "__main__",
+                cpp_module_name: str | None = None) -> None:
         """Analyze a module for semantic correctness.
 
         Args:
             module: The parsed module AST.
             module_name: Name of this module ("__main__" for entry point).
+            cpp_module_name: File-derived structural name used by codegen
+                for namespace identity. Defaults to `module_name`; callers
+                analyzing an entry-point module should pass the file name
+                so `union_wrapper_index.origin` matches what codegen
+                compares against. See `bind_imports` for details.
 
         Note: User module dependencies should be registered in registry.modules
         before calling this method (via register_module).
@@ -325,22 +333,32 @@ class SemanticAnalyzer:
         across all modules; for now `analyze()` is a thin wrapper that
         preserves the legacy per-module-with-publishing pipeline.
         """
-        self.bind_imports(module, module_name)
+        self.bind_imports(module, module_name, cpp_module_name=cpp_module_name)
         self.register_records_and_protocols(module)
         self.register_signatures(module)
         self.analyze_bodies(module)
         self.run_phase2_fixpoint(module)
 
-    def bind_imports(self, module: TpyModule, module_name: str = "__main__") -> None:
+    def bind_imports(self, module: TpyModule, module_name: str = "__main__",
+                     cpp_module_name: str | None = None) -> None:
         """Sub-phase 1: set module context, bind imports + bare modules.
 
         Establishes `ctx.module_name`, `ctx.parser_resolver`, the imports
         dict, star-import registrations, tpy type-alias bindings, and
         bare-module bindings. Macro registries and resolved type refs
         are expected to already be in place (compiler-driven).
+
+        `module_name` is the runtime/`__name__` flavor ("__main__" for
+        the entry point). `cpp_module_name` (when given) is the
+        file-derived structural name that codegen uses for namespace
+        identity -- needed by `_register_union_wrappers` so the
+        wrapper-index origin matches what codegen compares against.
+        Defaults to `module_name` for non-entry callers that already
+        pass the structural name.
         """
         # Set module context
         self.ctx.module_name = module_name
+        self.ctx.cpp_module_name = cpp_module_name or module_name
         self.ctx.module_cpp_namespace = getattr(module.directives, 'cpp_namespace', None) if hasattr(module, 'directives') else None
         # Builder-trace expansion (phase 7) needs to splice synthesized
         # records/functions into the module while bodies are being analyzed.
@@ -526,6 +544,7 @@ class SemanticAnalyzer:
         # Detect mutual recursion cycles and tag recursive union aliases
         self._detect_recursive_unions(module)
         self.ctx.recursive_union_names = module.recursive_union_names
+        self._register_union_wrappers(module)
 
         # The parser eagerly expands same-module union aliases, so
         # RecursiveAlias | None becomes UnionType(NoneType, member1, member2, ...)
@@ -535,6 +554,8 @@ class SemanticAnalyzer:
             self._fix_recursive_optional_annotations(module)
 
         # Transfer type aliases from parser to sema registry, validating members
+        compiler = get_current_compiler()
+        display_names = compiler.union_display_names if compiler is not None else None
         for name, (typ, loc) in module.type_aliases.items():
             self._validate_type_alias_members(name, typ, loc)
             self.ctx.registry.register_type_alias(name, typ)
@@ -542,6 +563,13 @@ class SemanticAnalyzer:
                 self.ctx.module_attributes, name,
                 SymbolKind.TYPE_ALIAS, typ,
             )
+            # Register the defining-module's canonical short name for
+            # `UnionType.__str__` so diagnostics print "Shape" instead
+            # of "Circle | Rect". First write wins via `setdefault` --
+            # the defining module's name takes precedence over any
+            # import aliasing in downstream modules.
+            if display_names is not None and isinstance(typ, UnionType):
+                display_names.setdefault(typ.members, name)
         self._advance_phase(
             self._PHASE_BIND_IMPORTS,
             self._PHASE_REGISTER_RECORDS_AND_PROTOCOLS,
@@ -1575,6 +1603,43 @@ class SemanticAnalyzer:
             for alias_name in cycle.alias_names:
                 module.recursive_union_names.add(alias_name)
 
+    def _register_union_wrappers(self, module: TpyModule) -> None:
+        """Register this module's recursive union aliases in the compiler-wide
+        `union_wrapper_index`. The index is keyed by the canonical member tuple
+        (and, when None is a direct member, also by the non-None subset) so a
+        narrowed-by-None type still resolves to the same wrapper.
+
+        Sema is the authoritative source: each module's pass writes its own
+        entries with `setdefault` (idempotent), accumulating across the
+        compilation. Downstream lookups go through `UnionType.wrapper_info()`
+        / `UnionType.needs_wrapper()`.
+        """
+        if not module.recursive_union_names:
+            return
+        compiler = get_current_compiler()
+        if compiler is None:
+            return
+        index = compiler.union_wrapper_index
+        # Use the codegen-flavor (file-derived) name -- the entry point's
+        # ctx.module_name is "__main__" for runtime semantics, but
+        # codegen filters `info.origin == self.module_name` against the
+        # file name. They must agree.
+        module_name = self.ctx.cpp_module_name
+        for alias_name in module.recursive_union_names:
+            entry = module.type_aliases.get(alias_name)
+            if entry is None:
+                continue
+            typ = entry[0]
+            if not isinstance(typ, UnionType):
+                continue
+            info = RecursiveUnionInfo(
+                name=alias_name, full_members=typ.members, origin=module_name,
+            )
+            index.setdefault(typ.members, info)
+            non_none = tuple(m for m in typ.members if not is_void_like_type(m))
+            if len(non_none) < len(typ.members):
+                index.setdefault(non_none, info)
+
     def _validate_record_method_linkage(self, module: TpyModule) -> None:
         """Check per-record linkage rules against each method:
         @native classes require stub bodies; regular classes disallow
@@ -1614,7 +1679,7 @@ class SemanticAnalyzer:
 
         The parser eagerly expands same-module aliases, so `Expr | None`
         (where `Expr = Lit | BinOp`) becomes UnionType(NoneType, Lit, BinOp).
-        This pass converts that back to OptionalType(NominalType("Expr")) by
+        This pass converts that back to OptionalType(AliasRef("Expr")) by
         matching the non-None members against the alias definitions.
 
         When the alias's own definition already includes None (e.g.
@@ -1659,7 +1724,7 @@ class SemanticAnalyzer:
             alias_name, alias_has_none = entry
             if alias_has_none:
                 return typ
-            return OptionalType(NominalType(alias_name))
+            return OptionalType(AliasRef(alias_name, module=self.ctx.module_name))
 
         def _fix_func(func: TpyFunction) -> None:
             for i, (pname, typ) in enumerate(func.params):

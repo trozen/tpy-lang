@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NominalType,
+    TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NominalType, AliasRef,
     TypeParamRef, IntLiteralType, AnyType,
     ReadonlyType, UnionType, unwrap_readonly, unwrap_qualifiers, unwrap_ref_type, make_union, union_none_narrow,
     is_protocol_type, polymorphic_source_inner,
@@ -99,13 +99,11 @@ class NarrowingTracker:
                     inner = inner.wrapped
                 if isinstance(inner, UnionType):
                     return inner
-        # Expand recursive union alias NominalType to underlying UnionType
+        # Expand recursive union alias placeholder to underlying UnionType
         # (e.g. after Optional narrowing: Tree | None -> Tree -> int | list[Tree]).
-        # Alias placeholders are bare parser NominalTypes without a TypeDef
-        # entry -- match by name against recursive_union_names directly.
-        if (isinstance(effective, NominalType)
-                and not effective.is_protocol
-                and effective.name in self.ctx.recursive_union_names):
+        # `AliasRef` is the parser-emitted self-reference inside a
+        # recursive alias body; expand by looking the alias up.
+        if isinstance(effective, AliasRef):
             alias = self.ctx.registry.get_type_alias(effective.name)
             if alias is not None:
                 return alias

@@ -369,7 +369,7 @@ class FunctionGenerator:
             # Recursive union wrapper structs are value types -- render as
             # const ref, bypassing UnionType.to_cpp_param() which would
             # generate pointer-variant form.
-            if isinstance(own, UnionType) and self.ctx.is_recursive_union(own):
+            if isinstance(own, UnionType) and own.needs_wrapper():
                 cpp_type = self.types.type_to_cpp(own)
                 if isinstance(ptype, OwnType):
                     part = f"{cpp_type}&& {cpp_pname}"
@@ -485,7 +485,7 @@ class FunctionGenerator:
                         part = f"{base_type}& {cpp_pname}"
                 else:
                     own = unwrap_readonly(ptype)
-                    if isinstance(own, UnionType) and self.ctx.is_recursive_union(own):
+                    if isinstance(own, UnionType) and own.needs_wrapper():
                         cpp_type = self.types.type_to_cpp(own)
                         if isinstance(ptype, OwnType):
                             part = f"{cpp_type}&& {cpp_pname}"
@@ -557,7 +557,7 @@ class FunctionGenerator:
         # uses the wrapper struct name -- including the qualified form for
         # cross-module aliases via types.type_to_cpp().
         if (isinstance(unwrap_ref_type(unwrap_readonly(return_type)), UnionType)
-                and self.ctx.is_recursive_union(unwrap_ref_type(unwrap_readonly(return_type)))):
+                and unwrap_ref_type(unwrap_readonly(return_type)).needs_wrapper()):
             ret = self.types.type_to_cpp(unwrap_ref_type(unwrap_readonly(return_type)))
         elif const:
             ret = return_type.to_cpp_return_const()
@@ -568,7 +568,7 @@ class FunctionGenerator:
             # (where ret is T&), use val_or_ref<T> which stores by pointer.
             inner = unwrap_ref_type(return_type).to_cpp()
             if (not return_type.is_value_type() and not isinstance(return_type, VoidType)
-                    and not self.ctx.is_recursive_union(return_type)):
+                    and not return_type.needs_wrapper()):
                 inner = f"::tpy::val_or_ref<{inner}>"
             return f"std::expected<{inner}, {cpp_error}>"
         return ret
@@ -1751,7 +1751,7 @@ class FunctionGenerator:
         self.ctx.emit_source_comment(out, stmt.loc)
         var_type = self._resolve_global_type(stmt)
         cpp_type = self._global_cpp_type(var_type, stmt)
-        is_value = var_type.is_value_type() or self.ctx.is_recursive_union(var_type)
+        is_value = var_type.is_value_type() or var_type.needs_wrapper()
         if is_value:
             # C++ primitives need explicit zero-init; class types (BigInt, string_view) don't
             init = "{}" if (is_primitive_type(var_type) or isinstance(var_type, PtrType)) else ""
@@ -1763,7 +1763,7 @@ class FunctionGenerator:
         """Generate an extern declaration for a global variable in header file."""
         var_type = self._resolve_global_type(stmt)
         cpp_type = self._global_cpp_type(var_type, stmt)
-        is_value = var_type.is_value_type() or self.ctx.is_recursive_union(var_type)
+        is_value = var_type.is_value_type() or var_type.needs_wrapper()
         if is_value:
             out.write(f"extern {cpp_type} {stmt.name};\n")
         else:
@@ -1835,7 +1835,7 @@ class FunctionGenerator:
             self.ctx.var_types = {name: typ for name, typ in global_types.items() if typ is not None}
             self.ctx.pointer_locals = {
                 name for name, typ in global_types.items()
-                if typ and not typ.is_value_type() and not self.ctx.is_recursive_union(typ)
+                if typ and not typ.is_value_type() and not typ.needs_wrapper()
             }
         self.ctx.slots.reset(global_scope=True)
         scan = self.ctx.analyzer.top_level_scan_result

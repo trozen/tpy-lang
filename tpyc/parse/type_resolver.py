@@ -19,7 +19,7 @@ import ast
 from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
-    TpyType, NominalType, PtrType, OwnType, ReadonlyType, AutoReadonlyType,
+    TpyType, NominalType, AliasRef, PtrType, OwnType, ReadonlyType, AutoReadonlyType,
     AutoOwnType, FinalType, ClassVarType, OptionalType, VoidType, UnionType, TupleType,
     CallableType, make_union, make_fn_type,
     TypeParamRef, TypeParamKind, LiteralType, LiteralTag,
@@ -721,10 +721,11 @@ class TypeResolver:
         """
         parser = self._parser
         # Self-reference in a recursive type alias (e.g. list[JsonValue] inside
-        # the definition of JsonValue). Return a NominalType placeholder that
-        # survives inside container types and is detected post-parse.
+        # the definition of JsonValue). Return an AliasRef placeholder that
+        # survives inside container types and is detected by an
+        # `isinstance(typ, AliasRef)` check rather than a name-set lookup.
         if self._pending_alias is not None and name == self._pending_alias:
-            return NominalType(name)
+            return AliasRef(name, module=parser._public_module())
         # Resolve short nested type names: Kind -> Message.Kind
         if name in parser._nested_type_scope:
             dotted = parser._nested_type_scope[name]

@@ -616,6 +616,13 @@ class SemanticContext:
 
     # --- Cross-module support ---
     module_name: str = "__main__"
+    # File-derived module name used by codegen for namespaces. Identical to
+    # `module_name` for non-entry modules; for the entry point, codegen uses
+    # the file name while `module_name` stays "__main__" for runtime
+    # `__name__` semantics. Set alongside `module_name` in `bind_imports`;
+    # consumed by `_register_union_wrappers` so the wrapper-index origin
+    # matches the comparison codegen does against its own `module_name`.
+    cpp_module_name: str = "__main__"
     module_cpp_namespace: str | None = None  # from # tpy: cpp_namespace directive
     # Reference to the current module's `CompiledModule.exports`. Set by
     # `Compiler._finalize_declarations` so the registration paths can
@@ -674,31 +681,18 @@ class SemanticContext:
     # No other sema code should touch this; the main parser ->
     # TpyType binding happens via `parse.resolve_refs.resolve_refs`.
     parser_resolver: 'TypeResolver | None' = None
-    # Reverse map: frozenset(members) -> alias name (built lazily)
-    _recursive_union_members: dict[frozenset, str] | None = None
 
     def is_recursive_union(self, typ: 'TpyType') -> bool:
         """Check if a union type is a recursive union alias.
 
-        Recognizes both aliases declared in the current module and those
-        imported transitively from other modules.
+        Delegates to `UnionType.wrapper_info()`, which reads the
+        compiler-wide `union_wrapper_index` populated by sema's
+        `_register_union_wrappers` (per module, accumulating across
+        the compilation).
         """
         if not isinstance(typ, UnionType):
             return False
-        if self._recursive_union_members is None:
-            self._recursive_union_members = {}
-            for name in self.recursive_union_names:
-                alias = self.registry.get_type_alias(name)
-                if alias is not None and isinstance(alias, UnionType):
-                    self._recursive_union_members[frozenset(alias.members)] = name
-            for module_info in self.registry.modules.values():
-                for alias_name in module_info.recursive_union_names:
-                    alias = module_info.type_aliases.get(alias_name)
-                    if isinstance(alias, UnionType):
-                        self._recursive_union_members[frozenset(alias.members)] = alias_name
-        if not self._recursive_union_members:
-            return False
-        return frozenset(typ.members) in self._recursive_union_members
+        return typ.needs_wrapper()
 
     # --- Control flow (persistent) ---
     in_comprehension: int = 0

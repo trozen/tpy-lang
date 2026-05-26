@@ -467,7 +467,7 @@ class StatementAnalyzer:
                         if (isinstance(elem_stripped, OptionalType) and not elem_stripped.inner.is_value_type()):
                             should_warn = True
                         elif (isinstance(elem_stripped, UnionType) and elem_stripped.uses_pointer_repr()
-                              and not self.ctx.is_recursive_union(elem_stripped)):
+                              and not elem_stripped.needs_wrapper()):
                             should_warn = True
                 if should_warn:
                     if self.ctx.is_type_non_copyable(et):
@@ -3659,7 +3659,7 @@ class StatementAnalyzer:
             is_compound_ref = (
                 (isinstance(stripped_value, OptionalType) and not stripped_value.inner.is_value_type())
                 or (isinstance(stripped_value, UnionType) and stripped_value.uses_pointer_repr()
-                    and not self.ctx.is_recursive_union(stripped_value))
+                    and not stripped_value.needs_wrapper())
             )
             # Ptr[T] target takes the address of the source (`_a(&a)`), no copy.
             target_is_ptr = isinstance(unwrap_qualifiers(target_type), PtrType)

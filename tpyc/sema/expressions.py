@@ -412,7 +412,7 @@ class ExpressionAnalyzer:
             # Recursive union type with a list member: propagate the union
             # as element hint so nested list literals infer as list[Tree]
             # (e.g. x: Tree = [1, [3, 4]] where type Tree = int | list[Tree])
-            if isinstance(inner_hint, UnionType) and self.ctx.is_recursive_union(inner_hint):
+            if isinstance(inner_hint, UnionType) and inner_hint.needs_wrapper():
                 list_member = _find_list_member(inner_hint)
                 if list_member is not None:
                     result = self._analyze_array_literal(expr, inner_hint)
@@ -471,7 +471,7 @@ class ExpressionAnalyzer:
                 result = self._analyze_dict_literal(expr, inner_hint.type_args[0], inner_hint.type_args[1])
                 self.ctx.set_expr_type(expr, result)
                 return result
-            if isinstance(inner_hint, UnionType) and self.ctx.is_recursive_union(inner_hint):
+            if isinstance(inner_hint, UnionType) and inner_hint.needs_wrapper():
                 dict_member = _find_dict_member(inner_hint)
                 if dict_member is not None:
                     result = self._analyze_dict_literal(expr, dict_member.type_args[0], inner_hint)

@@ -12,7 +12,7 @@ from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType,
-    NominalType, PtrType, OwnType, OptionalType, NoneType, AnyType, make_array,
+    NominalType, AliasRef, PtrType, OwnType, OptionalType, NoneType, AnyType, make_array,
     PendingListType, ListRepeatType,
     TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_own, unwrap_qualifiers, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     TupleType, CallableType,
@@ -30,6 +30,7 @@ from ..type_def_registry import (
     protocol_info_of,
 )
 from ..symbol_binding import lookup_qualified, lookup_imported, resolve_definer, SymbolKind
+from .variant_access import VariantAccess
 
 
 _CMP_HELPER: Final = {
@@ -321,14 +322,15 @@ class ExpressionGenerator:
             return None
         arg_type = self.ctx.get_expr_type(arg)
         cpp_decl = self._get_cpp_declared_type(arg)
-        # Recursive union alias: NominalType("Expr") and UnionType(members) alias
-        # the same C++ wrapper struct. When ptype is the expanded union and arg
-        # carries the unexpanded NominalType (reverse source ordering -- classes
-        # defined before alias), treat them as the same already-variant value.
+        # Recursive union alias: AliasRef("Expr") and UnionType(members)
+        # alias the same C++ wrapper struct. When ptype is the expanded
+        # union and arg carries the unexpanded AliasRef self-reference,
+        # treat them as the same already-variant value.
+        ptype_wrapper = ptype_union.wrapper_info()
         arg_is_same_recursive = (
-            isinstance(arg_type, NominalType)
-            and arg_type.name in self.ctx.recursive_union_names
-            and self.ctx.recursive_union_name(ptype_union) == arg_type.name
+            isinstance(arg_type, AliasRef)
+            and ptype_wrapper is not None
+            and ptype_wrapper.name == arg_type.name
         )
         already_union = (
             isinstance(arg_type, UnionType)
@@ -1663,10 +1665,9 @@ class ExpressionGenerator:
                 val = self.gen_expr(union_expr)
                 if self.ctx.is_indirect_name(union_expr):
                     val = f"(*{val})"
-                # Recursive union wrapper: access .data for variant operations
                 union_type = left_type if isinstance(left_type, UnionType) else right_type
-                val = self.ctx.variant_data_expr(val, union_type)
-                check = f"std::holds_alternative<std::monostate>({val})"
+                va = VariantAccess(val, union_type, is_ptr_variant=False)
+                check = va.holds("std::monostate")
                 if expr.op == "is":
                     return f"({check})"
                 else:
@@ -2223,17 +2224,15 @@ class ExpressionGenerator:
                 continue
             # Pointer-variant unions: *std::get<T*>(var) or *std::get<const T*>(var)
             if var_name in self.ctx.ptr_variant_locals:
-                const_pfx = "const " if var_name in self.ctx.const_indirect_locals else ""
-                result[var_name] = f"(*std::get<{const_pfx}{cpp_type}*>({var_ref}))"
+                is_const = var_name in self.ctx.const_indirect_locals
+                va = VariantAccess(var_ref, var_decl, is_ptr_variant=True, is_const=is_const)
             else:
-                # Recursive union wrapper: access .data for variant operations.
+                # Recursive union wrapper: access .value for variant operations.
                 # Skip if already narrowed (narrowed var is concrete, not a wrapper).
-                if var_name not in self.ctx.narrowed_vars:
-                    var_decl_type = self.ctx.var_types.get(var_name)
-                    get_ref = self.ctx.variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
-                else:
-                    get_ref = var_ref
-                result[var_name] = f"std::get<{cpp_type}>({get_ref})"
+                indirection_typ = (self.ctx.var_types.get(var_name)
+                                   if var_name not in self.ctx.narrowed_vars else None)
+                va = VariantAccess(var_ref, indirection_typ, is_ptr_variant=False)
+            result[var_name] = va.get_by_type(cpp_type)
         return result
 
     def _extract_isinstance_facts(
@@ -2503,18 +2502,15 @@ class ExpressionGenerator:
                     return checks[0]
                 return "(" + " || ".join(checks) + ")"
             if orig_var in self.ctx.ptr_variant_locals:
-                const_pfx = "const " if orig_var in self.ctx.const_indirect_locals else ""
-                checks = [
-                    f"std::holds_alternative<{const_pfx}{self.types.type_to_cpp(m)}*>({var_ref})"
-                    for m in check_members
-                ]
+                is_const = orig_var in self.ctx.const_indirect_locals
+                va = VariantAccess(var_ref, None, is_ptr_variant=True, is_const=is_const)
             else:
                 var_decl_type = self.ctx.var_types.get(orig_var)
-                get_ref = self.ctx.variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
-                checks = [
-                    f"std::holds_alternative<{self.types.type_to_cpp(m)}>({get_ref})"
-                    for m in check_members
-                ]
+                va = VariantAccess(var_ref, var_decl_type, is_ptr_variant=False)
+            checks = [
+                va.holds(self.types.type_to_cpp(m))
+                for m in check_members
+            ]
             if len(checks) == 1:
                 return checks[0]
             return "(" + " || ".join(checks) + ")"
@@ -3537,14 +3533,15 @@ class ExpressionGenerator:
             cpp_type = self.types.type_to_cpp(narrowed_type)
             # Pointer-variant unions: *std::get<T*>(var) or *std::get<const T*>(var)
             if expr_obj.name in self.ctx.ptr_variant_locals:
-                const_pfx = "const " if expr_obj.name in self.ctx.const_indirect_locals else ""
-                return f"(*std::get<{const_pfx}{cpp_type}*>({obj_code}))", True
+                is_const = expr_obj.name in self.ctx.const_indirect_locals
+                va = VariantAccess(obj_code, None, is_ptr_variant=True, is_const=is_const)
+                return va.get_by_type(cpp_type), True
             if self.ctx.is_indirect_name(expr_obj):
-                return f"std::get<{cpp_type}>((*{expr_obj.name}))", True
-            # Recursive union wrapper: access .data for variant operations
+                va = VariantAccess(f"(*{expr_obj.name})", None, is_ptr_variant=False)
+                return va.get_by_type(cpp_type), True
             var_decl_type = self.ctx.var_types.get(expr_obj.name)
-            get_ref = self.ctx.variant_data_expr(obj_code, var_decl_type) if var_decl_type else obj_code
-            return f"std::get<{cpp_type}>({get_ref})", True
+            va = VariantAccess(obj_code, var_decl_type, is_ptr_variant=False)
+            return va.get_by_type(cpp_type), True
         return obj_code, False
 
     def _native_field_cpp_name(self, obj_type, field_name: str) -> str | None:
@@ -3938,10 +3935,9 @@ class ExpressionGenerator:
                 if isinstance(et, (OptionalType, UnionType, TupleType, AnyType)) or is_str_type(et):
                     elem_target = et
                 # Recursive union element type: pass it as elem_target so nested
-                # array literals trigger union_prefix. Alias placeholders are
-                # bare NominalType (no TypeDef entry) -- match by name directly.
-                elif (isinstance(et, NominalType) and not et.is_protocol
-                        and et.name in self.ctx.recursive_union_names):
+                # array literals trigger union_prefix. The placeholder is an
+                # AliasRef emitted by the parser; expand it to the union body.
+                elif isinstance(et, AliasRef):
                     alias = self.ctx.analyzer.registry.get_type_alias(et.name)
                     if alias is not None:
                         elem_target = alias
@@ -4036,9 +4032,7 @@ class ExpressionGenerator:
             expr_type = self.ctx.get_expr_type(expr)
             if is_list(expr_type):
                 et = expr_type.type_args[0]
-                # Alias placeholder (bare NominalType) for recursive union.
-                if (isinstance(et, NominalType) and not et.is_protocol
-                        and et.name in self.ctx.recursive_union_names):
+                if isinstance(et, AliasRef):
                     return f"{self.types.type_to_cpp(expr_type)}{literal}"
         return literal
 
@@ -4056,9 +4050,7 @@ class ExpressionGenerator:
         if isinstance(typ, UnionType):
             return any(self._is_cpp_noncopyable(m) for m in typ.members
                        if not isinstance(m, (NoneType, VoidType)))
-        # Alias placeholder (bare NominalType) for recursive union.
-        if (isinstance(typ, NominalType) and not typ.is_protocol
-                and typ.name in self.ctx.recursive_union_names):
+        if isinstance(typ, AliasRef):
             alias = self.ctx.analyzer.registry.get_type_alias(typ.name)
             if isinstance(alias, UnionType):
                 return any(self._is_cpp_noncopyable(m) for m in alias.members

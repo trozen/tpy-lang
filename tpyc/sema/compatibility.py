@@ -13,7 +13,7 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, UnknownElementType,
     LiteralType, LiteralValue, LiteralTag, FLOAT, make_list, make_dict, make_set,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
-    NominalType, TypeParamRef, NoneType, AnyType, OptionalType, UnionType,
+    NominalType, AliasRef, TypeParamRef, NoneType, AnyType, OptionalType, UnionType,
     is_protocol_type, is_dyn_protocol, unwrap_own, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     CallableType, is_fn_type, RefType, unwrap_ref_type,
@@ -347,27 +347,22 @@ class TypeCompatibility:
         return result
 
     def _resolve_recursive_refs(self, typ: TpyType) -> TpyType:
-        """Resolve NominalType references to recursive union aliases.
+        """Resolve AliasRef self-references to recursive union aliases.
 
-        Handles both bare NominalType("Tree") and NominalType nested inside
-        containers (e.g. list[NominalType("Tree")] -> list[UnionType(...)]).
+        Handles both bare AliasRef("Tree") and AliasRef nested inside
+        containers (e.g. list[AliasRef("Tree")] -> list[UnionType(...)]).
         Treats recursive union types as opaque (does not recurse into their
         members) to prevent infinite expansion of self-referencing placeholders.
         """
-        # Recursive-union alias placeholders are bare NominalType (no qname)
-        # emitted by the parser; they never carry a TypeDef entry, so the
-        # redefined is_user_record would return False here. Match by name
-        # against recursive_union_names directly.
-        if isinstance(typ, NominalType) and not typ.is_protocol:
-            if typ.name in self.ctx.recursive_union_names:
-                alias = self.ctx.registry.get_type_alias(typ.name)
-                if alias is not None:
-                    return alias
+        if isinstance(typ, AliasRef):
+            alias = self.ctx.registry.get_type_alias(typ.name)
+            if alias is not None:
+                return alias
         if not self.ctx.recursive_union_names:
             return typ
-        # Don't recurse into recursive union aliases -- their NominalType
+        # Don't recurse into recursive union aliases -- their AliasRef
         # placeholders are structural and must not be expanded.
-        if isinstance(typ, UnionType) and self.ctx.is_recursive_union(typ):
+        if isinstance(typ, UnionType) and typ.needs_wrapper():
             return typ
         inner = typ.inner_types()
         if not inner:
@@ -1536,9 +1531,12 @@ class TypeCompatibility:
                 continue
             if not isinstance(a_arg, TpyType) or not isinstance(e_arg, TpyType):
                 return False
-            # Resolve NominalType("Expr") -> union type alias (recursive only)
-            e_resolved = self._resolve_recursive_refs(e_arg) if isinstance(e_arg, NominalType) else e_arg
-            if isinstance(e_resolved, UnionType) and self.ctx.is_recursive_union(e_resolved):
+            # Resolve recursive-alias placeholders (AliasRef from parser, or
+            # forward NominalType refs from cross-module aliases) into their
+            # underlying UnionType so the union-coercion path below applies.
+            e_resolved = (self._resolve_recursive_refs(e_arg)
+                          if isinstance(e_arg, (NominalType, AliasRef)) else e_arg)
+            if isinstance(e_resolved, UnionType) and e_resolved.needs_wrapper():
                 # Container type-arg slot is storage form (the container stores
                 # values, no address-take fires for pointer-repr Optional).
                 result = self._check_compat(

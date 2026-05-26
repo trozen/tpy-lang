@@ -34,6 +34,8 @@ class _TestCompilerContext:
     )
     protocol_modules: dict[str, str] = field(default_factory=dict)
     union_alias_names: dict[Any, str] = field(default_factory=dict)
+    union_display_names: dict[Any, str] = field(default_factory=dict)
+    union_wrapper_index: dict[Any, Any] = field(default_factory=dict)
     native_cpp_names: dict[str, str] = field(default_factory=dict)
     dynamic_type_defs: dict[str, Any] = field(default_factory=dict)
     dynamic_created_qnames: set[str] = field(default_factory=set)

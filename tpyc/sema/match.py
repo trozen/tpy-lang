@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType,
-    NominalType,
+    NominalType, AliasRef,
     NoneType, OptionalType, UnionType, PendingStrType,
     LiteralType, LiteralValue, LiteralTag, TypeParamRef,
     unwrap_readonly, unwrap_ref_type,
@@ -63,12 +63,9 @@ class MatchAnalyzer:
         """Analyze a match/case statement."""
         subject_type = self.expr.analyze_expr(stmt.subject)
         effective_type = unwrap_ref_type(unwrap_readonly(subject_type))
-        # Expand recursive union alias NominalType to its underlying UnionType
-        # (bare parser placeholder; no TypeDef entry, so is_user_record is
-        # False post-migration -- filter on name + non-protocol instead).
-        if (isinstance(effective_type, NominalType)
-                and not effective_type.is_protocol
-                and effective_type.name in self.ctx.recursive_union_names):
+        # Expand recursive union alias placeholder to its underlying
+        # UnionType so match dispatch sees the variant arms.
+        if isinstance(effective_type, AliasRef):
             alias = self.ctx.registry.get_type_alias(effective_type.name)
             if alias is not None:
                 effective_type = alias

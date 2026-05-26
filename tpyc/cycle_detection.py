@@ -67,8 +67,12 @@ def _walk(
     expanded_aliases: dict[frozenset[TpyType], str] | None,
     expanding: set[str],
 ) -> None:
-    from .typesys import NominalType, UnionType
+    from .typesys import NominalType, AliasRef, UnionType
     from .type_def_registry import record_info_of
+    # Recursive-alias self-reference: parser-emitted AliasRef placeholder.
+    if isinstance(typ, AliasRef) and typ.name in target_names:
+        out.append((typ.name, inside_indirection))
+        return
     if isinstance(typ, NominalType) and typ.name in target_names and not typ.is_protocol:
         out.append((typ.name, inside_indirection))
         return

@@ -11,7 +11,7 @@ from typing import Callable, TextIO, TYPE_CHECKING
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, PtrType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
-    NoneType, NominalType, AnyType, STR, BYTES, TupleType, VoidType,
+    NoneType, NominalType, AliasRef, AnyType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type,
     polymorphic_source_is_pointer, polymorphic_subclass_into_optional,
     is_polymorphic_subclass_fact, ALL_FIXED_INTS,
@@ -39,6 +39,7 @@ from ..sema.context import PENDING_CONTAINER_TYPES
 from ..sema.literal_utils import literal_value_from_expr
 from ..sema.registration import build_record_self_type
 from ..typesys import view_family_for_type
+from .variant_access import VariantAccess
 from ..diagnostics import SemanticError
 from ..liveness import stmts_terminate
 
@@ -506,7 +507,7 @@ class StatementGenerator:
                 # Recursive union wrapper struct: `return None` constructs the
                 # monostate variant (NoneType is one of the wrapper's members).
                 if isinstance(ret_value, TpyNoneLiteral):
-                    if self.ctx.is_recursive_union(unwrap_qualifiers(ret_type)):
+                    if unwrap_qualifiers(ret_type).needs_wrapper():
                         return self._make_return(indent, "std::monostate{}")
                 # Pointer-variant union return: return variant<T*...>
                 if self.ctx.is_ptr_variant_union(ret_type):
@@ -699,7 +700,7 @@ class StatementGenerator:
         if self.ctx.is_ptr_variant_union(check):
             return False
         # Recursive union wrapper structs are value types
-        if self.ctx.is_recursive_union(check):
+        if check.needs_wrapper():
             return False
         return True
 
@@ -2413,16 +2414,15 @@ class StatementGenerator:
             var_decl_type = self.ctx.var_types.get(var_name)
             is_const = (var_name in self.ctx.current_func_params
                         and var_decl_type is not None
-                        and (var_decl_type.is_value_type() or self.ctx.is_recursive_union(var_decl_type)))
+                        and (var_decl_type.is_value_type() or var_decl_type.needs_wrapper()))
             qualifier = "const auto&" if is_const else "auto&"
             # Pointer-variant unions: *std::get<T*>(var) or *std::get<const T*>(var)
             if var_name in self.ctx.ptr_variant_locals:
-                const_pfx = "const " if var_name in self.ctx.const_indirect_locals else ""
-                out.write(f"{inner_indent}{qualifier} {local_name} = *std::get<{const_pfx}{cpp_type}*>({var_ref});\n")
+                is_const = var_name in self.ctx.const_indirect_locals
+                va = VariantAccess(var_ref, None, is_ptr_variant=True, is_const=is_const)
             else:
-                # Recursive union wrapper: access .data for variant operations
-                get_ref = self.ctx.variant_data_expr(var_ref, var_decl_type) if var_decl_type else var_ref
-                out.write(f"{inner_indent}{qualifier} {local_name} = std::get<{cpp_type}>({get_ref});\n")
+                va = VariantAccess(var_ref, var_decl_type, is_ptr_variant=False)
+            out.write(f"{inner_indent}{qualifier} {local_name} = {va.get_by_type(cpp_type, lvalue=True)};\n")
             saved[var_name] = self.ctx.narrowed_vars.get(var_name)
             self.ctx.narrowed_vars[var_name] = local_name
             if persistent:
@@ -4111,11 +4111,22 @@ class StatementGenerator:
             then_body = last.then_body
             if then_body and isinstance(then_body[-1], (TpyReturn, TpyRaise)):
                 registry = self.ctx.analyzer.registry
+                def _recursive_union_shape(vt: TpyType | None) -> bool:
+                    """True if vt's storage form is a recursive-union wrapper
+                    struct. Handles the post-`_fix_recursive_optional_annotations`
+                    shape `OptionalType(AliasRef(name))` -- declared `Tree | None`
+                    is rewritten to that form, whose `needs_wrapper()` is False
+                    despite the underlying alias being a wrapper struct."""
+                    if vt is None:
+                        return False
+                    if vt.needs_wrapper():
+                        return True
+                    return isinstance(vt, OptionalType) and isinstance(vt.inner, AliasRef)
                 post_facts = {
                     k: v for k, v in last.else_type_facts.items()
-                    if self.ctx.is_recursive_union(self.ctx.var_types.get(k))
-                       or is_polymorphic_subclass_fact(
-                           self.ctx.lookup_var_type(k), v, registry)
+                    if (_recursive_union_shape(self.ctx.var_types.get(k))
+                        or is_polymorphic_subclass_fact(
+                            self.ctx.lookup_var_type(k), v, registry))
                 }
                 if post_facts:
                     self._emit_isinstance_extractions(

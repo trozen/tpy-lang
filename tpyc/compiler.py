@@ -42,6 +42,7 @@ from .typesys import (
     TpyType, INT32, INT64, BIGINT, VOID, NominalType,
     RecordInfo, FunctionInfo, ProtocolInfo,
     OwnType, OptionalType, UnionType, TupleType, PtrType, RefType, ReadonlyType,
+    RecursiveUnionInfo,
     is_fn_type, unwrap_ref_type, is_protocol_type, is_protocol_union,
     clear_all_compilation_state, BUILTIN_RETURN_EXCEPTIONS,
 )
@@ -1103,6 +1104,15 @@ class Compiler:
         self.return_exception_names: set[str] = set(BUILTIN_RETURN_EXCEPTIONS)
         self.protocol_modules: dict[str, str] = {}
         self.union_alias_names: dict[tuple[TpyType, ...], str] = {}
+        # Canonical short name per union body (defining-module perspective).
+        # Populated by sema's alias registration; consumed by
+        # `UnionType.__str__` so diagnostics show the user-spelled name
+        # (`Shape`) instead of the expanded form (`Circle | Rect`).
+        # Separate from `union_alias_names` because that dict is keyed on
+        # per-codegen-module perspective (local import aliases override
+        # the canonical name) and gets cleared between codegen passes.
+        self.union_display_names: dict[tuple[TpyType, ...], str] = {}
+        self.union_wrapper_index: dict[tuple[TpyType, ...], RecursiveUnionInfo] = {}
         self.native_cpp_names: dict[str, str] = {}
         self.dynamic_type_defs: dict[str, _TypeDef] = {}
         self.dynamic_created_qnames: set[str] = set()
@@ -1166,6 +1176,8 @@ class Compiler:
         self.include_path_map = {}
         self.native_cpp_names = {}
         self.union_alias_names = {}
+        self.union_display_names = {}
+        self.union_wrapper_index = {}
         self.protocol_modules = {}
         self.return_exception_names = set(BUILTIN_RETURN_EXCEPTIONS)
         clear_all_compilation_state()
@@ -2767,7 +2779,8 @@ class Compiler:
         # Run the three declaration-time sub-phases. Body sema (sub-phases 4
         # and 5) is deferred to `_analyze_bodies`.
         try:
-            analyzer.bind_imports(compiled.ast, module_name=module_name)
+            analyzer.bind_imports(compiled.ast, module_name=module_name,
+                                  cpp_module_name=compiled.name)
             analyzer.register_records_and_protocols(compiled.ast)
             analyzer.register_signatures(compiled.ast)
         except SemanticError as e:
