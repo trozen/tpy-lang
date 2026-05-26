@@ -56,6 +56,16 @@ The orchestrator passes you a base ref and the changed-file list.
 - Comments explaining WHAT the code does (should explain WHY, and only when non-obvious)
 - Unicode in `tpyc/` Python sources (ASCII-only rule)
 
+## False-positive discipline
+
+Before surfacing a finding, rule out these false positives -- do NOT flag:
+- **Pre-existing** -- doc drift not introduced by this diff. Confirm with `git blame -- <file>` or `git show <BASE>:<file>`; if the doc was already stale before this change, omit it, unless the diff makes it materially more wrong (then note it once, plainly).
+- **Intentional** -- a doc state that's clearly correct for the new behavior.
+- **Nitpicks** -- "could document this better" without naming the specific missing update.
+- **Out of scope** -- concerns another specialist owns (see Scope).
+
+If you still cannot verify a finding is real after this check, keep it but append ` (low confidence)` so the aggregator can weigh it.
+
 ## Output format
 
 Be terse. One bullet per finding, a single short sentence. Do NOT include code excerpts or a separate "Fix:" line -- the user will ask if they want details or a suggested fix. Include `file:line` or section only when the issue is anchored to a specific location the user needs to find; generic findings have no line reference.

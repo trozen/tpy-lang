@@ -1,6 +1,6 @@
 ---
 name: tpy-review
-description: Run a parallel multi-agent review of TurboPython compiler changes. Dispatches specialist reviewers (codegen, architecture, tests, safety, runtime, docs) in parallel and aggregates findings into a unified report.
+description: Run a parallel multi-agent review of TurboPython compiler changes. Dispatches specialist reviewers (codegen, architecture, tests, safety, runtime, docs, conventions) in parallel and aggregates findings into a unified report.
 disable-model-invocation: true
 ---
 
@@ -55,6 +55,7 @@ Skip a specialist when its scope is empty:
 | `test-coverage` | always (cheap; catches missing tests for compiler changes) |
 | `safety-model` | any of `tpyc/sema/`, `tpyc/typesys.py`, `tpyc/coercions.py`, `tpyc/codegen_cpp/`, or `runtime/cpp/` touched |
 | `runtime-cpp-correctness` | `runtime-cpp` non-empty |
+| `convention-compliance` | always (cheap; checks the diff against CLAUDE.md's written rules across all changed files) |
 | `docs-sync` | always (cheap) |
 
 ### 4. Fan out specialists IN PARALLEL
@@ -84,6 +85,7 @@ Once all specialists return, synthesize a unified report. Be terse -- one bullet
 - **Dedupe**: when multiple specialists flag the same `file:line` with related issues, merge into one entry crediting all contributing specialists.
 - **Group by severity**: Critical first, then Warning, then Suggestion.
 - **Filter noise**: if Suggestions total > 10 across all specialists, drop the lowest-signal ones (vague, duplicative of a Warning at the same location).
+- **Carry confidence tags**: specialists may append ` (low confidence)` to a finding they couldn't fully verify. Keep the finding but preserve the tag -- it feeds the meta-review's confidence pass (step 8). Don't silently drop low-confidence findings here.
 - **Note clean specialists**: list them explicitly so the user sees what was checked.
 - **Minimize code references**: include `file:line` only when the user needs it to find the issue. Generic findings don't need a line reference.
 
@@ -153,18 +155,28 @@ Trigger meta-review when ANY of these holds:
 
 State the trigger reason in one short line ("Meta-review: triggered (Critical present)" or "Meta-review: skipped (routine)"). Note: routine compiler work routinely touches `tpyc/sema/`, `tpyc/codegen_cpp/`, and dispatches several specialists, so don't gate on those alone -- gate on signal in the findings themselves.
 
-When triggered, dispatch ONE fresh-context `general-purpose` Agent with the *aggregated report + drafted recommendation list + diffstat (`git diff <BASE> --stat`) + the file-bucket classification from step 2*. Do NOT pass the raw diff. The diffstat and file list let the agent spot-check severity claims and "hallucinated issue" suspicions without re-discovering scope.
+When triggered, dispatch ONE fresh-context `general-purpose` Agent with the *aggregated report (findings, with any `(low confidence)` tags) + drafted recommendation list + diffstat (`git diff <BASE> --stat`) + the file-bucket classification from step 2*. Do NOT pass the raw diff. The diffstat and file list let the agent spot-check severity claims and "hallucinated issue" suspicions without re-discovering scope.
 
-Prompt it to flag:
+Prompt it to do two things:
+
+**(a) Confidence-score each finding.** Assign every finding a confidence using this rubric, then act on it:
+
+- **High** -- verified against the actual code; clearly introduced by this diff; will bite in practice. Keep.
+- **Medium** -- plausible and real but not fully verified, or minor/infrequent. Keep, marked.
+- **Low** -- couldn't verify; may be a false positive, pre-existing, or toolchain-caught. **Auto-drop, UNLESS the finding is Critical** -- never auto-drop a Critical; instead downgrade it to a "verify manually" note so a real blocker is never silently discarded.
+
+Honour the specialists' own `(low confidence)` self-tags as a strong prior toward Low. Show every dropped finding with a one-line reason so the user sees what was cut and why.
+
+**(b) Challenge the recommendation list.** Flag:
 
 - over-zealous suggestions disproportionate to actual impact
 - recommendations that contradict project conventions in `CLAUDE.md`, `docs/LANGUAGE_FEATURES.md`, `BUGS.md`, or `TODO.md`
 - hallucinated issues -- claims that refer to code or behavior that doesn't actually exist
 - severity/bucket mismatches (e.g. a Critical that's really a Suggestion, or vice versa)
 
-Output: the same recommendation list, with each item annotated `[meta: keep]`, `[meta: downgrade -> <bucket> because <reason>]`, or `[meta: drop because <reason>]`.
+Output: the recommendation list with each item annotated `[meta: keep]`, `[meta: downgrade -> <bucket> because <reason>]`, or `[meta: drop because <reason>]`, PLUS a short "Dropped (low confidence)" list of findings cut in (a) with their reasons.
 
-Fold the verdicts into the printed Recommendation. Keep the meta-reviewer's one-line reason next to any downgraded or dropped item so the user sees the dissent rather than a silent edit.
+Fold the verdicts into the printed Recommendation. Keep the meta-reviewer's one-line reason next to any downgraded or dropped item so the user sees the dissent rather than a silent edit. Append the "Dropped (low confidence)" list (if any) under the report so cuts are visible, not silent.
 
 ### 9. Ask the user
 

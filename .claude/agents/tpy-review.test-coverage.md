@@ -61,6 +61,17 @@ You may NOT run `uv run pytest`. Surface coverage concerns as findings.
 - New cases in the right group (browse `tests/cases/`)
 - `options.json` only if the test needs a non-default option (currently just `default_int`)
 
+## False-positive discipline
+
+Before surfacing a finding, rule out these false positives -- do NOT flag:
+- **Pre-existing** -- a coverage gap not introduced by this diff. Confirm with `git blame -- <file>` or `git show <BASE>:<file>`; if the untested code path predates the diff, omit it, unless the diff materially worsens it (then note it once, plainly). A *behavior change* in this diff without a test is always in scope.
+- **Intentional** -- a behavior shift that is clearly part of this change's purpose (it still needs a test, but don't flag it as a bug).
+- **Toolchain-caught** -- a failing assertion or broken snapshot the suite already surfaces. Assume the suite runs. (A *missing* test is not toolchain-caught -- that stays in scope.)
+- **Nitpicks** -- "could test more edge cases" without naming a concrete unguarded input.
+- **Out of scope** -- concerns another specialist owns (see Scope).
+
+If you still cannot verify a finding is real after this check, keep it but append ` (low confidence)` so the aggregator can weigh it.
+
 ## Output format
 
 Be terse. One bullet per finding, a single short sentence. Do NOT include code excerpts or a separate "Fix:" line -- the user will ask if they want details or a suggested fix. Include the location only when the issue is anchored to a specific case the user needs to find; generic findings have no location.

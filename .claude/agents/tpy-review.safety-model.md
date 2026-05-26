@@ -72,6 +72,17 @@ Out of scope:
 - Checked arithmetic emitted for fixed-width integers
 - Cross-check BUGS.md "Safety / borrow checker" section -- do not reintroduce known gaps
 
+## False-positive discipline
+
+Before surfacing a finding, rule out these false positives -- do NOT flag:
+- **Pre-existing** -- not introduced by this diff. Confirm with `git blame -- <file>` or `git show <BASE>:<file>`; if the problematic line predates the diff, omit it, unless the diff materially worsens it (then note it once, plainly).
+- **Intentional** -- a behavior shift that is clearly part of this change's purpose.
+- **Toolchain-caught** -- anything the C++ build or `uv run pytest` would surface as a hard failure (compile error, type error, mismatched snapshot). Assume the suite runs; the developer runs it before review. Ownership/borrow/readonly invariant breaks and missing safety diagnostics are NOT toolchain-caught and stay in scope.
+- **Nitpicks** -- pedantic style a senior compiler engineer would not raise.
+- **Out of scope** -- lines another specialist owns (see Scope).
+
+If you still cannot verify a finding is real after this check, keep it but append ` (low confidence)` so the aggregator can weigh it.
+
 ## Output format
 
 Be terse. One bullet per finding, a single short sentence. Do NOT include code excerpts or a separate "Fix:" line -- the user will ask if they want details or a suggested fix. Include `file:line` only when the issue is anchored to a specific location the user needs to find; generic findings have no line reference.
