@@ -18,7 +18,7 @@ from __future__ import annotations
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
     TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyAssert, TpyRaise,
-    TpyExprStmt, TpyMatch, TpyNestedDef, TpyDelItem, TpyDelVar, TpyTry, TpyWith,
+    TpyYield, TpyExprStmt, TpyMatch, TpyNestedDef, TpyDelItem, TpyDelVar, TpyTry, TpyWith,
     TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr,
 )
 
@@ -279,10 +279,16 @@ def _analyze_stmt(
             # and the prescan handles aug-assign separately.
 
     elif isinstance(stmt, TpyReturn):
+        # Terminating: nothing reached after the return is live. Clear first
+        # so the return-expression reads become the only live-before names --
+        # otherwise an earlier consume of a var read here is misread as
+        # last-use (clearing after would discard those reads).
+        live.clear()
         if stmt.value:
             _process_reads(stmt.value, live, last_uses, source_aliases, detached_aliases)
-        # After a return, nothing is live (this path terminates)
-        live.clear()
+
+    elif isinstance(stmt, TpyYield):
+        _process_reads(stmt.value, live, last_uses, source_aliases, detached_aliases)
 
     elif isinstance(stmt, TpyExprStmt):
         _process_reads(stmt.expr, live, last_uses, source_aliases, detached_aliases)
@@ -302,7 +308,14 @@ def _analyze_stmt(
             _process_reads(stmt.message, live, last_uses, source_aliases, detached_aliases)
 
     elif isinstance(stmt, TpyRaise):
+        # Terminating (transfers to a handler / unwinds). Clear normal-flow
+        # live, then process the raised exception's own reads so an earlier
+        # consume of a var read here is not misread as last-use.
         live.clear()
+        if stmt.raise_expr:
+            _process_reads(stmt.raise_expr, live, last_uses, source_aliases, detached_aliases)
+        for arg in stmt.args:
+            _process_reads(arg, live, last_uses, source_aliases, detached_aliases)
 
     elif isinstance(stmt, TpyNestedDef):
         # Captured vars are referenced by the closure (by-ref or by-value).
@@ -313,7 +326,9 @@ def _analyze_stmt(
                 live.add(name)
         live.discard(stmt.func.name)
 
-    # TpyBreak, TpyContinue, TpyPassStmt, TpyGlobal, TpyNonlocal, TpyImport: no reads
+    # TpyBreak, TpyContinue, TpyPassStmt, TpyGlobal, TpyNonlocal, TpyImport: no reads.
+    # TpyWith / TpyTry are NOT handled: their bodies are not recursed, so reads
+    # inside them are invisible to last-use analysis.
 
 
 def _analyze_if(
@@ -555,10 +570,17 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
             live.add(stmt.target.name)
 
     elif isinstance(stmt, TpyReturn):
+        # Clear before adding reads: the return terminates this path, so only
+        # the return-expression reads are live-before (clearing after would
+        # discard them).
+        live.clear()
         if stmt.value:
             for node in _collect_reads_expr(stmt.value):
                 live.add(node.name)
-        live.clear()
+
+    elif isinstance(stmt, TpyYield):
+        for node in _collect_reads_expr(stmt.value):
+            live.add(node.name)
 
     elif isinstance(stmt, TpyExprStmt):
         for node in _collect_reads_expr(stmt.expr):
@@ -584,6 +606,12 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
 
     elif isinstance(stmt, TpyRaise):
         live.clear()
+        if stmt.raise_expr:
+            for node in _collect_reads_expr(stmt.raise_expr):
+                live.add(node.name)
+        for arg in stmt.args:
+            for node in _collect_reads_expr(arg):
+                live.add(node.name)
 
     elif isinstance(stmt, TpyNestedDef):
         if stmt.captured_names:

@@ -1574,6 +1574,10 @@ class StatementGenerator:
                     return self._gen_pointer_local_rebind(
                         stmt.name, cpp_type, stmt.init, target_type, indent)
                 return None
+            # Frame-promoted storage-slot local: register movability so a
+            # last-use read moves out of the slot instead of copying it.
+            if stmt.name in self.ctx.sema_movable_locals:
+                self.ctx.movable_locals.add(stmt.name)
             if stmt.init:
                 cpp_name = escape_cpp_name(stmt.name)
                 init_expr = self.expressions.gen_expr(stmt.init)

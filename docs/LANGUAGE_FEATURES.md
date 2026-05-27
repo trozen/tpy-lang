@@ -1322,6 +1322,8 @@ Auto-move does NOT apply to:
 
 The analysis is conservative: if unsure whether a variable is at its last use (e.g., used inside a loop body that may iterate multiple times), the compiler does NOT auto-move and requires explicit `copy()` as before.
 
+**Known gap (unsafe):** the conservative guarantee above does *not* hold inside `with` and `try` bodies. Last-use analysis does not recurse into them, so a movable / `@nocopy` local consumed before a `with`/`try` whose body reads it can be wrongly auto-moved with no diagnostic (use-after-move), and a genuine last-use *inside* such a body is falsely rejected. Tracked in BUGS.md.
+
 **Branch handling**: If a variable is used in both branches of an if/else and not used after, both branches get auto-move:
 
 ```python
