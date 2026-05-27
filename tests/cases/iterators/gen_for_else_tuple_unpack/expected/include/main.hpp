@@ -16,20 +16,29 @@ void main();
 
 // Generator: gen
 struct __gen_gen {
-    int __state;
+    int32_t __state;
     std::vector<std::tuple<int32_t, int32_t>>& pairs;
     int32_t limit;
     std::tuple<int32_t, int32_t> __for_tup_0;
     int32_t a;
     int32_t b;
-    std::optional<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_it_0;
-    std::optional<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_end_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_it_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
 
     __gen_gen(std::vector<std::tuple<int32_t, int32_t>>& pairs, int32_t limit_)
-        : __state(0), pairs(pairs), limit(limit_) {}
+        : __state(S_INITIAL), pairs(pairs), limit(std::move(limit_)) {}
 
-    __gen_gen& __iter__() { return *this; }
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {
         return os << "<generator gen>";

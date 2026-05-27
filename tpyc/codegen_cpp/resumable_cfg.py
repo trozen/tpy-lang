@@ -33,7 +33,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Union
+from typing import TYPE_CHECKING, Union
 
 from ..parse.nodes import (
     TpyAssign, TpyAwait, TpyBreak, TpyContinue, TpyExceptHandler,
@@ -41,6 +41,63 @@ from ..parse.nodes import (
     TpyRaise, TpyReturn, TpyStmt, TpyTry, TpyVarDecl, TpyWhile, TpyWith,
     TpyWithItem, TpyYield,
 )
+
+if TYPE_CHECKING:
+    from ..parse.nodes import TpyFunction
+    from .gen_generators import GeneratorForInfo
+
+
+@dataclass
+class ResumableFuncState:
+    """Per-function codegen state for the resumable-frame lowering, shared by
+    generators and `async def` coroutines. Attached to a `TpyFunction` as
+    `func._resumable_state` (via `resumable_state()`), built lazily by the
+    prescan / CFG-build / eligibility passes and consumed by the struct +
+    body emit.
+
+    Replaces ~16 individually string-keyed `getattr(func, "_resumable_*" /
+    "_async_*" / "_with_*")` side tables with one typed attribute: no
+    `getattr(..., None) or {}` ritual, no silent-None-on-typo miscompile, and
+    the prescan->emit contract (pass P populates fields A1..An) is visible in
+    one place. The `_async_*`-named members keep that prefix because they are
+    genuinely async-only (sub-coro struct names from `async for`/`async
+    with`, await-arg lifting); the rest are shape-neutral."""
+    # CFG build (_build_resumable_cfg / _try_build_resumable_cfg)
+    cfg: 'CFG | None' = None
+    cfg_builder: 'CFGBuilder | None' = None
+    # await-arg lifting (_effective_body / _lift_nested_awaits)
+    lifted_body: 'list[TpyStmt] | None' = None
+    next_lift_id: int = 0
+    # for-loop prescan (_prescan_resumable_for_loops). `*_prescanned` flags
+    # preserve the original "cache even when the result is empty" semantics
+    # (an empty map distinct from "not yet prescanned").
+    for_prescanned: bool = False
+    for_uid_map: 'dict[int, int]' = field(default_factory=dict)
+    for_fields: 'list[tuple[str, str]]' = field(default_factory=list)
+    for_loop_info: 'dict[int, GeneratorForInfo]' = field(default_factory=dict)
+    for_info_by_uid: 'dict[int, GeneratorForInfo]' = field(default_factory=dict)
+    async_for_struct_names: 'dict[int, str]' = field(default_factory=dict)
+    # with-stmt prescan (_prescan_with_stmts)
+    with_prescanned: bool = False
+    with_uid_map: 'dict[int, list[int]]' = field(default_factory=dict)
+    with_fields: 'list[tuple[str, str]]' = field(default_factory=list)
+    with_owning_str_targets: 'set[str]' = field(default_factory=set)
+    async_with_struct_names: 'dict[int, tuple[str, str]]' = field(default_factory=dict)
+    # try/finally prescan (_prescan_resumable_try_finally)
+    try_finally_prescanned: bool = False
+    try_finally_uid_map: 'dict[int, int]' = field(default_factory=dict)
+    try_finally_fields: 'list[tuple[str, str]]' = field(default_factory=list)
+    # resumable-generator eligibility memoization (generator.py gate)
+    gen_eligible: 'bool | None' = None
+
+
+def resumable_state(func: 'TpyFunction') -> ResumableFuncState:
+    """Get-or-create the `ResumableFuncState` attached to `func`."""
+    state = getattr(func, "_resumable_state", None)
+    if state is None:
+        state = ResumableFuncState()
+        func._resumable_state = state
+    return state
 
 
 # -- Resumable-frame shape: which state machine the emitter produces.
@@ -1522,27 +1579,6 @@ def _stmts_have_suspending_compound(
         if hasattr(s, "sub_bodies"):
             for body in s.sub_bodies():
                 if _stmts_have_suspending_compound(body, kinds):
-                    return True
-    return False
-
-
-def _stmts_have_tuple_unpack_for_with_suspension(stmts: list[TpyStmt]) -> bool:
-    """True if any `for a, b in ...` (tuple-unpack) loop in `stmts`
-    (recursively) carries a suspension. The resumable for-loop emit binds
-    only the synthetic `__for_tup_<n>` loop var into the frame; the
-    destructured targets (`a`, `b`) are emitted as ordinary unpack
-    statements, so a target read across a `yield`/`await` does not persist
-    (it reads a never-assigned frame field -> garbage). The generator gate
-    defers these to the legacy path -- which binds the targets as frame-
-    field assignments -- until the resumable path emits the unpack targets
-    into the frame too."""
-    for s in stmts:
-        if (isinstance(s, TpyForEach) and s.is_tuple_unpack
-                and _stmt_has_any_suspension(s)):
-            return True
-        if hasattr(s, "sub_bodies"):
-            for body in s.sub_bodies():
-                if _stmts_have_tuple_unpack_for_with_suspension(body):
                     return True
     return False
 

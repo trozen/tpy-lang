@@ -200,7 +200,123 @@
     `__finally_stop` is a struct field added only when at least one helper body
     contains a `return` (via `_stmts_have_return` scan). New test:
     `gen_resumable_return_in_finally`. Full suite 4194 passed.
-- Next: **F** generics + retire the legacy path + extract shared base (F), then new surface (G).
+- **Phase F SCOPED (2026-05-27)** -- see "Phase F approach" below.
+  Generics in scope (F2); generic-class methods deferred but
+  forward-compatible (F4); legacy struct path deleted once parity proven
+  (F5). Then new surface (G).
+- **Phase F2 DONE (2026-05-27)** (generic free-fn generators). Lifted the
+  `func.type_params` early-out in `_compute_resumable_generator_eligible`;
+  generic (`[T]` type-param) multi-yield generators now route onto the
+  resumable frame. Added `gen_async._is_templated_coro(func)` (true for
+  explicit type params OR a static-protocol-typed param) as the single
+  source of truth for the inline-header-vs-`.cpp` body placement; the
+  generator orchestration in `generator.py` uses it to emit the templated
+  struct + `__next__` + factory inline in the header (mirroring the generic
+  `async def` branch). All four resumable emit functions were already
+  template-aware (`_emit_template_header` / `_struct_name_templated`), so no
+  emission changes were needed -- F2 is purely gate + orchestration.
+  Verified across shapes: for-loop over `list[T]`, `try`/`finally`,
+  multi-type-param `tuple[K, V]` yield. The `gen_generators.py` generic
+  reject is RETAINED as a fallback guard (a generic generator whose body the
+  resumable CFG can't build -- e.g. `match`+yield -- falls to legacy and
+  gets a clean "not yet supported" diagnostic instead of a broken build).
+  **Proto-param generators (`def gen(it: Iterable[T])`) are gate-excluded**
+  (`get_all_protocol_params` check): the resumable for-loop frame field
+  would be typed against the abstract concept (`Iterable<T>`) instead of the
+  deduced template param `T_it` -- an ill-formed field decl -- so they route
+  to legacy for a clean reject (a strict improvement: previously they were
+  silently routed to resumable and produced a broken C++ build). That
+  substitution is the separate TODO.md "protocol-typed params" feature.
+  Tests: converted `error_gen_generic_multi_yield` ->
+  `gen_generic_multi_yield` (now positive), new `gen_generic_for`,
+  `gen_generic_tuple_yield`, `error_gen_proto_param_multi_yield`. Full suite
+  4207 passed; async byte-identical (the `_is_templated_coro` helper is used
+  only in the generator orchestration branches -- async still keys off
+  `func.type_params`; see the latent-async note below).
+- **Phase F1 DONE (2026-05-27)** (generator methods on the resumable frame).
+  Generator methods previously always routed to the legacy
+  `gen_generators` emitter (3 orchestration sites: .cpp `__next__` def,
+  forward decl, struct + inline factory). Eligible non-simple generator
+  methods now route through `gen_coro_*(record_name=...)` under
+  `ResumableShape.GENERATOR`, mirroring the async-method emission exactly --
+  the inline factory reuses `_factory_args_forwarded(method,
+  receiver=(record, "*this"))` (so `Own[T]` / protocol params move in
+  correctly), and `_struct_name_templated` / `_emit_template_header` make it
+  generic-method-ready by construction. Generator method structs stay in the
+  post-records orchestration loop (unlike async methods, which emit early to
+  satisfy sub-future field inlining -- generators have no sub-futures, so
+  the ordering is unchanged from the legacy path -> minimal churn).
+  `_resumable_generator_eligible` works unchanged for methods (its checks
+  are body/param-shape based, record-name-agnostic). Verified: multi-yield
+  `__iter__` + `while`-loop method, `try`/`finally` method with a param,
+  readonly no-param method (const factory + `__self` capture). The
+  generic-CLASS-method reject (`registration.py`) still fires before codegen
+  (F4, deferred). One existing test flipped shape (`gen_method_complex`,
+  output byte-identical, snapshot regenerated); new `gen_resumable_method`.
+  Full suite 4208 passed. Remaining F: F3 (tuple-unpack), F5 (retire
+  legacy), F6 (cleanup).
+- **Phase F3 DONE (2026-05-27)** (tuple-unpack for-loops). `for a, b in xs:`
+  generators/coroutines carrying a suspension now route onto the resumable
+  frame (the `_stmts_have_tuple_unpack_for_with_suspension` gate exclusion +
+  helper + its unit tests are removed). The fix is in the shared
+  `_gen_tuple_unpack` (`statements.py`): when the unpack source is a LIVE
+  frame field (a suspending loop's `__for_tup`, not an awaitless shadow
+  local), each target is ASSIGNED into its frame field instead of declared
+  as a shadow C++ local (which wouldn't survive the suspension). Shared by
+  generators and coroutines (`in_generator_body`), so it also closed the
+  latent async tuple-unpack-after-await gap.
+  - **Reference elements alias (correctness, not perf).** The "pointer-alias
+    for reference elements" originally filed as a perf follow-up turned out
+    to be a CPython-semantics requirement: a value-copy diverges when the
+    unpacked record is mutated (CPython: mutation propagates to the source;
+    TPy plain loop vars already alias via D2a). So reference (non-value,
+    non-readonly, non-Optional) unpack targets now use pointer-form aliasing
+    -- `__for_tup` becomes `T*` (aliases the live container element) and the
+    targets become `T*` (`&std::get<i>(*__for_tup)`), via a new
+    `GeneratorForInfo.pointer_form_unpack_targets`. Value elements copy
+    (CPython-equivalent for immutables); pointer-repr Optional elements use
+    `optional_to_ptr`; readonly elements fall back to value. Verified
+    TPy==CPython for mutation propagation (`process` mutating `it.n` -> the
+    source list sees it), for generators and coroutines.
+  - **No awaitless regression.** The frame-store gate keys off
+    `frame_field_shadows`: an awaitless loop emits `__for_tup` as a shadow
+    `auto&&` local, so its targets stay zero-copy `T& a = ...` references
+    (e.g. `coro_for_tuple_unpack_ref` reverted to byte-identical). Only
+    suspending loops frame-store. The over-broad `generator_locals` hoist
+    (dead-field TODO) is why the gate is needed; the sema narrowing would
+    subsume it.
+  - Tests: existing `gen_tuple_unpack_use_after_yield`, `gen_for_tuple_unpack`,
+    `gen_for_else_tuple_unpack`, `async_for_tuple_unpack` flipped to the
+    resumable path (output-identical, snapshots regenerated); new
+    `gen_resumable_tuple_unpack_ref` (mutation propagation), `_optional`,
+    and async `coro_tuple_unpack_mutate`. Full suite 4209 passed. Remaining
+    F: F5 (retire legacy), F6 (cleanup).
+- **Phase F6 DONE (2026-05-27)** (cleanup: `ResumableFuncState`). The ~16
+  string-keyed `getattr(func, "_resumable_*" / "_async_*" / "_with_*")` side
+  tables attached to each `TpyFunction` collapsed into one typed
+  `func._resumable_state: ResumableFuncState` dataclass (defined in
+  `resumable_cfg.py`, the cycle-free home; get-or-create via
+  `resumable_state(func)`). Read sites lose the `getattr(..., None) or {}`
+  ritual (the dataclass fields default to empty containers); the
+  prescan->emit contract is visible in one place; a typo is now a real
+  AttributeError instead of a silent `None`/`{}` miscompile. The original
+  "cache even when empty" semantics of the three prescans are preserved with
+  explicit `for_prescanned` / `with_prescanned` / `try_finally_prescanned`
+  flags (an empty result distinct from "not yet run"). Pure internal
+  refactor -- zero snapshot churn, full suite 4209 passed. Pairs with the
+  eventual THIR/MIR migration (the dataclass is the natural nucleus of
+  per-function lowering state). Remaining F: F5 (retire the legacy struct
+  path), then G.
+- **Latent (surfaced during F2):** async coro orchestration gates
+  inline-header on `func.type_params` alone, so a hypothetical
+  proto-param-only async coro (static protocol param, no `[T]`) would emit
+  its poll body out-of-line against a template struct (link failure) -- the
+  same bug class F2 fixed for generators via `_is_templated_coro`. Verified
+  **unreachable in the current suite** (no async coro has a proto param
+  without a co-occurring type param; asyncio's `Own[Awaitable[T]]` always
+  brings a `[T]`). Fix = swap the two async `func.type_params` orchestration
+  checks to `_is_templated_coro` (zero churn confirmed). Folded into the F1
+  "reuse the async method seams" convergence work, or do standalone.
 - **Phase D/E prerequisites (surfaced by /tpy-review):**
   - Borrow-form yield slot **DONE**: `_resumable_ret_type_cpp` now
     routes through `gen_generators._iter_slot_for_yield` -- borrow form
@@ -312,6 +428,128 @@ yield slot; `gen_coro_finally_top_def` wired into the generator
 orchestration -- latent today; `_build_cfg` -> `_build_resumable_cfg`
 de-async-ify pass; frame_slot unification of synthetic fields). Phase E
 (try/except/finally generators) is the next step.
+
+## Phase F approach (scoped 2026-05-27)
+
+**Classification: architectural.** Reach full parity with the legacy
+struct path, then delete it -- leaving one struct-shape codegen (the
+resumable frame) plus the untouched simple-generator peephole.
+
+### Key finding that reshaped the original framing
+
+The original "Revised sequence" treated generic multi-yield as a Phase G
+item ("NOT free", section 6) because reusing the async machinery for
+generics was unproven at the time. It is now confirmed: the async
+resumable path **already fully supports generics and methods**. Concretely
+in `gen_async.py`: `_emit_template_header`, `_struct_name_templated`,
+`_protocol_template_parts` (type params + static-protocol-typed params);
+the `if func.type_params:` branch in `generator.py` (~line 1182) emits the
+coro **struct + poll body + factory all inline in the header** for template
+async coros -- exactly the shape a generic generator needs; and
+`gen_coro_poll_def(record_name=...)` already handles async methods.
+
+Therefore the generic-generator rejection (`gen_generators.py` ~line 692,
+"generic generator functions with multiple yield points are not yet
+supported") and the "out-of-line `__next__` won't link for templates"
+limitation are **legacy-path-only**. Generic free-function generators on
+the resumable path are machinery-*reuse*, not machinery-*building* -- much
+cheaper than the original plan assumed, so generics moves into F.
+
+### Decisions (user-approved)
+
+1. **Generics in F (F2 in scope).** Reuse the proven async-template
+   inline-header emission; closes the generic-multi-yield gap (the
+   `gen_generators.py` "not yet supported" reject + the TODO.md feature
+   entry, not a BUGS.md entry).
+2. **Generic-class methods (F4) deferred, but stay forward-compatible.**
+   Keep the rejection for now (it is shared with async -- `async def`
+   methods on generic classes are rejected identically, so no regression),
+   but the F1/F2 design must NOT foreclose lifting it later (see the
+   forward-compat constraint below).
+3. **Delete the legacy struct path once parity is proven (F5).** The
+   simple-generator peephole stays.
+
+### Sub-phases (F1/F2/F3 independent; then F5; F6 cleanup; F4 standalone)
+
+- **F1 -- Generator methods onto the resumable path.** Today every
+  non-simple generator *method* routes to `gen_generators.gen_generator_*`
+  unconditionally (`generator.py` ~lines 489, 1036, 1192); the resumable
+  gate is consulted only for free functions. Route non-generic generator
+  methods through `gen_coro_struct`/`gen_coro_poll_def`/factory-method under
+  `ResumableShape.GENERATOR` with `record_name`, mirroring the async-method
+  emission seams (which already exist and work). **Reuse the async method
+  seams rather than inventing generator-specific method plumbing** -- this
+  is also what keeps F4 cheap later.
+- **F2 -- Generic free-function generators onto the resumable path.** Lift
+  the `func.type_params` early-out in `_compute_resumable_generator_eligible`
+  (`generator.py` ~line 566); route generic generators through the
+  async-template inline-header branch (mirror `generator.py` ~lines
+  1182-1188 for `GENERATOR` shape: struct + poll + finally-top + factory all
+  in the header); wire `_protocol_template_parts` for the generator shape
+  (protocol-typed params); drop the `gen_generators.py` generic-multi-yield
+  `SemanticError`. The CFG trial-build is type-agnostic (control flow only),
+  so the eligibility gate works unchanged once the type_params early-out is
+  removed.
+- **F3 -- Tuple-unpack `for` with a suspension.** Frame-store the
+  destructured unpack targets so a target read across a `yield`/`await`
+  reads a live frame field (D2 follow-up, TODO.md). Removes the last
+  correctness-driven gate exclusion (`_stmts_have_tuple_unpack_for_with_suspension`).
+  Likely shared with the latent async tuple-unpack-for shape noted in
+  TODO.md.
+- **F5 -- Retire the legacy struct path.** After F1+F2+F3 land and the full
+  regression net is green, delete the struct-mode functions in
+  `gen_generators.py` (`gen_generator_struct`, `gen_generator_next`,
+  `_gen_generator_body`, the loop-body / for-strategy helpers that the
+  resumable path now owns via the ported `_analyze_for_strategy`). Keep
+  `is_simple_generator`, `gen_simple_generator_inline`, and the
+  `_iter_slot_for_yield` helper that the resumable path borrows. ~500-600 of
+  ~948 lines removed. The eligibility gate collapses: anything not a simple
+  generator routes to resumable (no more trial-build fallback to legacy,
+  since there is no legacy struct path to fall back to) -- so the gate
+  becomes "simple peephole vs resumable", and `_CFGNotYetSupported` shapes
+  (if any remain) must be made to either compile or raise a clean
+  `SemanticError` rather than silently fall back.
+- **F6 -- "Extract shared base" reassessment.** The original plan's
+  premise ("two struct consumers exist, extract a base") **dissolves after
+  F5**: there is then exactly ONE struct consumer (the resumable frame) plus
+  the simple peephole, which shares almost nothing structural. So F6 is
+  expected to reduce to internal cleanup rather than an inheritance split:
+  consolidate the `ResumableShape` branches in `gen_async.py`, and land the
+  `ResumableFuncState` typed-dataclass refactor (TODO.md -- collapse the
+  ~dozen `getattr(func, "_resumable_*", None) or {}` side tables) which
+  pairs naturally with this phase and de-risks the eventual THIR migration.
+- **F4 (deferred, forward-compatible) -- generator/async methods on
+  generic classes.** Lifting `registration.py:_reject_method_on_generic_class`
+  requires the out-of-line member definitions to carry the class's template
+  header (`template <typename T>` ahead of the def) OR be emitted inline in
+  the class header. **Forward-compat constraint for F1/F2:** keep the
+  per-method "where does the poll/next body go" choice (out-of-line `.cpp`
+  vs inline-in-header) parameterized and *shared between async and
+  generator shapes*, and keep `_reject_method_on_generic_class` as the
+  single rejection chokepoint for both. Then F4 = flip methods-on-generic-
+  classes to the inline-header branch + lift the one shared rejection,
+  benefiting async and generators together. Do not add generator-specific
+  method-emission assumptions that would diverge from the async method path.
+
+### Sequencing + gate
+
+F1, F2, F3 are mutually independent and can land in any order (each
+regression-net-green on its own slice). F5 depends on all three. F6 follows
+F5. F4 is standalone and out of this phase's required scope. The
+byte-identical-async gate continues to apply to every step that touches the
+shared `gen_async.py` emit.
+
+### Tests
+
+Per-step regression slices in `tests/cases/iterators/*` and
+`tests/cases/tuple/tuple_optional_yield_*`. New cases: a generic
+free-function multi-yield generator (F2), a generic generator with a
+protocol-typed param (F2), a generator *method* with multi-yield /
+control-flow (F1), a tuple-unpack-for generator that reads a target after a
+yield (F3 -- the `gen_tuple_unpack_use_after_yield` shape, now flipped to
+the resumable path). After F5, confirm no snapshot still references a
+`__gen_` struct from the deleted path (every non-simple generator now emits
+the `__coro_`-shape struct).
 
 ## Goal
 

@@ -43,15 +43,23 @@ inline std::ostream& operator<<(std::ostream& os, const Range& obj) {
 
 // Generator: Range.__iter__
 struct __gen_Range___iter__ {
-    int __state;
+    int32_t __state;
     const Range& __self;
     int32_t i;
 
-    __gen_Range___iter__(const Range& __self)
-        : __state(0), __self(__self) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
 
-    __gen_Range___iter__& __iter__() { return *this; }
+    __gen_Range___iter__(const Range& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Range___iter__& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_Range___iter__&) {
         return os << "<generator Range.__iter__>";
@@ -64,15 +72,23 @@ inline __gen_Range___iter__ Range::__iter__() const {
 
 // Generator: Range.pairs
 struct __gen_Range_pairs {
-    int __state;
+    int32_t __state;
     const Range& __self;
     int32_t i;
 
-    __gen_Range_pairs(const Range& __self)
-        : __state(0), __self(__self) {}
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
 
-    __gen_Range_pairs& __iter__() { return *this; }
+    __gen_Range_pairs(const Range& __self)
+        : __state(S_INITIAL), __self(__self) {}
+
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_Range_pairs& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_Range_pairs&) {
         return os << "<generator Range.pairs>";

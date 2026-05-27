@@ -47,8 +47,8 @@ namespace tpyapp::main {
     case S_JOIN_1: {
         // async for k, sq in p:
         const auto& __tup_1 = __for_tup_0;
-        const ::tpy::BigInt& k = std::get<0>(__tup_1);
-        const ::tpy::BigInt& sq = std::get<1>(__tup_1);
+        k = std::get<0>(__tup_1);
+        sq = std::get<1>(__tup_1);
         // total += sq
         total = ::tpy::add_check<int32_t>(total, (sq).to_fixed_check<int32_t>());
         __state = S_JOIN_0;

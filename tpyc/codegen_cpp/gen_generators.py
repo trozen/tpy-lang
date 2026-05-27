@@ -7,7 +7,7 @@ from typing import Callable, TYPE_CHECKING
 
 from ..parse.nodes import (
     TpyFunction, TpyYield, TpyStmt, TpyWhile, TpyForEach, TpyReturn, TpyVarDecl,
-    TpyCall, TpyName, TpyExpr,
+    TpyCall, TpyName, TpyExpr, TpyTupleUnpack,
 )
 from ..typesys import IntLiteralType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_readonly, unwrap_ref_type
 from ..type_def_registry import is_str_type
@@ -28,6 +28,15 @@ class GeneratorForInfo:
     # preserves CPython aliasing semantics across yield/resume instead of
     # copying the element into the frame. None when copy-storage is used.
     pointer_form_loop_var: str | None = None
+    # For a tuple-unpack loop (`for a, b in items:`) whose element tuple
+    # contains non-value, non-readonly members, the names of the unpack
+    # targets bound to those members. They are stored as `T*` (alias into
+    # the live container element via the pointer-form `__for_tup`), so
+    # mutating an unpacked record propagates to the source -- matching both
+    # CPython and the plain pointer-form loop var above. Value/readonly
+    # members are NOT listed (they stay value-copy). Empty for non-unpack
+    # loops and all-value tuples.
+    pointer_form_unpack_targets: frozenset[str] = frozenset()
 
 
 def _collect_yield_stmts(stmts: list[TpyStmt]) -> list[TpyYield]:
@@ -597,16 +606,43 @@ class GeneratorCodegen:
             # elements fall back to value-storage to avoid a
             # const-correctness violation when taking `&(*iter)`.
             elem_for_form = unwrap_ref_type(native_elem) if native_elem else None
-            pointer_form_var = (
-                stmt.var
-                if (elem_for_form is not None
-                    and not elem_for_form.is_value_type()
-                    and not isinstance(elem_for_form, ReadonlyType))
-                else None
-            )
+            pointer_form_targets: frozenset[str] = frozenset()
+            if (stmt.is_tuple_unpack and isinstance(elem_for_form, TupleType)
+                    and stmt.body and isinstance(stmt.body[0], TpyTupleUnpack)):
+                # Tuple-unpack over a stable lvalue container: alias the
+                # non-value, non-readonly members so mutating an unpacked
+                # record propagates to the source element (CPython semantics,
+                # matching the plain pointer-form loop var). `__for_tup`
+                # becomes T* and the aliased targets become T* too; value /
+                # readonly members stay value-copy.
+                unpack = stmt.body[0]
+                # Optional members are excluded: they go through the existing
+                # pointer-repr-Optional path (`T* = nullptr`, optional_to_ptr)
+                # in the struct emit and `_gen_tuple_unpack`. Only plain
+                # reference members alias via `&std::get<i>(...)`.
+                aliased = {
+                    tname
+                    for tname, etype in zip(
+                        unpack.targets, elem_for_form.element_types)
+                    if tname is not None
+                    and not unwrap_ref_type(etype).is_value_type()
+                    and not isinstance(
+                        unwrap_ref_type(etype), (ReadonlyType, OptionalType))
+                }
+                pointer_form_var = stmt.var if aliased else None
+                pointer_form_targets = frozenset(aliased)
+            else:
+                pointer_form_var = (
+                    stmt.var
+                    if (elem_for_form is not None
+                        and not elem_for_form.is_value_type()
+                        and not isinstance(elem_for_form, ReadonlyType))
+                    else None
+                )
             return GeneratorForInfo(
                 uid=uid, strategy="begin_end", fields=fields,
                 pointer_form_loop_var=pointer_form_var,
+                pointer_form_unpack_targets=pointer_form_targets,
             )
 
         # Universal default: ::tpy::__iter__() + __next__() loop.
@@ -685,9 +721,15 @@ class GeneratorCodegen:
     def gen_generator_struct(self, out: TextIO, func: TpyFunction,
                              record_name: str | None = None) -> None:
         """Generate the state machine struct for a generator function."""
-        # Generic generators with multiple yields (struct path) are not yet
-        # supported -- the out-of-line __next__() in .cpp won't link for
-        # template structs. Generic simple generators (single yield) work fine.
+        # Fallback guard. Generic generators (explicit type params or
+        # protocol-typed params) normally route to the resumable emitter,
+        # which is template-aware (struct + __next__ + factory inline in the
+        # header). They only reach this legacy struct path when the
+        # resumable CFG could not build the body (e.g. a `match` carrying a
+        # yield) -- and the legacy path cannot link an out-of-line template
+        # __next__, so the honest answer is "not yet supported". Generic
+        # simple generators (single yield) use the inline peephole and never
+        # reach here.
         proto_params = self.functions.protocols.get_all_protocol_params(func.params)
         if func.type_params or proto_params:
             from ..diagnostics import SemanticError

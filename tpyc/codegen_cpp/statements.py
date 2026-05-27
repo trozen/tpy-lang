@@ -2469,6 +2469,15 @@ class StatementGenerator:
             value_expr = unwrapped_tmp
         else:
             value_expr = self.expressions.gen_expr(stmt.value)
+            # A pointer-form loop var (the synthetic `__for_tup` of a
+            # tuple-unpack loop aliasing a container element) renders as a
+            # bare `T*` -- the bare-name deref only fires for
+            # generator_optional_fields, not pointer_locals. Deref here so
+            # the tuple source `tmp` binds to the live element (and the
+            # per-target `&std::get<i>(tmp)` aliases it), not the pointer.
+            if (self.ctx.in_generator_body and isinstance(stmt.value, TpyName)
+                    and stmt.value.name in self.ctx.pointer_locals):
+                value_expr = f"(*{value_expr})"
             self.ctx.temps.flush(out, indent)
             wrapped = self._maybe_wrap_storage_tuple_source(stmt, value_expr)
             wrapped_to_pointer = wrapped is not value_expr
@@ -2504,6 +2513,62 @@ class StatementGenerator:
             cpp_type = self.types.type_to_cpp(target_type)
             cpp_name = escape_cpp_name(name)
             get_expr = f"std::get<{i}>({tmp})"
+            # Generator/coro body: an unpack target that genuinely lives in
+            # the frame must be ASSIGNED, not re-declared -- a fresh C++ local
+            # would shadow the field, so the value would not survive a
+            # yield/await (the resume state reads the stale field). Mirrors
+            # the TpyVarDecl frame-field path in `_gen_var_decl_code`; shared
+            # by generators and async coroutines (both set in_generator_body).
+            #
+            # Gate on the unpack SOURCE being a live frame field. For a
+            # tuple-unpack for-loop the source is the synthetic `__for_tup`:
+            # when the loop suspends it is a real frame field (state-machine
+            # decomposed), but an awaitless loop emits it as a C++-local
+            # `auto&& __for_tup` (registered in frame_field_shadows) and the
+            # targets should stay zero-copy `T& a = ...` references too --
+            # frame-storing them there would needlessly copy (and break
+            # reference aliasing). `generator_locals` is over-broad (it hoists
+            # every loop var regardless of suspension), so the field-name set
+            # alone can't distinguish the two.
+            source_is_live_frame_field = (
+                isinstance(stmt.value, TpyName)
+                and stmt.value.name in self.ctx.generator_field_names
+                and stmt.value.name not in self.ctx.frame_field_shadows)
+            if (self.ctx.in_generator_body and source_is_live_frame_field
+                    and name in self.ctx.generator_field_names):
+                self.ctx.declared_vars.add(name)
+                self.ctx.local_scope_names.add(name)
+                self.ctx.var_types[name] = target_type
+                if name in self.ctx.pointer_locals:
+                    # `T*` frame slot. Two sub-cases:
+                    if isinstance(target_type, OptionalType):
+                        # Pointer-repr Optional element: storage-form
+                        # `optional<T>` -> the pointer the slot expects.
+                        out.write(
+                            f"{indent}{cpp_name} = "
+                            f"::tpy::optional_to_ptr({get_expr});\n")
+                    else:
+                        # Plain reference member aliased into the live
+                        # container element: take its address. `__for_tup` is
+                        # pointer-form (aliases the element), so the tuple
+                        # source `tmp` is a non-const reference into it and
+                        # `&std::get<i>(tmp)` is a `T*` to the live member --
+                        # mutations propagate to the source (CPython
+                        # semantics, matching the plain pointer-form loop var).
+                        out.write(f"{indent}{cpp_name} = &({get_expr});\n")
+                    continue
+                if stmt.is_ref[i]:
+                    get_expr = f"::tpy::unwrap_ref({get_expr})"
+                if stmt.is_owned[i]:
+                    get_expr = f"std::move({get_expr})"
+                if name in self.ctx.generator_frame_slot_locals:
+                    # frame_slot<T>: no operator=, writes go through emplace.
+                    get_expr = self._wrap_brace_init_for_emplace(
+                        get_expr, target_type)
+                    out.write(f"{indent}{cpp_name}.emplace({get_expr});\n")
+                else:
+                    out.write(f"{indent}{cpp_name} = {get_expr};\n")
+                continue
             # Pointer-repr Optional element: slot is T*, register the local
             # in pointer_locals so subsequent reads know to deref.
             is_ptr_optional = (isinstance(target_type, OptionalType)

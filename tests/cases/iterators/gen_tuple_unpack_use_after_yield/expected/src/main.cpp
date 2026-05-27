@@ -4,40 +4,51 @@
 namespace tpyapp::main {
 
 
+// def gen(pairs: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // total = 0
+        total = 0;
+        __for_it_0.emplace((pairs).begin());
+        __for_end_0.emplace((pairs).end());
+        __state = S_JOIN_0;
+        continue;
     }
-    // total = 0
-    total = 0;
-    // for a, b in pairs:
-    __for_it_0 = (pairs).begin();
-    __for_end_0 = (pairs).end();
-    while (*__for_it_0 != *__for_end_0) {
-        __for_tup_0 = *(*__for_it_0)++;
-        a = std::get<0>(__for_tup_0);
-        b = std::get<1>(__for_tup_0);
+    case S_RESUME_0: {
+        // total += b      # `b` must survive the yield above
+        total = ::tpy::add_check<int32_t>(total, b);
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            // yield total
+            __state = S_RESUME_1;
+            return total;
+        }
+        __for_tup_0 = *((*__for_it_0))++;
+        // for a, b in pairs:
+        const auto& __tup_1 = __for_tup_0;
+        a = std::get<0>(__tup_1);
+        b = std::get<1>(__tup_1);
         // total += a
         total = ::tpy::add_check<int32_t>(total, a);
         // yield a + b
-        __state = 1;
+        __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(a, b));
-        __resume_1:;
-        // total += b      # `b` must survive the yield above
-        total = ::tpy::add_check<int32_t>(total, b);
     }
-    // yield total
-    __state = 2;
-    return total;
-    __resume_2:;
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+
+// def gen(pairs: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
 __gen_gen gen(std::vector<std::tuple<int32_t, int32_t>>& pairs) {
     return __gen_gen(pairs);
 }

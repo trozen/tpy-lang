@@ -32,59 +32,77 @@ void main() {
     }
 }
 
+// def __iter__(self) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Range___iter__::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield -1
+        __state = S_RESUME_0;
+        return -1;
     }
-    // yield -1
-    __state = 1;
-    return -1;
-    __resume_1:;
-    // i = self.start
-    i = __self.start;
-    // while i < self.stop:
-    while ((i < __self.stop)) {
-        // yield i
-        __state = 2;
-        return i;
-        __resume_2:;
+    case S_RESUME_0: {
+        // i = self.start
+        i = __self.start;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
     }
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_JOIN_0: {
+        if ((i < __self.stop)) {
+            // yield i
+            __state = S_RESUME_1;
+            return i;
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+
+// def pairs(self) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_Range_pairs::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // i = self.start
+        i = __self.start;
+        __state = S_JOIN_0;
+        continue;
     }
-    // i = self.start
-    i = __self.start;
-    // while i < self.stop:
-    while ((i < __self.stop)) {
-        // yield i * 10
-        __state = 1;
-        return (::tpy::mul_check<int32_t>(i, 10));
-        __resume_1:;
+    case S_RESUME_0: {
         // yield i * 10 + 1
-        __state = 2;
+        __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 10)), 1));
-        __resume_2:;
+    }
+    case S_RESUME_1: {
         // i += 1
         i = ::tpy::add_check<int32_t>(i, 1);
+        __state = S_JOIN_0;
+        continue;
     }
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_JOIN_0: {
+        if ((i < __self.stop)) {
+            // yield i * 10
+            __state = S_RESUME_0;
+            return (::tpy::mul_check<int32_t>(i, 10));
+        } else {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
+
 
 void __tpy_init() {
     static bool initialized = false;

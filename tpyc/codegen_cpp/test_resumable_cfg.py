@@ -16,7 +16,6 @@ from .resumable_cfg import (
     CFGBuilder, YieldPayload, AwaitPayload,
     _stmt_has_any_suspension, _CFGNotYetSupported,
     _stmts_have_suspending_compound,
-    _stmts_have_tuple_unpack_for_with_suspension,
 )
 from .generator import GEN_DEFERRED_SUSPENDING_COMPOUNDS
 
@@ -219,22 +218,3 @@ class TestDeferredCompoundDetection:
         assert not _stmts_have_suspending_compound(
             body, GEN_DEFERRED_SUSPENDING_COMPOUNDS)
 
-    def test_tuple_unpack_for_with_yield_is_deferred(self):
-        # A `for a, b in ...` carrying a yield is deferred to the legacy
-        # path (the resumable emit doesn't frame-store the unpack targets).
-        body = _gen_body(
-            "from typing import Iterator\n"
-            "from tpy import Int32\n"
-            "def g(ps: list[tuple[Int32, Int32]]) -> Iterator[Int32]:\n"
-            "    for a, b in ps:\n        yield a + b\n")
-        assert _stmts_have_tuple_unpack_for_with_suspension(body)
-
-    def test_plain_unpack_free_for_not_deferred(self):
-        # A non-tuple-unpack `for` with a yield is NOT caught by the
-        # tuple-unpack predicate (it routes to the resumable path).
-        body = _gen_body(
-            "from typing import Iterator\n"
-            "from tpy import Int32\n"
-            "def g(xs: list[Int32]) -> Iterator[Int32]:\n"
-            "    for x in xs:\n        yield x\n")
-        assert not _stmts_have_tuple_unpack_for_with_suspension(body)

@@ -4,100 +4,140 @@
 namespace tpyapp::main {
 
 
+// def sums(pairs: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_sums::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // yield -1
+        __state = S_RESUME_0;
+        return -1;
     }
-    // yield -1
-    __state = 1;
-    return -1;
-    __resume_1:;
-    // for a, b in pairs:
-    __for_it_0 = (pairs).begin();
-    __for_end_0 = (pairs).end();
-    while (*__for_it_0 != *__for_end_0) {
-        __for_tup_0 = *(*__for_it_0)++;
-        a = std::get<0>(__for_tup_0);
-        b = std::get<1>(__for_tup_0);
+    case S_RESUME_0: {
+        __for_it_0.emplace((pairs).begin());
+        __for_end_0.emplace((pairs).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        __for_tup_0 = *((*__for_it_0))++;
+        // for a, b in pairs:
+        const auto& __tup_1 = __for_tup_0;
+        a = std::get<0>(__tup_1);
+        b = std::get<1>(__tup_1);
         // yield a + b
-        __state = 2;
+        __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(a, b));
-        __resume_2:;
     }
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+
+// def sums(pairs: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
 __gen_sums sums(std::vector<std::tuple<int32_t, int32_t>>& pairs) {
     return __gen_sums(pairs);
 }
 
+// def firsts(pairs: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_firsts::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        __for_it_0.emplace((pairs).begin());
+        __for_end_0.emplace((pairs).end());
+        __state = S_JOIN_0;
+        continue;
     }
-    // for x, _ in pairs:
-    __for_it_0 = (pairs).begin();
-    __for_end_0 = (pairs).end();
-    while (*__for_it_0 != *__for_end_0) {
-        __for_tup_1 = *(*__for_it_0)++;
-        x = std::get<0>(__for_tup_1);
+    case S_RESUME_0: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        __for_tup_1 = *((*__for_it_0))++;
+        // for x, _ in pairs:
+        const auto& __tup_1 = __for_tup_1;
+        x = std::get<0>(__tup_1);
         // yield x
-        __state = 1;
+        __state = S_RESUME_0;
         return x;
-        __resume_1:;
     }
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+
+// def firsts(pairs: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
 __gen_firsts firsts(std::vector<std::tuple<int32_t, int32_t>>& pairs) {
     return __gen_firsts(pairs);
 }
 
+// def multi(p1: list[tuple[Int32, Int32]], p2: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
-    switch (__state) {
-        case 0: break;
-        case 1: goto __resume_1;
-        case 2: goto __resume_2;
-        default: goto __done;
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        __for_it_0.emplace((p1).begin());
+        __for_end_0.emplace((p1).end());
+        __state = S_JOIN_0;
+        continue;
     }
-    // for a, b in p1:
-    __for_it_0 = (p1).begin();
-    __for_end_0 = (p1).end();
-    while (*__for_it_0 != *__for_end_0) {
-        __for_tup_2 = *(*__for_it_0)++;
-        a = std::get<0>(__for_tup_2);
-        b = std::get<1>(__for_tup_2);
+    case S_RESUME_0: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __for_it_1.emplace((p2).begin());
+            __for_end_1.emplace((p2).end());
+            __state = S_JOIN_1;
+            continue;
+        }
+        __for_tup_2 = *((*__for_it_0))++;
+        // for a, b in p1:
+        const auto& __tup_1 = __for_tup_2;
+        a = std::get<0>(__tup_1);
+        b = std::get<1>(__tup_1);
         // yield a + b
-        __state = 1;
+        __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(a, b));
-        __resume_1:;
     }
-    // for c, d in p2:
-    __for_it_1 = (p2).begin();
-    __for_end_1 = (p2).end();
-    while (*__for_it_1 != *__for_end_1) {
-        __for_tup_3 = *(*__for_it_1)++;
-        c = std::get<0>(__for_tup_3);
-        d = std::get<1>(__for_tup_3);
+    case S_JOIN_1: {
+        if ((*__for_it_1) == (*__for_end_1)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        __for_tup_3 = *((*__for_it_1))++;
+        // for c, d in p2:
+        const auto& __tup_2 = __for_tup_3;
+        c = std::get<0>(__tup_2);
+        d = std::get<1>(__tup_2);
         // yield c * d
-        __state = 2;
+        __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(c, d));
-        __resume_2:;
     }
-    __done:
-    __state = -1;
-    return ::tpy::make_unexpected(::tpy::StopIteration{});
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
 }
 
+
+// def multi(p1: list[tuple[Int32, Int32]], p2: list[tuple[Int32, Int32]]) -> Iterator[Int32]:
 __gen_multi multi(std::vector<std::tuple<int32_t, int32_t>>& p1, std::vector<std::tuple<int32_t, int32_t>>& p2) {
     return __gen_multi(p1, p2);
 }

@@ -16,8 +16,7 @@ from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protoco
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith
 from .resumable_cfg import (
-    ResumableShape, _stmts_have_suspending_compound,
-    _stmts_have_tuple_unpack_for_with_suspension,
+    ResumableShape, _stmts_have_suspending_compound, resumable_state,
 )
 
 # Compound kinds whose resumable (generator) lowering isn't ready yet, used
@@ -448,25 +447,19 @@ class CodeGenerator:
             if func.is_generator:
                 if self._resumable_generator_eligible(func):
                     # Migrated path: generator lowered onto the resumable
-                    # frame. Eligible generators are non-template, so the
-                    # __next__ body + factory land in the .cpp.
-                    # `gen_coro_finally_top_def` is a no-op when the CFG
-                    # produced no finally helpers (today's gate excludes
-                    # try/with, so the helper list is always empty). Phase E
-                    # will lift that exclusion AND needs additional wiring
-                    # in gen_coro_finally_top_def itself: today it only
-                    # enters _resumable_frame_ctx, but generator finally
-                    # bodies also need _resumable_return_lowering (for the
-                    # return -> StopIteration done-path mapping + yield-type
-                    # storage->borrow bridging). See the Phase E pre-flight
-                    # TODO for the full latent-gap checklist.
-                    with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
-                        self.gen_async.gen_coro_poll_def(cpp, func)
-                        cpp.write("\n")
-                        self.gen_async.gen_coro_finally_top_def(cpp, func)
-                        cpp.write("\n")
-                        self.gen_async.gen_factory(cpp, func)
-                        cpp.write("\n")
+                    # frame. Non-template generators emit the __next__ body
+                    # + factory here in the .cpp; templated ones (generic /
+                    # protocol-typed params) emit inline in the header
+                    # instead (see the struct-definition pass), so skip the
+                    # .cpp emission for them.
+                    if not self.gen_async._is_templated_coro(func):
+                        with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
+                            self.gen_async.gen_coro_poll_def(cpp, func)
+                            cpp.write("\n")
+                            self.gen_async.gen_coro_finally_top_def(cpp, func)
+                            cpp.write("\n")
+                            self.gen_async.gen_factory(cpp, func)
+                            cpp.write("\n")
                 elif not self.gen_generators.is_simple_generator(func):
                     self.gen_generators.gen_generator_next(cpp, func)
                     cpp.write("\n")
@@ -478,8 +471,11 @@ class CodeGenerator:
                 # Templates are emitted inline in the header (same rule as
                 # template functions). For non-template async coros, emit
                 # poll() body, optional __finally_top(), and the factory
-                # function in the .cpp.
-                if not func.type_params:
+                # function in the .cpp. `_is_templated_coro` (not bare
+                # type_params) so a protocol-typed param -- which also makes
+                # the struct a template -- routes to the header, not an
+                # out-of-line .cpp body that would fail to link.
+                if not self.gen_async._is_templated_coro(func):
                     self.gen_async.gen_coro_poll_def(cpp, func)
                     cpp.write("\n")
                     self.gen_async.gen_coro_finally_top_def(cpp, func)
@@ -496,13 +492,27 @@ class CodeGenerator:
         for record in module.all_records():
             for method in record.methods:
                 if method.is_generator and not self.gen_generators.is_simple_generator(method):
-                    self.gen_generators.gen_generator_next(
-                        cpp, method, record_name=record.name)
-                    cpp.write("\n")
-                elif method.is_async and not method.type_params:
+                    if self._resumable_generator_eligible(method):
+                        # Non-template generator methods: __next__ body +
+                        # finally-top land in the .cpp (templated ones emit
+                        # inline next to the struct in the .hpp, see below).
+                        if not self.gen_async._is_templated_coro(method):
+                            with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
+                                self.gen_async.gen_coro_poll_def(
+                                    cpp, method, record_name=record.name)
+                                cpp.write("\n")
+                                self.gen_async.gen_coro_finally_top_def(
+                                    cpp, method, record_name=record.name)
+                                cpp.write("\n")
+                    else:
+                        self.gen_generators.gen_generator_next(
+                            cpp, method, record_name=record.name)
+                        cpp.write("\n")
+                elif method.is_async and not self.gen_async._is_templated_coro(method):
                     # Non-template async methods: poll body lands in .cpp.
-                    # Template async methods have their poll body emitted
-                    # inline next to the struct in the .hpp (see above).
+                    # Template async methods (type params OR a protocol-typed
+                    # param) have their poll body emitted inline next to the
+                    # struct in the .hpp (see above).
                     self.gen_async.gen_coro_poll_def(
                         cpp, method, record_name=record.name)
                     cpp.write("\n")
@@ -542,55 +552,62 @@ class CodeGenerator:
         return hpp.getvalue(), cpp.getvalue()
 
     def _resumable_generator_eligible(self, func: "TpyFunction") -> bool:
-        """Gate for routing a generator through the resumable (async)
-        state-machine emitter (`gen_async`) rather than
-        `gen_generators.py`. Eligible: free function, non-generic, not a
-        simple-peephole generator, no tuple-unpack `for` carrying a
-        suspension (D2 follow-up: the resumable emit doesn't frame-store
-        unpack targets yet), and a body shape the resumable CFG accepts
-        (verified by trial-building it -- see
-        `_try_build_resumable_cfg`; `try`/`with` carrying a suspension are
-        deferred to Phase E and stay on the legacy path). Parameters are
-        captured into the coro frame via the same `_classify_params`
-        machinery async coroutines use (value by value, str as
-        string_view, reference types by `T&`, `Own[T]` moved in,
-        pointer-repr `Optional` as `T*`), matching the legacy generator
-        capture shape. Tuple yields use the borrow-form slot
-        (`std::tuple<T&, ...>` / `std::tuple<P*, ...>`) via
-        `gen_generators._iter_slot_for_yield`. Everything outside this
-        set stays on the legacy path.
+        """Gate for routing a generator (free function OR method) through the
+        resumable state-machine emitter (`gen_async`) rather than
+        `gen_generators.py`. Eligible: not a simple-peephole generator, no
+        protocol-typed params (the for-loop frame field would be typed
+        against the abstract concept, not the deduced template param -- they
+        stay on the legacy path for a clean reject), and a body shape the
+        resumable CFG accepts (verified by trial-building it; see
+        `_try_build_resumable_cfg`). Generic generators are eligible -- the
+        templated struct + `__next__` + factory emit inline in the header.
+        Parameters are captured via the async `_classify_params` machinery
+        (value by value, str as string_view, reference types by `T&`,
+        `Own[T]` moved in, pointer-repr `Optional` as `T*`). Tuple yields use
+        the borrow-form slot via `gen_generators._iter_slot_for_yield`.
+        Shapes the CFG can't build (e.g. `match` carrying a yield) stay on
+        the legacy path.
 
         The decision is memoized on the func: the gate is consulted from
         several orchestration passes, and a trial CFG build per call would
         be wasteful (and, for rejected shapes, repeated).
         """
-        cached = getattr(func, "_resumable_gen_eligible", None)
-        if cached is not None:
-            return cached
+        state = resumable_state(func)
+        if state.gen_eligible is not None:
+            return state.gen_eligible
         result = self._compute_resumable_generator_eligible(func)
-        func._resumable_gen_eligible = result
+        state.gen_eligible = result
         return result
 
     def _compute_resumable_generator_eligible(self, func: "TpyFunction") -> bool:
-        if not func.is_generator or func.type_params:
+        # Generic generators (explicit `[T]` type params or protocol-typed
+        # params) are eligible: the resumable emitter is template-aware
+        # (struct + __next__ + factory emitted inline in the header for
+        # templated coros, exactly like generic async defs). The legacy
+        # struct path could not link an out-of-line template __next__, which
+        # is why it rejected them; the resumable path has no such limit.
+        if not func.is_generator:
             return False
         if self.gen_generators.is_simple_generator(func):
             return False
         if func.generator_yield_type is None:
+            return False
+        # Protocol-typed params (`def gen(it: Iterable[T])`) make the struct
+        # a template (`T_it`), but the resumable for-loop frame fields are
+        # still typed against the abstract protocol (`Iterable<T>`, a C++
+        # concept) instead of the deduced template param -- an ill-formed
+        # field decl. That substitution is a separate feature (TODO.md
+        # "Generator: protocol-typed params"); until it lands, route these
+        # to the legacy path, where they get a clean "not yet supported"
+        # diagnostic instead of a confusing C++ error. (Explicit `[T]` type
+        # params have no such issue and stay eligible.)
+        if self.protocols.get_all_protocol_params(func.params):
             return False
         # GEN_DEFERRED_SUSPENDING_COMPOUNDS is now empty (Phase E migrated
         # try/with/finally onto the resumable path). All generators with
         # suspending compounds are now eligible for the resumable frame.
         if _stmts_have_suspending_compound(
                 func.body, GEN_DEFERRED_SUSPENDING_COMPOUNDS):
-            return False
-        # Tuple-unpack for-loops carrying a suspension: the resumable emit
-        # binds only the synthetic `__for_tup` loop var, not the
-        # destructured targets, so a target read across a yield reads a
-        # stale frame field. Keep these on the legacy path (which binds the
-        # targets as frame-field assignments) until the resumable path emits
-        # the unpack targets into the frame. (D2 follow-up.)
-        if _stmts_have_tuple_unpack_for_with_suspension(func.body):
             return False
         # Trial-build the CFG. The builder rejects shapes it can't yet
         # lower (loop-`else` with a suspension, await bound to a field, a
@@ -1051,8 +1068,13 @@ class CodeGenerator:
         for record in module.all_records():
             for method in record.methods:
                 if method.is_generator and not self.gen_generators.is_simple_generator(method):
-                    self.gen_generators.gen_generator_forward_decl(
-                        hpp, method, record_name=record.name)
+                    if self._resumable_generator_eligible(method):
+                        with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
+                            self.gen_async.gen_coro_forward_decl(
+                                hpp, method, record_name=record.name)
+                    else:
+                        self.gen_generators.gen_generator_forward_decl(
+                            hpp, method, record_name=record.name)
                     emitted_gen_fwd = True
                 if method.is_async:
                     self.gen_async.gen_coro_forward_decl(
@@ -1157,8 +1179,10 @@ class CodeGenerator:
                 self.gen_async.gen_coro_struct(
                     hpp, method, record_name=record.name)
                 hpp.write("\n")
-                # Templates: poll() body must be inline-in-header.
-                if method.type_params:
+                # Templates (type params OR a protocol-typed param): poll()
+                # body must be inline-in-header, else the out-of-line .cpp
+                # body fails to link against the template struct.
+                if self.gen_async._is_templated_coro(method):
                     self.gen_async.gen_coro_poll_def(
                         hpp, method, record_name=record.name)
                     hpp.write("\n")
@@ -1189,14 +1213,26 @@ class CodeGenerator:
                 if self._resumable_generator_eligible(func):
                     with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
                         self.gen_async.gen_coro_struct(hpp, func)
+                        # Templated generators: __next__ body + factory must
+                        # be inline-in-header (template definitions can't go
+                        # in the .cpp). Emit right after the struct so they
+                        # see fully-defined fields. Mirrors the generic
+                        # async-def branch below.
+                        if self.gen_async._is_templated_coro(func):
+                            self.gen_async.gen_coro_poll_def(hpp, func)
+                            hpp.write("\n")
+                            self.gen_async.gen_coro_finally_top_def(hpp, func)
+                            hpp.write("\n")
+                            self.gen_async.gen_factory(hpp, func)
                 else:
                     self.gen_generators.gen_generator_struct(hpp, func)
                 hpp.write("\n")
             if func.is_async:
                 self.gen_async.gen_coro_struct(hpp, func)
-                # Templates: poll() body must be inline-in-header. Emit it
-                # right after the struct so it sees fully-defined fields.
-                if func.type_params:
+                # Templates (type params OR a protocol-typed param): poll()
+                # body must be inline-in-header. Emit it right after the
+                # struct so it sees fully-defined fields.
+                if self.gen_async._is_templated_coro(func):
                     self.gen_async.gen_coro_poll_def(hpp, func)
                     hpp.write("\n")
                     self.gen_async.gen_coro_finally_top_def(hpp, func)
@@ -1207,22 +1243,52 @@ class CodeGenerator:
         for record in module.all_records():
             for method in record.methods:
                 if method.is_generator and not self.gen_generators.is_simple_generator(method):
-                    self.gen_generators.gen_generator_struct(
-                        hpp, method, record_name=record.name)
-                    hpp.write("\n")
-                    # Inline factory method definition (now that struct is complete)
-                    struct_name = self.gen_generators.gen_struct_name(method, record.name)
-                    cpp_record = escape_cpp_name(record.name.replace(".", "::"))
-                    params = self.functions.gen_params(
-                        method.params, method, emit_defaults=False)
-                    if method.params:
-                        args = f"*this, {', '.join(escape_cpp_name(p) for p, _ in method.params)}"
+                    if self._resumable_generator_eligible(method):
+                        with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
+                            self.gen_async.gen_coro_struct(
+                                hpp, method, record_name=record.name)
+                            hpp.write("\n")
+                            # Templated generator methods: __next__ body +
+                            # finally-top must be inline-in-header.
+                            if self.gen_async._is_templated_coro(method):
+                                self.gen_async.gen_coro_poll_def(
+                                    hpp, method, record_name=record.name)
+                                hpp.write("\n")
+                                self.gen_async.gen_coro_finally_top_def(
+                                    hpp, method, record_name=record.name)
+                                hpp.write("\n")
+                            # Inline factory method (mirrors the async-method
+                            # factory: _factory_args_forwarded moves Own[T] /
+                            # protocol params in correctly).
+                            struct_name = self.gen_async._struct_name_templated(method, record.name)
+                            cpp_record = escape_cpp_name(record.name.replace(".", "::"))
+                            params = self.functions.gen_params(
+                                method.params, method.type_params,
+                                emit_defaults=False, func=method)
+                            args = self.gen_async._factory_args_forwarded(
+                                method, receiver=(record.name, "*this"))
+                            const_suffix = " const" if method.is_readonly else ""
+                            self.gen_async._emit_template_header(hpp, method)
+                            hpp.write(f"inline {struct_name} {cpp_record}::{method.name}({params}){const_suffix} {{\n")
+                            hpp.write(f"    return {struct_name}({args});\n")
+                            hpp.write(f"}}\n\n")
                     else:
-                        args = "*this"
-                    const_suffix = " const" if method.is_readonly else ""
-                    hpp.write(f"inline {struct_name} {cpp_record}::{method.name}({params}){const_suffix} {{\n")
-                    hpp.write(f"    return {struct_name}({args});\n")
-                    hpp.write(f"}}\n\n")
+                        self.gen_generators.gen_generator_struct(
+                            hpp, method, record_name=record.name)
+                        hpp.write("\n")
+                        # Inline factory method definition (now that struct is complete)
+                        struct_name = self.gen_generators.gen_struct_name(method, record.name)
+                        cpp_record = escape_cpp_name(record.name.replace(".", "::"))
+                        params = self.functions.gen_params(
+                            method.params, method, emit_defaults=False)
+                        if method.params:
+                            args = f"*this, {', '.join(escape_cpp_name(p) for p, _ in method.params)}"
+                        else:
+                            args = "*this"
+                        const_suffix = " const" if method.is_readonly else ""
+                        hpp.write(f"inline {struct_name} {cpp_record}::{method.name}({params}){const_suffix} {{\n")
+                        hpp.write(f"    return {struct_name}({args});\n")
+                        hpp.write(f"}}\n\n")
 
         # Trivial out-of-line method bodies (single-statement getters /
         # setters / forwarders) stay in the .hpp with ``inline`` so the

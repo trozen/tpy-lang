@@ -20,19 +20,27 @@ void main();
 
 // Generator: sums
 struct __gen_sums {
-    int __state;
+    int32_t __state;
     std::vector<std::tuple<int32_t, int32_t>>& pairs;
     std::tuple<int32_t, int32_t> __for_tup_0;
     int32_t a;
     int32_t b;
-    std::optional<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_it_0;
-    std::optional<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_end_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_it_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
 
     __gen_sums(std::vector<std::tuple<int32_t, int32_t>>& pairs)
-        : __state(0), pairs(pairs) {}
+        : __state(S_INITIAL), pairs(pairs) {}
 
-    __gen_sums& __iter__() { return *this; }
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_sums& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_sums&) {
         return os << "<generator sums>";
@@ -41,18 +49,25 @@ struct __gen_sums {
 
 // Generator: firsts
 struct __gen_firsts {
-    int __state;
+    int32_t __state;
     std::vector<std::tuple<int32_t, int32_t>>& pairs;
     std::tuple<int32_t, int32_t> __for_tup_1;
     int32_t x;
-    std::optional<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_it_0;
-    std::optional<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_end_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_it_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
 
     __gen_firsts(std::vector<std::tuple<int32_t, int32_t>>& pairs)
-        : __state(0), pairs(pairs) {}
+        : __state(S_INITIAL), pairs(pairs) {}
 
-    __gen_firsts& __iter__() { return *this; }
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_firsts& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_firsts&) {
         return os << "<generator firsts>";
@@ -61,7 +76,7 @@ struct __gen_firsts {
 
 // Generator: multi
 struct __gen_multi {
-    int __state;
+    int32_t __state;
     std::vector<std::tuple<int32_t, int32_t>>& p1;
     std::vector<std::tuple<int32_t, int32_t>>& p2;
     std::tuple<int32_t, int32_t> __for_tup_2;
@@ -70,16 +85,25 @@ struct __gen_multi {
     std::tuple<int32_t, int32_t> __for_tup_3;
     int32_t c;
     int32_t d;
-    std::optional<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_it_0;
-    std::optional<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_end_0;
-    std::optional<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_it_1;
-    std::optional<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_end_1;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_it_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_end_0;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_it_1;
+    ::tpy::frame_slot<decltype(std::declval<std::vector<std::tuple<int32_t, int32_t>>&>().begin())> __for_end_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
 
     __gen_multi(std::vector<std::tuple<int32_t, int32_t>>& p1, std::vector<std::tuple<int32_t, int32_t>>& p2)
-        : __state(0), p1(p1), p2(p2) {}
+        : __state(S_INITIAL), p1(p1), p2(p2) {}
 
-    __gen_multi& __iter__() { return *this; }
     std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_multi& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_multi&) {
         return os << "<generator multi>";

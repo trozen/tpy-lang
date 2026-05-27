@@ -1731,9 +1731,12 @@ class CodeGenContext:
         # `generator_for_loop_info`; bodies with no for-loop leave it empty
         # (the loop is then a no-op).
         for info in self.generator_for_loop_info.values():
-            iter_var = getattr(info, "pointer_form_loop_var", None)
-            if iter_var is not None:
-                self.pointer_locals.add(iter_var)
+            if info.pointer_form_loop_var is not None:
+                self.pointer_locals.add(info.pointer_form_loop_var)
+            # Tuple-unpack targets aliasing a non-value container member:
+            # stored as `T*` (alias into the live element), same dispatch
+            # as a pointer-form loop var.
+            self.pointer_locals.update(info.pointer_form_unpack_targets)
 
         if not func.generator_locals:
             return
