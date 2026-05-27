@@ -1,0 +1,1 @@
+main.py:7: error: Recursive type alias 'Outer' must use a union form (e.g. `type Outer = SomeBaseType | list[Outer]`) so the compiler can emit a wrapper struct. Bare non-union self-recursion (`type Outer = list[Outer]`) is not supported.

@@ -1,0 +1,1 @@
+main.py:11: error: Generic type alias 'Pair' requires type arguments: Pair[T]

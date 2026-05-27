@@ -1601,6 +1601,20 @@ class CallAnalyzer:
         resolved = _resolve_concrete_type_name(name)
         if resolved is not None:
             return resolved
+        # Generic type alias used as an isinstance second arg.  A non-
+        # recursive generic alias (`type Pair[T] = ...`) has no runtime
+        # identity -- the resolver expanded `Pair[T]` use sites to the
+        # body, so there's no `Pair` class to test against.  Direct the
+        # user to test the body's expanded members instead.  See Codex
+        # review point B in docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.
+        alias_info = self.ctx.registry.get_type_alias_info(name)
+        if alias_info is not None and alias_info.type_params:
+            raise self.ctx.error(
+                f"isinstance() does not support generic type alias "
+                f"'{name}' -- generic aliases have no runtime identity. "
+                f"Test the expanded type's members directly.",
+                expr,
+            )
         raise self.ctx.error(f"isinstance() second argument must be a type, got '{name}'", expr)
 
     def _resolve_isinstance_check_types(

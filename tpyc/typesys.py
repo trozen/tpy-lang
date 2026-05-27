@@ -4203,6 +4203,28 @@ class ModuleVarInfo:
 
 
 @dataclass
+class TypeAliasInfo:
+    """Per-alias metadata for a `type X[...] = ...` declaration.
+
+    `body` is the alias's RHS as a fully resolved TpyType (post
+    `parse.resolve_refs`).  `type_params` / `type_param_kinds` describe the
+    alias's generic parameters; both empty for non-generic aliases.
+    `is_recursive` is True when the alias self-references through an
+    indirecting container and codegen must emit a wrapper struct (see
+    `recursive_union_names`).
+
+    See `docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md` for the broader design;
+    fields beyond v1's needs (bounds, defining_module) will land alongside
+    the commits that consume them.
+    """
+    body: 'TpyType'
+    type_params: list[str] = field(default_factory=list)
+    type_param_kinds: list[TypeParamKind] = field(default_factory=list)
+    loc: Optional[Any] = None  # SourceLocation from parse.py (avoid circular import)
+    is_recursive: bool = False
+
+
+@dataclass
 class ModuleInfo:
     """Information about a module (builtin or user-defined)."""
     name: str
@@ -4214,7 +4236,7 @@ class ModuleInfo:
     variables: dict[str, ModuleVarInfo] = field(default_factory=dict)  # var_name -> ModuleVarInfo
     records: dict[str, RecordInfo] = field(default_factory=dict)  # type_name -> RecordInfo (exported types)
     protocols: dict[str, ProtocolInfo] = field(default_factory=dict)  # protocol_name -> ProtocolInfo
-    type_aliases: dict[str, 'TpyType'] = field(default_factory=dict)  # alias_name -> resolved type
+    type_aliases: dict[str, TypeAliasInfo] = field(default_factory=dict)  # alias_name -> resolved info
     recursive_union_names: set[str] = field(default_factory=set)  # subset of type_aliases that are recursive union aliases
     enums: dict[str, 'NominalType'] = field(default_factory=dict)  # enum_name -> NominalType (enum-kind)
     # Defining modules whose symbols this module's generated code references.
@@ -4281,7 +4303,7 @@ class TypeRegistry:
         self.modules: dict[str, ModuleInfo] = (
             shared_modules if shared_modules is not None else {}
         )
-        self.type_aliases: dict[str, 'TpyType'] = {}  # alias_name -> resolved type
+        self.type_aliases: dict[str, TypeAliasInfo] = {}  # alias_name -> resolved info
         # Source tracking for imported aliases: local_name -> (declaring_module, original_name).
         # Type alias bodies (UnionType, OptionalType, ...) have no `_module_qname` of
         # their own -- an alias is a pure name-binding in the module that declared it --
@@ -4394,18 +4416,32 @@ class TypeRegistry:
         self.enums[name] = NominalType(name=name, _module_qname=qname)
 
     def register_type_alias(self, name: str, typ: 'TpyType',
-                            *, imported_from: tuple[str, str] | None = None) -> None:
+                            *, imported_from: tuple[str, str] | None = None,
+                            info: 'TypeAliasInfo | None' = None) -> None:
         """Register a type alias (e.g., Shape = Circle | Rect).
+
+        `info` carries generic-alias metadata (type_params, type_param_kinds,
+        loc, is_recursive); pass None for non-generic aliases and a bare-body
+        `TypeAliasInfo(body=typ)` is constructed.
 
         imported_from: (declaring_module, alias_name) if the alias was imported
             from another user module; None for locally-defined aliases.
         """
-        self.type_aliases[name] = typ
+        self.type_aliases[name] = info if info is not None else TypeAliasInfo(body=typ)
         if imported_from is not None:
             self.imported_type_alias_info[name] = imported_from
 
     def get_type_alias(self, name: str) -> 'TpyType | None':
-        """Get a type alias by name, or None if not found."""
+        """Get a type alias body by name, or None if not found.
+
+        Returns the resolved body type; for generic-alias metadata (type
+        params, recursion flag, loc) use `get_type_alias_info`.
+        """
+        entry = self.type_aliases.get(name)
+        return entry.body if entry is not None else None
+
+    def get_type_alias_info(self, name: str) -> 'TypeAliasInfo | None':
+        """Get the full type alias info by name, or None if not found."""
         return self.type_aliases.get(name)
 
     def imported_record_qualification(

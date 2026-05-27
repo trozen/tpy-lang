@@ -1,0 +1,1 @@
+main.py:14: error: isinstance() second argument must be a type name (or tuple of type names)

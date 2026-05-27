@@ -755,11 +755,69 @@ class Parser:
                 all_module_classes = False
         return has_confirmed_type or all_module_classes
 
+    def _parse_alias_type_params(
+        self, node: ast.TypeAlias,
+    ) -> 'tuple[list[str], list[TypeParamKind]]':
+        """Parse PEP 695 type parameters on a `type X[...] = ...` alias.
+
+        v1 of generic recursive type aliases (see
+        `docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md`) accepts only bare
+        `ast.TypeVar` entries.  Bounds (`type Tree[T: Hashable] = ...`),
+        defaults (PEP 696), `TypeVarTuple`, and `ParamSpec` are rejected
+        outright -- silent stripping would diverge from CPython
+        semantics.
+        """
+        if not (hasattr(node, 'type_params') and node.type_params):
+            return [], []
+        type_params: list[str] = []
+        type_param_kinds: list[TypeParamKind] = []
+        for tp in node.type_params:
+            if not isinstance(tp, ast.TypeVar):
+                raise ParseError(
+                    f"Type alias '{node.name.id}': only simple type "
+                    f"parameters are supported in v1; got "
+                    f"{type(tp).__name__}",
+                    node,
+                )
+            if tp.bound is not None:
+                raise ParseError(
+                    f"Type alias '{node.name.id}': bounds on type "
+                    f"parameters (`{tp.name}: ...`) are not yet "
+                    f"supported. Remove the bound or open an issue.",
+                    node,
+                )
+            if getattr(tp, 'default_value', None) is not None:
+                raise ParseError(
+                    f"Type alias '{node.name.id}': default values on "
+                    f"type parameters (`{tp.name} = ...`) are not yet "
+                    f"supported.",
+                    node,
+                )
+            if tp.name in type_params:
+                raise ParseError(
+                    f"Type alias '{node.name.id}': duplicate type "
+                    f"parameter name '{tp.name}'.",
+                    node,
+                )
+            type_params.append(tp.name)
+            type_param_kinds.append(TypeParamKind.TYPE)
+        return type_params, type_param_kinds
+
     def _register_type_alias(
         self, name: str, type_node: ast.expr,
-        type_aliases: 'dict[str, tuple[TpyType | TypeRefNode, SourceLocation | None]]'
+        type_aliases: 'dict[str, tuple[TpyType | TypeRefNode, SourceLocation | None, list[str], list[TypeParamKind]]]',
+        type_params: 'list[str] | None' = None,
+        type_param_kinds: 'list[TypeParamKind] | None' = None,
     ) -> None:
         """Parse a type alias RHS as a TypeRefNode.
+
+        `type_params` / `type_param_kinds` describe an alias's generic
+        parameters (`type Tree[T] = ...`); both empty for non-generic
+        aliases.  When present, the parser temporarily binds them into
+        `_type_param_scope` so `T` references in the body resolve as
+        `TypeParamRef` instead of failing with "Unknown type: T".  Sema
+        rejects further use until generic-alias substitution lands; see
+        `docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md`.
 
         The post-parse `resolve_refs` pass resolves the ref with a
         `pending_alias` kwarg so same-body self-references produce a
@@ -767,9 +825,21 @@ class Parser:
         unions and registers the resolved alias in parser.registry so
         later alias bodies can reference it.
         """
-        ref = self._parse_type_ref(type_node)
+        type_params = list(type_params or [])
+        type_param_kinds = list(type_param_kinds or [])
         loc = SourceLocation(line=type_node.lineno) if hasattr(type_node, 'lineno') else None
-        type_aliases[name] = (ref, loc)
+        if type_params:
+            # `_parse_type_ref` defaults its scope arg to `self._type_param_scope`,
+            # so setting the attribute is enough -- no explicit pass needed.
+            old_scope = self._type_param_scope
+            self._type_param_scope = dict(zip(type_params, type_param_kinds))
+            try:
+                ref = self._parse_type_ref(type_node)
+            finally:
+                self._type_param_scope = old_scope
+        else:
+            ref = self._parse_type_ref(type_node)
+        type_aliases[name] = (ref, loc, type_params, type_param_kinds)
 
     def _parse_module(self, tree: ast.Module) -> TpyModule:
         """Parse a module."""
@@ -801,7 +871,7 @@ class Parser:
         protocols = []
         enums = []
         top_level_stmts = []
-        type_aliases: dict[str, tuple[TpyType, SourceLocation | None]] = {}
+        type_aliases: 'dict[str, tuple[TpyType | TypeRefNode, SourceLocation | None, list[str], list[TypeParamKind]]]' = {}
         imports: dict[str, set[tuple[str, str]] | None | str] = {}
         user_module_imports: dict[str, int] = {}
         module_aliases: dict[str, str] = {}
@@ -906,7 +976,11 @@ class Parser:
                         self._decorator_schemas[func.builtin_decorator_key] = schema
             elif isinstance(node, ast.TypeAlias):
                 seen_non_import = True
-                self._register_type_alias(node.name.id, node.value, type_aliases)
+                tp_names, tp_kinds = self._parse_alias_type_params(node)
+                self._register_type_alias(
+                    node.name.id, node.value, type_aliases,
+                    type_params=tp_names, type_param_kinds=tp_kinds,
+                )
             elif isinstance(node, ast.Assign) and self._is_type_alias_assign(node):
                 seen_non_import = True
                 self._register_type_alias(node.targets[0].id, node.value, type_aliases)

@@ -93,7 +93,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D16 | Dynamic attributes (`__getattr__`/`__setattr__`/`__delattr__`) | M-L | Done | [VII](#dynamic-attributes) |
 | D17 | `*args` (variadic positional arguments) | M | Done (homogeneous) | [VI](#args--kwargs) |
 | D18 | `**kwargs` (variadic keyword arguments) | M-L | Done | [VI](#args--kwargs) |
-| D19 | Recursive type aliases | M | Done (non-generic) | [I](#recursive-type-aliases) |
+| D19 | Recursive type aliases | M | Done (non-generic + generic non-recursive); generic recursive in progress | [I](#recursive-type-aliases) |
 | D20 | Mutual recursion (cross-type cycles) | M-L | Done (same-module) | [I](#mutual-recursion) |
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
 | D22 | Multiple inheritance (mixins) | L | Done | [VII](#multiple-inheritance) |
@@ -640,8 +640,20 @@ Safety validation rejects direct and fixed-size recursion. The alias name is
 callable as a constructor (e.g. `Tree(42)`). Annotation-driven inference works
 for nested list/dict literals (`x: Tree = [1, [3, 4]]` infers as `list[Tree]`).
 
+**Phase 1 shipped (generic non-recursive aliases)**: `type Pair[T] = tuple[T, T]`,
+`type Result[T, E] = T | E`, multi-param, alias-in-alias, container element,
+cross-module (short-name + qualified). Substitution happens at parse-resolution
+via `substitute_type_params_structural`. Generated C++ uses the expanded body
+directly; the alias has no C++-level identity. `isinstance(x, Pair)` rejected
+(no runtime identity). See `docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md`.
+
 **Not yet supported**:
-- Generic recursive aliases (`type Tree[T] = T | list[Tree[T]]`).
+- Generic *recursive* aliases (`type Tree[T] = T | list[Tree[T]]`) -- Phase 2
+  of the rollout will add the templated wrapper struct. Today rejected at
+  parse time with a clean diagnostic.
+- Bounds on alias type params (`type Tree[T: Hashable] = ...`) -- rejected at
+  parse time.
+- Mutual recursion across generic aliases -- Phase 2 follow-up.
 
 **Dependencies**: Union types (done). Match/case (done for unions).
 

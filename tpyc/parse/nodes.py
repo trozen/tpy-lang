@@ -1459,13 +1459,18 @@ class TpyModule:
     module_aliases: dict[str, str] = field(default_factory=dict)
     # Modules that had bare `import X` statements (needed for module binding in sema)
     bare_module_imports: set[str] = field(default_factory=set)
-    # Type aliases (e.g., Shape = Circle | Rect) -> (resolved type, source location)
+    # Type aliases (e.g., Shape = Circle | Rect) -> (resolved type, source
+    # location, type_params, type_param_kinds).  `type_params` /
+    # `type_param_kinds` are non-empty only for generic aliases
+    # (`type Tree[T] = ...`); v1 of generic aliases keeps storage
+    # extensible without consuming type_params yet -- see
+    # `docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md`.
     # Between parse and the post-parse resolve_refs pass, alias
     # RHS values may hold TypeRefNode in place of TpyType.  Sema resolves
     # each alias passing `pending_alias=alias_name` through the resolver
     # API so same-body self-refs become NominalType(name) placeholders,
     # then detects recursive unions post-resolution.
-    type_aliases: 'dict[str, tuple[TpyType | TypeRefNode, SourceLocation | None]]' = field(default_factory=dict)
+    type_aliases: 'dict[str, tuple[TpyType | TypeRefNode, SourceLocation | None, list[str], list[TypeParamKind]]]' = field(default_factory=dict)
     # Parser warnings (e.g., imports after non-import code)
     parse_warnings: list[ParseWarning] = field(default_factory=list)
     # Module-level # tpy: directives

@@ -1,0 +1,1 @@
+main.py:11: error: isinstance() does not support generic type alias 'Pair' -- generic aliases have no runtime identity. Test the expanded type's members directly.

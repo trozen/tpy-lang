@@ -309,7 +309,16 @@ class CodeGenerator:
         # below registers them with their qualified C++ name so cross-module
         # consumers emit the right type.
         for local_name, (source_module, original_name) in self.analyzer.registry.imported_type_alias_info.items():
-            alias_type = self.analyzer.registry.get_type_alias(local_name)
+            alias_info = self.analyzer.registry.get_type_alias_info(local_name)
+            if alias_info is not None and alias_info.type_params:
+                # Generic non-recursive aliases have no C++-level identity
+                # (expanded at use sites); registering the alias name for a
+                # value-type union body would make UnionType.to_cpp() emit a
+                # name that was never defined. Mirrors the guard in the
+                # imported-alias `using` loop. See
+                # docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.
+                continue
+            alias_type = alias_info.body if alias_info is not None else None
             if not isinstance(alias_type, UnionType):
                 continue
             source_info = self.analyzer.registry.modules.get(source_module)
@@ -953,7 +962,7 @@ class CodeGenerator:
         # Forward declare recursive union wrapper structs (before records,
         # so that record fields like Box[JsonValue] can reference the name)
         emitted_fwd = False
-        for name, (_typ, _loc) in module.type_aliases.items():
+        for name in module.type_aliases:
             if name in module.recursive_union_names:
                 hpp.write(f"struct {name};\n")
                 emitted_fwd = True
@@ -999,8 +1008,16 @@ class CodeGenerator:
             # Skip aliases whose C++ emission bypasses the Python name --
             # the `using PythonName = ...;` would be dead code. See
             # _emits_own_cpp above.
-            alias_type = self.analyzer.registry.get_type_alias(local_name)
-            if alias_type is not None:
+            alias_info = self.analyzer.registry.get_type_alias_info(local_name)
+            if alias_info is not None:
+                if alias_info.type_params:
+                    # Generic non-recursive aliases have no C++-level
+                    # identity (the source module skipped emission), so
+                    # emitting `using Local = Src::Original;` would
+                    # dangle. See
+                    # docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.
+                    continue
+                alias_type = alias_info.body
                 if isinstance(alias_type, NominalType) and _emits_own_cpp(alias_type):
                     continue
                 if not isinstance(alias_type, (NominalType, UnionType)):
@@ -1224,11 +1241,22 @@ class CodeGenerator:
         # specs appear before any struct that uses the type as a set/dict-key.
 
         # Module-local type alias definitions (after record definitions
-        # so member types are complete for std::variant)
+        # so member types are complete for std::variant).
+        #
+        # Non-recursive generic aliases (`type Pair[T] = ...`) are
+        # expanded at use sites by the parser-resolver (Phase 1 of
+        # generic recursive aliases; see
+        # docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md), so they have no
+        # C++-level identity and we skip emission entirely.  The body
+        # still contains TypeParamRef placeholders, which would render
+        # as bare `T` -- invalid C++ at module scope.
         emitted_alias = False
-        for name, (typ, _loc) in sorted(module.type_aliases.items()):
+        for name, entry in sorted(module.type_aliases.items()):
+            typ, _loc, type_params, _kinds = entry
             if name in module.recursive_union_names:
                 self._gen_recursive_union_struct(hpp, name, typ)
+            elif type_params:
+                continue  # generic non-recursive alias: no C++ emission
             else:
                 cpp_type = self.types.type_to_cpp(typ)
                 hpp.write(f"using {name} = {cpp_type};\n")
@@ -1237,9 +1265,14 @@ class CodeGenerator:
             hpp.write("\n")
         # Register module-local union aliases AFTER emitting the using
         # declaration (to avoid circular `using Shape = Shape;`) but
-        # BEFORE function definitions (so signatures use the alias name)
-        for name, (typ, _loc) in module.type_aliases.items():
-            if isinstance(typ, UnionType):
+        # BEFORE function definitions (so signatures use the alias name).
+        # Skip generic aliases: they have no name-level C++ identity, and
+        # registering their substituted body under the alias name would
+        # collide with downstream code that expects union alias names to
+        # be C++-visible.
+        for name, entry in module.type_aliases.items():
+            typ, _loc, type_params, _kinds = entry
+            if not type_params and isinstance(typ, UnionType):
                 register_union_alias(typ.members, name)
 
         # Function declarations (template definitions, stubs, and extern "C";

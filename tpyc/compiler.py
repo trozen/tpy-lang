@@ -40,7 +40,7 @@ from .codegen_cpp.context import qualified_cpp_name, get_include_path, module_to
 from .compilation_context import activate_compiler
 from .typesys import (
     TpyType, INT32, INT64, BIGINT, VOID, NominalType,
-    RecordInfo, FunctionInfo, ProtocolInfo,
+    RecordInfo, FunctionInfo, ProtocolInfo, TypeAliasInfo,
     OwnType, OptionalType, UnionType, TupleType, PtrType, RefType, ReadonlyType,
     RecursiveUnionInfo,
     is_fn_type, unwrap_ref_type, is_protocol_type, is_protocol_union,
@@ -945,7 +945,7 @@ class ModuleExports:
     protocols: dict[str, ProtocolInfo] = field(default_factory=dict)
     enums: dict[str, 'NominalType'] = field(default_factory=dict)
     variables: dict[str, TpyType] = field(default_factory=dict)
-    type_aliases: dict[str, TpyType] = field(default_factory=dict)
+    type_aliases: dict[str, 'TypeAliasInfo'] = field(default_factory=dict)
     # Subset of type_aliases that are recursive union aliases (compile to a
     # C++ wrapper struct). Cross-module consumers need this to qualify the
     # alias name with the defining module's namespace.
@@ -2161,7 +2161,8 @@ class Compiler:
                 compiled.ast.recursive_union_names
                 if compiled.ast.recursive_union_names else set()
             )
-            for alias_name, (alias_type, alias_loc) in compiled.ast.type_aliases.items():
+            for alias_name, entry in compiled.ast.type_aliases.items():
+                alias_type, alias_loc = entry[0], entry[1]
                 if alias_name not in recursive_aliases:
                     continue
                 found = _find_complete_required_peer(unwrap_ref_type(alias_type), member)
@@ -3106,8 +3107,15 @@ class Compiler:
                     exports.enums[local_name] = module_info.enums[original_name]
 
         # Export type aliases
-        for name, (typ, _loc) in compiled.ast.type_aliases.items():
-            exports.type_aliases[name] = typ
+        for name, entry in compiled.ast.type_aliases.items():
+            typ, loc, type_params, type_param_kinds = entry
+            exports.type_aliases[name] = TypeAliasInfo(
+                body=typ,
+                type_params=list(type_params),
+                type_param_kinds=list(type_param_kinds),
+                loc=loc,
+                is_recursive=name in compiled.ast.recursive_union_names,
+            )
         exports.recursive_union_names = set(compiled.ast.recursive_union_names)
 
     def _extract_body_exports(
@@ -3464,10 +3472,10 @@ class Compiler:
             if name in table:
                 continue
             install_binding(table, name, SymbolKind.VARIABLE, vtype)
-        for name, alias_type in exports.type_aliases.items():
+        for name, alias_info in exports.type_aliases.items():
             if name in table:
                 continue
-            install_binding(table, name, SymbolKind.TYPE_ALIAS, alias_type)
+            install_binding(table, name, SymbolKind.TYPE_ALIAS, alias_info.body)
 
     def _exports_to_module_info(self, name: str, exports: ModuleExports,
                                compiled: 'CompiledModule | None' = None) -> 'ModuleInfo':

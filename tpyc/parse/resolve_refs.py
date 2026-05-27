@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, UnionType, VOID, TypeParamKind,
+    TypeAliasInfo,
     BIGINT, FLOAT, STR,
 )
 from ..typesys import _contains_self_reference
@@ -33,6 +34,7 @@ from .nodes import (
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef,
     TpyInferFromDefaultRef, ParseError, ResolutionFailure,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyName,
+    SourceLocation,
 )
 from .type_resolver import _FIXED_INT_MAP
 from ..diagnostics import SemanticError
@@ -329,18 +331,61 @@ def resolve_refs(module: TpyModule) -> None:
     # bodies can find it by name.  Recursive unions are detected post-
     # resolution.
     if module.type_aliases:
-        resolved_aliases: dict[str, tuple[TpyType, object]] = {}
-        for alias_name, (alias_ref, alias_loc) in module.type_aliases.items():
+        resolved_aliases: 'dict[str, tuple[TpyType, SourceLocation | None, list[str], list[TypeParamKind]]]' = {}
+        for alias_name, entry in module.type_aliases.items():
+            alias_ref, alias_loc, alias_type_params, alias_type_param_kinds = entry
+            # Generic-alias scope: bind `T` (etc.) so the body resolves
+            # `T` to a TypeParamRef instead of failing with "Unknown
+            # type: T".  Empty scope for non-generic aliases.
+            alias_scope = (
+                dict(zip(alias_type_params, alias_type_param_kinds))
+                if alias_type_params else None
+            )
             alias_type = _resolve_value_position(
-                resolver, alias_ref, None, pending_alias=alias_name)
-            # Tag self-referential union aliases as recursive; the indirection
+                resolver, alias_ref, alias_scope, pending_alias=alias_name)
+            # Tag self-referential aliases as recursive; the indirection
             # check itself runs later in sema (`_validate_recursive_union_paths`)
             # so it can see same-module RecordInfo / TypeDef entries that
             # `register_records_and_protocols` hasn't attached yet.
-            if isinstance(alias_type, UnionType) and _contains_self_reference(alias_type, alias_name):
-                module.recursive_union_names.add(alias_name)
-            resolver.registry.register_type_alias(alias_name, alias_type)
-            resolved_aliases[alias_name] = (alias_type, alias_loc)
+            # Union shapes are the historical case (`type Json = ... | list[Json]`).
+            # Generic aliases use a wider trigger so non-union recursive forms
+            # like `type Bag[T] = list[Bag[T]]` also reach the Phase-1 sema
+            # rejection in `analyzer._register_type_aliases`; Phase 2 will
+            # convert these into templated wrapper structs.
+            #
+            # Non-union, non-generic self-referential aliases (`type Foo =
+            # list[Foo]`, or `type Outer = Pair[Outer]` where Pair is a
+            # generic alias whose substitution introduces a self-reference)
+            # have no wrapper-struct path today and would otherwise emit
+            # ill-formed C++ (`using Foo = std::vector<Foo>;` with Foo
+            # incomplete).  Reject cleanly at parse-resolution.
+            if _contains_self_reference(alias_type, alias_name):
+                if isinstance(alias_type, UnionType) or alias_type_params:
+                    module.recursive_union_names.add(alias_name)
+                else:
+                    raise ParseError(
+                        f"Recursive type alias '{alias_name}' must use a "
+                        f"union form (e.g. `type {alias_name} = SomeBaseType "
+                        f"| list[{alias_name}]`) so the compiler can emit a "
+                        f"wrapper struct. Bare non-union self-recursion "
+                        f"(`type {alias_name} = list[{alias_name}]`) is not "
+                        f"supported.",
+                        loc=alias_loc,
+                    )
+            # Pass the full TypeAliasInfo so generic-alias use sites
+            # (which run after this loop) can detect type_params via
+            # `get_type_alias_info` and emit the v1 placeholder error.
+            alias_info = TypeAliasInfo(
+                body=alias_type,
+                type_params=list(alias_type_params),
+                type_param_kinds=list(alias_type_param_kinds),
+                loc=alias_loc,
+                is_recursive=alias_name in module.recursive_union_names,
+            )
+            resolver.registry.register_type_alias(
+                alias_name, alias_type, info=alias_info,
+            )
+            resolved_aliases[alias_name] = (alias_type, alias_loc, alias_type_params, alias_type_param_kinds)
         module.type_aliases = resolved_aliases
 
     # Top-level functions (methods are resolved in the record loop

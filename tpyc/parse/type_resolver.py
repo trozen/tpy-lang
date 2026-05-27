@@ -26,6 +26,7 @@ from ..typesys import (
     INT32, VOID, NONE, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW,
     BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE, ANY, AnyType,
     ALL_FIXED_INTS,
+    substitute_type_params_structural,
 )
 from .. import qnames
 from ..type_def_registry import (
@@ -486,6 +487,19 @@ class TypeResolver:
             raise ResolutionFailure(f"Unknown type: {name}", loc=ref.loc)
 
         # Generic form (name + args) -- bare or dotted
+
+        # Self-reference inside the body of the alias currently being
+        # resolved (`type Tree[T] = T | list[Tree[T]]` -- the inner
+        # `Tree[T]`).  The alias isn't yet registered, so the normal
+        # lookup path would fail.  Emit an `AliasRef` placeholder (same
+        # as the bare-name self-ref path below) so `_contains_self_reference`
+        # detects it and tags the alias recursive; Phase 1 then rejects the
+        # generic+recursive combination.  The `[T]` type args are dropped --
+        # `AliasRef` carries no args, and a generic recursive alias never
+        # reaches codegen (rejected at sema), so the args would be unused.
+        if self._pending_alias is not None and name == self._pending_alias:
+            return AliasRef(name, module=parser._public_module())
+
         if "." in name:
             parts = name.split(".")
             if len(parts) == 2:
@@ -545,6 +559,17 @@ class TypeResolver:
                     is_dynamic_protocol=user_protocol.is_dynamic,
                 )
 
+        # Generic type alias use site (`Pair[int]`).  Phase 1 of generic
+        # recursive aliases (see docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md):
+        # substitute non-recursive generic aliases at use sites; recursive
+        # ones stay rejected for Phase 2.  Handle local, short-name-imported,
+        # and dotted-qualified forms via one helper.
+        alias_info = self._lookup_generic_alias_info(name, resolved_container, resolved)
+        if alias_info is not None and alias_info.type_params:
+            return self._resolve_generic_alias_use(
+                ref, resolved_container, alias_info, type_param_scope,
+            )
+
         # Unresolved bare (non-dotted) name -- helpful import hint
         if not resolved and "." not in name and name:
             parser._raise_unresolved_import_error(name, loc=ref.loc)
@@ -580,6 +605,85 @@ class TypeResolver:
                 return NominalType(dotted, type_args, _module_qname=qname)
 
         raise ResolutionFailure(f"Unknown generic type: {name}", loc=ref.loc)
+
+    def _lookup_generic_alias_info(
+        self, name: str, resolved_container: str,
+        resolved: 'tuple[str, str] | None',
+    ) -> 'TypeAliasInfo | None':
+        """Find a generic alias's TypeAliasInfo across local + imported forms.
+
+        Handles:
+        - Local: `type Pair[T] = ...` in the current module.
+        - Imported short name: `from lib_a import Pair` then `Pair[int]`.
+        - Dotted qualified: `lib_a.Pair[int]` (resolved is the
+          (source_module, original_name) tuple).
+
+        Returns None if the name isn't a registered alias anywhere; the
+        caller then continues with the record / unknown-name fallback.
+        """
+        parser = self._parser
+        # Local registry first -- covers same-module aliases and aliases
+        # whose import was already materialised into the parser registry.
+        local = parser.registry.get_type_alias_info(name)
+        if local is not None:
+            return local
+        # Cross-module: consult the source module's ModuleInfo for the
+        # original-named alias.  Works for both short-name imports
+        # (`resolved == (source_module, original_name)`) and dotted
+        # qualification.
+        if resolved is not None:
+            source_module, original_name = resolved
+            mod_info = parser.registry.modules.get(source_module)
+            if mod_info is not None and mod_info.type_aliases:
+                return mod_info.type_aliases.get(original_name)
+        return None
+
+    def _resolve_generic_alias_use(
+        self, ref: 'TpyTypeRef', name: str, alias_info: 'TypeAliasInfo',
+        type_param_scope: 'dict[str, TypeParamKind] | None',
+    ) -> TpyType:
+        """Expand a use of a generic type alias at the use site.
+
+        v1 of generic recursive aliases (see
+        `docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md`):
+        - Non-recursive aliases (`type Pair[T] = tuple[T, T]`): build
+          `{T_i: arg_i}` and apply structural substitution to the body.
+          The alias name disappears from the type tree downstream.
+        - Recursive aliases (`type Tree[T] = T | list[Tree[T]]`) and
+          aliases that self-reference during their own body resolution:
+          rejected until Phase 2 lands the templated wrapper struct.
+        """
+        expected = len(alias_info.type_params)
+        actual = len(ref.args)
+        if actual != expected:
+            raise ResolutionFailure(
+                f"Type alias '{name}' takes {expected} type "
+                f"argument{'s' if expected != 1 else ''}, got {actual}",
+                loc=ref.loc,
+            )
+        if alias_info.is_recursive:
+            raise ResolutionFailure(
+                f"Generic recursive type aliases are not yet supported "
+                f"(use of '{name}[...]'). Track progress in "
+                f"docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.",
+                loc=ref.loc,
+            )
+        # Resolve each type arg.  int args (Array's N slot) shouldn't
+        # appear here -- v1 aliases reject int-kind type params at parse
+        # time -- but pass them through unchanged for forward compatibility.
+        resolved_args: list[TpyType | int] = []
+        for arg in ref.args:
+            if isinstance(arg, int):
+                resolved_args.append(arg)
+            else:
+                resolved_args.append(
+                    self.resolve(arg, type_param_scope, is_type_arg=True)
+                )
+        subst: dict[str, TpyType] = {}
+        for tp_name, arg in zip(alias_info.type_params, resolved_args):
+            if isinstance(arg, TpyType):
+                subst[tp_name] = arg
+        return substitute_type_params_structural(alias_info.body, subst)
 
     # ------------------------------------------------------------------
     # Helpers
@@ -749,8 +853,19 @@ class TypeResolver:
             )
         elif (enum_type := parser.registry.get_enum(name)) is not None:
             return enum_type
-        elif (alias := parser.registry.get_type_alias(name)) is not None:
-            return alias
+        elif (alias_info := parser.registry.get_type_alias_info(name)) is not None:
+            if alias_info.type_params:
+                # Bare reference to a generic alias -- mirror the protocol
+                # arm above: require type arguments at the use site rather
+                # than letting the body's TypeParamRefs leak into the
+                # annotation.  See docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.
+                from ..diagnostics import SemanticError
+                raise SemanticError(
+                    f"Generic type alias '{name}' requires type arguments: "
+                    f"{name}[{', '.join(alias_info.type_params)}]",
+                    loc=loc,
+                )
+            return alias_info.body
         elif not resolved:
             parser._raise_unresolved_import_error(name, node, loc=loc)
         if (resolved or parser.registry.is_known_type(name)
@@ -790,7 +905,18 @@ class TypeResolver:
         if mod_info.enums and attr in mod_info.enums:
             return mod_info.enums[attr]
         if mod_info.type_aliases and attr in mod_info.type_aliases:
-            return mod_info.type_aliases[attr]
+            alias_info = mod_info.type_aliases[attr]
+            if alias_info.type_params:
+                # Cross-module bare reference to a generic alias --
+                # require type arguments rather than leaking
+                # TypeParamRefs into the annotation.
+                from ..diagnostics import SemanticError
+                raise SemanticError(
+                    f"Generic type alias '{attr}' requires type arguments: "
+                    f"{attr}[{', '.join(alias_info.type_params)}]",
+                    loc=ref.loc,
+                )
+            return alias_info.body
         if mod_info.protocols and attr in mod_info.protocols:
             proto = mod_info.protocols[attr]
             if proto.type_params:

@@ -1,0 +1,1 @@
+main.py:6: error: Generic recursive type aliases are not yet supported (alias 'Tree' is both generic and self-referential). Track progress in docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.

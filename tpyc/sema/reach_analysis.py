@@ -151,8 +151,8 @@ def compute_reached_symbols(
         visit_record(r)
     for p in module.protocols:
         visit_protocol(p)
-    for _name, (typ, _loc) in module.type_aliases.items():
-        visit_type(typ)
+    for _name, entry in module.type_aliases.items():
+        visit_type(entry[0])
     for f in module.functions:
         visit_func_signature(f)
         visit_body(f.body)

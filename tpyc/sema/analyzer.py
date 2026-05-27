@@ -14,6 +14,7 @@ from ..typesys import (
     RecursiveUnionInfo,
     FunctionInfo, ParamInfo, is_any_str_type, BIGINT, FLOAT,
     make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType, PtrType,
+    TypeAliasInfo,
     is_integer_type, is_void_like_type,
     _contains_self_reference,
     contains_type_param,
@@ -556,9 +557,30 @@ class SemanticAnalyzer:
         # Transfer type aliases from parser to sema registry, validating members
         compiler = get_current_compiler()
         display_names = compiler.union_display_names if compiler is not None else None
-        for name, (typ, loc) in module.type_aliases.items():
+        for name, entry in module.type_aliases.items():
+            typ, loc, type_params, type_param_kinds = entry
+            is_recursive = name in module.recursive_union_names
+            if type_params and is_recursive:
+                # Phase 1 of generic recursive aliases ships only the
+                # non-recursive substitution path; the recursive wrapper-
+                # struct templating lands in Phase 2.  See
+                # docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.
+                raise SemanticError(
+                    f"Generic recursive type aliases are not yet "
+                    f"supported (alias '{name}' is both generic and "
+                    f"self-referential). Track progress in "
+                    f"docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.",
+                    loc,
+                )
             self._validate_type_alias_members(name, typ, loc)
-            self.ctx.registry.register_type_alias(name, typ)
+            info = TypeAliasInfo(
+                body=typ,
+                type_params=list(type_params),
+                type_param_kinds=list(type_param_kinds),
+                loc=loc,
+                is_recursive=is_recursive,
+            )
+            self.ctx.registry.register_type_alias(name, typ, info=info)
             install_binding(
                 self.ctx.module_attributes, name,
                 SymbolKind.TYPE_ALIAS, typ,
@@ -567,8 +589,12 @@ class SemanticAnalyzer:
             # `UnionType.__str__` so diagnostics print "Shape" instead
             # of "Circle | Rect". First write wins via `setdefault` --
             # the defining module's name takes precedence over any
-            # import aliasing in downstream modules.
-            if display_names is not None and isinstance(typ, UnionType):
+            # import aliasing in downstream modules. Skip generic aliases:
+            # their display name is only meaningful parameterized
+            # (`Either[Int32]`), and keying on the unsubstituted members
+            # would mislabel an unrelated concrete union of the same shape.
+            if (display_names is not None and not type_params
+                    and isinstance(typ, UnionType)):
                 display_names.setdefault(typ.members, name)
         self._advance_phase(
             self._PHASE_BIND_IMPORTS,
@@ -1546,7 +1572,7 @@ class SemanticAnalyzer:
             entry = module.type_aliases.get(alias_name)
             if entry is None:
                 continue
-            alias_type, alias_loc = entry
+            alias_type, alias_loc = entry[0], entry[1]
             if not isinstance(alias_type, UnionType):
                 continue
             err = validate_recursive_union_paths(alias_name, alias_type.members)
@@ -1566,7 +1592,8 @@ class SemanticAnalyzer:
 
         union_aliases: dict[str, tuple[TpyType, ...]] = {}
         alias_locs: dict[str, object] = {}
-        for name, (typ, loc) in module.type_aliases.items():
+        for name, entry in module.type_aliases.items():
+            typ, loc = entry[0], entry[1]
             if isinstance(typ, UnionType) and name not in module.recursive_union_names:
                 union_aliases[name] = typ.members
                 alias_locs[name] = loc
@@ -1698,7 +1725,7 @@ class SemanticAnalyzer:
         for name in module.recursive_union_names:
             entry = module.type_aliases.get(name)
             if entry is not None:
-                typ = entry[0]
+                typ = entry[0]  # entry[0] is the body type
                 if isinstance(typ, UnionType):
                     alias_has_none = any(
                         is_void_like_type(m) for m in typ.members
@@ -1805,7 +1832,17 @@ class SemanticAnalyzer:
 
     def _resolve_imported_aliases(self, module: TpyModule) -> None:
         """Substitute imported alias NominalTypes in module AST type annotations."""
-        aliases = self.ctx.registry.type_aliases
+        # Exclude generic aliases from the substitution pool: their bodies
+        # contain unbound TypeParamRefs that would leak into annotations if
+        # _resolve_alias rewrote a bare NominalType(name) placeholder.
+        # Generic alias use sites go through the parse-resolution path
+        # (`_resolve_generic_alias_use`) which substitutes correctly with
+        # the supplied type args.
+        aliases = {
+            n: info.body
+            for n, info in self.ctx.registry.type_aliases.items()
+            if not info.type_params
+        }
         skip = frozenset(module.recursive_union_names)
         for func in module.functions:
             self._resolve_func_aliases(func, aliases, skip)
@@ -2622,21 +2659,24 @@ class SemanticAnalyzer:
         tpy_info = self.ctx.registry.get_module("tpy")
         if not tpy_info or not tpy_info.type_aliases:
             return
-        alias_type = tpy_info.type_aliases.get(original_name)
-        if alias_type is not None:
-            self.ctx.registry.register_type_alias(local_name, alias_type,
-                                                  imported_from=("tpy", original_name))
+        alias_info = tpy_info.type_aliases.get(original_name)
+        if alias_info is not None:
+            self.ctx.registry.register_type_alias(local_name, alias_info.body,
+                                                  imported_from=("tpy", original_name),
+                                                  info=alias_info)
             if local_name != original_name:
-                self.ctx.registry.register_type_alias(original_name, alias_type)
+                self.ctx.registry.register_type_alias(original_name, alias_info.body,
+                                                      info=alias_info)
 
     def _register_all_tpy_type_aliases(self) -> None:
         """Register all tpy type aliases (for bare 'import tpy' and star imports)."""
         tpy_info = self.ctx.registry.get_module("tpy")
         if not tpy_info or not tpy_info.type_aliases:
             return
-        for name, alias_type in tpy_info.type_aliases.items():
-            self.ctx.registry.register_type_alias(name, alias_type,
-                                                  imported_from=("tpy", name))
+        for name, alias_info in tpy_info.type_aliases.items():
+            self.ctx.registry.register_type_alias(name, alias_info.body,
+                                                  imported_from=("tpy", name),
+                                                  info=alias_info)
 
     def _bind_star_reexport(self, original_name: str, local_name: str) -> None:
         """Try to bind a star-imported re-export from a known module.
@@ -2876,9 +2916,11 @@ class SemanticAnalyzer:
 
         # Check for type alias
         if module_info.type_aliases and original_name in module_info.type_aliases:
-            typ = module_info.type_aliases[original_name]
+            alias_info = module_info.type_aliases[original_name]
+            typ = alias_info.body
             self.ctx.registry.register_type_alias(local_name, typ,
-                                                  imported_from=(module_name, original_name))
+                                                  imported_from=(module_name, original_name),
+                                                  info=alias_info)
             # Implicitly import member record types so codegen can qualify them
             if isinstance(typ, UnionType) and module_info.records:
                 for member in typ.members:
