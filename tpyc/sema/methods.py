@@ -19,7 +19,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
-    TpyLambda,
+    TpyLambda, TpyStarUnpack,
     is_docstring,
     TpyFString, TpyExpr,
     is_super_del_call,
@@ -216,8 +216,12 @@ class MethodAnalyzer:
             if not inferring_indices:
                 continue
 
-            # Pre-analyze all args (needed for _check_and_coerce_args reuse)
-            pre_analyzed = [self.expr.analyze_expr(arg) for arg in expr.args]
+            # Pre-analyze all args (needed for _check_and_coerce_args reuse).
+            # analyze_call_arg (not analyze_expr) so a `*xs` arg yields the
+            # unpacked element type instead of hitting the structural
+            # analyzer's "Unknown expression type" catch-all; the non-variadic
+            # reject gate in _check_args_or_pack_varargs still rejects it.
+            pre_analyzed = [self.expr.analyze_call_arg(arg) for arg in expr.args]
 
             # Infer element type from params that directly carry a type param
             # (T or Own[T]). Params with nested type params like Iterable[Own[T]]
@@ -267,7 +271,7 @@ class MethodAnalyzer:
         """
         lhs_hint = self.ctx.expr_type_hint
         if lhs_hint is None:
-            return [self.expr.analyze_expr(arg) for arg in expr.args]
+            return [self.expr.analyze_call_arg(arg) for arg in expr.args]
 
         n = len(expr.args)
         candidate_hints = [
@@ -289,10 +293,7 @@ class MethodAnalyzer:
             # node before overload selection.
             if hint is not None and is_callable_type(hint) and isinstance(arg, (TpyName, TpyLambda)):
                 hint = None
-            if hint is not None:
-                arg_types.append(self.expr.analyze_expr_with_hint(arg, hint))
-            else:
-                arg_types.append(self.expr.analyze_expr(arg))
+            arg_types.append(self.expr.analyze_call_arg(arg, hint))
         return arg_types
 
     def _check_args_or_pack_varargs(
@@ -312,6 +313,16 @@ class MethodAnalyzer:
             self.ctx.func.pre_analyzed_method_args.pop(id(expr), None)
             self.calls._analyze_and_pack_varargs(expr, resolved)
         else:
+            # `*unpack` is only valid at a variadic param position; a
+            # non-variadic method must reject it (mirrors the free-function
+            # guard in CallAnalyzer._typecheck_call_args). Without this the
+            # pre-analyzed element type would be silently coerced as if the
+            # unpack were a single positional arg.
+            for arg in expr.args:
+                if isinstance(arg, TpyStarUnpack):
+                    raise self.ctx.error(
+                        f"Cannot use *unpacking: '{resolved.name}' "
+                        f"does not accept *args", arg)
             self._check_and_coerce_args(expr, resolved.params, arg_types,
                                         target_is_readonly=resolved.is_readonly)
 
@@ -1430,8 +1441,10 @@ class MethodAnalyzer:
                 arity_error_msg(expr.method, method.min_args, method.max_args, len(expr.args)),
                 expr)
 
-        # Analyze arguments and accumulate constraints
-        arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+        # Analyze arguments and accumulate constraints. analyze_call_arg so a
+        # `*xs` arg yields the unpacked element type rather than crashing the
+        # structural analyzer; non-variadic reject gate handles validity.
+        arg_types = [self.expr.analyze_call_arg(arg) for arg in expr.args]
         type_param_names = set(info.type_params)
         for (pname, ptype), arg_type in zip(method.params, arg_types):
             if not contains_type_param(ptype, type_param_names):
@@ -1926,10 +1939,7 @@ class MethodAnalyzer:
             out: list[TpyType] = []
             for i, arg in enumerate(expr.args):
                 hint = seeded_arg_hint(_pf.params, i, _seed)
-                if hint is not None:
-                    out.append(self.expr.analyze_expr_with_hint(arg, hint))
-                else:
-                    out.append(self.expr.analyze_expr(arg))
+                out.append(self.expr.analyze_call_arg(arg, hint))
             return out
 
         arg_types = _analyze_args()

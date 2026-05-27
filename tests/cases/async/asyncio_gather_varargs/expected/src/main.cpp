@@ -92,6 +92,34 @@ __coro_fetch fetch(int32_t n) {
             // print(r)
             std::cout << r << "\n";
         }
+        // # *unpack: build a list of tasks and unpack it at the call site.
+        // pending: list[asyncio.Task[Int32]] = []
+        pending.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
+        // pending.append(asyncio.create_task(fetch(4)))
+        (*pending).push_back(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(fetch(4))>>>(fetch(4))));
+        // pending.append(asyncio.create_task(fetch(5)))
+        (*pending).push_back(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(fetch(5))>>>(fetch(5))));
+        // unpacked_results = await asyncio.gather(*pending)
+        __sub_2.emplace(std::move(::tpystd::asyncio::gather<int32_t>(::tpy::varargs<::tpystd::asyncio::_executor::Task<int32_t>>(::tpy::as_mut_span((*pending))))));
+        __state = S_RESUME_2;
+        continue;
+    }
+    case S_RESUME_2: {
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
+        if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        unpacked_results.emplace(std::move(__r2).value());
+        __sub_2.reset();
+        // print("unpacked:")
+        std::cout << "unpacked:" << "\n";
+        // for r in unpacked_results:
+        auto& __obj_2 = (*unpacked_results);
+        auto __beg_2 = __obj_2.begin();
+        auto __end_2 = __obj_2.end();
+        for (; __beg_2 != __end_2; ++__beg_2) {
+            int32_t r = *__beg_2;
+            // print(r)
+            std::cout << r << "\n";
+        }
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -118,14 +146,10 @@ void __tpy_init() {
     initialized = true;
 
     // # asyncio.gather (variadic-positional form): homogeneous Task[T] args
-    // # collected into list[T] result. Covers multi-arg and single-arg
-    // # shapes -- both sharing the same `_GatherFuture[T]` engine as
-    // # gather_list. The empty case (n == 0) is covered separately by
-    // # `asyncio_gather_empty` (which uses gather_list). The `*unpack` form
-    // # (`gather(*list_of_tasks)`) is currently blocked by a sema dispatch
-    // # gap on TpyStarUnpack into generic reference-element varargs (see
-    // # BUGS.md); users with a list in hand call `gather_list(tasks)`
-    // # instead.
+    // # collected into list[T] result. Covers multi-arg, single-arg, and
+    // # *unpack call shapes -- all sharing the same `_GatherFuture[T]`
+    // # engine as gather_list. The empty case (n == 0) is covered separately
+    // # by `asyncio_gather_empty` (which uses gather_list).
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
     // main()

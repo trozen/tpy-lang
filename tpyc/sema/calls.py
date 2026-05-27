@@ -2947,9 +2947,7 @@ class CallAnalyzer:
         """
         def _analyze_arg(idx: int, arg: TpyExpr) -> TpyType:
             hint = seeded_arg_hint(func.params, idx, seed_subst or {})
-            if hint is not None:
-                return self.expr.analyze_expr_with_hint(arg, hint)
-            return self.expr.analyze_expr(arg)
+            return self.expr.analyze_call_arg(arg, hint)
 
         # Quick check: if no Fn/Callable params, analyze all args directly
         fn_positions: set[int] = set()
@@ -2969,9 +2967,19 @@ class CallAnalyzer:
         # Start from the seed so Fn args see seeded type params even before
         # any non-Fn evidence binds them.
         partial_inferred: dict[str, TpyType] = dict(seed_subst) if seed_subst else {}
-        for (_, ptype), arg_type in zip(func.params, arg_types):
-            if arg_type is not None:
-                self.type_ops.match_type_with_inference(ptype, arg_type, partial_inferred)
+        for param, arg_type in zip(func.params, arg_types):
+            if arg_type is None:
+                continue
+            match_ptype = param.type
+            # A variadic param's declared type is the packed `Span[readonly[E]]`;
+            # the corresponding arg_type is a single element (an individual
+            # positional or a `*xs` unpack's element). Match against E so the
+            # element evidence can bind the type param -- otherwise a Span-vs-
+            # element shape mismatch leaves T unbound and a sibling Fn arg
+            # can't concretize its hint.
+            if param.is_variadic and is_span(unwrap_ref_type(match_ptype)):
+                match_ptype = unwrap_readonly(unwrap_ref_type(match_ptype).type_args[0])
+            self.type_ops.match_type_with_inference(match_ptype, arg_type, partial_inferred)
         # Resolve IntLiteralType to concrete int for the Fn hint
         for k, v in partial_inferred.items():
             if isinstance(v, IntLiteralType):
@@ -3290,7 +3298,7 @@ class CallAnalyzer:
         """
         lhs_hint = self.ctx.expr_type_hint
         if lhs_hint is None:
-            return [self.expr.analyze_expr(arg) for arg in expr.args]
+            return [self.expr.analyze_call_arg(arg) for arg in expr.args]
 
         n = len(expr.args)
         candidate_hints = [
@@ -3327,10 +3335,7 @@ class CallAnalyzer:
             # doesn't break legitimate body-type inference.
             if hint is not None and is_callable_type(hint) and isinstance(arg, (TpyName, TpyLambda)):
                 hint = None
-            if hint is not None:
-                arg_types.append(self.expr.analyze_expr_with_hint(arg, hint))
-            else:
-                arg_types.append(self.expr.analyze_expr(arg))
+            arg_types.append(self.expr.analyze_call_arg(arg, hint))
         return arg_types
 
     def _is_function_binding(self, expr: TpyName) -> bool:
@@ -3410,7 +3415,7 @@ class CallAnalyzer:
             if i in fn_pos_idx_supplied and self._is_contextual_fn_arg(arg):
                 continue  # defer to per-candidate
             try:
-                baseline_pos[i] = self.expr.analyze_expr(arg)
+                baseline_pos[i] = self.expr.analyze_call_arg(arg)
             except SemanticError as e:
                 if saved_unhinted_error is None:
                     saved_unhinted_error = e
@@ -4284,6 +4289,21 @@ class CallAnalyzer:
         kwonly_args = expr.args[len(expr.args) - n_kwonly:] if n_kwonly else []
         vararg_exprs = expr.args[va_idx:len(expr.args) - n_kwonly] if n_kwonly else expr.args[va_idx:]
 
+        # A `*xs` unpack must be the SOLE entry in the vararg region. Codegen's
+        # `_gen_vararg_pack` returns on the first star-unpack, dropping any
+        # sibling positional args -- so `f(a, *xs)`, `f(*xs, b)`, `f(*a, *b)`
+        # would silently miscompile (wrong arg set). Reject the mix until
+        # codegen concatenates leading/trailing positionals with the unpacked
+        # span. A lone `f(*xs)` (and `f(fixed, *xs)` where `fixed` fills a
+        # non-variadic param) is fine -- those don't share the vararg region.
+        if len(vararg_exprs) > 1 and any(
+                isinstance(a, TpyStarUnpack) for a in vararg_exprs):
+            star = next(a for a in vararg_exprs if isinstance(a, TpyStarUnpack))
+            raise self.ctx.error(
+                "Cannot mix *unpacking with other arguments in a *args call: "
+                "`*iterable` must be the only variadic argument "
+                f"(call to '{func.name}')", star)
+
         # Type-check fixed positional args
         for i, ((pname, ptype), arg) in enumerate(zip(func.params[:va_idx], fixed_args)):
             fixed_args[i] = self._typecheck_and_coerce_arg(arg, pname, ptype, func.is_readonly)
@@ -4291,16 +4311,10 @@ class CallAnalyzer:
         # Type-check each variadic arg against element type T
         for i, arg in enumerate(vararg_exprs):
             if isinstance(arg, TpyStarUnpack):
-                # *expr unpacking: analyze inner expr and check element type compat
-                inner_type = self.expr.analyze_expr(arg.expr)
-                inner_elem = None
-                if is_array(inner_type) or is_span(inner_type) or is_list(inner_type):
-                    inner_elem = inner_type.get_element_type()
-                elif isinstance(inner_type, PendingListType):
-                    inner_elem = inner_type.element_type
-                if inner_elem is None:
-                    raise self.ctx.error(
-                        f"Cannot unpack type '{inner_type}' into *args", arg)
+                # *expr unpacking: validate + analyze the inner container
+                # (analyze_call_arg sets the inner expr's type for codegen
+                # and raises a clean diagnostic for non-unpackable shapes).
+                self.expr.analyze_call_arg(arg, elem_type)
                 continue
             arg_type = self.expr.analyze_expr_with_hint(arg, elem_type)
             arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
@@ -4463,6 +4477,16 @@ class CallAnalyzer:
         if resolved_func.has_variadic:
             self._analyze_and_pack_varargs(expr, resolved_func)
         else:
+            # `*unpack` is only valid at a variadic param position; a
+            # non-variadic generic function must reject it cleanly (mirrors
+            # the non-generic guard in _typecheck_call_args). Inference may
+            # have element-extracted the unpack as evidence, so this gate is
+            # what actually rejects the misuse.
+            for arg in expr.args:
+                if isinstance(arg, TpyStarUnpack):
+                    raise self.ctx.error(
+                        f"Cannot use *unpacking: '{func.name}' "
+                        f"does not accept *args", arg)
             for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
                 resolved_ptype = self.type_ops.substitute_type_params(ptype, type_subst)
 

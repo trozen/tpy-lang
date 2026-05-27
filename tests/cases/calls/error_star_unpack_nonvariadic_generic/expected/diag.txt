@@ -1,0 +1,1 @@
+main.py:14: error: Cannot use *unpacking: 'one_arg' does not accept *args

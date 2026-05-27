@@ -37,7 +37,7 @@ from ..parse import (
     TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression, TpyComprehensionGenerator,
     TpySlice, TpySubscript, TpyCoerce,
     TpyIfExpr, TpyNamedExpr, TpyAwait,
-    TpyLambda,
+    TpyLambda, TpyStarUnpack,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyForEach, TpyWith,
     TpyNestedDef,
     collect_name_refs,
@@ -200,6 +200,58 @@ class ExpressionAnalyzer:
         """User-facing type name for error messages (resolves literal types)."""
         return str(self._resolve_literal_type(t))
 
+    def analyze_call_arg(self, arg: TpyExpr, hint: 'TpyType | None' = None) -> TpyType:
+        """Analyze one call argument, transparently handling `*xs` unpack.
+
+        Every call-argument pre-analyzer (generic inference, overload
+        probing, vararg packing -- in both `calls.py` and `methods.py`)
+        must route args through here rather than `analyze_expr` directly:
+        a `TpyStarUnpack` carries no expression-type semantics of its own,
+        so feeding it to the structural analyzer hits the catch-all
+        "Unknown expression type" error. For a `*container` arg this
+        returns the container's element type (the value an individual
+        positional arg would have contributed); for everything else it
+        is `analyze_expr[_with_hint]`.
+        """
+        if isinstance(arg, TpyStarUnpack):
+            return self._unpack_star_element_type(arg, hint)
+        if hint is not None:
+            return self.analyze_expr_with_hint(arg, hint)
+        return self.analyze_expr(arg)
+
+    def _unpack_star_element_type(
+        self, node: TpyStarUnpack, elem_hint: 'TpyType | None'
+    ) -> TpyType:
+        """Element type of the container unpacked by `*node.expr`.
+
+        `elem_hint`, when present, is the vararg parameter's element type;
+        we lift it to `list[elem_hint]` so the inner container literal can
+        resolve its own element type from context (mirrors the seeded-hint
+        path other args get).
+
+        Only directly-iterable lvalue containers (list / span / array) are
+        accepted -- the same set the vararg-pack codegen can lower via
+        `as_mut_span`. Owning-rvalue (`Own[list[...]]`) and other wrapped
+        shapes are deliberately NOT unwrapped here: sema must not accept a
+        shape codegen can't emit (the owning-rvalue unpack gap is tracked in
+        TODO.md).
+        """
+        inner_hint = make_list(elem_hint) if elem_hint is not None else None
+        if inner_hint is not None:
+            inner_type = self.analyze_expr_with_hint(node.expr, inner_hint)
+        else:
+            inner_type = self.analyze_expr(node.expr)
+        elem: 'TpyType | None' = None
+        if is_array(inner_type) or is_span(inner_type) or is_list(inner_type):
+            elem = inner_type.get_element_type()
+        elif isinstance(inner_type, PendingListType):
+            elem = inner_type.element_type
+        if elem is None:
+            raise self.ctx.error(
+                f"Cannot unpack type '{self._user_type_name(inner_type)}' "
+                f"into *args", node)
+        return elem
+
     def analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type."""
         if isinstance(expr, TpyIntLiteral):
@@ -270,6 +322,17 @@ class ExpressionAnalyzer:
         elif isinstance(expr, TpyCoerce):
             # Coercions are attached post-analysis; treat as the expected type.
             typ = expr.expected_type
+        elif isinstance(expr, TpyStarUnpack):
+            # `*xs` is only meaningful at a variadic-accepting call position,
+            # where the handler routes it through `analyze_call_arg` (element
+            # extraction) instead of here. Reaching the structural analyzer
+            # means the surrounding call target does not accept *args -- reject
+            # cleanly rather than falling through to the "Unknown expression
+            # type" catch-all (or silently mis-typing the unpack as one arg).
+            raise self.ctx.error(
+                "Cannot use *unpacking here: the call target does not accept "
+                "*args (only a variadic parameter can receive `*iterable`)",
+                expr)
         else:
             raise self.ctx.error(f"Unknown expression type: {type(expr).__name__}", expr)
 

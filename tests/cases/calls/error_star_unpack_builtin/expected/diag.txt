@@ -1,0 +1,1 @@
+main.py:10: error: Cannot use *unpacking here: the call target does not accept *args (only a variadic parameter can receive `*iterable`)

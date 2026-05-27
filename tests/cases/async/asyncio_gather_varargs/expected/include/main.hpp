@@ -53,15 +53,19 @@ struct __coro_main_coro {
     ::tpy::frame_slot<std::vector<int32_t>> multi_results;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<int32_t>> s1;
     ::tpy::frame_slot<std::vector<int32_t>> single_results;
+    ::tpy::frame_slot<std::vector<::tpystd::asyncio::_executor::Task<int32_t>>> pending;
+    ::tpy::frame_slot<std::vector<int32_t>> unpacked_results;
     int32_t r;
     std::optional<::tpystd::asyncio::_GatherFuture<int32_t>> __sub_0;
     std::optional<::tpystd::asyncio::_GatherFuture<int32_t>> __sub_1;
+    std::optional<::tpystd::asyncio::_GatherFuture<int32_t>> __sub_2;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_RESUME_0 = 1,
         S_RESUME_1 = 2,
-        S_DONE = 3,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
     };
 
     __coro_main_coro()

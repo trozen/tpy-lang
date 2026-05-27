@@ -1104,13 +1104,11 @@ in flight.
 
 All `gather_list_*` tests carry `no_cpython.txt` because `gather_list`
 is TPy-only. The sibling `asyncio_gather_varargs` test exercises the
-variadic-positional form (multi-arg and single-arg shapes) and runs
-under both TPy and CPython (CPython's `asyncio.gather(*coros)` accepts
-the equivalent call shape and returns a list of results). The empty
-case (`n == 0`) is covered separately by `asyncio_gather_empty` via
-`gather_list`; the `*unpack` form (`gather(*list_of_tasks)`) is
-currently blocked by a sema dispatch gap on `TpyStarUnpack` into
-generic reference-element varargs (see `BUGS.md`).
+variadic-positional form (multi-arg, single-arg, and `*unpack` shapes)
+and runs under both TPy and CPython (CPython's `asyncio.gather(*coros)`
+accepts the equivalent call shape and returns a list of results). The
+empty case (`n == 0`) is covered separately by `asyncio_gather_empty`
+via `gather_list`.
 
 ### M10 SHIPPED -- `Task.cancel()` runnable-mark hook
 

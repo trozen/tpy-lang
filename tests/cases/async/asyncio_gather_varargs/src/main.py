@@ -1,12 +1,8 @@
 # asyncio.gather (variadic-positional form): homogeneous Task[T] args
-# collected into list[T] result. Covers multi-arg and single-arg
-# shapes -- both sharing the same `_GatherFuture[T]` engine as
-# gather_list. The empty case (n == 0) is covered separately by
-# `asyncio_gather_empty` (which uses gather_list). The `*unpack` form
-# (`gather(*list_of_tasks)`) is currently blocked by a sema dispatch
-# gap on TpyStarUnpack into generic reference-element varargs (see
-# BUGS.md); users with a list in hand call `gather_list(tasks)`
-# instead.
+# collected into list[T] result. Covers multi-arg, single-arg, and
+# *unpack call shapes -- all sharing the same `_GatherFuture[T]`
+# engine as gather_list. The empty case (n == 0) is covered separately
+# by `asyncio_gather_empty` (which uses gather_list).
 import asyncio
 from tpy import Int32
 
@@ -31,6 +27,15 @@ async def main_coro() -> None:
     single_results = await asyncio.gather(s1)
     print("single:")
     for r in single_results:
+        print(r)
+
+    # *unpack: build a list of tasks and unpack it at the call site.
+    pending: list[asyncio.Task[Int32]] = []
+    pending.append(asyncio.create_task(fetch(4)))
+    pending.append(asyncio.create_task(fetch(5)))
+    unpacked_results = await asyncio.gather(*pending)
+    print("unpacked:")
+    for r in unpacked_results:
         print(r)
 
 

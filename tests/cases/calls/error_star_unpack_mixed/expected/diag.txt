@@ -1,0 +1,1 @@
+main.py:18: error: Cannot mix *unpacking with other arguments in a *args call: `*iterable` must be the only variadic argument (call to 'sum_all')
