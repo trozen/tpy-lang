@@ -3909,7 +3909,8 @@ class FunctionInfo:
     # type-name string; today consumed only as a marker.
     native_cpp_return_type: Optional[str] = None
     type_params: list[str] = field(default_factory=list)
-    type_param_bounds: dict[str, 'NominalType'] = field(default_factory=dict)
+    # Protocol bound (capability) OR a class / type-param subtype bound (`U: Animal`, `U: T`).
+    type_param_bounds: dict[str, 'TpyType'] = field(default_factory=dict)
     type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "tpy.extern.DefaultInt"}
     cpp_template: Optional[str] = None  # For builtins: "{self}.push_back({0})"
     value_ptr_coercion: bool = False  # @value_ptr_coercion: Ptr[T] params accept T values

@@ -17,12 +17,32 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
       ...
       return Rc[T](cell, cell.storage.ptr())   # Ptr[U] -> Ptr[T] coercion needed
   ```
-  Three sema features required before this is buildable:
-  1. **Bound-based subtype coercion.** When bound `U: T` is declared, allow `Ptr[U] -> Ptr[T]`,
-     `Own[U] -> Own[T]`, etc. inside the body. Today sema requires identity for these; the
-     C++ implicit-pointer-upcast through inheritance is fine, but TPy sema rejects it.
-     Without this, the body fails to type-check at the `Rc[T](cell, cell.storage.ptr())`
-     return-construction site.
+  Remaining sema work before this is buildable:
+  1. **Bound-based subtype coercion -- remaining gaps.** The `Ptr[U] -> Ptr[B]` form (B a
+     class or a sibling/enclosing type param) coerces in the body and is validated nominally
+     at the call site (`satisfies_bound`); `_is_representational_subtype` walks U's immediate
+     bound (no flatten) and declines protocol targets. Still open:
+     - **`Own[U] -> Own[B]` / bare `U -> B`.** Not implemented -- Rc.new needs only `Ptr`,
+       and `Own` can slice a concrete base; add only when a real use appears.
+     - **Bound substitution at explicit call sites.** `Holder.make[Animal, Dog](...)` checks U
+       against the raw bound `T` instead of the resolved class arg `Animal` (the explicit-type-
+       args path in `methods.py` pulls `method_info.type_param_bounds`, not the class-
+       substituted bounds). Newly reachable now that `U: T` is expressible.
+     - **Complete the `satisfies_bound` migration.** ~6 bound-check sites still call
+       `type_conforms_to_protocol` directly (`type_ops.py` inference path, `calls.py` overload
+       pre-check + the three record-ctor sites, `expressions.py` Fn/Callable inference,
+       `bound_check.py` class-param-shadowed method). Correct for protocol bounds (all that
+       reaches them today -- record-level class bounds are still rejected at registration and
+       class-bounded inference fails first), but they must route through `satisfies_bound`
+       once record class bounds / inference make class bounds reachable there. Also guard the
+       bound-collection loop in `codegen_cpp/generator.py` (it adds non-protocol bound names to
+       protocol-include lists -- harmless no-match today) with `is_protocol_type`.
+     - **Representational-use marking before enabling `Rc[@dynamic P]`.** A `U: T` bound
+       substituted to a `@dynamic` protocol at instantiation (`Rc[Pet]`) currently passes
+       `satisfies_bound` structurally, then a structural conformer would hit a C++ compile
+       error (not a clean sema diagnostic). Whoever lands inference/dynamic type-args MUST add
+       representational-use checking (reject structural conformers at the call site) before
+       turning on the single-alloc `Rc[@dynamic P]` path.
   2. **Default-T=U inference rule.** Needed so `Rc.new(42)` works without an LHS hint:
      defaults the unresolved class param to the resolved method-local one. Initially landed
      on this branch but rolled back during `/tpy-review` because the rule's guard relies on
@@ -33,8 +53,10 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
      the merge into `all_type_params`. Conservative 1-to-1 rule (multi-param needs explicit
      LHS hint or future PEP 696). See `tpyc/sema/methods.py:1152-1186`.
   3. **Layer 1 LHS-hint preference.** Already landed for (B); reusable for (A).
-  Once (1) lands, migrate Rc.new from (B) two-allocation shape to (A) single-allocation.
-  Net: -1 heap allocation per Rc.new for both abstract and concrete T.
+  The `Ptr` coercion in (1) works; the migration still waits on the inference work in (2)
+  plus the remaining sub-gaps listed under (1). Once those land, migrate Rc.new from (B)
+  two-allocation shape to (A) single-allocation. Net: -1 heap allocation per Rc.new for both
+  abstract and concrete T.
 - fix Box/Rc TODOs
 - Add generic-holder (`class Holder[U]: shared: Rc[U]`) and Weak-via-downgrade variants of rc_field_default_init -- pin the broadened using-decl invariant.
 - Protocol-side parallel handling of `IMPLICIT_AUTO_READONLY_METHODS`. Today `sema/registration.py::register_protocol` applies `IMPLICIT_READONLY_METHODS` to protocol method signatures (so e.g. `Deref[T].__deref__` becomes implicitly `is_readonly=True`), but doesn't parallel-treat `IMPLICIT_AUTO_READONLY_METHODS`. Harmless currently because protocol matching only asks "does the type have a signature with this name/shape" -- the type's dual mutable/const overload pair from method_expansion offers both, and the protocol's single const signature matches the const one. Becomes load-bearing if protocol-driven dispatch is ever extended to pick between the two overloads (e.g., `&p_borrow.__deref__()` resolving to the const overload vs `&p_owned.__deref__()` resolving to the mutable one). Surfaced by the parallel review of the `IMPLICIT_AUTO_READONLY_METHODS` split.

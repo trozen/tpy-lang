@@ -1,0 +1,4 @@
+Requires explicit type args (as_animal[Dog](...)) because generic inference
+for a Ptr[U] parameter is not yet implemented. CPython does not support
+subscripting a generic function (functions have no __class_getitem__), so the
+call form raises TypeError under CPython.

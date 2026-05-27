@@ -575,12 +575,40 @@ Compiler infrastructure issues (not blocked on `Box[P]`):
 - **Multiple protocol conformance** -- `pet: Pet & Drawable` for intersection types.
 - **Single-allocation `Rc[P]`** -- today's `Rc[@dynamic P]` works via two heap
   allocations (refcount cell + payload, like `std::shared_ptr` default). The
-  `make_shared`-style single-allocation variant requires bound-based `U: T`
-  subtype coercion in sema so the body of a `[U](value: Own[U]) -> Own[Rc[T]]`
-  factory can construct `Rc[T]` from `_RcCell[U]` storage. See TODO.md
-  "Single-allocation `Rc[@dynamic P]`".
+  `make_shared`-style single-allocation variant needs the bound-based `Ptr[U] -> Ptr[T]`
+  coercion (now landed -- see "Bounded type-parameter coercion" in LANGUAGE_FEATURES.md)
+  plus generic inference so a `[U: T](value: Own[U]) -> Own[Rc[T]]` factory can be called
+  without explicit type args. See TODO.md "Single-allocation `Rc[@dynamic P]`".
 - **`Arc[T]`** -- atomic-refcount sibling of `Rc[T]` for multi-threaded sharing.
   Same shape; refcount ops become atomic CAS loops.
+- **Fat-pointer protocol reference (`dyn[P]`) for structural borrow coercion.**
+  The current model lowers `@dynamic P` to a C++ abstract base with an *embedded*
+  vtable, so a protocol reference is a thin `P*`. That makes a *borrowed* structural
+  conformer un-coercible to `Ptr[P]`: a structural conformer (one that has P's methods
+  but does not inherit P's base) needs an `Adapter<P, T>` object to carry the vtable,
+  and a borrow has nowhere to store one with a long-enough lifetime (a function-local
+  adapter would dangle on return). Structural conformance therefore only works where
+  *owned* storage holds the adapter -- `Box[P]`, `Rc[P]`.
+
+  A Rust-`&dyn` / Go-interface style **fat pointer** -- `(data*, const PVtable*)` where
+  the vtable is a `static` per-`(P, T)` global -- removes that wall: the vtable is
+  `'static` (nothing to store) and the data pointer aliases the original object, so a
+  bare borrowed structural conformer coerces with no adapter and no dangling. It would
+  also unify structural and inheritance conformance through one path (retiring the
+  `Adapter` for the protocol case) and decouple conformance from object layout
+  (duck-typing without inheritance).
+
+  Not adopted as the default because it conflicts with shipped commitments:
+  protocol references would become two words (fighting the low-latency goal for
+  pointer/container-heavy code); the custom fat-pointer ABI breaks the clean `@native`
+  C++ interop the abstract-base model gives (`@native` code takes `P&`); and `isinstance`
+  would need a vtable type-id (reimplementing RTTI) instead of leaning on C++
+  `dynamic_cast`. The realistic path, if structural *borrow* coercion ever becomes a
+  recurring need, is an **opt-in** `dyn[P]` two-word reference type *alongside* the
+  inheritance model -- common code keeps thin `P*` + C++ interop; only code that wants
+  structural borrow coercion pays the second word. Two coexisting models is its own
+  complexity, so gate this on demonstrated demand. (Owned structural conformance via
+  `Box[P]`/`Rc[P]` already works and does not need this.)
 
 ## Implementation Steps
 

@@ -402,16 +402,16 @@ def resolve_inferred_type_arg(t: "TpyType | int", default_int_type: TpyType) -> 
 
 def validate_type_param_bounds(
     type_subst: dict[str, TpyType],
-    bounds: dict[str, NominalType],
+    bounds: dict[str, TpyType],
     func_name: str,
-    type_conforms_to_protocol,
+    satisfies_bound,
     error_fn,
 ) -> None:
     """Validate that resolved type args satisfy their type parameter bounds."""
     for param_name, type_arg in type_subst.items():
         if param_name in bounds:
             bound = bounds[param_name]
-            if not type_conforms_to_protocol(type_arg, bound):
+            if not satisfies_bound(type_arg, bound):
                 raise error_fn(
                     f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
                     f"for type parameter '{param_name}' of '{func_name}'")
@@ -4438,7 +4438,7 @@ class CallAnalyzer:
 
             validate_type_param_bounds(
                 type_subst, func.type_param_bounds, func.name,
-                self.protocols.type_conforms_to_protocol,
+                self.protocols.satisfies_bound,
                 lambda msg: self.ctx.error(msg, expr),
             )
         else:

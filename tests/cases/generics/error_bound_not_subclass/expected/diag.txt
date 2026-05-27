@@ -1,0 +1,1 @@
+main.py:22: error: Type argument 'Cat' does not satisfy bound 'Animal' for type parameter 'U' of 'as_animal'

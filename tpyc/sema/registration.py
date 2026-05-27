@@ -86,6 +86,19 @@ def _vararg_span_type(elem_type: 'TpyType') -> NominalType:
     return make_span(elem_type, is_readonly=True)
 
 
+def _is_valid_type_param_bound(t: 'TpyType') -> bool:
+    """A bound usable on a type parameter: a protocol (capability or
+    @dynamic), a sibling/enclosing type param (`U: T`), or a user-record
+    class (`U: Animal`). The latter two are subtype bounds for
+    representational coercion; the C++-upcast soundness they promise is
+    enforced at instantiation, not at registration."""
+    if is_protocol_type(t):
+        return True
+    if isinstance(t, TypeParamRef):
+        return True
+    return isinstance(t, NominalType) and t.is_user_record
+
+
 _LINKAGE_MAP = {
     'DEFAULT': FunctionLinkage.DEFAULT,
     'NATIVE': FunctionLinkage.NATIVE,
@@ -194,14 +207,16 @@ class TypeRegistrar:
 
     def _resolve_type_param_bounds(
         self, raw_bounds: dict[str, TpyType], loc,
-    ) -> dict[str, NominalType]:
-        """Resolve parsed type parameter bounds, validating each is a protocol."""
-        resolved: dict[str, NominalType] = {}
+    ) -> dict[str, TpyType]:
+        """Resolve parsed type parameter bounds, validating each is a
+        protocol, a class, or a (sibling/enclosing) type parameter."""
+        resolved: dict[str, TpyType] = {}
         for param_name, bound_type in raw_bounds.items():
             resolved_bound = self.type_ops.resolve_type(bound_type)
-            if not is_protocol_type(resolved_bound):
+            if not _is_valid_type_param_bound(resolved_bound):
                 raise SemanticError(
-                    f"Type parameter bound must be a protocol, got {resolved_bound}",
+                    f"Type parameter bound must be a protocol, a class, or a "
+                    f"type parameter, got {resolved_bound}",
                     loc,
                 )
             resolved[param_name] = resolved_bound

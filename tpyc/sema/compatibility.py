@@ -779,6 +779,17 @@ class TypeCompatibility:
                     if self._is_covariant_target(actual.inner_pointee, expected.inner_pointee):
                         return None
 
+        # Ptr[U] -> Ptr[B] where U is a type param whose subtype bound reaches
+        # B (`def f[U: B]`). Borrow-form pointer upcast only; the C++ upcast is
+        # only valid when the concrete U is a real subtype of B, which the call
+        # site enforces (see methods/calls bound validation).
+        if (isinstance(actual, PtrType) and isinstance(expected, PtrType)
+                and isinstance(actual.inner_pointee, TypeParamRef)
+                and _ptr_readonly_compatible(actual, expected)
+                and self._is_representational_subtype(
+                    actual.inner_pointee, expected.inner_pointee)):
+            return None
+
         # Covariant generic coercion: Box[Child] -> Box[Parent]
         # when Box extends Covariant[T] and Child conforms to @dynamic Parent.
         # C++ converting move ctor handles the actual conversion.
@@ -1577,6 +1588,40 @@ class TypeCompatibility:
             if not self._is_covariant_target(actual_arg, expected_arg):
                 return False
         return True
+
+    def _is_representational_subtype(self, child: TpyType, parent: TpyType) -> bool:
+        """True if a `Ptr[child] -> Ptr[parent]` C++ pointer upcast is valid,
+        where `child` is a bounded type parameter.
+
+        Matches `child`'s IMMEDIATE bound against the actual `parent` at each
+        hop -- never flattens a bound to bound(parent), which would wrongly
+        admit a sibling subtype (`U: T`, `T: Pet` does NOT make `U` any
+        `Pet`). A `U: V`, `V: U` cycle is guarded by a seen-set.
+
+        A protocol `parent` is declined: a structural conformer satisfies the
+        bound without inheriting, so the plain C++ pointer upcast would be
+        invalid. Those need the adapter path (out of scope here). Only a class
+        or a (further) type-param bound proves the upcast. The concrete
+        instantiation's soundness is enforced at the call site.
+        """
+        if is_protocol_type(parent):
+            return False
+        seen: set[str] = set()
+        cur = child
+        while isinstance(cur, TypeParamRef) and cur.name not in seen:
+            seen.add(cur.name)
+            bound = self.type_ops.get_type_param_bound(cur.name)
+            if bound is None:
+                return False
+            if bound == parent:
+                return True
+            if isinstance(bound, NominalType) and bound.is_user_record:
+                return self._is_covariant_target(bound, parent)
+            if isinstance(bound, TypeParamRef):
+                cur = bound
+                continue
+            return False
+        return False
 
     def _is_covariant_target(self, child: TpyType, parent: TpyType) -> bool:
         """Check if child -> parent is valid for covariant conversion.

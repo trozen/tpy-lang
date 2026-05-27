@@ -148,6 +148,26 @@ class ProtocolChecker:
         """
         return self.classify_protocol_conformance(actual, protocol) is not None
 
+    def satisfies_bound(self, actual: TpyType, bound: TpyType) -> bool:
+        """Does `actual` satisfy a type-parameter `bound`?
+
+        A protocol bound (`T: Comparable`) uses structural conformance -- a
+        capability assertion. A class bound (`U: Animal`) or a type-param bound
+        (`U: T`) is a subtype assertion checked by nominal inheritance; that
+        subtyping is what backs the `Ptr[U] -> Ptr[Bound]` pointer upcast (see
+        CompatibilityChecker._is_representational_subtype).
+        """
+        if is_protocol_type(bound):
+            return self.type_conforms_to_protocol(actual, bound)
+        if isinstance(bound, NominalType) and bound.is_user_record:
+            return actual == bound or self.ctx.registry.is_subclass_of(actual, bound)
+        if isinstance(bound, TypeParamRef):
+            # Unsubstituted bound (a sibling/enclosing type param that wasn't
+            # resolved to a concrete type at this site). Identity is all that
+            # is provable here.
+            return actual == bound
+        return False
+
     def classify_protocol_conformance(
         self, actual: TpyType, protocol: NominalType,
     ) -> ProtocolConformanceKind | None:

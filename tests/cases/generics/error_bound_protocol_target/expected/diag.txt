@@ -1,0 +1,1 @@
+main.py:15: error: Type mismatch in return value: expected Ptr[Pet], got Ptr[U]

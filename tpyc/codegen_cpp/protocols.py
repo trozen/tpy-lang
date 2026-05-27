@@ -301,7 +301,7 @@ class ProtocolGenerator:
             kind = type_param_kinds[i] if type_param_kinds and i < len(type_param_kinds) else TypeParamKind.TYPE
             if kind == TypeParamKind.INT:
                 template_parts.append(f"std::size_t {tp}")
-            elif tp in type_param_bounds:
+            elif tp in type_param_bounds and is_protocol_type(type_param_bounds[tp]):
                 bound = type_param_bounds[tp]
                 concept_name = self.get_concept_name(bound)
                 if bound.type_args:
@@ -310,6 +310,9 @@ class ProtocolGenerator:
                 else:
                     template_parts.append(f"{concept_name} {tp}")
             else:
+                # A class or type-param bound (`U: Animal` / `U: T`) is not a
+                # C++ concept; emit an unconstrained param. The subtype bound
+                # is enforced at the TPy call site (satisfies_bound).
                 template_parts.append(f"typename {tp}")
         return f"template<{', '.join(template_parts)}>"
 
@@ -342,7 +345,8 @@ class ProtocolGenerator:
 
         # Add type parameters for generic functions (with optional bounds)
         for tp in type_params:
-            if type_param_bounds and tp in type_param_bounds:
+            if (type_param_bounds and tp in type_param_bounds
+                    and is_protocol_type(type_param_bounds[tp])):
                 bound = type_param_bounds[tp]
                 concept_name = self.get_concept_name(bound)
                 if bound.type_args:
@@ -351,6 +355,9 @@ class ProtocolGenerator:
                 else:
                     template_parts.append(f"{concept_name} {tp}")
             else:
+                # A class or type-param bound (`U: Animal` / `U: T`) is not a
+                # C++ concept; emit an unconstrained param. The subtype bound
+                # is enforced at the TPy call site (satisfies_bound).
                 template_parts.append(f"typename {tp}")
 
         # Add protocol params with concept constraints

@@ -1590,7 +1590,7 @@ class MethodAnalyzer:
         for param_name, type_arg in zip(info.type_params, type_args):
             if param_name in info.record_info.type_param_bounds:
                 bound = info.record_info.type_param_bounds[param_name]
-                if not self.protocols.type_conforms_to_protocol(type_arg, bound):
+                if not self.protocols.satisfies_bound(type_arg, bound):
                     raise self.ctx.error(
                         f"Inferred type '{type_arg}' does not satisfy bound '{bound}' "
                         f"for type parameter '{param_name}' of '{info.record_name}'",
@@ -1889,7 +1889,7 @@ class MethodAnalyzer:
         if new_param_bounds:
             validate_type_param_bounds(
                 method_subst, new_param_bounds, method_info.name,
-                self.protocols.type_conforms_to_protocol,
+                self.protocols.satisfies_bound,
                 lambda msg: self.ctx.error(msg, expr),
             )
 

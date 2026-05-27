@@ -10,8 +10,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from tpyc.typesys import TpyType
 
-from tpyc.typesys import NominalType  # noqa: F401 -- forward ref in MethodDef.type_param_bounds
-
 
 @dataclass
 class ParamDef:
@@ -33,7 +31,7 @@ class MethodDef:
     is_static: bool = False
     # Per-method type params and bounds (for constraining class-level type params)
     type_params: list[str] = field(default_factory=list)
-    type_param_bounds: dict[str, "NominalType"] = field(default_factory=dict)
+    type_param_bounds: dict[str, "TpyType"] = field(default_factory=dict)
 
 
 # C++ expression templates for Python dunder methods.

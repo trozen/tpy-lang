@@ -316,13 +316,14 @@ def resolve_refs(module: TpyModule) -> None:
     def _resolve_return_type(t, scope=None):
         return _resolve_return_slot(resolver, t, scope)
 
-    # Type parameter bounds: resolved with no enclosing type-param
-    # scope since bounds reference protocols in scope, not other
-    # type params.
-    def _resolve_bounds(bounds):
+    # A bound may name a protocol (`T: Comparable`) or an enclosing/sibling
+    # type param (`U: T` -- a subtype bound for representational coercion).
+    # Resolve under the owner's type-param scope so the latter becomes a
+    # TypeParamRef rather than failing as an unknown type.
+    def _resolve_bounds(bounds, scope=None):
         if not bounds:
             return bounds
-        return {name: _resolve(t, None) for name, t in bounds.items()}
+        return {name: _resolve(t, scope) for name, t in bounds.items()}
 
     # Type alias RHS: resolve in declaration order, passing
     # `pending_alias=alias_name` to the resolver so same-body self-
@@ -398,7 +399,7 @@ def resolve_refs(module: TpyModule) -> None:
             func.vararg_type = _resolve(func.vararg_type, scope)
         if func.kwarg_type is not None:
             func.kwarg_type = _resolve(func.kwarg_type, scope)
-        func.type_param_bounds = _resolve_bounds(func.type_param_bounds)
+        func.type_param_bounds = _resolve_bounds(func.type_param_bounds, scope)
 
     # All records (including nested) -- fields, methods, bases.  Record
     # methods use a merged scope (record type params + method type
@@ -408,7 +409,7 @@ def resolve_refs(module: TpyModule) -> None:
     # base-resolution error would surface.
     for record in module.all_records():
         scope = _record_scope(record)
-        record.type_param_bounds = _resolve_bounds(record.type_param_bounds)
+        record.type_param_bounds = _resolve_bounds(record.type_param_bounds, scope)
         record.bases = [_resolve(b, scope) for b in record.bases]
         for fld in record.fields:
             if isinstance(fld.type, TpyInferFromDefaultRef):
@@ -434,7 +435,7 @@ def resolve_refs(module: TpyModule) -> None:
                 method.self_annotation = _resolve(method.self_annotation, method_scope)
             if method.kwarg_type is not None:
                 method.kwarg_type = _resolve(method.kwarg_type, method_scope)
-            method.type_param_bounds = _resolve_bounds(method.type_param_bounds)
+            method.type_param_bounds = _resolve_bounds(method.type_param_bounds, method_scope)
 
     # Protocol MethodSignatures + field types: resolve under the
     # protocol's own type-param scope.
