@@ -231,16 +231,19 @@ class ExpressionAnalyzer:
 
         Only directly-iterable lvalue containers (list / span / array) are
         accepted -- the same set the vararg-pack codegen can lower via
-        `as_mut_span`. Owning-rvalue (`Own[list[...]]`) and other wrapped
-        shapes are deliberately NOT unwrapped here: sema must not accept a
-        shape codegen can't emit (the owning-rvalue unpack gap is tracked in
-        TODO.md).
+        `as_mut_span`. A reference-type container *parameter* (e.g.
+        `xs: list[T]`) carries a `Ref[...]` wrapper from by-reference passing;
+        that is just the borrow form codegen already emits, so unwrap it.
+        Owning-rvalue (`Own[list[...]]`) and other wrapped shapes are
+        deliberately NOT unwrapped: sema must not accept a shape codegen can't
+        emit (the owning-rvalue unpack gap is tracked in TODO.md).
         """
         inner_hint = make_list(elem_hint) if elem_hint is not None else None
         if inner_hint is not None:
             inner_type = self.analyze_expr_with_hint(node.expr, inner_hint)
         else:
             inner_type = self.analyze_expr(node.expr)
+        inner_type = unwrap_ref_type(inner_type)
         elem: 'TpyType | None' = None
         if is_array(inner_type) or is_span(inner_type) or is_list(inner_type):
             elem = inner_type.get_element_type()

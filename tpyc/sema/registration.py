@@ -80,10 +80,13 @@ from .. import qnames
 def _vararg_span_type(elem_type: 'TpyType') -> NominalType:
     """Build the sema-level Span type for a *args parameter.
 
-    Always Span[readonly[T]] regardless of value/non-value. The distinction
-    (std::span<const T> vs tpy::varargs<T>) is handled in codegen only.
+    Preserves the user's mutability intent in the element type: `*xs: T`
+    lowers to Span[T] (mutable vararg, codegen `varargs<T>`), `*xs: readonly[T]`
+    to Span[readonly[T]] (readonly vararg, codegen `varargs<const T>`). The
+    element const-ness is the single source of truth for body mutability and
+    for whether a readonly source may be unpacked into the slot.
     """
-    return make_span(elem_type, is_readonly=True)
+    return make_span(elem_type)
 
 
 def _is_valid_type_param_bound(t: 'TpyType') -> bool:
@@ -2770,7 +2773,7 @@ class TypeRegistrar:
                       keyword_only=is_kwonly))
         # *args with no keyword-only params: append at end
         if func.vararg_name is not None and resolved_vararg_type is not None and (kw_start is None or kw_start >= len(resolved_params)):
-            span_type = make_span(resolved_vararg_type, is_readonly=True)
+            span_type = _vararg_span_type(resolved_vararg_type)
             param_infos.append(ParamInfo(func.vararg_name, span_type, is_variadic=True))
 
         # **kwargs: Unpack[TypedDict] -- append as TypedDict param at end

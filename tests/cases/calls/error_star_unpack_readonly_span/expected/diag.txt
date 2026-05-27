@@ -1,0 +1,1 @@
+main.py:25: error: Cannot pass readonly[Box] as mutable Box when unpacking into *args (call to 'take_all'); declare the parameter '*items: readonly[...]' to accept it

@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType,
     PendingListType, PendingDictType, PendingSetType, PendingViewType, ViewTypeFamily, make_list, make_dict, make_set, TypeParamRef, NominalType,
-    UnionType, NoneType, VoidType, TupleType,
+    UnionType, NoneType, VoidType, TupleType, ReadonlyType,
     unwrap_readonly, is_protocol_type, resolve_int_literals,
     is_integer_type, is_float_type, is_void_like_type,
     INT32, BIGINT, FLOAT, FLOAT32, STR, BYTES,
@@ -306,6 +306,18 @@ class TypeResolver:
             resolved_default = self.ctx.analyzer.ctx.default_int_for_literal(resolved)
             return is_big_int_type(resolved_default)
         return False
+
+    def varargs_elem_cpp(self, elem: TpyType) -> str:
+        """C++ element type for a `*args` parameter's `varargs<...>`.
+
+        `const T` for a readonly slot element (`*xs: readonly[T]` -> readonly
+        vararg with const element access), else `T`. Mirrors the Span cpp
+        formatter's `std::span<const T>` rendering and keeps the param-emit and
+        call-site pack-emit in lockstep (both must produce the same string).
+        """
+        if isinstance(elem, ReadonlyType):
+            return f"const {self.type_to_cpp(elem.wrapped)}"
+        return self.type_to_cpp(elem)
 
     def type_to_cpp(self, typ: TpyType) -> str:
         """Convert a type to its C++ representation, qualifying imported types.

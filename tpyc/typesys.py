@@ -3844,7 +3844,7 @@ class ParamInfo:
     requires_mutable_lvalue: bool = False
     default_expr: 'Any | None' = None  # TpyExpr from parser; None = required param
     keyword_only: bool = False  # True for params after * separator
-    is_variadic: bool = False  # True for *args param (type is Span[readonly[T]])
+    is_variadic: bool = False  # True for *args param (type Span[T], or Span[readonly[T]] for readonly *args)
 
     @property
     def has_default(self) -> bool:

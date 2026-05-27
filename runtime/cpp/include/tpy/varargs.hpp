@@ -41,6 +41,17 @@ struct varargs {
     template<size_t N>
     varargs(std::array<T*, N>& arr) : indirect_(arr.data()), size_(static_cast<int32_t>(N)) {}
 
+    // Readonly view of a mutable varargs<U> -- forwarding `*xs` where `xs` is a
+    // mutable `*args` param into a `readonly[...]` vararg. Present only when T
+    // is const. The pointer-array conversion (`U* const*` -> `const U* const*`,
+    // i.e. `T* const*`) is a plain implicit qualification conversion -- legal
+    // because the enclosing pointer level is already const -- not a reinterpret.
+    template<typename U = T, std::enable_if_t<std::is_const_v<U>, int> = 0>
+    varargs(const varargs<std::remove_const_t<U>>& o)
+        : direct_(o.direct_),
+          indirect_(o.indirect_),
+          size_(o.size_) {}
+
     T& operator[](int32_t i) const {
         return indirect_ ? *indirect_[i] : direct_[i];
     }
@@ -84,6 +95,12 @@ struct varargs<T, true> {
 
     template<size_t N>
     varargs(std::array<T, N>& arr) : data_(arr.data()), size_(static_cast<int32_t>(N)) {}
+
+    // Readonly view of a mutable value-type varargs<U> (forwarding into a
+    // `readonly[...]` value-type vararg). Present only when T is const.
+    template<typename U = T, std::enable_if_t<std::is_const_v<U>, int> = 0>
+    varargs(const varargs<std::remove_const_t<U>>& o)
+        : data_(o.data_), size_(o.size_) {}
 
     T& operator[](int32_t i) const { return data_[i]; }
     int32_t size() const { return size_; }

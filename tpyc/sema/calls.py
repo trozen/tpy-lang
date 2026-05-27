@@ -4293,10 +4293,14 @@ class CallAnalyzer:
         va_param = func.params[va_idx]
         n_kwonly = sum(1 for p in func.params if p.keyword_only)
 
-        # Element type T from Span[readonly[T]]
+        # Vararg slot type from Span[T] (mutable *args) or Span[readonly[T]]
+        # (readonly *args). Keep the readonly wrapper: it makes a readonly slot
+        # accept both mutable and readonly args (adding const is safe) while a
+        # mutable slot keeps rejecting readonly args, and it drives codegen's
+        # varargs<T> vs varargs<const T> choice via pack.element_type.
         assert is_span(unwrap_ref_type(va_param.type))
         span_type = unwrap_ref_type(va_param.type)
-        elem_type = unwrap_readonly(span_type.type_args[0])
+        elem_type = span_type.type_args[0]
 
         # Split args: [fixed_positional...] [varargs...] [kwonly_defaults...]
         fixed_args = expr.args[:va_idx]
@@ -4328,7 +4332,57 @@ class CallAnalyzer:
                 # *expr unpacking: validate + analyze the inner container
                 # (analyze_call_arg sets the inner expr's type for codegen
                 # and raises a clean diagnostic for non-unpackable shapes).
-                self.expr.analyze_call_arg(arg, elem_type)
+                unpacked_elem = self.expr.analyze_call_arg(arg, elem_type)
+                # The container is forwarded wholesale to `varargs<T>(...)`,
+                # which has no per-element coercion. A *mutable* `*args` slot
+                # exposes mutable element access (operator[] -> T&), so unpacking
+                # a `Span[readonly[T]]` source (std::span<const T>) into it would
+                # both fail to construct and alias readonly data into a mutable
+                # vararg -- reject it (mirrors the per-arg readonly gate the
+                # non-unpack branch below gets via coerce_expr). A *readonly*
+                # slot (`*xs: readonly[T]` -> varargs<const T>) is the safe
+                # target: the const-span source constructs directly and the
+                # body cannot mutate, so allow it. A differing element type is
+                # rejected by the coercion check below regardless.
+                # Note on forwarding (`def g(*xs): f(*xs)`): a *mutable* vararg
+                # param `*xs: T` carries the non-readonly `Span[T]` type, so it
+                # never trips this gate; a *readonly* vararg `*xs: readonly[T]`
+                # carries `Span[readonly[T]]` and is correctly rejected here when
+                # forwarded into a mutable slot (and accepted into a readonly
+                # one via the slot_is_readonly branch). No provenance exemption
+                # is needed -- the source's own span type already distinguishes.
+                inner_type = self.ctx.get_expr_type(arg.expr)
+                slot_is_readonly = isinstance(elem_type, ReadonlyType)
+                if (inner_type is not None and is_readonly_span(inner_type)
+                        and not slot_is_readonly):
+                    raise self.ctx.error(
+                        f"Cannot pass readonly[{elem_type}] as mutable "
+                        f"{elem_type} when unpacking into *args "
+                        f"(call to '{func.name}'); declare the parameter "
+                        f"'*{va_param.name}: readonly[...]' to accept it", arg)
+                coercion = self.compat.check_type_compatible(
+                    unpacked_elem, elem_type, "*args (unpacked element)",
+                    loc=getattr(arg, "loc", None),
+                    coercion_ctx=CoercionContext.ARG)
+                if coercion is not None:
+                    raise self.ctx.error(
+                        f"Cannot unpack into *args: element type "
+                        f"'{unpacked_elem}' needs a conversion to '{elem_type}' "
+                        f"that *unpacking cannot apply (call to '{func.name}')",
+                        arg)
+                # Unpacking into a *mutable* vararg slot is a mutable borrow of
+                # the source's elements (the slot's operator[] yields T&). For a
+                # reference-type container source (a list -- codegen lowers it
+                # via `as_mut_span`, which needs a non-const lvalue), force the
+                # source non-const by marking its root mutated. A span source is
+                # already a mutable view (no marking needed); a readonly slot
+                # borrows const (`as_span`) so no marking either.
+                if (not slot_is_readonly and inner_type is not None
+                        and not is_span(inner_type)):
+                    root = _root_name_of_expr(arg.expr)
+                    if root is not None:
+                        self.ctx.mark_param_mutated(root)
+                        self.ctx.mark_loop_var_mutated(root)
                 continue
             arg_type = self.expr.analyze_expr_with_hint(arg, elem_type)
             arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)

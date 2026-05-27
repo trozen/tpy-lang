@@ -5312,8 +5312,9 @@ class ExpressionGenerator:
         Non-value types: std::array<T*, N> + tpy::ptr_span<T> (pointers, reference semantics).
         """
         elem_type = pack.element_type
-        elem_cpp = self.types.type_to_cpp(elem_type)
-        is_ref = not elem_type.is_value_type() and not isinstance(elem_type, TypeParamRef)
+        elem_cpp = self.types.varargs_elem_cpp(elem_type)
+        bare_elem = unwrap_readonly(elem_type)
+        is_ref = not bare_elem.is_value_type() and not isinstance(bare_elem, TypeParamRef)
 
         if not pack.args:
             return f"::tpy::varargs<{elem_cpp}>()"
@@ -5325,7 +5326,13 @@ class ExpressionGenerator:
                 inner_type = self.ctx.get_expr_type(a.expr)
                 if is_span(inner_type):
                     return f"::tpy::varargs<{elem_cpp}>({inner})"
-                return f"::tpy::varargs<{elem_cpp}>(::tpy::as_mut_span({inner}))"
+                # Borrow a span from a non-span container (e.g. a list). A
+                # readonly slot (varargs<const T>) takes a const span and its
+                # source may itself be a const borrow, so use as_span; a mutable
+                # slot needs a mutable span (the source is kept non-const by the
+                # mark_param_mutated in _analyze_and_pack_varargs).
+                span_fn = "as_span" if isinstance(elem_type, ReadonlyType) else "as_mut_span"
+                return f"::tpy::varargs<{elem_cpp}>(::tpy::{span_fn}({inner}))"
             gen = self.gen_expr(a)
             sub_args.append(f"&{gen}" if is_ref else gen)
         n = len(sub_args)

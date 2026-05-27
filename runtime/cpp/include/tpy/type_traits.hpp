@@ -31,6 +31,11 @@ class BigInt;
  */
 template<typename T> struct is_value_type : std::false_type {};
 
+// const-qualified types share their unqualified value-ness, so a readonly
+// `*args` param lowered to `varargs<const T>` selects the same specialization
+// (value vs dual-mode) as the mutable `varargs<T>`.
+template<typename T> struct is_value_type<const T> : is_value_type<T> {};
+
 // Primitive value types
 template<> struct is_value_type<int8_t> : std::true_type {};
 template<> struct is_value_type<int16_t> : std::true_type {};

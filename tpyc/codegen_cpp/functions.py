@@ -358,9 +358,10 @@ class FunctionGenerator:
                 continue
             own = unwrap_readonly(unwrap_ref_type(ptype))
             bare_ptype = unwrap_ref_type(ptype)
-            # *args parameter: emit tpy::varargs<T>
+            # *args parameter: emit tpy::varargs<T> (varargs<const T> for a
+            # readonly vararg -- the element readonly-ness drives const access).
             if func and func.vararg_name and pname == func.vararg_name and is_span(bare_ptype):
-                inner_cpp = unwrap_readonly(bare_ptype.type_args[0]).to_cpp()
+                inner_cpp = self.types.varargs_elem_cpp(bare_ptype.type_args[0])
                 part = f"::tpy::varargs<{inner_cpp}> {escape_cpp_name(pname)}"
                 if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
                     part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
