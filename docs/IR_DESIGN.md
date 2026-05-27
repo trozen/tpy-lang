@@ -1452,3 +1452,32 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    than reconstructed in codegen.
    Recommendation: form tag on `THIRTupleType` with conversions emitted as explicit
    THIR nodes during lowering -- analogous to how borrows are explicit in MIR.
+
+10. **Covariant return for polymorphic-owner types.** TPy lowers `Own[T]` to
+    `std::unique_ptr<T>`, and C++ does not support covariant return on
+    `unique_ptr` (only on raw `T*` / `T&` -- a deliberate, repeatedly-reaffirmed
+    C++ language restriction, see P0670's rejection). This blocks the natural
+    pattern of a method overriding a `@dynamic`-protocol slot with a narrower
+    return type (e.g. `Dog.replicate(self) -> Own[Dog]` refining
+    `Cloneable.replicate(self) -> Own[Cloneable]`, or
+    `BaseException.clone(self) -> Own[BaseException]` refining
+    `Throwable.clone(self) -> Own[Throwable]`). An attempt to support it on the
+    C++ backend (a sema covariant-return acceptance rule + a
+    `tpy::narrowing_cast<>` codegen bridge that emits the vtable slot at the
+    parent's wider signature and downcasts at concrete-typed call sites) worked
+    but introduced a divergence between the TPy declaration and the emitted C++
+    signature, plus a cluster of edge cases (multi-protocol ambiguity, overload
+    matching, the narrowing-cast hardening). It was dropped: the cost/benefit
+    (mostly a naming preference -- `Box[BaseException]` vs the existing
+    `Box[Throwable]` convention) did not justify the machinery, and the existing
+    `Box[Throwable]` + virtual-`__raise__` convention (Phase 20) already handles
+    polymorphic exception storage and dynamic-type recovery (`raise stored /
+    except ConcreteType`). A backend that controls codegen below the C++ language
+    layer (LLVM IR, or the MIR -> C++-or-LLVM split here) has no covariant-return
+    restriction: raw pointers in vtable slots + a smart-pointer wrap at the call
+    boundary (the standard pre-2011 C++ idiom, and what LLVM-targeting languages
+    like Rust/Swift do by choice) makes this a clean codegen rule. Revisit when
+    the backend question opens up; until then, declare polymorphic-protocol method
+    returns at the protocol's own type (`Own[Cloneable]`, `Own[Throwable]`).
+    Recommendation: handle at MIR -> backend lowering, not as a C++-backend
+    sema/codegen feature.

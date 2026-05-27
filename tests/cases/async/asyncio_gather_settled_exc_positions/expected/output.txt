@@ -1,0 +1,3 @@
+exc: boom-0
+ok: 99
+exc: boom-2

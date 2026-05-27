@@ -1,0 +1,4 @@
+`asyncio.gather_list_settled` is a TPy-specific helper -- not in CPython. The
+Settled[T] record shape diverges from CPython's `list[T | BaseException]`
+because TPy's variant-in-container convention is by-value (the exception root is
+a polymorphic owner; storing by-value slices the dynamic subclass).

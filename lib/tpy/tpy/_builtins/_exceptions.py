@@ -22,6 +22,21 @@ class BaseException(Throwable):
 
     def __str__(self) -> StrView: ...
 
+    # Returns Own[Throwable] DELIBERATELY -- do NOT narrow to
+    # Own[BaseException]. Narrowing (so `Box(e.clone())` could be typed
+    # `Box[BaseException]` instead of `Box[Throwable]`) requires covariant
+    # return support, which C++ does not provide for `std::unique_ptr`
+    # (only raw pointers/references; see [class.virtual] and P0670's
+    # rejection). The full exploration -- a sema covariant-return rule + a
+    # `tpy::narrowing_cast<>` codegen bridge -- was built and then dropped:
+    # it forced a divergence between the TPy declaration and the emitted
+    # C++ signature, for what amounts to a naming preference. The
+    # `Box[Throwable]` + virtual-`__raise__` convention (Phase 20; see
+    # `tests/cases/exceptions/box_throwable_preserves_dynamic_type`)
+    # already stores exceptions polymorphically and recovers the concrete
+    # subclass via `raise stored / except ConcreteType`. Revisit only when
+    # TPy gains a backend below the C++ language layer (LLVM / the THIR-MIR
+    # migration) -- see `docs/IR_DESIGN.md` Open Question 10.
     @readonly
     def clone(self) -> Own[Throwable]: ...
 

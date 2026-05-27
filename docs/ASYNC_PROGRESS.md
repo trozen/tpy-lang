@@ -1154,6 +1154,77 @@ and `asyncio_wait_for_in_finally` continue to pass with the same
 output but much faster runtime (the snapshots are output-keyed, not
 runtime-keyed, so no snapshot regen was needed).
 
+### M11 SHIPPED -- `asyncio.gather_list_settled` (return-exceptions variant)
+
+`async def gather_list_settled[T](tasks: list[Task[T]]) -> list[Settled[T]]`:
+the return-exceptions variant of `gather` (CPython
+`gather(*coros, return_exceptions=True)`). Each sub-task runs to
+completion regardless of sibling failures; results land in a
+`Settled[T]` record with either `value: Box[T] | None` or
+`exception: Box[Throwable] | None` populated.
+
+**Why the record shape, not `list[T | BaseException]`?** TPy lowers
+container element unions to value-variants, and the exception root is
+a polymorphic owner, so a by-value variant slot would slice the
+dynamic subclass on every move. A `Box`-of-exception inside a union
+would dodge slicing, but `isinstance(x, Box[Throwable])` against a
+union member of that exact parametric shape isn't supported at sema --
+so callers would have no clean way to discriminate. The `Settled[T]`
+record gives field-based discrimination
+(`if r.exception is not None: ...`) without either problem. The
+exception is stored as `Box[Throwable]`; re-raise to recover the
+concrete subclass.
+
+**Cancellation semantics.** Two distinct cases, matching CPython:
+
+- **A submitted sub-task is cancelled independently** (via its own
+  handle) while the gather runs -- its `CancelledError` is caught in
+  the per-task loop and collected as a `Settled` entry with
+  `exception` set, like any other failure. Siblings are unaffected.
+  This is the `return_exceptions=True` rule: a cancelled submitted
+  task is treated as having raised.
+- **The gather caller itself is cancelled** -- `_GatherSettledFuture.
+  cancel()` propagates cancel into every still-unsettled sub-task (so
+  they don't leak), but the `CancelledError` then propagates UP to the
+  awaiting caller; it is NOT swallowed into the result list. Cancelling
+  `gather()` cancels it.
+
+So the collected-result path (a list containing a `CancelledError`
+`Settled` entry) is observable only for the first case
+(independently-cancelled sub-task), not when the gather caller is
+cancelled. The `asyncio_gather_settled_outer_cancel` test exercises the
+second case (propagation up); a dedicated sub-task-cancel test for the
+first case is a fair follow-up.
+
+**Implementation.** Arrival-order parallel arrays (`_result_indices` /
+`_result_boxes`, `_exc_indices` / `_exc_boxes`). On task settle,
+appends to the appropriate pair; on assembly, walks input order
+0..n-1, finds the matching arrival index, and pops ownership of the
+Box out of the list. O(n^2) assembly walk (matches `_GatherFuture`'s
+shape; N is small in practice).
+
+**Test coverage** (all `no_cpython.txt` -- TPy-specific helper +
+divergent return shape): `asyncio_gather_settled_basic` (all-success,
+input order), `asyncio_gather_settled_mixed` (success + ValueError),
+`asyncio_gather_settled_empty` (empty input returns `[]`),
+`asyncio_gather_settled_outer_cancel` (outer cancel propagates up;
+gather collects sub-task `CancelledError`s as Settled entries).
+
+**Covariant return for BaseException was explored and dropped.** An
+earlier iteration narrowed `BaseException.clone() -> Own[BaseException]`
+(so `gather_list_settled` could return `list[T | BaseException]`),
+requiring covariant-return support in protocol conformance + a
+`tpy::narrowing_cast<>` codegen bridge. C++ does not support covariant
+return on `std::unique_ptr` (only raw pointers/references), so the
+bridge introduced a divergence between the TPy declaration and the
+emitted C++ signature. The cost/benefit (a naming preference,
+`Box[BaseException]` vs `Box[Throwable]`) didn't justify the
+machinery. The proper home for covariant return is a future
+backend that controls codegen below the C++ language layer (LLVM /
+the THIR/MIR migration); see `docs/IR_DESIGN.md`. Until then the
+`Box[Throwable]` + virtual-`__raise__` convention (Phase 20) handles
+polymorphic exception storage.
+
 ## v1.x milestone: asyncio runtime TPy port (must precede v1.5)
 
 The v1 asyncio runtime (Executor + run loop + spawn registration + sleep

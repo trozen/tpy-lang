@@ -403,6 +403,204 @@ def gather[T](*tasks: Task[T]) -> Own[_GatherFuture[T]]:
     return _GatherFuture[T](task_list)
 
 
+@nocopy
+class Settled[T]:
+    """One slot in `gather_list_settled`'s output. Exactly one of
+    `value` / `exception` is populated; the other is `None`. The
+    record shape sidesteps two TPy/CPython mismatches around the
+    natural `T | BaseException` form: (1) TPy lowers union elements
+    in containers to a value-variant, and the exception root is a
+    polymorphic owner (slicing risk on by-value moves); (2) TPy
+    `isinstance(x, Box[Throwable])` against a union member of
+    that exact shape is not yet supported. Field access is a clean
+    discriminator on either side.
+
+    Callers inspect:
+        if entry.exception is not None:
+            raise entry.exception        # recover dynamic type via except
+        elif entry.value is not None:
+            handle_ok(entry.value.get())
+
+    Both fields are wrapped in `Box` so the record stays trivially
+    movable inside `list[Settled[T]]` regardless of T's value/non-value
+    shape. The exception is stored as `Box[Throwable]` (the polymorphic
+    root); re-raise it to recover the concrete subclass.
+    """
+
+    value: Box[T] | None
+    exception: Box[Throwable] | None
+
+    # Users normally don't construct Settled directly --
+    # `gather_list_settled` is the only producer and assigns the
+    # `value` / `exception` fields directly post-init.
+    def __init__(self) -> None:
+        self.value = None
+        self.exception = None
+
+
+@nocopy
+class _GatherSettledFuture[T]:
+    """Drives N already-spawned `Task[T]`s concurrently and harvests
+    every result -- value OR exception -- into a `list[Settled[T]]`
+    in input order. Variant of CPython
+    `gather(*coros, return_exceptions=True)`.
+
+    Unlike `_GatherFuture`, a sub-task exception does NOT cancel its
+    siblings: each task runs to completion and contributes either its
+    value or its raised exception to the result list. A sub-task that
+    is cancelled independently (via its own handle) raises
+    `CancelledError`, which is collected as a `Settled` entry like any
+    other exception -- matching CPython's `return_exceptions=True`
+    rule that a cancelled submitted task is treated as having raised.
+
+    Cancelling the gather itself (the task awaiting it) is different:
+    `cancel()` propagates cancel to every still-unsettled sub-task
+    (so they don't leak), but the `CancelledError` then propagates UP
+    to the awaiting caller -- it is NOT swallowed into the result
+    list. This also matches CPython: cancelling `gather()` cancels
+    it. (The collected-result path is therefore only observable for
+    independently-cancelled sub-tasks, not for cancelling the gather
+    caller.)
+
+    Storage uses arrival-order parallel arrays for both values and
+    exceptions (mirroring `_GatherFuture`'s shape). Boxes are
+    `@nocopy`; the assembly loop ownership-transfers each entry out
+    of its arrival array via `list.pop`, then assigns to the
+    appropriate `Settled` field. Per-input-index storage is rejected
+    here because `list[Box[T] | None]` element slots have no
+    take-and-clear primitive that satisfies the borrow checker.
+    """
+
+    _tasks: list[Task[T]]
+    _settled: list[bool]
+    _result_indices: list[Int32]
+    _result_boxes: list[Box[T]]
+    _exc_indices: list[Int32]
+    _exc_boxes: list[Box[Throwable]]
+    _completed: Int32
+    _cancel_pending: bool
+
+    def __init__(self, tasks: list[Task[T]]) -> None:
+        # `tasks` is borrowed from the caller -- Rc-clone each entry as
+        # in `_GatherFuture` (avoids the named-local Own[list[T]] arg
+        # codegen gap; each clone is one refcount bump on TaskState).
+        self._tasks = []
+        self._settled = []
+        self._result_indices = []
+        self._result_boxes = []
+        self._exc_indices = []
+        self._exc_boxes = []
+        self._completed = 0
+        self._cancel_pending = False
+        for t in tasks:
+            self._tasks.append(t.clone())
+            self._settled.append(False)
+
+    # Required for structural conformance to `@dynamic Cancellable[T]`.
+    def cancel(self) -> None:
+        self._cancel_pending = True
+
+    def __poll__(self, waker: Waker) -> Own[Poll[list[Settled[T]]]]:
+        n = len(self._tasks)
+        if n == 0:
+            empty: list[Settled[T]] = []
+            return poll_ready(empty)
+
+        # Outer cancel: mark every unsettled sub-task's slot runnable
+        # via Task.cancel. Subs will raise CancelledError at their
+        # next suspension; we collect it as an entry rather than
+        # bubbling it out (CPython's return_exceptions semantics).
+        was_canceling = self._cancel_pending
+        self._cancel_pending = False
+        if was_canceling:
+            i: Int32 = 0
+            while i < n:
+                if not self._settled[i]:
+                    self._tasks[i].cancel()
+                i += 1
+
+        i: Int32 = 0
+        while i < n:
+            if not self._settled[i]:
+                try:
+                    p = self._tasks[i].__poll__(waker)
+                    if p.is_ready():
+                        self._settled[i] = True
+                        self._completed += 1
+                        self._result_indices.append(i)
+                        self._result_boxes.append(Box(p.value()))
+                except BaseException as e:
+                    self._settled[i] = True
+                    self._completed += 1
+                    self._exc_indices.append(i)
+                    self._exc_boxes.append(Box(e.clone()))
+            i += 1
+
+        if self._completed < n:
+            return poll_pending()
+
+        # Assemble in input order. For each input slot, scan the
+        # arrival-order arrays for a matching index, then `pop` to
+        # transfer ownership of the Box out of the list. O(n^2)
+        # walk -- N is typically small (handful of concurrent
+        # operations); fine for v1.5.
+        result: list[Settled[T]] = []
+        orig_i: Int32 = 0
+        while orig_i < n:
+            settled_via_value = False
+            k: Int32 = 0
+            kn = len(self._result_indices)
+            while k < kn:
+                if self._result_indices[k] == orig_i:
+                    self._result_indices.pop(k)
+                    box = self._result_boxes.pop(k)
+                    entry = Settled[T]()
+                    entry.value = box
+                    result.append(entry)
+                    settled_via_value = True
+                    break
+                k += 1
+            if not settled_via_value:
+                k = 0
+                kn = len(self._exc_indices)
+                while k < kn:
+                    if self._exc_indices[k] == orig_i:
+                        self._exc_indices.pop(k)
+                        ebox = self._exc_boxes.pop(k)
+                        entry = Settled[T]()
+                        entry.exception = ebox
+                        result.append(entry)
+                        break
+                    k += 1
+            orig_i += 1
+        return poll_ready(result)
+
+
+# Run `tasks` concurrently and harvest every result -- value OR
+# exception -- into `list[Settled[T]]` in input order. Variant of
+# CPython `asyncio.gather(*coros, return_exceptions=True)`: a sub-task
+# failure does NOT cancel siblings (each runs to completion); a
+# sub-task cancelled independently is collected as a `Settled` entry
+# with `exception` populated (its `CancelledError`). Cancelling the
+# gather caller itself propagates cancel into the sub-tasks for
+# cleanup and then re-raises `CancelledError` to the caller -- it is
+# NOT swallowed into the result list (matching CPython: cancelling
+# gather() cancels it).
+#
+# TPy-specific shape: returns `list[Settled[T]]` rather than CPython's
+# `list[T | BaseException]`. Two reasons: (1) TPy lowers union
+# elements in containers to a value-variant and the exception root is
+# a polymorphic owner (slicing risk); (2) `isinstance` against
+# `Box[Throwable]` as a union member isn't yet supported. The
+# `Settled[T]` record gives clean field-based discrimination; the
+# exception is a `Box[Throwable]` (re-raise to recover the subclass).
+#
+# Sibling of `gather_list` / `gather` (cancel-and-re-raise variants).
+async def gather_list_settled[T](
+        tasks: list[Task[T]]) -> list[Settled[T]]:
+    return await _GatherSettledFuture[T](tasks)
+
+
 class InvalidStateError(Exception):
     """Raised when set_result / set_exception is called on a Future
     that is already done."""

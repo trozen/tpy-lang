@@ -5754,6 +5754,36 @@ Send/Sync rules for built-in types:
   fires `waker.wake()` so the slot is scheduled for an immediate
   poll. The in-flight frame observes its `__cancel_pending` on the
   next executor cycle instead of waiting on a timer / IO wake.
+- **Working**: `asyncio.gather_list_settled(tasks) -> list[Settled[T]]`
+  -- the return-exceptions variant of `gather` (CPython's
+  `gather(*coros, return_exceptions=True)`). A sub-task failure does
+  NOT cancel its siblings; each runs to completion and contributes a
+  `Settled[T]` entry with either `value: Box[T] | None` or
+  `exception: Box[Throwable] | None` populated (input order). A
+  sub-task cancelled independently (via its own handle) is collected
+  as a `Settled` entry with its `CancelledError`, like any other
+  failure. Cancelling the gather caller itself is different: it
+  propagates cancel into the sub-tasks (cleanup) and then re-raises
+  `CancelledError` to the caller -- it is NOT swallowed into the
+  result list (matching CPython: cancelling `gather()` cancels it).
+  Diverges from CPython's `list[T | BaseException]` because TPy lowers
+  container-element unions to a value-variant and the exception root
+  is a polymorphic owner (slicing risk); the `Settled[T]` record
+  gives clean field-based discrimination instead. Recover the
+  concrete exception type by re-raising:
+  ```python
+  for entry in results:
+      if entry.exception is not None:
+          try:
+              raise entry.exception
+          except ValueError as v:
+              handle(v)
+      elif entry.value is not None:
+          handle_ok(entry.value.get())
+  ```
+  Implementation: `lib/tpy/asyncio/__init__.py:_GatherSettledFuture`
+  (arrival-order parallel result/exc arrays, pop-based input-order
+  assembly).
 - **Open (v1.5+)**: nesting two `await`-in-`finally` regions
   (multi-item / nested `async with`), await inside a `for`/`while`
   `else:` clause, `async for ... else:`, executor slot reuse,

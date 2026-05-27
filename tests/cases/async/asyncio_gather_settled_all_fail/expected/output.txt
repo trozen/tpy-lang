@@ -1,0 +1,4 @@
+count 3
+exc: boom-0
+exc: boom-1
+exc: boom-2
