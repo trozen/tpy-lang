@@ -22,7 +22,14 @@ It ships two CLIs that share the same argument grammar, differing only in their 
 
 **Snippets**: write to a file under `/tmp/agents/` (any filename or subdirectory) and run from there. Do NOT use heredocs (`<<EOF`) -- they trigger permission prompts for multi-line commands.
 
-**Never commit, amend, or stage without explicit user request.** Do not run `git commit`, `git commit --amend`, or `git add` unless the user explicitly asks.
+**Committing -- branch-aware.** A *temporary working branch* is any branch that is **not** `master`/`main` **and** has **no** remote-tracking (upstream) branch -- a throwaway branch for developing a feature before it's squash-merged into `master`. Detect it mechanically: branch from `git branch --show-current`; upstream from `git rev-parse --abbrev-ref --symbolic-full-name @{u}` (this command fails when there is no upstream). Make this determination yourself -- do **not** ask the user whether the branch qualifies.
+
+- **On a temporary working branch:** auto-commit your *own* completed work at each meaningful checkpoint -- a finished plan step, a self-contained edit set, a green run for a change you made, or fixes applied after a review pass (manual or automatic). A checkpoint is a coherent unit you'd want to point back to; err toward fewer substantive commits, not a stream of micro-commits after every edit. Just commit -- do **not** ask permission each time; this rule *is* the standing permission. (You still *pause and flag* -- without halting to ask about routine commits -- if a commit would sweep in something genuinely off: a secret, a stray binary, or changes you didn't make.) Stage only the files you created or modified for that work -- **never** `git add -A` / `git add .` (the tree carries untracked scratch and binary files that must not land in a commit). Concise messages are fine; the branch is squash-merged into `master`, so working history is throwaway.
+- **Everywhere else** (`master`/`main`, or any branch that *does* track a remote): never `git commit` or `git add` unless the user explicitly asks.
+
+In all cases: never `--amend`, rebase, force-push, or commit changes you didn't make; never push without an explicit request. An explicit user instruction ("don't commit yet", "hold off") always overrides the auto-commit default.
+
+**Spirit over letter.** These commit rules exist to (a) spare the user the manual-commit chore and (b) keep junk out of `master` -- not to be performed as a ritual. If following them literally would waste time or nag about obviously-legitimate files, optimize for that intent instead.
 
 **Never make design decisions autonomously.** If during implementation you discover the plan needs to change (new concept, behavior split, workaround for an unforeseen constraint), **stop and consult the user** before proceeding. If you encounter a hard problem or are unsure how to proceed, ask first.
 
