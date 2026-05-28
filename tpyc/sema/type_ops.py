@@ -1201,10 +1201,19 @@ class TypeOperations:
                 break
             ptype = p.type
             if p.is_variadic and is_span(unwrap_ref_type(ptype)):
-                # Variadic param: match each remaining arg against element type
+                # Variadic param: match each remaining arg against element type.
+                # `elem_type` is bare T (the Span[T] wrapping was stripped), so
+                # strip Ref from the arg side too -- otherwise a non-value arg
+                # whose analyzed type is `Ref[Box]` (e.g. a borrowed param)
+                # binds T=Ref[Box], which renders as illegal `varargs<Box&>`.
+                # The non-variadic ref-param path gets this via the Ref-vs-Ref
+                # strip in match_type_with_inference; varargs use bare-T params
+                # (`varargs<T>`, no val_or_ref indirection) so they need the
+                # equivalent strip explicitly here.
                 elem_type = unwrap_readonly(unwrap_ref_type(ptype).type_args[0])
                 while arg_idx < len(arg_types):
-                    if not self.match_type_with_inference(elem_type, arg_types[arg_idx], inferred):
+                    arg_t = unwrap_ref_type(arg_types[arg_idx])
+                    if not self.match_type_with_inference(elem_type, arg_t, inferred):
                         return None
                     arg_idx += 1
                 continue

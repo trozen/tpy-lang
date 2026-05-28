@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def via_param(b: Box, c: Box) -> Int32:
 int32_t via_param(Box& b, Box& c) {
-    // return count[Box](b, c)  # tpyc: ok
+    // return count(b, c)  # tpyc: ok
     std::array<Box*, 2> __tmp_1{&b, &c};
     return count<Box>(::tpy::varargs<Box>(__tmp_1));
 }

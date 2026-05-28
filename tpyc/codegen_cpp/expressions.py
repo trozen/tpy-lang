@@ -5334,7 +5334,25 @@ class ExpressionGenerator:
                 span_fn = "as_span" if isinstance(elem_type, ReadonlyType) else "as_mut_span"
                 return f"::tpy::varargs<{elem_cpp}>(::tpy::{span_fn}({inner}))"
             gen = self.gen_expr(a)
-            sub_args.append(f"&{gen}" if is_ref else gen)
+            if is_ref:
+                # Indirect-mode pack stores T*, so each arg must be an
+                # addressable lvalue. Names / field access / subscripts are
+                # lvalues; constructor calls, literals, and other prvalues
+                # need to be hoisted into a temp first (`&Box(1)` is invalid).
+                # Peel TpyCoerce -- the coercion's source determines lvalue-
+                # ness for the common identity coercion. @nocopy is safe:
+                # lvalues take `&` directly (no copy); rvalues move-construct
+                # the temp from the prvalue (move, not copy).
+                bare = a
+                while isinstance(bare, TpyCoerce):
+                    bare = bare.expr
+                if isinstance(bare, (TpyName, TpyFieldAccess, TpySubscript)):
+                    sub_args.append(f"&{gen}")
+                else:
+                    tmp = self.ctx.temps.create_typed(elem_cpp, gen)
+                    sub_args.append(f"&{tmp}")
+            else:
+                sub_args.append(gen)
         n = len(sub_args)
         init = ", ".join(sub_args)
         if is_ref:

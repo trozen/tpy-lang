@@ -1,7 +1,7 @@
 # Reference-type *args on a method (`*boxes: Box`). Goes through the
 # tpy::varargs<T> indirect-mode codegen path. Uses named locals at the
-# call site (rvalue temporaries with `tpy::varargs` indirect mode are a
-# separate pre-existing limitation; see BUGS.md).
+# call site -- the typical pattern; rvalue temporaries also work
+# (varargs_rvalue_ref_arg covers that path).
 from tpy import Int32
 
 

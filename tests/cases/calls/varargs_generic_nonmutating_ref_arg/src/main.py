@@ -1,9 +1,7 @@
-# Generic vararg with T substituted to a reference type at the call site.
-# After substitution elem_type is the concrete Box (not TypeParamRef), so the
-# marking gate fires -- guards the post-substitution path (the gate excludes
-# unbounded TypeParamRef, but the resolved param is concrete here). Uses
-# explicit [Box] to sidestep a pre-existing inference bug where T gets bound
-# to `Box&` for ref-typed args (unrelated to this fix; see TODO).
+# Generic vararg with T inferred from a non-value ref-typed arg. The variadic
+# inference branch strips Ref from the arg side before binding T (mirroring
+# how the non-variadic ref-param match works), so T binds to Box, not Ref[Box]
+# -- the latter would render as illegal `varargs<Box&>`.
 from tpy import Int32, nocopy
 
 
@@ -20,7 +18,7 @@ def count[T](*items: T) -> Int32:
 
 
 def via_param(b: Box, c: Box) -> Int32:
-    return count[Box](b, c)  # tpyc: ok
+    return count(b, c)  # tpyc: ok
 
 
 def main() -> None:
