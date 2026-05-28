@@ -58,12 +58,12 @@ __coro_cleanup cleanup() {
                 if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
                 x = std::move(__r0).value();
                 __sub_0.reset();
-                __state = S_JOIN_2;
+                __state = S_JOIN_3;
                 continue;
             } catch (...) {
                 __sub_0.reset();
                 this->__finally_exc_0 = std::current_exception();
-                __state = S_JOIN_2;
+                __state = S_JOIN_3;
                 continue;
             }
         } catch (const ::tpy::ValueError&) {
@@ -85,12 +85,7 @@ __coro_cleanup cleanup() {
             if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
             (void)std::move(__r1).value();
             __sub_1.reset();
-            if (this->__finally_exc_0) {
-                std::exception_ptr __tmp = this->__finally_exc_0;
-                this->__finally_exc_0 = nullptr;
-                std::rethrow_exception(__tmp);
-            }
-            __state = S_JOIN_3;
+            __state = S_JOIN_2;
             continue;
         } catch (const ::tpy::ValueError&) {
             __sub_1.reset();
@@ -127,13 +122,12 @@ __coro_cleanup cleanup() {
         }
     }
     case S_JOIN_2: {
-        // await cleanup()
-        __sub_1.emplace();
-        __state = S_RESUME_1;
-        continue;
-    }
-    case S_JOIN_3: {
         try {
+            if (this->__finally_exc_0) {
+                std::exception_ptr __tmp = this->__finally_exc_0;
+                this->__finally_exc_0 = nullptr;
+                std::rethrow_exception(__tmp);
+            }
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::ValueError&) {
@@ -146,6 +140,12 @@ __coro_cleanup cleanup() {
         } catch (...) {
             throw;
         }
+    }
+    case S_JOIN_3: {
+        // await cleanup()
+        __sub_1.emplace();
+        __state = S_RESUME_1;
+        continue;
     }
     case S_JOIN_4: {
         // x = await boom()

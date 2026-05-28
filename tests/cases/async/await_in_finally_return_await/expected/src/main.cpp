@@ -75,20 +75,21 @@ __coro_cleanup cleanup() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (this->__finally_pending_0) {
+            this->__finally_pending_0 = false;
+            this->__finally_exc_0 = nullptr;
+            __state = S_DONE;
+            return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(this->__finally_ret_0));
+        }
         if (this->__finally_exc_0) {
             std::exception_ptr __tmp = this->__finally_exc_0;
             this->__finally_exc_0 = nullptr;
             std::rethrow_exception(__tmp);
         }
-        if (this->__finally_pending_0) {
-            this->__finally_pending_0 = false;
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(this->__finally_ret_0));
-        }
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_JOIN_0: {
         ::tpy::tpy_panic("async def fell through without returning a value");
     }
     case S_JOIN_1: {

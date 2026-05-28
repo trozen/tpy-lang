@@ -239,9 +239,23 @@ class TryRegion:
 class FinallyRegion:
     """Marker for BBs inside a finally body. Emit treats specially:
     a throw inside a finally re-raises *after* the body completes;
-    a return inside a finally is rejected (TPy async semantics)."""
+    a `return` inside a finally body parks into the same pending-return
+    slot as a return from the try / handler body (`finally_exit_bb`
+    drains it via AsyncFinallyExit, Python: return-in-finally wins and
+    swallows any in-flight exception).
+    """
     helper_name: str
     loc_source: TpyStmt | None = None
+    # Parking fields mirror TryRegion's so a `return` inside the finally
+    # body sees the same slot as a return inside the try body. None when
+    # the try has no reachable returns anywhere in try / handlers /
+    # finally (no slot allocated).
+    pending_return_flag: str | None = None
+    pending_return_slot: str | None = None
+    # Dedicated BB whose single stmt is AsyncFinallyExit. Both normal
+    # fall-through and a return-in-finally jump here, so AsyncFinallyExit
+    # is the single replay site.
+    finally_exit_bb: int | None = None
 
 
 @dataclass(frozen=True)
@@ -383,31 +397,39 @@ class AsyncForIterSetup:
 
 @dataclass(frozen=True)
 class AsyncFinallyExit:
-    """Synthetic leaf stmt at the tail of a CFG-decomposed finally body.
-    Two-stage emit:
+    """Synthetic leaf stmt at the single replay site of a CFG-decomposed
+    finally region (allocated as the finally's dedicated `finally_exit_bb`
+    so both normal fall-through and a return-in-finally drain through one
+    point). Two-stage emit -- pending-return check FIRST so a return in
+    the finally body wins over any in-flight exception (Python
+    semantics):
 
+      if (this-><pending_return_flag>) {
+          this-><pending_return_flag> = false;
+          this-><captured_exc_field> = nullptr;   // swallow in-flight exc
+          <walk outer finally chain>
+          __state = S_DONE;
+          return Poll<T>::ready(std::move(this-><pending_return_slot>));
+      }
       if (this-><captured_exc_field>) {
           std::exception_ptr __tmp = this-><captured_exc_field>;
           this-><captured_exc_field> = nullptr;
           std::rethrow_exception(__tmp);
       }
-      if (this-><pending_return_flag>) {
-          this-><pending_return_flag> = false;
-          <walk outer finally chain>
-          __state = S_DONE;
-          return Poll<T>::ready(std::move(this-><pending_return_slot>));
-      }
 
-    The first stage rethrows a saved in-flight exception. The
-    second stage emits the deferred Poll::ready when a `return` in the
-    try/handler body set the pending flag. Fields are cleared
-    after extraction so a re-entry to the same try (e.g. inside a
-    loop) doesn't carry over stale state.
+    Stage 1 emits the deferred Poll::ready (or StopIteration for the
+    generator shape) when a `return` originating in the try body, any
+    handler body, OR the finally body itself set the pending flag; the
+    captured-exc clear-on-its-way-out implements the Python
+    return-in-finally-wins-over-raise rule. Stage 2 rethrows a saved
+    in-flight exception when no return is pending. Fields are cleared
+    after extraction so a re-entry to the same try (e.g. inside a loop)
+    doesn't carry over stale state.
 
-    `pending_return_flag` / `pending_return_slot` are None when the
-    try body / handlers contain no reachable `return` (skip stage 2).
-    `pending_return_slot` is None for void async defs even when the
-    flag is set (the deferred return needs no value)."""
+    `pending_return_flag` / `pending_return_slot` are None when no
+    `return` is reachable in try / handlers / finally (stage 1 omitted).
+    `pending_return_slot` is None for void async defs even when the flag
+    is set (the deferred return needs no value)."""
     captured_exc_field: str
     pending_return_flag: str | None = None
     pending_return_slot: str | None = None
@@ -1041,14 +1063,12 @@ class CFGBuilder:
             self._next_finally_id += 1
             self._finally_helpers.append((finally_name, list(stmt.finally_body)))
         elif finally_async:
-            # CFG-based finally. Pre-scan
-            # assigns an exception-slot uid and (if returns are present
-            # anywhere reachable) a pending-return slot. Remaining
-            # restrictions: no return inside the finally body itself
-            # (would need override semantics), and no nesting of two
-            # CFG-based finally regions (the inner AsyncFinallyExit
-            # would need to know about the outer slot for pending-
-            # return forwarding).
+            # CFG-based finally. Pre-scan assigns an exception-slot uid
+            # and (if returns are reachable in any of try / handler /
+            # finally) a pending-return slot. Remaining restriction: no
+            # nesting of two CFG-based finally regions (the inner
+            # AsyncFinallyExit would need to forward its pending slot
+            # to the outer one).
             for r in self._region_stack:
                 if (isinstance(r, TryRegion)
                         and r.captured_exc_field is not None):
@@ -1066,19 +1086,17 @@ class CFGBuilder:
                     loc=stmt.loc,
                 )
             captured_exc_field = f"__finally_exc_{uid}"
-            if _stmts_have_any_return(stmt.finally_body):
-                raise _CFGNotYetSupported(
-                    "`return` inside a finally body that itself "
-                    "contains await is a planned follow-up.",
-                    loc=stmt.loc,
-                )
-            # Pending-return slot: allocated only when there's a
-            # reachable `return` inside try-body or any handler-body.
+            # Pending-return slot: allocated when there's a reachable
+            # `return` anywhere the CFG-based finally can intercept --
+            # try body, any handler body, or the finally body itself
+            # (the FinallyRegion mirrors the flag/slot so a return inside
+            # the finally body parks into the same place).
             # `pending_return_slot` is None for void async defs (the
             # flag alone suffices).
             try_has_return = (_stmts_have_any_return(stmt.try_body)
                                or any(_stmts_have_any_return(h.body)
-                                       for h in stmt.handlers))
+                                       for h in stmt.handlers)
+                               or _stmts_have_any_return(stmt.finally_body))
             if try_has_return:
                 pending_return_flag = f"__finally_pending_{uid}"
                 # Void async defs need only the flag (no value to park);
@@ -1093,15 +1111,25 @@ class CFGBuilder:
                 pending_return_flag = None
                 pending_return_slot = None
 
-        # Pre-allocate finally_entry_bb (CFG-based finally only) so
-        # TryRegion can carry it. The BB must capture FinallyRegion on
-        # its region_stack -- temporarily push/pop the finally_region.
+        # Pre-allocate finally_entry_bb + finally_exit_bb (CFG-based
+        # finally only) so TryRegion / FinallyRegion can carry them.
+        # `finally_exit_bb` is the single replay site holding the
+        # AsyncFinallyExit synth -- both normal fall-through from the
+        # finally body and a return-in-finally jump here, which gives
+        # the deferred-return replay a home outside the body's last BB.
         finally_region: FinallyRegion | None = None
+        finally_exit_bb: int | None = None
         if finally_async:
             assert captured_exc_field is not None
+            # finally_exit_bb is OUTSIDE the FinallyRegion -- by the time
+            # AsyncFinallyExit runs, the finally body is done.
+            finally_exit_bb = self._new_bb()
             finally_region = FinallyRegion(
                 helper_name=captured_exc_field,
                 loc_source=stmt,
+                pending_return_flag=pending_return_flag,
+                pending_return_slot=pending_return_slot,
+                finally_exit_bb=finally_exit_bb,
             )
             self._region_stack.append(finally_region)
             finally_entry_bb = self._new_bb()
@@ -1180,23 +1208,31 @@ class CFGBuilder:
         if finally_async:
             assert finally_region is not None
             assert finally_entry_bb is not None
+            assert finally_exit_bb is not None
             assert captured_exc_field is not None
             self._region_stack.append(finally_region)
             try:
                 finally_end = self._build_block(
                     finally_entry_bb, stmt.finally_body)
                 if finally_end is not None:
-                    # Append the AsyncFinallyExit stmt (rethrow check
-                    # + pending-return check) then fall to join.
-                    self._blocks[finally_end].stmts.append(
-                        AsyncFinallyExit(
-                            captured_exc_field=captured_exc_field,
-                            pending_return_flag=pending_return_flag,
-                            pending_return_slot=pending_return_slot,
-                        ))
-                    self._finish(finally_end, Fall(next_bb=join_bb))
+                    # Normal fall-through: route through finally_exit_bb
+                    # so AsyncFinallyExit (rethrow + deferred-return
+                    # replay) runs at the single replay site. A
+                    # return-in-finally inside the body also jumps to
+                    # finally_exit_bb (via the FinallyRegion's parking
+                    # info -- see gen_async._pending_return_info_for_region_stack).
+                    self._finish(finally_end, Fall(next_bb=finally_exit_bb))
             finally:
                 self._region_stack.pop()
+            # AsyncFinallyExit lives at the dedicated exit BB; fall to
+            # join from there.
+            self._blocks[finally_exit_bb].stmts.append(
+                AsyncFinallyExit(
+                    captured_exc_field=captured_exc_field,
+                    pending_return_flag=pending_return_flag,
+                    pending_return_slot=pending_return_slot,
+                ))
+            self._finish(finally_exit_bb, Fall(next_bb=join_bb))
 
         return join_bb
 

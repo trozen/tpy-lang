@@ -51,11 +51,6 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
             __sub_0.reset();
             // print("finally-done")
             std::cout << "finally-done" << "\n";
-            if (this->__finally_exc_0) {
-                std::exception_ptr __tmp = this->__finally_exc_0;
-                this->__finally_exc_0 = nullptr;
-                std::rethrow_exception(__tmp);
-            }
             __state = S_JOIN_2;
             continue;
         } catch (const ::tpy::RuntimeError& e) {
@@ -88,6 +83,11 @@ __coro_cleanup_task cleanup_task(std::string_view label) {
     }
     case S_JOIN_2: {
         try {
+            if (this->__finally_exc_0) {
+                std::exception_ptr __tmp = this->__finally_exc_0;
+                this->__finally_exc_0 = nullptr;
+                std::rethrow_exception(__tmp);
+            }
             __state = S_JOIN_0;
             continue;
         } catch (const ::tpy::RuntimeError& e) {

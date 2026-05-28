@@ -497,15 +497,32 @@ existing `error_*` case to positive.
   `iterators/error_gen_match_yield`, `error_gen_method_match_yield`,
   `error_gen_generic_match_yield`, `async/error_async_match_await`.
 
-- **H2 -- `return` inside a suspending `finally`.** The CFG-based
-  finally already parks pending returns from the *try body* (M3.3.2
-  for async; carried over for generators in F5/E). Fix: extend the
-  parking to returns inside the *finally body itself* -- park into the
-  same `__finally_ret_<n>` slot + `__finally_pending_<n>` flag, then
-  `AsyncFinallyExit` emits the deferred Poll::ready / generator
-  StopIteration. Drop the sema reject. Converts:
-  `iterators/error_gen_return_in_yield_finally`,
-  `async/error_async_return_in_await_finally`.
+- **H2 DONE (2026-05-28)** -- `return` inside a suspending `finally`.
+  Extended the existing M3.3.2 parking machinery so a `return` originating
+  inside the finally body parks into the same `__finally_ret_<n>` /
+  `__finally_pending_<n>` slot used for try-body / handler-body returns.
+  Mechanism: `FinallyRegion` gained `pending_return_flag` /
+  `pending_return_slot` / `finally_exit_bb` fields; a new
+  `finally_exit_bb` (allocated outside the FinallyRegion) holds the
+  single `AsyncFinallyExit` synthetic, so both normal fall-through and
+  a return-in-finally drain through one replay site (jumping back to
+  `finally_entry_bb` would have re-executed the body). The CFG prescan
+  + try/finally builder now look at `stmt.finally_body` when deciding
+  whether to allocate the slot; `_pending_return_info_for_region_stack`
+  recognizes the FinallyRegion and returns its parking info with
+  `target_bb = finally_exit_bb` and `boundary = 0` (no inner frames to
+  skip -- already inside the finally). `AsyncFinallyExit` emit order
+  was swapped: pending-return check runs FIRST, clearing the captured
+  exception on its way out (Python: return-in-finally swallows
+  in-flight exceptions); the rethrow check runs only when no return is
+  pending. Sema reject dropped. The CFG layer's parallel reject was
+  also dropped. Tests: converted `iterators/error_gen_return_in_yield_finally`
+  -> `iterators/gen_return_in_yield_finally` and
+  `async/error_async_return_in_await_finally` -> `async/async_return_in_await_finally`;
+  new positive cases `iterators/gen_return_in_finally_swallows_exception`,
+  `async/async_return_in_finally_swallows_exception` (exception
+  swallowing), and `async/async_return_in_finally_overrides_try_return`
+  (try-body and finally-body both return -- finally wins).
 
 - **H3 -- Nested suspending `finally`.** Today rejected because the
   inner suspending finally would need to forward its pending exception

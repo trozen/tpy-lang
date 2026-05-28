@@ -64,7 +64,7 @@ __coro_cleanup cleanup() {
                 this->__finally_ret_0 = x;
                 this->__finally_pending_0 = true;
                 (*__with_ctx_0).__exit__({}, nullptr, {});
-                __state = S_JOIN_0;
+                __state = S_JOIN_1;
                 continue;
             } catch (::tpy::BaseException& __exc_0) {
                 (*__with_ctx_0).__exit__({}, &__exc_0, {});
@@ -76,7 +76,7 @@ __coro_cleanup cleanup() {
         } catch (...) {
             __sub_0.reset();
             this->__finally_exc_0 = std::current_exception();
-            __state = S_JOIN_0;
+            __state = S_JOIN_1;
             continue;
         }
     }
@@ -85,27 +85,28 @@ __coro_cleanup cleanup() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (this->__finally_pending_0) {
+            this->__finally_pending_0 = false;
+            this->__finally_exc_0 = nullptr;
+            __state = S_DONE;
+            return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(this->__finally_ret_0));
+        }
         if (this->__finally_exc_0) {
             std::exception_ptr __tmp = this->__finally_exc_0;
             this->__finally_exc_0 = nullptr;
             std::rethrow_exception(__tmp);
         }
-        if (this->__finally_pending_0) {
-            this->__finally_pending_0 = false;
-            __state = S_DONE;
-            return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(this->__finally_ret_0));
-        }
-        __state = S_JOIN_1;
-        continue;
+        ::tpy::tpy_panic("async def fell through without returning a value");
     }
-    case S_JOIN_0: {
+    case S_JOIN_1: {
         // await cleanup()
         __sub_1.emplace();
         __state = S_RESUME_1;
         continue;
-    }
-    case S_JOIN_1: {
-        ::tpy::tpy_panic("async def fell through without returning a value");
     }
     case S_JOIN_2: {
         try {
@@ -115,7 +116,7 @@ __coro_cleanup cleanup() {
             continue;
         } catch (...) {
             this->__finally_exc_0 = std::current_exception();
-            __state = S_JOIN_0;
+            __state = S_JOIN_1;
             continue;
         }
     }

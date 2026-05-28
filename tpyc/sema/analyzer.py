@@ -31,7 +31,7 @@ from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef,
     expr_contains_self_method_call,
-    stmt_has_any_suspension, stmts_have_any_suspension, stmts_have_any_return,
+    stmt_has_any_suspension, stmts_have_any_suspension,
 )
 from .expressions import _collect_body_name_refs
 
@@ -1125,8 +1125,7 @@ class SemanticAnalyzer:
 
           1. a suspension inside a `match` (the only compound the CFG does
              not decompose),
-          2. a `return` inside a `finally` body that itself suspends,
-          3. a suspending `finally` nested inside another suspending
+          2. a suspending `finally` nested inside another suspending
              `finally`.
 
         The codegen CFG build (`_build_resumable_cfg`) remains the
@@ -1146,12 +1145,6 @@ class SemanticAnalyzer:
                     )
                 if isinstance(stmt, TpyTry):
                     finally_suspends = stmts_have_any_suspension(stmt.finally_body)
-                    if finally_suspends and stmts_have_any_return(stmt.finally_body):
-                        raise self._error(
-                            f"`return` inside a finally body that itself "
-                            f"contains `{kw}` is a planned follow-up.",
-                            stmt,
-                        )
                     if finally_suspends and in_suspending_finally:
                         raise self._error(
                             f"nesting two `{kw}`-in-`finally` regions is a "

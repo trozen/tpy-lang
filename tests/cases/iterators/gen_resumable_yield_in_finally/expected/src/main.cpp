@@ -12,20 +12,21 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_return_then_finally
         continue;
     }
     case S_RESUME_0: {
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (this->__finally_pending_0) {
+            this->__finally_pending_0 = false;
+            this->__finally_exc_0 = nullptr;
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
         if (this->__finally_exc_0) {
             std::exception_ptr __tmp = this->__finally_exc_0;
             this->__finally_exc_0 = nullptr;
             std::rethrow_exception(__tmp);
         }
-        if (this->__finally_pending_0) {
-            this->__finally_pending_0 = false;
-            __state = S_DONE;
-            return ::tpy::make_unexpected(::tpy::StopIteration{});
-        }
-        __state = S_JOIN_0;
-        continue;
-    }
-    case S_JOIN_0: {
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -89,11 +90,6 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_exception_then_fina
         continue;
     }
     case S_RESUME_2: {
-        if (this->__finally_exc_0) {
-            std::exception_ptr __tmp = this->__finally_exc_0;
-            this->__finally_exc_0 = nullptr;
-            std::rethrow_exception(__tmp);
-        }
         __state = S_JOIN_1;
         continue;
     }
@@ -103,6 +99,11 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_exception_then_fina
         return ::tpy::BigInt(0);
     }
     case S_JOIN_1: {
+        if (this->__finally_exc_0) {
+            std::exception_ptr __tmp = this->__finally_exc_0;
+            this->__finally_exc_0 = nullptr;
+            std::rethrow_exception(__tmp);
+        }
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

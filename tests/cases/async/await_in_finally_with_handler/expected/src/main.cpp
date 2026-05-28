@@ -37,25 +37,25 @@ __coro_cleanup cleanup() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
         if (this->__finally_exc_0) {
             std::exception_ptr __tmp = this->__finally_exc_0;
             this->__finally_exc_0 = nullptr;
             std::rethrow_exception(__tmp);
         }
-        __state = S_JOIN_1;
-        continue;
-    }
-    case S_JOIN_0: {
-        // await cleanup()
-        __sub_0.emplace();
-        __state = S_RESUME_0;
-        continue;
-    }
-    case S_JOIN_1: {
         // return 7
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 7;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
+    }
+    case S_JOIN_1: {
+        // await cleanup()
+        __sub_0.emplace();
+        __state = S_RESUME_0;
+        continue;
     }
     case S_JOIN_2: {
         try {
@@ -65,16 +65,16 @@ __coro_cleanup cleanup() {
             try {
                 // print("caught")
                 std::cout << "caught" << "\n";
-                __state = S_JOIN_0;
+                __state = S_JOIN_1;
                 continue;
             } catch (...) {
                 this->__finally_exc_0 = std::current_exception();
-                __state = S_JOIN_0;
+                __state = S_JOIN_1;
                 continue;
             }
         } catch (...) {
             this->__finally_exc_0 = std::current_exception();
-            __state = S_JOIN_0;
+            __state = S_JOIN_1;
             continue;
         }
     }
