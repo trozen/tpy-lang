@@ -3226,7 +3226,7 @@ class CallAnalyzer:
         for func in iter_funcs:
             if is_generic_for_pool(func):
                 type_subst = self.type_ops.infer_type_params_for_function(
-                    func, arg_types, self.protocols.type_conforms_to_protocol,
+                    func, arg_types, self.protocols.satisfies_bound,
                     expected_return_type=self.ctx.expr_type_hint,
                     explicit_type_args=explicit_type_args,
                 )
@@ -3740,7 +3740,7 @@ class CallAnalyzer:
             if expanded_args is None:
                 return None
             type_subst = self.type_ops.infer_type_params_for_function(
-                func, expanded_args, self.protocols.type_conforms_to_protocol,
+                func, expanded_args, self.protocols.satisfies_bound,
                 expected_return_type=self.ctx.expr_type_hint,
                 explicit_type_args=explicit_type_args,
             )
@@ -4469,7 +4469,7 @@ class CallAnalyzer:
                         merged_seed[tp] = ta
                 arg_types = self._infer_arg_types(expr, func, seed_subst=merged_seed)
                 type_subst = self.type_ops.infer_type_params_for_function(
-                    func, arg_types, self.protocols.type_conforms_to_protocol,
+                    func, arg_types, self.protocols.satisfies_bound,
                     expected_return_type=self.ctx.expr_type_hint,
                     explicit_type_args=expr.type_args,
                 )
@@ -4495,7 +4495,7 @@ class CallAnalyzer:
             )
             arg_types = self._infer_arg_types(expr, func, seed_subst=seed_subst)
             type_subst = self.type_ops.infer_type_params_for_function(
-                func, arg_types, self.protocols.type_conforms_to_protocol,
+                func, arg_types, self.protocols.satisfies_bound,
                 expected_return_type=self.ctx.expr_type_hint,
             )
             if type_subst is None:

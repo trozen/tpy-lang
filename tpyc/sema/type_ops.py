@@ -1273,10 +1273,12 @@ class TypeOperations:
             if isinstance(inferred[tp], UnknownElementType):
                 return None
 
-        # Validate type parameter bounds
+        # Substitute already-inferred params into the bound before validating
+        # so a bound that names another param (`U: T`) is checked against the
+        # resolved form, not the raw type-param.
         for param_name, type_arg in inferred.items():
             if param_name in func.type_param_bounds:
-                bound = func.type_param_bounds[param_name]
+                bound = self.substitute_type_params(func.type_param_bounds[param_name], inferred)
                 if not type_conforms_to_protocol(type_arg, bound):
                     # Return None to signal inference failure (allows overload resolution to try other candidates)
                     return None

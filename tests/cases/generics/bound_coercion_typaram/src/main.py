@@ -1,8 +1,6 @@
-# The Ptr[U] -> Ptr[T] coercion via a type-param bound (`U: T`) is accepted
-# in a generic method body -- the shape a single-allocation Rc factory needs.
-# Calling such a factory is gated on generic inference (separate work), so
-# this pins only the body-level acceptance of the coercion.
 from __future__ import annotations
+# Body-level acceptance of `Ptr[U] -> Ptr[T]` via a type-param bound `U: T`
+# in a generic method (calling the factory is covered by bound_factory_inference).
 from tpy import Ptr, Own
 
 

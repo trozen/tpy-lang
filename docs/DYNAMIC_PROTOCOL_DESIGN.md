@@ -575,10 +575,13 @@ Compiler infrastructure issues (not blocked on `Box[P]`):
 - **Multiple protocol conformance** -- `pet: Pet & Drawable` for intersection types.
 - **Single-allocation `Rc[P]`** -- today's `Rc[@dynamic P]` works via two heap
   allocations (refcount cell + payload, like `std::shared_ptr` default). The
-  `make_shared`-style single-allocation variant needs the bound-based `Ptr[U] -> Ptr[T]`
-  coercion (now landed -- see "Bounded type-parameter coercion" in LANGUAGE_FEATURES.md)
-  plus generic inference so a `[U: T](value: Own[U]) -> Own[Rc[T]]` factory can be called
-  without explicit type args. See TODO.md "Single-allocation `Rc[@dynamic P]`".
+  `make_shared`-style single-allocation variant: the sema prerequisites are in --
+  the bound-based `Ptr[U] -> Ptr[T]` coercion and the LHS-hinted factory inference for
+  `[U: T](value: Own[U]) -> Own[Rc[T]]` both work, so `r: Rc[Pet] = Rc.new(v)` resolves
+  without explicit type args. Remaining: the `tplib/rc.py` rewrite to single-cell inline
+  storage, representational-use marking so structural conformers reject cleanly (or get
+  inline-adapter materialization), and the hint-free default-`T=U` rule (optional). See
+  TODO.md "Single-allocation `Rc[@dynamic P]`".
 - **`Arc[T]`** -- atomic-refcount sibling of `Rc[T]` for multi-threaded sharing.
   Same shape; refcount ops become atomic CAS loops.
 - **Fat-pointer protocol reference (`dyn[P]`) for structural borrow coercion.**

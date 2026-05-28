@@ -1944,7 +1944,7 @@ class MethodAnalyzer:
 
         arg_types = _analyze_args()
         method_subst = self.type_ops.infer_type_params_for_function(
-            partial_func, arg_types, self.protocols.type_conforms_to_protocol,
+            partial_func, arg_types, self.protocols.satisfies_bound,
             expected_return_type=self.ctx.expr_type_hint,
             explicit_type_args=explicit_type_args,
         )
