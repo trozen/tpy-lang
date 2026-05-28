@@ -681,24 +681,6 @@ class TypeRegistrar:
             record.fields[:] = remaining
         return class_constants, finality
 
-    def _reject_method_on_generic_class(self, kind: str,
-                                          record: 'TpyRecord',
-                                          method: 'TpyFunction') -> None:
-        """Reject generator / async methods on generic classes with a
-        consistent diagnostic. Both codegen paths (out-of-line generator
-        `__next__`, out-of-line async `__poll__`) currently emit at
-        namespace scope without forwarding the class's template header,
-        so any body reference to the class's type params fails C++
-        build. Lifting either rejection requires the codegen to emit
-        `template <typename T>` ahead of the struct's out-of-line
-        member definitions."""
-        if record.type_params:
-            raise SemanticError(
-                f"{kind} methods on generic classes are not yet supported "
-                f"('{record.name}.{method.name}')",
-                method.loc or record.loc,
-            )
-
     def _validate_generator_yield_copyable(self, yield_type: TpyType, loc) -> None:
         """Reject a generator that would yield a non-copyable value.
 
@@ -1064,7 +1046,6 @@ class TypeRegistrar:
                 method.generator_yield_type = method_return.type_args[0]
                 self._validate_generator_yield_copyable(
                     method.generator_yield_type, method.loc or record.loc)
-                self._reject_method_on_generic_class("Generator", record, method)
             # For the mutable clone of a auto_readonly pair, skip implicit_readonly so
             # that the mutable clone keeps is_readonly=False. This allows tie-breaking in
             # method resolution to correctly distinguish the two clones based on receiver
@@ -1157,13 +1138,6 @@ class TypeRegistrar:
             # and the body-return checker. Cancellable structurally extends
             # Awaitable, so `await` / `async for` / `async with` still match.
             if method.is_async:
-                # M4 codegen emits the method's coro struct at namespace
-                # scope but doesn't propagate the class's template
-                # header to the out-of-line `__poll__` body, so any
-                # reference to the class's type params would fail C++
-                # build. Same shape as generator methods on generic
-                # classes; share the rejection helper.
-                self._reject_method_on_generic_class("Async", record, method)
                 fi_method_return = make_cancellable(
                     NONE if isinstance(method_return, VoidType) else method_return)
             else:

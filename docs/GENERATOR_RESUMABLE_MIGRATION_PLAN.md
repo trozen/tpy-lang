@@ -201,9 +201,9 @@
     contains a `return` (via `_stmts_have_return` scan). New test:
     `gen_resumable_return_in_finally`. Full suite 4194 passed.
 - **Phase F SCOPED (2026-05-27)** -- see "Phase F approach" below.
-  Generics in scope (F2); generic-class methods deferred but
-  forward-compatible (F4); legacy struct path deleted once parity proven
-  (F5). Then new surface (G).
+  Generics in scope (F2); generic-class methods initially deferred but
+  forward-compatible (F4, completed 2026-05-28); legacy struct path
+  deleted once parity proven (F5). Then new surface (G).
 - **Phase F2 DONE (2026-05-27)** (generic free-fn generators). Lifted the
   `func.type_params` early-out in `_compute_resumable_generator_eligible`;
   generic (`[T]` type-param) multi-yield generators now route onto the
@@ -350,16 +350,51 @@
     `error_gen_generic_match_yield`, `async/error_async_match_await`.
     Remaining F: F4 (generator/async methods on generic classes, deferred /
     standalone). Then G (new surface: `yield from`/`send`/`throw`/`close`).
-- **Latent (surfaced during F2):** async coro orchestration gates
-  inline-header on `func.type_params` alone, so a hypothetical
-  proto-param-only async coro (static protocol param, no `[T]`) would emit
-  its poll body out-of-line against a template struct (link failure) -- the
-  same bug class F2 fixed for generators via `_is_templated_coro`. Verified
-  **unreachable in the current suite** (no async coro has a proto param
-  without a co-occurring type param; asyncio's `Own[Awaitable[T]]` always
-  brings a `[T]`). Fix = swap the two async `func.type_params` orchestration
-  checks to `_is_templated_coro` (zero churn confirmed). Folded into the F1
-  "reuse the async method seams" convergence work, or do standalone.
+- **Phase F4 DONE (2026-05-28)** (generator/async methods on generic
+  classes). Lifted the shared `_reject_method_on_generic_class` sema
+  rejection (deleted along with both call sites in `registration.py`).
+  Codegen change: extended `_is_templated_coro` / `_emit_template_header` /
+  `_struct_name_templated` (and `_classify_params`'s `__self` receiver
+  type) to fold in the enclosing record's `type_params` for methods. The
+  single-source-of-truth predicate F1/F2 established now answers "does
+  this coro struct need a C++ template header?" with `func.type_params OR
+  proto-typed params OR the method's enclosing record's type_params`,
+  shared between async and generator shapes. Inline factory definitions
+  qualify the class name with its template args (`Box<T>::get` /
+  `Box<T>::items`). Verified: async method on `Box[T]`, generator method
+  on `Box[T]` (multi-yield), and a generator method on a two-param
+  `Pair[K, V]` with control flow. Converted the two rejection tests to
+  positive (`iterators/gen_method_generic`,
+  `async/async_method_on_generic_class`); added
+  `iterators/gen_method_generic_multi_param`. Full suite 4263 passed (3
+  new positive cases; the 2 error cases became positive).
+  **Follow-up coverage (surfaced by /tpy-review):**
+  `async/async_method_readonly_on_generic_class` (the `const Box<T>&`
+  self-capture branch) and `async/async_method_typeparam_on_generic_class`
+  (method with its own `[U]` on a generic class). The latter surfaced a
+  real bug missed by the initial F4 work: the out-of-class inline factory
+  definition of a member function template of a class template
+  (`Box<T>::with_label`) requires **nested** C++ template headers
+  (`template <typename T>` then `template <typename U>`), not the flat
+  `template <typename T, typename U>` that `_emit_template_header`
+  produces (which declares a different entity and triggers "no
+  declaration matches"). Fix: added `_emit_member_template_headers` for
+  the out-of-class member-definition sites; the flat helper stays
+  correct for free-struct definitions and for struct-member methods like
+  `__poll__`. **Second-round /code-review** caught two more issues: (1)
+  the generator-method in-class declaration in `records.py` switched to
+  `_struct_name_templated` (correctly spelling `__gen_X_items<U>`) but
+  forgot to call `_emit_template_header` -- a non-simple generator
+  method with its own `[U]` type param emitted the templated return
+  type with no leading `template <typename U>`, an asymmetry vs the
+  async-method branch; (2) `_classify_params`'s receiver-type
+  construction called `escape_cpp_name(record_name)` without the
+  `.replace('.', '::')` the two factory sites use, so a method on a
+  nested record (`Outer.Inner`) would have spelled `__self: Outer.Inner&`
+  -- invalid C++. Both fixed; new positive test
+  `iterators/gen_method_typeparam` guards the first (the second is
+  latent, no nested-record method test exists). Migration scope is now
+  complete -- only G (new surface) remains.
 - **Phase D/E prerequisites (surfaced by /tpy-review):**
   - Borrow-form yield slot **DONE**: `_resumable_ret_type_cpp` now
     routes through `gen_generators._iter_slot_for_yield` -- borrow form
@@ -424,8 +459,9 @@
     size win (bare storage for default-constructible field types,
     dropping the bool) needs the `std::conditional` `frame_field<T>`
     wrapper and stays a separate item in TODO.md.
-- Phases D (D1+D2+D3), E, and F (F1/F2/F3/F5/F6) DONE; F4 deferred
-  (generator/async methods on generic classes); G (new surface) not started.
+- Phases D (D1+D2+D3), E, and F (all of F1-F6) DONE; the migration is
+  complete. G (new surface: `yield from`/`send`/`throw`/`close`) not
+  started.
 
 ## Phase D approach (DONE -- historical record)
 
@@ -505,11 +541,12 @@ cheaper than the original plan assumed, so generics moves into F.
    inline-header emission; closes the generic-multi-yield gap (the
    `gen_generators.py` "not yet supported" reject + the TODO.md feature
    entry, not a BUGS.md entry).
-2. **Generic-class methods (F4) deferred, but stay forward-compatible.**
-   Keep the rejection for now (it is shared with async -- `async def`
-   methods on generic classes are rejected identically, so no regression),
-   but the F1/F2 design must NOT foreclose lifting it later (see the
-   forward-compat constraint below).
+2. **Generic-class methods (F4) initially deferred, completed later.**
+   Originally kept the rejection (shared with async -- both shapes
+   rejected identically, so no regression). F1/F2 preserved the
+   forward-compat constraint below. F4 then lifted the rejection by
+   widening the single-source-of-truth templated-coro predicate to fold
+   in the enclosing record's `type_params`.
 3. **Delete the legacy struct path once parity is proven (F5).** The
    simple-generator peephole stays.
 
@@ -562,18 +599,20 @@ cheaper than the original plan assumed, so generics moves into F.
   `ResumableFuncState` typed-dataclass refactor (TODO.md -- collapse the
   ~dozen `getattr(func, "_resumable_*", None) or {}` side tables) which
   pairs naturally with this phase and de-risks the eventual THIR migration.
-- **F4 (deferred, forward-compatible) -- generator/async methods on
-  generic classes.** Lifting `registration.py:_reject_method_on_generic_class`
-  requires the out-of-line member definitions to carry the class's template
-  header (`template <typename T>` ahead of the def) OR be emitted inline in
-  the class header. **Forward-compat constraint for F1/F2:** keep the
-  per-method "where does the poll/next body go" choice (out-of-line `.cpp`
-  vs inline-in-header) parameterized and *shared between async and
-  generator shapes*, and keep `_reject_method_on_generic_class` as the
-  single rejection chokepoint for both. Then F4 = flip methods-on-generic-
-  classes to the inline-header branch + lift the one shared rejection,
-  benefiting async and generators together. Do not add generator-specific
-  method-emission assumptions that would diverge from the async method path.
+- **F4 -- generator/async methods on generic classes.** (DONE; see the
+  F4 DONE log entry above for the implementation record.) The F1/F2
+  forward-compat constraint -- keep the per-method
+  out-of-line-vs-inline-header choice parameterized and shared between
+  async and generator shapes, with `_reject_method_on_generic_class` as
+  the single rejection chokepoint for both -- held, and F4 was a
+  natural extension: widen the templated-coro predicate to fold in the
+  enclosing record's `type_params`, then lift the shared rejection.
+  Methods on generic classes route to the inline-header branch
+  automatically once the widened predicate fires, benefiting async and
+  generators together. The record-template-args plumbing
+  (`_record_template_args`, threaded `record_name` parameters on
+  `_is_templated_coro` / `_emit_template_header` / `_struct_name_templated`
+  / `_classify_params`'s self-capture) stays generator-agnostic.
 
 ### Sequencing + gate
 

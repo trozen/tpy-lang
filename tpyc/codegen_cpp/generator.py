@@ -488,7 +488,7 @@ class CodeGenerator:
                     # (templated ones emit inline next to the struct in the
                     # .hpp, see below).
                     if (self._resumable_generator_eligible(method)
-                            and not self.gen_async._is_templated_coro(method)):
+                            and not self.gen_async._is_templated_coro(method, record.name)):
                         with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
                             self.gen_async.gen_coro_poll_def(
                                 cpp, method, record_name=record.name)
@@ -496,7 +496,7 @@ class CodeGenerator:
                             self.gen_async.gen_coro_finally_top_def(
                                 cpp, method, record_name=record.name)
                             cpp.write("\n")
-                elif method.is_async and not self.gen_async._is_templated_coro(method):
+                elif method.is_async and not self.gen_async._is_templated_coro(method, record.name):
                     # Non-template async methods: poll body lands in .cpp.
                     # Template async methods (type params OR a protocol-typed
                     # param) have their poll body emitted inline next to the
@@ -1159,10 +1159,11 @@ class CodeGenerator:
                 self.gen_async.gen_coro_struct(
                     hpp, method, record_name=record.name)
                 hpp.write("\n")
-                # Templates (type params OR a protocol-typed param): poll()
-                # body must be inline-in-header, else the out-of-line .cpp
-                # body fails to link against the template struct.
-                if self.gen_async._is_templated_coro(method):
+                # Templates (type params OR a protocol-typed param OR a
+                # method on a generic class): poll() body must be
+                # inline-in-header, else the out-of-line .cpp body fails to
+                # link against the template struct.
+                if self.gen_async._is_templated_coro(method, record.name):
                     self.gen_async.gen_coro_poll_def(
                         hpp, method, record_name=record.name)
                     hpp.write("\n")
@@ -1173,13 +1174,19 @@ class CodeGenerator:
                 # would otherwise fall off CTAD.
                 struct_name = self.gen_async._struct_name_templated(method, record.name)
                 cpp_record = escape_cpp_name(record.name.replace(".", "::"))
+                # Out-of-class definition of a member of a class template
+                # qualifies the class name with its template args
+                # (`Box<T>::get()`, not `Box::get()`).
+                record_tps = self.gen_async._record_template_args(record.name)
+                if record_tps:
+                    cpp_record = f"{cpp_record}<{', '.join(record_tps)}>"
                 params = self.functions.gen_params(
                     method.params, method.type_params,
                     emit_defaults=False, func=method)
                 args = self.gen_async._factory_args_forwarded(
                     method, receiver=(record.name, "*this"))
                 const_suffix = " const" if method.is_readonly else ""
-                self.gen_async._emit_template_header(hpp, method)
+                self.gen_async._emit_member_template_headers(hpp, method, record_name=record.name)
                 hpp.write(f"inline {struct_name} {cpp_record}::{method.name}({params}){const_suffix} {{\n")
                 hpp.write(f"    return {struct_name}({args});\n")
                 hpp.write(f"}}\n\n")
@@ -1226,9 +1233,11 @@ class CodeGenerator:
                             self.gen_async.gen_coro_struct(
                                 hpp, method, record_name=record.name)
                             hpp.write("\n")
-                            # Templated generator methods: __next__ body +
-                            # finally-top must be inline-in-header.
-                            if self.gen_async._is_templated_coro(method):
+                            # Templated generator methods (own type params, a
+                            # proto-typed param, OR a method on a generic
+                            # class): __next__ body + finally-top must be
+                            # inline-in-header.
+                            if self.gen_async._is_templated_coro(method, record.name):
                                 self.gen_async.gen_coro_poll_def(
                                     hpp, method, record_name=record.name)
                                 hpp.write("\n")
@@ -1240,13 +1249,19 @@ class CodeGenerator:
                             # protocol params in correctly).
                             struct_name = self.gen_async._struct_name_templated(method, record.name)
                             cpp_record = escape_cpp_name(record.name.replace(".", "::"))
+                            # Qualify with class template args for
+                            # out-of-class member definitions of a class
+                            # template (e.g. `Box<T>::items`).
+                            record_tps = self.gen_async._record_template_args(record.name)
+                            if record_tps:
+                                cpp_record = f"{cpp_record}<{', '.join(record_tps)}>"
                             params = self.functions.gen_params(
                                 method.params, method.type_params,
                                 emit_defaults=False, func=method)
                             args = self.gen_async._factory_args_forwarded(
                                 method, receiver=(record.name, "*this"))
                             const_suffix = " const" if method.is_readonly else ""
-                            self.gen_async._emit_template_header(hpp, method)
+                            self.gen_async._emit_member_template_headers(hpp, method, record_name=record.name)
                             hpp.write(f"inline {struct_name} {cpp_record}::{method.name}({params}){const_suffix} {{\n")
                             hpp.write(f"    return {struct_name}({args});\n")
                             hpp.write(f"}}\n\n")

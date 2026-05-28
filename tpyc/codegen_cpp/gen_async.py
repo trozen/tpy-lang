@@ -302,7 +302,16 @@ class AsyncCoroCodegen:
         """
         out: list[_CoroParam] = []
         if record_name:
-            cpp_record = escape_cpp_name(record_name)
+            # Match the factory-site spelling (generator.py:1177, :1252):
+            # convert dotted nested-class names to C++ scope syntax (`Outer.Inner`
+            # -> `Outer::Inner`) before escaping, then template-qualify for a
+            # generic class (`Box[T]` -> `Box<T>&`) -- the bare class name in
+            # a type position outside the class body is ill-formed for
+            # templates.
+            cpp_record = escape_cpp_name(record_name.replace(".", "::"))
+            record_tps = self._record_template_args(record_name)
+            if record_tps:
+                cpp_record = f"{cpp_record}<{', '.join(record_tps)}>"
             const_prefix = "const " if func.is_readonly else ""
             recv_type = f"{const_prefix}{cpp_record}"
             out.append(_CoroParam(
@@ -432,27 +441,75 @@ class AsyncCoroCodegen:
                 parts.append(f"{concept_name} T_{pname}")
         return parts
 
-    def _is_templated_coro(self, func: TpyFunction) -> bool:
-        """True iff the coro/generator struct is a C++ template -- either
-        from explicit `[T, ...]` type params OR a static-protocol-typed
-        param (which contributes a `T_<pname>` template arg). Templated
-        structs must emit their poll/__next__ body + factory inline in the
-        header; a non-template struct's body lands in the .cpp. The narrow
-        `func.type_params` test misses the proto-param case, which would
-        otherwise emit an out-of-line body against a template struct (link
-        failure). Single source of truth for the header-vs-cpp placement
+    def _record_template_args(self, record_name: str | None) -> tuple[str, ...]:
+        """Type params of the enclosing record for a method, or () for a free
+        function / method on a non-generic class. A method on `class Box[T]`
+        contributes T to the coro struct's template header so the struct can
+        reference `Box<T>` in the self-capture field."""
+        if not record_name:
+            return ()
+        info = self.ctx.analyzer.registry.get_record(record_name)
+        if info is None or not info.type_params:
+            return ()
+        return tuple(info.type_params)
+
+    def _is_templated_coro(self, func: TpyFunction,
+                            record_name: str | None = None) -> bool:
+        """True iff the coro/generator struct is a C++ template -- because
+        of explicit `[T, ...]` type params, a static-protocol-typed param
+        (`T_<pname>` template arg), OR (for a method) the enclosing record's
+        type params. Templated structs must emit their poll/__next__ body +
+        factory inline in the header; a non-template struct's body lands in
+        the .cpp. Single source of truth for the header-vs-cpp placement
         decision across both async and generator shapes."""
-        return bool(func.type_params) or bool(self._protocol_template_parts(func))
+        return (bool(func.type_params)
+                or bool(self._protocol_template_parts(func))
+                or bool(self._record_template_args(record_name)))
 
     def _emit_template_header(self, out: "TextIO", func: TpyFunction,
-                                *, indent: str = "") -> bool:
+                                *, indent: str = "",
+                                record_name: str | None = None) -> bool:
         proto_parts = self._protocol_template_parts(func)
-        if not func.type_params and not proto_parts:
+        record_tps = self._record_template_args(record_name)
+        if not func.type_params and not proto_parts and not record_tps:
             return False
-        parts = [f"typename {tp}" for tp in func.type_params]
+        # Record's [T...] first so an outer Box<T> reads naturally; then the
+        # method's own [U...]; then protocol-typed-param template args. The
+        # combined-flat form is correct for free types (structs at namespace
+        # scope) -- the coro/gen struct itself is a free `template<typename
+        # T, typename U> struct __coro_...`. For an out-of-class member
+        # function definition of a class template (`Box<T>::method`) where
+        # the method is itself a template, C++ requires NESTED headers
+        # instead -- see `_emit_member_template_headers`.
+        parts = [f"typename {tp}" for tp in record_tps]
+        parts.extend(f"typename {tp}" for tp in func.type_params)
         parts.extend(proto_parts)
         out.write(f"{indent}template <{', '.join(parts)}>\n")
         return True
+
+    def _emit_member_template_headers(self, out: "TextIO",
+                                       func: TpyFunction,
+                                       *, record_name: str,
+                                       indent: str = "") -> None:
+        """Emit C++ template headers for the out-of-class definition of a
+        member function of a class template: `template <record_tps>` then
+        `template <method_type_params + proto_parts>`. Either level may
+        collapse to no-op if that level has no params (e.g. a non-template
+        method on a class template emits only the class header; a method
+        template on a non-generic class emits only the method header). The
+        nested form is the **only** C++-legal spelling for "member function
+        template of a class template"; the flat form `_emit_template_header`
+        produces declares a different entity and triggers
+        no-declaration-matches at the in-class declaration."""
+        record_tps = self._record_template_args(record_name)
+        if record_tps:
+            parts = ", ".join(f"typename {tp}" for tp in record_tps)
+            out.write(f"{indent}template <{parts}>\n")
+        proto_parts = self._protocol_template_parts(func)
+        if func.type_params or proto_parts:
+            parts_list = [f"typename {tp}" for tp in func.type_params]
+            parts_list.extend(proto_parts)
+            out.write(f"{indent}template <{', '.join(parts_list)}>\n")
 
     def _struct_name_templated(self, func: TpyFunction,
                                 record_name: str | None = None) -> str:
@@ -464,14 +521,15 @@ class AsyncCoroCodegen:
         still correct inside the struct body (constructors) and for
         forward decls (`struct X;`).
 
-        For functions whose params include static protocols, the
-        per-param `T_<pname>` template args are appended after the
-        explicit `[T1, T2, ...]` type-param list, in param order.
+        Template-arg order matches `_emit_template_header`: record's type
+        params first (for a method on a generic class), then the function's
+        own type params, then per-param `T_<pname>` static-protocol args.
         """
         bare = self.gen_struct_name(func, record_name)
         extras = [p.field_type for p in self._classify_params(func, record_name)
                   if p.kind is _CoroParamKind.STATIC_PROTOCOL]
-        all_args = list(func.type_params) + extras
+        all_args = (list(self._record_template_args(record_name))
+                    + list(func.type_params) + extras)
         if not all_args:
             return bare
         return f"{bare}<{', '.join(all_args)}>"
@@ -505,7 +563,7 @@ class AsyncCoroCodegen:
     def gen_coro_forward_decl(self, out: "TextIO", func: TpyFunction,
                               record_name: str | None = None) -> bool:
         struct_name = self.gen_struct_name(func, record_name)
-        self._emit_template_header(out, func)
+        self._emit_template_header(out, func, record_name=record_name)
         out.write(f"struct {struct_name};\n")
         return True
 
@@ -747,7 +805,7 @@ class AsyncCoroCodegen:
         label = f"{record_name}.{func.name}" if record_name else func.name
         kind = "Generator" if self._is_generator_shape() else "Async coroutine"
         out.write(f"// {kind}: {label}\n")
-        self._emit_template_header(out, func)
+        self._emit_template_header(out, func, record_name=record_name)
         out.write(f"struct {struct_name} {{\n")
 
         # State integer (shared) + per-shape extra state (async adds the
@@ -1024,7 +1082,7 @@ class AsyncCoroCodegen:
 
         with self._resumable_frame_ctx(func, record_name):
             for helper_name, body_stmts in cfg.finally_helpers:
-                self._emit_template_header(out, func)
+                self._emit_template_header(out, func, record_name=record_name)
                 out.write(f"void {struct_name}::{helper_name}() {{\n")
                 self.ctx.indent_level = 1
                 with self._generator_finally_helper_scope():
@@ -1236,7 +1294,7 @@ class AsyncCoroCodegen:
         has_yields = bool(cfg.yield_sites)
 
         self.ctx.emit_source_comment(out, func.loc)
-        self._emit_template_header(out, func)
+        self._emit_template_header(out, func, record_name=record_name)
         out.write(f"{self._resumable_body_method_decl(func, struct_name)} {{\n")
         self._emit_resumable_body_prelude(out, has_yields)
 
