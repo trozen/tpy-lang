@@ -4381,6 +4381,22 @@ class CallAnalyzer:
                 arg, arg_type, elem_type, f"*args element {i}",
                 coercion_ctx=CoercionContext.ARG)
             vararg_exprs[i] = coerced_arg
+            # A mutable reference-element vararg slot address-takes each arg
+            # (`&arg` into a `T*` array for varargs<T> indirect mode), so the
+            # source must be a non-const lvalue regardless of whether the callee
+            # mutates -- mark it mutated (symmetric to the *unpack branch above;
+            # _check_loop_var_arg_mutation skips vararg params since the param's
+            # Span type is a value type). Gate mirrors codegen's `is_ref`
+            # (_gen_vararg_pack): value-type and unbounded-generic elements are
+            # copied, not address-taken, so they need no marking.
+            if not isinstance(elem_type, ReadonlyType):
+                bare_elem = unwrap_readonly(elem_type)
+                if (not bare_elem.is_value_type()
+                        and not isinstance(bare_elem, TypeParamRef)):
+                    root = _root_name_of_expr(arg)
+                    if root is not None:
+                        self.ctx.mark_param_mutated(root)
+                        self.ctx.mark_loop_var_mutated(root)
 
         # Type-check keyword-only args (resolve_kwargs has filled all slots)
         kwonly_params = [p for p in func.params if p.keyword_only]

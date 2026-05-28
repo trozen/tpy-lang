@@ -1,0 +1,3 @@
+Uses TPy-only explicit type-argument syntax `count[Box](...)` to sidestep a
+pre-existing T=Box& inference bug for ref-typed generic-vararg args; CPython
+treats `count[Box]` as subscripting a function and raises TypeError.
