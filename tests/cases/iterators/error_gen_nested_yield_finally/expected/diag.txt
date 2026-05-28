@@ -1,0 +1,1 @@
+main.py:11: error: nesting two `yield`-in-`finally` regions is a planned follow-up.

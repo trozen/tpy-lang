@@ -1,0 +1,1 @@
+main.py:10: error: `return` inside a finally body that itself contains `yield` is a planned follow-up.

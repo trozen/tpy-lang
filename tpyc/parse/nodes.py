@@ -1649,3 +1649,56 @@ def is_stable_address_lvalue(expr: TpyExpr) -> bool:
     while isinstance(e, TpyFieldAccess):
         e = e.obj
     return isinstance(e, TpyName)
+
+
+def stmt_has_any_suspension(stmt: TpyStmt) -> bool:
+    """Walk a statement (its expression slots and sub_bodies) for any
+    suspension point -- a `TpyAwait` (async) or a `TpyYield` (generator).
+    `async with` and `async for` always count even when their bodies have
+    none: the `__aenter__` / `__aexit__` / `__anext__` calls are themselves
+    suspensions. Does not descend into nested function/lambda bodies (a
+    suspension there belongs to the inner callable, not this one)."""
+    if isinstance(stmt, TpyYield):
+        return True
+    if isinstance(stmt, TpyWith) and stmt.is_async:
+        return True
+    if isinstance(stmt, TpyForEach) and stmt.is_async:
+        return True
+
+    def walk_expr(e: TpyExpr | None) -> bool:
+        if e is None:
+            return False
+        if isinstance(e, TpyAwait):
+            return True
+        for c in (e.children() if hasattr(e, "children") else ()):
+            if walk_expr(c):
+                return True
+        return False
+
+    if hasattr(stmt, "exprs"):
+        for e in stmt.exprs():
+            if walk_expr(e):
+                return True
+    if hasattr(stmt, "sub_bodies"):
+        for body in stmt.sub_bodies():
+            for s in body:
+                if stmt_has_any_suspension(s):
+                    return True
+    return False
+
+
+def stmts_have_any_suspension(stmts: list[TpyStmt]) -> bool:
+    return any(stmt_has_any_suspension(s) for s in stmts)
+
+
+def stmts_have_any_return(stmts: list[TpyStmt]) -> bool:
+    """True if any of `stmts` (recursively through sub_bodies) contains a
+    TpyReturn. Does not descend into nested function/lambda bodies."""
+    for s in stmts:
+        if isinstance(s, TpyReturn):
+            return True
+        if hasattr(s, "sub_bodies"):
+            for b in s.sub_bodies():
+                if stmts_have_any_return(b):
+                    return True
+    return False

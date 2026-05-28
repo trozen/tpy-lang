@@ -1,1 +1,1 @@
-main.py:10: error: generic generator functions with multiple yield points are not yet supported
+main.py:10: error: generators with a protocol-typed parameter are not yet supported

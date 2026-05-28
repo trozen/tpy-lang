@@ -1589,9 +1589,9 @@ class CodeGenContext:
         """Register a loop / unpack variable into the storage-form tracking
         sets based on its sema element type.
 
-        Shared by the three producer-side sites: `_gen_loop_body` (regular
-        for-loop), `_gen_generator_loop_body` (generator-body for-loop), and
-        `_enter_comp_scope` (comprehension/genexpr scope). The sites differ
+        Shared by the producer-side sites: `_gen_loop_body` (regular
+        for-loop) and `_enter_comp_scope` (comprehension/genexpr scope). The
+        sites differ
         only in whether they detect a const-bound iteration source:
           - regular for-loop + comp/genexpr: default
             `detect_const_source=True` runs `iteration_yields_const`
@@ -1752,11 +1752,10 @@ class CodeGenContext:
             if lname in self.pointer_locals:
                 continue
             self.generator_optional_fields.add(lname)
-            # User-local non-pointer-form non-value frame fields are
-            # backed by `tpy::frame_slot<T>` (see
-            # gen_generators.py:_gen_generator_struct field-decl path).
-            # Writes route through `.emplace(...)`; reads share the
-            # `(*name)` access with the legacy `std::optional<T>` path.
+            # User-local non-pointer-form non-value frame fields are backed by
+            # `tpy::frame_slot<T>` (emitted by the resumable struct field-decl
+            # path in `gen_async.gen_coro_struct`). Writes route through
+            # `.emplace(...)`; reads use the `(*name)` access.
             self.generator_frame_slot_locals.add(lname)
 
     def is_already_pointer_source(self, expr: TpyExpr) -> bool:

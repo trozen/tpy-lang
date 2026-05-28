@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from io import StringIO
 from typing import Callable, TYPE_CHECKING
 
 from ..parse.nodes import (
@@ -10,7 +9,6 @@ from ..parse.nodes import (
     TpyCall, TpyName, TpyExpr, TpyTupleUnpack,
 )
 from ..typesys import IntLiteralType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_readonly, unwrap_ref_type
-from ..type_def_registry import is_str_type
 from tpyc import modules as builtin_modules
 from .context import INDENT, escape_cpp_name
 
@@ -57,17 +55,6 @@ def _contains_return(stmts: list[TpyStmt]) -> bool:
             return True
         for body in stmt.sub_bodies():
             if _contains_return(body):
-                return True
-    return False
-
-
-def _for_body_contains_yield(stmts: list[TpyStmt]) -> bool:
-    """Check if a statement list contains any TpyYield (recursive)."""
-    for stmt in stmts:
-        if isinstance(stmt, TpyYield):
-            return True
-        for body in stmt.sub_bodies():
-            if _for_body_contains_yield(body):
                 return True
     return False
 
@@ -509,39 +496,6 @@ class GeneratorCodegen:
                 return stmt, body[:i], body[i + 1:]
         raise AssertionError("no yield found in body")
 
-    def _prescan_for_loops(self, func: TpyFunction) -> dict[int, GeneratorForInfo]:
-        """Pre-scan for-loops containing yields to determine struct fields.
-
-        Returns a dict keyed by id(TpyForEach) with field info for each loop.
-        """
-        from ..diagnostics import SemanticError
-        from tpyc.modules import get_error_return_next_element_type
-
-        result: dict[int, GeneratorForInfo] = {}
-        uid_counter = [0]
-
-        def _scan(stmts: list[TpyStmt]) -> None:
-            for stmt in stmts:
-                if isinstance(stmt, TpyForEach) and _for_body_contains_yield(stmt.body):
-                    info = self._analyze_for_strategy(stmt, uid_counter[0])
-                    if info is None:
-                        raise SemanticError(
-                            "yield inside this for-loop type is not yet supported "
-                            "in generators with multiple yield points. "
-                            "Use a while-loop instead",
-                            stmt.loc,
-                        )
-                    result[id(stmt)] = info
-                    uid_counter[0] += 1
-                    # Recurse into loop body for nested for-loops
-                    _scan(stmt.body)
-                else:
-                    for body in stmt.sub_bodies():
-                        _scan(body)
-
-        _scan(func.body)
-        return result
-
     def _analyze_for_strategy(self, stmt: TpyForEach, uid: int) -> GeneratorForInfo | None:
         """Determine the iteration strategy and struct fields for a for-loop with yield."""
         from tpyc.modules import get_error_return_next_element_type
@@ -657,23 +611,6 @@ class GeneratorCodegen:
         ]
         return GeneratorForInfo(uid=uid, strategy="iter_next", fields=fields)
 
-    @staticmethod
-    def _pointer_form_loop_vars(
-            for_loop_info: dict[int, 'GeneratorForInfo']) -> set[str]:
-        """Names of for-loop iter vars that should be pointer-form (T*).
-
-        Shared by `gen_generator_struct` (frame field emission) and
-        `_gen_generator_body` (body prescan). Driven by
-        `GeneratorForInfo.pointer_form_loop_var` (set in
-        `_analyze_for_strategy` for begin_end iterables with non-value
-        elements).
-        """
-        return {
-            info.pointer_form_loop_var
-            for info in for_loop_info.values()
-            if info.pointer_form_loop_var is not None
-        }
-
     def _is_named_generator_field(self, expr: TpyExpr) -> bool:
         """Check if expression is a named variable that's stable across yields.
 
@@ -718,273 +655,3 @@ class GeneratorCodegen:
                 captures.append(escape_cpp_name(stmt.name))
         return ", ".join(captures)
 
-    def gen_generator_struct(self, out: TextIO, func: TpyFunction,
-                             record_name: str | None = None) -> None:
-        """Generate the state machine struct for a generator function."""
-        # Fallback guard. Generic generators (explicit type params or
-        # protocol-typed params) normally route to the resumable emitter,
-        # which is template-aware (struct + __next__ + factory inline in the
-        # header). They only reach this legacy struct path when the
-        # resumable CFG could not build the body (e.g. a `match` carrying a
-        # yield) -- and the legacy path cannot link an out-of-line template
-        # __next__, so the honest answer is "not yet supported". Generic
-        # simple generators (single yield) use the inline peephole and never
-        # reach here.
-        proto_params = self.functions.protocols.get_all_protocol_params(func.params)
-        if func.type_params or proto_params:
-            from ..diagnostics import SemanticError
-            raise SemanticError(
-                "generic generator functions with multiple yield points "
-                "are not yet supported",
-                func.loc,
-            )
-
-        # Pre-scan for-loops with yields to determine synthetic struct fields
-        for_loop_info = self._prescan_for_loops(func)
-        self.ctx.generator_for_loop_info = for_loop_info
-
-        struct_name = self.gen_struct_name(func, record_name)
-        elem_type = func.generator_yield_type
-        assert elem_type is not None
-        cpp_elem = self.types.type_to_cpp(elem_type)
-        cpp_iter_slot = self._iter_slot_for_yield(elem_type, cpp_elem)
-
-        # Collect yield state numbers for THIS function
-        yield_states = self.ctx.analyzer.ctx.generator_yield_states
-        func_yields = _collect_yield_stmts(func.body)
-        func_state_nums = sorted(yield_states[id(y)] for y in func_yields)
-
-        # Classify params: value types by value, non-value types by reference.
-        # str params use string_view (the param type) -- the generator borrows
-        # from the caller's string, same as container refs. No hidden copy.
-        ctor_params: list[tuple[str, str, bool]] = []  # (cpp_name, cpp_type, is_ref)
-        # For methods, add __self as a reference to the record
-        if record_name:
-            cpp_record = escape_cpp_name(record_name)
-            const_prefix = "const " if func.is_readonly else ""
-            ctor_params.append(("__self", f"{const_prefix}{cpp_record}", True))
-        for pname, ptype in func.params:
-            cpp_name = escape_cpp_name(pname)
-            ptype_inner = unwrap_ref_type(ptype)
-            actual = unwrap_readonly(ptype_inner)
-            if is_str_type(ptype_inner):
-                ctor_params.append((cpp_name, "std::string_view", False))
-            elif isinstance(actual, OptionalType) and actual.uses_pointer_repr():
-                ctor_params.append((cpp_name, ptype_inner.to_cpp_param_type(), False))
-            else:
-                cpp_type = self.types.type_to_cpp(ptype_inner)
-                is_ref = not ptype_inner.is_value_type()
-                ctor_params.append((cpp_name, cpp_type, is_ref))
-
-        label = f"{record_name}.{func.name}" if record_name else func.name
-        out.write(f"// Generator: {label}\n")
-        tpl_header = self._gen_template_header(func)
-        if tpl_header:
-            out.write(tpl_header)
-        out.write(f"struct {struct_name} {{\n")
-
-        # __state field
-        out.write(f"{INDENT}int __state;\n")
-
-        # Parameter fields
-        for cpp_name, cpp_type, is_ref in ctor_params:
-            if is_ref:
-                out.write(f"{INDENT}{cpp_type}& {cpp_name};\n")
-            else:
-                out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
-
-        # Local variable fields
-        pointer_form_loop_vars = self._pointer_form_loop_vars(for_loop_info)
-        if func.generator_locals:
-            for lname, ltype in func.generator_locals:
-                cpp_name = escape_cpp_name(lname)
-                ltype_inner = unwrap_ref_type(ltype)
-                if ltype_inner.is_value_type():
-                    # Value types: leave uninitialized
-                    cpp_type = self.types.type_to_cpp(ltype_inner)
-                    out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
-                elif (isinstance(ltype_inner, OptionalType)
-                        and ltype_inner.uses_pointer_repr()):
-                    # Pointer-repr Optional: bare `T* = nullptr` aliases
-                    # the source and uses nullptr as both "uninitialized"
-                    # and "None"; no outer `std::optional<...>` wrap.
-                    inner_cpp = self.types.type_to_cpp(ltype_inner.inner)
-                    out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
-                elif lname in pointer_form_loop_vars:
-                    # Stable-lvalue iter source: alias the container
-                    # element via `T*` instead of copying into an
-                    # `std::optional<T>` slot that gets overwritten each
-                    # iteration (would break `prev = it` aliasing across
-                    # yields). See GeneratorForInfo.pointer_form_loop_var.
-                    inner_cpp = self.types.type_to_cpp(ltype_inner)
-                    out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
-                else:
-                    # Non-value, non-pointer-form local: uninitialized
-                    # storage with explicit emplace on first write.
-                    cpp_type = self.types.type_to_cpp(ltype_inner)
-                    out.write(f"{INDENT}::tpy::frame_slot<{cpp_type}> {cpp_name};\n")
-
-        # Synthetic fields for for-loops containing yields (always optional)
-        if for_loop_info:
-            for info in for_loop_info.values():
-                for field_name, field_type in info.fields:
-                    out.write(f"{INDENT}std::optional<{field_type}> {field_name};\n")
-
-        out.write(f"\n")
-
-        # Constructor: initializes __state and reference params
-        ctor_param_list = ", ".join(
-            f"{cpp_type}& {cpp_name}" if is_ref else f"{cpp_type} {cpp_name}_"
-            for cpp_name, cpp_type, is_ref in ctor_params
-        )
-        init_parts = ["__state(0)"]
-        for cpp_name, _, is_ref in ctor_params:
-            if is_ref:
-                init_parts.append(f"{cpp_name}({cpp_name})")
-            else:
-                init_parts.append(f"{cpp_name}({cpp_name}_)")
-        init_list = ", ".join(init_parts)
-        out.write(f"{INDENT}{struct_name}({ctor_param_list})\n")
-        out.write(f"{INDENT}{INDENT}: {init_list} {{}}\n\n")
-
-        # __iter__() method (inline -- trivial)
-        out.write(f"{INDENT}{struct_name}& __iter__() {{ return *this; }}\n")
-        # __next__() declaration (body in .cpp)
-        out.write(f"{INDENT}std::expected<{cpp_iter_slot}, ::tpy::StopIteration> __next__();\n\n")
-
-        # operator<< for printing
-        out.write(f"{INDENT}friend std::ostream& operator<<(std::ostream& os, const {struct_name}&) {{\n")
-        out.write(f"{INDENT}{INDENT}return os << \"<generator {label}>\";\n")
-        out.write(f"{INDENT}}}\n")
-
-        out.write(f"}};\n")
-
-    def gen_generator_next(self, out: TextIO, func: TpyFunction,
-                           record_name: str | None = None) -> None:
-        """Generate the out-of-line __next__() method body in the .cpp file."""
-        struct_name = self.gen_struct_name(func, record_name)
-        elem_type = func.generator_yield_type
-        assert elem_type is not None
-        cpp_elem = self.types.type_to_cpp(elem_type)
-        cpp_iter_slot = self._iter_slot_for_yield(elem_type, cpp_elem)
-
-        # Re-run prescan (needed for body codegen context)
-        for_loop_info = self._prescan_for_loops(func)
-        self.ctx.generator_for_loop_info = for_loop_info
-
-        # Collect yield state numbers for THIS function
-        yield_states = self.ctx.analyzer.ctx.generator_yield_states
-        func_yields = _collect_yield_stmts(func.body)
-        func_state_nums = sorted(yield_states[id(y)] for y in func_yields)
-
-        tpl_header = self._gen_template_header(func)
-        if tpl_header:
-            out.write(tpl_header)
-        out.write(f"std::expected<{cpp_iter_slot}, ::tpy::StopIteration> {struct_name}::__next__() {{\n")
-        inner = INDENT
-
-        # Switch dispatch
-        out.write(f"{inner}switch (__state) {{\n")
-        out.write(f"{inner}{INDENT}case 0: break;\n")
-        for state_num in func_state_nums:
-            out.write(f"{inner}{INDENT}case {state_num}: goto __resume_{state_num};\n")
-        out.write(f"{inner}{INDENT}default: goto __done;\n")
-        out.write(f"{inner}}}\n")
-
-        # Generate the function body with generator context
-        self._gen_generator_body(out, func, inner, record_name=record_name)
-
-        # Exhaustion label
-        out.write(f"{inner}__done:\n")
-        out.write(f"{inner}__state = -1;\n")
-        out.write(f"{inner}return ::tpy::make_unexpected(::tpy::StopIteration{{}});\n")
-        out.write(f"}}\n")
-
-    def _gen_generator_body(self, out: TextIO, func: TpyFunction, indent: str,
-                            record_name: str | None = None) -> None:
-        """Generate the function body inside __next__() with generator context."""
-        # `pointer_locals` is owned by gen_body (reset + repopulated
-        # there), so it's intentionally absent from this save/restore.
-        old_in_gen = self.ctx.in_generator_body
-        old_field_names = self.ctx.generator_field_names
-        old_optional_fields = self.ctx.generator_optional_fields
-        old_frame_slot_locals = self.ctx.generator_frame_slot_locals
-        old_for_info = self.ctx.generator_for_loop_info
-        old_self_ref = self.ctx.generator_self_ref
-
-        self.ctx.in_generator_body = True
-        self.ctx.generator_field_names = set()
-        self.ctx.generator_optional_fields = set()
-        self.ctx.generator_frame_slot_locals = set()
-        if record_name:
-            self.ctx.generator_self_ref = "__self"
-            self.ctx.generator_field_names.add("__self")
-        for pname, _ in func.params:
-            self.ctx.generator_field_names.add(pname)
-        if func.generator_locals:
-            for lname, _ltype in func.generator_locals:
-                self.ctx.generator_field_names.add(lname)
-        # Add synthetic for-loop field names (all optional)
-        for info in self.ctx.generator_for_loop_info.values():
-            for field_name, _ in info.fields:
-                self.ctx.generator_field_names.add(field_name)
-                self.ctx.generator_optional_fields.add(field_name)
-
-        # Set up codegen context for body generation
-        from ..namespace import Namespace
-        local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
-        for pname, ptype in func.params:
-            local_ns.bind_variable(pname, ptype)
-
-        self.statements.gen_body(
-            out, func.body, func.params, func.generator_yield_type,
-            func, local_ns, indent_level=1, is_method=False,
-        )
-
-        # Restore context
-        self.ctx.in_generator_body = old_in_gen
-        self.ctx.generator_field_names = old_field_names
-        self.ctx.generator_optional_fields = old_optional_fields
-        self.ctx.generator_frame_slot_locals = old_frame_slot_locals
-        self.ctx.generator_for_loop_info = old_for_info
-        self.ctx.generator_self_ref = old_self_ref
-
-    def gen_generator_factory(self, out: TextIO, func: TpyFunction) -> None:
-        """Generate the factory function that creates a generator struct."""
-        struct_name = self.gen_struct_name(func)
-        tpl_header = self._gen_template_header(func)
-        if tpl_header:
-            out.write(tpl_header)
-        params = self._gen_params(func, emit_defaults=False)
-        out.write(f"{struct_name} {func.name}({params}) {{\n")
-
-        if func.params:
-            args = ", ".join(escape_cpp_name(pname) for pname, _ in func.params)
-            out.write(f"{INDENT}return {struct_name}({args});\n")
-        else:
-            out.write(f"{INDENT}return {struct_name}();\n")
-
-        out.write(f"}}\n")
-
-    def gen_generator_forward_decl(self, out: TextIO, func: TpyFunction,
-                                    record_name: str | None = None) -> bool:
-        """Generate forward declaration for a generator struct.
-
-        Returns True if anything was emitted.
-        """
-        struct_name = self.gen_struct_name(func, record_name)
-        tpl_header = self._gen_template_header(func)
-        if tpl_header:
-            out.write(tpl_header)
-        out.write(f"struct {struct_name};\n")
-        return True
-
-    def gen_generator_factory_forward_decl(self, out: TextIO, func: TpyFunction) -> bool:
-        """Generate forward declaration for the factory function."""
-        struct_name = self.gen_struct_name(func)
-        tpl_header = self._gen_template_header(func)
-        if tpl_header:
-            out.write(tpl_header)
-        params = self._gen_params(func, emit_defaults=True)
-        out.write(f"{struct_name} {func.name}({params});\n")
-        return True

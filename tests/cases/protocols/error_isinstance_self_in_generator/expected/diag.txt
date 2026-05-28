@@ -1,1 +1,0 @@
-main.py:21: error: isinstance(self, ...) is not yet supported inside a generator method body. Move the check into a regular method called from the generator, or factor the subclass-specific iteration into a separate method on the subclass.

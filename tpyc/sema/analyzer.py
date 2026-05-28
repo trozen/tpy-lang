@@ -29,6 +29,7 @@ from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef,
     expr_contains_self_method_call,
+    stmt_has_any_suspension, stmts_have_any_suspension, stmts_have_any_return,
 )
 from .expressions import _collect_body_name_refs
 
@@ -984,6 +985,59 @@ class SemanticAnalyzer:
                 func,
             )
 
+    def _check_resumable_suspension_shape(self, func: TpyFunction) -> None:
+        """Reject suspension (`yield`/`await`) shapes the resumable-frame
+        lowering does not yet support, with a clean located diagnostic
+        instead of an opaque downstream C++ error. Covers the user-facing
+        generator/coroutine-reachable cases the CFG builder raises on:
+
+          1. a suspension inside a `match` (the only compound the CFG does
+             not decompose),
+          2. a `return` inside a `finally` body that itself suspends,
+          3. a suspending `finally` nested inside another suspending
+             `finally`.
+
+        The codegen CFG build (`_build_resumable_cfg`) remains the
+        authoritative backstop, raising a `CodeGenError` for any residual
+        shape not enumerated here, so this check only needs to be
+        conservative (never over-reject): each condition mirrors a
+        `_CFGNotYetSupported` raise exactly."""
+        kw = "yield" if func.is_generator else "await"
+
+        def walk(stmts: list, in_suspending_finally: bool) -> None:
+            for stmt in stmts:
+                if isinstance(stmt, TpyMatch) and stmt_has_any_suspension(stmt):
+                    raise self._error(
+                        f"`{kw}` inside a `match` statement is not yet "
+                        f"supported by the resumable lowering",
+                        stmt,
+                    )
+                if isinstance(stmt, TpyTry):
+                    finally_suspends = stmts_have_any_suspension(stmt.finally_body)
+                    if finally_suspends and stmts_have_any_return(stmt.finally_body):
+                        raise self._error(
+                            f"`return` inside a finally body that itself "
+                            f"contains `{kw}` is a planned follow-up.",
+                            stmt,
+                        )
+                    if finally_suspends and in_suspending_finally:
+                        raise self._error(
+                            f"nesting two `{kw}`-in-`finally` regions is a "
+                            f"planned follow-up.",
+                            stmt,
+                        )
+                    nested_flag = in_suspending_finally or finally_suspends
+                    walk(stmt.try_body, nested_flag)
+                    for h in stmt.handlers:
+                        walk(h.body, nested_flag)
+                    walk(stmt.else_body, nested_flag)
+                    walk(stmt.finally_body, nested_flag)
+                    continue
+                for body in stmt.sub_bodies():
+                    walk(body, in_suspending_finally)
+
+        walk(func.body, False)
+
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
         # Stub functions (extern imports with ... body) have no body to analyze
@@ -993,8 +1047,6 @@ class SemanticAnalyzer:
         self.ctx.reset_function_tracking()
 
         self.ctx.func.current_function = func
-        if func.is_generator:
-            self.ctx._yield_counter = 0
         # Async def bodies are analyzed normally. The await-expression
         # analyzer (sema/expressions.py:_analyze_await) handles the supported
         # v1 forms (direct call to async def, Task[T], Future[T], structural
@@ -1062,6 +1114,7 @@ class SemanticAnalyzer:
         # in_generator_body flag (the `in_async_coro_body` flag steers only
         # the return-statement rewrite).
         if func.is_generator or func.is_async:
+            self._check_resumable_suspension_shape(func)
             param_names = {pname for pname, _ in func.params}
             locals_dict: dict[str, 'TpyType'] = {}
             for name, binding in local_ns.all_bindings().items():
@@ -1935,8 +1988,6 @@ class SemanticAnalyzer:
 
             self.ctx.reset_function_tracking()
             self.ctx.func.current_function = method
-            if method.is_generator:
-                self.ctx._yield_counter = 0
             # Resolve return type (sets is_protocol for cross-module imports)
             method.return_type = make_ref(self.type_ops.resolve_type(method.return_type))
             scope = Scope(parent=self.ctx.global_scope)
@@ -2021,6 +2072,7 @@ class SemanticAnalyzer:
             # field generation (locals that may live across yield / await
             # suspensions are hoisted to the resumable-frame struct).
             if method.is_generator or method.is_async:
+                self._check_resumable_suspension_shape(method)
                 param_names = {pname for pname, _ in method.params}
                 locals_dict: dict[str, 'TpyType'] = {}
                 for name, binding in local_ns.all_bindings().items():

@@ -15,9 +15,7 @@ from ..parse import Parser
 from .resumable_cfg import (
     CFGBuilder, YieldPayload, AwaitPayload,
     _stmt_has_any_suspension, _CFGNotYetSupported,
-    _stmts_have_suspending_compound,
 )
-from .generator import GEN_DEFERRED_SUSPENDING_COMPOUNDS
 
 
 def _gen_body(src: str):
@@ -177,44 +175,4 @@ class TestUndecomposedLeafSuspensionRejected:
         assert len(cfg.yield_sites) == 2
 
 
-class TestDeferredCompoundDetection:
-    # Phase D1 routed `if`/`while` generators onto the resumable emitter;
-    # D2 added `for`; E added `try`/`with`. GEN_DEFERRED_SUSPENDING_COMPOUNDS
-    # is now empty -- no compound kind is deferred. Tests confirm the
-    # predicate returns False for every handled kind.
-    def _body(self, header: str, body_src: str):
-        return _gen_body(
-            "from typing import Iterator\n"
-            "from tpy import Int32\n"
-            f"def g(xs: list[Int32]) -> Iterator[Int32]:\n{body_src}"
-        )
-
-    def test_for_with_yield_is_not_deferred(self):
-        body = self._body("", "    for x in xs:\n        yield x\n")
-        assert not _stmts_have_suspending_compound(
-            body, GEN_DEFERRED_SUSPENDING_COMPOUNDS)
-
-    def test_try_with_yield_is_not_deferred(self):
-        # Phase E: try/with are now handled on the resumable path.
-        body = self._body(
-            "", "    try:\n        yield xs[0]\n    finally:\n        print(1)\n")
-        assert not _stmts_have_suspending_compound(
-            body, GEN_DEFERRED_SUSPENDING_COMPOUNDS)
-
-    def test_if_while_with_yield_not_deferred(self):
-        body = self._body(
-            "",
-            "    if xs:\n        yield xs[0]\n"
-            "    n = 0\n"
-            "    while n < 3:\n        yield n\n        n += 1\n")
-        assert not _stmts_have_suspending_compound(
-            body, GEN_DEFERRED_SUSPENDING_COMPOUNDS)
-
-    def test_yield_free_for_not_deferred(self):
-        # A `for` with no suspension is plain leaf code -> not deferred.
-        body = self._body(
-            "",
-            "    total = 0\n    for x in xs:\n        total += x\n    yield total\n")
-        assert not _stmts_have_suspending_compound(
-            body, GEN_DEFERRED_SUSPENDING_COMPOUNDS)
 

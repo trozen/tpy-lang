@@ -40,6 +40,9 @@ from ..parse.nodes import (
     TpyExpr, TpyExprStmt, TpyForEach, TpyIf, TpyName,
     TpyRaise, TpyReturn, TpyStmt, TpyTry, TpyVarDecl, TpyWhile, TpyWith,
     TpyWithItem, TpyYield,
+    stmt_has_any_suspension as _stmt_has_any_suspension,
+    stmts_have_any_suspension as _stmts_have_any_suspension,
+    stmts_have_any_return as _stmts_have_any_return,
 )
 
 if TYPE_CHECKING:
@@ -62,7 +65,7 @@ class ResumableFuncState:
     one place. The `_async_*`-named members keep that prefix because they are
     genuinely async-only (sub-coro struct names from `async for`/`async
     with`, await-arg lifting); the rest are shape-neutral."""
-    # CFG build (_build_resumable_cfg / _try_build_resumable_cfg)
+    # CFG build (_build_resumable_cfg)
     cfg: 'CFG | None' = None
     cfg_builder: 'CFGBuilder | None' = None
     # await-arg lifting (_effective_body / _lift_nested_awaits)
@@ -691,9 +694,10 @@ class CFGBuilder:
         # kind the builder doesn't decompose (today: `match`). Appending it
         # as a leaf would emit the nested `await`/`yield` as straight-line
         # code -- silently wrong for async, and for a generator it would
-        # collide with the resumable state enum. Refuse so the generator
-        # trial-build gate routes such functions to the legacy path (and
-        # async surfaces a clear error instead of a miscompile).
+        # collide with the resumable state enum. Refuse so the build surfaces
+        # a clean CodeGenError instead of a miscompile (sema's
+        # `_check_resumable_suspension_shape` catches the common cases even
+        # earlier).
         if _stmt_has_any_suspension(stmt):
             raise _CFGNotYetSupported(
                 "a suspension (`await`/`yield`) inside this statement is "
@@ -1522,79 +1526,8 @@ def _classify_await_position(
     )
 
 
-def _stmt_has_any_suspension(stmt: TpyStmt) -> bool:
-    """Walk a statement (its expression slots and sub_bodies) for any
-    suspension point -- a `TpyAwait` (async) or a `TpyYield` (generator).
-    Used for the lazy-decomposition decision: a compound statement is
-    only lowered to a CFG region if it contains a suspension. `async
-    with` and `async for` always count even when their bodies have none
-    -- the `__aenter__` / `__aexit__` / `__anext__` calls are themselves
-    suspensions."""
-    if isinstance(stmt, TpyYield):
-        return True
-    if isinstance(stmt, TpyWith) and stmt.is_async:
-        return True
-    if isinstance(stmt, TpyForEach) and stmt.is_async:
-        return True
-
-    def walk_expr(e: TpyExpr | None) -> bool:
-        if e is None:
-            return False
-        if isinstance(e, TpyAwait):
-            return True
-        for c in (e.children() if hasattr(e, "children") else ()):
-            if walk_expr(c):
-                return True
-        return False
-
-    if hasattr(stmt, "exprs"):
-        for e in stmt.exprs():
-            if walk_expr(e):
-                return True
-    if hasattr(stmt, "sub_bodies"):
-        for body in stmt.sub_bodies():
-            for s in body:
-                if _stmt_has_any_suspension(s):
-                    return True
-    return False
 
 
-def _stmts_have_any_suspension(stmts: list[TpyStmt]) -> bool:
-    return any(_stmt_has_any_suspension(s) for s in stmts)
-
-
-def _stmts_have_suspending_compound(
-        stmts: list[TpyStmt], kinds: tuple[type, ...]) -> bool:
-    """True if any statement in `stmts` (recursively) whose type is in
-    `kinds` carries a suspension -- i.e. it contains an `await`/`yield` or
-    is an `async for`/`async with`. The generator eligibility gate passes an
-    empty `kinds` tuple (GEN_DEFERRED_SUSPENDING_COMPOUNDS = ()), so this
-    always returns False for generators now that Phase E is complete. The
-    function is kept because async still uses it for async-specific gating.
-    A statement of one of the given kinds with no suspension is plain leaf
-    code and does not count."""
-    for s in stmts:
-        if isinstance(s, kinds) and _stmt_has_any_suspension(s):
-            return True
-        if hasattr(s, "sub_bodies"):
-            for body in s.sub_bodies():
-                if _stmts_have_suspending_compound(body, kinds):
-                    return True
-    return False
-
-
-def _stmts_have_any_return(stmts: list[TpyStmt]) -> bool:
-    """True if any of `stmts` (recursively through sub_bodies) contains
-    a TpyReturn. Drives the pending-return-slot allocation decision
-    for a CFG-based finally region."""
-    for s in stmts:
-        if isinstance(s, TpyReturn):
-            return True
-        if hasattr(s, "sub_bodies"):
-            for b in s.sub_bodies():
-                if _stmts_have_any_return(b):
-                    return True
-    return False
 
 
 def _stmt_has_unbound_loop_transfer(stmt: TpyStmt) -> bool:

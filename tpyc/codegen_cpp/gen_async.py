@@ -1257,19 +1257,18 @@ class AsyncCoroCodegen:
     # CFG-based state-machine emitter (replaces _emit_switch_body).
     # =====================================================================
 
-    def _build_resumable_cfg(self, func: TpyFunction,
-                   *, convert_errors: bool = True) -> 'rcfg.CFG':
+    def _build_resumable_cfg(self, func: TpyFunction) -> 'rcfg.CFG':
         """Apply the await-lift pre-pass, then build the CFG. The CFG
         builder handles any wrapping try/finally uniformly with all
         other compound statements -- no special unwrap-and-rewrap pass
         is needed.
 
-        With `convert_errors=True` (default, used by the async/generator
-        emit path) a `_CFGNotYetSupported` is turned into a `CodeGenError`
-        at the offending location. The generator eligibility gate passes
-        `convert_errors=False` (via `_try_build_resumable_cfg`) so it can catch the
-        raw rejection and fall back to the legacy path instead of failing
-        the compile."""
+        A `_CFGNotYetSupported` (a shape the resumable lowering can't yet
+        handle) is turned into a `CodeGenError` at the offending location.
+        For generators, sema's `_check_resumable_suspension_shape` already
+        rejects the common cases earlier with friendlier diagnostics; this
+        is the authoritative backstop so no unsupported shape silently
+        miscompiles. The result is cached on the func for the emit pass."""
         state = rcfg.resumable_state(func)
         if state.cfg is not None:
             return state.cfg
@@ -1287,28 +1286,12 @@ class AsyncCoroCodegen:
             )
             cfg = builder.build(body)
         except rcfg._CFGNotYetSupported as e:
-            if convert_errors:
-                raise CodeGenError(e.msg, loc=e.loc)
-            raise
+            raise CodeGenError(e.msg, loc=e.loc)
         # Stash the builder so callers (emit) can look up handler
         # entries via builder.get_handler_entry().
         state.cfg_builder = builder
         state.cfg = cfg
         return cfg
-
-    def _try_build_resumable_cfg(self, func: TpyFunction) -> 'rcfg.CFG | None':
-        """Trial-build the CFG for the generator eligibility gate. Returns
-        the CFG on success (cached on the func, so the subsequent emit pass
-        reuses it) or None if the builder rejects the shape
-        (`_CFGNotYetSupported`: loop-`else` with a suspension, await bound
-        to a field, a suspension inside an undecomposable leaf like `match`,
-        ...). The caller falls back to the legacy generator path. Unlike
-        `_build_resumable_cfg` this does not convert the rejection into a compile
-        error."""
-        try:
-            return self._build_resumable_cfg(func, convert_errors=False)
-        except rcfg._CFGNotYetSupported:
-            return None
 
     def _prescan_resumable_for_loops(
             self, func: TpyFunction,
@@ -1343,7 +1326,7 @@ class AsyncCoroCodegen:
         # {id(TpyForEach) -> GeneratorForInfo}: carries pointer_form_loop_var
         # so `setup_resumable_frame_locals` + the struct field emit render a
         # non-value loop var as an aliasing `T*` rather than a `frame_slot<T>`
-        # value copy. Mirrors the legacy struct-path `_prescan_for_loops`.
+        # value copy.
         for_loop_info: dict[int, GeneratorForInfo] = {}
         info_by_uid: dict[int, GeneratorForInfo] = {}
         counter = [0]
@@ -2653,8 +2636,7 @@ class AsyncCoroCodegen:
 
     def _emit_for_range_setup(self, out: "TextIO", indent: str,
                               stmt: 'rcfg.AsyncForIterSetup', uid: int) -> None:
-        """range() counter init into the frame counters. Mirrors
-        `StatementGenerator._gen_generator_for_range` (init half)."""
+        """range() counter init into the frame counters."""
         range_call = stmt.iterable_expr
         elem_type = stmt.elem_type
         if elem_type and isinstance(elem_type, IntLiteralType):

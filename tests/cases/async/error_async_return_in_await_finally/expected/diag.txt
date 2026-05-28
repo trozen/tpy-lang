@@ -1,0 +1,1 @@
+main.py:14: error: `return` inside a finally body that itself contains `await` is a planned follow-up.

@@ -307,6 +307,49 @@
   eventual THIR/MIR migration (the dataclass is the natural nucleus of
   per-function lowering state). Remaining F: F5 (retire the legacy struct
   path), then G.
+- **Phase F5 DONE (2026-05-27)** (retire the legacy struct path). Done in
+  two stages to de-risk a multi-file deletion.
+  - **Stage 1 -- relocate rejections, flip the gate (no deletion).** New
+    sema check `_check_resumable_suspension_shape` (analyzer.py) rejects the
+    suspension-generic shapes the resumable CFG can't lower -- `yield`/`await`
+    in a `match`, `return` in a suspending `finally`, nested suspending
+    `finally` -- with clean located diagnostics for generators AND
+    coroutines (verified it preserves `error_await_in_control_flow`'s exact
+    message + loc, and does not over-reject the supported return-in-try /
+    non-suspending-finally cases). The three pure-AST predicates
+    (`stmt_has_any_suspension` / `stmts_have_any_suspension` /
+    `stmts_have_any_return`) moved to `parse/nodes.py` so sema and codegen
+    share them without a sema->codegen import. The generator gate
+    (`_compute_resumable_generator_eligible`) now returns True or raises for
+    a non-simple generator -- proto-param -> clean `SemanticError`;
+    everything else builds the CFG (the `convert_errors=True` backstop
+    raises a clean `CodeGenError` for any residual shape) -- never falls
+    through to a legacy branch. Proof the legacy struct path was already
+    behaviorally dead: instrumenting `gen_generator_struct` showed the only
+    suite consumer was `error_gen_proto_param_multi_yield` (a reject-only
+    case); the three not-yet-supported shapes all *failed to compile* on
+    legacy today (goto-crossing / duplicate-label C++ errors), so the clean
+    reject is a strict improvement, not a regression. Full suite green.
+  - **Stage 2 -- delete the dead code (~660 lines).** Removed the
+    `gen_generators.py` struct functions (`gen_generator_struct` /
+    `gen_generator_next` / `_gen_generator_body` / `gen_generator_factory` /
+    `*_forward_decl`) + the struct-only helpers (`_prescan_for_loops`,
+    `_pointer_form_loop_vars`, `_for_body_contains_yield`); the
+    `statements.py` legacy lowering (the goto-style `_gen_yield`, the
+    `_gen_generator_for_*` for-loop cluster, the dead `in_generator_body`
+    for-loop dispatch, the `goto __done` return branch); the write-only sema
+    `generator_yield_states` / `_yield_counter` bookkeeping; and
+    `gen_async._try_build_resumable_cfg` + the `convert_errors` param. Kept
+    the simple-generator peephole, `_analyze_for_strategy`,
+    `_iter_slot_for_yield`, `_is_named_generator_field`, `GeneratorForInfo`
+    (all borrowed by the resumable path), and `gen_struct_name` (the
+    resumable generator struct keeps the `__gen_` name). A `yield` reaching
+    the linear statement walk now raises an internal-invariant error. Full
+    suite 4238 passed. New error cases: `iterators/error_gen_match_yield`,
+    `error_gen_return_in_yield_finally`, `error_gen_nested_yield_finally`,
+    `error_gen_generic_match_yield`, `async/error_async_match_await`.
+    Remaining F: F4 (generator/async methods on generic classes, deferred /
+    standalone). Then G (new surface: `yield from`/`send`/`throw`/`close`).
 - **Latent (surfaced during F2):** async coro orchestration gates
   inline-header on `func.type_params` alone, so a hypothetical
   proto-param-only async coro (static protocol param, no `[T]`) would emit
@@ -381,7 +424,8 @@
     size win (bare storage for default-constructible field types,
     dropping the bool) needs the `std::conditional` `frame_field<T>`
     wrapper and stays a separate item in TODO.md.
-- Phases D (D1+D2+D3) and E DONE; Phases F-G not started.
+- Phases D (D1+D2+D3), E, and F (F1/F2/F3/F5/F6) DONE; F4 deferred
+  (generator/async methods on generic classes); G (new surface) not started.
 
 ## Phase D approach (DONE -- historical record)
 

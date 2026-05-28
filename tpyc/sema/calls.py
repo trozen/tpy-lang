@@ -1805,11 +1805,9 @@ class CallAnalyzer:
         #     silently diverging from CPython. The transitive case
         #     (isinstance(self) inside a method called from __init__/__del__)
         #     is not detected here; see TODO.md.
-        #   - generator methods (`def f(self) -> Iterator[T]: yield ...`):
-        #     the generator frame captures `__self: const T&`, and the
-        #     state-machine `goto`-based dispatch doesn't compose with the
-        #     C++17 if-init form codegen uses for polymorphic dispatch.
-        #     Filed in BUGS.md.
+        # Generator methods are NOT rejected: they share the resumable frame
+        # with `async def` (which already supports isinstance(self, Sub)), and
+        # `polymorphic_cast_arg` emits the correct `&__self` cast input there.
         if (first_arg.name == "self"
                 and polymorphic_source is not None
                 and isinstance(self.ctx.func.current_function, TpyFunction)):
@@ -1829,15 +1827,6 @@ class CallAnalyzer:
                     f"currently detect this transitive case). Move the "
                     f"check into a method called after construction "
                     f"completes.",
-                    expr,
-                )
-            if cur.is_generator and not cur.is_async:
-                raise self.ctx.error(
-                    "isinstance(self, ...) is not yet supported inside a "
-                    "generator method body. Move the check into a regular "
-                    "method called from the generator, or factor the "
-                    "subclass-specific iteration into a separate method on "
-                    "the subclass.",
                     expr,
                 )
         if narrowed is not None and polymorphic_source is None:

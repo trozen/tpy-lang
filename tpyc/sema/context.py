@@ -714,10 +714,6 @@ class SemanticContext:
     # --- Consuming method tracking ---
     in_consuming_method: bool = False
 
-    # --- Generator yield tracking (persists across functions) ---
-    _yield_counter: int = 0
-    generator_yield_states: dict[int, int] = field(default_factory=dict)  # id(TpyYield) -> state number
-
     # --- Expression type hint ---
     expr_type_hint: TpyType | None = None
 
