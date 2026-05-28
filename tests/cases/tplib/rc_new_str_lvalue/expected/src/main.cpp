@@ -10,14 +10,14 @@ void main() {
     std::string_view s = "world";
     // r = Rc.new(s)
     std::string_view __tmp_1{s};
-    ::tpystd::tplib::rc::Rc<std::string_view> r = Rc<std::string_view>::new_(std::move(__tmp_1));
+    ::tpystd::tplib::rc::Rc<std::string_view> r = Rc<std::string_view>::new_<std::string_view>(std::move(__tmp_1));
     // print(r.get())
     std::cout << r.get() << "\n";
     // t: str = "hello"
     std::string_view t = "hello";
     // r2 = Rc.new(t)
     std::string_view __tmp_2{t};
-    ::tpystd::tplib::rc::Rc<std::string_view> r2 = Rc<std::string_view>::new_(std::move(__tmp_2));
+    ::tpystd::tplib::rc::Rc<std::string_view> r2 = Rc<std::string_view>::new_<std::string_view>(std::move(__tmp_2));
     // print(r2.get())
     std::cout << r2.get() << "\n";
 }

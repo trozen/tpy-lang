@@ -28,9 +28,9 @@ void main() {
     std::cout << ::tpy::print_float(bf.get()) << "\n";
     // # Generic static-method factory: int and float literals.
     // ri = Rc.new(7)
-    ::tpystd::tplib::rc::Rc<int32_t> ri = Rc<int32_t>::new_(7);
+    ::tpystd::tplib::rc::Rc<int32_t> ri = Rc<int32_t>::new_<int32_t>(7);
     // rf = Rc.new(3.14)
-    ::tpystd::tplib::rc::Rc<double> rf = Rc<double>::new_(3.14);
+    ::tpystd::tplib::rc::Rc<double> rf = Rc<double>::new_<double>(3.14);
     // print(ri.get())
     std::cout << ri.get() << "\n";
     // print(rf.get())

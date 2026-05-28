@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // r1 = Rc.new(State(Int32(1)))
-    ::tpystd::tplib::rc::Rc<State> r1 = Rc<State>::new_(State(1));
+    ::tpystd::tplib::rc::Rc<State> r1 = Rc<State>::new_<State>(State(1));
     // r2 = r1.clone()
     ::tpystd::tplib::rc::Rc<State> r2 = r1.clone();
     // print(r1.get().x, r2.get().x)  # 1 1

@@ -1272,6 +1272,27 @@ class TypeOperations:
                 else:
                     raise ValueError(f"Unknown type_param_default sentinel: {sentinel!r}")
 
+        # `U: T` with U arg-inferred but T unconstrained: default T to U.
+        # Sound because U trivially satisfies its own bound when used as T,
+        # and gives hint-free bounded-factory calls (`x = f(v)` where f is
+        # `def f[U: T](v: Own[U]) -> Own[Box[T]]`) a defined inference
+        # outcome instead of "Cannot infer T". Multi-step chains
+        # (`V: U`, `U: T`) iterate to a fixed point.
+        if func.type_param_bounds:
+            changed = True
+            while changed:
+                changed = False
+                for u_name, bound in func.type_param_bounds.items():
+                    if not isinstance(bound, TypeParamRef):
+                        continue
+                    t_name = bound.name
+                    if t_name in inferred:
+                        continue
+                    src = inferred.get(u_name)
+                    if src is not None and not isinstance(src, UnknownElementType):
+                        inferred[t_name] = src
+                        changed = True
+
         # Reject leftover UnknownElementType: letting it ride through
         # substituted param types surfaces later as the indirect
         # pending-list resolver error; failing here lets the caller emit
@@ -1412,6 +1433,47 @@ class TypeOperations:
             return {}
         return {k: v for k, v in tmp.items() if _is_useful_seed_binding(v)}
 
+    def compute_representational_subst_params(
+        self, fi: FunctionInfo, inferred_type_args: tuple[TpyType, ...],
+    ) -> 'frozenset[str] | None':
+        """Decide which marked type-params need adapter substitution at codegen.
+
+        Reads ``fi.root.representational_type_params`` (set by sema body
+        analysis when ``Ptr[U] -> Ptr[T]`` coerces in the callee body) and,
+        for each marked U, returns U iff its substituted bound is a @dynamic
+        protocol structurally satisfied by the inferred U (i.e., the concrete
+        u_sub does NOT C++-inherit the protocol -- the Adapter wrap is then
+        required so the body's pointer upcast becomes valid).
+
+        Result is stored on the call AST node
+        (``TpyCall.representational_subst_params`` /
+        ``TpyMethodCall.representational_subst_params``) so codegen reads
+        the decision instead of re-deriving it across multiple emission sites.
+        Returns ``None`` when no marked param needs the adapter detour.
+        """
+        canonical = fi.root
+        marked = canonical.representational_type_params
+        if not marked or not inferred_type_args or not fi.type_params:
+            return None
+        subst = dict(zip(fi.type_params, inferred_type_args))
+        result: set[str] = set()
+        for tp_name in fi.type_params:
+            if tp_name not in marked:
+                continue
+            bound = canonical.type_param_bounds.get(tp_name)
+            if bound is None:
+                continue
+            t_sub = self.substitute_type_params(bound, subst)
+            if not is_dyn_protocol(t_sub):
+                continue
+            u_sub = subst[tp_name]
+            if not isinstance(u_sub, NominalType) or not u_sub.is_user_record:
+                continue
+            if self.protocols.directly_implements_dynamic(u_sub, t_sub):
+                continue
+            result.add(tp_name)
+        return frozenset(result) if result else None
+
     def seed_subst_from_return_hint(
         self, func: FunctionInfo, expected_return_type: TpyType | None,
     ) -> dict[str, TpyType]:
@@ -1419,12 +1481,32 @@ class TypeOperations:
         ``func.return_type``. Used to give nested generic call args a hint
         that reflects the LHS-derived outer type before arg-driven inference
         has any evidence to contribute.
+
+        For each unbound method-local type param `U` with a bound `B`, if
+        substituting the seed into `B` yields a concrete type, default `U =
+        B[seed]`. U=B trivially satisfies the bound (B <: B); the arg-driven
+        inference may later refine U to a more specific subtype of B.
+        Without this, a bounded-factory call with a nested generic arg --
+        `f[U: T](v: Own[U])` called with `f(Box(Cat(...)))` against an LHS
+        `Box[Greeter]` -- would analyze the inner arg with no type-arg hint
+        and infer `U=Box[Cat]` instead of `Box[Greeter]`.
         """
         if expected_return_type is None or func.return_type is None:
             return {}
         if not func.type_params:
             return {}
-        return self._seed_subst(func.return_type, expected_return_type)
+        seed = self._seed_subst(func.return_type, expected_return_type)
+        if seed and func.type_param_bounds:
+            for tp in func.type_params:
+                if tp in seed:
+                    continue
+                bound = func.type_param_bounds.get(tp)
+                if bound is None:
+                    continue
+                substituted = self.substitute_type_params(bound, seed)
+                if not contains_type_param(substituted):
+                    seed[tp] = substituted
+        return seed
 
     def seed_subst_from_record_pattern(
         self, record: RecordInfo, expected_type: TpyType | None,

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // r: Rc[Pet] = Rc.new(Parrot("Polly"))
-    ::tpystd::tplib::rc::Rc<Pet> r = Rc<Parrot>::new_(Parrot("Polly"));
+    ::tpystd::tplib::rc::Rc<Pet> r = Rc<Pet>::new_<Parrot>(Parrot("Polly"));
     // print(r.get().name())
     std::cout << r.get().name() << "\n";
 }

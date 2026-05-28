@@ -7,7 +7,7 @@ from tplib import Rc
 
 
 def main() -> None:
-    r1 = Rc.new(Int32(7))
+    r1 = Rc.new(Int32(7))  # tpyc: type(Rc[Int32])
     r2 = r1.clone()
     print(r1.get(), r2.get())  # 7 7
 

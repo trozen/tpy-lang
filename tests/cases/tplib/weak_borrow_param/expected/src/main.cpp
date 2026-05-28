@@ -20,7 +20,7 @@ int32_t read_via_weak(::tpystd::tplib::rc::Weak<Cell>& w) {
 // def main() -> None:
 void main() {
     // rc = Rc.new(Cell(Int32(7)))
-    ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_(Cell(7));
+    ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_<Cell>(Cell(7));
     // w = rc.downgrade()
     ::tpystd::tplib::rc::Weak<Cell> w = rc.downgrade();
     // print(read_via_weak(w))  # 7 (w borrowed; caller retains ownership)

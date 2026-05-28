@@ -66,7 +66,7 @@ struct Wrapper {
     template<typename T>
     ::tpystd::tplib::rc::Rc<T> wrap(::tpy::own_param_t<T> value) const {
         // return Rc.new(value)
-        return Rc<T>::new_(std::move(value));
+        return Rc<T>::template new_<T>(std::move(value));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };

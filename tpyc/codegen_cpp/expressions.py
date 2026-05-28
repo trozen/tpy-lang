@@ -18,7 +18,7 @@ from ..typesys import (
     TupleType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
-    is_float_type, is_readonly_span, is_dyn_protocol)
+    is_float_type, is_readonly_span, is_dyn_protocol, contains_type_param)
 from ..type_def_registry import (
     is_dict_view, is_set, is_dict, is_array, is_span, is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type,
@@ -703,6 +703,42 @@ class ExpressionGenerator:
                 else:
                     return f"std::move({gen_code}).__iter__()"
         return None
+
+    def _representational_param_subst(self, expr, fi) -> dict | None:
+        """Build the per-param adapter spelling dict for a call whose sema
+        analysis marked some type-params as needing representational
+        substitution (`expr.representational_subst_params`).
+
+        Returns dict[type_param_name -> adapter_cpp_str], or None when sema
+        determined no substitution is needed. The decision is made in sema
+        (`TypeOperations.compute_representational_subst_params`); codegen
+        only formats the C++ Adapter spelling per marked param.
+        """
+        marked = getattr(expr, 'representational_subst_params', None)
+        if not marked or not fi or not fi.type_params or not expr.inferred_type_args:
+            return None
+        canonical = fi.root
+        subst = dict(zip(fi.type_params, expr.inferred_type_args))
+        result: dict = {}
+        for tp_name in marked:
+            bound = canonical.type_param_bounds.get(tp_name)
+            if bound is None:
+                continue
+            t_sub = self.types.substitute_type_params(bound, subst)
+            u_sub = subst.get(tp_name)
+            if u_sub is None:
+                continue
+            concrete_cpp = self.types.type_to_cpp(u_sub)
+            result[tp_name] = self.protocols.get_dynamic_adapter_type(t_sub, concrete_cpp)
+        return result or None
+
+    def _render_method_type_arg(self, t, param_name: str | None, repr_subst: dict | None) -> str:
+        """Render a method-level template argument, substituting marked type-params
+        with their Adapter spelling.
+        """
+        if repr_subst is not None and param_name is not None and param_name in repr_subst:
+            return repr_subst[param_name]
+        return self.types.type_to_cpp(unwrap_ref_type(t))
 
     def _gen_dynamic_protocol_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
         """If ptype is a @dynamic protocol, return the wrapped arg expression. Otherwise None."""
@@ -2600,6 +2636,7 @@ class ExpressionGenerator:
 
             gen_args = []
             dcbp = func_info.deep_const_borrow_params
+            repr_subst = self._representational_param_subst(expr, func_info)
             for arg, (pname, ptype) in zip(expr.args, func_info.params):
                 # Strip Ref wrapper -- Ref is a sema annotation; codegen handles
                 # reference semantics through is_value_type() / type traits.
@@ -2722,7 +2759,11 @@ class ExpressionGenerator:
             # template argument deduction works correctly.
             if func_info.is_generic() and expr.inferred_type_args and not func_info.is_native_import:
                 type_args_str = ", ".join(
-                    self.types.type_to_cpp_stored(t) for t in expr.inferred_type_args)
+                    repr_subst[func_info.type_params[i]]
+                    if (repr_subst is not None and i < len(func_info.type_params)
+                        and func_info.type_params[i] in repr_subst)
+                    else self.types.type_to_cpp_stored(t)
+                    for i, t in enumerate(expr.inferred_type_args))
                 return f"{func_cpp_name}<{type_args_str}>({', '.join(gen_args)})"
             return f"{func_cpp_name}({', '.join(gen_args)})"
         # Generic type instantiation (e.g., Container[T, N]())
@@ -3107,16 +3148,23 @@ class ExpressionGenerator:
                 cpp_class = qualified_cpp_name(expr.user_module_call, class_short)
             cpp_method = fi.native_name if fi and fi.native_name else escape_cpp_name(expr.method)
             static_method_targs = ""
+            template_kw = ""
             if expr.inferred_type_args:
                 n_class = len(record_info.type_params) if record_info and record_info.type_params else 0
                 class_args = expr.inferred_type_args[:n_class]
                 method_args = expr.inferred_type_args[n_class:]
+                method_param_names = list(fi.type_params[n_class:]) if fi and fi.type_params else []
+                repr_subst = self._representational_param_subst(expr, fi)
                 if class_args:
                     type_args_str = ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in class_args)
                     cpp_class = f"{cpp_class}<{type_args_str}>"
                 if method_args:
-                    static_method_targs = "<" + ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in method_args) + ">"
-            return f"{cpp_class}::{cpp_method}{static_method_targs}({args})"
+                    static_method_targs = "<" + ", ".join(
+                        self._render_method_type_arg(t, method_param_names[j] if j < len(method_param_names) else None, repr_subst)
+                        for j, t in enumerate(method_args)) + ">"
+                    if any(contains_type_param(t) for t in class_args):
+                        template_kw = "template "
+            return f"{cpp_class}::{template_kw}{cpp_method}{static_method_targs}({args})"
 
         # Handle user module function calls: module.func() -> ::tpyapp::module::func()
         if expr.user_module_call is not None:
@@ -3262,17 +3310,27 @@ class ExpressionGenerator:
                 class_name = qualified_cpp_name(
                     record_info.module, record_info.name)
             static_method_targs = ""
+            template_kw = ""
             if expr.inferred_type_args:
                 # Split inferred type args into class-level and method-level
                 n_class = len(record_info.type_params) if record_info and record_info.type_params else 0
                 class_args = expr.inferred_type_args[:n_class]
                 method_args = expr.inferred_type_args[n_class:]
+                method_param_names = list(fi.type_params[n_class:]) if fi and fi.type_params else []
+                repr_subst = self._representational_param_subst(expr, fi)
                 if class_args:
                     type_args_str = ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in class_args)
                     class_name = f"{class_name}<{type_args_str}>"
                 if method_args:
-                    static_method_targs = "<" + ", ".join(self.types.type_to_cpp(unwrap_ref_type(t)) for t in method_args) + ">"
-            return f"{class_name}::{escape_cpp_name(expr.method)}{static_method_targs}({args})"
+                    static_method_targs = "<" + ", ".join(
+                        self._render_method_type_arg(t, method_param_names[j] if j < len(method_param_names) else None, repr_subst)
+                        for j, t in enumerate(method_args)) + ">"
+                    # C++ requires `template` keyword before a dependent template
+                    # name. Class args containing a TypeParamRef make the qualified
+                    # name dependent inside the enclosing template.
+                    if any(contains_type_param(t) for t in class_args):
+                        template_kw = "template "
+            return f"{class_name}::{template_kw}{escape_cpp_name(expr.method)}{static_method_targs}({args})"
         # Handle module.function() (import X -> X.func())
         # Only if the name isn't shadowed by a variable, user-defined function, or record
         if isinstance(expr.obj, TpyName) and expr.obj.name in self.ctx.analyzer.imports:

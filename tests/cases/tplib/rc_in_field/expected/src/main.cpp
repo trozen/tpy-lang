@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // counter = Rc.new(Counter())
-    ::tpystd::tplib::rc::Rc<Counter> counter = Rc<Counter>::new_(Counter());
+    ::tpystd::tplib::rc::Rc<Counter> counter = Rc<Counter>::new_<Counter>(Counter());
     // h1 = Holder("first", counter.clone())
     Holder h1 = Holder("first", counter.clone());
     // h2 = Holder("second", counter.clone())

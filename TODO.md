@@ -13,77 +13,17 @@ See `docs/FEATURE_ROADMAP.md` for bigger tasks and `BUGS.md` for known compiler 
 - **Type alias re-export through intermediate module.** General TPy limitation surfaced while adding generic-alias tests: `lib_a` defines `type Foo = ...`; `lib_b` does `from lib_a import Foo`; `main` then does `from lib_b import Foo` and fails with `'Foo' not found in module 'lib_b'`. Affects both generic and non-generic type aliases. Root cause: `compiler.py::_extract_decl_exports` iterates `compiled.ast.type_aliases` (parser-output) which only contains locally-declared aliases, not imported ones; re-exporting modules don't add imported aliases to their `ModuleExports.type_aliases`. Records / functions / enums have separate re-export paths that work (see `tests/cases/imports/*_reexport`). The line-less module-level diagnostic shape (`main.py: error: ...`) means today's `# tpyc: error()` annotation can't pin it as a regression guard; once the re-export path is fixed, add a `generic_alias_reexport` happy-path test.
 - **Refactor `_resolve_own_source_type` to reuse `substitute_type_params`.** `tpyc/codegen_cpp/expressions.py:_resolve_own_source_type` (Box[P] Phase 3) does manual `dict(zip(...))` + `.get(name)` lookups in two places (function `inferred_type_args` and record-receiver `type_args`) instead of delegating to the established codegen helper `substitute_type_params` (used at line 2461). Not blocking; the duplication will rot as the helper grows. Cleanup: collapse both branches into one call through `substitute_type_params(fi.return_type, subst)` and let the existing helper handle the TypeParamRef walk. Surfaced by /tpy-review of the Box[P] Phase 1-5 work.
 - **Box[P] test coverage gaps.** Missing test cases identified during tpy-review: `tests/cases/protocols/dyn_box_generic_protocol` (Box[Container[Int32]] where Container[T] is `@dynamic` and generic -- exercises the partial-template `is_dyn_protocol_base` specialization for generic protocols + unique_ptr<Container<Int32>> construction); `tests/cases/protocols/dyn_box_return_from_function` (`def make() -> Own[Box[Pet]]: return Box(Dog(...))` -- pins return-site coercion for structural conformers, not just inheritance). The multi-hop inheritance case landed as `dyn_box_nested_dyn_inherit`; Rc[Box[Pet]] now resolves through both the intermediate-local form (`rc_dyn_box_workaround`) and the nested-call form (`rc_box_pet_nested`); the explicit-typearg form is still pinned by `error_rc_dyn_explicit_typearg`.
-- **Single-allocation `Rc[@dynamic P]`** -- migrate from today's two-allocation shape to a `make_shared`-style single heap block. Shipped: basic `Rc[@dynamic P]` works (`r: Rc[Pet] = Rc.new(Parrot(...))`, `r: Rc[Pet] = Rc.new(Cat(...))` for structural conformer). The implementation uses two heap allocations -- a non-generic `_RcCell {strong, weak}` refcount block + a separately heap-allocated payload (`Ptr[T]`). Polymorphic destruction routes through `tpy::heap_release`'s `std::has_virtual_destructor_v<T>` branch -- for abstract `@dynamic P`, `delete p` dispatches through P's auto-emitted virtual destructor in the vtable. For structural conformers, Layer 1 LHS-hint preference (now extended to `infer_type_params_for_function`) switches arg-inferred `T=ConcreteU` to `T=P`, letting Phase 16's call-site `std::make_unique<Adapter<P, U>>` wrapping fire. For inheritance conformers, Covariant[T]'s converting move ctor handles `Rc[ConcreteU] -> Rc[P]` (the wrapping-layer issue that broke Covariant in the old `_RcCell[T]` design is gone -- `_RcCell` is now non-generic). Tested in `tests/cases/protocols/rc_dyn_inherit_basic`, `rc_dyn_structural`, `rc_dyn_polymorphic_drop`. Future single-allocation path uses a method-local concrete type-param:
-  ```python
-  @staticmethod
-  def new[U: T](value: Own[U]) -> Own[Rc[T]]:
-      cell = unsafe_alloc[_RcCell[U]]()
-      ...
-      return Rc[T](cell, cell.storage.ptr())   # Ptr[U] -> Ptr[T] coercion needed
-  ```
-  Remaining sema work before this is buildable:
-  1. **Bound-based subtype coercion -- remaining gaps.** The `Ptr[U] -> Ptr[B]` form (B a
-     class or a sibling/enclosing type param) coerces in the body and is validated nominally
-     at the call site (`satisfies_bound`); `_is_representational_subtype` walks U's immediate
-     bound (no flatten) and declines protocol targets. Still open:
-     - **`Own[U] -> Own[B]` / bare `U -> B`.** Not implemented -- Rc.new needs only `Ptr`,
-       and `Own` can slice a concrete base; add only when a real use appears.
-     - **Bound substitution at explicit call sites.** `Holder.make[Animal, Dog](...)` checks U
-       against the raw bound `T` instead of the resolved class arg `Animal` (the explicit-type-
-       args path: `validate_type_param_bounds` in `calls.py` does not substitute the bound by
-       the resolved type args before checking). The *inference* path is fixed (see below); the
-       explicit-args path mirrors the same shape and should substitute too. Niche -- explicit
-       args are only needed when inference can't run, and explicit `@dynamic` type-args are
-       rejected anyway.
-     - **Complete the `satisfies_bound` migration.** The inference path
-       (`type_ops.py::infer_type_params_for_function`) now substitutes the bound by the
-       inferred params and validates via `satisfies_bound` (its real callers pass it; overload
-       resolution still injects a structural checker by design). Remaining sites still call
-       `type_conforms_to_protocol` directly: `calls.py` overload pre-check + the three
-       record-ctor sites, `expressions.py` Fn/Callable inference, `bound_check.py`
-       class-param-shadowed method, and `validate_type_param_bounds` (explicit-args, above).
-       Correct for protocol bounds (all that reaches them today -- record-level class bounds
-       are still rejected at registration), so route them through `satisfies_bound` only once
-       record class bounds become reachable. Also guard the bound-collection loop in
-       `codegen_cpp/generator.py` (it adds non-protocol bound names to protocol-include lists
-       -- harmless no-match today) with `is_protocol_type`.
-     - **Imprecise diagnostic for an inference-path bound violation.** When an inferred type
-       arg fails its bound, `infer_type_params_for_function` returns `None`, so the call site
-       reports the generic "Cannot infer type arguments ..." rather than a precise
-       "'X' does not satisfy bound 'Y'". The `None` return is intentional (lets overload
-       resolution try other candidates); a clean fix surfaces bound-miss as a distinct outcome.
-       Pinned by `tests/cases/generics/error_bound_factory_inference`.
-     - **Representational-use marking before enabling `Rc[@dynamic P]`.** A `U: T` bound
-       substituted to a `@dynamic` protocol at instantiation (`Rc[Pet]`) currently passes
-       `satisfies_bound` structurally, then a structural conformer would hit a C++ compile
-       error (not a clean sema diagnostic). Whoever lands inference/dynamic type-args MUST add
-       representational-use checking (reject structural conformers at the call site) before
-       turning on the single-alloc `Rc[@dynamic P]` path. **Test-coverage guard:** no test
-       currently pins the "structural conformer -> C++ error" behavior, so the future fix could
-       land silently; add an `error_*` regression-guard case when the marking work starts.
-     - **Test-coverage gap: parametric protocol bound in inference.** No test exercises the
-       substitution edge where the bound itself names another inferred param (`T: Iterable[U]`
-       with U live in inference) -- the most subtle case for the new substitute-before-check
-       logic. Existing `for_iterable_bound` uses a concrete type-arg, so substitution is a
-       no-op there. Add when a real use surfaces.
-  2. **Default-T=U inference rule.** OPTIONAL now -- the LHS-hinted call `r: Rc[Pet] = Rc.new(v)`
-     already infers (U from the arg, T from the hint) after the bound-substitution fix. This
-     rule only adds hint-free `x = Rc.new(v)` -> `Rc[Parrot]`, which defaults the unresolved
-     class param to the resolved method-local one. Initially landed
-     on this branch but rolled back during `/tpy-review` because the rule's guard relies on
-     `func.owning_type_qname` being set on the dispatch-time `virtual_func` built in
-     `methods.py::_analyze_generic_static_method_call`, which it isn't. Implementing (A)
-     requires either threading `owning_type_qname` through `virtual_func` construction, or
-     splitting the inferred-type tables so class-level vs method-local distinction survives
-     the merge into `all_type_params`. Conservative 1-to-1 rule (multi-param needs explicit
-     LHS hint or future PEP 696). See `tpyc/sema/methods.py:1152-1186`.
-  3. **Layer 1 LHS-hint preference.** Already landed for (B); reusable for (A).
-  The `Ptr` coercion in (1) AND the LHS-hinted factory inference both work now, so the
-  single-allocation `Rc.new` factory is callable as `r: Rc[Pet] = Rc.new(v)`. The migration
-  itself is now just the `lib/tpy/tplib/rc.py` rewrite to a single inline-storage `_RcCell[U]`
-  (refcount / destruction / Weak correctness -- its own focused pass); (2) and the remaining
-  sub-gaps under (1) are only needed for hint-free calls / completeness. Net: -1 heap
-  allocation per Rc.new for both abstract and concrete T.
+- **Bounded factory / single-allocation Rc loose ends.**
+  - **`Own[U] -> Own[B]` / bare `U -> B` coercion.** Not implemented -- single-cell `Rc.new` only needs `Ptr`. Add only when a real use appears.
+  - **Bound substitution at explicit call sites.** `Holder.make[Animal, Dog](...)` checks U against the raw bound `T` instead of the resolved class arg `Animal` (the explicit-type-args path: `validate_type_param_bounds` in `calls.py` does not substitute the bound by the resolved type args before checking). The *inference* path is fixed; the explicit-args path mirrors the same shape and should substitute too. Niche -- explicit args are only needed when inference can't run, and explicit `@dynamic` type-args are rejected anyway.
+  - **Complete the `satisfies_bound` migration.** The inference path (`type_ops.py::infer_type_params_for_function`) substitutes the bound by the inferred params and validates via `satisfies_bound` (its real callers pass it; overload resolution still injects a structural checker by design). Remaining sites still call `type_conforms_to_protocol` directly: `calls.py` overload pre-check + the three record-ctor sites, `expressions.py` Fn/Callable inference, `bound_check.py` class-param-shadowed method, and `validate_type_param_bounds` (explicit-args, above). Correct for protocol bounds (all that reaches them today -- record-level class bounds are still rejected at registration), so route them through `satisfies_bound` only once record class bounds become reachable. Also guard the bound-collection loop in `codegen_cpp/generator.py` (it adds non-protocol bound names to protocol-include lists -- harmless no-match today) with `is_protocol_type`.
+  - **Imprecise diagnostic for an inference-path bound violation.** When an inferred type arg fails its bound, `infer_type_params_for_function` returns `None`, so the call site reports the generic "Cannot infer type arguments ..." rather than a precise "'X' does not satisfy bound 'Y'". The `None` return is intentional (lets overload resolution try other candidates); a clean fix surfaces bound-miss as a distinct outcome. Pinned by `tests/cases/generics/error_bound_factory_inference` AND `tests/cases/protocols/error_rc_dyn_nonconformer` (both accept either wording via regex).
+  - **Test-coverage gap: parametric protocol bound in inference.** No test exercises the substitution edge where the bound itself names another inferred param (`T: Iterable[U]` with U live in inference) -- the most subtle case for the new substitute-before-check logic. Existing `for_iterable_bound` uses a concrete type-arg, so substitution is a no-op there. Add when a real use surfaces.
+  - **`@dataclass` macros applied to `Rc` factories.** Macro-emitted constructors that internally call `Rc.new[U: T]` may not see the LHS-hint propagation that the seed-substitute path provides for direct call sites. Untested; surface when a real use appears.
+- **Materialize `repr_subst` on `TpyCall` / `TpyMethodCall` during sema.** Codegen currently re-derives the representational-type-param substitution (`_representational_param_subst` in `tpyc/codegen_cpp/expressions.py`) at four emission sites (free-function arg loop + type-args, generic method arg loop, two static-method emission paths). Both `fi` and `inferred_type_args` are already materialized on the AST node, so the substitution decision can be computed once at the end of sema's call analysis and stored on the call expression. Removes the re-derivation at codegen, eliminates the risk of one of the four sites silently diverging, and aligns with CLAUDE.md's "Prefer first-class type/AST facts over consumer-side dispatch" guidance -- a future THIR lowering would carry the fact across the IR boundary cleanly. Surfaced by `/tpy-review` of `feat-single-alloc-rc` (architecture-fit specialist).
+- **`seed_subst_from_return_hint` bound-following loop should iterate to fixpoint.** `tpyc/sema/type_ops.py::seed_subst_from_return_hint` walks `func.type_param_bounds` in a single pass to pre-bind unresolved bounded params from LHS-hint-derived seeds. The companion default-T=U logic in `infer_type_params_for_function` (same file) iterates to a fixed point for multi-hop chains (`V: U`, `U: T`); the seed-substitute path does not. For 3+-param bound chains called with an LHS hint, `candidate_arg_hints` (which calls `seed_subst_from_return_hint`) gives the inner args a partial hint that misses the deepest param. Inference itself still succeeds (the fixpoint logic in `infer_type_params_for_function` recovers), but the arg-side type-hint propagation is incomplete -- nested-generic args may be analyzed with a wider type than they ultimately resolve to. Add a `while changed` loop mirroring the fixpoint in the inference path. Surfaced by `/tpy-review` of `feat-single-alloc-rc` (architecture-fit specialist).
+- **Cross-cell `Weak[OtherT]` test coverage.** Current `weak_cycle_breaks` / `weak_outlives_payload` / `weak_basic` all exercise self-referential cells (a `Weak[Node]` field inside `Node`). The new `_RcCell[U]::release_strong` comment claims "a nested `Weak.__del__` triggered by payload destructor sees `weak >= 2`" -- but no test exercises the case where U's destructor fires a `Weak.__del__` on a *different* cell (e.g., `Rc[A]` whose A holds a `Weak[B]`). The cross-cell sequencing should be correct by construction (each cell tracks its own counters), but the gap means a future change to the destruction order would not be caught by the canary suite. Add a focused case under `tests/cases/tplib/`. Surfaced by `/tpy-review` of `feat-single-alloc-rc` (test-coverage specialist).
+- **Extend `@dynamic` protocols to allow fields.** Currently `@dynamic` protocols can declare methods but not fields (gap noted in `docs/DYNAMIC_PROTOCOL_DESIGN.md:559-561`). That forced `_RcCellBase` in `lib/tpy/tplib/rc.py` to expose strong/weak counters as virtual methods. The fused-release API on the cell keeps each Rc/Weak operation to at most one vcall, so the perf delta from this is small (~the indirect-call cost on the final cell teardown, plus an icache + vtable-slot reduction from 5 methods to 1). The bigger payoff is shape clarity: a `@dynamic` base with `strong: UInt32` + `weak: UInt32` fields + a single virtual `release_payload(self) -> bool` matches `std::shared_ptr`'s control-block shape exactly. TODO comment in `lib/tpy/tplib/rc.py` flags the migration site. Also unlocks other polymorphic-cell patterns (any future tagged-union / type-erased control block).
 - fix Box/Rc TODOs
 - Add generic-holder (`class Holder[U]: shared: Rc[U]`) and Weak-via-downgrade variants of rc_field_default_init -- pin the broadened using-decl invariant.
 - Protocol-side parallel handling of `IMPLICIT_AUTO_READONLY_METHODS`. Today `sema/registration.py::register_protocol` applies `IMPLICIT_READONLY_METHODS` to protocol method signatures (so e.g. `Deref[T].__deref__` becomes implicitly `is_readonly=True`), but doesn't parallel-treat `IMPLICIT_AUTO_READONLY_METHODS`. Harmless currently because protocol matching only asks "does the type have a signature with this name/shape" -- the type's dual mutable/const overload pair from method_expansion offers both, and the protocol's single const signature matches the const one. Becomes load-bearing if protocol-driven dispatch is ever extended to pick between the two overloads (e.g., `&p_borrow.__deref__()` resolving to the const overload vs `&p_owned.__deref__()` resolving to the mutable one). Surfaced by the parallel review of the `IMPLICIT_AUTO_READONLY_METHODS` split.

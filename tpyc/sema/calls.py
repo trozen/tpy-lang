@@ -3926,6 +3926,9 @@ class CallAnalyzer:
                 expr.inferred_type_args = tuple(
                     self._resolve_inferred_type_arg(type_subst[p])
                     for p in overload.type_params)
+                expr.representational_subst_params = (
+                    self.type_ops.compute_representational_subst_params(
+                        overload, expr.inferred_type_args))
                 if isinstance(overload.return_type, UnionType):
                     orig_count = len(overload.return_type.members)
                     resolved_ret = matched.return_type
@@ -4562,6 +4565,9 @@ class CallAnalyzer:
         expr.inferred_type_args = tuple(
             self._resolve_inferred_type_arg(type_subst[p]) for p in func.type_params
         )
+        expr.representational_subst_params = (
+            self.type_ops.compute_representational_subst_params(
+                func, expr.inferred_type_args))
 
         # Validate defaults for generic params not covered by explicit args
         self._validate_generic_defaults(expr, func, type_subst)

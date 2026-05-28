@@ -14,9 +14,9 @@ int32_t both(const std::tuple<::tpystd::tplib::rc::Rc<Node>&, ::tpystd::tplib::r
 // def main() -> None:
 void main() {
     // a = Rc.new(Node(Int32(10)))
-    ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_(Node(10));
+    ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_<Node>(Node(10));
     // b = Rc.new(Node(Int32(20)))
-    ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_(Node(20));
+    ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_<Node>(Node(20));
     // pair: tuple[Rc[Node], Rc[Node]] = (a.clone(), b.clone())
     auto pair = std::tuple<::tpystd::tplib::rc::Rc<Node>, ::tpystd::tplib::rc::Rc<Node>>{a.clone(), b.clone()};
     // print(both(pair))  # 30

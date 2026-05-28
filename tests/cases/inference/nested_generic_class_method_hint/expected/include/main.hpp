@@ -77,7 +77,7 @@ struct Container {
     template<typename U>
     ::tpystd::tplib::rc::Rc<U> wrap(::tpy::own_param_t<U> value) const {
         // return Rc.new(value)
-        return Rc<U>::new_(std::move(value));
+        return Rc<U>::template new_<U>(std::move(value));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };

@@ -10,7 +10,7 @@ std::vector<::tpystd::tplib::rc::Rc<Node>> build_clones() {
     // Rc.new(Node(7)),
     // Rc.new(Node(11)),
     // ]
-    std::vector<::tpystd::tplib::rc::Rc<Node>> src = ::tpy::make_vector<::tpystd::tplib::rc::Rc<Node>>(Rc<Node>::new_(Node(7)), Rc<Node>::new_(Node(11)));
+    std::vector<::tpystd::tplib::rc::Rc<Node>> src = ::tpy::make_vector<::tpystd::tplib::rc::Rc<Node>>(Rc<Node>::new_<Node>(Node(7)), Rc<Node>::new_<Node>(Node(11)));
     // return [x.clone() for x in src]
     return ({
         std::vector<::tpystd::tplib::rc::Rc<Node>> __result;

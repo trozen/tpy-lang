@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // r = Rc.new(State(Int32(10)))
-    ::tpystd::tplib::rc::Rc<State> r = Rc<State>::new_(State(10));
+    ::tpystd::tplib::rc::Rc<State> r = Rc<State>::new_<State>(State(10));
     // print(r.x)            # auto-deref: 10
     std::cout << r.__deref__().x << "\n";
     // print(r.doubled())    # auto-deref method: 20

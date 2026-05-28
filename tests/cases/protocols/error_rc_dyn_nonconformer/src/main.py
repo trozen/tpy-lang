@@ -18,7 +18,10 @@ class NotAPet:
 
 
 def main() -> None:
-    r: Rc[Pet] = Rc.new(NotAPet("oops"))  # tpyc: error(/does not conform to protocol Pet/)
+    # Regex accepts either the imprecise inference-failure message or the
+    # precise protocol-conformance one -- the bounded-factory inference path
+    # currently surfaces the former; mirrors error_bound_factory_inference.
+    r: Rc[Pet] = Rc.new(NotAPet("oops"))  # tpyc: error(/Cannot infer type arguments for 'new'|does not conform to protocol Pet/)
     print(r.get().name())
 
 

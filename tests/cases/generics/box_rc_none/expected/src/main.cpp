@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // r = Rc.new(None)
-    ::tpystd::tplib::rc::Rc<std::monostate> r = Rc<std::monostate>::new_(std::monostate{});
+    ::tpystd::tplib::rc::Rc<std::monostate> r = Rc<std::monostate>::new_<std::monostate>(std::monostate{});
     // print("rc constructed")
     std::cout << "rc constructed" << "\n";
     // b = Box(None)

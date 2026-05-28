@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // rc = Rc.new(Cell(Int32(10)))
-    ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_(Cell(10));
+    ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_<Cell>(Cell(10));
     // w = rc.downgrade()
     ::tpystd::tplib::rc::Weak<Cell> w = rc.downgrade();
     // print(rc.get().val)  # 10

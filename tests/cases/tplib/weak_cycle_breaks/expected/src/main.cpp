@@ -7,9 +7,9 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // root = Rc.new(Node("root"))
-    ::tpystd::tplib::rc::Rc<Node> root = Rc<Node>::new_(Node("root"));
+    ::tpystd::tplib::rc::Rc<Node> root = Rc<Node>::new_<Node>(Node("root"));
     // child = Rc.new(Node("child"))
-    ::tpystd::tplib::rc::Rc<Node> child = Rc<Node>::new_(Node("child"));
+    ::tpystd::tplib::rc::Rc<Node> child = Rc<Node>::new_<Node>(Node("child"));
     // # Wire the cycle: root owns child strongly; child holds a Weak back to root.
     // root.get().children.append(child.clone())
     root.get().children.push_back(child.clone());

@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // a = Rc.new(Int32(10))
-    ::tpystd::tplib::rc::Rc<int32_t> a = Rc<int32_t>::new_(10);
+    ::tpystd::tplib::rc::Rc<int32_t> a = Rc<int32_t>::new_<int32_t>(10);
     // b = Rc.new(Int32(10))   # same content, different cell
-    ::tpystd::tplib::rc::Rc<int32_t> b = Rc<int32_t>::new_(10);
+    ::tpystd::tplib::rc::Rc<int32_t> b = Rc<int32_t>::new_<int32_t>(10);
     // c = Rc.new(Int32(20))
-    ::tpystd::tplib::rc::Rc<int32_t> c = Rc<int32_t>::new_(20);
+    ::tpystd::tplib::rc::Rc<int32_t> c = Rc<int32_t>::new_<int32_t>(20);
     // # Content equality (not identity): a and b are distinct cells but equal content.
     // print(a == b)             # True
     std::cout << ::tpy::print_bool(((a) == (b))) << "\n";

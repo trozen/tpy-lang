@@ -1611,6 +1611,9 @@ class TypeCompatibility:
         """
         if is_protocol_type(parent):
             return False
+        # Record the originating type-param as representational so codegen at
+        # call sites knows to materialize structural conformers via Adapter.
+        origin_param = child.name if isinstance(child, TypeParamRef) else None
         seen: set[str] = set()
         cur = child
         while isinstance(cur, TypeParamRef) and cur.name not in seen:
@@ -1619,9 +1622,15 @@ class TypeCompatibility:
             if bound is None:
                 return False
             if bound == parent:
+                if origin_param is not None:
+                    self.ctx.func.current_representational_params.add(origin_param)
                 return True
             if isinstance(bound, NominalType) and bound.is_user_record:
-                return self._is_covariant_target(bound, parent)
+                if self._is_covariant_target(bound, parent):
+                    if origin_param is not None:
+                        self.ctx.func.current_representational_params.add(origin_param)
+                    return True
+                return False
             if isinstance(bound, TypeParamRef):
                 cur = bound
                 continue

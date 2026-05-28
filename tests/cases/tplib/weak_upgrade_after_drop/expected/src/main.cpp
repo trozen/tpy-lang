@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make_weak_after_rc_dies() -> Own[Weak[Cell]]:
 ::tpystd::tplib::rc::Weak<Cell> make_weak_after_rc_dies() {
     // rc = Rc.new(Cell(Int32(7)))
-    ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_(Cell(7));
+    ::tpystd::tplib::rc::Rc<Cell> rc = Rc<Cell>::new_<Cell>(Cell(7));
     // w = rc.downgrade()
     ::tpystd::tplib::rc::Weak<Cell> w = rc.downgrade();
     // # rc drops at function return -- payload destructed, but `w` keeps the

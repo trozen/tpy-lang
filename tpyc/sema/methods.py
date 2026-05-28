@@ -713,6 +713,7 @@ class MethodAnalyzer:
                     expr.user_module_call = flat_expr.user_module_call
                     expr.resolved_function_info = flat_expr.resolved_function_info
                     expr.inferred_type_args = flat_expr.inferred_type_args
+                    expr.representational_subst_params = flat_expr.representational_subst_params
                     return result
 
         obj_type = self.expr.analyze_expr(expr.obj)
@@ -1196,6 +1197,7 @@ class MethodAnalyzer:
         expr.kwargs = fake_expr.kwargs
         expr.resolved_function_info = resolved_info
         expr.inferred_type_args = fake_expr.inferred_type_args
+        expr.representational_subst_params = fake_expr.representational_subst_params
         expr.unbound_self_parent_type = parent_type
         return return_type
 
@@ -1257,6 +1259,7 @@ class MethodAnalyzer:
         expr.kwargs = temp_call.kwargs
         expr.resolved_function_info = temp_call.resolved_function_info
         expr.inferred_type_args = temp_call.inferred_type_args
+        expr.representational_subst_params = temp_call.representational_subst_params
         expr.is_static_call = True
         return result
 
@@ -1302,6 +1305,7 @@ class MethodAnalyzer:
                 expr.kwargs = temp_call.kwargs
                 expr.resolved_function_info = temp_call.resolved_function_info
                 expr.inferred_type_args = temp_call.inferred_type_args
+                expr.representational_subst_params = temp_call.representational_subst_params
                 return result
             else:
                 expr.user_module_call = module_name
@@ -1315,6 +1319,7 @@ class MethodAnalyzer:
                 expr.kwargs = temp_call.kwargs
                 expr.resolved_function_info = temp_call.resolved_function_info
                 expr.inferred_type_args = temp_call.inferred_type_args
+                expr.representational_subst_params = temp_call.representational_subst_params
                 return result
 
         qname = f"{module_name}.{expr.method}"
@@ -1898,6 +1903,9 @@ class MethodAnalyzer:
             resolve_inferred_type_arg(method_subst[p], self.ctx.default_int_type)
             for p in new_params
         )
+        expr.representational_subst_params = (
+            self.type_ops.compute_representational_subst_params(
+                method_info, expr.inferred_type_args))
 
         # Merge class subst + method subst for full substitution
         full_subst = dict(class_subst) if class_subst else {}

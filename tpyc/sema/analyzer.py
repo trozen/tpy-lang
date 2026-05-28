@@ -1276,6 +1276,7 @@ class SemanticAnalyzer:
             )
             func_info.direct_mutated_params = direct
             func_info.call_edges = list(self.ctx.func.current_call_edges)
+            func_info.representational_type_params = frozenset(self.ctx.func.current_representational_params)
             # Set mutated_params to direct facts as initial estimate;
             # Phase 2 propagation will replace with the complete transitive set.
             func_info.mutated_params = direct
@@ -2313,6 +2314,7 @@ class SemanticAnalyzer:
                     method_fi.direct_self_mutated = self.ctx.func.current_self_mutated
                     method_fi.call_edges = list(self.ctx.func.current_call_edges)
                     method_fi.mutated_params = direct
+                    method_fi.representational_type_params = frozenset(self.ctx.func.current_representational_params)
                     # Structural mutation facts (append/insert/clear/del/etc.)
                     direct_struct = frozenset(
                         i for i, pname in enumerate(param_list)

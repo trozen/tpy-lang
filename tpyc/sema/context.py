@@ -551,6 +551,11 @@ class FunctionTrackingState:
     current_param_names: set[str] = field(default_factory=set)
     current_param_name_to_idx: dict[str, int] = field(default_factory=dict)
     current_mutated_param_names: set[str] = field(default_factory=set)
+    # Method type params whose `U: T` bound was used representationally in the
+    # body (e.g. `Ptr[U] -> Ptr[T]` coercion). Drained to FunctionInfo at body
+    # end; codegen reads it at call sites to decide adapter-wrap for structural
+    # conformers.
+    current_representational_params: set[str] = field(default_factory=set)
     current_rebound_params: set[str] = field(default_factory=set)
     current_call_edges: list = field(default_factory=list)
     current_self_mutated: bool = False

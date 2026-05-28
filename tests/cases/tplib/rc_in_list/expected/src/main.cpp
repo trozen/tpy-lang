@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // a = Rc.new(Node(Int32(1)))
-    ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_(Node(1));
+    ::tpystd::tplib::rc::Rc<Node> a = Rc<Node>::new_<Node>(Node(1));
     // b = Rc.new(Node(Int32(2)))
-    ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_(Node(2));
+    ::tpystd::tplib::rc::Rc<Node> b = Rc<Node>::new_<Node>(Node(2));
     // c = Rc.new(Node(Int32(3)))
-    ::tpystd::tplib::rc::Rc<Node> c = Rc<Node>::new_(Node(3));
+    ::tpystd::tplib::rc::Rc<Node> c = Rc<Node>::new_<Node>(Node(3));
     // a_alias = a.clone()
     ::tpystd::tplib::rc::Rc<Node> a_alias = a.clone();
     // items: list[Rc[Node]] = [a.clone(), b.clone(), c.clone()]

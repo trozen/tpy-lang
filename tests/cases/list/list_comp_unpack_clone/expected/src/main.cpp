@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make_pair(i: Int32, v: Int32) -> Own[tuple[Int32, Rc[Node]]]:
 std::tuple<int32_t, ::tpystd::tplib::rc::Rc<Node>> make_pair(int32_t i, int32_t v) {
     // return (i, Rc.new(Node(v)))
-    return std::tuple<int32_t, ::tpystd::tplib::rc::Rc<Node>>{i, Rc<Node>::new_(Node(v))};
+    return std::tuple<int32_t, ::tpystd::tplib::rc::Rc<Node>>{i, Rc<Node>::new_<Node>(Node(v))};
 }
 
 // def main() -> None:

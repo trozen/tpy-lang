@@ -338,6 +338,13 @@ class TpyCall(TpyExpr):
     # codegen wraps it in a lambda that catches AttributeError.
     dyn_hasattr_call: 'TpyMethodCall | None' = None       # hasattr(obj, "name") -> bool
     dyn_getattr_default_call: 'TpyMethodCall | None' = None  # getattr(obj, "name", default) -> T
+    # Method-local type params marked representational (`Ptr[U] -> Ptr[T]` in
+    # the callee body) whose substituted bound is @dynamic AND whose inferred
+    # type arg is a structural conformer needing Adapter wrap. Set by sema
+    # during call analysis; consulted by codegen to substitute the C++ template
+    # arg `U -> Adapter<T_sub, U_sub>`. None when the call doesn't need any
+    # substitution. Empty frozenset is never written -- absence is None.
+    representational_subst_params: frozenset[str] | None = None
 
     @property
     def func_name(self) -> str:
@@ -391,6 +398,8 @@ class TpyMethodCall(TpyExpr):
     is_nested_constructor: bool = False  # Set by sema: Outer.Inner() nested record constructor
     is_nested_enum_constructor: bool = False  # Set by sema: Outer.Kind(v) nested enum from_value
     nested_type_name: str | None = None  # Set by sema: dotted name for nested type calls
+    # See TpyCall.representational_subst_params for the contract.
+    representational_subst_params: frozenset[str] | None = None
 
     def children(self) -> list[TpyExpr]:
         if self.fstr_expansion is not None:

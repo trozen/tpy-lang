@@ -1,1 +1,1 @@
-main.py:21: error: Type NotAPet does not conform to protocol Pet in argument 'value'
+main.py:24: error: Cannot infer type arguments for 'new'. Specify explicitly: new[T, U](...)

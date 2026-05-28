@@ -9,13 +9,13 @@ namespace tpyapp::main {
 ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<std::string>> double_wrap(std::string_view inner) {
     // return Box(Rc.new(inner))
     std::string __tmp_1{inner};
-    return ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<std::string>>(Rc<std::string>::new_(std::move(__tmp_1)));
+    return ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<std::string>>(Rc<std::string>::new_<std::string>(std::move(__tmp_1)));
 }
 
 // def main() -> None:
 void main() {
     // b: Box[Rc[Pet]] = double_wrap(Rc.new(Dog("Spot")))  # tpyc: type(Box[Rc[Pet]])
-    ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<Pet>> b = double_wrap<Pet>(Rc<Pet>::new_(std::make_unique<::tpy::Adapter<Pet, Dog>>(Dog("Spot"))));
+    ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<Pet>> b = double_wrap<Pet>(Rc<Pet>::new_<::tpy::Adapter<Pet, Dog>>(Dog("Spot")));
     // print(b.get().get().name())
     std::cout << b.get().get().name() << "\n";
 }

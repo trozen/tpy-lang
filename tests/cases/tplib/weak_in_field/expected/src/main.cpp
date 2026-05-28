@@ -8,7 +8,7 @@ namespace tpyapp::main {
 Observer make_observer_with_dead_target() {
     // # Local rc dies at function return; obs.target outlives it as a Weak.
     // rc = Rc.new(Counter(Int32(99)))
-    ::tpystd::tplib::rc::Rc<Counter> rc = Rc<Counter>::new_(Counter(99));
+    ::tpystd::tplib::rc::Rc<Counter> rc = Rc<Counter>::new_<Counter>(Counter(99));
     // return Observer(rc.downgrade())
     return Observer(rc.downgrade());
 }
@@ -16,7 +16,7 @@ Observer make_observer_with_dead_target() {
 // def main() -> None:
 void main() {
     // c = Rc.new(Counter(Int32(10)))
-    ::tpystd::tplib::rc::Rc<Counter> c = Rc<Counter>::new_(Counter(10));
+    ::tpystd::tplib::rc::Rc<Counter> c = Rc<Counter>::new_<Counter>(Counter(10));
     // obs = Observer(c.downgrade())
     Observer obs = Observer(c.downgrade());
     // print(obs.read())  # 10

@@ -91,8 +91,75 @@ class UninitArrayStorage(metaclass=_StorageMeta):
         return self._slots[index]
 
     def ptr(self):
+        # Capacity-1 storage (Rc.new's inline _RcCell.storage): the user
+        # treats `.ptr()` as a Ptr[T] that derefs to T -- attribute access
+        # must reach the inline value, not the storage object. Multi-element
+        # storage (ArrayList's backing) reaches its elements via the returned
+        # ptr's .span(n), where the standard _Ptr(self) already proxies
+        # through `_slots[i]`.
+        if self._resolved_capacity == 1:
+            return _SlotPtr(self)
         from tpy import take_ptr
         return take_ptr(self)
+
+
+class _SlotPtr:
+    """CPython proxy for `UninitArrayStorage.ptr()` -- attribute access
+    forwards to `_slots[0]`, matching TPy's `Ptr[T]` derefs-to-T semantics.
+    """
+    __slots__ = ('_storage',)
+
+    def __init__(self, storage):
+        object.__setattr__(self, '_storage', storage)
+
+    def __getattr__(self, name):
+        return getattr(object.__getattribute__(self, '_storage')._slots[0], name)
+
+    def __setattr__(self, name, value):
+        if name == '_storage':
+            object.__setattr__(self, name, value)
+        else:
+            setattr(object.__getattribute__(self, '_storage')._slots[0], name, value)
+
+    def __deref__(self):
+        return object.__getattribute__(self, '_storage')._slots[0]
+
+    def __str__(self):
+        return str(object.__getattribute__(self, '_storage')._slots[0])
+
+    def __repr__(self):
+        return repr(object.__getattribute__(self, '_storage')._slots[0])
+
+    def __format__(self, spec):
+        return format(object.__getattribute__(self, '_storage')._slots[0], spec)
+
+    def __eq__(self, other):
+        v = object.__getattribute__(self, '_storage')._slots[0]
+        ov = object.__getattribute__(other, '_storage')._slots[0] if isinstance(other, _SlotPtr) else other
+        return v == ov
+
+    def __lt__(self, other):
+        v = object.__getattribute__(self, '_storage')._slots[0]
+        ov = object.__getattribute__(other, '_storage')._slots[0] if isinstance(other, _SlotPtr) else other
+        return v < ov
+
+    def __le__(self, other):
+        v = object.__getattribute__(self, '_storage')._slots[0]
+        ov = object.__getattribute__(other, '_storage')._slots[0] if isinstance(other, _SlotPtr) else other
+        return v <= ov
+
+    def __gt__(self, other):
+        v = object.__getattribute__(self, '_storage')._slots[0]
+        ov = object.__getattribute__(other, '_storage')._slots[0] if isinstance(other, _SlotPtr) else other
+        return v > ov
+
+    def __ge__(self, other):
+        v = object.__getattribute__(self, '_storage')._slots[0]
+        ov = object.__getattribute__(other, '_storage')._slots[0] if isinstance(other, _SlotPtr) else other
+        return v >= ov
+
+    def __hash__(self):
+        return hash(object.__getattribute__(self, '_storage')._slots[0])
 
 
 class UninitHeapStorage(metaclass=_StorageMeta):

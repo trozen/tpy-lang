@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // r: Rc[Pet] = Rc.new(Cat("Whiskers"))
-    ::tpystd::tplib::rc::Rc<Pet> r = Rc<Pet>::new_(std::make_unique<::tpy::Adapter<Pet, Cat>>(Cat("Whiskers")));
+    ::tpystd::tplib::rc::Rc<Pet> r = Rc<Pet>::new_<::tpy::Adapter<Pet, Cat>>(Cat("Whiskers"));
     // print(r.get().name())
     std::cout << r.get().name() << "\n";
 }

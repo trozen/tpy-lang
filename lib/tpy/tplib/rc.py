@@ -7,6 +7,14 @@
 # payload lifetime from cell lifetime so a Weak outliving all Rcs can
 # still check `strong > 0` against still-valid memory.
 #
+# Layout: one heap block per Rc.new -- `_RcCell[U]` holds the refcount
+# AND the payload inline (`UninitArrayStorage[U, 1]`). The cell's
+# bookkeeping virtuals (incr/decr/get strong/weak, drop_payload) are
+# dispatched through `_RcCellBase`, a @dynamic protocol -- so the
+# Rc/Weak handles can hold a `Ptr[_RcCellBase]` and stay agnostic to U.
+# The strong-zero path calls `cell.drop_payload()` BEFORE the final
+# weak decrement; UninitArrayStorage's debug dtor asserts alive_==0.
+#
 # `Weak` is intentionally NOT re-exported from `tplib`: import as
 # `from tplib.rc import Weak`. Reserves the bare name for a future
 # `tplib.arc.Weak` (atomic refcount), mirroring `std::rc::Weak` vs
@@ -18,43 +26,99 @@
 # - `Rc[readonly[T]]` cannot share -- clone()/downgrade()/upgrade() write
 #   the refcount and can't be @readonly.
 from __future__ import annotations
-from tpy import Own, Ptr, UInt32, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, nocopy, auto_readonly
+from typing import Protocol
+from tpy import Own, Ptr, UInt32, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly
+from tpy.mem import UninitArrayStorage
 from tpy.unsafe import unsafe_take, unsafe_release
 
 
-class _RcCell:
+# TODO: Once @dynamic protocols support fields (see
+# docs/DYNAMIC_PROTOCOL_DESIGN.md:559-561 -- "protocol-field gap"),
+# move `strong` and `weak` to _RcCellBase as direct fields and keep
+# only `release_payload` as a virtual method. That removes the vcall
+# from every counter op, leaving just one indirect call per cell
+# (the drop) -- matching std::shared_ptr's control-block shape. The
+# fused-release API below ALREADY collapses to 1 vcall per Rc op
+# (see method docs), so the @dynamic-fields work would only buy
+# cache-line + icache savings on the existing path, not a per-op
+# count reduction.
+@dynamic
+class _RcCellBase(Protocol):
+    # Fused release ops keep each Rc/Weak operation to at most one
+    # vcall, regardless of how many internal counter writes happen.
+    # release_strong does the strong=0 -> drop_payload -> decr_weak
+    # chain in one go (preserving the "strong holds collective weak"
+    # invariant); try_incr_strong is the upgrade primitive.
+    def incr_strong(self) -> None: ...
+    def release_strong(self) -> bool: ...
+    def try_incr_strong(self) -> bool: ...
+    def incr_weak(self) -> None: ...
+    def release_weak(self) -> bool: ...
+
+
+@nocopy
+class _RcCell[U](_RcCellBase):
     strong: UInt32
     weak: UInt32
+    storage: UninitArrayStorage[U, 1]
 
     def __init__(self) -> None:
         self.strong = 1
         self.weak = 1
+        # Explicit init mirrors the C++ default-construction so the field
+        # is set before any use. Without it, TPy emits a warning about
+        # the unset field (CPython doesn't reach this stub -- it uses
+        # lib/cpy/tplib/rc.py which has a different internal model).
+        self.storage = UninitArrayStorage[U, 1]()
+
+    def incr_strong(self) -> None:
+        self.strong = self.strong + 1
+
+    def release_strong(self) -> bool:
+        # Decrement strong; if it hit zero, destruct the inline payload
+        # FIRST (UninitArrayStorage's debug dtor asserts alive==0) and
+        # THEN decrement the collective weak. Returns True iff the cell
+        # itself is now unreferenced and needs free. A nested Weak.__del__
+        # triggered by the payload destructor (self-Weak inside U) sees
+        # weak >= 2 (collective + its own) and can't free us mid-method.
+        new_strong = self.strong - 1
+        self.strong = new_strong
+        if new_strong == 0:
+            self.storage.drop0()
+            new_weak = self.weak - 1
+            self.weak = new_weak
+            return new_weak == 0
+        return False
+
+    def try_incr_strong(self) -> bool:
+        if self.strong == 0:
+            return False
+        self.strong = self.strong + 1
+        return True
+
+    def incr_weak(self) -> None:
+        self.weak = self.weak + 1
+
+    def release_weak(self) -> bool:
+        new_weak = self.weak - 1
+        self.weak = new_weak
+        return new_weak == 0
 
 
 @nocopy
 class Rc[T](Deref[T], Covariant[T]):
-    _cell: Ptr[_RcCell]
+    _cell: Ptr[_RcCellBase]
     _payload: Ptr[T]
 
     # TODO: package-private once TPy gains a private-method mechanism;
     # only `Rc.new`, `clone`, `downgrade`, and `Weak.upgrade` should call.
-    def __init__(self, cell: Ptr[_RcCell], payload: Ptr[T]) -> None:
+    def __init__(self, cell: Ptr[_RcCellBase], payload: Ptr[T]) -> None:
         self._cell = cell
         self._payload = payload
 
     def __del__(self) -> None:
-        new_strong = self._cell.strong - 1
-        self._cell.strong = new_strong
-        if new_strong == 0:
-            # heap_release(_payload) must happen BEFORE we decrement the
-            # collective weak. Any nested Weak.__del__ triggered by the
-            # payload destructor (e.g. a self-Weak field inside T) sees
-            # weak >= 1 and can't free the cell out from under us.
-            unsafe_release(self._payload)
-            new_weak = self._cell.weak - 1
-            self._cell.weak = new_weak
-            if new_weak == 0:
-                unsafe_release(self._cell)
+        if self._cell.release_strong():
+            unsafe_release(self._cell)
 
     def __deref__(self) -> T:
         return self.get()
@@ -67,17 +131,17 @@ class Rc[T](Deref[T], Covariant[T]):
         return self._payload
 
     @staticmethod
-    def new(value: Own[T]) -> Own[Rc[T]]:
-        return Rc[T](unsafe_take(_RcCell()), unsafe_take(value))
+    def new[U: T](value: Own[U]) -> Own[Rc[T]]:
+        cell = unsafe_take(_RcCell[U]())
+        cell.storage.init0(value)
+        return Rc[T](cell, cell.storage.ptr())
 
     def clone(self) -> Own[Rc[T]]:
-        new_strong = self._cell.strong + 1
-        self._cell.strong = new_strong
+        self._cell.incr_strong()
         return Rc[T](self._cell, self._payload)
 
     def downgrade(self) -> Own[Weak[T]]:
-        new_weak = self._cell.weak + 1
-        self._cell.weak = new_weak
+        self._cell.incr_weak()
         return Weak[T](self._cell, self._payload)
 
     # Equality and ordering delegate to T (content, matching Rust's
@@ -110,30 +174,29 @@ class Rc[T](Deref[T], Covariant[T]):
 
 @nocopy
 class Weak[T]:
-    _cell: Ptr[_RcCell]
+    _cell: Ptr[_RcCellBase]
     # _payload dangles between strong=0 and weak=0, but is only dereferenced
     # via upgrade() after the strong-count check confirms the payload is live.
     _payload: Ptr[T]
 
     # TODO: package-private (same as Rc.__init__).
-    def __init__(self, cell: Ptr[_RcCell], payload: Ptr[T]) -> None:
+    def __init__(self, cell: Ptr[_RcCellBase], payload: Ptr[T]) -> None:
         self._cell = cell
         self._payload = payload
 
     def __del__(self) -> None:
-        new_weak = self._cell.weak - 1
-        self._cell.weak = new_weak
-        if new_weak == 0:
+        if self._cell.release_weak():
             unsafe_release(self._cell)
 
     def upgrade(self) -> Own[Rc[T]] | None:
-        strong = self._cell.strong
-        if strong == 0:
+        # Single vcall instead of get_strong + incr_strong: cell checks
+        # strong > 0 and increments atomically (in the local sense; Rc is
+        # non-atomic, so "atomically" here just means within one method).
+        if not self._cell.try_incr_strong():
             return None
-        self._cell.strong = strong + 1
         return Rc[T](self._cell, self._payload)
 
     def clone(self) -> Own[Weak[T]]:
-        new_weak = self._cell.weak + 1
-        self._cell.weak = new_weak
+        self._cell.incr_weak()
         return Weak[T](self._cell, self._payload)
+

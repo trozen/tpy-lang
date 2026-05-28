@@ -11,7 +11,7 @@ void main() {
     // Rc.new(Node(20)),
     // Rc.new(Node(30)),
     // ]
-    std::vector<::tpystd::tplib::rc::Rc<Node>> originals = ::tpy::make_vector<::tpystd::tplib::rc::Rc<Node>>(Rc<Node>::new_(Node(10)), Rc<Node>::new_(Node(20)), Rc<Node>::new_(Node(30)));
+    std::vector<::tpystd::tplib::rc::Rc<Node>> originals = ::tpy::make_vector<::tpystd::tplib::rc::Rc<Node>>(Rc<Node>::new_<Node>(Node(10)), Rc<Node>::new_<Node>(Node(20)), Rc<Node>::new_<Node>(Node(30)));
     // clones: list[Rc[Node]] = [x.clone() for x in originals]
     std::vector<::tpystd::tplib::rc::Rc<Node>> clones = ({
         std::vector<::tpystd::tplib::rc::Rc<Node>> __result;

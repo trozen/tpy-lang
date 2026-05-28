@@ -3949,6 +3949,10 @@ class FunctionInfo:
     direct_mutated_params: Optional[frozenset[int]] = None
     direct_structural_mutated_params: Optional[frozenset[int]] = None
     call_edges: Optional[list['MutationCallEdge']] = None
+    # Method type-params whose `U: T` bound was used representationally in the
+    # body (e.g. `Ptr[U] -> Ptr[T]` coercion). Codegen reads this at call sites
+    # to decide adapter materialization for structural conformers.
+    representational_type_params: frozenset[str] = frozenset()
     # Self-mutation inference (Phase 1 + Phase 2, methods only)
     # None = not yet analyzed; True/False = Phase 1 direct fact; finalized by Phase 2.
     direct_self_mutated: Optional[bool] = None

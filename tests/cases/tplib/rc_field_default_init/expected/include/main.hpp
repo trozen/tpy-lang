@@ -40,7 +40,7 @@ struct Holder {
     ::tpystd::tplib::rc::Rc<Val> shared;
 
     // def __init__(self) -> None:
-    Holder() : shared(Rc<Val>::new_(Val(0))) {}
+    Holder() : shared(Rc<Val>::new_<Val>(Val(0))) {}
     // non-copyable (field 'shared')
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
