@@ -56,6 +56,7 @@ CPY_LIB_DIR = LIB_DIR / "cpy"
 TPY_LIB_DIR = LIB_DIR / "tpy"
 DEFAULT_LIB_DIRS = [TPY_LIB_DIR]
 RUNTIME_DIR = PROJECT_ROOT / "runtime" / "cpp" / "include"
+TPYC_DIR = PROJECT_ROOT / "tpyc"
 
 
 # ---------------------------------------------------------------------------
@@ -326,16 +327,32 @@ def _libtpy_hash() -> str:
 
 
 @functools.cache
+def _tpyc_hash() -> str:
+    """Hash of all .py files under tpyc/ (the compiler source). Session-cached.
+
+    Compiler changes can mutate the C++ emitted for a given stdlib source
+    (auto-readonly inference of `*args` slots, codegen-rendering tweaks,
+    new coercions) without touching `lib/tpy/`. Without this in the cache
+    key, stale .o files with the previous signature would silently linger
+    and break linking against newly-compiled test mains.
+    """
+    files = sorted(TPYC_DIR.rglob("*.py"))
+    return _hash_files(files)
+
+
+@functools.cache
 def _stdlib_cache_key() -> str:
     """Content-addressed key for the persistent stdlib .o cache.
 
     Captures everything that affects the produced .o files: runtime headers,
-    stdlib Python source (compiled into the .o files), and C++ build config.
+    stdlib Python source, compiler source (tpyc/), and C++ build config.
     """
     h = hashlib.sha256()
     h.update(_runtime_hash().encode())
     h.update(b"\0")
     h.update(_libtpy_hash().encode())
+    h.update(b"\0")
+    h.update(_tpyc_hash().encode())
     h.update(b"\0")
     h.update(repr((
         CPP_CONFIG.compiler,
