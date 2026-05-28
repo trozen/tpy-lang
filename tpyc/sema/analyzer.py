@@ -16,10 +16,12 @@ from ..typesys import (
     make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType, PtrType,
     TypeAliasInfo,
     is_integer_type, is_void_like_type,
+    span_as_const, span_is_readonly,
     _contains_self_reference,
     contains_type_param,
     del_suppresses_default_ctor,
 )
+from ..type_def_registry import is_span
 from ..compilation_context import get_current_compiler
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_docstring, is_super_del_call, is_base_init_call, ParseError
@@ -704,6 +706,7 @@ class SemanticAnalyzer:
         """
         self._propagate_mutation_facts()
         self._sync_inferred_const(module)
+        self._sync_inferred_vararg_readonly(module)
         self._advance_phase(
             self._PHASE_ANALYZE_BODIES,
             self._PHASE_PHASE2_FIXPOINT,
@@ -886,6 +889,135 @@ class SemanticAnalyzer:
                 return True
         for parent in proto_info.parent_protocols:
             if self._proto_hierarchy_has_nonconst(parent.name, method_name, visited):
+                return True
+        return False
+
+    def _sync_inferred_vararg_readonly(self, module: TpyModule) -> None:
+        """Flip vararg slots `Span[T]` -> `Span[readonly[T]]` for bodies that
+        don't mutate the vararg pack. Parallels `_sync_inferred_const` for
+        methods and the per-index `mutated_params` gate that `decide_param_const`
+        consumes for non-vararg ref params -- both extend the same body-mutation
+        inference to the vararg case so non-mutating callees collapse to
+        `varargs<const T>` and accept const arg sources without caller-side
+        marking workarounds. Skip rules mirror `_sync_inferred_const`: explicit
+        readonly slot, @native, overload stubs, and @dynamic-protocol overrides
+        whose virtual slot is non-const.
+        """
+        for func in module.functions:
+            if func.is_overload_stub or func.native_function:
+                continue
+            if func.vararg_name is None:
+                continue
+            # For @overload groups, mutation facts land on the implementation's
+            # FI (last in overload list); see analyzer.py:1142-1143 where
+            # Phase 1 writes them. Plain defs have a single entry.
+            overloads = self.ctx.registry.get_function(func.name)
+            if not overloads:
+                continue
+            self._maybe_flip_vararg_readonly(func, overloads[-1], dyn_pin_nonconst=False)
+
+        for record in module.all_records():
+            rec_info = self.ctx.registry.get_record(record.name)
+            if rec_info is None:
+                continue
+            for method in record.methods:
+                if method.is_overload_stub or method.native_function:
+                    continue
+                if method.vararg_name is None:
+                    continue
+                # @auto_readonly methods are cloned into mutable + const pairs;
+                # the mutable clone exists precisely to offer the non-const
+                # form, so its vararg slot must stay mutable even when the
+                # body doesn't mutate the pack. The const clone gets the slot
+                # via its own ReadonlyType wrapping at clone time.
+                if method.is_auto_readonly_mutable_clone:
+                    continue
+                method_fi = rec_info.get_method(method.name)
+                if method_fi is None:
+                    continue
+                pin_nonconst = self._dynamic_proto_pins_vararg_nonconst(
+                    rec_info, method.name)
+                self._maybe_flip_vararg_readonly(method, method_fi,
+                                                 dyn_pin_nonconst=pin_nonconst)
+
+    def _maybe_flip_vararg_readonly(
+        self, func: TpyFunction, fi: 'FunctionInfo', *, dyn_pin_nonconst: bool,
+    ) -> None:
+        """Apply the slot flip when body analysis shows the vararg isn't
+        mutated. Mutates both `fi.params` and `func.params` so codegen
+        (which reads from the AST) and downstream sema (which reads from FI)
+        agree on the resolved slot type.
+        """
+        va_idx = next((i for i, p in enumerate(fi.params) if p.is_variadic), -1)
+        if va_idx < 0:
+            return
+        va_param = fi.params[va_idx]
+        bare_va = unwrap_ref_type(va_param.type)
+        if not is_span(bare_va) or span_is_readonly(bare_va):
+            return
+        # mutated_params=None means no body was analyzed (native, stub,
+        # builtin). The signature is the source of truth in those cases --
+        # don't infer-flip what the user (or C++ binding) declared.
+        if fi.mutated_params is None or va_idx in fi.mutated_params:
+            return
+        if dyn_pin_nonconst:
+            return
+        new_span = span_as_const(bare_va)
+        new_param_type = make_ref(new_span) if isinstance(va_param.type, RefType) else new_span
+        fi.params[va_idx] = ParamInfo(
+            name=va_param.name,
+            type=new_param_type,
+            requires_mutable_lvalue=va_param.requires_mutable_lvalue,
+            default_expr=va_param.default_expr,
+            keyword_only=va_param.keyword_only,
+            is_variadic=True,
+        )
+        # AST mirror: codegen reads from `func.params` directly.
+        for i, (pname, _) in enumerate(func.params):
+            if pname == func.vararg_name:
+                func.params[i] = (pname, new_param_type)
+                break
+
+    def _dynamic_proto_pins_vararg_nonconst(
+        self, record_info: 'RecordInfo', method_name: str,
+    ) -> bool:
+        """Parallel to `_dynamic_proto_requires_nonconst`, but for the vararg
+        slot: an override of a @dynamic protocol method must keep the vararg
+        mutable when the protocol declares it mutable, since the C++ vtable
+        slot is monomorphized to `varargs<T>` vs `varargs<const T>`.
+
+        Reachable but unexercised today: `MethodSignature` (typesys.py:4127)
+        does not carry `is_variadic`, so protocol methods can't declare a
+        `*args` slot; `_proto_hierarchy_has_vararg_nonconst` therefore never
+        finds a mutable-vararg sig. Kept as a forward-compat guard so the
+        invariant is in place the day protocols gain vararg method support.
+        """
+        visited: set[str] = set()
+        for proto_type, _ in self.ctx.registry.iter_dynamic_protocols(record_info):
+            if self._proto_hierarchy_has_vararg_nonconst(
+                    proto_type.name, method_name, visited):
+                return True
+        return False
+
+    def _proto_hierarchy_has_vararg_nonconst(
+        self, proto_name: str, method_name: str, visited: set[str],
+    ) -> bool:
+        if proto_name in visited:
+            return False
+        visited.add(proto_name)
+        proto_info = self.ctx.registry.scan_by_short_name(proto_name)
+        if proto_info is None:
+            return False
+        for sig in proto_info.methods:
+            if sig.name != method_name:
+                continue
+            for _, ptype in sig.params:
+                bare = unwrap_ref_type(ptype) if isinstance(ptype, TpyType) else None
+                if bare is not None and is_span(bare) and not span_is_readonly(bare):
+                    return True
+        for parent in proto_info.parent_protocols:
+            if self._proto_hierarchy_has_vararg_nonconst(
+                    parent.name, method_name, visited):
                 return True
         return False
 

@@ -15,7 +15,7 @@ void main() {
     // items.append(Box(3))
     items.push_back(Box<int32_t>(3));
     // print(take_all(*items))
-    std::cout << take_all<int32_t>(::tpy::varargs<Box<int32_t>>(::tpy::as_mut_span(items))) << "\n";
+    std::cout << take_all<int32_t>(::tpy::varargs<const Box<int32_t>>(::tpy::as_span(items))) << "\n";
 }
 
 void __tpy_init() {

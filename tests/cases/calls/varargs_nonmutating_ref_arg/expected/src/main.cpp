@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def sum_all(*items: Box) -> Int32:
-int32_t sum_all(::tpy::varargs<Box> items) {
+int32_t sum_all(::tpy::varargs<const Box> items) {
     // n: Int32 = 0
     int32_t n = 0;
     // for b in items:
@@ -22,10 +22,10 @@ int32_t sum_all(::tpy::varargs<Box> items) {
 }
 
 // def via_param(b: Box, c: Box) -> Int32:
-int32_t via_param(Box& b, Box& c) {
+int32_t via_param(const Box& b, const Box& c) {
     // return sum_all(b, c)  # tpyc: ok
-    std::array<Box*, 2> __tmp_1{&b, &c};
-    return sum_all(::tpy::varargs<Box>(__tmp_1));
+    std::array<const Box*, 2> __tmp_1{&b, &c};
+    return sum_all(::tpy::varargs<const Box>(__tmp_1));
 }
 
 // def main() -> None:

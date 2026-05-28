@@ -11,7 +11,7 @@ struct Resource;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void use_all(::tpy::varargs<Resource> args);
+void use_all(::tpy::varargs<const Resource> args);
 void main();
 
 // @nocopy

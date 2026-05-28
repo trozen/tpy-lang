@@ -2614,7 +2614,7 @@ class ExpressionGenerator:
 
                 # *args pack: materialize as std::array temp + std::span
                 if isinstance(arg, TpyVarargPack):
-                    gen_args.append(self._gen_vararg_pack(arg))
+                    gen_args.append(self._gen_vararg_pack(arg, slot_type=resolved_ptype))
                     continue
 
                 # @dynamic protocol params: wrap concrete args in temp adapter
@@ -3040,7 +3040,7 @@ class ExpressionGenerator:
                     assert ptype is not None, f"No param type for TpyTypeParamConstruct at arg {i}"
                     gen_args.append(f"{self.types.type_to_cpp(ptype)}{{}}")
                 elif isinstance(arg, TpyVarargPack):
-                    gen_args.append(self._gen_vararg_pack(arg))
+                    gen_args.append(self._gen_vararg_pack(arg, slot_type=ptype))
                 else:
                     # @dynamic protocol params in method calls
                     if ptype is not None:
@@ -3364,7 +3364,7 @@ class ExpressionGenerator:
                             iter_params.append((p.name, p.type))
                     for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, iter_params)):
                         if isinstance(arg, TpyVarargPack):
-                            gen_args.append(self._gen_vararg_pack(arg))
+                            gen_args.append(self._gen_vararg_pack(arg, slot_type=ptype))
                             continue
                         ptype_bare = unwrap_ref_type(ptype)
                         if isinstance(ptype_bare, TypeParamRef) and self.ctx.is_temporary_expr(arg):
@@ -5305,13 +5305,32 @@ class ExpressionGenerator:
             return self.builtins.gen_call_from_fi(binop_result.method, wrapped_right, [wrapped_left])
         return self.builtins.gen_call_from_fi(binop_result.method, wrapped_left, [wrapped_right])
 
-    def _gen_vararg_pack(self, pack: TpyVarargPack) -> str:
+    def _gen_vararg_pack(self, pack: TpyVarargPack,
+                         slot_type: TpyType | None = None) -> str:
         """Generate C++ for a *args pack: stack array + span.
 
         Value types: std::array<T, N> + std::span<const T> (copies, immutable).
         Non-value types: std::array<T*, N> + tpy::ptr_span<T> (pointers, reference semantics).
+
+        `slot_type`, when provided, is the callee param's currently-resolved
+        slot type from the call site. Its element wrapping (ReadonlyType or
+        not) supersedes `pack.element_type`'s wrapping -- the pack is stamped
+        during Phase 1 sema, before Phase 2 vararg-readonly inference may flip
+        the slot. The pack still owns the substituted base type (e.g. `Box<int32_t>`
+        from a generic instantiation -- the FI slot would still carry the
+        un-substituted `Box<T>`), so combine: base from pack, const-ness from slot.
         """
         elem_type = pack.element_type
+        if slot_type is not None:
+            slot_bare = unwrap_ref_type(slot_type)
+            if is_span(slot_bare):
+                slot_elem = slot_bare.type_args[0]
+                slot_is_const = isinstance(slot_elem, ReadonlyType)
+                pack_is_const = isinstance(elem_type, ReadonlyType)
+                if slot_is_const and not pack_is_const:
+                    elem_type = ReadonlyType(elem_type)
+                elif not slot_is_const and pack_is_const:
+                    elem_type = elem_type.wrapped
         elem_cpp = self.types.varargs_elem_cpp(elem_type)
         bare_elem = unwrap_readonly(elem_type)
         is_ref = not bare_elem.is_value_type() and not isinstance(bare_elem, TypeParamRef)
@@ -5327,10 +5346,11 @@ class ExpressionGenerator:
                 if is_span(inner_type):
                     return f"::tpy::varargs<{elem_cpp}>({inner})"
                 # Borrow a span from a non-span container (e.g. a list). A
-                # readonly slot (varargs<const T>) takes a const span and its
-                # source may itself be a const borrow, so use as_span; a mutable
-                # slot needs a mutable span (the source is kept non-const by the
-                # mark_param_mutated in _analyze_and_pack_varargs).
+                # readonly slot (varargs<const T>) takes a const span; a mutable
+                # slot needs a mutable span. The source is kept non-const when
+                # needed by Phase-2 vararg call-edges propagating callee mutation
+                # back to the caller's source param + the mutating-slot loop-var
+                # marking in _check_loop_var_arg_mutation.
                 span_fn = "as_span" if isinstance(elem_type, ReadonlyType) else "as_mut_span"
                 return f"::tpy::varargs<{elem_cpp}>(::tpy::{span_fn}({inner}))"
             gen = self.gen_expr(a)

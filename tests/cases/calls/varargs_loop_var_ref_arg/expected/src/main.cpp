@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def take_mut(*items: Box) -> Int32:
-int32_t take_mut(::tpy::varargs<Box> items) {
+int32_t take_mut(::tpy::varargs<const Box> items) {
     // n: Int32 = 0
     int32_t n = 0;
     // for b in items:
@@ -22,7 +22,7 @@ int32_t take_mut(::tpy::varargs<Box> items) {
 }
 
 // def via_loop(xs: list[Box]) -> Int32:
-int32_t via_loop(std::vector<Box>& xs) {
+int32_t via_loop(const std::vector<Box>& xs) {
     // total: Int32 = 0
     int32_t total = 0;
     // for b in xs:
@@ -30,10 +30,10 @@ int32_t via_loop(std::vector<Box>& xs) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& b = *__beg_0;
+        const auto& b = *__beg_0;
         // total += take_mut(b)  # tpyc: ok
-        std::array<Box*, 1> __tmp_1{&b};
-        total = ::tpy::add_check<int32_t>(total, take_mut(::tpy::varargs<Box>(__tmp_1)));
+        std::array<const Box*, 1> __tmp_1{&b};
+        total = ::tpy::add_check<int32_t>(total, take_mut(::tpy::varargs<const Box>(__tmp_1)));
     }
     // return total
     return total;

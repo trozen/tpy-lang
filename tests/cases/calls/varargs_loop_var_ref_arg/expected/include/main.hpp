@@ -11,8 +11,8 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t take_mut(::tpy::varargs<Box> items);
-int32_t via_loop(std::vector<Box>& xs);
+int32_t take_mut(::tpy::varargs<const Box> items);
+int32_t via_loop(const std::vector<Box>& xs);
 void main();
 
 // @nocopy

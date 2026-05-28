@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def take_mut(*items: Box) -> Int32:
-int32_t take_mut(::tpy::varargs<Box> items) {
+int32_t take_mut(::tpy::varargs<const Box> items) {
     // n: Int32 = 0
     int32_t n = 0;
     // for b in items:
@@ -39,9 +39,9 @@ int32_t take_ro(::tpy::varargs<const Box> items) {
 }
 
 // def via_mut(xs: list[Box]) -> Int32:
-int32_t via_mut(std::vector<Box>& xs) {
+int32_t via_mut(const std::vector<Box>& xs) {
     // return take_mut(*xs)
-    return take_mut(::tpy::varargs<Box>(::tpy::as_mut_span(xs)));
+    return take_mut(::tpy::varargs<const Box>(::tpy::as_span(xs)));
 }
 
 // def via_ro(xs: list[Box]) -> Int32:

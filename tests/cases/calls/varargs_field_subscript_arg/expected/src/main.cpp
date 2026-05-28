@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def sum_all(*items: Box) -> Int32:
-int32_t sum_all(::tpy::varargs<Box> items) {
+int32_t sum_all(::tpy::varargs<const Box> items) {
     // n: Int32 = 0
     int32_t n = 0;
     // for it in items:
@@ -22,17 +22,17 @@ int32_t sum_all(::tpy::varargs<Box> items) {
 }
 
 // def via_field(p: Pair) -> Int32:
-int32_t via_field(Pair& p) {
+int32_t via_field(const Pair& p) {
     // return sum_all(p.a, p.b)  # tpyc: ok
-    std::array<Box*, 2> __tmp_1{&p.a, &p.b};
-    return sum_all(::tpy::varargs<Box>(__tmp_1));
+    std::array<const Box*, 2> __tmp_1{&p.a, &p.b};
+    return sum_all(::tpy::varargs<const Box>(__tmp_1));
 }
 
 // def via_subscript(items: list[Box]) -> Int32:
-int32_t via_subscript(std::vector<Box>& items) {
+int32_t via_subscript(const std::vector<Box>& items) {
     // return sum_all(items[0], items[1])  # tpyc: ok
-    std::array<Box*, 2> __tmp_2{&::tpy::__getitem__(items, 0), &::tpy::__getitem__(items, 1)};
-    return sum_all(::tpy::varargs<Box>(__tmp_2));
+    std::array<const Box*, 2> __tmp_2{&::tpy::__getitem__(items, 0), &::tpy::__getitem__(items, 1)};
+    return sum_all(::tpy::varargs<const Box>(__tmp_2));
 }
 
 // def main() -> None:

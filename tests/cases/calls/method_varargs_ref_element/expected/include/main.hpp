@@ -35,7 +35,7 @@ struct Pile {
 
 
     // def total(self, *boxes: Box) -> Int32:
-    int32_t total(::tpy::varargs<Box> boxes) const;
+    int32_t total(::tpy::varargs<const Box> boxes) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pile";
 };
 
@@ -46,7 +46,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pile& obj) {
 
 
 // def total(self, *boxes: Box) -> Int32:
-inline int32_t Pile::total(::tpy::varargs<Box> boxes) const {
+inline int32_t Pile::total(::tpy::varargs<const Box> boxes) const {
     // s: Int32 = Int32(0)
     int32_t s = 0;
     // for b in boxes:

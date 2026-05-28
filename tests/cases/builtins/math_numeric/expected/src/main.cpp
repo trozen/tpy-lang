@@ -64,45 +64,45 @@ void main() {
     std::cout << ::tpy::print_bool(((r2 > 0.99) && (r2 < 1.01))) << "\n";
     // # gcd
     // print(math.gcd(12, 8))
-    std::array<::tpy::BigInt, 2> __tmp_1{12, 8};
-    std::cout << ::tpystd::math::gcd(::tpy::varargs<::tpy::BigInt>(__tmp_1)) << "\n";
+    std::array<const ::tpy::BigInt, 2> __tmp_1{12, 8};
+    std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_1)) << "\n";
     // print(math.gcd(-12, 8))
-    std::array<::tpy::BigInt, 2> __tmp_2{-12, 8};
-    std::cout << ::tpystd::math::gcd(::tpy::varargs<::tpy::BigInt>(__tmp_2)) << "\n";
+    std::array<const ::tpy::BigInt, 2> __tmp_2{-12, 8};
+    std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_2)) << "\n";
     // print(math.gcd(12, -8))
-    std::array<::tpy::BigInt, 2> __tmp_3{12, -8};
-    std::cout << ::tpystd::math::gcd(::tpy::varargs<::tpy::BigInt>(__tmp_3)) << "\n";
+    std::array<const ::tpy::BigInt, 2> __tmp_3{12, -8};
+    std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_3)) << "\n";
     // print(math.gcd(0, 5))
-    std::array<::tpy::BigInt, 2> __tmp_4{0, 5};
-    std::cout << ::tpystd::math::gcd(::tpy::varargs<::tpy::BigInt>(__tmp_4)) << "\n";
+    std::array<const ::tpy::BigInt, 2> __tmp_4{0, 5};
+    std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_4)) << "\n";
     // print(math.gcd(5, 0))
-    std::array<::tpy::BigInt, 2> __tmp_5{5, 0};
-    std::cout << ::tpystd::math::gcd(::tpy::varargs<::tpy::BigInt>(__tmp_5)) << "\n";
+    std::array<const ::tpy::BigInt, 2> __tmp_5{5, 0};
+    std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_5)) << "\n";
     // print(math.gcd(0, 0))
-    std::array<::tpy::BigInt, 2> __tmp_6{0, 0};
-    std::cout << ::tpystd::math::gcd(::tpy::varargs<::tpy::BigInt>(__tmp_6)) << "\n";
+    std::array<const ::tpy::BigInt, 2> __tmp_6{0, 0};
+    std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_6)) << "\n";
     // # lcm
     // print(math.lcm(4, 6))
-    std::array<::tpy::BigInt, 2> __tmp_7{4, 6};
-    std::cout << ::tpystd::math::lcm(::tpy::varargs<::tpy::BigInt>(__tmp_7)) << "\n";
+    std::array<const ::tpy::BigInt, 2> __tmp_7{4, 6};
+    std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_7)) << "\n";
     // print(math.lcm(0, 5))
-    std::array<::tpy::BigInt, 2> __tmp_8{0, 5};
-    std::cout << ::tpystd::math::lcm(::tpy::varargs<::tpy::BigInt>(__tmp_8)) << "\n";
+    std::array<const ::tpy::BigInt, 2> __tmp_8{0, 5};
+    std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_8)) << "\n";
     // print(math.lcm(-4, 6))
-    std::array<::tpy::BigInt, 2> __tmp_9{-4, 6};
-    std::cout << ::tpystd::math::lcm(::tpy::varargs<::tpy::BigInt>(__tmp_9)) << "\n";
+    std::array<const ::tpy::BigInt, 2> __tmp_9{-4, 6};
+    std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_9)) << "\n";
     // print(math.lcm(4, -6))
-    std::array<::tpy::BigInt, 2> __tmp_10{4, -6};
-    std::cout << ::tpystd::math::lcm(::tpy::varargs<::tpy::BigInt>(__tmp_10)) << "\n";
+    std::array<const ::tpy::BigInt, 2> __tmp_10{4, -6};
+    std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_10)) << "\n";
     // print(math.lcm(-4, -6))
-    std::array<::tpy::BigInt, 2> __tmp_11{-4, -6};
-    std::cout << ::tpystd::math::lcm(::tpy::varargs<::tpy::BigInt>(__tmp_11)) << "\n";
+    std::array<const ::tpy::BigInt, 2> __tmp_11{-4, -6};
+    std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_11)) << "\n";
     // # lcm with gcd > 1 -- actually exercises the (a // gcd) * b bounded
     // # intermediate path. gcd(600000, 1000000) = 200000; naive a * b = 6e11,
     // # new impl's intermediate is only 3e6.
     // print(math.lcm(600000, 1000000))
-    std::array<::tpy::BigInt, 2> __tmp_12{600000, 1000000};
-    std::cout << ::tpystd::math::lcm(::tpy::varargs<::tpy::BigInt>(__tmp_12)) << "\n";
+    std::array<const ::tpy::BigInt, 2> __tmp_12{600000, 1000000};
+    std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_12)) << "\n";
     // # factorial
     // print(math.factorial(0))
     std::cout << ::tpystd::math::factorial(::tpy::BigInt(0)) << "\n";

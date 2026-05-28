@@ -8,64 +8,64 @@ namespace tpyapp::main {
 void main() {
     // # hypot: empty -> 0.0, single -> abs, multi -> sqrt(sum of squares)
     // print(math.hypot())
-    std::cout << ::tpy::print_float(::tpystd::math::hypot(::tpy::varargs<double>())) << "\n";
+    std::cout << ::tpy::print_float(::tpystd::math::hypot(::tpy::varargs<const double>())) << "\n";
     // print(math.hypot(5.0))
-    std::array<double, 1> __tmp_1{5.0};
-    std::cout << ::tpy::print_float(::tpystd::math::hypot(::tpy::varargs<double>(__tmp_1))) << "\n";
+    std::array<const double, 1> __tmp_1{5.0};
+    std::cout << ::tpy::print_float(::tpystd::math::hypot(::tpy::varargs<const double>(__tmp_1))) << "\n";
     // print(math.hypot(-5.0))
-    std::array<double, 1> __tmp_2{-(5.0)};
-    std::cout << ::tpy::print_float(::tpystd::math::hypot(::tpy::varargs<double>(__tmp_2))) << "\n";
+    std::array<const double, 1> __tmp_2{-(5.0)};
+    std::cout << ::tpy::print_float(::tpystd::math::hypot(::tpy::varargs<const double>(__tmp_2))) << "\n";
     // print(math.hypot(3.0, 4.0))
-    std::array<double, 2> __tmp_3{3.0, 4.0};
-    std::cout << ::tpy::print_float(::tpystd::math::hypot(::tpy::varargs<double>(__tmp_3))) << "\n";
+    std::array<const double, 2> __tmp_3{3.0, 4.0};
+    std::cout << ::tpy::print_float(::tpystd::math::hypot(::tpy::varargs<const double>(__tmp_3))) << "\n";
     // print(math.hypot(1.0, 2.0, 2.0))   # sqrt(1+4+4) = 3.0
-    std::array<double, 3> __tmp_4{1.0, 2.0, 2.0};
-    std::cout << ::tpy::print_float(::tpystd::math::hypot(::tpy::varargs<double>(__tmp_4))) << "\n";
+    std::array<const double, 3> __tmp_4{1.0, 2.0, 2.0};
+    std::cout << ::tpy::print_float(::tpystd::math::hypot(::tpy::varargs<const double>(__tmp_4))) << "\n";
     // print(math.hypot(0.0, 0.0, 0.0))
-    std::array<double, 3> __tmp_5{0.0, 0.0, 0.0};
-    std::cout << ::tpy::print_float(::tpystd::math::hypot(::tpy::varargs<double>(__tmp_5))) << "\n";
+    std::array<const double, 3> __tmp_5{0.0, 0.0, 0.0};
+    std::cout << ::tpy::print_float(::tpystd::math::hypot(::tpy::varargs<const double>(__tmp_5))) << "\n";
     // # gcd: empty -> 0, single -> abs, variadic reduces across all args
     // print(math.gcd())
-    std::cout << ::tpystd::math::gcd(::tpy::varargs<::tpy::BigInt>()) << "\n";
+    std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>()) << "\n";
     // print(math.gcd(12))
-    std::array<::tpy::BigInt, 1> __tmp_6{12};
-    std::cout << ::tpystd::math::gcd(::tpy::varargs<::tpy::BigInt>(__tmp_6)) << "\n";
+    std::array<const ::tpy::BigInt, 1> __tmp_6{12};
+    std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_6)) << "\n";
     // print(math.gcd(-12))
-    std::array<::tpy::BigInt, 1> __tmp_7{-12};
-    std::cout << ::tpystd::math::gcd(::tpy::varargs<::tpy::BigInt>(__tmp_7)) << "\n";
+    std::array<const ::tpy::BigInt, 1> __tmp_7{-12};
+    std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_7)) << "\n";
     // print(math.gcd(0))                 # 0 (single-zero edge)
-    std::array<::tpy::BigInt, 1> __tmp_8{0};
-    std::cout << ::tpystd::math::gcd(::tpy::varargs<::tpy::BigInt>(__tmp_8)) << "\n";
+    std::array<const ::tpy::BigInt, 1> __tmp_8{0};
+    std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_8)) << "\n";
     // print(math.gcd(12, 18, 24))        # 6
-    std::array<::tpy::BigInt, 3> __tmp_9{12, 18, 24};
-    std::cout << ::tpystd::math::gcd(::tpy::varargs<::tpy::BigInt>(__tmp_9)) << "\n";
+    std::array<const ::tpy::BigInt, 3> __tmp_9{12, 18, 24};
+    std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_9)) << "\n";
     // print(math.gcd(12, 18, 25))        # 1 (coprime early-out)
-    std::array<::tpy::BigInt, 3> __tmp_10{12, 18, 25};
-    std::cout << ::tpystd::math::gcd(::tpy::varargs<::tpy::BigInt>(__tmp_10)) << "\n";
+    std::array<const ::tpy::BigInt, 3> __tmp_10{12, 18, 25};
+    std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_10)) << "\n";
     // print(math.gcd(0, 0, 0))           # 0
-    std::array<::tpy::BigInt, 3> __tmp_11{0, 0, 0};
-    std::cout << ::tpystd::math::gcd(::tpy::varargs<::tpy::BigInt>(__tmp_11)) << "\n";
+    std::array<const ::tpy::BigInt, 3> __tmp_11{0, 0, 0};
+    std::cout << ::tpystd::math::gcd(::tpy::varargs<const ::tpy::BigInt>(__tmp_11)) << "\n";
     // # lcm: empty -> 1, single -> abs, zero anywhere -> 0
     // print(math.lcm())
-    std::cout << ::tpystd::math::lcm(::tpy::varargs<::tpy::BigInt>()) << "\n";
+    std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>()) << "\n";
     // print(math.lcm(6))
-    std::array<::tpy::BigInt, 1> __tmp_12{6};
-    std::cout << ::tpystd::math::lcm(::tpy::varargs<::tpy::BigInt>(__tmp_12)) << "\n";
+    std::array<const ::tpy::BigInt, 1> __tmp_12{6};
+    std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_12)) << "\n";
     // print(math.lcm(-6))
-    std::array<::tpy::BigInt, 1> __tmp_13{-6};
-    std::cout << ::tpystd::math::lcm(::tpy::varargs<::tpy::BigInt>(__tmp_13)) << "\n";
+    std::array<const ::tpy::BigInt, 1> __tmp_13{-6};
+    std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_13)) << "\n";
     // print(math.lcm(0))                 # 0 (single-zero edge)
-    std::array<::tpy::BigInt, 1> __tmp_14{0};
-    std::cout << ::tpystd::math::lcm(::tpy::varargs<::tpy::BigInt>(__tmp_14)) << "\n";
+    std::array<const ::tpy::BigInt, 1> __tmp_14{0};
+    std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_14)) << "\n";
     // print(math.lcm(4, 6, 8))           # 24
-    std::array<::tpy::BigInt, 3> __tmp_15{4, 6, 8};
-    std::cout << ::tpystd::math::lcm(::tpy::varargs<::tpy::BigInt>(__tmp_15)) << "\n";
+    std::array<const ::tpy::BigInt, 3> __tmp_15{4, 6, 8};
+    std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_15)) << "\n";
     // print(math.lcm(4, 0, 8))           # 0 (zero short-circuit)
-    std::array<::tpy::BigInt, 3> __tmp_16{4, 0, 8};
-    std::cout << ::tpystd::math::lcm(::tpy::varargs<::tpy::BigInt>(__tmp_16)) << "\n";
+    std::array<const ::tpy::BigInt, 3> __tmp_16{4, 0, 8};
+    std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_16)) << "\n";
     // print(math.lcm(-4, -6, -8))        # 24 (sign always stripped)
-    std::array<::tpy::BigInt, 3> __tmp_17{-4, -6, -8};
-    std::cout << ::tpystd::math::lcm(::tpy::varargs<::tpy::BigInt>(__tmp_17)) << "\n";
+    std::array<const ::tpy::BigInt, 3> __tmp_17{-4, -6, -8};
+    std::cout << ::tpystd::math::lcm(::tpy::varargs<const ::tpy::BigInt>(__tmp_17)) << "\n";
 }
 
 void __tpy_init() {

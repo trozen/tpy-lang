@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string f(::tpy::varargs<int32_t> args, std::string_view sep = ", ");
+std::string f(::tpy::varargs<const int32_t> args, std::string_view sep = ", ");
 void main();
 
 void __tpy_init();

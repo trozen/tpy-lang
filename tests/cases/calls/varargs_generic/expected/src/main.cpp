@@ -13,11 +13,11 @@ void main() {
     std::array<std::string, 2> __tmp_2{"hello", "world"};
     std::cout << first<std::string>(::tpy::varargs<std::string>(__tmp_2)) << "\n";
     // print(count(1, 2, 3, 4))
-    std::array<int32_t, 4> __tmp_3{1, 2, 3, 4};
-    std::cout << count<int32_t>(::tpy::varargs<int32_t>(__tmp_3)) << "\n";
+    std::array<const int32_t, 4> __tmp_3{1, 2, 3, 4};
+    std::cout << count<int32_t>(::tpy::varargs<const int32_t>(__tmp_3)) << "\n";
     // print(count("a"))
-    std::array<std::string, 1> __tmp_4{"a"};
-    std::cout << count<std::string>(::tpy::varargs<std::string>(__tmp_4)) << "\n";
+    std::array<const std::string, 1> __tmp_4{"a"};
+    std::cout << count<std::string>(::tpy::varargs<const std::string>(__tmp_4)) << "\n";
 }
 
 void __tpy_init() {

@@ -12,7 +12,7 @@ struct Box;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t take_ro(::tpy::varargs<const Box> items);
-int32_t forward_mutable(::tpy::varargs<Box> xs);
+int32_t forward_mutable(::tpy::varargs<const Box> xs);
 int32_t forward_readonly(::tpy::varargs<const Box> xs);
 void main();
 

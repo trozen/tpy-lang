@@ -9,7 +9,7 @@ void main() {
     // p = Pile()
     Pile p = Pile();
     // print(p.total())
-    std::cout << p.total(::tpy::varargs<Box>()) << "\n";
+    std::cout << p.total(::tpy::varargs<const Box>()) << "\n";
     // a = Box(Int32(1))
     Box a = Box(1);
     // b = Box(Int32(2))
@@ -17,8 +17,8 @@ void main() {
     // c = Box(Int32(3))
     Box c = Box(3);
     // print(p.total(a, b, c))
-    std::array<Box*, 3> __tmp_1{&a, &b, &c};
-    std::cout << p.total(::tpy::varargs<Box>(__tmp_1)) << "\n";
+    std::array<const Box*, 3> __tmp_1{&a, &b, &c};
+    std::cout << p.total(::tpy::varargs<const Box>(__tmp_1)) << "\n";
 }
 
 void __tpy_init() {

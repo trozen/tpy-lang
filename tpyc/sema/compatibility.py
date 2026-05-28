@@ -206,9 +206,18 @@ class TypeCompatibility:
         self.deduction: 'LocalTypeDeduction'
 
     def _mark_addr_taken(self, expr: TpyExpr) -> None:
-        """Mark all param roots of expr as mutated because their address is taken."""
-        for r in addr_taken_roots(expr):
-            self.ctx.mark_param_mutated(r)
+        """Mark all param roots of expr as mutated because their address is taken.
+
+        Resolves alias / element / field / ptr borrow chains via
+        `effective_storage` so element-borrowing aliases (`v = items[i]`)
+        trace back to their underlying param. Loop variables also propagate
+        to their source iterables -- both are storage that the address-take
+        could mutate via the resulting pointer.
+        """
+        for name in addr_taken_roots(expr):
+            root = self.ctx.func.borrow_tracker.effective_storage(name)
+            self.ctx.mark_param_mutated(root)
+            self.ctx.mark_loop_var_mutated(root)
 
     def is_type_compatible(self, actual: TpyType, expected: TpyType) -> bool:
         """Non-raising check: is actual assignable to expected?"""
@@ -1245,15 +1254,11 @@ class TypeCompatibility:
         if coercion is None:
             return expr
         # Value-to-mutable-Ptr coercions (`record_to_ptr`, `upcast_to_ptr`)
-        # emit `&expr` and require the source storage to stay mutable. Mark
-        # the source roots as mutated so Phase 2 keeps them as `T&` (not
-        # `const T&`) -- same propagation the explicit `take_ptr(x)` path
-        # gets via `value_ptr_coercion` handling in calls.py.
+        # emit `&expr` and require the source storage to stay mutable -- same
+        # propagation the explicit `take_ptr(x)` path gets via the
+        # `value_ptr_coercion` handler in calls.py and the vararg pack handler.
         if coercion.name in ("record_to_ptr", "upcast_to_ptr"):
-            for name in addr_taken_roots(expr):
-                root = self.ctx.func.borrow_tracker.effective_storage(name)
-                self.ctx.mark_param_mutated(root)
-                self.ctx.mark_loop_var_mutated(root)
+            self._mark_addr_taken(expr)
         runtime_bigint = False
         if coercion.name == "int_literal_to_fixed_int":
             runtime_bigint = self.is_runtime_bigint_expr(expr)

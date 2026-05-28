@@ -9,13 +9,13 @@ void main() {
     // c = Counter(Int32(10))
     Counter c = Counter(10);
     // print(c.total(Int32(1)))
-    std::cout << c.total(1, ::tpy::varargs<int32_t>(), 1) << "\n";
+    std::cout << c.total(1, ::tpy::varargs<const int32_t>(), 1) << "\n";
     // print(c.total(Int32(1), Int32(2), Int32(3)))
-    std::array<int32_t, 2> __tmp_1{2, 3};
-    std::cout << c.total(1, ::tpy::varargs<int32_t>(__tmp_1), 1) << "\n";
+    std::array<const int32_t, 2> __tmp_1{2, 3};
+    std::cout << c.total(1, ::tpy::varargs<const int32_t>(__tmp_1), 1) << "\n";
     // print(c.total(Int32(1), Int32(2), Int32(3), multiplier=Int32(10)))
-    std::array<int32_t, 2> __tmp_2{2, 3};
-    std::cout << c.total(1, ::tpy::varargs<int32_t>(__tmp_2), 10) << "\n";
+    std::array<const int32_t, 2> __tmp_2{2, 3};
+    std::cout << c.total(1, ::tpy::varargs<const int32_t>(__tmp_2), 10) << "\n";
 }
 
 void __tpy_init() {

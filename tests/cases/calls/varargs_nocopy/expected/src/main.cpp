@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def use_all(*args: Resource) -> None:
-void use_all(::tpy::varargs<Resource> args) {
+void use_all(::tpy::varargs<const Resource> args) {
     // for r in args:
     auto& __obj_0 = args;
     auto __beg_0 = __obj_0.begin();
@@ -24,8 +24,8 @@ void main() {
     // b = Resource(2)
     Resource b = Resource(2);
     // use_all(a, b)
-    std::array<Resource*, 2> __tmp_1{&a, &b};
-    use_all(::tpy::varargs<Resource>(__tmp_1));
+    std::array<const Resource*, 2> __tmp_1{&a, &b};
+    use_all(::tpy::varargs<const Resource>(__tmp_1));
     // print("after use_all")
     std::cout << "after use_all" << "\n";
 }

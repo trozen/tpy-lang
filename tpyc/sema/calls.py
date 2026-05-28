@@ -37,7 +37,7 @@ from ..modules import extract_type_params
 from ..namespace import BindingKind
 from ..coercions import CoercionContext, VALUE_TO_PTR
 from ..symbol_binding import SymbolKind, is_kind, walk_attribute_chain
-from .context import PENDING_CONTAINER_TYPES, addr_taken_roots
+from .context import PENDING_CONTAINER_TYPES
 from ..diagnostics import SemanticError
 from .overloads import (
     type_matches_numeric, type_matches_with_coercion,
@@ -2535,11 +2535,7 @@ class CallAnalyzer:
                     raise self.ctx.error(
                         f"argument '{param.name}' must be a variable, attribute, "
                         f"or container element (not a temporary or expression)", expr)
-                # Address-taking requires T& -- mark params and loop vars as mutated.
-                for name in addr_taken_roots(expr.args[i]):
-                    root = self.ctx.func.borrow_tracker.effective_storage(name)
-                    self.ctx.mark_param_mutated(root)
-                    self.ctx.mark_loop_var_mutated(root)
+                self.compat._mark_addr_taken(expr.args[i])
 
     def _check_borrow_arg_conflicts(self, expr: TpyCall | TpyMethodCall) -> None:
         """Warn when a borrowed container is passed to a non-readonly parameter.
@@ -2619,6 +2615,31 @@ class CallAnalyzer:
             # If callee is known not to mutate this param, skip
             if fi.mutated_params is not None and i not in fi.mutated_params:
                 continue
+            # Vararg slot: Span[T] is itself a value type, so the
+            # unwrap-readonly gate below would short-circuit. Each individual
+            # arg in the pack is address-taken into a `T*` slot (indirect-mode
+            # varargs), so the source must be a non-const lvalue. Mark each
+            # arg's root on both axes: `mark_param_mutated` keeps caller
+            # params non-const AND traces loop vars back to their iterable
+            # (via loop_var_iterable); `mark_loop_var_mutated` keeps the
+            # for-loop binding `auto& b` rather than `const auto& b` so `&b`
+            # is `T*` not `const T*`. Phase-2 vararg edges cover transitive
+            # propagation; this branch handles the local Phase-1 facts the
+            # edge mechanism doesn't (loop-var bindings are per-callsite).
+            if param.is_variadic and isinstance(arg, TpyVarargPack):
+                bare_va = unwrap_ref_type(param.type)
+                if is_span(bare_va) and not isinstance(bare_va.type_args[0], ReadonlyType):
+                    elem_type = bare_va.type_args[0]
+                    bare_elem = unwrap_readonly(elem_type)
+                    if (not bare_elem.is_value_type()
+                            and not isinstance(bare_elem, TypeParamRef)):
+                        for sub in arg.args:
+                            sub_expr = sub.expr if isinstance(sub, TpyStarUnpack) else sub
+                            sub_root = _root_name_of_expr(sub_expr)
+                            if sub_root is not None:
+                                self.ctx.mark_param_mutated(sub_root)
+                                self.ctx.mark_loop_var_mutated(sub_root)
+                continue
             if not unwrap_readonly(param.type).is_value_type():
                 arg_root = _root_name_of_expr(arg)
                 if arg_root is not None:
@@ -2652,10 +2673,44 @@ class CallAnalyzer:
             return
 
         param_map: dict[int, int] = {}
+        # A vararg slot can receive multiple caller args; param_map is single-
+        # valued per callee idx, so additional vararg-arg roots beyond the first
+        # spawn standalone edges (collected here, emitted alongside the main edge).
+        extra_vararg_edges: list[tuple[int, int]] = []
         for i, callee_param in enumerate(fi.params):
             if i >= len(expr.args):
                 break
             if isinstance(callee_param.type, ReadonlyType):
+                continue
+            # Vararg slot: walk the TpyVarargPack and record one (va_idx ->
+            # caller_idx) entry per distinct arg root. A readonly vararg slot
+            # is skipped (slot can't mutate elements through *items).
+            if callee_param.is_variadic:
+                bare_va = unwrap_ref_type(callee_param.type)
+                if not is_span(bare_va):
+                    continue
+                if isinstance(bare_va.type_args[0], ReadonlyType):
+                    continue
+                pack = expr.args[i]
+                if not isinstance(pack, TpyVarargPack):
+                    continue
+                seen_callers: set[int] = set()
+                for sub in pack.args:
+                    sub_expr = sub.expr if isinstance(sub, TpyStarUnpack) else sub
+                    sub_root = _root_name_of_expr(sub_expr)
+                    if sub_root is None:
+                        continue
+                    resolved = self.ctx.func.borrow_tracker.effective_storage_through_borrows(sub_root)
+                    if resolved not in name_to_idx or resolved in rebound:
+                        continue
+                    caller_idx = name_to_idx[resolved]
+                    if caller_idx in seen_callers:
+                        continue
+                    seen_callers.add(caller_idx)
+                    if i not in param_map:
+                        param_map[i] = caller_idx
+                    else:
+                        extra_vararg_edges.append((i, caller_idx))
                 continue
             # Skip params with no mutable borrow surface. This catches plain
             # value types and also opts out of Own[T], TypeParamRef, and
@@ -2683,6 +2738,13 @@ class CallAnalyzer:
             self.ctx.func.current_call_edges.append(
                 MutationCallEdge(callee_fi=callee, param_map=param_map,
                                  receiver_is_self=receiver_is_self)
+            )
+        for callee_idx, caller_idx in extra_vararg_edges:
+            callee = fi.root
+            self.ctx.func.current_call_edges.append(
+                MutationCallEdge(callee_fi=callee,
+                                 param_map={callee_idx: caller_idx},
+                                 receiver_is_self=False)
             )
 
     def _validate_ptr_constructor(self, expr: TpyCall) -> None:
@@ -4359,19 +4421,6 @@ class CallAnalyzer:
                         f"'{unpacked_elem}' needs a conversion to '{elem_type}' "
                         f"that *unpacking cannot apply (call to '{func.name}')",
                         arg)
-                # Unpacking into a *mutable* vararg slot is a mutable borrow of
-                # the source's elements (the slot's operator[] yields T&). For a
-                # reference-type container source (a list -- codegen lowers it
-                # via `as_mut_span`, which needs a non-const lvalue), force the
-                # source non-const by marking its root mutated. A span source is
-                # already a mutable view (no marking needed); a readonly slot
-                # borrows const (`as_span`) so no marking either.
-                if (not slot_is_readonly and inner_type is not None
-                        and not is_span(inner_type)):
-                    root = _root_name_of_expr(arg.expr)
-                    if root is not None:
-                        self.ctx.mark_param_mutated(root)
-                        self.ctx.mark_loop_var_mutated(root)
                 continue
             arg_type = self.expr.analyze_expr_with_hint(arg, elem_type)
             arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
@@ -4381,22 +4430,6 @@ class CallAnalyzer:
                 arg, arg_type, elem_type, f"*args element {i}",
                 coercion_ctx=CoercionContext.ARG)
             vararg_exprs[i] = coerced_arg
-            # A mutable reference-element vararg slot address-takes each arg
-            # (`&arg` into a `T*` array for varargs<T> indirect mode), so the
-            # source must be a non-const lvalue regardless of whether the callee
-            # mutates -- mark it mutated (symmetric to the *unpack branch above;
-            # _check_loop_var_arg_mutation skips vararg params since the param's
-            # Span type is a value type). Gate mirrors codegen's `is_ref`
-            # (_gen_vararg_pack): value-type and unbounded-generic elements are
-            # copied, not address-taken, so they need no marking.
-            if not isinstance(elem_type, ReadonlyType):
-                bare_elem = unwrap_readonly(elem_type)
-                if (not bare_elem.is_value_type()
-                        and not isinstance(bare_elem, TypeParamRef)):
-                    root = _root_name_of_expr(arg)
-                    if root is not None:
-                        self.ctx.mark_param_mutated(root)
-                        self.ctx.mark_loop_var_mutated(root)
 
         # Type-check keyword-only args (resolve_kwargs has filled all slots)
         kwonly_params = [p for p in func.params if p.keyword_only]
@@ -4596,10 +4629,7 @@ class CallAnalyzer:
                         raise self.ctx.error(
                             f"argument '{pname}' must be a variable, attribute, "
                             f"or container element (not a temporary or expression)", expr)
-                    for name in addr_taken_roots(source):
-                        root = self.ctx.func.borrow_tracker.effective_storage(name)
-                        self.ctx.mark_param_mutated(root)
-                        self.ctx.mark_loop_var_mutated(root)
+                    self.compat._mark_addr_taken(source)
                     inner_type = self.ctx.get_expr_type(source)
                     vpc_node = TpyCoerce(
                         expr=source,

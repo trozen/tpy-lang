@@ -12,7 +12,7 @@ template<typename T> struct Box;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-int32_t take_all(::tpy::varargs<Box<T>> boxes);
+int32_t take_all(::tpy::varargs<const Box<T>> boxes);
 void main();
 
 // @nocopy
@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 
 // def take_all[T](*boxes: Box[T]) -> Int32:
 template<typename T>
-int32_t take_all(::tpy::varargs<Box<T>> boxes) {
+int32_t take_all(::tpy::varargs<const Box<T>> boxes) {
     // n: Int32 = 0
     int32_t n = 0;
     // for b in boxes:

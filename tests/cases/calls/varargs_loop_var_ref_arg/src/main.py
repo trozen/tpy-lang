@@ -1,7 +1,7 @@
-# Loop-variable as a vararg arg into a non-mutating mutable slot. Exercises
-# the mark_loop_var_mutated half of the fix (the param-arg variant only hits
-# mark_param_mutated). Without the marking, the loop var `b` binds as
-# `const auto& b` and `&b` is `const Box*` -- mismatched with std::array<Box*>.
+# Loop-variable as a vararg arg into a non-mutating slot. After auto-readonly
+# inference, `take_mut` collapses to `varargs<const Box>`, so the loop var
+# `b` correctly binds as `const auto& b` and `&b` (`const Box*`) matches the
+# slot. The mutating-slot variant lives in varargs_auto_readonly_mutating_loop_var.
 from tpy import Int32, nocopy
 
 

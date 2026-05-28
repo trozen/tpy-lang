@@ -12,8 +12,8 @@ struct Box;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-int32_t count(::tpy::varargs<T> items);
-int32_t via_param(Box& b, Box& c);
+int32_t count(::tpy::varargs<const T> items);
+int32_t via_param(const Box& b, const Box& c);
 void main();
 
 // @nocopy
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 
 // def count[T](*items: T) -> Int32:
 template<typename T>
-int32_t count(::tpy::varargs<T> items) {
+int32_t count(::tpy::varargs<const T> items) {
     // return len(items)
     return ::tpy::__len__(items);
 }

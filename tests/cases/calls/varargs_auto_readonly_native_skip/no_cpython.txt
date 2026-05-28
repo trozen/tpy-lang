@@ -1,0 +1,1 @@
+native C++ companion -- not runnable under CPython

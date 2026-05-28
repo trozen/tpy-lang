@@ -1,6 +1,7 @@
 # Unpacking a reference-type container *parameter* (list[T], passed by C++
-# reference -> Ref[list[T]]) into *args. Into a mutable slot the source is
-# kept non-const (mutable borrow); into a readonly slot it borrows const.
+# reference -> Ref[list[T]]) into *args. Auto-readonly inference collapses
+# both `take_mut` and `take_ro` to `varargs<const Box>`, so the source
+# borrows const in both cases (the explicit readonly slot was already const).
 from tpy import Int32, readonly, nocopy
 
 

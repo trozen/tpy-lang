@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def take_all(*items: Box) -> Int32:
-int32_t take_all(::tpy::varargs<Box> items) {
+int32_t take_all(::tpy::varargs<const Box> items) {
     // n: Int32 = 0
     int32_t n = 0;
     // for b in items:
@@ -24,7 +24,7 @@ int32_t take_all(::tpy::varargs<Box> items) {
 // def use(xs: Span[Box]) -> Int32:
 int32_t use(std::span<Box> xs) {
     // return take_all(*xs)
-    return take_all(::tpy::varargs<Box>(xs));
+    return take_all(::tpy::varargs<const Box>(xs));
 }
 
 // def main() -> None:

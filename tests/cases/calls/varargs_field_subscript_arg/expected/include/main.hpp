@@ -12,9 +12,9 @@ struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t sum_all(::tpy::varargs<Box> items);
-int32_t via_field(Pair& p);
-int32_t via_subscript(std::vector<Box>& items);
+int32_t sum_all(::tpy::varargs<const Box> items);
+int32_t via_field(const Pair& p);
+int32_t via_subscript(const std::vector<Box>& items);
 void main();
 
 // @nocopy

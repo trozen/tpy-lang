@@ -44,7 +44,7 @@ struct Pile {
 
     // def total[T](self, *boxes: Box[T]) -> Int32:
     template<typename T>
-    int32_t total(::tpy::varargs<Box<T>> boxes) const {
+    int32_t total(::tpy::varargs<const Box<T>> boxes) const {
         // n: Int32 = 0
         int32_t n = 0;
         // for b in boxes:

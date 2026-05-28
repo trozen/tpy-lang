@@ -22,7 +22,7 @@ int32_t take_ro(::tpy::varargs<const Box> items) {
 }
 
 // def forward_mutable(*xs: Box) -> Int32:
-int32_t forward_mutable(::tpy::varargs<Box> xs) {
+int32_t forward_mutable(::tpy::varargs<const Box> xs) {
     // return take_ro(*xs)
     return take_ro(::tpy::varargs<const Box>(xs));
 }
@@ -40,8 +40,8 @@ void main() {
     // b = Box(6)
     Box b = Box(6);
     // print(forward_mutable(a, b))
-    std::array<Box*, 2> __tmp_1{&a, &b};
-    std::cout << forward_mutable(::tpy::varargs<Box>(__tmp_1)) << "\n";
+    std::array<const Box*, 2> __tmp_1{&a, &b};
+    std::cout << forward_mutable(::tpy::varargs<const Box>(__tmp_1)) << "\n";
     // print(forward_readonly(a, b))
     std::array<const Box*, 2> __tmp_2{&a, &b};
     std::cout << forward_readonly(::tpy::varargs<const Box>(__tmp_2)) << "\n";

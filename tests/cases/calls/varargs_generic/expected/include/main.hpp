@@ -12,7 +12,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename T>
 ::tpy::val_or_ref_t<T> first(::tpy::varargs<T> args);
 template<typename T>
-int32_t count(::tpy::varargs<T> args);
+int32_t count(::tpy::varargs<const T> args);
 void main();
 
 // def first[T](*args: T) -> T:
@@ -23,7 +23,7 @@ template<typename T>
 }
 // def count[T](*args: T) -> Int32:
 template<typename T>
-int32_t count(::tpy::varargs<T> args) {
+int32_t count(::tpy::varargs<const T> args) {
     // return len(args)
     return ::tpy::__len__(args);
 }

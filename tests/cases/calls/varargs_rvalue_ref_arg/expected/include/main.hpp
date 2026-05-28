@@ -11,7 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t sum_all(::tpy::varargs<Box> items);
+int32_t sum_all(::tpy::varargs<const Box> items);
 void main();
 
 // @nocopy

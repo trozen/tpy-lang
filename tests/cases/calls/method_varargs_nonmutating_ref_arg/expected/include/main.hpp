@@ -41,10 +41,10 @@ struct Pile {
 
 
     // def total(self, *boxes: Box) -> Int32:
-    int32_t total(::tpy::varargs<Box> boxes) const;
+    int32_t total(::tpy::varargs<const Box> boxes) const;
 
     // def via_param(self, b: Box, c: Box) -> Int32:
-    int32_t via_param(Box& b, Box& c) const;
+    int32_t via_param(const Box& b, const Box& c) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pile";
 };
 
@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Pile& obj) {
 
 
 // def total(self, *boxes: Box) -> Int32:
-inline int32_t Pile::total(::tpy::varargs<Box> boxes) const {
+inline int32_t Pile::total(::tpy::varargs<const Box> boxes) const {
     // n: Int32 = 0
     int32_t n = 0;
     // for b in boxes:
@@ -72,10 +72,10 @@ inline int32_t Pile::total(::tpy::varargs<Box> boxes) const {
 }
 
 // def via_param(self, b: Box, c: Box) -> Int32:
-inline int32_t Pile::via_param(Box& b, Box& c) const {
+inline int32_t Pile::via_param(const Box& b, const Box& c) const {
     // return self.total(b, c)  # tpyc: ok
-    std::array<Box*, 2> __tmp_1{&b, &c};
-    return this->total(::tpy::varargs<Box>(__tmp_1));
+    std::array<const Box*, 2> __tmp_1{&b, &c};
+    return this->total(::tpy::varargs<const Box>(__tmp_1));
 }
 void __tpy_init();
 } // namespace tpyapp::main
