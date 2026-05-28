@@ -393,8 +393,8 @@
   nested record (`Outer.Inner`) would have spelled `__self: Outer.Inner&`
   -- invalid C++. Both fixed; new positive test
   `iterators/gen_method_typeparam` guards the first (the second is
-  latent, no nested-record method test exists). Migration scope is now
-  complete -- only G (new surface) remains.
+  latent, no nested-record method test exists). The structural migration
+  is complete; user-visible completeness is tracked as Phase H below.
 - **Phase D/E prerequisites (surfaced by /tpy-review):**
   - Borrow-form yield slot **DONE**: `_resumable_ret_type_cpp` now
     routes through `gen_generators._iter_slot_for_yield` -- borrow form
@@ -459,9 +459,127 @@
     size win (bare storage for default-constructible field types,
     dropping the bool) needs the `std::conditional` `frame_field<T>`
     wrapper and stays a separate item in TODO.md.
-- Phases D (D1+D2+D3), E, and F (all of F1-F6) DONE; the migration is
-  complete. G (new surface: `yield from`/`send`/`throw`/`close`) not
-  started.
+- Phases D (D1+D2+D3), E, and F (all of F1-F6) DONE; the migration's
+  **structural** goal (one struct-shape codegen + the simple-generator
+  peephole) is complete. **User-visible completeness** -- closing the
+  shapes the resumable frame is now structurally capable of lowering
+  but that still cleanly reject -- is tracked as **Phase H** below.
+  G (`yield from`/`send`/`throw`/`close`), async generators (PEP 525),
+  and `@contextlib.contextmanager` are out of Phase H scope (new
+  surface, not completeness gaps).
+
+## Phase H approach: close the rejects (user-visible completeness)
+
+The migration's structural goal (A-F: one struct-shape codegen + the
+simple-generator peephole) is complete. Phase H is the user-visible
+completeness pass: every shape the resumable frame is now
+*structurally* capable of lowering but that still emits a clean
+"not yet supported" diagnostic should compile -- the suspension-shape
+sema reject becomes effectively empty for the resumable path.
+
+**Definition of complete:** Phase H1-H3 done (the high-priority
+CFG-decomposition bundle), and H4-H6 either done or explicitly
+deferred in TODO.md with a tracker. H7 stays low-priority indefinitely.
+
+### High priority -- CFG-decomposition family
+
+Shared fix shape: extend the CFG builder to decompose one more compound
+shape. Benefits async and generators together; each item converts an
+existing `error_*` case to positive.
+
+- **H1 -- `yield`/`await` inside `match`.** `match` is the one compound
+  the CFG does not decompose, so a suspension reaching the leaf-append
+  path raises `_CFGNotYetSupported` (and sema's
+  `_check_resumable_suspension_shape` rejects it earlier). Fix: add a
+  `MatchRegion` to `resumable_cfg.py` that lowers each case arm as its
+  own basic block, with the discriminant-bind and pattern-test as
+  separate terminators. Drop the corresponding sema reject. Converts:
+  `iterators/error_gen_match_yield`, `error_gen_method_match_yield`,
+  `error_gen_generic_match_yield`, `async/error_async_match_await`.
+
+- **H2 -- `return` inside a suspending `finally`.** The CFG-based
+  finally already parks pending returns from the *try body* (M3.3.2
+  for async; carried over for generators in F5/E). Fix: extend the
+  parking to returns inside the *finally body itself* -- park into the
+  same `__finally_ret_<n>` slot + `__finally_pending_<n>` flag, then
+  `AsyncFinallyExit` emits the deferred Poll::ready / generator
+  StopIteration. Drop the sema reject. Converts:
+  `iterators/error_gen_return_in_yield_finally`,
+  `async/error_async_return_in_await_finally`.
+
+- **H3 -- Nested suspending `finally`.** Today rejected because the
+  inner suspending finally would need to forward its pending exception
+  / return to the outer slot. Fix: when building a try whose finally
+  suspends inside an outer suspending-finally region, chain the
+  pending-exception and pending-return slots so the inner's
+  AsyncFinallyExit hands off to the outer's parking machinery instead
+  of running them as the final exit. Drop the sema reject. Converts:
+  `iterators/error_gen_nested_yield_finally`,
+  `async/error_await_in_control_flow`.
+
+### Medium priority -- independent shapes
+
+- **H4 -- multi-yield protocol-typed-param generators.** Today rejected
+  at the codegen gate: a `def gen(it: Iterable[T])` makes the struct a
+  template (`T_it`) but the resumable for-loop frame field is typed
+  against the abstract concept `Iterable<T>` instead of the deduced
+  template param -- ill-formed. Fix: substitute the for-loop frame-field
+  type (and any other body type referencing the iterable) with the
+  deduced template param `T_it`. Drop the codegen-gate reject.
+  Converts: `iterators/error_gen_proto_param_multi_yield`.
+
+- **H5 -- narrowing across a suspension inside the narrowed block.**
+  Shared async+generator latent limitation filed in `BUGS.md` during
+  F5 review: `isinstance(self, Sub)` (or any polymorphic narrowing)
+  inside a block that suspends, then accesses subclass state after,
+  fails to compile because the narrowed `Sub*` is a C++ local, not a
+  frame field. Fix: materialize the narrowing binding as a frame field
+  (`Sub* __self_narrowed`) hoisted across the suspension, parallel to
+  how user locals are hoisted. Same machinery as flow-fact-narrowing
+  surviving a suspension generally.
+
+- **H6 DONE (2026-05-28)** -- generator/async methods on bounded
+  generic classes (`class Box[T: Bound]`). The H6 repro surfaced TWO
+  bugs F4 had missed: (1) the literal entry -- `_resumable_frame_ctx`
+  not passing `record_type_param_bounds` to `setup_body_scope` (body
+  emit's `current_type_param_bounds` empty -- mostly latent, but breaks
+  move-only `T: Iterator[X]` params and silently skips for-loop strategy
+  peepholes); (2) the actual user-visible blocker -- the resumable
+  factory's out-of-class member definition (`Cls<T>::method() const`)
+  used `template <typename T>` instead of the constrained form,
+  non-equivalent to the in-class declaration's `template<Iterable<int32_t>
+  T>` -> hard C++ constraint mismatch. Fix: extracted a shared
+  `protocols.gen_record_template_parts` (refactor of
+  `gen_record_template_header`), added `gen_async._record_template_parts`
+  that folds in the record's `type_param_bounds` / `type_param_kinds`,
+  and routed `_emit_template_header` + `_emit_member_template_headers`
+  through it. Bug (1) was the literal one-line `setup_body_scope` thread.
+  Tests: `iterators/gen_method_bounded_on_generic_class`,
+  `async/async_method_bounded_on_generic_class`, plus
+  `{iterators/gen,async/async}_method_native_iterable_bound` as
+  regression guards for the bounds-threading (catch the begin/end
+  peephole in a non-suspending body for-loop on a `NativeIterable`-
+  bounded T -- without Fix B the for-loop falls back to the universal
+  `::tpy::__iter__` shape). Closed the second half of BUGS:240 in the
+  same arc: `_resumable_frame_ctx` now save/restores `pointer_locals`
+  AND `current_type_param_bounds` so a future caller that nests sync
+  body emission around a coro won't see inner-coro state leak out.
+
+### Low priority -- skippable indefinitely
+
+- **H7 -- multi-item `async with X as a, Y as b:`.** Workaround is
+  documented (nest two `async with`); skippable until a real workload
+  needs it.
+
+### Out of Phase H scope (new surface, separate phases)
+
+- **G -- `yield from` / `send()` / `throw()` / `close()`.** Largest
+  user-visible feature gap in Python-generator support; incremental on
+  the resumable frame rather than from scratch.
+- **Async generators (PEP 525).** `async def f() -> AsyncIterator[T]:
+  yield ...` -- combines async + generator semantics. Distinct feature.
+- **`@contextlib.contextmanager`.** Generator-based context managers
+  via a stdlib decorator; tracked in TODO.md.
 
 ## Phase D approach (DONE -- historical record)
 

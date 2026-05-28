@@ -453,6 +453,24 @@ class AsyncCoroCodegen:
             return ()
         return tuple(info.type_params)
 
+    def _record_template_parts(self, record_name: str | None) -> list[str]:
+        """Rendered template-header parts for the enclosing record's type
+        params, mirroring `protocols.gen_record_template_parts` so out-of-class
+        member-def headers spell the same constrained form as the class
+        declaration (`Iterable<int32_t> T`, not bare `typename T`). Without
+        this, an out-of-class definition's parameter-list is non-equivalent to
+        the in-class declaration's and C++ rejects with a constraint
+        mismatch."""
+        if not record_name:
+            return []
+        info = self.ctx.analyzer.registry.get_record(record_name)
+        if info is None or not info.type_params:
+            return []
+        return self.functions.protocols.gen_record_template_parts(
+            list(info.type_params),
+            info.type_param_bounds or {},
+            info.type_param_kinds)
+
     def _is_templated_coro(self, func: TpyFunction,
                             record_name: str | None = None) -> bool:
         """True iff the coro/generator struct is a C++ template -- because
@@ -464,14 +482,14 @@ class AsyncCoroCodegen:
         decision across both async and generator shapes."""
         return (bool(func.type_params)
                 or bool(self._protocol_template_parts(func))
-                or bool(self._record_template_args(record_name)))
+                or bool(self._record_template_parts(record_name)))
 
     def _emit_template_header(self, out: "TextIO", func: TpyFunction,
                                 *, indent: str = "",
                                 record_name: str | None = None) -> bool:
         proto_parts = self._protocol_template_parts(func)
-        record_tps = self._record_template_args(record_name)
-        if not func.type_params and not proto_parts and not record_tps:
+        record_parts = self._record_template_parts(record_name)
+        if not func.type_params and not proto_parts and not record_parts:
             return False
         # Record's [T...] first so an outer Box<T> reads naturally; then the
         # method's own [U...]; then protocol-typed-param template args. The
@@ -481,7 +499,7 @@ class AsyncCoroCodegen:
         # function definition of a class template (`Box<T>::method`) where
         # the method is itself a template, C++ requires NESTED headers
         # instead -- see `_emit_member_template_headers`.
-        parts = [f"typename {tp}" for tp in record_tps]
+        parts = list(record_parts)
         parts.extend(f"typename {tp}" for tp in func.type_params)
         parts.extend(proto_parts)
         out.write(f"{indent}template <{', '.join(parts)}>\n")
@@ -501,10 +519,9 @@ class AsyncCoroCodegen:
         template of a class template"; the flat form `_emit_template_header`
         produces declares a different entity and triggers
         no-declaration-matches at the in-class declaration."""
-        record_tps = self._record_template_args(record_name)
-        if record_tps:
-            parts = ", ".join(f"typename {tp}" for tp in record_tps)
-            out.write(f"{indent}template <{parts}>\n")
+        record_parts = self._record_template_parts(record_name)
+        if record_parts:
+            out.write(f"{indent}template <{', '.join(record_parts)}>\n")
         proto_parts = self._protocol_template_parts(func)
         if func.type_params or proto_parts:
             parts_list = [f"typename {tp}" for tp in func.type_params]
@@ -1007,6 +1024,13 @@ class AsyncCoroCodegen:
         old_movable_locals = self.ctx.movable_locals
         old_in_method = self.ctx.in_method
         old_method_record = self.ctx.current_method_record_type
+        # `setup_body_scope` -> `reset_scope` wipes `pointer_locals` and
+        # `current_type_param_bounds` on entry, so the inner body sees a
+        # clean state. Save/restore here so a future caller that nests sync
+        # body emission around a coro doesn't see inner-coro state leak out
+        # on exit.
+        old_pointer_locals = self.ctx.pointer_locals
+        old_type_param_bounds = self.ctx.current_type_param_bounds
 
         # Reset frame-specific fields before setup_body_scope, since the
         # `setup_resumable_frame_locals` call inside it reads
@@ -1025,11 +1049,23 @@ class AsyncCoroCodegen:
             local_ns.bind_variable(pname, ptype)
 
         crp, dcbp = self.functions.compute_body_const_sets(func, record_name)
+        # Mirror sync `_gen_method`: a generator/async method on a generic
+        # record needs the record's type-param bounds in scope so for-loop
+        # over `self.items: T` resolves T to its protocol bound (otherwise
+        # falls back to the universal `::tpy::__iter__` path, missing the
+        # direct-iterator / native-iterable peepholes and breaking move-only
+        # `Iterator[X]` params).
+        record_bounds = None
+        if record_name:
+            rec_info = self.ctx.analyzer.registry.get_record(record_name)
+            if rec_info is not None and rec_info.type_param_bounds:
+                record_bounds = rec_info.type_param_bounds
         self.statements.setup_body_scope(
             func.params, func.return_type, func, local_ns,
             indent_level=1, is_method=bool(record_name),
             const_ref_params=crp, deep_const_borrow_params=dcbp,
             owning_record_name=record_name,
+            record_type_param_bounds=record_bounds,
         )
 
         self.ctx.in_generator_body = True
@@ -1068,6 +1104,8 @@ class AsyncCoroCodegen:
             self.ctx.movable_locals = old_movable_locals
             self.ctx.in_method = old_in_method
             self.ctx.current_method_record_type = old_method_record
+            self.ctx.pointer_locals = old_pointer_locals
+            self.ctx.current_type_param_bounds = old_type_param_bounds
 
     def gen_coro_finally_top_def(self, out: "TextIO", func: TpyFunction,
                                    record_name: str | None = None) -> None:

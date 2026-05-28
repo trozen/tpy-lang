@@ -283,21 +283,22 @@ class ProtocolGenerator:
                 return True
         return False
 
-    def gen_record_template_header(
+    def gen_record_template_parts(
         self,
         type_params: list[str],
         type_param_bounds: dict[str, NominalType],
         type_param_kinds: list[TypeParamKind] | None = None
-    ) -> str:
-        """Generate template header for a generic record.
+    ) -> list[str]:
+        """Render the per-param parts of a generic record's template header.
 
-        For unbounded TYPE params: template<typename T>
-        For bounded TYPE params: template<Comparable T>
-        For INT params: template<std::size_t N>
+        For unbounded TYPE params: `typename T`
+        For protocol-bounded TYPE params: `Comparable T` / `Sequence<int32_t> T`
+        For INT params: `std::size_t N`
+        For class / type-param bounds (not C++ concepts): `typename T` -- the
+        TPy-side subtype bound is enforced at the call site (satisfies_bound).
         """
         template_parts = []
         for i, tp in enumerate(type_params):
-            # Check if this is an INT type param
             kind = type_param_kinds[i] if type_param_kinds and i < len(type_param_kinds) else TypeParamKind.TYPE
             if kind == TypeParamKind.INT:
                 template_parts.append(f"std::size_t {tp}")
@@ -310,11 +311,17 @@ class ProtocolGenerator:
                 else:
                     template_parts.append(f"{concept_name} {tp}")
             else:
-                # A class or type-param bound (`U: Animal` / `U: T`) is not a
-                # C++ concept; emit an unconstrained param. The subtype bound
-                # is enforced at the TPy call site (satisfies_bound).
                 template_parts.append(f"typename {tp}")
-        return f"template<{', '.join(template_parts)}>"
+        return template_parts
+
+    def gen_record_template_header(
+        self,
+        type_params: list[str],
+        type_param_bounds: dict[str, NominalType],
+        type_param_kinds: list[TypeParamKind] | None = None
+    ) -> str:
+        parts = self.gen_record_template_parts(type_params, type_param_bounds, type_param_kinds)
+        return f"template<{', '.join(parts)}>"
 
     def _concept_constraint(self, pname: str, ptype: NominalType) -> str:
         """Build the concept constraint expression for a protocol template param.
