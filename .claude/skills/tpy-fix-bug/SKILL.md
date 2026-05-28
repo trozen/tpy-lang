@@ -1,7 +1,6 @@
 ---
 name: tpy-fix-bug
 description: Structured procedure for fixing tpyc compiler bugs. Starts with an impact assessment to choose between a quick fix and a full architectural analysis. Forces the analysis to be presented to the user before any code change beyond trivial fixes. Invoke at the start of any bug-fix work -- a user-reported defect, a BUGS.md entry, a failing test, a discovered crash.
-disable-model-invocation: true
 ---
 
 # tpy-fix-bug
@@ -210,13 +209,25 @@ Phase 2 trace. The user will ask if they want depth.
 Don't propose deleting or cleaning up the old branch -- leave that
 to the user.
 
-**Do not start coding.** The user picks the path:
+**Do not start coding. Propose; don't poll.** Lead with your
+recommendation: the fix you would design from scratch -- the cleanest
+long-term shape, usually the architectural fix for a real root cause,
+unless the analysis showed a strong case against it. State it clearly
+enough that the user can just confirm; don't dress it up as option (a)
+of a menu when there's nothing else live. Include the proposed branch
+(if any) as part of the recommendation -- one confirmation covers both.
 
-- (a) architectural fix (and proposed branch, if any)
-- (b) patch + tracked follow-up in BUGS.md
-- (c) different direction -- e.g. redesign the feature itself if the
-  architectural fix is awkward in revealing ways
-- (d) more analysis needed before deciding
+Add alternatives ONLY when they are genuinely present in the analysis:
+
+- a **patch + tracked BUGS.md follow-up**, when the architectural fix is
+  too costly for the current context;
+- a **redesign-the-feature** path, when the architectural fix is awkward
+  in revealing ways (the feature may not fit the existing design);
+- a **more-analysis** path, when something material is genuinely
+  unresolved.
+
+For many bugs there is only one sensible path. In that case, propose it
+and ask for a yes -- not "pick (a), (b), or (c)."
 
 When the user signals "just fix it" or applies time pressure, push back
 once: ask whether they want the patch (with architectural fix tracked)
@@ -228,10 +239,11 @@ itself a signal: the feature may not fit the existing design well. Flag
 this as a design-level question -- do not reflexively force-fit with a
 patch.
 
-Once the user signals (a) or (b), create the proposed branch (if any)
-with `git checkout -b <new-branch> master` and start implementing --
-one approval covers both the fix direction and the branch. Do not
-push, force, or use `-D`.
+Once the user confirms a coding path (the recommendation or a coding
+alternative), create the proposed branch (if any) with
+`git checkout -b <new-branch> master` and start implementing -- one
+approval covers both the fix direction and the branch. Do not push,
+force, or use `-D`.
 
 ## Throughout: track new issues uncovered
 

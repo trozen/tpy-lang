@@ -1,7 +1,6 @@
 ---
 name: tpy-add-feature
 description: Structured procedure for adding new TurboPython language features or extending existing ones. Starts with a scope assessment to choose between a quick implementation and a full design pass. Forces the design to be presented to the user before any code change beyond trivial. Invoke at the start of any feature work -- new language construct, new built-in, new stdlib module, or extension to an existing feature.
-disable-model-invocation: true
 ---
 
 # tpy-add-feature
@@ -242,20 +241,34 @@ depth.
 Don't propose deleting or cleaning up the old branch -- leave that
 to the user.
 
-**Do not start coding.** The user picks the path:
+**Do not start coding. Propose; don't poll.** Lead with your
+recommendation: the design you would build from scratch -- the cleanest
+long-term shape that fits the existing model, unless the risk check
+raised a strong case against it. State it clearly enough that the user
+can just confirm; don't dress it up as option (a) of a menu when there's
+nothing else live. Include the proposed branch (if any) as part of the
+recommendation -- one confirmation covers both.
 
-- (a) proceed with the sketched design (and proposed branch, if any)
-- (b) different design -- e.g. a different phase boundary, a different
-  invariant, or a different home for the new behavior
-- (c) more analysis needed before deciding
-- (d) defer -- file as TODO/open question; not the right time to build
+Add alternatives ONLY when they are genuinely present:
+
+- a **different design** -- a different phase boundary, invariant, or
+  home for the behavior, when you see a materially better one or are
+  genuinely torn between two;
+- a **defer** path, when the design is reasonable but it's not the right
+  time to build (file as TODO / open question);
+- a **more-analysis** path, when something material is genuinely
+  unresolved.
+
+For many features there is only one sensible design. In that case,
+propose it and ask for a yes -- not "pick (a), (b), or (c)."
 
 When the user signals "just build it" or applies time pressure, push
 back once: a wrong design is much harder to unwind than a wrong fix.
 The cost of one round-trip is much lower than the cost of a feature
 that surfaces later as multiple bugs and a redesign.
 
-Once the user signals (a), create the proposed branch (if any) with
+Once the user confirms the design (the recommendation or an agreed
+alternative), create the proposed branch (if any) with
 `git checkout -b <new-branch> master` and start implementing -- one
 approval covers both the design and the branch. Do not push, force,
 or use `-D`.
