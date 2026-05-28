@@ -910,6 +910,12 @@ class TpyRaise(TpyStmt):
     is_call_form: bool = False  # raise Name() vs raise Name (set by parser)
     deref_depth: int = 0  # Set by sema: __deref__ steps to peel before calling __raise__ (Phase 20)
 
+    def exprs(self) -> list[TpyExpr]:
+        result = list(self.args)
+        if self.raise_expr is not None:
+            result.append(self.raise_expr)
+        return result
+
 
 @dataclass
 class TpyExceptHandler:

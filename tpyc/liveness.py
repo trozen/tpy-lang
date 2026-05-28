@@ -17,8 +17,8 @@ from __future__ import annotations
 
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
-    TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyAssert, TpyRaise,
-    TpyYield, TpyExprStmt, TpyMatch, TpyNestedDef, TpyDelItem, TpyDelVar, TpyTry, TpyWith,
+    TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyRaise,
+    TpyMatch, TpyNestedDef, TpyDelVar, TpyTry, TpyWith,
     TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr,
 )
 
@@ -287,35 +287,23 @@ def _analyze_stmt(
         if stmt.value:
             _process_reads(stmt.value, live, last_uses, source_aliases, detached_aliases)
 
-    elif isinstance(stmt, TpyYield):
-        _process_reads(stmt.value, live, last_uses, source_aliases, detached_aliases)
-
-    elif isinstance(stmt, TpyExprStmt):
-        _process_reads(stmt.expr, live, last_uses, source_aliases, detached_aliases)
-
-    elif isinstance(stmt, TpyDelItem):
-        for target in stmt.targets:
-            _process_reads(target.obj, live, last_uses, source_aliases, detached_aliases)
-            _process_reads(target.index, live, last_uses, source_aliases, detached_aliases)
-
-    elif isinstance(stmt, TpyDelVar):
-        for name in stmt.names:
-            live.discard(name)
-
-    elif isinstance(stmt, TpyAssert):
-        _process_reads(stmt.condition, live, last_uses, source_aliases, detached_aliases)
-        if stmt.message:
-            _process_reads(stmt.message, live, last_uses, source_aliases, detached_aliases)
-
     elif isinstance(stmt, TpyRaise):
         # Terminating (transfers to a handler / unwinds). Clear normal-flow
         # live, then process the raised exception's own reads so an earlier
         # consume of a var read here is not misread as last-use.
         live.clear()
-        if stmt.raise_expr:
-            _process_reads(stmt.raise_expr, live, last_uses, source_aliases, detached_aliases)
-        for arg in stmt.args:
-            _process_reads(arg, live, last_uses, source_aliases, detached_aliases)
+        for expr in stmt.exprs():
+            _process_reads(expr, live, last_uses, source_aliases, detached_aliases)
+
+    elif isinstance(stmt, TpyWith):
+        _analyze_with(stmt, live, last_uses, source_aliases, detached_aliases)
+
+    elif isinstance(stmt, TpyTry):
+        _analyze_try(stmt, live, last_uses, source_aliases, detached_aliases)
+
+    elif isinstance(stmt, TpyDelVar):
+        for name in stmt.names:
+            live.discard(name)
 
     elif isinstance(stmt, TpyNestedDef):
         # Captured vars are referenced by the closure (by-ref or by-value).
@@ -326,9 +314,13 @@ def _analyze_stmt(
                 live.add(name)
         live.discard(stmt.func.name)
 
-    # TpyBreak, TpyContinue, TpyPassStmt, TpyGlobal, TpyNonlocal, TpyImport: no reads.
-    # TpyWith / TpyTry are NOT handled: their bodies are not recursed, so reads
-    # inside them are invisible to last-use analysis.
+    else:
+        # Non-terminating, non-defining statements (yield, expr-stmt, assert,
+        # del-item, del-attr, ...): process every read-bearing child expression.
+        # Routing through exprs() means a future read-bearing statement is
+        # covered automatically rather than silently dropping its reads.
+        for expr in stmt.exprs():
+            _process_reads(expr, live, last_uses, source_aliases, detached_aliases)
 
 
 def _analyze_if(
@@ -367,6 +359,8 @@ def _analyze_match(
     detached_aliases: set[str],
 ) -> None:
     """Analyze match/case with per-arm branch merging (same as if/else)."""
+    # Case patterns are not read-tracked: value patterns (`case X.Y:`) reference
+    # module-level constants, never movable locals, so they carry no last-use.
     merged_live: set[str] = set()
     for case in stmt.cases:
         arm_terminates = stmts_terminate(case.body)
@@ -463,6 +457,85 @@ def _analyze_for_each(
 
     # Process iterable reads
     _process_reads(stmt.iterable, live, last_uses, source_aliases, detached_aliases)
+
+
+def _all_read_names(stmts: list[TpyStmt]) -> list[TpyName]:
+    """May over-collect defined names (e.g. a plain assign target renders as a
+    TpyName); callers only consult node identity against `last_uses`, where
+    those surplus nodes never appear, so the surplus is harmless.
+    """
+    result: list[TpyName] = []
+    for stmt in stmts:
+        for expr in stmt.exprs():
+            result.extend(_collect_reads_expr(expr))
+        for body in stmt.sub_bodies():
+            result.extend(_all_read_names(body))
+    return result
+
+
+def _analyze_with(
+    stmt: TpyWith,
+    live: set[str],
+    last_uses: set[int],
+    source_aliases: _Aliases,
+    detached_aliases: set[str],
+) -> None:
+    """Analyze a with statement. `__exit__` runs after the body on every path
+    but reads only the context manager, not body locals, so the body is a
+    plain sequential block: recurse it, kill the `as` targets (bound at
+    entry), then process the context-manager expressions (evaluated at entry).
+    """
+    _analyze_stmts_backward(stmt.body, live, last_uses, source_aliases, detached_aliases)
+    for item in reversed(stmt.items):
+        if item.target is not None:
+            live.discard(item.target)
+        _process_reads(item.context_expr, live, last_uses, source_aliases, detached_aliases)
+
+
+def _analyze_try(
+    stmt: TpyTry,
+    live: set[str],
+    last_uses: set[int],
+    source_aliases: _Aliases,
+    detached_aliases: set[str],
+) -> None:
+    """Analyze a try statement.
+
+    finally runs last on every path; handlers run on the exception path; else
+    runs on the normal path after the try body. An exception can transfer to a
+    handler at ANY point in the try body, so a name read by a handler or by
+    finally is live across the whole try body and must never be marked
+    last-use there -- otherwise a consume in the try body could move a value
+    the exception path still reads. We compute the handler/finally/else live
+    sets, mark the try body normally, then drop the last-use marks the body
+    walk gave to any name read on an exception path.
+    """
+    finally_live = live.copy()
+    if stmt.finally_body:
+        _analyze_stmts_backward(stmt.finally_body, finally_live, last_uses, source_aliases, detached_aliases)
+
+    handler_union: set[str] = set()
+    for h in stmt.handlers:
+        h_live = finally_live.copy()
+        _analyze_stmts_backward(h.body, h_live, last_uses, source_aliases, detached_aliases)
+        if h.binding is not None:
+            h_live.discard(h.binding)
+        handler_union |= h_live
+
+    else_live = finally_live.copy()
+    if stmt.else_body:
+        _analyze_stmts_backward(stmt.else_body, else_live, last_uses, source_aliases, detached_aliases)
+
+    # Try body: normal exit flows to else, exception at any point to a handler.
+    live.clear()
+    live.update(else_live | handler_union)
+    _analyze_stmts_backward(stmt.try_body, live, last_uses, source_aliases, detached_aliases)
+
+    exception_path_live = handler_union | finally_live
+    if exception_path_live:
+        for node in _all_read_names(stmt.try_body):
+            if node.name in exception_path_live:
+                last_uses.discard(id(node))
 
 
 def _compute_live_only(stmts: list[TpyStmt], live: set[str]) -> None:
@@ -578,46 +651,50 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
             for node in _collect_reads_expr(stmt.value):
                 live.add(node.name)
 
-    elif isinstance(stmt, TpyYield):
-        for node in _collect_reads_expr(stmt.value):
-            live.add(node.name)
-
-    elif isinstance(stmt, TpyExprStmt):
-        for node in _collect_reads_expr(stmt.expr):
-            live.add(node.name)
-
-    elif isinstance(stmt, TpyDelItem):
-        for target in stmt.targets:
-            for node in _collect_reads_expr(target.obj):
+    elif isinstance(stmt, TpyRaise):
+        live.clear()
+        for expr in stmt.exprs():
+            for node in _collect_reads_expr(expr):
                 live.add(node.name)
-            for node in _collect_reads_expr(target.index):
+
+    elif isinstance(stmt, TpyWith):
+        _compute_live_only(stmt.body, live)
+        for item in reversed(stmt.items):
+            if item.target is not None:
+                live.discard(item.target)
+            for node in _collect_reads_expr(item.context_expr):
                 live.add(node.name)
+
+    elif isinstance(stmt, TpyTry):
+        # Conservative over-approximation: any sub-body's reads may be live
+        # entering the try (an exception can transfer mid-body to a handler).
+        if stmt.finally_body:
+            _compute_live_only(stmt.finally_body, live)
+        for h in stmt.handlers:
+            h_live = live.copy()
+            _compute_live_only(h.body, h_live)
+            if h.binding is not None:
+                h_live.discard(h.binding)
+            live.update(h_live)
+        if stmt.else_body:
+            _compute_live_only(stmt.else_body, live)
+        _compute_live_only(stmt.try_body, live)
 
     elif isinstance(stmt, TpyDelVar):
         for name in stmt.names:
             live.discard(name)
-
-    elif isinstance(stmt, TpyAssert):
-        for node in _collect_reads_expr(stmt.condition):
-            live.add(node.name)
-        if stmt.message:
-            for node in _collect_reads_expr(stmt.message):
-                live.add(node.name)
-
-    elif isinstance(stmt, TpyRaise):
-        live.clear()
-        if stmt.raise_expr:
-            for node in _collect_reads_expr(stmt.raise_expr):
-                live.add(node.name)
-        for arg in stmt.args:
-            for node in _collect_reads_expr(arg):
-                live.add(node.name)
 
     elif isinstance(stmt, TpyNestedDef):
         if stmt.captured_names:
             for name in stmt.captured_names:
                 live.add(name)
         live.discard(stmt.func.name)
+
+    else:
+        # yield, expr-stmt, assert, del-item, del-attr, ...: add child-expr reads.
+        for expr in stmt.exprs():
+            for node in _collect_reads_expr(expr):
+                live.add(node.name)
 
 
 # -- Read collection ----------------------------------------------------------
