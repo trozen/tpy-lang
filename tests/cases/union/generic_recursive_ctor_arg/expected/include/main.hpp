@@ -8,11 +8,11 @@
 namespace tpyapp::main {
 
 template<typename T> struct Tree;
-struct E;
+struct Summary;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::expected<Tree<int32_t>, E> f();
+int32_t count_leaves(const Tree<int32_t>& t);
 void main();
 
 template<typename T>
@@ -33,19 +33,19 @@ struct Tree {
     }
 };
 
-// class E(Exception, ReturnException):
-struct E : ::tpy::Exception {
+// class Summary:
+struct Summary {
+    // n: Int32
+    int32_t n;
 
-    using ::tpy::Exception::Exception;
-
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<E>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
-    static constexpr std::string_view __tpy_class_name__ = "__main__.E";
+    // def __init__(self, t: Tree[Int32]) -> None:
+    Summary() = default;
+    explicit Summary(const Tree<int32_t>& t) : n(count_leaves(t)) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Summary";
 };
 
-inline std::ostream& operator<<(std::ostream& os, const E& obj) {
-    ::tpy::print_object_default(os, "E", obj);
+inline std::ostream& operator<<(std::ostream& os, const Summary& obj) {
+    ::tpy::print_object_default(os, "Summary", obj);
     return os;
 }
 

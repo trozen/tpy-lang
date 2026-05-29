@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, TypeRegistry, NominalType, AliasRef, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
     NoneType, INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
     RecursiveUnionInfo, RecursiveAliasInstanceType,
-    FunctionInfo, ParamInfo, is_any_str_type, BIGINT, FLOAT,
+    FunctionInfo, ParamInfo, MethodSignature, is_any_str_type, BIGINT, FLOAT,
     make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType, PtrType,
     TypeAliasInfo,
     is_integer_type, is_void_like_type,
@@ -2140,8 +2140,43 @@ class SemanticAnalyzer:
                 f.type = self._finalize_alias_refs(f.type)
             for method in record.methods:
                 self._finalize_func_aliases(method)
+            # RecordInfo carries registration-time snapshots of the ctor and
+            # method signatures, built before this pass, so their alias
+            # placeholders are stale and must be finalized here too. (Free
+            # functions register after this pass, so their FunctionInfo is
+            # already finalized; protocol signatures are finalized below.)
+            info = self.ctx.registry.get_record(record.name)
+            if info is not None:
+                if info.init_params:
+                    info.init_params = [
+                        (n, self._finalize_alias_refs(t), d)
+                        for (n, t, d) in info.init_params
+                    ]
+                for overloads in info.methods.values():
+                    for fi in overloads:
+                        if fi.return_type is not None:
+                            fi.return_type = self._finalize_alias_refs(fi.return_type)
+                        for pi in fi.params:
+                            pi.type = self._finalize_alias_refs(pi.type)
+        # Protocol method signatures are another registration-time snapshot:
+        # the registry ProtocolInfo (shared with the TypeDef payload) is read
+        # by conformance + protocol-call dispatch; the AST copy is separate.
+        for protocol in module.protocols:
+            self._finalize_method_signatures(protocol.methods)
+            pinfo = self.ctx.registry.scan_by_short_name(protocol.name)
+            if pinfo is not None:
+                self._finalize_method_signatures(pinfo.methods)
         if module.top_level_stmts:
             self._finalize_stmts_aliases(module.top_level_stmts)
+
+    def _finalize_method_signatures(self, methods: list[MethodSignature]) -> None:
+        for msig in methods:
+            for i, (name, typ) in enumerate(msig.params):
+                new = self._finalize_alias_refs(typ)
+                if new is not typ:
+                    msig.params[i] = (name, new)
+            if msig.return_type is not None:
+                msig.return_type = self._finalize_alias_refs(msig.return_type)
 
     def _finalize_func_aliases(self, func: TpyFunction) -> None:
         if func.return_type is not None:

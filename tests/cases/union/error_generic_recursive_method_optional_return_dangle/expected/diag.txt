@@ -1,0 +1,1 @@
+main.py:22: error: Cannot return local or temporary as 'Tree[Int32] | None'. The returned pointer would dangle. Return a reference to parameter data, or use Own[Tree[Int32] | None] to return by value.

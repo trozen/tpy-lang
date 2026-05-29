@@ -1975,6 +1975,15 @@ class TypeCompatibility:
             fi = expr.resolved_function_info
             if fi is not None and (is_str_type(fi.return_type) or is_string_type(fi.return_type)):
                 return True
+            # A method returning a recursive-union wrapper struct yields a
+            # value-shape rvalue; taking its address (the Optional pointer-repr
+            # return path) would emit `&(call())`. Reuses the free-function
+            # branch's wrapper-shape check so `return obj.method()` through
+            # Optional[Wrapper] is rejected (use Own[Optional[Wrapper]]). The
+            # free-function branch's return_borrows_from handling is not yet
+            # mirrored here -- see BUGS.md.
+            if fi is not None and unwrap_ref_type(unwrap_readonly(fi.return_type)).needs_wrapper():
+                return True
             return False
 
         # Ternary - dangles if either branch dangles

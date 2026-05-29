@@ -20,6 +20,24 @@ template<typename T>
 int32_t leaf_count(const Tree<T>& t);
 void main();
 
+template<typename T>
+struct Tree {
+    using variant_type = std::variant<T, std::vector<Tree<T>>>;
+    variant_type value;
+
+    Tree() requires std::default_initializable<variant_type> = default;
+    template<typename _TpyAliasCtorArg>
+        requires std::constructible_from<variant_type, _TpyAliasCtorArg&&>
+    Tree(_TpyAliasCtorArg&& v) : value(std::forward<_TpyAliasCtorArg>(v)) {}
+
+    bool operator==(const Tree&) const requires std::equality_comparable<variant_type> = default;
+
+    friend std::ostream& operator<<(std::ostream& os, const Tree& v) {
+        ::tpy::detail::print_element(os, v.value);
+        return os;
+    }
+};
+
 // class Holder[T]:
 template<typename T>
 struct Holder {
@@ -42,24 +60,6 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
     ::tpy::print_object_default(os, "Holder", obj);
     return os;
 }
-
-template<typename T>
-struct Tree {
-    using variant_type = std::variant<T, std::vector<Tree<T>>>;
-    variant_type value;
-
-    Tree() requires std::default_initializable<variant_type> = default;
-    template<typename _TpyAliasCtorArg>
-        requires std::constructible_from<variant_type, _TpyAliasCtorArg&&>
-    Tree(_TpyAliasCtorArg&& v) : value(std::forward<_TpyAliasCtorArg>(v)) {}
-
-    bool operator==(const Tree&) const requires std::equality_comparable<variant_type> = default;
-
-    friend std::ostream& operator<<(std::ostream& os, const Tree& v) {
-        ::tpy::detail::print_element(os, v.value);
-        return os;
-    }
-};
 
 // def leaf_count[T](t: Tree[T]) -> Int32:
 template<typename T>

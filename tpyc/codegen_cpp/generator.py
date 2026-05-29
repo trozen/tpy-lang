@@ -819,6 +819,24 @@ class CodeGenerator:
         self, hpp: TextIO, module: TpyModule, deps: _ProtocolDeps
     ) -> None:
         """Generate forward declarations for prereq/bound/protocol-referenced records and concepts."""
+        # A protocol method signature can reference a generic recursive-alias
+        # wrapper (`def m(self, t: Tree[Int32])`), which renders inside the
+        # concept body as `Tree<int32_t>` -- so the wrapper template must be
+        # forward-declared before any concept. Only needed when protocols
+        # exist; otherwise the fwd-decl before records (in
+        # _generate_definitions_and_reexports) suffices, and skipping here
+        # avoids churning protocol-free recursive-alias snapshots.
+        emitted_wrapper_fwd = False
+        if module.protocols:
+            for name, entry in module.type_aliases.items():
+                if name in module.recursive_union_names and entry[2]:
+                    header = self.protocols.gen_record_template_header(
+                        entry[2], {}, entry[3])
+                    hpp.write(f"{header} struct {name};\n")
+                    emitted_wrapper_fwd = True
+            if emitted_wrapper_fwd:
+                hpp.write("\n")
+
         # Forward declare records referenced by prereq protocols (unconstrained)
         for record_name in sorted(deps.prereq_protocol_records):
             if record_name in deps.module_record_names:
@@ -979,6 +997,11 @@ class CodeGenerator:
             if name in module.recursive_union_names:
                 type_params = entry[2]
                 if type_params:
+                    # Generic wrappers are forward-declared before concepts
+                    # when the module has protocols (see
+                    # _generate_forward_decls_and_concepts); avoid a duplicate.
+                    if module.protocols:
+                        continue
                     header = self.protocols.gen_record_template_header(
                         type_params, {}, entry[3])
                     hpp.write(f"{header} struct {name};\n")
@@ -1104,6 +1127,21 @@ class CodeGenerator:
             elif self.functions.gen_function_forward_decl(hpp, func):
                 emitted_fwd_func = True
         if emitted_fwd_func:
+            hpp.write("\n")
+
+        # Generic recursive-alias wrapper structs are templates: member
+        # completeness is required only at instantiation, not at the template
+        # definition, so they precede records that embed them by value (a
+        # `Tree[Int32]` field needs `Tree` complete). Non-generic wrappers stay
+        # after records -- their variant stores the member records by value, so
+        # those must be complete first.
+        emitted_generic_wrapper = False
+        for name, entry in sorted(module.type_aliases.items()):
+            typ, _loc, type_params, _kinds = entry
+            if name in module.recursive_union_names and type_params:
+                self._gen_recursive_union_struct(hpp, name, typ, type_params, _kinds)
+                emitted_generic_wrapper = True
+        if emitted_generic_wrapper:
             hpp.write("\n")
 
         # Full record definitions (skip those already defined early)
@@ -1311,6 +1349,8 @@ class CodeGenerator:
         for name, entry in sorted(module.type_aliases.items()):
             typ, _loc, type_params, _kinds = entry
             if name in module.recursive_union_names:
+                if type_params:
+                    continue  # generic recursive wrapper emitted before records
                 self._gen_recursive_union_struct(
                     hpp, name, typ, type_params, _kinds)
             elif type_params:

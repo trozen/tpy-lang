@@ -8,11 +8,11 @@
 namespace tpyapp::main {
 
 template<typename T> struct Tree;
-struct E;
+struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::expected<Tree<int32_t>, E> f();
+int32_t leaf_count(const Tree<int32_t>& t);
 void main();
 
 template<typename T>
@@ -33,21 +33,38 @@ struct Tree {
     }
 };
 
-// class E(Exception, ReturnException):
-struct E : ::tpy::Exception {
+// class Holder:
+struct Holder {
+    // t: Tree[Int32]
+    Tree<int32_t> t;
 
-    using ::tpy::Exception::Exception;
+    // def __init__(self, t: Own[Tree[Int32]]) -> None:
+    explicit Holder(Tree<int32_t>&& t) : t(std::move(t)) {}
 
-    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<E>(*this); }
-    [[noreturn]] void __raise__() const override { throw *this; }
-    const char* what() const noexcept override { return this->message.c_str(); }
-    static constexpr std::string_view __tpy_class_name__ = "__main__.E";
+    // def get(self) -> Tree[Int32]:
+    Tree<int32_t> get();
+
+    // def matches(self, other: Tree[Int32]) -> bool:
+    bool matches(const Tree<int32_t>& other) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
-inline std::ostream& operator<<(std::ostream& os, const E& obj) {
-    ::tpy::print_object_default(os, "E", obj);
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
     return os;
 }
 
+
+// def get(self) -> Tree[Int32]:
+inline Tree<int32_t> Holder::get() {
+    // return self.t
+    return this->t;
+}
+
+// def matches(self, other: Tree[Int32]) -> bool:
+inline bool Holder::matches(const Tree<int32_t>& other) const {
+    // return leaf_count(self.t) == leaf_count(other)
+    return (leaf_count(this->t) == leaf_count(other));
+}
 void __tpy_init();
 } // namespace tpyapp::main
