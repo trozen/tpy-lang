@@ -31,7 +31,6 @@ from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef,
     expr_contains_self_method_call,
-    stmt_has_any_suspension,
 )
 from .expressions import _collect_body_name_refs
 
@@ -1110,33 +1109,6 @@ class SemanticAnalyzer:
                 func,
             )
 
-    def _check_resumable_suspension_shape(self, func: TpyFunction) -> None:
-        """Reject suspension (`yield`/`await`) shapes the resumable-frame
-        lowering does not yet support, with a clean located diagnostic
-        instead of an opaque downstream C++ error. Covers the user-facing
-        generator/coroutine-reachable case the CFG builder raises on:
-        a suspension inside a `match` (the only compound the CFG does
-        not decompose).
-
-        The codegen CFG build (`_build_resumable_cfg`) remains the
-        authoritative backstop, raising a `CodeGenError` for any residual
-        shape not enumerated here, so this check only needs to be
-        conservative (never over-reject)."""
-        kw = "yield" if func.is_generator else "await"
-
-        def walk(stmts: list) -> None:
-            for stmt in stmts:
-                if isinstance(stmt, TpyMatch) and stmt_has_any_suspension(stmt):
-                    raise self._error(
-                        f"`{kw}` inside a `match` statement is not yet "
-                        f"supported by the resumable lowering",
-                        stmt,
-                    )
-                for body in stmt.sub_bodies():
-                    walk(body)
-
-        walk(func.body)
-
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
         # Stub functions (extern imports with ... body) have no body to analyze
@@ -1213,7 +1185,6 @@ class SemanticAnalyzer:
         # in_generator_body flag (the `in_async_coro_body` flag steers only
         # the return-statement rewrite).
         if func.is_generator or func.is_async:
-            self._check_resumable_suspension_shape(func)
             param_names = {pname for pname, _ in func.params}
             locals_dict: dict[str, 'TpyType'] = {}
             for name, binding in local_ns.all_bindings().items():
@@ -2359,7 +2330,6 @@ class SemanticAnalyzer:
             # field generation (locals that may live across yield / await
             # suspensions are hoisted to the resumable-frame struct).
             if method.is_generator or method.is_async:
-                self._check_resumable_suspension_shape(method)
                 param_names = {pname for pname, _ in method.params}
                 locals_dict: dict[str, 'TpyType'] = {}
                 for name, binding in local_ns.all_bindings().items():

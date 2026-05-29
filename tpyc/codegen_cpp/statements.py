@@ -4234,6 +4234,21 @@ class StatementGenerator:
         branch_decls = self.ctx.analyzer.if_branch_decls.get(id(stmt), {})
         for name, raw_var_type in branch_decls.items():
             var_type = unwrap_ref_type(raw_var_type)
+            # Resumable body (generator / async): a branch-first-declared
+            # local that is a frame field must NOT be re-declared as a C++
+            # local here -- the local would shadow the struct member and the
+            # branch writes would land on it instead of the field, losing the
+            # value across any later suspension. Record it as declared (so the
+            # branch assignments emit `name = ...` against the member) and emit
+            # no decl.
+            if self.ctx.in_generator_body and name in self.ctx.generator_field_names:
+                self.ctx.declared_vars.add(name)
+                self.ctx.local_scope_names.add(name)
+                if var_type is not None:
+                    self.ctx.var_types[name] = var_type
+                    if self.ctx.current_ns:
+                        self.ctx.current_ns.bind_variable(name, var_type)
+                continue
             if (name not in self.ctx.declared_vars
                     and name not in self.ctx.global_declared_vars
                     and name not in self.ctx.native_global_names):

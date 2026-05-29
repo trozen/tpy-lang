@@ -1364,9 +1364,7 @@ class AsyncCoroCodegen:
 
         A `_CFGNotYetSupported` (a shape the resumable lowering can't yet
         handle) is turned into a `CodeGenError` at the offending location.
-        For generators, sema's `_check_resumable_suspension_shape` already
-        rejects the common cases earlier with friendlier diagnostics; this
-        is the authoritative backstop so no unsupported shape silently
+        This is the authoritative backstop so no unsupported shape silently
         miscompiles. The result is cached on the func for the emit pass."""
         state = rcfg.resumable_state(func)
         if state.cfg is not None:
@@ -1941,6 +1939,21 @@ class AsyncCoroCodegen:
                         and r.finally_exit_bb is not None):
                     finally_exit_bbs.add(r.finally_exit_bb)
         for bid in finally_entry_bbs | finally_exit_bbs:
+            if bid not in case_entries:
+                case_entries[bid] = _StateLabel(_StateKind.JOIN, join_idx)
+                join_idx += 1
+        # MatchDispatch join BBs: the dispatch transitions to its join
+        # directly (a non-CFG edge from the suspension-free dispatch's
+        # fall-through), and each arm body Falls there. The arm bodies
+        # are INLINED by the dispatch (not their own cases), so arm_bbs
+        # are deliberately NOT marked here; only the shared join needs a
+        # label.
+        match_join_bbs: set[int] = set()
+        for bb in cfg.blocks.values():
+            t = bb.terminator
+            if isinstance(t, rcfg.MatchDispatch) and t.join_bb is not None:
+                match_join_bbs.add(t.join_bb)
+        for bid in match_join_bbs:
             if bid not in case_entries:
                 case_entries[bid] = _StateLabel(_StateKind.JOIN, join_idx)
                 join_idx += 1
@@ -2588,9 +2601,54 @@ class AsyncCoroCodegen:
                 self._emit_async_for_advance(
                     out, body_indent, cfg, t, case_entries, func, from_bb=cur)
                 return
+            if isinstance(t, rcfg.MatchDispatch):
+                self._emit_match_dispatch(
+                    out, cfg, t, case_entries, func, from_bb=cur)
+                return
             raise CodeGenError(
                 f"internal: unknown terminator {type(t).__name__}",
                 loc=None)
+
+    def _emit_match_dispatch(self, out: "TextIO", cfg: 'rcfg.CFG',
+                              t: 'rcfg.MatchDispatch',
+                              case_entries: dict[int, _StateLabel],
+                              func: TpyFunction, from_bb: int) -> None:
+        """Emit a suspending `match` (H1) by reusing the ordinary
+        `gen_match` for the type-aware dispatch, with each arm body routed
+        back through `_walk_inline` via the `_emit_case_body` hook. Arm
+        bodies are inlined here (not their own cases); their internal
+        suspensions split out resume cases as usual. After the dispatch,
+        the (non-exhaustive) fall-through transitions to `join_bb`."""
+        body_indent = self.ctx.indent()
+        # The arm emitter inlines one arm body in place. `match` adds no
+        # region, so the arm BB shares `from_bb`'s region stack -- the
+        # inline walk handles its own fall-to-join / suspension exits.
+        def emit_arm(arm_bb: int) -> None:
+            self._walk_inline(out, cfg, arm_bb, case_entries, func)
+        old_emitter = self.ctx.resumable_arm_emitter
+        old_map = self.ctx.resumable_arm_bb_by_body
+        self.ctx.resumable_arm_emitter = emit_arm
+        self.ctx.resumable_arm_bb_by_body = {
+            id(case.body): arm_bb
+            for case, arm_bb in zip(t.match_stmt.cases, t.arm_bbs)
+        }
+        try:
+            self.statements.match.gen_match(out, t.match_stmt, body_indent)
+        finally:
+            self.ctx.resumable_arm_emitter = old_emitter
+            self.ctx.resumable_arm_bb_by_body = old_map
+        # The dispatch case MUST end in a terminating statement: a switch
+        # whose cases all return/continue still "may fall through" to the
+        # GCC eye (no default), so without this the next state's `case`
+        # label trips -Werror=implicit-fallthrough. When a fall-through is
+        # reachable (`join_bb` set) emit the state transition to join;
+        # otherwise the match is exhaustive AND every arm terminates, so
+        # the post-dispatch point is genuinely unreachable.
+        if t.join_bb is not None:
+            self._walk_inline_or_jump(
+                out, cfg, t.join_bb, case_entries, func, from_bb=from_bb)
+        else:
+            out.write(f"{body_indent}__builtin_unreachable();\n")
 
     def _walk_inline_or_jump(self, out: "TextIO", cfg: 'rcfg.CFG',
                               target_bb: int,

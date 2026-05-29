@@ -882,6 +882,25 @@ class CodeGenContext:
     # resumable frame. `return` here sets `this->__finally_stop = true` and
     # void-returns; callers check the flag and emit StopIteration.
     in_generator_finally_helper: bool = False
+    # Resumable-frame `match` decomposition (H1): when a suspending `match`
+    # is emitted, the existing `gen_match` dispatch is reused unchanged, but
+    # each arm BODY is routed back through the resumable walker instead of
+    # emitted inline. `resumable_arm_emitter(arm_bb)` emits one arm's body
+    # via the state machine; `resumable_arm_bb_by_body` maps `id(case.body)`
+    # to its arm BB. Consulted in the single shared `_emit_case_body`
+    # chokepoint. None outside a suspending-match emit.
+    resumable_arm_emitter: 'Callable[[int], None] | None' = None
+    resumable_arm_bb_by_body: dict[int, int] = field(default_factory=dict)
+    # Whether the `match` currently being emitted has an lvalue subject (set
+    # by `gen_match`). A non-lvalue subject is bound to a dispatch-local copy,
+    # so a pointer-form (pointer-repr `Optional`) arm binding would alias that
+    # copy and dangle across a suspension -- the resumable binding emit rejects
+    # that combination. Default True (lvalue) for non-match / non-resumable.
+    resumable_match_subject_is_lvalue: bool = True
+    # Source location of the `match` currently being emitted, used to locate
+    # the resumable binding-emit reject (the binding emit is deep in the
+    # dispatch and has no stmt in hand otherwise). Set by `gen_match`.
+    resumable_match_loc: 'SourceLocation | None' = None
     # True iff the current generator's struct has a `__finally_stop` field
     # (i.e. at least one helper-based finally body contains a `return`).
     # Controls whether _emit_finally_helper_call appends the stop check.

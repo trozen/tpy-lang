@@ -38,6 +38,7 @@ from typing import TYPE_CHECKING, Union
 from ..parse.nodes import (
     TpyAssign, TpyAwait, TpyBreak, TpyContinue, TpyExceptHandler,
     TpyExpr, TpyExprStmt, TpyForEach, TpyIf, TpyName,
+    TpyMatch,
     TpyRaise, TpyReturn, TpyStmt, TpyTry, TpyVarDecl, TpyWhile, TpyWith,
     TpyWithItem, TpyYield,
     stmt_has_any_suspension as _stmt_has_any_suspension,
@@ -371,8 +372,25 @@ class AsyncForAdvance:
     exhausted_bb: int
 
 
+@dataclass(frozen=True)
+class MatchDispatch:
+    """Terminator for a `match` whose arm bodies contain a suspension (H1).
+
+    The suspension-free dispatch (subject eval + every arm test + bindings
+    + guards) is emitted by reusing the ordinary `gen_match`; each arm
+    *body* is routed back through the resumable walker (it may suspend),
+    so arm bodies live in the state machine while the dispatch keeps its
+    type-aware switch / if-elif shape. `arm_bbs[i]` is the entry BB of
+    `match_stmt.cases[i].body`; `join_bb` is the post-match continuation
+    (None when the match is exhaustive and every arm terminates, so no
+    fall-through exists)."""
+    match_stmt: TpyMatch
+    arm_bbs: tuple[int, ...]
+    join_bb: int | None
+
+
 Terminator = Union[Fall, Branch, Yield, ReturnT, RaiseT, Unreachable,
-                   AsyncForAdvance]
+                   AsyncForAdvance, MatchDispatch]
 
 
 # -- Synthetic leaf-stmt types for CFG-lowered for-loops ----------------
@@ -722,15 +740,16 @@ class CFGBuilder:
         elif isinstance(stmt, TpyWith):
             if _stmt_has_any_suspension(stmt) or force_loop_decomp:
                 return self._build_with(cur, stmt)
+        elif isinstance(stmt, TpyMatch):
+            if _stmt_has_any_suspension(stmt) or force_loop_decomp:
+                return self._build_match(cur, stmt)
         # Leaf statement (or compound without suspensions). If a statement
-        # reaches this point STILL containing a suspension, it's a compound
-        # kind the builder doesn't decompose (today: `match`). Appending it
-        # as a leaf would emit the nested `await`/`yield` as straight-line
-        # code -- silently wrong for async, and for a generator it would
-        # collide with the resumable state enum. Refuse so the build surfaces
-        # a clean CodeGenError instead of a miscompile (sema's
-        # `_check_resumable_suspension_shape` catches the common cases even
-        # earlier).
+        # reaches this point STILL containing a suspension, it's a statement
+        # kind the builder doesn't decompose (if/while/for/try/with/match all
+        # are). Appending it as a leaf would emit the nested `await`/`yield`
+        # as straight-line code -- silently wrong for async, and for a
+        # generator it would collide with the resumable state enum. Refuse so
+        # the build surfaces a clean CodeGenError instead of a miscompile.
         if _stmt_has_any_suspension(stmt):
             raise _CFGNotYetSupported(
                 "a suspension (`await`/`yield`) inside this statement is "
@@ -1498,6 +1517,41 @@ class CFGBuilder:
             self._region_stack.pop()
 
         return join_bb
+
+    # -- match -----------------------------------------------------------
+
+    def _build_match(self, cur: int, stmt: TpyMatch) -> int | None:
+        """Lower a `match` whose arm bodies contain a suspension. The
+        dispatch stays a single suspension-free unit (emitted later by
+        reusing `gen_match`); each arm body becomes its own BB chain
+        (recursively built, so nested suspensions decompose), joining at
+        `join_bb`. `match` introduces no region, so arm BBs and join
+        share `cur`'s region stack -- no finally-chain delta on the
+        dispatch->arm or arm->join transitions.
+
+        A guard or the subject expression cannot host a suspension (those
+        appear only at statement position), so the dispatch is always
+        suspension-free; only arm bodies suspend."""
+        join_bb = self._new_bb()
+        arm_bbs: list[int] = []
+        all_terminate = True
+        for case in stmt.cases:
+            arm_bb = self._new_bb()
+            arm_bbs.append(arm_bb)
+            arm_end = self._build_block(arm_bb, case.body)
+            if arm_end is not None:
+                self._finish(arm_end, Fall(next_bb=join_bb))
+                all_terminate = False
+        # When the match is exhaustive AND every arm terminates, no
+        # control path reaches past the match: the dispatch has no
+        # fall-through and join is unreachable.
+        reachable_join = None if (stmt.is_exhaustive and all_terminate) else join_bb
+        self._finish(cur, MatchDispatch(
+            match_stmt=stmt,
+            arm_bbs=tuple(arm_bbs),
+            join_bb=reachable_join,
+        ))
+        return reachable_join
 
     # -- post-construction passes ---------------------------------------
 

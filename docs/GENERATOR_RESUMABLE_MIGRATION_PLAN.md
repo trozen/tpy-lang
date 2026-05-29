@@ -487,15 +487,45 @@ Shared fix shape: extend the CFG builder to decompose one more compound
 shape. Benefits async and generators together; each item converts an
 existing `error_*` case to positive.
 
-- **H1 -- `yield`/`await` inside `match`.** `match` is the one compound
-  the CFG does not decompose, so a suspension reaching the leaf-append
-  path raises `_CFGNotYetSupported` (and sema's
-  `_check_resumable_suspension_shape` rejects it earlier). Fix: add a
-  `MatchRegion` to `resumable_cfg.py` that lowers each case arm as its
-  own basic block, with the discriminant-bind and pattern-test as
-  separate terminators. Drop the corresponding sema reject. Converts:
-  `iterators/error_gen_match_yield`, `error_gen_method_match_yield`,
-  `error_gen_generic_match_yield`, `async/error_async_match_await`.
+- **H1 DONE (2026-05-29)** -- `yield`/`await` inside `match`.
+  **Realized mechanism (differs from the original `MatchRegion` +
+  per-arm-test-terminator sketch -- strictly more reuse):** a single
+  `MatchDispatch` terminator carries the `TpyMatch` + one BB per arm
+  body. Emit reuses the ordinary `gen_match` UNCHANGED for the
+  suspension-free, type-aware dispatch (switch jump-tables / if-elif /
+  variant-index all preserved); each arm body is routed back through
+  the resumable walker via a hook in the single shared `_emit_case_body`
+  chokepoint (`ctx.resumable_arm_emitter`), so arm bodies live in the
+  state machine and split out resume cases as usual. The invariant that
+  makes this clean: a suspension can only appear in an arm *body* (never
+  the subject expr or a guard -- both statement-position-only), so the
+  whole dispatch is suspension-free. `_build_match` (`resumable_cfg.py`)
+  builds arm-body BBs (recursively, so nested suspensions decompose) +
+  a join BB; arm BBs are inlined (not their own cases) so only the join
+  is a case entry. The dispatch case always ends in a terminating
+  statement (join transition, or `__builtin_unreachable()` when
+  exhaustive+all-arms-terminate) to satisfy `-Werror=implicit-fallthrough`
+  (a `default`-less switch "may fall through" to the next state's
+  `case`). **Bindings:** pattern-bound names (capture / `x=v` field / `as`)
+  are collected into `generator_locals` (sema `match.py`, gated on a
+  suspending generator/async match) so they are frame fields, and
+  match's `_emit_binding` writes the field (value `=` / `frame_slot
+  .emplace` / pointer `&`) instead of a shadowing `auto&` local -- so a
+  binding read in a (separate-state) arm body survives. **Prereq landed
+  first:** `_emit_branch_decls` no longer re-declares frame-field names
+  as shadowing C++ locals in resumable bodies (a pre-existing if/match
+  miscompile, BUGS.md). The blanket sema reject
+  (`_check_resumable_suspension_shape`) is deleted. **Remaining gap
+  (uniform with `if`/`while`):** reading an `isinstance`-narrowed binding
+  *across* a suspension stays the open H5 gap. Converts:
+  `iterators/{gen_match_yield, gen_method_match_yield,
+  gen_generic_match_yield}`, `async/async_match_await`; new cases
+  `iterators/{gen_resumable_match_enum, gen_match_union (field + `as`
+  bindings), gen_match_optional, gen_match_loop_break (match in a loop
+  + guard + break), gen_branch_local_survives_yield (prereq regression)}`,
+  `async/async_match_binding`. Two pre-existing bugs surfaced + filed
+  (union-value generator param / temp-receiver-with-union-field). All
+  CPython-verified.
 
 - **H2 DONE (2026-05-28)** -- `return` inside a suspending `finally`.
   Extended the existing M3.3.2 parking machinery so a `return` originating

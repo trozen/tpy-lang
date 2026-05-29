@@ -604,11 +604,9 @@ class CodeGenerator:
                 loc=func.loc,
             )
         # Backstop: build (and cache) the CFG, which raises a clean located
-        # CodeGenError for any shape the resumable lowering can't handle.
-        # Sema's `_check_resumable_suspension_shape` already rejects the
-        # common cases (suspension in `match`, return/nesting in a suspending
-        # finally) earlier with friendlier diagnostics; this catches any
-        # residual shape so nothing silently miscompiles.
+        # CodeGenError for any shape the resumable lowering can't handle, so a
+        # residual unsupported shape surfaces as a diagnostic rather than a
+        # silent miscompile.
         self.gen_async._build_resumable_cfg(func)
         return True
 

@@ -13,8 +13,8 @@ import pytest
 
 from ..parse import Parser
 from .resumable_cfg import (
-    CFGBuilder, YieldPayload, AwaitPayload,
-    _stmt_has_any_suspension, _CFGNotYetSupported,
+    CFGBuilder, YieldPayload, AwaitPayload, MatchDispatch,
+    _stmt_has_any_suspension,
 )
 
 
@@ -132,29 +132,33 @@ class TestLoopElseSupported:
         assert len(cfg.yield_sites) == 2
 
 
-class TestUndecomposedLeafSuspensionRejected:
-    # The generator eligibility gate trial-builds the CFG and falls back to
-    # the legacy path when the builder raises. A compound the builder does
-    # NOT decompose (today: `match`) that hides a `yield`/`await` must raise
-    # `_CFGNotYetSupported` rather than be appended as a leaf -- otherwise
-    # the nested suspension would be emitted as straight-line code and the
-    # post-compound yields silently dropped (BUGS.md). This guards the
-    # leaf-append check in `_build_stmt`.
-    def test_yield_in_match_rejected(self):
-        with pytest.raises(_CFGNotYetSupported):
-            _build(
-                "from typing import Iterator\n"
-                "from tpy import Int32\n"
-                "def g() -> Iterator[Int32]:\n"
-                "    yield 1\n"
-                "    sel = 2\n"
-                "    match sel:\n"
-                "        case 2:\n"
-                "            yield 99\n"
-                "        case _:\n"
-                "            yield 0\n"
-                "    yield 3\n"
-            )
+class TestMatchDecomposition:
+    # H1: a `match` carrying a suspension is decomposed by the builder into
+    # a single `MatchDispatch` terminator (the suspension-free, type-aware
+    # dispatch is reused at emit) plus one BB per arm body, so the nested
+    # yields are real CFG yield sites rather than silently-dropped leaves.
+    def test_yield_in_match_decomposes(self):
+        cfg = _build(
+            "from typing import Iterator\n"
+            "from tpy import Int32\n"
+            "def g() -> Iterator[Int32]:\n"
+            "    yield 1\n"
+            "    sel = 2\n"
+            "    match sel:\n"
+            "        case 2:\n"
+            "            yield 99\n"
+            "        case _:\n"
+            "            yield 0\n"
+            "    yield 3\n"
+        )
+        # yield 1 / yield 99 / yield 0 / yield 3 are all real suspensions.
+        assert len(cfg.yield_sites) == 4
+        dispatches = [bb.terminator for bb in cfg.blocks.values()
+                      if isinstance(bb.terminator, MatchDispatch)]
+        assert len(dispatches) == 1
+        # One arm BB per case; a reachable join (the trailing `yield 3`).
+        assert len(dispatches[0].arm_bbs) == 2
+        assert dispatches[0].join_bb is not None
 
     def test_match_without_suspension_is_plain_leaf(self):
         # A `match` with no `yield` inside is ordinary straight-line code

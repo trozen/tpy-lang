@@ -1,1 +1,0 @@
-main.py:13: error: `await` inside a `match` statement is not yet supported by the resumable lowering

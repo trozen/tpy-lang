@@ -28,6 +28,7 @@ from ..parse import (
     TpyMatch, TpyMatchCase, TpyPattern, TpyWildcardPattern, TpyCapturePattern,
     TpyClassPattern, TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
 )
+from ..parse.nodes import stmt_has_any_suspension
 
 if TYPE_CHECKING:
     from ..typesys import RecordInfo
@@ -103,6 +104,19 @@ class MatchAnalyzer:
         if isinstance(stmt.subject, TpyName):
             subject_name = stmt.subject.name
 
+        # Resumable frame (H1): when a generator/async `match` carries a
+        # suspension, its arm bodies become separate states, so pattern
+        # bindings must be frame fields (see the per-arm binding loop).
+        # `current_function` may be a module-init sentinel for a top-level
+        # `match` (no `is_generator`/`is_async`); a suspension cannot appear
+        # at module scope anyway, so guard with getattr.
+        cur_fn = self.ctx.func.current_function
+        needs_frame_field = (
+            (getattr(cur_fn, "is_generator", False)
+             or getattr(cur_fn, "is_async", False))
+            and stmt_has_any_suspension(stmt)
+        )
+
         had_wildcard = False
         seen_types: set[str] = set()
         seen_values: set[object] = set()
@@ -160,6 +174,16 @@ class MatchAnalyzer:
                 self.stmts.init.mark_assigned(name)
                 if name not in self.ctx.func.var_scope_depth:
                     self.ctx.func.var_scope_depth[name] = self.ctx.func.current_scope.depth
+                # Resumable frame (H1): a `match` carrying a suspension
+                # decomposes into per-arm body states, so a pattern binding
+                # read in an arm body must live in the frame rather than as a
+                # dispatch-local that vanishes at the state split. Register it
+                # in the function namespace so `_analyze_function` collects it
+                # into `generator_locals` (-> a struct field). Pattern
+                # bindings otherwise only land in `current_scope`, which the
+                # generator-local collection does not read.
+                if needs_frame_field and self.ctx.func.current_ns is not None:
+                    self.ctx.func.current_ns.bind_variable(name, ty)
 
             # Narrow subject variable for class patterns (union only)
             narrowing_facts = self._match_case_narrowing_facts(

@@ -86,8 +86,24 @@ class MatchGenerator:
         # field access whose target is itself an lvalue (e.g.
         # `self.payload`). Everything else (calls, temporaries) is
         # copied as `auto` to avoid dangling references.
-        binding = ("auto&" if _match_subject_is_lvalue(stmt.subject)
-                   else "auto")
+        subject_is_lvalue = _match_subject_is_lvalue(stmt.subject)
+        binding = "auto&" if subject_is_lvalue else "auto"
+        # Record whether the subject is a stable frame-resident lvalue, for
+        # the resumable pointer-form binding emit: a pointer-into-subject arm
+        # binding survives a suspension only if the subject's storage outlives
+        # it. A non-lvalue subject is a dispatch-local copy; a *narrowed* name
+        # (union/isinstance) renders to a dispatch-local extraction alias
+        # (`__case_N`) even though it is syntactically a name -- so a nested
+        # `match` on a narrowed subject is NOT frame-stable. Both are unsafe
+        # for a pointer-form binding (the emit rejects that combination).
+        # Set unconditionally; read only on the resumable pointer-form path.
+        # Re-set per match (incl. nested) -- arm bindings emit before any
+        # nested-match arm body runs, so no save/restore is needed.
+        subject_is_narrowed = (isinstance(stmt.subject, TpyName)
+                               and stmt.subject.name in self.ctx.narrowed_vars)
+        self.ctx.resumable_match_subject_is_lvalue = (
+            subject_is_lvalue and not subject_is_narrowed)
+        self.ctx.resumable_match_loc = stmt.loc
         out.write(f"{indent}{binding} __match_subject = {subject_code};\n")
 
         if isinstance(subject_type, (UnionType, RecursiveAliasInstanceType)):
@@ -171,6 +187,19 @@ class MatchGenerator:
         """
         assert isinstance(stmt.subject, TpyName)
         subject_name = stmt.subject.name
+
+        # This @overload-specialization path emits the matched arm body
+        # directly via `gen_stmt`, bypassing `_emit_case_body` -- so the
+        # resumable-frame arm-routing hook would never fire and a suspension
+        # in the arm would be emitted as straight-line code (dropped). Refuse
+        # rather than silently miscompile; the resumable `match` decomposition
+        # does not cover the overload-specialized subject.
+        if self.ctx.resumable_arm_emitter is not None:
+            raise CodeGenError(
+                "a `yield`/`await` inside a `match` on an @overload-"
+                "specialized parameter is not yet supported",
+                loc=stmt.loc,
+            )
 
         def emit_field_bindings(pattern: TpyClassPattern) -> None:
             self._gen_match_field_bindings(out, pattern, subject_name, indent)
@@ -547,6 +576,36 @@ class MatchGenerator:
         if escaped is None:
             return
         raw_name = raw or escaped
+        # Resumable frame (H1): a bound name that is a frame field must be
+        # WRITTEN to the field, not re-declared as a shadowing C++ local --
+        # in a decomposed (suspending) match the arm body is a separate
+        # state that reads the live field, so an `auto&` dispatch-local
+        # would be lost at the state split. The value/frame_slot/pointer
+        # split mirrors the field-write logic in `_gen_assign`.
+        if (self.ctx.in_generator_body
+                and raw_name in self.ctx.generator_field_names):
+            if raw_name in self.ctx.pointer_locals:
+                # Pointer-repr `Optional` field: bridge storage form
+                # (`std::optional<T>`) to the borrow-form `T*` frame slot via
+                # `optional_to_ptr` (raw `&` would take the address of the
+                # optional -- wrong type). The pointer aliases into the
+                # subject, so a non-lvalue subject (dispatch-local copy) would
+                # dangle across the suspension: reject rather than miscompile.
+                if not self.ctx.resumable_match_subject_is_lvalue:
+                    raise CodeGenError(
+                        "binding a `T | None` field from a non-lvalue "
+                        "`match` subject inside a generator/`async` is not "
+                        "yet supported (the binding would dangle across a "
+                        "suspension); bind the subject to a local first",
+                        loc=self.ctx.resumable_match_loc)
+                out.write(
+                    f"{indent}{escaped} = "
+                    f"::tpy::optional_to_ptr({subject_expr});\n")
+            elif raw_name in self.ctx.generator_frame_slot_locals:
+                out.write(f"{indent}{escaped}.emplace({subject_expr});\n")
+            else:
+                out.write(f"{indent}{escaped} = {subject_expr};\n")
+            return
         if raw_name in self.ctx.declared_vars:
             out.write(f"{indent}{escaped} = {subject_expr};\n")
         else:
@@ -854,8 +913,18 @@ class MatchGenerator:
                 if isinstance(ty, LiteralType):
                     self.ctx.literal_facts[var_name] = ty
         try:
-            for s in body:
-                self.stmts.gen_stmt(out, s)
+            # Resumable-frame `match` (H1): when a suspending match is
+            # being emitted, this arm's body is not emitted inline -- it
+            # lives in the state machine and is routed back through the
+            # resumable walker. Identify the arm by its body's identity.
+            arm_emitter = self.ctx.resumable_arm_emitter
+            arm_bb = (self.ctx.resumable_arm_bb_by_body.get(id(body))
+                      if arm_emitter is not None else None)
+            if arm_emitter is not None and arm_bb is not None:
+                arm_emitter(arm_bb)
+            else:
+                for s in body:
+                    self.stmts.gen_stmt(out, s)
         finally:
             self.ctx.narrowed_vars = narrowed_saved
             self.ctx.declared_persistent_aliases = alias_saved
