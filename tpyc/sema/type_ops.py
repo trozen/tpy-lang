@@ -9,7 +9,7 @@ from dataclasses import replace as dc_replace
 from typing import Literal, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, TypeParamRef, NominalType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType,
+    TpyType, TypeParamRef, NominalType, RecursiveAliasInstanceType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType,
     make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType, FinalType, ClassVarType,
     IntLiteralType, FloatLiteralType, TypeParamKind, BIGINT, UnknownElementType,
@@ -894,6 +894,18 @@ class TypeOperations:
                 inner_arg = inner_arg.wrapped
             return self.match_type_with_inference(
                 param_type.wrapped, inner_arg, inferred
+            )
+
+        # Generic recursive alias instance (e.g. Tree[T]): match alias identity,
+        # then recurse on type args to infer the params.
+        if isinstance(param_type, RecursiveAliasInstanceType):
+            if (not isinstance(arg_type, RecursiveAliasInstanceType)
+                    or param_type.qname != arg_type.qname
+                    or len(param_type.type_args) != len(arg_type.type_args)):
+                return False
+            return all(
+                self.match_type_with_inference(p, a, inferred)
+                for p, a in zip(param_type.type_args, arg_type.type_args)
             )
 
         # None literal (NoneType) matches None annotation (VoidType)

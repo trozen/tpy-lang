@@ -18,7 +18,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from .typesys import substitute_type_params_structural
+from .typesys import substitute_type_params_structural, AliasRef, TypeParamRef
 
 if TYPE_CHECKING:
     from .typesys import NominalType, RecordInfo, TpyType, UnionType
@@ -149,16 +149,40 @@ class _Edge:
     field_name: str | None = None
 
 
+def _collect_self_refs(
+    typ: TpyType, alias_name: str, out: list,
+) -> None:
+    """Collect `AliasRef` self-reference nodes (to `alias_name`) in a type
+    tree, including those nested inside the args of an outer self-ref
+    (`Tree[Tree[T]]`), so the identity-recursion check sees every one."""
+    if isinstance(typ, AliasRef) and typ.name == alias_name:
+        out.append(typ)
+        for arg in typ.args:
+            _collect_self_refs(arg, alias_name, out)
+        return
+    for inner in typ.inner_types():
+        _collect_self_refs(inner, alias_name, out)
+
+
 def validate_recursive_union_paths(
     alias_name: str, members: tuple[TpyType, ...],
+    type_params: list[str] | None = None,
 ) -> str | None:
     """Validate that all self-references in a recursive union alias go
-    through an indirecting container.
+    through an indirecting container, and -- for generic aliases -- that
+    every self-reference is identity recursion.
 
     Returns an error message if a non-indirected self-reference exists,
     or None when the alias is well-formed. Indirection sources are the
     same as the wider cycle walker (`_is_indirecting_type` + the
     structural field walk via `_walk` over non-indirecting nominals).
+
+    `type_params` is the alias's declared generic parameters (empty/None
+    for non-generic aliases). When non-empty, each self-reference
+    (`Tree[...]`) must reuse the declared parameters positionally as bare
+    `TypeParamRef`s -- v1 supports identity recursion only, so growing
+    (`Tree[list[T]]`), swapped (`Pair[V, K]`), and constant (`Bad[int]`)
+    recursive args are rejected.
 
     Called from sema's `_validate_recursive_union_paths` after record /
     protocol registration so the field walk can see same-module RecordInfo /
@@ -177,6 +201,29 @@ def validate_recursive_union_paths(
         for _ref_name, has_indirection in results:
             if not has_indirection:
                 return error_msg
+
+    if type_params:
+        arity = len(type_params)
+        self_refs: list = []
+        for member in members:
+            _collect_self_refs(member, alias_name, self_refs)
+        for ref in self_refs:
+            # Arity normally caught earlier at the parse-resolution self-ref
+            # site; kept here as a backstop so the positional check below is
+            # index-safe.
+            if len(ref.args) != arity:
+                plural = "s" if arity != 1 else ""
+                return (
+                    f"recursive position of alias '{alias_name}' takes "
+                    f"{arity} type argument{plural}, got {len(ref.args)}"
+                )
+            for i, (arg, param) in enumerate(zip(ref.args, type_params)):
+                if not (isinstance(arg, TypeParamRef) and arg.name == param):
+                    return (
+                        f"recursive position of alias '{alias_name}' must "
+                        f"reuse type parameter '{param}' at position {i}; "
+                        f"got '{arg}'. v1 supports identity recursion only."
+                    )
     return None
 
 

@@ -1,0 +1,1 @@
+main.py:5: error: recursive position of alias 'Pair' must reuse type parameter 'K' at position 0; got 'V'. v1 supports identity recursion only.

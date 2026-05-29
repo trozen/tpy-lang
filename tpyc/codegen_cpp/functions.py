@@ -553,13 +553,18 @@ class FunctionGenerator:
             # Non-dynamic protocol return (e.g. Iterator[T] from __iter__):
             # use auto, C++ deduces the type from the return expression.
             return "auto"
-        # Recursive union wrapper structs are value types; bypass UnionType's
-        # to_cpp_return() (which would emit a pointer-variant) so the return
-        # uses the wrapper struct name -- including the qualified form for
-        # cross-module aliases via types.type_to_cpp().
-        if (isinstance(unwrap_ref_type(unwrap_readonly(return_type)), UnionType)
-                and unwrap_ref_type(unwrap_readonly(return_type)).needs_wrapper()):
-            ret = self.types.type_to_cpp(unwrap_ref_type(unwrap_readonly(return_type)))
+        # Recursive union wrapper structs are value types; bypass the default
+        # to_cpp_return() (which appends `&` for non-value types, dangling on
+        # a function-local return) so the return uses the wrapper struct name
+        # -- including the qualified form for cross-module aliases via
+        # types.type_to_cpp(). Preserve const for readonly returns / readonly
+        # methods so the wrapper's value semantics still propagate the const
+        # intent to the caller.
+        unwrapped_return = unwrap_ref_type(unwrap_readonly(return_type))
+        if unwrapped_return.needs_wrapper():
+            ret = self.types.type_to_cpp(unwrapped_return)
+            if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
+                ret = f"const {ret}"
         elif const:
             ret = return_type.to_cpp_return_const()
         else:
@@ -567,9 +572,12 @@ class FunctionGenerator:
         if cpp_error:
             # std::expected can't hold references. For non-value types
             # (where ret is T&), use val_or_ref<T> which stores by pointer.
-            inner = unwrap_ref_type(return_type).to_cpp()
+            # Test wrapper-ness on the unwrapped type so a `readonly[Tree[T]]`
+            # return doesn't fall into val_or_ref when the wrapper is already
+            # a value-shape struct.
+            inner = unwrapped_return.to_cpp()
             if (not return_type.is_value_type() and not isinstance(return_type, VoidType)
-                    and not return_type.needs_wrapper()):
+                    and not unwrapped_return.needs_wrapper()):
                 inner = f"::tpy::val_or_ref<{inner}>"
             return f"std::expected<{inner}, {cpp_error}>"
         return ret

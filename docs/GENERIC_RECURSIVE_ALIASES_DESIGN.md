@@ -18,12 +18,49 @@ type DictTree[K, V] = V | dict[K, DictTree[K, V]]
 **Phase 1 shipped (2026-05).** Generic non-recursive aliases (`type Pair[T] =
 tuple[T, T]`, multi-param, alias-in-alias, cross-module) work end-to-end via
 substitution at parse-resolution. Generic recursive aliases stay rejected with
-a clean diagnostic; Phase 2 will land the templated wrapper struct.
+a clean diagnostic; Phase 2 lands the templated wrapper struct.
 
 Design revision 2 (incorporates Codex review + independent review) restructured
 around the principle that **only recursive aliases have C++-level nominal
 identity** (a generated wrapper struct); non-recursive generic aliases are pure
 sema-only expansion.
+
+**Design revision 3 (2026-05, Phase 2 refresh against master).** The original
+Phase 2 plan predated master's recursive-union representation (`AliasRef`
+placeholder + member-tuple-keyed `union_wrapper_index` + `needs_wrapper()`).
+Refreshed against that code, with a second Codex review pass, the use-site
+carrier changed from "plain `NominalType`" to a **dedicated
+`RecursiveAliasInstanceType`** that carries `alias_info` on the type itself
+(no global name-keyed lookup -- avoids a same-short-name cross-module
+collision) and is explicitly union-like (so plain `NominalType` consumers --
+records, enums, protocols -- stay untouched). Consumers route through
+capability helpers (`is_recursive_union_like` / `recursive_union_alternatives`),
+scoped to the wrapper/recursive-union conversion
+sites a recursive-alias value actually flows through. See the refreshed
+"Phase 2" sections below.
+
+**Phase 2 shipped (2026-05, revision 4 -- synced to as-built).** Generic
+recursive aliases now compile and run end-to-end. Revision 4 reconciles this
+doc with the implementation, which diverged from the rev-3 plan in two ways
+discovered during the build (both reviewed):
+
+- **Option D (uniform `AliasRef` + a single sema finalize pass).** The parser
+  and semantic analyzer use *separate* `TypeRegistry` objects, and use-site
+  type resolution is a parse-phase activity -- so a use site cannot mint a
+  `RecursiveAliasInstanceType` (it lacks the sema-registry `alias_info`).
+  Instead, parse-resolution emits an `AliasRef(name, args)` for *both* the
+  in-body self-reference *and* every use site, and one early-sema pass
+  (`_finalize_generic_recursive_aliases`) converts them to instances against
+  the sema registry. This supersedes the rev-3 "use site returns the instance
+  directly + finalize rewrites only bodies" sketch in the sections below.
+- **`(qname, type_args)` identity.** `TypeAliasInfo` is not hashable (it has
+  `list` fields), so it cannot be a frozen-dataclass eq/hash field. The
+  instance keys identity on `(qname, type_args)` and carries `alias_info`
+  (and the local render name) as `compare=False` payload. The rev-3 dataclass
+  sketch below (`(alias_info, type_args)`) is corrected in the Carrier section.
+
+The remaining v1 gaps and follow-ups discovered during the build are collected
+under "As-built gaps (revision 4)" near the end of this doc.
 
 ## Goals (v1)
 
@@ -33,7 +70,10 @@ sema-only expansion.
 - Cross-module: alias defined in module A, used in module B.
 - `isinstance(x, AliasName)` (bare name) works on the **recursive** form
   only. Non-recursive aliases reject `isinstance` -- they have no
-  runtime identity.
+  runtime identity. **(As-built: deferred.** `isinstance(x, Tree)` on a
+  recursive generic alias is still rejected with the generic-alias "no
+  runtime identity" diagnostic -- the fold-to-True path was not built. It is
+  a trivially-true check and low value; tracked in follow-ups.)
 - Generated C++ uses one `template<...> struct AliasName { ... };` per
   **recursive** alias; non-recursive aliases produce no C++ declaration
   (sema expands them at use sites).
@@ -78,12 +118,12 @@ sema-only expansion.
 
 Two distinct mechanisms with one shared piece of plumbing:
 
-| Aspect | Non-recursive generic alias | Recursive generic alias |
+| Aspect | Non-recursive generic alias | Recursive generic alias (as-built) |
 |---|---|---|
-| Sema use-site resolution | Substitute body; return expanded type | Return `NominalType("Tree", [args])` |
+| Sema use-site resolution | Substitute body; return expanded type | Parse emits `AliasRef`; sema finalize -> `RecursiveAliasInstanceType` |
 | C++ identity | None -- alias does not exist in C++ | `template<...> struct Tree { variant<...> value; };` |
-| `isinstance(x, Name)` | **Rejected** at sema (no runtime identity) | Folds to True via wrapper's variant tag |
-| Member expansion | Eager at sema use-site | On-demand for narrowing / match / codegen internals |
+| `isinstance(x, Name)` | **Rejected** at sema (no runtime identity) | **Rejected** too (fold-to-True deferred -- see As-built gaps) |
+| Member expansion | Eager at sema use-site | On-demand via `recursive_union_alternatives` (narrowing / match) |
 | Cross-module emission | No C++ artifact | Wrapper struct in defining module's header |
 
 This split resolves the internal contradiction in the previous revision
@@ -298,7 +338,7 @@ stops rejecting them:
 ### Same-args invariant validator
 
 Today's `validate_recursive_union_paths` in
-`tpyc/sema/cycle_detection.py` walks the union body checking
+`tpyc/cycle_detection.py` walks the union body checking
 self-references go through a container. Phase 2 extends:
 
 1. **Direct self-reference check**: at each `NominalType("Tree",
@@ -317,6 +357,16 @@ self-references go through a container. Phase 2 extends:
    recurses through 'Forest'; mutual recursion across generic aliases
    is not supported in v1"`.
 
+   **As-built:** the distinct diagnostic fires for cycles that *resolve*
+   far enough to be tagged by `_detect_recursive_unions` -- in practice the
+   generic-alias <-> generic-*record* cycle (`type Expr[T] = Lit[T] | Op[T]`
+   with `Op[T]` holding `Box[Expr[T]]`), where the records register before
+   aliases. A pure alias <-> alias cycle (`Forest`/`Tree`) is *also* rejected,
+   but earlier and with a coarser message: neither alias can be defined first
+   without the other being an "Unknown generic type" forward reference, so it
+   dies at parse-resolution before the validator runs. Both are rejected;
+   only the message quality differs for the alias-alias path.
+
 3. **Conflicting recursive args** (`type Bad[T] = T | list[Bad[int]]`,
    `type Pair[K, V] = ... | dict[V, Pair[V, K]]`): caught by check (1)
    -- the recursive position's args aren't bare `TypeParamRef`s
@@ -328,24 +378,108 @@ self-references go through a container. Phase 2 extends:
    True`. This drives Phase 2's branch in sema use-site resolution
    (see below).
 
-### Sema use-site resolution for recursive aliases
+### Carrier: `RecursiveAliasInstanceType` (revision 3)
 
-When sema encounters `Tree[Int32]` and `info.is_recursive`:
+The resolved semantic type for a generic recursive alias use site
+(`Tree[Int32]`) is a **dedicated frozen type**, not a plain
+`NominalType`. As-built shape (`tpyc/typesys.py`):
 
-1. Validate arity.
-2. Return `NominalType("Tree", [Int32])`. **Do not substitute the body.**
-3. Body member expansion happens on-demand:
-   - **Narrowing** (`if isinstance(x, list):`): walk
-     `info.body.members`, substitute `{T_i: args[i]}`, find the
-     matching member by structural match, narrow `x` to the
-     substituted member.
-   - **Match arm matching**: same -- expand members on demand,
-     dispatch by variant index.
-   - **Codegen rendering**: emit `Tree<int32_t>` at the use site; the
-     wrapper template handles the rest.
+```python
+@dataclass(frozen=True)
+class RecursiveAliasInstanceType(TpyType):
+    qname: str                         # defining module + short name; IDENTITY
+    type_args: tuple[TpyType, ...]
+    name: str = field(compare=False, hash=False)   # local render name
+    alias_info: TypeAliasInfo = field(compare=False, hash=False)  # semantics
+```
 
-This mirrors how generic records resolve at use sites (`Stack[Int32]`
-becomes `NominalType("Stack", [Int32])`, members on-demand).
+Identity is `(qname, type_args)` -- `TypeAliasInfo` is not hashable (it has
+`list` fields), so it cannot be an eq/hash field; it rides along
+`compare=False` as the semantic payload. `name` is the *local* reference name
+(e.g. the importing-side name), used only for C++ rendering via
+`native_cpp_names` -- mirroring how cross-module records render -- so two
+same-short-named aliases imported into one module do not collide on
+rendering.
+
+Why a dedicated type rather than overloading `NominalType` (the original
+revision's choice):
+
+- **No global name-keyed dict.** Alias identity is the qname and the body
+  rides on `alias_info`, so `alternatives()` / `is_value_type()` /
+  `wrapper_info()` need no `get_current_compiler()` lookup. A name-keyed
+  `dict[str, TypeAliasInfo]` would mis-resolve two modules that both
+  define `type Tree[...]` -- the qname identity is collision-proof.
+- **`NominalType` stays clean.** It is shared by records, enums, and
+  protocols; teaching every `NominalType` consumer that "some nominals
+  are secretly recursive unions" is a smell. A first-class union-like
+  type is honest and THIR-friendly.
+
+Semantics (all derived from on-type `alias_info`, no compiler context):
+- `recursive_union_alternatives()`: substitute `{type_params[i]:
+  type_args[i]}` into `alias_info.body`'s union members.
+- `is_value_type()`: delegate to the substituted union's semantics
+  (mirrors the non-generic `UnionType` wrapper -- does *not* just return
+  True because the wrapper struct is copyable).
+- `to_cpp()`: render `Tree<int32_t>` via the alias qname + the
+  per-compilation `native_cpp_names` map (the one legitimate
+  compiler-context touch, identical to existing `AliasRef`/`UnionType`/
+  `NominalType` name mangling).
+
+### Use-site resolution + finalize (revision 4 -- Option D, as-built)
+
+Rev 3 planned for the use site to mint the instance directly. That is not
+possible here: the parser and sema use *separate* `TypeRegistry` objects
+(`Parser` constructs its own; `SemanticAnalyzer` builds a fresh one and
+re-registers each alias from a cross-phase tuple), and use-site type
+resolution runs in the **parse** phase -- which cannot see the sema-registry
+`alias_info`. So the as-built flow is **Option D**:
+
+1. **Parse-resolution emits `AliasRef(name, args)`** for both the in-body
+   self-reference (`type_resolver._resolve_ref`, the `_pending_alias` branch)
+   *and* every use site (`_resolve_generic_alias_use`, the `is_recursive`
+   branch). Arity is checked here; args are resolved (restoring the
+   "Unknown type" diagnostic for malformed args). `AliasRef` is a pure
+   forward placeholder -- never the semantic carrier for a value.
+2. **One early-sema pass `_finalize_generic_recursive_aliases`**
+   (`tpyc/sema/analyzer.py`, run from the records&protocols phase, before
+   body analysis) rewrites every generic-recursive `AliasRef` into
+   `RecursiveAliasInstanceType` against the **sema** registry's `alias_info`.
+   It walks: the alias's own stored body (the registered `TypeAliasInfo.body`
+   *and* the cross-phase tuple), function/method signatures, record fields,
+   globals, **and function-body local annotations** (which `resolve_refs`
+   also resolves at parse time, so they carry the same placeholders). One
+   conversion point, one `alias_info` source -- no cross-registry divergence.
+   The pass runs whenever the module defines *or imports* a generic recursive
+   alias. `_alias_lookup_for_finalize` resolves the alias_info + qname for
+   both local and imported aliases (imported-first, since `from m import Tree`
+   also registers a local entry whose module name would otherwise mis-stamp
+   the qname).
+
+Downstream, alternatives are expanded on demand via
+`recursive_union_alternatives(typ)` (match dispatch, narrowing) and rendering
+emits `Tree<int32_t>`; the wrapper template handles the rest. This mirrors how
+generic records resolve at use sites while keeping union-like behavior off
+`NominalType`.
+
+### Central capability helpers (revision 3)
+
+Consumers ask about wrapper-ness by **capability, not by file list**:
+
+- `is_recursive_union_like(t)` -- True for the non-generic `UnionType`
+  wrapper *and* `RecursiveAliasInstanceType`.
+- `recursive_union_alternatives(t)` -- the variant alternatives behind
+  the wrapper (`UnionType.members` / substituted instance alternatives).
+
+(As-built: a third helper `recursive_union_info` was sketched but dropped --
+match/codegen read wrapper identity via `wrapper_info()` directly on the type,
+so it had no callers.)
+
+Apply these at the conversion sites a recursive-alias value flows
+through: alternative -> wrapper construction, wrapper -> `.value`
+variant access, param/return lowering, assignment compatibility,
+isinstance/narrowing, match lowering, equality/printing. **Do not**
+sweep every `isinstance(t, UnionType)` branch -- plain structural
+`A | B` value-variants never become a recursive-alias instance.
 
 ### Wrapper struct templating
 
@@ -397,7 +531,7 @@ Phase 2 changes (when `info.type_params != []`):
    body); the existing `tpy::detail::print_element` dispatch handles
    variant printing per-alternative. No ODR concern because the friend
    is per-instantiation.
-6. Forward declarations at `generator.py:910-912` add `template<...>
+6. Forward declarations in `generator.py`'s forward-decl pass add `template<...>
    struct AliasName;`.
 
 ### Match / narrowing details (Codex point F)
@@ -415,36 +549,47 @@ def walk[T](t: Tree[T]) -> Int32:
             return 1
 ```
 
-Or, if narrowing to the T alternative is needed:
-
-```python
-if isinstance(t, list):
-    ...
-else:
-    # t is the T alternative; bind via assignment
-    leaf: T = t
-```
-
 The `case _` arm is the catch-all for the T alternative until
-type-param-as-pattern is a separate feature. Tests must use these
+type-param-as-pattern is a separate feature. Tests use these
 patterns, not `case T()`.
 
-### Registry adaptation (Codex point L commitment / mine #6)
+**As-built notes:**
+
+- The rev-3 alternative (`if isinstance(t, list): ... else: leaf: T = t`)
+  does **not** work: bare `isinstance(x, list)` is unsupported even for a
+  plain union (pre-existing -- the second arg `list` has no element type to
+  resolve), and `case _` does not narrow the subject to the remaining
+  alternative either. Use `match` with `case list()` / `case dict()` for the
+  container arm and `case _` for the leaf.
+- **Leaf-value extraction needs a concrete leaf type.** A fully generic
+  `[T]` traversal can only use `case _` for the leaf (the `T` value is not
+  bound -- count-style traversal). To read the leaf value, the leaf type must
+  be concrete so a class pattern matches it: e.g. `sum_leaves(t: Tree[int])`
+  uses `case int() as v: return v`.
+- The match subject stays the `RecursiveAliasInstanceType` for codegen (its
+  `wrapper_info()` drives `.value` variant dispatch); sema analyzes the arms
+  against a synthesized `UnionType` of the instance's alternatives so the
+  existing union arm-analysis applies unchanged.
+
+### Registry adaptation (revision 3)
 
 `recursive_union_names: set[str]` stays name-keyed. The wrapper is one
 template per alias name, so name-keyed membership is correct.
 
-`is_recursive_union` reverse-map (frozenset-of-members -> name) in
-`sema/context.py:680`: **for generic recursive aliases, every reference
-is parameterized (`Tree[Int32]`)**, never raw expanded variant. The
-reverse-map is queried only when sema sees a raw `UnionType` and wants
-to know "is this a recursive alias's body?" -- which doesn't happen
-for generic aliases (their bodies live behind the templated wrapper).
+The member-tuple-keyed `union_wrapper_index` stays **non-generic-only**.
+Generic recursive aliases never register there -- `_register_union_wrappers`
+and `_fix_recursive_optional_annotations` skip aliases with `type_params`
+(this is carry-over #2's deliberate resolution: it prevents
+`TypeParamRef`-keyed entries from leaking into the concrete-union index).
+Generic-alias recognition uses the on-type `alias_info` carried by
+`RecursiveAliasInstanceType`, not a global lookup -- which is why
+revision 3 has **no** `generic_recursive_aliases` compiler dict (an
+earlier sketch proposed one; it was dropped as a same-short-name
+collision hazard).
 
-**Commitment**: leave the reverse-map non-generic-only. Generic-alias
-recognition uses `info.is_recursive` on the looked-up `TypeAliasInfo`,
-which is the natural signal. Document this in the code comment at the
-reverse-map's construction site.
+`is_recursive_union` reverse-map (frozenset-of-members -> name) in
+`sema/context.py`: leave non-generic-only -- generic instances carry
+their identity on the type, so they never query the reverse-map.
 
 ### Cross-module generic recursive aliases
 
@@ -459,43 +604,67 @@ defining module's context at parse + sema time, before export. Body's
 other types are module-qualified (via the existing resolve pipeline).
 Importing modules walk the body to substitute type params at use sites
 -- no resolution context needed because the body is already fully
-qualified. The `defining_module` field on `TypeAliasInfo` is used only
-for diagnostics, not load-bearing.
+qualified.
 
-### Tests (Phase 2)
+**As-built:** cross-module works through the `from m import Tree` form. The
+finalize pass resolves the imported `alias_info` (and its `treelib.Tree`
+qname) so the importer's use sites finalize correctly, and codegen registers
+the imported wrapper's qualified C++ name (`tpyapp::treelib::Tree`) under the
+local import name in `native_cpp_names` so rendering emits the qualified type.
+**Not yet wired:** the *qualified* use form (`import treelib; x: treelib.Tree[int]`)
+and the *aliased* import form (`from treelib import Tree as T2`) at recursive-
+alias use sites -- both fall back to the "mixed types" / unrecognized-wrapper
+path. (Note: `TypeAliasInfo` did not gain a `defining_module` field as rev-3
+sketched; the qname is derived at finalize from `imported_type_alias_info` /
+the current module name.)
 
-Under `tests/cases/union/`:
+### Tests (Phase 2 -- as-built)
 
-- `generic_recursive_tree_int`: `type Tree[T] = T | list[Tree[T]]`;
-  construct, pass, match via `case list()` + `case _`.
-- `generic_recursive_tree_str`: same alias, instantiated with `Str`.
-- `generic_recursive_tree_nested`: `Tree[list[Int32]]` -- alias type
-  arg is a container.
+Shipped under `tests/cases/union/` (error cases use the
+`error_generic_alias_*` prefix, not the rev-3 `error_recursive_*` names):
+
+Happy path:
+- `generic_recursive_tree_int`: `type Tree[T] = T | list[Tree[T]]` --
+  construct nested, generic `leaf_count[T]` (`case _` leaf), concrete
+  `sum_leaves` (`case int()` binds the leaf value), equality, printing.
+- `generic_recursive_tree_str`: same alias instantiated with `str`
+  (multi-instantiation dispatch).
 - `generic_recursive_two_param`: `type DictTree[K, V] = V | dict[K,
-  DictTree[K, V]]`.
-- `generic_recursive_box_field` (mine point N): `class Holder[T]:
-  data: Box[Tree[T]]` -- pins generic alias inside Box inside generic
-  class.
-- `generic_recursive_cross_module`: alias in module A, used in module
-  B with concrete type args, match dispatch.
-- `generic_recursive_non_eq_t`: `Tree[T]` where T is a class without
-  `__eq__` -- pins the constrained `operator==`; `t1 == t2` errors
-  cleanly.
-- `error_recursive_arity_mismatch`: `type Tree[T] = T | list[Tree[T,
-  T]]` -- arity error.
-- `error_recursive_non_identity_arg`: `type Weird[T] = T |
-  list[Weird[list[T]]]` -- "must reuse type parameter" (growing-args
-  case).
-- `error_recursive_swap_args`: `type Pair[K, V] = ... | dict[V,
-  Pair[V, K]]` -- "must reuse type parameter" (swapped-args case).
-- `error_recursive_concrete_arg`: `type Bad[T] = T | list[Bad[int]]`
-  -- "must reuse type parameter" (constant-args case, Q6 framing).
-- `error_mutual_generic_recursion`: `type Forest[T] = list[Tree[T]];
-  type Tree[T] = T | Forest[T]` -- "mutual recursion across generic
-  aliases" (transitive cycle, Codex point J).
+  DictTree[K, V]]` (multi-param, dict-alternative dispatch).
+- `generic_recursive_box_field`: `class Holder[T]: data: Box[Tree[T]]`
+  (`no_cpython` -- Box storage + match diverges under the CPython stub).
+- `generic_recursive_cross_module`: alias + traversal in `treelib`, used
+  from `main` via `from treelib import Tree`.
 
-All existing non-generic recursive alias tests must keep passing
-unchanged.
+Error cases:
+- `error_generic_alias_recursive_arity`: `list[Tree[T, T]]` -- self-ref
+  arity error (parse-resolution).
+- `error_generic_alias_recursive_non_identity`: `list[Weird[list[T]]]`
+  -- "must reuse type parameter" (growing-args).
+- `error_generic_alias_recursive_swap`: `dict[V, Pair[V, K]]` --
+  "must reuse type parameter" (swapped-args).
+- `error_generic_alias_recursive_concrete`: `list[Bad[int]]` --
+  "must reuse type parameter" (constant-args).
+- `error_generic_alias_mutual_recursion`: generic alias <-> generic
+  record cycle (`Expr` / `Lit` / `Op` with `Box[Expr[T]]`) -- "mutual
+  recursion across generic aliases".
+- `error_generic_alias_recursive_generic_nonunion`: `type Bag[T] =
+  list[Bag[T]]` -- non-union recursive alias rejected ("must use a union
+  form").
+
+**Dropped / deferred from the rev-3 list:**
+- `generic_recursive_tree_nested` (`Tree[list[Int32]]`) -- *both*
+  alternatives are list-shaped (`list[Int32]` leaf, `list[Tree[...]]`
+  branch), so construction/dispatch is inherently ambiguous; needs a
+  multi-list-alternative disambiguation design.
+- `generic_recursive_non_eq_t` -- the constrained `operator==` is emitted,
+  but a "C++ should fail to compile" assertion doesn't fit the snapshot
+  harness (it expects a successful build/run).
+- Codex-suggested `Tree[Tree[int]]`, same-short-name collision, and
+  passing/returning-alternatives / reassignment cases -- the first two hit
+  the dropped/ambiguous and qualified/aliased-use-site gaps above.
+
+All existing non-generic recursive alias tests keep passing unchanged.
 
 ---
 
@@ -533,28 +702,47 @@ detection (`type Bag[T] = list[Bag[T]]` now rejects cleanly); synced
 `is_recursive` flag at parse-resolve time so the parse-gate and sema-gate
 agree; backfilled `# tpyc: type(...)` annotations on happy-path tests.
 
-### Phase 2 commits (in order)
+### Phase 2 commits (as-built)
 
-7. **`is_recursive` detection + same-args validator** -- extend
-   `validate_recursive_union_paths` with the identity-recursion check
-   and the transitive-cycle detector. Set
-   `TypeAliasInfo.is_recursive`.
-8. **Sema use-site resolution split** -- for recursive aliases,
-   return `NominalType("Tree", [args])` instead of expanding the body.
-   On-demand member expansion utility for narrowing + match consumers.
-9. **Wrapper struct templating** -- update
-   `_gen_recursive_union_struct` to emit `template<typename ...>`,
-   sentinel ctor template param, constrained `operator==`, constrained
-   default ctor.
-10. **Cross-module template forward decl ordering** -- forward decls
-    at `generator.py:910-912` get the templated prefix; verify include
-    order machinery handles templated cycle-peer forward decls.
-11. **Match + narrowing through templated wrapper** -- verify variant
-    dispatch works through the template parameter.
-12. **Phase 2 tests** -- ship alongside.
+7. **`AliasRef.args` + identity-recursion validator** -- extend `AliasRef`
+   with `args` (eq/hash + `inner_types`/`with_inner_types` so
+   `substitute_type_params_structural` recurses; `to_cpp` renders `Tree<T>`).
+   Self-ref site resolves args + arity-checks (restores the Unknown-type
+   diagnostic). Extend `validate_recursive_union_paths`
+   (`tpyc/cycle_detection.py`) with the identity-recursion check, guarded to
+   `type_params` aliases (non-generic unaffected). The transitive-cycle
+   rejection moved to commit 8 (coupled to gate removal). `is_recursive` is
+   set at parse-resolution.
+8. **`RecursiveAliasInstanceType` + finalize pass + use-site resolution** --
+   introduce the dedicated type (`(qname, type_args)` identity, `alias_info`
+   carried `compare=False`, delegated `is_value_type`, per-member
+   `alternatives()`, `to_cpp` via the local render name). Use-site resolution
+   returns an `AliasRef` (Option D -- see "Use-site resolution + finalize"),
+   and the single sema finalize pass converts bodies + all annotation use
+   sites. Add the capability helpers. Skip generic aliases in
+   `_register_union_wrappers` / `_fix_recursive_optional_annotations`. Remove
+   both rejection gates. Add the transitive-cycle rejection (a generic alias
+   tagged recursive via the cycle detector rather than a direct self-ref).
+9. **Wrapper struct templating** -- `_gen_recursive_union_struct` emits
+   `template<...>` via `gen_record_template_header`, sentinel ctor template
+   param (`_TpyAliasCtorArg`), constrained `operator==`, constrained default
+   ctor, header-only; templated forward decls. Non-generic path byte-identical.
+10. **Route consumers through the helpers** -- assignment/return compat
+    (`sema/compatibility.py`), list/dict-literal construction + array-literal
+    codegen (`sema/expressions.py`, `codegen_cpp/expressions.py`), generic
+    inference (`sema/type_ops.py`), match dispatch (`sema/match.py` +
+    `codegen_cpp/match.py`). `_variant_index` / `VariantAccess` already read
+    via `wrapper_info()` / `needs_wrapper()`, which the instance implements.
+11. **Tests + docs** -- ship the happy-path suite (see "Tests (Phase 2 --
+    as-built)"); flip `docs/LANGUAGE_FEATURES.md` to Working; file the
+    pre-existing/adjacent bugs (`.template`-keyword, generic-class ctor
+    inference through `Box[Tree[T]]`) in `BUGS.md`. Folded in three
+    consumer-routing fixes surfaced by the cross-module + two-param tests
+    (dict-literal value coercion, imported-alias finalize + qualified C++
+    name registration, local-name rendering).
 
-Each step is one commit on a feature branch; review at the end of
-each phase before merging.
+Each step was one commit on the `generic-type-aliases` branch (plus a
+preceding doc-refresh commit for revision 3).
 
 ---
 
@@ -565,13 +753,16 @@ each phase before merging.
   alias name ever shadows it (unlikely), error message points at the
   sentinel name and we add an explicit reservation. Mitigation: a
   parse-time check that no user type-param starts with `_TpyAlias`.
+  **(As-built: the mitigation check was not added -- left as a latent
+  follow-up; collision is extremely unlikely.)**
 - **Constrained auto-default machinery**: `operator==` and default
   ctor now have `requires` clauses. C++ overload resolution behavior
   when these constraints aren't satisfied differs subtly from "method
-  doesn't exist" vs "method exists but unusable." Verify with
-  `error_recursive_non_eq_t` test that the error site is meaningful
-  (at the comparison/construction site, not at template
-  instantiation).
+  doesn't exist" vs "method exists but unusable." **(As-built: the
+  `non_eq_t` test that would have pinned the error-site quality was
+  dropped -- a "C++ should fail to compile" assertion doesn't fit the
+  snapshot harness. The constraints are emitted; the error-site quality
+  is unverified by an automated test.)**
 - **Transitive-cycle detection performance**: the validator must walk
   every NominalType in every generic alias body. For N generic
   aliases with average body size B, naive is O(N * B * N) (each
@@ -597,6 +788,35 @@ each phase before merging.
 (Previous revision estimated Phase 2 at M; revised to M-L because
 templated `operator==` / default ctor constraint design and
 transitive-cycle detection add real implementation surface.)
+
+## As-built gaps (revision 4)
+
+What shipped vs. the v1 plan, for the next person:
+
+- **`isinstance(x, Tree)` on the recursive form** (Goal, line ~48): not
+  built -- still rejected with the generic-alias "no runtime identity"
+  diagnostic. Low value (trivially true).
+- **`tree_nested` (`Tree[list[Int32]]`)**: not supported -- both
+  alternatives are list-shaped, so literal construction / `case list()`
+  dispatch is ambiguous. Needs a multi-container-alternative disambiguation
+  design (annotate which alternative, or forbid).
+- **Qualified / aliased cross-module use sites** (`m.Tree[int]`,
+  `from m import Tree as T2`): not wired -- only `from m import Tree`
+  resolves recursive-alias use sites. The qname *identity* is collision-proof
+  regardless, so the same-short-name correctness concern is handled; what's
+  missing is the use-site resolution for these two import forms.
+- **Alias <-> alias mutual-recursion diagnostic**: rejected via a coarse
+  `Unknown generic type` forward-ref error rather than the distinct "mutual
+  recursion across generic aliases" message (which the alias <-> record cycle
+  does get).
+- **Generic narrowing to the leaf**: a fully generic `[T]` traversal can't
+  bind the `T` leaf value (`case _` only); leaf extraction needs a concrete
+  leaf type + class pattern (`case int()`). Bare `isinstance(x, list)` is
+  unsupported (pre-existing).
+- **Filed in `BUGS.md` (adjacent, surfaced here):** member-template call on a
+  dependent receiver inside a generic function omits `.template`; generic-class
+  ctor inference doesn't deduce `T` through a nested `Box[Tree[T]]` arg
+  (annotate explicitly).
 
 ## Open follow-ups (post-v1)
 
@@ -624,16 +844,21 @@ Captured here so they don't get lost:
   `K` etc. inside an alias body could hint "did you mean to declare
   this alias as `type Foo[T] = ...`?" -- nice-to-have polish.
 
-## References
+## References (as-built -- symbols, not line numbers, which churn)
 
 - `docs/FEATURE_ROADMAP.md` -- D19 "Recursive Type Aliases" Done; this
   work is the listed D19 extension.
-- `docs/LANGUAGE_FEATURES.md` -- update when shipped.
-- `tpyc/parse/nodes.py:1296` -- `TpyRecord` shape, model for
-  `TypeAliasInfo`'s generic metadata.
-- `tpyc/codegen_cpp/generator.py:1541` -- `_gen_recursive_union_struct`,
-  the templating target for Phase 2.
-- `tpyc/sema/cycle_detection.py` -- validator extension target for
-  the same-args invariant + transitive-cycle detection.
-- `tpyc/sema/type_ops.py:534` -- `substitute_type_params`, the right
-  substitution primitive (not the codegen-side homonym).
+- `docs/LANGUAGE_FEATURES.md` -- generic recursive aliases marked Working.
+- `tpyc/typesys.py` -- `RecursiveAliasInstanceType` (+ `AliasRef.args`,
+  capability helpers `is_recursive_union_like` / `recursive_union_alternatives`).
+- `tpyc/sema/analyzer.py` -- `_finalize_generic_recursive_aliases` (Option D
+  finalize pass), `_alias_lookup_for_finalize`, transitive-cycle rejection in
+  `_detect_recursive_unions`, gate removal in the alias-registration loop.
+- `tpyc/parse/type_resolver.py` -- self-ref + use-site `AliasRef` emission
+  (`_resolve_generic_alias_use`).
+- `tpyc/cycle_detection.py` -- `validate_recursive_union_paths`
+  identity-recursion check.
+- `tpyc/codegen_cpp/generator.py` -- `_gen_recursive_union_struct` templated
+  branch + imported-alias qualified-name registration.
+- `tpyc/sema/{compatibility,expressions,type_ops,match}.py`,
+  `tpyc/codegen_cpp/{expressions,match}.py` -- consumer routing (commit 10/11).

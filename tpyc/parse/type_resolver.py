@@ -491,14 +491,30 @@ class TypeResolver:
         # Self-reference inside the body of the alias currently being
         # resolved (`type Tree[T] = T | list[Tree[T]]` -- the inner
         # `Tree[T]`).  The alias isn't yet registered, so the normal
-        # lookup path would fail.  Emit an `AliasRef` placeholder (same
-        # as the bare-name self-ref path below) so `_contains_self_reference`
-        # detects it and tags the alias recursive; Phase 1 then rejects the
-        # generic+recursive combination.  The `[T]` type args are dropped --
-        # `AliasRef` carries no args, and a generic recursive alias never
-        # reaches codegen (rejected at sema), so the args would be unused.
+        # lookup path would fail.  Emit an `AliasRef` placeholder so
+        # `_contains_self_reference` detects it and tags the alias
+        # recursive.  Resolve and carry the `[...]` args (restoring the
+        # "Unknown type" diagnostic for malformed args like
+        # `list[Tree[Undefined]]`) and arity-check against the alias's
+        # declared params; the same-args identity rule is enforced later
+        # by the recursive-union validator.
         if self._pending_alias is not None and name == self._pending_alias:
-            return AliasRef(name, module=parser._public_module())
+            expected = len(type_param_scope) if type_param_scope else 0
+            actual = len(ref.args)
+            if actual != expected:
+                raise ResolutionFailure(
+                    f"Recursive alias '{name}' self-reference takes "
+                    f"{expected} type argument{'s' if expected != 1 else ''}, "
+                    f"got {actual}",
+                    loc=ref.loc,
+                )
+            resolved_args = tuple(
+                a if isinstance(a, int)
+                else self.resolve(a, type_param_scope, is_type_arg=True)
+                for a in ref.args
+            )
+            return AliasRef(
+                name, module=parser._public_module(), args=resolved_args)
 
         if "." in name:
             parts = name.split(".")
@@ -644,14 +660,16 @@ class TypeResolver:
     ) -> TpyType:
         """Expand a use of a generic type alias at the use site.
 
-        v1 of generic recursive aliases (see
-        `docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md`):
+        Two outcomes:
         - Non-recursive aliases (`type Pair[T] = tuple[T, T]`): build
           `{T_i: arg_i}` and apply structural substitution to the body.
           The alias name disappears from the type tree downstream.
-        - Recursive aliases (`type Tree[T] = T | list[Tree[T]]`) and
-          aliases that self-reference during their own body resolution:
-          rejected until Phase 2 lands the templated wrapper struct.
+        - Recursive aliases (`type Tree[T] = T | list[Tree[T]]`): emit an
+          `AliasRef(name, args)` placeholder (parse-resolve runs against a
+          separate registry and cannot mint the semantic
+          `RecursiveAliasInstanceType`). Sema's finalize pass converts it
+          using the sema-registry alias_info. See
+          docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.
         """
         expected = len(alias_info.type_params)
         actual = len(ref.args)
@@ -659,13 +677,6 @@ class TypeResolver:
             raise ResolutionFailure(
                 f"Type alias '{name}' takes {expected} type "
                 f"argument{'s' if expected != 1 else ''}, got {actual}",
-                loc=ref.loc,
-            )
-        if alias_info.is_recursive:
-            raise ResolutionFailure(
-                f"Generic recursive type aliases are not yet supported "
-                f"(use of '{name}[...]'). Track progress in "
-                f"docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.",
                 loc=ref.loc,
             )
         # Resolve each type arg.  int args (Array's N slot) shouldn't
@@ -679,6 +690,11 @@ class TypeResolver:
                 resolved_args.append(
                     self.resolve(arg, type_param_scope, is_type_arg=True)
                 )
+        if alias_info.is_recursive:
+            return AliasRef(
+                name, module=self._parser._public_module(),
+                args=tuple(resolved_args),
+            )
         subst: dict[str, TpyType] = {}
         for tp_name, arg in zip(alias_info.type_params, resolved_args):
             if isinstance(arg, TpyType):

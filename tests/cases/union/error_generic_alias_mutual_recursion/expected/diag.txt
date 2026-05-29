@@ -1,0 +1,1 @@
+main.py:23: error: alias 'Expr' participates in a type cycle (through Op); mutual recursion across generic aliases is not supported in v1

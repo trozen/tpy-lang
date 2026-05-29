@@ -13,7 +13,7 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, UnknownElementType,
     LiteralType, LiteralValue, LiteralTag, FLOAT, make_list, make_dict, make_set,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
-    NominalType, AliasRef, TypeParamRef, NoneType, AnyType, OptionalType, UnionType,
+    NominalType, AliasRef, RecursiveAliasInstanceType, TypeParamRef, NoneType, AnyType, OptionalType, UnionType,
     is_protocol_type, is_dyn_protocol, unwrap_own, unwrap_readonly, unwrap_optional_own,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     CallableType, is_fn_type, RefType, unwrap_ref_type,
@@ -367,6 +367,11 @@ class TypeCompatibility:
             alias = self.ctx.registry.get_type_alias(typ.name)
             if alias is not None:
                 return alias
+        # Generic recursive alias instances are opaque, like the non-generic
+        # UnionType wrapper below -- their alternatives live behind the
+        # wrapper and must not be expanded here.
+        if isinstance(typ, RecursiveAliasInstanceType):
+            return typ
         if not self.ctx.recursive_union_names:
             return typ
         # Don't recurse into recursive union aliases -- their AliasRef
@@ -566,21 +571,27 @@ class TypeCompatibility:
                     return result
             return None
 
-        # T -> Union[T, ...]: actual must match at least one member.
-        # Iterate twice so a category-crossing widening (e.g. int -> float)
-        # never wins when an in-category member exists. Without this, an int
-        # going into `int | float` would silently coerce to float when float
-        # happens to be earlier in the canonical member order.
+        # T -> Union[T, ...] (and T -> a generic recursive alias wrapper, whose
+        # alternatives stand in for the union members): actual must match at
+        # least one member. Iterate twice so a category-crossing widening (e.g.
+        # int -> float) never wins when an in-category member exists. Without
+        # this, an int going into `int | float` would silently coerce to float
+        # when float happens to be earlier in the canonical member order.
+        union_members: 'tuple[TpyType, ...] | None' = None
         if isinstance(expected, UnionType):
+            union_members = expected.members
+        elif isinstance(expected, RecursiveAliasInstanceType):
+            union_members = expected.alternatives()
+        if union_members is not None:
             actual_unwrapped = unwrap_own(actual)
             a_info = numeric_info(actual_unwrapped)
-            for member in expected.members:
+            for member in union_members:
                 if not _is_natural_union_member(actual_unwrapped, a_info, member):
                     continue
                 result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
                 if not isinstance(result, CompatError):
                     return result
-            for member in expected.members:
+            for member in union_members:
                 if _is_natural_union_member(actual_unwrapped, a_info, member):
                     continue
                 result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
@@ -1927,6 +1938,17 @@ class TypeCompatibility:
             if fi is not None and (is_str_type(fi.return_type) or is_string_type(fi.return_type)):
                 return True
 
+            # A function returning a recursive-union wrapper struct is an
+            # rvalue by value (the wrapper is value-shape). Taking its
+            # address (the Optional pointer-repr return path) would yield
+            # `&(call())` -- ill-formed C++. Force the diagnostic so the
+            # user wraps the return type in Own[Optional[Wrapper]] (or
+            # binds to a local first).
+            if fi is not None:
+                ret_unwrapped = unwrap_ref_type(unwrap_readonly(fi.return_type))
+                if ret_unwrapped.needs_wrapper():
+                    return True
+
             # Regular function call - assume it returns something safe
             # (the callee is responsible for not returning dangling refs)
             return False
@@ -2012,6 +2034,7 @@ class TypeCompatibility:
             if isinstance(expr, TpyTupleLiteral):
                 for i, et in enumerate(return_type.element_types):
                     if (not et.is_value_type() and not isinstance(et, (OwnType, TypeParamRef))
+                            and not et.needs_wrapper()
                             and i < len(expr.elements)):
                         if self.is_dangling_return(expr.elements[i]):
                             raise self.ctx.error(
@@ -2021,7 +2044,16 @@ class TypeCompatibility:
                                 expr.elements[i]
                             )
             return
-        if return_type.is_value_type() or isinstance(return_type, (VoidType, OwnType)):
+        if (return_type.is_value_type()
+                or isinstance(return_type, (VoidType, OwnType))
+                or unwrap_readonly(return_type).needs_wrapper()):
+            # Recursive-union wrappers (non-generic `UnionType` form + the
+            # generic `RecursiveAliasInstanceType`) are returned by value at
+            # the C++ level even though `is_value_type()` is False (the
+            # alternatives may be reference types) -- codegen emits the
+            # wrapper struct as a value-returned type, so no dangling concern.
+            # The `unwrap_readonly` mirrors codegen's `to_cpp_return_const`
+            # delegation through ReadonlyType.
             return
 
         # Optional[T] for non-value T returns T* -- returning a local would dangle.
@@ -2033,7 +2065,7 @@ class TypeCompatibility:
                 raise self.ctx.error(
                     f"Cannot return local or temporary as '{return_type}'. "
                     f"The returned pointer would dangle. "
-                    f"Return a reference to parameter data, or use Own[{return_type.inner}] "
+                    f"Return a reference to parameter data, or use Own[{return_type}] "
                     f"to return by value.",
                     expr
                 )

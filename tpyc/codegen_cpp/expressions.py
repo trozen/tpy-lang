@@ -12,7 +12,8 @@ from typing import Final, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType,
-    NominalType, AliasRef, PtrType, OwnType, OptionalType, NoneType, AnyType, make_array,
+    NominalType, AliasRef, RecursiveAliasInstanceType, recursive_union_alternatives,
+    PtrType, OwnType, OptionalType, NoneType, AnyType, make_array,
     PendingListType, ListRepeatType,
     TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_own, unwrap_qualifiers, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
     TupleType, CallableType,
@@ -3962,12 +3963,26 @@ class ExpressionGenerator:
         # When the target is a union/optional, find the matching container member
         # and use it as the effective target. The brace-init will be prefixed with
         # the explicit C++ type so the variant can deduce the alternative.
+        # Strip readonly: wrapper-typed return slots arrive as
+        # readonly[Tree[T]], but the variant-alternative match needs to see the
+        # bare wrapper to find the list member.
+        if isinstance(target_type, ReadonlyType):
+            target_type = target_type.wrapped
         union_prefix: str | None = None
         if isinstance(target_type, UnionType):
             # Find the unique list/array union member to use as the effective
             # target.  If multiple container members exist (e.g. list[int] |
             # list[str]), skip -- sema should have caught the ambiguity.
             container_members = [m for m in target_type.members
+                                 if is_array(m) or is_list(m)]
+            if len(container_members) == 1:
+                union_prefix = self.types.type_to_cpp(container_members[0])
+                target_type = container_members[0]
+        elif isinstance(target_type, RecursiveAliasInstanceType):
+            # A generic recursive alias instance isn't a UnionType, so the
+            # branch above misses it; its alternatives carry the list/array
+            # member the brace-init must be prefixed with.
+            container_members = [m for m in (recursive_union_alternatives(target_type) or ())
                                  if is_array(m) or is_list(m)]
             if len(container_members) == 1:
                 union_prefix = self.types.type_to_cpp(container_members[0])
@@ -3999,6 +4014,11 @@ class ExpressionGenerator:
                     alias = self.ctx.analyzer.registry.get_type_alias(et.name)
                     if alias is not None:
                         elem_target = alias
+                # Carry the instance element down so a nested array literal
+                # (a branch of the recursive structure) gets its own
+                # union_prefix; unlike AliasRef it needs no registry lookup.
+                elif isinstance(et, RecursiveAliasInstanceType):
+                    elem_target = et
         elements = []
         with self._container_element_context():
             for e in expr.elements:
@@ -4113,6 +4133,13 @@ class ExpressionGenerator:
             if isinstance(alias, UnionType):
                 return any(self._is_cpp_noncopyable(m) for m in alias.members
                            if not isinstance(m, (NoneType, VoidType)))
+        # Generic recursive alias instance: a @nocopy alternative makes the
+        # wrapper's std::variant non-copyable. Use the unified alternatives
+        # accessor so the check matches the alternative list codegen emits.
+        if isinstance(typ, RecursiveAliasInstanceType):
+            return any(self._is_cpp_noncopyable(m)
+                       for m in (recursive_union_alternatives(typ) or ())
+                       if not isinstance(m, (NoneType, VoidType)))
         return False
 
     def _is_cpp_noncopyable(self, typ: TpyType) -> bool:

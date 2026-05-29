@@ -11,7 +11,7 @@ from typing import Optional
 from ..typesys import (
     TpyType, TypeRegistry, NominalType, AliasRef, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
     NoneType, INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
-    RecursiveUnionInfo,
+    RecursiveUnionInfo, RecursiveAliasInstanceType,
     FunctionInfo, ParamInfo, is_any_str_type, BIGINT, FLOAT,
     make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType, PtrType,
     TypeAliasInfo,
@@ -563,18 +563,6 @@ class SemanticAnalyzer:
         for name, entry in module.type_aliases.items():
             typ, loc, type_params, type_param_kinds = entry
             is_recursive = name in module.recursive_union_names
-            if type_params and is_recursive:
-                # Phase 1 of generic recursive aliases ships only the
-                # non-recursive substitution path; the recursive wrapper-
-                # struct templating lands in Phase 2.  See
-                # docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.
-                raise SemanticError(
-                    f"Generic recursive type aliases are not yet "
-                    f"supported (alias '{name}' is both generic and "
-                    f"self-referential). Track progress in "
-                    f"docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.",
-                    loc,
-                )
             self._validate_type_alias_members(name, typ, loc)
             info = TypeAliasInfo(
                 body=typ,
@@ -599,6 +587,11 @@ class SemanticAnalyzer:
             if (display_names is not None and not type_params
                     and isinstance(typ, UnionType)):
                 display_names.setdefault(typ.members, name)
+        # Convert the parser's AliasRef placeholders for generic recursive
+        # aliases (self-refs in bodies + use sites in annotations) into
+        # semantic RecursiveAliasInstanceType nodes, now that the alias
+        # registry carries each alias's TypeAliasInfo.
+        self._finalize_generic_recursive_aliases(module)
         self._advance_phase(
             self._PHASE_BIND_IMPORTS,
             self._PHASE_REGISTER_RECORDS_AND_PROTOCOLS,
@@ -1754,7 +1747,8 @@ class SemanticAnalyzer:
             alias_type, alias_loc = entry[0], entry[1]
             if not isinstance(alias_type, UnionType):
                 continue
-            err = validate_recursive_union_paths(alias_name, alias_type.members)
+            err = validate_recursive_union_paths(
+                alias_name, alias_type.members, type_params=entry[2])
             if err is not None:
                 raise SemanticError(err, loc=alias_loc)
 
@@ -1805,8 +1799,23 @@ class SemanticAnalyzer:
                 loc = alias_locs.get(edge.source) or alias_locs.get(edge.target)
                 raise SemanticError(msg, loc)
 
-            # Tag union aliases in this cycle as recursive
+            # Tag union aliases in this cycle as recursive. A *generic* alias
+            # reaching this point is recursive transitively (through a record
+            # or another alias) rather than via a direct self-ref -- direct
+            # generic self-refs are tagged at parse-resolution and excluded
+            # from the cycle graph above. v1 supports only direct identity
+            # recursion, so reject the transitive case with a clear diagnostic.
             for alias_name in cycle.alias_names:
+                entry = module.type_aliases.get(alias_name)
+                if entry is not None and entry[2]:
+                    others = [n for n in cycle.path if n != alias_name]
+                    through = f" (through {', '.join(others)})" if others else ""
+                    raise SemanticError(
+                        f"alias '{alias_name}' participates in a type "
+                        f"cycle{through}; mutual recursion across generic "
+                        f"aliases is not supported in v1",
+                        alias_locs.get(alias_name),
+                    )
                 module.recursive_union_names.add(alias_name)
 
     def _register_union_wrappers(self, module: TpyModule) -> None:
@@ -1837,6 +1846,12 @@ class SemanticAnalyzer:
                 continue
             typ = entry[0]
             if not isinstance(typ, UnionType):
+                continue
+            # Generic recursive aliases are keyed by their on-type alias_info
+            # (RecursiveAliasInstanceType), not the member-tuple index -- their
+            # members carry unbound TypeParamRefs that must not leak into the
+            # concrete-union index.
+            if entry[2]:
                 continue
             info = RecursiveUnionInfo(
                 name=alias_name, full_members=typ.members, origin=module_name,
@@ -1904,6 +1919,12 @@ class SemanticAnalyzer:
         for name in module.recursive_union_names:
             entry = module.type_aliases.get(name)
             if entry is not None:
+                # Generic recursive aliases have parameterized use sites
+                # (RecursiveAliasInstanceType), never a bare expanded union, so
+                # the member-set reverse map does not apply -- and their members
+                # carry TypeParamRefs that would mis-key it.
+                if entry[2]:
+                    continue
                 typ = entry[0]  # entry[0] is the body type
                 if isinstance(typ, UnionType):
                     alias_has_none = any(
@@ -2044,6 +2065,130 @@ class SemanticAnalyzer:
             resolved = SemanticAnalyzer._resolve_alias(typ, aliases, _skip=skip)
             if resolved is not typ:
                 func.params[i] = (name, resolved)
+
+    def _alias_lookup_for_finalize(
+        self, name: str,
+    ) -> 'tuple[TypeAliasInfo, str, str] | None':
+        """Resolve a referenced alias name to (info, qname, short_name),
+        covering both local and imported aliases, or None if not an alias.
+
+        The qname is the defining module + the alias's original name --
+        collision-proof across modules that define same-short-named aliases,
+        and consistent whether the alias is referenced from its own module or
+        an importer (both resolve to the defining module's name).
+
+        Imported aliases are checked first: `from m import Tree` also registers
+        a local entry, so a local-first lookup would mis-stamp the importer's
+        module name onto the qname (diverging from the defining module's body,
+        which the importer inherits via the shared alias_info)."""
+        imp = self.ctx.registry.imported_type_alias_info.get(name)
+        if imp is not None:
+            decl_mod, orig = imp
+            mod_info = self.ctx.registry.modules.get(decl_mod)
+            iinfo = mod_info.type_aliases.get(orig) if mod_info is not None else None
+            if iinfo is None:
+                iinfo = self.ctx.registry.get_type_alias_info(name)
+            if iinfo is not None:
+                return iinfo, f"{decl_mod}.{orig}", orig
+        info = self.ctx.registry.get_type_alias_info(name)
+        if info is not None:
+            return info, f"{self.ctx.module_name}.{name}", name
+        return None
+
+    def _finalize_alias_refs(self, typ: TpyType) -> TpyType:
+        """Rewrite a generic-recursive `AliasRef` placeholder into the
+        semantic `RecursiveAliasInstanceType`, recursing through inner types.
+
+        Non-generic recursive aliases keep their bare `AliasRef` self-ref
+        (their use sites stay UnionType + union_wrapper_index)."""
+        if isinstance(typ, AliasRef):
+            looked = self._alias_lookup_for_finalize(typ.name)
+            if (looked is not None and looked[0].type_params
+                    and looked[0].is_recursive):
+                info, qname, _short = looked
+                new_args = tuple(
+                    self._finalize_alias_refs(a) if isinstance(a, TpyType) else a
+                    for a in typ.args
+                )
+                # Render via the *local* reference name (`typ.name`) -- codegen
+                # keys native_cpp_names by the importing name (e.g. `from m
+                # import Tree as MyTree`), exactly as cross-module records do,
+                # so two same-short-named aliases imported into one module do
+                # not collide on rendering. Identity stays the qname.
+                return RecursiveAliasInstanceType(qname, new_args, typ.name, info)
+        return typ.map_inner_types(self._finalize_alias_refs)
+
+    def _finalize_generic_recursive_aliases(self, module: TpyModule) -> None:
+        """Convert the parser's generic-recursive `AliasRef` placeholders into
+        `RecursiveAliasInstanceType` across alias bodies and all annotation
+        slots, using the sema-registry alias_info (parse-resolve runs against
+        a separate registry and cannot mint the semantic type).
+
+        Single conversion point so use-site instances and recursive children
+        share one alias_info source. Runs both for locally-defined generic
+        recursive aliases (whose bodies get finalized) and for modules that
+        merely *use* an imported one (use sites still need conversion). See
+        docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md."""
+        generic_rec = {
+            n for n in module.recursive_union_names
+            if (gi := self.ctx.registry.get_type_alias_info(n)) is not None
+            and gi.type_params
+        }
+        imports_generic_rec = any(
+            (lk := self._alias_lookup_for_finalize(n)) is not None
+            and lk[0].type_params and lk[0].is_recursive
+            for n in self.ctx.registry.imported_type_alias_info
+        )
+        if not generic_rec and not imports_generic_rec:
+            return
+        # Alias bodies: the registered TypeAliasInfo (read by alternatives
+        # expansion) and the cross-phase tuple (read by codegen + export).
+        for n in generic_rec:
+            info = self.ctx.registry.get_type_alias_info(n)
+            info.body = self._finalize_alias_refs(info.body)
+            entry = module.type_aliases.get(n)
+            if entry is not None:
+                module.type_aliases[n] = (
+                    (self._finalize_alias_refs(entry[0]),) + tuple(entry[1:])
+                )
+        # Use sites in annotations.
+        for func in module.functions:
+            self._finalize_func_aliases(func)
+        for record in module.all_records():
+            for f in record.fields:
+                f.type = self._finalize_alias_refs(f.type)
+            for method in record.methods:
+                self._finalize_func_aliases(method)
+        if module.top_level_stmts:
+            self._finalize_stmts_aliases(module.top_level_stmts)
+
+    def _finalize_func_aliases(self, func: TpyFunction) -> None:
+        if func.return_type is not None:
+            func.return_type = self._finalize_alias_refs(func.return_type)
+        for i, (name, typ) in enumerate(func.params):
+            new = self._finalize_alias_refs(typ)
+            if new is not typ:
+                func.params[i] = (name, new)
+        if func.vararg_type is not None:
+            func.vararg_type = self._finalize_alias_refs(func.vararg_type)
+        if func.kwarg_type is not None:
+            func.kwarg_type = self._finalize_alias_refs(func.kwarg_type)
+        if func.body:
+            self._finalize_stmts_aliases(func.body)
+
+    def _finalize_stmts_aliases(self, stmts: 'list') -> None:
+        """Convert generic-recursive AliasRef placeholders in local variable
+        annotations. Local annotations are resolved at parse-resolution (via
+        resolve_refs `_walk_body`), so they carry the same placeholders as
+        signatures and must be finalized too."""
+        for stmt in stmts:
+            if isinstance(stmt, TpyVarDecl) and stmt.type is not None:
+                stmt.type = self._finalize_alias_refs(stmt.type)
+            if isinstance(stmt, TpyNestedDef):
+                self._finalize_func_aliases(stmt.func)
+                continue
+            for body in stmt.sub_bodies():
+                self._finalize_stmts_aliases(body)
 
     def _analyze_class_constants(self, record: TpyRecord) -> None:
         """Analyze each class constant's initializer and validate it is a

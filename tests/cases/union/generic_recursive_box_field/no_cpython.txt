@@ -1,0 +1,2 @@
+Box[Tree[T]] storage + match dispatch through Box.get() depends on TPy
+storage-form semantics; the CPython Box stub + match diverge.

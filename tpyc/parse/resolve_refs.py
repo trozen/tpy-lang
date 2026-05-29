@@ -348,20 +348,17 @@ def resolve_refs(module: TpyModule) -> None:
             # check itself runs later in sema (`_validate_recursive_union_paths`)
             # so it can see same-module RecordInfo / TypeDef entries that
             # `register_records_and_protocols` hasn't attached yet.
-            # Union shapes are the historical case (`type Json = ... | list[Json]`).
-            # Generic aliases use a wider trigger so non-union recursive forms
-            # like `type Bag[T] = list[Bag[T]]` also reach the Phase-1 sema
-            # rejection in `analyzer._register_type_aliases`; Phase 2 will
-            # convert these into templated wrapper structs.
             #
-            # Non-union, non-generic self-referential aliases (`type Foo =
-            # list[Foo]`, or `type Outer = Pair[Outer]` where Pair is a
-            # generic alias whose substitution introduces a self-reference)
-            # have no wrapper-struct path today and would otherwise emit
-            # ill-formed C++ (`using Foo = std::vector<Foo>;` with Foo
-            # incomplete).  Reject cleanly at parse-resolution.
+            # A self-referential alias (generic or not) must use a union form
+            # so the compiler can emit a variant-backed wrapper struct. Bare
+            # non-union self-recursion (`type Foo = list[Foo]`,
+            # `type Bag[T] = list[Bag[T]]`, or `type Outer = Pair[Outer]` where
+            # Pair's substitution reintroduces the self-reference) has no
+            # wrapper-struct path and would emit ill-formed C++
+            # (`using Foo = std::vector<Foo>;` with Foo incomplete). Reject it
+            # cleanly at parse-resolution.
             if _contains_self_reference(alias_type, alias_name):
-                if isinstance(alias_type, UnionType) or alias_type_params:
+                if isinstance(alias_type, UnionType):
                     module.recursive_union_names.add(alias_name)
                 else:
                     raise ParseError(

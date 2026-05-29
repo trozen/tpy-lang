@@ -10,7 +10,7 @@ from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, NoneType, OptionalType,
-    PendingStrType, UnionType,
+    PendingStrType, UnionType, RecursiveAliasInstanceType,
     LiteralType,
     unwrap_readonly, is_any_str_type,
 )
@@ -90,7 +90,11 @@ class MatchGenerator:
                    else "auto")
         out.write(f"{indent}{binding} __match_subject = {subject_code};\n")
 
-        if isinstance(subject_type, UnionType):
+        if isinstance(subject_type, (UnionType, RecursiveAliasInstanceType)):
+            # Generic recursive alias instances dispatch through the same
+            # variant-index path; _variant_index / VariantAccess read members
+            # via wrapper_info() / needs_wrapper(), both of which the instance
+            # implements.
             has_guard = any(c.guard is not None for c in stmt.cases)
             # Also use guarded path when union field guards cause multiple
             # arms to share the same variant index

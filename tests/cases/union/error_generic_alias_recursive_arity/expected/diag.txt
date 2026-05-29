@@ -1,0 +1,1 @@
+main.py:5: error: Recursive alias 'Tree' self-reference takes 1 type argument, got 2

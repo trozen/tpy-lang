@@ -1,0 +1,1 @@
+main.py:5: error: recursive position of alias 'Bad' must reuse type parameter 'T' at position 0; got 'int'. v1 supports identity recursion only.

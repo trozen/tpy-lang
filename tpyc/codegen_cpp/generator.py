@@ -305,12 +305,16 @@ class CodeGenerator:
         for local_name, (source_module, original_name) in self.analyzer.registry.imported_type_alias_info.items():
             alias_info = self.analyzer.registry.get_type_alias_info(local_name)
             if alias_info is not None and alias_info.type_params:
-                # Generic non-recursive aliases have no C++-level identity
-                # (expanded at use sites); registering the alias name for a
-                # value-type union body would make UnionType.to_cpp() emit a
-                # name that was never defined. Mirrors the guard in the
-                # imported-alias `using` loop. See
-                # docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.
+                # Generic recursive aliases DO have a C++ identity (the wrapper
+                # template). Map the imported short name to the defining
+                # module's qualified name so RecursiveAliasInstanceType.to_cpp()
+                # emits `tpyapp::lib::Tree<...>` rather than a bare, undeclared
+                # `Tree<...>`. Generic non-recursive aliases are expanded at use
+                # sites and have no C++-level identity -- skip them.
+                src = self.analyzer.registry.modules.get(source_module)
+                if src is not None and original_name in src.recursive_union_names:
+                    register_native_cpp_name(
+                        local_name, qualified_cpp_name(source_module, original_name))
                 continue
             alias_type = alias_info.body if alias_info is not None else None
             if not isinstance(alias_type, UnionType):
@@ -339,6 +343,11 @@ class CodeGenerator:
         for name in module.recursive_union_names:
             entry = module.type_aliases.get(name)
             if entry is not None:
+                # Generic recursive aliases render via RecursiveAliasInstanceType
+                # (Tree<int>), not the member-tuple union_alias_names map; their
+                # members carry TypeParamRefs that must not pollute it.
+                if entry[2]:
+                    continue
                 typ = entry[0]
                 if isinstance(typ, UnionType):
                     register_union_alias(typ.members, name)
@@ -966,9 +975,15 @@ class CodeGenerator:
         # Forward declare recursive union wrapper structs (before records,
         # so that record fields like Box[JsonValue] can reference the name)
         emitted_fwd = False
-        for name in module.type_aliases:
+        for name, entry in module.type_aliases.items():
             if name in module.recursive_union_names:
-                hpp.write(f"struct {name};\n")
+                type_params = entry[2]
+                if type_params:
+                    header = self.protocols.gen_record_template_header(
+                        type_params, {}, entry[3])
+                    hpp.write(f"{header} struct {name};\n")
+                else:
+                    hpp.write(f"struct {name};\n")
                 emitted_fwd = True
 
         # Forward declare remaining records (excluding native records)
@@ -1296,7 +1311,8 @@ class CodeGenerator:
         for name, entry in sorted(module.type_aliases.items()):
             typ, _loc, type_params, _kinds = entry
             if name in module.recursive_union_names:
-                self._gen_recursive_union_struct(hpp, name, typ)
+                self._gen_recursive_union_struct(
+                    hpp, name, typ, type_params, _kinds)
             elif type_params:
                 continue  # generic non-recursive alias: no C++ emission
             else:
@@ -1659,23 +1675,53 @@ class CodeGenerator:
         if any_written:
             hpp.write("\n")
 
-    def _gen_recursive_union_struct(self, out: TextIO, name: str, typ: UnionType) -> None:
+    def _gen_recursive_union_struct(
+        self, out: TextIO, name: str, typ: UnionType,
+        type_params: 'list[str] | None' = None,
+        type_param_kinds: 'list | None' = None,
+    ) -> None:
         """Generate a wrapper struct for a recursive union type alias.
 
-        Instead of `using JsonValue = std::variant<...>`, emits:
+        Non-generic (`type JsonValue = ... | list[JsonValue]`):
           struct JsonValue {
               using variant_type = std::variant<...>;
               variant_type value;
               JsonValue() = default;
-              template<typename T> requires ... JsonValue(T&& v) : data(...) {}
+              template<typename T> requires ... JsonValue(T&& v) : value(...) {}
               bool operator==(const JsonValue&) const = default;
           };
+
+        Generic (`type Tree[T] = T | list[Tree[T]]`): one template per alias
+        name. The default ctor / `operator==` are constrained so an
+        instantiation with a non-default-constructible / non-comparable T
+        loses just that member (clean error at the use site) rather than an
+        ill-formed struct. The forwarding ctor's template param uses a
+        sentinel name that cannot collide with a user type param.
         """
         cpp_members = [
             "std::monostate" if is_void_like_type(m) else self.types.type_to_cpp(m)
             for m in typ.members
         ]
         variant_type = f"std::variant<{', '.join(cpp_members)}>"
+        if type_params:
+            header = self.protocols.gen_record_template_header(
+                type_params, {}, type_param_kinds or [])
+            out.write(f"{header}\n")
+            out.write(f"struct {name} {{\n")
+            out.write(f"    using variant_type = {variant_type};\n")
+            out.write(f"    variant_type value;\n\n")
+            out.write(f"    {name}() requires std::default_initializable<variant_type> = default;\n")
+            out.write(f"    template<typename _TpyAliasCtorArg>\n")
+            out.write(f"        requires std::constructible_from<variant_type, _TpyAliasCtorArg&&>\n")
+            out.write(f"    {name}(_TpyAliasCtorArg&& v) : value(std::forward<_TpyAliasCtorArg>(v)) {{}}\n\n")
+            out.write(f"    bool operator==(const {name}&) const "
+                      f"requires std::equality_comparable<variant_type> = default;\n\n")
+            out.write(f"    friend std::ostream& operator<<(std::ostream& os, const {name}& v) {{\n")
+            out.write(f"        ::tpy::detail::print_element(os, v.value);\n")
+            out.write(f"        return os;\n")
+            out.write(f"    }}\n")
+            out.write(f"}};\n")
+            return
         out.write(f"struct {name} {{\n")
         out.write(f"    using variant_type = {variant_type};\n")
         out.write(f"    variant_type value;\n\n")

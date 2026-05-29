@@ -25,7 +25,8 @@ from ..typesys import (
     PendingGenericInstanceType, unwrap_ref_type, make_ref, RefType,
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
-    unwrap_own, is_readonly_span)
+    unwrap_own, is_readonly_span,
+    RecursiveAliasInstanceType, recursive_union_alternatives)
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFStringValue, TpyFString, FSTRING_CONV_REPR, FSTRING_CONV_STR,
@@ -136,17 +137,25 @@ def _collect_body_local_defs(stmts: list[TpyStmt]) -> set[str]:
     return defs
 
 
-def _find_list_member(ut: UnionType) -> NominalType | None:
-    """Find the list[...] member of a union type, if any."""
-    for m in ut.members:
+def _union_like_members(ut: TpyType) -> 'tuple[TpyType, ...]':
+    """The variant alternatives of a recursive-union wrapper -- the non-generic
+    UnionType's members or a generic instance's alternatives."""
+    if isinstance(ut, UnionType):
+        return ut.members
+    return recursive_union_alternatives(ut) or ()
+
+
+def _find_list_member(ut: TpyType) -> NominalType | None:
+    """Find the list[...] member of a recursive-union wrapper, if any."""
+    for m in _union_like_members(ut):
         if is_list(m):
             return m
     return None
 
 
-def _find_dict_member(ut: UnionType) -> NominalType | None:
-    """Find the dict[...] member of a union type, if any."""
-    for m in ut.members:
+def _find_dict_member(ut: TpyType) -> NominalType | None:
+    """Find the dict[...] member of a recursive-union wrapper, if any."""
+    for m in _union_like_members(ut):
         if is_dict(m):
             return m
     return None
@@ -478,7 +487,7 @@ class ExpressionAnalyzer:
             # Recursive union type with a list member: propagate the union
             # as element hint so nested list literals infer as list[Tree]
             # (e.g. x: Tree = [1, [3, 4]] where type Tree = int | list[Tree])
-            if isinstance(inner_hint, UnionType) and inner_hint.needs_wrapper():
+            if inner_hint.needs_wrapper():
                 list_member = _find_list_member(inner_hint)
                 if list_member is not None:
                     result = self._analyze_array_literal(expr, inner_hint)
@@ -537,7 +546,7 @@ class ExpressionAnalyzer:
                 result = self._analyze_dict_literal(expr, inner_hint.type_args[0], inner_hint.type_args[1])
                 self.ctx.set_expr_type(expr, result)
                 return result
-            if isinstance(inner_hint, UnionType) and inner_hint.needs_wrapper():
+            if inner_hint.needs_wrapper():
                 dict_member = _find_dict_member(inner_hint)
                 if dict_member is not None:
                     result = self._analyze_dict_literal(expr, dict_member.type_args[0], inner_hint)
@@ -2611,10 +2620,14 @@ class ExpressionAnalyzer:
                 key_type = unified
 
         # Unify value types
-        if is_union_or_optional_type(expected_value) or isinstance(expected_value, AnyType):
-            # Annotation provides a union/optional/Any -- each value validates
-            # against the slot independently rather than against its peers
-            # (heterogeneous values are the whole point of these slot types).
+        if (is_union_or_optional_type(expected_value)
+                or isinstance(expected_value, AnyType)
+                or (expected_value is not None and expected_value.needs_wrapper())):
+            # Annotation provides a union/optional/Any/recursive-alias wrapper --
+            # each value validates against the slot independently rather than
+            # against its peers (heterogeneous values are the whole point of
+            # these slot types; a recursive dict alias's values are leaves or
+            # nested wrappers).
             value_type = expected_value
             for i, vt in enumerate(value_types, 1):
                 if vt == expected_value:

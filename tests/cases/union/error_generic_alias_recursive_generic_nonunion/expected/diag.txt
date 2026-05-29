@@ -1,1 +1,1 @@
-main.py:8: error: Generic recursive type aliases are not yet supported (alias 'Bag' is both generic and self-referential). Track progress in docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.
+main.py:8: error: Recursive type alias 'Bag' must use a union form (e.g. `type Bag = SomeBaseType | list[Bag]`) so the compiler can emit a wrapper struct. Bare non-union self-recursion (`type Bag = list[Bag]`) is not supported.

@@ -307,6 +307,7 @@ def clear_all_compilation_state() -> None:
     from tpyc.type_def_registry import clear_dynamic_type_defs
     _evaluating_send.clear()
     _evaluating_sync.clear()
+    _evaluating_alias_value.clear()
     clear_dynamic_type_defs()
 
 
@@ -1466,6 +1467,12 @@ class ReadonlyType(TpyType):
     def is_value_type(self) -> bool:
         return self.wrapped.is_value_type()
 
+    def needs_wrapper(self) -> bool:
+        # readonly is a const qualifier, not a shape change -- the C++
+        # form is the wrapped type. Consumers asking "does this type
+        # have a wrapper struct?" must see through the qualifier.
+        return self.wrapped.needs_wrapper()
+
     def is_send(self) -> bool:
         return self.wrapped.is_send()
 
@@ -1562,9 +1569,18 @@ class RefType(TpyType):
         return f"{self.wrapped.to_cpp()}&"
 
     def to_cpp_return(self) -> str:
+        # Wrapper structs (recursive aliases) are value-shape; auto-inserted
+        # RefType around one should still lower to the by-value form, not
+        # a dangling `Wrapper&`. Delegate to the wrapped type's override
+        # so tuple-element / boundary return positions emit the wrapper
+        # name unchanged.
+        if self.wrapped.needs_wrapper():
+            return self.wrapped.to_cpp_return()
         return self.to_cpp()
 
     def to_cpp_return_const(self) -> str:
+        if self.wrapped.needs_wrapper():
+            return self.wrapped.to_cpp_return_const()
         if isinstance(self.wrapped, TypeParamRef):
             return f"::tpy::val_or_cref_t<{self.wrapped.name}>"
         return f"const {self.wrapped.to_cpp()}&"
@@ -2441,16 +2457,35 @@ class AliasRef(TpyType):
     the source module's `type_aliases` (cross-module aliases). The
     C++ rendering is the alias name -- recursive aliases emit a
     wrapper struct named identically.
+
+    `args` carries the type arguments of a *generic* recursive alias
+    self-reference (`type Tree[T] = T | list[Tree[T]]` -- the inner
+    `Tree[T]`). It is unresolved forward material only: after alias
+    registration the finalize step rewrites resolvable `AliasRef(name,
+    args)` nodes into `RecursiveAliasInstanceType`, so the semantic
+    carrier for a value is never a half-resolved `AliasRef`. Empty for
+    non-generic self-references.
     """
     name: str  # alias short name (e.g. "Tree")
     module: Optional[str] = None  # defining module; None for current-module local
+    args: tuple['TpyType', ...] = ()  # generic self-ref type args; () for non-generic
 
     def to_cpp(self) -> str:
         # Recursive-alias wrapper struct shares the alias's short name.
         # Cross-module references go through the per-compilation
         # native_cpp_names map (populated for imports during codegen),
         # which already routes the name to the qualified C++ form.
-        return _native_cpp_names_view().get(self.name, self.name)
+        base = _native_cpp_names_view().get(self.name, self.name)
+        if self.args:
+            rendered = ", ".join(a.to_cpp() for a in self.args)
+            return f"{base}<{rendered}>"
+        return base
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return self.args
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return AliasRef(self.name, self.module, types)
 
     # Conservative defaults matching the prior bare-NominalType
     # placeholder behavior. The wrapper struct itself is value-type,
@@ -2468,7 +2503,158 @@ class AliasRef(TpyType):
         return False
 
     def __str__(self) -> str:
+        if self.args:
+            return f"{self.name}[{', '.join(str(a) for a in self.args)}]"
         return self.name
+
+
+# Re-entrancy guard for RecursiveAliasInstanceType.is_value_type. A generic
+# recursive alias's body contains a self-reference instance, so naive
+# delegation to the substituted union's is_value_type would recurse forever.
+# Returning False at the re-entry point mirrors AliasRef.is_value_type (the
+# non-generic placeholder's conservative answer) and matches how the
+# non-generic UnionType wrapper aggregates -- codegen treats the wrapper as a
+# value via needs_wrapper() regardless. Cleared per compilation via
+# clear_all_compilation_state.
+_evaluating_alias_value: set[tuple] = set()
+
+
+@dataclass(frozen=True)
+class RecursiveAliasInstanceType(TpyType):
+    """A use of a generic recursive type alias at a concrete instantiation
+    (`Tree[Int32]`, or `Tree[T]` inside a generic function/alias body).
+
+    The semantic carrier for a generic recursive alias value. Unlike a
+    non-generic recursive alias -- whose use site is an eagerly-expanded
+    `UnionType` recognized via `union_wrapper_index` -- a generic alias has
+    one C++ template per name and unboundedly many instantiations, so the
+    use site is this dedicated nominal-but-union-like type that renders
+    `Tree<int32_t>`.
+
+    Identity is `(qname, type_args)`: `qname` is the alias's fully-qualified
+    name (defining module + short name), collision-proof across modules that
+    define same-short-named aliases. `name` (short, for C++ rendering via the
+    per-compilation native_cpp_names map) and `alias_info` (the semantic
+    payload -- body + type_params, used to expand alternatives / value-ness)
+    are carried but excluded from eq/hash.
+
+    Minted only by sema's finalize pass from the parser's `AliasRef`
+    placeholders -- parse-resolve runs against a separate registry and lacks
+    the sema `alias_info`. See docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.
+    """
+    qname: str
+    type_args: tuple['TpyType', ...] = ()
+    name: str = field(default="", compare=False, hash=False)
+    alias_info: 'TypeAliasInfo' = field(
+        default=None, compare=False, hash=False, repr=False)
+
+    def _short(self) -> str:
+        return self.name or self.qname.rsplit('.', 1)[-1]
+
+    def _origin(self) -> str:
+        return self.qname.rsplit('.', 1)[0] if '.' in self.qname else self.qname
+
+    def substituted_body(self) -> 'TpyType':
+        """The alias body with this instance's type args substituted for the
+        alias's declared type params. The self-reference inside stays a
+        RecursiveAliasInstanceType (substitution only touches TypeParamRefs)."""
+        info = self.alias_info
+        if info is None:
+            return self
+        subst = {
+            p: a for p, a in zip(info.type_params, self.type_args)
+            if isinstance(a, TpyType)
+        }
+        return substitute_type_params_structural(info.body, subst)
+
+    def alternatives(self) -> tuple['TpyType', ...]:
+        """The variant alternatives behind the wrapper, in the wrapper
+        struct's std::variant ordering.
+
+        Substitutes each *original* body member positionally rather than
+        substituting the whole union -- the latter re-canonicalizes (sorts,
+        collapses `X | None` to Optional), which would diverge from the
+        template's fixed `std::variant<member0, member1, ...>` ordering."""
+        info = self.alias_info
+        if info is None or not isinstance(info.body, UnionType):
+            return (self.substituted_body(),)
+        subst = {
+            p: a for p, a in zip(info.type_params, self.type_args)
+            if isinstance(a, TpyType)
+        }
+        return tuple(
+            substitute_type_params_structural(m, subst)
+            for m in info.body.members
+        )
+
+    def wrapper_info(self) -> 'RecursiveUnionInfo | None':
+        return RecursiveUnionInfo(
+            name=self._short(), full_members=self.alternatives(),
+            origin=self._origin(),
+        )
+
+    def needs_wrapper(self) -> bool:
+        return True
+
+    def to_cpp(self) -> str:
+        base = _native_cpp_names_view().get(self._short(), self._short())
+        if self.type_args:
+            rendered = ", ".join(
+                a.to_cpp() if isinstance(a, TpyType) else str(a)
+                for a in self.type_args
+            )
+            return f"{base}<{rendered}>"
+        return base
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return tuple(a for a in self.type_args if isinstance(a, TpyType))
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return RecursiveAliasInstanceType(
+            self.qname, types, self.name, self.alias_info)
+
+    def is_value_type(self) -> bool:
+        key = (self.qname, self.type_args)
+        if key in _evaluating_alias_value:
+            return False
+        _evaluating_alias_value.add(key)
+        try:
+            return self.substituted_body().is_value_type()
+        finally:
+            _evaluating_alias_value.discard(key)
+
+    def to_cpp_return(self) -> str:
+        # The C++ wrapper struct is value-shape (copy/move ctors, by-value
+        # std::variant payload). The default `{to_cpp()}&` would dangle when
+        # returning a function-local wrapper.
+        return self.to_cpp()
+
+    def to_cpp_return_const(self) -> str:
+        return self.to_cpp()
+
+    def is_send(self) -> bool:
+        return False
+
+    def is_sync(self) -> bool:
+        return False
+
+    def __str__(self) -> str:
+        if self.type_args:
+            return f"{self._short()}[{', '.join(str(a) for a in self.type_args)}]"
+        return self._short()
+
+
+def recursive_union_alternatives(typ: 'TpyType') -> 'tuple[TpyType, ...] | None':
+    """The variant alternatives behind a recursive-union wrapper, in the
+    wrapper struct's std::variant ordering, or None if `typ` is not a
+    recursive-union wrapper."""
+    if isinstance(typ, RecursiveAliasInstanceType):
+        return typ.alternatives()
+    if isinstance(typ, UnionType):
+        info = typ.wrapper_info()
+        if info is not None:
+            return info.full_members
+    return None
 
 
 @dataclass(frozen=True)

@@ -10,10 +10,10 @@ from typing import TYPE_CHECKING
 
 from ..typesys import (
     TpyType,
-    NominalType, AliasRef,
+    NominalType, AliasRef, RecursiveAliasInstanceType,
     NoneType, OptionalType, UnionType, PendingStrType,
     LiteralType, LiteralValue, LiteralTag, TypeParamRef,
-    unwrap_readonly, unwrap_ref_type,
+    unwrap_readonly, unwrap_ref_type, make_union,
     is_float_type, is_any_str_type,
 )
 from ..modules import _resolve_concrete_type_name
@@ -70,6 +70,13 @@ class MatchAnalyzer:
             if alias is not None:
                 effective_type = alias
         stmt.subject_type = effective_type
+        # A generic recursive alias instance (Tree[int]) stays the codegen
+        # subject -- its wrapper_info() drives .value variant dispatch. For the
+        # (UnionType-centric) pattern arm-analysis below, stand in a synthesized
+        # union of its substituted alternatives so the existing union path
+        # applies unchanged.
+        if isinstance(effective_type, RecursiveAliasInstanceType):
+            effective_type = make_union(*effective_type.alternatives())
         is_union = isinstance(effective_type, UnionType)
         is_enum = is_enum_type(effective_type)
         is_literal = isinstance(effective_type, LiteralType)

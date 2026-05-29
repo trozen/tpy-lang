@@ -21,6 +21,7 @@ if TYPE_CHECKING:
 from ..typesys import (
     TpyType, TypeRegistry, ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
     INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, UnionType, TupleType,
+    RecursiveAliasInstanceType, recursive_union_alternatives,
     PendingListType, PendingDictType, PendingSetType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
@@ -687,18 +688,6 @@ class SemanticContext:
     # TpyType binding happens via `parse.resolve_refs.resolve_refs`.
     parser_resolver: 'TypeResolver | None' = None
 
-    def is_recursive_union(self, typ: 'TpyType') -> bool:
-        """Check if a union type is a recursive union alias.
-
-        Delegates to `UnionType.wrapper_info()`, which reads the
-        compiler-wide `union_wrapper_index` populated by sema's
-        `_register_union_wrappers` (per module, accumulating across
-        the compilation).
-        """
-        if not isinstance(typ, UnionType):
-            return False
-        return typ.needs_wrapper()
-
     # --- Control flow (persistent) ---
     in_comprehension: int = 0
     sc_and_walrus: set[str] = field(default_factory=set)
@@ -712,6 +701,11 @@ class SemanticContext:
     is_top_level: bool = False
     # REPL mode: allow @error_return calls at top level (unwrap with panic)
     allow_top_level_error_unwrap: bool = False
+    # Re-entry guard for `is_type_nocopy` on a `RecursiveAliasInstanceType`:
+    # the wrapper's own self-reference (`list[Tree[T]]` member) would otherwise
+    # recurse into Tree[T] forever. Conservative False at the recursion point
+    # mirrors `RecursiveAliasInstanceType.is_value_type`'s guard in typesys.
+    _evaluating_alias_nocopy: set = field(default_factory=set)
 
     # --- Last-use tracking (shared with codegen, persists across functions) ---
     all_last_uses: set[int] = field(default_factory=set)
@@ -834,6 +828,23 @@ class SemanticContext:
                 if isinstance(e, TpyType) and self.is_type_nocopy(e):
                     return True
             return False
+        # Generic recursive alias instance: a @nocopy alternative makes the
+        # wrapper's std::variant non-copyable. Mirrors the TupleType walk
+        # above; uses the unified alternatives accessor. The recursive
+        # alternative (e.g. `list[Tree[T]]`) re-enters Tree[T] -- conservative
+        # False at the recursion point matches `is_value_type`'s guard.
+        if isinstance(typ, RecursiveAliasInstanceType):
+            key = (typ.qname, typ.type_args)
+            if key in self._evaluating_alias_nocopy:
+                return False
+            self._evaluating_alias_nocopy.add(key)
+            try:
+                for m in (recursive_union_alternatives(typ) or ()):
+                    if isinstance(m, TpyType) and self.is_type_nocopy(m):
+                        return True
+                return False
+            finally:
+                self._evaluating_alias_nocopy.discard(key)
         record = self.registry.get_record_for_type(typ)
         if record is not None and record.is_nocopy:
             return True
@@ -873,6 +884,22 @@ class SemanticContext:
                 if isinstance(e, TpyType) and self.is_type_non_copyable(e):
                     return True
             return False
+        # Mirrors the is_type_nocopy branch: a non-copyable alternative
+        # propagates through the wrapper's std::variant. Re-entry returns
+        # False to match the value/nocopy recursion guards (the recursive
+        # alternative re-enters the same instance).
+        if isinstance(typ, RecursiveAliasInstanceType):
+            key = (typ.qname, typ.type_args)
+            if key in self._evaluating_alias_nocopy:
+                return False
+            self._evaluating_alias_nocopy.add(key)
+            try:
+                for m in (recursive_union_alternatives(typ) or ()):
+                    if isinstance(m, TpyType) and self.is_type_non_copyable(m):
+                        return True
+                return False
+            finally:
+                self._evaluating_alias_nocopy.discard(key)
         # Abstract @dynamic protocol bases have pure virtuals and the
         # concrete size depends on the dynamic type, so they have no usable
         # copy/move ctor at the C++ level.

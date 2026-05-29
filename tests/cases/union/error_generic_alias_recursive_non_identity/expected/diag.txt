@@ -1,0 +1,1 @@
+main.py:5: error: recursive position of alias 'Weird' must reuse type parameter 'T' at position 0; got 'list[T]'. v1 supports identity recursion only.
