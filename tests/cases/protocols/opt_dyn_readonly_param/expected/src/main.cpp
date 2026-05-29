@@ -18,7 +18,7 @@ std::string greet(const Pet* p) {
 // def main() -> None:
 void main() {
     // print(greet(Dog("rex")))
-    auto __tmp_1 = Dog("rex");
+    Dog __tmp_1 = Dog("rex");
     std::cout << greet(&(__tmp_1)) << "\n";
     // print(greet(None))
     std::cout << greet(nullptr) << "\n";

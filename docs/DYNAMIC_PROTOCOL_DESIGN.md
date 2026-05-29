@@ -14,7 +14,7 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 5a | Conditional/loop reassignment (hoisted `std::optional` slots) | Done |
 | 6 | Return types (provably long-lived values only) | Done |
 | 7 | `@dynamic` protocol params in record methods/constructors | Done |
-| 8 | `Optional[Pet]` sema rejection | Done, then **narrowed to non-parameter positions**. A direct-`@dynamic`-protocol `Optional[Pet]` is now allowed at a parameter position -- it lowers to a `[const] Pet*` borrow (the @dynamic-protocol param codegen emits pointer-repr for the nullable case instead of dropping the Optional to `Pet&`), `is None` narrows, and `isinstance(p, Sub)` dispatches via `dynamic_cast` on the pointer. The rejection stays for storage / return / local / container / owned positions, where the abstract base has no value-repr (`validate_type`'s `allow_pointer_repr_dynamic` flag, set only at the param call site, gates it; nested recursion resets the flag so `list[Optional[Pet]]` etc. stay rejected). Tests: `opt_dyn_protocol_param`, `opt_dyn_generic_protocol_param`, `error_protocol_dynamic_optional_field`. Init-only-local + the rebind-position reject are a deferred follow-up (TODO.md). **Adjacent rejection:** `Own[Optional[Polymorphic]]` (a *concrete* polymorphic class wrapped in Own-Optional) is rejected for the same family of reasons -- the Own-Optional slot is laid out for the base alone, so a derived instance would slice and `isinstance` has no valid lowering. Implemented at `tpyc/sema/type_ops.py::validate_type` covering every position uniformly (params, return types, fields, method params + returns, and any nested position the validator recurses into, e.g. tuple elements); see `tests/cases/protocols/error_own_optional_polymorphic/` and `tests/cases/protocols/error_tuple_own_optional_polymorphic/`. Broader "polymorphic + wrappers + isinstance" landscape (the long-term lifting of this rejection) tracked in TODO.md. |
+| 8 | `Optional[Pet]` sema rejection | Done, then **narrowed to non-parameter positions**. A direct-`@dynamic`-protocol `Optional[Pet]` is now allowed at a parameter position -- it lowers to a `[const] Pet*` borrow (the @dynamic-protocol param codegen emits pointer-repr for the nullable case instead of dropping the Optional to `Pet&`), `is None` narrows, and `isinstance(p, Sub)` dispatches via `dynamic_cast` on the pointer. It is also allowed as an **init-only function-local** (Phase 2): `p: Optional[Pet] = Dog()` lowers to the same `const Pet*` pointing at the materialized rvalue; the **rvalue-rebind** position stays rejected (the shared slot can't be retyped per rvalue). The rejection stays for storage / return / field / container / owned / global positions and no-init locals, where the abstract base has no value-repr (`validate_type`'s `allow_pointer_repr_dynamic` flag, set at the param call site and at init-only local var-decls, gates it; nested recursion resets the flag so `list[Optional[Pet]]` etc. stay rejected). Tests: `opt_dyn_protocol_param`, `opt_dyn_generic_protocol_param`, `opt_dyn_protocol_local`, `error_opt_dyn_protocol_local_rebind`, `error_protocol_dynamic_optional_field`. **Adjacent rejection:** `Own[Optional[Polymorphic]]` (a *concrete* polymorphic class wrapped in Own-Optional) is rejected for the same family of reasons -- the Own-Optional slot is laid out for the base alone, so a derived instance would slice and `isinstance` has no valid lowering. Implemented at `tpyc/sema/type_ops.py::validate_type` covering every position uniformly (params, return types, fields, method params + returns, and any nested position the validator recurses into, e.g. tuple elements); see `tests/cases/protocols/error_own_optional_polymorphic/` and `tests/cases/protocols/error_tuple_own_optional_polymorphic/`. Broader "polymorphic + wrappers + isinstance" landscape (the long-term lifting of this rejection) tracked in TODO.md. |
 | 9 | Protocol field access through erased type | Future |
 | 10 | Cross-module `@dynamic` protocols | Done |
 | 11 | `@dynamic` extending `@dynamic` (base class inheritance chain) | Done |
@@ -282,9 +282,14 @@ inner type implements `P`. The `Ptr[Subclass] -> Ptr[@dynamic P]` and
 slicing-check false-positive in `BUGS.md`; the record-direct
 `subclass -> Ptr[P]` upcast at the call/init site works). `isinstance(p,
 Sub)` on a `Ptr[P]` (or a bare `P` borrow) dispatches at runtime via
-`dynamic_cast` on the underlying `P*`; since a protocol borrow only ever
-carries an inheritance conformer, `Sub` must inherit `P` (a structural
-conformer is rejected -- it can never sit behind the pointer). Static
+`dynamic_cast` on the underlying `P*` for an inheritance conformer, or via
+`tpy::dyn_adapter_cast<P,Sub>` for a structural conformer (behind the `P*` a
+structural `Sub` is physically an `Adapter<P,Sub>` / `RefAdapter<P,Sub>`, so
+the helper tries both shapes and projects `.inner`); codegen picks the cast
+by `directly_implements_dynamic`. A check type that neither inherits nor
+structurally conforms is rejected (can never match). Owning wrappers
+(`Box[P]` / `Rc[P]`) dispatch the same way via deref-view narrowing on the
+payload pointer (`docs/LANGUAGE_FEATURES.md`, "Deref-view narrowing"). Static
 (non-`@dynamic`) protocols are rejected as `Ptr` element types -- they
 have no runtime representation to dispatch through
 (`tpyc/sema/type_ops.py:265`).
@@ -292,8 +297,9 @@ have no runtime representation to dispatch through
 \* `BaseConcrete` here is a concrete class that inherits a `@dynamic` protocol
 (transitively), e.g. `class BaseExc(Throwable)` where `Throwable` is `@dynamic`.
 This is a separate surface from `Optional[Pet]` (direct `@dynamic` protocol),
-which is now allowed at a parameter position (lowering to `const Pet*`) but
-still rejected in storage / return / local / container positions (see Phase 8).
+which is now allowed at a parameter position and as an init-only function-local
+(both lowering to `const Pet*`; rvalue rebind rejected) but
+still rejected in storage / return / field / container / global positions (see Phase 8).
 The two columns are complementary:
 direct `@dynamic` protocol types are for structural conformance + Adapter dispatch;
 concrete class roots with a `@dynamic` parent are for class-hierarchy dispatch

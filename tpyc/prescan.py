@@ -80,6 +80,38 @@ def _expr_to_narrowing_key(expr: TpyExpr) -> str | None:
     return None
 
 
+# A deref-view narrowing rides `narrowed_types` under a distinct key: it
+# narrows the polymorphic payload reached through an owning wrapper's
+# reference-returning __deref__ (`if isinstance(rc, Dog): rc.bark()` resolves
+# `bark` against Dog through the deref, while `rc.clone()` stays an Rc method).
+# Keying it apart from the wrapper variable's own narrowing key leaves the
+# wrapper type untouched and lets the existing save/restore/merge-at-joins
+# machinery for narrowed_types apply unchanged -- exactly like field-path
+# narrowing keys. The NUL suffix cannot collide with any source-level dotted
+# path produced by _expr_to_narrowing_key.
+#
+# INVARIANT: a deref-view key is NOT a `name.`-dotted field path, so the
+# field-path prefix sweeps (NarrowingTracker._invalidate_field_facts and
+# friends) do NOT cover it. Any code that invalidates narrowed_types on a
+# write/mutation of `name` must also drop deref_view_key(name) explicitly (see
+# update_after_write); a prefix-scan alone silently leaves the deref-view fact
+# stale -- the bug class that null-derefs a reassigned wrapper.
+_DEREF_VIEW_SUFFIX = "\x00deref"
+
+
+def deref_view_key(narrowing_key: str) -> str:
+    """Map a receiver narrowing key to its deref-view narrowing key."""
+    return narrowing_key + _DEREF_VIEW_SUFFIX
+
+
+def parse_deref_view_key(key: str) -> 'str | None':
+    """If `key` is a deref-view narrowing key, return the receiver key it wraps;
+    otherwise None."""
+    if key.endswith(_DEREF_VIEW_SUFFIX):
+        return key[:-len(_DEREF_VIEW_SUFFIX)]
+    return None
+
+
 def match_is_none(expr: TpyExpr) -> tuple[str, bool] | None:
     """Match `v is None`, `v is not None`, `None is v`, `None is not v`.
 

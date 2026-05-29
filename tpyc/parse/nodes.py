@@ -330,6 +330,12 @@ class TpyCall(TpyExpr):
     isinstance_var: str | None = None        # Set by sema: variable name being isinstance-checked
     isinstance_type: TpyType | None = None   # Set by sema: resolved type being checked for
     isinstance_is_protocol: bool = False     # Set by sema: protocol isinstance (if constexpr)
+    # Set by sema (>0) when the isinstance source is an owning wrapper
+    # (Box[Pet]/Rc[Pet]): the dispatch target is the polymorphic payload
+    # reached through `depth` reference-returning __deref__ steps, not the
+    # variable itself. Drives deref-view narrowing (the wrapper's own type is
+    # never narrowed) and the deref-payload-pointer cast in codegen.
+    isinstance_deref_depth: int = 0
     cast_target_type: TpyType | None = None  # Set by sema for typing.cast(T, x): the resolved target type
     cast_source_is_any: bool = False         # Set by sema for typing.cast: True iff source's static type is Any
     macro_expansion: 'TpyExpr | None' = None  # Set by sema: replacement expr from @call_macro
@@ -389,6 +395,10 @@ class TpyMethodCall(TpyExpr):
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved method overloads
     inferred_type_args: tuple[TpyType, ...] | None = None  # Set by sema for generic builtin module calls
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before method resolution
+    # Set by sema to the narrowed subclass when this method resolves through a
+    # deref-view narrowing (`if isinstance(rc, Dog): rc.bark()`); codegen casts
+    # the deref payload pointer to it instead of emitting a plain __deref__ call.
+    deref_narrowed_to: TpyType | None = None
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
     is_callable_field: bool = False  # Set by sema: method name is a Callable-typed field
     macro_expansion: 'TpyExpr | None' = None  # Set by sema: replacement expr from @call_macro
@@ -416,6 +426,9 @@ class TpyFieldAccess(TpyExpr):
     field: str
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before field lookup
+    # Set by sema to the narrowed subclass when this field access resolves
+    # through a deref-view narrowing; codegen casts the deref payload pointer.
+    deref_narrowed_to: TpyType | None = None
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
     is_property_access: bool = False  # Set by sema: this is a property getter
     property_setter: bool = False  # Set by sema: assignment target is a property setter

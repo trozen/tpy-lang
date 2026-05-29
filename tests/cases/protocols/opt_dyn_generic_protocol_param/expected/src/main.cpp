@@ -18,7 +18,7 @@ int32_t maybe_show(Container<int32_t>* c) {
 // def main() -> None:
 void main() {
     // print(maybe_show(IntBox(42)))
-    auto __tmp_1 = IntBox(42);
+    IntBox __tmp_1 = IntBox(42);
     std::cout << maybe_show(&(__tmp_1)) << "\n";
     // print(maybe_show(None))
     std::cout << maybe_show(nullptr) << "\n";

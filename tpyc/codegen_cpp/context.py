@@ -697,6 +697,11 @@ class CodeGenContext:
     # condition; the isinstance bool-check and cast-and-cache extraction both
     # consult this map and reuse the local instead of re-emitting dynamic_cast.
     isinstance_init_locals: dict[str, str] = field(default_factory=dict)
+    # Same idea for deref-view narrowing through an owning wrapper (Box/Rc):
+    # keyed by the wrapper receiver name (e.g. `rc`), the value is the pre-bound
+    # `Sub*` local cast from the deref payload pointer, so the condition and the
+    # narrowed member accesses share one cast instead of re-deriving it.
+    deref_view_init_locals: dict[str, str] = field(default_factory=dict)
     # Locals whose tuple type contains pointer-repr Optional but whose C++
     # representation is the storage form (std::tuple<std::optional<T>, ...>):
     # for-loop variables iterating storage-form containers, and locals
@@ -1700,6 +1705,56 @@ class CodeGenContext:
         if polymorphic_source_is_pointer(var_decl):
             return escaped
         return f"&{escaped}"
+
+    def deref_view_cast_arg(self, var_name: str, depth: int) -> str:
+        """C++ payload pointer for a deref-view isinstance/narrowing on owning
+        wrapper `var_name`: `&(<v>.__deref__()...)` peeled `depth` times. The
+        wrapper's reference-returning __deref__ yields a `[const] P&`, so the
+        address-of is the same `[const] P*` dynamic_cast input the bare/Ptr/
+        Optional sources expose directly. Const-ness tracks the wrapper
+        receiver (auto_readonly __deref__), decided by the caller."""
+        name_expr = TpyName(var_name)
+        escaped = escape_cpp_name(var_name)
+        base = f"(*{escaped})" if self.is_indirect_name(name_expr) else escaped
+        chain = ".__deref__()" * depth
+        return f"&({base}{chain})"
+
+    def deref_dispatch_inner(self, var_decl: 'TpyType | None', depth: int) -> 'TpyType | None':
+        """Peel `depth` __deref__ steps off `var_decl` to recover the
+        dispatch inner (the @dynamic protocol / polymorphic class behind an
+        owning wrapper), so codegen can pick dynamic_cast vs dyn_adapter_cast
+        for a deref-view narrowing."""
+        cur = unwrap_readonly(var_decl) if var_decl is not None else None
+        type_ops = self.analyzer.type_ops
+        for _ in range(depth):
+            if cur is None:
+                return None
+            cur = type_ops.get_deref_target_type(cur)
+            if cur is not None:
+                cur = unwrap_readonly(cur)
+        return cur
+
+    def deref_dispatch_source(self, var_decl: 'TpyType | None') -> 'tuple[TpyType, int] | None':
+        """Peel __deref__ steps off `var_decl` until reaching a @dynamic
+        dispatch inner; return (inner, depth). Mirrors sema's
+        CallAnalyzer._deref_dispatch_inner so the if-init cast-and-cache can
+        recover the depth a deref-view fact omits (the fact carries only the
+        narrowed subclass, not the wrapper or its deref depth)."""
+        from ..typesys import is_dynamic_dispatch_inner
+        cur = unwrap_readonly(var_decl) if var_decl is not None else None
+        type_ops = self.analyzer.type_ops
+        for depth in range(1, 9):
+            if cur is None:
+                return None
+            target = type_ops.get_deref_target_type(cur)
+            if target is None:
+                return None
+            inner = unwrap_readonly(target)
+            if (isinstance(inner, NominalType)
+                    and is_dynamic_dispatch_inner(inner, self.analyzer.registry)):
+                return inner, depth
+            cur = inner
+        return None
 
     def is_indirect_name(self, expr: TpyExpr) -> bool:
         """Check if expression needs indirect access (-> / deref).

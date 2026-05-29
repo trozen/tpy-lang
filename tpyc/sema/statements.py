@@ -41,7 +41,7 @@ from ..parse import (
 from ..coercions import CoercionContext
 from ..namespace import BindingKind
 from ..symbol_binding import SymbolKind, lookup_imported
-from ..prescan import ScanResult, scan_reassigned_vars
+from ..prescan import ScanResult, scan_reassigned_vars, parse_deref_view_key
 from ..liveness import analyze_last_uses
 from ..parse.nodes import VarLinkage
 from .context import addr_taken_roots, expr_yields_non_null_ptr
@@ -1394,7 +1394,11 @@ class StatementAnalyzer:
             if (isinstance(_peel(self.narrowing.declared_type_for_name(name)), (UnionType, AnyType))
                 or isinstance(ty, LiteralType)
                 or is_protocol_type(ty)
-                or _polymorphic_subclass_fact(name, ty))
+                or _polymorphic_subclass_fact(name, ty)
+                # Deref-view facts (key carries the deref suffix) drive the
+                # if-init cast-and-cache for owning wrappers; the wrapper var
+                # itself is never retyped, so they pass through verbatim.
+                or parse_deref_view_key(name) is not None)
         }
 
     def _analyze_raise(self, stmt: TpyRaise) -> None:
@@ -2662,7 +2666,22 @@ class StatementAnalyzer:
                     (isinstance(self.ctx.func.current_function, TpyFunction) and self.ctx.func.current_function.type_params)
                     or self.ctx.record_ctx.type_params
                 )
-                self.type_ops.validate_type(stmt.type, allow_type_param_ref=in_generic, loc=stmt.loc, allow_forward_ref=False)
+                # An init-only function-local `p: Optional[Pet] = Dog()` lowers
+                # to a `const Pet*` pointing at the materialized rvalue, same
+                # shape as the parameter position. Allow the pointer-repr
+                # @dynamic Optional here; the rvalue-rebind reject (shared slot
+                # can't retype) and definite-assignment keep it sound. Globals
+                # (module-init sentinel) and no-init declarations stay rejected
+                # -- a static slot has no value representation for an abstract
+                # base.
+                allow_ptr_repr_dyn = (
+                    stmt.init is not None
+                    and isinstance(self.ctx.func.current_function, TpyFunction)
+                )
+                self.type_ops.validate_type(
+                    stmt.type, allow_type_param_ref=in_generic, loc=stmt.loc,
+                    allow_forward_ref=False,
+                    allow_pointer_repr_dynamic=allow_ptr_repr_dyn)
             except SemanticError as e:
                 raise self.ctx.error(str(e), stmt)
 

@@ -22,7 +22,7 @@ from ..parse import (
 )
 from .literal_utils import literal_value_from_expr
 from .value_range import ValueRange
-from ..prescan import match_is_none, _expr_to_narrowing_key
+from ..prescan import match_is_none, _expr_to_narrowing_key, deref_view_key
 from ..namespace import BindingKind
 from ..diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
 from ..type_def_registry import protocol_info_of
@@ -249,6 +249,12 @@ class NarrowingTracker:
         if isinstance(expr, TpyCall) and expr.isinstance_var is not None and expr.isinstance_type is not None:
             name = expr.isinstance_var
             check_type = expr.isinstance_type
+            # Deref-view narrowing (owning wrapper source): narrow the wrapper's
+            # polymorphic payload under a distinct key, leaving the wrapper
+            # variable's own type intact. The false branch can't narrow the
+            # payload (it might be any other subclass).
+            if expr.isinstance_deref_depth > 0:
+                return {deref_view_key(name): check_type}, {}
             effective = self.effective_union_type(name)
             # Any narrowing (D15): non-consuming -- the true branch sees the
             # variable as `check_type` (a borrow into the cell); the false
@@ -685,6 +691,10 @@ class NarrowingTracker:
     ) -> None:
         """Update flow facts after assigning/writing a variable."""
         self.ctx.func.narrowed_types.pop(name, None)
+        # A deref-view narrowing (isinstance through an owning wrapper) is keyed
+        # apart from the variable's own narrowing, so the pop above misses it;
+        # clear it too or a reassigned wrapper keeps the stale subclass cast.
+        self.ctx.func.narrowed_types.pop(deref_view_key(name), None)
         # Invalidate field narrowing facts rooted at this variable
         self._invalidate_field_facts(name)
         # Invalidate integer range facts for this variable
@@ -799,6 +809,22 @@ class NarrowingTracker:
 
 
 # -- Module-level helpers for range fact dict operations ------------------
+
+def deref_view_narrowed(ctx, obj, deref_target: TpyType) -> 'NominalType | None':
+    """Deref-view narrowed subclass for receiver `obj` when the peeled payload
+    `deref_target` is a @dynamic-dispatch inner narrowed by an active
+    `if isinstance(<obj>, Sub):`. Shared by the method-call (methods.py) and
+    field-access (expressions.py) deref-chain resolvers."""
+    inner = unwrap_readonly(deref_target)
+    if not (isinstance(inner, NominalType)
+            and is_dynamic_dispatch_inner(inner, ctx.registry)):
+        return None
+    key = _expr_to_narrowing_key(obj)
+    if key is None:
+        return None
+    narrowed = ctx.func.narrowed_types.get(deref_view_key(key))
+    return narrowed if isinstance(narrowed, NominalType) else None
+
 
 def _intersect_range_dicts(
     a: dict[str, ValueRange], b: dict[str, ValueRange],

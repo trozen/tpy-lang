@@ -1,0 +1,2 @@
+Wrapper isinstance is C++-only: in CPython isinstance(b, Dog) checks the Box
+wrapper type (always False), not the polymorphic payload.

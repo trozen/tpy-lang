@@ -36,18 +36,18 @@ std::string describe(Pet* p) {
 // def main() -> None:
 void main() {
     // print(greet(Dog("rex")))
-    auto __tmp_1 = Dog("rex");
+    Dog __tmp_1 = Dog("rex");
     std::cout << greet(&(__tmp_1)) << "\n";
     // print(greet(Fish()))
-    auto __tmp_2 = Fish();
+    Fish __tmp_2 = Fish();
     std::cout << greet(&(__tmp_2)) << "\n";
     // print(greet(None))
     std::cout << greet(nullptr) << "\n";
     // print(describe(Dog("fido")))
-    auto __tmp_3 = Dog("fido");
+    Dog __tmp_3 = Dog("fido");
     std::cout << describe(&(__tmp_3)) << "\n";
     // print(describe(Fish()))
-    auto __tmp_4 = Fish();
+    Fish __tmp_4 = Fish();
     std::cout << describe(&(__tmp_4)) << "\n";
     // print(describe(None))
     std::cout << describe(nullptr) << "\n";

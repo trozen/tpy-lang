@@ -1708,6 +1708,42 @@ class CallAnalyzer:
                 )
         return result
 
+    def _deref_dispatch_inner(
+        self, typ: TpyType,
+    ) -> 'tuple[NominalType, int] | None':
+        """If `typ` is an owning wrapper whose reference-returning __deref__
+        peels to a @dynamic-dispatch inner (polymorphic class or direct
+        @dynamic protocol), return (inner, deref_depth). The deref payload
+        pointer `&(<v>.__deref__()...)` is then the same dynamic_cast input the
+        bare/Ptr/Optional sources expose directly, so isinstance dispatches the
+        same way -- on the deref view rather than on the wrapper.
+
+        Bare/Ptr/Optional sources are caught earlier via
+        polymorphic_source_inner; this fires only for wrappers (Box/Rc). A
+        wrapper without a __deref__ (e.g. Weak) has no deref view and yields
+        None here -- it falls through to the static-fold path."""
+        current = unwrap_readonly(typ)
+        for depth in range(1, 9):
+            target = self.type_ops.get_deref_target_type(current)
+            if target is None:
+                return None
+            inner = unwrap_readonly(target)
+            if (isinstance(inner, NominalType)
+                    and is_dynamic_dispatch_inner(inner, self.ctx.registry)):
+                return inner, depth
+            current = inner
+        return None
+
+    def _is_non_deref_handle(self, typ: TpyType) -> bool:
+        """True if `typ` is a non-owning handle to a payload reachable only via
+        `upgrade()` (e.g. Weak[Pet]): it exposes `upgrade()` but no
+        reference-returning `__deref__`, so it has no deref view to narrow."""
+        record = self.ctx.registry.get_record_for_type(typ)
+        if record is None:
+            return False
+        return (bool(record.get_method_overloads("upgrade"))
+                and not record.get_method_overloads("__deref__"))
+
     def _validate_polymorphic_subclass_dispatch(
         self,
         inner: 'TpyType',
@@ -1721,26 +1757,28 @@ class CallAnalyzer:
         @dynamic protocol, and post-`is None` narrowing branches of
         ``_analyze_isinstance`` so they stay in lockstep.
 
-        When `inner` is a @dynamic protocol, a valid check type must C++-
-        inherit the protocol base (only inheritance conformers can sit
-        behind the pointer/reference being cast); a structural conformer
-        would always fail the dynamic_cast at runtime, so it is rejected
-        with a pointed diagnostic rather than silently folding to False.
+        When `inner` is a @dynamic protocol, a valid check type either C++-
+        inherits the protocol base (`dynamic_cast<Sub*>`) or structurally
+        conforms to it -- a structural conformer sits behind the `P*` as an
+        `Adapter`/`RefAdapter` wrapper, so codegen narrows via
+        `tpy::dyn_adapter_cast` instead. A type that neither inherits nor
+        structurally conforms can never match and is rejected with a pointed
+        diagnostic rather than silently folding to False.
         """
         if is_protocol_type(inner):
             non_impls = [
                 ct for ct in check_types
                 if not (isinstance(ct, NominalType)
-                        and self.protocols.directly_implements_dynamic(ct, inner))
+                        and (self.protocols.directly_implements_dynamic(ct, inner)
+                             or self.protocols.type_conforms_to_protocol(ct, inner)))
             ]
             if non_impls:
                 names = ", ".join(f"'{t}'" for t in non_impls)
                 raise self.ctx.error(
-                    f"isinstance() check type(s) {names} do not inherit the "
-                    f"@dynamic protocol '{inner}'. A protocol borrow only "
-                    f"carries inheritance conformers, so a structural "
-                    f"conformer can never match; declare `class {non_impls[0]}"
-                    f"({inner})` to dispatch on it.",
+                    f"isinstance() check type(s) {names} do not conform to the "
+                    f"@dynamic protocol '{inner}', so the check can never "
+                    f"match; the check type must inherit '{inner}' or "
+                    f"structurally implement its methods.",
                     expr,
                 )
         else:
@@ -1929,6 +1967,29 @@ class CallAnalyzer:
             if polymorphic_source is not None and check_types:
                 return self._validate_polymorphic_subclass_dispatch(
                     polymorphic_source, check_types, first_arg.name, expr)
+            # Owning-wrapper source (Box[Pet]/Rc[Pet]): the dispatch object is
+            # the polymorphic payload reached through the wrapper's
+            # reference-returning __deref__, not the wrapper itself. Narrow the
+            # deref view (so `rc.bark()` resolves against the subclass while
+            # `rc.clone()` stays an Rc method) and tag the depth for codegen.
+            deref = self._deref_dispatch_inner(effective_type)
+            if deref is not None and check_types:
+                inner, depth = deref
+                result = self._validate_polymorphic_subclass_dispatch(
+                    inner, check_types, first_arg.name, expr)
+                expr.isinstance_deref_depth = depth
+                return result
+            # Non-owning handle (e.g. Weak[Pet]): no deref view -- the payload
+            # is reachable only after `upgrade()`. Reject rather than silently
+            # folding to False, since the user clearly intends a payload check.
+            if check_types and self._is_non_deref_handle(effective_type):
+                raise self.ctx.error(
+                    f"isinstance() on '{effective_type}' is not supported: it "
+                    f"is a non-owning handle with no deref view. Call "
+                    f"'.upgrade()' first to obtain an owning handle (or None) "
+                    f"and isinstance-check that instead.",
+                    expr,
+                )
             # Non-union: compile-time evaluate against the static type,
             # walking the inheritance hierarchy. Reuse the narrowed-path
             # fold if it already ran so we don't warn twice.

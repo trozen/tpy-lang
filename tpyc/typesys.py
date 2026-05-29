@@ -3698,10 +3698,11 @@ def is_dynamic_dispatch_inner(typ: TpyType, registry: 'TypeRegistry') -> bool:
     a value is the input to isinstance's dynamic_cast -- so callers treat
     them uniformly.
 
-    Pointer/reference borrows of a @dynamic protocol only ever bind an
-    inheritance conformer (a structural conformer needs an owned Adapter,
-    which a borrow has nowhere to store -- see DYNAMIC_PROTOCOL_DESIGN.md's
-    fat-pointer note), so the cast is always against a real IS-A object."""
+    Behind such a pointer/reference the runtime object is either an
+    inheritance conformer (a real IS-A `dynamic_cast` target) or, for a
+    structural conformer, an owned `Adapter<P,U>` / `RefAdapter<P,U>` reached
+    via `tpy::dyn_adapter_cast` -- both vtable-carrying, so the descendant cast
+    is sound either way."""
     if is_polymorphic_class_type(typ, registry):
         return True
     if isinstance(typ, NominalType) and typ.is_protocol:
@@ -3783,14 +3784,22 @@ def polymorphic_subclass_into_optional(
     slot). The caller decides how to react: argument-passing widens the
     temp to the returned type; local init does the same; local rebind
     raises because the shared rebind slot can't be retyped per rvalue.
+
+    The inner may be a concrete polymorphic class (`Optional[Animal]`) or a
+    direct @dynamic protocol (`Optional[Pet]`) -- both lower to a pointer-repr
+    borrow that an init-only local can back with a widened slot, and both face
+    the same shared-rebind-slot retyping problem.
     """
     if not (isinstance(target_type, OptionalType)
-            and is_polymorphic_class_type(target_type.inner, registry)
             and isinstance(init_type, NominalType)
             and is_polymorphic_class_type(init_type, registry)
             and init_type != target_type.inner):
         return None
-    return init_type
+    inner = target_type.inner
+    if (is_polymorphic_class_type(inner, registry)
+            or is_dynamic_dispatch_inner(inner, registry)):
+        return init_type
+    return None
 
 
 def is_protocol_union(typ: TpyType) -> bool:

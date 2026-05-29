@@ -16,7 +16,7 @@ from ..typesys import (
     NoneType, VoidType, CallableType,
     RecordInfo, FunctionInfo, ParamInfo, is_protocol_type, unwrap_readonly,
     unwrap_ref_type, unwrap_qualifiers, RefType, is_dyn_protocol,
-    is_polymorphic_class_type,
+    is_polymorphic_class_type, is_dynamic_dispatch_inner,
     is_callable_type, is_integer_type, is_float_type, is_void_like_type,
     contains_type_param,
 )
@@ -366,6 +366,30 @@ class TypeOperations:
                     self.validate_hashable_container_elem(key_or_elem, kind, loc)
         elif isinstance(typ, OptionalType):
             _recurse(typ.inner)
+            # Reject `Optional[Own[Polymorphic]]`: a polymorphic Own lowers to
+            # `unique_ptr<P>` (P abstract / a @dynamic protocol), so the
+            # Optional slot is `optional<unique_ptr<P>>` -- a double indirection
+            # the member-access, call-site, and isinstance lowerings do not
+            # thread (a concrete Own collapses to `optional<P>` by value and
+            # stays supported). Point users at `Optional[Box[P]]`, the
+            # idiomatic nullable owned-polymorphic form. Mirrors the
+            # `Own[Optional[Polymorphic]]` rejection in the OwnType branch.
+            own_inner = unwrap_readonly(typ.inner)
+            if isinstance(own_inner, OwnType):
+                own_pointee = unwrap_readonly(own_inner.wrapped)
+                if (isinstance(own_pointee, NominalType)
+                        and (is_polymorphic_class_type(own_pointee, self.ctx.registry)
+                             or is_dynamic_dispatch_inner(own_pointee, self.ctx.registry))):
+                    raise SemanticError(
+                        f"`Optional[Own[{own_pointee.name}]]` is not yet "
+                        f"supported: a polymorphic `Own[{own_pointee.name}]` "
+                        f"lowers to `unique_ptr<{own_pointee.name}>`, so the "
+                        f"optional slot is a double indirection that member "
+                        f"access and isinstance do not thread today. Use "
+                        f"`Optional[Box[{own_pointee.name}]]` for a nullable "
+                        f"owned polymorphic value instead.",
+                        loc,
+                    )
             if is_protocol_type(typ.inner) and not allow_pointer_repr_dynamic:
                 proto_def = protocol_info_of(typ.inner)
                 if proto_def and proto_def.is_dynamic:

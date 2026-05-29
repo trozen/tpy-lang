@@ -1,0 +1,1 @@
+main.py:25: error: isinstance() check type(s) 'Rock' do not conform to the @dynamic protocol 'Pet', so the check can never match; the check type must inherit 'Pet' or structurally implement its methods.

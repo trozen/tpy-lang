@@ -58,7 +58,7 @@ from ..prescan import _expr_to_narrowing_key
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
 from .context import is_body_like_scope
-from .narrowing import NarrowingTracker
+from .narrowing import NarrowingTracker, deref_view_narrowed
 from .numeric_lattice import widen_numeric_types
 from .list_literals import IterableHelper
 from .local_deduction import collect_pending_source_types
@@ -1954,7 +1954,14 @@ class ExpressionAnalyzer:
             if isinstance(deref_target, ReadonlyType):
                 is_readonly_obj = True
                 deref_target = deref_target.wrapped
-            current_type = deref_target
+            # Deref-view narrowing: a field declared only on the narrowed
+            # subclass resolves through the cast (see the method-call path).
+            nsub = deref_view_narrowed(self.ctx, expr.obj, deref_target)
+            if nsub is not None:
+                expr.deref_narrowed_to = nsub
+                current_type = nsub
+            else:
+                current_type = deref_target
             deref_depth += 1
 
         # D16 dynamic-attribute fallback: if the receiver is a record with

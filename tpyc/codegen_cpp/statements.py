@@ -14,6 +14,7 @@ from ..typesys import (
     NoneType, NominalType, AliasRef, AnyType, STR, BYTES, TupleType, VoidType,
     INT32, BIGINT, FLOAT, is_protocol_type,
     polymorphic_source_is_pointer, polymorphic_subclass_into_optional,
+    polymorphic_source_inner,
     is_polymorphic_subclass_fact, ALL_FIXED_INTS,
     ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType, LiteralTag,
     is_own_pointer_repr_optional,
@@ -53,7 +54,7 @@ from ..type_def_registry import (
 from .expressions import _is_concrete_user_record
 from .functions import default_to_cpp
 from .type_resolution import resolve_stmt_binding_type, resolve_stmt_type_cascade
-from ..prescan import match_is_none
+from ..prescan import match_is_none, parse_deref_view_key
 from .match import MatchGenerator
 from .gen_async import POLL_VOID_READY_RETURN
 
@@ -2279,25 +2280,43 @@ class StatementGenerator:
         if not type_facts:
             return "", []
         registry = self.ctx.analyzer.registry
-        candidates: list[tuple[str, NominalType, TpyType]] = []
+        # A pointer-source fact retypes the variable (`var -> Sub`); a deref-view
+        # fact (key carries the deref suffix) narrows the wrapper's payload
+        # without retyping the wrapper. Both pre-bind one `Sub*` for the
+        # condition + reads to share; collect either kind, single-fact only.
+        candidates: list[tuple[str, NominalType, TpyType, int]] = []
         for var_name, ty in type_facts.items():
+            recv = parse_deref_view_key(var_name)
+            if recv is not None:
+                var_decl = self.ctx.lookup_var_type(recv)
+                src = self.ctx.deref_dispatch_source(var_decl)
+                if src is None or not isinstance(ty, NominalType):
+                    continue
+                candidates.append((recv, ty, var_decl, src[1]))
+                continue
             var_decl = self.ctx.lookup_var_type(var_name)
             if not is_polymorphic_subclass_fact(var_decl, ty, registry):
                 continue
             assert isinstance(ty, NominalType)  # gated by the predicate
-            candidates.append((var_name, ty, var_decl))
+            candidates.append((var_name, ty, var_decl, 0))
         if len(candidates) != 1:
             return "", []
-        var_name, narrowed_type, var_decl = candidates[0]
+        var_name, narrowed_type, var_decl, deref_depth = candidates[0]
         cpp_type = self.types.type_to_cpp(narrowed_type)
         const_pfx = "const " if self._is_const_borrow_source(var_name, var_decl) else ""
         ptr_local = f"__{var_name}_ptr"
-        cast_arg = self.ctx.polymorphic_cast_arg(var_name, var_decl)
-        init_expr = (
-            f"{const_pfx}{cpp_type}* {ptr_local} = "
-            f"dynamic_cast<{const_pfx}{cpp_type}*>({cast_arg})"
-        )
-        self.ctx.isinstance_init_locals[var_name] = ptr_local
+        if deref_depth > 0:
+            cast_arg = self.ctx.deref_view_cast_arg(var_name, deref_depth)
+            source_inner = self.ctx.deref_dispatch_inner(var_decl, deref_depth)
+            self.ctx.deref_view_init_locals[var_name] = ptr_local
+        else:
+            cast_arg = self.ctx.polymorphic_cast_arg(var_name, var_decl)
+            source_inner = polymorphic_source_inner(var_decl, registry)
+            self.ctx.isinstance_init_locals[var_name] = ptr_local
+        cast_rhs = self.protocols.dynamic_narrow_cast_rhs(
+            cpp_type, narrowed_type, source_inner, cast_arg,
+            is_const=bool(const_pfx))
+        init_expr = f"{const_pfx}{cpp_type}* {ptr_local} = {cast_rhs}"
         return f"{init_expr}; ", [var_name]
 
     def _fresh_alias_local(self, var_name: str, *, persistent: bool) -> str:
@@ -2348,6 +2367,11 @@ class StatementGenerator:
         for var_name, narrowed_type in type_facts.items():
             if isinstance(narrowed_type, (UnionType, NoneType)):
                 continue
+            # Deref-view facts don't retype the wrapper var -- no extraction
+            # local. The narrowed reads route through deref_narrowed_to (and the
+            # if-init's deref_view_init_locals); the wrapper stays its own type.
+            if parse_deref_view_key(var_name) is not None:
+                continue
             # LiteralType narrowing: track for dead branch elimination,
             # no std::get extraction needed.
             if isinstance(narrowed_type, LiteralType):
@@ -2384,9 +2408,14 @@ class StatementGenerator:
                 local_name = self._fresh_alias_local(var_name, persistent=persistent)
                 cast_const = "const " if self._is_const_borrow_source(var_name, var_decl) else ""
                 cast_arg = self.ctx.polymorphic_cast_arg(var_name, var_decl)
+                source_inner = polymorphic_source_inner(
+                    var_decl, self.ctx.analyzer.registry)
+                cast_rhs = self.protocols.dynamic_narrow_cast_rhs(
+                    cpp_type, narrowed_type, source_inner, cast_arg,
+                    is_const=bool(cast_const))
                 out.write(
                     f"{inner_indent}{cast_const}{cpp_type}& {local_name} = "
-                    f"*dynamic_cast<{cast_const}{cpp_type}*>({cast_arg});\n"
+                    f"*{cast_rhs};\n"
                 )
                 saved[var_name] = self.ctx.narrowed_vars.get(var_name)
                 self.ctx.narrowed_vars[var_name] = local_name
@@ -3893,6 +3922,7 @@ class StatementGenerator:
             self.ctx.restore_local_scope(br_snap)
             for _iv in init_vars:
                 self.ctx.isinstance_init_locals.pop(_iv, None)
+                self.ctx.deref_view_init_locals.pop(_iv, None)
 
         # Final else branch (from the last node in the chain)
         last = chain[-1]

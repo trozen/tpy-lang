@@ -1,0 +1,1 @@
+main.py:20: error: isinstance() on 'Weak[Pet]' is not supported: it is a non-owning handle with no deref view. Call '.upgrade()' first to obtain an owning handle (or None) and isinstance-check that instead.

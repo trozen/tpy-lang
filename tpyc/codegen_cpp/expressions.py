@@ -73,7 +73,7 @@ from ..parse import (
     TpyVarargPack, TpyStarUnpack,
     collect_name_refs,
 )
-from ..prescan import match_is_none
+from ..prescan import match_is_none, _expr_to_narrowing_key
 from ..namespace import BindingKind
 from ..sema.numeric_lattice import fixed_int_range_contains
 from ..sema.literal_utils import literal_value_from_expr
@@ -2264,16 +2264,32 @@ class ExpressionGenerator:
             # same operand inside the same expression.
             var_decl = self.ctx.lookup_var_type(var_name)
             registry = self.ctx.analyzer.registry
-            if (polymorphic_source_inner(var_decl, registry) is not None
+            source_inner = polymorphic_source_inner(var_decl, registry)
+            if (source_inner is not None
                     and isinstance(narrowed_type, NominalType)):
                 is_const_src = (isinstance(var_decl, ReadonlyType)
                                 or var_name in self.ctx.deep_const_borrow_params
                                 or var_name in self.ctx.const_ref_params)
                 const_pfx = "const " if is_const_src else ""
                 cast_arg = self.ctx.polymorphic_cast_arg(var_name, var_decl)
-                result[var_name] = (
-                    f"(*static_cast<{const_pfx}{cpp_type}*>({cast_arg}))"
-                )
+                # Inheritance conformer: the `&&` LHS already validated the cast
+                # via `dynamic_cast<Sub*>(...) != nullptr`, so static_cast is
+                # well-defined (the standard guarantees the same glvalue without
+                # a runtime check) and avoids gcc's `-Wnonnull-compare` on a
+                # second dynamic_cast of the same operand. A structural conformer
+                # has no static_cast path (Adapter is not a Sub), so re-run the
+                # adapter cast to project `.inner`.
+                if (is_protocol_type(source_inner)
+                        and not self.protocols.directly_implements_dynamic(
+                            narrowed_type, source_inner)):
+                    rhs = self.protocols.dynamic_narrow_cast_rhs(
+                        cpp_type, narrowed_type, source_inner, cast_arg,
+                        is_const=is_const_src)
+                    result[var_name] = f"(*{rhs})"
+                else:
+                    result[var_name] = (
+                        f"(*static_cast<{const_pfx}{cpp_type}*>({cast_arg}))"
+                    )
                 continue
             # Pointer-variant unions: *std::get<T*>(var) or *std::get<const T*>(var)
             if var_name in self.ctx.ptr_variant_locals:
@@ -2295,6 +2311,12 @@ class ExpressionGenerator:
         if isinstance(expr, TpyCall) and expr.isinstance_var and expr.isinstance_type:
             # Protocol isinstance uses if constexpr -- no extraction needed
             if expr.isinstance_is_protocol:
+                return
+            # Deref-view isinstance narrows the wrapper's payload, not the
+            # wrapper variable: no var retyping / extraction local. The cast is
+            # applied per member access via deref_narrowed_to (see
+            # _gen_deref_view_method_call), and the condition emits its own cast.
+            if expr.isinstance_deref_depth > 0:
                 return
             if true_branch:
                 facts[expr.isinstance_var] = expr.isinstance_type
@@ -2535,6 +2557,26 @@ class ExpressionGenerator:
             # preserves the rvalue type. Use the bare variable name --
             # gen_expr_deref would produce `(*e)` which isn't useful here.
             registry = self.ctx.analyzer.registry
+            # Deref-view source (owning wrapper): cast the deref payload
+            # pointer, never the wrapper. The wrapper's own type is untouched.
+            if expr.isinstance_deref_depth > 0:
+                # If `_gen_if` pre-bound the cast via C++17 if-init, the
+                # single-member check reduces to a null check on that local.
+                init_local = self.ctx.deref_view_init_locals.get(orig_var)
+                if init_local is not None and len(check_members) == 1:
+                    return f"({init_local} != nullptr)"
+                source_inner = self.ctx.deref_dispatch_inner(
+                    var_decl, expr.isinstance_deref_depth)
+                is_const_src = (isinstance(var_decl, ReadonlyType)
+                                or orig_var in self.ctx.deep_const_borrow_params
+                                or orig_var in self.ctx.const_ref_params)
+                ptr_ref = self.ctx.deref_view_cast_arg(
+                    orig_var, expr.isinstance_deref_depth)
+                checks = [
+                    f"({self.protocols.dynamic_narrow_cast_rhs(self.types.type_to_cpp(m), m, source_inner, ptr_ref, is_const=is_const_src)} != nullptr)"
+                    for m in check_members
+                ]
+                return checks[0] if len(checks) == 1 else "(" + " || ".join(checks) + ")"
             if polymorphic_source_inner(var_decl, registry) is not None:
                 ptr_ref = self.ctx.polymorphic_cast_arg(orig_var, var_decl)
                 # If `_gen_if` pre-bound the cast via C++17 if-init, the
@@ -2546,9 +2588,9 @@ class ExpressionGenerator:
                 is_const_src = (isinstance(var_decl, ReadonlyType)
                                 or orig_var in self.ctx.deep_const_borrow_params
                                 or orig_var in self.ctx.const_ref_params)
-                const_pfx = "const " if is_const_src else ""
+                source_inner = polymorphic_source_inner(var_decl, registry)
                 checks = [
-                    f"(dynamic_cast<{const_pfx}{self.types.type_to_cpp(m)}*>({ptr_ref}) != nullptr)"
+                    f"({self.protocols.dynamic_narrow_cast_rhs(self.types.type_to_cpp(m), m, source_inner, ptr_ref, is_const=is_const_src)} != nullptr)"
                     for m in check_members
                 ]
                 if len(checks) == 1:
@@ -3521,6 +3563,13 @@ class ExpressionGenerator:
         else:
             cpp_method = escape_cpp_name(expr.method)
         deref_chain = ".__deref__()" * expr.deref_depth
+        # Deref-view narrowing: `if isinstance(rc, Dog): rc.bark()` -- cast the
+        # deref payload pointer to the narrowed subclass, then call. `bark` is
+        # a Dog method, not on the Pet protocol, so the plain deref chain alone
+        # would not resolve it.
+        if expr.deref_narrowed_to is not None:
+            return self._gen_deref_view_method_call(
+                expr, obj, deref_chain, cpp_method, method_targs, args)
         # Optional with runtime null check -- must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
             if isinstance(expr.obj, TpyFieldAccess):
@@ -3544,6 +3593,50 @@ class ExpressionGenerator:
                      or self._receiver_is_own_dyn(expr.obj))
         accessor = "->" if use_arrow else "."
         return f"{obj}{accessor}{cpp_method}{method_targs}({args})"
+
+    def _deref_view_read(
+        self, obj_expr: TpyExpr, obj_code: str, deref_chain: str,
+        deref_depth: int, narrowed_to: TpyType,
+    ) -> str:
+        """Build `(*<cast>)` reading the deref-view-narrowed payload: cast the
+        `&(<obj>.__deref__()...)` payload pointer to the narrowed subclass via
+        dynamic_cast (inheritance conformer) or dyn_adapter_cast (structural).
+        Const-ness tracks the wrapper receiver (its auto_readonly __deref__
+        returns const for a const receiver, mutable otherwise)."""
+        # Reuse the if-init pre-bound cast local when `_gen_if` bound one, so
+        # the condition and every narrowed access share a single cast.
+        recv_key = _expr_to_narrowing_key(obj_expr)
+        if recv_key is not None:
+            init_local = self.ctx.deref_view_init_locals.get(recv_key)
+            if init_local is not None:
+                return f"(*{init_local})"
+        is_narrowed = (isinstance(obj_expr, TpyName)
+                       and obj_expr.name in self.ctx.narrowed_vars)
+        if self.ctx.is_indirect_name(obj_expr) and not is_narrowed:
+            deref_expr = f"{obj_code}->{deref_chain[1:]}"
+        else:
+            deref_expr = f"{obj_code}{deref_chain}"
+        payload_ptr = f"&({deref_expr})"
+        recv_name = obj_expr.name if isinstance(obj_expr, TpyName) else None
+        recv_decl = (self.ctx.lookup_var_type(recv_name) if recv_name
+                     else self.ctx.get_expr_type(obj_expr))
+        is_const_src = (isinstance(recv_decl, ReadonlyType)
+                        or (recv_name is not None
+                            and (recv_name in self.ctx.deep_const_borrow_params
+                                 or recv_name in self.ctx.const_ref_params)))
+        source_inner = self.ctx.deref_dispatch_inner(recv_decl, deref_depth)
+        cpp = self.types.type_to_cpp(narrowed_to)
+        rhs = self.protocols.dynamic_narrow_cast_rhs(
+            cpp, narrowed_to, source_inner, payload_ptr, is_const=is_const_src)
+        return f"(*{rhs})"
+
+    def _gen_deref_view_method_call(
+        self, expr: TpyMethodCall, obj: str, deref_chain: str,
+        cpp_method: str, method_targs: str, args: str,
+    ) -> str:
+        read = self._deref_view_read(
+            expr.obj, obj, deref_chain, expr.deref_depth, expr.deref_narrowed_to)
+        return f"{read}.{cpp_method}{method_targs}({args})"
 
     def _gen_dyn_hasattr_block(self, synth: 'TpyMethodCall') -> str:
         """Stmt-expr that yields true if __getattr__ succeeds, false on AttributeError."""
@@ -3946,6 +4039,13 @@ class ExpressionGenerator:
             ):
                 obj = f"(*{obj})"
         deref_chain = ".__deref__()" * expr.deref_depth
+        # Deref-view narrowing: a field declared only on the narrowed subclass,
+        # reached through an owning wrapper's deref -- cast the payload pointer.
+        if expr.deref_narrowed_to is not None:
+            read = self._deref_view_read(
+                expr.obj, obj, deref_chain, expr.deref_depth,
+                expr.deref_narrowed_to)
+            return f"{read}.{cpp_field}"
         # Optional with runtime null check -- must come before deref fast path
         if expr.needs_optional_runtime_check and is_optional_ptr:
             # Storage-form Optional source (field, container subscript,
