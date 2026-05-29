@@ -59,6 +59,27 @@ struct varargs {
     int32_t size() const { return size_; }
     bool empty() const { return size_ == 0; }
 
+    // Python-style slice preserving direct-vs-indirect mode. Returns another
+    // varargs of the same instantiation with adjusted pointers + size -- the
+    // only correct shape, since indirect-mode storage (`T* const*`) cannot be
+    // exposed as `std::span<T>`. Indices follow Python clamp semantics.
+    varargs slice(int32_t start, int32_t stop) const {
+        int32_t i = start;
+        int32_t j = stop;
+        if (i < 0) i += size_;
+        if (j < 0) j += size_;
+        if (i < 0) i = 0;
+        if (j < 0) j = 0;
+        if (i > size_) i = size_;
+        if (j > size_) j = size_;
+        varargs r;
+        if (i >= j) return r;
+        r.size_ = j - i;
+        if (direct_) r.direct_ = direct_ + i;
+        if (indirect_) r.indirect_ = indirect_ + i;
+        return r;
+    }
+
     struct iterator {
         T* direct_;
         T* const* indirect_;
@@ -117,5 +138,37 @@ int32_t __len__(const varargs<T, V>& v) { return v.size(); }
 
 template<typename T, bool V>
 T& __getitem__(const varargs<T, V>& v, int32_t i) { return v[i]; }
+
+} // namespace tpy
+
+#include "container_ops.hpp"
+
+namespace tpy {
+
+// list_slice on a non-value varargs returns another varargs (preserving
+// direct-vs-indirect mode), not std::span<T> -- the generic Container
+// list_slice in container_ops.hpp would call `c.data()` which non-value
+// varargs intentionally doesn't expose (indirect storage is `T* const*`,
+// not contiguous T). The value-type varargs path stays on the generic
+// template via its own `data()` (defined in the value-type specialization).
+template<typename T>
+varargs<T, false> list_slice(varargs<T, false>& c, int32_t start, int32_t stop) {
+    return c.slice(start, stop);
+}
+
+template<typename T>
+varargs<T, false> list_slice(const varargs<T, false>& c, int32_t start, int32_t stop) {
+    return c.slice(start, stop);
+}
+
+template<typename T>
+varargs<T, false> list_slice(varargs<T, false>& c, BasicSlice sl) {
+    return c.slice(sl.start.value_or(0), sl.stop.value_or(SLICE_END));
+}
+
+template<typename T>
+varargs<T, false> list_slice(const varargs<T, false>& c, BasicSlice sl) {
+    return c.slice(sl.start.value_or(0), sl.stop.value_or(SLICE_END));
+}
 
 } // namespace tpy
