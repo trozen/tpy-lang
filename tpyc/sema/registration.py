@@ -210,20 +210,82 @@ class TypeRegistrar:
 
     def _resolve_type_param_bounds(
         self, raw_bounds: dict[str, TpyType], loc,
+        type_params: list[str] | None = None,
     ) -> dict[str, TpyType]:
         """Resolve parsed type parameter bounds, validating each is a
-        protocol, a class, or a (sibling/enclosing) type parameter."""
+        protocol, a class, or a (sibling/enclosing) type parameter.
+
+        When `type_params` is supplied (the declaration-order list of param
+        names this bounds dict belongs to), bound TypeParamRef references to
+        a not-yet-declared sibling are rejected here -- otherwise they slip
+        through to `substitute_type_params` at a downstream use site and
+        crash with a context-less "Unknown type parameter 'X'".
+        """
         resolved: dict[str, TpyType] = {}
-        for param_name, bound_type in raw_bounds.items():
-            resolved_bound = self.type_ops.resolve_type(bound_type)
-            if not _is_valid_type_param_bound(resolved_bound):
-                raise SemanticError(
-                    f"Type parameter bound must be a protocol, a class, or a "
-                    f"type parameter, got {resolved_bound}",
-                    loc,
-                )
-            resolved[param_name] = resolved_bound
+        if type_params is None:
+            for param_name, bound_type in raw_bounds.items():
+                resolved_bound = self.type_ops.resolve_type(bound_type)
+                if not _is_valid_type_param_bound(resolved_bound):
+                    raise SemanticError(
+                        f"Type parameter bound must be a protocol, a class, or a "
+                        f"type parameter, got {resolved_bound}",
+                        loc,
+                    )
+                resolved[param_name] = resolved_bound
+            return resolved
+        # Declaration-order walk so a bound that names a sibling is checked
+        # against the params declared so far. raw_bounds only contains bounded
+        # params; the iteration drives off `type_params` so unbounded ones
+        # still register their declaration position.
+        declared_so_far: set[str] = set()
+        for param_name in type_params:
+            if param_name in raw_bounds:
+                bound_type = raw_bounds[param_name]
+                resolved_bound = self.type_ops.resolve_type(bound_type)
+                if not _is_valid_type_param_bound(resolved_bound):
+                    raise SemanticError(
+                        f"Type parameter bound must be a protocol, a class, or a "
+                        f"type parameter, got {resolved_bound}",
+                        loc,
+                    )
+                self._reject_forward_typeparam_bound_refs(
+                    param_name, resolved_bound, type_params, declared_so_far, loc)
+                resolved[param_name] = resolved_bound
+            declared_so_far.add(param_name)
         return resolved
+
+    def _reject_forward_typeparam_bound_refs(
+        self, param_name: str, bound: TpyType,
+        type_params: list[str], declared_so_far: set[str], loc,
+    ) -> None:
+        sibling_set = set(type_params)
+        forward = self._first_forward_typeparam_ref(bound, sibling_set, declared_so_far)
+        if forward is not None:
+            raise SemanticError(
+                f"Type parameter '{param_name}' references '{forward}' in its "
+                f"bound, but '{forward}' is declared later. Reorder so each "
+                f"bound only names previously-declared type parameters.",
+                loc,
+            )
+
+    def _first_forward_typeparam_ref(
+        self, typ: TpyType, sibling_set: set[str], declared_so_far: set[str],
+    ) -> str | None:
+        if isinstance(typ, TypeParamRef):
+            if typ.name in sibling_set and typ.name not in declared_so_far:
+                return typ.name
+            return None
+        for inner in typ.inner_types():
+            hit = self._first_forward_typeparam_ref(inner, sibling_set, declared_so_far)
+            if hit is not None:
+                return hit
+        if isinstance(typ, NominalType) and typ.type_args:
+            for arg in typ.type_args:
+                if isinstance(arg, TpyType):
+                    hit = self._first_forward_typeparam_ref(arg, sibling_set, declared_so_far)
+                    if hit is not None:
+                        return hit
+        return None
 
     def register_tpy_star_import(self) -> None:
         """Register all tpy exports for 'from tpy import *'.
@@ -1062,7 +1124,8 @@ class TypeRegistrar:
             )
             method.is_readonly = resolved_readonly
             method_type_param_bounds = self._resolve_type_param_bounds(
-                method.type_param_bounds, method.loc or record.loc)
+                method.type_param_bounds, method.loc or record.loc,
+                type_params=list(method.type_params))
             if method_type_param_bounds:
                 method.type_param_bounds.update(method_type_param_bounds)
             method_defaults = method.defaults if method.defaults else []
@@ -2725,7 +2788,7 @@ class TypeRegistrar:
                 )
 
         type_param_bounds = self._resolve_type_param_bounds(
-            func.type_param_bounds, func.loc)
+            func.type_param_bounds, func.loc, type_params=list(func.type_params))
         # Propagate resolved bounds back to AST so get_type_param_bound sees
         # correct is_protocol flags during body analysis (safe: fresh AST per compile)
         if type_param_bounds:

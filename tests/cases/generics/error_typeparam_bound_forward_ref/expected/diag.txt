@@ -1,0 +1,1 @@
+main.py:8: error: Type parameter 'U' references 'T' in its bound, but 'T' is declared later. Reorder so each bound only names previously-declared type parameters.
