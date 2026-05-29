@@ -817,20 +817,24 @@ class CodeGenerator:
         self, hpp: TextIO, module: TpyModule, deps: _ProtocolDeps
     ) -> None:
         """Generate forward declarations for prereq/bound/protocol-referenced records and concepts."""
-        # A protocol method signature can reference a generic recursive-alias
-        # wrapper (`def m(self, t: Tree[Int32])`), which renders inside the
-        # concept body as `Tree<int32_t>` -- so the wrapper template must be
-        # forward-declared before any concept. Only needed when protocols
-        # exist; otherwise the fwd-decl before records (in
+        # A protocol method signature can reference a recursive-union wrapper
+        # (`def m(self, t: Tree[Int32])` / `def m(self, e: Expr)`), which
+        # renders inside the concept body as `Tree<int32_t>` / `Expr` -- so the
+        # wrapper must be forward-declared before any concept. Covers both
+        # generic (template) and non-generic wrappers. Only needed when
+        # protocols exist; otherwise the fwd-decl before records (in
         # _generate_definitions_and_reexports) suffices, and skipping here
         # avoids churning protocol-free recursive-alias snapshots.
         emitted_wrapper_fwd = False
         if module.protocols:
             for name, entry in module.type_aliases.items():
-                if name in module.recursive_union_names and entry[2]:
-                    header = self.protocols.gen_record_template_header(
-                        entry[2], {}, entry[3])
-                    hpp.write(f"{header} struct {name};\n")
+                if name in module.recursive_union_names:
+                    if entry[2]:
+                        header = self.protocols.gen_record_template_header(
+                            entry[2], {}, entry[3])
+                        hpp.write(f"{header} struct {name};\n")
+                    else:
+                        hpp.write(f"struct {name};\n")
                     emitted_wrapper_fwd = True
             if emitted_wrapper_fwd:
                 hpp.write("\n")
@@ -994,12 +998,12 @@ class CodeGenerator:
         for name, entry in module.type_aliases.items():
             if name in module.recursive_union_names:
                 type_params = entry[2]
+                # Wrappers (generic and non-generic) are forward-declared
+                # before concepts when the module has protocols (see
+                # _generate_forward_decls_and_concepts); avoid a duplicate.
+                if module.protocols:
+                    continue
                 if type_params:
-                    # Generic wrappers are forward-declared before concepts
-                    # when the module has protocols (see
-                    # _generate_forward_decls_and_concepts); avoid a duplicate.
-                    if module.protocols:
-                        continue
                     header = self.protocols.gen_record_template_header(
                         type_params, {}, entry[3])
                     hpp.write(f"{header} struct {name};\n")
