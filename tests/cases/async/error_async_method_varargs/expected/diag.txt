@@ -1,0 +1,1 @@
+main.py:7: error: Variadic positional parameters (*args) are not yet supported on async methods

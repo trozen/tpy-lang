@@ -54,6 +54,7 @@ Skip a specialist when its scope is empty:
 | `architecture-fit` | `compiler-py` non-empty |
 | `test-coverage` | always (cheap; catches missing tests for compiler changes) |
 | `safety-model` | any of `tpyc/sema/`, `tpyc/typesys.py`, `tpyc/coercions.py`, `tpyc/codegen_cpp/`, or `runtime/cpp/` touched |
+| `cpython-parity` | any of `codegen-output`, `codegen-logic`, `tpyc/sema/`, `tpyc/typesys.py`, `runtime/cpp/`, or `tests/cases/` touched (effectively always for compiler work) -- catches TPy-vs-CPython behavioral divergence the cpy test phase can't (mutation-dependent or `no_cpython`-masked) |
 | `runtime-cpp-correctness` | `runtime-cpp` non-empty |
 | `convention-compliance` | always (cheap; checks the diff against CLAUDE.md's written rules across all changed files) |
 | `docs-sync` | always (cheap) |
@@ -84,6 +85,7 @@ Once all specialists return, synthesize a unified report. Be terse -- one bullet
 
 - **Dedupe**: when multiple specialists flag the same `file:line` with related issues, merge into one entry crediting all contributing specialists.
 - **Group by severity**: Critical first, then Warning, then Suggestion.
+- **Silent CPython divergence outranks**: a `cpython-parity` finding that TPy behaves differently from CPython with no warning, no source-level escape hatch, and no `no_cpython.txt` is a Critical -- keep it Critical even if it would otherwise read as a minor cost. A divergence that is warned, escape-hatched, or justifiably declared is fine as a Suggestion. This reflects the project's "standard Python works out of the box" goal; do not downgrade a silent divergence to a perf nit.
 - **Filter noise**: if Suggestions total > 10 across all specialists, drop the lowest-signal ones (vague, duplicative of a Warning at the same location).
 - **Carry confidence tags**: specialists may append ` (low confidence)` to a finding they couldn't fully verify. Keep the finding but preserve the tag -- it feeds the meta-review's confidence pass (step 8). Don't silently drop low-confidence findings here.
 - **Note clean specialists**: list them explicitly so the user sees what was checked.

@@ -1186,6 +1186,14 @@ class TypeRegistrar:
             # (`_analyze_and_pack_varargs`) sees the canonical
             # [fixed..., variadic, kwonly...] layout shared with free functions.
             if method.vararg_name is not None and method.vararg_type is not None:
+                # A variadic coroutine factory's await-call lowering is not
+                # wired and miscompiles to opaque C++; reject at the source.
+                if method.is_async:
+                    raise SemanticError(
+                        "Variadic positional parameters (*args) are not yet "
+                        "supported on async methods",
+                        method.loc or record.loc
+                    )
                 va_type = self.type_ops.resolve_type(method.vararg_type)
                 va_param = ParamInfo(method.vararg_name, _vararg_span_type(va_type),
                                      is_variadic=True)
@@ -2769,6 +2777,17 @@ class TypeRegistrar:
             raise SemanticError(
                 f"Generator function must have return type 'Iterator[T]', "
                 f"got '{resolved_return}'",
+                func.loc
+            )
+
+        # *args on async def: the await-call lowering for a variadic coroutine
+        # factory is not wired -- the vararg pack reaches gen_async's coro
+        # emplace path with no argument and miscompiles to opaque C++. Reject
+        # at the source rather than at the C++ build.
+        if func.is_async and func.vararg_name is not None:
+            raise SemanticError(
+                "Variadic positional parameters (*args) are not yet supported "
+                "on async functions",
                 func.loc
             )
 

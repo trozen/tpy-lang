@@ -1489,6 +1489,14 @@ class StatementGenerator:
         """
         yield_type = self.ctx.current_yield_type
         expr = self.expressions.gen_expr(yield_stmt.value, yield_type)
+        # Deref a borrow-form for-loop var (stored as T* so the borrow survives
+        # suspension) into the value-form yield slot. Gated on the
+        # borrow-form-loop-var set, not the broader pointer_locals: pointer-repr
+        # Optional/Union locals must keep the pass-through path or `(*name)`
+        # would strip their None/variant case.
+        if (isinstance(yield_stmt.value, TpyName)
+                and yield_stmt.value.name in self.ctx.generator_borrow_form_loop_vars):
+            return f"(*{expr})"
         return self._maybe_wrap_tuple_to_pointer(
             expr, yield_type, self.ctx.unwrap_copy(yield_stmt.value))
 

@@ -1019,6 +1019,7 @@ class AsyncCoroCodegen:
         old_field_names = self.ctx.generator_field_names
         old_optional_fields = self.ctx.generator_optional_fields
         old_frame_slot_locals = self.ctx.generator_frame_slot_locals
+        old_borrow_form_loop_vars = self.ctx.generator_borrow_form_loop_vars
         old_for_info = self.ctx.generator_for_loop_info
         old_self_ref = self.ctx.generator_self_ref
         old_movable_locals = self.ctx.movable_locals
@@ -1038,6 +1039,7 @@ class AsyncCoroCodegen:
         self.ctx.generator_field_names = set()
         self.ctx.generator_optional_fields = set()
         self.ctx.generator_frame_slot_locals = set()
+        self.ctx.generator_borrow_form_loop_vars = set()
         # Populated by `_prescan_resumable_for_loops`; carries
         # `pointer_form_loop_var` so `setup_resumable_frame_locals` (called
         # inside `setup_body_scope` below) seeds non-value loop vars into
@@ -1099,6 +1101,7 @@ class AsyncCoroCodegen:
             self.ctx.generator_field_names = old_field_names
             self.ctx.generator_optional_fields = old_optional_fields
             self.ctx.generator_frame_slot_locals = old_frame_slot_locals
+            self.ctx.generator_borrow_form_loop_vars = old_borrow_form_loop_vars
             self.ctx.generator_for_loop_info = old_for_info
             self.ctx.generator_self_ref = old_self_ref
             self.ctx.movable_locals = old_movable_locals

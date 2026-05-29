@@ -21,7 +21,7 @@ template <typename T>
 struct __gen_doubled {
     int32_t __state;
     std::vector<T>& xs;
-    T x;
+    T* x = nullptr;
     ::tpy::frame_slot<decltype(std::declval<std::vector<T>&>().begin())> __for_it_0;
     ::tpy::frame_slot<decltype(std::declval<std::vector<T>&>().begin())> __for_end_0;
 
@@ -56,7 +56,7 @@ std::expected<T, ::tpy::StopIteration> __gen_doubled<T>::__next__() {
     case S_RESUME_0: {
         // yield x
         __state = S_RESUME_1;
-        return x;
+        return (*x);
     }
     case S_RESUME_1: {
         __state = S_JOIN_0;
@@ -67,10 +67,10 @@ std::expected<T, ::tpy::StopIteration> __gen_doubled<T>::__next__() {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        x = *((*__for_it_0))++;
+        x = &(*((*__for_it_0))++);
         // yield x
         __state = S_RESUME_0;
-        return x;
+        return (*x);
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

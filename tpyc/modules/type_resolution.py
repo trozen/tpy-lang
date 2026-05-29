@@ -540,13 +540,16 @@ def _find_iter_method_element(
             elem = ret.type_args[0]
             if type_subst:
                 try:
-                    elem = _resolve_type_or_param(elem, type_subst)
+                    # Successful resolution settles the element type even when
+                    # it resolves to another type param: iterating Span[T] in
+                    # a generic body yields T, a valid in-scope element type
+                    # (parallel to args[0] indexing). Only an unresolved param
+                    # (ValueError) means the element is genuinely unknown here.
+                    return _resolve_type_or_param(elem, type_subst)
                 except ValueError:
-                    # Unresolved TypeParamRef (top-level or nested via
-                    # map_inner_types). Skip this branch -- elem is still
-                    # a TypeParamRef and the guard below rejects it.
                     pass
-            if not isinstance(elem, TypeParamRef):
+            elif not isinstance(elem, TypeParamRef):
+                # No substitution context: a bare type param is meaningless.
                 return elem
 
         # User-defined iterator with error_return __next__

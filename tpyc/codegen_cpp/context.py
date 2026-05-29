@@ -850,6 +850,11 @@ class CodeGenContext:
     # non-value, non-pointer-form). Writes here must go through
     # `.emplace(value)` -- the helper has no operator= for arbitrary T.
     generator_frame_slot_locals: set[str] = field(default_factory=set)
+    # Subset of pointer_locals that are borrow-form for-loop vars (a `T*`
+    # aliasing a live container element). Yielding one by name needs a deref
+    # to the value yield slot -- but pointer-repr Optional/Union locals (also
+    # in pointer_locals) must NOT be deref'd that way, hence a dedicated set.
+    generator_borrow_form_loop_vars: set[str] = field(default_factory=set)
     # For-loops with yields in state machine generators: keyed by id(TpyForEach)
     # Values are GeneratorForInfo (not imported here to avoid circular dep)
     generator_for_loop_info: dict[int, object] = field(default_factory=dict)
@@ -1733,10 +1738,12 @@ class CodeGenContext:
         for info in self.generator_for_loop_info.values():
             if info.pointer_form_loop_var is not None:
                 self.pointer_locals.add(info.pointer_form_loop_var)
+                self.generator_borrow_form_loop_vars.add(info.pointer_form_loop_var)
             # Tuple-unpack targets aliasing a non-value container member:
             # stored as `T*` (alias into the live element), same dispatch
             # as a pointer-form loop var.
             self.pointer_locals.update(info.pointer_form_unpack_targets)
+            self.generator_borrow_form_loop_vars.update(info.pointer_form_unpack_targets)
 
         if not func.generator_locals:
             return
