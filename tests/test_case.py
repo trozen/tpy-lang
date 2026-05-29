@@ -268,6 +268,15 @@ def test_case(case_dir, main_src, request):
                     pytrace=False,
                 )
             check_or_update(run_result.stderr, expected_dir / "panic.txt", "Panic output")
+            # Panic tests may also print on stdout before the panic
+            # (tpy_terminate_handler flushes stdout). Capture that
+            # too so pre-panic side effects are observable. Guard on
+            # either side having content so empty-stdout panic tests
+            # don't generate stub files, but a regression that drops
+            # stdout from a test that previously had observable
+            # pre-panic output is still caught.
+            if run_result.stdout or (expected_dir / "output.txt").exists():
+                check_or_update(run_result.stdout, expected_dir / "output.txt", "Output")
     elif not is_warn and not (expected_dir / "output.txt").exists() and not is_panic:
         # Compiled cleanly but no expected output recorded; warn so user can
         # run update_snapshots.py -k <case>

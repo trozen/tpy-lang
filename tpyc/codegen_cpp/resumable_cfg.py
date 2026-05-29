@@ -417,10 +417,21 @@ class AsyncFinallyExit:
           std::rethrow_exception(__tmp);
       }
 
-    Stage 1 emits the deferred Poll::ready (or StopIteration for the
-    generator shape) when a `return` originating in the try body, any
-    handler body, OR the finally body itself set the pending flag; the
-    captured-exc clear-on-its-way-out implements the Python
+    Stage 1 fires when a `return` originating in the try body, any
+    handler body, OR the finally body itself set the pending flag. It
+    has two shapes depending on whether an enclosing CFG-finally region
+    is active at this exit site (see `_emit_async_finally_exit`):
+      * No enclosing CFG finally: replay locally -- walk the outer
+        helper chain, then emit Poll<T>::ready / StopIteration as shown
+        above (the deferred return is delivered as the coro's exit).
+      * Enclosing CFG finally present: forward -- move this exit's
+        parked value into the outer's `pending_return_slot`, set the
+        outer's `pending_return_flag`, walk helpers between this exit
+        and the outer's finally entry, then transition state to the
+        outer's `finally_entry_bb`. The outer's AsyncFinallyExit
+        eventually performs the local replay (or forwards again, for
+        deeper nesting).
+    The captured-exc clear-on-its-way-out implements the Python
     return-in-finally-wins-over-raise rule. Stage 2 rethrows a saved
     in-flight exception when no return is pending. Fields are cleared
     after extraction so a re-entry to the same try (e.g. inside a loop)
@@ -1065,18 +1076,10 @@ class CFGBuilder:
         elif finally_async:
             # CFG-based finally. Pre-scan assigns an exception-slot uid
             # and (if returns are reachable in any of try / handler /
-            # finally) a pending-return slot. Remaining restriction: no
-            # nesting of two CFG-based finally regions (the inner
-            # AsyncFinallyExit would need to forward its pending slot
-            # to the outer one).
-            for r in self._region_stack:
-                if (isinstance(r, TryRegion)
-                        and r.captured_exc_field is not None):
-                    raise _CFGNotYetSupported(
-                        "nesting two `await`-in-`finally` regions is "
-                        "a planned follow-up.",
-                        loc=stmt.loc,
-                    )
+            # finally) a pending-return slot. Nesting two CFG-based
+            # finally regions is supported: the inner AsyncFinallyExit
+            # forwards its pending state into the outer's parking slot
+            # (see `_emit_async_finally_exit`).
             uid = self._try_finally_uid_map.get(id(stmt))
             if uid is None:
                 raise _CFGNotYetSupported(
@@ -1352,20 +1355,23 @@ class CFGBuilder:
                 "finally-exc uid (internal: pre-scan missed it).",
                 loc=stmt.loc,
             )
-        # Nested async-with: each item gets its own TryRegion, but the
-        # M3.3 finally machinery only supports one CFG-based finally at
-        # a time (filed in BUGS.md). Reject multi-item async-with for
-        # now -- left-to-right desugaring via the same uid mechanism
-        # would collide. (Parser also supports the workaround:
-        # nested async-with stmts.)
+        # Multi-item `async with X as a, Y as b:`: would left-to-right
+        # desugar to nested `async with` using the same finally_uid, so
+        # the items would collide on the shared `__finally_exc_<n>` /
+        # `__finally_pending_<n>` / `__finally_ret_<n>` fields. Reject
+        # for now; users can nest two `async with` statements instead.
         if len(stmt.items) != 1:
             raise _CFGNotYetSupported(
                 "multi-item `async with X as a, Y as b:` is not yet "
                 "supported -- nest two `async with` statements instead",
                 loc=stmt.loc,
             )
-        # Outer TryRegion can't be inside another CFG-based finally
-        # region (same M3.3 nesting limit).
+        # An `async with` synthesizes its own TryRegion with a CFG-based
+        # finally body (the `__aexit__` Yield). Plain try/finally
+        # nesting was lifted by extending AsyncFinallyExit to forward
+        # parked state outward; the async-with case has not been lifted
+        # because the synthesized finally also needs to keep its
+        # __aexit__ call ordering correct across forwarding.
         for r in self._region_stack:
             if (isinstance(r, TryRegion)
                     and r.captured_exc_field is not None):

@@ -250,6 +250,14 @@ inline std::string demangle_type_name(const char* mangled) {
         }
     }
 
+    // Flush any pending pre-panic output (prints from finally bodies,
+    // partial lines, etc.) so users see the load-bearing side effects
+    // that ran before the panic. `_Exit` below bypasses all stream
+    // flushing, so without this the user sees only the panic message.
+    // `std::cout` is sync'd with C's stdout by default, so fflush
+    // alone covers both streams (avoids dragging in `<iostream>`).
+    std::fflush(stdout);
+
     std::fputs("TurboPython panic: uncaught ", stderr);
     std::fwrite(type_name.data(), 1, type_name.size(), stderr);
     if (what_msg && *what_msg) {

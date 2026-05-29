@@ -191,8 +191,8 @@ void __tpy_init() {
     // # Nested async-with via a helper async def: each `async with` lives in
     // # its own CFG, so the inner's TryRegion doesn't collide with the
     // # outer's. (Direct nesting `async with X: async with Y:` in the same
-    // # function hits the same M3.3 "two `await`-in-`finally` regions"
-    // # restriction -- tracked separately.)
+    // # function is still rejected by the `_build_async_with` guard --
+    // # tracked separately.)
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
     // asyncio.run(main_coro())

@@ -524,15 +524,39 @@ existing `error_*` case to positive.
   swallowing), and `async/async_return_in_finally_overrides_try_return`
   (try-body and finally-body both return -- finally wins).
 
-- **H3 -- Nested suspending `finally`.** Today rejected because the
-  inner suspending finally would need to forward its pending exception
-  / return to the outer slot. Fix: when building a try whose finally
-  suspends inside an outer suspending-finally region, chain the
-  pending-exception and pending-return slots so the inner's
-  AsyncFinallyExit hands off to the outer's parking machinery instead
-  of running them as the final exit. Drop the sema reject. Converts:
-  `iterators/error_gen_nested_yield_finally`,
-  `async/error_await_in_control_flow`.
+- **H3 DONE (2026-05-28)** -- nested suspending `finally`. The fix
+  extended the existing H2 forwarding pattern to one more origin: at
+  the inner `AsyncFinallyExit`'s pending-return replay branch, when
+  an enclosing CFG-finally region is on the stack, the inner forwards
+  its parked state (slot value + flag) into the outer's slots and
+  transitions to the outer's `finally_entry_bb` instead of replaying
+  with `Poll::ready` / `StopIteration`. The exception path is free --
+  the inner's `std::rethrow_exception` is wrapped in the outer's
+  case-body try-catch, which already routes to the outer's finally.
+  Mechanism:
+  - `_pending_return_info_for_region_stack` rewritten to return the
+    INNERMOST CFG finally region with parking (was outermost). This
+    is what makes nested CFG work: a return inside the inner try
+    body parks into the inner's slot (not skipping straight to the
+    outer); the inner's AsyncFinallyExit then forwards outward. At
+    the inner's `finally_exit_bb` the inner FinallyRegion is no
+    longer on the stack, so the same lookup naturally finds the
+    outer.
+  - `_emit_async_finally_exit`'s pending branch now reads
+    `ctx.async_pending_return_*` (set by `_emit_case` for this BB's
+    region_stack) and branches: if outer present, emit forwarding
+    + `_emit_finally_chain(stop_at=outer_boundary)` + state
+    transition; else fall back to the existing local replay
+    (`Poll::ready` / `StopIteration`).
+  - Sema reject branch removed; CFG reject in `_build_try` removed.
+  Tests: converted `iterators/error_gen_nested_yield_finally` ->
+  `iterators/gen_nested_yield_finally` (1, 2, 3 iteration) and
+  `async/error_await_in_control_flow` ->
+  `async/async_nested_await_in_finally` (both finally bodies run);
+  new `async/async_nested_return_in_inner_finally` (inner finally's
+  return is forwarded; outer finally runs before the value is
+  delivered) and `async/async_nested_raise_in_inner_try` (both
+  finally bodies run before the unhandled exception propagates).
 
 ### Medium priority -- independent shapes
 

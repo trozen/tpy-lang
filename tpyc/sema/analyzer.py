@@ -31,7 +31,7 @@ from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef,
     expr_contains_self_method_call,
-    stmt_has_any_suspension, stmts_have_any_suspension,
+    stmt_has_any_suspension,
 )
 from .expressions import _collect_body_name_refs
 
@@ -1114,21 +1114,17 @@ class SemanticAnalyzer:
         """Reject suspension (`yield`/`await`) shapes the resumable-frame
         lowering does not yet support, with a clean located diagnostic
         instead of an opaque downstream C++ error. Covers the user-facing
-        generator/coroutine-reachable cases the CFG builder raises on:
-
-          1. a suspension inside a `match` (the only compound the CFG does
-             not decompose),
-          2. a suspending `finally` nested inside another suspending
-             `finally`.
+        generator/coroutine-reachable case the CFG builder raises on:
+        a suspension inside a `match` (the only compound the CFG does
+        not decompose).
 
         The codegen CFG build (`_build_resumable_cfg`) remains the
         authoritative backstop, raising a `CodeGenError` for any residual
         shape not enumerated here, so this check only needs to be
-        conservative (never over-reject): each condition mirrors a
-        `_CFGNotYetSupported` raise exactly."""
+        conservative (never over-reject)."""
         kw = "yield" if func.is_generator else "await"
 
-        def walk(stmts: list, in_suspending_finally: bool) -> None:
+        def walk(stmts: list) -> None:
             for stmt in stmts:
                 if isinstance(stmt, TpyMatch) and stmt_has_any_suspension(stmt):
                     raise self._error(
@@ -1136,25 +1132,10 @@ class SemanticAnalyzer:
                         f"supported by the resumable lowering",
                         stmt,
                     )
-                if isinstance(stmt, TpyTry):
-                    finally_suspends = stmts_have_any_suspension(stmt.finally_body)
-                    if finally_suspends and in_suspending_finally:
-                        raise self._error(
-                            f"nesting two `{kw}`-in-`finally` regions is a "
-                            f"planned follow-up.",
-                            stmt,
-                        )
-                    nested_flag = in_suspending_finally or finally_suspends
-                    walk(stmt.try_body, nested_flag)
-                    for h in stmt.handlers:
-                        walk(h.body, nested_flag)
-                    walk(stmt.else_body, nested_flag)
-                    walk(stmt.finally_body, nested_flag)
-                    continue
                 for body in stmt.sub_bodies():
-                    walk(body, in_suspending_finally)
+                    walk(body)
 
-        walk(func.body, False)
+        walk(func.body)
 
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""

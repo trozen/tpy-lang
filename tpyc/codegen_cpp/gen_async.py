@@ -2144,45 +2144,53 @@ class AsyncCoroCodegen:
 
     def _pending_return_info_for_region_stack(
             self, region_stack: tuple) -> 'tuple[str, str | None, int, int] | None':
-        """If a CFG-based finally is active for this region_stack (i.e.
-        a TryRegion with `pending_return_flag` OR an ExceptRegion whose
-        parent had one OR a FinallyRegion carrying the parking fields),
-        return `(flag, slot, target_bb, boundary)` -- boundary is the
-        count of finally_stack frames contributed by regions OUTSIDE the
-        CFG-based try. Returns None otherwise.
+        """If a CFG-based finally is active for this region_stack, return
+        `(flag, slot, target_bb, boundary)` for the INNERMOST one --
+        boundary is the count of finally_stack frames contributed by
+        helper-based regions BELOW it (those defer to AsyncFinallyExit
+        instead of running at the return site). Returns None otherwise.
+
+        Walking innermost-first is what makes nested CFG finally work:
+        a return inside the inner try body parks into the inner's slot;
+        the inner's AsyncFinallyExit later forwards into the outer.
+        At the inner's `finally_exit_bb`, the inner FinallyRegion is no
+        longer on the stack, so the same lookup naturally finds the
+        outer (the new innermost) -- which is how AsyncFinallyExit
+        learns whether to replay locally or forward outward.
 
         For try/handler-body returns: target_bb = finally_entry_bb (the
         return parks + jumps to the finally entry).
         For finally-body returns: target_bb = finally_exit_bb (the return
         parks + jumps straight to AsyncFinallyExit; running the finally
         body again would re-execute it from the top)."""
+        innermost: 'tuple[str, str | None, int, int] | None' = None
         boundary = 0
         for region in region_stack:
             if isinstance(region, rcfg.TryRegion):
                 if region.pending_return_flag is not None:
-                    return (region.pending_return_flag,
-                            region.pending_return_slot,
-                            region.finally_entry_bb,
-                            boundary)
-                if region.finally_helper_name is not None:
+                    innermost = (region.pending_return_flag,
+                                 region.pending_return_slot,
+                                 region.finally_entry_bb,
+                                 boundary)
+                elif region.finally_helper_name is not None:
                     boundary += 1
             elif isinstance(region, rcfg.ExceptRegion):
                 if region.parent_pending_return_flag is not None:
-                    return (region.parent_pending_return_flag,
-                            region.parent_pending_return_slot,
-                            region.parent_finally_entry_bb,
-                            boundary)
-                if region.parent_finally is not None:
+                    innermost = (region.parent_pending_return_flag,
+                                 region.parent_pending_return_slot,
+                                 region.parent_finally_entry_bb,
+                                 boundary)
+                elif region.parent_finally is not None:
                     boundary += 1
             elif isinstance(region, rcfg.FinallyRegion):
                 if region.pending_return_flag is not None:
-                    return (region.pending_return_flag,
-                            region.pending_return_slot,
-                            region.finally_exit_bb,
-                            boundary)
+                    innermost = (region.pending_return_flag,
+                                 region.pending_return_slot,
+                                 region.finally_exit_bb,
+                                 boundary)
             elif isinstance(region, rcfg.WithRegion):
                 boundary += 1
-        return None
+        return innermost
 
     def _emit_finally_helper_call(self, out: "TextIO", indent: str,
                                     helper_name: str) -> None:
@@ -2601,15 +2609,28 @@ class AsyncCoroCodegen:
     def _emit_async_finally_exit(self, out: "TextIO", indent: str,
                                    stmt: 'rcfg.AsyncFinallyExit') -> None:
         """Emit the deferred-return check + saved-exception rethrow at
-        the tail of a CFG-decomposed finally body. Both fields are
-        cleared before extraction so a re-entry to the same try (e.g.
-        in a loop) starts with no carried-over state.
+        the dedicated finally exit BB. Both fields are cleared before
+        extraction so a re-entry to the same try (e.g. in a loop)
+        starts with no carried-over state.
 
         Order matters: the pending-return check runs FIRST so a `return`
         in the finally body wins over an in-flight exception captured
         from the try (Python: return-in-finally swallows). The deferred
         return clears the captured-exc field on the way out so the
-        rethrow check is skipped automatically."""
+        rethrow check is skipped automatically.
+
+        The pending branch has two outcomes depending on whether an
+        enclosing CFG-finally region is active at this exit site (set
+        in `ctx.async_pending_return_*` by `_emit_case` from this BB's
+        region_stack):
+          * Not active: replay locally -- walk outer helpers, then
+            emit Poll::ready / StopIteration as the coro's exit.
+          * Active: forward -- move this exit's parked value into the
+            outer's slot, set the outer's flag, walk helpers down to
+            the outer boundary, transition to the outer's
+            `finally_entry_bb`. The outer's `AsyncFinallyExit`
+            eventually performs the local replay (or forwards again
+            for deeper nesting)."""
         f = stmt.captured_exc_field
         inner = indent + INDENT
         if stmt.pending_return_flag is not None:
@@ -2622,26 +2643,48 @@ class AsyncCoroCodegen:
             # from the try body (no in-flight exception), this is a
             # no-op.
             out.write(f"{inner}this->{f} = nullptr;\n")
-            # Walk any outer helpers (e.g. an enclosing helper-based
-            # finally outside this CFG-based one) before emitting the
-            # actual return. `_emit_finally_chain` handles its own
-            # indent-level save/sync from the `inner` string.
-            self.statements._emit_finally_chain(out, inner)
-            if self._is_generator_shape():
-                done_state = self.ctx.generator_resumable_done_state or "S_DONE"
-                out.write(f"{inner}__state = {done_state};\n")
-                out.write(f"{inner}return ::tpy::make_unexpected("
-                          f"::tpy::StopIteration{{}});\n")
+            # If an enclosing CFG-based finally is active (set in ctx
+            # by `_emit_case` from this BB's region_stack), forward the
+            # parked state into the outer's slots and transition to its
+            # finally_entry instead of replaying locally -- otherwise
+            # the outer finally body would be skipped.
+            outer_flag = self.ctx.async_pending_return_flag
+            if outer_flag is not None:
+                outer_slot = self.ctx.async_pending_return_slot
+                outer_target = self.ctx.async_pending_return_target_state
+                outer_boundary = self.ctx.async_pending_return_boundary
+                inner_slot = stmt.pending_return_slot
+                if outer_slot is not None and inner_slot is not None:
+                    out.write(f"{inner}this->{outer_slot} = "
+                              f"std::move(this->{inner_slot});\n")
+                out.write(f"{inner}this->{outer_flag} = true;\n")
+                # Walk helpers between this exit and the outer finally
+                # entry; helpers BELOW the outer (`outer_boundary`) stay
+                # on the stack to run inside the outer's finally region.
+                self.statements._emit_finally_chain(out, inner,
+                                                     stop_at=outer_boundary)
+                out.write(f"{inner}__state = {outer_target};\n")
+                out.write(f"{inner}continue;\n")
             else:
-                done_state = self.ctx.async_coro_done_state or "S_DONE"
-                out.write(f"{inner}__state = {done_state};\n")
-                slot = stmt.pending_return_slot
-                ret_cpp = self.ctx.async_coro_return_cpp
-                if slot is None or ret_cpp == "void":
-                    out.write(f"{inner}{POLL_VOID_READY_RETURN}\n")
+                # No outer CFG finally: replay locally. Walk any outer
+                # helpers (an enclosing helper-based finally outside
+                # this CFG-based one) before emitting the actual return.
+                self.statements._emit_finally_chain(out, inner)
+                if self._is_generator_shape():
+                    done_state = self.ctx.generator_resumable_done_state or "S_DONE"
+                    out.write(f"{inner}__state = {done_state};\n")
+                    out.write(f"{inner}return ::tpy::make_unexpected("
+                              f"::tpy::StopIteration{{}});\n")
                 else:
-                    out.write(f"{inner}return ::tpystd::tpy::Poll<{ret_cpp}>::ready"
-                              f"(std::move(this->{slot}));\n")
+                    done_state = self.ctx.async_coro_done_state or "S_DONE"
+                    out.write(f"{inner}__state = {done_state};\n")
+                    slot = stmt.pending_return_slot
+                    ret_cpp = self.ctx.async_coro_return_cpp
+                    if slot is None or ret_cpp == "void":
+                        out.write(f"{inner}{POLL_VOID_READY_RETURN}\n")
+                    else:
+                        out.write(f"{inner}return ::tpystd::tpy::Poll<{ret_cpp}>::ready"
+                                  f"(std::move(this->{slot}));\n")
             out.write(f"{indent}}}\n")
         out.write(f"{indent}if (this->{f}) {{\n")
         out.write(f"{inner}std::exception_ptr __tmp = this->{f};\n")
