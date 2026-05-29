@@ -11,7 +11,7 @@ from typing import Callable, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, own_tuple_target, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
-    is_polymorphic_class_type, polymorphic_source_inner,
+    is_polymorphic_class_type, is_dynamic_dispatch_inner, polymorphic_source_inner,
     IntLiteralType, resolve_int_literals,
     LiteralType, LiteralValue, LiteralTag, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, is_void_like_type, ParamInfo, ReadonlyType,
@@ -1715,24 +1715,47 @@ class CallAnalyzer:
         var_name: str,
         expr: TpyCall,
     ) -> TpyType:
-        """Validate isinstance() check types against a polymorphic-class
+        """Validate isinstance() check types against a dynamic-dispatch
         source's inner root and set up runtime dispatch. Shared between the
-        `Optional[Polymorphic]`, bare polymorphic, and post-`is None`
-        narrowing branches of ``_analyze_isinstance`` so they stay in
-        lockstep.
+        `Optional[Polymorphic]`, bare polymorphic, `Ptr[inner]`, direct
+        @dynamic protocol, and post-`is None` narrowing branches of
+        ``_analyze_isinstance`` so they stay in lockstep.
+
+        When `inner` is a @dynamic protocol, a valid check type must C++-
+        inherit the protocol base (only inheritance conformers can sit
+        behind the pointer/reference being cast); a structural conformer
+        would always fail the dynamic_cast at runtime, so it is rejected
+        with a pointed diagnostic rather than silently folding to False.
         """
-        non_subs = [
-            ct for ct in check_types
-            if not (isinstance(ct, NominalType)
-                    and self.ctx.registry.is_subclass_of_or_equal(ct, inner))
-        ]
-        if non_subs:
-            names = ", ".join(f"'{t}'" for t in non_subs)
-            raise self.ctx.error(
-                f"isinstance() check type(s) {names} are not subclasses of "
-                f"'{inner}'",
-                expr,
-            )
+        if is_protocol_type(inner):
+            non_impls = [
+                ct for ct in check_types
+                if not (isinstance(ct, NominalType)
+                        and self.protocols.directly_implements_dynamic(ct, inner))
+            ]
+            if non_impls:
+                names = ", ".join(f"'{t}'" for t in non_impls)
+                raise self.ctx.error(
+                    f"isinstance() check type(s) {names} do not inherit the "
+                    f"@dynamic protocol '{inner}'. A protocol borrow only "
+                    f"carries inheritance conformers, so a structural "
+                    f"conformer can never match; declare `class {non_impls[0]}"
+                    f"({inner})` to dispatch on it.",
+                    expr,
+                )
+        else:
+            non_subs = [
+                ct for ct in check_types
+                if not (isinstance(ct, NominalType)
+                        and self.ctx.registry.is_subclass_of_or_equal(ct, inner))
+            ]
+            if non_subs:
+                names = ", ".join(f"'{t}'" for t in non_subs)
+                raise self.ctx.error(
+                    f"isinstance() check type(s) {names} are not subclasses of "
+                    f"'{inner}'",
+                    expr,
+                )
         expr.isinstance_var = var_name
         expr.isinstance_type = (check_types[0] if len(check_types) == 1
                                 else make_union(*check_types))
@@ -1848,15 +1871,15 @@ class CallAnalyzer:
 
         if isinstance(effective_type, OptionalType):
             inner = effective_type.inner
-            # Optional[Polymorphic]: class-based dispatch via dynamic_cast.
-            # `inner` is a class type inheriting a @dynamic protocol
-            # transitively, so the C++ representation is `const Inner*` to a
-            # polymorphism-intact object (slicing is prevented at temp
-            # materialization sites by the polymorphic-class branch in
-            # `_gen_optional_ptr_arg`). Check types must be subclasses of
-            # inner so the dynamic_cast is sound and well-typed.
+            # Optional[dynamic-dispatch inner]: class-based dispatch via
+            # dynamic_cast on the `const Inner*` representation, without
+            # requiring a prior `is None` narrow. `inner` is a polymorphic
+            # class or a direct @dynamic protocol (both carry a vtable); the
+            # cast against nullptr (the None case) yields nullptr -> False.
+            # _validate_polymorphic_subclass_dispatch picks subclass- vs
+            # inheritance-conformer validity per inner kind.
             if (isinstance(inner, NominalType)
-                    and is_polymorphic_class_type(inner, self.ctx.registry)
+                    and is_dynamic_dispatch_inner(inner, self.ctx.registry)
                     and check_types):
                 return self._validate_polymorphic_subclass_dispatch(
                     inner, check_types, first_arg.name, expr)
@@ -4298,14 +4321,10 @@ class CallAnalyzer:
             self._maybe_coerce_empty_list_to_protocol(arg_type, ptype)
             arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
-            if (isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType)
-                    and not ptype.is_value_type() and not isinstance(arg, TpyName)):
-                hint = "Assign to a variable first: x = func(); other_func(x)"
-                raise self.ctx.error(
-                    f"Cannot pass Own[{arg_type.wrapped}] directly to parameter '{pname}' "
-                    f"(object types are passed by reference). {hint}",
-                    arg
-                )
+            # A fresh Own[...] rvalue lent to a borrow param is safe: codegen
+            # materializes a named temp that outlives the call. Strip the Own
+            # and let coercion handle the rest (create-lend-drop is intentional;
+            # ownership-transfer params declare Own[T] and skip this).
             if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
                 arg_type = arg_type.wrapped
 
@@ -4610,14 +4629,8 @@ class CallAnalyzer:
                 self._maybe_coerce_empty_list_to_protocol(arg_type, check_ptype)
                 arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
 
-                if (isinstance(arg_type, OwnType) and not isinstance(check_ptype, OwnType)
-                        and not check_ptype.is_value_type() and not isinstance(arg, TpyName)):
-                    hint = "Assign to a variable first: x = func(); other_func(x)"
-                    raise self.ctx.error(
-                        f"Cannot pass Own[{arg_type.wrapped}] directly to parameter '{pname}' "
-                        f"(object types are passed by reference). {hint}",
-                        arg
-                    )
+                # See the non-generic call site: a fresh Own[...] rvalue lent to
+                # a borrow param is safe via codegen's named-temp materialization.
                 if isinstance(arg_type, OwnType) and not isinstance(check_ptype, OwnType):
                     arg_type = arg_type.wrapped
 

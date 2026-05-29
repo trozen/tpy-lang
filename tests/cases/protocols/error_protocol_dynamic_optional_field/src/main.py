@@ -1,5 +1,6 @@
-# Optional[@dynamic protocol] as a record field is rejected (same rule
-# as for params and locals). Closes a pass-order gap: register_record
+# Optional[@dynamic protocol] as a record field is rejected: only the
+# parameter position has a pointer-repr lowering; a field would need value-
+# repr storage of an abstract base. Closes a pass-order gap: register_record
 # validates fields before protocols register, so the check has to run
 # in a second pass.
 from typing import Protocol, Optional
@@ -12,7 +13,7 @@ class Pet(Protocol):
 
 
 class Holder:
-    x: Optional[Pet]  # tpyc: error(/Optional\[Pet\] is not supported/)
+    x: Optional[Pet]  # tpyc: error(/Optional\[Pet\] is only supported at a parameter position/)
 
     def __init__(self) -> None:
         self.x = None

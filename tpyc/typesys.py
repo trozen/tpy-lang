@@ -3690,12 +3690,34 @@ def is_polymorphic_class_type(typ: TpyType, registry: 'TypeRegistry') -> bool:
     return answer
 
 
+def is_dynamic_dispatch_inner(typ: TpyType, registry: 'TypeRegistry') -> bool:
+    """True if values of `typ` carry a @dynamic-rooted C++ vtable reachable
+    through a pointer/reference, so dynamic_cast to a descendant is sound:
+    either a polymorphic class (`is_polymorphic_class_type`) or a direct
+    @dynamic protocol. The two share one fact -- a pointer/reference to such
+    a value is the input to isinstance's dynamic_cast -- so callers treat
+    them uniformly.
+
+    Pointer/reference borrows of a @dynamic protocol only ever bind an
+    inheritance conformer (a structural conformer needs an owned Adapter,
+    which a borrow has nowhere to store -- see DYNAMIC_PROTOCOL_DESIGN.md's
+    fat-pointer note), so the cast is always against a real IS-A object."""
+    if is_polymorphic_class_type(typ, registry):
+        return True
+    if isinstance(typ, NominalType) and typ.is_protocol:
+        from .type_def_registry import protocol_info_of
+        pi = protocol_info_of(typ)
+        return pi is not None and pi.is_dynamic
+    return False
+
+
 def polymorphic_source_inner(
     declared: 'TpyType | None', registry: 'TypeRegistry'
 ) -> 'NominalType | None':
-    """If `declared` is a polymorphic-class-typed source -- either
-    `Optional[Polymorphic]` (pointer-repr) or a bare polymorphic
-    `NominalType` -- return the polymorphic root class. Returns None
+    """If `declared` is a dynamic-dispatch source -- a bare dispatch inner
+    (`T&`), `Optional[inner]` (pointer-repr `T*`), or `Ptr[inner]` (`T*`),
+    where `inner` is a polymorphic class or direct @dynamic protocol
+    (`is_dynamic_dispatch_inner`) -- return that inner. Returns None
     otherwise. Centralizes the predicate used by the isinstance narrowing
     fact filter (sema) and the cast-and-cache extraction (codegen)."""
     if declared is None:
@@ -3704,10 +3726,15 @@ def polymorphic_source_inner(
     if (isinstance(unwrapped, OptionalType)
             and unwrapped.uses_pointer_repr()
             and isinstance(unwrapped.inner, NominalType)
-            and is_polymorphic_class_type(unwrapped.inner, registry)):
+            and is_dynamic_dispatch_inner(unwrapped.inner, registry)):
         return unwrapped.inner
+    if isinstance(unwrapped, PtrType):
+        pointee = unwrapped.inner_pointee
+        if (isinstance(pointee, NominalType)
+                and is_dynamic_dispatch_inner(pointee, registry)):
+            return pointee
     if (isinstance(unwrapped, NominalType)
-            and is_polymorphic_class_type(unwrapped, registry)):
+            and is_dynamic_dispatch_inner(unwrapped, registry)):
         return unwrapped
     return None
 
@@ -3738,6 +3765,8 @@ def polymorphic_source_is_pointer(declared: 'TpyType | None') -> bool:
     if declared is None:
         return False
     unwrapped = unwrap_readonly(declared)
+    if isinstance(unwrapped, PtrType):
+        return True
     return (isinstance(unwrapped, OptionalType)
             and unwrapped.uses_pointer_repr())
 

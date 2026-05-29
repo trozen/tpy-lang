@@ -1,0 +1,2 @@
+main.py:22: warning: returns a copy of str field 'self.tag'; use -> StrView for zero-copy access or -> String to silence this warning
+main.py:35: warning: returns a copy of str field 'self.label'; use -> StrView for zero-copy access or -> String to silence this warning

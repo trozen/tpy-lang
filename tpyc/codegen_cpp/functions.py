@@ -479,11 +479,16 @@ class FunctionGenerator:
                         and (pi := protocol_info_of(resolved))
                         and pi.is_dynamic):
                     base_type = self.protocols.get_dynamic_base_name(resolved)
-                    if (isinstance(ptype, ReadonlyType)
-                            or (mutated_params is not None and i not in mutated_params)):
-                        part = f"const {base_type}& {cpp_pname}"
+                    is_const = (isinstance(ptype, ReadonlyType)
+                                or (mutated_params is not None and i not in mutated_params))
+                    const_kw = "const " if is_const else ""
+                    if isinstance(unwrapped, OptionalType):
+                        # Nullable @dynamic protocol param needs pointer-repr (a
+                        # reference can't be null), mirroring Optional[concrete
+                        # polymorphic root].
+                        part = f"{const_kw}{base_type}* {cpp_pname}"
                     else:
-                        part = f"{base_type}& {cpp_pname}"
+                        part = f"{const_kw}{base_type}& {cpp_pname}"
                 else:
                     own = unwrap_readonly(ptype)
                     if isinstance(own, UnionType) and own.needs_wrapper():

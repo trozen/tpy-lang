@@ -1,0 +1,1 @@
+main.py:20: error: Optional[Pet] is only supported at a parameter position (where it lowers to a `const Pet*` borrow). In a field, return, local, container, or owned slot it has no value representation; use `Optional[Box[Pet]]` for owned storage or a separate 'has' flag instead

@@ -2702,7 +2702,8 @@ class TypeRegistrar:
         for pname, ptype in func.params:
             try:
                 resolved_ptype = self.type_ops.resolve_type(ptype)
-                self.type_ops.validate_type(resolved_ptype, allow_type_param_ref=is_generic)
+                self.type_ops.validate_type(resolved_ptype, allow_type_param_ref=is_generic,
+                                            allow_pointer_repr_dynamic=True)
             except SemanticError as e:
                 raise self.ctx.error(str(e), func)
             if _contains_self_type(resolved_ptype):
@@ -2972,7 +2973,8 @@ class TypeRegistrar:
             for pname, ptype in func.params:
                 resolved_ptype = self.type_ops.resolve_type(ptype)
                 try:
-                    self.type_ops.validate_type(resolved_ptype, allow_type_param_ref=is_generic)
+                    self.type_ops.validate_type(resolved_ptype, allow_type_param_ref=is_generic,
+                                                allow_pointer_repr_dynamic=True)
                 except SemanticError as e:
                     raise self.ctx.error(str(e), func)
                 resolved_params.append((pname, resolved_ptype))

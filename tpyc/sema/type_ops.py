@@ -223,6 +223,7 @@ class TypeOperations:
     def validate_type(
         self, typ: TpyType, allow_type_param_ref: bool = False, loc: SourceLocation | None = None,
         allow_forward_ref: bool = True, check_hashable_constraints: bool = True,
+        allow_pointer_repr_dynamic: bool = False,
     ) -> None:
         """Validate that a type is well-formed.
 
@@ -231,6 +232,11 @@ class TypeOperations:
             allow_type_param_ref: If True, TypeParamRef is allowed (for generic class definitions).
             loc: Optional source location for error messages.
             allow_forward_ref: If True, unknown NominalType records are allowed (for class registration).
+            allow_pointer_repr_dynamic: If True, a top-level `Optional[@dynamic protocol]`
+                is allowed -- it lowers to a `const P*` borrow, which is sound at a
+                parameter position. Reset for any nested position (storage / container /
+                Own slot), where the value-repr `std::optional<P>` of an abstract base is
+                not representable.
         """
         # Closure-captured recurse helper: every internal recursive call uses
         # this so the four contextual params (`allow_type_param_ref`, `loc`,
@@ -243,6 +249,11 @@ class TypeOperations:
         # impossible -- adding a new wrapper branch in the future cannot
         # forget to forward.
         def _recurse(inner: TpyType) -> None:
+            # allow_pointer_repr_dynamic is deliberately NOT forwarded here: a
+            # nested position -- container element, Own slot, tuple member -- is
+            # storage-shaped, where Optional[@dynamic P] has no valid value-repr,
+            # so it must stay rejected. The transparent readonly wrappers are the
+            # exception and preserve the flag explicitly in their own branch.
             self.validate_type(
                 inner, allow_type_param_ref, loc,
                 allow_forward_ref=allow_forward_ref,
@@ -355,12 +366,16 @@ class TypeOperations:
                     self.validate_hashable_container_elem(key_or_elem, kind, loc)
         elif isinstance(typ, OptionalType):
             _recurse(typ.inner)
-            if is_protocol_type(typ.inner):
+            if is_protocol_type(typ.inner) and not allow_pointer_repr_dynamic:
                 proto_def = protocol_info_of(typ.inner)
                 if proto_def and proto_def.is_dynamic:
                     raise SemanticError(
-                        f"Optional[{typ.inner}] is not supported for @dynamic protocols. "
-                        f"Use a sentinel value or separate 'has' flag instead",
+                        f"Optional[{typ.inner}] is only supported at a parameter "
+                        f"position (where it lowers to a `const {typ.inner}*` "
+                        f"borrow). In a field, return, local, container, or owned "
+                        f"slot it has no value representation; use `Optional"
+                        f"[Box[{typ.inner}]]` for owned storage or a separate "
+                        f"'has' flag instead",
                         loc,
                     )
         elif isinstance(typ, UnionType):
@@ -429,10 +444,17 @@ class TypeOperations:
                     f"preserving) instead.",
                     loc,
                 )
-        elif isinstance(typ, ReadonlyType):
-            _recurse(typ.wrapped)
-        elif isinstance(typ, AutoReadonlyType):
-            _recurse(typ.wrapped)
+        elif isinstance(typ, (ReadonlyType, AutoReadonlyType)):
+            # readonly is a transparent same-position wrapper, so preserve
+            # allow_pointer_repr_dynamic across it: readonly[Optional[@dynamic P]]
+            # at a parameter is still a pointer-repr borrow (const P*), unlike
+            # the container/Own/tuple positions where _recurse resets the flag.
+            self.validate_type(
+                typ.wrapped, allow_type_param_ref, loc,
+                allow_forward_ref=allow_forward_ref,
+                check_hashable_constraints=check_hashable_constraints,
+                allow_pointer_repr_dynamic=allow_pointer_repr_dynamic,
+            )
         elif isinstance(typ, AutoOwnType):
             # auto_own[T] is stripped before sema body analysis, but
             # registration may still call validate_type on a freshly-parsed

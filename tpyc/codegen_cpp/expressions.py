@@ -294,6 +294,22 @@ class ExpressionGenerator:
             if not arg_type.uses_pointer_repr():
                 return f"::tpy::optional_to_ptr({arg_gen})"
             return arg_gen
+        inner = unwrap_readonly(actual.inner)
+        if (is_protocol_type(inner) and (pi := protocol_info_of(inner)) and pi.is_dynamic
+                and isinstance(arg_type, NominalType) and arg_type.is_user_record
+                and not self.protocols.directly_implements_dynamic(arg_type, inner)):
+            # Structural conformer: not Base-derived in C++, so &concrete won't
+            # upcast to Base*. Carry the vtable via an Adapter (which inherits
+            # Base) and take its address -- mirrors the bare-Base& param path
+            # in _gen_dynamic_protocol_arg.
+            concrete_cpp = self.types.type_to_cpp(arg_type)
+            arg_expr = self.gen_expr_deref(arg, arg_type)
+            if self.ctx.is_temporary_expr(arg):
+                adapter_type = self.protocols.get_dynamic_adapter_type(inner, concrete_cpp)
+            else:
+                adapter_type = self.protocols.get_dynamic_ref_adapter_type(inner, concrete_cpp)
+            tmp = self.ctx.temps.create_typed(adapter_type, arg_expr, brace_init=True)
+            return f"&({tmp})"
         gen = self.gen_expr(arg, ptype)
         if self.ctx.is_temporary_expr(arg):
             # Use the Optional's inner type for the temp -- gen was already

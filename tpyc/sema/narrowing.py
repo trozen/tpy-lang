@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NominalType, AliasRef,
     TypeParamRef, IntLiteralType, AnyType,
     ReadonlyType, UnionType, unwrap_readonly, unwrap_qualifiers, unwrap_ref_type, make_union, union_none_narrow,
-    is_protocol_type, polymorphic_source_inner,
+    is_protocol_type, is_dynamic_dispatch_inner, polymorphic_source_inner,
     LiteralType, LiteralValue, is_any_int_type,
 
 )
@@ -264,10 +264,17 @@ class NarrowingTracker:
                 remaining = [m for m in effective.members if m not in check_members]
                 false_type = (make_union(*remaining) if remaining else check_type)
                 return {name: check_type}, {name: false_type}
-            # Optional[Protocol] isinstance narrows to the inner protocol type
+            # Optional[Protocol] isinstance narrows to the inner protocol type.
+            # Exception: a @dynamic protocol inner with a concrete-class check
+            # type is a runtime subclass dispatch -- fall through to the
+            # polymorphic branch below so it narrows to the subclass (Dog),
+            # not the bare protocol (Pet).
             if self._is_optional_type(effective):
                 inner = self._optional_inner_type(effective)
-                if is_protocol_type(inner):
+                if is_protocol_type(inner) and not (
+                        is_dynamic_dispatch_inner(inner, self.ctx.registry)
+                        and isinstance(check_type, NominalType)
+                        and not is_protocol_type(check_type)):
                     return {name: inner}, {}
             # Optional[Polymorphic class] or post-`is not None`-narrowed
             # polymorphic class: isinstance(x, Subclass) narrows to Subclass.

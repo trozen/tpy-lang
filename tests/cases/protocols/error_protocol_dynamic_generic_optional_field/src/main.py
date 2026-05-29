@@ -11,7 +11,7 @@ class Container[T](Protocol):
 
 
 class Holder:
-    x: Optional[Container[Int32]]  # tpyc: error(/Optional\[Container\[Int32\]\] is not supported/)
+    x: Optional[Container[Int32]]  # tpyc: error(/Optional\[Container\[Int32\]\] is only supported at a parameter position/)
 
     def __init__(self) -> None:
         self.x = None

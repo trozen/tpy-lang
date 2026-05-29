@@ -1,0 +1,1 @@
+main.py:25: error: isinstance() check type(s) 'Cat' do not inherit the @dynamic protocol 'Pet'. A protocol borrow only carries inheritance conformers, so a structural conformer can never match; declare `class Cat(Pet)` to dispatch on it.
