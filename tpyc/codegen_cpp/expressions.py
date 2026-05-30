@@ -3409,6 +3409,20 @@ class ExpressionGenerator:
         obj, is_assign_narrowed = self._apply_assign_narrowing(expr.obj, obj)
         obj_type = self.types.get_resolved_type(expr.obj)
 
+        # Generator factory methods capture the receiver by reference -- the
+        # resumable frame holds `const Box& __self`, the simple-generator
+        # peephole captures `[this]` -- and the returned iterator outlives this
+        # call expression (it is consumed by the enclosing loop). A temporary
+        # receiver would dangle, so lift it into a named local flushed to the
+        # enclosing scope, parallel to the ref-param arg lifting below. Async
+        # methods don't need this: a coro can escape via a Task, so sema
+        # already rejects a temporary receiver outright rather than lifting it.
+        _mfi = expr.resolved_function_info
+        if (_mfi is not None and _mfi.is_generator
+                and self.ctx.is_temporary_expr(expr.obj)
+                and isinstance(obj_type, NominalType)):
+            obj = self.ctx.temps.create(obj_type, obj)
+
         # Consuming method: wrap receiver in std::move() for rvalue-qualified call.
         # For pointer-locals (T* internally), dereference before moving.
         is_consuming = (expr.resolved_function_info is not None

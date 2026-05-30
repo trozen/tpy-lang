@@ -1,0 +1,5 @@
+start
+woof
+ro
+cat
+2

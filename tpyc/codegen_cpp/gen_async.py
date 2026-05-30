@@ -373,6 +373,25 @@ class AsyncCoroCodegen:
                     ctor_param_type=cpp_type,
                     kind=_CoroParamKind.POINTER,
                 ))
+            elif self.ctx.is_ptr_variant_union(actual):
+                # Non-value union: the pointer-variant borrow form
+                # (`std::variant<A*, B*>`) is the shape every other param
+                # boundary uses -- ordinary functions, simple generators,
+                # plain locals. Storing it by value in the frame keeps the
+                # factory's signature in step with what the call site (and
+                # the emplace path) already build; a value-variant-by-ref
+                # field would be the lone divergence. Deep-const for a
+                # readonly union, matching `_gen_union_arg`.
+                is_readonly_param = actual is not ptype_inner
+                cpp_type = (self.types.type_to_cpp_const_ptr_variant(actual)
+                            if is_readonly_param
+                            else self.types.type_to_cpp_ptr_variant(actual))
+                out.append(_CoroParam(
+                    cpp_name=cpp_name,
+                    field_type=cpp_type,
+                    ctor_param_type=cpp_type,
+                    kind=_CoroParamKind.POINTER,
+                ))
             else:
                 cpp_type = self.types.type_to_cpp(ptype_inner)
                 if isinstance(ptype_inner, OwnType):
@@ -3035,6 +3054,10 @@ class AsyncCoroCodegen:
         dynamic_arg = self.expressions._gen_dynamic_protocol_arg(arg, ptype)
         if dynamic_arg is not None:
             return dynamic_arg
+        union_arg = self.expressions._gen_union_arg(
+            arg, ptype, is_readonly_target=fi.is_readonly)
+        if union_arg is not None:
+            return union_arg
         return self.expressions.gen_call_arg(arg, ptype)
 
     def _emit_sub_reset(self, out: "TextIO", indent: str,

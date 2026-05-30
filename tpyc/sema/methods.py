@@ -1524,6 +1524,11 @@ class MethodAnalyzer:
             name=expr.method,
             params=method.params,
             return_type=return_type,
+            # Resumable-factory flags drive call-site capture decisions
+            # (e.g. temporary-receiver lift); a pending-generic generator/
+            # async method must not lose them on this minimal path.
+            is_async=method.is_async,
+            is_generator=method.is_generator,
             canonical_fi=method.root,
         )
         return return_type

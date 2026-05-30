@@ -1,0 +1,4 @@
+start
+dog
+start
+cat

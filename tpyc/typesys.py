@@ -4119,6 +4119,7 @@ class FunctionInfo:
     is_method: bool = False
     is_staticmethod: bool = False
     is_async: bool = False  # `async def` -- factory returns a coroutine struct
+    is_generator: bool = False  # `yield` body -- factory returns an iterator/frame that borrows the receiver + args
     is_property_getter: bool = False
     is_property_setter: bool = False
     property_name: Optional[str] = None  # for setter: which property it belongs to
