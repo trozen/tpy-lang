@@ -3,12 +3,15 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "tpy-poc"
+name = "tpy-lang"
 dynamic = ["version"]
 description = "TurboPython compiler - translates restricted Python-syntax to C++ for ultra-low-latency applications"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
+
+[project.urls]
+Homepage = "https://tpy.dev"
 
 [project.optional-dependencies]
 bundled = ["ziglang>=0.13"]

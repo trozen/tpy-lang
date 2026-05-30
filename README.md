@@ -1,6 +1,6 @@
 # TurboPython (TPy)
 
-A proof-of-concept compiler that translates Python to C++.
+A compiler that translates Python to C++.
 
 **Goals:**
 
@@ -69,7 +69,7 @@ Source files are valid Python -- your IDE, linter, and type checker work as-is.
 ### For development
 
 ```bash
-git clone https://github.com/trozen/tpy-poc.git && cd tpy-poc
+git clone https://github.com/trozen/tpy.git && cd tpy
 uv sync
 
 uv run tpy examples/hello.py
@@ -78,7 +78,7 @@ uv run tpy examples/hello.py
 ### For use
 
 ```bash
-git clone https://github.com/trozen/tpy-poc.git && cd tpy-poc
+git clone https://github.com/trozen/tpy.git && cd tpy
 uv tool install .
 uv tool install ".[bundled]"   # bundles zig as C++ compiler
 ```

@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-TurboPython (TPy) is a proof-of-concept toolchain that translates Python to C++.
+TurboPython (TPy) is a toolchain that translates Python to C++.
 It ships two CLIs that share the same argument grammar, differing only in their default action:
 
 - **`tpy`** -- user-facing runner. Bare `tpy` drops into a REPL; `tpy foo.py` runs the program.

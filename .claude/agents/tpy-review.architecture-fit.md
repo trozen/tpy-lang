@@ -1,6 +1,6 @@
 ---
 name: architecture-fit
-description: Reviews tpyc/ Python compiler source for pipeline fit, duplication, module placement, sema/codegen mirroring, and perf cliffs. One of several specialist reviewers dispatched by /tpy-review.
+description: Reviews tpyc/ Python compiler source for pipeline fit, duplication, generalize-vs-parallelize, module placement, sema/codegen mirroring, and perf cliffs. One of several specialist reviewers dispatched by /tpy-review.
 tools: Read, Grep, Glob, Bash
 model: sonnet
 ---
@@ -25,7 +25,8 @@ The orchestrator passes you a base ref and the changed-file list in your scope.
 
 1. `git diff <BASE> -- 'tpyc/**/*.py'`
 2. For each new function/class, grep for similar logic elsewhere -- the codebase has substantial machinery, new code often duplicates an existing utility.
-3. Trace cross-phase consistency: if sema emits a new fact, where does codegen consume it? If codegen reads an attribute, is sema responsible for setting it?
+3. For each new *mechanism* (a new pass, table, registry, predicate, narrowing/coercion/dispatch path, type-shape concept), ask whether an existing abstraction already does this job and the new case is one parameter / method / `TypeDef` field away from being absorbed into it. A second system that should have been a generalization of the first is the costlier defect -- catch it even when no line is literally copy-pasted.
+4. Trace cross-phase consistency: if sema emits a new fact, where does codegen consume it? If codegen reads an attribute, is sema responsible for setting it?
 
 ## Checks
 
@@ -52,6 +53,13 @@ The orchestrator passes you a base ref and the changed-file list in your scope.
 - Search for similar logic elsewhere before approving new code
 - Copy-pasted patterns should be extracted to a shared helper
 - Especially watch: new coercion paths, new emit helpers, new narrowing rules
+
+**Generalize, don't parallelize** (one altitude above duplication)
+- A new mechanism that solves a problem an existing abstraction already solves should *extend / generalize* that abstraction, not sit beside it as a second system -- flag the parallel mechanism even when no line is literally duplicated
+- Ask: could this new type / pass / table / predicate / registry be expressed as a *case* of an existing one? If the existing abstraction is one parameter, method, or `TypeDef` field away from covering the new case, prefer that over a sibling mechanism
+- Smell (per CLAUDE.md): a new consumer-side shape inspection that re-derives a fact an existing mechanism already carries -- that's a parallelization of a fact that should be first-class on the node/type
+- Watch for: a second narrowing path, a second coercion/dispatch table, a second per-type metadata channel, a hand-copied predicate "mirror" kept in lockstep across phases -- each is a parallel system that entrenches divergence
+- Severity: parallel-when-it-should-be-unified is usually a **Warning**; escalate to **Critical** when it entrenches a divergence two phases must keep in manual lockstep (a sema/codegen predicate mirror that will silently drift)
 
 **Per-module state hygiene**
 - New per-analysis state must be per-module, not global

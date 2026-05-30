@@ -356,7 +356,7 @@ def list_compilers() -> None:
 
     if not entries:
         print("No C++ compilers found.")
-        print("Install g++, clang++, or: uv tool install \"tpy-poc[bundled]\"")
+        print("Install g++, clang++, or: uv tool install \"tpy-lang[bundled]\"")
         return
 
     name_width = max(len(b) for b, _, _, _ in entries)

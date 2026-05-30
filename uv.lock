@@ -207,7 +207,7 @@ wheels = [
 ]
 
 [[package]]
-name = "tpy-poc"
+name = "tpy-lang"
 source = { editable = "." }
 
 [package.optional-dependencies]

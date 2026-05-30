@@ -207,6 +207,7 @@ second concrete plugin lands.
 ## Build pipeline
 - when a module forwards imports only, those imports should not generate headers if the symbols are not used
 - do not compile .cpp files that are not needed, e.g. no function is called etc
+- **Fill in package metadata before public release.** `pyproject.toml` declares only `name`/`description`/`Homepage = https://tpy.dev`. Add `authors`/`maintainers`, a `Repository` URL (deferred while the GitHub repo is private), and a `license` field + `LICENSE` file (project is currently unlicensed = all-rights-reserved; pick proprietary vs OSS when going public). Optionally `keywords` + trove `classifiers` for PyPI discoverability.
 
 ## Compiler Performance / mypyc
 

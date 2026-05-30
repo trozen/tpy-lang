@@ -4,7 +4,7 @@ This file is on sys.path when user code runs under CPython via
 `PYTHONPATH=lib/cpy:...`, and it *shadows* the real tpyc package. We
 therefore can't `import tpyc` to get at the real values; instead we read
 the installed distribution's metadata (works for both editable and
-wheel installs of tpy-poc).
+wheel installs of tpy-lang).
 
 Exposed: __version__, VERSION_INFO -- mirroring the real tpyc package so
 that lib/cpy/tpy/version.py (and any future cpy-side consumer) can
@@ -38,10 +38,10 @@ def _parse_version_info(v: str) -> tuple[int, int, int, str, int]:
 
 
 try:
-    __version__: str = _dist_version("tpy-poc")
+    __version__: str = _dist_version("tpy-lang")
 except PackageNotFoundError as e:
     raise PackageNotFoundError(
-        "tpy-poc must be installed (e.g. `uv sync` or `pip install -e .`) "
+        "tpy-lang must be installed (e.g. `uv sync` or `pip install -e .`) "
         "for tpy.version to work under CPython -- the cpy-side tpyc stub "
         "reads the version from installed distribution metadata."
     ) from e
