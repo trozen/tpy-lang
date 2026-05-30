@@ -47,6 +47,11 @@ The orchestrator passes you a base ref and the changed-file list.
    - behavior that only differs under **mutation** the test doesn't perform (e.g. a yielded/returned reference the consumer never writes to -- output matches, semantics don't),
    - anything behind **`no_cpython.txt`**,
    - codegen/sema changes that introduce a divergence class no current case triggers.
+5. **When the change touches value/reference semantics, audit the tests for whether BOTH shapes are exercised.** A test that only *reads* a reference type leaves any silent-copy divergence invisible -- output matches CPython precisely because nobody mutated through the alias. If the feature/code under review could plausibly diverge on value-vs-reference (a boundary where TPy might copy a reference type: yield, return, container move, comprehension binding, param passing), the test must *force* the divergence to surface, by one of:
+   - **mutating the shared object** after the boundary (write through the alias, then observe) -- a silent copy then diverges in `output.txt` and the cpy phase catches it, OR
+   - **using a `@nocopy` type** (e.g. `Box`, `Rc`, a user `@nocopy` record) -- a silent copy at the boundary becomes a *compile error* rather than a silent behavior change.
+
+   If the change applies to a val/ref-sensitive boundary but the tests only read (no mutation, no `@nocopy`), flag it: the divergence class is untested even though a test exists. Severity follows the dial -- a genuinely reachable silent-copy path with only read-only coverage is Critical; if you can't confirm the copy actually happens, keep it with ` (low confidence)`. This is a *test-adequacy* gap specific to parity; do not defer it to test-coverage, which does not reason about val/ref shape.
 
 You may NOT run `uv run pytest` or `tests/update_snapshots.py`. Probing individual snippets with `uv run tpy` / `python3` is fine and encouraged.
 
@@ -56,6 +61,7 @@ You may NOT run `uv run pytest` or `tests/update_snapshots.py`. Probing individu
 - A reference type (class / `list` / `dict` / `set`) that CPython shares but TPy *copies* at a boundary: generator/genexpr `yield`, some returns, container element moves, comprehension element binding. CPython mutations through the alias propagate; a TPy copy silently drops them.
 - The tell: TPy lowering produces a value slot (`std::expected<T,...>`, `std::optional<T>`, a by-value field/return) for a reference type where CPython would alias. Compare against what a borrow (`T*`/`T&`) would do.
 - Is the copy *signaled*? An explicit `copy()` / `.clone()` in source, a compiler warning, or a `no_cpython.txt` makes it acceptable. Bare and silent makes it Critical.
+- Is the divergence *exercised*? When the change adds or moves such a boundary, the test must mutate through the alias or use a `@nocopy` type so a silent copy actually shows up (see Process step 5). Read-only coverage hides the bug.
 
 **Numbers**
 - Fixed-width int (`Int32`, etc.) overflow wraps or panics; CPython `int` is arbitrary-precision. Silent wrap on a value that fits CPython but not the chosen width is a divergence.
