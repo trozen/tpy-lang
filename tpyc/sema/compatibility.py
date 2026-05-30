@@ -813,18 +813,8 @@ class TypeCompatibility:
         # Covariant generic coercion: Box[Child] -> Box[Parent]
         # when Box extends Covariant[T] and Child conforms to @dynamic Parent.
         # C++ converting move ctor handles the actual conversion.
-        if (isinstance(actual, NominalType) and actual.is_user_record
-                and isinstance(expected, NominalType) and expected.is_user_record
-                and actual.name == expected.name
-                and actual.type_args and expected.type_args
-                and actual.type_args != expected.type_args):
-            record_info = self.ctx.registry.get_record(actual.name)
-            if record_info and record_info.type_params:
-                covariant = get_covariant_params(record_info)
-                if covariant and self._check_covariant_args(
-                    record_info, covariant, actual, expected
-                ):
-                    return None
+        if self.is_covariant_generic_upcast(actual, expected):
+            return None
 
         # Union-member coercion through generic containers:
         # Container[Lit] -> Container[Expr] when Expr is a recursive union alias
@@ -1583,6 +1573,26 @@ class TypeCompatibility:
             if isinstance(source_expr, TpyCall) and source_expr.call_type is not None:
                 source_expr.call_type = expected
         return True
+
+    def is_covariant_generic_upcast(self, actual: TpyType, expected: TpyType) -> bool:
+        """True if `actual -> expected` is a covariant-generic wrapper upcast
+        (e.g. `Box[Child] -> Box[Parent]`): same user-record generic, differing
+        type args, every differing position covariant and a valid C++ upcast
+        target. This is a representation-preserving converting move, NOT
+        slicing. Shared by `check_type_compatible` and the container-literal
+        element guards so the covariant-vs-slice line is drawn in one place."""
+        if not (isinstance(actual, NominalType) and actual.is_user_record
+                and isinstance(expected, NominalType) and expected.is_user_record
+                and actual.name == expected.name
+                and actual.type_args and expected.type_args
+                and actual.type_args != expected.type_args):
+            return False
+        record_info = self.ctx.registry.get_record(actual.name)
+        if record_info is None or not record_info.type_params:
+            return False
+        covariant = get_covariant_params(record_info)
+        return bool(covariant and self._check_covariant_args(
+            record_info, covariant, actual, expected))
 
     def _check_covariant_args(
         self, record_info: 'RecordInfo', covariant: set[str],

@@ -2068,9 +2068,14 @@ class ExpressionAnalyzer:
                 if elem_type == expected_elem:
                     continue
                 # Subclass coercion excluded: storing Child in list[Base] silently
-                # slices objects (same invariance as dict/set).
+                # slices objects (same invariance as dict/set). A covariant-generic
+                # wrapper upcast (Box[Dog] -> Box[Pet]) is exempt -- it's a
+                # representation-preserving converting move, not slicing -- and
+                # falls through to check_type_compatible below (which the append
+                # path already uses).
                 if (isinstance(elem_type, NominalType) and elem_type.is_user_record
-                        and isinstance(expected_elem, NominalType) and expected_elem.is_user_record):
+                        and isinstance(expected_elem, NominalType) and expected_elem.is_user_record
+                        and not self.compat.is_covariant_generic_upcast(elem_type, expected_elem)):
                     raise self.ctx.error(
                         f"List literal element {i} has type {elem_type}, "
                         f"incompatible with annotated element type {expected_elem}", expr
@@ -2629,12 +2634,18 @@ class ExpressionAnalyzer:
         # Unify value types
         if (is_union_or_optional_type(expected_value)
                 or isinstance(expected_value, AnyType)
-                or (expected_value is not None and expected_value.needs_wrapper())):
+                or (expected_value is not None and expected_value.needs_wrapper())
+                or (expected_value is not None and any(
+                    self.compat.is_covariant_generic_upcast(vt, expected_value)
+                    for vt in value_types))):
             # Annotation provides a union/optional/Any/recursive-alias wrapper --
             # each value validates against the slot independently rather than
             # against its peers (heterogeneous values are the whole point of
             # these slot types; a recursive dict alias's values are leaves or
-            # nested wrappers).
+            # nested wrappers). Same when the annotated value is a covariant-
+            # generic wrapper the values upcast to (Box[Dog] -> Box[Pet]):
+            # check each against the annotation so the dict builds at the
+            # annotated instantiation, not the peer-unified subclass.
             value_type = expected_value
             for i, vt in enumerate(value_types, 1):
                 if vt == expected_value:
@@ -2688,9 +2699,16 @@ class ExpressionAnalyzer:
             elem_types = [self._analyze_and_strip(e) for e in expr.elements]
 
         # Unify element types
-        if is_union_or_optional_type(expected_elem) or isinstance(expected_elem, AnyType):
+        if (is_union_or_optional_type(expected_elem) or isinstance(expected_elem, AnyType)
+                or (expected_elem is not None and any(
+                    self.compat.is_covariant_generic_upcast(et, expected_elem)
+                    for et in elem_types))):
             # Annotation provides a union/optional/Any -- each element validates
-            # against the slot independently rather than against its peers.
+            # against the slot independently rather than against its peers. Same
+            # for a covariant-generic element the values upcast to (parallel to
+            # the dict-value path; moot for @nocopy Box/Rc, which are rejected
+            # as set elements, but kept symmetric for a hashable covariant
+            # value-type element).
             elem_type = expected_elem
             for i, et in enumerate(elem_types, 1):
                 if et == expected_elem:
@@ -2829,9 +2847,13 @@ class ExpressionAnalyzer:
 
         if expected_elem is not None and result_elem_type != expected_elem:
             # Subclass coercion excluded: storing Child in list/set[Base] silently
-            # slices objects (same invariance as container literals).
+            # slices objects (same invariance as container literals). Covariant-
+            # generic wrapper upcasts (Box[Dog] -> Box[Pet]) are exempt -- a
+            # representation-preserving converting move, not slicing -- and flow
+            # through coerce_expr below.
             if (isinstance(result_elem_type, NominalType) and result_elem_type.is_user_record
-                    and isinstance(expected_elem, NominalType) and expected_elem.is_user_record):
+                    and isinstance(expected_elem, NominalType) and expected_elem.is_user_record
+                    and not self.compat.is_covariant_generic_upcast(result_elem_type, expected_elem)):
                 raise self.ctx.error(
                     f"{kind.capitalize()} comprehension element has type {result_elem_type}, "
                     f"incompatible with annotated element type {expected_elem}", expr

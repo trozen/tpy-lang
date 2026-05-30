@@ -5002,6 +5002,23 @@ class SmartPtr[T](Covariant[T]):
     ...
 ```
 
+The covariant upcast also applies to **container-literal elements**: a `list`
+literal or comprehension may upcast each element to the annotated covariant
+element type, so `pets: list[Box[Pet]] = [Box(Dog()), Box(Cat())]` and
+`[Box(d) for d in dogs]` compile (each `Box[Dog]`/`Box[Cat]` converting-moves to
+`Box[Pet]`). Same for `list[Rc[Pet]]`. **`dict` value literals** do the same per
+value: `pets: dict[str, Box[Pet]] = {"a": Box(Dog()), "b": Box(Cat())}` builds at
+`dict[str, Box[Pet]]` directly (each value coerced to the annotated value type,
+not peer-unified). This all matches what `pets.append(Box(Dog()))` already
+accepts. Plain value/reference-record element slicing is still rejected
+(`list[Animal] = [Dog(), Cat()]` errors -- storing a `Dog` by value into an
+`Animal` slot slices), as is an *invariant* generic element. Note the upcast is
+at the *element/value* position of a fresh literal, not at the container level:
+passing a whole `dict[str, Box[Dog]]` where `dict[str, Box[Pet]]` is expected is
+still rejected, because `dict` is invariant. `set` element upcast is moot for the
+`@nocopy` `Box`/`Rc` wrappers (rejected as set elements) but applies to any
+hashable covariant value-type element.
+
 **Available stdlib modules:**
 
 | Module | Functions |
