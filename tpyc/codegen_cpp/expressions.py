@@ -19,6 +19,7 @@ from ..typesys import (
     TupleType, CallableType,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
+    yield_uses_borrow_slot,
     is_float_type, is_readonly_span, is_dyn_protocol, contains_type_param)
 from ..type_def_registry import (
     is_dict_view, is_set, is_dict, is_array, is_span, is_list,
@@ -4590,10 +4591,21 @@ class ExpressionGenerator:
         finally:
             self._exit_comp_scope(comp_names)
 
+    @staticmethod
+    def _genexpr_slot(elem_type: TpyType, cpp_elem: str) -> str:
+        """The make_generator slot for a genexpr element. A bare reference element
+        is handed out by reference via val_or_ref<T> (zero-copy borrow); the forms
+        with their own representation (Optional/Union/readonly/tuple/value) keep
+        the value slot. Shares the single gate with def-generators."""
+        if yield_uses_borrow_slot(elem_type):
+            return f"::tpy::val_or_ref<{cpp_elem}>"
+        return cpp_elem
+
     def _gen_generator_expression(self, expr: TpyGeneratorExpression) -> str:
         gen = expr.generator
         elem_type = self._resolve_int_literal(expr.result_elem_type)
         cpp_elem = self.types.type_to_cpp(elem_type)
+        cpp_slot = self._genexpr_slot(elem_type, cpp_elem)
         cpp_var = escape_cpp_name(gen.var)
 
         comp_names = self._enter_comp_scope(gen)
@@ -4620,7 +4632,7 @@ class ExpressionGenerator:
 
             # Range: counter state fits in lambda init-captures
             if is_range:
-                self._gen_genexpr_counter_lambda(buf, expr, gen, sema_elem, cpp_var, cpp_elem,
+                self._gen_genexpr_counter_lambda(buf, expr, gen, sema_elem, cpp_var, cpp_slot,
                                                  yield_code, stmt_ind, ind1, ind2, ind3)
                 return buf.getvalue()
 
@@ -4640,7 +4652,7 @@ class ExpressionGenerator:
                 iife_str = iife_captures.removesuffix(", ") if iife_captures else ""
                 buf.write(f"[{iife_str}]() {{\n")
                 buf.write(f"{ind1}auto& __src = {iterable_code};\n")
-                buf.write(f"{ind1}return ::tpy::make_generator<{cpp_elem}>(\n")
+                buf.write(f"{ind1}return ::tpy::make_generator<{cpp_slot}>(\n")
                 lambda_ind = ind2
             else:
                 # Non-lvalue (literals, temporaries): move the source into the
@@ -4650,7 +4662,7 @@ class ExpressionGenerator:
                 # std::initializer_list (which does not).
                 cpp_iterable = self.types.type_to_cpp(iterable_type)
                 lambda_ind = ind1
-                buf.write(f"::tpy::make_generator<{cpp_elem}>(\n")
+                buf.write(f"::tpy::make_generator<{cpp_slot}>(\n")
 
             ind2i = lambda_ind + INDENT
             ind3i = ind2i + INDENT
@@ -4658,13 +4670,13 @@ class ExpressionGenerator:
 
             if is_lvalue:
                 buf.write(f"{lambda_ind}[{outer}__beg = __src.begin(), __end = __src.end()]"
-                          f"() mutable -> std::optional<{cpp_elem}> {{\n")
+                          f"() mutable -> std::optional<{cpp_slot}> {{\n")
             else:
                 buf.write(f"{lambda_ind}[{outer}__src = {cpp_iterable}({iterable_code}), "
                           f"__started = false, "
                           f"__beg = {cpp_iterable}::iterator(), "
                           f"__end = {cpp_iterable}::iterator()]"
-                          f"() mutable -> std::optional<{cpp_elem}> {{\n")
+                          f"() mutable -> std::optional<{cpp_slot}> {{\n")
                 buf.write(f"{ind2i}if (!__started) {{ __beg = __src.begin(); __end = __src.end(); __started = true; }}\n")
 
             buf.write(f"{ind2i}while (__beg != __end) {{\n")
@@ -4677,7 +4689,7 @@ class ExpressionGenerator:
                                            gen.const_loop_var)
                 buf.write(f"{ind3i}{binding}\n")
 
-            self._gen_genexpr_yield(buf, gen, yield_code, cpp_elem, ind3i, ind3i + INDENT)
+            self._gen_genexpr_yield(buf, gen, yield_code, cpp_slot, ind3i, ind3i + INDENT)
             buf.write(f"{ind2i}}}\n")
             buf.write(f"{ind2i}return std::nullopt;\n")
             buf.write(f"{lambda_ind}}}\n")

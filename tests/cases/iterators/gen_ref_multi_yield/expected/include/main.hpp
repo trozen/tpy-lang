@@ -51,7 +51,7 @@ struct __gen_twice {
     __gen_twice(std::vector<Box>& xs)
         : __state(S_INITIAL), xs(xs) {}
 
-    std::expected<Box, ::tpy::StopIteration> __next__();
+    std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __next__();
     __gen_twice& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_twice&) {

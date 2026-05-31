@@ -26,7 +26,7 @@ struct Box {
     Box() = default;
     explicit Box(const T& value) : value(value) {}
 
-    __gen_Box_items<T> items() const;
+    __gen_Box_items<T> items();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 template <typename T>
 struct __gen_Box_items {
     int32_t __state;
-    const Box<T>& __self;
+    Box<T>& __self;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -49,7 +49,7 @@ struct __gen_Box_items {
         S_DONE = 3,
     };
 
-    __gen_Box_items(const Box<T>& __self)
+    __gen_Box_items(Box<T>& __self)
         : __state(S_INITIAL), __self(__self) {}
 
     std::expected<T, ::tpy::StopIteration> __next__();
@@ -85,7 +85,7 @@ std::expected<T, ::tpy::StopIteration> __gen_Box_items<T>::__next__() {
 
 
 template <typename T>
-inline __gen_Box_items<T> Box<T>::items() const {
+inline __gen_Box_items<T> Box<T>::items() {
     return __gen_Box_items<T>(*this);
 }
 

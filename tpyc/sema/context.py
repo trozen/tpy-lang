@@ -525,6 +525,14 @@ class FunctionTrackingState:
     # would lose it.
     param_provenance_vars: set[str] = field(default_factory=set)
     safe_to_return_vars: set[str] = field(default_factory=set)
+    # Loop vars / next() results bound from a frame-slot-rooted borrow yield
+    # (a generator / genexpr / Iterator[T] source, T non-value): the borrow is
+    # valid only until the next iteration step (the generator frame slot is
+    # overwritten on each __next__()), so retaining it past the step is unsound.
+    # These are kept OUT of safe_to_return_vars and rejected at escape sites
+    # (return / store / container insert / closure capture / yield onward).
+    # Active only during the consuming loop body (added before, discarded after).
+    ephemeral_borrow_vars: set[str] = field(default_factory=set)
     non_null_ptr_vars: set[str] = field(default_factory=set)
     # Narrowing accumulated during a single statement's expression analysis;
     # flushed into non_null_ptr_vars at the statement boundary. Deferred so

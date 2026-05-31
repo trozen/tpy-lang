@@ -8,7 +8,7 @@ from ..parse.nodes import (
     TpyFunction, TpyYield, TpyStmt, TpyWhile, TpyForEach, TpyReturn, TpyVarDecl,
     TpyCall, TpyName, TpyExpr, TpyTupleUnpack,
 )
-from ..typesys import IntLiteralType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_readonly, unwrap_ref_type
+from ..typesys import IntLiteralType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_readonly, unwrap_ref_type, yield_uses_borrow_slot
 from tpyc import modules as builtin_modules
 from .context import INDENT, escape_cpp_name
 
@@ -157,7 +157,7 @@ class GeneratorCodegen:
         assert isinstance(while_stmt, TpyWhile)
         init_stmts = func.body[:-1]
         yield_stmt, pre_yield, post_yield = self._split_at_yield(while_stmt.body)
-        ref_yield = not post_yield and isinstance(elem_type, TypeParamRef)
+        ref_yield = self._yield_binds_by_ref(elem_type, post_yield)
         val_binding = "auto&&" if ref_yield else "auto"
 
         ind1 = INDENT
@@ -234,9 +234,7 @@ class GeneratorCodegen:
         init_stmts = func.body[:-1]
         yield_stmt, pre_yield, post_yield = self._split_at_yield(for_stmt.body)
 
-        # auto&&: preserve references for generic generators (T may be val_or_ref).
-        # Only safe when no post_yield code can modify the referenced value.
-        ref_yield = not post_yield and isinstance(elem_type, TypeParamRef)
+        ref_yield = self._yield_binds_by_ref(elem_type, post_yield)
         val_binding = "auto&&" if ref_yield else "auto"
 
         ind1 = INDENT
@@ -473,9 +471,12 @@ class GeneratorCodegen:
         is a value type that std::optional can hold, with reference-bearing
         inner elements preserved through the yield boundary.
 
-        Non-tuple yields stay value form because `to_cpp_return()` on a bare
-        non-value type expands to `T&` directly, and std::optional<T&> is
-        ill-formed pre-C++26.
+        A bare non-value yield under `Iterator[T]` (BORROW_REF) wraps the slot
+        in `val_or_ref<T>` -- a pointer-holding value wrapper -- so the
+        std::optional / std::expected slot can hand out a reference to the live
+        object instead of a copy (`std::optional<T&>` is ill-formed pre-C++26).
+        `Iterator[Own[T]]` (OWNED) keeps the bare value slot (moved out), and a
+        value-type element (VALUE) keeps the bare value (copies are free).
 
         A `readonly[tuple[...]]` yield must peel the ReadonlyType wrapper
         before the tuple check (`unwrap_ref_type` only strips RefType), else
@@ -484,9 +485,31 @@ class GeneratorCodegen:
         form (`std::tuple<const T&, ...>`).
         """
         unwrapped = unwrap_ref_type(unwrap_readonly(elem_type))
-        if not isinstance(unwrapped, TupleType):
-            return cpp_elem
-        return elem_type.to_cpp_return()
+        if isinstance(unwrapped, TupleType):
+            return elem_type.to_cpp_return()
+        # A bare reference element is handed out by reference via val_or_ref<T>.
+        # yield_uses_borrow_slot excludes the forms with their own representation
+        # (Optional/Union pointer-or-storage, readonly const-borrow, Own move,
+        # TypeParamRef already val_or_ref-substituted by the caller).
+        if yield_uses_borrow_slot(elem_type):
+            return f"::tpy::val_or_ref<{cpp_elem}>"
+        return cpp_elem
+
+    @staticmethod
+    def _yield_binds_by_ref(elem_type: 'TpyType', post_yield: list[TpyStmt]) -> bool:
+        """Whether a simple-generator yield binds its value as `auto&&` (borrow).
+
+        A concrete borrow yield must bind by reference unconditionally: its slot
+        is `val_or_ref<T>` (stores a pointer), so a copied local would dangle. A
+        generic (TypeParamRef) yield keeps the prior post_yield-guarded binding --
+        its slot is the already-substituted `val_or_ref<ConcreteT>` / value, a
+        cheap wrapper safe to copy, so auto&& is only used when no post-yield code
+        could mutate the referenced source.
+        """
+        unwrapped = unwrap_ref_type(unwrap_readonly(elem_type))
+        if isinstance(unwrapped, TypeParamRef):
+            return not post_yield
+        return yield_uses_borrow_slot(elem_type)
 
     @staticmethod
     def _split_at_yield(body: list[TpyStmt]) -> tuple[TpyYield, list[TpyStmt], list[TpyStmt]]:

@@ -26,6 +26,7 @@ from ..typesys import (
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
     unwrap_own, is_readonly_span,
+    yield_uses_borrow_slot,
     RecursiveAliasInstanceType, recursive_union_alternatives)
 from ..parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -591,6 +592,12 @@ class ExpressionAnalyzer:
                 f"Cannot use '{expr.name}' after it was consumed by a consuming method call",
                 expr,
             )
+
+        # No ephemeral-borrow closure-capture check is needed: an escaping closure
+        # is Callable-typed and captures by value (copies the borrow's value -- safe),
+        # while a by-reference Fn-typed closure is inline / non-escaping (used within
+        # the iteration step). So no closure can retain an ephemeral frame-slot borrow
+        # past its step.
 
         # Check for INT type parameter references in generic class context
         # INT type params can be used as values in expressions (e.g., Int32(N))
@@ -2825,6 +2832,34 @@ class ExpressionAnalyzer:
             result_elem_type = resolve_int_literals(result_elem_type, self.ctx.default_int_for_literal)
 
         expr.result_elem_type = result_elem_type
+        # Genexpr borrow ABI: a bare non-value (non-readonly) element is handed
+        # out by reference (val_or_ref slot), zero-copy, like a def-generator's
+        # Iterator[T]. readonly / value elements keep the value (copy) slot.
+        if yield_uses_borrow_slot(result_elem_type):
+            # A freshly-constructed element would dangle in the borrow slot.
+            # Accept borrows of the captured iteration (the loop var / its
+            # fields); reject fresh constructions and point at the
+            # list-comprehension form, which materializes owned storage.
+            # (Genexprs have no Own[] surface, so there is no owned opt-in.)
+            saved = gen.var in self.ctx.func.safe_to_return_vars
+            self.ctx.func.safe_to_return_vars.add(gen.var)
+            try:
+                dangles = self.compat.is_dangling_return(expr.element_expr)
+            finally:
+                if not saved:
+                    self.ctx.func.safe_to_return_vars.discard(gen.var)
+            if dangles:
+                raise self.ctx.error(
+                    f"Cannot yield a freshly-constructed '{result_elem_type}' from a "
+                    f"generator expression: it is handed out by reference and would "
+                    f"dangle. Use a list comprehension '[...]' to materialize owned "
+                    f"elements instead.",
+                    expr.element_expr,
+                )
+            # Hand out a mutable borrow (the loop var aliases the live source
+            # element), mirroring a def-generator borrow yield -- so the slot is
+            # val_or_ref<T> (T&), not const, and consumer mutation propagates.
+            gen.const_loop_var = False
         return GenExprType(result_elem_type)
 
     def _analyze_elem_comprehension(

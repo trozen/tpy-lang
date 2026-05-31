@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def twice(xs: list[Box]) -> Iterator[Box]:
-std::expected<Box, ::tpy::StopIteration> __gen_twice::__next__() {
+std::expected<::tpy::val_or_ref<Box>, ::tpy::StopIteration> __gen_twice::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         __for_it_0.emplace((xs).begin());
@@ -47,18 +47,27 @@ __gen_twice twice(std::vector<Box>& xs) {
 void main() {
     // data = [Box(1), Box(2)]
     std::vector<Box> data = {Box(::tpy::BigInt(1)), Box(::tpy::BigInt(2))};
-    // # Read-only on purpose: scalar non-value yields currently copy rather than
-    // # borrow (value-form slot, BUGS.md), so mutating `b` would not propagate to
-    // # `data` and would diverge from CPython.
+    // # Borrow yield: mutation through the yielded `b` propagates to the source
+    // # element. Each element is yielded twice, so both yields alias the same Box
+    // # and the +10 applies twice per element.
     // for b in twice(data):
     auto __src_0 = twice(data);
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        const auto& b = ::tpy::unwrap_ref(*__r_1);
-        // print(b.val)
-        std::cout << b.val << "\n";
+        auto&& b = ::tpy::unwrap_ref(*__r_1);
+        // b.val = b.val + 10
+        b.val = ((b.val) + (::tpy::BigInt(10)));
+    }
+    // for d in data:
+    auto& __obj_2 = data;
+    auto __beg_2 = __obj_2.begin();
+    auto __end_2 = __obj_2.end();
+    for (; __beg_2 != __end_2; ++__beg_2) {
+        const auto& d = *__beg_2;
+        // print(d.val)
+        std::cout << d.val << "\n";
     }
 }
 

@@ -1538,6 +1538,29 @@ def unwrap_own(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def yield_uses_borrow_slot(elem_type: 'TpyType') -> bool:
+    """Whether a generator / genexpr yield of this element uses the plain
+    `val_or_ref<T>` borrow slot -- i.e. a bare reference type (record / class)
+    handed out by reference, zero-copy, instead of a copy (`Iterator[T]` for a
+    non-value `T`).
+
+    Excluded (each keeps its existing slot): value-type elements (copied);
+    `Own` (owned value slot, moved out); `readonly` (a const borrow, not the
+    mutable `val_or_ref<T>`); tuples (own borrow form via `to_cpp_return`);
+    `Optional` / `Union` (pointer / storage-form machinery -- `optional_to_ptr`,
+    pointer variants); and `TypeParamRef` (already substituted with
+    `val_or_ref<ConcreteT>` by the caller -- wrapping again would double-wrap).
+    """
+    if elem_type.is_value_type():
+        return False
+    if isinstance(unwrap_readonly(unwrap_ref_type(elem_type)), OwnType):
+        return False
+    if isinstance(unwrap_ref_type(elem_type), ReadonlyType):
+        return False
+    bare = unwrap_ref_type(unwrap_readonly(elem_type))
+    return not isinstance(bare, (TupleType, OptionalType, UnionType, TypeParamRef))
+
+
 def unwrap_qualifiers(typ: 'TpyType') -> 'TpyType':
     """Strip ReadonlyType, OwnType, and RefType wrappers."""
     if isinstance(typ, RefType):

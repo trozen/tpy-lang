@@ -26,7 +26,7 @@ struct Pair {
     explicit Pair(const K& k, const V& v) : k(k), v(v) {}
 
     // def stream(self, n: int) -> Iterator[V]:  # tpyc: ok
-    auto stream(const ::tpy::BigInt& n) const {
+    auto stream(const ::tpy::BigInt& n) {
         // i = 0
         int32_t i = 0;
         return ::tpy::make_generator<V>(

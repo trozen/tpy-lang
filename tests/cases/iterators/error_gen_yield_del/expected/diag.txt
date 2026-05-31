@@ -1,1 +1,0 @@
-main.py:17: error: Generator cannot yield non-copyable type 'Res': each yielded value is stored by value and handed out as a copy by __next__(), which requires a copy constructor. Yield a copyable type, or a tuple whose elements are yielded by reference.

@@ -744,18 +744,19 @@ class TypeRegistrar:
         return class_constants, finality
 
     def _validate_generator_yield_copyable(self, yield_type: TpyType, loc) -> None:
-        """Reject a generator that would yield a non-copyable value.
+        """Reject a generator whose VALUE-slot yield would copy a non-copyable value.
 
-        A generator stores each yielded value by value in its iterator slot
-        (`std::expected<T, StopIteration>` on the resumable path,
-        `std::optional<T>` on the legacy peephole) and `__next__()` hands out
-        a copy. A non-copyable yield type (`@nocopy`, a record with `__del__`,
-        or one that transitively contains either) would hit a deleted copy
-        constructor in the generated C++ -- on BOTH codegen paths, so routing
-        to the legacy path is no escape. Tuple yields are exempt: their slot is
-        borrow form (`std::tuple<T&, ...>` / `<T*, ...>`), so the elements are
-        referenced, not copied."""
-        if isinstance(unwrap_ref_type(unwrap_readonly(yield_type)), TupleType):
+        Only a VALUE-ABI element is stored by value and handed out as a copy by
+        `__next__()` -- there a `@nocopy` / `__del__` element would hit a deleted
+        copy constructor. Under BORROW_REF the slot is `val_or_ref<T>` (a borrow,
+        no copy) and under OWNED the slot moves out, so a non-copyable element is
+        fine for both -- the per-yield rooting check in `_analyze_yield` enforces
+        those instead. This is the declaration-driven yield-ABI rule (the element
+        type drives the slot form, mirroring function returns)."""
+        # Only a non-Own value-type element copies into the slot; an Own[T] yield
+        # moves and a non-value yield borrows, so neither needs a copy ctor.
+        if (isinstance(unwrap_readonly(unwrap_ref_type(yield_type)), OwnType)
+                or not yield_type.is_value_type()):
             return
         if not self.ctx.is_type_non_copyable(yield_type):
             return

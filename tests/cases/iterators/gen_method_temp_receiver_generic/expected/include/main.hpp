@@ -24,7 +24,7 @@ struct Holder {
     explicit Holder(const std::vector<T>& items) : items(items) {}
 
     // def walk(self) -> Iterator[T]:
-    auto walk() const {
+    auto walk() {
         return ::tpy::make_generator<T>(
             [this, __beg = decltype(((*this).items).begin())(), __end = decltype(((*this).items).begin())(), __init = false]() mutable -> std::optional<T> {
                 if (!__init) { __beg = ((*this).items).begin(); __end = ((*this).items).end(); __init = true; }

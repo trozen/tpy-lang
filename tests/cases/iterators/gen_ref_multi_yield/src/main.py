@@ -14,10 +14,12 @@ def twice(xs: list[Box]) -> Iterator[Box]:
 
 def main() -> None:
     data = [Box(1), Box(2)]
-    # Read-only on purpose: scalar non-value yields currently copy rather than
-    # borrow (value-form slot, BUGS.md), so mutating `b` would not propagate to
-    # `data` and would diverge from CPython.
+    # Borrow yield: mutation through the yielded `b` propagates to the source
+    # element. Each element is yielded twice, so both yields alias the same Box
+    # and the +10 applies twice per element.
     for b in twice(data):
-        print(b.val)
+        b.val = b.val + 10
+    for d in data:
+        print(d.val)
 
 main()

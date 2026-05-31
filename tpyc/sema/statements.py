@@ -24,6 +24,7 @@ from ..typesys import (
     is_integer_type, is_any_int_type, is_numeric_type, is_readonly_span,
     is_float_type, is_any_float_type, is_polymorphic_subclass_fact,
     resolve_int_literals,
+    yield_uses_borrow_slot, GenExprType,
     bare_name)
 from ..parse import (
     TpyExpr,
@@ -844,6 +845,10 @@ class StatementAnalyzer:
                         # Annotate per-element capture mode (ref/value/const_ref)
                         self._annotate_tuple_elem_capture(
                             stmt.value, tuple_target, is_return=True)
+                # Returning an ephemeral generator/iterator borrow lets it escape
+                # its iteration step -- reject with the copy-out fix (before the
+                # generic dangling check so the specific message wins).
+                self._reject_ephemeral_escape(stmt.value, "return")
                 # Check for dangling reference (returning local/temporary as reference)
                 self.compat.check_dangling_reference(stmt.value, expected, stmt.loc)
                 # Returning a non-value type by reference takes the source's address.
@@ -1204,12 +1209,31 @@ class StatementAnalyzer:
                         iter_depth = inner_scope.depth
                     # Track provenance for loop vars whose type participates in
                     # provenance tracking, when iterating over a param-derived iterable.
+                    # Inside a generator the iteration source is always materialized
+                    # on the resumable frame (a captured param/self, or a `__for_src`
+                    # field for locals/temporaries), so any loop var aliases
+                    # frame-held storage and outlives suspension -- a durable borrow
+                    # source for a yield. Generators cannot `return <value>`, so the
+                    # only consumer of safe_to_return_vars in a generator body is the
+                    # borrow-yield rooting check; broadening it here is contained.
+                    cur_fn = self.ctx.func.current_function
+                    in_generator = isinstance(cur_fn, TpyFunction) and cur_fn.is_generator
+                    # A frame-slot-rooted borrow source (generator / Iterator[T]
+                    # value, element non-value non-Own) yields ephemeral borrows
+                    # valid only until the next __next__(): they must NOT be
+                    # treated as durable (kept out of provenance / safe_to_return)
+                    # and escapes are rejected in the loop body. Container sources
+                    # are durable and keep their normal provenance.
+                    ephemeral_src = self._is_ephemeral_borrow_loop_source(inner_iterable_type)
                     track_loop_prov = (
-                        _needs_provenance_tracking(unwrap_readonly(elem_type))
-                        and self.compat.is_param_derived_expr(stmt.iterable)
+                        not ephemeral_src
+                        and _needs_provenance_tracking(unwrap_readonly(elem_type))
+                        and (self.compat.is_param_derived_expr(stmt.iterable)
+                             or in_generator)
                     )
                     if track_loop_prov:
                         self.init.add_loop_var_provenance(stmt.var)
+                    eph_added = self._mark_ephemeral_loop_targets(stmt, ephemeral_src)
                     self.ctx.func.mutated_loop_vars.discard(stmt.var)
                     self.ctx.func.consumed_loop_vars.discard(stmt.var)
                     self.ctx.func.deferred_loop_copy_warnings.pop(stmt.var, None)
@@ -1219,6 +1243,7 @@ class StatementAnalyzer:
                             self.analyze_stmt(s)
                     if track_loop_prov:
                         self.init.remove_loop_var_provenance(stmt.var)
+                    self.ctx.func.ephemeral_borrow_vars -= eph_added
                 # Set const-ref binding when the loop var was never mutated.
                 # mutated_loop_vars was cleared for stmt.var before entering the
                 # loop body, so it only reflects mutations from this loop.
@@ -2577,6 +2602,75 @@ class StatementAnalyzer:
 
         return var_type
 
+    def _is_ephemeral_borrow_loop_source(self, iterable_type: TpyType) -> bool:
+        """True if iterating this source hands out frame-slot-rooted borrows whose
+        validity ends at the next iteration step -- a generator / `Iterator[T]`
+        value whose element is a non-value borrow (BORROW_REF). Container sources
+        (list/dict/Span/user `__iter__`) are durable and excluded; so is
+        `Iterator[Own[T]]` (owned, moved out) and value-type elements.
+        """
+        inner = unwrap_readonly(unwrap_ref_type(iterable_type))
+        # Ephemeral exactly when the source hands out the plain val_or_ref borrow
+        # slot (a bare reference element). Optional / Union / readonly / value
+        # elements keep their own (non-frame-slot-borrow) representation and are
+        # not ephemeral -- yield_uses_borrow_slot is the single shared gate.
+        if isinstance(inner, GenExprType):
+            return yield_uses_borrow_slot(inner.element_type)
+        if not (is_protocol_type(inner) and isinstance(inner, NominalType)
+                and inner.qualified_name() == "typing.Iterator" and inner.type_args):
+            return False
+        raw_elem = inner.type_args[0]
+        if not isinstance(raw_elem, TpyType):
+            return False
+        return yield_uses_borrow_slot(raw_elem)
+
+    def _mark_ephemeral_loop_targets(self, stmt: TpyForEach, ephemeral_src: bool) -> set[str]:
+        """Stamp the loop var of an ephemeral borrow yield, returning the names
+        added to ephemeral_borrow_vars (so the caller can drop them after the loop
+        body). Only scalar plain-reference sources are ephemeral here: a tuple
+        element source never qualifies (`yield_uses_borrow_slot` excludes tuples,
+        so `ephemeral_src` is False for `for a, b in ...`), and a tuple-borrow
+        member that escapes is caught by the existing dangling-return check (its
+        unpack targets are not provenance-broadened in a generator)."""
+        if not ephemeral_src:
+            return set()
+        added = {stmt.var}
+        self.ctx.func.ephemeral_borrow_vars |= added
+        return added
+
+    def _reject_ephemeral_escape(self, expr: 'TpyExpr | None', what: str) -> None:
+        """If `expr` is (or roots in) an ephemeral borrow var, reject the escape.
+
+        An ephemeral borrow (a for-loop var over a generator / Iterator[T] /
+        genexpr borrow source) is valid only for the current iteration step -- the
+        producer's frame slot is overwritten on the next __next__(). Retaining it
+        past the step (returning or yielding it onward) would read a stale slot.
+        The fix is to copy out (`.clone()` for @nocopy types, a plain copy)."""
+        name = self._ephemeral_root_name(expr)
+        if name is None:
+            return
+        raise self.ctx.error(
+            f"Cannot {what} '{name}': it borrows an element of a generator / "
+            f"iterator, valid only for the current iteration step (the producer "
+            f"reuses its frame slot on the next step). Copy it out first "
+            f"(`{name}.clone()` for a @nocopy type, otherwise a plain copy).",
+            expr,
+        )
+
+    def _ephemeral_root_name(self, expr: 'TpyExpr | None') -> 'str | None':
+        """Return the ephemeral-borrow var name `expr` reads from, else None.
+
+        A bare ephemeral name, or a field/subscript chain rooted in one (storing
+        `x.field` retains a borrow into the same stale slot). A `.clone()` /
+        copy-producing call breaks the borrow, so calls are not roots."""
+        if isinstance(expr, TpyCoerce):
+            return self._ephemeral_root_name(expr.expr)
+        if isinstance(expr, TpyName):
+            return expr.name if expr.name in self.ctx.func.ephemeral_borrow_vars else None
+        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+            return self._ephemeral_root_name(expr.obj)
+        return None
+
     def _analyze_yield(self, stmt: TpyYield) -> None:
         """Analyze a yield statement in a generator function."""
         func = self.ctx.func.current_function
@@ -2588,7 +2682,38 @@ class StatementAnalyzer:
         stmt.value = self.compat.coerce_expr(
             stmt.value, yield_type, elem_type, "yield value",
             coercion_ctx=CoercionContext.RETURN)
-        self.compat.check_view_return_dangle(stmt.value, elem_type, stmt.loc)
+        # Re-yielding an ephemeral borrow onward (consumed from an inner
+        # generator/iterator) past its iteration step would let the outer
+        # consumer read a stale slot -- reject unless copied out.
+        self._reject_ephemeral_escape(stmt.value, "yield")
+        # Declaration-driven yield ABI: a plain-reference borrow yield (the
+        # val_or_ref<T> slot) hands out a reference, so the yielded source must
+        # outlive the frame -- the same rooting rule as returning a reference,
+        # since the generator frame survives suspension. The view-only
+        # check_view_return_dangle misses bare non-value reference yields, so route
+        # those through the full dangling check (Iterator[Own[T]]-flavored
+        # diagnostic). Forms with their own representation (Optional/Union/readonly/
+        # tuple/generic) keep the view check -- they don't use the borrow slot.
+        if yield_uses_borrow_slot(elem_type):
+            self.compat.check_dangling_reference(
+                stmt.value, elem_type, stmt.loc, for_yield=True)
+        else:
+            self.compat.check_view_return_dangle(stmt.value, elem_type, stmt.loc)
+        # A mutable borrow yield hands the consumer a writable reference into the
+        # frame's source storage (a self field, param, ...), exactly like returning
+        # a mutable borrow (see the TpyReturn branch above). Mark the source roots
+        # mutated so an enclosing method is not auto-inferred readonly -- a const
+        # receiver would make the source element `const T&` which the mutable
+        # val_or_ref<T> slot cannot bind, and would wrongly forbid consumer
+        # mutation. Applies to every non-readonly non-value, non-Own yield
+        # (including a generic TypeParamRef, which instantiates to a borrow); a
+        # readonly yield is a const borrow and an Own[T] yield moves, so both skip.
+        if (not elem_type.is_value_type()
+                and not isinstance(unwrap_readonly(unwrap_ref_type(elem_type)), OwnType)
+                and not isinstance(unwrap_ref_type(elem_type), ReadonlyType)):
+            for root in addr_taken_roots(stmt.value):
+                self.ctx.mark_param_mutated(root)
+                self.ctx.mark_param_returned(root)
 
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
@@ -3627,6 +3752,14 @@ class StatementAnalyzer:
             self._enforce_readonly_assignment_target(stmt.target)
             return
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
+        # NOTE: storing an ephemeral borrow into value storage (a field, a
+        # container element, a global, or another local) COPIES the value in TPy
+        # (the existing "copies into owned storage" path), so it is memory-safe
+        # and is intentionally NOT rejected. Escapes that retain the *reference*
+        # past the iteration step are caught elsewhere: returning it
+        # (dangling-return check), stashing it where it outlives its scope
+        # (lifetime analysis), re-yielding it (yield-onward check), and capturing
+        # it by reference in a closure (nested-def escape check).
         # Property setter: validate and tag for codegen
         if isinstance(stmt.target, TpyFieldAccess) and stmt.target.is_property_access:
             obj_type = self.ctx.get_expr_type(stmt.target.obj)

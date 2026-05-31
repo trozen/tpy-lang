@@ -2020,20 +2020,35 @@ class TypeCompatibility:
         if isinstance(return_type, PtrType) or is_borrowing_view_type(return_type):
             self.check_dangling_reference(expr, return_type, loc)
 
-    def check_dangling_reference(self, expr: TpyExpr, return_type: TpyType, loc: SourceLocation | None) -> None:
-        """Check if returning expr as a reference would be a dangling reference.
+    def check_dangling_reference(self, expr: TpyExpr, return_type: TpyType,
+                                 loc: SourceLocation | None,
+                                 *, for_yield: bool = False) -> None:
+        """Check if returning (or yielding) expr as a reference would dangle.
 
-        Object types are returned by reference. Returning a local variable or
+        Object types are returned/yielded by reference. A local variable or
         newly constructed object would create a dangling reference.
+
+        `for_yield`: the same rooting rule applies to a generator's borrow yield
+        (`Iterator[T]`, T non-value) -- the generator frame survives suspension,
+        so a yield must root in frame-held storage exactly as a return must root
+        in caller-outliving storage. Only the diagnostic wording differs: the
+        owning escape is `Iterator[Own[T]]` rather than `Own[T]`.
         """
+        verb = "yield" if for_yield else "return"
+
+        def _own_fix(t: object, *, cap: bool) -> str:
+            s = (f"declare the generator 'Iterator[Own[{t}]]' to yield by value"
+                 if for_yield else f"use Own[{t}] to return by value")
+            return (s[0].upper() + s[1:]) if cap else s
+
         # Only check object types (value types are returned by value)
         # OwnType returns by value (ownership transfer), so no dangling risk
         # Pointer types need dangling checks (the pointer value may point to a local)
         if isinstance(return_type, PtrType):
             if self.is_dangling_return(expr):
                 raise self.ctx.error(
-                    "Cannot return pointer to local or temporary value; "
-                    "the returned pointer would dangle",
+                    f"Cannot {verb} pointer to local or temporary value; "
+                    f"the {verb}ed pointer would dangle",
                     expr
                 )
             return
@@ -2057,9 +2072,9 @@ class TypeCompatibility:
                             and i < len(expr.elements)):
                         if self.is_dangling_return(expr.elements[i]):
                             raise self.ctx.error(
-                                f"Cannot return local or temporary as tuple element {i}. "
-                                f"Type '{et}' is returned by reference. "
-                                f"Use Own[{et}] to return by value.",
+                                f"Cannot {verb} local or temporary as tuple element {i}. "
+                                f"Type '{et}' is {verb}ed by reference. "
+                                f"{_own_fix(et, cap=True)}.",
                                 expr.elements[i]
                             )
             return
@@ -2082,10 +2097,9 @@ class TypeCompatibility:
                 return
             if self.is_dangling_return(expr):
                 raise self.ctx.error(
-                    f"Cannot return local or temporary as '{return_type}'. "
-                    f"The returned pointer would dangle. "
-                    f"Return a reference to parameter data, or use Own[{return_type}] "
-                    f"to return by value.",
+                    f"Cannot {verb} local or temporary as '{return_type}'. "
+                    f"The {verb}ed pointer would dangle. "
+                    f"{verb.capitalize()} a reference to parameter data, or {_own_fix(return_type, cap=False)}.",
                     expr
                 )
             return
@@ -2094,14 +2108,14 @@ class TypeCompatibility:
         if self.is_dangling_return(expr):
             if is_protocol_type(return_type):
                 raise self.ctx.error(
-                    f"Cannot return local or temporary as '{return_type}'. "
+                    f"Cannot {verb} local or temporary as '{return_type}'. "
                     f"Dynamic protocol return requires a value that outlives the caller "
                     f"(parameter or global).",
                     expr
                 )
             raise self.ctx.error(
-                f"Cannot return local or temporary as reference. "
-                f"Object type '{return_type}' is returned by reference. "
-                f"Use Own[{return_type}] to return by value.",
+                f"Cannot {verb} local or temporary as reference. "
+                f"Object type '{return_type}' is {verb}ed by reference. "
+                f"{_own_fix(return_type, cap=True)}.",
                 expr
             )

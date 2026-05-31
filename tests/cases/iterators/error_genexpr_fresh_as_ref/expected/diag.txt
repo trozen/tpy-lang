@@ -1,0 +1,1 @@
+main.py:13: error: Cannot yield a freshly-constructed 'Node' from a generator expression: it is handed out by reference and would dangle. Use a list comprehension '[...]' to materialize owned elements instead.
