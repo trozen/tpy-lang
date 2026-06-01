@@ -2137,7 +2137,23 @@ class MatchGenerator:
                 inner = inner.pattern
             if isinstance(inner, TpyLiteralPattern):
                 val = inner.value
-                if isinstance(val, bool):
+                if val is None:
+                    field_type = self._record_field_type(pattern, field_name)
+                    expr = f"{subject_expr}.{field_name}"
+                    if isinstance(field_type, OptionalType):
+                        conds.append(f"!{expr}.has_value()")
+                    elif isinstance(field_type, UnionType):
+                        conds.append(
+                            f"std::holds_alternative<std::monostate>({expr})")
+                    else:
+                        # Sema gates `=None` to nullable fields, so the repr is
+                        # always optional or union-with-None; a miss here means
+                        # that invariant broke -- fail loud, never silently drop
+                        # the check (the bug this branch fixed).
+                        raise CodeGenError(
+                            f"internal: `{field_name}=None` field pattern on "
+                            f"non-nullable type {field_type}", loc=pattern.loc)
+                elif isinstance(val, bool):
                     conds.append(f"{subject_expr}.{field_name} == {'true' if val else 'false'}")
                 elif isinstance(val, int):
                     conds.append(f"{subject_expr}.{field_name} == {val}")
@@ -2236,20 +2252,32 @@ class MatchGenerator:
         else:
             raise CodeGenError(f"Cannot use literal {val!r} in switch case label")
 
+    def _record_field_type(
+        self, pattern: TpyClassPattern, field_name: str,
+    ) -> 'TpyType | None':
+        """Declared type of a class-pattern field, including inherited fields.
+        Generic type-param substitution is skipped on purpose: callers inspect
+        only the nullable repr (optional vs union), invariant under the arg."""
+        record_type = pattern.resolved_type
+        if not isinstance(record_type, NominalType):
+            return None
+        registry = self.ctx.analyzer.registry
+        record = registry.get_record_for_type(record_type)
+        if record is None:
+            return None
+        for f in registry.get_all_fields(record):
+            if f.name == field_name:
+                return f.type
+        return None
+
     def _record_capture_type(
         self, pattern: TpyClassPattern, field_name: str, capture_name: str,
     ) -> None:
-        """Register the field's declared type for a match-bound capture so
-        ``_get_cpp_declared_type`` (which only looks at ``var_types``) can
-        drive narrowing-aware deref on the captured name."""
-        record_type = pattern.resolved_type
-        if not isinstance(record_type, NominalType):
-            return
-        record = self.ctx.analyzer.registry.get_record_for_type(record_type)
-        for f in record.fields:
-            if f.name == field_name:
-                self.ctx.var_types[capture_name] = f.type
-                return
+        """Register a match-bound capture's type so ``_get_cpp_declared_type``
+        (which reads only ``var_types``) drives narrowing-aware deref on it."""
+        field_type = self._record_field_type(pattern, field_name)
+        if field_type is not None:
+            self.ctx.var_types[capture_name] = field_type
 
     def _gen_match_field_bindings(
         self, out: TextIO, pattern: TpyClassPattern, case_var: str, indent: str,

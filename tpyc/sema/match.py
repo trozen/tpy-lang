@@ -822,7 +822,9 @@ class MatchAnalyzer:
             elif isinstance(sub_pattern, TpyWildcardPattern):
                 pass
             elif isinstance(sub_pattern, TpyLiteralPattern):
-                pass  # Literal comparison -- validated at codegen time
+                if sub_pattern.value is None:
+                    self._check_none_field_nullable(field_name, field_type, sub_pattern)
+                # Other literal comparisons are validated at codegen time.
             elif isinstance(sub_pattern, TpyValuePattern):
                 # Named-constant field comparison (e.g. `size=Size.BIG`) is not
                 # yet emitted; only literal field comparisons are. Point at the
@@ -849,6 +851,8 @@ class MatchAnalyzer:
                     if inner_sub.keywords or inner_sub.positional:
                         self._resolve_nested_class_fields(inner_sub, matched_type, bindings)
                 elif isinstance(inner_sub, TpyLiteralPattern):
+                    if inner_sub.value is None:
+                        self._check_none_field_nullable(field_name, field_type, inner_sub)
                     bindings[sub_pattern.name] = field_type
                 elif isinstance(inner_sub, (TpyWildcardPattern, TpyCapturePattern)):
                     bindings[sub_pattern.name] = field_type
@@ -864,6 +868,21 @@ class MatchAnalyzer:
                     f"Unsupported sub-pattern in field binding: "
                     f"{type(sub_pattern).__name__}", sub_pattern
                 )
+
+    def _check_none_field_nullable(
+        self, field_name: str, field_type: TpyType, pattern: TpyPattern,
+    ) -> None:
+        """A `field=None` sub-pattern only makes sense when the field can hold
+        None; on a non-nullable field it can never match (CPython) and codegen
+        has no repr to emit a check against (it would silently match all)."""
+        if not (isinstance(field_type, OptionalType)
+                or (isinstance(field_type, UnionType)
+                    and field_type.has_none_member())):
+            raise self.ctx.error(
+                f"field '{field_name}' of type '{field_type}' cannot be None, "
+                f"so `{field_name}=None` can never match; drop the arm or use "
+                f"a guard", pattern,
+            )
 
     def _analyze_pattern_nonunion(
         self, pattern: TpyPattern, subject_type: TpyType,
