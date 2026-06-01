@@ -202,12 +202,14 @@ Flag this as a design-level question rather than force-fitting.
 ## Phase 6: Present and wait
 
 Write the design (compressed for localized features) and present it
-to the user. **Start with a short summary of the feature** (1-3 sentences) --
-the user must be able to confirm scope ("yes, that's the feature
-we're talking about") in a few seconds, before reading any design
-details. The summary names the user-visible surface (what Python
-code becomes valid that wasn't before, or what existing surface
-changes).
+to the user. **Lead with the feature shown concretely, not described
+abstractly.** Open the report with the minimal Python example from
+Phase 1 -- the user-facing usage that becomes valid (or the surface
+that changes), plus a one-line sketch of what it compiles to when
+that aids understanding. Follow it with a one-sentence summary of the
+surface. The user must be able to grasp *what the feature does* from
+the example and confirm scope ("yes, that's the feature") in seconds,
+before reading any design details.
 
 **Keep the design itself terse.** Convey the most important info
 in short bullets; the user will ask follow-up questions for
@@ -215,7 +217,6 @@ anything they want to dig into. Aim for the whole report to be
 readable in under a minute. Cover (each in one line or two):
 
 - Classification (trivial / localized / architectural)
-- User-visible surface (the minimal Python example from Phase 1)
 - Invariant established (one sentence from Phase 3)
 - Phases touched (one line each: parser / sema / typesys / codegen / runtime / stdlib -- only the ones that apply)
 - Tests + docs plan (brief)
@@ -223,9 +224,10 @@ readable in under a minute. Cover (each in one line or two):
 - Adjacent issues uncovered (brief)
 - Proposed branch (see below)
 
-Do NOT paste large code sketches, exhaustive sibling-survey results,
-or full design-doc-style elaboration. The user will ask if they want
-depth.
+Beyond that leading example, do NOT paste large code sketches,
+exhaustive sibling-survey results, or full design-doc-style
+elaboration. The minimal example up front is required; deeper
+sketches are not -- the user will ask if they want depth.
 
 **Proposed branch line.** Check `git branch --show-current` and pick:
 

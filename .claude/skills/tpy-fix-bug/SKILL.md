@@ -173,11 +173,15 @@ parallel code path the proper fix has to remove) is not.
 ## Phase 7: Present and wait
 
 Write the analysis (compressed for localized bugs) and present it.
-**Start with a short summary of the bug** (1-3 sentences) -- the
-user must be able to confirm scope ("yes, that's the bug we're
-talking about") in a few seconds, before reading any analysis. The
-summary names the visible symptom and the affected feature; it is
-not the root cause.
+**Lead with the bug shown concretely, not described abstractly.**
+Open the report with a minimal code example the user can read at a
+glance: the reproducer snippet, plus what it does now (the wrong
+output, or the error + where it surfaces) versus what it should do.
+Follow it with a one-sentence summary naming the symptom and the
+affected feature. The user must be able to grasp *what is broken*
+from the example and confirm scope ("yes, that's the bug") in
+seconds, before reading any analysis. The example shows the visible
+symptom, not the root cause.
 
 **Keep the analysis itself terse.** Convey the most important info
 in short bullets; the user will ask follow-up questions for
@@ -191,8 +195,10 @@ readable in under a minute. Cover (each in one line or two):
 - Adjacent issues surfaced during analysis (brief)
 - Proposed branch (see below)
 
-Do NOT paste large code excerpts, full file lists, or reproduce the
-Phase 2 trace. The user will ask if they want depth.
+Beyond that leading reproducer, do NOT paste large code excerpts,
+internal trace dumps, or full file lists. The small illustrative
+example up front is required; the Phase 2 trace and file dumps are
+not -- the user will ask if they want that depth.
 
 **Proposed branch line.** Check `git branch --show-current` and pick:
 
