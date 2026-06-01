@@ -190,7 +190,13 @@ class StatementGenerator:
             # Non-value union params are pointer variants (variant<T*...>)
             elif self.ctx.is_ptr_variant_union(actual):
                 self.ctx.ptr_variant_locals.add(pname)
-                if isinstance(ptype, ReadonlyType):
+                # Deep-const members (`const T*`) when the param is `readonly[...]`
+                # OR the const verdict deep-consts it (readonly fn/method whose
+                # param address does not escape). `deep_const_borrow_params` is the
+                # same addr-escape-aware verdict the signature and call site read,
+                # so the body's `std::get<T*>` matches the param decl.
+                if (isinstance(ptype, ReadonlyType)
+                        or pname in self.ctx.deep_const_borrow_params):
                     self.ctx.const_indirect_locals.add(pname)
             # Own[T] and Own[T] | None params are movable (caller gave up ownership)
             own_actual = unwrap_optional_own(actual)

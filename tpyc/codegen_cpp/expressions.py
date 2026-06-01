@@ -2697,7 +2697,7 @@ class ExpressionGenerator:
             gen_args = []
             dcbp = func_info.deep_const_borrow_params
             repr_subst = self._representational_param_subst(expr, func_info)
-            for arg, (pname, ptype) in zip(expr.args, func_info.params):
+            for _pidx, (arg, (pname, ptype)) in enumerate(zip(expr.args, func_info.params)):
                 # Strip Ref wrapper -- Ref is a sema annotation; codegen handles
                 # reference semantics through is_value_type() / type traits.
                 ptype = unwrap_ref_type(ptype)
@@ -2754,9 +2754,13 @@ class ExpressionGenerator:
                             temp_type = arg_type
                     temp_name = self.ctx.temps.create(temp_type, init_expr)
                     gen_args.append(temp_name)
-                # Union params: wrap concrete member type in variant
-                elif (union_arg := self._gen_union_arg(arg, resolved_ptype,
-                                                        is_readonly_target=func_info.is_readonly)) is not None:
+                # Union params: wrap concrete member type in variant. Deep-const
+                # iff the callee's materialized verdict says so (addr-escape /
+                # readonly aware) -- not the coarse `func.is_readonly`, which
+                # disagrees with the signature whenever the param is used.
+                elif (union_arg := self._gen_union_arg(
+                        arg, resolved_ptype,
+                        is_readonly_target=(dcbp is not None and _pidx in dcbp))) is not None:
                     gen_args.append(union_arg)
                 else:
                     arg_idx = len(gen_args)
@@ -3520,8 +3524,9 @@ class ExpressionGenerator:
                                 gen_args.append(proto_arg)
                             elif (opt_arg := self._gen_optional_ptr_arg(arg, rptype)) is not None:
                                 gen_args.append(opt_arg)
-                            elif (union_arg := self._gen_union_arg(arg, rptype,
-                                                                    is_readonly_target=method_info.is_readonly)) is not None:
+                            elif (union_arg := self._gen_union_arg(
+                                    arg, rptype,
+                                    is_readonly_target=(method_dcbp is not None and i in method_dcbp))) is not None:
                                 gen_args.append(union_arg)
                             else:
                                 # target_type controls gen_expr_deref hints:

@@ -616,6 +616,7 @@ class FunctionGenerator:
         reassigned_params: 'set[str] | None' = None,
         use_const_params: bool = False,
         addr_escapes_params: 'frozenset[int]' = frozenset(),
+        use_readonly_params: bool = False,
     ) -> tuple[set[str], set[str]]:
         """Compute (const_ref_params, deep_const_borrow_params) in one pass.
 
@@ -642,6 +643,7 @@ class FunctionGenerator:
                 reassigned_params=reassigned_params,
                 is_ptr_variant_union=self.ctx.is_ptr_variant_union(inner),
                 const_params=use_const_params,
+                use_readonly_params=use_readonly_params,
             )
             if decision.signature_const and (
                     inner.is_ref_param() or self.ctx.is_ptr_variant_union(inner)):
@@ -668,8 +670,13 @@ class FunctionGenerator:
             # marked params with ReadonlyType, so don't blanket-apply.
             use_const_params = ((func.is_readonly and not func.auto_readonly_params_resolved)
                                 or func.name in CONST_PARAMS_METHODS)
+        # `use_readonly_params=func.is_readonly` mirrors the signature emitter
+        # and the FunctionInfo verdict (`populate_const_borrow_params`): a
+        # readonly fn/method deep-consts its ptr-variant union params, so the
+        # body's variant-member access matches the signature and call site.
         crp, dcbp = self._build_param_const_sets(
-            func.params, mp, rp, use_const_params, addr_escapes_params=ae)
+            func.params, mp, rp, use_const_params, addr_escapes_params=ae,
+            use_readonly_params=func.is_readonly)
         # `_build_param_const_sets` only looks at `func.params`; `self` isn't
         # in there, so the readonly-self add lives at the caller.
         if func.is_readonly and record_name is not None:
@@ -1047,7 +1054,7 @@ class FunctionGenerator:
             local_ns.bind_variable(pname, ptype)
         crp, dcbp = self._build_param_const_sets(
             func.params, mp, rp, use_const_params=func.is_readonly,
-            addr_escapes_params=ae)
+            addr_escapes_params=ae, use_readonly_params=func.is_readonly)
         self.statements.gen_body(out, func.body, func.params, func.return_type,
                                  func, local_ns,
                                  const_ref_params=crp,
@@ -1114,7 +1121,8 @@ class FunctionGenerator:
                 self.ctx.literal_overload_facts[pname] = stub_ptype
 
         crp, dcbp = self._build_param_const_sets(
-            impl.params, mp, rp, use_const_params=impl.is_readonly)
+            impl.params, mp, rp, use_const_params=impl.is_readonly,
+            use_readonly_params=impl.is_readonly)
         try:
             self.statements.gen_body(out, impl.body, impl.params, stub.return_type,
                                      impl, local_ns,
@@ -1189,7 +1197,8 @@ class FunctionGenerator:
         # isinstance-based elim (if x is None:).
         self._inject_literal_overload_facts(overload_types)
         crp, dcbp = self._build_param_const_sets(
-            stub.params, mp, rp, use_const_params=stub.is_readonly)
+            stub.params, mp, rp, use_const_params=stub.is_readonly,
+            use_readonly_params=stub.is_readonly)
         try:
             self.statements.gen_body(out, impl.body, stub.params, stub.return_type,
                                      impl, local_ns,
@@ -1661,7 +1670,7 @@ class FunctionGenerator:
         self.ctx.in_consuming_method = method.is_consuming
         method_crp, method_dcbp = self._build_param_const_sets(
             method.params, mp, rp, use_const_params,
-            addr_escapes_params=ae)
+            addr_escapes_params=ae, use_readonly_params=method.is_readonly)
         # ``self`` is const in any const method, including the
         # auto_readonly_params_resolved clone where ``use_const_params``
         # is False (its params already carry explicit ``readonly[T]``).

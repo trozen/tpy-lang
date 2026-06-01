@@ -1235,9 +1235,8 @@ class CodeGenerator:
                 record_tps = self.gen_async._record_template_args(record.name)
                 if record_tps:
                     cpp_record = f"{cpp_record}<{', '.join(record_tps)}>"
-                params = self.functions.gen_params(
-                    method.params, method.type_params,
-                    emit_defaults=False, func=method)
+                params = self.gen_async._emit_method_params_decl(
+                    method, record.name)
                 args = self.gen_async._factory_args_forwarded(
                     method, receiver=(record.name, "*this"))
                 const_suffix = " const" if method.is_readonly else ""
@@ -1310,9 +1309,8 @@ class CodeGenerator:
                             record_tps = self.gen_async._record_template_args(record.name)
                             if record_tps:
                                 cpp_record = f"{cpp_record}<{', '.join(record_tps)}>"
-                            params = self.functions.gen_params(
-                                method.params, method.type_params,
-                                emit_defaults=False, func=method)
+                            params = self.gen_async._emit_method_params_decl(
+                                method, record.name)
                             args = self.gen_async._factory_args_forwarded(
                                 method, receiver=(record.name, "*this"))
                             const_suffix = " const" if method.is_readonly else ""

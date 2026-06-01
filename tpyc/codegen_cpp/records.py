@@ -569,8 +569,8 @@ class RecordGenerator:
                     with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
                         struct_name = self.gen_async._struct_name_templated(
                             method, record.name)
-                    params = self.functions.gen_params(
-                        method.params, method.type_params, emit_defaults=True)
+                    params = self.gen_async._emit_method_params_decl(
+                        method, record.name)
                     const_suffix = " const" if method.is_readonly else ""
                     out.write("\n")
                     # In-class method declaration: do NOT pass record_name --
@@ -585,8 +585,8 @@ class RecordGenerator:
             # emit pass, parallel to generator methods above.
             if method.is_async:
                 struct_name = self.gen_async._struct_name_templated(method, record.name)
-                params = self.functions.gen_params(
-                    method.params, method.type_params, emit_defaults=True)
+                params = self.gen_async._emit_method_params_decl(
+                    method, record.name)
                 const_suffix = " const" if method.is_readonly else ""
                 out.write("\n")
                 # In-class method declaration: do NOT pass record_name --

@@ -47,6 +47,17 @@ class ParamConstDecision:
 _NOT_CONST = ParamConstDecision(signature_const=False, deep_borrow_const=False)
 
 
+def _is_ptr_variant_union(ptype: TpyType) -> bool:
+    """Type-intrinsic mirror of `CodeGenContext.is_ptr_variant_union` -- a
+    non-value union that lowers to `std::variant<A*, B*>`. Pure type query
+    (no Compiler ctx), so the FunctionInfo verdict can be materialized at
+    Phase-2 time, before any codegen context exists."""
+    inner = unwrap_readonly(unwrap_ref_type(ptype))
+    return (isinstance(inner, UnionType)
+            and inner.uses_pointer_repr()
+            and not inner.needs_wrapper())
+
+
 def decide_param_const(
     ptype: TpyType,
     *,
@@ -137,10 +148,14 @@ def populate_const_borrow_params(fi: FunctionInfo) -> None:
     `addr_escapes_params`. The result is a frozen ABI fact -- call sites
     read it directly without re-deriving the decision.
 
-    For now we only populate the inference path (no const_params /
-    use_readonly_params context here). Forced-const paths (const methods,
-    constructors) compute the decision per-emission, which is fine because
-    they're driven by the emitter's frame.
+    `use_readonly_params=fi.is_readonly` mirrors the signature emitter
+    (`gen_params(..., use_readonly_params=func.is_readonly)`): a readonly
+    fn/method deep-consts its pointer-variant union params. Requires
+    `fi.is_readonly` to be finalized first -- this runs after
+    `infer_method_const` in the Phase-2 driver, not inside
+    `propagate_mutation_facts`. `reassigned_params` is unavailable here (a
+    body-scan fact), but it only flips copy-for-reassign value types (str,
+    BigInt), never the borrow-shaped params whose verdict call sites read.
     """
     if fi.mutated_params is None:
         # Phase-2 hasn't run for this function -- leave as None to signal
@@ -150,11 +165,6 @@ def populate_const_borrow_params(fi: FunctionInfo) -> None:
     sig: set[int] = set()
     deep: set[int] = set()
     for i, p in enumerate(fi.params):
-        # No `is_ptr_variant_union` info available here without ctx; the
-        # shallow-vs-deep distinction for unions only matters at the
-        # emitter, where ctx is available. We populate the union case as
-        # signature_const=True (the typical inference outcome) and let
-        # emitters pick deep vs shallow themselves.
         decision = decide_param_const(
             p.type,
             index=i,
@@ -162,6 +172,8 @@ def populate_const_borrow_params(fi: FunctionInfo) -> None:
             mutated_params=fi.mutated_params,
             addr_escapes_params=fi.addr_escapes_params,
             reassigned_params=None,  # not tracked on FunctionInfo
+            is_ptr_variant_union=_is_ptr_variant_union(p.type),
+            use_readonly_params=fi.is_readonly,
         )
         if decision.signature_const:
             sig.add(i)

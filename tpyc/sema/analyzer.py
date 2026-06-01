@@ -809,6 +809,13 @@ class SemanticAnalyzer:
                 _collect_from(mod_info)
         propagate_mutation_facts(all_fis)
         infer_method_const(all_fis)
+        # Materialize per-param const ABI facts AFTER readonly is finalized
+        # (infer_method_const sets is_readonly): the union deep-const verdict
+        # keys off fi.is_readonly, so it must run last. Imported inside the
+        # method to avoid the codegen_cpp <-> sema import cycle.
+        from ..codegen_cpp.param_const import populate_const_borrow_params
+        for fi in all_fis:
+            populate_const_borrow_params(fi)
 
     def _sync_inferred_const(self, module: TpyModule) -> None:
         """Copy inferred is_readonly=True from FunctionInfo back to TpyFunction nodes.

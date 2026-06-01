@@ -83,16 +83,6 @@ def propagate_mutation_facts(functions: list[FunctionInfo]) -> None:
     for fi in local_fis:
         fi.call_edges = None
 
-    # Populate codegen ABI facts derived from finalized mutation_params.
-    # These are read directly by emitters and call-arg lowering instead of
-    # re-deriving the const decision at every site. Imported inside the
-    # function body to avoid an import cycle: codegen_cpp/__init__.py
-    # transitively imports sema, so a top-level `from ..codegen_cpp...`
-    # here would deadlock during package initialization.
-    from ..codegen_cpp.param_const import populate_const_borrow_params
-    for fi in local_fis:
-        populate_const_borrow_params(fi)
-
 
 def _resolve_single(fi: FunctionInfo) -> None:
     """Compute mutated_params, structural_mutated_params, and self_mutated for a function whose callees are resolved."""

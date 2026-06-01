@@ -301,6 +301,15 @@ class AsyncCoroCodegen:
         asyncio.run).
         """
         out: list[_CoroParam] = []
+        # The per-param const verdict (addr-escape / readonly aware) lives on
+        # the resolved FunctionInfo. An inferred-readonly method does NOT wrap
+        # its params in ReadonlyType, so the factory field must consult the
+        # verdict, not just the param type, to match the call site + body.
+        _deep_const: 'frozenset[int] | None' = None
+        if record_name:
+            _ri = self.ctx.analyzer.registry.get_record(record_name)
+            _mfi = _ri.get_method(func.name) if _ri else None
+            _deep_const = _mfi.deep_const_borrow_params if _mfi else None
         if record_name:
             # Match the factory-site spelling (generator.py:1177, :1252):
             # convert dotted nested-class names to C++ scope syntax (`Outer.Inner`
@@ -320,7 +329,7 @@ class AsyncCoroCodegen:
                 ctor_param_type=recv_type,
                 kind=_CoroParamKind.REF,
             ))
-        for pname, ptype in func.params:
+        for _pidx, (pname, ptype) in enumerate(func.params):
             cpp_name = escape_cpp_name(pname)
             ptype_inner = unwrap_ref_type(ptype)
             actual = unwrap_readonly(ptype_inner)
@@ -380,9 +389,12 @@ class AsyncCoroCodegen:
                 # plain locals. Storing it by value in the frame keeps the
                 # factory's signature in step with what the call site (and
                 # the emplace path) already build; a value-variant-by-ref
-                # field would be the lone divergence. Deep-const for a
-                # readonly union, matching `_gen_union_arg`.
-                is_readonly_param = actual is not ptype_inner
+                # field would be the lone divergence. Deep-const when the param
+                # is `readonly[...]` OR the const verdict deep-consts it (matches
+                # the call site + body, addr-escape aware).
+                is_readonly_param = ((actual is not ptype_inner)
+                                     or (_deep_const is not None
+                                         and _pidx in _deep_const))
                 cpp_type = (self.types.type_to_cpp_const_ptr_variant(actual)
                             if is_readonly_param
                             else self.types.type_to_cpp_ptr_variant(actual))
@@ -572,6 +584,18 @@ class AsyncCoroCodegen:
 
     def _emit_params_decl(self, func: TpyFunction) -> str:
         return ", ".join(p.factory_param_decl() for p in self._classify_params(func))
+
+    def _emit_method_params_decl(self, method: TpyFunction, record_name: str) -> str:
+        """User-facing factory signature params for a generator/async *method*
+        (`Z::voices(...)`), derived from the SAME `_classify_params` the frame
+        field and ctor use -- so the signature's per-param const-ness (union
+        deep-const per the verdict, ref params mutable) matches the field by
+        construction. `__self` is implicit via `*this`, so it's dropped.
+        Mirrors `_emit_params_decl` for free functions."""
+        return ", ".join(
+            p.factory_param_decl()
+            for p in self._classify_params(method, record_name)
+            if p.cpp_name != "__self")
 
     def _ret_cpp(self, func: TpyFunction) -> str:
         return self.types.type_to_cpp(unwrap_ref_type(func.return_type))
@@ -3054,8 +3078,10 @@ class AsyncCoroCodegen:
         dynamic_arg = self.expressions._gen_dynamic_protocol_arg(arg, ptype)
         if dynamic_arg is not None:
             return dynamic_arg
+        _dcbp = fi.deep_const_borrow_params
         union_arg = self.expressions._gen_union_arg(
-            arg, ptype, is_readonly_target=fi.is_readonly)
+            arg, ptype,
+            is_readonly_target=(_dcbp is not None and arg_index in _dcbp))
         if union_arg is not None:
             return union_arg
         return self.expressions.gen_call_arg(arg, ptype)
