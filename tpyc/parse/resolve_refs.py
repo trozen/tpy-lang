@@ -336,8 +336,8 @@ def resolve_refs(module: TpyModule) -> None:
         for alias_name, entry in module.type_aliases.items():
             alias_ref, alias_loc, alias_type_params, alias_type_param_kinds = entry
             # Generic-alias scope: bind `T` (etc.) so the body resolves
-            # `T` to a TypeParamRef instead of failing with "Unknown
-            # type: T".  Empty scope for non-generic aliases.
+            # `T` to a TypeParamRef instead of failing with an
+            # "Unknown type: T" error.  Empty scope for non-generic aliases.
             alias_scope = (
                 dict(zip(alias_type_params, alias_type_param_kinds))
                 if alias_type_params else None
