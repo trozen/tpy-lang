@@ -7,14 +7,15 @@ namespace tpyapp::main {
 // def describe(p: Pet) -> str:
 std::string describe(Pet& p) {
     // match p:  # tpyc: ok
+    auto& __match_subject = p;
     // case Dog(name=n):
-    if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&p)) {
+    if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&__match_subject)) {
         Dog& __case_0 = *__mpoly_0;
         auto& n = __case_0.name;
         // return "dog:" + n + ":" + p.speak()
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("dog:", n)), ":")), __case_0.speak()));
     // case Cat() | Hamster():
-    } else if ((dynamic_cast<Cat*>(&p) != nullptr) || (dynamic_cast<Hamster*>(&p) != nullptr)) {
+    } else if ((dynamic_cast<Cat*>(&__match_subject) != nullptr) || (dynamic_cast<Hamster*>(&__match_subject) != nullptr)) {
         // return "small:" + p.speak()
         return (::tpy::str_concat("small:", p.speak()));
     // case _:

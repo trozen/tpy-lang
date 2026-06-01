@@ -7,14 +7,15 @@ namespace tpyapp::main {
 // def classify(s: Shape) -> str:
 std::string classify(Shape& s) {
     // match s:  # tpyc: ok
+    auto& __match_subject = s;
     // case Square(side=k):
-    if (Square* __mpoly_0 = ::tpy::dyn_adapter_cast<Shape, Square>(&s)) {
+    if (Square* __mpoly_0 = ::tpy::dyn_adapter_cast<Shape, Square>(&__match_subject)) {
         Square& __case_0 = *__mpoly_0;
         auto& k = __case_0.side;
         // return "square " + str(k) + " -> " + str(s.area())
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("square ", (k).to_string())), " -> ")), (__case_0.area()).to_string()));
     // case Rect():
-    } else if (Rect* __mpoly_1 = ::tpy::dyn_adapter_cast<Shape, Rect>(&s)) {
+    } else if (Rect* __mpoly_1 = ::tpy::dyn_adapter_cast<Shape, Rect>(&__match_subject)) {
         Rect& __case_1 = *__mpoly_1;
         // return "rect -> " + str(s.area())
         return (::tpy::str_concat("rect -> ", (__case_1.area()).to_string()));

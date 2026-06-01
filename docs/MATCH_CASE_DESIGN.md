@@ -662,8 +662,16 @@ arm.
   shared with union / record subjects) and falls through to a later `Dog()` /
   `_` arm when it fails. A *named-constant* comparison (`case Dog(size=Big):`)
   is not yet emitted -- use a guard (`case Dog() if d.size == Big:`).
-- The subject must be a bare variable name (same restriction as `isinstance`);
-  a field / subscript / call subject is rejected with a bind-to-local hint.
+- The subject may be an arbitrary expression -- a bare name, subscript, field,
+  rvalue call, or wrapper deref view. It is evaluated once into
+  `__match_subject` (`auto&` for an lvalue so a `case C() as v: v.f = ...` arm
+  writes through; `auto` for an rvalue so a temporary outlives the deref-view
+  cast), and the dynamic_cast chain runs off that binding. Only a bare-name
+  subject narrows the subject for in-arm reads (`p.speak()` resolves to the
+  matched subclass); an expression subject reaches the narrowed value via
+  `as` / a capture. This is a deliberate divergence from `isinstance`, which
+  stays bare-name-only: `match` re-evaluates the subject (CPython semantics)
+  rather than narrowing a name in place, so it needs no dotted-path key.
 - `Optional[Pet]` is not routed here -- polymorphic dispatch on an optional
   additionally needs a `None` arm (a separate, unimplemented path); it stays
   rejected by the existing Optional handling.
@@ -882,7 +890,7 @@ Minor differences where TPy's compiled model diverges:
 | Sequence patterns | Runtime protocol check | Phase 2 (not yet) | Missing feature, not a semantic difference |
 | Mapping patterns | Runtime protocol check | Phase 2 (not yet) | Missing feature, not a semantic difference |
 | Soft keyword | `match`/`case` usable as variable names | Same (Python ast handles this) | No difference |
-| Polymorphic subject expression | Any expression | Must be a bare variable name (like `isinstance`) | Rejected with a bind-to-local hint; valid CPython needs a one-line rebind |
+| Polymorphic subject expression | Any expression | Any expression (bound once into `__match_subject`); `isinstance` still requires a bare name | Match: no difference. Deliberate divergence from `isinstance`, which stays bare-name-only |
 | Shadowed polymorphic arm | Silently allowed (dead arm) | Compile error (`unreachable case`) | Stricter: rejects an arm CPython would accept-but-never-run |
 | Non-conformer polymorphic arm | Silently allowed (never matches) | Compile error | Stricter: a `case T()` whose `T` can't match the subject is rejected, not dead code |
 

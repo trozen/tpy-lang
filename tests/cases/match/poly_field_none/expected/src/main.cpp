@@ -7,8 +7,9 @@ namespace tpyapp::main {
 // def describe(p: Pet) -> str:
 std::string describe(const Pet& p) {
     // match p:
+    auto& __match_subject = p;
     // case Dog(name=None):  # tpyc: ok
-    if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&p)) {
+    if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&__match_subject)) {
         const Dog& __case_0 = *__mpoly_0;
         if (!__case_0.name.has_value()) {
             // return "nameless dog"
@@ -17,7 +18,7 @@ std::string describe(const Pet& p) {
         }
     }
     // case Dog():
-    if (const Dog* __mpoly_1 = dynamic_cast<const Dog*>(&p)) {
+    if (const Dog* __mpoly_1 = dynamic_cast<const Dog*>(&__match_subject)) {
         const Dog& __case_1 = *__mpoly_1;
         // return "named dog"
         return "named dog";

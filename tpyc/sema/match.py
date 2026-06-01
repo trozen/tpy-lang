@@ -13,12 +13,13 @@ from ..typesys import (
     NominalType, AliasRef, RecursiveAliasInstanceType,
     NoneType, OptionalType, UnionType, PendingStrType,
     LiteralType, LiteralValue, LiteralTag, TypeParamRef,
-    unwrap_readonly, unwrap_ref_type, make_union,
+    unwrap_readonly, unwrap_ref_type, unwrap_own, make_union,
     is_float_type, is_any_str_type, is_protocol_type,
-    polymorphic_source_inner,
+    polymorphic_source_inner, deref_dispatch_inner,
 )
 from ..modules import _resolve_concrete_type_name
 from .flow_facts import FlowFacts
+from .protocols import dynamic_dispatch_type_conforms
 from ..type_def_registry import (
     is_bool_type, is_fixed_int_type, is_big_int_type,
     is_str_category, is_char_type, is_float_category,
@@ -64,7 +65,11 @@ class MatchAnalyzer:
     def analyze_match(self, stmt: TpyMatch) -> None:
         """Analyze a match/case statement."""
         subject_type = self.expr.analyze_expr(stmt.subject)
-        effective_type = unwrap_ref_type(unwrap_readonly(subject_type))
+        # `unwrap_own` handles an rvalue subject returned by value
+        # (`match make_box():` -> `Own[Box[T]]`); the match reads the owned
+        # value, so dispatch sees its inner type. Reachable only since
+        # expression subjects were allowed (a name local is never Own-typed).
+        effective_type = unwrap_own(unwrap_ref_type(unwrap_readonly(subject_type)))
         # Expand recursive union alias placeholder to its underlying
         # UnionType so match dispatch sees the variant arms.
         if isinstance(effective_type, AliasRef):
@@ -110,18 +115,15 @@ class MatchAnalyzer:
             )
         stmt.polymorphic_dispatch = is_polymorphic
 
-        # Subject variable name for narrowing (only if simple name)
+        # Subject variable name for narrowing (only if simple name). A
+        # polymorphic match on an expression subject (subscript / field /
+        # rvalue call / wrapper deref) dispatches on a once-bound
+        # `__match_subject`, so no name is required -- unlike isinstance, which
+        # narrows a name in place. The arm reaches the narrowed value through
+        # `as` / a capture; subject-name narrowing below applies only to names.
         subject_name: str | None = None
         if isinstance(stmt.subject, TpyName):
             subject_name = stmt.subject.name
-
-        # Polymorphic dispatch narrows the subject through dynamic_cast on its
-        # original storage; like isinstance, that needs a stable variable name.
-        if is_polymorphic and subject_name is None:
-            raise self.ctx.error(
-                "match on a @dynamic / polymorphic value requires the subject "
-                "to be a variable name; bind it to a local first", stmt
-            )
 
         # Resumable frame (H1): when a generator/async `match` carries a
         # suspension, its arm bodies become separate states, so pattern
@@ -364,7 +366,8 @@ class MatchAnalyzer:
         inner = polymorphic_source_inner(effective_type, self.ctx.registry)
         if inner is not None:
             return inner, 0
-        deref = self.expr.calls._deref_dispatch_inner(effective_type)
+        deref = deref_dispatch_inner(
+            effective_type, self.expr.type_ops, self.ctx.registry)
         if deref is not None:
             return deref[0], deref[1]
         return None, 0
@@ -472,19 +475,15 @@ class MatchAnalyzer:
                 f"unknown type '{name}' in match pattern", pattern
             )
 
-        if is_protocol_type(source_inner):
-            conforms = (
-                self.stmts.protocols.directly_implements_dynamic(resolved, source_inner)
-                or self.stmts.protocols.type_conforms_to_protocol(resolved, source_inner)
-            )
-            if not conforms:
+        if not dynamic_dispatch_type_conforms(
+                resolved, source_inner, self.stmts.protocols, self.ctx.registry):
+            if is_protocol_type(source_inner):
                 raise self.ctx.error(
                     f"type '{name}' does not conform to the @dynamic protocol "
                     f"'{source_inner}', so the case can never match; it must "
                     f"inherit '{source_inner}' or structurally implement its "
                     f"methods", pattern
                 )
-        elif not self.ctx.registry.is_subclass_of_or_equal(resolved, source_inner):
             raise self.ctx.error(
                 f"type '{name}' is not a subclass of '{source_inner}'", pattern
             )

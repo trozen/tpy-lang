@@ -1736,25 +1736,15 @@ class CodeGenContext:
 
     def deref_dispatch_source(self, var_decl: 'TpyType | None') -> 'tuple[TpyType, int] | None':
         """Peel __deref__ steps off `var_decl` until reaching a @dynamic
-        dispatch inner; return (inner, depth). Mirrors sema's
-        CallAnalyzer._deref_dispatch_inner so the if-init cast-and-cache can
-        recover the depth a deref-view fact omits (the fact carries only the
-        narrowed subclass, not the wrapper or its deref depth)."""
-        from ..typesys import is_dynamic_dispatch_inner
-        cur = unwrap_readonly(var_decl) if var_decl is not None else None
-        type_ops = self.analyzer.type_ops
-        for depth in range(1, 9):
-            if cur is None:
-                return None
-            target = type_ops.get_deref_target_type(cur)
-            if target is None:
-                return None
-            inner = unwrap_readonly(target)
-            if (isinstance(inner, NominalType)
-                    and is_dynamic_dispatch_inner(inner, self.analyzer.registry)):
-                return inner, depth
-            cur = inner
-        return None
+        dispatch inner; return (inner, depth). Delegates to the shared
+        typesys.deref_dispatch_inner so the if-init cast-and-cache recovers the
+        depth a deref-view fact omits (the fact carries only the narrowed
+        subclass, not the wrapper or its deref depth)."""
+        from ..typesys import deref_dispatch_inner
+        if var_decl is None:
+            return None
+        return deref_dispatch_inner(
+            var_decl, self.analyzer.type_ops, self.analyzer.registry)
 
     def is_indirect_name(self, expr: TpyExpr) -> bool:
         """Check if expression needs indirect access (-> / deref).

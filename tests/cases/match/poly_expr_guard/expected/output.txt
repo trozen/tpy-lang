@@ -1,0 +1,3 @@
+legless snake
+quadruped dog
+dog legs=3

@@ -3763,6 +3763,34 @@ def polymorphic_source_inner(
     return None
 
 
+def deref_dispatch_inner(
+    typ: TpyType, type_ops: 'TypeOperations', registry: 'TypeRegistry',
+) -> 'tuple[NominalType, int] | None':
+    """If `typ` is an owning wrapper whose reference-returning __deref__ peels
+    to a @dynamic-dispatch inner (polymorphic class or direct @dynamic
+    protocol), return (inner, deref_depth). The deref payload pointer
+    `&(<v>.__deref__()...)` is then the same dynamic_cast input the
+    bare/Ptr/Optional sources expose directly, so isinstance / match dispatch
+    the same way -- on the deref view rather than on the wrapper.
+
+    Bare/Ptr/Optional sources are caught earlier via polymorphic_source_inner;
+    this fires only for wrappers (Box/Rc). A wrapper without a __deref__ (e.g.
+    Weak) has no deref view and yields None -- it falls through to the
+    static-fold path. `type_ops` is the analyzer's TypeOperations (it owns
+    `get_deref_target_type`); passed in to keep typesys free of a sema import."""
+    current = unwrap_readonly(typ)
+    for depth in range(1, 9):
+        target = type_ops.get_deref_target_type(current)
+        if target is None:
+            return None
+        inner = unwrap_readonly(target)
+        if (isinstance(inner, NominalType)
+                and is_dynamic_dispatch_inner(inner, registry)):
+            return inner, depth
+        current = inner
+    return None
+
+
 def is_polymorphic_subclass_fact(
     var_decl: 'TpyType | None', narrowed: 'TpyType', registry: 'TypeRegistry'
 ) -> bool:

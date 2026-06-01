@@ -10,10 +10,11 @@ from dataclasses import dataclass
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NominalType, NoneType, OptionalType,
+    TpyType, NominalType, NoneType, OptionalType, ReadonlyType,
     PendingStrType, UnionType, RecursiveAliasInstanceType,
     LiteralType,
     unwrap_readonly, is_any_str_type, polymorphic_source_inner,
+    polymorphic_source_is_pointer,
 )
 from .variant_access import VariantAccess
 from ..parse import (
@@ -56,11 +57,13 @@ class _PolyDispatch:
     """Cast context shared across the arms of a @dynamic / polymorphic match.
 
     `cast_arg` is the C++ pointer expression fed to `dynamic_cast` /
-    `dyn_adapter_cast` (the subject's payload address); `source_inner` is the
-    @dynamic protocol or polymorphic-class root the casts narrow from;
-    `subject_read` reads the subject at its base type for capture / as
-    bindings."""
-    subject_name: str
+    `dyn_adapter_cast` (the once-bound `__match_subject`'s payload address);
+    `source_inner` is the @dynamic protocol or polymorphic-class root the casts
+    narrow from; `subject_read` reads the subject at its base type for capture /
+    as bindings. `subject_name` is the subject's variable name when it is a bare
+    name (used to narrow the body's reads to the arm subclass) and None for an
+    expression subject (the arm reaches the value via `as` / capture only)."""
+    subject_name: str | None
     source_inner: TpyType
     cast_arg: str
     is_const: bool
@@ -94,9 +97,10 @@ class MatchGenerator:
         # Pre-declare variables first declared inside match arms
         self.stmts._emit_branch_decls(out, stmt, indent)
 
-        # @dynamic / polymorphic dispatch operates on the subject's original
-        # storage (dynamic_cast), not on a `__match_subject` copy/alias -- so
-        # it forgoes that binding entirely, like isinstance.
+        # @dynamic / polymorphic dispatch evaluates the subject once into
+        # `__match_subject` (see `_gen_match_polymorphic`) and runs the
+        # `dynamic_cast` chain off it -- so it owns its own binding emit and
+        # returns here.
         if stmt.polymorphic_dispatch:
             self._gen_match_polymorphic(out, stmt, indent)
             self._emit_match_unreachable_tail(out, stmt, indent)
@@ -224,9 +228,6 @@ class MatchGenerator:
         `dynamic_cast` chain, the match sibling of isinstance subclass
         narrowing. Reuses the same cast-argument / cast-rhs helpers so the two
         constructs stay in lockstep."""
-        assert isinstance(stmt.subject, TpyName)
-        subject_name = stmt.subject.name
-
         # A suspension inside an arm body is not threaded through the resumable
         # frame's arm routing (the dispatch is a plain dynamic_cast chain, not
         # the decomposed state machine) -- refuse rather than drop it.
@@ -237,24 +238,41 @@ class MatchGenerator:
                 loc=stmt.loc,
             )
 
-        var_decl = self.ctx.lookup_var_type(subject_name)
+        subject = stmt.subject
+        subject_name = subject.name if isinstance(subject, TpyName) else None
         registry = self.ctx.analyzer.registry
+        # Dispatch type: declared var type for a bare name; for an expression,
+        # the fully-unwrapped effective type sema already stored on the node
+        # (Own / Ref / Readonly stripped). Reusing it rather than re-deriving
+        # keeps the source / deref-depth predicates seeing exactly what sema
+        # accepted as polymorphic. Both feed the same predicates below.
+        if subject_name is not None:
+            var_decl = self.ctx.lookup_var_type(subject_name)
+        else:
+            var_decl = stmt.subject_type
+
+        # Evaluate the subject once into `__match_subject` -- `auto&` for an
+        # lvalue (so `case C() as v: v.f = ...` writes through to the original
+        # storage), `auto` for an rvalue (so a temporary such as `make_box()`
+        # outlives the deref-view cast that points into it). The dynamic_cast
+        # chain then takes its pointer from this single binding.
+        subject_code = self.expressions.gen_expr(subject)
+        self.ctx.temps.flush(out, indent)
+        binding = "auto&" if _match_subject_is_lvalue(subject) else "auto"
+        out.write(f"{indent}{binding} __match_subject = {subject_code};\n")
+
         source_inner = polymorphic_source_inner(var_decl, registry)
         if source_inner is not None:
-            cast_arg = self.ctx.polymorphic_cast_arg(subject_name, var_decl)
+            depth = 0
         else:
             deref = self.ctx.deref_dispatch_source(var_decl)
             assert deref is not None  # sema flagged this as polymorphic
             source_inner, depth = deref
-            cast_arg = self.ctx.deref_view_cast_arg(subject_name, depth)
-        is_const = self.stmts._is_const_borrow_source(subject_name, var_decl)
-        # No `__match_subject` alias is bound (dispatch reads the original
-        # storage), so capture / as / wildcard arms need a direct subject read.
-        subject_read = self.expressions.gen_expr(stmt.subject)
-        self.ctx.temps.flush(out, indent)
+        cast_arg = self._poly_match_cast_arg(var_decl, depth)
+        is_const = self._poly_subject_is_const(subject, subject_name, var_decl)
 
         ctx = _PolyDispatch(subject_name, source_inner, cast_arg, is_const,
-                            subject_read)
+                            "__match_subject")
         # The if/elif chain relies on the `if (Sub* p = cast)` init form, which
         # can't also AND a field-value check; a field condition (like a guard)
         # therefore needs the standalone-if + goto guarded path.
@@ -266,6 +284,60 @@ class MatchGenerator:
             self._gen_match_polymorphic_guarded(out, stmt, ctx, indent)
         else:
             self._gen_match_polymorphic_if_elif(out, stmt, ctx, indent)
+
+    def _poly_match_cast_arg(self, var_decl: 'TpyType | None', depth: int) -> str:
+        """The dynamic_cast pointer input, taken from the once-bound
+        `__match_subject`: a deref view (`&(__match_subject.__deref__()...)`)
+        for owning wrappers, the pointer itself for pointer-repr sources
+        (`Ptr[inner]` / pointer-repr `Optional`), else its address."""
+        if depth > 0:
+            return f"&(__match_subject{'.__deref__()' * depth})"
+        if polymorphic_source_is_pointer(var_decl):
+            return "__match_subject"
+        return "&__match_subject"
+
+    def _poly_subject_is_const(
+        self, subject: TpyExpr, subject_name: str | None,
+        var_decl: 'TpyType | None',
+    ) -> bool:
+        """Whether the dispatch pointee is const, so the cast targets
+        `const Sub*` (else `dynamic_cast<Sub*>(const T*)` fails to compile).
+
+        True when the subject is readonly-typed, or when `__match_subject`
+        binds a const borrow: a const-ref param, or -- since C++ propagates
+        const through member access -- a field / element of a const receiver.
+        The param const-borrow facts (`const_ref_params` etc.) need not surface
+        as `ReadonlyType` in the sema type, so they are consulted directly."""
+        if isinstance(self.ctx.analyzer.get_expr_type(subject), ReadonlyType):
+            return True
+        return self._expr_is_const_borrow(subject, var_decl)
+
+    def _expr_is_const_borrow(
+        self, expr: TpyExpr, var_decl: 'TpyType | None',
+    ) -> bool:
+        """Does `expr` bind as a const borrow? A bare name defers to the
+        param/local const-borrow facts; a field / subscript is const when its
+        receiver is (C++ member access preserves const)."""
+        if isinstance(expr, TpyName):
+            return self.stmts._is_const_borrow_source(expr.name, var_decl)
+        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+            recv = expr.obj
+            return self._expr_is_const_borrow(
+                recv, self.ctx.analyzer.get_expr_type(recv))
+        return False
+
+    def _poly_narrow_save(
+        self, ctx: '_PolyDispatch', ref_local: str,
+    ) -> dict[str, str | None]:
+        """Narrow the subject name to the arm's subclass reference so reads of
+        the subject in the body resolve to it. Only a bare-name subject has a
+        name to narrow; an expression subject reaches the value via `as` /
+        capture, so this is a no-op there."""
+        if ctx.subject_name is None:
+            return {}
+        saved = {ctx.subject_name: self.ctx.narrowed_vars.get(ctx.subject_name)}
+        self.ctx.narrowed_vars[ctx.subject_name] = ref_local
+        return saved
 
     def _poly_arm_cast(
         self, pattern: TpyClassPattern, i: int, ctx: '_PolyDispatch',
@@ -323,8 +395,7 @@ class MatchGenerator:
                 out.write(f"{inner}{ref_decl}\n")
                 self._gen_match_field_bindings(out, pattern, ref_local, inner)
                 self._emit_binding(out, as_name, as_raw, ref_local, inner)
-                saved = {ctx.subject_name: self.ctx.narrowed_vars.get(ctx.subject_name)}
-                self.ctx.narrowed_vars[ctx.subject_name] = ref_local
+                saved = self._poly_narrow_save(ctx, ref_local)
                 self.ctx.indent_level += 1
                 self._emit_case_body(out, case.body, case.type_facts)
                 self.ctx.indent_level -= 1
@@ -375,8 +446,7 @@ class MatchGenerator:
                 out.write(f"{inner}{ref_decl}\n")
                 self._gen_match_field_bindings(out, pattern, ref_local, inner)
                 self._emit_binding(out, as_name, as_raw, ref_local, inner)
-                saved = {ctx.subject_name: self.ctx.narrowed_vars.get(ctx.subject_name)}
-                self.ctx.narrowed_vars[ctx.subject_name] = ref_local
+                saved = self._poly_narrow_save(ctx, ref_local)
                 field_conds = self._record_field_conditions(pattern, ref_local)
                 self._emit_poly_guarded_action(
                     out, case, guard, field_conds, end_label, indent, inner)

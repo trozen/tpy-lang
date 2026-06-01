@@ -1,0 +1,2 @@
+Box deref-view dispatch: CPython's `case Dog()` would isinstance-check the Box
+wrapper itself, not its payload, so it never matches. C++-only divergence.

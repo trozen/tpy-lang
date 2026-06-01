@@ -12,6 +12,7 @@ from typing import Callable, NoReturn, TYPE_CHECKING
 from ..typesys import (
     TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, own_tuple_target, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
     is_polymorphic_class_type, is_dynamic_dispatch_inner, polymorphic_source_inner,
+    deref_dispatch_inner,
     IntLiteralType, resolve_int_literals,
     LiteralType, LiteralValue, LiteralTag, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, is_void_like_type, ParamInfo, ReadonlyType,
@@ -46,6 +47,7 @@ from .overloads import (
     _scalar_widening_cost,
 )
 from .statements import _root_name_of_expr, _is_self_call_deferred
+from .protocols import dynamic_dispatch_type_conforms
 from .type_ops import partial_substitute, post_substitute_hint, seeded_arg_hint
 from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo, _is_static_str
 from ..macro_loader import expand_call_macro
@@ -1708,32 +1710,6 @@ class CallAnalyzer:
                 )
         return result
 
-    def _deref_dispatch_inner(
-        self, typ: TpyType,
-    ) -> 'tuple[NominalType, int] | None':
-        """If `typ` is an owning wrapper whose reference-returning __deref__
-        peels to a @dynamic-dispatch inner (polymorphic class or direct
-        @dynamic protocol), return (inner, deref_depth). The deref payload
-        pointer `&(<v>.__deref__()...)` is then the same dynamic_cast input the
-        bare/Ptr/Optional sources expose directly, so isinstance dispatches the
-        same way -- on the deref view rather than on the wrapper.
-
-        Bare/Ptr/Optional sources are caught earlier via
-        polymorphic_source_inner; this fires only for wrappers (Box/Rc). A
-        wrapper without a __deref__ (e.g. Weak) has no deref view and yields
-        None here -- it falls through to the static-fold path."""
-        current = unwrap_readonly(typ)
-        for depth in range(1, 9):
-            target = self.type_ops.get_deref_target_type(current)
-            if target is None:
-                return None
-            inner = unwrap_readonly(target)
-            if (isinstance(inner, NominalType)
-                    and is_dynamic_dispatch_inner(inner, self.ctx.registry)):
-                return inner, depth
-            current = inner
-        return None
-
     def _is_non_deref_handle(self, typ: TpyType) -> bool:
         """True if `typ` is a non-owning handle to a payload reachable only via
         `upgrade()` (e.g. Weak[Pet]): it exposes `upgrade()` but no
@@ -1765,15 +1741,14 @@ class CallAnalyzer:
         structurally conforms can never match and is rejected with a pointed
         diagnostic rather than silently folding to False.
         """
-        if is_protocol_type(inner):
-            non_impls = [
-                ct for ct in check_types
-                if not (isinstance(ct, NominalType)
-                        and (self.protocols.directly_implements_dynamic(ct, inner)
-                             or self.protocols.type_conforms_to_protocol(ct, inner)))
-            ]
-            if non_impls:
-                names = ", ".join(f"'{t}'" for t in non_impls)
+        non_conformers = [
+            ct for ct in check_types
+            if not dynamic_dispatch_type_conforms(
+                ct, inner, self.protocols, self.ctx.registry)
+        ]
+        if non_conformers:
+            names = ", ".join(f"'{t}'" for t in non_conformers)
+            if is_protocol_type(inner):
                 raise self.ctx.error(
                     f"isinstance() check type(s) {names} do not conform to the "
                     f"@dynamic protocol '{inner}', so the check can never "
@@ -1781,19 +1756,11 @@ class CallAnalyzer:
                     f"structurally implement its methods.",
                     expr,
                 )
-        else:
-            non_subs = [
-                ct for ct in check_types
-                if not (isinstance(ct, NominalType)
-                        and self.ctx.registry.is_subclass_of_or_equal(ct, inner))
-            ]
-            if non_subs:
-                names = ", ".join(f"'{t}'" for t in non_subs)
-                raise self.ctx.error(
-                    f"isinstance() check type(s) {names} are not subclasses of "
-                    f"'{inner}'",
-                    expr,
-                )
+            raise self.ctx.error(
+                f"isinstance() check type(s) {names} are not subclasses of "
+                f"'{inner}'",
+                expr,
+            )
         expr.isinstance_var = var_name
         expr.isinstance_type = (check_types[0] if len(check_types) == 1
                                 else make_union(*check_types))
@@ -1972,7 +1939,8 @@ class CallAnalyzer:
             # reference-returning __deref__, not the wrapper itself. Narrow the
             # deref view (so `rc.bark()` resolves against the subclass while
             # `rc.clone()` stays an Rc method) and tag the depth for codegen.
-            deref = self._deref_dispatch_inner(effective_type)
+            deref = deref_dispatch_inner(
+                effective_type, self.type_ops, self.ctx.registry)
             if deref is not None and check_types:
                 inner, depth = deref
                 result = self._validate_polymorphic_subclass_dispatch(

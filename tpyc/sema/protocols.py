@@ -36,6 +36,28 @@ from ..typesys import is_numeric_type
 from .bound_check import find_method_class_param_bound_violation
 
 
+def dynamic_dispatch_type_conforms(
+    check_type: TpyType, inner: TpyType,
+    protocols: 'ProtocolChecker', registry: 'TypeRegistry',
+) -> bool:
+    """True if `check_type` can be the runtime type behind a @dynamic-dispatch
+    source rooted at `inner`, so a dynamic_cast / match arm against it can
+    succeed. When `inner` is a @dynamic protocol, conformance is C++ inheritance
+    of the protocol base OR structural implementation (the latter sits behind
+    the `P*` as an Adapter / RefAdapter); otherwise `check_type` must be a
+    subclass-or-equal of the class root.
+
+    Shared by isinstance (`CallAnalyzer._validate_polymorphic_subclass_dispatch`)
+    and match (`MatchAnalyzer._resolve_polymorphic_pattern_type`) so both accept
+    identical types; each caller keeps its own rejection diagnostic."""
+    if not isinstance(check_type, NominalType):
+        return False
+    if is_protocol_type(inner):
+        return (protocols.directly_implements_dynamic(check_type, inner)
+                or protocols.type_conforms_to_protocol(check_type, inner))
+    return registry.is_subclass_of_or_equal(check_type, inner)
+
+
 def _build_parent_protocol_subst(
     parent: NominalType, parent_info: 'ProtocolInfo | None',
 ) -> dict[str, TpyType]:

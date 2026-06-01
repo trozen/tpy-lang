@@ -7,8 +7,9 @@ namespace tpyapp::main {
 // def describe(b: Box[Pet]) -> str:
 std::string describe(::tpystd::tplib::box::Box<Pet>& b) {
     // match b:  # tpyc: ok
+    auto& __match_subject = b;
     // case Dog(n=k) if k > 0:
-    if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&(b.__deref__()))) {
+    if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&(__match_subject.__deref__()))) {
         Dog& __case_0 = *__mpoly_0;
         auto& k = __case_0.n;
         if ((k > 0)) {
@@ -18,7 +19,7 @@ std::string describe(::tpystd::tplib::box::Box<Pet>& b) {
         }
     }
     // case Dog():
-    if (Dog* __mpoly_1 = dynamic_cast<Dog*>(&(b.__deref__()))) {
+    if (Dog* __mpoly_1 = dynamic_cast<Dog*>(&(__match_subject.__deref__()))) {
         Dog& __case_1 = *__mpoly_1;
         // return "dog0 legs=" + str(b.legs())
         return (::tpy::str_concat("dog0 legs=", (__case_1.legs()).to_string()));
