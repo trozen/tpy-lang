@@ -1,0 +1,1 @@
+main.py:10: error: field 'legs' of type 'int' cannot be None, so `legs=None` can never match; drop the arm or use a guard
