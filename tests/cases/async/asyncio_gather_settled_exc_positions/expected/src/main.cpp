@@ -89,7 +89,7 @@ __coro_bad bad(int32_t tag) {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& r = *__beg_0;
+            const auto& r = *__beg_0;
             // if r.exception is not None:
             if ((r.exception.has_value())) {
                 // try:

@@ -1077,7 +1077,7 @@ class SemanticContext:
         if name in self.func.loop_vars:
             self.func.consumed_loop_vars.add(name)
 
-    def mark_param_mutated(self, name: str) -> None:
+    def mark_param_mutated(self, name: str, *, through_field: bool = False) -> None:
         """Mark a function parameter as directly mutated (Phase 1 of mutation inference).
 
         For 'self': sets current_self_mutated (method self-mutation tracking).
@@ -1086,6 +1086,13 @@ class SemanticContext:
         element/field/ptr borrows back to their source storage (8a.5: deferred
         marking for element refs -- when v = items[i] and v.field is written,
         the write propagates back to items).
+
+        ``through_field``: the mutation is a genuine through-reference write
+        (field/subscript/slice assignment, del) rather than the speculative
+        non-readonly-method-call mark. Only then do we climb a field-path
+        borrow root (`o.items` -> `o`) to the owning param: a method call whose
+        callee turns out readonly must NOT demote the receiver, so the
+        method-call mark stops at the field-path key as it always has.
         """
         if name == "self":
             self.func.current_self_mutated = True
@@ -1095,7 +1102,7 @@ class SemanticContext:
         iterable = self.func.loop_var_iterable.get(name)
         if iterable is not None:
             # Field-path iterables ("c.items") need root extraction for param lookup
-            self.mark_param_mutated(_storage_root(iterable))
+            self.mark_param_mutated(_storage_root(iterable), through_field=through_field)
         # 8a.5: trace through element/field/ptr borrows to source param.
         # When v = items[i] (deferred) and v is later written through,
         # mark the ultimate storage root (e.g. items) as mutated.
@@ -1103,7 +1110,16 @@ class SemanticContext:
         # on the ultimate root returns itself (no upstream borrow points to it).
         ultimate = self.func.borrow_tracker.effective_storage_through_borrows(name)
         if ultimate != name:
-            self.mark_param_mutated(ultimate)
+            self.mark_param_mutated(ultimate, through_field=through_field)
+        # A borrow rooted at a field path (`o.items`, registered for `e = o.items[0]`
+        # or for an @auto_readonly accessor result `x = o.b.get()`) reaches the
+        # owning param through that field; a genuine write through the borrower
+        # mutates the param. The leaf-name walk in _root_name_of_expr handles the
+        # inline form (`o.items[0].v = 9`); this climbs the alias form to the param.
+        if through_field:
+            field_root = _storage_root(name)
+            if field_root != name:
+                self.mark_param_mutated(field_root, through_field=through_field)
 
     def mark_param_structurally_mutated(self, name: str) -> None:
         """Mark a parameter as structurally mutated (append/insert/clear/del/etc.).

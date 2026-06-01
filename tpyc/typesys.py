@@ -4308,6 +4308,19 @@ class FunctionInfo:
         """Backward compat alias for native_name."""
         return self.native_name
 
+    @property
+    def borrows_receiver_via_auto_readonly(self) -> bool:
+        """Mutable clone of an @auto_readonly accessor whose result borrows the
+        receiver (Box.get / Rc.get / Deref). Such a call does not mutate its
+        receiver; only a mutation through the borrowed result does. Used for
+        mutation rooting and to keep the receiver const for read-only use.
+        A value-returning clone (no -1 in return_borrows_from) returns a copy
+        and is excluded.
+        """
+        return (self.is_auto_readonly_mutable_clone
+                and self.return_borrows_from is not None
+                and -1 in self.return_borrows_from)
+
     def is_generic(self) -> bool:
         """Return True if this is a generic function with type parameters."""
         return bool(self.type_params)

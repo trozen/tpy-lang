@@ -15,7 +15,7 @@ struct State;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void use(::tpystd::tplib::rc::Rc<State>& r);
+void use(const ::tpystd::tplib::rc::Rc<State>& r);
 void single_owner();
 void shared_via_clone();
 void main();

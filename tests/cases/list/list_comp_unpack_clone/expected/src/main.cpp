@@ -33,11 +33,11 @@ void main() {
         std::move(__result);
     });
     // for c in clones:
-    auto __obj_1 = ::tpy::own_iter(std::move(clones));
+    auto& __obj_1 = clones;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        auto&& c = *__beg_1;
+        const auto& c = *__beg_1;
         // print(c.get().value)
         std::cout << c.get().value << "\n";
     }

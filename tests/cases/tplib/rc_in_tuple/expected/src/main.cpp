@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def both(t: tuple[Rc[Node], Rc[Node]]) -> Int32:
-int32_t both(const std::tuple<::tpystd::tplib::rc::Rc<Node>&, ::tpystd::tplib::rc::Rc<Node>&>& t) {
+int32_t both(const std::tuple<const ::tpystd::tplib::rc::Rc<Node>&, const ::tpystd::tplib::rc::Rc<Node>&>& t) {
     // # Borrow form: tuple of Rc[T] borrows.
     // return t[0].get().value + t[1].get().value
     return (::tpy::add_check<int32_t>(std::get<0>(t).get().value, std::get<1>(t).get().value));

@@ -831,7 +831,14 @@ class MethodAnalyzer:
                 # Track non-readonly method calls on for-each loop variables
                 # and string view sources (receiver mutation invalidates views)
                 info = expr.resolved_function_info
-                if info is not None and not info.is_readonly:
+                # The mutable clone of an @auto_readonly accessor (Box.get / Rc.get /
+                # Deref) does not mutate its receiver -- only a mutation *through* its
+                # borrowed result does. Demoting here would force every read-only use
+                # (`return o.b.get().v`) to a mutable receiver. The actual mutation is
+                # rooted back to the receiver at the mutation site, where
+                # _root_name_of_expr is transparent to the accessor call.
+                if (info is not None and not info.is_readonly
+                        and not info.is_auto_readonly_mutable_clone):
                     obj_root = _root_name_of_expr(expr.obj)
                     if obj_root is not None:
                         self.ctx.mark_loop_var_mutated(obj_root)

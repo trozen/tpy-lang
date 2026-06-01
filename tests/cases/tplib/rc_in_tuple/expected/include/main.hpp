@@ -15,7 +15,7 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t both(const std::tuple<::tpystd::tplib::rc::Rc<Node>&, ::tpystd::tplib::rc::Rc<Node>&>& t);
+int32_t both(const std::tuple<const ::tpystd::tplib::rc::Rc<Node>&, const ::tpystd::tplib::rc::Rc<Node>&>& t);
 void main();
 
 // class Node:

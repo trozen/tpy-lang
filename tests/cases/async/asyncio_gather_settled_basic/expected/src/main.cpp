@@ -61,7 +61,7 @@ __coro_fetch fetch(int32_t n) {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& r = *__beg_0;
+            const auto& r = *__beg_0;
             // if r.value is not None:
             if ((r.value.has_value())) {
                 // print("ok", r.value.get())

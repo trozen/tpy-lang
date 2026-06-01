@@ -31,11 +31,11 @@ void main() {
     // out = build_clones()
     std::vector<::tpystd::tplib::rc::Rc<Node>> out = build_clones();
     // for c in out:
-    auto __obj_0 = ::tpy::own_iter(std::move(out));
+    auto& __obj_0 = out;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& c = *__beg_0;
+        const auto& c = *__beg_0;
         // print(c.get().value)
         std::cout << c.get().value << "\n";
     }

@@ -179,16 +179,41 @@ def _root_name_of_expr(expr: TpyExpr) -> str | None:
     e.g. p.inner.v -> "p", c.items[0] -> "c", x -> "x".
     Returns None for non-name roots (calls, literals, etc.).
 
+    Transparent to a borrowing @auto_readonly accessor call (`o.b.get()` -> "o"):
+    the result borrows the receiver, so it is the same storage object. This
+    serves both the mutation-root callers (a write through the result mutates
+    the receiver) and the borrow-source callers (the result borrows the
+    receiver's storage); both want the receiver's root.
+
     Unbound-self field access (BaseN.field, set by sema) reports "self"
     since the implicit receiver is `this` -- the syntactic root name is
     the ancestor class, but the mutation travels through self.
     """
-    while isinstance(expr, (TpyFieldAccess, TpySubscript)):
-        if (isinstance(expr, TpyFieldAccess)
-                and expr.unbound_self_parent_type is not None):
-            return "self"
-        expr = expr.obj
+    while True:
+        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+            if (isinstance(expr, TpyFieldAccess)
+                    and expr.unbound_self_parent_type is not None):
+                return "self"
+            expr = expr.obj
+        elif _is_borrowing_auto_readonly_accessor(expr):
+            # An @auto_readonly accessor (Box.get / Rc.get / Deref) whose result
+            # borrows its receiver is transparent for mutation rooting: writing
+            # through `o.b.get().v` mutates `o`, so the root is the receiver's.
+            expr = expr.obj
+        else:
+            break
     return expr.name if isinstance(expr, TpyName) else None
+
+
+def _is_borrowing_auto_readonly_accessor(expr: TpyExpr) -> bool:
+    """Whether a mutation through this call's result roots back to the receiver.
+
+    Only a borrowing accessor (result aliases the receiver) qualifies; a
+    value-returning @auto_readonly clone hands back a copy that can't.
+    """
+    return (isinstance(expr, TpyMethodCall)
+            and expr.resolved_function_info is not None
+            and expr.resolved_function_info.borrows_receiver_via_auto_readonly)
 
 
 def _local_traces_to_self(borrow_tracker: 'BorrowTracker', name: str) -> bool:
@@ -3345,6 +3370,15 @@ class StatementAnalyzer:
                 and not var_type.is_value_type()):
             init_unwrapped = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
             _register_call_result_borrow(self.ctx, stmt.name, init_unwrapped)
+            # A non-const local alias of an @auto_readonly accessor result needs a
+            # mutable source binding (locals bind non-const references by default).
+            # Keep the receiver mutable so `x = o.b.get()` compiles whether x is
+            # later read or written; the eager-mark suppression only buys a const
+            # receiver for the direct, un-aliased read (`return o.b.get().v`).
+            if _is_borrowing_auto_readonly_accessor(init_unwrapped):
+                recv_root = _root_name_of_expr(init_unwrapped.obj)
+                if recv_root is not None:
+                    self.ctx.mark_param_mutated(recv_root)
         # Reassigned non-value locals generate T* local = &(source) in C++.
         # Mark source param as mutated so it stays T& (not const T&), regardless
         # of whether the borrow-tracking block above ran.
@@ -3678,7 +3712,7 @@ class StatementAnalyzer:
         root = _root_name_of_expr(stmt.target)
         if root is not None:
             self.ctx.mark_loop_var_mutated(root)
-            self.ctx.mark_param_mutated(root)
+            self.ctx.mark_param_mutated(root, through_field=True)
             # Slice assignment replaces a subrange -- structural mutation.
             self.ctx.mark_param_structurally_mutated(root)
         storage = self._resolve_obj_storage(stmt.target.obj)
@@ -3753,7 +3787,7 @@ class StatementAnalyzer:
             root = _root_name_of_expr(stmt.target.obj)
             if root is not None:
                 self.ctx.mark_loop_var_mutated(root)
-                self.ctx.mark_param_mutated(root)
+                self.ctx.mark_param_mutated(root, through_field=True)
             self._enforce_readonly_assignment_target(stmt.target)
             return
         value_type = self.expr.analyze_expr_with_hint(stmt.value, target_type)
@@ -3792,7 +3826,7 @@ class StatementAnalyzer:
             # Through-reference writes (field/subscript) mutate the param's object;
             # plain name reassignment just rebinds the local.
             if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
-                self.ctx.mark_param_mutated(root)
+                self.ctx.mark_param_mutated(root, through_field=True)
         copy_warning_fired = False
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
@@ -4100,7 +4134,7 @@ class StatementAnalyzer:
             del_root = _root_name_of_expr(subscript.obj)
             if del_root is not None:
                 self.ctx.mark_loop_var_mutated(del_root)
-                self.ctx.mark_param_mutated(del_root)
+                self.ctx.mark_param_mutated(del_root, through_field=True)
                 # del item removes an element from the container -- structural mutation.
                 self.ctx.mark_param_structurally_mutated(del_root)
             # Borrow conflict: del on a container with element-level borrows
@@ -4196,7 +4230,7 @@ class StatementAnalyzer:
         root = _root_name_of_expr(stmt.target.obj)
         if root is not None:
             self.ctx.mark_loop_var_mutated(root)
-            self.ctx.mark_param_mutated(root)
+            self.ctx.mark_param_mutated(root, through_field=True)
         self._enforce_readonly_assignment_target(stmt.target)
 
     def _analyze_del_attr(self, stmt: 'TpyDelAttr') -> None:
@@ -4277,7 +4311,7 @@ class StatementAnalyzer:
             root = _root_name_of_expr(target.obj)
             if root is not None:
                 self.ctx.mark_loop_var_mutated(root)
-                self.ctx.mark_param_mutated(root)
+                self.ctx.mark_param_mutated(root, through_field=True)
             self._enforce_readonly_assignment_target(target)
 
     def _analyze_del_var(self, stmt: TpyDelVar) -> None:
@@ -4406,7 +4440,7 @@ class StatementAnalyzer:
         aug_root = _root_name_of_expr(stmt.target)
         if aug_root is not None:
             self.ctx.mark_loop_var_mutated(aug_root)
-            self.ctx.mark_param_mutated(aug_root)
+            self.ctx.mark_param_mutated(aug_root, through_field=True)
             # items += other_list extends the container in-place (structural mutation).
             # items[i] += x and obj.field += x are in-place element/field writes -- not structural.
             if isinstance(stmt.target, TpyName):

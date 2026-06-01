@@ -421,6 +421,42 @@ readonly, so `self.__span__()` resolves to `__span__`'s readonly variant
 (returning `Span[readonly[T]]`). The types flow correctly through each variant
 independently.
 
+### Usage-dependent receiver const-ness
+
+A parameter read only *through* an `@auto_readonly` accessor (`Box.get`,
+`Rc.get`, a `Deref.__deref__`) keeps a `const` receiver. The mutable clone of
+the accessor does not mutate its receiver -- only a mutation *through* the
+borrowed result does -- so the accessor call itself no longer demotes the
+receiver param (`sema/methods.py` skips the non-readonly-call mutation mark for
+`is_auto_readonly_mutable_clone`). The actual demotion is rooted back to the
+receiver at the mutation site:
+
+```python
+def read(o: Outer) -> Int32:  return o.b.get().v   # const Outer&  (result only read)
+def write(o: Outer) -> None:  o.b.get().v = 9       # Outer&        (result field written)
+def mutate(o: Outer) -> None: o.b.get().bump()      # Outer&        (mutating method on result)
+```
+
+C++ overload resolution then selects `get()` vs `get() const` automatically
+from the receiver's const-ness -- no clone is chosen in sema or codegen.
+
+Two predicates intentionally differ in scope: the call-site demotion is
+suppressed for *every* `@auto_readonly` mutable clone (`is_auto_readonly_mutable_clone`)
+-- including value-returning ones, which read the receiver to produce a copy
+and must not demote it -- whereas mutation rooting back through the result
+(the `_root_name_of_expr` transparency) applies only to a *borrowing* clone
+(`FunctionInfo.borrows_receiver_via_auto_readonly`, which also requires the
+result to alias the receiver), since a value copy cannot carry a mutation back.
+Mutation rooting is symmetric with subscript element access (`xs[0].v = 9`):
+`_root_name_of_expr` is transparent to a borrowing accessor call, and a genuine
+through-reference write climbs a field-path borrow root to its owning param
+(`mark_param_mutated(..., through_field=True)`).
+
+**Limitation:** binding an accessor result to a local (`x = o.b.get()`) keeps
+the receiver mutable, because a non-const local alias requires a mutable source
+(locals are non-const by default). A const receiver for aliased *reads* awaits
+never-mutated-local const-binding (see TODO).
+
 ### Restrictions
 
 - `@auto_readonly` on `__init__`, `@staticmethod`, or `@classmethod` is

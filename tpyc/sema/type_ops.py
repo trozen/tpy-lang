@@ -1838,6 +1838,10 @@ class TypeOperations:
             return_borrows_from=method.return_borrows_from,
             mutated_params=method.mutated_params,
             structural_mutated_params=method.structural_mutated_params,
+            # Needed at the call site to recognize the mutable half of an
+            # @auto_readonly pair, whose receiver demotion is conditional on
+            # whether the call result is actually mutated.
+            is_auto_readonly_mutable_clone=method.is_auto_readonly_mutable_clone,
             canonical_fi=method.root,
         )
 

@@ -2903,6 +2903,13 @@ overload pair automatically (`IMPLICIT_AUTO_READONLY_METHODS`). Plain `def __spa
 without any decorator produces both halves. Value-typed returns stay single-overload.
 Use `@readonly` to opt back into a strict const-only contract.
 
+**Usage-dependent receiver const-ness**: a parameter read only *through* an `@auto_readonly`
+accessor (`Box.get`, `Rc.get`, `Deref`) keeps a `const` receiver -- `def read(o: Outer) -> Int32: return o.b.get().v`
+emits `const Outer& o`. A mutation through the result (`o.b.get().v = 9`, `o.b.get().bump()`)
+demotes it to `Outer&`. C++ overload resolution picks `get()` vs `get() const` from the
+receiver. (Binding the result to a local, `x = o.b.get()`, keeps the receiver mutable for now;
+see `docs/READONLY_DESIGN.md`.)
+
 Explicit `@auto_readonly` is still required for other methods that want dual overloads (e.g.,
 `__iter__`, plain `get()` accessors, or user-defined non-dunder accessors):
 

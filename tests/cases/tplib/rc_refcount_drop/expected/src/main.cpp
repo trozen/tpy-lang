@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def use(r: Rc[State]) -> None:
-void use(::tpystd::tplib::rc::Rc<State>& r) {
+void use(const ::tpystd::tplib::rc::Rc<State>& r) {
     // print("use sees", r.get().label)
     std::cout << "use sees" << " " << r.get().label << "\n";
 }
