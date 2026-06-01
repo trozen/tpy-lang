@@ -1,0 +1,1 @@
+main.py:16: error: Cannot yield local or temporary as tuple element 1. Type 'Box' is yielded by reference. Use Own[Box] for this tuple element to yield by value.

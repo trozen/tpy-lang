@@ -1,0 +1,1 @@
+main.py:16: error: A tuple yield with a non-value member ('Box') nested inside another tuple is not yet supported -- the nested borrow slot is miscompiled. Flatten the tuple, or make the member Own[Box].

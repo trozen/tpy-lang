@@ -33,8 +33,20 @@ several places. Where this section and the prose below disagree, **this section 
   constructs from `T&`, so `(*b)` produces the `T&` the slot needs.
 - **Tuple ephemeral marking is scalar-only.** A tuple source never classifies ephemeral
   (`yield_uses_borrow_slot` excludes tuples); tuple-borrow-member *escapes* are caught by the existing
-  dangling-return check instead. **Open gap (design risk #4, NOT closed):** a fresh non-value member
-  inside a tuple yield (`yield (i, Box(i))`) is unchecked and dangles silently -- filed in BUGS.md.
+  dangling-return check instead. **Design risk #4 closed:** `_analyze_yield` (gate unwraps a
+  `readonly` wrapper) routes a tuple-typed yield through `check_dangling_reference`, whose per-element
+  tuple branch rejects a fresh top-level non-value member (`yield (i, Box(i))` -> "Use Own[Box] for
+  this tuple element"); the `Iterator[tuple[..., Own[Box]]]` form is the fix. Same branch / same
+  diagnostic covers `return`. A non-value member nested inside an *inner* tuple is a deeper hole --
+  codegen's tuple borrow/storage conversion is flat, so the nested borrow slot is miscompiled even for
+  a rooted source; it is rejected outright (`_nested_tuple_borrow_member`, "nested borrow slot is
+  miscompiled") until codegen recurses (BUGS.md). Nested *value* / nested *Own* members work.
+  Regression: `error_gen_tuple_yield_fresh`, `error_gen_tuple_yield_fresh_elem0`,
+  `error_gen_tuple_yield_readonly`, `error_gen_tuple_yield_nested`, `error_tuple_nested_ref`,
+  `gen_tuple_yield_own`, `gen_tuple_yield_nested_own`, `gen_tuple_yield_ref` (borrow-ref mutation).
+  **Still open:** the per-element check is literal-gated, so a non-literal yield/return of a tuple
+  *local* assigned a fresh member (`t = (i, Box(i)); yield t`) dangles unchecked -- the dangle wants
+  catching at the local-assignment site (BUGS.md).
 - **Actual tests** (the "Tests" section names are aspirational): `gen_yield_nocopy`, `gen_yield_del`,
   `gen_method_yield_nocopy`, `gen_own_yield_fresh`, `gen_ref_multi_yield` (mutation guard),
   `genexpr_ref_mutate`, `error_gen_yield_fresh_as_ref`, `error_gen_borrow_yield_onward`,
@@ -387,10 +399,10 @@ ABI exception) and fixes the common syntax in the same release.
    generators (-> `Iterator[Own[T]]`), caught at compile time.
 3. **`@nocopy` + `Iterator[Own[T]]`**: owned yield moves, so `@nocopy` is fine; confirm the move (not
    copy) is what codegen emits for the owned slot.
-4. **Tuple-inner fresh yields.** The dangling/borrow check must also cover fresh values *inside* a
-   tuple yield -- `yield (i, Box(1))` puts a dangling `Box*` in the `std::tuple<int32_t, Box*>` slot.
-   The classifier must run per-tuple-element, not just on scalar yields. (Likely a pre-existing gap in
-   the tuple-borrow path; verify and fold into the same check.)
+4. **Tuple-inner fresh yields. (CLOSED -- see As-built reconciliation.)** The dangling/borrow check
+   covers fresh values *inside* a tuple yield -- `yield (i, Box(1))` puts a dangling `Box*` in the
+   `std::tuple<int32_t, Box*>` slot. `_analyze_yield` routes a tuple-typed yield through
+   `check_dangling_reference`, whose existing per-element tuple branch runs the check per member.
 5. **Cross-suspension residual** (see the invariant): D hard-errors local-yields but does not close the
    caller-mutates-container hazard; it stays at parity with tuple yields (partial warning). Not a
    regression, but the LANGUAGE_FEATURES / BUGS wording must not claim full borrow safety.

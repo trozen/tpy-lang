@@ -2064,19 +2064,25 @@ class TypeCompatibility:
             elif self.is_dangling_return(expr):
                 raise self.ctx.error(view_msg, expr)
             return
-        if isinstance(return_type, TupleType):
-            if isinstance(expr, TpyTupleLiteral):
-                for i, et in enumerate(return_type.element_types):
-                    if (not et.is_value_type() and not isinstance(et, (OwnType, TypeParamRef))
-                            and not et.needs_wrapper()
-                            and i < len(expr.elements)):
-                        if self.is_dangling_return(expr.elements[i]):
-                            raise self.ctx.error(
-                                f"Cannot {verb} local or temporary as tuple element {i}. "
-                                f"Type '{et}' is {verb}ed by reference. "
-                                f"{_own_fix(et, cap=True)}.",
-                                expr.elements[i]
-                            )
+        # A tuple's borrow form (std::tuple<..., T*, ...>) stores each non-value
+        # member by pointer. The check sees through a readonly wrap (the slot is
+        # still borrow form). A borrow member nested inside an *inner* tuple is
+        # rejected outright -- codegen's tuple borrow/storage conversion is flat
+        # (doesn't recurse), so such a slot is miscompiled regardless of whether
+        # the source dangles (BUGS.md). A top-level borrow member is fine when
+        # rooted, so it gets the per-element fresh-source dangling check.
+        tuple_rt = unwrap_readonly(return_type)
+        if isinstance(tuple_rt, TupleType):
+            nested_bad = self._nested_tuple_borrow_member(tuple_rt)
+            if nested_bad is not None:
+                raise self.ctx.error(
+                    f"A tuple {verb} with a non-value member ('{nested_bad}') nested "
+                    f"inside another tuple is not yet supported -- the nested borrow "
+                    f"slot is miscompiled. Flatten the tuple, or make the member "
+                    f"Own[{nested_bad}].",
+                    expr
+                )
+            self._check_tuple_elem_dangle(tuple_rt, expr, verb)
             return
         if (return_type.is_value_type()
                 or isinstance(return_type, (VoidType, OwnType))
@@ -2119,3 +2125,50 @@ class TypeCompatibility:
                 f"{_own_fix(return_type, cap=True)}.",
                 expr
             )
+
+    def _check_tuple_elem_dangle(self, tuple_type: TupleType, expr: TpyExpr,
+                                 verb: str) -> None:
+        """Per-element dangling check for a top-level tuple return/yield literal.
+
+        Each non-value member is stored by pointer in the tuple's borrow form,
+        so a freshly-constructed member would dangle. The owning fix is
+        element-scoped (`Own[T]` on the member), not the whole return/iterator.
+        Nested-tuple members are handled upstream by the unsupported-shape check.
+        """
+        inner = expr.expr if isinstance(expr, TpyCoerce) else expr
+        if not isinstance(inner, TpyTupleLiteral):
+            return
+        for i, et in enumerate(tuple_type.element_types):
+            if i >= len(inner.elements):
+                break
+            if (not et.is_value_type() and not isinstance(et, (OwnType, TypeParamRef))
+                    and not et.needs_wrapper()
+                    and self.is_dangling_return(inner.elements[i])):
+                raise self.ctx.error(
+                    f"Cannot {verb} local or temporary as tuple element {i}. "
+                    f"Type '{et}' is {verb}ed by reference. "
+                    f"Use Own[{et}] for this tuple element to {verb} by value.",
+                    inner.elements[i]
+                )
+
+    def _nested_tuple_borrow_member(self, tuple_type: TupleType,
+                                    _nested: bool = False) -> TpyType | None:
+        """Return a borrow-form member type nested inside an inner tuple, or None.
+
+        Codegen's tuple borrow/storage conversion is flat: a non-value member
+        carried by an *inner* tuple slot (`std::tuple<..., std::tuple<..., T*>>`)
+        is miscompiled. A top-level borrow member (`_nested` False) is fine and
+        excluded; `Own` / value / wrapper / type-param members are value-stored
+        and excluded at any depth.
+        """
+        for et in tuple_type.element_types:
+            bare = unwrap_readonly(et)
+            if isinstance(bare, TupleType):
+                deeper = self._nested_tuple_borrow_member(bare, _nested=True)
+                if deeper is not None:
+                    return deeper
+            elif (_nested and not et.is_value_type()
+                    and not isinstance(et, (OwnType, TypeParamRef))
+                    and not et.needs_wrapper()):
+                return et
+        return None

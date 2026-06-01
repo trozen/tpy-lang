@@ -1,0 +1,1 @@
+main.py:11: error: A tuple return with a non-value member ('Box') nested inside another tuple is not yet supported -- the nested borrow slot is miscompiled. Flatten the tuple, or make the member Own[Box].

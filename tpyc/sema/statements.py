@@ -2694,7 +2694,12 @@ class StatementAnalyzer:
         # those through the full dangling check (Iterator[Own[T]]-flavored
         # diagnostic). Forms with their own representation (Optional/Union/readonly/
         # tuple/generic) keep the view check -- they don't use the borrow slot.
-        if yield_uses_borrow_slot(elem_type):
+        # A tuple yield uses borrow form per-element (`std::tuple<int, Box*>`),
+        # so a fresh non-value member dangles exactly like a bare borrow yield.
+        # yield_uses_borrow_slot excludes tuples (they own their borrow form via
+        # to_cpp_return), so route them through the full dangling check too -- its
+        # per-element tuple branch is what catches the fresh member.
+        if yield_uses_borrow_slot(elem_type) or isinstance(unwrap_readonly(elem_type), TupleType):
             self.compat.check_dangling_reference(
                 stmt.value, elem_type, stmt.loc, for_yield=True)
         else:
