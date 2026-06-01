@@ -130,6 +130,30 @@ target_link_libraries(myapp PRIVATE ${TPYC_LIBRARIES})
 set_target_properties(myapp PROPERTIES CXX_STANDARD ${TPYC_CXX_STANDARD})
 ```
 
+## Coding with an AI agent (recommended)
+
+TurboPython source is valid Python, so coding agents (Claude Code, Cursor,
+Copilot, ...) and your existing tooling work out of the box. The fastest way to
+be productive is to hand the agent TPy's rules and exact API surface up front:
+
+```bash
+tpy --install-agent-docs docs/   # writes TPY_*.md into ./docs and prints a
+                                 # snippet to add to your AGENTS.md / CLAUDE.md
+```
+
+This installs four reference files into your project:
+
+- `TPY_FOR_AGENTS.md` -- concise Python-to-TPy bootstrap (the delta, ownership
+  rules, idiomatic patterns)
+- `TPY_LANGUAGE_FEATURES.md` -- full language reference (only **Working**
+  sections are usable today)
+- `TPY_STDLIB_ROADMAP.md` -- stdlib coverage (what's available vs missing)
+- `TPY_API_REFERENCE.md` -- the exact callable API surface, generated from the
+  installed version
+
+Append the printed snippet to your `AGENTS.md` / `CLAUDE.md` so the agent reads
+them before writing TPy code. Re-run after upgrading `tpy-lang` to refresh.
+
 ## Dependencies
 
 - Python 3.12+
