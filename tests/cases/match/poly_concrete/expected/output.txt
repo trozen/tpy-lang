@@ -1,0 +1,3 @@
+dog
+snake legs=0
+animal legs=6

@@ -13,6 +13,7 @@
 | 6 | Exhaustiveness warnings (union, enum, Optional, bool) | Done |
 | 7 | `switch` codegen for unions (`switch (s.index())`) and enums (`switch (e)`); if/elif fallback when guards present | Done |
 | 8 | Optimized string dispatch: for 5+ string literal cases, emit switch-based dispatch. Compiler picks best discriminator (string length or character at position i) that minimizes max bucket size. Also applies to `EnumUtil::try_parse`/`from_name`. | Done |
+| 9 | Polymorphic dispatch on `@dynamic`-protocol / polymorphic-class subjects: class patterns lower to `dynamic_cast` / `dyn_adapter_cast`, the subject narrows to the matched subclass inside the arm (reusing the isinstance engine), with wildcard-exhaustiveness + subclass-shadow unreachable rules. | Done |
 
 ### Future Extensions
 
@@ -136,6 +137,7 @@ are deferred to Phase 2.
 | Optional (`T \| None`) | if/elif with `has_value()`/`== nullptr` | Yes (T + None) |
 | Primitive (`int`, `str`, `bool`) | if/elif with `==` comparison | No (infinite domain) |
 | Record (concrete class) | if/elif on field values; goto for guards | No |
+| Polymorphic (`@dynamic` protocol / polymorphic class; bare, `Ptr[Pet]`, or `Box[Pet]`/`Rc[Pet]` deref view) | `dynamic_cast` / `dyn_adapter_cast` if/elif chain; goto for guards | Open hierarchy -- only via wildcard or a root-type arm |
 
 ---
 
@@ -578,6 +580,87 @@ if (__match_subject == nullptr) {
 }
 ```
 
+### Polymorphic (`@dynamic` protocol / polymorphic class) subjects
+
+When the subject carries a `@dynamic`-rooted C++ vtable -- a bare `Pet`, a
+`Ptr[Pet]`, or the deref view of an owning wrapper (`Box[Pet]` / `Rc[Pet]`) --
+match dispatches by runtime type, the statement-level sibling of `isinstance`
+subclass narrowing. It reuses the same engine: the subject-source detection
+(`polymorphic_source_inner` / deref-dispatch peel), the cast-argument helpers
+(`polymorphic_cast_arg` / `deref_view_cast_arg`), and the cast-rhs builder
+(`ProtocolGenerator.dynamic_narrow_cast_rhs`, which picks `dynamic_cast` for an
+inheritance conformer vs `tpy::dyn_adapter_cast` for a structural conformer).
+
+```python
+def describe(p: Pet) -> str:       # Pet is a @dynamic protocol
+    match p:
+        case Dog(name=n):
+            return "dog:" + n + ":" + p.speak()
+        case Cat():
+            return "cat:" + p.speak()
+        case _:
+            return "?"
+```
+
+```cpp
+std::string describe(Pet& p) {
+    if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&p)) {
+        Dog& __case_0 = *__mpoly_0;
+        auto& n = __case_0.name;
+        // `p.speak()` narrows to `__case_0.speak()` inside the arm
+        return ...;
+    } else if (Cat* __mpoly_1 = dynamic_cast<Cat*>(&p)) {
+        Cat& __case_1 = *__mpoly_1;
+        return ...;
+    } else {
+        return "?";
+    }
+}
+```
+
+Each class-pattern arm casts the subject's payload pointer to the matched
+subclass; on success it binds a `[const] Sub& __case_i` reference and narrows
+the subject (`narrowed_vars`) so member access in the arm resolves against the
+subclass. The unconditional (no-guard) form is an `if`/`else if` chain (a failed
+cast naturally falls to the next arm); the guarded form uses standalone `if`
+blocks with a `goto __match_end` label, like guarded unions/records, so a failed
+guard falls through to the next arm. A `const` borrow source produces
+`dynamic_cast<const Sub*>` and a `const Sub&` binding. Or-patterns lower to an
+`||` of `dynamic_cast != nullptr` tests (type-test only; no field bindings).
+
+A polymorphic subject ranges over an open subclass set, so sema treats the
+match as exhaustive only when an unconditional catch-all is present -- a
+wildcard/capture arm, or a class pattern naming the subject's own concrete root
+(whose cast always succeeds). Otherwise it warns (the match simply falls through
+when no arm matches, matching CPython). A later arm whose type is a
+subclass-or-equal of an earlier arm's type is rejected as unreachable.
+
+When the subject's static type is a *concrete* class that is itself
+`@dynamic`-rooted (both record-like and polymorphic), polymorphic dispatch
+takes precedence over record field-value matching -- consistent with
+`isinstance`, which dispatches by runtime type on such a value. The regression
+pin is `tests/cases/match/poly_concrete` (a `case Dog():` subclass arm on an
+`Animal` subject compiles only under polymorphic precedence). Field-value
+matching on such a class is therefore expressed with a guard, not a record
+arm.
+
+#### As-built gaps
+
+- A field-value sub-pattern (`case Dog(legs=4):`) in a polymorphic arm is
+  rejected: the runtime type test cannot also compare fields, so it would be
+  silently dropped. Use a guard (`case Dog() if d.legs == 4:`). (The union
+  strategy has the same emit limitation but currently drops the condition
+  silently -- tracked in `BUGS.md`.)
+- The subject must be a bare variable name (same restriction as `isinstance`);
+  a field / subscript / call subject is rejected with a bind-to-local hint.
+- `Optional[Pet]` is not routed here -- polymorphic dispatch on an optional
+  additionally needs a `None` arm (a separate, unimplemented path); it stays
+  rejected by the existing Optional handling.
+- A `yield` / `await` inside a polymorphic-match arm is rejected (the
+  dynamic_cast chain is not threaded through the resumable frame's arm routing).
+- Or-pattern alternatives bind no variables (a binding would have no single
+  well-typed value across distinct subclasses).
+
 ### Guards
 
 Guards add a condition that must be true for the case to match. The key
@@ -788,6 +871,12 @@ Minor differences where TPy's compiled model diverges:
 | Sequence patterns | Runtime protocol check | Phase 2 (not yet) | Missing feature, not a semantic difference |
 | Mapping patterns | Runtime protocol check | Phase 2 (not yet) | Missing feature, not a semantic difference |
 | Soft keyword | `match`/`case` usable as variable names | Same (Python ast handles this) | No difference |
+| Polymorphic subject expression | Any expression | Must be a bare variable name (like `isinstance`) | Rejected with a bind-to-local hint; valid CPython needs a one-line rebind |
+| Shadowed polymorphic arm | Silently allowed (dead arm) | Compile error (`unreachable case`) | Stricter: rejects an arm CPython would accept-but-never-run |
+| Non-conformer polymorphic arm | Silently allowed (never matches) | Compile error | Stricter: a `case T()` whose `T` can't match the subject is rejected, not dead code |
+
+All three polymorphic-dispatch rejections emit explicit diagnostics, so no silent
+divergence -- they tighten valid-but-buggy CPython into a compile error.
 
 ---
 

@@ -1,0 +1,3 @@
+dog+ 5 legs=4
+dog0 legs=4
+other legs=2

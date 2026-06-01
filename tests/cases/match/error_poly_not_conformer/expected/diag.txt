@@ -1,0 +1,1 @@
+main.py:33: error: type 'Widget' does not conform to the @dynamic protocol 'Pet', so the case can never match; it must inherit 'Pet' or structurally implement its methods

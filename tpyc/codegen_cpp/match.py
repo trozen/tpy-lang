@@ -6,13 +6,14 @@ Generates C++ code from TurboPython match/case statements.
 
 from __future__ import annotations
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, NoneType, OptionalType,
     PendingStrType, UnionType, RecursiveAliasInstanceType,
     LiteralType,
-    unwrap_readonly, is_any_str_type,
+    unwrap_readonly, is_any_str_type, polymorphic_source_inner,
 )
 from .variant_access import VariantAccess
 from ..parse import (
@@ -50,6 +51,22 @@ if TYPE_CHECKING:
     from .statements import StatementGenerator
 
 
+@dataclass
+class _PolyDispatch:
+    """Cast context shared across the arms of a @dynamic / polymorphic match.
+
+    `cast_arg` is the C++ pointer expression fed to `dynamic_cast` /
+    `dyn_adapter_cast` (the subject's payload address); `source_inner` is the
+    @dynamic protocol or polymorphic-class root the casts narrow from;
+    `subject_read` reads the subject at its base type for capture / as
+    bindings."""
+    subject_name: str
+    source_inner: TpyType
+    cast_arg: str
+    is_const: bool
+    subject_read: str
+
+
 class MatchGenerator:
     """Generates C++ code from TurboPython match/case statements."""
 
@@ -76,6 +93,14 @@ class MatchGenerator:
 
         # Pre-declare variables first declared inside match arms
         self.stmts._emit_branch_decls(out, stmt, indent)
+
+        # @dynamic / polymorphic dispatch operates on the subject's original
+        # storage (dynamic_cast), not on a `__match_subject` copy/alias -- so
+        # it forgoes that binding entirely, like isinstance.
+        if stmt.polymorphic_dispatch:
+            self._gen_match_polymorphic(out, stmt, indent)
+            self._emit_match_unreachable_tail(out, stmt, indent)
+            return
 
         # Evaluate subject and bind to a local
         subject_code = self.expressions.gen_expr(stmt.subject)
@@ -163,19 +188,243 @@ class MatchGenerator:
         else:
             self._gen_match_if_elif(out, stmt, indent)
 
-        # If the match is exhaustive (sema-proven) AND every arm body
-        # terminates, the post-match control point is unreachable. Tell the
-        # compiler so -- otherwise it warns "control reaches end of non-void
-        # function" when the match is the function's last statement.
-        #
-        # For non-exhaustive matches, falling through the end-label is the
-        # user's intent (sema only warns), so emitting std::unreachable()
-        # there would let the optimizer eliminate code that the user expects
-        # to execute.
+        self._emit_match_unreachable_tail(out, stmt, indent)
+
+    def _emit_match_unreachable_tail(
+        self, out: TextIO, stmt: TpyMatch, indent: str,
+    ) -> None:
+        """If the match is exhaustive (sema-proven) AND every arm body
+        terminates, the post-match control point is unreachable. Tell the
+        compiler so -- otherwise it warns "control reaches end of non-void
+        function" when the match is the function's last statement.
+
+        For non-exhaustive matches, falling through the end-label is the
+        user's intent (sema only warns), so emitting std::unreachable() there
+        would let the optimizer eliminate code that the user expects to
+        execute."""
         if (stmt.is_exhaustive
                 and stmt.cases
                 and all(stmts_terminate(c.body) for c in stmt.cases)):
             out.write(f"{indent}::std::unreachable();\n")
+
+    # ------------------------------------------------------------------
+    # @dynamic / polymorphic dispatch
+    # ------------------------------------------------------------------
+
+    def _gen_match_polymorphic(
+        self, out: TextIO, stmt: TpyMatch, indent: str,
+    ) -> None:
+        """Dispatch a match on a @dynamic / polymorphic subject via a
+        `dynamic_cast` chain, the match sibling of isinstance subclass
+        narrowing. Reuses the same cast-argument / cast-rhs helpers so the two
+        constructs stay in lockstep."""
+        assert isinstance(stmt.subject, TpyName)
+        subject_name = stmt.subject.name
+
+        # A suspension inside an arm body is not threaded through the resumable
+        # frame's arm routing (the dispatch is a plain dynamic_cast chain, not
+        # the decomposed state machine) -- refuse rather than drop it.
+        if self.ctx.resumable_arm_emitter is not None:
+            raise CodeGenError(
+                "a `yield` / `await` inside a `match` on a @dynamic / "
+                "polymorphic value is not yet supported",
+                loc=stmt.loc,
+            )
+
+        var_decl = self.ctx.lookup_var_type(subject_name)
+        registry = self.ctx.analyzer.registry
+        source_inner = polymorphic_source_inner(var_decl, registry)
+        if source_inner is not None:
+            cast_arg = self.ctx.polymorphic_cast_arg(subject_name, var_decl)
+        else:
+            deref = self.ctx.deref_dispatch_source(var_decl)
+            assert deref is not None  # sema flagged this as polymorphic
+            source_inner, depth = deref
+            cast_arg = self.ctx.deref_view_cast_arg(subject_name, depth)
+        is_const = self.stmts._is_const_borrow_source(subject_name, var_decl)
+        # No `__match_subject` alias is bound (dispatch reads the original
+        # storage), so capture / as / wildcard arms need a direct subject read.
+        subject_read = self.expressions.gen_expr(stmt.subject)
+        self.ctx.temps.flush(out, indent)
+
+        ctx = _PolyDispatch(subject_name, source_inner, cast_arg, is_const,
+                            subject_read)
+        if any(c.guard is not None for c in stmt.cases):
+            self._gen_match_polymorphic_guarded(out, stmt, ctx, indent)
+        else:
+            self._gen_match_polymorphic_if_elif(out, stmt, ctx, indent)
+
+    def _poly_arm_cast(
+        self, pattern: TpyClassPattern, i: int, ctx: '_PolyDispatch',
+    ) -> tuple[str, str, str]:
+        """Return (cond_decl, ref_decl, ref_local) for a class-pattern arm.
+
+        `cond_decl` is the `Sub* __ptr = <cast>` usable directly as an
+        if-condition; `ref_decl` binds a `Sub&` to the cast result for field
+        and subject-narrowing reads inside the arm."""
+        narrowed = pattern.resolved_type
+        cpp_type = self.types.type_to_cpp(narrowed)
+        const_pfx = "const " if ctx.is_const else ""
+        ptr_local = f"__mpoly_{i}"
+        ref_local = f"__case_{i}"
+        cast_rhs = self.stmts.protocols.dynamic_narrow_cast_rhs(
+            cpp_type, narrowed, ctx.source_inner, ctx.cast_arg,
+            is_const=ctx.is_const)
+        cond_decl = f"{const_pfx}{cpp_type}* {ptr_local} = {cast_rhs}"
+        ref_decl = f"{const_pfx}{cpp_type}& {ref_local} = *{ptr_local};"
+        return cond_decl, ref_decl, ref_local
+
+    def _poly_or_condition(
+        self, pattern: TpyOrPattern, ctx: '_PolyDispatch',
+    ) -> str:
+        """Build an OR of `dynamic_cast != nullptr` tests for an or-pattern
+        (type-test only; or-pattern alternatives bind no variables)."""
+        parts: list[str] = []
+        for alt in pattern.patterns:
+            assert isinstance(alt, TpyClassPattern)
+            cpp_type = self.types.type_to_cpp(alt.resolved_type)
+            rhs = self.stmts.protocols.dynamic_narrow_cast_rhs(
+                cpp_type, alt.resolved_type, ctx.source_inner, ctx.cast_arg,
+                is_const=ctx.is_const)
+            parts.append(f"({rhs} != nullptr)")
+        return " || ".join(parts)
+
+    def _gen_match_polymorphic_if_elif(
+        self, out: TextIO, stmt: TpyMatch, ctx: '_PolyDispatch', indent: str,
+    ) -> None:
+        inner = INDENT * (self.ctx.indent_level + 1)
+        for i, case in enumerate(stmt.cases):
+            self.ctx.emit_source_comment(out, case.loc, indent)
+            keyword = "if" if i == 0 else "} else if"
+            pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
+
+            if isinstance(pattern, TpyClassPattern):
+                cond_decl, ref_decl, ref_local = self._poly_arm_cast(pattern, i, ctx)
+                out.write(f"{indent}{keyword} ({cond_decl}) {{\n")
+                out.write(f"{inner}{ref_decl}\n")
+                self._gen_match_field_bindings(out, pattern, ref_local, inner)
+                self._emit_binding(out, as_name, as_raw, ref_local, inner)
+                saved = {ctx.subject_name: self.ctx.narrowed_vars.get(ctx.subject_name)}
+                self.ctx.narrowed_vars[ctx.subject_name] = ref_local
+                self.ctx.indent_level += 1
+                self._emit_case_body(out, case.body, case.type_facts)
+                self.ctx.indent_level -= 1
+                self.ctx.restore_narrowed_vars(saved)
+
+            elif isinstance(pattern, TpyOrPattern):
+                out.write(f"{indent}{keyword} ({self._poly_or_condition(pattern, ctx)}) {{\n")
+                self._emit_binding(out, as_name, as_raw, ctx.subject_read, inner)
+                self.ctx.indent_level += 1
+                self._emit_case_body(out, case.body, case.type_facts)
+                self.ctx.indent_level -= 1
+
+            elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
+                if i == 0:
+                    out.write(f"{indent}{{\n")
+                else:
+                    out.write(f"{indent}}} else {{\n")
+                if isinstance(pattern, TpyCapturePattern):
+                    self._emit_binding(out, escape_cpp_name(pattern.name),
+                                       pattern.name, ctx.subject_read, inner)
+                self._emit_binding(out, as_name, as_raw, ctx.subject_read, inner)
+                self.ctx.indent_level += 1
+                self._emit_case_body(out, case.body, case.type_facts)
+                self.ctx.indent_level -= 1
+
+            else:
+                raise CodeGenError(
+                    f"Unsupported match pattern for polymorphic subject: "
+                    f"{type(pattern).__name__}")
+
+        out.write(f"{indent}}}\n")
+
+    def _gen_match_polymorphic_guarded(
+        self, out: TextIO, stmt: TpyMatch, ctx: '_PolyDispatch', indent: str,
+    ) -> None:
+        inner = INDENT * (self.ctx.indent_level + 1)
+        self.ctx.match_counter += 1
+        end_label = f"__match_end_{self.ctx.match_counter}"
+
+        for i, case in enumerate(stmt.cases):
+            self.ctx.emit_source_comment(out, case.loc, indent)
+            pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
+            guard = case.guard
+
+            if isinstance(pattern, TpyClassPattern):
+                cond_decl, ref_decl, ref_local = self._poly_arm_cast(pattern, i, ctx)
+                out.write(f"{indent}if ({cond_decl}) {{\n")
+                out.write(f"{inner}{ref_decl}\n")
+                self._gen_match_field_bindings(out, pattern, ref_local, inner)
+                self._emit_binding(out, as_name, as_raw, ref_local, inner)
+                saved = {ctx.subject_name: self.ctx.narrowed_vars.get(ctx.subject_name)}
+                self.ctx.narrowed_vars[ctx.subject_name] = ref_local
+                self._emit_poly_guarded_action(out, case, guard, end_label, indent, inner)
+                self.ctx.restore_narrowed_vars(saved)
+                out.write(f"{indent}}}\n")
+
+            elif isinstance(pattern, TpyOrPattern):
+                cond = self._poly_or_condition(pattern, ctx)
+                if guard is not None:
+                    guard_code = self.expressions.gen_expr(guard)
+                    self.ctx.temps.flush(out, indent)
+                    cond = f"({cond}) && {guard_code}"
+                out.write(f"{indent}if ({cond}) {{\n")
+                self._emit_binding(out, as_name, as_raw, ctx.subject_read, inner)
+                self.ctx.indent_level += 1
+                self._emit_case_body(out, case.body, case.type_facts)
+                self.ctx.indent_level -= 1
+                out.write(f"{inner}goto {end_label};\n")
+                out.write(f"{indent}}}\n")
+
+            elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
+                if isinstance(pattern, TpyCapturePattern):
+                    self._emit_binding(out, escape_cpp_name(pattern.name),
+                                       pattern.name, ctx.subject_read, indent)
+                self._emit_binding(out, as_name, as_raw, ctx.subject_read, indent)
+                if guard is not None:
+                    guard_code = self.expressions.gen_expr(guard)
+                    self.ctx.temps.flush(out, indent)
+                    out.write(f"{indent}if ({guard_code}) {{\n")
+                    self.ctx.indent_level += 1
+                    self._emit_case_body(out, case.body, case.type_facts)
+                    self.ctx.indent_level -= 1
+                    out.write(f"{inner}goto {end_label};\n")
+                    out.write(f"{indent}}}\n")
+                else:
+                    out.write(f"{indent}{{\n")
+                    self.ctx.indent_level += 1
+                    self._emit_case_body(out, case.body, case.type_facts)
+                    self.ctx.indent_level -= 1
+                    out.write(f"{indent}}}\n")
+
+            else:
+                raise CodeGenError(
+                    f"Unsupported match pattern for polymorphic subject: "
+                    f"{type(pattern).__name__}")
+
+        out.write(f"{indent}{end_label}:;\n")
+
+    def _emit_poly_guarded_action(
+        self, out: TextIO, case: TpyMatchCase, guard: 'TpyExpr | None',
+        end_label: str, indent: str, inner: str,
+    ) -> None:
+        """Emit a class-pattern arm body inside its `if (cast)` block, with the
+        guard (if any) gating the `goto end_label`. A failed guard falls through
+        to the next standalone-if arm."""
+        if guard is not None:
+            guard_code = self.expressions.gen_expr(guard)
+            self.ctx.temps.flush(out, inner)
+            out.write(f"{inner}if ({guard_code}) {{\n")
+            self.ctx.indent_level += 2
+            self._emit_case_body(out, case.body, case.type_facts)
+            self.ctx.indent_level -= 2
+            out.write(f"{inner}    goto {end_label};\n")
+            out.write(f"{inner}}}\n")
+        else:
+            self.ctx.indent_level += 1
+            self._emit_case_body(out, case.body, case.type_facts)
+            self.ctx.indent_level -= 1
+            out.write(f"{inner}goto {end_label};\n")
 
     def _gen_match_overload_specialized(
         self, out: TextIO, stmt: TpyMatch, concrete_type: 'TpyType', indent: str,

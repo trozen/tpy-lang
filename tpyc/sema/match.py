@@ -14,7 +14,8 @@ from ..typesys import (
     NoneType, OptionalType, UnionType, PendingStrType,
     LiteralType, LiteralValue, LiteralTag, TypeParamRef,
     unwrap_readonly, unwrap_ref_type, make_union,
-    is_float_type, is_any_str_type,
+    is_float_type, is_any_str_type, is_protocol_type,
+    polymorphic_source_inner,
 )
 from ..modules import _resolve_concrete_type_name
 from .flow_facts import FlowFacts
@@ -93,16 +94,34 @@ class MatchAnalyzer:
             and self.ctx.registry.get_record(effective_type.name) is not None
         )
         is_optional = isinstance(effective_type, OptionalType)
-        if not (is_union or is_enum or is_primitive or is_record or is_optional):
+        # @dynamic-protocol / polymorphic-class subject: dispatch by runtime
+        # type via dynamic_cast, the match-statement sibling of isinstance
+        # subclass narrowing. Reuses the isinstance source detection so bare
+        # `Pet`, `Ptr[Pet]`, and owning-wrapper deref views all qualify. Takes
+        # precedence over the record/wrapper paths (a `Box[Pet]` is itself a
+        # record, but the arms dispatch on the deref payload's dynamic type).
+        poly_inner, poly_depth = self._poly_dispatch_source(effective_type)
+        is_polymorphic = poly_inner is not None
+        if not (is_union or is_enum or is_primitive or is_record
+                or is_optional or is_polymorphic):
             raise self.ctx.error(
                 f"match subject must be a union, enum, primitive, record, "
                 f"or Optional type, got '{effective_type}'", stmt
             )
+        stmt.polymorphic_dispatch = is_polymorphic
 
         # Subject variable name for narrowing (only if simple name)
         subject_name: str | None = None
         if isinstance(stmt.subject, TpyName):
             subject_name = stmt.subject.name
+
+        # Polymorphic dispatch narrows the subject through dynamic_cast on its
+        # original storage; like isinstance, that needs a stable variable name.
+        if is_polymorphic and subject_name is None:
+            raise self.ctx.error(
+                "match on a @dynamic / polymorphic value requires the subject "
+                "to be a variable name; bind it to a local first", stmt
+            )
 
         # Resumable frame (H1): when a generator/async `match` carries a
         # suspension, its arm bodies become separate states, so pattern
@@ -120,6 +139,10 @@ class MatchAnalyzer:
         had_wildcard = False
         seen_types: set[str] = set()
         seen_values: set[object] = set()
+        # Polymorphic dispatch: resolved arm types, in source order, for the
+        # subclass-shadowing unreachable check (a later arm whose type is a
+        # subclass-or-equal of an earlier arm's type can never be reached).
+        seen_poly: list[TpyType] = []
 
         scope_before = set(self.ctx.func.current_scope.bindings.keys())
         assigned_before = frozenset(self.ctx.func.definitely_assigned)
@@ -149,7 +172,14 @@ class MatchAnalyzer:
             has_guard = case.guard is not None
             saved_seen_types = set(seen_types) if has_guard else None
             saved_seen_values = set(seen_values) if has_guard else None
-            if is_union:
+            saved_seen_poly = list(seen_poly) if has_guard else None
+            if is_polymorphic:
+                assert poly_inner is not None
+                self._analyze_pattern_polymorphic(
+                    case.pattern, poly_inner, seen_types, seen_poly,
+                    pattern_bindings, stmt,
+                )
+            elif is_union:
                 self._analyze_pattern(case.pattern, effective_type, seen_types, pattern_bindings, stmt)
             elif is_record:
                 self._analyze_pattern_record(
@@ -168,6 +198,7 @@ class MatchAnalyzer:
                 seen_types.update(saved_seen_types)  # type: ignore[arg-type]
                 seen_values.clear()
                 seen_values.update(saved_seen_values)  # type: ignore[arg-type]
+                seen_poly[:] = saved_seen_poly  # type: ignore[index]
 
             for name, ty in pattern_bindings.items():
                 self.ctx.func.current_scope.define(name, ty)
@@ -185,10 +216,12 @@ class MatchAnalyzer:
                 if needs_frame_field and self.ctx.func.current_ns is not None:
                     self.ctx.func.current_ns.bind_variable(name, ty)
 
-            # Narrow subject variable for class patterns (union only)
+            # Narrow subject variable for class patterns. For polymorphic
+            # dispatch the fact lets the arm body resolve `subject.method()`
+            # against the matched subclass (same as isinstance narrowing).
             narrowing_facts = self._match_case_narrowing_facts(
                 case.pattern, subject_name, effective_type,
-            ) if is_union else {}
+            ) if (is_union or is_polymorphic) else {}
             if narrowing_facts:
                 case.type_facts = self.stmts._filter_union_codegen_facts(narrowing_facts)
                 self.ctx.func.narrowed_types.update(narrowing_facts)
@@ -227,18 +260,35 @@ class MatchAnalyzer:
                 pat = pat.pattern
             if isinstance(pat, (TpyWildcardPattern, TpyCapturePattern)) and case.guard is None:
                 had_wildcard = True
-            # Class pattern on concrete record with no conditions is always-matching
-            elif ((is_record or is_optional) and isinstance(pat, TpyClassPattern)
+            # Class pattern on concrete record with no conditions is always-matching.
+            # Excludes polymorphic dispatch -- there `case Sub()` is a runtime
+            # type test, not an always-true field match, so only a root-type arm
+            # (handled below) is a catch-all.
+            elif (not is_polymorphic
+                  and (is_record or is_optional) and isinstance(pat, TpyClassPattern)
                   and case.guard is None
                   and not any(self._is_constraining_sub_pattern(sub)
                               for _, sub in pat.keywords)):
                 had_wildcard = True
+            # Polymorphic dispatch: a bare class pattern naming the subject's
+            # own (concrete) root type matches every value -- `dynamic_cast` to
+            # the root always succeeds -- so it acts as a catch-all.
+            elif (is_polymorphic and isinstance(pat, TpyClassPattern)
+                  and case.guard is None and pat.resolved_type == poly_inner
+                  and not any(self._is_constraining_sub_pattern(sub)
+                              for _, sub in pat.keywords)):
+                had_wildcard = True
 
-        # Exhaustiveness check for finite-valued types
-        missing = (
-            [] if had_wildcard
-            else self._match_missing_cases(effective_type, seen_types, seen_values)
-        )
+        # Exhaustiveness check for finite-valued types. A polymorphic subject
+        # ranges over an open set of subclasses, so it is exhaustive only with
+        # an unconditional catch-all (wildcard or root-type arm).
+        if is_polymorphic:
+            missing = [] if had_wildcard else [None]  # type: ignore[list-item]
+        else:
+            missing = (
+                [] if had_wildcard
+                else self._match_missing_cases(effective_type, seen_types, seen_values)
+            )
         stmt.is_exhaustive = not missing
         if missing:
             if missing == [None]:
@@ -297,6 +347,191 @@ class MatchAnalyzer:
                 name: self.ctx.func.current_scope.lookup(name)
                 for name in sorted(predecl)
             }
+
+    def _poly_dispatch_source(
+        self, effective_type: TpyType,
+    ) -> tuple[TpyType | None, int]:
+        """If the match subject carries a @dynamic vtable reachable for
+        runtime dispatch, return (inner_root, deref_depth); else (None, 0).
+
+        Reuses the isinstance source detection: bare `Pet` / `Ptr[Pet]` resolve
+        via ``polymorphic_source_inner`` (depth 0); an owning wrapper
+        (`Box[Pet]` / `Rc[Pet]`) resolves through its `__deref__` view. Optional
+        is deliberately excluded -- `Optional[Pet]` dispatch additionally needs
+        a `None` arm, which is a separate (unimplemented) path."""
+        if isinstance(effective_type, OptionalType):
+            return None, 0
+        inner = polymorphic_source_inner(effective_type, self.ctx.registry)
+        if inner is not None:
+            return inner, 0
+        deref = self.expr.calls._deref_dispatch_inner(effective_type)
+        if deref is not None:
+            return deref[0], deref[1]
+        return None, 0
+
+    def _analyze_pattern_polymorphic(
+        self, pattern: TpyPattern, source_inner: TpyType,
+        seen_types: set[str], seen_poly: list[TpyType],
+        bindings: dict[str, TpyType], stmt: TpyMatch,
+    ) -> None:
+        """Analyze a pattern against a @dynamic / polymorphic subject."""
+        if isinstance(pattern, TpyWildcardPattern):
+            return
+
+        elif isinstance(pattern, TpyCapturePattern):
+            # A bare capture does not narrow, so it binds the base type.
+            bindings[pattern.name] = source_inner
+
+        elif isinstance(pattern, TpyAsPattern):
+            self._analyze_pattern_polymorphic(
+                pattern.pattern, source_inner, seen_types, seen_poly,
+                bindings, stmt,
+            )
+            if (isinstance(pattern.pattern, TpyClassPattern)
+                    and pattern.pattern.resolved_type is not None):
+                bindings[pattern.name] = pattern.pattern.resolved_type
+            else:
+                bindings[pattern.name] = source_inner
+
+        elif isinstance(pattern, TpyClassPattern):
+            self._analyze_class_pattern_polymorphic(
+                pattern, source_inner, seen_types, seen_poly, bindings, stmt,
+            )
+
+        elif isinstance(pattern, TpyOrPattern):
+            self._analyze_or_pattern_polymorphic(
+                pattern, source_inner, seen_types, seen_poly, bindings, stmt,
+            )
+
+        else:
+            raise self.ctx.error(
+                f"unsupported pattern for @dynamic / polymorphic subject: "
+                f"{type(pattern).__name__}", pattern
+            )
+
+    def _analyze_class_pattern_polymorphic(
+        self, pattern: TpyClassPattern, source_inner: TpyType,
+        seen_types: set[str], seen_poly: list[TpyType],
+        bindings: dict[str, TpyType], stmt: TpyMatch,
+    ) -> None:
+        """Validate a class pattern names a subclass / conformer of the
+        polymorphic root, bind its fields, and flag duplicate / unreachable
+        arms."""
+        if not isinstance(pattern.cls, TpyName):
+            raise self.ctx.error("class pattern must use a simple name", pattern)
+        cls_name = pattern.cls.name
+
+        resolved = self._resolve_polymorphic_pattern_type(
+            cls_name, source_inner, pattern)
+        pattern.resolved_type = resolved
+
+        record = self.ctx.registry.get_record(cls_name)
+        if record is not None:
+            self._resolve_class_pattern_fields(pattern, record, bindings)
+        elif pattern.keywords or pattern.positional:
+            raise self.ctx.error(
+                f"type '{cls_name}' does not support field patterns", pattern
+            )
+
+        # The dynamic_cast dispatch path emits only the type test + field
+        # captures, never a field-value comparison -- a literal / value field
+        # sub-pattern would be silently dropped, so reject it and point at the
+        # guard form, which the polymorphic codegen does support.
+        self._reject_value_field_subpatterns(pattern, cls_name)
+
+        type_key = str(resolved)
+        if type_key in seen_types:
+            raise self.ctx.error(
+                f"duplicate case for '{cls_name}' in match statement", pattern
+            )
+        # A later arm whose type is a subclass-or-equal of an earlier arm's
+        # type is dead: the earlier (broader) dynamic_cast already caught it.
+        for prior in seen_poly:
+            if self.ctx.registry.is_subclass_of_or_equal(resolved, prior):
+                raise self.ctx.error(
+                    f"unreachable case for '{cls_name}': already matched by "
+                    f"the earlier '{prior}' arm", pattern
+                )
+        seen_types.add(type_key)
+        seen_poly.append(resolved)
+
+    def _reject_value_field_subpatterns(
+        self, pattern: TpyClassPattern, cls_name: str,
+    ) -> None:
+        """Reject literal / value field sub-patterns in a polymorphic class
+        pattern. Positional patterns have been folded into keywords by
+        `_resolve_class_pattern_fields` before this runs."""
+        for field_name, sub in pattern.keywords:
+            inner = sub.pattern if isinstance(sub, TpyAsPattern) else sub
+            if isinstance(inner, (TpyLiteralPattern, TpyValuePattern)):
+                raise self.ctx.error(
+                    f"field-value pattern on '{field_name}' is not supported "
+                    f"in a @dynamic / polymorphic match arm (the runtime type "
+                    f"test cannot also compare fields); use a guard instead, "
+                    f"e.g. `case {cls_name}() if <subject>.{field_name} == ...:`",
+                    pattern,
+                )
+
+    def _resolve_polymorphic_pattern_type(
+        self, name: str, source_inner: TpyType, pattern: TpyClassPattern,
+    ) -> NominalType:
+        """Resolve a class-pattern name and validate it can match the
+        polymorphic root (C++ inheritance, structural conformance, or
+        subclass), mirroring isinstance's dispatch validation."""
+        resolved = _resolve_concrete_type_name(name)
+        record = self.ctx.registry.get_record(name)
+        if resolved is None and record is not None:
+            resolved = NominalType(name, _module_qname=record.qualified_name())
+        if resolved is None or not isinstance(resolved, NominalType):
+            raise self.ctx.error(
+                f"unknown type '{name}' in match pattern", pattern
+            )
+
+        if is_protocol_type(source_inner):
+            conforms = (
+                self.stmts.protocols.directly_implements_dynamic(resolved, source_inner)
+                or self.stmts.protocols.type_conforms_to_protocol(resolved, source_inner)
+            )
+            if not conforms:
+                raise self.ctx.error(
+                    f"type '{name}' does not conform to the @dynamic protocol "
+                    f"'{source_inner}', so the case can never match; it must "
+                    f"inherit '{source_inner}' or structurally implement its "
+                    f"methods", pattern
+                )
+        elif not self.ctx.registry.is_subclass_of_or_equal(resolved, source_inner):
+            raise self.ctx.error(
+                f"type '{name}' is not a subclass of '{source_inner}'", pattern
+            )
+        return resolved
+
+    def _analyze_or_pattern_polymorphic(
+        self, pattern: TpyOrPattern, source_inner: TpyType,
+        seen_types: set[str], seen_poly: list[TpyType],
+        bindings: dict[str, TpyType], stmt: TpyMatch,
+    ) -> None:
+        """Or-pattern over polymorphic class patterns (type-test only)."""
+        if len(pattern.patterns) < 2:
+            raise self.ctx.error(
+                "or-pattern must have at least 2 alternatives", pattern
+            )
+        for alt in pattern.patterns:
+            if not isinstance(alt, TpyClassPattern):
+                raise self.ctx.error(
+                    "or-pattern alternatives in a @dynamic / polymorphic match "
+                    "must be class patterns", alt
+                )
+            # The alternatives narrow to distinct subclasses, so a binding
+            # would have no single well-typed value -- disallow rather than
+            # silently dropping it.
+            if alt.keywords or alt.positional:
+                raise self.ctx.error(
+                    "field bindings are not supported in or-pattern "
+                    "alternatives of a @dynamic / polymorphic match", alt
+                )
+            self._analyze_class_pattern_polymorphic(
+                alt, source_inner, seen_types, seen_poly, bindings, stmt,
+            )
 
     def _match_case_narrowing_facts(
         self, pattern: TpyPattern, subject_name: str | None,

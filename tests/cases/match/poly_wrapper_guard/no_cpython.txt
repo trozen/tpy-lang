@@ -1,0 +1,1 @@
+C++-only deref-view dispatch: CPython would match the Box wrapper itself against Dog/Bird, not the deref payload.

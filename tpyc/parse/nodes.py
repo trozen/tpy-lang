@@ -1102,6 +1102,11 @@ class TpyMatch(TpyStmt):
     # match end-label so non-void functions whose only exit is the match
     # don't trip -Wreturn-type.
     is_exhaustive: bool = False
+    # Set by sema: true when the subject is a @dynamic-protocol / polymorphic-
+    # class value (bare, Ptr, or reached through an owning wrapper's deref
+    # view). Routes codegen to the dynamic_cast dispatch strategy rather than
+    # variant-index / field-value matching.
+    polymorphic_dispatch: bool = False
 
     def exprs(self) -> list[TpyExpr]:
         result: list[TpyExpr] = [self.subject]

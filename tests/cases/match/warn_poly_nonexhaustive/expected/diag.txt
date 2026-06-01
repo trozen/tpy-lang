@@ -1,0 +1,1 @@
+main.py:30: warning: non-exhaustive match on 'Pet'; no unconditional catch-all arm (add 'case _:' to suppress)

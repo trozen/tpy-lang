@@ -1,0 +1,2 @@
+square 3 -> 9
+rect -> 10

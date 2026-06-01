@@ -1,0 +1,1 @@
+main.py:32: error: unreachable case for 'Dog': already matched by the earlier 'Mammal' arm
