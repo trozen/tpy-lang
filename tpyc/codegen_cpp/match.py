@@ -141,6 +141,12 @@ class MatchGenerator:
             # arms to share the same variant index
             if not has_guard:
                 has_guard = self._has_shared_variant_index(stmt, subject_type)
+            # A field-value sub-pattern (e.g. `Dog(legs=4)`) is conditional --
+            # the unconditional switch path emits no `&&` field check and would
+            # silently drop it, so route to the guarded path which does.
+            if not has_guard:
+                has_guard = any(self._pattern_has_field_condition(c.pattern)
+                                for c in stmt.cases)
             if has_guard:
                 self._gen_match_guarded_union(out, stmt, subject_type, indent)
             else:
@@ -249,7 +255,14 @@ class MatchGenerator:
 
         ctx = _PolyDispatch(subject_name, source_inner, cast_arg, is_const,
                             subject_read)
-        if any(c.guard is not None for c in stmt.cases):
+        # The if/elif chain relies on the `if (Sub* p = cast)` init form, which
+        # can't also AND a field-value check; a field condition (like a guard)
+        # therefore needs the standalone-if + goto guarded path.
+        needs_guarded = any(
+            c.guard is not None or self._pattern_has_field_condition(c.pattern)
+            for c in stmt.cases
+        )
+        if needs_guarded:
             self._gen_match_polymorphic_guarded(out, stmt, ctx, indent)
         else:
             self._gen_match_polymorphic_if_elif(out, stmt, ctx, indent)
@@ -299,6 +312,12 @@ class MatchGenerator:
             pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
 
             if isinstance(pattern, TpyClassPattern):
+                # A field-value sub-pattern needs the guarded path; the
+                # `if (Sub* p = cast)` init form here can't AND a field check.
+                if self._pattern_has_field_condition(pattern):
+                    raise CodeGenError(
+                        "internal: field-value sub-pattern reached the "
+                        "polymorphic if/elif path", loc=case.loc)
                 cond_decl, ref_decl, ref_local = self._poly_arm_cast(pattern, i, ctx)
                 out.write(f"{indent}{keyword} ({cond_decl}) {{\n")
                 out.write(f"{inner}{ref_decl}\n")
@@ -358,7 +377,9 @@ class MatchGenerator:
                 self._emit_binding(out, as_name, as_raw, ref_local, inner)
                 saved = {ctx.subject_name: self.ctx.narrowed_vars.get(ctx.subject_name)}
                 self.ctx.narrowed_vars[ctx.subject_name] = ref_local
-                self._emit_poly_guarded_action(out, case, guard, end_label, indent, inner)
+                field_conds = self._record_field_conditions(pattern, ref_local)
+                self._emit_poly_guarded_action(
+                    out, case, guard, field_conds, end_label, indent, inner)
                 self.ctx.restore_narrowed_vars(saved)
                 out.write(f"{indent}}}\n")
 
@@ -406,15 +427,18 @@ class MatchGenerator:
 
     def _emit_poly_guarded_action(
         self, out: TextIO, case: TpyMatchCase, guard: 'TpyExpr | None',
-        end_label: str, indent: str, inner: str,
+        field_conds: list[str], end_label: str, indent: str, inner: str,
     ) -> None:
-        """Emit a class-pattern arm body inside its `if (cast)` block, with the
-        guard (if any) gating the `goto end_label`. A failed guard falls through
-        to the next standalone-if arm."""
+        """Emit a class-pattern arm body inside its `if (cast)` block, gating
+        the `goto end_label` on the field-value conditions and guard (if any).
+        A failed condition falls through to the next standalone-if arm."""
+        cond_parts = list(field_conds)
         if guard is not None:
             guard_code = self.expressions.gen_expr(guard)
             self.ctx.temps.flush(out, inner)
-            out.write(f"{inner}if ({guard_code}) {{\n")
+            cond_parts.append(guard_code)
+        if cond_parts:
+            out.write(f"{inner}if ({' && '.join(cond_parts)}) {{\n")
             self.ctx.indent_level += 2
             self._emit_case_body(out, case.body, case.type_facts)
             self.ctx.indent_level -= 2
@@ -520,6 +544,13 @@ class MatchGenerator:
 
             if isinstance(pattern, TpyClassPattern):
                 assert pattern.resolved_type is not None
+                # This unconditional-switch path emits no field-value check;
+                # an arm carrying one must have been routed to the guarded
+                # path. Fail loudly rather than silently drop the condition.
+                if self._pattern_has_field_condition(pattern):
+                    raise CodeGenError(
+                        "internal: field-value sub-pattern reached the "
+                        "unconditional union switch path", loc=case.loc)
                 idx = self._variant_index(subject_type, pattern.resolved_type)
                 out.write(f"{indent}case {idx}: {{\n")
                 case_var: str | None = None
@@ -978,7 +1009,7 @@ class MatchGenerator:
                 truncated.append(entry)
                 pat = entry[1]
                 has_field_guard = (isinstance(pat, TpyClassPattern)
-                                   and any(self._sub_has_union_field_guard(sub)
+                                   and any(self._sub_has_field_condition(sub)
                                            for _, sub in pat.keywords))
                 if entry[0].guard is None and not has_field_guard:
                     break
@@ -2131,12 +2162,35 @@ class MatchGenerator:
         return conds
 
     @staticmethod
-    def _sub_has_union_field_guard(sub: TpyPattern) -> bool:
-        """Check if a field sub-pattern contains a union field guard."""
-        inner = sub
-        if isinstance(inner, TpyAsPattern):
-            inner = inner.pattern
-        return isinstance(inner, TpyClassPattern) and inner.is_union_field_guard
+    def _sub_has_field_condition(sub: TpyPattern) -> bool:
+        """Whether a field sub-pattern emits a runtime condition (mirrors what
+        `_record_field_conditions` produces): a literal comparison, a union
+        field guard, or a nested record sub-pattern that itself carries one.
+        Such a sub-pattern makes its arm conditional -- a later arm on the same
+        variant stays reachable."""
+        inner = sub.pattern if isinstance(sub, TpyAsPattern) else sub
+        if isinstance(inner, TpyLiteralPattern):
+            return True
+        if isinstance(inner, TpyClassPattern):
+            if inner.is_union_field_guard:
+                return True
+            return any(MatchGenerator._sub_has_field_condition(s)
+                       for _, s in inner.keywords)
+        return False
+
+    @staticmethod
+    def _pattern_has_field_condition(pattern: TpyPattern) -> bool:
+        """Whether a case pattern (class or or-pattern alternative) carries a
+        field-value condition that the guarded codegen path must emit."""
+        if isinstance(pattern, TpyAsPattern):
+            pattern = pattern.pattern
+        if isinstance(pattern, TpyClassPattern):
+            return any(MatchGenerator._sub_has_field_condition(sub)
+                       for _, sub in pattern.keywords)
+        if isinstance(pattern, TpyOrPattern):
+            return any(MatchGenerator._pattern_has_field_condition(alt)
+                       for alt in pattern.patterns)
+        return False
 
     def _has_shared_variant_index(self, stmt: TpyMatch, subject_type: UnionType) -> bool:
         """Check if multiple cases resolve to the same variant index (e.g. union field guards)."""

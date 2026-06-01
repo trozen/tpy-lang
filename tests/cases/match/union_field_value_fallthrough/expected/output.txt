@@ -1,0 +1,8 @@
+quad dog
+tripod dog
+some dog
+rex cat
+cat
+quaddog-or-cat
+other
+quaddog-or-cat

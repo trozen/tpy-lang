@@ -1,8 +1,14 @@
-# A field-value sub-pattern in a polymorphic-dispatch arm is rejected: the
-# dynamic_cast test cannot also compare fields, so it would be silently
-# dropped. Sema points at the guard form instead.
+# A *literal* field sub-pattern in a polymorphic-dispatch arm is supported
+# (see poly_field_value); a *named-constant* (value) comparison is not, since
+# only literal field checks are emitted. Sema points at the guard form.
+import enum
 from typing import Protocol
 from tpy import dynamic
+
+
+class Size(enum.Enum):
+    SMALL = 1
+    BIG = 2
 
 
 @dynamic
@@ -11,10 +17,10 @@ class Pet(Protocol):
 
 
 class Dog(Pet):
-    legs: int
+    size: Size
 
-    def __init__(self, legs: int) -> None:
-        self.legs = legs
+    def __init__(self, size: Size) -> None:
+        self.size = size
 
     def speak(self) -> str:
         return "woof"
@@ -22,14 +28,14 @@ class Dog(Pet):
 
 def describe(p: Pet) -> str:
     match p:
-        case Dog(legs=4):  # tpyc: error(/field-value pattern on 'legs' is not supported/)
-            return "quadruped"
+        case Dog(size=Size.BIG):  # tpyc: error(/comparing field 'size' against a named constant is not supported/)
+            return "big"
         case _:
             return "?"
 
 
 def main() -> None:
-    print(describe(Dog(4)))
+    print(describe(Dog(Size.BIG)))
 
 
 main()

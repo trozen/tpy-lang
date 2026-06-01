@@ -1,0 +1,1 @@
+main.py:17: error: duplicate case for 'Dog' in match statement

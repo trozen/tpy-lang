@@ -123,7 +123,9 @@ Phase 1 supports these sub-pattern types within class patterns:
 - **Capture**: `field=name` -- binds field value to a local variable
 - **Literal**: `field=42` -- checks field equals literal
 - **Wildcard**: `field=_` -- matches any value, no binding
-- **Value**: `field=Color.RED` -- checks field equals named constant
+- **Value**: `field=Color.RED` -- comparing a field against a named constant
+  is **not yet emitted** (rejected with a guard hint; only literal field
+  comparisons are supported -- see TODO.md "Open feature gaps")
 
 Deeply nested class sub-patterns (`case Circle(center=Point(x=0)):`)
 are deferred to Phase 2.
@@ -426,6 +428,14 @@ switch (__match_subject.index()) {
 
 Wildcard/capture maps to `default:`. Each case arm gets a `break`.
 
+A literal field sub-pattern (`case Dog(legs=4):`) is a *conditional* arm: it
+matches only when the variant type *and* the field value match. Such an arm
+routes to the guarded switch path, which emits the field comparison as an
+`if (__case.legs == 4)` inside the `case` block (same `_record_field_conditions`
+machinery as concrete-record subjects) and falls through to a later `Dog()` /
+`_` arm when it fails. A conditional arm therefore does not count toward
+exhaustiveness -- the variant is still reported uncovered.
+
 ### Optional subjects
 
 For `T | None` using `std::optional<T>`:
@@ -646,11 +656,12 @@ arm.
 
 #### As-built gaps
 
-- A field-value sub-pattern (`case Dog(legs=4):`) in a polymorphic arm is
-  rejected: the runtime type test cannot also compare fields, so it would be
-  silently dropped. Use a guard (`case Dog() if d.legs == 4:`). (The union
-  strategy has the same emit limitation but currently drops the condition
-  silently -- tracked in `BUGS.md`.)
+- A literal field sub-pattern (`case Dog(legs=4):`) in a polymorphic arm
+  compares the field after the `dynamic_cast`: the arm routes to the guarded
+  path, which emits `if (__case.legs == 4)` (via `_record_field_conditions`,
+  shared with union / record subjects) and falls through to a later `Dog()` /
+  `_` arm when it fails. A *named-constant* comparison (`case Dog(size=Big):`)
+  is not yet emitted -- use a guard (`case Dog() if d.size == Big:`).
 - The subject must be a bare variable name (same restriction as `isinstance`);
   a field / subscript / call subject is rejected with a bind-to-local hint.
 - `Optional[Pet]` is not routed here -- polymorphic dispatch on an optional

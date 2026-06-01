@@ -1,1 +1,1 @@
-main.py:25: error: field-value pattern on 'legs' is not supported in a @dynamic / polymorphic match arm (the runtime type test cannot also compare fields); use a guard instead, e.g. `case Dog() if <subject>.legs == ...:`
+main.py:31: error: comparing field 'size' against a named constant is not supported in a class pattern; use a guard instead, e.g. `case Dog() if <subject>.size == ...:`

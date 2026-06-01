@@ -433,19 +433,20 @@ class MatchAnalyzer:
                 f"type '{cls_name}' does not support field patterns", pattern
             )
 
-        # The dynamic_cast dispatch path emits only the type test + field
-        # captures, never a field-value comparison -- a literal / value field
-        # sub-pattern would be silently dropped, so reject it and point at the
-        # guard form, which the polymorphic codegen does support.
-        self._reject_value_field_subpatterns(pattern, cls_name)
-
-        type_key = str(resolved)
+        # A literal field sub-pattern (`Dog(legs=4)`) makes the arm
+        # conditional: the dynamic_cast may succeed yet the field check fail,
+        # so it neither duplicates a bare `Dog()` arm nor renders a later one
+        # unreachable. Fold the constraint into the dedup key and keep the arm
+        # out of `seen_poly` (the catch-all set for the unreachable check).
+        constraint = MatchAnalyzer._field_constraint_key(pattern)
+        type_key = str(resolved) + constraint
         if type_key in seen_types:
             raise self.ctx.error(
                 f"duplicate case for '{cls_name}' in match statement", pattern
             )
-        # A later arm whose type is a subclass-or-equal of an earlier arm's
-        # type is dead: the earlier (broader) dynamic_cast already caught it.
+        # A later arm whose type is a subclass-or-equal of an earlier
+        # unconditional arm's type is dead: the earlier (broader) dynamic_cast
+        # already caught it.
         for prior in seen_poly:
             if self.ctx.registry.is_subclass_of_or_equal(resolved, prior):
                 raise self.ctx.error(
@@ -453,24 +454,8 @@ class MatchAnalyzer:
                     f"the earlier '{prior}' arm", pattern
                 )
         seen_types.add(type_key)
-        seen_poly.append(resolved)
-
-    def _reject_value_field_subpatterns(
-        self, pattern: TpyClassPattern, cls_name: str,
-    ) -> None:
-        """Reject literal / value field sub-patterns in a polymorphic class
-        pattern. Positional patterns have been folded into keywords by
-        `_resolve_class_pattern_fields` before this runs."""
-        for field_name, sub in pattern.keywords:
-            inner = sub.pattern if isinstance(sub, TpyAsPattern) else sub
-            if isinstance(inner, (TpyLiteralPattern, TpyValuePattern)):
-                raise self.ctx.error(
-                    f"field-value pattern on '{field_name}' is not supported "
-                    f"in a @dynamic / polymorphic match arm (the runtime type "
-                    f"test cannot also compare fields); use a guard instead, "
-                    f"e.g. `case {cls_name}() if <subject>.{field_name} == ...:`",
-                    pattern,
-                )
+        if not constraint:
+            seen_poly.append(resolved)
 
     def _resolve_polymorphic_pattern_type(
         self, name: str, source_inner: TpyType, pattern: TpyClassPattern,
@@ -838,6 +823,16 @@ class MatchAnalyzer:
                 pass
             elif isinstance(sub_pattern, TpyLiteralPattern):
                 pass  # Literal comparison -- validated at codegen time
+            elif isinstance(sub_pattern, TpyValuePattern):
+                # Named-constant field comparison (e.g. `size=Size.BIG`) is not
+                # yet emitted; only literal field comparisons are. Point at the
+                # guard form, which expresses the same test.
+                raise self.ctx.error(
+                    f"comparing field '{field_name}' against a named constant "
+                    f"is not supported in a class pattern; use a guard instead, "
+                    f"e.g. `case {cls_name}() if <subject>.{field_name} == ...:`",
+                    sub_pattern,
+                )
             elif isinstance(sub_pattern, TpyClassPattern):
                 # Type sub-pattern (e.g., value=str()) -- type guard
                 matched_type = self._validate_field_type_pattern(sub_pattern, field_type, pattern)
@@ -1152,15 +1147,29 @@ class MatchAnalyzer:
     def _build_pattern_type_key(
         pattern: TpyClassPattern, resolved_type: TpyType,
     ) -> str:
-        """Build a key for duplicate-case detection that includes union field guards."""
-        key = str(resolved_type)
-        for _, sub in pattern.keywords:
-            inner = sub
-            if isinstance(inner, TpyAsPattern):
-                inner = inner.pattern
-            if isinstance(inner, TpyClassPattern) and inner.is_union_field_guard:
-                key += f"+{inner.resolved_type}"
-        return key
+        """Build a key for duplicate-case / exhaustiveness detection, folding
+        in field-value constraints so a conditional arm (`Dog(legs=4)`) stays
+        distinct from `Dog()` / `Dog(legs=5)` and is reported as uncovered."""
+        return str(resolved_type) + MatchAnalyzer._field_constraint_key(pattern)
+
+    @staticmethod
+    def _field_constraint_key(pattern: TpyClassPattern) -> str:
+        """Canonical signature of a class pattern's field-value constraints
+        (literals + union field guards, recursing through nested record
+        sub-patterns). Empty when the pattern only binds / type-tests fields."""
+        parts: list[str] = []
+        for field_name, sub in pattern.keywords:
+            inner = sub.pattern if isinstance(sub, TpyAsPattern) else sub
+            if isinstance(inner, TpyLiteralPattern):
+                parts.append(f"+{field_name}={inner.value!r}")
+            elif isinstance(inner, TpyClassPattern) and inner.is_union_field_guard:
+                parts.append(f"+{field_name}:{inner.resolved_type}"
+                             + MatchAnalyzer._field_constraint_key(inner))
+            elif isinstance(inner, TpyClassPattern):
+                sub_key = MatchAnalyzer._field_constraint_key(inner)
+                if sub_key:
+                    parts.append(f"+{field_name}{sub_key}")
+        return "".join(parts)
 
     @staticmethod
     def _is_constraining_sub_pattern(sub: TpyPattern) -> bool:

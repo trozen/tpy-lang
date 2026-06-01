@@ -1,0 +1,1 @@
+main.py:23: error: comparing field 'size' against a named constant is not supported in a class pattern; use a guard instead, e.g. `case Dog() if <subject>.size == ...:`

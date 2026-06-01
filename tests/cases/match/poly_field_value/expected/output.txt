@@ -1,0 +1,3 @@
+quadruped dog
+other dog
+not a dog
