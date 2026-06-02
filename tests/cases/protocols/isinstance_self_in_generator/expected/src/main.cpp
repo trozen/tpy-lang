@@ -57,9 +57,10 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Pet_ro_names::__next__() 
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((dynamic_cast<const Dog*>(&__self) != nullptr)) {
+            const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
             // yield "ro-dog:" + self._name
             __state = S_RESUME_0;
-            return (::tpy::str_concat("ro-dog:", __self._name));
+            return (::tpy::str_concat("ro-dog:", __self_narrowed._name));
         } else {
             // yield "ro-pet:" + self._name
             __state = S_RESUME_1;
@@ -67,6 +68,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Pet_ro_names::__next__() 
         }
     }
     case S_RESUME_0: {
+        const Dog& __self_narrowed = *dynamic_cast<const Dog*>(&__self);
         __state = S_JOIN_0;
         continue;
     }
@@ -89,11 +91,12 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Pet_counts::__next__() 
     while (true) switch (__state) {
     case S_INITIAL: {
         if ((dynamic_cast<Dog*>(&__self) != nullptr)) {
+            Dog& __self_narrowed = *dynamic_cast<Dog*>(&__self);
             // self._n += 1
-            __self._n = (__self._n) + (::tpy::BigInt(1));
+            __self_narrowed._n = (__self_narrowed._n) + (::tpy::BigInt(1));
             // yield self._n
             __state = S_RESUME_0;
-            return __self._n;
+            return __self_narrowed._n;
         } else {
             // yield -1
             __state = S_RESUME_2;
@@ -101,13 +104,15 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Pet_counts::__next__() 
         }
     }
     case S_RESUME_0: {
+        Dog& __self_narrowed = *dynamic_cast<Dog*>(&__self);
         // self._n += 10
-        __self._n = (__self._n) + (::tpy::BigInt(10));
+        __self_narrowed._n = (__self_narrowed._n) + (::tpy::BigInt(10));
         // yield self._n
         __state = S_RESUME_1;
-        return __self._n;
+        return __self_narrowed._n;
     }
     case S_RESUME_1: {
+        Dog& __self_narrowed = *dynamic_cast<Dog*>(&__self);
         __state = S_JOIN_0;
         continue;
     }

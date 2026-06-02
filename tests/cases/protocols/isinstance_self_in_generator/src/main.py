@@ -3,9 +3,8 @@
 # narrowed self works: `polymorphic_cast_arg` emits `&__self` as the
 # dynamic_cast input. Covers the basic narrowing, a @readonly generator
 # method (const __self -> const Sub*), and mutation through the narrowed self
-# across a yield. (A yield *inside* the narrowed block followed by a
-# subclass-only field access is a separate shared async+generator limitation;
-# see BUGS.md -- not exercised here.)
+# across a yield. (A subclass-only field access *after* a suspension inside the
+# narrowed block is covered by isinstance_self_in_generator_field.)
 from typing import Protocol, Iterator
 from tpy import dynamic, readonly
 

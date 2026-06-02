@@ -75,11 +75,17 @@ def _regions_have_pending_cleanup(regions: tuple) -> bool:
 if TYPE_CHECKING:
     from collections.abc import Callable
     from io import TextIO
+    from ..typesys import TpyType
     from .context import CodeGenContext
     from .types import TypeMapper
     from .expressions import ExpressionGenerator
     from .statements import StatementGenerator
     from .functions import FunctionGenerator
+
+    # Saved (narrowed_vars, protocol_narrowings, literal_facts) snapshots that
+    # _restore_resume_narrowings reverts after a narrowed scope is emitted.
+    _NarrowingToken = tuple[dict[str, str | None],
+                            dict[str, TpyType], dict[str, TpyType]]
 
 
 class _CoroParamKind(IntEnum):
@@ -2635,8 +2641,15 @@ class AsyncCoroCodegen:
             if y.payload.kind is rcfg.AwaitKind.RETURN:
                 # Resume core already emitted the return.
                 return
-        # Walk BBs inline from entry_bb.
-        self._walk_inline(out, cfg, entry_bb, case_entries, func)
+        # A case may be (re-)entered after a suspension that split a
+        # narrowed region; re-establish the narrowed bindings active on
+        # entry before walking, so post-suspension member access sees the
+        # narrowed type rather than the raw frame field.
+        entry = cfg.blocks[entry_bb].entry_narrowings
+        tok = self._emit_resume_narrowings(out, entry)
+        self._walk_inline(out, cfg, entry_bb, case_entries, func,
+                          chain_entry=entry)
+        self._restore_resume_narrowings(tok)
 
     def _emit_exit_region_finallies(self, out: "TextIO", indent: str,
                                      from_regions: tuple,
@@ -2678,14 +2691,57 @@ class AsyncCoroCodegen:
         if not _regions_have_pending_cleanup(to_regions):
             self._emit_generator_stop_check(out, indent)
 
+    def _emit_resume_narrowings(
+        self, out: "TextIO",
+        entry_narrowings: 'dict[str, TpyType]',
+        outer: 'dict[str, TpyType] | None' = None,
+    ) -> '_NarrowingToken | None':
+        """Re-establish isinstance / `is not None` narrowing bindings that
+        are active on entry to a resumable BB. A suspension splits a
+        narrowed region across C++ case scopes, so the original
+        dynamic_cast / std::get local does not survive; this re-emits it
+        from the sema-computed facts stamped on the BB. `outer` lists facts
+        already bound in the enclosing C++ scope (passed at branch arms) so
+        they are not re-cast redundantly. Returns a restore token (or None
+        when nothing was emitted)."""
+        if not entry_narrowings:
+            return None
+        if outer:
+            delta = {k: v for k, v in entry_narrowings.items()
+                     if outer.get(k) is not v}
+        else:
+            delta = entry_narrowings
+        if not delta:
+            return None
+        lit_snap = self.ctx.save_literal_facts()
+        proto_snap = self.ctx.save_protocol_narrowings()
+        nv_saved = self.statements._emit_isinstance_extractions(
+            out, delta, indent_extra=0)
+        return (nv_saved, proto_snap, lit_snap)
+
+    def _restore_resume_narrowings(self, token: '_NarrowingToken | None') -> None:
+        if token is None:
+            return
+        nv_saved, proto_snap, lit_snap = token
+        self.ctx.restore_narrowed_vars(nv_saved)
+        self.ctx.restore_protocol_narrowings(proto_snap)
+        self.ctx.restore_literal_facts(lit_snap)
+
     def _walk_inline(self, out: "TextIO", cfg: 'rcfg.CFG',
                      start_bb: int, case_entries: dict[int, _StateLabel],
-                     func: TpyFunction) -> None:
+                     func: TpyFunction,
+                     chain_entry: 'dict[str, TpyType] | None' = None) -> None:
         """Walk BBs starting from start_bb, emitting their statements
         and following Fall/Branch terminators inline. Stops when the
         terminator is Yield/Return/Raise/Unreachable, or when a
         Fall/Branch target is a case_entry (then emits a state
-        transition)."""
+        transition).
+
+        `chain_entry` is the narrowing-fact set already bound in this C++
+        scope (the entry_narrowings of start_bb, which every inline
+        Fall-successor shares); branch arms diff their own facts against
+        it so enclosing narrowings aren't re-cast."""
+        chain_entry = chain_entry or {}
         body_indent = self.ctx.indent()
         cur = start_bb
         while True:
@@ -2739,12 +2795,14 @@ class AsyncCoroCodegen:
                 out.write(f"{body_indent}if ({cond_cpp}) {{\n")
                 self.ctx.indent_level += 1
                 self._walk_inline_or_jump(out, cfg, t.then_bb, case_entries,
-                                            func, from_bb=cur)
+                                            func, from_bb=cur,
+                                            outer_narrowings=chain_entry)
                 self.ctx.indent_level -= 1
                 out.write(f"{body_indent}}} else {{\n")
                 self.ctx.indent_level += 1
                 self._walk_inline_or_jump(out, cfg, t.else_bb, case_entries,
-                                            func, from_bb=cur)
+                                            func, from_bb=cur,
+                                            outer_narrowings=chain_entry)
                 self.ctx.indent_level -= 1
                 out.write(f"{body_indent}}}\n")
                 return
@@ -2805,9 +2863,13 @@ class AsyncCoroCodegen:
                               target_bb: int,
                               case_entries: dict[int, _StateLabel],
                               func: TpyFunction,
-                              from_bb: int) -> None:
+                              from_bb: int,
+                              outer_narrowings: 'dict[str, TpyType] | None' = None) -> None:
         body_indent = self.ctx.indent()
         if target_bb in case_entries:
+            # The target is its own case; it re-establishes narrowings from
+            # its own entry_narrowings (it may be re-entered after a
+            # suspension, so the binding can't be carried via this edge).
             self._emit_exit_region_finallies(
                 out, body_indent,
                 cfg.blocks[from_bb].region_stack,
@@ -2816,7 +2878,12 @@ class AsyncCoroCodegen:
                       f"{case_entries[target_bb].cpp_name()};\n")
             out.write(f"{body_indent}continue;\n")
         else:
-            self._walk_inline(out, cfg, target_bb, case_entries, func)
+            entry = cfg.blocks[target_bb].entry_narrowings
+            tok = self._emit_resume_narrowings(out, entry,
+                                               outer=outer_narrowings)
+            self._walk_inline(out, cfg, target_bb, case_entries, func,
+                              chain_entry=entry)
+            self._restore_resume_narrowings(tok)
 
     def _emit_async_finally_exit(self, out: "TextIO", indent: str,
                                    stmt: 'rcfg.AsyncFinallyExit') -> None:

@@ -515,9 +515,10 @@ existing `error_*` case to positive.
   first:** `_emit_branch_decls` no longer re-declares frame-field names
   as shadowing C++ locals in resumable bodies (a pre-existing if/match
   miscompile, BUGS.md). The blanket sema reject
-  (`_check_resumable_suspension_shape`) is deleted. **Remaining gap
-  (uniform with `if`/`while`):** reading an `isinstance`-narrowed binding
-  *across* a suspension stays the open H5 gap. Converts:
+  (`_check_resumable_suspension_shape`) is deleted. **Remaining gap:**
+  reading an `isinstance`-narrowed binding *across* a suspension is now
+  re-established for `if`/`while`/`assert` (H5, see below); the `match`-arm
+  form is still open (arm bodies don't stamp `case.type_facts`). Converts:
   `iterators/{gen_match_yield, gen_method_match_yield,
   gen_generic_match_yield}`, `async/async_match_await`; new cases
   `iterators/{gen_resumable_match_enum, gen_match_union (field + `as`
@@ -599,15 +600,18 @@ existing `error_*` case to positive.
   deduced template param `T_it`. Drop the codegen-gate reject.
   Converts: `iterators/error_gen_proto_param_multi_yield`.
 
-- **H5 -- narrowing across a suspension inside the narrowed block.**
-  Shared async+generator latent limitation filed in `BUGS.md` during
-  F5 review: `isinstance(self, Sub)` (or any polymorphic narrowing)
-  inside a block that suspends, then accesses subclass state after,
-  fails to compile because the narrowed `Sub*` is a C++ local, not a
-  frame field. Fix: materialize the narrowing binding as a frame field
-  (`Sub* __self_narrowed`) hoisted across the suspension, parallel to
-  how user locals are hoisted. Same machinery as flow-fact-narrowing
-  surviving a suspension generally.
+- **H5 (DONE for `if`/`while`/`assert`; `match` arms remain) --
+  narrowing across a suspension inside the narrowed block.**
+  `isinstance` / `is not None` narrowing (union param or polymorphic
+  `self`) inside an `if`/`while` body, or via `assert`, then accessing
+  arm-/subclass-specific state after a suspension. Fix shape used: the
+  CFG builder stamps each basic block with the narrowing facts active on
+  entry (threaded from the sema-attached `then_type_facts`/`else_type_facts`,
+  killed on reassignment), and the resumable emitter re-establishes the
+  cast / `std::get` at each resume case and branch arm. Cheaper than
+  hoisting a `Sub*` frame field -- the cast is idempotent and re-derived
+  per resume. **Still open:** `match`-arm narrowing across a suspension
+  (`_build_match` doesn't push `case.type_facts`); tracked in `BUGS.md`.
 
 - **H6 DONE (2026-05-28)** -- generator/async methods on bounded
   generic classes (`class Box[T: Bound]`). The H6 repro surfaced TWO

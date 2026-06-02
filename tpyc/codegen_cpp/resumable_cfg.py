@@ -36,10 +36,11 @@ from enum import Enum
 from typing import TYPE_CHECKING, Union
 
 from ..parse.nodes import (
-    TpyAssign, TpyAwait, TpyBreak, TpyContinue, TpyExceptHandler,
+    TpyAssert, TpyAssign, TpyAwait, TpyBreak, TpyContinue, TpyExceptHandler,
     TpyExpr, TpyExprStmt, TpyForEach, TpyIf, TpyName,
     TpyMatch,
-    TpyRaise, TpyReturn, TpyStmt, TpyTry, TpyVarDecl, TpyWhile, TpyWith,
+    TpyRaise, TpyReturn, TpyStmt, TpyTry, TpyTupleUnpack, TpyVarDecl,
+    TpyWhile, TpyWith,
     TpyWithItem, TpyYield,
     stmt_has_any_suspension as _stmt_has_any_suspension,
     stmts_have_any_suspension as _stmts_have_any_suspension,
@@ -48,6 +49,7 @@ from ..parse.nodes import (
 
 if TYPE_CHECKING:
     from ..parse.nodes import TpyFunction
+    from ..typesys import TpyType
     from .gen_generators import GeneratorForInfo
 
 
@@ -528,6 +530,12 @@ class BB:
     # only as the resume entry of a Yield (i.e. is a state target). Used
     # by emit to decide whether to emit a case label.
     is_resume_entry: bool = False
+    # isinstance/`is not None` narrowing facts (var name -> narrowed type)
+    # active when control enters this BB. A suspension splits a narrowed
+    # region across C++ case scopes, so the narrowed binding (a dynamic_cast
+    # / std::get local) does not survive; emit re-establishes it at the
+    # resume case from these facts. {} for un-narrowed blocks.
+    entry_narrowings: dict[str, "TpyType"] = field(default_factory=dict)
 
 
 # -- Loop-context tracking (used during construction; not in the final CFG)
@@ -627,6 +635,12 @@ class CFGBuilder:
         # Construction-time stacks.
         self._loop_stack: list[_LoopCtx] = []
         self._region_stack: list[Region] = []
+        # isinstance/`is not None` narrowing facts active at the current
+        # construction point. New BBs are stamped with a snapshot so the
+        # emitter can re-establish narrowed bindings at resume cases that
+        # land inside a narrowed region (a binding is a C++ local that
+        # does not survive the suspension that split the region).
+        self._active_narrowings: dict[str, TpyType] = {}
         self._payload_factory = payload_factory
         self._for_uid_map: dict[int, int] = for_uid_map or {}
         self._with_uid_map: dict[int, list[int]] = with_uid_map or {}
@@ -665,9 +679,53 @@ class CFGBuilder:
     def _new_bb(self) -> int:
         bb_id = self._next_bb_id
         self._next_bb_id += 1
-        bb = BB(id=bb_id, region_stack=tuple(self._region_stack))
+        bb = BB(id=bb_id, region_stack=tuple(self._region_stack),
+                entry_narrowings=dict(self._active_narrowings))
         self._blocks[bb_id] = bb
         return bb_id
+
+    # -- Narrowing-fact threading ---------------------------------------
+
+    def _push_narrowings(self, facts: 'dict[str, TpyType]') -> dict:
+        """Extend the active narrowing set with `facts` (concrete-type
+        narrowings only; union/None facts are no-ops at the binding
+        level). Returns a token for `_pop_narrowings`."""
+        prev = self._active_narrowings
+        if facts:
+            merged = dict(prev)
+            merged.update(facts)
+            self._active_narrowings = merged
+        else:
+            self._active_narrowings = dict(prev)
+        return prev
+
+    def _pop_narrowings(self, prev: dict) -> None:
+        self._active_narrowings = prev
+
+    def _kill_narrowings(self, stmt: TpyStmt) -> None:
+        """Drop a variable's narrowing when a statement reassigns it, so
+        BBs built after the reassignment don't re-cast a now-wrong type.
+        Assert narrowings (`then_type_facts`) flow forward into the active
+        set for the rest of the block."""
+        if isinstance(stmt, TpyAssert):
+            if stmt.then_type_facts:
+                self._active_narrowings = {**self._active_narrowings,
+                                           **stmt.then_type_facts}
+            return
+        killed: set[str] = set()
+        if isinstance(stmt, TpyAssign) and isinstance(stmt.target, TpyName):
+            killed.add(stmt.target.name)
+        elif isinstance(stmt, TpyVarDecl):
+            killed.add(stmt.name)
+        elif isinstance(stmt, TpyTupleUnpack):
+            # `a, b = ...` rebinds each target to a fresh value; any narrowed
+            # name among them must lose its narrowing (parser guarantees the
+            # targets are simple names, `None` for `_`).
+            killed.update(n for n in stmt.targets if n is not None)
+        if killed & self._active_narrowings.keys():
+            self._active_narrowings = {
+                k: v for k, v in self._active_narrowings.items()
+                if k not in killed}
 
     def _finish(self, bb_id: int, terminator: Terminator) -> None:
         """Set the terminator on a BB if it doesn't already have one.
@@ -697,6 +755,7 @@ class CFGBuilder:
             if cur_after is None:
                 return None
             cur = cur_after
+            self._kill_narrowings(stmt)
         return cur
 
     def _build_stmt(self, cur: int, stmt: TpyStmt) -> int | None:
@@ -859,10 +918,23 @@ class CFGBuilder:
         join_bb = self._new_bb()
         self._finish(cur, Branch(cond=stmt.condition, then_bb=then_bb,
                                   else_bb=else_bb))
+        # Each arm carries the condition's narrowing facts so a suspension
+        # inside the arm re-establishes the narrowed binding at its resume
+        # case. then_bb/else_bb were created in the outer context, so stamp
+        # them explicitly; continuation BBs are stamped by `_new_bb` while
+        # the arm facts are pushed.
+        self._blocks[then_bb].entry_narrowings = {
+            **self._active_narrowings, **stmt.then_type_facts}
+        prev = self._push_narrowings(stmt.then_type_facts)
         then_end = self._build_block(then_bb, stmt.then_body)
+        self._pop_narrowings(prev)
         if then_end is not None:
             self._finish(then_end, Fall(next_bb=join_bb))
+        self._blocks[else_bb].entry_narrowings = {
+            **self._active_narrowings, **stmt.else_type_facts}
+        prev = self._push_narrowings(stmt.else_type_facts)
         else_end = self._build_block(else_bb, stmt.else_body)
+        self._pop_narrowings(prev)
         if else_end is not None:
             self._finish(else_end, Fall(next_bb=join_bb))
         # If both branches terminate, the join is unreachable.
@@ -890,12 +962,18 @@ class CFGBuilder:
             break_bb=after_bb,
             regions_at_entry=tuple(self._region_stack),
         ))
+        # The condition's narrowing applies inside the loop body; a
+        # suspension in the body re-establishes the binding at its resume.
+        self._blocks[body_bb].entry_narrowings = {
+            **self._active_narrowings, **stmt.then_type_facts}
+        prev = self._push_narrowings(stmt.then_type_facts)
         try:
             body_end = self._build_block(body_bb, stmt.body)
             if body_end is not None:
                 self._finish(body_end, Fall(next_bb=check_bb))
         finally:
             self._loop_stack.pop()
+            self._pop_narrowings(prev)
         if stmt.orelse:
             # else runs on the normal-exit edge, then falls to after_bb;
             # break edges (-> after_bb) skip it. The else body is a regular

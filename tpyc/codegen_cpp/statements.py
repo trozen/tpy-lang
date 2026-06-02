@@ -2340,6 +2340,14 @@ class StatementGenerator:
         # is still live). The caller records the chosen name in the set; the
         # set is part of LocalScopeSnap so it tracks C++ lexical scope.
         base = f"__{var_name}"
+        # In a resumable frame the alias must not shadow a captured frame
+        # field (e.g. `self` is the field `__self`): the cast initializer
+        # reads the source by name, so a same-named alias would self-reference
+        # its own uninitialized storage. Frame-field sets are empty outside
+        # resumable bodies, so this is a no-op for sync codegen.
+        if (base == self.ctx.generator_self_ref
+                or base in self.ctx.generator_field_names):
+            base = f"{base}_narrowed"
         if not persistent:
             return base
         in_use = self.ctx.declared_persistent_aliases

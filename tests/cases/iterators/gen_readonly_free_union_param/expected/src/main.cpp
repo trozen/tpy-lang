@@ -14,20 +14,24 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_codes::__next__() {
     }
     case S_RESUME_0: {
         if (std::holds_alternative<const Dog*>(a)) {
+            auto& __a = *std::get<const Dog*>(a);
             // yield 1
             __state = S_RESUME_1;
             return ::tpy::BigInt(1);
         } else {
+            auto& __a = *std::get<const Cat*>(a);
             // yield 2
             __state = S_RESUME_2;
             return ::tpy::BigInt(2);
         }
     }
     case S_RESUME_1: {
+        auto& __a = *std::get<const Dog*>(a);
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_2: {
+        auto& __a = *std::get<const Cat*>(a);
         __state = S_JOIN_0;
         continue;
     }
