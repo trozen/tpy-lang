@@ -546,6 +546,20 @@ class FunctionTrackingState:
     # --- Consumed variable tracking ---
     consumed_vars: set[str] = field(default_factory=set)
 
+    # Tuple-typed locals that OWN a fresh (locally-constructed) non-value
+    # member -- the local is storage form (`std::tuple<int, Box>`) and a pure
+    # read is fine, but borrowing such a member across a yield/return boundary
+    # (`tuple_to_pointer` takes `&t.box` into the dying local) dangles. Recorded
+    # at the tuple-literal assignment when the literal would itself be rejected
+    # at a direct yield/return; the boundary check then rejects a bare-name
+    # yield/return of the local. Loop/param-derived tuple locals are never
+    # recorded, so borrow composition (`for pair in src: yield pair`) is unaffected.
+    # Hazard fact -> merges with UNION at branch/loop joins (flag if any path owns-fresh).
+    # Maps the local name to the first dangerous element index, so the boundary
+    # diagnostic points at the actually-fresh element (not just the first
+    # borrow-form one, which a safe param-rooted element could precede).
+    owns_fresh_tuple_member_vars: dict[str, int] = field(default_factory=dict)
+
 
     # --- Variable declaration tracking (per-function) ---
     var_decl_by_name: dict[str, 'TpyVarDecl'] = field(default_factory=dict)

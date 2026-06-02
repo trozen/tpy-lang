@@ -2325,7 +2325,10 @@ class OptionalType(TpyType):
     the THIR/MIR migration.
     """
     inner: TpyType
-    # Excluded from eq/hash: codegen concern only; see class docstring.
+    # Excluded from eq/hash: representation context, not semantic identity --
+    # it pins uses_pointer_repr() to True over a value inner without splitting
+    # one C++ shape into two distinct TPy types. See the class docstring's
+    # force_pointer_repr invariants.
     force_pointer_repr: bool = field(default=False, compare=False, hash=False)
 
     def __new__(cls, inner: 'TpyType | None' = None, force_pointer_repr: bool = False):
@@ -2790,11 +2793,25 @@ class UnionType(TpyType):
         return f"const {self.to_cpp()}& {name}"
 
     def to_cpp_return(self) -> str:
+        # A recursive-union wrapper struct is value-shape: return by value
+        # (the wrapper name), never the pointer-variant form -- a function-local
+        # wrapper would dangle behind a reference. `to_cpp()` resolves to the
+        # registered alias name (identical to types.type_to_cpp here).
+        if self.needs_wrapper():
+            return self.to_cpp()
         if self.uses_pointer_repr():
             return self.to_cpp_ptr_variant()
         return self.to_cpp()
 
     def to_cpp_return_const(self) -> str:
+        # A wrapper union is value-shape; emit the alias, never the ptr-variant
+        # (uses_pointer_repr() is True for a wrapper since its members are
+        # non-value). Mirrors to_cpp_return + RecursiveAliasInstanceType so a
+        # wrapper union reached as a const tuple element (via
+        # TupleType._element_to_cpp_param) renders correctly. The top-level
+        # const-return prefix stays positional in functions._return_type_cpp.
+        if self.needs_wrapper():
+            return self.to_cpp()
         if self.uses_pointer_repr():
             return self.to_cpp_const_ptr_variant()
         return self.to_cpp()

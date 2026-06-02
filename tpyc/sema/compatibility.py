@@ -2083,6 +2083,7 @@ class TypeCompatibility:
                     expr
                 )
             self._check_tuple_elem_dangle(tuple_rt, expr, verb)
+            self._check_owns_fresh_tuple_local(tuple_rt, expr, verb)
             return
         if (return_type.is_value_type()
                 or isinstance(return_type, (VoidType, OwnType))
@@ -2126,6 +2127,26 @@ class TypeCompatibility:
                 expr
             )
 
+    def _tuple_literal_fresh_borrow_elem(
+            self, tuple_type: TupleType, inner: TpyExpr) -> int | None:
+        """First element index whose non-value (borrow-form) slot has a fresh /
+        dangling source in this tuple literal, else None.
+
+        Shared by the literal yield/return check and the owns-fresh-member
+        assignment marking, so both agree on exactly which tuple literals are
+        dangerous to borrow across a boundary.
+        """
+        if not isinstance(inner, TpyTupleLiteral):
+            return None
+        for i, et in enumerate(tuple_type.element_types):
+            if i >= len(inner.elements):
+                break
+            if (not et.is_value_type() and not isinstance(et, (OwnType, TypeParamRef))
+                    and not et.needs_wrapper()
+                    and self.is_dangling_return(inner.elements[i])):
+                return i
+        return None
+
     def _check_tuple_elem_dangle(self, tuple_type: TupleType, expr: TpyExpr,
                                  verb: str) -> None:
         """Per-element dangling check for a top-level tuple return/yield literal.
@@ -2136,20 +2157,69 @@ class TypeCompatibility:
         Nested-tuple members are handled upstream by the unsupported-shape check.
         """
         inner = expr.expr if isinstance(expr, TpyCoerce) else expr
-        if not isinstance(inner, TpyTupleLiteral):
+        i = self._tuple_literal_fresh_borrow_elem(tuple_type, inner)
+        if i is not None:
+            et = tuple_type.element_types[i]
+            raise self.ctx.error(
+                f"Cannot {verb} local or temporary as tuple element {i}. "
+                f"Type '{et}' is {verb}ed by reference. "
+                f"Use Own[{et}] for this tuple element to {verb} by value.",
+                inner.elements[i]
+            )
+
+    def update_owns_fresh_tuple_member(
+            self, name: str, var_type: TpyType | None,
+            init_expr: TpyExpr | None) -> None:
+        """Set/clear the owns-fresh-tuple-member hazard fact for a (re)assigned
+        local (see `sema.context`).
+
+        Reassignment always clears it first; it is re-set only when the new
+        value is a tuple literal that the per-element fresh-source check would
+        itself reject at a direct yield/return. Recorded here (not rejected) so
+        a pure local read of such a tuple stays valid -- only a later
+        yield/return of the bare name is rejected, at the boundary.
+        """
+        self.ctx.func.owns_fresh_tuple_member_vars.pop(name, None)
+        if init_expr is None or var_type is None:
             return
-        for i, et in enumerate(tuple_type.element_types):
-            if i >= len(inner.elements):
-                break
-            if (not et.is_value_type() and not isinstance(et, (OwnType, TypeParamRef))
-                    and not et.needs_wrapper()
-                    and self.is_dangling_return(inner.elements[i])):
-                raise self.ctx.error(
-                    f"Cannot {verb} local or temporary as tuple element {i}. "
-                    f"Type '{et}' is {verb}ed by reference. "
-                    f"Use Own[{et}] for this tuple element to {verb} by value.",
-                    inner.elements[i]
-                )
+        tt = unwrap_readonly(var_type)
+        inner = init_expr.expr if isinstance(init_expr, TpyCoerce) else init_expr
+        if isinstance(tt, TupleType):
+            idx = self._tuple_literal_fresh_borrow_elem(tt, inner)
+            if idx is not None:
+                self.ctx.func.owns_fresh_tuple_member_vars[name] = idx
+
+    def _check_owns_fresh_tuple_local(self, tuple_type: TupleType,
+                                      expr: TpyExpr, verb: str) -> None:
+        """Reject a bare-name yield/return of a tuple local that owns a fresh
+        non-value member (the non-literal remainder of `_check_tuple_elem_dangle`).
+
+        The literal check only sees a `TpyTupleLiteral` at the boundary; here the
+        source is a `TpyName` whose binding was flagged at assignment. Loop /
+        param-derived tuple locals are never flagged, so borrow composition
+        (`for pair in src: yield pair`) is unaffected.
+        """
+        inner = expr.expr if isinstance(expr, TpyCoerce) else expr
+        if not isinstance(inner, TpyName):
+            return
+        idx = self.ctx.func.owns_fresh_tuple_member_vars.get(inner.name)
+        if idx is None or idx >= len(tuple_type.element_types):
+            return
+        et = tuple_type.element_types[idx]
+        # Re-check against the *declared* element type: the flag's index comes
+        # from the assignment-inferred type, but the boundary type may differ --
+        # an Own[T] element (the escape) is moved by value, so it is safe and
+        # must not be rejected.
+        if (et.is_value_type() or isinstance(et, (OwnType, TypeParamRef))
+                or et.needs_wrapper()):
+            return
+        raise self.ctx.error(
+            f"Cannot {verb} tuple local '{inner.name}': element {idx} "
+            f"('{et}') owns a freshly constructed value that is {verb}ed "
+            f"by reference and would dangle. Use Own[{et}] for this tuple "
+            f"element to {verb} by value.",
+            inner
+        )
 
     def _nested_tuple_borrow_member(self, tuple_type: TupleType,
                                     _nested: bool = False) -> TpyType | None:

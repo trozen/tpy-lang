@@ -1,0 +1,1 @@
+main.py:15: error: Cannot yield tuple local 't': element 1 ('Box') owns a freshly constructed value that is yielded by reference and would dangle. Use Own[Box] for this tuple element to yield by value.

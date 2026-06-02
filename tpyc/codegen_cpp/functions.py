@@ -558,18 +558,17 @@ class FunctionGenerator:
             # Non-dynamic protocol return (e.g. Iterator[T] from __iter__):
             # use auto, C++ deduces the type from the return expression.
             return "auto"
-        # Recursive union wrapper structs are value types; bypass the default
-        # to_cpp_return() (which appends `&` for non-value types, dangling on
-        # a function-local return) so the return uses the wrapper struct name
-        # -- including the qualified form for cross-module aliases via
-        # types.type_to_cpp(). Preserve const for readonly returns / readonly
-        # methods so the wrapper's value semantics still propagate the const
-        # intent to the caller.
+        # Recursive-union wrapper structs are value-shape: the non-const
+        # return form is emitted by the wrapper-aware to_cpp_return() (and the
+        # Ref/Readonly wrapper-defer), so it flows through the default path.
+        # The const-qualified form stays positional here: a readonly/const
+        # wrapper return is `const <wrapper>`, but the same wrapper as a tuple
+        # element must NOT be const-qualified, so this cannot live in the
+        # type's to_cpp_return_const (which tuple elements reuse).
         unwrapped_return = unwrap_ref_type(unwrap_readonly(return_type))
-        if unwrapped_return.needs_wrapper():
-            ret = self.types.type_to_cpp(unwrapped_return)
-            if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
-                ret = f"const {ret}"
+        if unwrapped_return.needs_wrapper() and (
+                const or isinstance(unwrap_ref_type(return_type), ReadonlyType)):
+            ret = f"const {self.types.type_to_cpp(unwrapped_return)}"
         elif const:
             ret = return_type.to_cpp_return_const()
         else:
@@ -1774,6 +1773,10 @@ class FunctionGenerator:
         self.ctx.emit_source_comment(out, stmt.loc)
         var_type = self._resolve_global_type(stmt)
         cpp_type = self._global_cpp_type(var_type, stmt)
+        # Global-slot storage is a value-vs-pointer-storage question: a
+        # force_pointer_repr Optional is T* at a boundary but a value-stored
+        # std::optional<T> in a global, so this asks the storage predicate, not
+        # a boundary-form one.
         is_value = var_type.is_value_type() or var_type.needs_wrapper()
         if is_value:
             # C++ primitives need explicit zero-init; class types (BigInt, string_view) don't

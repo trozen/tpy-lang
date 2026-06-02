@@ -141,6 +141,8 @@ tests/cases/<group>/<case>/
 
 **CPython compatibility**: avoid adding `no_cpython.txt` unless absolutely necessary. Most tests can be made CPython-compatible by adding `__init__` methods (CPython doesn't create instance attributes from type annotations alone) and using `lib/cpy/` stubs. The `lib/cpy/tpy/` package provides CPython implementations of TPy types (`Own`, `nocopy`, `UninitHeapStorage`, etc.). Only skip CPython when the test truly depends on C++-only behavior (e.g. `@native` interop).
 
+**Reference-type happy tests must force the value-vs-reference distinction.** A *passing* test that moves a reference type (class / `list` / `dict` / `set` / recursive-union wrapper) across a boundary -- `yield`, `return`, local binding (`x = accessor()`), container insert, param passing -- must either **mutate the shared object after the boundary and observe the change**, or use a **`@nocopy` type** (so a silent copy becomes a compile error). Read-only output is *parity-blind*: the cpy phase only byte-compares `output.txt`, so a test that just reads can match CPython exactly while TPy silently *copied* where CPython would *alias* -- the divergence (and any aliasing/UAF bug behind it) stays invisible. If copy semantics are genuinely intended at that boundary, say so in the top-of-file comment so the next reader knows it wasn't an oversight. (This mirrors the cpython-parity reviewer's test-adequacy check -- but the author should not rely on review to catch it.)
+
 ## Code Style
 
 For `tpyc/` compiler modules:

@@ -148,6 +148,9 @@ class FlowFacts:
     non_null_ptr_vars: frozenset[str] = frozenset()
     narrowed_types: frozenset[tuple[str, TpyType]] = frozenset()
     consumed_vars: frozenset[str] = frozenset()
+    # Hazard fact: (local name, dangerous element index) for tuple locals owning
+    # a fresh non-value member (see sema.context).
+    owns_fresh_tuple_member_vars: frozenset[tuple[str, int]] = frozenset()
     # Borrow map: (storage_name, borrower_name, BorrowKind) triples.
     # "__for_iter" is used as the borrower for implicit for-loop iterator borrows.
     borrows: frozenset[tuple[str, str, BorrowKind]] = frozenset()
@@ -186,6 +189,10 @@ class FlowFacts:
             ),
             consumed_vars=_merge_sets(
                 then.consumed_vars, else_.consumed_vars,
+                then_term, else_term, _MergePolicy.UNION,
+            ),
+            owns_fresh_tuple_member_vars=_merge_sets(
+                then.owns_fresh_tuple_member_vars, else_.owns_fresh_tuple_member_vars,
                 then_term, else_term, _MergePolicy.UNION,
             ),
             borrows=_merge_borrow_triples(
