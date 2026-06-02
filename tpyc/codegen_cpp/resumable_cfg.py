@@ -72,6 +72,10 @@ class ResumableFuncState:
     # await-arg lifting (_effective_body / _lift_nested_awaits)
     lifted_body: 'list[TpyStmt] | None' = None
     next_lift_id: int = 0
+    # borrowed-rvalue-arg lifting (_lift_borrowed_rvalue_args): counter for
+    # the `__coro_arg_<n>` hoisted locals that back rvalue temps borrowed by
+    # an INLINE sub-coro across a suspension.
+    next_arg_lift_id: int = 0
     # for-loop prescan (_prescan_resumable_for_loops). `*_prescanned` flags
     # preserve the original "cache even when the result is empty" semantics
     # (an empty map distinct from "not yet prescanned").

@@ -1,8 +1,8 @@
 # Regression: a non-value union (Dog | Cat) passed to an `async def` factory --
-# the await/emplace path must union-wrap it (pointer-variant borrow form).
-# Body uses only an isinstance discriminant check on purpose: a post-await
-# field access on the union arg would dangle (BUGS.md async rvalue-temp emplace
-# lifetime gap), so do NOT add one here.
+# the await/emplace path must union-wrap it (pointer-variant borrow form). The
+# rvalue temps `Dog()` / `Cat()` are hoisted into the awaiter's frame
+# (`__coro_arg_N`) so the sub-coro's `variant<Cat*, Dog*>` borrows a frame
+# field that outlives the suspension.
 import asyncio
 
 

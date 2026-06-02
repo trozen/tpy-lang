@@ -1,0 +1,9 @@
+rex
+cat
+fido
+spot
+none
+held
+tag:max
+loop
+loop

@@ -73,6 +73,7 @@ def _regions_have_pending_cleanup(regions: tuple) -> bool:
 
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from io import TextIO
     from .context import CodeGenContext
     from .types import TypeMapper
@@ -333,33 +334,25 @@ class AsyncCoroCodegen:
             cpp_name = escape_cpp_name(pname)
             ptype_inner = unwrap_ref_type(ptype)
             actual = unwrap_readonly(ptype_inner)
-            if is_str_type(ptype_inner):
-                out.append(_CoroParam(
-                    cpp_name=cpp_name,
-                    field_type="std::string_view",
-                    ctor_param_type="std::string_view",
-                    kind=_CoroParamKind.VALUE,
-                ))
-            elif isinstance(ptype_inner, TypeParamRef):
+            kind = self._classify_param_kind(ptype)
+            if kind is _CoroParamKind.VALUE:
+                # str lowers to a string_view view (caller-owned storage);
+                # other value types store their own C++ type by value.
+                cpp_type = ("std::string_view" if is_str_type(ptype_inner)
+                            else self.types.type_to_cpp(ptype_inner))
+                field_type = ctor_type = cpp_type
+            elif kind is _CoroParamKind.TYPE_PARAM:
                 # to_cpp_return / to_cpp_param_type already encode the
                 # val_or_ref_t<T> / param_val_or_ref_t<T> traits (and
                 # collapse to std::size_t for INT-kind params).
-                out.append(_CoroParam(
-                    cpp_name=cpp_name,
-                    field_type=ptype_inner.to_cpp_return(),
-                    ctor_param_type=ptype_inner.to_cpp_param_type(),
-                    kind=_CoroParamKind.TYPE_PARAM,
-                ))
-            elif self.functions.protocols.is_static_protocol_param(ptype):
+                field_type = ptype_inner.to_cpp_return()
+                ctor_type = ptype_inner.to_cpp_param_type()
+            elif kind is _CoroParamKind.STATIC_PROTOCOL:
                 # Static-protocol param (e.g. `Own[Awaitable[T]]`): the
                 # concrete operand type is deduced as an extra template
                 # arg `T_<pname>` with a concept constraint, declared in
                 # `_emit_template_header`. Field stores by value;
-                # ctor/factory forward via T_<pname>&&. Checked before
-                # the OptionalType-pointer-repr branch below so
-                # `Own[Awaitable[T]] | None` doesn't get mis-routed to
-                # POINTER -- `_protocol_template_parts` will reject the
-                # nullable shape with a clear diagnostic.
+                # ctor/factory forward via T_<pname>&&.
                 #
                 # `T_{pname}` (raw, not escaped) keeps the template-arg
                 # name aligned with `_protocol_template_parts` (which
@@ -367,77 +360,82 @@ class AsyncCoroCodegen:
                 # reads the same field back to spell instantiations.
                 # Using `cpp_name` here would diverge when `pname`
                 # collides with a C++ keyword (e.g. `class` -> `class_`).
-                template_arg = f"T_{pname}"
-                out.append(_CoroParam(
-                    cpp_name=cpp_name,
-                    field_type=template_arg,
-                    ctor_param_type=template_arg,
-                    kind=_CoroParamKind.STATIC_PROTOCOL,
-                ))
-            elif isinstance(actual, OptionalType) and actual.uses_pointer_repr():
-                cpp_type = ptype_inner.to_cpp_param_type()
-                out.append(_CoroParam(
-                    cpp_name=cpp_name,
-                    field_type=cpp_type,
-                    ctor_param_type=cpp_type,
-                    kind=_CoroParamKind.POINTER,
-                ))
-            elif self.ctx.is_ptr_variant_union(actual):
-                # Non-value union: the pointer-variant borrow form
-                # (`std::variant<A*, B*>`) is the shape every other param
-                # boundary uses -- ordinary functions, simple generators,
-                # plain locals. Storing it by value in the frame keeps the
-                # factory's signature in step with what the call site (and
-                # the emplace path) already build; a value-variant-by-ref
-                # field would be the lone divergence. Deep-const when the param
-                # is `readonly[...]` OR the const verdict deep-consts it (matches
-                # the call site + body, addr-escape aware).
-                is_readonly_param = ((actual is not ptype_inner)
-                                     or (_deep_const is not None
-                                         and _pidx in _deep_const))
-                cpp_type = (self.types.type_to_cpp_const_ptr_variant(actual)
-                            if is_readonly_param
-                            else self.types.type_to_cpp_ptr_variant(actual))
-                out.append(_CoroParam(
-                    cpp_name=cpp_name,
-                    field_type=cpp_type,
-                    ctor_param_type=cpp_type,
-                    kind=_CoroParamKind.POINTER,
-                ))
-            else:
-                cpp_type = self.types.type_to_cpp(ptype_inner)
-                if isinstance(ptype_inner, OwnType):
-                    # Owned non-value (e.g. `Own[Cancellable[T]]` -- a
-                    # @dynamic protocol whose C++ shape is unique_ptr<P>,
-                    # so the param can't be re-bound through REF and the
-                    # factory can't forward by bare name without
-                    # tripping the deleted copy ctor). Store by value;
-                    # ctor moves in; factory moves out. Checked before
-                    # `is_value_type()` because `OwnType.is_value_type()`
-                    # returns True (Own[T] uses T&& at param boundaries
-                    # so it's value-like for *most* purposes) but the
-                    # move-only semantics still need explicit forwarding.
-                    out.append(_CoroParam(
-                        cpp_name=cpp_name,
-                        field_type=cpp_type,
-                        ctor_param_type=cpp_type,
-                        kind=_CoroParamKind.OWNED_VALUE,
-                    ))
-                elif ptype_inner.is_value_type():
-                    out.append(_CoroParam(
-                        cpp_name=cpp_name,
-                        field_type=cpp_type,
-                        ctor_param_type=cpp_type,
-                        kind=_CoroParamKind.VALUE,
-                    ))
+                field_type = ctor_type = f"T_{pname}"
+            elif kind is _CoroParamKind.POINTER:
+                if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
+                    field_type = ctor_type = ptype_inner.to_cpp_param_type()
                 else:
-                    out.append(_CoroParam(
-                        cpp_name=cpp_name,
-                        field_type=cpp_type,
-                        ctor_param_type=cpp_type,
-                        kind=_CoroParamKind.REF,
-                    ))
+                    # Non-value union: the pointer-variant borrow form
+                    # (`std::variant<A*, B*>`) is the shape every other param
+                    # boundary uses -- ordinary functions, simple generators,
+                    # plain locals. Storing it by value in the frame keeps the
+                    # factory's signature in step with what the call site (and
+                    # the emplace path) already build; a value-variant-by-ref
+                    # field would be the lone divergence. Deep-const when the
+                    # param is `readonly[...]` OR the const verdict deep-consts
+                    # it (matches the call site + body, addr-escape aware).
+                    is_readonly_param = ((actual is not ptype_inner)
+                                         or (_deep_const is not None
+                                             and _pidx in _deep_const))
+                    field_type = ctor_type = (
+                        self.types.type_to_cpp_const_ptr_variant(actual)
+                        if is_readonly_param
+                        else self.types.type_to_cpp_ptr_variant(actual))
+            else:  # OWNED_VALUE / REF -- both spell the plain C++ type
+                field_type = ctor_type = self.types.type_to_cpp(ptype_inner)
+            out.append(_CoroParam(
+                cpp_name=cpp_name,
+                field_type=field_type,
+                ctor_param_type=ctor_type,
+                kind=kind,
+            ))
         return out
+
+    def _classify_param_kind(self, ptype: 'TpyType') -> _CoroParamKind:
+        """Decide the coro-frame storage kind for an async-def param.
+
+        Single source of truth for the kind cascade: `_classify_params`
+        derives the C++ spelling from it, and `_param_borrows` reads it to
+        decide whether an rvalue-temporary arg bound to this param must be
+        hoisted into the awaiter's frame (see `_lift_borrowed_rvalue_args`).
+        """
+        ptype_inner = unwrap_ref_type(ptype)
+        actual = unwrap_readonly(ptype_inner)
+        if is_str_type(ptype_inner):
+            return _CoroParamKind.VALUE
+        if isinstance(ptype_inner, TypeParamRef):
+            return _CoroParamKind.TYPE_PARAM
+        # Checked before the OptionalType-pointer-repr branch so
+        # `Own[Awaitable[T]] | None` isn't mis-routed to POINTER --
+        # `_protocol_template_parts` rejects the nullable shape instead.
+        if self.functions.protocols.is_static_protocol_param(ptype):
+            return _CoroParamKind.STATIC_PROTOCOL
+        if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
+            return _CoroParamKind.POINTER
+        if self.ctx.is_ptr_variant_union(actual):
+            return _CoroParamKind.POINTER
+        # Own[T] checked before is_value_type(): `OwnType.is_value_type()` is
+        # True (Own[T] uses T&& at param boundaries) but the move-only
+        # semantics need explicit forwarding, so it can't ride the VALUE path.
+        if isinstance(ptype_inner, OwnType):
+            return _CoroParamKind.OWNED_VALUE
+        if ptype_inner.is_value_type():
+            return _CoroParamKind.VALUE
+        return _CoroParamKind.REF
+
+    def _param_borrows(self, ptype: 'TpyType') -> bool:
+        """True iff a param of this type is captured in the coro frame as a
+        borrow (a reference/pointer into the arg) rather than by value -- the
+        REF / POINTER kinds. An rvalue-temporary arg bound to such a param
+        dangles once the suspending `case` block exits unless it is hoisted
+        into a frame field that outlives the sub-coro.
+
+        TYPE_PARAM (generic-async) is intentionally not treated as borrowing
+        here: its value-vs-reference form resolves only at instantiation, so
+        the borrowing rvalue-arg dangle for an object-typed `T` is left to the
+        generic-async dangle tracked in BUGS.md (#292 M7)."""
+        return self._classify_param_kind(ptype) in (
+            _CoroParamKind.REF, _CoroParamKind.POINTER)
 
     def _protocol_template_parts(self, func: TpyFunction) -> list[str]:
         """Return template-header parts for any static-protocol-typed
@@ -649,6 +647,11 @@ class AsyncCoroCodegen:
         if state.lifted_body is not None:
             return state.lifted_body
         lifted = self._lift_nested_awaits(func, func.body)
+        # Runs on the await-normalized body: every await now sits in a
+        # top-level statement, so each INLINE await's call args are in a
+        # known position to hoist (a nested-await arg has already become a
+        # stable hoisted-local name and is left alone).
+        lifted = self._lift_borrowed_rvalue_args(func, lifted)
         state.lifted_body = lifted
         return lifted
 
@@ -691,6 +694,17 @@ class AsyncCoroCodegen:
         its sub-bodies needs lifting, return a shallow copy with the
         sub-body lists replaced by lifted versions. Otherwise return
         `stmt` unchanged. Does not mutate the input."""
+        return self._map_compound_subbodies(func, stmt, self._lift_nested_awaits)
+
+    def _map_compound_subbodies(
+            self, func: TpyFunction, stmt: TpyStmt,
+            transform: 'Callable[[TpyFunction, list[TpyStmt]], list[TpyStmt]]',
+    ) -> TpyStmt:
+        """Apply `transform(func, body)` to each statement-list sub-body of a
+        compound `stmt` (its dataclass fields plus try-handler bodies). Return
+        `stmt` unchanged when nothing moved -- preserving its id for the
+        analyzer's id(stmt)-keyed tables -- or a shallow copy with the
+        rewritten sub-bodies otherwise. Does not mutate the input."""
         if not hasattr(stmt, "sub_bodies"):
             return stmt
         if not is_dataclass(stmt):
@@ -703,7 +717,7 @@ class AsyncCoroCodegen:
         for f in fields(stmt):
             v = getattr(stmt, f.name, None)
             if isinstance(v, list) and v and isinstance(v[0], TpyStmt):
-                lifted = self._lift_nested_awaits(func, v)
+                lifted = transform(func, v)
                 if not _same_elements(lifted, v):
                     replacements[f.name] = lifted
         # TpyTry: handlers list isn't TpyStmt-typed but each handler
@@ -714,7 +728,7 @@ class AsyncCoroCodegen:
             rebuilt: list[TpyExceptHandler] = []
             any_changed = False
             for h in stmt.handlers:
-                lifted_body = self._lift_nested_awaits(func, h.body) if h.body else h.body
+                lifted_body = transform(func, h.body) if h.body else h.body
                 if not _same_elements(lifted_body, h.body):
                     rebuilt.append(TpyExceptHandler(
                         exception_type=h.exception_type,
@@ -805,6 +819,100 @@ class AsyncCoroCodegen:
 
     def _bump_lift_id(self, func: TpyFunction) -> None:
         rcfg.resumable_state(func).next_lift_id += 1
+
+    # -- Borrowed-rvalue-arg lift (runs after the await-lift pass) ------------
+
+    def _lift_borrowed_rvalue_args(self, func: TpyFunction,
+                                    body: list[TpyStmt]) -> list[TpyStmt]:
+        """Hoist rvalue-temporary arguments of INLINE-mode await calls into
+        frame-backed hoisted locals so the sub-coro's borrow doesn't dangle
+        across the suspension.
+
+            await f(Dog("x"))          # f(a: Dog | Cat)
+        becomes
+            __coro_arg_0 = Dog("x")
+            await f(__coro_arg_0)
+
+        The sub-coro frame's `variant<Cat*, Dog*>` (or `T*` for pointer-form
+        Optional, or `T&` for a plain non-value ref param) then points at
+        `__coro_arg_0` -- a frame field outliving the sub-coro -- instead of
+        a `__tmp` flushed inside the suspending `case` block, which dies at
+        the `continue`. Without the lift the pointer/variant shapes are
+        silent UB and the plain-ref shape is a hard C++ error.
+
+        A stable-lvalue arg (a name or field chain) is left in place: its
+        address already persists across the suspension, and copying it would
+        break mutation-through-borrow and reject @nocopy elements.
+
+        Runs after `_lift_nested_awaits`, so every await is already in a
+        top-level statement; recursion into compound sub-bodies mirrors that
+        pass. Self-gating for generators (no awaits -> no INLINE calls).
+
+        Scope: only borrowed rvalue temps at `await f(...)` positions. The
+        escaping-Task form `create_task(f(rvalue))` is not an await, so the
+        sub-coro's borrow of that rvalue is out of scope here and stays under
+        the escaping-borrow hazard in BUGS.md (#292)."""
+        out: list[TpyStmt] = []
+        for stmt in body:
+            out.extend(self._hoist_borrowed_args(func, stmt))
+            # Recurse compound bodies AFTER the surface hoist: the surface
+            # hoist mutates only the await call's arg list, never sub-bodies,
+            # so the two never touch the same node.
+            out[-1] = self._map_compound_subbodies(
+                func, out[-1], self._lift_borrowed_rvalue_args)
+        return out
+
+    def _hoist_borrowed_args(self, func: TpyFunction,
+                              stmt: TpyStmt) -> list[TpyStmt]:
+        """If `stmt` hosts a top-level INLINE await call, hoist its borrowed
+        rvalue args into preceding vardecls (mutating the call's arg list in
+        place to reference the hoisted names). Returns [preceding vardecls...,
+        stmt]; [stmt] when nothing to hoist."""
+        await_node = rcfg._top_level_await_in(stmt)
+        if await_node is None or await_node.awaited_async_func_name is None:
+            return [stmt]
+        call = await_node.value
+        if not isinstance(call, (TpyCall, TpyMethodCall)):
+            return [stmt]
+        fi = call.resolved_function_info
+        if fi is None:
+            return [stmt]
+        pre: list[TpyStmt] = []
+        for i, arg in enumerate(call.args):
+            # Varargs (arg_index past the declared params) are a separate
+            # dangle class tracked in BUGS.md; leave them for the *args path.
+            if i >= len(fi.params):
+                break
+            if not self._param_borrows(fi.params[i].type):
+                continue
+            # `None` lowers to nullptr (pointer-form Optional) or
+            # `std::monostate` (pointer-variant union) -- a by-value slot, not
+            # a borrow, so there is no temp to outlive the suspension.
+            if isinstance(arg, TpyNoneLiteral):
+                continue
+            if not (self.ctx.is_rvalue_source(arg)
+                    or self.ctx.is_temporary_expr(arg)):
+                continue
+            arg_t = self.ctx.get_expr_type(arg)
+            if arg_t is None:
+                raise CodeGenError(
+                    "await arg has no analyzed type (borrowed-arg lift)",
+                    loc=stmt.loc)
+            arg_t = unwrap_ref_type(arg_t)
+            name = f"__coro_arg_{rcfg.resumable_state(func).next_arg_lift_id}"
+            rcfg.resumable_state(func).next_arg_lift_id += 1
+            # loc=None: the hoisted decl is a synthesized sub-step of the host
+            # await statement, not its own source line, so it must not re-emit
+            # the host's source comment (which the host statement still emits).
+            pre.append(TpyVarDecl(name=name, type=arg_t, init=arg, loc=None))
+            if func.generator_locals is None:
+                func.generator_locals = []
+            func.generator_locals.append((name, arg_t))
+            replacement = TpyName(name=name, loc=arg.loc)
+            self.ctx.analyzer.ctx.set_expr_type(replacement, arg_t)
+            call.args[i] = replacement
+        pre.append(stmt)
+        return pre
 
     def _replace_expr_in_stmt(self, stmt: TpyStmt, old_expr,
                                 new_expr) -> None:

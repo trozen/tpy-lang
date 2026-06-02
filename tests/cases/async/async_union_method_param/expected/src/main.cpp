@@ -10,9 +10,9 @@ namespace tpyapp::main {
     case S_INITIAL: {
         // s = Shelter()
         s.emplace(Shelter());
+        __coro_arg_0.emplace(Dog());
         // print(await s.describe(Dog()))
-        Dog __tmp_1 = Dog();
-        __sub_0.emplace((*s), std::variant<Cat*, Dog*>{&__tmp_1});
+        __sub_0.emplace((*s), std::variant<Cat*, Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;
         continue;
     }
@@ -23,9 +23,9 @@ namespace tpyapp::main {
         __sub_0.reset();
         // print(await s.describe(Dog()))
         std::cout << __await_lift_0 << "\n";
+        __coro_arg_1.emplace(Cat());
         // print(await s.describe(Cat()))
-        Cat __tmp_2 = Cat();
-        __sub_1.emplace((*s), std::variant<Cat*, Dog*>{&__tmp_2});
+        __sub_1.emplace((*s), std::variant<Cat*, Dog*>{&((*__coro_arg_1))});
         __state = S_RESUME_1;
         continue;
     }
