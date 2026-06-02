@@ -1,14 +1,14 @@
-# Generic recursive alias as a tuple element of a return type:
-# `tuple[Tree[Int32], Int32]` must not lower the wrapper element to
-# `Tree<int32_t>&` (which would dangle for a function-local return).
-from tpy import Int32
+# Generic recursive alias as a tuple element of a return type. Like any
+# reference type (record / list), a wrapper tuple element is borrow form
+# (`Tree<int32_t>&`), so a fresh value needs Own[] (lowers by value); a bare
+# `Tree[Int32]` element with a function-local value is rejected as dangling.
+from tpy import Int32, Own
 
 type Tree[T] = T | list[Tree[T]]
 
 
-def make_pair() -> tuple[Tree[Int32], Int32]:
-    leaf: Tree[Int32] = [1, 2]
-    return (leaf, 0)
+def make_pair() -> tuple[Own[Tree[Int32]], Int32]:
+    return ([1, 2], 0)
 
 
 def main() -> None:

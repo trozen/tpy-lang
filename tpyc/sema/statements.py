@@ -875,7 +875,7 @@ class StatementAnalyzer:
                 # generic dangling check so the specific message wins).
                 self._reject_ephemeral_escape(stmt.value, "return")
                 # Check for dangling reference (returning local/temporary as reference)
-                self.compat.check_dangling_reference(stmt.value, expected, stmt.loc)
+                self.compat.check_dangling_reference(stmt.value, expected, stmt.loc, ret_type)
                 # Returning a non-value type by reference takes the source's address.
                 # Mark both loop vars and params so they keep T& (not const T&/const T*).
                 if isinstance(stmt.value, TpyName):

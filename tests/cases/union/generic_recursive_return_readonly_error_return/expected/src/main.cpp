@@ -4,24 +4,54 @@
 namespace tpyapp::main {
 
 
-// @error_return(E)
-// def f() -> readonly[Tree[Int32]]:
-std::expected<Tree<int32_t>, E> f() {
-    // return [1, 2]
-    return std::vector<Tree<int32_t>>{1, 2};
+// def leaf_count(t: readonly[Tree[Int32]]) -> Int32:
+int32_t leaf_count(const Tree<int32_t>& t) {
+    // match t:
+    auto& __match_subject = t;
+    switch (__match_subject.value.index()) {
+    // case list() as branches:
+    case 1: {
+        auto& branches = std::get<1>(__match_subject.value);
+        // n = 0
+        int32_t n = 0;
+        // for c in branches:
+        auto& __obj_0 = branches;
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const auto& c = *__beg_0;
+            // n += leaf_count(c)
+            n = ::tpy::add_check<int32_t>(n, leaf_count(c));
+        }
+        // return n
+        return n;
+        break;
+    }
+    // case _:
+    default: {
+        // return 1
+        return 1;
+        break;
+    }
+    }
+    ::std::unreachable();
 }
 
 // def main() -> None:
 void main() {
+    // h = Holder([1, 2])
+    Holder h = Holder(std::vector<Tree<int32_t>>{1, 2});
     // try:
+    std::optional<Tree<int32_t>> v;
     {
-        // f()
+        // v = h.view()
         {
-            auto __try_tmp_2 = f();
+            auto __try_tmp_2 = h.view();
             if (!__try_tmp_2.has_value()) goto __except_1;
+            v = ::tpy::unwrap_ref(*__try_tmp_2);
         }
-        // print("ok")
-        std::cout << "ok" << "\n";
+        // print(leaf_count(v))
+        std::cout << leaf_count((*v)) << "\n";
         goto __after_try_1;
         // except E:
         __except_1:;

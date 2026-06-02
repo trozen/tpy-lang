@@ -1,6 +1,6 @@
 # A structural protocol method may take and return a generic recursive alias
 # instance (Tree[Int32]); the protocol signature must be finalized.
-from tpy import Int32
+from tpy import Int32, Own
 from typing import Protocol
 
 type Tree[T] = T | list[Tree[T]]
@@ -19,14 +19,14 @@ def leaf_count(t: Tree[Int32]) -> Int32:
 
 class TreeSink(Protocol):
     def absorb(self, t: Tree[Int32]) -> Int32: ...
-    def sprout(self) -> Tree[Int32]: ...
+    def sprout(self) -> Own[Tree[Int32]]: ...
 
 
 class Counter:
     def absorb(self, t: Tree[Int32]) -> Int32:
         return leaf_count(t)
 
-    def sprout(self) -> Tree[Int32]:
+    def sprout(self) -> Own[Tree[Int32]]:
         return [1, [2, 3]]
 
 

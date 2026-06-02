@@ -17,9 +17,9 @@ bool is_null(const ::tpyapp::pkg_v::V& v) {
 }
 
 // def wrap(v: V) -> V:
-::tpyapp::pkg_v::V wrap(const ::tpyapp::pkg_v::V& v) {
-    // # Bare recursive-union return (no Own[]) -- covers _resolve_return_type's
-    // # recursive-union path.
+::tpyapp::pkg_v::V& wrap(::tpyapp::pkg_v::V& v) {
+    // # Wrapper param returned by reference: const-inference keeps v mutable to
+    // # match the `V&` return, mirroring the record passthrough convention.
     // return v
     return v;
 }

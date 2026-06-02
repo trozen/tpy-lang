@@ -42,7 +42,7 @@ struct Holder {
     explicit Holder(Tree<int32_t>&& t) : t(std::move(t)) {}
 
     // def get(self) -> Tree[Int32]:
-    Tree<int32_t> get();
+    Tree<int32_t>& get();
 
     // def matches(self, other: Tree[Int32]) -> bool:
     bool matches(const Tree<int32_t>& other) const;
@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 // def get(self) -> Tree[Int32]:
-inline Tree<int32_t> Holder::get() {
+inline Tree<int32_t>& Holder::get() {
     // return self.t
     return this->t;
 }

@@ -4,19 +4,17 @@
 namespace tpyapp::main {
 
 
-// def make_pair() -> tuple[Tree[Int32], Int32]:
+// def make_pair() -> tuple[Own[Tree[Int32]], Int32]:
 std::tuple<Tree<int32_t>, int32_t> make_pair() {
-    // leaf: Tree[Int32] = [1, 2]
-    Tree<int32_t> leaf = std::vector<Tree<int32_t>>{1, 2};
-    // return (leaf, 0)
-    return std::tuple<Tree<int32_t>, int32_t>{std::move(leaf), 0};
+    // return ([1, 2], 0)
+    return std::tuple<Tree<int32_t>, int32_t>{std::vector<Tree<int32_t>>{1, 2}, 0};
 }
 
 // def main() -> None:
 void main() {
     // t, n = make_pair()
     auto __tup_1 = make_pair();
-    Tree<int32_t>& t = ::tpy::unwrap_ref(std::get<0>(__tup_1));
+    Tree<int32_t> t = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     // print(n)
     std::cout << n << "\n";

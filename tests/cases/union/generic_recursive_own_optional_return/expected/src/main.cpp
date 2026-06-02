@@ -4,7 +4,7 @@
 namespace tpyapp::main {
 
 
-// def build() -> Tree[Int32]:
+// def build() -> Own[Tree[Int32]]:
 Tree<int32_t> build() {
     // return 7
     return 7;

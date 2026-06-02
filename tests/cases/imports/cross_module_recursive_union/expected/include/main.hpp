@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 using ::tpyapp::pkg_v::V;
 
 bool is_null(const ::tpyapp::pkg_v::V& v);
-::tpyapp::pkg_v::V wrap(const ::tpyapp::pkg_v::V& v);
+::tpyapp::pkg_v::V& wrap(::tpyapp::pkg_v::V& v);
 void main();
 
 // class Holder:

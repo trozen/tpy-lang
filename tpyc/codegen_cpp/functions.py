@@ -367,16 +367,7 @@ class FunctionGenerator:
                     part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
                 parts.append(part)
                 continue
-            # Recursive union wrapper structs are value types -- render as
-            # const ref, bypassing UnionType.to_cpp_param() which would
-            # generate pointer-variant form.
-            if isinstance(own, UnionType) and own.needs_wrapper():
-                cpp_type = self.types.type_to_cpp(own)
-                if isinstance(ptype, OwnType):
-                    part = f"{cpp_type}&& {cpp_pname}"
-                else:
-                    part = f"const {cpp_type}& {cpp_pname}"
-            elif (reassigned_params and pname in reassigned_params
+            if (reassigned_params and pname in reassigned_params
                     and ptype.param_needs_copy_for_reassign()):
                 # Rename param so the body can declare a mutable local with the original name
                 part = ptype.to_cpp_param(f"__param_{cpp_pname}")
@@ -491,24 +482,17 @@ class FunctionGenerator:
                         part = f"{const_kw}{base_type}& {cpp_pname}"
                 else:
                     own = unwrap_readonly(ptype)
-                    if isinstance(own, UnionType) and own.needs_wrapper():
-                        cpp_type = self.types.type_to_cpp(own)
-                        if isinstance(ptype, OwnType):
-                            part = f"{cpp_type}&& {cpp_pname}"
-                        else:
-                            part = f"const {cpp_type}& {cpp_pname}"
-                    else:
-                        is_pvu = self.ctx.is_ptr_variant_union(own)
-                        decision = decide_param_const(
-                            ptype,
-                            index=i,
-                            pname=pname,
-                            mutated_params=mutated_params,
-                            is_ptr_variant_union=is_pvu,
-                            const_params=const_params,
-                            use_readonly_params=use_readonly_params,
-                        )
-                        part = self._emit_param_with_decision(decision, is_pvu, own, ptype, cpp_pname)
+                    is_pvu = self.ctx.is_ptr_variant_union(own)
+                    decision = decide_param_const(
+                        ptype,
+                        index=i,
+                        pname=pname,
+                        mutated_params=mutated_params,
+                        is_ptr_variant_union=is_pvu,
+                        const_params=const_params,
+                        use_readonly_params=use_readonly_params,
+                    )
+                    part = self._emit_param_with_decision(decision, is_pvu, own, ptype, cpp_pname)
             if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:
                 part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
             result.append(part)
@@ -558,31 +542,23 @@ class FunctionGenerator:
             # Non-dynamic protocol return (e.g. Iterator[T] from __iter__):
             # use auto, C++ deduces the type from the return expression.
             return "auto"
-        # Recursive-union wrapper structs are value-shape: the non-const
-        # return form is emitted by the wrapper-aware to_cpp_return() (and the
-        # Ref/Readonly wrapper-defer), so it flows through the default path.
-        # The const-qualified form stays positional here: a readonly/const
-        # wrapper return is `const <wrapper>`, but the same wrapper as a tuple
-        # element must NOT be const-qualified, so this cannot live in the
-        # type's to_cpp_return_const (which tuple elements reuse).
         unwrapped_return = unwrap_ref_type(unwrap_readonly(return_type))
-        if unwrapped_return.needs_wrapper() and (
-                const or isinstance(unwrap_ref_type(return_type), ReadonlyType)):
-            ret = f"const {self.types.type_to_cpp(unwrapped_return)}"
-        elif const:
+        if const:
             ret = return_type.to_cpp_return_const()
         else:
             ret = return_type.to_cpp_return()
         if cpp_error:
-            # std::expected can't hold references. For non-value types
-            # (where ret is T&), use val_or_ref<T> which stores by pointer.
-            # Test wrapper-ness on the unwrapped type so a `readonly[Tree[T]]`
-            # return doesn't fall into val_or_ref when the wrapper is already
-            # a value-shape struct.
+            # std::expected can't hold references. For reference-returned types
+            # (where ret is T&) -- including recursive-union wrappers -- use
+            # val_or_ref<T> which stores by pointer. A const / readonly return
+            # keeps the const through the stored pointer (val_or_ref<const T>),
+            # mirroring the @dynamic-protocol branch above.
             inner = unwrapped_return.to_cpp()
-            if (not return_type.is_value_type() and not isinstance(return_type, VoidType)
-                    and not unwrapped_return.needs_wrapper()):
-                inner = f"::tpy::val_or_ref<{inner}>"
+            if not return_type.is_value_type() and not isinstance(return_type, VoidType):
+                if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
+                    inner = f"::tpy::val_or_ref<const {inner}>"
+                else:
+                    inner = f"::tpy::val_or_ref<{inner}>"
             return f"std::expected<{inner}, {cpp_error}>"
         return ret
 

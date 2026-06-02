@@ -50,8 +50,8 @@ struct Counter {
     // def absorb(self, t: Tree[Int32]) -> Int32:
     int32_t absorb(const Tree<int32_t>& t) const;
 
-    // def sprout(self) -> Tree[Int32]:
-    const Tree<int32_t> sprout() const;
+    // def sprout(self) -> Own[Tree[Int32]]:
+    Tree<int32_t> sprout() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
@@ -67,8 +67,8 @@ inline int32_t Counter::absorb(const Tree<int32_t>& t) const {
     return leaf_count(t);
 }
 
-// def sprout(self) -> Tree[Int32]:
-inline const Tree<int32_t> Counter::sprout() const {
+// def sprout(self) -> Own[Tree[Int32]]:
+inline Tree<int32_t> Counter::sprout() const {
     // return [1, [2, 3]]
     return std::vector<Tree<int32_t>>{1, std::vector<Tree<int32_t>>{2, 3}};
 }
@@ -76,7 +76,8 @@ inline const Tree<int32_t> Counter::sprout() const {
 template<TreeSink T_s>
 int32_t use(T_s& s, Tree<int32_t>& t) {
     // return s.absorb(t) + leaf_count(s.sprout())
-    return (::tpy::add_check<int32_t>(s.absorb(t), leaf_count(s.sprout())));
+    Tree<int32_t> __tmp_1 = s.sprout();
+    return (::tpy::add_check<int32_t>(s.absorb(t), leaf_count(__tmp_1)));
 }
 
 void __tpy_init();

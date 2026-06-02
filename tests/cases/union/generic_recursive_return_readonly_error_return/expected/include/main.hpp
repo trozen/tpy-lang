@@ -9,10 +9,11 @@ namespace tpyapp::main {
 
 template<typename T> struct Tree;
 struct E;
+struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::expected<Tree<int32_t>, E> f();
+int32_t leaf_count(const Tree<int32_t>& t);
 void main();
 
 template<typename T>
@@ -49,5 +50,31 @@ inline std::ostream& operator<<(std::ostream& os, const E& obj) {
     return os;
 }
 
+// class Holder:
+struct Holder {
+    // t: Tree[Int32]
+    Tree<int32_t> t;
+
+    // def __init__(self, t: Own[Tree[Int32]]) -> None:
+    explicit Holder(Tree<int32_t>&& t) : t(std::move(t)) {}
+
+    // @error_return(E)
+    // def view(self) -> readonly[Tree[Int32]]:
+    std::expected<::tpy::val_or_ref<const Tree<int32_t>>, E> view();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
+
+// @error_return(E)
+// def view(self) -> readonly[Tree[Int32]]:
+inline std::expected<::tpy::val_or_ref<const Tree<int32_t>>, E> Holder::view() {
+    // return self.t
+    return this->t;
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -44,7 +44,7 @@ void main() {
     // h = Holder(seed)
     Holder h = Holder(std::move(seed));
     // g = h.get()
-    Tree<int32_t> g = h.get();
+    Tree<int32_t>& g = h.get();
     // print(leaf_count(g))
     std::cout << leaf_count(g) << "\n";
     // print(leaf_count(h.get()))

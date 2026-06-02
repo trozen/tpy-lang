@@ -11,7 +11,7 @@ from tpy import Int32, Own
 type Tree[T] = T | list[Tree[T]]
 
 
-def build() -> Tree[Int32]:
+def build() -> Own[Tree[Int32]]:
     return 7
 
 

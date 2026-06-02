@@ -4,22 +4,55 @@
 namespace tpyapp::main {
 
 
-// def f() -> tuple[readonly[Tree[Int32]], Int32]:
+// def leaf_count(t: readonly[Tree[Int32]]) -> Int32:
+int32_t leaf_count(const Tree<int32_t>& t) {
+    // match t:
+    auto& __match_subject = t;
+    switch (__match_subject.value.index()) {
+    // case list() as branches:
+    case 1: {
+        auto& branches = std::get<1>(__match_subject.value);
+        // n = 0
+        int32_t n = 0;
+        // for c in branches:
+        auto& __obj_0 = branches;
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const auto& c = *__beg_0;
+            // n += leaf_count(c)
+            n = ::tpy::add_check<int32_t>(n, leaf_count(c));
+        }
+        // return n
+        return n;
+        break;
+    }
+    // case _:
+    default: {
+        // return 1
+        return 1;
+        break;
+    }
+    }
+    ::std::unreachable();
+}
+
+// def f() -> tuple[Own[Tree[Int32]], Int32]:
 std::tuple<Tree<int32_t>, int32_t> f() {
-    // leaf: Tree[Int32] = [1, 2]
-    Tree<int32_t> leaf = std::vector<Tree<int32_t>>{1, 2};
-    // return (leaf, 0)
-    return std::tuple<Tree<int32_t>, int32_t>{std::move(leaf), 0};
+    // return ([1, 2], 0)
+    return std::tuple<Tree<int32_t>, int32_t>{std::vector<Tree<int32_t>>{1, 2}, 0};
 }
 
 // def main() -> None:
 void main() {
     // t, n = f()
     auto __tup_1 = f();
-    Tree<int32_t>& t = ::tpy::unwrap_ref(std::get<0>(__tup_1));
+    Tree<int32_t> t = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     // print(n)
     std::cout << n << "\n";
+    // print(leaf_count(t))
+    std::cout << leaf_count(t) << "\n";
 }
 
 void __tpy_init() {

@@ -17,8 +17,8 @@ def is_null(v: V) -> bool:
 
 
 def wrap(v: V) -> V:
-    # Bare recursive-union return (no Own[]) -- covers _resolve_return_type's
-    # recursive-union path.
+    # Wrapper param returned by reference: const-inference keeps v mutable to
+    # match the `V&` return, mirroring the record passthrough convention.
     return v
 
 

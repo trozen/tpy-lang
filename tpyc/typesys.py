@@ -1592,18 +1592,9 @@ class RefType(TpyType):
         return f"{self.wrapped.to_cpp()}&"
 
     def to_cpp_return(self) -> str:
-        # Wrapper structs (recursive aliases) are value-shape; auto-inserted
-        # RefType around one should still lower to the by-value form, not
-        # a dangling `Wrapper&`. Delegate to the wrapped type's override
-        # so tuple-element / boundary return positions emit the wrapper
-        # name unchanged.
-        if self.wrapped.needs_wrapper():
-            return self.wrapped.to_cpp_return()
         return self.to_cpp()
 
     def to_cpp_return_const(self) -> str:
-        if self.wrapped.needs_wrapper():
-            return self.wrapped.to_cpp_return_const()
         if isinstance(self.wrapped, TypeParamRef):
             return f"::tpy::val_or_cref_t<{self.wrapped.name}>"
         return f"const {self.wrapped.to_cpp()}&"
@@ -2649,15 +2640,6 @@ class RecursiveAliasInstanceType(TpyType):
         finally:
             _evaluating_alias_value.discard(key)
 
-    def to_cpp_return(self) -> str:
-        # The C++ wrapper struct is value-shape (copy/move ctors, by-value
-        # std::variant payload). The default `{to_cpp()}&` would dangle when
-        # returning a function-local wrapper.
-        return self.to_cpp()
-
-    def to_cpp_return_const(self) -> str:
-        return self.to_cpp()
-
     def is_send(self) -> bool:
         return False
 
@@ -2775,16 +2757,26 @@ class UnionType(TpyType):
         return f"std::variant<{', '.join(cpp_members)}>"
 
     def to_cpp_param_type(self) -> str:
+        # A recursive-alias wrapper is a single nominal struct, not a
+        # pointer-variant; it follows the reference-type param convention
+        # (mutable `X&`, const `const X&` via to_cpp_const_param), checked
+        # before uses_pointer_repr so a wrapper never renders as a ptr-variant.
+        if self.needs_wrapper():
+            return f"{self.to_cpp()}&"
         if self.uses_pointer_repr():
             return self.to_cpp_ptr_variant()
         return f"const {self.to_cpp()}&"
 
     def to_cpp_param(self, name: str) -> str:
+        if self.needs_wrapper():
+            return f"{self.to_cpp()}& {name}"
         if self.uses_pointer_repr():
             return f"{self.to_cpp_ptr_variant()} {name}"
         return f"const {self.to_cpp()}& {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
+        if self.needs_wrapper():
+            return f"const {self.to_cpp()}& {name}"
         if self.uses_pointer_repr():
             # Shallow const: const on the variant, not on the pointers.
             # Constructors and non-mutated params use this for efficiency
@@ -2793,25 +2785,18 @@ class UnionType(TpyType):
         return f"const {self.to_cpp()}& {name}"
 
     def to_cpp_return(self) -> str:
-        # A recursive-union wrapper struct is value-shape: return by value
-        # (the wrapper name), never the pointer-variant form -- a function-local
-        # wrapper would dangle behind a reference. `to_cpp()` resolves to the
-        # registered alias name (identical to types.type_to_cpp here).
+        # A recursive-alias wrapper is a single nominal struct (not a
+        # pointer-variant); it follows the reference-type return convention
+        # (`X&`), with Own[X] required for fresh values.
         if self.needs_wrapper():
-            return self.to_cpp()
+            return f"{self.to_cpp()}&"
         if self.uses_pointer_repr():
             return self.to_cpp_ptr_variant()
         return self.to_cpp()
 
     def to_cpp_return_const(self) -> str:
-        # A wrapper union is value-shape; emit the alias, never the ptr-variant
-        # (uses_pointer_repr() is True for a wrapper since its members are
-        # non-value). Mirrors to_cpp_return + RecursiveAliasInstanceType so a
-        # wrapper union reached as a const tuple element (via
-        # TupleType._element_to_cpp_param) renders correctly. The top-level
-        # const-return prefix stays positional in functions._return_type_cpp.
         if self.needs_wrapper():
-            return self.to_cpp()
+            return f"const {self.to_cpp()}&"
         if self.uses_pointer_repr():
             return self.to_cpp_const_ptr_variant()
         return self.to_cpp()

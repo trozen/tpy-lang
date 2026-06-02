@@ -1948,17 +1948,6 @@ class TypeCompatibility:
             if fi is not None and (is_str_type(fi.return_type) or is_string_type(fi.return_type)):
                 return True
 
-            # A function returning a recursive-union wrapper struct is an
-            # rvalue by value (the wrapper is value-shape). Taking its
-            # address (the Optional pointer-repr return path) would yield
-            # `&(call())` -- ill-formed C++. Force the diagnostic so the
-            # user wraps the return type in Own[Optional[Wrapper]] (or
-            # binds to a local first).
-            if fi is not None:
-                ret_unwrapped = unwrap_ref_type(unwrap_readonly(fi.return_type))
-                if ret_unwrapped.needs_wrapper():
-                    return True
-
             # Regular function call - assume it returns something safe
             # (the callee is responsible for not returning dangling refs)
             return False
@@ -1985,15 +1974,15 @@ class TypeCompatibility:
             fi = expr.resolved_function_info
             if fi is not None and (is_str_type(fi.return_type) or is_string_type(fi.return_type)):
                 return True
-            # A method returning a recursive-union wrapper struct yields a
-            # value-shape rvalue; taking its address (the Optional pointer-repr
-            # return path) would emit `&(call())`. Reuses the free-function
-            # branch's wrapper-shape check so `return obj.method()` through
-            # Optional[Wrapper] is rejected (use Own[Optional[Wrapper]]). The
-            # free-function branch's return_borrows_from handling is not yet
-            # mirrored here -- see BUGS.md.
-            if fi is not None and unwrap_ref_type(unwrap_readonly(fi.return_type)).needs_wrapper():
-                return True
+            # A user method returning Own[T] creates a by-value temporary;
+            # taking its address (the Optional pointer-repr return path) would
+            # emit `&(obj.method())`. Builtin container methods (list.pop, ...)
+            # also return Own[T] but are exempt -- mirrors the free-function
+            # branch's user-function-only OwnType guard above.
+            if fi is not None and isinstance(fi.return_type, OwnType):
+                obj_type = self.ctx.get_expr_type(expr.obj)
+                if isinstance(obj_type, NominalType) and obj_type.is_user_record:
+                    return True
             return False
 
         # Ternary - dangles if either branch dangles
@@ -2022,11 +2011,15 @@ class TypeCompatibility:
 
     def check_dangling_reference(self, expr: TpyExpr, return_type: TpyType,
                                  loc: SourceLocation | None,
+                                 source_type: TpyType | None = None,
                                  *, for_yield: bool = False) -> None:
         """Check if returning (or yielding) expr as a reference would dangle.
 
         Object types are returned/yielded by reference. A local variable or
-        newly constructed object would create a dangling reference.
+        newly constructed object would create a dangling reference. `source_type`
+        is the analyzed type of `expr` before return-coercion; it lets the
+        recursive-union-wrapper case tell a wrap-into-wrapper (fresh temporary)
+        from a reference to an existing wrapper value.
 
         `for_yield`: the same rooting rule applies to a generator's borrow yield
         (`Iterator[T]`, T non-value) -- the generator frame survives suspension,
@@ -2082,19 +2075,34 @@ class TypeCompatibility:
                     f"Own[{nested_bad}].",
                     expr
                 )
-            self._check_tuple_elem_dangle(tuple_rt, expr, verb)
+            self._check_tuple_elem_dangle(tuple_rt, expr, verb, source_type)
             self._check_owns_fresh_tuple_local(tuple_rt, expr, verb)
             return
         if (return_type.is_value_type()
-                or isinstance(return_type, (VoidType, OwnType))
-                or unwrap_readonly(return_type).needs_wrapper()):
-            # Recursive-union wrappers (non-generic `UnionType` form + the
-            # generic `RecursiveAliasInstanceType`) are returned by value at
-            # the C++ level even though `is_value_type()` is False (the
-            # alternatives may be reference types) -- codegen emits the
-            # wrapper struct as a value-returned type, so no dangling concern.
-            # The `unwrap_readonly` mirrors codegen's `to_cpp_return_const`
-            # delegation through ReadonlyType.
+                or isinstance(return_type, (VoidType, OwnType))):
+            return
+
+        # Recursive-union wrappers follow the reference-type convention: a bare
+        # `X` return lowers to `X&`. Coercing a value / list / None into the
+        # wrapper materializes a fresh wrapper temporary, so returning it by
+        # reference would dangle -- only an existing wrapper-typed reference
+        # (parameter / field / global / a ref-returning call) is safe. Require
+        # Own[X] for fresh values, matching the list / dict / record rule.
+        if unwrap_readonly(return_type).needs_wrapper():
+            src = expr.expr if isinstance(expr, TpyCoerce) else expr
+            # The value is wrapped into the wrapper (a fresh temporary) unless
+            # its source type is already that wrapper -- i.e. a reference to
+            # existing wrapper data. The wrap is implicit at codegen, so the
+            # pre-coercion source_type is the only reliable signal.
+            from_existing_wrapper = (source_type is not None
+                and unwrap_readonly(unwrap_ref_type(source_type)).needs_wrapper())
+            if not from_existing_wrapper or self.is_dangling_return(src):
+                raise self.ctx.error(
+                    f"Cannot {verb} local or temporary as reference. "
+                    f"Object type '{return_type}' is {verb}ed by reference. "
+                    f"{_own_fix(return_type, cap=True)}.",
+                    expr
+                )
             return
 
         # Optional[T] for non-value T returns T* -- returning a local would dangle.
@@ -2148,24 +2156,43 @@ class TypeCompatibility:
         return None
 
     def _check_tuple_elem_dangle(self, tuple_type: TupleType, expr: TpyExpr,
-                                 verb: str) -> None:
+                                 verb: str, source_type: TpyType | None = None) -> None:
         """Per-element dangling check for a top-level tuple return/yield literal.
 
         Each non-value member is stored by pointer in the tuple's borrow form,
         so a freshly-constructed member would dangle. The owning fix is
         element-scoped (`Own[T]` on the member), not the whole return/iterator.
         Nested-tuple members are handled upstream by the unsupported-shape check.
+        A recursive-union-wrapper member is also borrow form: a value / list /
+        None coerced into it is a fresh temporary, so the per-element check uses
+        the pre-coercion `source_type` member types to tell a wrap-into-wrapper
+        leaf from a reference to an existing wrapper.
         """
         inner = expr.expr if isinstance(expr, TpyCoerce) else expr
-        i = self._tuple_literal_fresh_borrow_elem(tuple_type, inner)
-        if i is not None:
-            et = tuple_type.element_types[i]
-            raise self.ctx.error(
-                f"Cannot {verb} local or temporary as tuple element {i}. "
-                f"Type '{et}' is {verb}ed by reference. "
-                f"Use Own[{et}] for this tuple element to {verb} by value.",
-                inner.elements[i]
-            )
+        if not isinstance(inner, TpyTupleLiteral):
+            return
+        src_elems = (source_type.element_types
+                     if isinstance(source_type, TupleType)
+                     and len(source_type.element_types) == len(tuple_type.element_types)
+                     else None)
+        for i, et in enumerate(tuple_type.element_types):
+            if i >= len(inner.elements):
+                break
+            if et.is_value_type() or isinstance(et, (OwnType, TypeParamRef)):
+                continue
+            bad = self.is_dangling_return(inner.elements[i])
+            if not bad and et.needs_wrapper():
+                src_et = src_elems[i] if src_elems is not None else None
+                from_existing_wrapper = (src_et is not None
+                    and unwrap_readonly(unwrap_ref_type(src_et)).needs_wrapper())
+                bad = not from_existing_wrapper
+            if bad:
+                raise self.ctx.error(
+                    f"Cannot {verb} local or temporary as tuple element {i}. "
+                    f"Type '{et}' is {verb}ed by reference. "
+                    f"Use Own[{et}] for this tuple element to {verb} by value.",
+                    inner.elements[i]
+                )
 
     def update_owns_fresh_tuple_member(
             self, name: str, var_type: TpyType | None,

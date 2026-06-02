@@ -696,7 +696,7 @@ class StatementGenerator:
         """True for non-value types that need indirection (list, dict, record, etc.).
 
         Unwraps Own[T] and excludes pointer-repr Optional and Union which
-        have their own codegen paths. Recursive union wrappers are value types.
+        have their own codegen paths.
         """
         check = t.wrapped if isinstance(t, OwnType) else t
         if check.is_value_type():
@@ -705,9 +705,10 @@ class StatementGenerator:
             return False
         if self.ctx.is_ptr_variant_union(check):
             return False
-        # Recursive union wrapper structs are value types
-        if check.needs_wrapper():
-            return False
+        # Recursive-union wrappers are reference types like records: a local
+        # bound from a reference source (`g = h.get()`) binds `Tree<T>&`, a
+        # fresh value (`t = [1, 2]`) stays by value -- the is_rvalue_source
+        # rule in _needs_indirection draws that line (mirrors list/dict/record).
         return True
 
     def _needs_indirection(self, target_type: TpyType | None, name: str,

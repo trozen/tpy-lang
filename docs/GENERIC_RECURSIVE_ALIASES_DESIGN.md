@@ -817,6 +817,21 @@ What shipped vs. the v1 plan, for the next person:
   dependent receiver inside a generic function omits `.template`; generic-class
   ctor inference doesn't deduce `T` through a nested `Box[Tree[T]]` arg
   (annotate explicitly).
+- **Return convention (Family C, landed on `recursive-union-ref-return`):** the
+  wrapper now follows the reference-type return convention -- a bare `-> Tree[T]`
+  return lowers to `Tree<T>&`, a fresh value requires `Own[Tree[T]]` (rejected
+  bare), and a field/param accessor returns the reference. **Locals
+  & match subjects (Part A, landed):** wrapper *locals* and `match`-on-call
+  subjects now bind *by reference* when the source is a reference (`v = h.view()`
+  -> `Tree<T>&`, `match h.get()` -> `auto&`), so reads no longer copy the variant
+  tree and caller mutations through them reach the field (CPython aliasing); a
+  fresh value still binds by value. **Params (Part B, landed):** wrapper params
+  are routed through normal const-inference (read-only -> `const Tree<T>&`,
+  returned-by-reference or mutated -> `Tree<T>&`), matching record params, so
+  `def f(e: Tree[T]) -> Tree[T]: return e` works without a `readonly[]` /
+  `Own[]` workaround. The `@auto_readonly` usage-dependent receiver const-ness
+  prerequisite (a read-only-through-`Box.get` param stays const) landed first on
+  master.
 
 ## Open follow-ups (post-v1)
 

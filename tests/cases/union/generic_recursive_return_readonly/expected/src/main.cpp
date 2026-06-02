@@ -4,18 +4,47 @@
 namespace tpyapp::main {
 
 
-// def f() -> readonly[Tree[Int32]]:
-const Tree<int32_t> f() {
-    // return [1, 2]
-    return std::vector<Tree<int32_t>>{1, 2};
+// def leaf_count(t: readonly[Tree[Int32]]) -> Int32:
+int32_t leaf_count(const Tree<int32_t>& t) {
+    // match t:
+    auto& __match_subject = t;
+    switch (__match_subject.value.index()) {
+    // case list() as branches:
+    case 1: {
+        auto& branches = std::get<1>(__match_subject.value);
+        // n = 0
+        int32_t n = 0;
+        // for c in branches:
+        auto& __obj_0 = branches;
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const auto& c = *__beg_0;
+            // n += leaf_count(c)
+            n = ::tpy::add_check<int32_t>(n, leaf_count(c));
+        }
+        // return n
+        return n;
+        break;
+    }
+    // case _:
+    default: {
+        // return 1
+        return 1;
+        break;
+    }
+    }
+    ::std::unreachable();
 }
 
 // def main() -> None:
 void main() {
-    // t = f()
-    Tree<int32_t> t = f();
-    // print("ok")
-    std::cout << "ok" << "\n";
+    // h = Holder([1, [2, 3]])
+    Holder h = Holder(std::vector<Tree<int32_t>>{1, std::vector<Tree<int32_t>>{2, 3}});
+    // v = h.view()
+    const Tree<int32_t>& v = h.view();
+    // print(leaf_count(v))
+    std::cout << leaf_count(v) << "\n";
 }
 
 void __tpy_init() {

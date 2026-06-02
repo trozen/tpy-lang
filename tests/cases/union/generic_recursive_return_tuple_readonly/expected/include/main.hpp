@@ -11,6 +11,7 @@ template<typename T> struct Tree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+int32_t leaf_count(const Tree<int32_t>& t);
 std::tuple<Tree<int32_t>, int32_t> f();
 void main();
 

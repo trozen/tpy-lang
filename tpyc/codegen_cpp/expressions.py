@@ -4099,10 +4099,13 @@ class ExpressionGenerator:
         # When the target is a union/optional, find the matching container member
         # and use it as the effective target. The brace-init will be prefixed with
         # the explicit C++ type so the variant can deduce the alternative.
-        # Strip readonly: wrapper-typed return slots arrive as
-        # readonly[Tree[T]], but the variant-alternative match needs to see the
-        # bare wrapper to find the list member.
+        # Strip readonly / Own: wrapper-typed return slots arrive as
+        # readonly[Tree[T]] (readonly return) or Own[Tree[T]] (the fresh-value
+        # return convention), but the variant-alternative match needs to see
+        # the bare wrapper to find the list member.
         if isinstance(target_type, ReadonlyType):
+            target_type = target_type.wrapped
+        if isinstance(target_type, OwnType):
             target_type = target_type.wrapped
         union_prefix: str | None = None
         if isinstance(target_type, UnionType):

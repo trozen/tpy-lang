@@ -21,7 +21,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 int32_t depth(const Expr& e);
 template<Sink T_s>
-int32_t run(T_s& s, const Expr& e);
+int32_t run(T_s& s, Expr& e);
 void main();
 
 // class Counter:
@@ -63,7 +63,7 @@ struct Expr {
 
 // def run(s: Sink, e: Expr) -> Int32:
 template<Sink T_s>
-int32_t run(T_s& s, const Expr& e) {
+int32_t run(T_s& s, Expr& e) {
     // return s.take(e)
     return s.take(e);
 }

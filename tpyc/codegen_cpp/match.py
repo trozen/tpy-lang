@@ -10,18 +10,36 @@ from dataclasses import dataclass
 from typing import TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NominalType, NoneType, OptionalType, ReadonlyType,
+    TpyType, NominalType, NoneType, OptionalType, OwnType, PtrType, ReadonlyType,
     PendingStrType, UnionType, RecursiveAliasInstanceType,
     LiteralType,
-    unwrap_readonly, is_any_str_type, polymorphic_source_inner,
+    unwrap_readonly, is_any_str_type, is_protocol_type, polymorphic_source_inner,
     polymorphic_source_is_pointer,
 )
 from .variant_access import VariantAccess
 from ..parse import (
     TpyStmt, TpyExpr, TpyFieldAccess, TpyName, TpyMatch, TpyMatchCase, TpyPattern,
     TpySubscript, TpyWildcardPattern, TpyCapturePattern, TpyClassPattern,
-    TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
+    TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern, TpyMethodCall,
 )
+
+
+def _returns_bare_reference(rt: 'TpyType | None') -> bool:
+    """True when a return type lowers to a C++ lvalue reference (`T&` /
+    `const T&`) -- a bare non-value reference type. Own (by-value move),
+    Optional / Ptr (pointer repr), protocols (auto / base), and value types
+    are prvalues / non-references and excluded."""
+    if rt is None:
+        return False
+    rt = unwrap_readonly(rt)
+    if rt.is_value_type() or isinstance(rt, (OwnType, OptionalType, PtrType)):
+        return False
+    if isinstance(rt, UnionType) and not rt.needs_wrapper():
+        # A pointer-variant or value union is returned by value (a prvalue
+        # `std::variant<...>`), not `T&`. Only a wrapper union returns by
+        # reference (mirrors UnionType.to_cpp_return's needs_wrapper gate).
+        return False
+    return not is_protocol_type(rt)
 
 
 def _match_subject_is_lvalue(expr: TpyExpr) -> bool:
@@ -30,7 +48,11 @@ def _match_subject_is_lvalue(expr: TpyExpr) -> bool:
     write through to the original storage).
 
     Plain names, field accesses whose target is itself an lvalue,
-    and subscripts on lvalue targets all qualify. Calls, literals,
+    and subscripts on lvalue targets all qualify. A method call that
+    returns a bare reference (an accessor like `h.get() -> Tree[T]`
+    lowering to `Tree<T>&`) on an lvalue receiver also qualifies -- the
+    reference aliases the receiver's storage, which outlives the match.
+    Other calls (by-value / Own returns, temporary receivers), literals,
     and constructed temporaries do not."""
     if isinstance(expr, TpyName):
         return True
@@ -38,6 +60,10 @@ def _match_subject_is_lvalue(expr: TpyExpr) -> bool:
         return _match_subject_is_lvalue(expr.obj)
     if isinstance(expr, TpySubscript):
         return _match_subject_is_lvalue(expr.obj)
+    if isinstance(expr, TpyMethodCall):
+        fi = expr.resolved_function_info
+        return (fi is not None and _returns_bare_reference(fi.return_type)
+                and _match_subject_is_lvalue(expr.obj))
     return False
 from .context import INDENT, CodeGenError, escape_cpp_name, escape_cpp_string, escape_cpp_char, cpp_string_literal_expr
 from .string_dispatch import find_best_discriminator, STRING_SWITCH_THRESHOLD
@@ -108,6 +134,15 @@ class MatchGenerator:
 
         # Evaluate subject and bind to a local
         subject_code = self.expressions.gen_expr(stmt.subject)
+        # A wrapper subject in pointer-form (a hoisted/reassigned local, `Tree<T>*`)
+        # must deref so the `.value` access lands on the struct, not the pointer.
+        # Gated to the wrapper shape: Optional/Ptr/ptr-variant subjects keep their
+        # pointer (the match reads it directly for the None-check / variant dispatch).
+        if (isinstance(stmt.subject, TpyName)
+                and isinstance(subject_type, (UnionType, RecursiveAliasInstanceType))
+                and subject_type.needs_wrapper()
+                and self.ctx.is_indirect_name(stmt.subject)):
+            subject_code = f"(*{subject_code})"
         self.ctx.temps.flush(out, indent)
         # Use auto& for lvalue subjects (safe reference; lets a
         # mutating `case C() as v: v.field = ...` arm write through

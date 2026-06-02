@@ -1,22 +1,31 @@
-# tuple[readonly[Tree[T]], int] return: the per-element dangling check
-# must see through readonly to recognize the wrapper shape. Pre-fix the
-# tuple-element walk only tested `et.needs_wrapper()` on the raw type
-# and ReadonlyType inherited False, producing a false-positive
-# "returned by reference" rejection on a perfectly safe value-shape
-# wrapper return.
-from tpy import Int32, readonly
+# readonly[Tree[T]] param + Own[Tree[T]] tuple-element return. Like any
+# reference type, a wrapper tuple element is borrow form, so a fresh value
+# needs Own[] (lowers by value); the readonly wrapper param exercises const
+# wrapper access (const Tree<int32_t>&) alongside the by-value Own tuple return.
+from tpy import Int32, readonly, Own
 
 type Tree[T] = T | list[Tree[T]]
 
 
-def f() -> tuple[readonly[Tree[Int32]], Int32]:
-    leaf: Tree[Int32] = [1, 2]
-    return (leaf, 0)
+def leaf_count(t: readonly[Tree[Int32]]) -> Int32:
+    match t:
+        case list() as branches:
+            n = 0
+            for c in branches:
+                n += leaf_count(c)
+            return n
+        case _:
+            return 1
+
+
+def f() -> tuple[Own[Tree[Int32]], Int32]:
+    return ([1, 2], 0)
 
 
 def main() -> None:
     t, n = f()
     print(n)
+    print(leaf_count(t))
 
 
 main()

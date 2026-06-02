@@ -3,7 +3,7 @@
 # would emit `&(obj.method())` -- ill-formed C++. The TpyMethodCall branch of
 # is_dangling_return must reject it the same way the free-function branch does.
 from typing import Optional
-from tpy import Int32
+from tpy import Int32, Own
 
 type Tree[T] = T | list[Tree[T]]
 
@@ -14,7 +14,7 @@ class Factory:
     def __init__(self, base: Int32) -> None:
         self.base = base
 
-    def make(self) -> Tree[Int32]:
+    def make(self) -> Own[Tree[Int32]]:
         return [self.base, 1]
 
 

@@ -8,10 +8,11 @@
 namespace tpyapp::main {
 
 template<typename T> struct Tree;
+struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-const Tree<int32_t> f();
+int32_t leaf_count(const Tree<int32_t>& t);
 void main();
 
 template<typename T>
@@ -32,5 +33,29 @@ struct Tree {
     }
 };
 
+// class Holder:
+struct Holder {
+    // t: Tree[Int32]
+    Tree<int32_t> t;
+
+    // def __init__(self, t: Own[Tree[Int32]]) -> None:
+    explicit Holder(Tree<int32_t>&& t) : t(std::move(t)) {}
+
+    // def view(self) -> readonly[Tree[Int32]]:
+    const Tree<int32_t>& view();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
+
+// def view(self) -> readonly[Tree[Int32]]:
+inline const Tree<int32_t>& Holder::view() {
+    // return self.t
+    return this->t;
+}
 void __tpy_init();
 } // namespace tpyapp::main
