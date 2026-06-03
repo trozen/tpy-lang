@@ -151,6 +151,8 @@ class FlowFacts:
     # Hazard fact: (local name, dangerous element index) for tuple locals owning
     # a fresh non-value member (see sema.context).
     owns_fresh_tuple_member_vars: frozenset[tuple[str, int]] = frozenset()
+    # Sibling hazard fact: tuple locals copying a durable reference member.
+    copies_durable_tuple_member_vars: frozenset[tuple[str, int]] = frozenset()
     # Borrow map: (storage_name, borrower_name, BorrowKind) triples.
     # "__for_iter" is used as the borrower for implicit for-loop iterator borrows.
     borrows: frozenset[tuple[str, str, BorrowKind]] = frozenset()
@@ -193,6 +195,10 @@ class FlowFacts:
             ),
             owns_fresh_tuple_member_vars=_merge_sets(
                 then.owns_fresh_tuple_member_vars, else_.owns_fresh_tuple_member_vars,
+                then_term, else_term, _MergePolicy.UNION,
+            ),
+            copies_durable_tuple_member_vars=_merge_sets(
+                then.copies_durable_tuple_member_vars, else_.copies_durable_tuple_member_vars,
                 then_term, else_term, _MergePolicy.UNION,
             ),
             borrows=_merge_borrow_triples(

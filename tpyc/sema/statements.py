@@ -3271,9 +3271,10 @@ class StatementAnalyzer:
             self.ctx.func.current_scope.define(stmt.name, var_type)
         # Reassignment revives a consumed variable
         self.ctx.func.consumed_vars.discard(stmt.name)
-        # Flag the local if it now owns a fresh non-value tuple member (a later
-        # bare-name yield/return would dangle); clears on any other reassignment.
-        self.compat.update_owns_fresh_tuple_member(stmt.name, var_type, stmt.init)
+        # Flag the local if it's bound to a tuple literal with a non-value member
+        # (fresh -> dangle, or durable -> silent copy at a later bare-name
+        # yield/return); clears on any other reassignment.
+        self.compat.update_tuple_member_local_facts(stmt.name, var_type, stmt.init)
         # Reassigning a loop variable prevents const-ref binding
         if existing_type is not None:
             self.ctx.mark_loop_var_mutated(stmt.name)
@@ -3941,7 +3942,7 @@ class StatementAnalyzer:
             self.ctx.func.current_scope.define(stmt.target.name, target_type)
             # Reassignment revives a consumed variable
             self.ctx.func.consumed_vars.discard(stmt.target.name)
-            self.compat.update_owns_fresh_tuple_member(
+            self.compat.update_tuple_member_local_facts(
                 stmt.target.name, target_type, stmt.value)
             # Borrow tracking: reassignment breaks aliases in both directions.
             # Retarget runs before remove_borrower so borrowers of the target

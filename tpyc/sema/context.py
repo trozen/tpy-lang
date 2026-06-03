@@ -560,6 +560,16 @@ class FunctionTrackingState:
     # borrow-form one, which a safe param-rooted element could precede).
     owns_fresh_tuple_member_vars: dict[str, int] = field(default_factory=dict)
 
+    # Sibling hazard fact for the *durable* (non-dangling) reference member case:
+    # a tuple local bound from a literal like `t = (i, b)` (b a param) is storage
+    # form, so binding silently COPIES b (CPython shares it) -- invisible at yield,
+    # a C++ build failure at return. Same recording/boundary-rejection as
+    # owns_fresh; the boundary check reports owns_fresh first (dangle is more
+    # severe than copy). Maps name -> first durable borrow element index.
+    # The full *fix* (make the bound local share) is THIR-gated -- see
+    # docs/IR_DESIGN.md item 9; pre-IR this is a rejection only.
+    copies_durable_tuple_member_vars: dict[str, int] = field(default_factory=dict)
+
 
     # --- Variable declaration tracking (per-function) ---
     var_decl_by_name: dict[str, 'TpyVarDecl'] = field(default_factory=dict)

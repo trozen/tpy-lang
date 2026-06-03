@@ -72,6 +72,44 @@ Trying to do both on the same representation forces either a tree that carries C
 information (awkward) or a CFG that carries type-checking state (wasteful). Two IRs
 let each phase use the right structure.
 
+### What THIR/MIR unblocks (running ledger)
+
+A growing list of concrete defects and duplication whose *clean* fix is gated on the
+IR migration -- maintained so the migration's priority can be judged against accumulated
+cost rather than asserted. Add entries here as they surface; cite the BUGS.md / TODO.md
+source. Some entries are closeable pre-IR only as a *rejection* (loud diagnostic), not a
+*fix*; those are the strongest signal, because the feature genuinely cannot be expressed
+in the current model.
+
+- **Borrow-form vs storage-form (Open Questions item 9 -- the largest cluster).** Tuple
+  (and Optional/Union) C++ form is reconstructed per-site in codegen instead of being a
+  type fact, so every new boundary shape needs another consumer-side dispatch patch:
+  - *Tuple local with a durable reference member silently copies it at yield/return* --
+    was **[MED, silent CPython divergence]** (TPy `5` vs CPython `99`). The direct-literal
+    `yield (i, b)` shares; only binding to a local first loses borrow form. **Now rejected
+    pre-IR** (loud diagnostic pointing at the working escape -- yield/return the literal
+    directly; `copies_durable_tuple_member_vars` in sema). The *fix* (make the bound local
+    share) is still THIR-gated -- it needs a reference-holding resumable-frame field
+    generators cannot express -- so the rejection is a stopgap, not the feature.
+  - Nested tuple where outer/inner forms disagree -- **[MED]** (BUGS.md).
+  - Rvalue tuple-of-records into a ref/pointer-form slot -- **[MED/LOW]** (BUGS.md).
+  - Generic `V | None` instantiated with `V = Ptr[T]` (double-pointer) (BUGS.md).
+  - Bare-Optional yield missing the storage->pointer bridge (BUGS.md).
+  Several smaller cases in this class *were* closed pre-IR by extending consumer-side
+  predicates -- but each one touched another dispatch site, which is exactly the cost the
+  IR fact removes.
+- **Path-insensitive borrow checking (Motivation problem 3).** The AST borrow checker
+  merges borrow states conservatively at join points (union over branches), so a move on
+  one path conflicts with a borrow on a mutually-exclusive path -- false positives a
+  CFG-based MIR resolves.
+- **Hand-copied sema/codegen predicate mirrors.** Predicates duplicated across phases and
+  kept in lockstep only by discipline: `directly_implements_dynamic` (sema mirror of
+  codegen, now 4 call sites -- BUGS.md), the default-ctor predicate and the param-const
+  verdict (TODO.md). A shared-IR contract removes the duplication class.
+- **Generic str/bytes ABI perf split (Open Questions item 8).** **[perf, not
+  correctness]** generic-`T`-over-`str` materializes `std::string` at each call site.
+  Documented; low priority.
+
 ---
 
 ## Prior Art
@@ -1437,10 +1475,20 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    boundary is the source of a
    recurring bug class: nested tuples where outer/inner forms disagree (BUGS.md
    `[MED] nested tuple literal of records`), rvalue tuple-of-records into
-   ref/pointer-form slots (BUGS.md `[LOW] tuple literal rvalue address-of`), and
+   ref/pointer-form slots (BUGS.md `[LOW] tuple literal rvalue address-of`),
    `Own[tuple[T_ref,...]]` param silently copying elements (BUGS.md `[IMM]
    Own[tuple] silent copy`, addressable pre-IR via lowering
-   `Own[tuple[T,...]]` -> `tuple[Own[T_ref],...]`). Several entries in this
+   `Own[tuple[T,...]]` -> `tuple[Own[T_ref],...]`), and a tuple LOCAL bound from a
+   literal with a *durable* reference member silently copying it at yield/return
+   (BUGS.md `[MED] tuple local ref-member silent copy`, verified TPy `5` vs CPython
+   `99`). The last one is the sharpest exhibit: the direct-literal `yield (i, b)`
+   shares correctly, so only the local binding loses borrow form -- yet making the
+   bound local share is *not* closeable pre-IR, because the generator frame would
+   need a reference-holding field that survives/rebinds across suspensions (a
+   `std::tuple<T&>` frame member), which the resumable-frame model cannot express.
+   Pre-IR it is turned into a rejection (shipped -- `copies_durable_tuple_member_vars`,
+   pointing at the yield-the-literal-directly escape); the share fix is THIR-gated.
+   Several entries in this
    class were closed pre-IR by extending the expression-level
    `is_storage_form_optional_source` predicate to cover loop-var / unpack-var
    bindings (comprehension tuple-unpack, list/dict-of-Optional element access,
