@@ -6030,6 +6030,7 @@ Send/Sync rules for built-in types:
   - `MacroArg.as_fstring()` for call macro decomposition, `MacroFStringPart.is_static_str` for detecting static-storage expressions (literals, ternaries of literals, `Final[str]` name references)
   - Tuple-based dispatch to native generic functions via `std::apply`
   - `CallMacroContext` introspection: `first_param`, `get_field_type`, `get_method_return_type`, `qualified_name` -- macros discover fields/methods by name on first param (self for methods) with qualified type checking
+  - `CallMacroContext.expected_type` -- type of the slot the call result lowers into (assignment/field-init LHS, declared call-arg, declared return), or `None` where sema has no expected type; enables type-directed literal rewriting in one macro
 - **Phase 7 done**: Builder-trace macros (`@builder_macro` on a class describes a state machine the compiler walks at compile time)
   - `@builder_macro` / `@builder_method` / `@builder_returns(child)` / `@builder_terminal` decorators -- the terminal closes the trace and synthesizes module-level declarations
   - `BuilderContext` API surface: diagnostics, macro-time literal evaluators, typed positional / kwarg extractors, and code emission (`fresh_module_name`, `emit_record`, `emit_function`, `replace_call`)

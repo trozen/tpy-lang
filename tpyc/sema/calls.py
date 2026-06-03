@@ -5259,29 +5259,37 @@ class CallAnalyzer:
         # Ensure macro_deps for this call macro's module are populated
         self._ensure_call_macro_deps(module_name)
 
-        macro_args = []
-        for a in args:
-            arg_type = self.expr.analyze_expr(a)
-            fstring_parts = None
-            if isinstance(a, TpyFString):
-                fstring_parts = self._build_fstring_parts(a)
-            macro_args.append(MacroArg(
-                expr=a,
-                type=TypeInfo.from_tpy_type(arg_type),
-                _fstring_parts=fstring_parts,
-            ))
-        macro_kwargs = {}
-        for k, v in kwargs.items():
-            kwarg_type = self.expr.analyze_expr(v)
-            kw_fstring_parts = None
-            if isinstance(v, TpyFString):
-                kw_fstring_parts = self._build_fstring_parts(v)
-            macro_kwargs[k] = MacroArg(
-                expr=v,
-                type=TypeInfo.from_tpy_type(kwarg_type),
-                _fstring_parts=kw_fstring_parts,
-            )
-        ctx = CallMacroContext(self.ctx, loc=loc)
+        # The hint for the whole call expression is the slot type the macro
+        # result lowers into (CallMacroContext.expected_type). Capture it, then
+        # clear it during arg analysis so it can't leak into arg sub-analysis.
+        expected_type = self.ctx.expr_type_hint
+        self.ctx.expr_type_hint = None
+        try:
+            macro_args = []
+            for a in args:
+                arg_type = self.expr.analyze_expr(a)
+                fstring_parts = None
+                if isinstance(a, TpyFString):
+                    fstring_parts = self._build_fstring_parts(a)
+                macro_args.append(MacroArg(
+                    expr=a,
+                    type=TypeInfo.from_tpy_type(arg_type),
+                    _fstring_parts=fstring_parts,
+                ))
+            macro_kwargs = {}
+            for k, v in kwargs.items():
+                kwarg_type = self.expr.analyze_expr(v)
+                kw_fstring_parts = None
+                if isinstance(v, TpyFString):
+                    kw_fstring_parts = self._build_fstring_parts(v)
+                macro_kwargs[k] = MacroArg(
+                    expr=v,
+                    type=TypeInfo.from_tpy_type(kwarg_type),
+                    _fstring_parts=kw_fstring_parts,
+                )
+        finally:
+            self.ctx.expr_type_hint = expected_type
+        ctx = CallMacroContext(self.ctx, loc=loc, expected_type=expected_type)
         qname = f"{module_name}.{func_name}"
         expansion = expand_call_macro(
             macro_fn, ctx, macro_args, macro_kwargs, qname, loc)

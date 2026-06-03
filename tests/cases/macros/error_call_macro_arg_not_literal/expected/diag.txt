@@ -1,0 +1,1 @@
+main.py:9: error: poly() expects a string literal argument

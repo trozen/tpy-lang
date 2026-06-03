@@ -184,6 +184,7 @@ class CallMacroContext:
     in_method: bool                                     # inside a method body?
     self_type: TypeInfo | None                          # current class (methods)
     first_param: tuple[str, TypeInfo] | None            # self for methods, first arg for free functions
+    expected_type: TypeInfo | None                      # slot type the call lowers into, or None
 
     # Type introspection
     def get_field_type(type_info, name) -> TypeInfo | None: ...        # field type (incl. inherited)
@@ -199,6 +200,17 @@ class CallMacroContext:
     def warning(msg, loc=None) -> None: ...
     def error(msg, loc=None) -> NoReturn: ...
 ```
+
+`expected_type` is the type of the slot the call result is being lowered into
+-- the LHS type of an assignment / field init, a declared parameter type at a
+call arg, or a function's declared return type. It is `None` in
+expression-statement and other positions where sema has no expected type. This
+lets a single macro do type-directed rewriting (e.g. lower `coerce("true")` to a
+`BoolLit` in a `bool` slot, an `IntLit` in an int slot, or a `StrLit`
+otherwise). It mirrors sema's existing expected-type propagation (the same
+signal `unsafe_cast` consumes): exact when the macro call is the directly-typed
+expression, and an over-approximation if the call is nested inside a parent
+expression that does not propagate the slot type.
 
 `add_method` injects a `TpyFunction` AST node (power user API). For common patterns,
 use the shared builder functions from `_macro_helpers` (`build_init`, `build_eq`,

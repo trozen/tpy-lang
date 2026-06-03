@@ -25,6 +25,7 @@ from .typesys import (
     ALL_FIXED_INTS,
     is_float_type,
     unwrap_final,
+    unwrap_readonly,
 )
 from .type_def_registry import is_str_type, is_str_view_type
 from .symbol_binding import SymbolKind, lookup_imported
@@ -349,9 +350,27 @@ class MacroArg:
 class CallMacroContext:
     """Context passed to call-site macros for type introspection and diagnostics."""
 
-    def __init__(self, ctx: SemanticContext, loc: Any = None) -> None:
+    def __init__(self, ctx: SemanticContext, loc: Any = None,
+                 expected_type: TpyType | None = None) -> None:
         self._ctx = ctx
         self._loc = loc
+        self._expected_type = expected_type
+
+    @property
+    def expected_type(self) -> TypeInfo | None:
+        """Type of the slot this call is being lowered into, or None.
+
+        Populated by sema when the macro call is the directly-hinted
+        expression of an assignment/field-init RHS, a declared-typed call
+        arg, or a declared-typed return -- i.e. wherever sema has an
+        expected type for the call. None in expression-statement and other
+        unhinted positions. Own/readonly/ref wrappers are stripped so the
+        macro sees the user-facing type.
+        """
+        if self._expected_type is None:
+            return None
+        # readonly must be stripped here; from_tpy_type already strips own/ref.
+        return TypeInfo.from_tpy_type(unwrap_readonly(self._expected_type))
 
     def get_record_fields(self, name: str) -> list[FieldInfo] | None:
         """Get all fields (parent + own) for a macro record, or None.

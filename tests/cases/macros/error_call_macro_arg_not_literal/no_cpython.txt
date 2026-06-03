@@ -1,0 +1,1 @@
+Call macro: poly() is a compile-time rewrite, not valid Python at runtime.
