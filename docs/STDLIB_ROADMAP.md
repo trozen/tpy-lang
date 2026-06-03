@@ -665,7 +665,7 @@ BUGS.md / TODO.md, not on macro or closure infrastructure:
 | `wraps`, `update_wrapper` | Blocked | CPython's `@wraps(f)` is a decorator factory (`wraps(f)` returns a decorator that takes the wrapper). TPy macro_api has no "decorator factory that's identity" form; would need new infrastructure separate from class/call/builder macros |
 | `partial` | Missing | Full variadic form needs function-macro or `*args` forwarding on user classes |
 | `partialmethod` | Missing | Descriptor-protocol heavy |
-| `lru_cache`, `cache` | Missing | Decorator must wrap + return a new callable with mutable cache dict; needs function-macro (not supported today) |
+| `lru_cache`, `cache` | Missing | Decorator must wrap + return a new callable with mutable cache dict. `@function_macro` exists now but only rewrites a body in place; it cannot yet return a new wrapping callable, which is what this needs |
 | `singledispatch` | Missing | Runtime dispatch; use `@overload` instead |
 | `cached_property` | Missing | Needs descriptor support |
 

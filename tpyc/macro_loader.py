@@ -371,6 +371,8 @@ class MacroRegistry:
     def __init__(self, search_dirs: list[Path] | None = None) -> None:
         self._macros: dict[tuple[str, str], Callable] = {}
         self._call_macros: dict[tuple[str, str], Callable] = {}
+        # Function-level (body) macros: (module, name) -> callable
+        self._function_macros: dict[tuple[str, str], Callable] = {}
         # Builder-trace macros: (module, name) -> class object
         self._builder_macros: dict[tuple[str, str], type] = {}
         self._modules: dict[str, Any] = {}
@@ -391,6 +393,10 @@ class MacroRegistry:
 
     def get_call_macro(self, module: str, name: str) -> Callable | None:
         return self._call_macros.get((module, name))
+
+    def get_function_macro(self, module: str, name: str) -> Callable | None:
+        """Look up a @function_macro callable by (module, name)."""
+        return self._function_macros.get((module, name))
 
     def get_builder_macro(self, module: str, name: str) -> type | None:
         """Look up a @builder_macro state class by (module, name)."""
@@ -493,5 +499,7 @@ class MacroRegistry:
                     self.register(module_name, attr_name, obj)
                 if getattr(obj, '_is_call_macro', False):
                     self._call_macros[(module_name, attr_name)] = obj
+                if getattr(obj, '_is_function_macro', False):
+                    self._function_macros[(module_name, attr_name)] = obj
 
         self._loaded_modules.add(module_name)

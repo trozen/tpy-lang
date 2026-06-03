@@ -15,7 +15,7 @@ Phases 2 and 3 are independent of any concurrency runtime and should land first.
 
 ## Problem Statement
 
-TurboPython targets HFT workloads where pipeline stages typically run on dedicated cores and communicate through queues. The compiler must be able to reject programs that transfer or share state across threads in ways that race, *without* requiring annotations on the 95% of types that are trivially thread-safe (value types) or trivially not (raw pointers, non-owning views).
+TurboPython targets low-latency workloads where pipeline stages typically run on dedicated cores and communicate through queues. The compiler must be able to reject programs that transfer or share state across threads in ways that race, *without* requiring annotations on the 95% of types that are trivially thread-safe (value types) or trivially not (raw pointers, non-owning views).
 
 The Rust experience is that these markers are very expensive to retrofit -- Swift's `Sendable` rollout took years of warnings precisely because the type-system shape had to change after concurrency primitives had already shipped. The TPy decision is to design and ship the type-level layer *before* any concurrency primitive lands, then plug enforcement sites in as concurrency arrives. Phase 1 already shipped the trait skeleton; this document specifies the rest.
 
@@ -171,7 +171,7 @@ Outside of generic-param position the bound form doesn't apply -- only the wrapp
 
 **Alternatives considered (rejected):**
 
-- *(A)* Callable always non-Send; force record-functor workaround for callback fields. **Rejected**: limits users -- callback-field-on-record is a common HFT pattern (completion handlers, market-event subscribers, on-fill callbacks) and `Fn[...]` is not valid in field position. The record-functor workaround is verbose and viral.
+- *(A)* Callable always non-Send; force record-functor workaround for callback fields. **Rejected**: limits users -- callback-field-on-record is a common pattern (completion handlers, event subscribers, callbacks) and `Fn[...]` is not valid in field position. The record-functor workaround is verbose and viral.
 - *(B)* Parallel `SendCallable[[...], R]` type. **Rejected**: solves OQ2 only, doesn't generalize to `@dynamic` adapters (OQ5) or future erased types. Naming doesn't scale (`SendSyncCallable`?).
 - *(C)* `T1 & Send` intersection operator (Rust-shaped). **Rejected**: introduces a new type-level operator that diverges from Python typing grammar. See [[language-design-versatile-pythonic]] memory.
 
@@ -314,9 +314,9 @@ Force the answer to true regardless of fields. The only place soundness depends 
 
 ```python
 @unsafe_send
-class MarketDataHandle:
-    raw: Ptr[NativeMDState]   # type system can't see that the C library
-                              # guarantees the handle is thread-safe to transfer
+class NativeHandle:
+    raw: Ptr[NativeState]   # type system can't see that the C library
+                            # guarantees the handle is thread-safe to transfer
 ```
 
 **Opt-out: `@nosend` / `@nosync`**

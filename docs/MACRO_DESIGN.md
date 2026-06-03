@@ -12,6 +12,7 @@
 | 5 | CPython compatibility: `lib/cpy/tpyc/macro_api.py` backend targeting Python `ast` module | Dropped |
 | 6 | TpyMini VM: tree-walking interpreter for self-hosted compiler | Not started |
 | 7 | Builder-trace macros: `@builder_macro` / `@builder_method` / `@builder_returns` / `@builder_terminal`, `BuilderContext`, sema sub-pass. First use case: `argparse` | Done |
+| 8 | Function macros: `@function_macro` on a free function, `FunctionMacroContext` (read-only introspection + body mutation), sema pass 5.5. Motivating use case: local-variable type deduction | Spike (mechanism + mutation work and are tested; the type-resolution surface and the motivating use case are not yet built -- see below) |
 
 ### Macro System Future Work
 
@@ -513,7 +514,7 @@ Known v1 divergences from CPython argparse:
 | ~~`parser.parse_args()` with no args~~ | resolved | uses `sys.argv[1:]` | done -- bare call rewrites to `synth_parse(list(sys.argv[1:]))` |
 | ~~Parse-time errors~~ | resolved | prints usage + ``prog: error: ...`` to stderr and `sys.exit(2)` | done -- the synthesized parse fn ``print(usage, "prog: error: " + msg, sep="\n", file=sys.stderr)`` then ``sys.exit(2)``. Wording / prog name still differ from CPython; covered by ``panic_argparse_*`` cases (cpy phase auto-skips for ``panic_*`` tests) until ``prog=`` and message parity land |
 
-## Three Macro Kinds
+## Macro Kinds
 
 ### Class macros (decorator macros) -- Phase 1, done
 
@@ -590,6 +591,54 @@ v1 trace rules (hard-error otherwise):
 
 Use cases beyond argparse: any builder pattern with statically-knowable
 configuration (logging setup, route registration, schema declaration).
+
+### Function macros (body-rewriting macros) -- Phase 8, mechanism + mutation done
+
+Applied as a decorator on a free function. The compiler runs the macro at
+sema pass 5.5 (before the body is type-checked) with a `FunctionMacroContext`
+that exposes the function's signature and body and lets the macro mutate the
+body in place. Unlike a call-site macro (one expression) or a builder trace
+(one call chain), a function macro sees the *whole body* across statements --
+the granularity a cross-statement resolver (e.g. local-variable type
+deduction) needs.
+
+```python
+@function_macro
+def deduce_bool_locals(ctx: FunctionMacroContext) -> None:
+    for stmt in list(ctx.body):
+        if (isinstance(stmt, VarDecl) and stmt.type is None
+                and isinstance(stmt.init, StrLiteral)
+                and stmt.init.value in ("true", "false")):
+            ctx.replace_expr(stmt.init, ast.bool_lit(stmt.init.value == "true"))
+            ctx.annotate_local(stmt.name, ctx.return_type)  # retype the local
+```
+
+Context surface:
+
+- *Read-only introspection:* `function_name`, `module_qname`, `params`
+  (resolved `(name, TypeInfo | None)` -- `None` for unannotated params),
+  `return_type`, `body` (walkable statements).
+- *Mutation:* `annotate_local(name, type)` sets a local's declared type at its
+  introducing statement (TPy parses `x = expr` as an untyped `TpyVarDecl`, so
+  this sets that decl's `.type`; a `TpyAssign` re-bind is converted to a
+  `VarDecl`). `replace_expr(old, new)` replaces a node by identity anywhere in
+  the body via a generic reflection walk.
+- *Diagnostics:* `warning` / `error`.
+- Statement/expression node aliases (`Assign`, `VarDecl`, `Name`,
+  `StrLiteral`, `BoolLiteral`) are re-exported from `tpyc.macro_api` so a
+  body-walking macro can recognize node kinds without importing
+  `tpyc.parse.nodes` (the macro import sandbox only allows `tpyc.macro_api`).
+
+Resolution: an unrecognized *resolved* (imported) decorator on a free function
+is collected as a pending function macro and resolved against the registry at
+sema (errors if unregistered). Genuinely unresolved decorator names still
+error at parse; method (record-body) decorators are unchanged.
+
+Not yet built (the type-resolution surface a full body resolver wants):
+`lookup_imported_name` (identifier -> resolved `TypeInfo` / signature -- the
+load-bearing downstream-slot signal), `enum_members`, `is_subtype_of`, and
+method-body function macros. Motivating use case driving the remaining work is
+local-variable type deduction.
 
 ## Execution Model
 

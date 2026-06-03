@@ -1299,6 +1299,9 @@ class TpyFunction:
     # `method_expansion` uses this to drive AutoReadonlyType param
     # wrapping; cleared on the auto_readonly clones once expanded.
     has_auto_readonly_decorator: bool = False
+    # Unrecognized decorators on a free function, resolved as @function_macro
+    # at sema time (mirrors TpyRecord.pending_macros). (qname, kwargs) pairs.
+    pending_macros: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     loc: SourceLocation | None = None
 
     @property

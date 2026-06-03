@@ -6038,6 +6038,12 @@ Send/Sync rules for built-in types:
   - `BuilderTraceExpander` runs in pass 5.5 (`SemanticAnalyzer._expand_builder_traces`) over every record-method body and free-function body; top-level statements are expanded inside `_analyze_top_level` (pass 4). Trace symbols have no runtime existence (each ctor + method statement is dropped, the terminal call is rewritten to call a synthesized free function)
   - Full v1 trace rules: tracked symbols may only appear as the receiver of registered builder method calls, may not be reassigned, escape, or be referenced inside control-flow blocks / lambdas / nested defs; exactly one terminal must be reached
   - First user: `lib/tpy/argparse.py` (see stdlib table above for the slice). v2 work tracked in `docs/MACRO_DESIGN.md`
+- **Phase 8 spike (mechanism + mutation work; motivating use case not yet built)**: Function macros (`@function_macro` on a free function -- a macro that rewrites the whole function body at compile time)
+  - `FunctionMacroContext` -- read-only introspection (`function_name`, `module_qname`, `params` as resolved `(name, TypeInfo | None)`, `return_type`, `body`) plus in-place mutation: `annotate_local(name, type)` (set a local's declared type at its introducing statement) and `replace_expr(old, new)` (identity-based replacement anywhere in the body)
+  - Runs in pass 5.5 (`SemanticAnalyzer._expand_function_macros`), before builder-trace expansion and before body type-checking, so mutations are seen by sema. The decorator has no runtime/codegen existence
+  - An unrecognized *resolved* (imported) decorator on a free function is treated as a function-macro reference (errors at sema if unregistered); genuinely unresolved names still error at parse; method decorators are unchanged
+  - Node aliases (`Assign`, `VarDecl`, `Name`, `StrLiteral`, `BoolLiteral`) re-exported from `tpyc.macro_api` so body-walking macros can recognize statement kinds within the macro import sandbox
+  - Partial: the type-resolution surface a full body resolver wants (`lookup_imported_name`, `enum_members`, `is_subtype_of`, method-body macros) is not yet built. Motivating use case + remaining work: local-variable type deduction (`docs/MACRO_DESIGN.md`)
 
 ### Compile-Time Hooks (Extensible Metaprogramming -- Future Design)
 

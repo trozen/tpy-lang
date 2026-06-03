@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import copy
 import textwrap
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import Any, Callable, Literal, NoReturn, TYPE_CHECKING
 
 from .parse.nodes import ParseError as _ParseError
@@ -59,6 +59,14 @@ MatchCase = TpyMatchCase
 ExceptHandler = TpyExceptHandler
 Pattern = TpyPattern
 ComprehensionGenerator = TpyComprehensionGenerator
+# Statement / expression node aliases for body-walking @function_macro authors
+# (macro modules may only import from tpyc.macro_api, so the node kinds they
+# need to recognize while walking a function body are surfaced here).
+Assign = TpyAssign
+VarDecl = TpyVarDecl
+Name = TpyName
+StrLiteral = TpyStrLiteral
+BoolLiteral = TpyBoolLiteral
 
 # Re-exports from the tpyc package so macro modules only need to import
 # from tpyc.macro_api.
@@ -109,6 +117,19 @@ def call_macro(fn: Callable) -> Callable:
     They return a replacement TpyExpr that sema analyzes.
     """
     fn._is_call_macro = True
+    return fn
+
+
+def function_macro(fn: Callable) -> Callable:
+    """Mark a function as a function-level (body-rewriting) macro.
+
+    A function macro decorates a TPy function/section. It runs at compile
+    time with a FunctionMacroContext that exposes the decorated function's
+    params, declared return type, and body, plus diagnostics, and mutates
+    the body in place (annotate_local / replace_expr) before sema
+    type-checks it.
+    """
+    fn._is_function_macro = True
     return fn
 
 
@@ -486,6 +507,164 @@ class CallMacroContext:
                 if type_info.name in mod_info.records:
                     return f"{mod_name}.{type_info.name}"
         return type_info.name
+
+    def warning(self, msg: str, loc: Any = None) -> None:
+        """Emit a compiler warning."""
+        self._ctx.warning_from_loc(msg, loc or self._loc)
+
+    def error(self, msg: str, loc: Any = None) -> NoReturn:
+        """Raise a compile error."""
+        from .diagnostics import SemanticError
+        raise SemanticError(msg, loc or self._loc)
+
+
+# ---------------------------------------------------------------------------
+# FunctionMacroContext -- context for function-level (body) macros
+# ---------------------------------------------------------------------------
+
+def _replace_node_in(node: Any, old: TpyExpr, new: TpyExpr) -> bool:
+    """Replace `old` with `new` by object identity anywhere under `node`.
+
+    Reflection over dataclass fields: recurses into TpyExpr / TpyStmt children
+    and into list / dict / tuple containers thereof (the AST is a tree
+    pre-sema, so no cycles). Mutates in place; returns True if any replacement
+    happened. Dict coverage matters for call ``kwargs`` (`dict[str, TpyExpr]`);
+    tuples are immutable, so a tuple field holding `old` is rebuilt + reset.
+    """
+    replaced = False
+    for f in fields(node):
+        val = getattr(node, f.name)
+        if val is old:
+            setattr(node, f.name, new)
+            replaced = True
+        elif isinstance(val, (TpyExpr, TpyStmt)):
+            replaced |= _replace_node_in(val, old, new)
+        elif isinstance(val, list):
+            for i, elem in enumerate(val):
+                if elem is old:
+                    val[i] = new
+                    replaced = True
+                elif isinstance(elem, (TpyExpr, TpyStmt)):
+                    replaced |= _replace_node_in(elem, old, new)
+        elif isinstance(val, dict):
+            for k, elem in val.items():
+                if elem is old:
+                    val[k] = new
+                    replaced = True
+                elif isinstance(elem, (TpyExpr, TpyStmt)):
+                    replaced |= _replace_node_in(elem, old, new)
+        elif isinstance(val, tuple) and val:
+            new_elems = list(val)
+            rebuilt = False
+            for i, elem in enumerate(val):
+                if elem is old:
+                    new_elems[i] = new
+                    rebuilt = True
+                elif isinstance(elem, (TpyExpr, TpyStmt)):
+                    replaced |= _replace_node_in(elem, old, new)
+            if rebuilt:
+                setattr(node, f.name, tuple(new_elems))
+                replaced = True
+    return replaced
+
+
+def _replace_in_body(stmts: list, old: TpyExpr, new: TpyExpr) -> bool:
+    """Replace `old` with `new` across a statement list (and nested nodes)."""
+    replaced = False
+    for i, stmt in enumerate(stmts):
+        if stmt is old:
+            stmts[i] = new
+            replaced = True
+        elif _replace_node_in(stmt, old, new):
+            replaced = True
+    return replaced
+
+
+class FunctionMacroContext:
+    """Context passed to a @function_macro for the decorated function.
+
+    Read-only introspection of the function's signature and body, plus
+    in-place mutation (annotate_local, replace_expr) and diagnostics.
+    """
+
+    def __init__(self, ctx: SemanticContext, func: TpyFunction,
+                 module_qname: str, loc: Any = None) -> None:
+        self._ctx = ctx
+        self._func = func
+        self._module_qname = module_qname
+        self._loc = loc if loc is not None else getattr(func, "loc", None)
+
+    @property
+    def function_name(self) -> str:
+        """Name of the decorated function."""
+        return self._func.name
+
+    @property
+    def module_qname(self) -> str:
+        """Qualified name of the enclosing module."""
+        return self._module_qname
+
+    @property
+    def params(self) -> list[tuple[str, TypeInfo | None]]:
+        """Ordered (name, type) for each parameter; type is None if absent."""
+        out: list[tuple[str, TypeInfo | None]] = []
+        for name, tpy_type in self._func.params:
+            ti = TypeInfo.from_tpy_type(tpy_type) if tpy_type is not None else None
+            out.append((name, ti))
+        return out
+
+    @property
+    def return_type(self) -> TypeInfo | None:
+        """Declared return type, or None."""
+        rt = self._func.return_type
+        return TypeInfo.from_tpy_type(rt) if rt is not None else None
+
+    @property
+    def body(self) -> list[TpyStmt]:
+        """The function body statements (walkable in source order)."""
+        return self._func.body or []
+
+    def annotate_local(self, name: str, type_info: TypeInfo) -> None:
+        """Give a local a declared type at its introducing statement so sema
+        type-checks the body with that type.
+
+        TPy models ``name = <rhs>`` as an (untyped) ``TpyVarDecl``; this sets
+        its declared type. A plain ``TpyAssign`` target (e.g. a re-bind) is
+        rewritten to a ``TpyVarDecl``. Errors if `name` has no introducing
+        statement, or already carries a declared type.
+        """
+        tpy_type = type_info._tpy_type if type_info is not None else None
+        if tpy_type is None:
+            self.error(f"annotate_local({name!r}): type has no underlying type")
+        if not self._annotate_in(self._func.body or [], name, tpy_type):
+            self.error(
+                f"annotate_local: no introducing statement for local {name!r}")
+
+    def _annotate_in(self, stmts: list, name: str, tpy_type: TpyType) -> bool:
+        for i, stmt in enumerate(stmts):
+            if isinstance(stmt, TpyVarDecl) and stmt.name == name:
+                if stmt.type is not None:
+                    self.error(
+                        f"annotate_local: local {name!r} already has a "
+                        f"declared type")
+                stmt.type = tpy_type
+                return True
+            if (isinstance(stmt, TpyAssign)
+                    and isinstance(stmt.target, TpyName)
+                    and stmt.target.name == name):
+                stmts[i] = TpyVarDecl(
+                    name=name, type=tpy_type, init=stmt.value, loc=stmt.loc)
+                return True
+            for body in stmt.sub_bodies():
+                if self._annotate_in(body, name, tpy_type):
+                    return True
+        return False
+
+    def replace_expr(self, old: TpyExpr, new: TpyExpr) -> None:
+        """Replace expression node `old` (matched by identity) with `new`
+        anywhere in the function body. Errors if `old` is not present."""
+        if not _replace_in_body(self._func.body or [], old, new):
+            self.error("replace_expr: node not found in function body")
 
     def warning(self, msg: str, loc: Any = None) -> None:
         """Emit a compiler warning."""

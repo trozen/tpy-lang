@@ -312,7 +312,8 @@ Top-level analyzers (one module each):
 `match`, `registration`, `list_literals`, `local_deduction`,
 `init_tracker`, `scope_tracker`, `flow_facts`, `value_range`,
 `numeric_lattice`, `mutation_propagation`, `method_expansion`,
-`macros`, `reach_analysis`, `context`. Error classes live in
+`macros`, `builder_trace`, `function_macros`, `reach_analysis`,
+`context`. Error classes live in
 `tpyc/diagnostics.py` (see "Compilation pipeline").
 
 `reach_analysis` runs after body analysis as a small post-pass that

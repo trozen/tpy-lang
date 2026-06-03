@@ -65,6 +65,7 @@ from ..parse.resolve_refs import (
 )
 from .macros import _promote_method_signature
 from .builder_trace import BuilderTraceExpander
+from .function_macros import run_function_macros
 from ..symbol_binding import (
     SymbolKind, install_binding, lookup_imported, protocol_kind_for,
     is_macro_kind, is_kind, walk_attribute_chain, resolve_definer,
@@ -666,7 +667,8 @@ class SemanticAnalyzer:
         for record in module.all_records():
             self._analyze_class_constants(record)
 
-        # Pass 5.5: see `_expand_builder_traces`.
+        # Pass 5.5: function-macro expansion, then builder-trace expansion.
+        self._expand_function_macros(module)
         self._expand_builder_traces(module)
 
         # Sixth pass: analyze record methods (including nested records)
@@ -3377,6 +3379,17 @@ class SemanticAnalyzer:
             return None
         ult_mod, ult_name, bd = result
         return (ult_mod, ult_name, bd.kind)
+
+    def _expand_function_macros(self, module: TpyModule) -> None:
+        """Pass 5.5: run @function_macro decorators on free-function bodies.
+
+        Iterates unconditionally (each function with no pending macros is a
+        cheap no-op) so an unresolved macro decorator errors rather than
+        being silently dropped. Only free functions carry function macros;
+        methods reject the decorator at parse time.
+        """
+        for func in list(module.functions):
+            run_function_macros(func, self.ctx, self.ctx.module_name)
 
     def _expand_builder_traces(self, module: TpyModule) -> None:
         """Pass 5.5: walk every record-method body and free-function body

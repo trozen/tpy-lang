@@ -1,0 +1,1 @@
+Function macro: @kwarg_bool is a compile-time decorator, not valid Python at runtime.

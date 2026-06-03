@@ -2389,6 +2389,7 @@ class Parser:
         native_name: str | None = None
         cpp_template: str | None = None
         native_cpp_return_type: str | None = None
+        pending_macros: list[tuple[str, dict[str, Any]]] = []
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"function '{node.name}'")
             if qname == qnames.TYPE_PARAM_DEFAULT:
@@ -2453,8 +2454,11 @@ class Parser:
                     raise ParseError(
                         f"@{bare_name(qname)}(cpp_return_type=...) requires a type name", dec)
             else:
-                dec_name = self._decorator_local_name(dec) or "?"
-                raise ParseError(f"Unknown decorator '{dec_name}' on function '{node.name}'", dec)
+                # Resolved name that is not a builtin function decorator --
+                # treat as a @function_macro (sema resolves against the macro
+                # registry and errors if unregistered). Mirrors the class path.
+                macro_kwargs = self._extract_decorator_kwargs(dec, arg, node.name)
+                pending_macros.append((qname, macro_kwargs))
 
         # Extract type parameters from Python 3.12+ syntax: def foo[T, U]():
         # Bounds: def foo[T: Comparable](): (protocol bound)
@@ -2665,6 +2669,7 @@ class Parser:
             builtin_function_key=builtin_function_key,
             is_generator=is_generator,
             is_async=is_async,
+            pending_macros=pending_macros,
             loc=self._loc(node)
         )
 
