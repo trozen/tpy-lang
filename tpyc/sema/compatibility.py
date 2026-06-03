@@ -2243,25 +2243,60 @@ class TypeCompatibility:
         A tuple local bound from a tuple literal with a non-value (borrow-form)
         member is unsafe to yield/return by NAME: binding produces storage form,
         which dangles for a freshly-constructed member (`owns_fresh`) or silently
-        copies a durable member (`copies_durable`; CPython shares it). Recorded
-        here (not rejected) so a pure local read stays valid -- only a later
-        yield/return of the bare name is rejected, at the boundary.
-        Reassignment clears both first.
+        copies a durable member (`copies_durable`; CPython shares it). The hazard
+        is equally present when the unsafe local is reached through an alias
+        (`u = t`) or a ternary of aliases/literals -- the storage-form copy is the
+        same -- so the fact is derived from the init expression's provenance, not
+        just a literal at the binding. Recorded here (not rejected) so a pure
+        local read stays valid -- only a later yield/return of the bare name is
+        rejected, at the boundary.
+
+        Derive before clearing so a self-assignment (`t = t`) re-installs its own
+        fact instead of losing it to the pop.
         """
+        fresh = durable = None
+        if init_expr is not None and var_type is not None:
+            tt = unwrap_readonly(var_type)
+            if isinstance(tt, TupleType):
+                fresh, durable = self._derive_tuple_member_hazards(tt, init_expr)
         self.ctx.func.owns_fresh_tuple_member_vars.pop(name, None)
         self.ctx.func.copies_durable_tuple_member_vars.pop(name, None)
-        if init_expr is None or var_type is None:
-            return
-        tt = unwrap_readonly(var_type)
-        if not isinstance(tt, TupleType):
-            return
-        inner = init_expr.expr if isinstance(init_expr, TpyCoerce) else init_expr
-        fresh = self._tuple_literal_fresh_borrow_elem(tt, inner)
         if fresh is not None:
             self.ctx.func.owns_fresh_tuple_member_vars[name] = fresh
-        durable = self._tuple_literal_durable_borrow_elem(tt, inner)
         if durable is not None:
             self.ctx.func.copies_durable_tuple_member_vars[name] = durable
+
+    def _derive_tuple_member_hazards(
+            self, tt: TupleType, expr: TpyExpr) -> tuple[int | None, int | None]:
+        """`(fresh_idx, durable_idx)` borrow-member hazards for an init expr bound
+        to a tuple local of type `tt`, or `(None, None)`.
+
+        Dispatches on provenance:
+        - tuple literal: scan its elements (`_tuple_literal_*_borrow_elem`).
+        - bare name: inherit the source local's already-recorded fact, re-checked
+          against `tt` so an `Own[T]` boundary element (the escape) is dropped.
+        - ternary: UNION the two arms -- the result aliases either, so it is
+          hazardous if either is (conservative over-rejection, matching the
+          flow_facts branch merge).
+        Other init shapes (calls, etc.) carry no fact; tracked as a residual
+        provenance gap in BUGS.md.
+        """
+        inner = expr.expr if isinstance(expr, TpyCoerce) else expr
+        if isinstance(inner, TpyIfExpr):
+            then_f, then_d = self._derive_tuple_member_hazards(tt, inner.then_expr)
+            else_f, else_d = self._derive_tuple_member_hazards(tt, inner.else_expr)
+            return (then_f if then_f is not None else else_f,
+                    then_d if then_d is not None else else_d)
+        if isinstance(inner, TpyName):
+            fresh = self.ctx.func.owns_fresh_tuple_member_vars.get(inner.name)
+            if fresh is not None and not self._tuple_elem_still_borrow(tt, fresh):
+                fresh = None
+            durable = self.ctx.func.copies_durable_tuple_member_vars.get(inner.name)
+            if durable is not None and not self._tuple_elem_still_borrow(tt, durable):
+                durable = None
+            return fresh, durable
+        return (self._tuple_literal_fresh_borrow_elem(tt, inner),
+                self._tuple_literal_durable_borrow_elem(tt, inner))
 
     def _check_tuple_member_local(self, tuple_type: TupleType,
                                   expr: TpyExpr, verb: str) -> None:
