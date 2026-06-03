@@ -11,6 +11,7 @@ from ..parse.nodes import (
 from ..typesys import IntLiteralType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_readonly, unwrap_ref_type, yield_uses_borrow_slot
 from tpyc import modules as builtin_modules
 from .context import INDENT, escape_cpp_name
+from .protocols import protocol_param_template_name
 
 
 @dataclass
@@ -519,8 +520,16 @@ class GeneratorCodegen:
                 return stmt, body[:i], body[i + 1:]
         raise AssertionError("no yield found in body")
 
-    def _analyze_for_strategy(self, stmt: TpyForEach, uid: int) -> GeneratorForInfo | None:
-        """Determine the iteration strategy and struct fields for a for-loop with yield."""
+    def _analyze_for_strategy(self, stmt: TpyForEach, uid: int,
+                              proto_param_names: frozenset[str] = frozenset()
+                              ) -> GeneratorForInfo | None:
+        """Determine the iteration strategy and struct fields for a for-loop with yield.
+
+        `proto_param_names` is the set of static-protocol param names of the
+        enclosing coro; iterating directly over one types the iterator frame
+        field against its deduced template arg `T_<pname>` (see the universal
+        strategy below) rather than the un-instantiable concept rendering.
+        """
         from tpyc.modules import get_error_return_next_element_type
 
         elem_type = stmt.elem_type
@@ -625,7 +634,20 @@ class GeneratorCodegen:
         # Universal default: ::tpy::__iter__() + __next__() loop.
         # Handles Iterable[T]/NativeIterable[T] protocol params, user types
         # with __iter__(), and any remaining iterable types.
-        src_cpp = self.types.type_to_cpp(iterable_type)
+        #
+        # A direct loop over a static-protocol param sources from its deduced
+        # template arg `T_<pname>` (the param's frame-field type), not
+        # `type_to_cpp`, which renders the protocol as a C++ concept --
+        # un-instantiable inside `std::declval`. The dual guard (name is a
+        # classified param AND the resolved type is still a static protocol)
+        # means a concrete-typed local that shadows the param name falls back
+        # to the ordinary rendering.
+        if (isinstance(stmt.iterable, TpyName)
+                and stmt.iterable.name in proto_param_names
+                and self.functions.protocols.is_static_protocol_param(iterable_type)):
+            src_cpp = protocol_param_template_name(stmt.iterable.name)
+        else:
+            src_cpp = self.types.type_to_cpp(iterable_type)
         iter_field_type = f"std::decay_t<decltype(::tpy::__iter__(std::declval<{src_cpp}&>()))>"
         result_field_type = f"decltype(std::declval<{iter_field_type}&>().__next__())"
         fields = [

@@ -590,19 +590,14 @@ class CodeGenerator:
             return False
         if func.generator_yield_type is None:
             return False
-        # Protocol-typed params (`def gen(it: Iterable[T])`) make the struct
-        # a template (`T_it`), but the resumable for-loop frame field would
-        # be typed against the abstract protocol (`Iterable<T>`, a C++
-        # concept) instead of the deduced template param -- an ill-formed
-        # field decl. That substitution is a separate feature (TODO.md
-        # "Generator: protocol-typed params"). (Explicit `[T]` type params
-        # have no such issue and stay eligible.)
-        if self.protocols.get_all_protocol_params(func.params):
-            raise CodeGenError(
-                "generators with a protocol-typed parameter are not yet "
-                "supported",
-                loc=func.loc,
-            )
+        # Static-protocol params (`def gen(it: Iterable[T])`) make the struct
+        # a template and are captured as a deduced template arg `T_<pname>`;
+        # a direct for-loop over such a param types its iterator frame field
+        # against `T_<pname>` (see `_analyze_for_strategy`). Indirect shapes
+        # the resumable frame can't yet back with a concrete type (e.g. a
+        # protocol param aliased into a local) get a clean reject at
+        # frame-field emit rather than a broken C++ build.
+        #
         # Backstop: build (and cache) the CFG, which raises a clean located
         # CodeGenError for any shape the resumable lowering can't handle, so a
         # residual unsupported shape surfaces as a diagnostic rather than a

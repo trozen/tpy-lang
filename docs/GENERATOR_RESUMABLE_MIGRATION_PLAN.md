@@ -591,14 +591,52 @@ existing `error_*` case to positive.
 
 ### Medium priority -- independent shapes
 
-- **H4 -- multi-yield protocol-typed-param generators.** Today rejected
-  at the codegen gate: a `def gen(it: Iterable[T])` makes the struct a
-  template (`T_it`) but the resumable for-loop frame field is typed
-  against the abstract concept `Iterable<T>` instead of the deduced
-  template param -- ill-formed. Fix: substitute the for-loop frame-field
-  type (and any other body type referencing the iterable) with the
-  deduced template param `T_it`. Drop the codegen-gate reject.
-  Converts: `iterators/error_gen_proto_param_multi_yield`.
+- **H4 DONE (2026-06-03)** -- multi-yield protocol-typed-param generators.
+  The documented blocker (the universal for-loop strategy typed its
+  iterator frame field against the C++ *concept* `Iterable<T>` instead of
+  the deduced template arg `T_it`, ill-formed inside `std::declval`) turned
+  out to be a **shared** bug: `async def f(it: Iterable[T])` for-looping
+  over the param miscompiled identically -- the generator gate just hid it
+  on the generator side. Fix in the shared `_analyze_for_strategy` universal
+  branch (`gen_generators.py`): when `stmt.iterable` is a `TpyName` that
+  names a static-protocol param (threaded in as `proto_param_names` from
+  the prescan) AND its resolved type is still a static protocol (so a
+  concrete-typed local shadowing the name falls back to the ordinary
+  rendering), source from `protocol_param_template_name(name)` = `T_<pname>`
+  rather than `type_to_cpp`. The `T_<pname>` spelling is centralized in a
+  new `protocols.protocol_param_template_name` helper, routed through
+  `_classify_params` and `_protocol_template_parts` too (zero snapshot
+  churn -- byte-identical to the prior literal).
+  - **Required forwarding fix (not in the original sketch):** the field-type
+    fix alone is insufficient. The factory `echo(T_it&& it)` deduces
+    `T_it` as a *reference* for an lvalue arg (the common case -- a
+    generator *borrows* its iterable), so the ctor/factory `std::move(it)`
+    manufactured an rvalue that couldn't bind the collapsed lvalue ref.
+    Changed the `STATIC_PROTOCOL` ctor-init and factory-forward to
+    `std::forward<T_<pname>>` (perfect forwarding -- value for rvalue args,
+    lvalue ref for lvalue args; `OWNED_VALUE` keeps `std::move`, its `T` is
+    never a deduced reference). Zero existing-snapshot impact (no
+    bare-static-protocol coro-param test existed). Borrowing (not copying)
+    the iterable is the CPython-correct reference semantic.
+  - **Residual rejects:** a protocol param aliased into a local
+    (`xs = it; for x in xs:`) has no concrete frame backing (only captured
+    params carry `T_<pname>`); the hoisted-local field emit now raises a
+    clean `CodeGenError` rather than emitting `frame_slot<Concept>`
+    (`iterators/error_gen_proto_param_aliased_local`).
+  - **Async caller-side still blocked (separate pre-existing bugs, filed
+    in BUGS.md):** `await consume(it)` for a protocol-param coro fails in
+    the await sub-future machinery -- a brace-literal arg yields
+    `decltype({1,2,3})` (ill-formed), and a named-lvalue arg yields a
+    value-vs-reference mismatch between the `remove_cvref_t<decltype(arg)>`
+    sub-future field type and the forwarding-ref factory's reference
+    deduction. Independent of the frame-field fix; driving the same coro
+    via `asyncio.run(consume(xs))` (Adapter-wrapped, no sub-future field)
+    works. Tests: converted `iterators/error_gen_proto_param_multi_yield`
+    -> positive `iterators/gen_proto_param_multi_yield` (multi-yield +
+    borrow-observe: mutating the source after generator creation is seen
+    through lazy iteration, proving borrow not copy; CPython-verified);
+    new `async/async_for_proto_param` (asyncio.run drive),
+    `iterators/error_gen_proto_param_aliased_local` (clean reject).
 
 - **H5 (DONE -- `if`/`while`/`assert` and `match` arms) --
   narrowing across a suspension inside the narrowed block.**

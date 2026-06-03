@@ -1,0 +1,1 @@
+main.py:9: error: local 'xs' of protocol type aliasing a protocol-typed parameter is not yet supported across a suspension; iterate the parameter directly

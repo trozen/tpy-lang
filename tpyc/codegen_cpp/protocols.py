@@ -35,6 +35,21 @@ _ADAPTER_IMPL_GENERIC = "__tpy_Impl"
 _ADAPTER_IMPL_NON_GENERIC = "T"
 
 
+def protocol_param_template_name(pname: str) -> str:
+    """Deduced template-argument name for a static-protocol param.
+
+    Shared `T_<pname>` spelling for the resumable-coro sites that must agree
+    on one name: the coro template-header declaration (`_protocol_template_parts`),
+    the captured-param frame field (`_classify_params`), and a for-loop over
+    the param (`_analyze_for_strategy`). The raw (unescaped) `pname` is used
+    deliberately so all three agree even when `pname` is a C++ keyword --
+    escaping here would diverge from the declaration. (The non-coro
+    template-header path in this module still inlines the spelling; those
+    sites are independent of the resumable frame.)
+    """
+    return f"T_{pname}"
+
+
 class ProtocolGenerator:
     """Generates C++20 concepts from TurboPython protocols."""
 

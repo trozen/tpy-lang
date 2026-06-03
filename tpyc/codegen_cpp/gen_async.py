@@ -36,6 +36,7 @@ from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, TypePa
 from .gen_generators import GeneratorCodegen, GeneratorForInfo
 from ..type_def_registry import is_str_type, is_str_category, is_big_int_type
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
+from .protocols import protocol_param_template_name
 from . import resumable_cfg as rcfg
 
 
@@ -171,6 +172,13 @@ class _CoroParam:
             # std::move on it yields an rvalue that won't bind to the field
             # type for non-value Ts. Direct bind/copy is uniformly correct.
             return f"{self.cpp_name}({self.cpp_name}_)"
+        if self.kind is _CoroParamKind.STATIC_PROTOCOL:
+            # `T_<pname>` is the class template param, so the ctor's
+            # `T_<pname>&&` reference-collapses (a plain lvalue ref when the
+            # factory deduced a borrowed lvalue). Forward to bind both the
+            # value and lvalue-ref cases; a bare std::move breaks the latter.
+            return (f"{self.cpp_name}("
+                    f"std::forward<{self.ctor_param_type}>({self.cpp_name}_))")
         return f"{self.cpp_name}(std::move({self.cpp_name}_))"
 
 
@@ -366,7 +374,7 @@ class AsyncCoroCodegen:
                 # reads the same field back to spell instantiations.
                 # Using `cpp_name` here would diverge when `pname`
                 # collides with a C++ keyword (e.g. `class` -> `class_`).
-                field_type = ctor_type = f"T_{pname}"
+                field_type = ctor_type = protocol_param_template_name(pname)
             elif kind is _CoroParamKind.POINTER:
                 if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
                     field_type = ctor_type = ptype_inner.to_cpp_param_type()
@@ -469,11 +477,12 @@ class AsyncCoroCodegen:
                     loc=func.loc)
             proto = info.protocols[0]
             concept_name = self.functions.protocols.get_concept_name(proto)
+            targ_name = protocol_param_template_name(pname)
             if proto.type_args:
                 targs = ", ".join(t.to_cpp() for t in proto.type_args)
-                parts.append(f"{concept_name}<{targs}> T_{pname}")
+                parts.append(f"{concept_name}<{targs}> {targ_name}")
             else:
-                parts.append(f"{concept_name} T_{pname}")
+                parts.append(f"{concept_name} {targ_name}")
         return parts
 
     def _record_template_args(self, record_name: str | None) -> tuple[str, ...]:
@@ -1003,6 +1012,17 @@ class AsyncCoroCodegen:
             for lname, ltype in func.generator_locals:
                 ltype_inner = unwrap_ref_type(ltype)
                 cpp_name = escape_cpp_name(lname)
+                # A protocol-typed local (e.g. aliasing a protocol param,
+                # `xs = it`) has no concrete C++ backing in the frame -- only
+                # captured params carry the deduced template arg `T_<pname>`.
+                # Rendering it would emit `frame_slot<Concept>` (ill-formed),
+                # so reject cleanly instead of producing a broken C++ build.
+                if self.functions.protocols.is_static_protocol_param(ltype_inner):
+                    raise CodeGenError(
+                        f"local {lname!r} of protocol type aliasing a "
+                        "protocol-typed parameter is not yet supported across "
+                        "a suspension; iterate the parameter directly",
+                        loc=func.loc)
                 if lname in owning_str:
                     # `with X() as label:` -- `__enter__` returns by
                     # value; storing the view across suspensions
@@ -1135,11 +1155,14 @@ class AsyncCoroCodegen:
             *, receiver: tuple[str, str] | None = None) -> str:
         """Format the arg list for a coro-struct factory call.
 
-        Static-protocol params (`Own[Awaitable[T]]` etc.) take a
-        forwarding-ref `T_<pname>&&` -- which, inside the factory body,
-        is an lvalue -- so the call to the struct ctor (also `T_<pname>&&`)
-        must wrap the name in `std::move(...)` to bind. Other kinds pass
-        by bare name.
+        Static-protocol params (`Own[Awaitable[T]]`, `Iterable[T]` etc.)
+        take a forwarding-ref `T_<pname>&&`: the factory deduces `T_<pname>`,
+        so it may be a value (rvalue arg) OR an lvalue reference (lvalue arg
+        -- the common case for a borrowed iterable). `std::forward<T_<pname>>`
+        preserves that category; a bare `std::move` would manufacture an
+        rvalue that can't bind the ctor's collapsed lvalue ref. `OWNED_VALUE`
+        takes its param by value (concrete type, never a deduced reference),
+        so it moves. Other kinds pass by bare name.
 
         `receiver=(record_name, recv_expr)` supports async methods: the
         receiver is prepended to the arg list as `recv_expr` (typically
@@ -1153,8 +1176,10 @@ class AsyncCoroCodegen:
         for cparam in self._classify_params(func, record_name):
             if cparam.cpp_name == "__self":
                 continue
-            if cparam.kind in (_CoroParamKind.STATIC_PROTOCOL,
-                               _CoroParamKind.OWNED_VALUE):
+            if cparam.kind is _CoroParamKind.STATIC_PROTOCOL:
+                parts.append(
+                    f"std::forward<{cparam.ctor_param_type}>({cparam.cpp_name})")
+            elif cparam.kind is _CoroParamKind.OWNED_VALUE:
                 parts.append(f"std::move({cparam.cpp_name})")
             else:
                 parts.append(cparam.cpp_name)
@@ -1574,6 +1599,12 @@ class AsyncCoroCodegen:
         state = rcfg.resumable_state(func)
         if state.for_prescanned:
             return state.for_uid_map
+        # Static-protocol params are captured as a deduced template arg
+        # `T_<pname>` (not their concept-rendered type); a for-loop over such
+        # a param must type its iterator frame field against that template arg.
+        proto_param_names = frozenset(
+            pname for pname, ptype in func.params
+            if self.functions.protocols.is_static_protocol_param(ptype))
         uid_map: dict[int, int] = {}
         fields_out: list[tuple[str, str]] = []
         struct_names_out: dict[int, str] = {}
@@ -1632,7 +1663,7 @@ class AsyncCoroCodegen:
                         # returns are emitted as `tpy::frame_slot<T>` in
                         # gen_coro_struct (matching hoisted user locals).
                         info = self.gen_generators._analyze_for_strategy(
-                            s, cur_uid)
+                            s, cur_uid, proto_param_names=proto_param_names)
                         if info is None:
                             raise rcfg._CFGNotYetSupported(
                                 "yield inside this for-loop shape is not yet "
