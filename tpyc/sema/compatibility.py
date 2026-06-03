@@ -2140,17 +2140,22 @@ class TypeCompatibility:
         """First element index whose non-value (borrow-form) slot has a fresh /
         dangling source in this tuple literal, else None.
 
-        Shared by the literal yield/return check and the owns-fresh-member
-        assignment marking, so both agree on exactly which tuple literals are
-        dangerous to borrow across a boundary.
+        Drives the owns-fresh-tuple-member assignment flag (see
+        `update_tuple_member_local_facts`). The literal yield/return path has its
+        own per-element loop (`_check_tuple_elem_dangle`), which is strictly
+        stronger: it also catches a value coerced into a wrapper element via the
+        pre-coercion source type, which this name-based flag cannot see.
         """
         if not isinstance(inner, TpyTupleLiteral):
             return None
         for i, et in enumerate(tuple_type.element_types):
             if i >= len(inner.elements):
                 break
+            # Recursive-union wrappers are borrow form here too, so a fresh
+            # wrapper member dangles like any other borrow element; the
+            # is_dangling_return source check tells a fresh local from a
+            # param/self-rooted wrapper, so there is no needs_wrapper() skip.
             if (not et.is_value_type() and not isinstance(et, (OwnType, TypeParamRef))
-                    and not et.needs_wrapper()
                     and self.is_dangling_return(inner.elements[i])):
                 return i
         return None
@@ -2182,12 +2187,13 @@ class TypeCompatibility:
         """Whether element `idx` of the *declared* boundary tuple is still
         borrow form. The hazard flag's index comes from the assignment-inferred
         type; the boundary type may differ (an `Own[T]` element -- the escape --
-        is moved by value and safe), so re-check before rejecting."""
+        is moved by value and safe), so re-check before rejecting. A
+        recursive-union wrapper element is borrow form (`X&`), so a flagged fresh
+        wrapper member is NOT exempt (the durable check never flags a wrapper)."""
         if idx >= len(tuple_type.element_types):
             return False
         et = tuple_type.element_types[idx]
-        return not (et.is_value_type() or isinstance(et, (OwnType, TypeParamRef))
-                    or et.needs_wrapper())
+        return not (et.is_value_type() or isinstance(et, (OwnType, TypeParamRef)))
 
     def _check_tuple_elem_dangle(self, tuple_type: TupleType, expr: TpyExpr,
                                  verb: str, source_type: TpyType | None = None) -> None:

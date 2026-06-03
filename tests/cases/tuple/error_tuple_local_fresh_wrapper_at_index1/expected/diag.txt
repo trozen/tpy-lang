@@ -1,0 +1,1 @@
+main.py:11: error: Cannot return tuple local 'pair': element 1 ('Tree[Int32]') owns a freshly constructed value that is returned by reference and would dangle. Use Own[Tree[Int32]] for this tuple element to return by value.
