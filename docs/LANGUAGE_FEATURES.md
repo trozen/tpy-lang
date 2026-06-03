@@ -3043,6 +3043,36 @@ Protocols serve as **compiler traits**—letting the compiler discover type capa
 
 See [docs/PROTOCOL_DESIGN.md](PROTOCOL_DESIGN.md) for the full design, including implementation phases and C++ codegen strategies.
 
+### Runtime Type Discrimination (isinstance / match / cast)
+
+Three surfaces ask "what concrete type is behind this value at runtime?" They share one
+mechanism layer; the per-case rules live in the sections below (Union/Optional, Any) and in
+`MATCH_CASE_DESIGN.md`, `DYNAMIC_PROTOCOL_DESIGN.md`, `ANY_TYPE_DESIGN.md`.
+
+TPy has no general RTTI: runtime type identity exists only where the language already pays
+for it -- `@dynamic` vtables, union variant tags, and `Any`'s `typeid`. A plain value type
+carries no hidden type tag, so it cannot be downcast.
+
+| Subject | isinstance | match | Lowering |
+|---------|-----------|-------|----------|
+| union value `A \| B` | narrow to member | switch / `holds_alternative` | variant index |
+| `Any` | check vs typeid | rejected (subject) | `typeid` / `any_cast_or_panic` |
+| polymorphic class / `@dynamic` proto | downcast + narrow | downcast + narrow | `dynamic_cast` / `dyn_adapter_cast` |
+| structural protocol | compile-time test | -- | `if constexpr (Concept)` |
+| plain (non-polymorphic) class | folds True/False | record-name equality | static fold |
+| `Optional[T]` | None-narrow | None-narrow | -- |
+
+By-design limits (consequences of value semantics, not gaps to fill):
+- **Plain-class downcast** (`isinstance(base_value, Derived)`) folds to False + warning -- the
+  value upcast already sliced the derived fields; use `@dynamic` for runtime type checks.
+- **Subscripted-generic targets** (`isinstance(x, list[int])`, `cast(P[T], x)`) are rejected --
+  the type arg is erased at runtime (matches CPython's `TypeError`).
+
+Surface split: `isinstance` is a bare-name test-and-narrow usable in any boolean context;
+`match` takes arbitrary expression subjects (`match self.pet:` / `match xs[i]:`) and adds
+destructuring -- prefer `match` when the subject is not a bare local. `typing.cast(T, x)` is a
+no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is `Any`.
+
 ### Union/Optional
 - **Working**: Union types `A | B | C` → `std::variant<A, B, C>`
   - **Pointer-variant representation**: non-value unions (containing records) use a two-layer representation for zero-copy semantics:

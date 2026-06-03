@@ -1509,10 +1509,13 @@ The work landed across 8 commits, one per phase of the plan:
   cycle-peer variant of the type-alias re-export gap remains
   -- pre-pop runs before alias resolution -- and is tracked
   in BUGS.md alongside the analogous cycle-peer variable gap.
-- **`functools.total_ordering`.** Mentioned as the headline
-  Phase 6 use case. The macro re-export mechanism is in place;
-  implementing `total_ordering` in `lib/tpy/functools.py` is
-  unblocked but not done.
+- **`functools.total_ordering`.** Done. The headline Phase 6
+  use case shipped: `total_ordering` is implemented as a
+  class macro in `lib/tpy/_functools_macros.py` and re-exported
+  through `lib/tpy/functools.py`. Regression guards live under
+  `tests/cases/records/total_ordering_*` (and the
+  `error_total_ordering_no_eq` / `error_total_ordering_no_ord`
+  rejection cases).
 
 ### Workspace-subphase-by-subphase declaration pipeline
 

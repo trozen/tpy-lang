@@ -24,6 +24,7 @@
 | Mapping patterns `{"k": v}` | Dict matching; needs mapping protocol |
 | Nested class sub-patterns | `case Circle(center=Point(x=0)):` -- recursive pattern compilation |
 | Builtin type patterns | `case int():` / `case str():` as type checks |
+| `Any` subject | `match x:` where `x: Any`; class patterns via `typeid` (reuse the isinstance-on-`Any` path) |
 | Or-pattern body dedup | Lambda-based body sharing instead of codegen duplication |
 | User-defined `__match_args__` | Explicit override of auto-generated positional mapping |
 
