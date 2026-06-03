@@ -198,6 +198,22 @@ def test_predicate_functions_agree_with_isinstance(instances):
         )
 
 
+def test_span_element_preserves_readonly_only_for_reference_elements():
+    # Span/SpanIter element_of keeps readonly[T] on a reference element (so the
+    # readonly-mutation gate sees it) but strips it on a value element (a
+    # by-value read drops const). Both views share one helper.
+    from tpyc.typesys import ReadonlyType, make_span, make_span_iter, make_list, INT32
+
+    ref_elem = make_list(INT32)  # list[Int32] is a reference type
+    for view in (make_span(ReadonlyType(ref_elem)), make_span_iter(ReadonlyType(ref_elem))):
+        elem = view.get_element_type()
+        assert isinstance(elem, ReadonlyType), f"{view}: expected readonly preserved, got {elem}"
+
+    for view in (make_span(ReadonlyType(INT32)), make_span_iter(ReadonlyType(INT32))):
+        elem = view.get_element_type()
+        assert elem == INT32, f"{view}: expected readonly stripped to Int32, got {elem}"
+
+
 def test_pending_types_are_not_concrete_containers():
     """PendingListType / PendingDictType / PendingSetType share builtin qnames
     with their resolved form ("builtins.list" etc.) but are distinct TpyType

@@ -1031,8 +1031,8 @@ class NominalType(TpyType):
             _evaluating_sync.discard(self)
 
     def get_element_type(self) -> Optional['TpyType']:
-        # Per-qname override (e.g. SpanIter[readonly[T]] iterates T, not
-        # readonly[T] -- the readonly wrapper is stripped from the element).
+        # Per-qname override (e.g. Span/SpanIter reshape a readonly[T] element:
+        # strip for a value element, keep for a reference element).
         from tpyc.type_def_registry import type_def_of
         td = type_def_of(self)
         if td is not None and td.element_of is not None:

@@ -163,8 +163,9 @@ class TypeDef:
     param_mut_cpp_formatter: Optional[Callable[[tuple], str]] = None
     # element_of(type_args) -> "element type produced by iterating this type".
     # Overrides NominalType.get_element_type's default (first TpyType arg).
-    # Needed when the raw first type_arg carries decoration that iteration
-    # strips -- e.g. SpanIter[readonly[T]] iterates T, not readonly[T].
+    # Needed when the raw first type_arg needs reshaping -- e.g. Span/SpanIter
+    # strip readonly[T] for a value element (a by-value read drops const) but
+    # keep it for a reference element (the borrow must stay readonly).
     element_of: Optional[Callable[[tuple], "TpyType"]] = None
     # Array/Span need explicit type targets for literal initializers (see
     # NominalType.needs_explicit_element_target). Default is False.
@@ -823,9 +824,19 @@ def _populate() -> None:
             return unwrap_readonly(elem).is_sync()
         return False
 
-    def _span_elem(args: tuple):
-        from tpyc.typesys import unwrap_readonly
-        return unwrap_readonly(args[0])
+    def _readonly_view_elem(args: tuple):
+        # Element type for a Span/SpanIter view. Keep readonly[T] on a
+        # reference element so a write through it is caught by the
+        # readonly-mutation gate at sema, not only by C++ const; strip it on a
+        # value element, where a by-value read drops const anyway (else
+        # numeric/value consumers see readonly[Int32] and reject).
+        from tpyc.typesys import ReadonlyType, unwrap_readonly
+        elem = args[0]
+        if isinstance(elem, ReadonlyType) and unwrap_readonly(elem).is_value_type():
+            return unwrap_readonly(elem)
+        return elem
+
+    _span_elem = _readonly_view_elem
 
     register(TypeDef(
         "tpy.Span", TC.SPAN,
@@ -850,14 +861,10 @@ def _populate() -> None:
             return f"::tpy::SpanIter<const {unwrap_readonly(elem).to_cpp()}>"
         return f"::tpy::SpanIter<{elem.to_cpp()}>"
 
-    def _span_iter_elem(args: tuple):
-        from tpyc.typesys import unwrap_readonly
-        return unwrap_readonly(args[0])
-
     register(TypeDef("tpy.SpanIter", TC.ITERATOR, is_value_type=True,
                      is_send=False, is_sync=False,
                      cpp_formatter=_span_iter_cpp,
-                     element_of=_span_iter_elem))
+                     element_of=_readonly_view_elem))
     register(TypeDef("tpy.CopyIter", TC.ITERATOR, is_value_type=True,
                      cpp_formatter=lambda args: "auto"))
     register(TypeDef("tpy.OwnIter",  TC.ITERATOR, is_value_type=True,
