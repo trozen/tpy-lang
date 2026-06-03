@@ -1,0 +1,1 @@
+main.py:17: error: isinstance() on type parameter 'T' bounded by the polymorphic / @dynamic type 'Pet' is not yet supported; use the @dynamic protocol type directly for runtime dispatch.

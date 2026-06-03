@@ -330,6 +330,7 @@ class TpyCall(TpyExpr):
     isinstance_var: str | None = None        # Set by sema: variable name being isinstance-checked
     isinstance_type: TpyType | None = None   # Set by sema: resolved type being checked for
     isinstance_is_protocol: bool = False     # Set by sema: protocol isinstance (if constexpr)
+    isinstance_type_param: bool = False      # Set by sema: subject is a non-poly class-bounded type param -> compile-time tpy::isinstance_static
     # Set by sema (>0) when the isinstance source is an owning wrapper
     # (Box[Pet]/Rc[Pet]): the dispatch target is the polymorphic payload
     # reached through `depth` reference-returning __deref__ steps, not the

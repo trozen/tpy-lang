@@ -2313,6 +2313,10 @@ class ExpressionGenerator:
             # Protocol isinstance uses if constexpr -- no extraction needed
             if expr.isinstance_is_protocol:
                 return
+            # Type-param isinstance is a pure compile-time trait on the
+            # subject's static type -- no variant to extract, no narrowing.
+            if expr.isinstance_type_param:
+                return
             # Deref-view isinstance narrows the wrapper's payload, not the
             # wrapper variable: no var retyping / extraction local. The cast is
             # applied per member access via deref_narrowed_to (see
@@ -2504,6 +2508,22 @@ class ExpressionGenerator:
                 if infos and infos[0].has_none and len(infos[0].protocols) == 1:
                     return f"!std::same_as<T_{var_name}, std::nullptr_t>"
             return self.protocols._concept_constraint(expr.isinstance_var, expr.isinstance_type)
+        # isinstance(x, C) on a generic type-param subject -> per-instantiation
+        # compile-time trait. Sema restricts this to non-polymorphic class
+        # bounds, so same-or-derived against the instantiated decltype(x) is
+        # exact.
+        if (expr.isinstance_var is not None and expr.isinstance_type_param
+                and expr.isinstance_type is not None):
+            var = expr.isinstance_var
+            if isinstance(expr.isinstance_type, UnionType):
+                members = list(expr.isinstance_type.members)
+            else:
+                members = [expr.isinstance_type]
+            checks = [
+                f"::tpy::isinstance_static<{self.types.type_to_cpp(m)}, decltype({var})>()"
+                for m in members
+            ]
+            return checks[0] if len(checks) == 1 else "(" + " || ".join(checks) + ")"
         # isinstance(x, T) -> std::holds_alternative<CppT>(x)
         if expr.isinstance_var is not None and expr.isinstance_type is not None:
             # In @overload context, param type is concrete -- resolve statically

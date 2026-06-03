@@ -1,0 +1,1 @@
+main.py:8: error: isinstance() on the unbounded type parameter 'T' is not supported: a generic body is compiled once for all instantiations, so the check cannot be resolved. Add a non-polymorphic class bound (e.g. 'T: Base').

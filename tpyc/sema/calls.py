@@ -1690,10 +1690,10 @@ class CallAnalyzer:
         warns, so tuple forms like `isinstance(a, (Dog, Cat))` surface all
         mistakes at once.
 
-        TODO: TypeParamRef bounds are not walked -- is_subclass_of short-
-        circuits on non-user-record types, so `isinstance(x, Animal)` where
-        `x: T` with `T: Dog` silently folds to False. Bounded generic
-        isinstance should either walk the bound or error explicitly.
+        Type-parameter subjects do not reach here -- they are intercepted in
+        `_analyze_isinstance` and lowered to a per-instantiation compile-time
+        trait (`_analyze_isinstance_type_param`), since a generic body is
+        analyzed once but instantiated per concrete type.
         """
         reg = self.ctx.registry
         result = False
@@ -1709,6 +1709,51 @@ class CallAnalyzer:
                     expr,
                 )
         return result
+
+    def _analyze_isinstance_type_param(
+        self, tp: TypeParamRef, check_types: list[TpyType],
+        var_name: str, expr: TpyCall,
+    ) -> TpyType:
+        """Lower isinstance(x, C) where x: T is a generic type parameter to a
+        per-instantiation compile-time trait (`tpy::isinstance_static<C,
+        decltype(x)>`), folded at C++ instantiation.
+
+        Sound only for a NON-polymorphic class bound, where the instantiated
+        static type IS the dynamic type. A polymorphic / @dynamic bound (needs
+        dynamic_cast), a protocol bound, and an unbounded param (which could
+        instantiate to a union / Any / polymorphic shape the static trait
+        cannot see) are rejected rather than silently mis-folded; the full
+        per-instantiation dispatcher that would lift these is tracked in
+        BUGS.md.
+        """
+        bound = self.type_ops.get_type_param_bound(tp.name)
+        if bound is None:
+            raise self.ctx.error(
+                f"isinstance() on the unbounded type parameter '{tp.name}' is "
+                f"not supported: a generic body is compiled once for all "
+                f"instantiations, so the check cannot be resolved. Add a "
+                f"non-polymorphic class bound (e.g. '{tp.name}: Base').",
+                expr,
+            )
+        if is_dynamic_dispatch_inner(bound, self.ctx.registry):
+            raise self.ctx.error(
+                f"isinstance() on type parameter '{tp.name}' bounded by the "
+                f"polymorphic / @dynamic type '{bound}' is not yet supported; "
+                f"use the @dynamic protocol type directly for runtime dispatch.",
+                expr,
+            )
+        if not (isinstance(bound, NominalType) and bound.is_user_record):
+            raise self.ctx.error(
+                f"isinstance() on type parameter '{tp.name}' bounded by "
+                f"'{bound}' is not supported: only non-polymorphic class "
+                f"bounds are supported.",
+                expr,
+            )
+        expr.isinstance_var = var_name
+        expr.isinstance_type = (check_types[0] if len(check_types) == 1
+                                else make_union(*check_types))
+        expr.isinstance_type_param = True
+        return BOOL
 
     def _is_non_deref_handle(self, typ: TpyType) -> bool:
         """True if `typ` is a non-owning handle to a payload reachable only via
@@ -1927,6 +1972,12 @@ class CallAnalyzer:
             return BOOL
 
         if not isinstance(effective_type, UnionType):
+            # Generic type-parameter subject: a generic body is analyzed once
+            # but instantiated per concrete type, so the answer is decided at
+            # C++ instantiation, not here. Lower to a compile-time trait.
+            if isinstance(effective_type, TypeParamRef) and check_types:
+                return self._analyze_isinstance_type_param(
+                    effective_type, check_types, first_arg.name, expr)
             # Polymorphic source post-narrowing: source was declared as a
             # polymorphic class (`Optional[Inner]` or bare `Inner`); the
             # C++ representation is `const Inner*` or `const Inner&` and

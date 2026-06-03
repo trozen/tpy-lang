@@ -1,0 +1,1 @@
+main.py:15: error: isinstance() on type parameter 'T' bounded by 'Named' is not supported: only non-polymorphic class bounds are supported.

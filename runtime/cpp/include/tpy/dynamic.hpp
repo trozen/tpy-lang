@@ -8,7 +8,33 @@
 
 #pragma once
 
+#include <type_traits>
+
 namespace tpy {
+
+// Compile-time `isinstance(x, C)` for a generic type-parameter subject. Sema
+// restricts this lowering to a non-polymorphic class-bounded `T`, where the
+// static instantiation type IS the dynamic type, so a same-or-derived test is
+// exact per instantiation. Polymorphic (vtable), union, and `Any` subjects do
+// NOT reach here -- they keep their dynamic_cast / holds_alternative / typeid
+// lowerings. Normalizes ref/pointer/cv on both sides before the trait test.
+template<typename C, typename X>
+constexpr bool isinstance_static() {
+    using CT = std::remove_cv_t<std::remove_pointer_t<std::remove_reference_t<C>>>;
+    using XT = std::remove_cv_t<std::remove_pointer_t<std::remove_reference_t<X>>>;
+    // A polymorphic instantiation breaks the static premise: the runtime
+    // object behind an `XT&` may be a subclass, so a compile-time test would
+    // silently miss it. Sema rejects a polymorphic *bound*, but a polymorphic
+    // subclass of a non-polymorphic bound slips through (BUGS.md); fail loud
+    // here rather than fold to a wrong answer. Temporary -- drop once the
+    // call-site substituted-type revalidation / dispatcher lands.
+    static_assert(!std::is_polymorphic_v<XT>,
+        "isinstance() on a generic type parameter instantiated with a "
+        "polymorphic type is not supported: the compile-time check cannot see "
+        "the runtime dynamic type. Use a @dynamic protocol parameter for "
+        "runtime dispatch.");
+    return std::is_base_of_v<CT, XT> || std::is_same_v<CT, XT>;
+}
 
 template<typename Base, typename T>
 struct Adapter;
