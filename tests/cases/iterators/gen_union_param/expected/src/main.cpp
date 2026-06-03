@@ -36,10 +36,12 @@ std::expected<std::string, ::tpy::StopIteration> __gen_describe::__next__() {
         continue;
     }
     case S_RESUME_1: {
+        auto& __a = *std::get<Dog*>(a);
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_2: {
+        auto& __a = *std::get<Cat*>(a);
         __state = S_JOIN_0;
         continue;
     }

@@ -1620,7 +1620,17 @@ class CFGBuilder:
         for case in stmt.cases:
             arm_bb = self._new_bb()
             arm_bbs.append(arm_bb)
+            # The arm's pattern/guard narrowing (case.type_facts) applies to
+            # the body; stamp the arm BBs so a suspension inside the arm
+            # re-establishes the subject narrowing at the resume case (parallel
+            # to _build_if). The pattern test + guard run in the suspension-free
+            # dispatch, so only case.body -- which executes after they succeed
+            # -- is stamped.
+            self._blocks[arm_bb].entry_narrowings = {
+                **self._active_narrowings, **case.type_facts}
+            prev = self._push_narrowings(case.type_facts)
             arm_end = self._build_block(arm_bb, case.body)
+            self._pop_narrowings(prev)
             if arm_end is not None:
                 self._finish(arm_end, Fall(next_bb=join_bb))
                 all_terminate = False

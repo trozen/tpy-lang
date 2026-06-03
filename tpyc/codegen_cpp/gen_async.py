@@ -2833,7 +2833,13 @@ class AsyncCoroCodegen:
         # region, so the arm BB shares `from_bb`'s region stack -- the
         # inline walk handles its own fall-to-join / suspension exits.
         def emit_arm(arm_bb: int) -> None:
-            self._walk_inline(out, cfg, arm_bb, case_entries, func)
+            # gen_match emits the arm's first-BB subject narrowing (__case_N);
+            # pass the arm's stamped facts as chain_entry so a nested branch
+            # inside the arm diffs against the already-active subject fact
+            # (avoids a redundant re-cast). Resume cases inside the arm
+            # re-establish the narrowing via the generic _emit_case_body path.
+            self._walk_inline(out, cfg, arm_bb, case_entries, func,
+                              chain_entry=cfg.blocks[arm_bb].entry_narrowings)
         old_emitter = self.ctx.resumable_arm_emitter
         old_map = self.ctx.resumable_arm_bb_by_body
         self.ctx.resumable_arm_emitter = emit_arm

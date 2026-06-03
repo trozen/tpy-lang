@@ -29,6 +29,8 @@ It ships two CLIs that share the same argument grammar, differing only in their 
 
 In all cases: never `--amend`, rebase, force-push, or commit changes you didn't make; never push without an explicit request. An explicit user instruction ("don't commit yet", "hold off") always overrides the auto-commit default.
 
+**Commit message format.** Subject line under ~72 chars; **hard-wrap the body at ~72 columns** (don't emit one long unwrapped line per paragraph -- when using `git commit`, pass a wrapped `-F <file>` rather than long `-m` strings). No `Co-Authored-By` or other LLM/tool-generated references.
+
 **Spirit over letter.** These commit rules exist to (a) spare the user the manual-commit chore and (b) keep junk out of `master` -- not to be performed as a ritual. If following them literally would waste time or nag about obviously-legitimate files, optimize for that intent instead.
 
 **Never make design decisions autonomously.** If during implementation you discover the plan needs to change (new concept, behavior split, workaround for an unforeseen constraint), **stop and consult the user** before proceeding. If you encounter a hard problem or are unsure how to proceed, ask first.

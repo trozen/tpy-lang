@@ -1,0 +1,11 @@
+is-dog
+woof
+meow
+got-dog
+woof
+big
+43
+other
+int:6
+rebound
+str:z

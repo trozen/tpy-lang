@@ -600,18 +600,20 @@ existing `error_*` case to positive.
   deduced template param `T_it`. Drop the codegen-gate reject.
   Converts: `iterators/error_gen_proto_param_multi_yield`.
 
-- **H5 (DONE for `if`/`while`/`assert`; `match` arms remain) --
+- **H5 (DONE -- `if`/`while`/`assert` and `match` arms) --
   narrowing across a suspension inside the narrowed block.**
   `isinstance` / `is not None` narrowing (union param or polymorphic
-  `self`) inside an `if`/`while` body, or via `assert`, then accessing
-  arm-/subclass-specific state after a suspension. Fix shape used: the
-  CFG builder stamps each basic block with the narrowing facts active on
-  entry (threaded from the sema-attached `then_type_facts`/`else_type_facts`,
-  killed on reassignment), and the resumable emitter re-establishes the
-  cast / `std::get` at each resume case and branch arm. Cheaper than
+  `self`) inside an `if`/`while` body, via `assert`, or a `match`-arm
+  subject narrowing, then accessing arm-/subclass-specific state after a
+  suspension. Fix shape used: the CFG builder stamps each basic block with
+  the narrowing facts active on entry (threaded from the sema-attached
+  `then_type_facts`/`else_type_facts`, and `case.type_facts` for `match`
+  arms; killed on reassignment), and the resumable emitter re-establishes
+  the cast / `std::get` at each resume case and branch arm. Cheaper than
   hoisting a `Sub*` frame field -- the cast is idempotent and re-derived
-  per resume. **Still open:** `match`-arm narrowing across a suspension
-  (`_build_match` doesn't push `case.type_facts`); tracked in `BUGS.md`.
+  per resume. (`match` on a `@dynamic`/polymorphic subject across a
+  suspension stays sema-rejected; recursive-union-alias subjects are a
+  separate pre-existing gap, see `BUGS.md`.)
 
 - **H6 DONE (2026-05-28)** -- generator/async methods on bounded
   generic classes (`class Box[T: Bound]`). The H6 repro surfaced TWO
