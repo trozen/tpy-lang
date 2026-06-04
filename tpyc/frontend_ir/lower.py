@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from ..diagnostics import Diagnostic, DiagnosticLevel
 from ..frontend_diagnostics import FrontendDiagnostic, FrontendDiagnosticCategory
@@ -650,7 +650,7 @@ def _lower_record(
         return None, None
     methods: list[TpyFunction] = []
     for m in rec.methods:
-        lowered = _lower_function(m, {}, plugin_name, fm, diags)
+        lowered = _lower_function(m, {}, plugin_name, fm, diags, is_method=True)
         if lowered is None:
             return None, None
         lowered.is_method = True
@@ -693,6 +693,7 @@ def _lower_function(
     plugin_name: str,
     fm: FrontendModule,
     diags: list[FrontendDiagnostic],
+    is_method: bool = False,
 ) -> TpyFunction | None:
     """Lower a frontend `Function` to a `TpyFunction`. Plugins emit
     functions whose params already carry resolved types (NamedType /
@@ -724,11 +725,37 @@ def _lower_function(
             return None
     body = _lower_stmt_list(
         fn.body, name_to_origin, plugin_name, fm, diags)
+    # Decorators are lowered into pending_macros so a plugin can apply a
+    # @function_macro to an emitted function -- the parser-side decorator
+    # path never runs for lowered functions. Sema's pass-5.5 function-macro
+    # phase resolves and runs them, exactly as for a source decorator.
+    # Only module-level functions are scanned there, so a decorator on a
+    # method would be set and silently never run; reject it loudly, as the
+    # parser does for any method decorator.
+    if is_method and fn.decorators:
+        diags.append(_ir_invalid(
+            plugin_name, fm,
+            f"method {fn.name!r}: decorators (function macros) are not "
+            f"supported on methods"))
+        return None
+    pending_macros: list[tuple[str, dict[str, Any]]] = []
+    for dec in fn.decorators:
+        if (not isinstance(dec, tuple) or len(dec) != 3
+                or not isinstance(dec[0], str) or not isinstance(dec[1], str)
+                or not isinstance(dec[2], dict)):
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                f"function {fn.name!r}: decorator must be a "
+                f"(module, name, kwargs) tuple, got {dec!r}"))
+            return None
+        module, name, kwargs = dec
+        pending_macros.append((f"{module}.{name}", dict(kwargs)))
     return TpyFunction(
         name=fn.name,
         params=params,
         return_type=return_type,
         body=body,
+        pending_macros=pending_macros,
     )
 
 

@@ -602,8 +602,13 @@ class Function:
 
     `is_method=False` for M4 -- methods on records land with M5. The
     field is kept on the node so lowering can route correctly once
-    records exist. `type_params` and `decorators` are reserved for
-    future milestones.
+    records exist. `type_params` is reserved for future milestones.
+
+    `decorators` carries `(module, name, kwargs)` tuples; lowering threads
+    them into `TpyFunction.pending_macros` so sema applies them as
+    `@function_macro`s. Only supported on free functions -- a decorator on
+    a method is rejected at lowering (methods are not scanned by the
+    function-macro phase), mirroring the parser's method-decorator error.
 
     Property accessors (`is_property_getter` / `is_property_setter`)
     let a plugin emit `@property` getter/setter pairs without going

@@ -618,6 +618,11 @@ Context surface:
 - *Read-only introspection:* `function_name`, `module_qname`, `params`
   (resolved `(name, TypeInfo | None)` -- `None` for unannotated params),
   `return_type`, `body` (walkable statements).
+- *Type minting:* `resolve_type(name)` returns the `TypeInfo` for a
+  primitive/builtin type name (`"bool"`, `"Int32"`, `"Float64"`, ...), or
+  `None` -- so a macro can hand a type to `annotate_local` without borrowing
+  one off a param/return. Imported user types are out of scope (that is the
+  `lookup_imported_name` work below).
 - *Mutation:* `annotate_local(name, type)` sets a local's declared type at its
   introducing statement (TPy parses `x = expr` as an untyped `TpyVarDecl`, so
   this sets that decl's `.type`; a `TpyAssign` re-bind is converted to a
@@ -634,11 +639,17 @@ is collected as a pending function macro and resolved against the registry at
 sema (errors if unregistered). Genuinely unresolved decorator names still
 error at parse; method (record-body) decorators are unchanged.
 
-Not yet built (the type-resolution surface a full body resolver wants):
-`lookup_imported_name` (identifier -> resolved `TypeInfo` / signature -- the
-load-bearing downstream-slot signal), `enum_members`, `is_subtype_of`, and
-method-body function macros. Motivating use case driving the remaining work is
-local-variable type deduction.
+Plugin-emitted functions get the same treatment: a frontend plugin sets
+`Function.decorators=((module, name, kwargs), ...)` in its IR, and lowering
+(`frontend_ir/lower.py`) threads those into `TpyFunction.pending_macros` -- the
+parser-side decorator path never runs for lowered functions, so this is how a
+frontend plugin applies a function macro to a function it emits.
+
+Not yet built (the rest of the type-resolution surface a full body resolver
+wants): `lookup_imported_name` (identifier -> resolved `TypeInfo` / signature
+for *imported user types* -- the load-bearing downstream-slot signal),
+`enum_members`, `is_subtype_of`, and method-body function macros. Motivating
+use case driving the remaining work is local-variable type deduction.
 
 ## Execution Model
 

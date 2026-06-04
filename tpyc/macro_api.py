@@ -624,6 +624,23 @@ class FunctionMacroContext:
         """The function body statements (walkable in source order)."""
         return self._func.body or []
 
+    def resolve_type(self, name: str) -> TypeInfo | None:
+        """Resolve a primitive/builtin type name (e.g. "bool", "Int32",
+        "Float64") to a TypeInfo, or None if `name` is not a known builtin.
+
+        Lets a macro mint a type to hand to annotate_local without borrowing
+        one off a param/return. Imported user types (enums/records) are not
+        resolved yet -- that is a future lookup_imported_name.
+        """
+        from .modules.type_resolution import _resolve_concrete_type_name
+        if name == "None":  # void is not a mintable local type
+            return None
+        # Float64 is TPy `float`; the shared resolver doesn't list the alias.
+        if name == "Float64":
+            return TypeInfo.from_tpy_type(_FLOAT)
+        t = _resolve_concrete_type_name(name)
+        return TypeInfo.from_tpy_type(t) if t is not None else None
+
     def annotate_local(self, name: str, type_info: TypeInfo) -> None:
         """Give a local a declared type at its introducing statement so sema
         type-checks the body with that type.
