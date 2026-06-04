@@ -1524,18 +1524,20 @@ class StatementGenerator:
             return expr
         return f"::tpy::tuple_to_pointer<{unwrapped.to_cpp_return()}>({expr})"
 
-    def _wrap_brace_init_for_emplace(self, init_expr: str,
-                                       target_type: TpyType | None) -> str:
-        """Prefix a brace-init expression with its C++ type so it can flow
-        through `frame_slot<T>::emplace(args...)` template-parameter
-        deduction.
+    def _typed_brace_init(self, init_expr: str,
+                          target_type: TpyType | None) -> str:
+        """Make a brace-init expression self-describing by prefixing its
+        destination C++ type, so it can bind to a template parameter that
+        cannot deduce from a bare brace-init-list.
 
-        Brace-enclosed initializer lists have no deduced type in C++ --
-        `.emplace({})` and `.emplace({1, 2, 3})` both fail to bind to
-        `template<typename... Args> emplace(Args&&...)`. Wrapping as
-        `T{...}` gives the list a concrete prvalue type whose
-        construction is then forwarded (with mandatory copy elision)
-        into the slot's storage.
+        Brace-enclosed initializer lists have no deduced type in C++, so
+        they fail template-argument deduction -- `.emplace({1, 2, 3})`
+        against `emplace(Args&&...)`, or `::tpy::__setitem__(c, k, {1, 2,
+        3})` against its forwarding-ref value parameter. Wrapping as
+        `T{...}` gives the list a concrete prvalue type that deduces (and
+        forwards, with mandatory copy elision) into the destination.
+        No-op for expressions that are already self-describing (anything
+        not starting with `{`, e.g. `::tpy::ordered_set<...>(...)`).
         """
         if not init_expr.startswith("{") or target_type is None:
             return init_expr
@@ -1600,7 +1602,7 @@ class StatementGenerator:
                     # frame_slot<T> has no operator= for arbitrary T;
                     # writes route through emplace, which also destroys
                     # any prior payload before constructing the new one.
-                    init_expr = self._wrap_brace_init_for_emplace(
+                    init_expr = self._typed_brace_init(
                         init_expr, self.ctx.var_types.get(stmt.name))
                     return f"{indent}{cpp_name}.emplace({init_expr});\n"
                 return f"{indent}{cpp_name} = {init_expr};\n"
@@ -1838,6 +1840,10 @@ class StatementGenerator:
                     return f"{indent}{subscript_obj}[{index_expr}] = {value};\n"
                 return f"{indent}{subscript_obj}[static_cast<std::size_t>({index_expr})] = {value};\n"
 
+            # A bare collection-literal value can't deduce the forwarding-ref
+            # value parameter of the ::tpy::__setitem__ template (the lvalue
+            # `x[i] =` path above binds a brace-init fine, so it stays bare).
+            value = self._typed_brace_init(value, target_type)
             # Use registry lookup for __setitem__
             fi = self.builtins.get_type_method_fi(obj_type, "__setitem__")
             if fi:
@@ -1861,7 +1867,7 @@ class StatementGenerator:
             target_type = self.ctx.var_types.get(stmt.target.name)
             value = self.expressions.gen_expr_deref(stmt.value, target_type)
             value = self.expressions._maybe_move(stmt.value, value)
-            value = self._wrap_brace_init_for_emplace(value, target_type)
+            value = self._typed_brace_init(value, target_type)
             return f"{indent}{cpp_name}.emplace({value});\n"
 
         # Property setter: delegate to normal method call codegen
@@ -2618,7 +2624,7 @@ class StatementGenerator:
                     get_expr = f"std::move({get_expr})"
                 if name in self.ctx.generator_frame_slot_locals:
                     # frame_slot<T>: no operator=, writes go through emplace.
-                    get_expr = self._wrap_brace_init_for_emplace(
+                    get_expr = self._typed_brace_init(
                         get_expr, target_type)
                     out.write(f"{indent}{cpp_name}.emplace({get_expr});\n")
                 else:
