@@ -171,6 +171,9 @@ class TypeDef:
     # Array/Span need explicit type targets for literal initializers (see
     # NominalType.needs_explicit_element_target). Default is False.
     needs_explicit_element_target: bool = False
+    # False for compiler-internal builtins (e.g. tpy.varargs): the annotation
+    # resolver rejects the name outside its own defining stub module.
+    user_spellable: bool = True
     # Primitive-specific: copy cost and reassign semantics. Matters for
     # parameter passing (const T& for expensive copies) and for the codegen
     # pattern that emits a local mutable copy when a const-ref parameter
@@ -879,6 +882,7 @@ def _populate() -> None:
         cpp_formatter=_varargs_cpp,
         element_of=_readonly_view_elem,
         needs_explicit_element_target=True,
+        user_spellable=False,
     ))
 
     # Iterator adapters. SpanIter forces is_send/is_sync=False (borrows from

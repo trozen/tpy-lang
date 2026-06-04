@@ -3,7 +3,7 @@
 from tpy import varargs
 
 
-def f(x: varargs[int]) -> None:  # tpyc: error(/internal type for \*args/)
+def f(x: varargs[int]) -> None:  # tpyc: error(/'varargs' is a compiler-internal type/)
     pass
 
 

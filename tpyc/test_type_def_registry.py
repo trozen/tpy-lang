@@ -215,6 +215,15 @@ def test_span_element_preserves_readonly_only_for_reference_elements():
         assert elem == INT32, f"{view}: expected readonly stripped to Int32, got {elem}"
 
 
+def test_user_spellable_flag_marks_only_internal_builtins():
+    # Lock the flag: only the internal *args view is non-spellable today;
+    # a regression here would silently re-expose or hide a builtin's name.
+    assert get_type_def("tpy.varargs").user_spellable is False
+    for qn in ("tpy.Span", "tpy.SpanIter", "tpy.Array", "builtins.list",
+               "builtins.dict", "builtins.set"):
+        assert get_type_def(qn).user_spellable is True, qn
+
+
 def test_pending_types_are_not_concrete_containers():
     """PendingListType / PendingDictType / PendingSetType share builtin qnames
     with their resolved form ("builtins.list" etc.) but are distinct TpyType

@@ -528,16 +528,18 @@ class TypeResolver:
 
         resolved_container = resolved[1] if resolved else name
 
-        # `varargs` is the compiler-internal body view of a *args parameter.
-        # Its builtin record is registered so the stdlib stub (_containers.py)
-        # can name it and so `*args: T` slots resolve, but users must not spell
-        # it. Allow the name only inside the implicit-stdlib modules (where the
-        # stub lives); reject it everywhere else.
-        if resolved == ("tpy", "varargs") and "varargs" not in parser._module_class_names:
-            raise ResolutionFailure(
-                "'varargs' is an internal type for *args parameters and "
-                "cannot be used in annotations; declare a variadic "
-                "parameter as `*args: T` instead", loc=ref.loc)
+        # Reject naming a user_spellable=False builtin (e.g. the *args view
+        # tpy.varargs) in an annotation. Its own @builtin_type stub is exempt:
+        # there the type's local class is what resolves to the builtin qname, so
+        # `name in _module_class_names` identifies the defining stub (a user's
+        # own same-named class resolves to itself, never to the builtin qname).
+        if resolved is not None:
+            _resolved_td = get_type_def(f"{resolved[0]}.{resolved[1]}")
+            if (_resolved_td is not None and not _resolved_td.user_spellable
+                    and resolved[1] not in parser._module_class_names):
+                raise ResolutionFailure(
+                    f"'{resolved[1]}' is a compiler-internal type and cannot be "
+                    f"used in annotations", loc=ref.loc)
 
         # Module-defined generic types (list, Array, Span, ...)
         if resolved_container and (td := find_factory_by_simple_name(resolved_container)):
