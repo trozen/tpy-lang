@@ -44,73 +44,6 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     return os;
 }
 
-// Async coroutine: Holder.run
-template <::tpystd::typing::Iterable<int32_t> T_extra>
-struct __coro_Holder_run {
-    int32_t __state;
-    bool __cancel_pending;
-    Holder& __self;
-    T_extra extra;
-    std::optional<__coro_consume<::tpy::await_arg_capture_t<decltype((__self.rows))>>> __sub_0;
-    std::optional<__coro_consume<::tpy::await_arg_capture_t<decltype((extra))>>> __sub_1;
-
-    enum : int32_t {
-        S_INITIAL = 0,
-        S_RESUME_0 = 1,
-        S_RESUME_1 = 2,
-        S_DONE = 3,
-    };
-
-    __coro_Holder_run(Holder& __self, T_extra&& extra_)
-        : __state(S_INITIAL), __cancel_pending(false), __self(__self), extra(std::forward<T_extra>(extra_)) {}
-
-    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
-    void cancel() { __cancel_pending = true; }
-
-    friend std::ostream& operator<<(std::ostream& os, const __coro_Holder_run<T_extra>&) {
-        return os << "<coroutine Holder.run>";
-    }
-};
-
-// async def run(self, extra: Iterable[Int32]) -> None:
-template <::tpystd::typing::Iterable<int32_t> T_extra>
-::tpystd::tpy::Poll<::std::monostate> __coro_Holder_run<T_extra>::__poll__(::tpystd::coro::Waker waker) {
-    while (true) switch (__state) {
-    case S_INITIAL: {
-        // await consume(self.rows)
-        __sub_0.emplace(__self.rows);
-        __state = S_RESUME_0;
-        continue;
-    }
-    case S_RESUME_0: {
-        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
-        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-        (void)std::move(__r0).value();
-        __sub_0.reset();
-        // await consume(extra)
-        __sub_1.emplace(extra);
-        __state = S_RESUME_1;
-        continue;
-    }
-    case S_RESUME_1: {
-        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
-        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
-        (void)std::move(__r1).value();
-        __sub_1.reset();
-        __state = S_DONE;
-        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
-    }
-    case S_DONE: ::tpy::tpy_panic("poll after Ready");
-    }
-    __builtin_unreachable();
-}
-
-
-template <::tpystd::typing::Iterable<int32_t> T_extra>
-inline __coro_Holder_run<T_extra> Holder::run(T_extra&& extra) {
-    return __coro_Holder_run<T_extra>(*this, std::forward<T_extra>(extra));
-}
-
 // Async coroutine: consume
 template <::tpystd::typing::Iterable<int32_t> T_it>
 struct __coro_consume {
@@ -180,6 +113,73 @@ template <::tpystd::typing::Iterable<int32_t> T_it>
 template <::tpystd::typing::Iterable<int32_t> T_it>
 __coro_consume<T_it> consume(T_it&& it) {
     return __coro_consume<T_it>(std::forward<T_it>(it));
+}
+
+// Async coroutine: Holder.run
+template <::tpystd::typing::Iterable<int32_t> T_extra>
+struct __coro_Holder_run {
+    int32_t __state;
+    bool __cancel_pending;
+    Holder& __self;
+    T_extra extra;
+    std::optional<__coro_consume<::tpy::await_arg_capture_t<decltype((__self.rows))>>> __sub_0;
+    std::optional<__coro_consume<::tpy::await_arg_capture_t<decltype((extra))>>> __sub_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __coro_Holder_run(Holder& __self, T_extra&& extra_)
+        : __state(S_INITIAL), __cancel_pending(false), __self(__self), extra(std::forward<T_extra>(extra_)) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_Holder_run<T_extra>&) {
+        return os << "<coroutine Holder.run>";
+    }
+};
+
+// async def run(self, extra: Iterable[Int32]) -> None:
+template <::tpystd::typing::Iterable<int32_t> T_extra>
+::tpystd::tpy::Poll<::std::monostate> __coro_Holder_run<T_extra>::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {
+        // await consume(self.rows)
+        __sub_0.emplace(__self.rows);
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        // await consume(extra)
+        __sub_1.emplace(extra);
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_RESUME_1: {
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+template <::tpystd::typing::Iterable<int32_t> T_extra>
+inline __coro_Holder_run<T_extra> Holder::run(T_extra&& extra) {
+    return __coro_Holder_run<T_extra>(*this, std::forward<T_extra>(extra));
 }
 
 // Async coroutine: main_coro

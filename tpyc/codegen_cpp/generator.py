@@ -7,6 +7,7 @@ Main orchestrator for generating C++ code from TurboPython AST.
 from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Callable, TextIO, TYPE_CHECKING
+import heapq
 import io
 import sys as _sys
 
@@ -14,7 +15,7 @@ from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType,
 from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
-from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith
+from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith, TpyAwait
 from .resumable_cfg import (
     ResumableShape, resumable_state,
 )
@@ -604,6 +605,158 @@ class CodeGenerator:
         # silent miscompile.
         self.gen_async._build_resumable_cfg(func)
         return True
+
+    def _inline_await_targets(
+            self, func: TpyFunction) -> list[tuple[str, str | None]]:
+        """`(awaited_name, owner_record_name | None)` for every statically-known
+        async-def inline `await` in `func`'s body -- the coros it embeds as
+        `std::optional<__coro_X>` sub-future fields. Does not descend into
+        nested callables (a suspension there belongs to the inner callable).
+
+        Captures *direct* `await` deps only. `async with` / `async for` also
+        embed by-value sub-future fields (their `__aenter__`/`__aexit__` /
+        `__anext__` coro structs) but produce no `TpyAwait` node, so their
+        ordering edges are not collected here -- a known incompleteness of the
+        topological emit (see BUGS.md). The robust fix sources deps from the
+        CFG's sub-future set rather than this AST walk."""
+        targets: list[tuple[str, str | None]] = []
+
+        def walk_expr(e: object) -> None:
+            if e is None:
+                return
+            if isinstance(e, TpyAwait) and e.awaited_async_func_name is not None:
+                owner = e.awaited_method_owner_type
+                targets.append((e.awaited_async_func_name,
+                                owner.name if owner is not None else None))
+            for c in (e.children() if hasattr(e, "children") else ()):
+                walk_expr(c)
+
+        def walk_stmts(stmts: list) -> None:
+            for s in stmts:
+                if hasattr(s, "exprs"):
+                    for e in s.exprs():
+                        walk_expr(e)
+                if hasattr(s, "sub_bodies"):
+                    for b in s.sub_bodies():
+                        walk_stmts(b)
+
+        walk_stmts(func.body)
+        return targets
+
+    def _emit_async_coro_structs(self, hpp: TextIO, module: TpyModule) -> None:
+        """Emit every async coro struct definition (free functions + methods)
+        topologically ordered so each inline-awaited callee precedes its
+        awaiter -- the by-value `std::optional<__coro_callee>` sub-future field
+        needs the callee complete. A genuine cycle (mutually recursive inline
+        await) can't be ordered (cyclic by-value sub-futures are infinite-size)
+        and is rejected with a clean diagnostic."""
+        # Seed order -- async methods (record / method order), then free async
+        # (source order) -- fed to a STABLE topological sort (Kahn's, ready node
+        # of smallest seed index first). A coro emits in its seed slot unless a
+        # dependency forces it later, so the order stays stable and readable:
+        # only an awaiter that sits ahead of its callee moves.
+        coros: list[tuple[TpyFunction, str | None]] = []
+        for record in module.all_records():
+            for method in record.methods:
+                if method.is_async:
+                    coros.append((method, record.name))
+        for func in module.functions:
+            if func.is_async and not func.skip_codegen:
+                coros.append((func, None))
+        n = len(coros)
+        if n == 0:
+            return
+        index = {(f.name, rn): i for i, (f, rn) in enumerate(coros)}
+        # deps[i] = coros i awaits inline that are emitted in this module (so
+        # their struct must precede i's). Cross-module / builtin awaits resolve
+        # to no index entry and are already complete via their included header.
+        deps: list[set[int]] = [set() for _ in range(n)]
+        dependents: list[list[int]] = [[] for _ in range(n)]
+        for i, (f, _rn) in enumerate(coros):
+            for name, owner in self._inline_await_targets(f):
+                j = index.get((name, owner))
+                # A self-edge (a coro that inline-awaits itself) is kept on
+                # purpose: it's a 1-cycle the sort detects and rejects, since a
+                # by-value `optional<__coro_self>` sub-future would be
+                # infinite-size -- same constraint as mutual recursion.
+                if j is not None:
+                    deps[i].add(j)
+        for i in range(n):
+            for d in deps[i]:
+                dependents[d].append(i)
+
+        indeg = [len(deps[i]) for i in range(n)]
+        ready = [i for i in range(n) if indeg[i] == 0]
+        heapq.heapify(ready)
+        order: list[int] = []
+        while ready:
+            i = heapq.heappop(ready)
+            order.append(i)
+            for k in dependents[i]:
+                indeg[k] -= 1
+                if indeg[k] == 0:
+                    heapq.heappush(ready, k)
+        if len(order) != n:
+            stuck = next(i for i in range(n) if indeg[i] > 0)
+            raise CodeGenError(
+                f"recursive inline `await` involving coroutine "
+                f"'{coros[stuck][0].name}' is not supported: the awaited "
+                f"coroutine is stored by value in the awaiter's frame, so the "
+                f"cycle would be infinite-size. Break the recursion (e.g. "
+                f"drive one side through a Task) or restructure.",
+                loc=coros[stuck][0].loc)
+        for i in order:
+            func, rn = coros[i]
+            self._emit_async_coro_unit(hpp, func, rn)
+
+    def _emit_async_coro_unit(self, hpp: TextIO, func: TpyFunction,
+                              record_name: str | None) -> None:
+        """Emit one async coro's struct plus the inline definitions its shape
+        requires (templated poll/finally; the inline factory for methods and
+        for templated free functions). Non-templated free-function poll +
+        factory bodies are emitted later in the .cpp pass."""
+        if record_name is None:
+            self.gen_async.gen_coro_struct(hpp, func)
+            # Templates (type params OR a protocol-typed param): poll() body
+            # must be inline-in-header. Emit right after the struct so it sees
+            # fully-defined fields.
+            if self.gen_async._is_templated_coro(func):
+                self.gen_async.gen_coro_poll_def(hpp, func)
+                hpp.write("\n")
+                self.gen_async.gen_coro_finally_top_def(hpp, func)
+                hpp.write("\n")
+                self.gen_async.gen_factory(hpp, func)
+            hpp.write("\n")
+            return
+        self.gen_async.gen_coro_struct(hpp, func, record_name=record_name)
+        hpp.write("\n")
+        # Templates (type params OR a protocol-typed param OR a method on a
+        # generic class): poll() body must be inline-in-header, else the
+        # out-of-line .cpp body fails to link against the template struct.
+        if self.gen_async._is_templated_coro(func, record_name):
+            self.gen_async.gen_coro_poll_def(hpp, func, record_name=record_name)
+            hpp.write("\n")
+            self.gen_async.gen_coro_finally_top_def(
+                hpp, func, record_name=record_name)
+            hpp.write("\n")
+        # Inline out-of-class factory definition (the struct's poll body for a
+        # non-templated method goes in the .cpp pass).
+        struct_name = self.gen_async._struct_name_templated(func, record_name)
+        cpp_record = escape_cpp_name(record_name.replace(".", "::"))
+        # Out-of-class definition of a member of a class template qualifies the
+        # class name with its template args (`Box<T>::get()`, not `Box::get()`).
+        record_tps = self.gen_async._record_template_args(record_name)
+        if record_tps:
+            cpp_record = f"{cpp_record}<{', '.join(record_tps)}>"
+        params = self.gen_async._emit_method_params_decl(func, record_name)
+        args = self.gen_async._factory_args_forwarded(
+            func, receiver=(record_name, "*this"))
+        const_suffix = " const" if func.is_readonly else ""
+        self.gen_async._emit_member_template_headers(
+            hpp, func, record_name=record_name)
+        hpp.write(f"inline {struct_name} {cpp_record}::{func.name}({params}){const_suffix} {{\n")
+        hpp.write(f"    return {struct_name}({args});\n")
+        hpp.write(f"}}\n\n")
 
     def _generate_protocol_ordering(self, hpp: TextIO, module: TpyModule,
                                     global_decls: list, final_decls: list,
@@ -1196,52 +1349,20 @@ class CodeGenerator:
                 self._gen_enum_operator_ostream(hpp, enum)
 
 
-        # Async-method coro struct definitions FIRST (before any free coro
-        # struct that might inline them as `optional<__coro_Class_method>`
-        # sub-future fields -- needs the full type, not just the forward
-        # decl emitted before records). Method factory definitions land
-        # immediately after their struct so the inline factory body sees
-        # the complete coro type.
-        for record in module.all_records():
-            for method in record.methods:
-                if not method.is_async:
-                    continue
-                self.gen_async.gen_coro_struct(
-                    hpp, method, record_name=record.name)
-                hpp.write("\n")
-                # Templates (type params OR a protocol-typed param OR a
-                # method on a generic class): poll() body must be
-                # inline-in-header, else the out-of-line .cpp body fails to
-                # link against the template struct.
-                if self.gen_async._is_templated_coro(method, record.name):
-                    self.gen_async.gen_coro_poll_def(
-                        hpp, method, record_name=record.name)
-                    hpp.write("\n")
-                    self.gen_async.gen_coro_finally_top_def(
-                        hpp, method, record_name=record.name)
-                    hpp.write("\n")
-                # Templated factory body too: zero-arg generic async defs
-                # would otherwise fall off CTAD.
-                struct_name = self.gen_async._struct_name_templated(method, record.name)
-                cpp_record = escape_cpp_name(record.name.replace(".", "::"))
-                # Out-of-class definition of a member of a class template
-                # qualifies the class name with its template args
-                # (`Box<T>::get()`, not `Box::get()`).
-                record_tps = self.gen_async._record_template_args(record.name)
-                if record_tps:
-                    cpp_record = f"{cpp_record}<{', '.join(record_tps)}>"
-                params = self.gen_async._emit_method_params_decl(
-                    method, record.name)
-                args = self.gen_async._factory_args_forwarded(
-                    method, receiver=(record.name, "*this"))
-                const_suffix = " const" if method.is_readonly else ""
-                self.gen_async._emit_member_template_headers(hpp, method, record_name=record.name)
-                hpp.write(f"inline {struct_name} {cpp_record}::{method.name}({params}){const_suffix} {{\n")
-                hpp.write(f"    return {struct_name}({args});\n")
-                hpp.write(f"}}\n\n")
+        # Async coro struct definitions, topologically ordered by inline-await
+        # dependency: an inline `await callee()` stores the callee struct by
+        # value (`std::optional<__coro_callee>`), so the callee's full
+        # definition must precede the awaiter's. The dependency can point in
+        # any direction (method<->free, free<->free), so a fixed method-first /
+        # source order can't satisfy it -- emit each awaited coro before its
+        # awaiter instead. (Forward decls for all coro structs are already
+        # emitted before records, so only the full-definition order matters.)
+        self._emit_async_coro_structs(hpp, module)
 
         # Generator struct full definitions (after records, so struct fields
-        # and inline __next__() can use fully-defined user types).
+        # and inline __next__() can use fully-defined user types). Generators
+        # neither await nor are awaited, so they carry no sub-future fields and
+        # need no dependency ordering among themselves or vs the async coros.
         for func in module.functions:
             if func.skip_codegen:
                 continue
@@ -1253,25 +1374,13 @@ class CodeGenerator:
                         # be inline-in-header (template definitions can't go
                         # in the .cpp). Emit right after the struct so they
                         # see fully-defined fields. Mirrors the generic
-                        # async-def branch below.
+                        # async-def branch.
                         if self.gen_async._is_templated_coro(func):
                             self.gen_async.gen_coro_poll_def(hpp, func)
                             hpp.write("\n")
                             self.gen_async.gen_coro_finally_top_def(hpp, func)
                             hpp.write("\n")
                             self.gen_async.gen_factory(hpp, func)
-                hpp.write("\n")
-            if func.is_async:
-                self.gen_async.gen_coro_struct(hpp, func)
-                # Templates (type params OR a protocol-typed param): poll()
-                # body must be inline-in-header. Emit it right after the
-                # struct so it sees fully-defined fields.
-                if self.gen_async._is_templated_coro(func):
-                    self.gen_async.gen_coro_poll_def(hpp, func)
-                    hpp.write("\n")
-                    self.gen_async.gen_coro_finally_top_def(hpp, func)
-                    hpp.write("\n")
-                    self.gen_async.gen_factory(hpp, func)
                 hpp.write("\n")
         # Method generator struct definitions + out-of-line factory methods
         for record in module.all_records():

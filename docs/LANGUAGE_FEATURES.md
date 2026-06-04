@@ -5809,12 +5809,12 @@ Send/Sync rules for built-in types:
   coroutine works for a named iterable, a hoisted local, or a `self`
   field (all borrow); a collection-literal / comprehension argument is
   rejected cleanly (no concrete type / no frame storage at the await
-  site -- see the collection-literal-in-coro gap in BUGS.md). One
-  exclusion: a `self.field` arg from a *concrete* (non-templated) async
-  method hits a separate, pre-existing struct-ordering bug (the method's
-  coro struct emits before the awaited free coro -> incomplete type; see
-  BUGS.md); a templated method (one with its own protocol/type param)
-  orders correctly.
+  site -- see the collection-literal-in-coro gap in BUGS.md). Coro
+  structs are emitted in inline-await dependency order (each awaited
+  callee before its awaiter), so awaiting a free coroutine from any
+  method (concrete or templated) -- or a coroutine defined later in the
+  module -- works; only a genuine cycle (mutually recursive inline
+  `await`) is rejected, since a by-value sub-future can't be cyclic.
   Remains the path for user-defined awaitable protocols; asyncio's
   own cancellable APIs (`run` / `create_task` / `wait_for`) have
   since moved to `Own[Cancellable[T]]` (@dynamic) via the

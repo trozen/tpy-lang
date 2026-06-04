@@ -1,0 +1,1 @@
+main.py:8: error: recursive inline `await` involving coroutine 'a' is not supported: the awaited coroutine is stored by value in the awaiter's frame, so the cycle would be infinite-size. Break the recursion (e.g. drive one side through a Task) or restructure.
