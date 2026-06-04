@@ -967,6 +967,10 @@ class MatchGenerator:
         # state that reads the live field, so an `auto&` dispatch-local
         # would be lost at the state split. The value/frame_slot/pointer
         # split mirrors the field-write logic in `_gen_assign`.
+        # NB: `generator_field_names` includes forwarded proto-param aliases
+        # (which have no real field); this path has no `generator_storage_name`
+        # redirect, but a forwarded local is a protocol-typed alias and so
+        # can't be a match-capture target today -- unreachable, see BUGS.md.
         if (self.ctx.in_generator_body
                 and raw_name in self.ctx.generator_field_names):
             if raw_name in self.ctx.pointer_locals:

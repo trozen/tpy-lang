@@ -1280,6 +1280,7 @@ class TpyFunction:
     force_resumable: bool = False
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
     generator_locals: 'list[tuple[str, TpyType]] | None' = None  # Set by sema: local vars for struct fields
+    forwarded_locals: 'dict[str, str] | None' = None  # Set by sema: hoisted local -> backing static-protocol param it forwards to
     is_async: bool = False  # Set by parser: `async def`. Lowered to a state-machine
                             # struct conforming to Awaitable[T] in PR 3 (codegen).
     # Set by `ClassInfo.add_method` for any function added through the macro

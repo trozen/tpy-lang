@@ -1574,6 +1574,15 @@ class StatementGenerator:
         if stmt.is_final:
             return None
 
+        # A forwarded proto-param alias (`xs = it`) is a compile-time alias:
+        # it has no frame field, so the binding emits nothing -- every later
+        # use resolves to the backing param via `generator_storage_name`.
+        if (self.ctx.in_generator_body
+                and stmt.name in self.ctx.generator_forwarded_locals):
+            self.ctx.declared_vars.add(stmt.name)
+            self.ctx.local_scope_names.add(stmt.name)
+            return None
+
         # Generator body: variable is a struct field, emit assignment only
         if self.ctx.in_generator_body and stmt.name in self.ctx.generator_field_names:
             self.ctx.declared_vars.add(stmt.name)

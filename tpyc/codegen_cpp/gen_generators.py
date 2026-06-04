@@ -576,7 +576,8 @@ class GeneratorCodegen:
         raise AssertionError("no yield found in body")
 
     def _analyze_for_strategy(self, stmt: TpyForEach, uid: int,
-                              proto_param_names: frozenset[str] = frozenset()
+                              proto_param_names: frozenset[str] = frozenset(),
+                              proto_param_alias: dict[str, str] | None = None
                               ) -> GeneratorForInfo | None:
         """Determine the iteration strategy and struct fields for a for-loop with yield.
 
@@ -584,6 +585,8 @@ class GeneratorCodegen:
         enclosing coro; iterating directly over one types the iterator frame
         field against its deduced template arg `T_<pname>` (see the universal
         strategy below) rather than the un-instantiable concept rendering.
+        `proto_param_alias` maps a forwarded local (`xs = it`) to the param it
+        aliases, so iterating the alias reuses the same `T_<pname>` deduction.
         """
         from tpyc.modules import get_error_return_next_element_type
 
@@ -724,10 +727,14 @@ class GeneratorCodegen:
         # classified param AND the resolved type is still a static protocol)
         # means a concrete-typed local that shadows the param name falls back
         # to the ordinary rendering.
-        if (isinstance(stmt.iterable, TpyName)
-                and stmt.iterable.name in proto_param_names
+        subj_pname = None
+        if isinstance(stmt.iterable, TpyName):
+            subj_pname = (proto_param_alias or {}).get(
+                stmt.iterable.name, stmt.iterable.name)
+        if (subj_pname is not None
+                and subj_pname in proto_param_names
                 and self.functions.protocols.is_static_protocol_param(iterable_type)):
-            src_cpp = protocol_param_template_name(stmt.iterable.name)
+            src_cpp = protocol_param_template_name(subj_pname)
         else:
             src_cpp = self.types.type_to_cpp(iterable_type)
         iter_field_type = f"std::decay_t<decltype(::tpy::__iter__(std::declval<{src_cpp}&>()))>"

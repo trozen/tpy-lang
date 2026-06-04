@@ -1022,16 +1022,21 @@ class AsyncCoroCodegen:
             for lname, ltype in func.generator_locals:
                 ltype_inner = unwrap_ref_type(ltype)
                 cpp_name = escape_cpp_name(lname)
-                # A protocol-typed local (e.g. aliasing a protocol param,
-                # `xs = it`) has no concrete C++ backing in the frame -- only
-                # captured params carry the deduced template arg `T_<pname>`.
-                # Rendering it would emit `frame_slot<Concept>` (ill-formed),
-                # so reject cleanly instead of producing a broken C++ build.
+                # A protocol-typed local has no concrete C++ backing in the
+                # frame -- only captured params carry the deduced template arg
+                # `T_<pname>`, so rendering it would emit `frame_slot<Concept>`
+                # (ill-formed). A *single-assignment* alias of a bare protocol
+                # param (`xs = it`) is forwarded to that param by sema (see
+                # `_extract_proto_param_forwarding`) and never reaches here.
+                # What lands here is the unforwarded remainder -- chiefly a
+                # *reassigned* alias -- which has no single backing param.
                 if self.functions.protocols.is_static_protocol_param(ltype_inner):
                     raise CodeGenError(
                         f"local {lname!r} of protocol type aliasing a "
-                        "protocol-typed parameter is not yet supported across "
-                        "a suspension; iterate the parameter directly",
+                        "protocol-typed parameter is only supported across a "
+                        "suspension when bound exactly once directly from the "
+                        "parameter; bind it once from the parameter, or iterate "
+                        "the parameter directly",
                         loc=func.loc)
                 if lname in owning_str:
                     # `with X() as label:` -- `__enter__` returns by
@@ -1209,6 +1214,7 @@ class AsyncCoroCodegen:
         """
         old_in_gen = self.ctx.in_generator_body
         old_field_names = self.ctx.generator_field_names
+        old_forwarded_locals = self.ctx.generator_forwarded_locals
         old_optional_fields = self.ctx.generator_optional_fields
         old_frame_slot_locals = self.ctx.generator_frame_slot_locals
         old_borrow_form_loop_vars = self.ctx.generator_borrow_form_loop_vars
@@ -1285,12 +1291,20 @@ class AsyncCoroCodegen:
         if func.generator_locals:
             for lname, _ltype in func.generator_locals:
                 self.ctx.generator_field_names.add(lname)
+        # Forwarded proto-param aliases have no field of their own, but they
+        # are still frame-resident names (storage resolves to the backing
+        # param) -- register them so the field-name membership tests fire and
+        # route through `generator_storage_name`.
+        self.ctx.generator_forwarded_locals = dict(func.forwarded_locals or {})
+        for lname in self.ctx.generator_forwarded_locals:
+            self.ctx.generator_field_names.add(lname)
 
         try:
             yield
         finally:
             self.ctx.in_generator_body = old_in_gen
             self.ctx.generator_field_names = old_field_names
+            self.ctx.generator_forwarded_locals = old_forwarded_locals
             self.ctx.generator_optional_fields = old_optional_fields
             self.ctx.generator_frame_slot_locals = old_frame_slot_locals
             self.ctx.generator_borrow_form_loop_vars = old_borrow_form_loop_vars
@@ -1630,6 +1644,10 @@ class AsyncCoroCodegen:
         proto_param_names = frozenset(
             pname for pname, ptype in func.params
             if self.functions.protocols.is_static_protocol_param(ptype))
+        # A forwarded local (`xs = it`) iterated across a suspension reuses the
+        # backing param's `T_<pname>` deduction rather than rendering its
+        # protocol type as an un-instantiable concept.
+        proto_param_alias = dict(func.forwarded_locals or {})
         uid_map: dict[int, int] = {}
         fields_out: list[tuple[str, str]] = []
         struct_names_out: dict[int, str] = {}
@@ -1688,7 +1706,8 @@ class AsyncCoroCodegen:
                         # returns are emitted as `tpy::frame_slot<T>` in
                         # gen_coro_struct (matching hoisted user locals).
                         info = self.gen_generators._analyze_for_strategy(
-                            s, cur_uid, proto_param_names=proto_param_names)
+                            s, cur_uid, proto_param_names=proto_param_names,
+                            proto_param_alias=proto_param_alias)
                         if info is None:
                             raise rcfg._CFGNotYetSupported(
                                 "yield inside this for-loop shape is not yet "

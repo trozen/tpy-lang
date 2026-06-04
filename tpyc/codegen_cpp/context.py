@@ -844,6 +844,10 @@ class CodeGenContext:
     # --- Generator function codegen ---
     in_generator_body: bool = False
     generator_field_names: set[str] = field(default_factory=set)
+    # Hoisted locals that are compile-time aliases of a captured static-protocol
+    # param (`xs = it`): they occupy no frame field of their own; every storage
+    # access resolves to the backing param via `generator_storage_name`.
+    generator_forwarded_locals: dict[str, str] = field(default_factory=dict)
     # Fields read through an outer wrap (`(*name)` deref) -- the union
     # of user locals stored as `tpy::frame_slot<T>` and synthetic for-
     # loop / async-with / async-for / try-finally fields still stored
@@ -1773,6 +1777,15 @@ class CodeGenContext:
                 if module_info and original_name in module_info.variables:
                     return module_info.variables[original_name].is_pointer
         return False
+
+    def generator_storage_name(self, name: str) -> str:
+        """Resolve a frame-resident name to its backing storage name.
+
+        A forwarded proto-param alias (`xs = it`) has no field of its own, so
+        every storage access resolves to the captured param it aliases. Plain
+        names (and uses outside a generator body) pass through unchanged.
+        """
+        return self.generator_forwarded_locals.get(name, name)
 
     def setup_resumable_frame_locals(self, func: 'TpyFunction') -> None:
         """Populate `pointer_locals`, `generator_optional_fields`, and

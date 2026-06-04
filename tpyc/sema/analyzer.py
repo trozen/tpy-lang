@@ -30,7 +30,7 @@ from ..parse.nodes import RecordLinkage
 from .registration import build_record_self_type, _vararg_span_type
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
-    TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef,
+    TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef, TpyCoerce,
     expr_contains_self_method_call,
 )
 from .expressions import _collect_body_name_refs
@@ -83,7 +83,9 @@ from ..parse import SourceLocation, is_parser_keyword
 from ..type_def_registry import (
     is_str_type, is_str_view_type, enum_info_of,
     is_array, is_enum_type, is_list, is_dict, is_set, is_span,
+    protocol_info_of,
 )
+from ..typesys import unwrap_own, is_protocol_type, is_protocol_union
 from ..parse.resolve_refs import (
     _walk_body, _merged_method_scope, _record_scope,
     promote_bare_nominals,
@@ -97,6 +99,73 @@ from ..symbol_binding import (
 )
 
 
+def _is_static_protocol_type(typ: TpyType) -> bool:
+    """Sema-side mirror of codegen's `is_static_protocol_param`.
+
+    Types are already alias-resolved at this point, so no codegen-style
+    resolve step is needed. Covers a bare static protocol, an Optional of one,
+    and a protocol union; excludes @dynamic protocols (which have a concrete
+    Adapter backing and so are not the rejected hoisted-local case).
+    """
+    unwrapped = unwrap_own(unwrap_readonly(unwrap_ref_type(typ)))
+    if isinstance(unwrapped, OptionalType):
+        inner = unwrapped.inner
+        if is_protocol_type(inner):
+            info = protocol_info_of(inner)
+            return not (info and info.is_dynamic)
+        return False
+    if isinstance(unwrapped, UnionType):
+        return is_protocol_union(unwrapped)
+    if is_protocol_type(unwrapped):
+        info = protocol_info_of(unwrapped)
+        return not (info and info.is_dynamic)
+    return False
+
+
+def _bare_name_source(expr: TpyExpr) -> 'TpyName | None':
+    """Peel a sema coercion wrapper to expose a bare name RHS, else None."""
+    while isinstance(expr, TpyCoerce):
+        expr = expr.expr
+    return expr if isinstance(expr, TpyName) else None
+
+
+def _extract_proto_param_forwarding(
+    locals_dict: dict[str, TpyType],
+    func_node: TpyFunction,
+    write_history: dict[str, list[tuple[TpyType, TpyExpr]]],
+) -> None:
+    """Pull hoisted locals that forward to a bare static-protocol param out of
+    the frame layout, recording the local->param link on the function.
+
+    `xs = it` (where `it: Iterable[T]`) is a single-assignment compile-time
+    alias of the param: only the captured param carries the deduced template
+    arg `T_<pname>`, so the local needs no frame field -- every use lowers to
+    the param's capture. Reaching here means the body passed flow analysis, so
+    a single write also dominates every read. Reassigned (>1 write) or
+    non-param-sourced locals stay in `locals_dict` (and are rejected at frame
+    emit if protocol-typed).
+
+    The recorded fact only governs the resumable-frame path; the simple
+    (single-yield) generator lambda peephole ignores `forwarded_locals` and
+    handles the alias itself (today buggily -- see BUGS.md).
+    """
+    param_types = {pname: ptype for pname, ptype in func_node.params}
+    forwarded: dict[str, str] = {}
+    for lname in list(locals_dict):
+        if not _is_static_protocol_type(locals_dict[lname]):
+            continue
+        writes = write_history.get(lname, [])
+        if len(writes) != 1:
+            continue
+        src = _bare_name_source(writes[0][1])
+        if src is None or src.name not in param_types:
+            continue
+        if not _is_static_protocol_type(param_types[src.name]):
+            continue
+        forwarded[lname] = src.name
+        del locals_dict[lname]
+    if forwarded:
+        func_node.forwarded_locals = forwarded
 
 
 def _body_has_raise(stmts: list[TpyStmt], exception_type: str) -> bool:
@@ -1229,6 +1298,8 @@ class SemanticAnalyzer:
                 if name not in param_names and vtype is not None:
                     locals_dict[name] = vtype
             _assert_no_pending_locals(locals_dict, func.name)
+            _extract_proto_param_forwarding(
+                locals_dict, func, self.ctx.func.write_history)
             func.generator_locals = list(locals_dict.items())
 
         # Finalize nested def escape analysis
@@ -2450,6 +2521,8 @@ class SemanticAnalyzer:
                     if name not in param_names and name != "self" and vtype is not None:
                         locals_dict[name] = vtype
                 _assert_no_pending_locals(locals_dict, method.name)
+                _extract_proto_param_forwarding(
+                    locals_dict, method, self.ctx.func.write_history)
                 method.generator_locals = list(locals_dict.items())
 
             # Store Phase 1 local mutation facts on method FunctionInfo.
