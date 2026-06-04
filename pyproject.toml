@@ -60,6 +60,7 @@ include = [
     "/docs/LANGUAGE_FEATURES.md",
     "/docs/STDLIB_ROADMAP.md",
     "/README.md",
+    "/RELEASE_NOTES.md",
 ]
 
 # Stamp _buildinfo.py for sdist too, so wheel-from-sdist (uv build's
