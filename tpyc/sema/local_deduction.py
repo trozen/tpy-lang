@@ -541,6 +541,19 @@ class LocalTypeDeduction:
             current = source
         return None
 
+    def _sync_resolved_to_ns(self, name: str, resolved: TpyType) -> None:
+        """Write a late-resolved local type through to the namespace binding.
+
+        Pending container/view types defer element-type inference until after
+        body analysis; the resolution sinks update `current_scope` (and the
+        AST / var_types), but `current_ns` is a parallel binding table that
+        must stay in sync. Consumers that read the namespace after resolution
+        -- notably the resumable-frame local hoist (`generator_locals`) -- would
+        otherwise see a stale `Pending*` type and crash in codegen.
+        """
+        if self.ctx.func.current_ns is not None:
+            self.ctx.func.current_ns.update_variable_type_recursive(name, resolved)
+
     def _apply_container_resolution(
         self,
         info: ListLiteralInfo | DictLiteralInfo | SetLiteralInfo,
@@ -562,6 +575,9 @@ class LocalTypeDeduction:
             current_type = self.ctx.func.current_scope.lookup(info.variable_name)
             if isinstance(current_type, PENDING_CONTAINER_TYPES):
                 self.ctx.func.current_scope.define(info.variable_name, resolved)
+
+        if info.variable_name:
+            self._sync_resolved_to_ns(info.variable_name, resolved)
 
         if info.variable_name and info.decl_line is not None:
             self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
@@ -700,6 +716,8 @@ class LocalTypeDeduction:
             current_type = self.ctx.func.current_scope.lookup(info.variable_name)
             if current_type is not None:
                 self.ctx.func.current_scope.define(info.variable_name, resolved)
+        if info.variable_name:
+            self._sync_resolved_to_ns(info.variable_name, resolved)
         if info.variable_name and info.decl_line is not None:
             self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
         if info.variable_name:
@@ -1026,6 +1044,9 @@ class LocalTypeDeduction:
                 current_type = self.ctx.func.current_scope.lookup(info.variable_name)
                 if isinstance(current_type, family.pending_type_class):
                     self.ctx.func.current_scope.define(info.variable_name, resolved)
+
+            if info.variable_name:
+                self._sync_resolved_to_ns(info.variable_name, resolved)
 
             var_decl = self.ctx.func.var_decl_by_name.get(info.variable_name)
             if var_decl:

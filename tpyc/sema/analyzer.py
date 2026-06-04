@@ -20,6 +20,7 @@ from ..typesys import (
     _contains_self_reference,
     contains_type_param,
     del_suppresses_default_ctor,
+    PendingListType, PendingDictType, PendingSetType, PendingViewType,
 )
 from ..type_def_registry import is_span, is_varargs, is_spanlike_view
 from ..compilation_context import get_current_compiler
@@ -33,6 +34,30 @@ from ..parse.nodes import (
     expr_contains_self_method_call,
 )
 from .expressions import _collect_body_name_refs
+
+# Deferred-resolution placeholder types. After `LocalTypeDeduction.resolve_all()`
+# every resolution sink syncs the final type into the namespace, so a hoisted
+# resumable-frame local must never still carry one of these -- if it does, a
+# sink was missed (the dual current_scope/current_ns hand-sync, see TODO).
+_PENDING_LOCAL_TYPES = (
+    PendingListType, PendingDictType, PendingSetType, PendingViewType,
+)
+
+
+def _assert_no_pending_locals(locals_dict: dict, func_name: str) -> None:
+    """Guard the resumable-frame hoist against unresolved Pending* locals.
+
+    Catches a missed resolution sink at sema (naming the variable) rather than
+    as an opaque `PendingListType should be resolved before codegen` crash.
+    """
+    for name, typ in locals_dict.items():
+        if isinstance(typ, _PENDING_LOCAL_TYPES):
+            raise AssertionError(
+                f"Internal error: resumable-frame local '{name}' in '{func_name}' "
+                f"still has unresolved type {type(typ).__name__} after resolve_all; "
+                f"a Pending* resolution sink did not sync current_ns"
+            )
+
 
 from ..diagnostics import Scope, Diagnostic, SemanticError
 from .context import SemanticContext, RecordContext, MODULE_INIT_CONTEXT
@@ -1203,6 +1228,7 @@ class SemanticAnalyzer:
             for name, (vtype, _, _) in self.ctx.func.pending_loop_vars.items():
                 if name not in param_names and vtype is not None:
                     locals_dict[name] = vtype
+            _assert_no_pending_locals(locals_dict, func.name)
             func.generator_locals = list(locals_dict.items())
 
         # Finalize nested def escape analysis
@@ -2336,20 +2362,6 @@ class SemanticAnalyzer:
             # Shared core: bind params, prescan, analyze body
             scan = self.stmts._prescan_and_analyze_body(method, resolved_params, scope, local_ns)
 
-            # Collect generator / async-coro local variables for struct
-            # field generation (locals that may live across yield / await
-            # suspensions are hoisted to the resumable-frame struct).
-            if method.is_generator or method.is_async:
-                param_names = {pname for pname, _ in method.params}
-                locals_dict: dict[str, 'TpyType'] = {}
-                for name, binding in local_ns.all_bindings().items():
-                    if name not in param_names and name != "self" and binding.type is not None:
-                        locals_dict[name] = binding.type
-                for name, (vtype, _, _) in self.ctx.func.pending_loop_vars.items():
-                    if name not in param_names and name != "self" and vtype is not None:
-                        locals_dict[name] = vtype
-                method.generator_locals = list(locals_dict.items())
-
             # Finalize nested def escape analysis (same as _analyze_function)
             self._finalize_nested_def_escapes()
 
@@ -2422,6 +2434,23 @@ class SemanticAnalyzer:
                         )
 
             self.deduction.resolve_all()
+
+            # Collect generator / async-coro local variables for struct field
+            # generation (locals that may live across yield / await suspensions
+            # are hoisted to the resumable-frame struct). Must run after
+            # resolve_all so the resolved (not Pending*) types reach the frame
+            # fields; mirrors the free-function path.
+            if method.is_generator or method.is_async:
+                param_names = {pname for pname, _ in method.params}
+                locals_dict: dict[str, 'TpyType'] = {}
+                for name, binding in local_ns.all_bindings().items():
+                    if name not in param_names and name != "self" and binding.type is not None:
+                        locals_dict[name] = binding.type
+                for name, (vtype, _, _) in self.ctx.func.pending_loop_vars.items():
+                    if name not in param_names and name != "self" and vtype is not None:
+                        locals_dict[name] = vtype
+                _assert_no_pending_locals(locals_dict, method.name)
+                method.generator_locals = list(locals_dict.items())
 
             # Store Phase 1 local mutation facts on method FunctionInfo.
             # For @overload methods, get_method() returns overloads[0] (the first

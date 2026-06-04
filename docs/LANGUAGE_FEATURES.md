@@ -5807,9 +5807,10 @@ Send/Sync rules for built-in types:
   resumable-body context (so `self`->`__self` and `frame_slot` deref
   apply) so the await site matches the factory exactly. Awaiting such a
   coroutine works for a named iterable, a hoisted local, or a `self`
-  field (all borrow); a collection-literal / comprehension argument is
-  rejected cleanly (no concrete type / no frame storage at the await
-  site -- see the collection-literal-in-coro gap in BUGS.md). Coro
+  field (all borrow); a collection-literal / comprehension argument
+  passed directly at the await site is rejected cleanly (no concrete
+  type / no frame storage there) -- bind it to a local first, then
+  await. Coro
   structs are emitted in inline-await dependency order (each awaited
   callee before its awaiter), so awaiting a free coroutine from any
   method (concrete or templated) -- or a coroutine defined later in the
