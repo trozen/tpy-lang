@@ -59,7 +59,8 @@ The semantic gaps that actually bite when writing code:
   storage (fields, containers, globals). See section 5.
 
 Everything else -- loops, comprehensions, f-strings, dicts, sets, tuples,
-decorators, generators, match/case, context managers -- works like Python.
+decorators, generators, match/case, context managers, async/await -- works
+like Python.
 
 ---
 
@@ -486,6 +487,32 @@ class Cache:
         self.last = copy(p)   # acknowledged copy; warning gone
 ```
 
+**`async`/`await` with asyncio.**
+
+```python
+import asyncio
+from tpy import Int32
+
+async def work(n: Int32) -> Int32:
+    await asyncio.sleep(0.001)
+    return n * 2
+
+async def main_coro() -> None:
+    t1 = asyncio.create_task(work(5))
+    t2 = asyncio.create_task(work(7))
+    print(await t1 + await t2)
+
+asyncio.run(main_coro())
+```
+
+Coroutines compile to stack-allocated state machines (no heap, no C++20
+coroutines) driven by a single-threaded executor. The asyncio subset
+covers `run`, `sleep`, `create_task` / `Task`, `gather`, `gather_list`,
+`gather_list_settled`, `wait_for` (+ `TimeoutError`), `Future`, `Event`,
+and exception-based cancellation (`Task.cancel()` / `CancelledError`).
+`async for`, `async with`, async methods, and generic async functions all
+work; `await` is allowed in arbitrary control flow.
+
 ---
 
 ## 8. Verifying your code
@@ -523,14 +550,17 @@ exist to prevent diverging on.
 The compiler is under active development. The following features are not
 yet available but are on the roadmap:
 
-- `async` / `await`.
-- Stepped slice assignment (`items[::2] = [...]`).
-- Dynamic attribute creation on compiled records (`setattr` or assigning
-  to undeclared fields) -- today, fields must appear as class-level
-  annotations.
+- Dynamic attribute *storage* on compiled records -- fields must appear as
+  class-level annotations (there is no `__dict__`). The fallback hooks
+  `__getattr__` / `__setattr__` / `__delattr__` and the `getattr` /
+  `setattr` / `hasattr` builtins *are* supported, but they route to those
+  hooks; they cannot create undeclared fields.
+- `match` sequence patterns (`case [a, b]:` / `case (a, b):`).
+- Threads: `threading` / `multiprocessing` are absent, and the asyncio
+  executor is single-threaded.
 
-If you're tempted to use one of these, pick the closest synchronous /
-fully-annotated equivalent and leave a comment noting the dependency.
+If you're tempted to use one of these, pick the closest fully-annotated /
+single-threaded equivalent and leave a comment noting the dependency.
 
 ---
 
@@ -549,7 +579,8 @@ Topics worth looking up there when you need depth beyond this guide:
 - Ownership edge cases, escape analysis, move semantics.
 - `Optional` narrowing rules and flow-sensitive analysis.
 - `match`/`case` patterns (literal, record, union, optional, enum, guard,
-  or-pattern, positional).
+  or-pattern, positional, polymorphic class dispatch).
+- `async`/`await`, the asyncio subset, and cancellation.
 - Union types (variant codegen, recursive unions).
 - `@native` / `@export` native interop for C++ bindings.
 - `@error_return` zero-cost error handling.
