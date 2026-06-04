@@ -28,7 +28,7 @@ def _adopt_skeleton(skeleton, full):
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type, AnyType, PtrType, RefType,
-    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span,
+    IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span, make_varargs,
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR, try_unwrap_class_constant,
     is_void_like_type,
     is_classvar_allowed_inner, CLASSVAR_INNER_TYPE_ERROR,
@@ -78,15 +78,17 @@ from tpyc import modules as builtin_modules
 from .. import qnames
 
 def _vararg_span_type(elem_type: 'TpyType') -> NominalType:
-    """Build the sema-level Span type for a *args parameter.
+    """Build the sema-level body-view type for a *args parameter.
 
     Preserves the user's mutability intent in the element type: `*xs: T`
-    lowers to Span[T] (mutable vararg, codegen `varargs<T>`), `*xs: readonly[T]`
-    to Span[readonly[T]] (readonly vararg, codegen `varargs<const T>`). The
+    lowers to varargs[T] (mutable vararg, codegen `varargs<T>`), `*xs: readonly[T]`
+    to varargs[readonly[T]] (readonly vararg, codegen `varargs<const T>`). The
     element const-ness is the single source of truth for body mutability and
-    for whether a readonly source may be unpacked into the slot.
+    for whether a readonly source may be unpacked into the slot. The varargs
+    type is distinct from Span so a vararg is not accepted where a Span[T] is
+    expected (no std::span conversion exists).
     """
-    return make_span(elem_type)
+    return make_varargs(elem_type)
 
 
 def _is_valid_type_param_bound(t: 'TpyType') -> bool:

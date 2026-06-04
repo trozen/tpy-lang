@@ -1,0 +1,1 @@
+main.py:19: error: Type mismatch in argument 'xs': expected Span[Box], got varargs[Box]

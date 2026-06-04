@@ -3091,6 +3091,31 @@ def span_as_mutable(t: 'TpyType') -> 'NominalType':
     return make_span(span_inner_element(t))
 
 
+def make_varargs(element_type: 'TpyType', is_readonly: bool = False) -> 'NominalType':
+    """Factory for the *args body view varargs[T] / varargs[readonly[T]].
+    Plain NominalType with qname `tpy.varargs`; behavior comes from the
+    TypeDef registry. Distinct from Span so it never coerces to std::span."""
+    if is_readonly and not isinstance(element_type, ReadonlyType):
+        element_type = ReadonlyType(element_type)
+    return NominalType(name="varargs", type_args=(element_type,),
+                       _module_qname="tpy.varargs")
+
+
+def varargs_is_readonly(t: 'TpyType') -> bool:
+    """True if t is a varargs whose element is wrapped in ReadonlyType."""
+    from tpyc.type_def_registry import is_varargs
+    return is_varargs(t) and isinstance(t.type_args[0], ReadonlyType)
+
+
+def varargs_as_const(t: 'TpyType') -> 'NominalType':
+    """Const variant (varargs[readonly[T]]) of a varargs. No-op if already
+    readonly. Parallels span_as_const but preserves the varargs qname so a
+    readonly-inferred *args slot does not silently become a Span."""
+    if varargs_is_readonly(t):
+        return t
+    return make_varargs(ReadonlyType(t.type_args[0]))
+
+
 def make_span_iter(element_type: 'TpyType') -> 'NominalType':
     """Factory for SpanIter[T]. Produces a plain NominalType with qname
     `tpy.SpanIter`; behavior (is_value_type, is_send=False, is_sync=False,

@@ -1,0 +1,1 @@
+main.py:6: error: 'varargs' is an internal type for *args parameters and cannot be used in annotations; declare a variadic parameter as `*args: T` instead

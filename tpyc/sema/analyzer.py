@@ -16,12 +16,12 @@ from ..typesys import (
     make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType, PtrType,
     TypeAliasInfo,
     is_integer_type, is_void_like_type,
-    span_as_const, span_is_readonly,
+    span_as_const, span_is_readonly, varargs_as_const, varargs_is_readonly,
     _contains_self_reference,
     contains_type_param,
     del_suppresses_default_ctor,
 )
-from ..type_def_registry import is_span
+from ..type_def_registry import is_span, is_varargs, is_spanlike_view
 from ..compilation_context import get_current_compiler
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_docstring, is_super_del_call, is_base_init_call, ParseError
@@ -954,7 +954,7 @@ class SemanticAnalyzer:
             return
         va_param = fi.params[va_idx]
         bare_va = unwrap_ref_type(va_param.type)
-        if not is_span(bare_va) or span_is_readonly(bare_va):
+        if not is_varargs(bare_va) or varargs_is_readonly(bare_va):
             return
         # mutated_params=None means no body was analyzed (native, stub,
         # builtin). The signature is the source of truth in those cases --
@@ -963,7 +963,7 @@ class SemanticAnalyzer:
             return
         if dyn_pin_nonconst:
             return
-        new_span = span_as_const(bare_va)
+        new_span = varargs_as_const(bare_va)
         new_param_type = make_ref(new_span) if isinstance(va_param.type, RefType) else new_span
         fi.params[va_idx] = ParamInfo(
             name=va_param.name,
@@ -1014,7 +1014,8 @@ class SemanticAnalyzer:
                 continue
             for _, ptype in sig.params:
                 bare = unwrap_ref_type(ptype) if isinstance(ptype, TpyType) else None
-                if bare is not None and is_span(bare) and not span_is_readonly(bare):
+                if (bare is not None and is_spanlike_view(bare)
+                        and not (span_is_readonly(bare) or varargs_is_readonly(bare))):
                     return True
         for parent in proto_info.parent_protocols:
             if self._proto_hierarchy_has_vararg_nonconst(

@@ -72,6 +72,7 @@ def _canonical_instances() -> dict[str, ts.TpyType]:
         "builtins.Range":  ts.make_range(I32),
         "tpy.Array":    ts.make_array(I32, 10),
         "tpy.Span":     ts.make_span(I32),
+        "tpy.varargs":  ts.make_varargs(I32),
         "tpy.SpanIter": ts.make_span_iter(I32),
         "tpy.CopyIter": ts.make_copy_iter(I32),
         "tpy.OwnIter":  ts.make_own_iter(I32),

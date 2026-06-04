@@ -128,6 +128,25 @@ struct varargs<T, true> {
     bool empty() const { return size_ == 0; }
     T* data() const { return data_; }
 
+    // Python-style slice -- returns another value-type varargs (not a
+    // std::span) so the *args body view stays a varargs across slicing,
+    // mirroring the non-value specialization.
+    varargs slice(int32_t start, int32_t stop) const {
+        int32_t i = start;
+        int32_t j = stop;
+        if (i < 0) i += size_;
+        if (j < 0) j += size_;
+        if (i < 0) i = 0;
+        if (j < 0) j = 0;
+        if (i > size_) i = size_;
+        if (j > size_) j = size_;
+        varargs r;
+        if (i >= j) return r;
+        r.data_ = data_ + i;
+        r.size_ = j - i;
+        return r;
+    }
+
     using iterator = T*;
     T* begin() const { return data_; }
     T* end() const { return data_ + size_; }
@@ -168,6 +187,30 @@ varargs<T, false> list_slice(varargs<T, false>& c, BasicSlice sl) {
 
 template<typename T>
 varargs<T, false> list_slice(const varargs<T, false>& c, BasicSlice sl) {
+    return c.slice(sl.start.value_or(0), sl.stop.value_or(SLICE_END));
+}
+
+// Value-type varargs slice also returns a varargs (not std::span), so a
+// sliced *args stays a body view -- overrides the generic Container list_slice
+// that would otherwise produce std::span<T> via the value specialization's
+// data().
+template<typename T>
+varargs<T, true> list_slice(varargs<T, true>& c, int32_t start, int32_t stop) {
+    return c.slice(start, stop);
+}
+
+template<typename T>
+varargs<T, true> list_slice(const varargs<T, true>& c, int32_t start, int32_t stop) {
+    return c.slice(start, stop);
+}
+
+template<typename T>
+varargs<T, true> list_slice(varargs<T, true>& c, BasicSlice sl) {
+    return c.slice(sl.start.value_or(0), sl.stop.value_or(SLICE_END));
+}
+
+template<typename T>
+varargs<T, true> list_slice(const varargs<T, true>& c, BasicSlice sl) {
     return c.slice(sl.start.value_or(0), sl.stop.value_or(SLICE_END));
 }
 

@@ -22,7 +22,7 @@ from ..parse import (
 
 from .context import escape_cpp_string, CodeGenError, expand_cpp_template, qualify_native_name, cpp_string_literal_expr
 from ..type_def_registry import (
-    is_dict_view, is_set, is_dict, is_array, is_span, is_list,
+    is_dict_view, is_set, is_dict, is_array, is_span, is_varargs, is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_float32_type, is_float64_type,
     is_bytearray_type, int_traits_of, is_enum_type, enum_info_of,
 )
@@ -411,6 +411,10 @@ class BuiltinGenerator:
             elif is_dict_view(arg_type):
                 # Dict views use their own operator<< for printing
                 parts.append(self._gen_expr_deref(arg))
+            elif is_varargs(arg_type):
+                # A *args body view is a tuple in Python -- print it tuple-style
+                # ((a, b, c), (a,) for one elem, () for empty) to match CPython.
+                parts.append(f'::tpy::VarargsPrinter({self._gen_expr_deref(arg)})')
             elif is_array(arg_type) or is_span(arg_type) or is_list(arg_type) or isinstance(arg_type, ListRepeatType):
                 # Sequence containers use ListPrinter for [a, b, c] formatting
                 if isinstance(arg, TpyArrayLiteral):

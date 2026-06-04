@@ -22,7 +22,7 @@ from ..typesys import (
     yield_uses_borrow_slot,
     is_float_type, is_readonly_span, is_dyn_protocol, contains_type_param)
 from ..type_def_registry import (
-    is_dict_view, is_set, is_dict, is_array, is_span, is_list,
+    is_dict_view, is_set, is_dict, is_array, is_span, is_varargs, is_spanlike_view, is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type,
     is_str_type, is_string_type, is_str_view_type,
     is_bytes_type, is_bytes_view_type,
@@ -5064,9 +5064,9 @@ class ExpressionGenerator:
 
     @staticmethod
     def _is_sized_type(typ: TpyType) -> bool:
-        """Check if a type has .size() in C++ (all STL containers + Span)."""
+        """Check if a type has .size() in C++ (all STL containers + Span/varargs)."""
         typ = unwrap_readonly(typ)
-        return (is_array(typ) or is_list(typ) or is_span(typ)
+        return (is_array(typ) or is_list(typ) or is_span(typ) or is_varargs(typ)
                 or is_dict(typ) or is_set(typ) or is_dict_view(typ))
 
     def _wrap_for_owned_slot(self, code: str, resolved: TpyType, slot_type: TpyType | None) -> str:
@@ -5578,7 +5578,7 @@ class ExpressionGenerator:
         elem_type = pack.element_type
         if slot_type is not None:
             slot_bare = unwrap_ref_type(slot_type)
-            if is_span(slot_bare):
+            if is_varargs(slot_bare):
                 slot_elem = slot_bare.type_args[0]
                 slot_is_const = isinstance(slot_elem, ReadonlyType)
                 pack_is_const = isinstance(elem_type, ReadonlyType)
@@ -5598,7 +5598,7 @@ class ExpressionGenerator:
                 # *expr unpacking -- wrap in varargs (direct mode from span)
                 inner = self.gen_expr(a.expr)
                 inner_type = self.ctx.get_expr_type(a.expr)
-                if is_span(inner_type):
+                if is_spanlike_view(inner_type):
                     return f"::tpy::varargs<{elem_cpp}>({inner})"
                 # Borrow a span from a non-span container (e.g. a list). A
                 # readonly slot (varargs<const T>) takes a const span; a mutable

@@ -24,7 +24,7 @@ from ..typesys import (
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     CallableType, is_fn_type, unwrap_ref_type,
     is_integer_type, is_any_int_type,
-    is_callable_type, is_float_type, is_readonly_span, unwrap_qualifiers,
+    is_callable_type, is_float_type, is_readonly_span, varargs_is_readonly, unwrap_qualifiers,
     param_has_mutable_borrow_surface, contains_type_param,
     del_suppresses_default_ctor)
 from ..parse import (
@@ -66,7 +66,7 @@ from tpyc import modules as builtin_modules
 from ..modules import _resolve_concrete_type_name
 from .. import qnames
 from ..type_def_registry import (
-    is_array, is_span, is_list, is_borrowing_view_type,
+    is_array, is_span, is_varargs, is_list, is_borrowing_view_type,
     is_fixed_int_type, is_bool_type, is_char_type, is_fstr_type,
     is_str_type, is_big_int_type,
     int_traits_of,
@@ -2731,7 +2731,7 @@ class CallAnalyzer:
             # edge mechanism doesn't (loop-var bindings are per-callsite).
             if param.is_variadic and isinstance(arg, TpyVarargPack):
                 bare_va = unwrap_ref_type(param.type)
-                if is_span(bare_va) and not isinstance(bare_va.type_args[0], ReadonlyType):
+                if is_varargs(bare_va) and not isinstance(bare_va.type_args[0], ReadonlyType):
                     elem_type = bare_va.type_args[0]
                     bare_elem = unwrap_readonly(elem_type)
                     if (not bare_elem.is_value_type()
@@ -2790,7 +2790,7 @@ class CallAnalyzer:
             # is skipped (slot can't mutate elements through *items).
             if callee_param.is_variadic:
                 bare_va = unwrap_ref_type(callee_param.type)
-                if not is_span(bare_va):
+                if not is_varargs(bare_va):
                     continue
                 if isinstance(bare_va.type_args[0], ReadonlyType):
                     continue
@@ -3145,7 +3145,7 @@ class CallAnalyzer:
             # element evidence can bind the type param -- otherwise a Span-vs-
             # element shape mismatch leaves T unbound and a sibling Fn arg
             # can't concretize its hint.
-            if param.is_variadic and is_span(unwrap_ref_type(match_ptype)):
+            if param.is_variadic and is_varargs(unwrap_ref_type(match_ptype)):
                 match_ptype = unwrap_readonly(unwrap_ref_type(match_ptype).type_args[0])
             self.type_ops.match_type_with_inference(match_ptype, arg_type, partial_inferred)
         # Resolve IntLiteralType to concrete int for the Fn hint
@@ -4451,7 +4451,7 @@ class CallAnalyzer:
         # accept both mutable and readonly args (adding const is safe) while a
         # mutable slot keeps rejecting readonly args, and it drives codegen's
         # varargs<T> vs varargs<const T> choice via pack.element_type.
-        assert is_span(unwrap_ref_type(va_param.type))
+        assert is_varargs(unwrap_ref_type(va_param.type))
         span_type = unwrap_ref_type(va_param.type)
         elem_type = span_type.type_args[0]
 
@@ -4498,15 +4498,16 @@ class CallAnalyzer:
                 # body cannot mutate, so allow it. A differing element type is
                 # rejected by the coercion check below regardless.
                 # Note on forwarding (`def g(*xs): f(*xs)`): a *mutable* vararg
-                # param `*xs: T` carries the non-readonly `Span[T]` type, so it
+                # param `*xs: T` carries the non-readonly `varargs[T]` type, so it
                 # never trips this gate; a *readonly* vararg `*xs: readonly[T]`
-                # carries `Span[readonly[T]]` and is correctly rejected here when
+                # carries `varargs[readonly[T]]` and is correctly rejected here when
                 # forwarded into a mutable slot (and accepted into a readonly
                 # one via the slot_is_readonly branch). No provenance exemption
                 # is needed -- the source's own span type already distinguishes.
                 inner_type = self.ctx.get_expr_type(arg.expr)
                 slot_is_readonly = isinstance(elem_type, ReadonlyType)
-                if (inner_type is not None and is_readonly_span(inner_type)
+                if (inner_type is not None
+                        and (is_readonly_span(inner_type) or varargs_is_readonly(inner_type))
                         and not slot_is_readonly):
                     raise self.ctx.error(
                         f"Cannot pass readonly[{elem_type}] as mutable "

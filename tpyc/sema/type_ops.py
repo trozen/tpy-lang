@@ -24,7 +24,7 @@ from ..coercions import resolve_coercion, CoercionContext
 from ..diagnostics import SemanticError, nocopy_container_elem_error
 from .. import qnames
 from ..type_def_registry import (
-    is_copy_iter, is_own_iter, is_array, is_span, is_list, is_dict, is_set,
+    is_copy_iter, is_own_iter, is_array, is_span, is_varargs, is_list, is_dict, is_set,
     is_enum_type,
     get_type_def, find_factory_by_simple_name, protocol_info_of, is_subtype,
 )
@@ -107,8 +107,8 @@ def seeded_arg_hint(
         return None
 
     ptype = unwrap_ref_type(target.type)
-    if target.is_variadic and is_span(ptype):
-        # *args: T was lowered to Span[readonly[T]]; expose the element.
+    if target.is_variadic and is_varargs(ptype):
+        # *args: T has the varargs[T] (or varargs[readonly[T]]) body view; expose the element.
         ptype = unwrap_readonly(ptype.type_args[0])
     return post_substitute_hint(ptype, subst)
 
@@ -1258,7 +1258,7 @@ class TypeOperations:
             if arg_idx >= len(arg_types):
                 break
             ptype = p.type
-            if p.is_variadic and is_span(unwrap_ref_type(ptype)):
+            if p.is_variadic and is_varargs(unwrap_ref_type(ptype)):
                 # Variadic param: match each remaining arg against element type.
                 # `elem_type` is bare T (the Span[T] wrapping was stripped), so
                 # strip Ref from the arg side too -- otherwise a non-value arg
@@ -1683,7 +1683,7 @@ class TypeOperations:
                 out.append(None)
                 continue
             ptype = unwrap_ref_type(target.type)
-            if target.is_variadic and is_span(ptype):
+            if target.is_variadic and is_varargs(ptype):
                 ptype = unwrap_readonly(ptype.type_args[0])
             hint = unwrap_qualifiers(ptype)
             # Mirror ``post_substitute_hint``: an ``Optional[T]`` param accepts

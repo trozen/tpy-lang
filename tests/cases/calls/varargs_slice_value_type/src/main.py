@@ -1,7 +1,6 @@
-# Regression guard: `args[1:]` on a value-type *args still works through the
-# generic `list_slice` template (value-type varargs has `data()`). The new
-# non-value list_slice overload is gated on `varargs<T, false>` so it must
-# not be selected here.
+# Regression guard: `args[1:]` on a value-type *args returns a varargs[Int32]
+# (via the value-type `varargs<T, true>` list_slice overload), so the slice
+# stays a body view rather than degrading to a std::span.
 from tpy import Int32
 
 

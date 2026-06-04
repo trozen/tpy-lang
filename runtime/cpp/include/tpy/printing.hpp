@@ -196,6 +196,30 @@ std::ostream& operator<<(std::ostream& os, const ListPrinter<C>& p) {
     return os;
 }
 
+// Prints a *args body view (tpy::varargs<T>) CPython-tuple-style: `(a, b, c)`,
+// `(a,)` for a single element (the singleton trailing comma), `()` for empty --
+// matching how a `*args` tuple reprs under CPython. Works for both varargs
+// storage modes (begin/end/size dispatch internally).
+template <typename V>
+struct VarargsPrinter {
+    const V& value;
+    explicit VarargsPrinter(const V& v) : value(v) {}
+};
+
+template <typename V>
+std::ostream& operator<<(std::ostream& os, const VarargsPrinter<V>& p) {
+    os << '(';
+    bool first = true;
+    for (auto it = p.value.begin(); it != p.value.end(); ++it) {
+        if (!first) os << ", ";
+        first = false;
+        detail::print_element(os, *it);
+    }
+    if (p.value.size() == 1) os << ',';
+    os << ')';
+    return os;
+}
+
 // --- Generic value printing for type parameters ---
 
 /**

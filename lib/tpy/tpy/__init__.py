@@ -25,6 +25,11 @@ from ._core import (
     Char, String, StrView, FStr, BytesView,
     # Container types
     Span, Array, Ptr, SpanIter,
+    # varargs is imported under a private alias so its builtin record
+    # propagates to the `tpy` root (registered by builtin_type_key, for
+    # *args body-op resolution) without exposing the user-spellable name --
+    # the *args body view is internal-only.
+    varargs as _varargs,
     # Functions
     span, deref, take_ptr, make_default,
     copy, copy_iter, own_iter, try_parse,

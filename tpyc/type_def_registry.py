@@ -44,6 +44,7 @@ class TypeCategory(Enum):
     SET = auto()
     ARRAY = auto()
     SPAN = auto()
+    VARARGS = auto()      # tpy.varargs -- the body view of a *args parameter
     ITERATOR = auto()     # SpanIter, CopyIter, OwnIter
     RANGE = auto()
     RECORD = auto()
@@ -463,6 +464,7 @@ def is_dict(t: "TpyType") -> bool:           return _is_concrete_cat(t, TypeCate
 def is_set(t: "TpyType") -> bool:            return _is_concrete_cat(t, TypeCategory.SET)
 def is_array(t: "TpyType") -> bool:          return _is_cat(t, TypeCategory.ARRAY)
 def is_span(t: "TpyType") -> bool:           return _is_cat(t, TypeCategory.SPAN)
+def is_varargs(t: "TpyType") -> bool:        return _is_cat(t, TypeCategory.VARARGS)
 def is_dict_view(t: "TpyType") -> bool:      return _is_cat(t, TypeCategory.DICT_VIEW)
 def is_range(t: "TpyType") -> bool:          return _is_cat(t, TypeCategory.RANGE)
 def is_iterator_adapter(t: "TpyType") -> bool: return _is_cat(t, TypeCategory.ITERATOR)
@@ -515,9 +517,17 @@ def is_slice_type(t: "TpyType") -> bool:   return _is_qn(t, "builtins.slice")
 # Value types that carry an interior pointer into source storage.
 # Returning one that borrows from a local would dangle, so these participate
 # in dangling-reference and provenance tracking alongside reference types.
+def is_spanlike_view(t: "TpyType") -> bool:
+    """Span or the *args body view -- contiguous views sharing body-operation
+    and borrowing-provenance semantics. Distinct from `is_span` (real
+    `std::span` only), which gates std::span emission and span coercion that
+    varargs must NOT satisfy."""
+    return is_span(t) or is_varargs(t)
+
+
 def is_borrowing_view_type(t: "TpyType") -> bool:
     return (is_str_view_type(t) or is_bytes_view_type(t)
-            or is_span(t) or is_span_iter(t))
+            or is_spanlike_view(t) or is_span_iter(t))
 
 
 # Trait accessors. Return the dataclass or None if the type isn't in the
@@ -845,6 +855,29 @@ def _populate() -> None:
         is_sync=_span_is_sync,
         cpp_formatter=_span_cpp,
         element_of=_span_elem,
+        needs_explicit_element_target=True,
+    ))
+
+    # varargs[T] / varargs[readonly[T]]: the body view of a *args parameter.
+    # Span-like (value-type contiguous view, never Send, borrows) but a
+    # DISTINCT category so it is not is_span -- it deliberately exposes no
+    # conversion to std::span (the runtime tpy::varargs<T> can't), so passing
+    # a vararg to a Span[T] parameter is rejected at sema instead of failing
+    # the C++ build. Shares Span's readonly-element handling.
+    def _varargs_cpp(args: tuple) -> str:
+        from tpyc.typesys import ReadonlyType, unwrap_readonly
+        elem = args[0]
+        if isinstance(elem, ReadonlyType):
+            return f"::tpy::varargs<const {unwrap_readonly(elem).to_cpp()}>"
+        return f"::tpy::varargs<{elem.to_cpp()}>"
+
+    register(TypeDef(
+        "tpy.varargs", TC.VARARGS,
+        is_value_type=True,
+        is_send=False,
+        is_sync=_span_is_sync,
+        cpp_formatter=_varargs_cpp,
+        element_of=_readonly_view_elem,
         needs_explicit_element_target=True,
     ))
 

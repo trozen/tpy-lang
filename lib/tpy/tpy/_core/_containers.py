@@ -63,6 +63,49 @@ class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
     def sort[T: Comparable](self) -> None: ...
 
 
+# Body view of a *args parameter. Span-like, but intentionally NOT Spannable
+# (no __span__): a reference-element vararg can be stored as a pointer array
+# (varargs<T, false> indirect mode), not contiguous T, so it has no general
+# std::span<T> -- hence a vararg is not accepted where a Span[T] is expected.
+# (A value-element vararg is contiguous and could expose one, but is rejected
+# under the same uniform rule.) Internal only -- not user-spellable.
+@builtin_type("tpy.varargs")
+@native("::tpy::varargs")
+class varargs[T](Iterable[T], NativeIterable[T]):
+    @native("tpy::__iter__", function=True)
+    @pure
+    @readonly
+    def __iter__(self) -> Iterator[T]: ...
+
+    @native("tpy::__len__", function=True)
+    @pure
+    @readonly
+    def __len__(self) -> Int32: ...
+
+    @cpp_template("{self}[{0}]")
+    @pure
+    @readonly
+    def unchecked_get(self, index: Int32) -> T: ...
+
+    @overload
+    @native("tpy::__getitem__", function=True)
+    @pure
+    @readonly
+    def __getitem__(self, index: Int32) -> T: ...
+
+    @overload
+    @cpp_template("::tpy::list_slice({self}, {0})")
+    @pure
+    @readonly
+    def __getitem__(self, index: basic_slice) -> varargs[T]: ...
+
+    @overload
+    @cpp_template("::tpy::list_stepped_slice({self}, {0})")
+    @pure
+    @readonly
+    def __getitem__(self, index: slice) -> Own[list[T]]: ...
+
+
 @builtin_type("tpy.Array")
 @native("std::array")
 class Array[T, N: int](Iterable[T], NativeIterable[T], Spannable[T]):

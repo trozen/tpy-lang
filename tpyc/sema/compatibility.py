@@ -32,7 +32,7 @@ from .context import addr_taken_roots
 from .numeric_lattice import fixed_int_range_contains, numeric_info
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from ..type_def_registry import (
-    is_set, is_dict, is_array, is_span, is_span_iter, is_list,
+    is_set, is_dict, is_array, is_span, is_varargs, is_span_iter, is_list,
     is_str_view_type, is_bytes_view_type, is_borrowing_view_type, int_traits_of,
     is_big_int_type, is_str_category, is_bytes_category, is_str_type, is_string_type,
     protocol_info_of,
@@ -68,6 +68,9 @@ def _dangling_view_message(return_type: TpyType) -> str | None:
                 "use bytes or bytearray to return an owned copy")
     if is_span(return_type):
         return ("Cannot return Span referencing a local or temporary; "
+                "use list or Array to return an owned copy")
+    if is_varargs(return_type):
+        return ("Cannot return a *args view referencing a local or temporary; "
                 "use list or Array to return an owned copy")
     if is_span_iter(return_type):
         return ("Cannot return SpanIter referencing a local or temporary; "

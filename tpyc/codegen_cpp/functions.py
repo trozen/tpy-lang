@@ -32,7 +32,7 @@ from ..typesys import (
     bare_name,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
-from ..type_def_registry import is_span, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of
+from ..type_def_registry import is_varargs, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of
 from ..parse.nodes import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyStrLiteral,
     TpyBytesLiteral, TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct,
@@ -360,7 +360,7 @@ class FunctionGenerator:
             bare_ptype = unwrap_ref_type(ptype)
             # *args parameter: emit tpy::varargs<T> (varargs<const T> for a
             # readonly vararg -- the element readonly-ness drives const access).
-            if func and func.vararg_name and pname == func.vararg_name and is_span(bare_ptype):
+            if func and func.vararg_name and pname == func.vararg_name and is_varargs(bare_ptype):
                 inner_cpp = self.types.varargs_elem_cpp(bare_ptype.type_args[0])
                 part = f"::tpy::varargs<{inner_cpp}> {escape_cpp_name(pname)}"
                 if emit_defaults and defaults and i < len(defaults) and defaults[i] is not None:

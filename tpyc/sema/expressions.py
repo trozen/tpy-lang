@@ -46,7 +46,7 @@ from ..parse import (
 )
 from .. import qnames
 from ..type_def_registry import (
-    is_set, is_dict, is_array, is_span, is_list,
+    is_set, is_dict, is_array, is_span, is_varargs, is_list,
     is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type, is_fstr_type,
     is_basic_slice_type, is_slice_type,
     int_traits_of,
@@ -255,7 +255,8 @@ class ExpressionAnalyzer:
             inner_type = self.analyze_expr(node.expr)
         inner_type = unwrap_ref_type(inner_type)
         elem: 'TpyType | None' = None
-        if is_array(inner_type) or is_span(inner_type) or is_list(inner_type):
+        if (is_array(inner_type) or is_span(inner_type) or is_varargs(inner_type)
+                or is_list(inner_type)):
             elem = inner_type.get_element_type()
         elif isinstance(inner_type, PendingListType):
             elem = inner_type.element_type
