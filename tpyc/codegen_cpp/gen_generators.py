@@ -6,11 +6,12 @@ from typing import Callable, TYPE_CHECKING
 
 from ..parse.nodes import (
     TpyFunction, TpyYield, TpyStmt, TpyWhile, TpyForEach, TpyReturn, TpyVarDecl,
-    TpyCall, TpyName, TpyExpr, TpyTupleUnpack,
+    TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpyTupleUnpack,
 )
 from ..typesys import IntLiteralType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_readonly, unwrap_ref_type, yield_uses_borrow_slot
 from tpyc import modules as builtin_modules
-from .context import INDENT, escape_cpp_name
+from .context import INDENT, CodeGenError, escape_cpp_name
+from .resumable_cfg import _stmts_have_any_suspension
 from .protocols import protocol_param_template_name
 
 
@@ -85,6 +86,13 @@ class GeneratorCodegen:
         self.expressions = expressions
         self.statements = statements
         self.functions = functions
+        # Generators defined in the module being emitted, keyed
+        # (name, owner_record), plus the names of generic records (whose
+        # method-generator structs can't be spelled as a `__for_src` field
+        # type yet). Filled by the per-module pre-scan before any emit pass.
+        self.same_module_generators: dict[
+            tuple[str, str | None], TpyFunction] = {}
+        self.generic_owner_names: set[str] = set()
 
     def _gen_template_header(self, func: TpyFunction, indent: str = "") -> str:
         """Generate template header for a generic generator function.
@@ -117,6 +125,8 @@ class GeneratorCodegen:
         Simple generators have exactly one yield inside a single while-loop or
         for-loop, with no early returns or nested control flow around the yield.
         """
+        if func.force_resumable:
+            return False
         yields = _collect_yield_stmts(func.body)
         if len(yields) != 1:
             return False
@@ -283,6 +293,25 @@ class GeneratorCodegen:
                 return f"this, {captures}" if captures else "this"
             return captures
 
+        # A temporary iterable must be evaluated exactly once into a `__src`
+        # slot: re-emitting the expression restarts a generator on every
+        # pull, and begin()/end() taken from two separate temporaries point
+        # into dead storage. The slot is an EMPTY optional capture emplaced
+        # lazily on the first pull -- CPython runs the source expression
+        # when the body first reaches the for statement, not at generator
+        # construction. A stable lvalue stays re-evaluable so the generator
+        # borrows it (CPython aliasing semantics).
+        src_is_temp = self.ctx.is_temporary_expr(for_stmt.iterable)
+
+        def _src_and_captures(iterable_code: str,
+                              base_captures: str) -> tuple[str, str]:
+            if src_is_temp:
+                cap = (f"__src = std::optional<std::decay_t<"
+                       f"decltype({iterable_code})>>()")
+                return "*__src", (f"{base_captures}, {cap}"
+                                  if base_captures else cap)
+            return iterable_code, base_captures
+
         # Indentation helpers adjusted for method nesting
         I = lambda n: INDENT * (n + extra)
 
@@ -321,15 +350,19 @@ class GeneratorCodegen:
             out.write(f"{I(1)});\n")
             out.write(f"{I(0)}}}\n")
         elif self._is_direct_iterator(for_stmt):
-            # Iterator[T] protocol: the param IS the iterator, call __next__() directly.
+            # Iterator[T] protocol: the source IS the iterator, call __next__() directly.
             # No __iter__() call needed -- avoids copying move-only iterators.
             iterable_code = self.expressions.gen_expr(for_stmt.iterable)
             base_captures = self._build_capture_list(func.params, init_stmts)
+            src_code, base_captures = _src_and_captures(
+                iterable_code, base_captures)
             all_captures = _add_self_capture(base_captures)
 
             out.write(f"{I(1)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
             out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
-            out.write(f"{I(3)}auto __r = ({iterable_code}).__next__();\n")
+            if src_is_temp:
+                out.write(f"{I(3)}if (!__src) {{ __src.emplace({iterable_code}); }}\n")
+            out.write(f"{I(3)}auto __r = ({src_code}).__next__();\n")
             out.write(f"{I(3)}if (!__r.has_value()) return std::nullopt;\n")
 
             self._gen_simple_for_yield_body(
@@ -341,7 +374,16 @@ class GeneratorCodegen:
             iterable_code = self.expressions.gen_expr(for_stmt.iterable)
 
             base_captures = self._build_capture_list(func.params, init_stmts)
-            iter_type = f"decltype(({iterable_code}).begin())"
+            src_code, base_captures = _src_and_captures(
+                iterable_code, base_captures)
+            if src_code == "__src":
+                # Spell begin()'s type against a mutable lvalue of the stored
+                # copy -- the rvalue expression itself may overload-resolve to
+                # a different (const) begin() than `__src.begin()`.
+                iter_type = (f"decltype(std::declval<std::decay_t<"
+                             f"decltype({iterable_code})>&>().begin())")
+            else:
+                iter_type = f"decltype(({iterable_code}).begin())"
             beg_capture = f"__beg = {iter_type}()"
             end_capture = f"__end = {iter_type}()"
             init_flag = "__init = false"
@@ -351,7 +393,9 @@ class GeneratorCodegen:
 
             out.write(f"{I(1)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
             out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
-            out.write(f"{I(3)}if (!__init) {{ __beg = ({iterable_code}).begin(); __end = ({iterable_code}).end(); __init = true; }}\n")
+            emplace_src = (f"__src.emplace({iterable_code}); "
+                           if src_is_temp else "")
+            out.write(f"{I(3)}if (!__init) {{ {emplace_src}__beg = ({src_code}).begin(); __end = ({src_code}).end(); __init = true; }}\n")
             out.write(f"{I(3)}if (__beg != __end) {{\n")
 
             self.ctx.indent_level = 4 + extra
@@ -381,8 +425,17 @@ class GeneratorCodegen:
             # user types with __iter__(), error_return __next__ iterators.
             iterable_code = self.expressions.gen_expr(for_stmt.iterable)
             base_captures = self._build_capture_list(func.params, init_stmts)
-
-            iter_type = f"std::decay_t<decltype(::tpy::__iter__({iterable_code}))>"
+            src_code, base_captures = _src_and_captures(
+                iterable_code, base_captures)
+            if src_code == "__src":
+                # `tpy::__iter__` borrows its argument, so it must run on the
+                # stored copy, and its type must be spelled against a mutable
+                # lvalue (the rvalue expression would pick a const overload).
+                iter_type = (f"std::decay_t<decltype(::tpy::__iter__("
+                             f"std::declval<std::decay_t<"
+                             f"decltype({iterable_code})>&>()))>")
+            else:
+                iter_type = f"std::decay_t<decltype(::tpy::__iter__({iterable_code}))>"
             iter_capture = f"__iter = std::optional<{iter_type}>()"
             parts = [p for p in [base_captures, iter_capture] if p]
             all_captures = ", ".join(parts)
@@ -390,7 +443,9 @@ class GeneratorCodegen:
 
             out.write(f"{I(1)}return ::tpy::make_generator<{cpp_iter_slot}>(\n")
             out.write(f"{I(2)}[{all_captures}]() mutable -> std::optional<{cpp_iter_slot}> {{\n")
-            out.write(f"{I(3)}if (!__iter) {{ __iter.emplace(::tpy::__iter__({iterable_code})); }}\n")
+            emplace_src = (f"__src.emplace({iterable_code}); "
+                           if src_is_temp else "")
+            out.write(f"{I(3)}if (!__iter) {{ {emplace_src}__iter.emplace(::tpy::__iter__({src_code})); }}\n")
             out.write(f"{I(3)}auto __r = (*__iter).__next__();\n")
             out.write(f"{I(3)}if (!__r.has_value()) return std::nullopt;\n")
 
@@ -552,9 +607,33 @@ class GeneratorCodegen:
 
         # Iterator[T] protocol -- iterable already has __next__()
         if is_protocol_type(iterable_type) and iterable_type.qualified_name() == "typing.Iterator":
-            result_type = f"std::expected<{elem_cpp}, ::tpy::StopIteration>"
-            fields: list[tuple[str, str]] = [(f"__for_r_{uid}", result_type)]
-            return GeneratorForInfo(uid=uid, strategy="next", fields=fields)
+            fields: list[tuple[str, str]] = []
+            if self.ctx.is_temporary_expr(stmt.iterable):
+                # The source iterator must live in the frame: re-emitting
+                # the expression per advance would restart it every pass.
+                # With the source struct known, spell the result slot from
+                # its actual __next__ (the elem-type formula renders a
+                # borrow element as `T&`, ill-formed inside std::expected).
+                src_cpp = self._temp_iterator_field_cpp(stmt)
+                fields.append((f"__for_src_{uid}", src_cpp))
+                result_type = f"decltype(std::declval<{src_cpp}&>().__next__())"
+            else:
+                result_type = f"std::expected<{elem_cpp}, ::tpy::StopIteration>"
+            fields.append((f"__for_r_{uid}", result_type))
+            # Non-value elements alias the producer's live yield slot (T*),
+            # mirroring begin_end's pointer-form loop var -- a frame_slot
+            # copy would hide loop-var mutations from the source elements.
+            elem_for_form = unwrap_ref_type(elem_type) if elem_type else None
+            pointer_form_var = (
+                stmt.var
+                if (elem_for_form is not None
+                    and not stmt.is_tuple_unpack
+                    and not elem_for_form.is_value_type()
+                    and not isinstance(elem_for_form, ReadonlyType))
+                else None
+            )
+            return GeneratorForInfo(uid=uid, strategy="next", fields=fields,
+                                    pointer_form_loop_var=pointer_form_var)
 
         # error_return __next__ types (user iterators)
         er_elem = get_error_return_next_element_type(
@@ -563,7 +642,7 @@ class GeneratorCodegen:
             iter_cpp = self.types.type_to_cpp(iterable_type)
             result_type = f"std::expected<{elem_cpp}, ::tpy::StopIteration>"
             fields = []
-            if not self._is_named_generator_field(stmt.iterable):
+            if self.ctx.is_temporary_expr(stmt.iterable):
                 fields.append((f"__for_src_{uid}", iter_cpp))
             fields.append((f"__for_r_{uid}", result_type))
             return GeneratorForInfo(uid=uid, strategy="next", fields=fields)
@@ -580,8 +659,11 @@ class GeneratorCodegen:
                 (f"__for_it_{uid}", iter_type),
                 (f"__for_end_{uid}", iter_type),
             ]
-            # If iterable is not a named variable (param or local), need a source field
-            if not self._is_named_generator_field(stmt.iterable):
+            # A temporary source needs a frame field; a stable lvalue (name,
+            # field path, container subscript) is borrowed instead -- copying
+            # it into the frame would hide loop-var mutations from the source
+            # (CPython aliasing semantics).
+            if self.ctx.is_temporary_expr(stmt.iterable):
                 fields.insert(0, (f"__for_src_{uid}", container_cpp))
             # Non-value element type with stable lvalue source: the loop var
             # becomes T* (aliasing the container element) instead of
@@ -654,16 +736,113 @@ class GeneratorCodegen:
             (f"__for_itr_{uid}", iter_field_type),
             (f"__for_r_{uid}", result_field_type),
         ]
+        if self.ctx.is_temporary_expr(stmt.iterable):
+            # `tpy::__iter__` borrows its argument, so a temporary source
+            # must be stored in the frame first or the iterator dangles.
+            if self.functions.protocols.is_static_protocol_param(iterable_type):
+                raise CodeGenError(
+                    "iterating a temporary protocol-typed iterable across a "
+                    "suspension is not supported; bind the elements first "
+                    "(e.g. `xs = list(...)`) and iterate those",
+                    loc=stmt.loc)
+            fields.insert(0, (f"__for_src_{uid}", src_cpp))
         return GeneratorForInfo(uid=uid, strategy="iter_next", fields=fields)
 
-    def _is_named_generator_field(self, expr: TpyExpr) -> bool:
-        """Check if expression is a named variable that's stable across yields.
+    def _resolve_same_module_generator_call(
+            self, expr: TpyExpr,
+    ) -> tuple[TpyFunction, str | None, TpyExpr] | None:
+        """Resolve a direct call to a generator defined in the module being
+        emitted: (callee_func, owner_record_name, peeled_call_node). None for
+        any other shape (cross-module call, non-call expression, unknown
+        callee). The lookup map is populated by the generator pre-scan in
+        generator.py."""
+        e = expr
+        while isinstance(e, TpyCoerce):
+            e = e.expr
+        if isinstance(e, TpyCall) and isinstance(e.func, TpyName):
+            f = self.same_module_generators.get((e.func_name, None))
+            return (f, None, e) if f is not None else None
+        if isinstance(e, TpyMethodCall):
+            if e.user_module_call or e.builtin_module_call:
+                return None
+            recv = unwrap_ref_type(self.types.get_resolved_type(e.obj))
+            owner = getattr(recv, "name", None)
+            if owner is None:
+                return None
+            f = self.same_module_generators.get((e.method, owner))
+            return (f, owner, e) if f is not None else None
+        return None
 
-        Returns True for named variables (params, locals, globals) since they
-        persist across __next__() calls. Returns False for expressions (calls,
-        constructors) that would need to be stored in a synthetic field.
-        """
-        return isinstance(expr, TpyName)
+    def _temp_iterator_field_cpp(self, stmt: TpyForEach) -> str:
+        """C++ frame-field type for a temporary `typing.Iterator` source:
+        the callee generator's struct name. Only a same-module callee is
+        spellable -- a cross-module *simple* generator has no named struct
+        (its factory returns an `inline auto` lambda wrapper) and simplicity
+        is not visible across the module boundary, so cross-module sources
+        are rejected with a clean diagnostic instead of miscompiling."""
+        resolved = self._resolve_same_module_generator_call(stmt.iterable)
+        if resolved is None:
+            raise CodeGenError(
+                "a for-loop with a yield/await in its body over an "
+                "Iterator-returning expression is only supported for a "
+                "direct call to a generator defined in the same module; "
+                "bind the elements first (e.g. `xs = list(...)`) and "
+                "iterate those, or move the callee into this module",
+                loc=stmt.loc)
+        callee, owner, call_node = resolved
+        if self.functions.protocols.get_all_protocol_params(callee.params):
+            raise CodeGenError(
+                f"cannot iterate '{callee.name}(...)' here: a generator "
+                "with protocol-typed parameters cannot be embedded in a "
+                "resumable frame yet; bind the elements first "
+                "(e.g. `xs = list(...)`) and iterate those",
+                loc=stmt.loc)
+        if owner is not None and owner in self.generic_owner_names:
+            raise CodeGenError(
+                f"cannot iterate '{owner}.{callee.name}(...)' here: a "
+                "generator method on a generic class cannot be embedded in "
+                "a resumable frame yet; bind the elements first "
+                "(e.g. `xs = list(...)`) and iterate those",
+                loc=stmt.loc)
+        base = "__gen_" + (f"{escape_cpp_name(owner)}_" if owner else "") \
+            + escape_cpp_name(callee.name)
+        if callee.type_params:
+            args = getattr(call_node, "inferred_type_args", None)
+            if not args or len(args) != len(callee.type_params):
+                raise CodeGenError(
+                    f"cannot iterate '{callee.name}(...)' here: the generic "
+                    "generator's type arguments were not resolved at the "
+                    "call site", loc=stmt.loc)
+            base += "<" + ", ".join(
+                self.types.type_to_cpp(a) for a in args) + ">"
+        return base
+
+    def _for_src_generator_targets(
+            self, func: TpyFunction) -> list[tuple[str, str | None]]:
+        """(name, owner_record) of same-module generator callees whose struct
+        `func`'s resumable frame embeds by value via a `__for_src` field --
+        emit-ordering dependencies (the embedded struct must be complete
+        first) and force-off-peephole inputs for simple callees."""
+        targets: list[tuple[str, str | None]] = []
+
+        def walk(stmts: list[TpyStmt]) -> None:
+            for s in stmts:
+                if (isinstance(s, TpyForEach) and not s.is_async
+                        and (_stmts_have_any_suspension(s.body)
+                             or _stmts_have_any_suspension(s.orelse))):
+                    t = self.types.get_resolved_type(s.iterable)
+                    if (t is not None and is_protocol_type(t)
+                            and t.qualified_name() == "typing.Iterator"
+                            and self.ctx.is_temporary_expr(s.iterable)):
+                        r = self._resolve_same_module_generator_call(
+                            s.iterable)
+                        if r is not None:
+                            targets.append((r[0].name, r[1]))
+                for b in (s.sub_bodies() if hasattr(s, "sub_bodies") else ()):
+                    walk(b)
+
+        walk(func.body)
+        return targets
 
     def _setup_body_scope(self, out: TextIO, func: TpyFunction, init_stmts: list[TpyStmt],
                           indent_level: int = 1) -> None:

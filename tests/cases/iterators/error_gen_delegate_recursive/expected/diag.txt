@@ -1,0 +1,1 @@
+main.py:7: error: recursive generator delegation involving 'cycle' is not supported: the delegated generator source is stored by value in the consumer's frame, so the cycle would be infinite-size. Break the recursion (e.g. materialize the inner elements with `list(...)`).

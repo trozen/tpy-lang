@@ -1,0 +1,1 @@
+main.py:11: error: a for-loop with a yield/await in its body over an Iterator-returning expression is only supported for a direct call to a generator defined in the same module; bind the elements first (e.g. `xs = list(...)`) and iterate those, or move the callee into this module

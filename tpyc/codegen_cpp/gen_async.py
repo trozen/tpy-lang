@@ -3162,9 +3162,11 @@ class AsyncCoroCodegen:
             # Source IS the iterator; just stash a temporary if needed.
             self._for_src_access(out, indent, stmt.iterable_expr, uid, info)
         else:  # iter_next (universal)
-            iter_cpp = self.expressions.gen_expr(stmt.iterable_expr)
-            self.ctx.temps.flush(out, indent)
-            out.write(f"{indent}__for_itr_{uid}.emplace(::tpy::__iter__({iter_cpp}));\n")
+            # `tpy::__iter__` borrows its argument; a temporary source is
+            # stashed in `__for_src` first so the iterator doesn't dangle.
+            src = self._for_src_access(out, indent, stmt.iterable_expr, uid,
+                                       info)
+            out.write(f"{indent}__for_itr_{uid}.emplace(::tpy::__iter__({src}));\n")
 
     def _emit_for_range_setup(self, out: "TextIO", indent: str,
                               stmt: 'rcfg.AsyncForIterSetup', uid: int) -> None:

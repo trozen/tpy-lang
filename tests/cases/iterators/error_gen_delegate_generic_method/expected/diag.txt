@@ -1,0 +1,1 @@
+main.py:21: error: cannot iterate 'Box.pair(...)' here: a generator method on a generic class cannot be embedded in a resumable frame yet; bind the elements first (e.g. `xs = list(...)`) and iterate those

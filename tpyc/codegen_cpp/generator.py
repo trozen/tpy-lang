@@ -151,6 +151,10 @@ class CodeGenerator:
         module.functions = [
             f for f in module.functions if not f.builtin_decorator_key
         ]
+        # Force simple generators consumed by a resumable frame's `__for_src`
+        # field into named structs. Must run before any pass consults
+        # `is_simple_generator` (forward decls, struct emit, factory emit).
+        self._prescan_for_src_embedding(module)
         # Populate native C++ name mappings for this module's codegen.
         # Must include both own records and imported records so NominalType.to_cpp()
         # resolves correctly in all type positions (Ptr[Rect] -> SDL_Rect*, etc.)
@@ -643,42 +647,117 @@ class CodeGenerator:
         walk_stmts(func.body)
         return targets
 
-    def _emit_async_coro_structs(self, hpp: TextIO, module: TpyModule) -> None:
-        """Emit every async coro struct definition (free functions + methods)
-        topologically ordered so each inline-awaited callee precedes its
-        awaiter -- the by-value `std::optional<__coro_callee>` sub-future field
-        needs the callee complete. A genuine cycle (mutually recursive inline
-        await) can't be ordered (cyclic by-value sub-futures are infinite-size)
-        and is rejected with a clean diagnostic."""
-        # Seed order -- async methods (record / method order), then free async
-        # (source order) -- fed to a STABLE topological sort (Kahn's, ready node
-        # of smallest seed index first). A coro emits in its seed slot unless a
-        # dependency forces it later, so the order stays stable and readable:
-        # only an awaiter that sits ahead of its callee moves.
-        coros: list[tuple[TpyFunction, str | None]] = []
+    def _prescan_for_src_embedding(self, module: TpyModule) -> None:
+        """Populate the same-module generator map, then force-mark simple
+        generators whose struct another resumable frame embeds by value via
+        a `__for_src` field -- the simple-lambda wrapper's type is
+        unnameable, so such a callee must emit as a named struct. Worklist
+        to a fixpoint: forcing a callee makes it resumable, which may
+        surface its own embeddings."""
+        gens: dict[tuple[str, str | None], TpyFunction] = {}
+        generic_owners: set[str] = set()
+        for record in module.all_records():
+            if record.type_params:
+                generic_owners.add(record.name)
+            for m in record.methods:
+                if m.is_generator:
+                    gens[(m.name, record.name)] = m
+        for f in module.functions:
+            if f.is_generator and not f.skip_codegen:
+                gens[(f.name, None)] = f
+        # Re-derive from scratch so a re-emit of the same AST (e.g. a future
+        # caching layer) can't inherit stale marks.
+        for f in gens.values():
+            f.force_resumable = False
+        self.gen_generators.same_module_generators = gens
+        self.gen_generators.generic_owner_names = generic_owners
+
+        # A simple generator delegating to ITSELF never enters the worklist
+        # below (simple consumers use the lambda `__src` capture, not a frame
+        # field) -- force it resumable so the cycle lands in the emit-order
+        # check and gets the clean recursive-delegation diagnostic. A mutual
+        # cycle of two *simple* generators is not caught here (neither side
+        # enters the worklist) and recurses at runtime instead.
+        for key, f in gens.items():
+            if self.gen_generators.is_simple_generator(f) and key in \
+                    self.gen_generators._for_src_generator_targets(f):
+                f.force_resumable = True
+
+        work: list[TpyFunction] = []
+        for record in module.all_records():
+            for m in record.methods:
+                if m.is_async or (m.is_generator and
+                                  not self.gen_generators.is_simple_generator(m)):
+                    work.append(m)
+        for f in module.functions:
+            if f.skip_codegen:
+                continue
+            if f.is_async or (f.is_generator and
+                              not self.gen_generators.is_simple_generator(f)):
+                work.append(f)
+        while work:
+            f = work.pop()
+            for name, owner in self.gen_generators._for_src_generator_targets(f):
+                callee = gens.get((name, owner))
+                if (callee is not None and not callee.force_resumable
+                        and self.gen_generators.is_simple_generator(callee)):
+                    callee.force_resumable = True
+                    work.append(callee)
+
+    def _emit_resumable_structs(self, hpp: TextIO, module: TpyModule) -> None:
+        """Emit every resumable-frame struct definition -- async coros AND
+        non-simple generators, free functions + methods -- topologically
+        ordered so each by-value-embedded callee precedes its consumer: an
+        inline-awaited coro is stored as `std::optional<__coro_callee>` and
+        a delegated generator source as `frame_slot<__gen_callee>`
+        (`__for_src`), and both need the callee complete. A genuine cycle
+        (mutually recursive inline await, generator self-delegation) can't
+        be ordered (cyclic by-value embedding is infinite-size) and is
+        rejected with a clean diagnostic."""
+        # Seed order -- async methods, async free, generator free, generator
+        # methods (each in record/method or source order) -- fed to a STABLE
+        # topological sort (Kahn's, ready node of smallest seed index first).
+        # A unit emits in its seed slot unless a dependency forces it later,
+        # so dependency-free modules keep a fixed, readable order.
+        units: list[tuple[TpyFunction, str | None, bool]] = []
         for record in module.all_records():
             for method in record.methods:
                 if method.is_async:
-                    coros.append((method, record.name))
+                    units.append((method, record.name, True))
         for func in module.functions:
             if func.is_async and not func.skip_codegen:
-                coros.append((func, None))
-        n = len(coros)
+                units.append((func, None, True))
+        for func in module.functions:
+            if (func.skip_codegen or not func.is_generator
+                    or self.gen_generators.is_simple_generator(func)):
+                continue
+            units.append((func, None, False))
+        for record in module.all_records():
+            for method in record.methods:
+                if (method.is_generator
+                        and not self.gen_generators.is_simple_generator(method)):
+                    units.append((method, record.name, False))
+        n = len(units)
         if n == 0:
             return
-        index = {(f.name, rn): i for i, (f, rn) in enumerate(coros)}
-        # deps[i] = coros i awaits inline that are emitted in this module (so
-        # their struct must precede i's). Cross-module / builtin awaits resolve
-        # to no index entry and are already complete via their included header.
+        index = {(f.name, rn): i for i, (f, rn, _) in enumerate(units)}
+        # deps[i] = same-module units whose struct unit i embeds by value (so
+        # their definition must precede i's). Cross-module / builtin targets
+        # resolve to no index entry and are already complete via their
+        # included header.
         deps: list[set[int]] = [set() for _ in range(n)]
         dependents: list[list[int]] = [[] for _ in range(n)]
-        for i, (f, _rn) in enumerate(coros):
-            for name, owner in self._inline_await_targets(f):
+        for i, (f, _rn, is_async) in enumerate(units):
+            edges = list(self.gen_generators._for_src_generator_targets(f))
+            if is_async:
+                edges.extend(self._inline_await_targets(f))
+            for name, owner in edges:
                 j = index.get((name, owner))
-                # A self-edge (a coro that inline-awaits itself) is kept on
-                # purpose: it's a 1-cycle the sort detects and rejects, since a
-                # by-value `optional<__coro_self>` sub-future would be
-                # infinite-size -- same constraint as mutual recursion.
+                # A self-edge (a coro that inline-awaits itself, a generator
+                # that delegates to itself) is kept on purpose: it's a 1-cycle
+                # the sort detects and rejects, since the by-value embedding
+                # would be infinite-size -- same constraint as mutual
+                # recursion.
                 if j is not None:
                     deps[i].add(j)
         for i in range(n):
@@ -698,16 +777,90 @@ class CodeGenerator:
                     heapq.heappush(ready, k)
         if len(order) != n:
             stuck = next(i for i in range(n) if indeg[i] > 0)
+            # A generator can't await, so a cycle through a generator is
+            # generator-only -- the stuck unit's kind picks the right wording.
+            if units[stuck][2]:
+                raise CodeGenError(
+                    f"recursive inline `await` involving coroutine "
+                    f"'{units[stuck][0].name}' is not supported: the awaited "
+                    f"coroutine is stored by value in the awaiter's frame, so the "
+                    f"cycle would be infinite-size. Break the recursion (e.g. "
+                    f"drive one side through a Task) or restructure.",
+                    loc=units[stuck][0].loc)
             raise CodeGenError(
-                f"recursive inline `await` involving coroutine "
-                f"'{coros[stuck][0].name}' is not supported: the awaited "
-                f"coroutine is stored by value in the awaiter's frame, so the "
-                f"cycle would be infinite-size. Break the recursion (e.g. "
-                f"drive one side through a Task) or restructure.",
-                loc=coros[stuck][0].loc)
+                f"recursive generator delegation involving "
+                f"'{units[stuck][0].name}' is not supported: the delegated "
+                f"generator source is stored by value in the consumer's "
+                f"frame, so the cycle would be infinite-size. Break the "
+                f"recursion (e.g. materialize the inner elements with "
+                f"`list(...)`).",
+                loc=units[stuck][0].loc)
         for i in order:
-            func, rn = coros[i]
-            self._emit_async_coro_unit(hpp, func, rn)
+            func, rn, is_async = units[i]
+            if is_async:
+                self._emit_async_coro_unit(hpp, func, rn)
+            else:
+                self._emit_generator_unit(hpp, func, rn)
+
+    def _emit_generator_unit(self, hpp: TextIO, func: TpyFunction,
+                             record_name: str | None) -> None:
+        """Emit one non-simple generator's struct plus the inline definitions
+        its shape requires (templated __next__/finally-top/factory; the
+        inline out-of-class factory for methods). Non-templated bodies are
+        emitted later in the .cpp pass."""
+        if record_name is None:
+            if self._resumable_generator_eligible(func):
+                with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
+                    self.gen_async.gen_coro_struct(hpp, func)
+                    # Templated generators: __next__ body + factory must be
+                    # inline-in-header (template definitions can't go in the
+                    # .cpp). Emit right after the struct so they see
+                    # fully-defined fields. Mirrors the generic async-def
+                    # branch.
+                    if self.gen_async._is_templated_coro(func):
+                        self.gen_async.gen_coro_poll_def(hpp, func)
+                        hpp.write("\n")
+                        self.gen_async.gen_coro_finally_top_def(hpp, func)
+                        hpp.write("\n")
+                        self.gen_async.gen_factory(hpp, func)
+            hpp.write("\n")
+            return
+        if self._resumable_generator_eligible(func):
+            with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
+                self.gen_async.gen_coro_struct(
+                    hpp, func, record_name=record_name)
+                hpp.write("\n")
+                # Templated generator methods (own type params, a proto-typed
+                # param, OR a method on a generic class): __next__ body +
+                # finally-top must be inline-in-header.
+                if self.gen_async._is_templated_coro(func, record_name):
+                    self.gen_async.gen_coro_poll_def(
+                        hpp, func, record_name=record_name)
+                    hpp.write("\n")
+                    self.gen_async.gen_coro_finally_top_def(
+                        hpp, func, record_name=record_name)
+                    hpp.write("\n")
+                # Inline factory method (mirrors the async-method factory:
+                # _factory_args_forwarded moves Own[T] / protocol params in
+                # correctly).
+                struct_name = self.gen_async._struct_name_templated(
+                    func, record_name)
+                cpp_record = escape_cpp_name(record_name.replace(".", "::"))
+                # Qualify with class template args for out-of-class member
+                # definitions of a class template (e.g. `Box<T>::items`).
+                record_tps = self.gen_async._record_template_args(record_name)
+                if record_tps:
+                    cpp_record = f"{cpp_record}<{', '.join(record_tps)}>"
+                params = self.gen_async._emit_method_params_decl(
+                    func, record_name)
+                args = self.gen_async._factory_args_forwarded(
+                    func, receiver=(record_name, "*this"))
+                const_suffix = " const" if func.is_readonly else ""
+                self.gen_async._emit_member_template_headers(
+                    hpp, func, record_name=record_name)
+                hpp.write(f"inline {struct_name} {cpp_record}::{func.name}({params}){const_suffix} {{\n")
+                hpp.write(f"    return {struct_name}({args});\n")
+                hpp.write(f"}}\n\n")
 
     def _emit_async_coro_unit(self, hpp: TextIO, func: TpyFunction,
                               record_name: str | None) -> None:
@@ -1349,79 +1502,18 @@ class CodeGenerator:
                 self._gen_enum_operator_ostream(hpp, enum)
 
 
-        # Async coro struct definitions, topologically ordered by inline-await
-        # dependency: an inline `await callee()` stores the callee struct by
-        # value (`std::optional<__coro_callee>`), so the callee's full
-        # definition must precede the awaiter's. The dependency can point in
-        # any direction (method<->free, free<->free), so a fixed method-first /
-        # source order can't satisfy it -- emit each awaited coro before its
-        # awaiter instead. (Forward decls for all coro structs are already
-        # emitted before records, so only the full-definition order matters.)
-        self._emit_async_coro_structs(hpp, module)
-
-        # Generator struct full definitions (after records, so struct fields
-        # and inline __next__() can use fully-defined user types). Generators
-        # neither await nor are awaited, so they carry no sub-future fields and
-        # need no dependency ordering among themselves or vs the async coros.
-        for func in module.functions:
-            if func.skip_codegen:
-                continue
-            if func.is_generator and not self.gen_generators.is_simple_generator(func):
-                if self._resumable_generator_eligible(func):
-                    with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
-                        self.gen_async.gen_coro_struct(hpp, func)
-                        # Templated generators: __next__ body + factory must
-                        # be inline-in-header (template definitions can't go
-                        # in the .cpp). Emit right after the struct so they
-                        # see fully-defined fields. Mirrors the generic
-                        # async-def branch.
-                        if self.gen_async._is_templated_coro(func):
-                            self.gen_async.gen_coro_poll_def(hpp, func)
-                            hpp.write("\n")
-                            self.gen_async.gen_coro_finally_top_def(hpp, func)
-                            hpp.write("\n")
-                            self.gen_async.gen_factory(hpp, func)
-                hpp.write("\n")
-        # Method generator struct definitions + out-of-line factory methods
-        for record in module.all_records():
-            for method in record.methods:
-                if method.is_generator and not self.gen_generators.is_simple_generator(method):
-                    if self._resumable_generator_eligible(method):
-                        with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
-                            self.gen_async.gen_coro_struct(
-                                hpp, method, record_name=record.name)
-                            hpp.write("\n")
-                            # Templated generator methods (own type params, a
-                            # proto-typed param, OR a method on a generic
-                            # class): __next__ body + finally-top must be
-                            # inline-in-header.
-                            if self.gen_async._is_templated_coro(method, record.name):
-                                self.gen_async.gen_coro_poll_def(
-                                    hpp, method, record_name=record.name)
-                                hpp.write("\n")
-                                self.gen_async.gen_coro_finally_top_def(
-                                    hpp, method, record_name=record.name)
-                                hpp.write("\n")
-                            # Inline factory method (mirrors the async-method
-                            # factory: _factory_args_forwarded moves Own[T] /
-                            # protocol params in correctly).
-                            struct_name = self.gen_async._struct_name_templated(method, record.name)
-                            cpp_record = escape_cpp_name(record.name.replace(".", "::"))
-                            # Qualify with class template args for
-                            # out-of-class member definitions of a class
-                            # template (e.g. `Box<T>::items`).
-                            record_tps = self.gen_async._record_template_args(record.name)
-                            if record_tps:
-                                cpp_record = f"{cpp_record}<{', '.join(record_tps)}>"
-                            params = self.gen_async._emit_method_params_decl(
-                                method, record.name)
-                            args = self.gen_async._factory_args_forwarded(
-                                method, receiver=(record.name, "*this"))
-                            const_suffix = " const" if method.is_readonly else ""
-                            self.gen_async._emit_member_template_headers(hpp, method, record_name=record.name)
-                            hpp.write(f"inline {struct_name} {cpp_record}::{method.name}({params}){const_suffix} {{\n")
-                            hpp.write(f"    return {struct_name}({args});\n")
-                            hpp.write(f"}}\n\n")
+        # Resumable struct definitions (async coros + non-simple generators;
+        # after records, so struct fields and inline bodies can use
+        # fully-defined user types), topologically ordered by by-value frame
+        # embedding: an inline `await callee()` stores `__coro_callee` and a
+        # delegated `for x in gen_call():` stores `__gen_callee` (`__for_src`)
+        # by value, so the callee's full definition must precede the
+        # consumer's. The dependency can point in any direction
+        # (method<->free, coro<->generator), so a fixed method-first / source
+        # order can't satisfy it. (Forward decls for all these structs are
+        # already emitted before records, so only the full-definition order
+        # matters.)
+        self._emit_resumable_structs(hpp, module)
 
         # Trivial out-of-line method bodies (single-statement getters /
         # setters / forwarders) stay in the .hpp with ``inline`` so the

@@ -1273,6 +1273,11 @@ class TpyFunction:
     builtin_decorator_key: str | None = None  # @builtin_decorator("tpy.readonly")
     builtin_function_key: str | None = None  # @builtin_function("tpy.extern.native_global")
     is_generator: bool = False  # Set by parser: body contains yield
+    # Set by the codegen pre-scan when another resumable frame in the same
+    # module embeds this generator's struct by value (a `__for_src` field):
+    # the simple-lambda peephole has no nameable C++ type, so the generator
+    # must emit as a named struct even when its shape qualifies as simple.
+    force_resumable: bool = False
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
     generator_locals: 'list[tuple[str, TpyType]] | None' = None  # Set by sema: local vars for struct fields
     is_async: bool = False  # Set by parser: `async def`. Lowered to a state-machine
