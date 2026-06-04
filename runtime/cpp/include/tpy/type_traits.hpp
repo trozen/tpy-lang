@@ -212,6 +212,23 @@ using own_return_t = std::conditional_t<
 >;
 
 /**
+ * await_arg_capture_t<X> -- the type a forwarding-ref factory `f(T&& a)`
+ * would deduce for `T` from an argument expression whose `decltype((arg))`
+ * is X. Used to spell the sub-future field type of an inline await of a
+ * coroutine with a static-protocol param, so the field type matches the
+ * factory's deduction and the in-place `emplace(arg)` binds: an lvalue arg
+ * (X = U&) is captured by reference (borrow); an rvalue (X = U or U&&) by
+ * value (own the moved-in operand). Pass `decltype((arg))` -- the double
+ * parens carry the value category.
+ */
+template<typename X>
+using await_arg_capture_t = std::conditional_t<
+    std::is_lvalue_reference_v<X>,
+    X,
+    std::remove_reference_t<X>
+>;
+
+/**
  * val_or_ref<T> - Wrapper for iterator __next__() returns.
  *
  * Stores value types (int, str, tuple, ...) by value, non-value types

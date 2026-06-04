@@ -5798,10 +5798,23 @@ Send/Sync rules for built-in types:
   param's concrete type is deduced as an extra template arg
   `T_<pname>` with the protocol concept constraint (mirroring the
   non-async `gen_params_with_protocols` pattern); the frame field
-  stores by value, the ctor takes `T_<pname>&&` and moves in, and
-  the factory forwards via `std::move`. Caller-side sub-coro field
-  declarations use `std::remove_cvref_t<decltype(arg)>` so the
-  concrete deduced type doesn't need spelling at the await site.
+  stores `T_<pname>` (which deduces to `U&` for an lvalue arg -- the
+  coroutine borrows the operand -- or `U` for an rvalue), the ctor
+  takes `T_<pname>&&` and the ctor/factory `std::forward` it in
+  (perfect-forwarding, so an lvalue binds without a copy). Caller-side
+  sub-coro field declarations spell the same forwarding-deduced type
+  via the `T&&` model over `decltype((arg))`, rendered in the
+  resumable-body context (so `self`->`__self` and `frame_slot` deref
+  apply) so the await site matches the factory exactly. Awaiting such a
+  coroutine works for a named iterable, a hoisted local, or a `self`
+  field (all borrow); a collection-literal / comprehension argument is
+  rejected cleanly (no concrete type / no frame storage at the await
+  site -- see the collection-literal-in-coro gap in BUGS.md). One
+  exclusion: a `self.field` arg from a *concrete* (non-templated) async
+  method hits a separate, pre-existing struct-ordering bug (the method's
+  coro struct emits before the awaited free coro -> incomplete type; see
+  BUGS.md); a templated method (one with its own protocol/type param)
+  orders correctly.
   Remains the path for user-defined awaitable protocols; asyncio's
   own cancellable APIs (`run` / `create_task` / `wait_for`) have
   since moved to `Own[Cancellable[T]]` (@dynamic) via the

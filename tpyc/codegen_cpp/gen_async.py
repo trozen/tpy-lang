@@ -30,7 +30,17 @@ from ..parse.nodes import (
     TpyMethodCall, TpyFieldAccess, TpyForEach, TpyWith,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyCoerce,
+    TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
+    TpyListComprehension, TpyDictComprehension, TpySetComprehension,
     is_stable_address_lvalue,
+)
+
+# Collection literals / comprehensions have no concrete C++ type at a
+# protocol-typed call site (the param is a concept) and no frame storage to
+# survive a suspension, so they can't back an inline-await sub-future field.
+_FRESH_COLLECTION_NODES = (
+    TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
+    TpyListComprehension, TpyDictComprehension, TpySetComprehension,
 )
 from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType
 from .gen_generators import GeneratorCodegen, GeneratorForInfo
@@ -982,7 +992,7 @@ class AsyncCoroCodegen:
         """
         struct_name = self.gen_struct_name(func, record_name)
         ctor_params = self._classify_params(func, record_name)
-        cfg = self._build_resumable_cfg(func)
+        cfg = self._build_resumable_cfg(func, record_name)
         yields = cfg.yield_sites
 
         label = f"{record_name}.{func.name}" if record_name else func.name
@@ -1298,7 +1308,7 @@ class AsyncCoroCodegen:
         the CFG produced (one per TryRegion with a finally body). No-op
         if the function has no finally bodies.
         """
-        cfg = self._build_resumable_cfg(func)
+        cfg = self._build_resumable_cfg(func, record_name)
         if not cfg.finally_helpers:
             return
         struct_name = self._struct_name_templated(func, record_name)
@@ -1513,7 +1523,7 @@ class AsyncCoroCodegen:
         sees `self.X` as `__self.X` (parallels generator methods).
         """
         struct_name = self._struct_name_templated(func, record_name)
-        cfg = self._build_resumable_cfg(func)
+        cfg = self._build_resumable_cfg(func, record_name)
         has_yields = bool(cfg.yield_sites)
 
         self.ctx.emit_source_comment(out, func.loc)
@@ -1538,7 +1548,8 @@ class AsyncCoroCodegen:
     # CFG-based state-machine emitter (replaces _emit_switch_body).
     # =====================================================================
 
-    def _build_resumable_cfg(self, func: TpyFunction) -> 'rcfg.CFG':
+    def _build_resumable_cfg(self, func: TpyFunction,
+                             record_name: str | None = None) -> 'rcfg.CFG':
         """Apply the await-lift pre-pass, then build the CFG. The CFG
         builder handles any wrapping try/finally uniformly with all
         other compound statements -- no special unwrap-and-rewrap pass
@@ -1547,7 +1558,14 @@ class AsyncCoroCodegen:
         A `_CFGNotYetSupported` (a shape the resumable lowering can't yet
         handle) is turned into a `CodeGenError` at the offending location.
         This is the authoritative backstop so no unsupported shape silently
-        miscompiles. The result is cached on the func for the emit pass."""
+        miscompiles. The result is cached on the func for the emit pass.
+
+        `record_name` (the enclosing coro's record, for a method) lets the
+        sub-future field-type computation render await-arg expressions with
+        the same body name-context the emplace uses (`self`->`__self`,
+        `frame_slot` deref) -- otherwise the field-type and emplace spellings
+        diverge. Generators never await, so the gate path may pass None.
+        """
         state = rcfg.resumable_state(func)
         if state.cfg is not None:
             return state.cfg
@@ -1563,7 +1581,14 @@ class AsyncCoroCodegen:
                 try_finally_uid_map=try_finally_uid_map,
                 func_returns_void=self._is_void_return(func),
             )
-            cfg = builder.build(body)
+            # Build inside the resumable-frame body context so the payload
+            # factory's field-type `gen_expr` (`_extra_template_args_for_await`)
+            # applies the `self`->`__self` rewrite and `frame_slot` deref,
+            # matching the emplace site. `setup_body_scope` is side-effect-free
+            # state setup, so entering it here (build) and again at emit is
+            # safe; the CFG is cached, so this runs once.
+            with self._resumable_frame_ctx(func, record_name):
+                cfg = builder.build(body)
         except rcfg._CFGNotYetSupported as e:
             raise CodeGenError(e.msg, loc=e.loc)
         # Stash the builder so callers (emit) can look up handler
@@ -1718,10 +1743,11 @@ class AsyncCoroCodegen:
             case is currently rejected at sema, so owner_type_args and
             inferred_type_args are not composed today.)
 
-        `extra_template_args` appends concrete C++ types (typically
-        `std::remove_cvref_t<decltype(arg)>`) for each static-protocol
-        param on the callee -- these correspond to the `T_<pname>`
-        template args declared on the callee's struct.
+        `extra_template_args` appends the deduced C++ type for each
+        static-protocol param on the callee (the `T&&`-forwarding model
+        over `decltype((arg))`; see `_extra_template_args_for_await`) --
+        these correspond to the `T_<pname>` template args declared on the
+        callee's struct.
         """
         ns_qual = ""
         owner_name = None
@@ -1757,14 +1783,17 @@ class AsyncCoroCodegen:
         """Compute the per-static-protocol `T_<pname>` template-arg
         spellings for the sub-coro struct of an inline await.
 
-        Each callee static-protocol param gets one extra template arg
-        on the struct (see `_protocol_template_parts`); at the call
-        site that arg is the concrete type of the corresponding
-        argument, spelled as `std::remove_cvref_t<decltype(<arg>)>` so
-        the compiler deduces it without us having to spell it.
+        Each callee static-protocol param gets one extra template arg on
+        the struct (see `_protocol_template_parts`). The sub-future field
+        is constructed in place via the struct ctor `Coro(T_<pname>&& it_)`
+        (not the factory), so the extra arg must equal the `T_<pname>` a
+        forwarding ref would deduce from the call argument -- `U&` for an
+        lvalue arg (the coroutine borrows it), `U` for an rvalue. Spelled
+        via `::tpy::await_arg_capture_t<decltype((arg))>` (the double parens
+        carry value category) rather than `remove_cvref_t`, which decays the
+        reference and would break the in-place lvalue bind.
         Temps queued by gen_expr are discarded -- decltype doesn't
-        evaluate, and the same arg's gen_expr will re-run at emplace
-        time when the temps are actually needed.
+        evaluate, and the same arg's gen_expr will re-run at emplace time.
         """
         if not isinstance(call, (TpyCall, TpyMethodCall)):
             return []
@@ -1787,8 +1816,28 @@ class AsyncCoroCodegen:
                 # a malformed template arg).
                 self.ctx.temps.rollback_to(checkpoint)
                 return []
-            arg_cpp = self.expressions.gen_expr(call.args[i])
-            out.append(f"std::remove_cvref_t<decltype({arg_cpp})>")
+            arg = call.args[i]
+            unwrapped = arg
+            while isinstance(unwrapped, TpyCoerce):
+                unwrapped = unwrapped.expr
+            if isinstance(unwrapped, _FRESH_COLLECTION_NODES):
+                # A fresh collection literal/comprehension has no concrete C++
+                # type here (the param is a concept) and no frame storage to
+                # survive the suspension, so it can't back the sub-future
+                # field. Reject cleanly rather than emit ill-formed C++.
+                # Binding it to a typed local first does not yet work either
+                # (the collection-literal-in-coro gap, BUGS.md).
+                self.ctx.temps.rollback_to(checkpoint)
+                raise CodeGenError(
+                    "awaiting a coroutine with a protocol-typed parameter "
+                    "does not yet support a collection literal argument; pass "
+                    "a named iterable instead",
+                    loc=getattr(arg, "loc", None) or call.loc)
+            arg_cpp = self.expressions.gen_expr(arg)
+            # `await_arg_capture_t` models the callee factory's `T&&` deduction:
+            # lvalue arg -> `U&` (borrow), rvalue -> `U` (own). `decltype((arg))`
+            # (double parens) carries the value category.
+            out.append(f"::tpy::await_arg_capture_t<decltype(({arg_cpp}))>")
         self.ctx.temps.rollback_to(checkpoint)
         return out
 
