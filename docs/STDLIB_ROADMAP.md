@@ -129,7 +129,7 @@ Examples of the policy in action:
 | [`pathlib`](#pathlib) | P0 | Missing | 0% | -- | Class-heavy; depends on filesystem bindings |
 | [`io`](#io) | P0 | Partial | ~30% | pure | `StringIO` / `BytesIO` (chunked storage, write/read/readline/seek/tell/truncate/iter/context-manager). `Readable` / `Writable` / `BinaryReadable` / `BinaryWritable` protocols on tpy core, re-exported from `io`. Missing: `IOBase` ABC hierarchy (deliberately deferred -- protocols cover the static-dispatch use case), `TextIOWrapper`, `io.SEEK_SET/CUR/END` constants (collide with `<cstdio>` macros), encoding/newline/errors kwargs, `read(size=-1)` arg |
 | [`json`](#json) | P0 | Partial | ~70% | pure | `loads` / `dumps` + `JSONDecodeError` done over a recursive union `JsonValue`. CPython byte-compatible across cpy phase. Missing: `load(fp)` / `dump(obj, fp)` (needs `io`), `JSONEncoder` / `JSONDecoder`, most `dumps`/`loads` kwargs |
-| [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, `count` arg on sub, true generator finditer, bytes input, compile cache |
+| [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, `count` arg on sub, bytes input, compile cache |
 | [`collections`](#collections) | P0 | Missing | 0% | -- | OrderedDict trivial (have ordered_map); deque needs C++ struct; Counter/defaultdict/namedtuple need macros |
 | [`itertools`](#itertools) | P0 | Missing | 0% | -- | C++ primitives exist in `runtime/itertools.hpp`; needs Python-surface module |
 | [`functools`](#functools) | P0 | Partial | ~25% | pure | `reduce(func, a, initial)`, `reduce(func, a)`, `total_ordering` done. `cmp_to_key`, `wraps` blocked on specific compiler / macro-infrastructure gaps (see section). partial/lru_cache/singledispatch/cached_property/partialmethod need closures + macros |
@@ -578,7 +578,7 @@ Architecture (no C++ wrapper layer, no pcre2.h in TPy-generated TUs):
 | `compile`, `Pattern` | Done | Pure-TPy class wrapping `Ptr[pcre2.Code]`; JIT-compiled on construct |
 | `search`, `match`, `fullmatch` | Done | Return `Optional[Own[Match]]` |
 | `findall` | Done | List of group-0 strings. Doesn't yet return captures-tuples for grouped patterns (CPython divergence) |
-| `finditer` | Partial | Returns `list[Match]` instead of a generator (deferred to v2) |
+| `finditer` | Done | Lazy generator yielding `Own[Match]` (like CPython) |
 | `sub` | Partial | Global replacement only; CPython's `count` arg deferred. Backref syntax is PCRE2-native (`$1`, `${name}`), not CPython's `\1` -- syntax translator deferred |
 | `split`, `split(maxsplit=)` | Done | |
 | `Match.group(int)`, `start`, `end`, `span` | Done | All returning `Int32` offsets and TPy `str` slices |
@@ -1071,8 +1071,8 @@ Done in v1:
 - `asyncio.run(coro)` -- drives a top-level coroutine to completion; sleeps idle on the executor's timer min-heap; cancel-drains remaining spawned tasks at exit so `finally` runs for fire-and-forget tasks.
 - `asyncio.sleep(seconds)` -- registers a steady-clock deadline with the running executor; returns `Own[Task[None]]`.
 - `asyncio.create_task(coro())` -- registers an async-def call with the running executor and returns `Own[Task[T]]` (T inferred from the async def's return type) sharing state with the executor's task slot.
-- `asyncio.Future[T]` -- single-awaiter manual-completion awaitable (`set_result(value)` / `set_exception(exc)` / `done()`); ownership-transfer API on `set_result` so nocopy types flow through. `Future[None]` is currently unusable (void-payload template substitution issue, BUGS.md); use `Event` for no-payload completion signals.
-- `asyncio.Event` -- boolean completion signal (`set` / `clear` / `is_set` / directly awaitable). The no-payload analog of `Future[T]`. CPython parity for the API surface; TPy diverges in that `await event` works directly (CPython requires `await event.wait()`) because TPy can't yet define `async def` methods on classes. Single-awaiter v1.
+- `asyncio.Future[T]` -- single-awaiter manual-completion awaitable (`set_result(value)` / `set_exception(exc)` / `done()`); ownership-transfer API on `set_result` so nocopy types flow through. `Future[None]` works (void-payload lowers to `Future<std::monostate>`); `Event` remains the idiomatic no-payload completion signal.
+- `asyncio.Event` -- boolean completion signal (`set` / `clear` / `is_set` / directly awaitable). The no-payload analog of `Future[T]`. CPython parity for the API surface; TPy diverges in that `await event` works directly (CPython requires `await event.wait()`). `async def` methods on classes are now supported in general, but the natural `async def wait(self): await self` is still blocked: awaiting `self` infers a const `self` while `__poll__` mutates it (see BUGS.md). Single-awaiter v1.
 - `asyncio.CancelledError` -- raised at the next suspension point of a cancelled task; thread through `try`/`finally`.
 - `Executor` body (slot table for parked tasks with `(slot_id, generation)` wakers, runnable deque, timer min-heap keyed on steady-clock deadlines) lives in TPy at `lib/tpy/asyncio/_executor.py`. `Executor` inherits the `@dynamic Awaker` protocol; `Waker.wake()` dispatches through that vtable. `runtime/cpp/include/tpy/async.hpp` carries two pieces: `CancelledError` and the `poll_with_cancel` resume-case helper template (M8) -- no FFI dispatch shell.
 
@@ -1152,7 +1152,7 @@ Architecture (mirrors the re / PCRE2 split):
 | `gethostbyname` | Done | Resolves via `getaddrinfo` behind `tpy_resolve_ipv4`; returns the first A record only |
 | `create_connection`, `create_server` | Done | TCP client/server convenience factories; `create_server` bundles SO_REUSEADDR + bind + listen |
 | `with socket(...) as s:` | Done | `__enter__` returns self, `__exit__` closes |
-| `SocketError` | Done | Wraps errno + strerror. `except socket.SocketError` blocked by qualified-except-clause gap; use `from socket import SocketError` |
+| `SocketError` | Done | Wraps errno + strerror. Catchable both qualified (`except socket.SocketError`) and via `from socket import SocketError` |
 | Constants (`AF_INET`, `SOCK_STREAM`, `SOL_SOCKET`, ...) | Done | Linux glibc values hardcoded. macOS/BSD values differ -- deferred |
 | `socketpair()` | Done | Defaults to `AF_UNIX` + `SOCK_STREAM`; returns `tuple[Own[Socket], Own[Socket]]` |
 | IPv6 / `AF_INET6` | Missing | Needs `SockaddrIn6` binding |

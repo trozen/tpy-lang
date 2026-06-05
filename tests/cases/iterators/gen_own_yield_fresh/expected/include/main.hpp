@@ -35,7 +35,7 @@ inline auto boxes(const ::tpy::BigInt& n) {
             while (__i < __stop) {
                 ::tpy::BigInt i = __i++;
                 auto __val = Node(i);
-                return std::optional<Node>(__val);
+                return std::optional<Node>(std::move(__val));
             }
             return std::nullopt;
         }

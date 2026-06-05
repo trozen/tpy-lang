@@ -700,8 +700,10 @@ class Event:
 
     `set` / `clear` / `is_set` match CPython. Divergence: TPy's Event
     is directly awaitable (`await event`) where CPython requires
-    `await event.wait()` -- TPy classes can't yet define `async def`
-    methods, so tests using Event need `no_cpython.txt`.
+    `await event.wait()`. A CPython-shape `wait()` would need an
+    `async def wait(self): await self`, which fails to compile: awaiting
+    `self` infers a const `self` while `__poll__` mutates it. Event tests
+    therefore use the direct-await form and need `no_cpython.txt`.
     """
 
     _is_set: bool

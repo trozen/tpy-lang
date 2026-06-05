@@ -8,7 +8,7 @@ from ..parse.nodes import (
     TpyFunction, TpyYield, TpyStmt, TpyWhile, TpyForEach, TpyReturn, TpyVarDecl,
     TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpyTupleUnpack,
 )
-from ..typesys import IntLiteralType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_readonly, unwrap_ref_type, yield_uses_borrow_slot
+from ..typesys import IntLiteralType, OptionalType, OwnType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_readonly, unwrap_ref_type, yield_uses_borrow_slot
 from tpyc import modules as builtin_modules
 from .context import INDENT, CodeGenError, escape_cpp_name
 from .resumable_cfg import _stmts_have_any_suspension
@@ -170,6 +170,11 @@ class GeneratorCodegen:
         yield_stmt, pre_yield, post_yield = self._split_at_yield(while_stmt.body)
         ref_yield = self._yield_binds_by_ref(elem_type, post_yield)
         val_binding = "auto&&" if ref_yield else "auto"
+        # The owned yield local dies as the lambda returns; move it into the
+        # result optional. Required for move-only Own[T] yields (deleted copy
+        # ctor, e.g. a Match owning a @nocopy handle); a no-op for borrow-form
+        # (auto&&) yields, which must not be moved.
+        yld = self._yield_optional_arg(elem_type, val_binding)
 
         ind1 = INDENT
         ind2 = INDENT * 2
@@ -196,6 +201,7 @@ class GeneratorCodegen:
 
         # Generate init stmts and set up codegen scope
         old_self_ref = self.ctx.generator_self_ref
+        saved_ns = self.ctx.current_ns
         if record_name:
             self.ctx.generator_self_ref = "(*this)"
         self._setup_body_scope(out, func, init_stmts,
@@ -221,7 +227,7 @@ class GeneratorCodegen:
         for stmt in post_yield:
             self.statements.gen_stmt(out, stmt)
 
-        out.write(f"{INDENT * (4 + extra)}return std::optional<{cpp_iter_slot}>(__val);\n")
+        self._emit_iter_slot_return(out, INDENT * (4 + extra), cpp_iter_slot, yld)
         out.write(f"{INDENT * (3 + extra)}}}\n")
         out.write(f"{INDENT * (3 + extra)}return std::nullopt;\n")
         out.write(f"{INDENT * (2 + extra)}}}\n")
@@ -229,6 +235,7 @@ class GeneratorCodegen:
         out.write(f"{INDENT if record_name else ''}}}\n")
         self.ctx.indent_level = old_indent
         self.ctx.generator_self_ref = old_self_ref
+        self.ctx.current_ns = saved_ns
 
     def _gen_simple_for_generator(self, out: TextIO, func: TpyFunction,
                                    record_name: str | None = None) -> None:
@@ -247,6 +254,7 @@ class GeneratorCodegen:
 
         ref_yield = self._yield_binds_by_ref(elem_type, post_yield)
         val_binding = "auto&&" if ref_yield else "auto"
+        yld = self._yield_optional_arg(elem_type, val_binding)
 
         ind1 = INDENT
         ind2 = INDENT * 2
@@ -271,6 +279,7 @@ class GeneratorCodegen:
             out.write(f"inline auto {escape_cpp_name(func.name)}({params}) {{\n")
 
         old_self_ref = self.ctx.generator_self_ref
+        saved_ns = self.ctx.current_ns
         if record_name:
             self.ctx.generator_self_ref = "(*this)"
         self._setup_body_scope(out, func, init_stmts,
@@ -343,7 +352,7 @@ class GeneratorCodegen:
             out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
             for stmt in post_yield:
                 self.statements.gen_stmt(out, stmt)
-            out.write(f"{I(4)}return std::optional<{cpp_iter_slot}>(__val);\n")
+            self._emit_iter_slot_return(out, I(4), cpp_iter_slot, yld)
             out.write(f"{I(3)}}}\n")
             out.write(f"{I(3)}return std::nullopt;\n")
             out.write(f"{I(2)}}}\n")
@@ -367,7 +376,7 @@ class GeneratorCodegen:
 
             self._gen_simple_for_yield_body(
                 out, for_stmt, pre_yield, post_yield, yield_stmt,
-                iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, I, extra)
+                iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, yld, I, extra)
         elif self._is_builtin_native_iterable(for_stmt):
             # Built-in NativeIterable (list, dict, set, Span, etc.):
             # begin/end peephole for efficiency.
@@ -413,7 +422,7 @@ class GeneratorCodegen:
             out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
             for stmt in post_yield:
                 self.statements.gen_stmt(out, stmt)
-            out.write(f"{I(4)}return std::optional<{cpp_iter_slot}>(__val);\n")
+            self._emit_iter_slot_return(out, I(4), cpp_iter_slot, yld)
             out.write(f"{I(3)}}}\n")
             out.write(f"{I(3)}return std::nullopt;\n")
             out.write(f"{I(2)}}}\n")
@@ -451,10 +460,11 @@ class GeneratorCodegen:
 
             self._gen_simple_for_yield_body(
                 out, for_stmt, pre_yield, post_yield, yield_stmt,
-                iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, I, extra)
+                iter_elem, cpp_iter_elem, cpp_var, cpp_iter_slot, val_binding, yld, I, extra)
 
         self.ctx.indent_level = old_indent
         self.ctx.generator_self_ref = old_self_ref
+        self.ctx.current_ns = saved_ns
 
     def _resolve_iterable_type(self, for_stmt: TpyForEach):
         """Resolve the iterable's type, following TypeParamRef bounds."""
@@ -486,7 +496,7 @@ class GeneratorCodegen:
         self, out: 'TextIO', for_stmt: TpyForEach,
         pre_yield: list[TpyStmt], post_yield: list[TpyStmt], yield_stmt: TpyYield,
         iter_elem: 'TpyType | None', cpp_iter_elem: str, cpp_var: str,
-        cpp_iter_slot: str, val_binding: str, I: 'Callable[[int], str]', extra: int,
+        cpp_iter_slot: str, val_binding: str, yld: str, I: 'Callable[[int], str]', extra: int,
     ) -> None:
         """Emit the shared yield body for __iter__+__next__ simple generator branches."""
         self.ctx.indent_level = 3 + extra
@@ -510,7 +520,7 @@ class GeneratorCodegen:
         out.write(f"{I(4)}{val_binding} __val = {yield_expr};\n")
         for stmt in post_yield:
             self.statements.gen_stmt(out, stmt)
-        out.write(f"{I(4)}return std::optional<{cpp_iter_slot}>(__val);\n")
+        self._emit_iter_slot_return(out, I(4), cpp_iter_slot, yld)
         out.write(f"{I(3)}}}\n")
         out.write(f"{I(2)}}}\n")
         out.write(f"{I(1)});\n")
@@ -852,8 +862,16 @@ class GeneratorCodegen:
         return targets
 
     def _setup_body_scope(self, out: TextIO, func: TpyFunction, init_stmts: list[TpyStmt],
-                          indent_level: int = 1) -> None:
-        """Generate init stmts and set up codegen scope."""
+                          indent_level: int = 1) -> "Namespace":
+        """Generate init stmts and set up codegen scope.
+
+        Returns the function's local namespace with `current_ns` left pointing
+        at it: `gen_body` clears `current_ns` on exit, but the simple-generator
+        peephole still emits the loop condition + body afterward, and
+        binding-based dispatch in `_gen_field_access` (module-constant /
+        enum-member / nested-type access) is gated on `current_ns`. The caller
+        restores the prior namespace.
+        """
         from ..namespace import Namespace
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         for pname, ptype in func.params:
@@ -862,6 +880,31 @@ class GeneratorCodegen:
             out, init_stmts, func.params, func.generator_yield_type,
             func, local_ns, indent_level=indent_level, is_method=False,
         )
+        self.ctx.current_ns = local_ns
+        return local_ns
+
+    @staticmethod
+    def _yield_optional_arg(elem_type, val_binding: str) -> str:
+        """The `__val` expression to wrap in the result `std::optional`.
+
+        Moves an owned (`auto`-bound) `Own[T]` yield local out -- required for
+        move-only types whose copy ctor is deleted, harmless for copyable
+        owned values. Borrow-form (`auto&&`) yields are returned as-is.
+        """
+        if val_binding == "auto" and isinstance(unwrap_readonly(elem_type), OwnType):
+            return "std::move(__val)"
+        return "__val"
+
+    @staticmethod
+    def _emit_iter_slot_return(out: TextIO, indent: str,
+                               cpp_iter_slot: str, yld: str) -> None:
+        """Emit a simple generator's per-pull `return std::optional<slot>(...)`.
+
+        Single emit site for all peephole paths (while / for-range /
+        for-iter / shared body) so the move-vs-copy choice (`yld`) can't
+        drift between them -- a missed site here previously shipped a copy
+        where a move was required, breaking move-only yields."""
+        out.write(f"{indent}return std::optional<{cpp_iter_slot}>({yld});\n")
 
     @staticmethod
     def _build_capture_list(params: list, init_stmts: list[TpyStmt],

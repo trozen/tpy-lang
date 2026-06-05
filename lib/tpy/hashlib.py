@@ -26,8 +26,6 @@
 #
 # Language / compiler gaps hit while porting SHA-256 (see BUGS.md for
 # detail; none of them are hashlib-specific, but they shaped this file):
-#   - Default parameter value `b""` rejected as non-constant; we use
-#     `bytes | None = None` instead.
 #   - Free function with a `bytearray` param + `.append()` inside gets
 #     auto-inferred as const, producing "discards qualifiers" C++ errors.
 #     Worked around by inlining `_pack_be32` into `digest()`.
@@ -199,8 +197,7 @@ class SHA256:
             j += 1
         return c
 
-def sha256(data: bytes | None = None) -> Own[SHA256]:
+def sha256(data: bytes = b"") -> Own[SHA256]:
     h: SHA256 = SHA256()
-    if data is not None:
-        h.update(data)
+    h.update(data)
     return h

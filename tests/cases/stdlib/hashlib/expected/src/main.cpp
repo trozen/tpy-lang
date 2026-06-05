@@ -8,20 +8,20 @@ namespace tpyapp::main {
 void main() {
     // # NIST FIPS 180-4 vectors.
     // h0 = sha256(b"")
-    ::tpystd::hashlib::SHA256 h0 = ::tpystd::hashlib::sha256(std::vector<uint8_t>{});
+    ::tpystd::hashlib::SHA256 h0 = ::tpystd::hashlib::sha256(std::span<const uint8_t>{});
     // print(h0.hexdigest())
     std::cout << h0.hexdigest() << "\n";
     // h1 = sha256(b"abc")
-    ::tpystd::hashlib::SHA256 h1 = ::tpystd::hashlib::sha256(std::vector<uint8_t>{0x61, 0x62, 0x63});
+    ::tpystd::hashlib::SHA256 h1 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("\x61\x62\x63", 3));
     // print(h1.hexdigest())
     std::cout << h1.hexdigest() << "\n";
     // h2 = sha256(b"The quick brown fox jumps over the lazy dog")
-    ::tpystd::hashlib::SHA256 h2 = ::tpystd::hashlib::sha256(std::vector<uint8_t>{0x54, 0x68, 0x65, 0x20, 0x71, 0x75, 0x69, 0x63, 0x6b, 0x20, 0x62, 0x72, 0x6f, 0x77, 0x6e, 0x20, 0x66, 0x6f, 0x78, 0x20, 0x6a, 0x75, 0x6d, 0x70, 0x73, 0x20, 0x6f, 0x76, 0x65, 0x72, 0x20, 0x74, 0x68, 0x65, 0x20, 0x6c, 0x61, 0x7a, 0x79, 0x20, 0x64, 0x6f, 0x67});
+    ::tpystd::hashlib::SHA256 h2 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("\x54\x68\x65\x20\x71\x75\x69\x63\x6b\x20\x62\x72\x6f\x77\x6e\x20\x66\x6f\x78\x20\x6a\x75\x6d\x70\x73\x20\x6f\x76\x65\x72\x20\x74\x68\x65\x20\x6c\x61\x7a\x79\x20\x64\x6f\x67", 43));
     // print(h2.hexdigest())
     std::cout << h2.hexdigest() << "\n";
     // # 56-byte input: forces the length-field into a second final block.
     // h3 = sha256(b"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq")
-    ::tpystd::hashlib::SHA256 h3 = ::tpystd::hashlib::sha256(std::vector<uint8_t>{0x61, 0x62, 0x63, 0x64, 0x62, 0x63, 0x64, 0x65, 0x63, 0x64, 0x65, 0x66, 0x64, 0x65, 0x66, 0x67, 0x65, 0x66, 0x67, 0x68, 0x66, 0x67, 0x68, 0x69, 0x67, 0x68, 0x69, 0x6a, 0x68, 0x69, 0x6a, 0x6b, 0x69, 0x6a, 0x6b, 0x6c, 0x6a, 0x6b, 0x6c, 0x6d, 0x6b, 0x6c, 0x6d, 0x6e, 0x6c, 0x6d, 0x6e, 0x6f, 0x6d, 0x6e, 0x6f, 0x70, 0x6e, 0x6f, 0x70, 0x71});
+    ::tpystd::hashlib::SHA256 h3 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("\x61\x62\x63\x64\x62\x63\x64\x65\x63\x64\x65\x66\x64\x65\x66\x67\x65\x66\x67\x68\x66\x67\x68\x69\x67\x68\x69\x6a\x68\x69\x6a\x6b\x69\x6a\x6b\x6c\x6a\x6b\x6c\x6d\x6b\x6c\x6d\x6e\x6c\x6d\x6e\x6f\x6d\x6e\x6f\x70\x6e\x6f\x70\x71", 56));
     // print(h3.hexdigest())
     std::cout << h3.hexdigest() << "\n";
     // # Multi-block: 1000 'a' bytes spans 16 blocks.
@@ -47,14 +47,14 @@ void main() {
     std::cout << s2.hexdigest() << "\n";
     // # digest() is idempotent -- second call returns the same bytes.
     // s3 = sha256(b"abc")
-    ::tpystd::hashlib::SHA256 s3 = ::tpystd::hashlib::sha256(std::vector<uint8_t>{0x61, 0x62, 0x63});
+    ::tpystd::hashlib::SHA256 s3 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("\x61\x62\x63", 3));
     // print(s3.hexdigest())
     std::cout << s3.hexdigest() << "\n";
     // print(s3.hexdigest())
     std::cout << s3.hexdigest() << "\n";
     // # copy() snapshots state: diverging the clone must not affect the original.
     // base = sha256(b"hello")
-    ::tpystd::hashlib::SHA256 base = ::tpystd::hashlib::sha256(std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f});
+    ::tpystd::hashlib::SHA256 base = ::tpystd::hashlib::sha256(::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5));
     // branch = base.copy()
     ::tpystd::hashlib::SHA256 branch = base.copy();
     // base.update(b" world")
@@ -67,7 +67,7 @@ void main() {
     std::cout << branch.hexdigest() << "\n";
     // # raw .digest() length.
     // print(len(sha256(b"abc").digest()))
-    std::cout << ::tpy::__len__(::tpystd::hashlib::sha256(std::vector<uint8_t>{0x61, 0x62, 0x63}).digest()) << "\n";
+    std::cout << ::tpy::__len__(::tpystd::hashlib::sha256(::tpy::bytes_literal("\x61\x62\x63", 3)).digest()) << "\n";
     // # Introspection.
     // print(s3.digest_size)
     std::cout << s3.digest_size << "\n";

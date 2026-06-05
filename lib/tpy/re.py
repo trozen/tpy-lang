@@ -19,8 +19,6 @@ TODO(v2): items deferred to a follow-up slice -- each is independent:
     `re.search("...", s)` in a hot loop is slower than caching a Pattern.
   * Named-group accessors: `match.group("name")` / `match.groupdict()`.
     Needs PCRE2 nametable walk + named-group index lookup.
-  * finditer as a true generator (currently returns list[Own[Match]]).
-    Loses streaming; minor for typical use, real for huge subjects.
   * bytes input on the public API (today: str only). Pattern + Match
     accept str; PCRE2 internally takes uint8_t* + length, so the lower
     layer is bytes-ready.
@@ -45,7 +43,7 @@ TODO(v2): items deferred to a follow-up slice -- each is independent:
 """
 
 from __future__ import annotations
-from typing import Final, Optional
+from typing import Final, Iterator, Optional
 from tpy import (
     Int32, UInt8, UInt32, UInt64, Ptr, readonly, Own, String, nocopy,
 )
@@ -94,11 +92,9 @@ class _OwnedMatchData:
 # requires a complete type at the throw site (not just a forward decl).
 class error(Exception):
     """Raised when PCRE2 rejects a pattern at compile time, or hits a
-    match-time error (rare). Catchable as a normal exception.
-
-    Caller-side gap that still bites: `except re.error:` is blocked by
-    the qualified-except-clause limitation (BUGS.md). Users today
-    must `from re import error` (no alias) then `except error:`.
+    match-time error (rare). Catchable as a normal exception, either via
+    `from re import error` then `except error:`, or qualified as
+    `except re.error:`.
     """
     pass
 
@@ -301,13 +297,12 @@ class Pattern:
         return self._do_match(subject, 0,
                               pcre2.PCRE2_ANCHORED | pcre2.PCRE2_ENDANCHORED)
 
-    def finditer(self, subject: str) -> Own[list[Match]]:
-        """All non-overlapping matches as a list.
+    def finditer(self, subject: str) -> Iterator[Own[Match]]:
+        """All non-overlapping matches, yielded lazily (like CPython).
 
-        TODO(v2): return a true generator like CPython (lazy iteration).
-        Today materializes the full list -- fine for typical cases, real
-        memory cost on huge subjects."""
-        out: list[Match] = []
+        Yields `Own[Match]` -- a Match owns its PCRE2 match-data, so it
+        moves out of the generator by value rather than borrowing a frame
+        local."""
         offset: UInt64 = 0
         sub_len = UInt64(len(subject))
         s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
@@ -325,14 +320,15 @@ class Pattern:
             ovec = pcre2.get_ovector_pointer(md.get())
             mstart = unsafe_load(ovec, 0)
             mend = unsafe_load(ovec, 1)
-            out.append(Match(md, subject, rc))   # md moves into Match
+            # mstart/mend are read before the yield moves `md` into the
+            # Match, so the post-resume bump-along still has the offsets.
+            yield Match(md, subject, rc)
             # Bump-along by one byte on zero-width match to avoid an
             # infinite loop.
             if mend == mstart:
                 offset = mend + 1
             else:
                 offset = mend
-        return out
 
     def findall(self, subject: str) -> Own[list[str]]:
         """All non-overlapping match strings (group 0).
@@ -342,14 +338,7 @@ class Pattern:
         the whole-match string. Today we always return group(0) regardless
         of pattern shape -- divergence flagged in `no_cpython.txt`."""
         out: list[str] = []
-        # TODO(compiler): the natural form `for m in self.finditer(subject):`
-        # fails C++ compilation -- "cannot bind non-const lvalue reference
-        # to rvalue" -- because finditer returns `Own[list[Match]]`. See
-        # BUGS.md entry "Iterating directly over a call that returns
-        # Own[list[T]]". When the codegen fix lands (use `auto&&` for the
-        # iteration temp on rvalue iterables), drop the `matches` local.
-        matches = self.finditer(subject)
-        for m in matches:
+        for m in self.finditer(subject):
             out.append(m.group(Int32(0)))
         return out
 
