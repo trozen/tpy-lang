@@ -623,6 +623,11 @@ Context surface:
   `None` -- so a macro can hand a type to `annotate_local` without borrowing
   one off a param/return. Imported user types are out of scope (that is the
   `lookup_imported_name` work below).
+- *Type introspection* (shared with `CallMacroContext` via `_MacroContextBase`):
+  `get_field_type(type, name)` resolves a record field's type (walking base
+  classes for inherited fields) or `None`; `get_method_return_type(type, name)`
+  resolves a method's return type or `None`; `qualified_name(type)` renders a
+  type's module-qualified name.
 - *Mutation:* `annotate_local(name, type)` sets a local's declared type at its
   introducing statement (TPy parses `x = expr` as an untyped `TpyVarDecl`, so
   this sets that decl's `.type`; a `TpyAssign` re-bind is converted to a
@@ -648,8 +653,10 @@ frontend plugin applies a function macro to a function it emits.
 Not yet built (the rest of the type-resolution surface a full body resolver
 wants): `lookup_imported_name` (identifier -> resolved `TypeInfo` / signature
 for *imported user types* -- the load-bearing downstream-slot signal),
-`enum_members`, `is_subtype_of`, and method-body function macros. Motivating
-use case driving the remaining work is local-variable type deduction.
+`enum_members`, `is_subtype_of`, and method-body function macros. Field and
+method-return introspection on a *resolved* type (param/return) is in hand via
+the shared `_MacroContextBase` methods above. Motivating use case driving the
+remaining work is local-variable type deduction.
 
 ## Execution Model
 

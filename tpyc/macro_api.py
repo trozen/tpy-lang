@@ -365,16 +365,82 @@ class MacroArg:
 
 
 # ---------------------------------------------------------------------------
+# _MacroContextBase -- shared diagnostics + type introspection
+# ---------------------------------------------------------------------------
+
+class _MacroContextBase:
+    """Shared surface for macro contexts: diagnostics anchored at the
+    context's location, and registry-backed type introspection. Every
+    macro kind that exposes these gets identical behavior."""
+
+    def __init__(self, ctx: SemanticContext, loc: Any = None) -> None:
+        self._ctx = ctx
+        self._loc = loc
+
+    def _get_record_info(self, type_info: TypeInfo) -> Any:
+        """Look up RecordInfo for a TypeInfo, or None."""
+        if type_info._tpy_type is None:
+            return None
+        return self._ctx.registry.get_record(type_info.name)
+
+    def get_field_type(self, type_info: TypeInfo, name: str) -> TypeInfo | None:
+        """Get the type of a named field on a record (including inherited), or None."""
+        record_info = self._get_record_info(type_info)
+        if record_info is None:
+            return None
+        for f in self._ctx.registry.get_all_fields(record_info):
+            if f.name == name:
+                return TypeInfo.from_tpy_type(f.type)
+        return None
+
+    def get_method_return_type(self, type_info: TypeInfo, name: str) -> TypeInfo | None:
+        """Get the return type of a named method on a record (including inherited), or None."""
+        record_info = self._get_record_info(type_info)
+        if record_info is None:
+            return None
+        overloads = self._ctx.registry.get_method_overloads_with_parents(record_info, name)
+        if not overloads:
+            return None
+        return TypeInfo.from_tpy_type(overloads[0].return_type)
+
+    def qualified_name(self, type_info: TypeInfo) -> str:
+        """Module-qualified type name (e.g. 'log_infra.LogHandle').
+
+        For builtin/module types, uses the type's own qualified name.
+        For user records, searches the registry modules.
+        Falls back to the short name if the module is unknown.
+        """
+        tpy_type = type_info._tpy_type
+        if isinstance(tpy_type, NominalType):
+            qn = tpy_type.qualified_name()
+            if qn is not None:
+                return qn
+            # Search registry modules for user-defined records
+            for mod_name, mod_info in self._ctx.registry.modules.items():
+                if type_info.name in mod_info.records:
+                    return f"{mod_name}.{type_info.name}"
+        return type_info.name
+
+    def warning(self, msg: str, loc: Any = None) -> None:
+        """Emit a compiler warning."""
+        self._ctx.warning_from_loc(msg, loc or self._loc)
+
+    def error(self, msg: str, loc: Any = None) -> NoReturn:
+        """Raise a compile error."""
+        from .diagnostics import SemanticError
+        raise SemanticError(msg, loc or self._loc)
+
+
+# ---------------------------------------------------------------------------
 # CallMacroContext -- context for call-site macros
 # ---------------------------------------------------------------------------
 
-class CallMacroContext:
+class CallMacroContext(_MacroContextBase):
     """Context passed to call-site macros for type introspection and diagnostics."""
 
     def __init__(self, ctx: SemanticContext, loc: Any = None,
                  expected_type: TpyType | None = None) -> None:
-        self._ctx = ctx
-        self._loc = loc
+        super().__init__(ctx, loc)
         self._expected_type = expected_type
 
     @property
@@ -464,59 +530,6 @@ class CallMacroContext:
             self.error("self_field() called outside a method context")
         return TpyFieldAccess(obj=TpyName("self"), field=name)
 
-    def _get_record_info(self, type_info: TypeInfo) -> Any:
-        """Look up RecordInfo for a TypeInfo, or None."""
-        if type_info._tpy_type is None:
-            return None
-        return self._ctx.registry.get_record(type_info.name)
-
-    def get_field_type(self, type_info: TypeInfo, name: str) -> TypeInfo | None:
-        """Get the type of a named field on a record (including inherited), or None."""
-        record_info = self._get_record_info(type_info)
-        if record_info is None:
-            return None
-        for f in self._ctx.registry.get_all_fields(record_info):
-            if f.name == name:
-                return TypeInfo.from_tpy_type(f.type)
-        return None
-
-    def get_method_return_type(self, type_info: TypeInfo, name: str) -> TypeInfo | None:
-        """Get the return type of a named method on a record (including inherited), or None."""
-        record_info = self._get_record_info(type_info)
-        if record_info is None:
-            return None
-        overloads = self._ctx.registry.get_method_overloads_with_parents(record_info, name)
-        if not overloads:
-            return None
-        return TypeInfo.from_tpy_type(overloads[0].return_type)
-
-    def qualified_name(self, type_info: TypeInfo) -> str:
-        """Module-qualified type name (e.g. 'log_infra.LogHandle').
-
-        For builtin/module types, uses the type's own qualified name.
-        For user records, searches the registry modules.
-        Falls back to the short name if the module is unknown.
-        """
-        tpy_type = type_info._tpy_type
-        if isinstance(tpy_type, NominalType):
-            qn = tpy_type.qualified_name()
-            if qn is not None:
-                return qn
-            # Search registry modules for user-defined records
-            for mod_name, mod_info in self._ctx.registry.modules.items():
-                if type_info.name in mod_info.records:
-                    return f"{mod_name}.{type_info.name}"
-        return type_info.name
-
-    def warning(self, msg: str, loc: Any = None) -> None:
-        """Emit a compiler warning."""
-        self._ctx.warning_from_loc(msg, loc or self._loc)
-
-    def error(self, msg: str, loc: Any = None) -> NoReturn:
-        """Raise a compile error."""
-        from .diagnostics import SemanticError
-        raise SemanticError(msg, loc or self._loc)
-
 
 # ---------------------------------------------------------------------------
 # FunctionMacroContext -- context for function-level (body) macros
@@ -580,19 +593,21 @@ def _replace_in_body(stmts: list, old: TpyExpr, new: TpyExpr) -> bool:
     return replaced
 
 
-class FunctionMacroContext:
+class FunctionMacroContext(_MacroContextBase):
     """Context passed to a @function_macro for the decorated function.
 
-    Read-only introspection of the function's signature and body, plus
-    in-place mutation (annotate_local, replace_expr) and diagnostics.
+    Read-only introspection of the function's signature and body (including
+    registry-backed type introspection from _MacroContextBase, e.g.
+    get_field_type for record params), plus in-place mutation
+    (annotate_local, replace_expr) and diagnostics.
     """
 
     def __init__(self, ctx: SemanticContext, func: TpyFunction,
                  module_qname: str, loc: Any = None) -> None:
-        self._ctx = ctx
+        super().__init__(
+            ctx, loc if loc is not None else getattr(func, "loc", None))
         self._func = func
         self._module_qname = module_qname
-        self._loc = loc if loc is not None else getattr(func, "loc", None)
 
     @property
     def function_name(self) -> str:
@@ -682,15 +697,6 @@ class FunctionMacroContext:
         anywhere in the function body. Errors if `old` is not present."""
         if not _replace_in_body(self._func.body or [], old, new):
             self.error("replace_expr: node not found in function body")
-
-    def warning(self, msg: str, loc: Any = None) -> None:
-        """Emit a compiler warning."""
-        self._ctx.warning_from_loc(msg, loc or self._loc)
-
-    def error(self, msg: str, loc: Any = None) -> NoReturn:
-        """Raise a compile error."""
-        from .diagnostics import SemanticError
-        raise SemanticError(msg, loc or self._loc)
 
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,1 @@
+Function macro: @field_typed_locals is a compile-time decorator, not valid Python at runtime.
