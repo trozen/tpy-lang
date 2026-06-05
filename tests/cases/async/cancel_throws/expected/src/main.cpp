@@ -37,7 +37,7 @@ __coro_yield_once yield_once() {
 // def main() -> None:
 void main() {
     // t: Task[Int32] = task_from_coro(yield_once())
-    ::tpystd::asyncio::_executor::Task<int32_t> t = ::tpystd::asyncio::_executor::task_from_coro<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(yield_once())>>>(yield_once()));
+    ::tpystd::asyncio::_executor::Task<int32_t> t = ::tpystd::asyncio::_executor::task_from_coro<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(yield_once()));
     // if poll_once(t).is_pending():
     if (::tpystd::coro::poll_once<int32_t>(t).is_pending()) {
         // print("first-poll-pending")

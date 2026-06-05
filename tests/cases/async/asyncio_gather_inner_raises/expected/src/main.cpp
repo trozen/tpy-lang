@@ -64,9 +64,9 @@ __coro_bad bad() {
         // tasks: list[asyncio.Task[Int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         // tasks.append(asyncio.create_task(bad()))
-        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(bad())>>>(bad())));
+        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(bad())));
         // tasks.append(asyncio.create_task(good()))
-        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(good())>>>(good())));
+        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(good())));
         __state = S_JOIN_1;
         continue;
     }
@@ -124,7 +124,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 void __tpy_init() {

@@ -67,9 +67,9 @@ __coro_slow slow() {
         // tasks: list[asyncio.Task[Int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         // tasks.append(asyncio.create_task(slow()))
-        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(slow())>>>(slow())));
+        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(slow())));
         // tasks.append(asyncio.create_task(slow()))
-        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(slow())>>>(slow())));
+        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(slow())));
         // return await asyncio.gather_list(tasks)
         __sub_0.emplace((*tasks));
         __state = S_RESUME_0;
@@ -99,7 +99,7 @@ __coro_gather_helper gather_helper() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // gtask = asyncio.create_task(gather_helper())
-        gtask.emplace(::tpystd::asyncio::create_task<std::vector<int32_t>>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::vector<int32_t>>, std::remove_cvref_t<decltype(gather_helper())>>>(gather_helper())));
+        gtask.emplace(::tpystd::asyncio::create_task<std::vector<int32_t>>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::vector<int32_t>>>(gather_helper())));
         // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
@@ -160,7 +160,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 void __tpy_init() {

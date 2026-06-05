@@ -39,7 +39,7 @@ __coro_compute compute() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // v = await asyncio.wait_for(compute(), 5.0)
-        __sub_0.emplace(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(compute())>>>(compute()), 5.0);
+        __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(compute()), 5.0);
         __state = S_RESUME_0;
         continue;
     }
@@ -67,7 +67,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 void __tpy_init() {

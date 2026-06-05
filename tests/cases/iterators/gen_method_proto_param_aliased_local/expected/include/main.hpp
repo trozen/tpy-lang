@@ -43,8 +43,8 @@ struct __gen_Repeater_run {
     T_it it;
     int32_t _;
     int32_t x;
-    ::tpy::frame_slot<std::decay_t<decltype(::tpy::__iter__(std::declval<T_it&>()))>> __for_itr_0;
-    ::tpy::frame_slot<decltype(std::declval<std::decay_t<decltype(::tpy::__iter__(std::declval<T_it&>()))>&>().__next__())> __for_r_0;
+    ::tpy::frame_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
+    ::tpy::frame_slot<::tpy::iter_result_t<T_it>> __for_r_0;
     ::tpy::frame_slot<int32_t> __for_i_1;
     ::tpy::frame_slot<int32_t> __for_stop_1;
 

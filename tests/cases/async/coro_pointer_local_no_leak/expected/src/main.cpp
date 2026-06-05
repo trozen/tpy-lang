@@ -146,7 +146,7 @@ void __tpy_init() {
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
     // asyncio.run(driver())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(driver())>>>(driver()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver()));
 }
 
 } // namespace tpyapp::main

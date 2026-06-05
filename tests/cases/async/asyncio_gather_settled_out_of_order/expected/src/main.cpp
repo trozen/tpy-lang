@@ -41,11 +41,11 @@ __coro_fetch fetch(int32_t n, double delay) {
         // tasks: list[asyncio.Task[Int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         // tasks.append(asyncio.create_task(fetch(Int32(0), 0.005)))   # settles last
-        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(fetch(0, 0.005))>>>(fetch(0, 0.005))));
+        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(0, 0.005))));
         // tasks.append(asyncio.create_task(fetch(Int32(1), 0.003)))   # settles middle
-        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(fetch(1, 0.003))>>>(fetch(1, 0.003))));
+        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(1, 0.003))));
         // tasks.append(asyncio.create_task(fetch(Int32(2), 0.001)))   # settles first
-        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(fetch(2, 0.001))>>>(fetch(2, 0.001))));
+        (*tasks).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(2, 0.001))));
         // results = await asyncio.gather_list_settled(tasks)
         __sub_0.emplace((*tasks));
         __state = S_RESUME_0;
@@ -89,7 +89,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 void __tpy_init() {

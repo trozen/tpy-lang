@@ -40,11 +40,11 @@ __coro_fetch fetch(int32_t n) {
     case S_INITIAL: {
         // # Multi-arg: three positional tasks.
         // t1 = asyncio.create_task(fetch(1))
-        t1.emplace(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(fetch(1))>>>(fetch(1))));
+        t1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(1))));
         // t2 = asyncio.create_task(fetch(2))
-        t2.emplace(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(fetch(2))>>>(fetch(2))));
+        t2.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(2))));
         // t3 = asyncio.create_task(fetch(3))
-        t3.emplace(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(fetch(3))>>>(fetch(3))));
+        t3.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(3))));
         // multi_results = await asyncio.gather(t1, t2, t3)
         std::array<::tpystd::asyncio::_executor::Task<int32_t>*, 3> __tmp_1{&(*t1), &(*t2), &(*t3)};
         __sub_0.emplace(std::move(::tpystd::asyncio::gather<int32_t>(::tpy::varargs<::tpystd::asyncio::_executor::Task<int32_t>>(__tmp_1))));
@@ -69,7 +69,7 @@ __coro_fetch fetch(int32_t n) {
         }
         // # Single-arg.
         // s1 = asyncio.create_task(fetch(10))
-        s1.emplace(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(fetch(10))>>>(fetch(10))));
+        s1.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(10))));
         // single_results = await asyncio.gather(s1)
         std::array<::tpystd::asyncio::_executor::Task<int32_t>*, 1> __tmp_2{&(*s1)};
         __sub_1.emplace(std::move(::tpystd::asyncio::gather<int32_t>(::tpy::varargs<::tpystd::asyncio::_executor::Task<int32_t>>(__tmp_2))));
@@ -96,9 +96,9 @@ __coro_fetch fetch(int32_t n) {
         // pending: list[asyncio.Task[Int32]] = []
         pending.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         // pending.append(asyncio.create_task(fetch(4)))
-        (*pending).push_back(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(fetch(4))>>>(fetch(4))));
+        (*pending).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(4))));
         // pending.append(asyncio.create_task(fetch(5)))
-        (*pending).push_back(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(fetch(5))>>>(fetch(5))));
+        (*pending).push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fetch(5))));
         // unpacked_results = await asyncio.gather(*pending)
         __sub_2.emplace(std::move(::tpystd::asyncio::gather<int32_t>(::tpy::varargs<::tpystd::asyncio::_executor::Task<int32_t>>(::tpy::as_mut_span((*pending))))));
         __state = S_RESUME_2;
@@ -137,7 +137,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 void __tpy_init() {

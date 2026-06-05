@@ -19,8 +19,8 @@ struct __gen_counted {
     int32_t __state;
     std::vector<::tpy::BigInt>& xs;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<decltype(std::declval<std::vector<::tpy::BigInt>&>().begin())> __for_it_0;
-    ::tpy::frame_slot<decltype(std::declval<std::vector<::tpy::BigInt>&>().begin())> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::BigInt>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::BigInt>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

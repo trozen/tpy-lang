@@ -52,8 +52,8 @@ struct __gen_g_resumable {
     int32_t __state;
     int32_t x;
     ::tpy::frame_slot<Holder> __for_src_0;
-    ::tpy::frame_slot<std::decay_t<decltype(::tpy::__iter__(std::declval<Holder&>()))>> __for_itr_0;
-    ::tpy::frame_slot<decltype(std::declval<std::decay_t<decltype(::tpy::__iter__(std::declval<Holder&>()))>&>().__next__())> __for_r_0;
+    ::tpy::frame_slot<::tpy::iter_type_t<Holder>> __for_itr_0;
+    ::tpy::frame_slot<::tpy::iter_result_t<Holder>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

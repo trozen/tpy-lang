@@ -112,15 +112,15 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
         // print(e_fast.is_set())
         std::cout << ::tpy::print_bool((*e_fast).is_set()) << "\n";
         // asyncio.create_task(fast_path_consumer(e_fast))
-        ::tpystd::asyncio::create_task<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(fast_path_consumer((*e_fast)))>>>(fast_path_consumer((*e_fast))));
+        ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(fast_path_consumer((*e_fast))));
         // e = Event()
         e.emplace(::tpystd::asyncio::Event());
         // print(e.is_set())
         std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
         // asyncio.create_task(consumer(e))
-        ::tpystd::asyncio::create_task<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(consumer((*e)))>>>(consumer((*e))));
+        ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(consumer((*e))));
         // asyncio.create_task(producer(e))
-        ::tpystd::asyncio::create_task<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(producer((*e)))>>>(producer((*e))));
+        ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer((*e))));
         // await asyncio.sleep(0.005)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.005)));
         __state = S_RESUME_0;
@@ -154,7 +154,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 void __tpy_init() {

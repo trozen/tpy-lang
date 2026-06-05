@@ -37,8 +37,8 @@ struct __gen_twice {
     int32_t __state;
     std::vector<Box>& xs;
     Box* b = nullptr;
-    ::tpy::frame_slot<decltype(std::declval<std::vector<Box>&>().begin())> __for_it_0;
-    ::tpy::frame_slot<decltype(std::declval<std::vector<Box>&>().begin())> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<Box>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

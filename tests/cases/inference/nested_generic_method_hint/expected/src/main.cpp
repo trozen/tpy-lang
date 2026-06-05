@@ -9,7 +9,7 @@ void main() {
     // w = Wrapper()
     Wrapper w = Wrapper();
     // r: Rc[Box[Greeter]] = w.wrap(Box(Frog("Kermit")))  # tpyc: type(Rc[Box[Greeter]])
-    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Greeter>> r = w.wrap<::tpystd::tplib::box::Box<Greeter>>(::tpystd::tplib::box::Box<Greeter>(std::make_unique<::tpy::Adapter<Greeter, Frog>>(Frog("Kermit"))));
+    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Greeter>> r = w.wrap<::tpystd::tplib::box::Box<Greeter>>(::tpystd::tplib::box::Box<Greeter>(::tpy::make_adapter<Greeter>(Frog("Kermit"))));
     // print(r.get().get().greet())
     std::cout << r.get().get().greet() << "\n";
 }

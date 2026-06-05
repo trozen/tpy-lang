@@ -58,7 +58,7 @@ __coro_w w() {
 // def main() -> None:
 void main() {
     // asyncio.run(w())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(w())>>>(w()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(w()));
 }
 
 void __tpy_init() {

@@ -46,7 +46,7 @@ struct __gen_gen {
     int32_t __state;
     int32_t x;
     ::tpy::frame_slot<__gen_src> __for_src_0;
-    ::tpy::frame_slot<decltype(std::declval<__gen_src&>().__next__())> __for_r_0;
+    ::tpy::frame_slot<::tpy::iter_next_t<__gen_src>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

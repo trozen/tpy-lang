@@ -9,7 +9,7 @@ void main() {
     // d = Dog("Rex")
     Dog d = Dog("Rex");
     // b: Box[Pet] = Box(d)
-    ::tpystd::tplib::box::Box<Pet> b = ::tpystd::tplib::box::Box<Pet>(std::make_unique<::tpy::Adapter<Pet, Dog>>(std::move(d)));
+    ::tpystd::tplib::box::Box<Pet> b = ::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(std::move(d)));
     // print(b.get().name())
     std::cout << b.get().name() << "\n";
 }

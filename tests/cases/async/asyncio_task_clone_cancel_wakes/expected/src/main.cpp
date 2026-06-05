@@ -67,7 +67,7 @@ __coro_waiter waiter() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // task = asyncio.create_task(waiter())
-        task.emplace(::tpystd::asyncio::create_task<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(waiter())>>>(waiter())));
+        task.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(waiter())));
         // dup = task.clone()
         dup.emplace((*task).clone());
         // await asyncio.sleep(0.001)
@@ -130,7 +130,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 void __tpy_init() {

@@ -68,7 +68,7 @@ __coro_runner runner() {
 // def main() -> None:
 void main() {
     // asyncio.run(runner())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(runner())>>>(runner()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(runner()));
 }
 
 // async def __anext__(self) -> int:

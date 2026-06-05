@@ -86,7 +86,7 @@ struct __coro_first_above {
     ::tpy::BigInt threshold;
     ::tpy::BigInt result;
     ::tpy::BigInt x;
-    ::tpy::frame_slot<std::decay_t<decltype(std::declval<Counts&>().__aiter__())>> __for_itr_0;
+    ::tpy::frame_slot<::tpy::aiter_type_t<Counts>> __for_itr_0;
     std::optional<__coro_Counter___anext__> __sub_0;
 
     enum : int32_t {

@@ -39,8 +39,8 @@ struct __gen_gen {
     std::vector<P>& items;
     P* prev = nullptr;
     P* it = nullptr;
-    ::tpy::frame_slot<decltype(std::declval<std::vector<P>&>().begin())> __for_it_0;
-    ::tpy::frame_slot<decltype(std::declval<std::vector<P>&>().begin())> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<P>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

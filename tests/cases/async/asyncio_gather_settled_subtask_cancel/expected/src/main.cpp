@@ -121,16 +121,16 @@ __coro_canceller canceller(::tpystd::asyncio::_executor::Task<int32_t> target) {
     while (true) switch (__state) {
     case S_INITIAL: {
         // a = asyncio.create_task(slow())
-        a.emplace(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(slow())>>>(slow())));
+        a.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(slow())));
         // b = asyncio.create_task(fast())
-        b.emplace(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(fast())>>>(fast())));
+        b.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(fast())));
         // # Hand a clone to the canceller; cancel propagates through the shared
         // # TaskState to the handle the gather awaits. Append rvalue clones (not
         // # the named `a`/`b`) -- appending a named @nocopy frame-local copies
         // # instead of moves in async bodies (BUGS.md codegen entry); rvalue
         // # clones move cleanly.
         // asyncio.create_task(canceller(a.clone()))
-        ::tpystd::asyncio::create_task<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(canceller((*a).clone()))>>>(canceller((*a).clone())));
+        ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(canceller((*a).clone())));
         // tasks: list[asyncio.Task[Int32]] = []
         tasks.emplace(std::vector<::tpystd::asyncio::_executor::Task<int32_t>>{});
         // tasks.append(a.clone())
@@ -221,7 +221,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 void __tpy_init() {

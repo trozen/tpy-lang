@@ -76,9 +76,9 @@ __coro_caller caller(::tpy::BigInt tag) {
 // def main() -> None:
 void main() {
     // print(asyncio.run(caller(0)))
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(caller(::tpy::BigInt(0)))>>>(caller(::tpy::BigInt(0)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller(::tpy::BigInt(0)))) << "\n";
     // print(asyncio.run(caller(7)))
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(caller(::tpy::BigInt(7)))>>>(caller(::tpy::BigInt(7)))) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller(::tpy::BigInt(7)))) << "\n";
 }
 
 void __tpy_init() {

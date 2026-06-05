@@ -34,7 +34,7 @@ __coro_inner inner() {
         {
             try {
                 // asyncio.run(inner())
-                ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(inner())>>>(inner()));
+                ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(inner()));
             } catch (const ::tpy::RuntimeError& e) {
                 // print("caught:", e)
                 std::cout << "caught:" << " " << e << "\n";
@@ -57,7 +57,7 @@ __coro_outer outer() {
 // def main() -> None:
 void main() {
     // asyncio.run(outer())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(outer())>>>(outer()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(outer()));
 }
 
 void __tpy_init() {

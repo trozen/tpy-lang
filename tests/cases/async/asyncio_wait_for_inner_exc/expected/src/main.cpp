@@ -69,7 +69,7 @@ __coro_fails fails() {
     case S_JOIN_1: {
         try {
             // v = await asyncio.wait_for(fails(), 5.0)
-            __sub_0.emplace(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(fails())>>>(fails()), 5.0);
+            __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(fails()), 5.0);
             __state = S_RESUME_0;
             continue;
         } catch (const ::tpy::ValueError& e) {
@@ -95,7 +95,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 void __tpy_init() {

@@ -22,8 +22,8 @@ struct __gen_doubled {
     int32_t __state;
     std::vector<T>& xs;
     T* x = nullptr;
-    ::tpy::frame_slot<decltype(std::declval<std::vector<T>&>().begin())> __for_it_0;
-    ::tpy::frame_slot<decltype(std::declval<std::vector<T>&>().begin())> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<T>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

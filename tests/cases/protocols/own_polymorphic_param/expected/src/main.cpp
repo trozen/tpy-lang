@@ -15,7 +15,7 @@ void main() {
     // print(adopt(Dog()).name())       # inheritance rvalue
     std::cout << adopt(std::make_unique<Dog>(Dog()))->name() << "\n";
     // print(adopt(Cat("felix")).name())  # structural rvalue -> Adapter
-    std::cout << adopt(std::make_unique<::tpy::Adapter<Pet, Cat>>(Cat("felix")))->name() << "\n";
+    std::cout << adopt(::tpy::make_adapter<Pet>(Cat("felix")))->name() << "\n";
 }
 
 void __tpy_init() {

@@ -9,6 +9,8 @@
 #pragma once
 
 #include <type_traits>
+#include <memory>
+#include <utility>
 
 namespace tpy {
 
@@ -41,6 +43,15 @@ struct Adapter;
 
 template<typename Base, typename T>
 struct RefAdapter;
+
+// Deduces Concrete from the argument so a call site whose concrete type is not
+// sema-visible need not spell it via `decltype` (which would force the argument
+// expression to appear twice).
+template<typename Base, typename Concrete>
+std::unique_ptr<Base> make_adapter(Concrete&& c) {
+    return std::make_unique<Adapter<Base, std::remove_cvref_t<Concrete>>>(
+        std::forward<Concrete>(c));
+}
 
 // Narrowing cast for `isinstance` against a STRUCTURAL conformer of a @dynamic
 // protocol. A structural `Cat` behind a `Pet*` is physically an

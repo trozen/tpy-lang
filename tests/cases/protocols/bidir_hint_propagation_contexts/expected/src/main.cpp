@@ -17,21 +17,21 @@ std::string take(::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tpl
 // def make() -> Own[Rc[Box[Box[Pet]]]]:
 ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>> make() {
     // return Rc.new(Box(Box(Dog("Returned"))))
-    return Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>::new_<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>(::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(std::make_unique<::tpy::Adapter<Pet, Dog>>(Dog("Returned")))));
+    return Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>::new_<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>(::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Returned")))));
 }
 
 // # Context 4: list-literal element under an annotated container type.
 // def collect() -> Own[list[Rc[Box[Pet]]]]:
 std::vector<::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>>> collect() {
     // return [Rc.new(Box(Dog("Listed1"))), Rc.new(Box(Dog("Listed2")))]
-    return ::tpy::make_vector<::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>>>(Rc<::tpystd::tplib::box::Box<Pet>>::new_<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(std::make_unique<::tpy::Adapter<Pet, Dog>>(Dog("Listed1")))), Rc<::tpystd::tplib::box::Box<Pet>>::new_<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(std::make_unique<::tpy::Adapter<Pet, Dog>>(Dog("Listed2")))));
+    return ::tpy::make_vector<::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>>>(Rc<::tpystd::tplib::box::Box<Pet>>::new_<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Listed1")))), Rc<::tpystd::tplib::box::Box<Pet>>::new_<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Listed2")))));
 }
 
 // def main() -> None:
 void main() {
     // # 1. function arg
     // print(take(Rc.new(Box(Box(Dog("Arg"))))))
-    std::cout << take(Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>::new_<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>(::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(std::make_unique<::tpy::Adapter<Pet, Dog>>(Dog("Arg")))))) << "\n";
+    std::cout << take(Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>::new_<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>(::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Arg")))))) << "\n";
     // # 2. return
     // r2 = make()
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>> r2 = make();
@@ -39,7 +39,7 @@ void main() {
     std::cout << r2.get().get().get().name() << "\n";
     // # 3. field via ctor arg
     // h = Holder(Rc.new(Box(Box(Dog("Field")))))
-    Holder h = Holder(Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>::new_<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>(::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(std::make_unique<::tpy::Adapter<Pet, Dog>>(Dog("Field"))))));
+    Holder h = Holder(Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>::new_<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>(::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Field"))))));
     // print(h.r.get().get().get().name())
     std::cout << h.r.get().get().get().name() << "\n";
     // # 4. list literal

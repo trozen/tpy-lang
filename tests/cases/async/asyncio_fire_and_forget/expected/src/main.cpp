@@ -34,7 +34,7 @@ __coro_background background(::tpystd::asyncio::Future<int32_t>& done) {
         // done: Future[Int32] = Future[Int32]()
         done.emplace(::tpystd::asyncio::Future<int32_t>());
         // t: Task[None] = asyncio.create_task(background(done))
-        t.emplace(::tpystd::asyncio::create_task<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(background((*done)))>>>(background((*done)))));
+        t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(background((*done)))));
         // # Drop the handle without awaiting; the executor still drives the task.
         // del t
         { auto __del_sink = std::move(t); }
@@ -67,7 +67,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 void __tpy_init() {

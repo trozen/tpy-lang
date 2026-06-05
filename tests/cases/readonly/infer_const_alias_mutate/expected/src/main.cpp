@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make_box() -> Own[Box[Mutating]]:
 ::tpystd::tplib::box::Box<Mutating> make_box() {
     // return Box(Impl())
-    return ::tpystd::tplib::box::Box<Mutating>(std::make_unique<::tpy::Adapter<Mutating, Impl>>(Impl()));
+    return ::tpystd::tplib::box::Box<Mutating>(::tpy::make_adapter<Mutating>(Impl()));
 }
 
 // def main() -> None:

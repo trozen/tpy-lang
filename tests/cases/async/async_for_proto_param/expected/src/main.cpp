@@ -9,7 +9,7 @@ void main() {
     // c = Counter(0, 3)
     Counter c = Counter(0, 3);
     // asyncio.run(consume(c))
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(consume(c))>>>(consume(c)));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(consume(c)));
 }
 
 void __tpy_init() {

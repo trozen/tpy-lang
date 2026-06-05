@@ -29,8 +29,8 @@ struct __coro_consume {
     bool __cancel_pending;
     T_it it;
     int32_t x;
-    ::tpy::frame_slot<std::decay_t<decltype(::tpy::__iter__(std::declval<T_it&>()))>> __for_itr_0;
-    ::tpy::frame_slot<decltype(std::declval<std::decay_t<decltype(::tpy::__iter__(std::declval<T_it&>()))>&>().__next__())> __for_r_0;
+    ::tpy::frame_slot<::tpy::iter_type_t<T_it>> __for_itr_0;
+    ::tpy::frame_slot<::tpy::iter_result_t<T_it>> __for_r_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {

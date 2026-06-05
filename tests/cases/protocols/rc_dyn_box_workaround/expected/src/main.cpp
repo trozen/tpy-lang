@@ -13,7 +13,7 @@ void main() {
     // r1_share = r1.clone()
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r1_share = r1.clone();
     // b2: Box[Pet] = Box(Dog("Rex"))
-    ::tpystd::tplib::box::Box<Pet> b2 = ::tpystd::tplib::box::Box<Pet>(std::make_unique<::tpy::Adapter<Pet, Dog>>(Dog("Rex")));
+    ::tpystd::tplib::box::Box<Pet> b2 = ::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex")));
     // r2: Rc[Box[Pet]] = Rc.new(b2)
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r2 = Rc<::tpystd::tplib::box::Box<Pet>>::new_<::tpystd::tplib::box::Box<Pet>>(std::move(b2));
     // print(r1.get().get().name())

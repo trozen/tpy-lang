@@ -106,7 +106,7 @@ __coro_caller caller() {
 // def main() -> None:
 void main() {
     // print(asyncio.run(caller()))
-    std::cout << ::tpystd::asyncio::run<std::string>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::string>, std::remove_cvref_t<decltype(caller())>>>(caller())) << "\n";
+    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(caller())) << "\n";
 }
 
 void __tpy_init() {

@@ -619,7 +619,7 @@ class GeneratorCodegen:
                 # borrow element as `T&`, ill-formed inside std::expected).
                 src_cpp = self._temp_iterator_field_cpp(stmt)
                 fields.append((f"__for_src_{uid}", src_cpp))
-                result_type = f"decltype(std::declval<{src_cpp}&>().__next__())"
+                result_type = f"::tpy::iter_next_t<{src_cpp}>"
             else:
                 result_type = f"std::expected<{elem_cpp}, ::tpy::StopIteration>"
             fields.append((f"__for_r_{uid}", result_type))
@@ -657,7 +657,7 @@ class GeneratorCodegen:
         native_elem = builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.analyzer.registry) if is_builtin_ni else None
         if native_elem is not None:
             container_cpp = self.types.type_to_cpp(iterable_type)
-            iter_type = f"decltype(std::declval<{container_cpp}&>().begin())"
+            iter_type = f"::tpy::begin_iter_t<{container_cpp}>"
             fields = [
                 (f"__for_it_{uid}", iter_type),
                 (f"__for_end_{uid}", iter_type),
@@ -737,8 +737,8 @@ class GeneratorCodegen:
             src_cpp = protocol_param_template_name(subj_pname)
         else:
             src_cpp = self.types.type_to_cpp(iterable_type)
-        iter_field_type = f"std::decay_t<decltype(::tpy::__iter__(std::declval<{src_cpp}&>()))>"
-        result_field_type = f"decltype(std::declval<{iter_field_type}&>().__next__())"
+        iter_field_type = f"::tpy::iter_type_t<{src_cpp}>"
+        result_field_type = f"::tpy::iter_result_t<{src_cpp}>"
         fields = [
             (f"__for_itr_{uid}", iter_field_type),
             (f"__for_r_{uid}", result_field_type),

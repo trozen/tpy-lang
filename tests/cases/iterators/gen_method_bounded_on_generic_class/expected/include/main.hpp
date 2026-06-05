@@ -88,8 +88,8 @@ struct __gen_Summer_each_doubled {
     int32_t __state;
     const Summer<T>& __self;
     int32_t x;
-    ::tpy::frame_slot<std::decay_t<decltype(::tpy::__iter__(std::declval<T&>()))>> __for_itr_0;
-    ::tpy::frame_slot<decltype(std::declval<std::decay_t<decltype(::tpy::__iter__(std::declval<T&>()))>&>().__next__())> __for_r_0;
+    ::tpy::frame_slot<::tpy::iter_type_t<T>> __for_itr_0;
+    ::tpy::frame_slot<::tpy::iter_result_t<T>> __for_r_0;
 
     enum : int32_t {
         S_INITIAL = 0,

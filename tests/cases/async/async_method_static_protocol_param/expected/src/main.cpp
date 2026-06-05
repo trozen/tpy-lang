@@ -41,7 +41,7 @@ __coro_inner inner() {
         // r = Runner()
         r.emplace(Runner());
         // v = await r.with_timeout(inner(), 5.0)
-        __sub_0.emplace((*r), std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(inner())>>>(inner()), 5.0);
+        __sub_0.emplace((*r), ::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(inner()), 5.0);
         __state = S_RESUME_0;
         continue;
     }
@@ -69,7 +69,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 void __tpy_init() {

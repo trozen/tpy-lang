@@ -1620,11 +1620,9 @@ class AsyncCoroCodegen:
         across suspensions.
 
         Sync for-with-await (M3.1): two slots,
-        `(__for_itr_N: decltype(::tpy::__iter__(it)),
-          __for_r_N: decltype(itr.__next__()))`.
+        `(__for_itr_N: iter_type_t<S>, __for_r_N: iter_result_t<S>)`.
 
-        Async-for (M6): one slot,
-        `__for_itr_N: decltype(it.__aiter__())`. No `__for_r_N` slot --
+        Async-for (M6): one slot, `__for_itr_N: aiter_type_t<S>`. No `__for_r_N` slot --
         the advance is a Yield(await __anext__()) and the unwrapped
         value goes straight to the loop var via the standard resume-bind
         path. Also populates `state.async_for_struct_names[uid]` with
@@ -1684,9 +1682,7 @@ class AsyncCoroCodegen:
                                 "for-loop iterable has no resolved type "
                                 "(async for pre-scan)", loc=s.loc)
                         src_cpp = self.types.type_to_cpp(unwrap_ref_type(iter_t))
-                        iter_field_type = (
-                            f"std::decay_t<decltype(std::declval<"
-                            f"{src_cpp}&>().__aiter__())>")
+                        iter_field_type = f"::tpy::aiter_type_t<{src_cpp}>"
                         fields_out.append(
                             (f"__for_itr_{cur_uid}", iter_field_type))
                         if s.async_aiter_type is None:

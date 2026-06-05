@@ -881,22 +881,19 @@ class ExpressionGenerator:
         arg_expr = self._maybe_move(arg, arg_expr)
         # Async-def call results: sema views them as `Cancellable[T]` (the
         # registered FunctionInfo return type), but the C++ value is the
-        # concrete `__coro_<funcname>` struct returned by the factory.
-        # Render the concrete impl via `decltype(arg_expr)` -- same trick
-        # the retired `_box_coro` cpp_template used, just inlined here so
-        # any Adapter-wrap site benefits. `arg_expr` appears twice in C++
-        # source (once in `decltype`, unevaluated; once in `make_unique`,
-        # evaluated) for a single runtime evaluation.
+        # concrete `__coro_<funcname>` struct returned by the factory -- not a
+        # sema-visible type. `make_adapter` deduces the concrete impl from the
+        # argument, so the source evaluates `arg_expr` once with no `decltype`.
         if self._is_async_call_with_protocol_return(arg, arg_type):
-            target_cpp = self.protocols.get_dynamic_adapter_type(
-                protocol, f"std::remove_cvref_t<decltype({arg_expr})>")
-            return f"std::make_unique<{target_cpp}>({arg_expr})"
-        concrete_cpp = self.types.type_to_cpp(arg_type)
+            base_cpp = self.protocols.get_dynamic_base_name(protocol)
+            return f"::tpy::make_adapter<{base_cpp}>({arg_expr})"
         if self.protocols.directly_implements_dynamic(arg_type, protocol):
-            target_cpp = concrete_cpp
-        else:
-            target_cpp = self.protocols.get_dynamic_adapter_type(protocol, concrete_cpp)
-        return f"std::make_unique<{target_cpp}>({arg_expr})"
+            # Inheritance conformer: U IS-A P, so unique_ptr<U> converts to
+            # unique_ptr<P> directly -- no adapter.
+            return f"std::make_unique<{self.types.type_to_cpp(arg_type)}>({arg_expr})"
+        # Structural conformer: wrap in the owning adapter.
+        base_cpp = self.protocols.get_dynamic_base_name(protocol)
+        return f"::tpy::make_adapter<{base_cpp}>({arg_expr})"
 
     def _is_async_call_with_protocol_return(self, arg: TpyExpr, arg_type: TpyType) -> bool:
         """True if `arg` is a call to an `async def` whose sema return type

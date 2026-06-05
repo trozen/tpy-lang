@@ -37,7 +37,7 @@ __coro_compute compute() {
 // def main() -> None:
 void main() {
     // result = asyncio.run(compute())
-    ::tpy::BigInt result = ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(compute())>>>(compute()));
+    ::tpy::BigInt result = ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(compute()));
     // print(result)
     std::cout << result << "\n";
 }

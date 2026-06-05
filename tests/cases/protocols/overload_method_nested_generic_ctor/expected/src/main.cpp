@@ -9,7 +9,7 @@ void main() {
     // w = Wrapper[Pet]()
     Wrapper<Pet> w = Wrapper<Pet>();
     // r: Rc[Box[Pet]] = w.wrap(Box(Dog("Buddy")))  # tpyc: type(Rc[Box[Pet]])
-    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r = w.wrap(::tpystd::tplib::box::Box<Pet>(std::make_unique<::tpy::Adapter<Pet, Dog>>(Dog("Buddy"))));
+    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r = w.wrap(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Buddy"))));
     // print(r.get().get().name())
     std::cout << r.get().get().name() << "\n";
 }

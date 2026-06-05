@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // box: Box[Pet] = Box(Dog(label="Rex"))
-    ::tpystd::tplib::box::Box<Pet> box = ::tpystd::tplib::box::Box<Pet>(std::make_unique<::tpy::Adapter<Pet, Dog>>(Dog("Rex")));
+    ::tpystd::tplib::box::Box<Pet> box = ::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex")));
     // print(box.get().name())
     std::cout << box.get().name() << "\n";
 }

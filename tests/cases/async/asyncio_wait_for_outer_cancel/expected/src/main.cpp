@@ -63,7 +63,7 @@ __coro_slow slow() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // task = asyncio.create_task(asyncio.wait_for(slow(), 5.0))
-        task.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(::tpystd::asyncio::wait_for<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(slow())>>>(slow()), 5.0))>>>(::tpystd::asyncio::wait_for<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(slow())>>>(slow()), 5.0))));
+        task.emplace(::tpystd::asyncio::create_task<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpystd::asyncio::wait_for<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(slow()), 5.0))));
         // await asyncio.sleep(0.001)
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.001)));
         __state = S_RESUME_0;
@@ -122,7 +122,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 void __tpy_init() {

@@ -9,7 +9,7 @@ void main() {
     // alice = Owner("Alice", Box(Parrot(label="Polly")))
     Owner alice = Owner("Alice", ::tpystd::tplib::box::Box<Parrot>(Parrot("Polly")));
     // bob = Owner("Bob", Box(Dog(label="Rex")))
-    Owner bob = Owner("Bob", ::tpystd::tplib::box::Box<Pet>(std::make_unique<::tpy::Adapter<Pet, Dog>>(Dog("Rex"))));
+    Owner bob = Owner("Bob", ::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex"))));
     // print(alice.name_, alice.pet.get().name())
     std::cout << alice.name_ << " " << alice.pet.get().name() << "\n";
     // print(bob.name_, bob.pet.get().name())

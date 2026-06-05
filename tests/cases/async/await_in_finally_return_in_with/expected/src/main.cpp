@@ -140,7 +140,7 @@ __coro_caller caller() {
 // def main() -> None:
 void main() {
     // print(asyncio.run(caller()))
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<::tpy::BigInt>, std::remove_cvref_t<decltype(caller())>>>(caller())) << "\n";
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(caller())) << "\n";
 }
 
 void __tpy_init() {

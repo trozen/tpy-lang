@@ -20,8 +20,8 @@ struct __gen_filtered {
     std::vector<int32_t>& items;
     int32_t limit;
     int32_t x;
-    ::tpy::frame_slot<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_it_0;
-    ::tpy::frame_slot<decltype(std::declval<std::vector<int32_t>&>().begin())> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<int32_t>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

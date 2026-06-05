@@ -21,8 +21,8 @@ struct __gen_gen {
     ::tpy::frame_slot<::tpy::ordered_map<int32_t, int32_t>> d;
     ::tpy::frame_slot<::tpy::ordered_set<int32_t>> s;
     int32_t n;
-    ::tpy::frame_slot<decltype(std::declval<std::array<int32_t, 3>&>().begin())> __for_it_0;
-    ::tpy::frame_slot<decltype(std::declval<std::array<int32_t, 3>&>().begin())> __for_end_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::array<int32_t, 3>>> __for_it_0;
+    ::tpy::frame_slot<::tpy::begin_iter_t<std::array<int32_t, 3>>> __for_end_0;
 
     enum : int32_t {
         S_INITIAL = 0,

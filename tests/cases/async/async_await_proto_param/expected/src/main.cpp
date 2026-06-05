@@ -9,7 +9,7 @@ void main() {
     // c = Counter(0, 3)
     Counter c = Counter(0, 3);
     // asyncio.run(driver(c))
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(driver(c))>>>(driver(c)));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(driver(c)));
 }
 
 void __tpy_init() {

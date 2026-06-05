@@ -95,7 +95,7 @@ struct __coro_sum_squares {
     ::tpy::BigInt k;
     ::tpy::BigInt sq;
     std::tuple<::tpy::BigInt, ::tpy::BigInt> __for_tup_0;
-    ::tpy::frame_slot<std::decay_t<decltype(std::declval<Pairs&>().__aiter__())>> __for_itr_0;
+    ::tpy::frame_slot<::tpy::aiter_type_t<Pairs>> __for_itr_0;
     std::optional<__coro_PairIter___anext__> __sub_0;
 
     enum : int32_t {

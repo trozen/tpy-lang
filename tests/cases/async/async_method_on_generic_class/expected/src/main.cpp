@@ -9,11 +9,11 @@ void main() {
     // b = Box(7)
     Box<int32_t> b = Box<int32_t>(7);
     // print(asyncio.run(b.take()))
-    std::cout << ::tpystd::asyncio::run<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(b.take())>>>(b.take())) << "\n";
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(b.take())) << "\n";
     // s = Box("hi")
     Box<std::string> s = Box<std::string>("hi");
     // print(asyncio.run(s.take()))
-    std::cout << ::tpystd::asyncio::run<std::string>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::string>, std::remove_cvref_t<decltype(s.take())>>>(s.take())) << "\n";
+    std::cout << ::tpystd::asyncio::run<std::string>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::string>>(s.take())) << "\n";
 }
 
 void __tpy_init() {

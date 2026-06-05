@@ -41,7 +41,7 @@ __coro_producer producer(::tpystd::asyncio::Future<int32_t>& f) {
         // f: Future[Int32] = Future[Int32]()
         f.emplace(::tpystd::asyncio::Future<int32_t>());
         // asyncio.create_task(producer(f))
-        ::tpystd::asyncio::create_task<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(producer((*f)))>>>(producer((*f))));
+        ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer((*f))));
         // result = await f
         __sub_0 = &((*f));
         __state = S_RESUME_0;
@@ -71,7 +71,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 void __tpy_init() {

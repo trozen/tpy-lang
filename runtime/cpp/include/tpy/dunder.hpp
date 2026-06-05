@@ -707,6 +707,21 @@ decltype(auto) __iter__(const T& x) {
     return x.__iter__();
 }
 
+// Iterator-protocol type helpers for spelling resumable for-loop frame fields
+// (the iterator slot and the per-step result slot) without the nested decltype
+// formulas inline. Defined after every free `__iter__` overload so the
+// qualified `::tpy::__iter__` lookup inside `iter_type_t` sees the full set.
+template<typename S>
+using iter_type_t = std::decay_t<decltype(::tpy::__iter__(std::declval<S&>()))>;
+template<typename It>
+using iter_next_t = decltype(std::declval<It&>().__next__());
+template<typename S>
+using iter_result_t = iter_next_t<iter_type_t<S>>;
+template<typename C>
+using begin_iter_t = decltype(std::declval<C&>().begin());
+template<typename S>
+using aiter_type_t = std::decay_t<decltype(std::declval<S&>().__aiter__())>;
+
 } // namespace tpy
 
 // std::hash specialization for bytes (needed by std::unordered_map/set)

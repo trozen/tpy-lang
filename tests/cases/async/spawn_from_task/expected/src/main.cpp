@@ -39,7 +39,7 @@ __coro_grandchild grandchild() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // g: Task[Int32] = asyncio.create_task(grandchild())
-        g.emplace(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(grandchild())>>>(grandchild())));
+        g.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(grandchild())));
         // return await g + Int32(1)
         __sub_0 = &((*g));
         __state = S_RESUME_0;
@@ -71,7 +71,7 @@ __coro_child child() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // c: Task[Int32] = asyncio.create_task(child())
-        c.emplace(::tpystd::asyncio::create_task<int32_t>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<int32_t>, std::remove_cvref_t<decltype(child())>>>(child())));
+        c.emplace(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(child())));
         // print(await c)
         __sub_0 = &((*c));
         __state = S_RESUME_0;
@@ -101,7 +101,7 @@ __coro_main_coro main_coro() {
 // def main() -> None:
 void main() {
     // asyncio.run(main_coro())
-    ::tpystd::asyncio::run<std::monostate>(std::make_unique<::tpy::Adapter<::tpystd::coro::Cancellable<std::monostate>, std::remove_cvref_t<decltype(main_coro())>>>(main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(main_coro()));
 }
 
 void __tpy_init() {

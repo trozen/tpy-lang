@@ -7,19 +7,19 @@ namespace tpyapp::main {
 // def make_parrot() -> Own[Pet]:
 std::unique_ptr<Pet> make_parrot() {
     // return Parrot("Polly")
-    return std::make_unique<::tpy::Adapter<Pet, Parrot>>(Parrot("Polly"));
+    return ::tpy::make_adapter<Pet>(Parrot("Polly"));
 }
 
 // def make_dog() -> Own[Pet]:
 std::unique_ptr<Pet> make_dog() {
     // return Dog("Rex")
-    return std::make_unique<::tpy::Adapter<Pet, Dog>>(Dog("Rex"));
+    return ::tpy::make_adapter<Pet>(Dog("Rex"));
 }
 
 // def make_tabby() -> Own[NamedPet]:
 std::unique_ptr<NamedPet> make_tabby() {
     // return Tabby("Whiskers")
-    return std::make_unique<::tpy::Adapter<NamedPet, Tabby>>(Tabby("Whiskers"));
+    return ::tpy::make_adapter<NamedPet>(Tabby("Whiskers"));
 }
 
 // def widen_to_pet(np: Own[NamedPet]) -> Own[Pet]:

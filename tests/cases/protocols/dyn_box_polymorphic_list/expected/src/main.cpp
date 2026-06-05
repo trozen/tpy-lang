@@ -11,7 +11,7 @@ void main() {
     // pets.append(Box(Parrot(label="Polly")))
     pets.push_back(::tpystd::tplib::box::Box<Parrot>(Parrot("Polly")));
     // pets.append(Box(Dog(label="Rex")))
-    pets.push_back(::tpystd::tplib::box::Box<Pet>(std::make_unique<::tpy::Adapter<Pet, Dog>>(Dog("Rex"))));
+    pets.push_back(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex"))));
     // for p in pets:
     auto __obj_0 = ::tpy::own_iter(std::move(pets));
     auto __beg_0 = __obj_0.begin();
