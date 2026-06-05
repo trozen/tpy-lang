@@ -368,6 +368,18 @@ class MacroArg:
 # _MacroContextBase -- shared diagnostics + type introspection
 # ---------------------------------------------------------------------------
 
+def _resolve_record_name(ctx: SemanticContext, name: str) -> "TypeInfo | None":
+    """The NominalType must carry the record's stable qname so is_user_record
+    / TypeDef lookups resolve and an emitted record's field identity matches
+    sema-resolved references in a synthesized body.
+    """
+    rec = ctx.registry.get_record(name)
+    if rec is None:
+        return None
+    return TypeInfo.from_tpy_type(
+        NominalType(name, _module_qname=rec.qualified_name()))
+
+
 class _MacroContextBase:
     """Shared surface for macro contexts: diagnostics anchored at the
     context's location, and registry-backed type introspection. Every
@@ -402,6 +414,20 @@ class _MacroContextBase:
         if not overloads:
             return None
         return TypeInfo.from_tpy_type(overloads[0].return_type)
+
+    def lookup_imported_name(self, name: str) -> TypeInfo | None:
+        """Resolve a name visible in the current module (record or enum,
+        module-local or imported under that local name/alias) to a
+        TypeInfo, or None if the registry doesn't know it.
+
+        Visibility matches what the module's own annotations see at this
+        point of sema. Generic records resolve to the unparameterized
+        nominal, so field lookups on them see unsubstituted type params.
+        """
+        enum_t = self._ctx.registry.get_enum(name)
+        if enum_t is not None:
+            return TypeInfo.from_tpy_type(enum_t)
+        return _resolve_record_name(self._ctx, name)
 
     def qualified_name(self, type_info: TypeInfo) -> str:
         """Module-qualified type name (e.g. 'log_infra.LogHandle').
@@ -644,8 +670,8 @@ class FunctionMacroContext(_MacroContextBase):
         "Float64") to a TypeInfo, or None if `name` is not a known builtin.
 
         Lets a macro mint a type to hand to annotate_local without borrowing
-        one off a param/return. Imported user types (enums/records) are not
-        resolved yet -- that is a future lookup_imported_name.
+        one off a param/return. For user types (enums/records), use
+        lookup_imported_name instead.
         """
         from .modules.type_resolution import _resolve_concrete_type_name
         if name == "None":  # void is not a mintable local type
@@ -991,15 +1017,8 @@ class BuilderContext:
         """
         if type_info._tpy_type is not None:
             return type_info
-        record_info = self._ctx.registry.get_record(type_info.name)
-        if record_info is None:
-            return type_info
-        qname = record_info.qualified_name()
-        if not qname:
-            return type_info
-        return TypeInfo.from_tpy_type(
-            NominalType(type_info.name, _module_qname=qname)
-        )
+        resolved = _resolve_record_name(self._ctx, type_info.name)
+        return resolved if resolved is not None else type_info
 
     # -- Code emission --
 
@@ -1176,6 +1195,14 @@ class TypeInfo:
         from .type_def_registry import is_enum_type
         assert is_enum_type(self._tpy_type)
         return self._tpy_type.name
+
+    @property
+    def enum_members(self) -> tuple[str, ...]:
+        """Member names in declaration order (only valid when is_enum)."""
+        from .type_def_registry import enum_info_of
+        info = enum_info_of(self._tpy_type)
+        assert info is not None, "enum_members on a non-enum TypeInfo"
+        return info.members
 
     @property
     def int_type_name(self) -> str:

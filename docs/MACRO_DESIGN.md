@@ -151,6 +151,9 @@ class TypeInfo:
     is_optional: bool
     is_value_type: bool
     is_record: bool
+    is_enum: bool
+    enum_name: str                 # enum class name (only when is_enum)
+    enum_members: tuple[str, ...]  # member names in declaration order (only when is_enum)
     _tpy_type: TpyType             # escape hatch for round-tripping
 
 class FieldInfo:
@@ -193,6 +196,7 @@ class CallMacroContext:
     def get_iterable_element_type(type_info) -> TypeInfo | None: ...
     def qualified_name(type_info) -> str: ...            # "module.TypeName"
     def get_record_fields(name: str) -> list[FieldInfo] | None: ...    # for match_args records
+    def lookup_imported_name(name: str) -> TypeInfo | None: ...        # module-visible record/enum by name
 
     # AST helpers
     def self_field(name) -> Expr: ...                    # AST for self.<name>
@@ -621,13 +625,15 @@ Context surface:
 - *Type minting:* `resolve_type(name)` returns the `TypeInfo` for a
   primitive/builtin type name (`"bool"`, `"Int32"`, `"Float64"`, ...), or
   `None` -- so a macro can hand a type to `annotate_local` without borrowing
-  one off a param/return. Imported user types are out of scope (that is the
-  `lookup_imported_name` work below).
+  one off a param/return. For imported user types (records/enums), use
+  `lookup_imported_name` instead.
 - *Type introspection* (shared with `CallMacroContext` via `_MacroContextBase`):
   `get_field_type(type, name)` resolves a record field's type (walking base
   classes for inherited fields) or `None`; `get_method_return_type(type, name)`
   resolves a method's return type or `None`; `qualified_name(type)` renders a
-  type's module-qualified name.
+  type's module-qualified name; `lookup_imported_name(name)` resolves a
+  module-visible record or enum (module-local or imported under that local
+  name/alias) to a `TypeInfo`, or `None`.
 - *Mutation:* `annotate_local(name, type)` sets a local's declared type at its
   introducing statement (TPy parses `x = expr` as an untyped `TpyVarDecl`, so
   this sets that decl's `.type`; a `TpyAssign` re-bind is converted to a
@@ -650,13 +656,12 @@ Plugin-emitted functions get the same treatment: a frontend plugin sets
 parser-side decorator path never runs for lowered functions, so this is how a
 frontend plugin applies a function macro to a function it emits.
 
-Not yet built (the rest of the type-resolution surface a full body resolver
-wants): `lookup_imported_name` (identifier -> resolved `TypeInfo` / signature
-for *imported user types* -- the load-bearing downstream-slot signal),
-`enum_members`, `is_subtype_of`, and method-body function macros. Field and
-method-return introspection on a *resolved* type (param/return) is in hand via
-the shared `_MacroContextBase` methods above. Motivating use case driving the
-remaining work is local-variable type deduction.
+`lookup_imported_name` (identifier -> resolved `TypeInfo` for *module-visible
+user types* -- the load-bearing downstream-slot signal) and `enum_members` are
+now in hand via the shared `_MacroContextBase` / `TypeInfo` surface, alongside
+field and method-return introspection on a *resolved* type (param/return). Not
+yet built: `is_subtype_of` and method-body function macros. Motivating use case
+driving the remaining work is local-variable type deduction.
 
 ## Execution Model
 
