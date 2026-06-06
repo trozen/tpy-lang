@@ -13,7 +13,7 @@ void main() {
     // pair = w.get_pair()
     auto pair = w.get_pair();
     // print(pair[0])
-    std::cout << std::get<0>(pair) << "\n";
+    std::cout << (*std::get<0>(pair)) << "\n";
     // print(pair[1])
     std::cout << std::get<1>(pair) << "\n";
 }

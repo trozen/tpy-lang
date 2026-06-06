@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // items: list[tuple[T, T]] = [(T(1), T(2)), (T(3), T(4))]
-    std::vector<std::tuple<T, T>> items = {std::tuple<T, T>{T(1), T(2)}, std::tuple<T, T>{T(3), T(4)}};
+    std::vector<std::tuple<T, T>> items = {::tpy::tuple_to_storage<std::tuple<T, T>>(std::tuple<T, T>{T(1), T(2)}), ::tpy::tuple_to_storage<std::tuple<T, T>>(std::tuple<T, T>{T(3), T(4)})};
     // for it in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
@@ -15,9 +15,9 @@ void main() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& it = *__beg_0;
         // a, b = it
-        auto& __tup_1 = it;
-        T& a = ::tpy::unwrap_ref(std::get<0>(__tup_1));
-        T& b = ::tpy::unwrap_ref(std::get<1>(__tup_1));
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(it);
+        auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+        auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         // print(a.x)
         std::cout << a.x << "\n";
         // print(b.x)

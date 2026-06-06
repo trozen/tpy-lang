@@ -311,6 +311,30 @@ def clear_all_compilation_state() -> None:
     clear_dynamic_type_defs()
 
 
+class ValueForm(Enum):
+    """A type's C++ value category -- the storage/borrow form it lowers to.
+
+    A general per-type property (not tuple-specific): the same categories drive
+    standalone variable/param/return lowering and tuple-element lowering. The
+    C++ *consequence* is context-dependent (a standalone `BORROW_REF` is a `T&`
+    reference; a tuple-member `BORROW_REF` must be a pointer because a reference
+    can't be a `std::tuple` member), but the category is the same.
+
+    PTR_OPTIONAL (nullable pointer) and BORROW_REF (non-null borrow) stay
+    distinct even though both can spell `T*`: they differ in nullability and
+    access semantics, so collapsing them would risk wrong null / subscript /
+    comparison handling.
+    """
+    VALUE = "value"            # value type: copied, rendered `T` everywhere.
+    OWN = "own"                # Own[T]: moved by value.
+    TYPE_PARAM = "type_param"  # generic `T`: val_or_ref proxies.
+    PTR_OPTIONAL = "ptr_opt"   # pointer-repr Optional[non-value] (or forced
+                               #   pointer-repr): storage `std::optional<T>`,
+                               #   borrow `T*` (nullable).
+    BORROW_REF = "borrow_ref"  # plain non-value (record/list/dict/set/recursive-
+                               #   union wrapper): storage `T`, borrow `T&`.
+
+
 @dataclass(frozen=True)
 class TpyType:
     """Base class for all TurboPython types."""
@@ -320,6 +344,11 @@ class TpyType:
     # structurals inherit the empty default. No annotation -- dataclass
     # subclasses would otherwise pick it up as an inherited field.
     type_args = ()
+
+    def value_form(self) -> 'ValueForm':
+        """This type's C++ value category (see `ValueForm`). Base: value types
+        are VALUE, every other (non-value) type is a borrowed reference."""
+        return ValueForm.VALUE if self.is_value_type() else ValueForm.BORROW_REF
 
     def to_cpp(self) -> str:
         """Return the C++ representation of this type.
@@ -819,6 +848,11 @@ class TypeParamRef(TpyType):
             return True
         # Unknown at definition time - the trait decides at C++ instantiation
         return False
+
+    def value_form(self) -> 'ValueForm':
+        # A value-bounded / INT type param is a value; otherwise the generic
+        # proxy category (val_or_ref_t<T>), neither a plain value nor a ref.
+        return ValueForm.VALUE if self.is_value_type() else ValueForm.TYPE_PARAM
 
     def to_cpp_param_type(self) -> str:
         if self.kind == TypeParamKind.INT:
@@ -1401,6 +1435,9 @@ class OwnType(TpyType):
     def is_value_type(self) -> bool:
         # Own[T] uses T&& at param boundaries; treat as value type for other purposes
         return True
+
+    def value_form(self) -> 'ValueForm':
+        return ValueForm.OWN
 
     def is_send(self) -> bool:
         return self.wrapped.is_send()
@@ -2360,6 +2397,13 @@ class OptionalType(TpyType):
             return True
         return not self.inner.is_value_type()
 
+    def value_form(self) -> 'ValueForm':
+        # Keyed on the C++ shape (uses_pointer_repr), NOT is_value_type: a
+        # force_pointer_repr Optional over a value inner is value-semantics but
+        # lowers to T* / std::optional<T>, so it is PTR_OPTIONAL. A non-pointer
+        # (value-inner) Optional is a plain value.
+        return ValueForm.PTR_OPTIONAL if self.uses_pointer_repr() else ValueForm.VALUE
+
     def to_cpp_return(self) -> str:
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}*"
@@ -2891,10 +2935,17 @@ class TupleType(TpyType):
         args = ", ".join(self._element_to_cpp_param(t, const=True) for t in self.element_types)
         return f"std::tuple<{args}>"
 
+    def element_forms(self) -> tuple['ValueForm', ...]:
+        """Per-element C++ value-category classification (see `ValueForm`)."""
+        return tuple(e.value_form() for e in self.element_types)
+
     def has_ref_elements(self) -> bool:
+        # A non-value element that is not moved-by-value (OWN) nor a generic
+        # proxy (TYPE_PARAM) -- i.e. a borrowed reference or pointer-repr slot.
         return any(
-            not et.is_value_type() and not isinstance(et, (OwnType, TypeParamRef))
-            for et in self.element_types
+            not e.is_value_type()
+            and e.value_form() not in (ValueForm.OWN, ValueForm.TYPE_PARAM)
+            for e in self.element_types
         )
 
     def has_pointer_repr_optional_element(self) -> bool:
@@ -2905,19 +2956,72 @@ class TupleType(TpyType):
         conversion at boundaries between the two reps goes through
         `tpy::tuple_to_pointer` / `tpy::tuple_to_storage`.
         """
-        return any(
-            isinstance(et, OptionalType) and et.uses_pointer_repr()
-            for et in self.element_types
-        )
+        return any(f is ValueForm.PTR_OPTIONAL for f in self.element_forms())
+
+    @staticmethod
+    def _element_is_pointer_repr(e: 'TpyType') -> bool:
+        """Whether element `e`'s borrow form is a bare pointer `T*` -- a
+        pointer-repr Optional (nullable) or a plain non-value reference
+        (record / list / dict / set; non-null).
+
+        Excludes UnionType elements: a pointer-variant union (`Dog | Cat`)
+        borrows as `std::variant<A*, B*>` and a recursive-union wrapper as
+        `X&` -- neither is a bare `T*`, and both keep their own borrow form and
+        conversion path rather than routing through tuple_to_pointer /
+        tuple_to_storage."""
+        form = e.value_form()
+        if form is ValueForm.PTR_OPTIONAL:
+            return True
+        if form is ValueForm.BORROW_REF:
+            peeled = unwrap_readonly(unwrap_ref_type(e))
+            # TypeParamRef keeps its `val_or_ref_t<T>` proxy (resolved at C++
+            # instantiation); a recursive-union wrapper keeps its nominal `X&`
+            # form; a (pointer-variant) union keeps `std::variant<A*,B*>`.
+            if isinstance(peeled, (UnionType, TypeParamRef)):
+                return False
+            if peeled.needs_wrapper():
+                return False
+            return True
+        return False
+
+    def has_pointer_repr_element(self) -> bool:
+        """True if any element's borrow form is a bare pointer `T*`.
+
+        Generalizes `has_pointer_repr_optional_element` to also cover plain
+        non-value (BORROW_REF) elements: both share one borrow representation
+        (`std::tuple<T*, ...>`) distinct from storage form, with element-wise
+        conversion at boundaries through `tpy::tuple_to_pointer` (storage ->
+        borrow) and `tpy::tuple_to_storage`
+        (borrow -> storage). Drives the storage<->pointer wrap sites."""
+        return any(self._element_is_pointer_repr(e) for e in self.element_types)
 
     def _element_to_cpp_param(self, t: 'TpyType', const: bool) -> str:
-        """C++ type for a tuple element in param/return context.
+        """C++ type for a tuple element in param/return (borrow) context.
 
-        Mirrors the top-level convention: OptionalType of a non-value type
-        lowers to T* (or const T*) in tuple param/return positions. The
-        std::optional<T> form is reserved for field/storage contexts and is
-        reached via to_cpp() / to_cpp_stored().
-        """
+        A non-value element borrows as a bare pointer `T*` / `const T*` (a
+        reference can't be a `std::tuple` member, and pointer form is both
+        constructible and aliasing). A pointer-variant union keeps its
+        `std::variant<A*, B*>` borrow form. OptionalType of a non-value inner
+        already lowers to `T*` via its own `to_cpp_return`. The `std::optional<T>`
+        / value-`T` storage forms are reserved for field/storage contexts and
+        reached via to_cpp() / to_cpp_stored()."""
+        if self._element_is_pointer_repr(t) and t.value_form() is ValueForm.BORROW_REF:
+            peeled = unwrap_ref_type(t)
+            is_const = const or isinstance(peeled, ReadonlyType)
+            base = unwrap_readonly(peeled).to_cpp()
+            return f"const {base}*" if is_const else f"{base}*"
+        # Generic element: val_or_ptr_t<T> (pointer sibling of val_or_ref_t) so
+        # the instantiated slot matches the concrete borrow form (`T*` for
+        # non-value T, `T` for value T). Plain val_or_ref_t would instantiate
+        # to `T&`, which neither a std::tuple member nor a concrete pointer-form
+        # caller can satisfy.
+        core = unwrap_readonly(unwrap_ref_type(t))
+        if (isinstance(core, TypeParamRef)
+                and t.value_form() in (ValueForm.TYPE_PARAM, ValueForm.BORROW_REF)):
+            peeled = unwrap_ref_type(t)
+            is_const = const or isinstance(peeled, ReadonlyType)
+            trait = "::tpy::val_or_cptr_t" if is_const else "::tpy::val_or_ptr_t"
+            return f"{trait}<{core.name}>"
         return t.to_cpp_return_const() if const else t.to_cpp_return()
 
     def to_cpp_param_type(self) -> str:

@@ -49,7 +49,7 @@ __gen_process process(std::vector<std::tuple<int32_t, Item>>& rows) {
 // def main() -> None:
 void main() {
     // rows: list[tuple[Int32, Item]] = [(1, Item(0)), (2, Item(0))]
-    std::vector<std::tuple<int32_t, Item>> rows = {std::tuple<int32_t, Item>{1, Item(0)}, std::tuple<int32_t, Item>{2, Item(0)}};
+    std::vector<std::tuple<int32_t, Item>> rows = {::tpy::tuple_to_storage<std::tuple<int32_t, Item>>(std::tuple<int32_t, Item>{1, Item(0)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Item>>(std::tuple<int32_t, Item>{2, Item(0)})};
     // for v in process(rows):
     auto __src_0 = process(rows);
     auto&& __itr_0 = ::tpy::__iter__(__src_0);

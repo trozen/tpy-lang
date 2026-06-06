@@ -42,7 +42,7 @@ _FRESH_COLLECTION_NODES = (
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
 )
-from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType
+from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType
 from .gen_generators import GeneratorCodegen, GeneratorForInfo
 from ..type_def_registry import is_str_type, is_str_category, is_big_int_type
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
@@ -388,6 +388,11 @@ class AsyncCoroCodegen:
             elif kind is _CoroParamKind.POINTER:
                 if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
                     field_type = ctor_type = ptype_inner.to_cpp_param_type()
+                elif isinstance(actual, TupleType):
+                    # Borrow form: std::tuple<..., T*> (readonly -> const T*).
+                    # The pointers alias the caller; stored by value in the
+                    # frame so they survive suspension.
+                    field_type = ctor_type = ptype_inner.to_cpp_return()
                 else:
                     # Non-value union: the pointer-variant borrow form
                     # (`std::variant<A*, B*>`) is the shape every other param
@@ -437,6 +442,12 @@ class AsyncCoroCodegen:
         if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
             return _CoroParamKind.POINTER
         if self.ctx.is_ptr_variant_union(actual):
+            return _CoroParamKind.POINTER
+        # A borrow-form tuple param (std::tuple<..., T*>) is held in the frame
+        # by value-of-pointers so it aliases the caller across suspensions; a
+        # VALUE-kind field would store the storage form (std::tuple<..., T>)
+        # and silently copy the element where CPython shares it.
+        if isinstance(actual, TupleType) and actual.has_pointer_repr_element():
             return _CoroParamKind.POINTER
         # Own[T] checked before is_value_type(): `OwnType.is_value_type()` is
         # True (Own[T] uses T&& at param boundaries) but the move-only
@@ -924,6 +935,15 @@ class AsyncCoroCodegen:
                     "await arg has no analyzed type (borrowed-arg lift)",
                     loc=stmt.loc)
             arg_t = unwrap_ref_type(arg_t)
+            # A tuple arg's analyzed type can carry IntLiteral elements and
+            # per-element Own provenance, which would demote the hoisted frame
+            # field to a value tuple (or fail to render). The hoisted local
+            # exists to back the param's borrow, so give it the declared param
+            # slot shape -- the frame field then takes the borrow form and the
+            # sub-coro's pointer slots stay valid across the suspension.
+            lift_ptype = unwrap_readonly(unwrap_ref_type(fi.params[i].type))
+            if isinstance(arg_t, TupleType) and isinstance(lift_ptype, TupleType):
+                arg_t = lift_ptype
             name = f"__coro_arg_{rcfg.resumable_state(func).next_arg_lift_id}"
             rcfg.resumable_state(func).next_arg_lift_id += 1
             # loc=None: the hoisted decl is a synthesized sub-step of the host
@@ -1056,6 +1076,19 @@ class AsyncCoroCodegen:
                     # of a tuple-unpack (`__for_tup`) is itself a value tuple.
                     inner_cpp = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
+                elif (isinstance(ltype_inner, TupleType)
+                        and ltype_inner.has_pointer_repr_element()
+                        and not lname.startswith("__for_tup_")):
+                    # Borrow-form tuple local (std::tuple<..., T*>): a value-form
+                    # field would copy the element across the suspension (the
+                    # silent-copy divergence). Pointers default-construct to
+                    # null, so no frame_slot wrapper is needed. The synthetic
+                    # `__for_tup_*` loop element holders are excluded -- their
+                    # form is the loop machinery's call (pointer-to-element for
+                    # stable sources, storage copy otherwise) and the loop
+                    # advance assigns the source element shape directly.
+                    cpp_type = self.types.tuple_borrow_cpp(ltype_inner)
+                    out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
                 elif ltype_inner.is_value_type():
                     cpp_type = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}{cpp_type} {cpp_name};\n")
@@ -1229,6 +1262,7 @@ class AsyncCoroCodegen:
         # body emission around a coro doesn't see inner-coro state leak out
         # on exit.
         old_pointer_locals = self.ctx.pointer_locals
+        old_borrow_form_tuple_locals = self.ctx.borrow_form_tuple_locals
         old_type_param_bounds = self.ctx.current_type_param_bounds
 
         # Reset frame-specific fields before setup_body_scope, since the
@@ -1314,6 +1348,7 @@ class AsyncCoroCodegen:
             self.ctx.in_method = old_in_method
             self.ctx.current_method_record_type = old_method_record
             self.ctx.pointer_locals = old_pointer_locals
+            self.ctx.borrow_form_tuple_locals = old_borrow_form_tuple_locals
             self.ctx.current_type_param_bounds = old_type_param_bounds
 
     def gen_coro_finally_top_def(self, out: "TextIO", func: TpyFunction,

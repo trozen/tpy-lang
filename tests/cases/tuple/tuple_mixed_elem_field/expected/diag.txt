@@ -1,0 +1,4 @@
+main.py:21: warning: copies Box | None into field (tuple element 0); use copy() to make this explicit
+main.py:21: warning: copies Box into field (tuple element 1); use copy() to make this explicit
+main.py:24: warning: copies Box | None into field (tuple element 0); use copy() to make this explicit
+main.py:24: warning: copies Box into field (tuple element 1); use copy() to make this explicit

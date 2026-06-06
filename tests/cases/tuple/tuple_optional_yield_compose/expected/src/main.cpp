@@ -21,7 +21,7 @@ void main() {
         // # Mutate through the relayed yielded tuple -- mutation must flow back
         // # through both generator boundaries to `points`.
         // for a, b in relay(first_only(points)):
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(__for_tup_0);
+        auto& __tup_1 = __for_tup_0;
         P* a = std::get<0>(__tup_1);
         P* b = std::get<1>(__tup_1);
         // if a is not None:

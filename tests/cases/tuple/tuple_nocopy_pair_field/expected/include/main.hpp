@@ -48,7 +48,7 @@ struct Container {
         // b = Handle(Int32(2))
         Handle b = Handle(2);
         // self.pair = (a, b)
-        this->pair = std::tuple<Handle, Handle>{std::move(a), std::move(b)};
+        this->pair = ::tpy::tuple_to_storage<std::tuple<Handle, Handle>>(std::tuple<Handle, Handle>{std::move(a), std::move(b)});
     }
     // non-copyable
     Container(const Container&) = delete;

@@ -39,7 +39,7 @@ def main() -> None:
     # storage-form source: assigning d[k] to another dict slot should
     # not double-wrap.
     d2: dict[Int32, tuple[P | None, P | None]] = {}
-    d2[Int32(0)] = d[Int32(0)]
+    d2[Int32(0)] = d[Int32(0)]  # tpyc: warning(/copies/) warning(/copies/)
     show(d2[Int32(0)])
 
 

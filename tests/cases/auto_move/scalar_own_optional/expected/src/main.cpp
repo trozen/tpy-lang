@@ -55,28 +55,6 @@ int32_t forward_borrow(std::optional<P>&& x) {
     return borrow(::tpy::optional_to_ptr(x));
 }
 
-// def return_into_borrow(x: Own[P | None]) -> P | None:
-P* return_into_borrow(std::optional<P>&& x) {
-    // # KNOWN-UB: returns optional_to_ptr(x) into a P* return; x dies at
-    // # function exit so the returned pointer dangles. Codegen is faithful
-    // # to the source; the missing diagnostic is filed under
-    // # BUGS.md "Safety / borrow checker" (Own[Optional]/[Union] dangling
-    // # return). Test reads rb->x immediately after the call -- happens to
-    // # work because the destructor of optional<P> doesn't clobber the
-    // # bytes. When the sema rejection lands, rewrite this test.
-    // return x
-    return ::tpy::optional_to_ptr(x);
-}
-
-// def make_pair(x: Own[P | None]) -> tuple[P | None, Int32]:
-std::tuple<P*, int32_t> make_pair(std::optional<P>&& x) {
-    // # KNOWN-UB: same shape as return_into_borrow above -- the returned
-    // # tuple's P* slot points into x's storage and dangles after the
-    // # function returns. See BUGS.md borrow-checker entry.
-    // return (x, Int32(0))
-    return std::tuple<P*, int32_t>{::tpy::optional_to_ptr(x), 0};
-}
-
 // def reassign_pointer(x: Own[P | None]) -> Int32:
 int32_t reassign_pointer(std::optional<P>&& x) {
     // # Reassign a pointer-form local from the Own-Optional param: the
@@ -191,37 +169,6 @@ void test_forward_to_borrow_slot() {
     std::cout << forward_borrow(std::nullopt) << "\n";
 }
 
-// def test_return_into_borrow_return_type() -> None:
-void test_return_into_borrow_return_type() {
-    // # Return into pointer-form `P | None` -- optional_to_ptr at return.
-    // rb = return_into_borrow(P(23))
-    P* rb = return_into_borrow(P(23));
-    // if rb is not None:
-    if ((rb != nullptr)) {
-        // print(rb.x)
-        std::cout << rb->x << "\n";
-    }
-    // rb_none = return_into_borrow(None)
-    P* rb_none = return_into_borrow(std::nullopt);
-    // print(rb_none is None)
-    std::cout << ::tpy::print_bool((rb_none == nullptr)) << "\n";
-}
-
-// def test_tuple_element() -> None:
-void test_tuple_element() {
-    // tp, tn = make_pair(P(29))
-    auto __tup_1 = make_pair(P(29));
-    P* tp = std::get<0>(__tup_1);
-    int32_t tn = std::get<1>(__tup_1);
-    // if tp is not None:
-    if ((tp != nullptr)) {
-        // print(tp.x)
-        std::cout << tp->x << "\n";
-    }
-    // print(tn)
-    std::cout << tn << "\n";
-}
-
 // def test_reassign_pointer_local() -> None:
 void test_reassign_pointer_local() {
     // print(reassign_pointer(P(31)))
@@ -274,10 +221,6 @@ void main() {
     test_return_passthrough();
     // test_forward_to_borrow_slot()
     test_forward_to_borrow_slot();
-    // test_return_into_borrow_return_type()
-    test_return_into_borrow_return_type();
-    // test_tuple_element()
-    test_tuple_element();
     // test_reassign_pointer_local()
     test_reassign_pointer_local();
     // test_first_decl_pointer_local()

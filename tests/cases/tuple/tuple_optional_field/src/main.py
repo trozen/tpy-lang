@@ -14,7 +14,7 @@ class Point:
 class Holder:
     pair: tuple[Optional[Point], Int32]
     def __init__(self, pair: tuple[Optional[Point], Int32]) -> None:
-        self.pair = pair
+        self.pair = pair  # tpyc: warning(/copies/)
 
 def main() -> None:
     p = Point(1, 2)

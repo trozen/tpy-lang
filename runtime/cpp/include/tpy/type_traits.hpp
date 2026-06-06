@@ -173,6 +173,57 @@ template<typename T> using val_or_ref_t       = typename detail::val_or_ref_impl
 template<typename T> using val_or_cref_t      = typename detail::val_or_cref_impl<T>::type;
 template<typename T> using param_val_or_ref_t = typename detail::param_val_or_ref_impl<T>::type;
 
+// Tuple-element borrow form for a generic T -- the pointer sibling of
+// val_or_ref_t. A reference can't be a std::tuple member and the concrete
+// tuple borrow form is std::tuple<..., T*>, so generic tuple slots use a bare
+// pointer for non-value Ts (value Ts stay by value). This keeps a generic
+// `tuple[T, ...]` param/return ABI-compatible with concrete pointer-form
+// tuples at instantiation.
+namespace detail {
+    template<typename T> struct val_or_ptr_impl  { using type = std::conditional_t<is_value_type<T>::value, T, T*>; };
+    template<typename T> struct val_or_cptr_impl { using type = std::conditional_t<is_value_type<T>::value, T, const T*>; };
+    template<> struct val_or_ptr_impl<void>  { using type = void; };
+    template<> struct val_or_cptr_impl<void> { using type = void; };
+}
+template<typename T> using val_or_ptr_t  = typename detail::val_or_ptr_impl<T>::type;
+template<typename T> using val_or_cptr_t = typename detail::val_or_cptr_impl<T>::type;
+
+// Read a generic tuple slot (val_or_ptr_t<T>) as a usable value/reference:
+// deref the non-value pointer case, pass value slots through. Constrained to
+// lvalues (and pointers, whose deref outlives the call regardless of the
+// pointer's own value category): a value-type rvalue would have its T&&
+// forwarded out of the call -- a dangling reference to the dead parameter.
+template<typename T>
+    requires (std::is_lvalue_reference_v<T>
+              || std::is_pointer_v<std::remove_cvref_t<T>>)
+decltype(auto) tuple_elem_ref(T&& x) {
+    using D = std::remove_cvref_t<T>;
+    if constexpr (std::is_pointer_v<D>) {
+        return (*x);
+    } else {
+        return std::forward<T>(x);
+    }
+}
+
+// Build a generic tuple slot from an element lvalue, with the slot type given
+// explicitly (Dest = val_or_ptr_t<T>): borrow into a pointer slot by address
+// (pass already-pointer sources through), construct/copy into a value slot.
+// Dest must be explicit -- the source alone can't distinguish a `T =
+// val_or_ref<U>` instantiation (value slot constructed from U&) from a plain
+// non-value `T = U` (pointer slot taking &x).
+template<typename Dest, typename T>
+Dest to_val_or_ptr(T& x) {
+    if constexpr (std::is_pointer_v<Dest>) {
+        if constexpr (std::is_pointer_v<std::remove_cv_t<T>>) {
+            return x;
+        } else {
+            return &x;
+        }
+    } else {
+        return x;
+    }
+}
+
 /**
  * is_dyn_protocol_base<T> -- true iff T is a TPy @dynamic protocol abstract
  * base. Codegen emits a specialization next to each @dynamic protocol class;
@@ -247,6 +298,9 @@ struct val_or_ref {
 
     val_or_ref(const std::remove_const_t<T>& v) requires (is_val) : data_(v) {}
     val_or_ref(T& ref) requires (!is_val) : data_(&ref) {}
+    // Borrow-pointer sources (tuple borrow slots are `T*`): same non-null
+    // borrow contract as the T& ctor.
+    val_or_ref(T* ptr) requires (!is_val) : data_(ptr) {}
 
     decltype(auto) get() const {
         if constexpr (is_val) return data_;

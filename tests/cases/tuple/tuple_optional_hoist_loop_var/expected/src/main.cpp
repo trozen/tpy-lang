@@ -27,7 +27,7 @@ void main() {
     // items: list[tuple[T | None, T | None]] = [(t1, None), (None, None)]
     std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{&(t1), nullptr}), ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{nullptr, nullptr})};
     // last = items[0]
-    auto last = ::tpy::__getitem__(items, 0);
+    auto&& last = ::tpy::__getitem__(items, 0);
     // for last in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();

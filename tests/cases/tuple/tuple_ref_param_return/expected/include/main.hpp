@@ -11,7 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::tuple<int32_t, Point&> make_pair(int32_t n, Point& p);
+std::tuple<int32_t, Point*> make_pair(int32_t n, Point& p);
 void main();
 
 // class Point:

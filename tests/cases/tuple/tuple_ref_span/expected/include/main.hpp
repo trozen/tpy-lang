@@ -11,7 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::tuple<Point&, int32_t> get_first(std::span<Point> s);
+std::tuple<Point*, int32_t> get_first(std::span<Point> s);
 void main();
 
 // class Point:

@@ -31,6 +31,7 @@ from ..type_def_registry import (
     is_bool_type, is_dict, is_set, is_bytes_view_type, is_str_view_type,
 )
 from ..symbol_binding import lookup_imported, SymbolKind
+from ..modules.type_resolution import is_native_iterable
 from ..compilation_context import get_current_compiler
 
 if TYPE_CHECKING:
@@ -273,6 +274,7 @@ def loop_var_binding(
     elem_type: TpyType, cpp_var: str, deref_expr: str,
     const_loop_var: bool, hoisted: bool = False,
     consuming: bool = False,
+    hoisted_tuple_lift_cpp: str | None = None,
 ) -> str:
     """Return the C++ loop variable binding line (no trailing newline).
 
@@ -282,18 +284,28 @@ def loop_var_binding(
     consuming=True uses auto&& to bind into OwnIter's move-iterator
     storage. Zero cost (no per-element move), but move-ready: codegen
     can later emit std::move(var) for per-element ownership transfer.
+
+    hoisted_tuple_lift_cpp: a hoisted pointer-repr tuple var is forward-
+    declared in BORROW form (std::tuple<..., T*>, see the branch-hoist
+    pre-declaration), so the per-iteration assignment from the storage
+    element must lift element-wise; the caller passes the borrow C++ type.
     """
     # Own[T] from consuming iterators uses the same binding as T.
     if isinstance(elem_type, OwnType):
         elem_type = elem_type.wrapped
     if hoisted:
+        if hoisted_tuple_lift_cpp is not None:
+            return (f"{cpp_var} = ::tpy::tuple_to_pointer"
+                    f"<{hoisted_tuple_lift_cpp}>({deref_expr});")
         return f"{cpp_var} = {deref_expr};"
     if consuming:
         # Forwarding ref into OwnIter storage: zero-cost, move-ready.
         return f"auto&& {cpp_var} = {deref_expr};"
     # Composite types (variants, tuples) use reference binding -- they may
-    # contain heap-allocated members, making copies expensive.
-    if isinstance(elem_type, (UnionType, TupleType)):
+    # contain heap-allocated members, making copies expensive. Peel readonly:
+    # a readonly[tuple[...]] yield is the same composite shape (and a typed
+    # copy of its borrow form would not even compile for pointer slots).
+    if isinstance(unwrap_readonly(elem_type), (UnionType, TupleType)):
         if const_loop_var:
             return f"const auto& {cpp_var} = {deref_expr};"
         return f"auto&& {cpp_var} = {deref_expr};"
@@ -564,7 +576,10 @@ class LocalScopeSnap:
 
     Note: hoisted_vars and branch_hoisted_vars are NOT snapshotted -- they are
     function-scoped accumulators. A stale entry from a prior branch's nested if
-    causes unnecessary hoisting but not incorrect code. Similarly,
+    causes unnecessary hoisting but not incorrect code. borrow_form_tuple_locals
+    is excluded for the same reason: its names are branch-hoisted declarations
+    emitted BEFORE the branches, so they are correct for every sibling branch
+    and persist to function exit (reset_scope clears them). Similarly,
     frame_field_shadows is NOT snapshotted -- entries are either discarded by
     the emit site that introduced them (for-loop iter var, scoped to the loop
     body) or persist to function exit where `reset_scope` clears them (with-as
@@ -643,6 +658,14 @@ class CodeGenContext:
     nested_def_locals: set[str] = field(default_factory=set)
     # Walrus pre-declarations already emitted (not snapshot/restored across branches)
     walrus_pre_declared: set[str] = field(default_factory=set)
+    # Deref rewrites for walrus optional-slot locals. The pre-decl is
+    # function-scope (hoisted via temps), so the `(*name)` read rewrite must
+    # survive the branch-scope narrowed_vars restores the same way
+    # walrus_pre_declared does -- restore_local_scope re-applies these.
+    walrus_deref_rewrites: dict[str, str] = field(default_factory=dict)
+    # Walrus locals holding the owning STORAGE tuple form: their
+    # storage_form_tuple_locals membership must survive the same restores.
+    walrus_storage_tuple_locals: set[str] = field(default_factory=set)
     global_names: set[str] = field(default_factory=set)
     current_ns: Namespace | None = None
     in_method: bool = False
@@ -770,6 +793,11 @@ class CodeGenContext:
     # Branch-hoisted pointer-locals: declared by _emit_branch_decls for if/match/try.
     # Rvalue slots for these vars must go to pending_hoist_decls, not block scope.
     branch_hoisted_vars: set[str] = field(default_factory=set)
+    # Tuple locals forward-declared in borrow (pointer) form `std::tuple<..., T*>`
+    # (no-init branch-hoist of a pointer-repr tuple). Their assignments stay in
+    # borrow form -- the storage<->pointer wrap must NOT fire when writing into
+    # them (the local IS the borrow, not a storage slot).
+    borrow_form_tuple_locals: set[str] = field(default_factory=set)
 
     # --- Comprehension-local variable names ---
     # Loop variables inside comprehensions shadow globals during element
@@ -1020,6 +1048,7 @@ class CodeGenContext:
         self.const_indirect_locals = set()
         self.storage_form_tuple_locals = set()
         self.const_storage_form_tuple_locals = set()
+        self.borrow_form_tuple_locals = set()
         self.storage_form_optional_locals = set()
         self.const_storage_form_optional_locals = set()
         self.slots.reset()
@@ -1060,6 +1089,8 @@ class CodeGenContext:
         self.assign_narrowed_types = {}
         self.literal_facts = {}
         self.walrus_pre_declared = set()
+        self.walrus_deref_rewrites = {}
+        self.walrus_storage_tuple_locals = set()
         self.overload_terminated = False
         # Note: overload_param_types and literal_overload_facts are NOT reset
         # here -- they're managed by the caller (set before gen_body, cleared
@@ -1117,7 +1148,19 @@ class CodeGenContext:
         self.plain_rebind_slots = snap.plain_rebind_slots.copy()
         self.assign_narrowed_types = dict(snap.assign_narrowed_types)
         self.narrowed_vars = dict(snap.narrowed_vars)
+        # Walrus optional-slot rewrites outlive C++ block scopes (the decl is
+        # function-scope); re-apply over the snapshot so sibling branches
+        # don't read the bare optional, and keep the storage-form
+        # classification of walrus storage-tuple locals alive with them.
+        self.narrowed_vars.update(self.walrus_deref_rewrites)
+        self.storage_form_tuple_locals.update(self.walrus_storage_tuple_locals)
         self.declared_persistent_aliases = snap.declared_persistent_aliases.copy()
+
+    def register_walrus_deref(self, name: str, deref: str) -> None:
+        """Install the `(*slot)` read rewrite for a walrus optional-slot local
+        in both the live map and the restore-surviving registry."""
+        self.narrowed_vars[name] = deref
+        self.walrus_deref_rewrites[name] = deref
 
     def restore_narrowed_vars(self, saved: dict[str, str | None]) -> None:
         """Restore narrowed_vars after a branch block."""
@@ -1496,6 +1539,12 @@ class CodeGenContext:
         """
         if isinstance(expr, (TpyFieldAccess, TpySubscript)):
             return True
+        # A ternary of two storage reads is itself a storage lvalue (C++
+        # evaluates one branch); mixed-form arms don't compose into one C++
+        # conditional and are not claimed here.
+        if isinstance(expr, TpyIfExpr):
+            return (self.is_storage_form_source(expr.then_expr)
+                    and self.is_storage_form_source(expr.else_expr))
         if isinstance(expr, TpyName):
             if expr.name in self.storage_form_tuple_locals:
                 return True
@@ -1516,6 +1565,22 @@ class CodeGenContext:
                 if isinstance(rt, TupleType) and any(
                         isinstance(et, OwnType) for et in rt.element_types):
                     return True
+        return False
+
+    def is_const_storage_source(self, expr: TpyExpr) -> bool:
+        """True when `expr` reads from a const-bound storage location, so
+        element addresses derived from it come out `const T*`: a field of a
+        const receiver (self in a readonly method, const param/local), or a
+        name bound const (const-storage loop var, const-inferred param/local).
+        """
+        if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
+            obj = expr.obj.name
+            return (obj in self.const_ref_params
+                    or obj in self.const_indirect_locals)
+        if isinstance(expr, TpyName):
+            return (expr.name in self.const_storage_form_tuple_locals
+                    or expr.name in self.const_ref_params
+                    or expr.name in self.const_indirect_locals)
         return False
 
     def callee_returns_own_ptr_optional(self, init: 'TpyExpr') -> bool:
@@ -1641,11 +1706,23 @@ class CodeGenContext:
         """
         if elem_type is None:
             return
+        # Only a native-iterable source (list/dict/set/array/Span) stores its
+        # elements in storage form, so its loop var binds storage form. A
+        # generator / Iterator yields BORROW form (the function-return ABI) --
+        # its loop var is already pointer/borrow form and must NOT be flagged as
+        # storage, or storage<->pointer wraps and the borrow-deref access path
+        # would misfire on an already-borrow value.
+        iter_type = self.get_expr_type(iterable)
+        if iter_type is None or not is_native_iterable(iter_type, self.analyzer.registry):
+            return
         elem_peeled = unwrap_readonly(elem_type)
         is_const_source = (detect_const_source
                            and self.iteration_yields_const(iterable))
         if (isinstance(elem_peeled, TupleType)
-                and elem_peeled.has_pointer_repr_optional_element()):
+                and elem_peeled.has_pointer_repr_element()
+                # A hoisted loop var forward-declared in BORROW form keeps
+                # that classification; the loop advance lifts each element.
+                and name not in self.borrow_form_tuple_locals):
             self.storage_form_tuple_locals.add(name)
             if is_const_source:
                 self.const_storage_form_tuple_locals.add(name)
@@ -1827,6 +1904,16 @@ class CodeGenContext:
 
         for lname, ltype in func.generator_locals:
             ltype_inner = unwrap_ref_type(ltype)
+            # Borrow-form tuple frame fields are declared std::tuple<..., T*>
+            # (gen_coro_struct), so assignments from storage sources need the
+            # element-wise pointer lift like any borrow-form local. Pointer-form
+            # loop vars / `__for_tup_*` holders keep the loop machinery's form.
+            if (isinstance(ltype_inner, TupleType)
+                    and ltype_inner.has_pointer_repr_element()
+                    and not lname.startswith("__for_tup_")
+                    and lname not in self.pointer_locals):
+                self.borrow_form_tuple_locals.add(lname)
+                continue
             if ltype_inner.is_value_type():
                 continue
             if (isinstance(ltype_inner, OptionalType)

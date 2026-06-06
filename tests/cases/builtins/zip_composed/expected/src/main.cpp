@@ -35,10 +35,10 @@ void main() {
         // # Non-value types through map
         // for a, b in zip(map(identity, pts1), map(identity, pts2)):
         auto& __tup_1 = __for_tup_0;
-        Point* a = &::tpy::unwrap_ref(std::get<0>(__tup_1));
-        Point* b = &::tpy::unwrap_ref(std::get<1>(__tup_1));
+        auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+        auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         // print(a, b)
-        std::cout << (*a) << " " << (*b) << "\n";
+        std::cout << a << " " << b << "\n";
     }
     // # Mixed: non-value and value types
     // for p, v in zip(map(identity, pts1), map(double, vals)):
@@ -51,7 +51,7 @@ void main() {
         // # Mixed: non-value and value types
         // for p, v in zip(map(identity, pts1), map(double, vals)):
         auto& __tup_2 = __for_tup_1;
-        Point& p = ::tpy::unwrap_ref(std::get<0>(__tup_2));
+        auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
         int32_t v = std::get<1>(__tup_2);
         // print(p, v)
         std::cout << p << " " << v << "\n";
@@ -67,12 +67,12 @@ void main() {
         // # Mutation through composed references proves no copy
         // for a, b in zip(map(identity, pts1), map(identity, pts2)):
         auto& __tup_3 = __for_tup_2;
-        Point* a = &::tpy::unwrap_ref(std::get<0>(__tup_3));
-        Point* b = &::tpy::unwrap_ref(std::get<1>(__tup_3));
+        auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
+        auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
         // a.x += 100
-        a->x = ::tpy::add_check<int32_t>(a->x, 100);
+        a.x = ::tpy::add_check<int32_t>(a.x, 100);
         // b.y += 200
-        b->y = ::tpy::add_check<int32_t>(b->y, 200);
+        b.y = ::tpy::add_check<int32_t>(b.y, 200);
     }
     // for pt in pts1:
     auto& __obj_6 = pts1;

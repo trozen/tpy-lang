@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 
 // def find(p: Point) -> tuple[Point, bool]:
-std::tuple<Point&, bool> find(Point& p) {
+std::tuple<Point*, bool> find(Point& p) {
     // return (p, True)
-    return std::tuple<Point&, bool>{p, true};
+    return std::tuple<Point*, bool>{&(p), true};
 }
 
 // def main() -> None:
@@ -16,7 +16,7 @@ void main() {
     Point p = Point(10, 20);
     // pt, found = find(p)
     auto __tup_1 = find(p);
-    Point& pt = ::tpy::unwrap_ref(std::get<0>(__tup_1));
+    auto&& pt = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     bool found = std::get<1>(__tup_1);
     // print(pt)
     std::cout << pt << "\n";

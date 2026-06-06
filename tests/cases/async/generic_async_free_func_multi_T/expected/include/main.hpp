@@ -51,7 +51,7 @@ template <typename K, typename V>
     case S_INITIAL: {
         // return (k, v)
         __state = S_DONE;
-        std::tuple<K, V> __tpy_async_ret = std::tuple<::tpy::val_or_ref_t<K>, ::tpy::val_or_ref_t<V>>{k, v};
+        std::tuple<K, V> __tpy_async_ret = std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<K>>(k), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<V>>(v)};
         return ::tpystd::tpy::Poll<std::tuple<K, V>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

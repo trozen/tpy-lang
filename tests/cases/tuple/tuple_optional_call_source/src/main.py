@@ -23,7 +23,7 @@ def main() -> None:
     pairs.append(make_pair(a, b))
 
     d: dict[Int32, tuple[P | None, P | None]] = {}
-    d[Int32(0)] = make_pair(a, b)
+    d[Int32(0)] = make_pair(a, b)  # tpyc: warning(/copies/) warning(/copies/)
 
     print(len(pairs))
     print(len(d))

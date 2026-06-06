@@ -47,7 +47,7 @@ struct PairHolder {
     std::tuple<Point, Point> pair;
 
     PairHolder() = default;
-    explicit PairHolder(const std::tuple<const Point&, const Point&>& pair) : pair(pair) {}
+    explicit PairHolder(const std::tuple<const Point*, const Point*>& pair) : pair(::tpy::tuple_to_storage<std::tuple<Point, Point>>(pair)) {}
 
     bool __eq__(const PairHolder& other) const;
 
@@ -74,11 +74,11 @@ inline std::string Point::__repr__() const {
 }
 
 inline bool PairHolder::__eq__(const PairHolder& other) const {
-    return (this->pair == other.pair);
+    return ::tpy::tuple_eq(this->pair, other.pair);
 }
 
 inline std::string PairHolder::__repr__() const {
-    return std::format("PairHolder(pair={})", ::tpy::tuple_to_str(this->pair));
+    return std::format("PairHolder(pair={})", ::tpy::tuple_to_str(::tpy::tuple_to_pointer<std::tuple<const Point*, const Point*>>(this->pair)));
 }
 void __tpy_init();
 } // namespace tpyapp::main

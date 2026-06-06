@@ -18,7 +18,7 @@ void main() {
         // for i, b in g(data):
         auto& __tup_1 = __for_tup_0;
         const ::tpy::BigInt& i = std::get<0>(__tup_1);
-        Box& b = ::tpy::unwrap_ref(std::get<1>(__tup_1));
+        auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         // b.val = b.val + 100
         b.val = ((b.val) + (::tpy::BigInt(100)));
     }

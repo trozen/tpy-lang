@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // items: list[tuple[str, Point]] = [("a", Point(1, 2)), ("b", Point(3, 4))]
-    std::vector<std::tuple<std::string, Point>> items = {std::tuple<std::string, Point>{"a", Point(1, 2)}, std::tuple<std::string, Point>{"b", Point(3, 4)}};
+    std::vector<std::tuple<std::string, Point>> items = {::tpy::tuple_to_storage<std::tuple<std::string, Point>>(std::tuple<std::string, Point>{"a", Point(1, 2)}), ::tpy::tuple_to_storage<std::tuple<std::string, Point>>(std::tuple<std::string, Point>{"b", Point(3, 4)})};
     // for item in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();

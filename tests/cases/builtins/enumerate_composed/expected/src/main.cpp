@@ -34,7 +34,7 @@ void main() {
         // for i, p in enumerate(map(identity, pts)):
         auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);
-        Point& p = ::tpy::unwrap_ref(std::get<1>(__tup_1));
+        auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         // print(i, p)
         std::cout << i << " " << p << "\n";
     }
@@ -66,7 +66,7 @@ void main() {
         // for k, q in enumerate(map(identity, pts)):
         auto& __tup_3 = __for_tup_2;
         int32_t k = std::get<0>(__tup_3);
-        Point& q = ::tpy::unwrap_ref(std::get<1>(__tup_3));
+        auto&& q = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
         // q.x += 100
         q.x = ::tpy::add_check<int32_t>(q.x, 100);
     }

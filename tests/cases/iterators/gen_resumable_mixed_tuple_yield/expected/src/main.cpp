@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def pairs(items: list[P]) -> Iterator[tuple[Int32, P]]:
-std::expected<std::tuple<int32_t, P&>, ::tpy::StopIteration> __gen_pairs::__next__() {
+std::expected<std::tuple<int32_t, P*>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // n = Int32(len(items))
@@ -28,11 +28,11 @@ std::expected<std::tuple<int32_t, P&>, ::tpy::StopIteration> __gen_pairs::__next
             if ((i == 0)) {
                 // yield (i, items[i])
                 __state = S_RESUME_0;
-                return std::tuple<int32_t, P&>{i, ::tpy::__getitem__(items, i)};
+                return std::tuple<int32_t, P*>{i, &(::tpy::__getitem__(items, i))};
             } else {
                 // yield (i * 10, items[i])
                 __state = S_RESUME_1;
-                return std::tuple<int32_t, P&>{(::tpy::mul_check<int32_t>(i, 10)), ::tpy::__getitem__(items, i)};
+                return std::tuple<int32_t, P*>{(::tpy::mul_check<int32_t>(i, 10)), &(::tpy::__getitem__(items, i))};
             }
         } else {
             __state = S_DONE;
@@ -70,7 +70,7 @@ void main() {
         // for idx, p in pairs(items):
         auto& __tup_1 = __for_tup_0;
         int32_t idx = std::get<0>(__tup_1);
-        P& p = ::tpy::unwrap_ref(std::get<1>(__tup_1));
+        auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         // print(idx)
         std::cout << idx << "\n";
         // print(p.x)

@@ -52,16 +52,6 @@ def forward_to_borrow(u: Own[A | B]) -> Int32:
     return borrow_union(u)
 
 
-def return_to_borrow(u: Own[A | B]) -> A | B:
-    # KNOWN-UB: to_ptr_variant(u) returns pointers into u's storage; u
-    # dies at function exit so the returned variant<A*, B*> dangles.
-    # Codegen is faithful to the source; the missing diagnostic is filed
-    # under BUGS.md "Safety / borrow checker" (Own[Optional]/[Union]
-    # dangling return). Caller reads r immediately and bytes haven't yet
-    # been clobbered. When the sema rejection lands, rewrite this test.
-    return u
-
-
 def test_body_isinstance_narrowing() -> None:
     print(describe(A(7)))
     print(describe(B(11)))
@@ -79,17 +69,10 @@ def test_forward_to_borrow_slot() -> None:
     print(forward_to_borrow(B(17)))
 
 
-def test_return_into_pointer_variant_return_type() -> None:
-    r = return_to_borrow(A(19))
-    if isinstance(r, A):
-        print(r.x)
-
-
 def main() -> None:
     test_body_isinstance_narrowing()
     test_return_into_pointer_variant_receiver()
     test_forward_to_borrow_slot()
-    test_return_into_pointer_variant_return_type()
 
 
 main()

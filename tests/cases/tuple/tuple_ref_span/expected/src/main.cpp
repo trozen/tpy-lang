@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 
 // def get_first(s: Span[Point]) -> tuple[Point, Int32]:
-std::tuple<Point&, int32_t> get_first(std::span<Point> s) {
+std::tuple<Point*, int32_t> get_first(std::span<Point> s) {
     // return (s[0], Int32(1))
-    return std::tuple<Point&, int32_t>{::tpy::__getitem__(s, 0), 1};
+    return std::tuple<Point*, int32_t>{&(::tpy::__getitem__(s, 0)), 1};
 }
 
 // def main() -> None:
@@ -19,10 +19,10 @@ void main() {
     // t = get_first(arr)
     auto t = get_first(::tpy::as_mut_span(arr));
     // print(t[0].x, t[0].y, t[1])
-    std::cout << std::get<0>(t).x << " " << std::get<0>(t).y << " " << std::get<1>(t) << "\n";
+    std::cout << std::get<0>(t)->x << " " << std::get<0>(t)->y << " " << std::get<1>(t) << "\n";
     // # Mutation through returned reference
     // t[0].x = Int32(99)
-    std::get<0>(t).x = 99;
+    std::get<0>(t)->x = 99;
     // print(arr[0].x)
     std::cout << ::tpy::__getitem__(arr, 0).x << "\n";
 }

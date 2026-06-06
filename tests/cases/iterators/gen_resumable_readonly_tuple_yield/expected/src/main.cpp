@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def pairs(items: list[P]) -> Iterator[readonly[tuple[P, P]]]:
-std::expected<std::tuple<const P&, const P&>, ::tpy::StopIteration> __gen_pairs::__next__() {
+std::expected<std::tuple<const P*, const P*>, ::tpy::StopIteration> __gen_pairs::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // n = Int32(len(items))
@@ -28,11 +28,11 @@ std::expected<std::tuple<const P&, const P&>, ::tpy::StopIteration> __gen_pairs:
             if ((i == 0)) {
                 // yield (items[i], items[i + 1])
                 __state = S_RESUME_0;
-                return std::tuple<const P&, const P&>{::tpy::__getitem__(items, i), ::tpy::__getitem__(items, (::tpy::add_check<int32_t>(i, 1)))};
+                return std::tuple<const P*, const P*>{&(::tpy::__getitem__(items, i)), &(::tpy::__getitem__(items, (::tpy::add_check<int32_t>(i, 1))))};
             } else {
                 // yield (items[i + 1], items[i])
                 __state = S_RESUME_1;
-                return std::tuple<const P&, const P&>{::tpy::__getitem__(items, (::tpy::add_check<int32_t>(i, 1))), ::tpy::__getitem__(items, i)};
+                return std::tuple<const P*, const P*>{&(::tpy::__getitem__(items, (::tpy::add_check<int32_t>(i, 1)))), &(::tpy::__getitem__(items, i))};
             }
         } else {
             __state = S_DONE;
@@ -66,11 +66,11 @@ void main() {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        std::tuple<P, P> pair = ::tpy::unwrap_ref(*__r_1);
+        auto&& pair = ::tpy::unwrap_ref(*__r_1);
         // print(pair[0].x)
-        std::cout << std::get<0>(pair).x << "\n";
+        std::cout << std::get<0>(pair)->x << "\n";
         // print(pair[1].x)
-        std::cout << std::get<1>(pair).x << "\n";
+        std::cout << std::get<1>(pair)->x << "\n";
     }
 }
 

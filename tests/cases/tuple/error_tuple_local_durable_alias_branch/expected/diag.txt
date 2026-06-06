@@ -1,1 +1,0 @@
-main.py:19: error: Cannot return tuple local 'u': element 1 ('Box') is a reference member, and a tuple bound to a local cannot yet alias it across a return the way CPython shares it (the bound local copies the member or fails to build). Return the tuple literal directly (e.g. `return (..., x)`) to share it, or use Own[Box] to return an owned copy.

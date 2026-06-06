@@ -5,22 +5,22 @@ namespace tpyapp::main {
 
 
 // def show(p: tuple[T, T]) -> None:  # tpyc: ok
-void show(const std::tuple<const T&, const T&>& p) {
+void show(const std::tuple<const T*, const T*>& p) {
     // a, b = p
     auto& __tup_1 = p;
-    const T& a = ::tpy::unwrap_ref(std::get<0>(__tup_1));
-    const T& b = ::tpy::unwrap_ref(std::get<1>(__tup_1));
+    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     // print(a.x + b.x)
     std::cout << (::tpy::add_check<int32_t>(a.x, b.x)) << "\n";
 }
 
 // def bump(p: tuple[T, T]) -> None:  # tpyc: ok
-void bump(const std::tuple<T&, T&>& p) {
+void bump(const std::tuple<T*, T*>& p) {
     // # mutates through slot -- slots stay as `T&` (mutable).
     // a, b = p
     auto& __tup_1 = p;
-    T& a = ::tpy::unwrap_ref(std::get<0>(__tup_1));
-    T& b = ::tpy::unwrap_ref(std::get<1>(__tup_1));
+    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     // a.x = a.x + 100
     a.x = (::tpy::add_check<int32_t>(a.x, 100));
 }
@@ -32,9 +32,9 @@ void main() {
     // t2 = T(2)
     T t2 = T(2);
     // show((t1, t2))
-    show(std::tuple<T&, T&>{t1, t2});
+    show(std::tuple<T*, T*>{&(t1), &(t2)});
     // bump((t1, t2))
-    bump(std::tuple<T&, T&>{t1, t2});
+    bump(std::tuple<T*, T*>{&(t1), &(t2)});
     // print(t1.x)
     std::cout << t1.x << "\n";
 }

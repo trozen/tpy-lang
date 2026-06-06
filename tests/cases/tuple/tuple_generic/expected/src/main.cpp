@@ -22,17 +22,17 @@ void main() {
     // pt = Point(Int32(1), Int32(2))
     Point pt = Point(1, 2);
     // pt_pair = (Int32(42), pt)
-    auto pt_pair = std::tuple<int32_t, Point&>{42, pt};
+    auto pt_pair = std::tuple<int32_t, Point*>{42, &(pt)};
     // swapped2 = swap(pt_pair)
     auto swapped2 = swap<int32_t, Point>(pt_pair);
     // print(swapped2[0].x)
-    std::cout << std::get<0>(swapped2).x << "\n";
+    std::cout << std::get<0>(swapped2)->x << "\n";
     // print(swapped2[1])
     std::cout << std::get<1>(swapped2) << "\n";
     // pt.x = Int32(99)
     pt.x = 99;
     // print(swapped2[0].x)
-    std::cout << std::get<0>(swapped2).x << "\n";
+    std::cout << std::get<0>(swapped2)->x << "\n";
 }
 
 void __tpy_init() {

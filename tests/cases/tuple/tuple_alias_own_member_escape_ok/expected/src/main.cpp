@@ -9,11 +9,11 @@ std::tuple<Box, int32_t> make() {
     // b = Box(5)
     Box b = Box(5);
     // pair = (b, 0)
-    auto pair = std::tuple<Box&, int32_t>{b, 0};
+    auto pair = std::tuple<Box*, int32_t>{&(b), 0};
     // u = pair
     auto u = pair;
     // return u
-    return u;
+    return ::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(u);
 }
 
 // def main() -> None:

@@ -15,7 +15,7 @@ void main() {
     // t: tuple[Point, int] = (Point(5, 6), 7)
     auto t = std::tuple<Point, ::tpy::BigInt>{Point(::tpy::BigInt(5), ::tpy::BigInt(6)), ::tpy::BigInt(7)};
     // print(str(t))
-    std::cout << ::tpy::tuple_to_str(t) << "\n";
+    std::cout << ::tpy::tuple_to_str(::tpy::tuple_to_pointer<std::tuple<Point*, ::tpy::BigInt>>(t)) << "\n";
     // d: dict[str, Point] = {"origin": Point(0, 0)}
     ::tpy::ordered_map<std::string, Point> d = ::tpy::ordered_map<std::string, Point>({{"origin", Point(::tpy::BigInt(0), ::tpy::BigInt(0))}});
     // print(str(d))

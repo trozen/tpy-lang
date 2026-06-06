@@ -65,17 +65,17 @@ template<typename T, ::tpystd::typing::Iterable<T> T_it>
 inline auto my_enumerate(T_it& it) {
     // i: Int32 = 0
     int32_t i = 0;
-    return ::tpy::make_generator<std::tuple<int32_t, ::tpy::val_or_ref_t<T>>>(
-        [&it, i, __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(it))>>()]() mutable -> std::optional<std::tuple<int32_t, ::tpy::val_or_ref_t<T>>> {
+    return ::tpy::make_generator<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(
+        [&it, i, __iter = std::optional<std::decay_t<decltype(::tpy::__iter__(it))>>()]() mutable -> std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>> {
             if (!__iter) { __iter.emplace(::tpy::__iter__(it)); }
             auto __r = (*__iter).__next__();
             if (!__r.has_value()) return std::nullopt;
             {
                 auto&& x = ::tpy::unwrap_ref(*__r);
-                auto __val = std::tuple<int32_t, ::tpy::val_or_ref_t<T>>{i, x};
+                auto __val = std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>{i, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)};
                 // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<std::tuple<int32_t, ::tpy::val_or_ref_t<T>>>(__val);
+                return std::optional<std::tuple<int32_t, ::tpy::val_or_ptr_t<T>>>(__val);
             }
         }
     );

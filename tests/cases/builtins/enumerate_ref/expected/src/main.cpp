@@ -18,7 +18,7 @@ void main() {
         // for i, p in enumerate(points):
         auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);
-        Point& p = ::tpy::unwrap_ref(std::get<1>(__tup_1));
+        auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         // p.x = (i + 1) * 10
         p.x = (::tpy::mul_check<int32_t>((::tpy::add_check<int32_t>(i, 1)), 10));
     }

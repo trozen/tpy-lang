@@ -23,7 +23,7 @@ class Holder:
     pair: tuple[Point | None, Ptr[Tag]]
 
     def __init__(self, pair: tuple[Point | None, Ptr[Tag]]) -> None:
-        self.pair = pair
+        self.pair = pair  # tpyc: warning(/copies/)
 
 
 def main() -> None:

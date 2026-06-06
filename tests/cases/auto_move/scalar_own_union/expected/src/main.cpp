@@ -59,18 +59,6 @@ int32_t forward_to_borrow(std::variant<A, B>&& u) {
     return borrow_union(::tpy::to_ptr_variant(u));
 }
 
-// def return_to_borrow(u: Own[A | B]) -> A | B:
-std::variant<A*, B*> return_to_borrow(std::variant<A, B>&& u) {
-    // # KNOWN-UB: to_ptr_variant(u) returns pointers into u's storage; u
-    // # dies at function exit so the returned variant<A*, B*> dangles.
-    // # Codegen is faithful to the source; the missing diagnostic is filed
-    // # under BUGS.md "Safety / borrow checker" (Own[Optional]/[Union]
-    // # dangling return). Caller reads r immediately and bytes haven't yet
-    // # been clobbered. When the sema rejection lands, rewrite this test.
-    // return u
-    return ::tpy::to_ptr_variant(u);
-}
-
 // def test_body_isinstance_narrowing() -> None:
 void test_body_isinstance_narrowing() {
     // print(describe(A(7)))
@@ -97,18 +85,6 @@ void test_forward_to_borrow_slot() {
     std::cout << forward_to_borrow(B(17)) << "\n";
 }
 
-// def test_return_into_pointer_variant_return_type() -> None:
-void test_return_into_pointer_variant_return_type() {
-    // r = return_to_borrow(A(19))
-    std::variant<A*, B*> r = return_to_borrow(A(19));
-    // if isinstance(r, A):
-    if (std::holds_alternative<A*>(r)) {
-        auto& __r = *std::get<A*>(r);
-        // print(r.x)
-        std::cout << __r.x << "\n";
-    }
-}
-
 // def main() -> None:
 void main() {
     // test_body_isinstance_narrowing()
@@ -117,8 +93,6 @@ void main() {
     test_return_into_pointer_variant_receiver();
     // test_forward_to_borrow_slot()
     test_forward_to_borrow_slot();
-    // test_return_into_pointer_variant_return_type()
-    test_return_into_pointer_variant_return_type();
 }
 
 void __tpy_init() {

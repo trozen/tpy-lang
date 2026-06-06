@@ -44,7 +44,7 @@ struct Wrapper {
 
     // @readonly
     // def get_pair(self) -> tuple[Container, Int32]:
-    std::tuple<const Container&, int32_t> get_pair() const;
+    std::tuple<const Container*, int32_t> get_pair() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -62,9 +62,9 @@ inline std::string Container::__repr__() const {
 
 // @readonly
 // def get_pair(self) -> tuple[Container, Int32]:
-inline std::tuple<const Container&, int32_t> Wrapper::get_pair() const {
+inline std::tuple<const Container*, int32_t> Wrapper::get_pair() const {
     // return (self.inner, self.inner.value)
-    return std::tuple<const Container&, int32_t>{this->inner, this->inner.value};
+    return std::tuple<const Container*, int32_t>{&(this->inner), this->inner.value};
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -11,7 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void show(const std::tuple<const Point&, int32_t>& pair);
+void show(const std::tuple<const Point*, int32_t>& pair);
 void main();
 
 // class Point:

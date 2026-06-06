@@ -85,12 +85,15 @@ in the current model.
   (and Optional/Union) C++ form is reconstructed per-site in codegen instead of being a
   type fact, so every new boundary shape needs another consumer-side dispatch patch:
   - *Tuple local with a durable reference member silently copies it at yield/return* --
-    was **[MED, silent CPython divergence]** (TPy `5` vs CPython `99`). The direct-literal
-    `yield (i, b)` shares; only binding to a local first loses borrow form. **Now rejected
-    pre-IR** (loud diagnostic pointing at the working escape -- yield/return the literal
-    directly; `copies_durable_tuple_member_vars` in sema). The *fix* (make the bound local
-    share) is still THIR-gated -- it needs a reference-holding resumable-frame field
-    generators cannot express -- so the rejection is a stopgap, not the feature.
+    was **[MED, silent CPython divergence]** (TPy `5` vs CPython `99`). **FIXED pre-IR**
+    by the tuple borrow-pointer unification (`unify-tuple-borrow-pointer-form`,
+    `docs/TUPLE_BORROW_UNIFICATION_PLAN.md`): the bound local is a pointer-form tuple
+    (`std::tuple<int, Box*>`), constructible and rebindable where a reference field is
+    not, and it aliases correctly across suspensions -- disproving this item's earlier
+    "THIR-gated" claim for the durable-share case. The cost was the consumer-side
+    dispatch inventory now listed under Open Questions item 9, plus three adversarial
+    audit waves closing provenance escapes -- the per-shape fact-propagation burden item
+    11 is about.
   - Nested tuple where outer/inner forms disagree -- **[MED]** (BUGS.md).
   - Rvalue tuple-of-records into a ref/pointer-form slot -- **[MED/LOW]** (BUGS.md).
   - Generic `V | None` instantiated with `V = Ptr[T]` (double-pointer) (BUGS.md).
@@ -106,6 +109,15 @@ in the current model.
   kept in lockstep only by discipline: `directly_implements_dynamic` (sema mirror of
   codegen, now 4 call sites -- BUGS.md), the default-ctor predicate and the param-const
   verdict (TODO.md). A shared-IR contract removes the duplication class.
+- **Eager per-shape local binding decisions (Open Questions item 11).** Non-value and
+  pointer-repr-tuple locals pick their C++ shape eagerly at the binding site across ~7
+  parallel mechanisms (ref binds, pointer-locals + rvalue slots, optional-locals,
+  frame_slot fields, borrow-/storage-form tuple sets), each with its own
+  init-deferral/rebind/alias rules -- the source of the optional brace-init corruption
+  class, the tuple owning/alias rebind rejection (BUGS.md), and the per-shape
+  provenance-fact propagation that three adversarial audit waves patched escape-by-escape.
+  MIR's place/loan model with late representation selection + a mem2reg-style fold
+  replaces all of it.
 - **Generic str/bytes ABI perf split (Open Questions item 8).** **[perf, not
   correctness]** generic-`T`-over-`str` materializes `std::string` at each call site.
   Documented; low priority.
@@ -1465,38 +1477,46 @@ or eliminating the C++ compiler dependency), the MIR is ready.
 
 9. **Tuple form as a first-class type fact.** Today `TupleType` is a single sema type
    whose C++ representation depends on context -- borrow form (`tuple<T*,...>`,
-   `tuple<T&,...>`) at param/return/local boundaries, storage form
-   (`tuple<optional<T>,...>`, `tuple<T,...>`) at field/container boundaries. (See
+   one pointer-element shape for every non-value element since the tuple
+   borrow-pointer unification; generic elements via `val_or_ptr_t<T>`) at
+   param/return/local/frame boundaries, storage form (`tuple<optional<T>,...>`,
+   `tuple<T,...>`) at field/container/`Own[]` boundaries. (See
    `LANGUAGE_FEATURES.md` "Borrow Form vs Storage Form" for the canonical definition
    of these forms; this item is specifically about elevating the distinction to a
    first-class IR fact.) Codegen reconstructs which form is needed at each site and
-   inserts conversions (`tuple_to_storage`, `tuple_to_pointer`,
-   `tuple_value_to_borrow`, `to_optional_form`, `to_pointer_form`). The implicit
-   boundary is the source of a
-   recurring bug class: nested tuples where outer/inner forms disagree (BUGS.md
-   `[MED] nested tuple literal of records`), rvalue tuple-of-records into
-   ref/pointer-form slots (BUGS.md `[LOW] tuple literal rvalue address-of`),
-   `Own[tuple[T_ref,...]]` param silently copying elements (BUGS.md `[IMM]
-   Own[tuple] silent copy`, addressable pre-IR via lowering
-   `Own[tuple[T,...]]` -> `tuple[Own[T_ref],...]`), and a tuple LOCAL bound from a
-   literal with a *durable* reference member silently copying it at yield/return
-   (BUGS.md `[MED] tuple local ref-member silent copy`, verified TPy `5` vs CPython
-   `99`). The last one is the sharpest exhibit: the direct-literal `yield (i, b)`
-   shares correctly, so only the local binding loses borrow form -- yet making the
-   bound local share is *not* closeable pre-IR, because the generator frame would
-   need a reference-holding field that survives/rebinds across suspensions (a
-   `std::tuple<T&>` frame member), which the resumable-frame model cannot express.
-   Pre-IR it is turned into a rejection (shipped -- `copies_durable_tuple_member_vars`,
-   pointing at the yield-the-literal-directly escape); the share fix is THIR-gated.
-   Several entries in this
-   class were closed pre-IR by extending the expression-level
-   `is_storage_form_optional_source` predicate to cover loop-var / unpack-var
-   bindings (comprehension tuple-unpack, list/dict-of-Optional element access,
-   loop-var-tuple-into-borrow-param) -- the pattern works but each new
-   boundary case still requires touching a consumer-side dispatch site, which
-   the IR fact would replace with structural conversion nodes. THIR should
-   make form an explicit type fact (either two distinct tuple types, or a
-   form tag on one), so conversion sites become visible in the IR rather
+   inserts conversions (`tuple_to_storage[_move]` with per-element dest-shape
+   dispatch, `tuple_to_pointer`, `tuple_value_to_borrow`, `to_storage_elem`,
+   `to_pointer_form`, `to_val_or_ptr`). The unification fixed the silent-copy
+   bug class (a param-/local-/call-rooted reference-member tuple now ALIASES at
+   yield/return, matching CPython; the borrow lives in a pointer-holding frame
+   field, which the resumable-frame model CAN express -- the prior assessment
+   that the share fix was THIR-gated proved wrong), but it did so by adding
+   more consumer-side dispatch: every site that READS a tuple element as a
+   value re-derives the form. The consumer-site inventory THIR must subsume
+   with structural conversion/access nodes:
+   - subscript read (`_gen_subscript` tuple branch: raw pointer vs
+     `tuple_elem_ref` for generic slots vs `optional_to_ptr` lift),
+   - field access / method call on a subscript (`->` vs `.` via
+     `_tuple_subscript_yields_borrow_ptr`),
+   - value contexts (`gen_expr_deref` deref of borrow subscripts),
+   - unpack binding (`unwrap_ref(tuple_elem_ref(std::get<i>(...)))`),
+   - print/repr and hash (runtime `print_element` / `__hash__` `T*` deref
+     overloads),
+   - comparison (`tpy::tuple_eq` / `tpy::tuple_lt` routing in the binop
+     emitter, plus the `in`-needle storage lift),
+   - construction slots (`_tuple_literal_slot_info` + address-of /
+     `tuple_value_to_borrow` / `to_val_or_ptr<Dest>` value rendering),
+   - boundary wraps (`_maybe_wrap_tuple_to_pointer` / `_to_storage`, the
+     call-arg bridge, field writes, return/yield conversion, the await-arg
+     lift).
+   Remaining open exhibits of the bug class: nested tuples where outer/inner
+   forms disagree (BUGS.md nested-tuple entries), rvalue tuple-of-records into
+   borrow-form slots (BUGS.md rvalue address-of entry), the rvalue GENERIC
+   tuple element gap, and the recursive-union-wrapper durable member (excluded
+   from the `T*` form). Each was/is handled by touching consumer-side dispatch
+   sites; the IR fact replaces all of it with explicit conversion nodes. THIR
+   should make form an explicit type fact (either two distinct tuple types, or
+   a form tag on one), so conversion sites become visible in the IR rather
    than reconstructed in codegen.
    Recommendation: form tag on `THIRTupleType` with conversions emitted as explicit
    THIR nodes during lowering -- analogous to how borrows are explicit in MIR.
@@ -1529,3 +1549,51 @@ or eliminating the C++ compiler dependency), the MIR is ready.
     returns at the protocol's own type (`Own[Cloneable]`, `Own[Throwable]`).
     Recommendation: handle at MIR -> backend lowering, not as a C++-backend
     sema/codegen feature.
+
+11. **Uniform local model: every non-value local as slot + alias, with late
+    representation folding.** Today the C++ shape of a non-value (or
+    pointer-repr-tuple) local is decided EAGERLY at the binding site, by a
+    zoo of per-shape mechanisms: `T&` ref binds and `auto&&` tuple aliases
+    (single-assignment borrows), `T*` pointer-locals + hoisted
+    `std::optional<T>` rvalue slots (`rebind_slots`, reassigned borrows),
+    `std::optional<T>` optional-locals (deferred init, sync), the walrus
+    variants of each, `tpy::frame_slot<T>` (resumable frames),
+    `std::tuple<..., T*>` borrow-form tuple locals, and storage-form tuple
+    locals -- tracked across `LocalCppForm` plus side sets
+    (`borrow_form_tuple_locals` has no classifier variant at all). Each
+    mechanism re-implements init-deferral, rebinding, and aliasing slightly
+    differently (operator= vs emplace vs lift), which is where the
+    `optional` brace-init corruption class, the default-construct-before-
+    assign waste, and the tuple owning/alias rebind rejection all came
+    from. The MIR-native model dissolves this: every local is a PLACE (a
+    slot owning storage, or a borrow of another place); binding kinds are
+    explicit (own-init, alias, rebind); representation selection (direct
+    `T`, `T&`, `T*` + slot, `optional<T>` / `frame_slot<T>`,
+    pointer-element tuple) becomes a LATE per-place decision driven by
+    facts the place already carries -- rebound? crosses a suspension?
+    address escapes? null state needed? -- followed by a mem2reg-style
+    FOLD that collapses single-binding straight-line places back to plain
+    direct bindings so generated C++ stays readable and the hot paths
+    (param borrows, loop vars) pay nothing. Provenance/escape soundness
+    also unifies: the per-name fact sets sema accumulates today
+    (`owns_fresh`, `owning_storage`, `ephemeral_borrow_vars`,
+    `safe_to_return_vars`) become properties of the place's loans,
+    compositional through aliases, ternaries, and walrus by construction
+    instead of per-shape propagation rules. Sub-question: whether the C++
+    backend should emit ONE deferred-storage primitive everywhere
+    (`frame_slot<T>` in sync bodies too, with the state-aware-destruction
+    TODO removing its alive bool) or keep `optional<T>` for sync --
+    uniformity favors the former; decide when the fold pass exists so the
+    choice is measurable. Pre-IR stopgaps this item replaces: the tuple
+    rvalue-slot design and the owning/alias mix rejection (BUGS.md), the
+    `BORROW_TUPLE` classifier gap, and the eager per-site binding
+    decisions in `_gen_var_decl_code` / `_gen_named_expr` / the loop
+    binders. Recommendation: make places-with-late-representation the MIR
+    locals model (the natural reading of `Place`/`LoanInfo` above), and
+    treat the C++ emission of each representation as a small backend menu
+    the fold pass picks from. Sequencing (agreed): the representation
+    model + fold are IR-ONLY -- building places/CFG/liveness against the
+    AST would be writing MIR badly, twice. The one piece worth pulling
+    forward pre-IR if the migration is not imminent is the sema-side
+    provenance consolidation (one BindingProvenance record replacing the
+    four per-name fact sets; TODO.md entry carries the decision rule).

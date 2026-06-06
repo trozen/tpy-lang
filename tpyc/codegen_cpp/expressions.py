@@ -16,7 +16,7 @@ from ..typesys import (
     PtrType, OwnType, OptionalType, NoneType, AnyType, make_array,
     PendingListType, ListRepeatType,
     TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_own, unwrap_qualifiers, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
-    TupleType, CallableType,
+    TupleType, CallableType, ValueForm,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
     yield_uses_borrow_slot,
@@ -405,6 +405,10 @@ class ExpressionGenerator:
             narrowed = self.ctx.overload_param_types[expr.name]
             if not isinstance(narrowed, OptionalType):
                 return result
+        # Borrow-tuple subscript: std::get<i> yields a non-null `T*`; value
+        # contexts (print, operators, value args) want the referent.
+        if self._tuple_subscript_yields_borrow_ptr(expr):
+            return f"(*{result})"
         is_narrowed = isinstance(expr, TpyName) and expr.name in self.ctx.narrowed_vars
         if self.ctx.is_indirect_name(expr) and not is_narrowed:
             # Pointer-repr Optional[T] (T*) passed to OwnType(OptionalType(T)):
@@ -995,17 +999,22 @@ class ExpressionGenerator:
             if slot_is_storage:
                 tuple_ptype_inner = unwrap_readonly(unwrap_ref_type(tuple_ptype_inner.wrapped))
             if (isinstance(tuple_ptype_inner, TupleType)
-                    and tuple_ptype_inner.has_pointer_repr_optional_element()):
+                    and tuple_ptype_inner.has_pointer_repr_element()):
                 arg_is_storage = self.ctx.is_storage_form_source(arg)
                 if arg_is_storage and not slot_is_storage:
-                    ptype_cpp = (tuple_ptype_inner.to_cpp_return_const() if target_const_borrow
+                    # A const storage source (self.field in a readonly method,
+                    # const param/local) yields const element addresses, so the
+                    # pointer form must be const-slotted to type-check.
+                    want_const = (target_const_borrow
+                                  or self.ctx.is_const_storage_source(arg))
+                    ptype_cpp = (tuple_ptype_inner.to_cpp_return_const() if want_const
                                  else tuple_ptype_inner.to_cpp_return())
                     gen_arg = f"::tpy::tuple_to_pointer<{ptype_cpp}>({gen_arg})"
                 elif not arg_is_storage and slot_is_storage:
                     # Tuple literal source: sema's per-element Own check
                     # cleared every element as movable (last-use lvalue,
                     # fresh rvalue, or copy() rvalue), so the lift moves
-                    # each pointee into the destination optional rather
+                    # each pointee into the destination slot rather
                     # than copying. Other rvalue sources (e.g. function
                     # returns of tuple[T_ref|None,...]) stay on the copy
                     # path -- moving from a returned pointer would alias
@@ -1591,6 +1600,17 @@ class ExpressionGenerator:
                 return f"({joined})"
             right_type_for_left = self.types.get_resolved_type(expr.right)
             left = self.gen_expr(expr.left, view_key_target(right_type_for_left))
+            # Tuple needle vs a container of storage-form tuples: lift the
+            # borrow-form needle (std::tuple<..., T*>) to the stored shape so
+            # the element comparison is value-level and well-typed (raw
+            # std::tuple<..., T*> vs std::tuple<..., T> does not even compile).
+            needle_t = self.ctx.get_expr_type(expr.left)
+            needle_t = unwrap_qualifiers(needle_t) if needle_t is not None else None
+            if (isinstance(needle_t, TupleType)
+                    and needle_t.has_pointer_repr_element()
+                    and not self.ctx.is_storage_form_source(expr.left)):
+                left = (f"::tpy::tuple_to_storage"
+                        f"<{self.types.tuple_storage_cpp(needle_t)}>({left})")
             right = self.gen_expr(expr.right)
             # Dereference globals for .begin()/.end() calls
             if self.ctx.is_indirect_name(expr.right):
@@ -1810,6 +1830,30 @@ class ExpressionGenerator:
                 return f"{_CMP_HELPER[expr.op]}({left}, {right})"
             left = self.gen_expr_deref(expr.left, left_target)
             right = self.gen_expr_deref(expr.right, right_target)
+
+            # Value-level tuple comparison: a borrow-form tuple's slots are
+            # bare pointers, so std::tuple's native operators would compare
+            # ADDRESSES, not referents. Route through the deref-aware runtime
+            # helpers, which also bridge a borrow-vs-storage form mismatch
+            # between the two sides.
+            lt_cmp = self.ctx.get_expr_type(expr.left)
+            rt_cmp = self.ctx.get_expr_type(expr.right)
+            lt_cmp = unwrap_qualifiers(lt_cmp) if lt_cmp is not None else None
+            rt_cmp = unwrap_qualifiers(rt_cmp) if rt_cmp is not None else None
+            if (isinstance(lt_cmp, TupleType) and isinstance(rt_cmp, TupleType)
+                    and (lt_cmp.has_pointer_repr_element()
+                         or rt_cmp.has_pointer_repr_element())):
+                if expr.op == "==":
+                    return f"::tpy::tuple_eq({left}, {right})"
+                if expr.op == "!=":
+                    return f"(!::tpy::tuple_eq({left}, {right}))"
+                if expr.op == "<":
+                    return f"::tpy::tuple_lt({left}, {right})"
+                if expr.op == ">":
+                    return f"::tpy::tuple_lt({right}, {left})"
+                if expr.op == "<=":
+                    return f"(!::tpy::tuple_lt({right}, {left}))"
+                return f"(!::tpy::tuple_lt({left}, {right}))"
 
             # BigInt has no implicit conversion to/from double in C++, so
             # mixed BigInt/float comparisons need an explicit cast (mirroring
@@ -3631,7 +3675,8 @@ class ExpressionGenerator:
             return f"::tpy::deref_check({obj}).{cpp_method}{method_targs}({args})"
         use_arrow = ((self.ctx.is_indirect_name(expr.obj) and not is_narrowed and not is_consuming)
                      or is_optional_ptr
-                     or self._receiver_is_own_dyn(expr.obj))
+                     or self._receiver_is_own_dyn(expr.obj)
+                     or self._tuple_subscript_yields_borrow_ptr(expr.obj))
         accessor = "->" if use_arrow else "."
         return f"{obj}{accessor}{cpp_method}{method_targs}({args})"
 
@@ -4111,7 +4156,8 @@ class ExpressionGenerator:
             if expr.ptr_non_null:
                 return f"{obj}->{cpp_field}"
             return f"::tpy::deref_check({obj}).{cpp_field}"
-        if is_indirect or is_optional_ptr or self._receiver_is_own_dyn(expr.obj):
+        if (is_indirect or is_optional_ptr or self._receiver_is_own_dyn(expr.obj)
+                or self._tuple_subscript_yields_borrow_ptr(expr.obj)):
             return f"{obj}->{cpp_field}"
         return f"{obj}.{cpp_field}"
 
@@ -4994,7 +5040,7 @@ class ExpressionGenerator:
                 # `list[tuple[P|None, Int32]]`).
                 elem_peeled = unwrap_readonly(elem)
                 if gen.unpack_vars and isinstance(elem_peeled, TupleType):
-                    is_storage_tuple = elem_peeled.has_pointer_repr_optional_element()
+                    is_storage_tuple = elem_peeled.has_pointer_repr_element()
                     for i, uvar in enumerate(gen.unpack_vars):
                         if uvar is None or i >= len(elem_peeled.element_types):
                             continue
@@ -5100,7 +5146,7 @@ class ExpressionGenerator:
             from ..coercions import wrap_into_any, CoercionContext
             return wrap_into_any(code, resolved, CoercionContext.INIT)
         if (isinstance(slot_type, TupleType)
-                and slot_type.has_pointer_repr_optional_element()):
+                and slot_type.has_pointer_repr_element()):
             return f"::tpy::tuple_to_storage<{slot_type.to_cpp()}>({code})"
         return code
 
@@ -5192,8 +5238,39 @@ class ExpressionGenerator:
                     and elem_target.uses_pointer_repr()
                     and elem_capture != TupleElemCapture.VALUE
                 )
+                # Plain non-value lvalue element in a borrow (pointer) slot:
+                # take its address (`&expr`) so the slot is `T*` (aliasing).
+                # Keyed on the resolved element type + slot mode, NOT
+                # elem_target, so it fires even with no consumer target tuple
+                # (e.g. a generator-local `t = (1, b)` assignment). Rvalues are
+                # left to the tuple_value_to_borrow path below (which addresses
+                # the source-tuple temp's slot, keeping it valid).
+                elem_rt = resolved_elem_types[i]
+                want_borrow_ptr_form = (
+                    not want_pointer_form
+                    and slot_mode in (TupleElemCapture.REF, TupleElemCapture.CONST_REF)
+                    and elem_rt.value_form() is ValueForm.BORROW_REF
+                    and TupleType._element_is_pointer_repr(elem_rt)
+                    and not self.ctx.is_rvalue_source(elem)
+                )
+                # Generic (TypeParamRef) element: the slot is val_or_ptr_t<T>,
+                # so route the element through to_val_or_ptr<slot> (address-of
+                # into a pointer slot, construct/copy into a value slot) --
+                # decided at instantiation.
+                want_val_or_ptr_form = (
+                    not want_pointer_form
+                    and not want_borrow_ptr_form
+                    and isinstance(elem_rt, TypeParamRef)
+                    and slot_info is not None
+                    and not self.ctx.is_rvalue_source(elem)
+                )
                 if want_pointer_form:
                     elem_str = self._optional_pointer_form_value(elem, elem_target)
+                elif want_borrow_ptr_form:
+                    elem_str = self._borrow_ptr_form_value(elem, elem_target)
+                elif want_val_or_ptr_form:
+                    elem_str = (f"::tpy::to_val_or_ptr<{slot_info[i][1]}>("
+                                f"{self.gen_expr_deref(elem, elem_target)})")
                 else:
                     elem_str = self._wrap_for_owned_slot(self.gen_expr_deref(elem, elem_target), resolved, elem_target)
                 # Matches the auto-move sema rule for `return x` of an Own var.
@@ -5333,14 +5410,29 @@ class ExpressionGenerator:
                 else:
                     info.append((mode, et.to_cpp_return()))
                 continue
-            if isinstance(et, TypeParamRef):
-                # Defer value-vs-ref to C++ instantiation time.
-                # T may be val_or_ref<U> when Ref[U] is the type arg,
-                # so T& would be val_or_ref<U>& -- wrong. Use the trait.
+            # Plain non-value (BORROW_REF) element in a borrow slot: pointer
+            # form `T*` / `const T*` (a reference can't be a std::tuple member;
+            # pointer form aliases and is constructible). Pointer-variant
+            # unions are excluded by `_element_is_pointer_repr` and fall through
+            # to their `to_cpp_return` variant spelling below.
+            if (et.value_form() is ValueForm.BORROW_REF
+                    and mode != TupleElemCapture.VALUE
+                    and TupleType._element_is_pointer_repr(et)):
+                ptr_base = unwrap_readonly(unwrap_ref_type(et)).to_cpp()
                 if mode == TupleElemCapture.CONST_REF:
-                    info.append((mode, f"::tpy::val_or_cref_t<{base}>"))
+                    info.append((mode, f"const {ptr_base}*"))
                 else:
-                    info.append((mode, f"::tpy::val_or_ref_t<{base}>"))
+                    info.append((mode, f"{ptr_base}*"))
+                continue
+            if isinstance(et, TypeParamRef):
+                # Defer value-vs-pointer to C++ instantiation time: the
+                # val_or_ptr_t trait mirrors the concrete tuple borrow form
+                # (`T*` for non-value T, `T` by value otherwise). A reference
+                # trait would produce `T&`, which can't be a tuple member.
+                if mode == TupleElemCapture.CONST_REF:
+                    info.append((mode, f"::tpy::val_or_cptr_t<{base}>"))
+                else:
+                    info.append((mode, f"::tpy::val_or_ptr_t<{base}>"))
             elif mode == TupleElemCapture.REF:
                 info.append((mode, f"{base}&"))
             elif mode == TupleElemCapture.CONST_REF:
@@ -5375,6 +5467,61 @@ class ExpressionGenerator:
             return ret_expr
         if self.ctx.is_storage_form_optional_source(elem):
             return f"::tpy::optional_to_ptr({ret_expr})"
+        return f"&({ret_expr})"
+
+    def _tuple_subscript_yields_borrow_ptr(self, expr: TpyExpr) -> bool:
+        """True when `expr` is a tuple subscript `t[i]` whose element is a plain
+        non-value (BORROW_REF) pointer-repr slot read from a borrow-form source,
+        so `std::get<i>(t)` is a bare `T*` and member access must use `->`.
+
+        A storage-form source (field, container subscript, storage-form local)
+        holds the element by value (`std::tuple<..., T>`), so `std::get` yields
+        a value reference accessed with `.`. Pointer-repr Optional elements are
+        nullable and routed through the optional null-check path instead."""
+        if not isinstance(expr, TpySubscript):
+            return False
+        obj_type = unwrap_qualifiers(self.ctx.get_expr_type(expr.obj))
+        if not isinstance(obj_type, TupleType):
+            return False
+        try:
+            idx = self._extract_compile_time_index(expr.index)
+        except RuntimeError:
+            return False
+        n = len(obj_type.element_types)
+        if idx < 0:
+            idx += n
+        if not (0 <= idx < n):
+            return False
+        et = obj_type.element_types[idx]
+        return (et.value_form() is ValueForm.BORROW_REF
+                and TupleType._element_is_pointer_repr(et)
+                and not self.ctx.is_storage_form_source(expr.obj))
+
+    def _borrow_ptr_form_value(self, elem: TpyExpr,
+                               elem_target: 'TpyType') -> str:
+        """Render a plain non-value (BORROW_REF) lvalue element as a `T*`
+        (pointer-form borrow) for a tuple slot.
+
+        Unlike the Optional counterpart the source is never None / nullable
+        and never std::optional storage: an already-pointer source (indirect
+        name, ternary of pointers) passes through; any other lvalue is
+        addressed with `&(...)`."""
+        ret_expr = self.gen_expr(elem, elem_target)
+        if self.ctx.is_already_pointer_source(elem):
+            return ret_expr
+        # Subscript of a borrow-form tuple: std::get<i> already yields T*.
+        if self._tuple_subscript_yields_borrow_ptr(elem):
+            return ret_expr
+        if isinstance(elem, TpyIfExpr):
+            # Pointer-yielding arms make the conditional a T*: pass through.
+            # Plain-lvalue arms make it an lvalue (a same-type lvalue ternary
+            # is itself an lvalue in C++), so one address-of covers both arms.
+            def _arm_is_ptr(arm: TpyExpr) -> bool:
+                return (self.ctx.is_already_pointer_source(arm)
+                        or self._tuple_subscript_yields_borrow_ptr(arm))
+            if _arm_is_ptr(elem.then_expr) or _arm_is_ptr(elem.else_expr):
+                return ret_expr
+            return f"&({ret_expr})"
         return f"&({ret_expr})"
 
     def _gen_subscript(self, expr: TpySubscript) -> str:
@@ -5445,6 +5592,12 @@ class ExpressionGenerator:
             if (isinstance(elem_type, OptionalType) and elem_type.uses_pointer_repr()
                     and self.ctx.is_storage_form_source(expr.obj)):
                 result = f"::tpy::optional_to_ptr({result})"
+            # Generic slot (val_or_ptr_t<T>): read as a usable value/reference
+            # -- derefs the non-value pointer case at instantiation. Consumers
+            # that need the slot form again (another generic tuple literal)
+            # re-wrap via to_val_or_ptr.
+            elif isinstance(unwrap_readonly(unwrap_ref_type(elem_type)), TypeParamRef):
+                result = f"::tpy::tuple_elem_ref({result})"
             return result
 
         index_type = self.ctx.analyzer.get_expr_type(expr.index)
@@ -5782,6 +5935,28 @@ class ExpressionGenerator:
         cpp_name = escape_cpp_name(expr.target)
         value_code = self.gen_expr(expr.value, value_type)
 
+        # A pointer-repr tuple is a value type, but its expression rendering
+        # is borrow form (std::tuple<..., T*>): declare the walrus local in
+        # borrow form and lift storage-form sources element-wise, mirroring
+        # the borrow-form-tuple VarDecl path. An owning-call RVALUE source
+        # (Own[tuple] / per-element-Own return) cannot be lifted (addresses
+        # into a dying temporary); the local keeps the owning storage form,
+        # like the VarDecl binding.
+        tuple_bare = unwrap_readonly(unwrap_own(value_type))
+        borrow_tuple = (isinstance(tuple_bare, TupleType)
+                        and tuple_bare.has_pointer_repr_element())
+        storage_rvalue = False
+        if borrow_tuple:
+            val_src = self.ctx.unwrap_copy(expr.value)
+            if isinstance(val_src, TpyCoerce):
+                val_src = val_src.expr
+            if isinstance(val_src, (TpyCall, TpyMethodCall)):
+                storage_rvalue = self.ctx.is_storage_form_source(val_src)
+            elif self.ctx.is_storage_form_source(val_src):
+                value_code = (f"::tpy::tuple_to_pointer"
+                              f"<{self.types.tuple_borrow_cpp(tuple_bare)}>"
+                              f"({value_code})")
+
         # Emit pre-declaration only once per function (walrus_pre_declared
         # is not snapshot/restored across branches, unlike declared_vars)
         need_predecl = expr.target not in self.ctx.walrus_pre_declared
@@ -5793,12 +5968,23 @@ class ExpressionGenerator:
                 inner_cpp = self.types.type_to_cpp(value_type.inner)
                 self.ctx.temps.declare_named(cpp_name, f"{inner_cpp}*", init="nullptr")
                 self.ctx.pointer_locals.add(expr.target)
+            elif borrow_tuple and storage_rvalue:
+                # Deferred-init slot like the non-value branch below: a bare
+                # storage-tuple decl would default-construct every element
+                # before the assignment overwrites it.
+                self.ctx.temps.declare_named(
+                    cpp_name,
+                    f"std::optional<{self.types.tuple_storage_cpp(tuple_bare)}>")
+                self.ctx.register_walrus_deref(expr.target, f"(*{cpp_name})")
+            elif borrow_tuple:
+                self.ctx.temps.declare_named(
+                    cpp_name, self.types.tuple_borrow_cpp(tuple_bare))
             elif value_type.is_value_type() or isinstance(value_type, OptionalType):
                 self.ctx.temps.declare_named(cpp_name, cpp_type)
             else:
                 # Non-value, non-Optional: std::optional<T> x; + comma for T& result
                 self.ctx.temps.declare_named(cpp_name, f"std::optional<{cpp_type}>")
-                self.ctx.narrowed_vars[expr.target] = f"(*{cpp_name})"
+                self.ctx.register_walrus_deref(expr.target, f"(*{cpp_name})")
 
         # Always ensure tracking state is set (may have been cleared by
         # restore_local_scope between branches)
@@ -5807,7 +5993,14 @@ class ExpressionGenerator:
         self.ctx.var_types[expr.target] = value_type
         if isinstance(value_type, OptionalType) and value_type.uses_pointer_repr():
             self.ctx.pointer_locals.add(expr.target)
+        if borrow_tuple and storage_rvalue:
+            self.ctx.storage_form_tuple_locals.add(expr.target)
+            self.ctx.walrus_storage_tuple_locals.add(expr.target)
+        elif borrow_tuple:
+            self.ctx.borrow_form_tuple_locals.add(expr.target)
 
+        if borrow_tuple and storage_rvalue:
+            return f"({cpp_name} = {value_code}, *{cpp_name})"
         if not value_type.is_value_type() and not isinstance(value_type, OptionalType):
             return f"({cpp_name} = {value_code}, *{cpp_name})"
         return f"({cpp_name} = {value_code})"
@@ -5947,8 +6140,15 @@ class ExpressionGenerator:
         # Explicit trailing return type -- needed for Ref[T] (C++ lambda
         # deduction strips references) and consistent for all lambdas.
         ret_type = expr.inferred_return_type
+        ret_unwrapped = unwrap_readonly(ret_type)
         if expr.readonly_params:
             trailing = f" -> {ret_type.to_cpp_return_const()}"
+        elif (isinstance(ret_unwrapped, TupleType)
+                and ret_unwrapped.has_pointer_repr_element()):
+            # A tuple with borrow elements is produced in borrow form
+            # (std::tuple<..., T*>) by the body; the storage form would
+            # not bind the returned pointers.
+            trailing = f" -> {ret_type.to_cpp_return()}"
         else:
             trailing = f" -> {ret_type.to_cpp()}"
         return f"{capture}({params_str}){trailing} {{ return {body_code}; }}"

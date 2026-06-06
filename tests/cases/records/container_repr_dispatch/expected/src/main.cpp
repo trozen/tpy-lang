@@ -54,7 +54,7 @@ void main() {
     std::cout << ::tpy::ListPrinter(std::array<ReprOnly, 1>{r}) << "\n";
     // # Tuple and dict containers dispatch through __repr__.
     // print((b, r))
-    std::cout << ::tpy::TuplePrinter(std::tuple<Both&, ReprOnly&>{b, r}) << "\n";
+    std::cout << ::tpy::TuplePrinter(std::tuple<Both*, ReprOnly*>{&(b), &(r)}) << "\n";
     // d: dict[str, ReprOnly] = {"a": r}
     ::tpy::ordered_map<std::string, ReprOnly> d = ::tpy::ordered_map<std::string, ReprOnly>({{"a", r}});
     // print(d)

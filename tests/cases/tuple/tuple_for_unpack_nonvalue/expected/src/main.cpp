@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // # str + non-value: str becomes string_view, Point becomes T&
     // items: list[tuple[str, Point]] = [("a", Point(1, 2)), ("b", Point(3, 4))]
-    std::vector<std::tuple<std::string, Point>> items = {std::tuple<std::string, Point>{"a", Point(1, 2)}, std::tuple<std::string, Point>{"b", Point(3, 4)}};
+    std::vector<std::tuple<std::string, Point>> items = {::tpy::tuple_to_storage<std::tuple<std::string, Point>>(std::tuple<std::string, Point>{"a", Point(1, 2)}), ::tpy::tuple_to_storage<std::tuple<std::string, Point>>(std::tuple<std::string, Point>{"b", Point(3, 4)})};
     // for name, pt in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
@@ -16,15 +16,15 @@ void main() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
         // for name, pt in items:
-        auto& __tup_1 = __for_tup_0;
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<std::string_view, Point*>>(__for_tup_0);
         std::string_view name = std::get<0>(__tup_1);
-        Point* pt = &::tpy::unwrap_ref(std::get<1>(__tup_1));
+        auto&& pt = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         // print(name, pt)
-        std::cout << name << " " << (*pt) << "\n";
+        std::cout << name << " " << pt << "\n";
     }
     // # Expensive value type + non-value: BigInt becomes const T&, Point becomes T&
     // pairs: list[tuple[int, Point]] = [(1, Point(10, 20)), (2, Point(30, 40))]
-    std::vector<std::tuple<::tpy::BigInt, Point>> pairs = {std::tuple<::tpy::BigInt, Point>{::tpy::BigInt(1), Point(10, 20)}, std::tuple<::tpy::BigInt, Point>{::tpy::BigInt(2), Point(30, 40)}};
+    std::vector<std::tuple<::tpy::BigInt, Point>> pairs = {::tpy::tuple_to_storage<std::tuple<::tpy::BigInt, Point>>(std::tuple<::tpy::BigInt, Point>{::tpy::BigInt(1), Point(10, 20)}), ::tpy::tuple_to_storage<std::tuple<::tpy::BigInt, Point>>(std::tuple<::tpy::BigInt, Point>{::tpy::BigInt(2), Point(30, 40)})};
     // for n, pt in pairs:
     auto& __obj_1 = pairs;
     auto __beg_1 = __obj_1.begin();
@@ -32,15 +32,15 @@ void main() {
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_1 = *__beg_1;
         // for n, pt in pairs:
-        auto& __tup_2 = __for_tup_1;
+        auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Point*>>(__for_tup_1);
         const ::tpy::BigInt& n = std::get<0>(__tup_2);
-        Point* pt = &::tpy::unwrap_ref(std::get<1>(__tup_2));
+        auto&& pt = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
         // print(n, pt)
-        std::cout << n << " " << (*pt) << "\n";
+        std::cout << n << " " << pt << "\n";
     }
     // # All non-value: both elements become T&
     // segments: list[tuple[Point, Point]] = [(Point(0, 0), Point(1, 1)), (Point(2, 2), Point(3, 3))]
-    std::vector<std::tuple<Point, Point>> segments = {std::tuple<Point, Point>{Point(0, 0), Point(1, 1)}, std::tuple<Point, Point>{Point(2, 2), Point(3, 3)}};
+    std::vector<std::tuple<Point, Point>> segments = {::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{Point(0, 0), Point(1, 1)}), ::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{Point(2, 2), Point(3, 3)})};
     // for a, b in segments:
     auto& __obj_2 = segments;
     auto __beg_2 = __obj_2.begin();
@@ -48,9 +48,9 @@ void main() {
     for (; __beg_2 != __end_2; ++__beg_2) {
         auto&& __for_tup_2 = *__beg_2;
         // for a, b in segments:
-        auto& __tup_3 = __for_tup_2;
-        Point& a = ::tpy::unwrap_ref(std::get<0>(__tup_3));
-        Point& b = ::tpy::unwrap_ref(std::get<1>(__tup_3));
+        auto __tup_3 = ::tpy::tuple_to_pointer<std::tuple<Point*, Point*>>(__for_tup_2);
+        auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
+        auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
         // print(a, b)
         std::cout << a << " " << b << "\n";
     }

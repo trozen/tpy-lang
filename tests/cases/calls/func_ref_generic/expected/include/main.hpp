@@ -12,7 +12,7 @@ inline constexpr std::string_view __name__ = "__main__";
 template<typename T>
 ::tpy::val_or_ref_t<T> identity(::tpy::param_val_or_ref_t<T> x);
 template<typename T, typename U>
-std::tuple<::tpy::val_or_ref_t<T>, ::tpy::val_or_ref_t<U>> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b);
+std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<U>> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b);
 template<::tpystd::tpy::Comparable T>
 ::tpy::val_or_ref_t<T> max_val(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 template<typename __F0>
@@ -48,9 +48,9 @@ template<typename T>
 }
 // def pair[T, U](a: T, b: U) -> tuple[T, U]:
 template<typename T, typename U>
-std::tuple<::tpy::val_or_ref_t<T>, ::tpy::val_or_ref_t<U>> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
+std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<U>> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
     // return (a, b)
-    return std::tuple<::tpy::val_or_ref_t<T>, ::tpy::val_or_ref_t<U>>{a, b};
+    return std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<U>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(a), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<U>>(b)};
 }
 // def max_val[T: Comparable](a: T, b: T) -> T:
 template<::tpystd::tpy::Comparable T>

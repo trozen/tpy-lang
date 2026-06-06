@@ -56,9 +56,9 @@ void main() {
         // for i, p in my_enumerate(pts):
         auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);
-        Point* p = &::tpy::unwrap_ref(std::get<1>(__tup_1));
+        auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         // print(i, p)
-        std::cout << i << " " << (*p) << "\n";
+        std::cout << i << " " << p << "\n";
     }
     // # Composition: my_enumerate(my_map(...))
     // for i, p in my_enumerate(my_map(identity, pts)):
@@ -73,9 +73,9 @@ void main() {
         // for i, p in my_enumerate(my_map(identity, pts)):
         auto& __tup_2 = __for_tup_1;
         int32_t i = std::get<0>(__tup_2);
-        Point* p = &::tpy::unwrap_ref(std::get<1>(__tup_2));
+        auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
         // print(i, p)
-        std::cout << i << " " << (*p) << "\n";
+        std::cout << i << " " << p << "\n";
     }
     // # Composition: builtin enumerate(my_map(...))
     // for j, q in enumerate(my_map(identity, pts)):
@@ -89,7 +89,7 @@ void main() {
         // for j, q in enumerate(my_map(identity, pts)):
         auto& __tup_3 = __for_tup_2;
         int32_t j = std::get<0>(__tup_3);
-        Point& q = ::tpy::unwrap_ref(std::get<1>(__tup_3));
+        auto&& q = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
         // print(j, q)
         std::cout << j << " " << q << "\n";
     }
@@ -106,7 +106,7 @@ void main() {
         // for k, r in my_enumerate(my_map(identity, pts)):
         auto& __tup_4 = __for_tup_3;
         int32_t k = std::get<0>(__tup_4);
-        Point& r = ::tpy::unwrap_ref(std::get<1>(__tup_4));
+        auto&& r = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_4)));
         // r.x += 100
         r.x = ::tpy::add_check<int32_t>(r.x, 100);
     }

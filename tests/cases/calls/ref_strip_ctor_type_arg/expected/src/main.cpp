@@ -11,9 +11,9 @@ Point& identity(Point& p) {
 }
 
 // def to_pair(p: Point) -> tuple[str, Point]:
-std::tuple<std::string, Point&> to_pair(Point& p) {
+std::tuple<std::string, Point*> to_pair(Point& p) {
     // return (str(p), p)
-    return std::tuple<std::string, Point&>{std::string(::tpy::__str__(p)), p};
+    return std::tuple<std::string, Point*>{std::string(::tpy::__str__(p)), &(p)};
 }
 
 // def main() -> None:

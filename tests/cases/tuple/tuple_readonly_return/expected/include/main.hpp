@@ -11,7 +11,7 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::tuple<const P&, const P&> pick(const std::vector<P>& items);
+std::tuple<const P*, const P*> pick(const std::vector<P>& items);
 void main();
 
 // class P:

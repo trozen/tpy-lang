@@ -11,7 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::tuple<Point&, bool> find(Point& p);
+std::tuple<Point*, bool> find(Point& p);
 void main();
 
 // class Point:

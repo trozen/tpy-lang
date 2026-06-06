@@ -19,7 +19,7 @@ void main() {
         auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for p, s in zip(points, scales):
         auto& __tup_1 = __for_tup_0;
-        Point& p = ::tpy::unwrap_ref(std::get<0>(__tup_1));
+        auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         int32_t s = std::get<1>(__tup_1);
         // p.x *= s
         p.x = ::tpy::mul_check<int32_t>(p.x, s);

@@ -16,16 +16,16 @@ class Holder:
         self.pair = (None, None)
 
     def update(self, p: tuple[T | None, T | None]) -> None:
-        self.pair = p
+        self.pair = p  # tpyc: warning(/copies/) warning(/copies/)
 
     def copy_from_subscript(self, items: list[tuple[T | None, T | None]]) -> None:
         # Source is a subscript -- already storage-form, so the field-write
         # is a direct copy (no redundant tuple_to_storage wrap).
-        self.pair = items[0]
+        self.pair = items[0]  # tpyc: warning(/copies/) warning(/copies/)
 
     def copy_from_field(self, other: 'Holder') -> None:
         # Source is a field -- already storage-form, direct copy.
-        self.pair = other.pair
+        self.pair = other.pair  # tpyc: warning(/copies/) warning(/copies/)
 
 
 g_anchor = T(99)
@@ -36,7 +36,7 @@ class GlobalCopier:
     pair: tuple[T | None, T | None]
     def __init__(self) -> None:
         # Source is a value global -- already storage-form, direct copy.
-        self.pair = g_pair
+        self.pair = g_pair  # tpyc: warning(/copies/) warning(/copies/)
 
 
 class SubscriptCtor:
@@ -44,7 +44,7 @@ class SubscriptCtor:
     def __init__(self, items: list[tuple[T | None, T | None]]) -> None:
         # Constructor MIL path: subscript source is already storage-form,
         # the field-init should be a direct copy (no redundant wrap).
-        self.pair = items[0]
+        self.pair = items[0]  # tpyc: warning(/copies/) warning(/copies/)
 
 
 def main() -> None:

@@ -33,7 +33,7 @@ from ..type_def_registry import int_traits_of
 from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
     TpyCall, TpyCoerce, TpyName, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr,
-    TpyNestedDef,
+    TpyNestedDef, TpyNamedExpr,
 )
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 
@@ -373,6 +373,69 @@ class BorrowTracker:
             self.borrow_kinds[(storage, borrower)] = kind
 
 
+def ephemeral_borrow_root(ephemeral_vars: set[str],
+                          expr: 'TpyExpr | None') -> str | None:
+    """Return the ephemeral-borrow var name `expr` reads from, else None.
+
+    A bare ephemeral name, a walrus handing one out, or a field/subscript
+    chain rooted in one (storing `x.field` retains a borrow into the same
+    stale slot). A `.clone()` / copy-producing call breaks the borrow, so
+    calls are not roots.
+    """
+    if isinstance(expr, TpyCoerce):
+        return ephemeral_borrow_root(ephemeral_vars, expr.expr)
+    if isinstance(expr, TpyNamedExpr):
+        return ephemeral_borrow_root(ephemeral_vars, expr.value)
+    # A ternary reads from whichever arm is taken -- ephemeral if either is.
+    if isinstance(expr, TpyIfExpr):
+        return (ephemeral_borrow_root(ephemeral_vars, expr.then_expr)
+                or ephemeral_borrow_root(ephemeral_vars, expr.else_expr))
+    if isinstance(expr, TpyName):
+        return expr.name if expr.name in ephemeral_vars else None
+    if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+        return ephemeral_borrow_root(ephemeral_vars, expr.obj)
+    return None
+
+
+def register_binding_borrow(ctx: 'SemanticContext', name: str,
+                            init_expr: TpyExpr) -> None:
+    """Register `name` as a borrower of `init_expr`'s storage root (ELEMENT /
+    FIELD / ALIAS by init shape). Shared by the VarDecl and walrus binding
+    paths.
+
+    A self-assignment (t = t) aliases nothing new; registering it would put
+    a self-edge in the borrow graph. For non-simple init shapes (ternary,
+    deep chains like `outer.inner[i]`) there is no single root to record, so
+    every address-taken root is eagerly marked mutated instead (the binding
+    aliases into them, so they must stay `T&`, not `const T&`).
+
+    8a.5: marking the source mutated is DEFERRED until the borrower is
+    actually written through for ELEMENT borrows (v = items[i]) and for
+    ALIAS/FIELD borrows whose root traces back to an ELEMENT borrow
+    (w = v, x = w where v = items[i] -- checked transitively). PTR/ITER
+    borrows and chains not rooted at an ELEMENT mark immediately.
+    """
+    init_unwrapped = (init_expr.expr if isinstance(init_expr, TpyCoerce)
+                      else init_expr)
+    root = _borrow_storage_root(init_expr)
+    if root is None:
+        for alias_root in addr_taken_roots(init_expr):
+            ctx.mark_param_mutated(alias_root)
+        return
+    if root == name:
+        return
+    if isinstance(init_unwrapped, TpySubscript):
+        kind = BorrowKind.ELEMENT
+    elif isinstance(init_unwrapped, TpyFieldAccess):
+        kind = BorrowKind.FIELD
+    else:
+        kind = BorrowKind.ALIAS
+    bt = ctx.func.borrow_tracker
+    bt.add_borrow(root, name, kind)
+    if not (kind == BorrowKind.ELEMENT or bt.is_deferred_borrow(root)):
+        ctx.mark_param_mutated(root)
+
+
 class _ModuleInitSentinel:
     """Sentinel for module-level init context (not a real function, but not None either).
 
@@ -560,15 +623,12 @@ class FunctionTrackingState:
     # borrow-form one, which a safe param-rooted element could precede).
     owns_fresh_tuple_member_vars: dict[str, int] = field(default_factory=dict)
 
-    # Sibling hazard fact for the *durable* (non-dangling) reference member case:
-    # a tuple local bound from a literal like `t = (i, b)` (b a param) is storage
-    # form, so binding silently COPIES b (CPython shares it) -- invisible at yield,
-    # a C++ build failure at return. Same recording/boundary-rejection as
-    # owns_fresh; the boundary check reports owns_fresh first (dangle is more
-    # severe than copy). Maps name -> first durable borrow element index.
-    # The full *fix* (make the bound local share) is THIR-gated -- see
-    # docs/IR_DESIGN.md item 9; pre-IR this is a rejection only.
-    copies_durable_tuple_member_vars: dict[str, int] = field(default_factory=dict)
+    # Tuple-typed locals bound from a call returning OWNING tuple storage
+    # (Own[tuple[...]] or per-element-Own): the local owns its element
+    # storage, so a borrow-form RETURN lift would take addresses into the
+    # dying local. Set/cleared alongside the owns-fresh fact; aliases are
+    # resolved through the borrow tracker at the boundary check.
+    owning_storage_tuple_vars: set[str] = field(default_factory=set)
 
 
     # --- Variable declaration tracking (per-function) ---

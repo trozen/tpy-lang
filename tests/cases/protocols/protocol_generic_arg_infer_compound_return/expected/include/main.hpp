@@ -35,13 +35,13 @@ struct Cell {
     explicit Cell(const T& value) : value(value) {}
 
     // def pair(self) -> tuple[T, Int32]:
-    std::tuple<::tpy::val_or_cref_t<T>, int32_t> pair() const {
+    std::tuple<::tpy::val_or_cptr_t<T>, int32_t> pair() const {
         // return (self.value, Int32(1))
-        return std::tuple<::tpy::val_or_ref_t<T>, int32_t>{this->value, 1};
+        return std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(this->value), 1};
     }
 
     // def consume(self, p: tuple[T, Int32]) -> Int32:
-    int32_t consume(const std::tuple<::tpy::val_or_cref_t<T>, int32_t>& p) const {
+    int32_t consume(const std::tuple<::tpy::val_or_cptr_t<T>, int32_t>& p) const {
         // return p[1]
         return std::get<1>(p);
     }
@@ -68,7 +68,7 @@ int32_t second_of(T_s& s) {
 template<typename T, HasPair<T> T_s>
 int32_t use_consume(T_s& s, ::tpy::param_val_or_ref_t<T> v) {
     // return s.consume((v, Int32(2)))
-    return s.consume(std::tuple<::tpy::val_or_ref_t<T>, int32_t>{v, 2});
+    return s.consume(std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(v), 2});
 }
 
 void __tpy_init();

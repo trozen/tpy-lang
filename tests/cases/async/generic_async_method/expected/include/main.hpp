@@ -122,7 +122,7 @@ template <typename T>
     case S_INITIAL: {
         // return (self.label, x)
         __state = S_DONE;
-        std::tuple<std::string, T> __tpy_async_ret = std::tuple<std::string, ::tpy::val_or_ref_t<T>>{__self.label, x};
+        std::tuple<std::string, T> __tpy_async_ret = std::tuple<std::string, ::tpy::val_or_ptr_t<T>>{__self.label, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(x)};
         return ::tpystd::tpy::Poll<std::tuple<std::string, T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

@@ -66,7 +66,7 @@ struct GlobalCopier {
     // def __init__(self) -> None:
     GlobalCopier() {
         // # Source is a value global -- already storage-form, direct copy.
-        // self.pair = g_pair
+        // self.pair = g_pair  # tpyc: warning(/copies/) warning(/copies/)
         this->pair = g_pair;
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.GlobalCopier";
@@ -96,7 +96,7 @@ inline std::ostream& operator<<(std::ostream& os, const SubscriptCtor& obj) {
 
 // def update(self, p: tuple[T | None, T | None]) -> None:
 inline void Holder::update(const std::tuple<const T*, const T*>& p) {
-    // self.pair = p
+    // self.pair = p  # tpyc: warning(/copies/) warning(/copies/)
     this->pair = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(p);
 }
 
@@ -104,14 +104,14 @@ inline void Holder::update(const std::tuple<const T*, const T*>& p) {
 inline void Holder::copy_from_subscript(const std::vector<std::tuple<std::optional<T>, std::optional<T>>>& items) {
     // # Source is a subscript -- already storage-form, so the field-write
     // # is a direct copy (no redundant tuple_to_storage wrap).
-    // self.pair = items[0]
+    // self.pair = items[0]  # tpyc: warning(/copies/) warning(/copies/)
     this->pair = ::tpy::__getitem__(items, 0);
 }
 
 // def copy_from_field(self, other: 'Holder') -> None:
 inline void Holder::copy_from_field(const Holder& other) {
     // # Source is a field -- already storage-form, direct copy.
-    // self.pair = other.pair
+    // self.pair = other.pair  # tpyc: warning(/copies/) warning(/copies/)
     this->pair = other.pair;
 }
 void __tpy_init();

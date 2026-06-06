@@ -781,35 +781,52 @@ const T* optional_to_ptr(const std::optional<T>& opt) {
 
 namespace detail {
 
+template<typename T> struct is_optional : std::false_type {};
+template<typename T> struct is_optional<std::optional<T>> : std::true_type {};
+template<typename T> inline constexpr bool is_optional_v = is_optional<T>::value;
+
 // Per-element conversion used by tuple_to_storage / tuple_to_pointer.
 // Dispatch on the destination slot type so mixed tuples (e.g. Ptr[T] +
 // Optional[U]) convert only the slots that need it -- a Src-typed overload
 // set would lift every T*/const T* slot to std::optional regardless of the
 // Dest shape.
 
+// Lower a borrow-form slot into its storage slot, dispatching on the DEST
+// slot shape: an optional dest is a nullable (PTR_OPTIONAL) slot and goes
+// through the null-checking ptr_to_optional; a value dest is a non-null
+// borrow (BORROW_REF) and is deref-copied. One converter handles tuples
+// mixing both element kinds.
 template<typename Dest, typename Src>
-inline Dest to_optional_form(Src&& s) {
+inline Dest to_storage_elem(Src&& s) {
     using SrcD = std::remove_cvref_t<Src>;
     using DestD = std::remove_cvref_t<Dest>;
     if constexpr (std::is_same_v<SrcD, DestD>) {
         return std::forward<Src>(s);
     } else if constexpr (std::is_pointer_v<SrcD>) {
-        return ptr_to_optional(s);
+        if constexpr (is_optional_v<DestD>) {
+            return ptr_to_optional(s);
+        } else {
+            return *s;
+        }
     } else {
         return std::forward<Src>(s);
     }
 }
 
-// Per-element conversion for tuple_to_storage_move: pointer-form sources
-// move the pointee into the optional; same-shape sources pass through.
+// Move-variant for tuple_to_storage_move: pointer-form sources move the
+// (null-checked optional / non-null value) pointee into the storage slot.
 template<typename Dest, typename Src>
-inline Dest to_optional_form_move(Src&& s) {
+inline Dest to_storage_elem_move(Src&& s) {
     using SrcD = std::remove_cvref_t<Src>;
     using DestD = std::remove_cvref_t<Dest>;
     if constexpr (std::is_same_v<SrcD, DestD>) {
         return std::forward<Src>(s);
     } else if constexpr (std::is_pointer_v<SrcD>) {
-        return ptr_to_optional_move(s);
+        if constexpr (is_optional_v<DestD>) {
+            return ptr_to_optional_move(s);
+        } else {
+            return std::move(*s);
+        }
     } else {
         return std::forward<Src>(s);
     }
@@ -830,7 +847,16 @@ inline Dest to_pointer_form(Src&& s) {
                    "to_pointer_form: cannot remove const from pointer");
         return s;
     } else if constexpr (std::is_pointer_v<DestD>) {
-        return optional_to_ptr(s);
+        if constexpr (is_optional_v<SrcD>) {
+            return optional_to_ptr(s);
+        } else {
+            // Plain value lvalue -> pointer: take its address. lvalue-only --
+            // taking the address of an rvalue would dangle once the
+            // full-expression ends.
+            static_assert(std::is_lvalue_reference_v<Src>,
+                          "to_pointer_form: cannot take the address of an rvalue");
+            return std::addressof(s);
+        }
     } else {
         return std::forward<Src>(s);
     }
@@ -840,14 +866,16 @@ inline Dest to_pointer_form(Src&& s) {
 
 template<typename ToTuple, typename FromTuple, std::size_t... I>
 inline ToTuple tuple_to_storage_impl(FromTuple&& t, std::index_sequence<I...>) {
-    return ToTuple(detail::to_optional_form<std::tuple_element_t<I, ToTuple>>(
+    return ToTuple(detail::to_storage_elem<std::tuple_element_t<I, ToTuple>>(
         std::get<I>(std::forward<FromTuple>(t)))...);
 }
 
-// Lift a pointer-form tuple (T*, ..., U) to storage-form (std::optional<T>, ..., U).
-// Plain elements pass through unchanged. Used at field-write boundaries where
-// the field stores std::tuple<std::optional<...>, ...> but the source is a
-// borrow-form tuple from a function return / param / local.
+// Lower a borrow-form tuple (T*, ..., U) to its storage form -- per-element
+// dest-shape dispatch: nullable slots become std::optional<T> (null-checked),
+// plain reference slots deref-copy into value `T` slots, value elements pass
+// through. Used at field/container-write boundaries where the destination owns
+// (std::tuple<std::optional<A>, B, int, ...>) but the source is a borrow-form
+// tuple from a function return / param / local.
 template<typename ToTuple, typename FromTuple>
 inline ToTuple tuple_to_storage(FromTuple&& t) {
     using F = std::remove_reference_t<FromTuple>;
@@ -857,7 +885,7 @@ inline ToTuple tuple_to_storage(FromTuple&& t) {
 
 template<typename ToTuple, typename FromTuple, std::size_t... I>
 inline ToTuple tuple_to_storage_move_impl(FromTuple&& t, std::index_sequence<I...>) {
-    return ToTuple(detail::to_optional_form_move<std::tuple_element_t<I, ToTuple>>(
+    return ToTuple(detail::to_storage_elem_move<std::tuple_element_t<I, ToTuple>>(
         std::get<I>(std::forward<FromTuple>(t)))...);
 }
 
@@ -888,6 +916,72 @@ inline ToTuple tuple_to_pointer(FromTuple&& t) {
     using F = std::remove_reference_t<FromTuple>;
     return tuple_to_pointer_impl<ToTuple>(std::forward<FromTuple>(t),
                                           std::make_index_sequence<std::tuple_size_v<F>>{});
+}
+
+namespace detail {
+
+// Value-level equality of two tuple slots that may be in any form: bare
+// borrow pointer (`T*`, non-null except for a nullable PTR_OPTIONAL slot),
+// storage optional (`std::optional<T>`), or plain value. CPython semantics:
+// compare referents; None equals only None.
+template<typename A, typename B>
+inline bool tuple_elem_eq(const A& a, const B& b) {
+    if constexpr (std::is_pointer_v<A> && std::is_pointer_v<B>) {
+        if (a == nullptr || b == nullptr) return a == nullptr && b == nullptr;
+        return *a == *b;
+    } else if constexpr (std::is_pointer_v<A> && is_optional_v<B>) {
+        if (a == nullptr || !b.has_value()) return a == nullptr && !b.has_value();
+        return *a == *b;
+    } else if constexpr (is_optional_v<A> && std::is_pointer_v<B>) {
+        return tuple_elem_eq(b, a);
+    } else if constexpr (std::is_pointer_v<A>) {
+        return a != nullptr && *a == b;
+    } else if constexpr (std::is_pointer_v<B>) {
+        return b != nullptr && a == *b;
+    } else {
+        return a == b;
+    }
+}
+
+// Slot read for ordering: deref a borrow pointer (non-null contract --
+// ordering against None is a TypeError in CPython and is not generated),
+// pass values through.
+template<typename T>
+inline decltype(auto) tuple_cmp_ref(const T& x) {
+    if constexpr (std::is_pointer_v<T>) {
+        return (*x);
+    } else {
+        return (x);
+    }
+}
+
+}  // namespace detail
+
+// Value-level tuple equality across borrow/storage forms: element-wise
+// referent comparison (std::tuple::operator== on a borrow-form tuple would
+// compare the element ADDRESSES). Sema guarantees equal arity.
+template<typename TA, typename TB>
+inline bool tuple_eq(const TA& a, const TB& b) {
+    return [&]<std::size_t... I>(std::index_sequence<I...>) {
+        return (detail::tuple_elem_eq(std::get<I>(a), std::get<I>(b)) && ...);
+    }(std::make_index_sequence<std::tuple_size_v<TA>>{});
+}
+
+// Value-level lexicographic tuple less-than across borrow/storage forms
+// (std::tuple::operator< on a borrow-form tuple would order by ADDRESS).
+// Same equivalence convention as std::tuple: a[i] < b[i] decides, else
+// b[i] < a[i] decides, else recurse.
+template<std::size_t I = 0, typename TA, typename TB>
+inline bool tuple_lt(const TA& a, const TB& b) {
+    if constexpr (I == std::tuple_size_v<TA>) {
+        return false;
+    } else {
+        decltype(auto) x = detail::tuple_cmp_ref(std::get<I>(a));
+        decltype(auto) y = detail::tuple_cmp_ref(std::get<I>(b));
+        if (x < y) return true;
+        if (y < x) return false;
+        return tuple_lt<I + 1>(a, b);
+    }
 }
 
 namespace detail {

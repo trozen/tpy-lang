@@ -22,7 +22,7 @@ void main() {
     pairs.push_back(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(make_pair(a, b)));
     // d: dict[Int32, tuple[P | None, P | None]] = {}
     ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>> d = ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>>();
-    // d[Int32(0)] = make_pair(a, b)
+    // d[Int32(0)] = make_pair(a, b)  # tpyc: warning(/copies/) warning(/copies/)
     ::tpy::__setitem__(d, 0, ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(make_pair(a, b)));
     // print(len(pairs))
     std::cout << ::tpy::__len__(pairs) << "\n";

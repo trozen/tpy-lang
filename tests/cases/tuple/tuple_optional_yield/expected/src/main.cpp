@@ -16,7 +16,7 @@ void main() {
         if (!__r_1.has_value()) break;
         auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for a, b in gen_for(items):
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(__for_tup_0);
+        auto& __tup_1 = __for_tup_0;
         P* a = std::get<0>(__tup_1);
         P* b = std::get<1>(__tup_1);
         // if a is not None:
@@ -33,7 +33,7 @@ void main() {
         if (!__r_3.has_value()) break;
         auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
         // for a, b in gen_range(items):
-        auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(__for_tup_1);
+        auto& __tup_2 = __for_tup_1;
         P* a = std::get<0>(__tup_2);
         P* b = std::get<1>(__tup_2);
         // if a is not None:
@@ -50,7 +50,7 @@ void main() {
         if (!__r_5.has_value()) break;
         auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
         // for a, b in gen_while(items, Int32(2)):
-        auto __tup_3 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(__for_tup_2);
+        auto& __tup_3 = __for_tup_2;
         P* a = std::get<0>(__tup_3);
         P* b = std::get<1>(__tup_3);
         // if a is not None:

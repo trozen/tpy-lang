@@ -61,7 +61,7 @@ void main() {
     // # Local initialised from a storage-form source: same conversion at
     // # the boundary as if the source were used directly.
     // snap = items[0]
-    auto snap = ::tpy::__getitem__(items, 0);
+    auto&& snap = ::tpy::__getitem__(items, 0);
     // consume(snap)
     consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(snap));
     // # for-loop with destructuring directly: the synthetic loop tuple is

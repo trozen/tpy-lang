@@ -1,0 +1,1 @@
+main.py:21: error: Cannot return 'p': it borrows an element of a generator / iterator, valid only for the current iteration step (the producer reuses its frame slot on the next step). Copy it out first (`p.clone()` for a @nocopy type, otherwise a plain copy).

@@ -12,7 +12,7 @@ struct Point;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-std::tuple<std::string, ::tpy::val_or_ref_t<T>> label(std::string_view tag, ::tpy::param_val_or_ref_t<T> val);
+std::tuple<std::string, ::tpy::val_or_ptr_t<T>> label(std::string_view tag, ::tpy::param_val_or_ref_t<T> val);
 void main();
 
 // class Point:
@@ -44,9 +44,9 @@ inline std::string Point::__str__() const {
 }
 // def label[T](tag: str, val: T) -> tuple[str, T]:
 template<typename T>
-std::tuple<std::string, ::tpy::val_or_ref_t<T>> label(std::string_view tag, ::tpy::param_val_or_ref_t<T> val) {
+std::tuple<std::string, ::tpy::val_or_ptr_t<T>> label(std::string_view tag, ::tpy::param_val_or_ref_t<T> val) {
     // return (tag, val)
-    return std::tuple<std::string, ::tpy::val_or_ref_t<T>>{tag, val};
+    return std::tuple<std::string, ::tpy::val_or_ptr_t<T>>{tag, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(val)};
 }
 
 void __tpy_init();

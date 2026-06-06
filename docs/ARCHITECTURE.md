@@ -159,6 +159,20 @@ container, primitive, record, and enum-class is a `NominalType` --
 `type(list[Int32]) == type(set[Int32])` is `True` and they differ
 only in `.name` / `.qualified_name()`.
 
+### Value-form taxonomy
+
+`TpyType.value_form()` classifies how a type behaves as a tuple element /
+borrow slot (`ValueForm` in `typesys.py`): `VALUE` (copied), `OWN` (moved),
+`TYPE_PARAM` (generic proxy, resolved at C++ instantiation via
+`val_or_ptr_t<T>`), `PTR_OPTIONAL` (nullable `T*`), and `BORROW_REF`
+(non-null `T*`). It drives the tuple borrow/storage form split --
+`TupleType.has_pointer_repr_element()` and the per-element C++ renderings --
+and is the sema-side anchor for the boundary conversions
+(`tuple_to_pointer` / `tuple_to_storage`). See `LANGUAGE_FEATURES.md`
+"Borrow Form vs Storage Form" for the user-facing semantics and
+`IR_DESIGN.md` Open Questions item 9 for the planned IR-level form fact.
+Unit-tested in `tpyc/test_value_form.py`.
+
 ### TypeDef registry
 
 `tpyc/type_def_registry.py` holds a single `TypeDef` per qname with

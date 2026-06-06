@@ -36,13 +36,13 @@ inline auto my_enumerate(std::vector<Point>& items) {
     int32_t i = 0;
     // n = Int32(len(items))
     int32_t n = ::tpy::__len__(items);
-    return ::tpy::make_generator<std::tuple<int32_t, Point&>>(
-        [&items, i, n]() mutable -> std::optional<std::tuple<int32_t, Point&>> {
+    return ::tpy::make_generator<std::tuple<int32_t, Point*>>(
+        [&items, i, n]() mutable -> std::optional<std::tuple<int32_t, Point*>> {
             while ((i < n)) {
-                auto __val = std::tuple<int32_t, Point&>{i, ::tpy::__getitem__(items, i)};
+                auto __val = std::tuple<int32_t, Point*>{i, &(::tpy::__getitem__(items, i))};
                 // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<std::tuple<int32_t, Point&>>(__val);
+                return std::optional<std::tuple<int32_t, Point*>>(__val);
             }
             return std::nullopt;
         }

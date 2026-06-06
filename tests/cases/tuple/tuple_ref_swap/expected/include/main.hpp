@@ -11,7 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::tuple<int32_t, Point&> swap(const std::tuple<Point&, int32_t>& p);
+std::tuple<int32_t, Point*> swap(const std::tuple<Point*, int32_t>& p);
 void main();
 
 // class Point:

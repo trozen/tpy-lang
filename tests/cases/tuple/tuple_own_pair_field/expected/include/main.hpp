@@ -47,7 +47,7 @@ struct Pair {
         // b = Point(Int32(3), Int32(4))
         Point b = Point(3, 4);
         // self.points = (a, b)
-        this->points = std::tuple<Point, Point>{std::move(a), std::move(b)};
+        this->points = ::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{std::move(a), std::move(b)});
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };

@@ -12,7 +12,7 @@ struct Point;
 inline constexpr std::string_view __name__ = "__main__";
 
 Point& identity(Point& p);
-std::tuple<std::string, Point&> to_pair(Point& p);
+std::tuple<std::string, Point*> to_pair(Point& p);
 void main();
 
 // class Point:

@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 
 // def find(p: Point) -> tuple[Point, bool]:
-std::tuple<Point&, bool> find(Point& p) {
+std::tuple<Point*, bool> find(Point& p) {
     // return (p, True)
-    return std::tuple<Point&, bool>{p, true};
+    return std::tuple<Point*, bool>{&(p), true};
 }
 
 // def main() -> None:
@@ -17,14 +17,14 @@ void main() {
     // result = find(p)
     auto result = find(p);
     // print(result[0])
-    std::cout << std::get<0>(result) << "\n";
+    std::cout << (*std::get<0>(result)) << "\n";
     // print(result[1])
     std::cout << ::tpy::print_bool(std::get<1>(result)) << "\n";
     // # Mutation through reference is visible
     // p.x = Int32(42)
     p.x = 42;
     // print(result[0])
-    std::cout << std::get<0>(result) << "\n";
+    std::cout << (*std::get<0>(result)) << "\n";
 }
 
 void __tpy_init() {

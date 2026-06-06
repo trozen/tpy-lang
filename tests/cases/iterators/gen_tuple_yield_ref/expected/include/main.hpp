@@ -32,15 +32,15 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 inline auto g(std::vector<Box>& boxes) {
     // i = 0
     int32_t i = 0;
-    return ::tpy::make_generator<std::tuple<::tpy::BigInt, Box&>>(
-        [&boxes, i, __beg = decltype((boxes).begin())(), __end = decltype((boxes).begin())(), __init = false]() mutable -> std::optional<std::tuple<::tpy::BigInt, Box&>> {
+    return ::tpy::make_generator<std::tuple<::tpy::BigInt, Box*>>(
+        [&boxes, i, __beg = decltype((boxes).begin())(), __end = decltype((boxes).begin())(), __init = false]() mutable -> std::optional<std::tuple<::tpy::BigInt, Box*>> {
             if (!__init) { __beg = (boxes).begin(); __end = (boxes).end(); __init = true; }
             if (__beg != __end) {
                 auto&& b = *__beg++;
-                auto __val = std::tuple<::tpy::BigInt, Box&>{i, b};
+                auto __val = std::tuple<::tpy::BigInt, Box*>{i, &(b)};
                 // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<std::tuple<::tpy::BigInt, Box&>>(__val);
+                return std::optional<std::tuple<::tpy::BigInt, Box*>>(__val);
             }
             return std::nullopt;
         }

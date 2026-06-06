@@ -12,9 +12,9 @@ struct Point;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-::tpy::val_or_ref_t<T> first_of_pair(const std::tuple<::tpy::val_or_ref_t<T>, ::tpy::val_or_ref_t<T>>& p);
+::tpy::val_or_ref_t<T> first_of_pair(const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<T>>& p);
 template<typename A, typename B>
-std::tuple<::tpy::val_or_ref_t<B>, ::tpy::val_or_ref_t<A>> swap(const std::tuple<::tpy::val_or_ref_t<A>, ::tpy::val_or_ref_t<B>>& p);
+std::tuple<::tpy::val_or_ptr_t<B>, ::tpy::val_or_ptr_t<A>> swap(const std::tuple<::tpy::val_or_ptr_t<A>, ::tpy::val_or_ptr_t<B>>& p);
 void main();
 
 // class Point:
@@ -46,15 +46,15 @@ inline std::string Point::__repr__() const {
 }
 // def first_of_pair[T](p: tuple[T, T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> first_of_pair(const std::tuple<::tpy::val_or_ref_t<T>, ::tpy::val_or_ref_t<T>>& p) {
+::tpy::val_or_ref_t<T> first_of_pair(const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<T>>& p) {
     // return p[0]
-    return std::get<0>(p);
+    return ::tpy::tuple_elem_ref(std::get<0>(p));
 }
 // def swap[A, B](p: tuple[A, B]) -> tuple[B, A]:
 template<typename A, typename B>
-std::tuple<::tpy::val_or_ref_t<B>, ::tpy::val_or_ref_t<A>> swap(const std::tuple<::tpy::val_or_ref_t<A>, ::tpy::val_or_ref_t<B>>& p) {
+std::tuple<::tpy::val_or_ptr_t<B>, ::tpy::val_or_ptr_t<A>> swap(const std::tuple<::tpy::val_or_ptr_t<A>, ::tpy::val_or_ptr_t<B>>& p) {
     // return (p[1], p[0])
-    return std::tuple<::tpy::val_or_ref_t<B>, ::tpy::val_or_ref_t<A>>{std::get<1>(p), std::get<0>(p)};
+    return std::tuple<::tpy::val_or_ptr_t<B>, ::tpy::val_or_ptr_t<A>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<B>>(::tpy::tuple_elem_ref(std::get<1>(p))), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<A>>(::tpy::tuple_elem_ref(std::get<0>(p)))};
 }
 
 void __tpy_init();

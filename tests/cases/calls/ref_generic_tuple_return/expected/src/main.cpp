@@ -12,7 +12,7 @@ void main() {
     std::vector<int32_t> vals = {10, 20};
     // # Non-value T=Point -- warns about copy
     // d = dict(map(lambda p: label(str(p.x), p), pts))  # tpyc: warning(/copies tuple\[str, Point\] elements/)
-    ::tpy::ordered_map<std::string, Point> d = ::tpy::dict_construct<std::string, Point>(::tpy::builtin_map<Point, std::tuple<std::string, ::tpy::val_or_ref<Point>>>([](Point& p) -> std::tuple<std::string, Point&> { return label<Point>(::tpy::fixed_to_str<int32_t>(p.x), p); }, pts));
+    ::tpy::ordered_map<std::string, Point> d = ::tpy::dict_construct<std::string, Point>(::tpy::builtin_map<Point, std::tuple<std::string, ::tpy::val_or_ref<Point>>>([](Point& p) -> std::tuple<std::string, Point*> { return label<Point>(::tpy::fixed_to_str<int32_t>(p.x), p); }, pts));
     // for k in d:
     auto& __obj_0 = d;
     auto __beg_0 = __obj_0.begin();
@@ -36,7 +36,7 @@ void main() {
     }
     // # copy_iter silences the warning
     // d3 = dict(copy_iter(map(lambda p: label(str(p.x), p), pts)))  # tpyc: ok
-    ::tpy::ordered_map<std::string, Point> d3 = ::tpy::dict_construct<std::string, Point>(::tpy::copy_iter<std::tuple<std::string, Point>>(::tpy::builtin_map<Point, std::tuple<std::string, ::tpy::val_or_ref<Point>>>([](Point& p) -> std::tuple<std::string, Point&> { return label<Point>(::tpy::fixed_to_str<int32_t>(p.x), p); }, pts)));
+    ::tpy::ordered_map<std::string, Point> d3 = ::tpy::dict_construct<std::string, Point>(::tpy::copy_iter<std::tuple<std::string, Point>>(::tpy::builtin_map<Point, std::tuple<std::string, ::tpy::val_or_ref<Point>>>([](Point& p) -> std::tuple<std::string, Point*> { return label<Point>(::tpy::fixed_to_str<int32_t>(p.x), p); }, pts)));
     // for k in d3:
     auto& __obj_2 = d3;
     auto __beg_2 = __obj_2.begin();

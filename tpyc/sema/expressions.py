@@ -15,6 +15,7 @@ from ..typesys import (
     NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, AnyType, OptionalType, UnionType, VoidType,
     ReadonlyType, unwrap_readonly, unwrap_qualifiers, is_any_str_type, PendingStrType, PendingViewType,
+    ValueForm,
     is_any_bytes_type, PendingBytesType,
     make_union,
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
@@ -58,7 +59,7 @@ from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
-from .context import is_body_like_scope
+from .context import is_body_like_scope, register_binding_borrow, ephemeral_borrow_root
 from .narrowing import NarrowingTracker, deref_view_narrowed
 from .numeric_lattice import widen_numeric_types
 from .list_literals import IterableHelper
@@ -996,6 +997,21 @@ class ExpressionAnalyzer:
                                 )
                     # For ordering ops, validate that element types support the operator
                     if expr.op in ("<", "<=", ">", ">="):
+                        # An Optional element has no ordering: CPython raises
+                        # TypeError when a None meets `<`, and a null
+                        # pointer-repr slot would be dereferenced by the C++
+                        # lexicographic compare (tuple_lt's non-null contract).
+                        if (isinstance(unwrap_readonly(lt), OptionalType)
+                                or isinstance(unwrap_readonly(rt), OptionalType)):
+                            opt_t = (lt if isinstance(unwrap_readonly(lt), OptionalType)
+                                     else rt)
+                            raise self.ctx.error(
+                                f"Cannot order tuples on element {i} "
+                                f"('{opt_t}'): ordering is undefined for an "
+                                f"optional element (None does not support "
+                                f"'{expr.op}')",
+                                expr,
+                            )
                         self._validate_comparison(expr, lt, rt)
                 return BOOL
             else:
@@ -2385,6 +2401,38 @@ class ExpressionAnalyzer:
         self.ctx.func.rvalue_vars.add(name)
         if name not in self.ctx.func.var_scope_depth:
             self.ctx.func.var_scope_depth[name] = target_scope.depth
+
+        # Mirror the VarDecl tuple facts: a walrus-bound pointer-repr tuple
+        # carries the same owns-fresh hazard as `t = (1, Box(5))`, and an
+        # lvalue-sourced binding ((t := items[0])) aliases its storage, so
+        # the borrow must be registered for the return-root gate and the
+        # deferred mutation-marking to see it. A rebind drops/retargets the
+        # old chain first, like the VarDecl path.
+        # Peel Own for the tuple bookkeeping: a walrus bound from an
+        # owning-tuple call carries the same facts as the VarDecl binding,
+        # whose inferred local type is already Own-stripped.
+        facts_type = unwrap_own(unwrap_readonly(resolved))
+        self.compat.update_tuple_member_local_facts(name, facts_type,
+                                                    expr.value)
+        res_bare = unwrap_readonly(facts_type)
+        is_borrow_tuple = (isinstance(res_bare, TupleType)
+                           and res_bare.has_pointer_repr_element())
+        if is_borrow_tuple:
+            bt = self.ctx.func.borrow_tracker
+            bt.retarget_storage_borrows(name)
+            bt.remove_borrower(name)
+            val_inner = (expr.value.expr if isinstance(expr.value, TpyCoerce)
+                         else expr.value)
+            if isinstance(val_inner, (TpyName, TpySubscript, TpyFieldAccess)):
+                register_binding_borrow(self.ctx, name, expr.value)
+        # An alias of an ephemeral borrow is the same stale-slot borrow under
+        # another name (mirrors the VarDecl _update_ephemeral_alias_fact).
+        eph = self.ctx.func.ephemeral_borrow_vars
+        if ((not resolved.is_value_type() or is_borrow_tuple)
+                and ephemeral_borrow_root(eph, expr.value) is not None):
+            eph.add(name)
+        else:
+            eph.discard(name)
 
         return value_type
 

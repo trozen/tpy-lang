@@ -44,7 +44,7 @@ struct Mixed {
         // b = Point(Int32(3), Int32(4))
         Point b = Point(3, 4);
         // self.pp = (a, b)  # tpyc: warning(/copies Point into field \(tuple element 0\)/)
-        this->pp = std::tuple<Point, Point>{a, std::move(b)};
+        this->pp = ::tpy::tuple_to_storage<std::tuple<Point, Point>>(std::tuple<Point, Point>{a, std::move(b)});
         // print(a.x)  # later use of `a` -- forces element 0 to copy
         std::cout << a.x << "\n";
     }

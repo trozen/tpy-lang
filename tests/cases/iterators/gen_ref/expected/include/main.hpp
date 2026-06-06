@@ -34,15 +34,15 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 inline auto my_enumerate(std::vector<Point>& items) {
     // i: Int32 = 0
     int32_t i = 0;
-    return ::tpy::make_generator<std::tuple<int32_t, Point&>>(
-        [&items, i, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<int32_t, Point&>> {
+    return ::tpy::make_generator<std::tuple<int32_t, Point*>>(
+        [&items, i, __beg = decltype((items).begin())(), __end = decltype((items).begin())(), __init = false]() mutable -> std::optional<std::tuple<int32_t, Point*>> {
             if (!__init) { __beg = (items).begin(); __end = (items).end(); __init = true; }
             if (__beg != __end) {
                 auto&& item = *__beg++;
-                auto __val = std::tuple<int32_t, Point&>{i, item};
+                auto __val = std::tuple<int32_t, Point*>{i, &(item)};
                 // i += 1
                 i = ::tpy::add_check<int32_t>(i, 1);
-                return std::optional<std::tuple<int32_t, Point&>>(__val);
+                return std::optional<std::tuple<int32_t, Point*>>(__val);
             }
             return std::nullopt;
         }

@@ -413,7 +413,7 @@ class GeneratorCodegen:
             else:
                 out.write(f"{I(4)}auto&& {cpp_var} = *__beg++;\n")
             if (isinstance(iter_elem, TupleType)
-                    and iter_elem.has_pointer_repr_optional_element()):
+                    and iter_elem.has_pointer_repr_element()):
                 self.ctx.storage_form_tuple_locals.add(for_stmt.var)
 
             for stmt in pre_yield:
@@ -508,7 +508,7 @@ class GeneratorCodegen:
         # codegen having to know which.
         iter_elem_unwrapped = unwrap_ref_type(iter_elem) if iter_elem else None
         is_pointer_repr_tuple = (isinstance(iter_elem_unwrapped, TupleType)
-                                 and iter_elem_unwrapped.has_pointer_repr_optional_element())
+                                 and iter_elem_unwrapped.has_pointer_repr_element())
         if iter_elem and iter_elem.is_value_type() and not is_pointer_repr_tuple:
             out.write(f"{I(4)}{cpp_iter_elem} {cpp_var} = ::tpy::unwrap_ref(*__r);\n")
         else:
@@ -604,6 +604,14 @@ class GeneratorCodegen:
         if elem_type and isinstance(elem_type, IntLiteralType):
             elem_type = self.ctx.analyzer.ctx.default_int_type
         elem_cpp = self.types.type_to_cpp(elem_type) if elem_type else "int32_t"
+        # An iterator yielding a pointer-repr tuple hands out the borrow form
+        # (std::tuple<..., T*>); the `__for_r` result slot must match that
+        # ABI, not the ref/value rendering of the element type.
+        elem_bare = (unwrap_readonly(unwrap_ref_type(elem_type))
+                     if elem_type else None)
+        if (isinstance(elem_bare, TupleType)
+                and elem_bare.has_pointer_repr_element()):
+            elem_cpp = self.types.tuple_borrow_cpp(elem_bare)
 
         # Range counter optimization
         if isinstance(stmt.iterable, TpyCall) and stmt.iterable.func_name == "range":

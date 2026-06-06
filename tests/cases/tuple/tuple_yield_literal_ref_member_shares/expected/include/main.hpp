@@ -46,7 +46,7 @@ struct __gen_gen {
     __gen_gen(Box& b)
         : __state(S_INITIAL), b(b) {}
 
-    std::expected<std::tuple<int32_t, Box&>, ::tpy::StopIteration> __next__();
+    std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen&) {

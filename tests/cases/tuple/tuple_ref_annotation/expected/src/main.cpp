@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 
 // def make(p: Point) -> tuple[Int32, Point]:
-std::tuple<int32_t, Point&> make(Point& p) {
+std::tuple<int32_t, Point*> make(Point& p) {
     // return (Int32(1), p)
-    return std::tuple<int32_t, Point&>{1, p};
+    return std::tuple<int32_t, Point*>{1, &(p)};
 }
 
 // def main() -> None:
@@ -19,12 +19,12 @@ void main() {
     // print(t[0])
     std::cout << std::get<0>(t) << "\n";
     // print(t[1])
-    std::cout << std::get<1>(t) << "\n";
+    std::cout << (*std::get<1>(t)) << "\n";
     // # Mutation through reference is visible
     // p.x = Int32(99)
     p.x = 99;
     // print(t[1])
-    std::cout << std::get<1>(t) << "\n";
+    std::cout << (*std::get<1>(t)) << "\n";
 }
 
 void __tpy_init() {

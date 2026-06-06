@@ -5,12 +5,12 @@ namespace tpyapp::main {
 
 
 // def gen(b: Box) -> Iterator[tuple[Int32, Box]]:
-std::expected<std::tuple<int32_t, Box&>, ::tpy::StopIteration> __gen_gen::__next__() {
+std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // yield (1, b)
         __state = S_RESUME_0;
-        return std::tuple<int32_t, Box&>{1, b};
+        return std::tuple<int32_t, Box*>{1, &(b)};
     }
     case S_RESUME_0: {
         __state = S_DONE;
@@ -39,7 +39,7 @@ void main() {
         if (!__r_1.has_value()) break;
         auto&& pair = ::tpy::unwrap_ref(*__r_1);
         // pair[1].val = 99   # mutate through the shared (borrow-form) member
-        std::get<1>(pair).val = 99;
+        std::get<1>(pair)->val = 99;
     }
     // print(shared.val)      # shares -> 99 (would be 5 if it copied)
     std::cout << shared.val << "\n";

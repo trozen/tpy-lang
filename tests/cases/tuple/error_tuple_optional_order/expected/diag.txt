@@ -1,0 +1,1 @@
+main.py:20: error: Cannot order tuples on element 1 ('Box | None'): ordering is undefined for an optional element (None does not support '<')

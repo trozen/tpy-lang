@@ -12,6 +12,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, PtrType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingViewType, OwnType, OptionalType,
     NoneType, NominalType, AliasRef, AnyType, STR, BYTES, TupleType, VoidType,
+    ValueForm,
     INT32, BIGINT, FLOAT, is_protocol_type,
     polymorphic_source_is_pointer, polymorphic_subclass_into_optional,
     polymorphic_source_inner,
@@ -29,6 +30,7 @@ from ..parse import (
     TpyRaise, TpyExceptHandler, TpyTry, TpyWith,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
     TpyImport, TpySubscript, TpySlice, TpyStrLiteral, TpyNoneLiteral, TpyName, TpyExpr, TpyFunction,
+    TpyTupleLiteral, TupleElemCapture,
     TpyAssert, TpyBoolLiteral, TpyArrayLiteral,
     TpyFieldAccess, TpyMethodCall,
     TpyBinOp, TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce, TpyIfExpr,
@@ -207,7 +209,7 @@ class StatementGenerator:
             # storage-form locals registered for storage-form tuple iteration.
             if isinstance(actual, OwnType):
                 inner = unwrap_readonly(actual.wrapped)
-                if isinstance(inner, TupleType) and inner.has_pointer_repr_optional_element():
+                if isinstance(inner, TupleType) and inner.has_pointer_repr_element():
                     self.ctx.storage_form_tuple_locals.add(pname)
             # Value-optional params (std::optional<T> by value) are movable when
             # the inner type has an expensive copy (String, BigInt, etc.).
@@ -597,6 +599,35 @@ class StatementGenerator:
                     if (self._is_str_view_source(ret_value)
                             or self._expr_uses_optional_str_param(ret_value)):
                         ret_expr = f"std::string({ret_expr})"
+                # Borrow-form tuple local returned as a per-element-Own storage
+                # tuple: deref-COPY each pointee into the owned return slot. A
+                # move would be sound only for a dying-local pointee; the
+                # borrow may equally be param-rooted (`pair = (b, 0)` for a
+                # borrowed param `b`), and codegen cannot tell the two apart
+                # here -- a move would silently gut the caller's object, so
+                # the dying-local case pays a copy where a move would do.
+                ret_tuple = (unwrap_qualifiers(ret_type)
+                             if ret_type is not None else None)
+                if (isinstance(ret_tuple, TupleType)
+                        and any(isinstance(et, OwnType)
+                                for et in ret_tuple.element_types)):
+                    src = self.ctx.unwrap_copy(ret_value)
+                    src_type = self.ctx.get_expr_type(src)
+                    src_tuple = (unwrap_qualifiers(src_type)
+                                 if src_type is not None else None)
+                    if (isinstance(src, TpyName)
+                            and isinstance(src_tuple, TupleType)
+                            and src_tuple.has_pointer_repr_element()
+                            and not self.ctx.is_storage_form_source(src)):
+                        ret_expr = (
+                            f"::tpy::tuple_to_storage"
+                            f"<{self.types.tuple_storage_cpp(ret_tuple)}>({ret_expr})")
+                # Borrow-form tuple return read from a storage location
+                # (field/subscript): lift element addresses into that storage.
+                # Sema rejects non-durable roots, so the pointers outlive the
+                # call. Self-gating: Own-element tuples are not pointer-repr.
+                ret_expr = self._maybe_wrap_tuple_to_pointer(
+                    ret_expr, ret_type, self.ctx.unwrap_copy(ret_value))
                 # Consuming method: move self fields on return (this->field is lvalue)
                 if (self.ctx.in_consuming_method
                         and isinstance(ret_value, TpyFieldAccess)
@@ -1475,14 +1506,33 @@ class StatementGenerator:
         tuple type must use `to_cpp_return_const()` to match.
         """
         ptr_form = TupleType(tuple(stmt.target_types))
-        if not ptr_form.has_pointer_repr_optional_element():
+        if not ptr_form.has_pointer_repr_element():
+            return value_expr
+        # An Own[T] tuple element over a plain reference type is stored by
+        # value and MOVED out at unpack, not pointer-converted.
+        # `stmt.target_types` strips Own[T] -> T (so it looks pointer-repr), so
+        # consult the SOURCE tuple type. Own over a pointer-repr Optional stays
+        # eligible: its `std::optional<T>` storage slot is lifted to `T*` like
+        # any other storage tuple.
+        src_value_type = self.ctx.get_expr_type(stmt.value)
+        src_tuple_type = (unwrap_qualifiers(src_value_type)
+                          if src_value_type is not None else None)
+
+        def _own_moved_elem(et: TpyType) -> bool:
+            if not isinstance(et, OwnType):
+                return False
+            inner = unwrap_readonly(et.wrapped)
+            return not (isinstance(inner, OptionalType)
+                        and inner.uses_pointer_repr())
+
+        if isinstance(src_tuple_type, TupleType) and any(
+                _own_moved_elem(et) for et in src_tuple_type.element_types):
             return value_expr
         if not self.ctx.is_storage_form_source(stmt.value):
             return value_expr
         is_const_source = (isinstance(stmt.value, TpyName)
                            and stmt.value.name in self.ctx.const_storage_form_tuple_locals)
-        cpp = (ptr_form.to_cpp_return_const() if is_const_source
-               else ptr_form.to_cpp_return())
+        cpp = self.types.tuple_borrow_cpp(ptr_form, const=is_const_source)
         return f"::tpy::tuple_to_pointer<{cpp}>({value_expr})"
 
     def gen_yield_value(self, yield_stmt: TpyYield) -> str:
@@ -1518,11 +1568,11 @@ class StatementGenerator:
             return expr
         unwrapped = unwrap_readonly(unwrap_ref_type(target_type))
         if not (isinstance(unwrapped, TupleType)
-                and unwrapped.has_pointer_repr_optional_element()):
+                and unwrapped.has_pointer_repr_element()):
             return expr
         if source is None or not self.ctx.is_storage_form_source(source):
             return expr
-        return f"::tpy::tuple_to_pointer<{unwrapped.to_cpp_return()}>({expr})"
+        return f"::tpy::tuple_to_pointer<{self.types.tuple_borrow_cpp(unwrapped)}>({expr})"
 
     def _typed_brace_init(self, init_expr: str,
                           target_type: TpyType | None) -> str:
@@ -1559,11 +1609,12 @@ class StatementGenerator:
             return expr
         unwrapped = unwrap_readonly(unwrap_ref_type(target_type))
         if not (isinstance(unwrapped, TupleType)
-                and unwrapped.has_pointer_repr_optional_element()):
+                and unwrapped.has_pointer_repr_element()):
             return expr
         if source is not None and self.ctx.is_storage_form_source(source):
             return expr
-        return f"::tpy::tuple_to_storage<{unwrapped.to_cpp()}>({expr})"
+        return (f"::tpy::tuple_to_storage"
+                f"<{self.types.tuple_storage_cpp(unwrapped)}>({expr})")
 
     def _gen_var_decl_code(self, stmt: TpyVarDecl, indent: str) -> str | None:
         """Generate code for a variable declaration. Returns code to write or None."""
@@ -1614,6 +1665,12 @@ class StatementGenerator:
                     init_expr = self._typed_brace_init(
                         init_expr, self.ctx.var_types.get(stmt.name))
                     return f"{indent}{cpp_name}.emplace({init_expr});\n"
+                if stmt.name in self.ctx.borrow_form_tuple_locals:
+                    # Borrow-form tuple frame field: lift a storage-form RHS
+                    # element-wise to pointers, same as the sync reassign path.
+                    init_expr = self._maybe_wrap_tuple_to_pointer(
+                        init_expr, self.ctx.var_types.get(stmt.name),
+                        self.ctx.unwrap_copy(stmt.init))
                 return f"{indent}{cpp_name} = {init_expr};\n"
             return None
 
@@ -1667,7 +1724,15 @@ class StatementGenerator:
                 if result := self._try_str_inplace_append(stmt.name, cpp_name, stmt.init, var_type, indent):
                     return result
                 init_expr = self.expressions.gen_expr(stmt.init, var_type)
-                init_expr = self._maybe_wrap_tuple_to_storage(init_expr, var_type, stmt.init)
+                if stmt.name in self.ctx.borrow_form_tuple_locals:
+                    # The local IS the borrow (std::tuple<..., T*>): a
+                    # storage-form RHS (field, subscript, storage local) is
+                    # lifted element-wise to pointers; a borrow-form RHS
+                    # assigns directly.
+                    init_expr = self._maybe_wrap_tuple_to_pointer(
+                        init_expr, var_type, self.ctx.unwrap_copy(stmt.init))
+                else:
+                    init_expr = self._maybe_wrap_tuple_to_storage(init_expr, var_type, stmt.init)
                 return f"{indent}{cpp_name} = {init_expr};\n"
             return None
 
@@ -1682,9 +1747,60 @@ class StatementGenerator:
             self.ctx.current_ns.bind_variable(stmt.name, target_type)
         if (stmt.init is not None
                 and isinstance(target_type, TupleType)
-                and target_type.has_pointer_repr_optional_element()
-                and self.ctx.is_storage_form_source(stmt.init)):
-            self.ctx.storage_form_tuple_locals.add(stmt.name)
+                and target_type.has_pointer_repr_element()):
+            if self.ctx.is_storage_form_source(stmt.init):
+                self.ctx.storage_form_tuple_locals.add(stmt.name)
+            else:
+                # A literal whose non-value members are VALUE-captured (sema
+                # marks fresh members owned, e.g. `(a.clone(), b.clone())`)
+                # builds the storage form, so the local owns its members and
+                # downstream reads need the storage->pointer wrap too.
+                init_inner = self.ctx.unwrap_copy(stmt.init)
+                if isinstance(init_inner, TpyCoerce):
+                    init_inner = init_inner.expr
+                if (isinstance(init_inner, TpyTupleLiteral) and init_inner.elem_capture
+                        and any(cap == TupleElemCapture.VALUE
+                                and i < len(target_type.element_types)
+                                and TupleType._element_is_pointer_repr(
+                                    target_type.element_types[i])
+                                for i, cap in enumerate(init_inner.elem_capture))):
+                    self.ctx.storage_form_tuple_locals.add(stmt.name)
+            # A reassigned local first bound from a BORROW-form source (loop
+            # var, pointer-form local, ref-captured literal) keeps the borrow
+            # C++ shape across rebinds, so a later storage-form RHS must take
+            # the element-wise lift on the reassignment path.
+            if (stmt.name not in self.ctx.storage_form_tuple_locals
+                    and stmt.name in self.ctx.reassigned_vars):
+                self.ctx.borrow_form_tuple_locals.add(stmt.name)
+
+        # A storage-form tuple local bound from an LVALUE storage source
+        # aliases the source (CPython shares the elements): bind a reference
+        # when the name is never rebound (reads keep the storage-form lifts),
+        # or fall over to the borrow-form pointer machinery when it is
+        # (references can't rebind; the reassign path lifts each RHS).
+        # Rvalue sources (calls returning owning tuples) keep the owning
+        # copy. Sema gates returning such aliases.
+        if (stmt.name in self.ctx.storage_form_tuple_locals
+                and stmt.init is not None
+                and stmt.name not in self.ctx.hoisted_vars
+                and stmt.name not in self.ctx.move_through_vars):
+            alias_inner = (stmt.init.expr if isinstance(stmt.init, TpyCoerce)
+                           else stmt.init)
+            if (isinstance(alias_inner, (TpyFieldAccess, TpySubscript))
+                    or (isinstance(alias_inner, TpyName)
+                        and self.ctx.is_storage_form_source(alias_inner))):
+                if stmt.name not in self.ctx.reassigned_vars:
+                    if self.ctx.is_const_storage_source(alias_inner):
+                        self.ctx.const_storage_form_tuple_locals.add(stmt.name)
+                    init_expr = self.expressions.gen_expr(stmt.init, target_type)
+                    return f"{indent}auto&& {cpp_name} = {init_expr};\n"
+                self.ctx.storage_form_tuple_locals.discard(stmt.name)
+                self.ctx.borrow_form_tuple_locals.add(stmt.name)
+                init_expr = self.expressions.gen_expr(stmt.init, target_type)
+                init_expr = self._maybe_wrap_tuple_to_pointer(
+                    init_expr, target_type, self.ctx.unwrap_copy(stmt.init))
+                borrow_cpp = self.types.tuple_borrow_cpp(target_type)
+                return f"{indent}{borrow_cpp} {cpp_name} = {init_expr};\n"
 
         cpp_type = self._resolve_cpp_type(stmt)
 
@@ -1906,7 +2022,7 @@ class StatementGenerator:
         if isinstance(stmt.target, TpyFieldAccess):
             target_type = field_target_type
             if (isinstance(target_type, TupleType)
-                    and target_type.has_pointer_repr_optional_element()):
+                    and target_type.has_pointer_repr_element()):
                 source = self.ctx.unwrap_copy(stmt.value)
                 target = self.expressions.gen_expr(stmt.target)
                 value = self.expressions.gen_expr(stmt.value, target_type)
@@ -2572,6 +2688,15 @@ class StatementGenerator:
             out.write(f"{indent}auto {tmp} = {value_expr};\n")
 
         source_has_const_slots = self._unpack_source_has_const_slots(stmt)
+        # The source tuple's element types (not stmt.target_types, which strip
+        # Own[T] -> T): only when the SOURCE element is pointer-repr does
+        # `std::get<i>(tmp)` yield a `T*` borrow. An Own[T] element is stored by
+        # value, so its slot is `T` (moved out), not a pointer.
+        src_value_type = self.ctx.get_expr_type(stmt.value)
+        src_tuple_type = (unwrap_qualifiers(src_value_type)
+                          if src_value_type is not None else None)
+        src_elem_types = (src_tuple_type.element_types
+                          if isinstance(src_tuple_type, TupleType) else None)
         for i, name in enumerate(stmt.targets):
             if name is None:
                 continue
@@ -2657,6 +2782,28 @@ class StatementGenerator:
                 ptr_cpp = (target_type.to_cpp_return_const() if is_const
                            else target_type.to_cpp_return())
                 out.write(f"{indent}{ptr_cpp} {cpp_name} = {get_expr};\n")
+                continue
+            # Plain non-value (BORROW_REF) element: the slot may be a bare `T*`
+            # (concrete borrow tuple), a `val_or_ref<T>` (generic instantiation
+            # with `T = Ref[U]`), or a `T&`. `tuple_elem_ref` derefs the pointer
+            # case and `unwrap_ref` the val_or_ref case, so one `auto&&`
+            # reference binding aliases the live element in every form -- no
+            # pointer-local bookkeeping, plain `.` access; non-nullable, so no
+            # optional_to_ptr / null-check.
+            src_elem = (src_elem_types[i]
+                        if src_elem_types is not None and i < len(src_elem_types)
+                        else target_type)
+            is_borrow_ref = (src_elem.value_form() is ValueForm.BORROW_REF
+                             and TupleType._element_is_pointer_repr(src_elem))
+            if is_borrow_ref and stmt.is_new[i]:
+                self.ctx.declared_vars.add(name)
+                self.ctx.local_scope_names.add(name)
+                self.ctx.var_types[name] = target_type
+                # A fresh C++-local reference shadows any same-named resumable
+                # frame field; suppress the (*name) frame peel.
+                self.ctx.register_frame_field_shadow(name)
+                out.write(f"{indent}auto&& {cpp_name} = ::tpy::unwrap_ref("
+                          f"::tpy::tuple_elem_ref({get_expr}));\n")
                 continue
             # Pointer-variant Union element: declare as variant<T*,...> via
             # to_ptr_variant lift. Without this the local is value-variant
@@ -4370,6 +4517,14 @@ class StatementGenerator:
                         self.ctx.rebind_slots[name] = slot
                         out.write(f"{indent}{static_kw}std::optional<{cpp_type}> {slot};\n")
                     out.write(f"{indent}{const_pfx}{cpp_type}* {name};\n")
+                elif (isinstance(resolve_type, TupleType)
+                        and resolve_type.has_pointer_repr_element()):
+                    # Borrow-form tuple local: forward-declare `std::tuple<..., T*>`
+                    # (default-constructs, pointers null) so branch assignments
+                    # alias rather than copy. Its writes stay borrow form.
+                    self.ctx.borrow_form_tuple_locals.add(name)
+                    borrow_cpp = self.types.tuple_borrow_cpp(resolve_type, const=is_const)
+                    out.write(f"{indent}{borrow_cpp} {name};\n")
                 else:
                     out.write(f"{indent}{cpp_type} {name};\n")
 
@@ -4448,6 +4603,16 @@ class StatementGenerator:
         was_declared = stmt.var in self.ctx.declared_vars
         self.ctx.local_scope_names.add(stmt.var)
         self.ctx.declared_vars.add(stmt.var)
+        # A fresh (non-hoisted) loop var gets a new C++ binding here, so any
+        # stale pointer-form classification from an earlier sibling loop reusing
+        # the same name (e.g. `for i, p in ...` then `for p in ...`) must be
+        # cleared -- otherwise field access on this loop's value-form var would
+        # wrongly emit `->`. Generator borrow-form loop vars are pointer-form by
+        # design (seeded before the body) and left intact.
+        if (not stmt.hoist_loop_var
+                and stmt.var not in self.ctx.generator_borrow_form_loop_vars):
+            self.ctx.pointer_locals.discard(stmt.var)
+            self.ctx.const_indirect_locals.discard(stmt.var)
         # For-loop iter var is a C++-scoped binding; register a shadow
         # for the loop body so a paired discard at body exit cleanly
         # reverses just this site's addition. Skip for hoisted / pre-
@@ -4541,9 +4706,16 @@ class StatementGenerator:
         inner_indent = indent + INDENT
         cpp_var = escape_cpp_name(stmt.var)
         hoisted = self._is_loop_var_hoisted(stmt)
+        lift_cpp = None
+        if hoisted and stmt.var in self.ctx.borrow_form_tuple_locals:
+            elem_bare = unwrap_readonly(unwrap_ref_type(elem_type))
+            if (isinstance(elem_bare, TupleType)
+                    and elem_bare.has_pointer_repr_element()):
+                lift_cpp = self.types.tuple_borrow_cpp(elem_bare)
         binding = loop_var_binding(elem_type, cpp_var, f"*{beg_name}",
                                    stmt.const_loop_var, hoisted,
-                                   consuming=consuming)
+                                   consuming=consuming,
+                                   hoisted_tuple_lift_cpp=lift_cpp)
         out.write(f"{inner_indent}{binding}\n")
 
         self._gen_loop_body(out, stmt, indent, elem_type, consuming=consuming)

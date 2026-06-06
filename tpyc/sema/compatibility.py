@@ -15,6 +15,7 @@ from ..typesys import (
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NominalType, AliasRef, RecursiveAliasInstanceType, TypeParamRef, NoneType, AnyType, OptionalType, UnionType,
     is_protocol_type, is_dyn_protocol, unwrap_own, unwrap_readonly, unwrap_optional_own,
+    contains_type_param,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     CallableType, is_fn_type, RefType, unwrap_ref_type,
     is_callable_type, is_integer_type, is_any_float_type, is_readonly_span,
@@ -23,12 +24,26 @@ from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyStrLiteral, TpyBytesLiteral,
-    TpyFunction, TpyIfExpr, TpyTupleLiteral, SourceLocation
+    TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyNamedExpr, SourceLocation
 )
+
+
+def _peel_value_wrappers(expr: TpyExpr) -> TpyExpr:
+    """Unwrap coercions and walrus wrappers to the value expression a
+    return/yield actually hands out -- `return (t := items[0])` hands out
+    the subscript read, so provenance checks must see through the binding.
+    """
+    while True:
+        if isinstance(expr, TpyCoerce):
+            expr = expr.expr
+        elif isinstance(expr, TpyNamedExpr):
+            expr = expr.value
+        else:
+            return expr
 from .literal_utils import literal_value_from_expr
 from ..coercions import resolve_coercion, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY
 from ..modules import get_span_return_type
-from .context import addr_taken_roots
+from .context import addr_taken_roots, _storage_root, BorrowKind, BorrowTracker
 from .numeric_lattice import fixed_int_range_contains, numeric_info
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from ..type_def_registry import (
@@ -1748,14 +1763,25 @@ class TypeCompatibility:
         self/param/non-shadowed-global checks in one place. is_param_derived_expr
         intentionally diverges by omitting the self check (self is the receiver,
         not a "parameter" for borrow-contract purposes).
+
+        An `Own[T]` param is CALLEE-owned and dies at function exit, so it does
+        NOT confer return-safety on borrows rooted in it; the same holds for
+        `self` in a consuming method. (Returning the owned value itself moves
+        by value through the OwnType return path, which never reaches the
+        dangling checks.) Generic `Own[...T...]` params keep the legacy
+        params-are-safe treatment: the body is analyzed pre-instantiation
+        where value-ness (by-value vs by-reference return) is unknown --
+        same TypeParamRef exemption the per-element tuple dangle check uses.
         """
-        if name == "self":
-            return True
         func = self.ctx.func.current_function
+        if name == "self":
+            return not (isinstance(func, TpyFunction) and func.is_consuming)
         if isinstance(func, TpyFunction):
-            for pname, _ptype in func.params:
+            for pname, ptype in func.params:
                 if pname == name:
-                    return True
+                    own_inner = unwrap_optional_own(unwrap_readonly(ptype))
+                    return (own_inner is None
+                            or contains_type_param(own_inner))
         if name in self.ctx.global_scope.bindings:
             if not self._is_local_shadow(name):
                 return True
@@ -1828,6 +1854,10 @@ class TypeCompatibility:
         """
         if isinstance(expr, TpyCoerce):
             return self.is_safe_to_return_expr(expr.expr)
+        # Walrus safety follows the wrapped value (superset invariant with
+        # is_dangling_return's TpyNamedExpr case).
+        if isinstance(expr, TpyNamedExpr):
+            return self.is_safe_to_return_expr(expr.value)
         # String / bytes / None literals live in rodata / are nullptr --
         # permanent storage, safe to return. Mirrors is_param_derived_expr.
         if isinstance(expr, (TpyStrLiteral, TpyBytesLiteral, TpyNoneLiteral)):
@@ -1892,6 +1922,10 @@ class TypeCompatibility:
         """Check if returning this expression would create a dangling reference."""
         if isinstance(expr, TpyCoerce):
             return self.is_dangling_return(expr.expr)
+        # A walrus hands out its value: `return (t := items[0])` returns the
+        # subscript read, so provenance follows the wrapped expression.
+        if isinstance(expr, TpyNamedExpr):
+            return self.is_dangling_return(expr.value)
         # Array/dict literal - creates temporary
         if isinstance(expr, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
             return True
@@ -1986,6 +2020,17 @@ class TypeCompatibility:
                 obj_type = self.ctx.get_expr_type(expr.obj)
                 if isinstance(obj_type, NominalType) and obj_type.is_user_record:
                     return True
+            # Method whose return borrows from its receiver/args: dangles if
+            # the borrowed source dangles -- mirrors the free-function branch;
+            # index -1 is the receiver (the 8b convention).
+            if fi is not None and fi.return_borrows_from:
+                for idx in fi.return_borrows_from:
+                    if idx == -1:
+                        if self.is_dangling_return(expr.obj):
+                            return True
+                    elif 0 <= idx < len(expr.args):
+                        if self.is_dangling_return(expr.args[idx]):
+                            return True
             return False
 
         # Ternary - dangles if either branch dangles
@@ -2080,6 +2125,8 @@ class TypeCompatibility:
                 )
             self._check_tuple_elem_dangle(tuple_rt, expr, verb, source_type)
             self._check_tuple_member_local(tuple_rt, expr, verb)
+            if not for_yield:
+                self._check_tuple_storage_return_root(tuple_rt, expr)
             return
         if (return_type.is_value_type()
                 or isinstance(return_type, (VoidType, OwnType))):
@@ -2163,29 +2210,6 @@ class TypeCompatibility:
                 return i
         return None
 
-    def _tuple_literal_durable_borrow_elem(
-            self, tuple_type: TupleType, inner: TpyExpr) -> int | None:
-        """First element index whose non-value (borrow-form) slot has a DURABLE
-        (non-dangling) source in this tuple literal, else None.
-
-        Counterpart to the fresh check: a durable reference member (a param,
-        self field, ...) does not dangle, but binding the tuple to a local
-        produces storage form, so the member is silently COPIED (CPython would
-        share it) -- invisible at yield, a C++ build failure at return. Yielding
-        the literal directly keeps borrow form and shares, so only the
-        local-binding form is unsafe.
-        """
-        if not isinstance(inner, TpyTupleLiteral):
-            return None
-        for i, et in enumerate(tuple_type.element_types):
-            if i >= len(inner.elements):
-                break
-            if (not et.is_value_type() and not isinstance(et, (OwnType, TypeParamRef))
-                    and not et.needs_wrapper()
-                    and not self.is_dangling_return(inner.elements[i])):
-                return i
-        return None
-
     def _tuple_elem_still_borrow(self, tuple_type: TupleType, idx: int) -> bool:
         """Whether element `idx` of the *declared* boundary tuple is still
         borrow form. The hazard flag's index comes from the assignment-inferred
@@ -2211,7 +2235,14 @@ class TypeCompatibility:
         the pre-coercion `source_type` member types to tell a wrap-into-wrapper
         leaf from a reference to an existing wrapper.
         """
-        inner = expr.expr if isinstance(expr, TpyCoerce) else expr
+        inner = _peel_value_wrappers(expr)
+        # A ternary returns whichever arm is taken -- check both.
+        if isinstance(inner, TpyIfExpr):
+            self._check_tuple_elem_dangle(tuple_type, inner.then_expr, verb,
+                                          source_type)
+            self._check_tuple_elem_dangle(tuple_type, inner.else_expr, verb,
+                                          source_type)
+            return
         if not isinstance(inner, TpyTupleLiteral):
             return
         src_elems = (source_type.element_types
@@ -2240,66 +2271,136 @@ class TypeCompatibility:
     def update_tuple_member_local_facts(
             self, name: str, var_type: TpyType | None,
             init_expr: TpyExpr | None) -> None:
-        """Set/clear the tuple-member hazard facts for a (re)assigned local
-        (see `sema.context`).
+        """Set/clear the owns-fresh tuple-member hazard fact for a (re)assigned
+        local (see `sema.context`).
 
-        A tuple local bound from a tuple literal with a non-value (borrow-form)
-        member is unsafe to yield/return by NAME: binding produces storage form,
-        which dangles for a freshly-constructed member (`owns_fresh`) or silently
-        copies a durable member (`copies_durable`; CPython shares it). The hazard
-        is equally present when the unsafe local is reached through an alias
-        (`u = t`) or a ternary of aliases/literals -- the storage-form copy is the
-        same -- so the fact is derived from the init expression's provenance, not
-        just a literal at the binding. Recorded here (not rejected) so a pure
-        local read stays valid -- only a later yield/return of the bare name is
-        rejected, at the boundary.
+        A tuple local bound from a literal with a FRESHLY-constructed non-value
+        member is unsafe to yield/return by NAME -- the member is a dying local
+        even in pointer borrow form. The hazard is equally present when the
+        unsafe local is reached through an alias (`u = t`) or a ternary of
+        aliases/literals, so the fact is derived from the init expression's
+        provenance, not just a literal at the binding. Recorded here (not
+        rejected) so a pure local read stays valid -- only a later yield/return
+        of the bare name is rejected, at the boundary. A DURABLE reference
+        member needs no fact: the bound local is pointer borrow form and
+        aliases the member like CPython.
 
         Derive before clearing so a self-assignment (`t = t`) re-installs its own
         fact instead of losing it to the pop.
         """
-        fresh = durable = None
+        fresh = None
+        owning = False
         if init_expr is not None and var_type is not None:
             tt = unwrap_readonly(var_type)
             if isinstance(tt, TupleType):
-                fresh, durable = self._derive_tuple_member_hazards(tt, init_expr)
+                fresh = self._derive_tuple_member_hazards(tt, init_expr)
+                if tt.has_pointer_repr_element():
+                    owning = self._derive_owning_storage(init_expr)
+                    self._reject_owning_alias_rebind(name, owning, init_expr)
         self.ctx.func.owns_fresh_tuple_member_vars.pop(name, None)
-        self.ctx.func.copies_durable_tuple_member_vars.pop(name, None)
         if fresh is not None:
             self.ctx.func.owns_fresh_tuple_member_vars[name] = fresh
-        if durable is not None:
-            self.ctx.func.copies_durable_tuple_member_vars[name] = durable
+        if owning:
+            self.ctx.func.owning_storage_tuple_vars.add(name)
+        else:
+            self.ctx.func.owning_storage_tuple_vars.discard(name)
+
+    def _reject_owning_alias_rebind(self, name: str, new_owning: bool,
+                                    init_expr: TpyExpr) -> None:
+        """Reject rebinding a tuple local between OWNING storage and a
+        storage ALIAS.
+
+        The C++ local has one fixed shape: an owning binding is the storage
+        form (it holds the elements), an aliasing binding is a reference /
+        borrow form (it points into other storage). Rebinding across the two
+        would either silently copy the aliased source into the owned slot
+        (CPython aliases) or take addresses into a dying temporary -- there
+        is no sound single shape, so require a separate local.
+        """
+        inner = _peel_value_wrappers(init_expr)
+        was_owning = name in self.ctx.func.owning_storage_tuple_vars
+        was_alias = (self.ctx.func.borrow_tracker.borrow_kind_of(name)
+                     is not None)
+        new_alias = (not new_owning
+                     and isinstance(inner, (TpyName, TpySubscript,
+                                            TpyFieldAccess)))
+        if (was_owning and new_alias) or (was_alias and new_owning):
+            # Also reached by branch-mixed FIRST bindings (`if c: t =
+            # make_pair() else: t = h.pair`) -- the fact is not yet
+            # flow-snapshot, so the then-arm's kind leaks into the else-arm
+            # check. The wording covers both shapes; the scalar-style
+            # rvalue-slot design that would ACCEPT all of them is tracked
+            # in BUGS.md.
+            raise self.ctx.error(
+                f"Cannot bind tuple local '{name}' to both an owning value "
+                f"(a call returning Own[...] elements) and a reference to "
+                f"existing storage -- the two need different "
+                f"representations. Use a separate local for the owning "
+                f"result.",
+                init_expr
+            )
+
+    @staticmethod
+    def _is_owning_tuple_call(expr: TpyExpr) -> bool:
+        """Whether `expr` is a call returning OWNING tuple storage --
+        `Own[tuple[...]]` or a tuple with per-element `Own` slots. A local
+        bound from one owns its element storage (the call's return ABI is
+        the storage form), unlike a borrow-form tuple call result whose
+        pointers the callee already proved durable.
+        """
+        inner = _peel_value_wrappers(expr)
+        if not isinstance(inner, (TpyCall, TpyMethodCall)):
+            return False
+        fi = inner.resolved_function_info
+        if fi is None:
+            return False
+        rt = unwrap_readonly(fi.return_type)
+        if isinstance(rt, OwnType):
+            return isinstance(unwrap_readonly(rt.wrapped), TupleType)
+        return (isinstance(rt, TupleType)
+                and any(isinstance(et, OwnType) for et in rt.element_types))
+
+    def _derive_owning_storage(self, expr: TpyExpr) -> bool:
+        """Whether a binding from `expr` makes the local OWN its tuple
+        element storage: an owning-tuple call, a name already carrying the
+        fact, or a ternary with an owning arm (the result aliases either,
+        so it is hazardous if either is -- matching the fresh-fact merge).
+        """
+        inner = _peel_value_wrappers(expr)
+        if isinstance(inner, TpyIfExpr):
+            return (self._derive_owning_storage(inner.then_expr)
+                    or self._derive_owning_storage(inner.else_expr))
+        if isinstance(inner, TpyName):
+            return inner.name in self.ctx.func.owning_storage_tuple_vars
+        return self._is_owning_tuple_call(inner)
 
     def _derive_tuple_member_hazards(
-            self, tt: TupleType, expr: TpyExpr) -> tuple[int | None, int | None]:
-        """`(fresh_idx, durable_idx)` borrow-member hazards for an init expr bound
-        to a tuple local of type `tt`, or `(None, None)`.
+            self, tt: TupleType, expr: TpyExpr) -> int | None:
+        """Fresh-dangle borrow-member hazard index for an init expr bound to a
+        tuple local of type `tt`, or None.
 
         Dispatches on provenance:
-        - tuple literal: scan its elements (`_tuple_literal_*_borrow_elem`).
+        - tuple literal: scan its elements (`_tuple_literal_fresh_borrow_elem`).
         - bare name: inherit the source local's already-recorded fact, re-checked
           against `tt` so an `Own[T]` boundary element (the escape) is dropped.
         - ternary: UNION the two arms -- the result aliases either, so it is
           hazardous if either is (conservative over-rejection, matching the
           flow_facts branch merge).
-        Other init shapes (calls, etc.) carry no fact; tracked as a residual
-        provenance gap in BUGS.md.
+        Other init shapes (calls, etc.) carry no fact: a call can only return a
+        durable borrow (its own fresh members are rejected at its return), and
+        durable members alias safely in pointer borrow form.
         """
         inner = expr.expr if isinstance(expr, TpyCoerce) else expr
         if isinstance(inner, TpyIfExpr):
-            then_f, then_d = self._derive_tuple_member_hazards(tt, inner.then_expr)
-            else_f, else_d = self._derive_tuple_member_hazards(tt, inner.else_expr)
-            return (then_f if then_f is not None else else_f,
-                    then_d if then_d is not None else else_d)
+            then_f = self._derive_tuple_member_hazards(tt, inner.then_expr)
+            else_f = self._derive_tuple_member_hazards(tt, inner.else_expr)
+            return then_f if then_f is not None else else_f
         if isinstance(inner, TpyName):
             fresh = self.ctx.func.owns_fresh_tuple_member_vars.get(inner.name)
             if fresh is not None and not self._tuple_elem_still_borrow(tt, fresh):
                 fresh = None
-            durable = self.ctx.func.copies_durable_tuple_member_vars.get(inner.name)
-            if durable is not None and not self._tuple_elem_still_borrow(tt, durable):
-                durable = None
-            return fresh, durable
-        return (self._tuple_literal_fresh_borrow_elem(tt, inner),
-                self._tuple_literal_durable_borrow_elem(tt, inner))
+            return fresh
+        return self._tuple_literal_fresh_borrow_elem(tt, inner)
 
     def _check_tuple_member_local(self, tuple_type: TupleType,
                                   expr: TpyExpr, verb: str) -> None:
@@ -2316,7 +2417,12 @@ class TypeCompatibility:
         trips both surfaces the dangle. The two facts may flag different element
         indices; the re-check below resolves each against the boundary type.
         """
-        inner = expr.expr if isinstance(expr, TpyCoerce) else expr
+        inner = _peel_value_wrappers(expr)
+        # A ternary returns whichever arm is taken -- check both.
+        if isinstance(inner, TpyIfExpr):
+            self._check_tuple_member_local(tuple_type, inner.then_expr, verb)
+            self._check_tuple_member_local(tuple_type, inner.else_expr, verb)
+            return
         if not isinstance(inner, TpyName):
             return
         fresh = self.ctx.func.owns_fresh_tuple_member_vars.get(inner.name)
@@ -2329,19 +2435,97 @@ class TypeCompatibility:
                 f"element to {verb} by value.",
                 inner
             )
-        durable = self.ctx.func.copies_durable_tuple_member_vars.get(inner.name)
-        if durable is not None and self._tuple_elem_still_borrow(tuple_type, durable):
-            et = tuple_type.element_types[durable]
+        # The durable (non-dangling) reference-member case needs no check: a
+        # tuple local is pointer borrow form (std::tuple<..., T*>), so
+        # yielding/returning it ALIASES the durable member exactly as CPython
+        # shares it. Only the fresh-dangle case above is rejected -- a locally
+        # constructed member dangles even as a pointer.
+
+    def _check_tuple_storage_return_root(self, tuple_type: TupleType,
+                                         expr: TpyExpr) -> None:
+        """Reject a borrow-form tuple RETURN read from non-durable storage.
+
+        Returning a storage-form source (field / subscript) lifts element
+        ADDRESSES into that storage (codegen's tuple_to_pointer), so the
+        storage root must outlive the call: non-Own params, non-consuming
+        self, and globals qualify; locals, temporaries, Own params, and
+        consuming-method self die at exit. Yields are exempt -- generator
+        storage is frame-rooted (alive while the consumer iterates) and the
+        consumer-side ephemeral-escape checks cover retention.
+        """
+        if not tuple_type.has_pointer_repr_element():
+            return
+        inner = _peel_value_wrappers(expr)
+        # A ternary returns whichever arm is taken -- check both.
+        if isinstance(inner, TpyIfExpr):
+            self._check_tuple_storage_return_root(tuple_type, inner.then_expr)
+            self._check_tuple_storage_return_root(tuple_type, inner.else_expr)
+            return
+        dangles = False
+        if isinstance(inner, (TpyFieldAccess, TpySubscript)):
+            dangles = self.is_dangling_return(inner)
+        elif isinstance(inner, (TpyCall, TpyMethodCall)):
+            # A relayed call: the callee's return_borrows_from names which
+            # receiver/args the returned pointers root in -- dangling iff
+            # that source is. An owning-rvalue return (Own[tuple] or
+            # per-element Own) is a dying temporary: lifting it dangles.
+            dangles = (self.is_dangling_return(inner)
+                       or self._is_owning_tuple_call(inner))
+        elif isinstance(inner, TpyName):
+            # A local that aliases STORAGE (t = items[0] / t = h.pair / loop
+            # var over a container): climb the borrow chain / loop provenance
+            # to the storage root. Only chains crossing an ELEMENT/FIELD/PTR/
+            # ITER borrow point INTO storage that must outlive the call;
+            # ALIAS-only chains and literal-bound locals merely copy the
+            # tuple's pointer slots, whose safety the owns-fresh facts cover
+            # -- UNLESS the chain bottoms out in a local that OWNS its
+            # element storage (bound from an owning-tuple call), where the
+            # lift would point into the dying owner.
+            bt = self.ctx.func.borrow_tracker
+            if self._borrow_chain_enters_storage(bt, inner.name):
+                src = bt.effective_storage_through_borrows(inner.name)
+                dangles = not self._name_is_param_or_global(_storage_root(src))
+            elif (bt.effective_storage(inner.name)
+                    in self.ctx.func.owning_storage_tuple_vars):
+                dangles = True
+            else:
+                it = self.ctx.func.loop_var_iterable.get(inner.name)
+                if it is not None:
+                    dangles = not self._name_is_param_or_global(
+                        _storage_root(it))
+        if dangles:
+            bad = next(et for et in tuple_type.element_types
+                       if tuple_type._element_is_pointer_repr(et))
             raise self.ctx.error(
-                f"Cannot {verb} tuple local '{inner.name}': element {durable} "
-                f"('{et}') is a reference member, and a tuple bound to a local "
-                f"cannot yet alias it across a {verb} the way CPython shares it "
-                f"(the bound local copies the member or fails to build). "
-                f"{verb.capitalize()} the tuple literal directly (e.g. "
-                f"`{verb} (..., x)`) to share it, or use Own[{et}] to {verb} an "
-                f"owned copy.",
+                f"Cannot return this tuple: its non-value elements are "
+                f"returned by reference into storage owned by the function, "
+                f"which dies when it returns. Return a tuple rooted in "
+                f"parameter data, or use Own[{unwrap_readonly(bad)}] for "
+                f"such elements to return by value.",
                 inner
             )
+
+    @staticmethod
+    def _borrow_chain_enters_storage(bt: BorrowTracker, name: str) -> bool:
+        """Whether `name`'s borrow chain crosses a storage-entering borrow
+        (ELEMENT/FIELD/PTR/ITER) -- i.e. holds addresses INTO a container or
+        object rather than a value-copy of another local. ALIAS links are
+        followed transitively; chains are acyclic so the walk terminates.
+        """
+        seen: set[str] = set()
+        cur = name
+        while cur not in seen:
+            seen.add(cur)
+            kind = bt.borrow_kind_of(cur)
+            if kind is None:
+                return False
+            if kind is not BorrowKind.ALIAS:
+                return True
+            nxt = bt.borrow_source(cur)
+            if nxt is None:
+                return False
+            cur = nxt
+        return False
 
     def _nested_tuple_borrow_member(self, tuple_type: TupleType,
                                     _nested: bool = False) -> TpyType | None:

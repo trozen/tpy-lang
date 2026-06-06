@@ -75,6 +75,34 @@ void print_element(std::ostream& os, const T& elem) {
     os << ::tpy::repr_of(elem);
 }
 
+// A `T*` element is a tuple / Optional borrow slot, not a raw address to
+// print: borrow-form tuple members and pointer-repr Optionals both spell `T*`,
+// and value-level ops (print / repr) want the referent. A null slot is a
+// pointer-repr Optional's None. (char* is excluded so C-string-shaped elements,
+// if any, keep the string overload path.) Both `T*` and `const T*` are needed:
+// a `T*` element binds to the generic `const T&` (T=`U*`) by identity, which
+// would out-rank a `const T*` qualification conversion -- so the non-const
+// pointer overload must exist to win for non-const borrow slots.
+template <typename T>
+    requires (!std::is_same_v<std::remove_cv_t<T>, char>)
+void print_element(std::ostream& os, T* elem) {
+    if (elem == nullptr) {
+        os << "None";
+    } else {
+        print_element(os, *elem);
+    }
+}
+
+template <typename T>
+    requires (!std::is_same_v<std::remove_cv_t<T>, char>)
+void print_element(std::ostream& os, const T* elem) {
+    if (elem == nullptr) {
+        os << "None";
+    } else {
+        print_element(os, *elem);
+    }
+}
+
 inline void print_element(std::ostream& os, bool elem) {
     os << (elem ? "True" : "False");
 }

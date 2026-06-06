@@ -28,20 +28,20 @@ void main() {
     // i: Int32 = 42
     int32_t i = 42;
     // m.log_inline(f"s={s} i={i}")
-    ::mylog::log_dispatch(m._logger, "s={} i={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::DeferredStr&, int32_t>>(std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(s), i}));
+    ::mylog::log_dispatch(m._logger, "s={} i={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::DeferredStr*, int32_t>>(std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(s), i}));
     // # Method @inline: static string literal
     // m.log_inline(f"status={"ok"}")
-    ::mylog::log_dispatch(m._logger, "status={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::StaticStr&>>(std::tuple<::mylog::StaticStr>(::mylog::static_str("ok"))));
+    ::mylog::log_dispatch(m._logger, "status={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::StaticStr*>>(std::tuple<::mylog::StaticStr>(::mylog::static_str("ok"))));
     // # Method @inline: ternary of string literals
     // flag = True
     bool flag = true;
     // m.log_inline(f"result={"yes" if flag else "no"}")
-    ::mylog::log_dispatch(m._logger, "result={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::StaticStr&>>(std::tuple<::mylog::StaticStr>(::mylog::static_str(((flag) ? ("yes") : ("no"))))));
+    ::mylog::log_dispatch(m._logger, "result={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::StaticStr*>>(std::tuple<::mylog::StaticStr>(::mylog::static_str(((flag) ? ("yes") : ("no"))))));
     // # Method @inline: dynamic string variable
     // tag = "world"
     std::string_view tag = "world";
     // m.log_inline(f"tag={tag}")
-    ::mylog::log_dispatch(m._logger, "tag={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::DeferredStr&>>(std::tuple<::mylog::DeferredStr>(::mylog::defer_str(tag))));
+    ::mylog::log_dispatch(m._logger, "tag={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::DeferredStr*>>(std::tuple<::mylog::DeferredStr>(::mylog::defer_str(tag))));
     // # Free function @inline
     // h = LogHandle("F")
     ::mylog::LogHandle h = ::mylog::LogHandle("F");

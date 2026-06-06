@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 
 // def pick(items: list[P]) -> readonly[tuple[P, P]]:
-std::tuple<const P&, const P&> pick(const std::vector<P>& items) {
+std::tuple<const P*, const P*> pick(const std::vector<P>& items) {
     // return (items[0], items[1])
-    return std::tuple<const P&, const P&>{::tpy::__getitem__(items, 0), ::tpy::__getitem__(items, 1)};
+    return std::tuple<const P*, const P*>{&(::tpy::__getitem__(items, 0)), &(::tpy::__getitem__(items, 1))};
 }
 
 // def main() -> None:
@@ -17,9 +17,9 @@ void main() {
     // pair = pick(items)
     auto pair = pick(items);
     // print(pair[0].x)
-    std::cout << std::get<0>(pair).x << "\n";
+    std::cout << std::get<0>(pair)->x << "\n";
     // print(pair[1].x)
-    std::cout << std::get<1>(pair).x << "\n";
+    std::cout << std::get<1>(pair)->x << "\n";
 }
 
 void __tpy_init() {

@@ -27,9 +27,9 @@ namespace tpyapp::main {
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_0 = *__beg_0;
             // for a, b in pairs:
-            auto& __tup_1 = __for_tup_0;
-            Item& a = ::tpy::unwrap_ref(std::get<0>(__tup_1));
-            Item& b = ::tpy::unwrap_ref(std::get<1>(__tup_1));
+            auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<const Item*, const Item*>>(__for_tup_0);
+            auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+            auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
             // s += a.n + b.n
             s = ::tpy::add_check<int32_t>(s, (::tpy::add_check<int32_t>(a.n, b.n)));
         }
@@ -56,9 +56,9 @@ __coro_total total(std::vector<std::tuple<Item, Item>>& pairs) {
         // pairs: list[tuple[Item, Item]] = []
         pairs.emplace(std::vector<std::tuple<Item, Item>>{});
         // pairs.append((Item(1), Item(2)))
-        (*pairs).push_back(::tpy::tuple_value_to_borrow<std::tuple<Item&, Item&>>(std::tuple<Item, Item>{Item(1), Item(2)}));
+        (*pairs).push_back(::tpy::tuple_to_storage_move<std::tuple<Item, Item>>(::tpy::tuple_value_to_borrow<std::tuple<Item*, Item*>>(std::tuple<Item, Item>{Item(1), Item(2)})));
         // pairs.append((Item(10), Item(20)))
-        (*pairs).push_back(::tpy::tuple_value_to_borrow<std::tuple<Item&, Item&>>(std::tuple<Item, Item>{Item(10), Item(20)}));
+        (*pairs).push_back(::tpy::tuple_to_storage_move<std::tuple<Item, Item>>(::tpy::tuple_value_to_borrow<std::tuple<Item*, Item*>>(std::tuple<Item, Item>{Item(10), Item(20)})));
         // print(await total(pairs))
         __sub_0.emplace((*pairs));
         __state = S_RESUME_0;

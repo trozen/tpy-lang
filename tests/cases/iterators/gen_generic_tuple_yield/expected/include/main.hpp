@@ -36,7 +36,7 @@ struct __gen_zip_pairs {
     __gen_zip_pairs(std::vector<K>& ks, std::vector<V>& vs)
         : __state(S_INITIAL), ks(ks), vs(vs) {}
 
-    std::expected<std::tuple<::tpy::val_or_ref_t<K>, ::tpy::val_or_ref_t<V>>, ::tpy::StopIteration> __next__();
+    std::expected<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>, ::tpy::StopIteration> __next__();
     __gen_zip_pairs& __iter__() { return *this; }
     void __finally_0();
 
@@ -46,7 +46,7 @@ struct __gen_zip_pairs {
 };
 // def zip_pairs[K, V](ks: list[K], vs: list[V]) -> Iterator[tuple[K, V]]:  # tpyc: ok
 template <typename K, typename V>
-std::expected<std::tuple<::tpy::val_or_ref_t<K>, ::tpy::val_or_ref_t<V>>, ::tpy::StopIteration> __gen_zip_pairs<K, V>::__next__() {
+std::expected<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>, ::tpy::StopIteration> __gen_zip_pairs<K, V>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // i = 0
@@ -70,7 +70,7 @@ std::expected<std::tuple<::tpy::val_or_ref_t<K>, ::tpy::val_or_ref_t<V>>, ::tpy:
             if (((i < ::tpy::__len__(ks)) && (i < ::tpy::__len__(vs)))) {
                 // yield (ks[i], vs[i])
                 __state = S_RESUME_0;
-                return std::tuple<::tpy::val_or_ref_t<K>, ::tpy::val_or_ref_t<V>>{::tpy::__getitem__(ks, i), ::tpy::__getitem__(vs, i)};
+                return std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<K>>(::tpy::__getitem__(ks, i)), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<V>>(::tpy::__getitem__(vs, i))};
             } else {
                 this->__finally_0();
                 __state = S_JOIN_1;

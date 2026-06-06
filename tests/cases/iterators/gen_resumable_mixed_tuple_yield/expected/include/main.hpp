@@ -51,7 +51,7 @@ struct __gen_pairs {
     __gen_pairs(std::vector<P>& items)
         : __state(S_INITIAL), items(items) {}
 
-    std::expected<std::tuple<int32_t, P&>, ::tpy::StopIteration> __next__();
+    std::expected<std::tuple<int32_t, P*>, ::tpy::StopIteration> __next__();
     __gen_pairs& __iter__() { return *this; }
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_pairs&) {

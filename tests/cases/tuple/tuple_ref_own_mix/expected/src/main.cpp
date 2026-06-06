@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 
 // def split(p: Point) -> tuple[Point, Own[Point]]:
-std::tuple<Point&, Point> split(Point& p) {
+std::tuple<Point*, Point> split(Point& p) {
     // return (p, copy(p))
-    return std::tuple<Point&, Point>{p, Point(p)};
+    return std::tuple<Point*, Point>{&(p), Point(p)};
 }
 
 // def main() -> None:
@@ -16,7 +16,7 @@ void main() {
     Point p = Point(1, 2);
     // ref, owned = split(p)
     auto __tup_1 = split(p);
-    Point& ref = ::tpy::unwrap_ref(std::get<0>(__tup_1));
+    auto&& ref = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     Point owned = std::move(std::get<1>(__tup_1));
     // print(ref)
     std::cout << ref << "\n";

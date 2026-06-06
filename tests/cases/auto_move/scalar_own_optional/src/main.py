@@ -58,24 +58,6 @@ def forward_borrow(x: Own[P | None]) -> Int32:
     return borrow(x)
 
 
-def return_into_borrow(x: Own[P | None]) -> P | None:
-    # KNOWN-UB: returns optional_to_ptr(x) into a P* return; x dies at
-    # function exit so the returned pointer dangles. Codegen is faithful
-    # to the source; the missing diagnostic is filed under
-    # BUGS.md "Safety / borrow checker" (Own[Optional]/[Union] dangling
-    # return). Test reads rb->x immediately after the call -- happens to
-    # work because the destructor of optional<P> doesn't clobber the
-    # bytes. When the sema rejection lands, rewrite this test.
-    return x
-
-
-def make_pair(x: Own[P | None]) -> tuple[P | None, Int32]:
-    # KNOWN-UB: same shape as return_into_borrow above -- the returned
-    # tuple's P* slot points into x's storage and dangles after the
-    # function returns. See BUGS.md borrow-checker entry.
-    return (x, Int32(0))
-
-
 def reassign_pointer(x: Own[P | None]) -> Int32:
     # Reassign a pointer-form local from the Own-Optional param: the
     # rebind path needs the lift, otherwise C++ assigns optional<P> to P*.
@@ -142,22 +124,6 @@ def test_forward_to_borrow_slot() -> None:
     print(forward_borrow(None))
 
 
-def test_return_into_borrow_return_type() -> None:
-    # Return into pointer-form `P | None` -- optional_to_ptr at return.
-    rb = return_into_borrow(P(23))
-    if rb is not None:
-        print(rb.x)
-    rb_none = return_into_borrow(None)
-    print(rb_none is None)
-
-
-def test_tuple_element() -> None:
-    tp, tn = make_pair(P(29))
-    if tp is not None:
-        print(tp.x)
-    print(tn)
-
-
 def test_reassign_pointer_local() -> None:
     print(reassign_pointer(P(31)))
     print(reassign_pointer(None))
@@ -186,8 +152,6 @@ def main() -> None:
     test_forward_own_return_to_own_param()
     test_return_passthrough()
     test_forward_to_borrow_slot()
-    test_return_into_borrow_return_type()
-    test_tuple_element()
     test_reassign_pointer_local()
     test_first_decl_pointer_local()
     test_rebind_from_successive_returns()

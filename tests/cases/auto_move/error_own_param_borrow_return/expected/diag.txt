@@ -1,0 +1,1 @@
+main.py:13: error: Cannot return local or temporary as 'P | None'. The returned pointer would dangle. Return a reference to parameter data, or use Own[P | None] to return by value.

@@ -169,13 +169,13 @@ inline bool Point::__eq__(const Point& other) const {
 // def __hash__(self) -> UInt64:
 inline uint64_t Edge::__hash__() const {
     // return hash((self.a, self.b))
-    return ::tpy::__hash__(std::tuple<const Key&, const Key&>{this->a, this->b});
+    return ::tpy::__hash__(std::tuple<const Key*, const Key*>{&(this->a), &(this->b)});
 }
 
 // def __eq__(self, other: Edge) -> bool:
 inline bool Edge::__eq__(const Edge& other) const {
     // return (self.a, self.b) == (other.a, other.b)
-    return (std::tuple<const Key&, const Key&>{this->a, this->b} == std::tuple<const Key&, const Key&>{other.a, other.b});
+    return ::tpy::tuple_eq(std::tuple<const Key*, const Key*>{&(this->a), &(this->b)}, std::tuple<const Key*, const Key*>{&(other.a), &(other.b)});
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -95,7 +95,7 @@ void main() {
         if (!__r_1.has_value()) break;
         auto&& pair = ::tpy::unwrap_ref(*__r_1);
         // show(pair)
-        show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(pair));
+        show(pair);
     }
 }
 

@@ -16,11 +16,9 @@ int32_t describe(std::variant<A, B>&& u);
 std::variant<A, B> pick(bool flag);
 int32_t borrow_union(const std::variant<A*, B*> u);
 int32_t forward_to_borrow(std::variant<A, B>&& u);
-std::variant<A*, B*> return_to_borrow(std::variant<A, B>&& u);
 void test_body_isinstance_narrowing();
 void test_return_into_pointer_variant_receiver();
 void test_forward_to_borrow_slot();
-void test_return_into_pointer_variant_return_type();
 void main();
 
 // class A:

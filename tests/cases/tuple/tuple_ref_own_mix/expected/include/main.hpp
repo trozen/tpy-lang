@@ -11,7 +11,7 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::tuple<Point&, Point> split(Point& p);
+std::tuple<Point*, Point> split(Point& p);
 void main();
 
 // class Point:

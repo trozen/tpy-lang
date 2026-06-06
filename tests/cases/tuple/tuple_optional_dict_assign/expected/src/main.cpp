@@ -55,7 +55,7 @@ void main() {
     // # not double-wrap.
     // d2: dict[Int32, tuple[P | None, P | None]] = {}
     ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>> d2 = ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>>();
-    // d2[Int32(0)] = d[Int32(0)]
+    // d2[Int32(0)] = d[Int32(0)]  # tpyc: warning(/copies/) warning(/copies/)
     ::tpy::__setitem__(d2, 0, ::tpy::__getitem__(d, 0));
     // show(d2[Int32(0)])
     show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(::tpy::__getitem__(d2, 0)));

@@ -9,16 +9,16 @@ void main() {
     // p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
     // t = (Int32(0), p)  # tpyc: ok
-    auto t = std::tuple<int32_t, Point&>{0, p};
+    auto t = std::tuple<int32_t, Point*>{0, &(p)};
     // print(t[0])
     std::cout << std::get<0>(t) << "\n";
     // print(t[1])
-    std::cout << std::get<1>(t) << "\n";
+    std::cout << (*std::get<1>(t)) << "\n";
     // # Mutation through reference is visible
     // p.x = Int32(99)
     p.x = 99;
     // print(t[1])
-    std::cout << std::get<1>(t) << "\n";
+    std::cout << (*std::get<1>(t)) << "\n";
 }
 
 void __tpy_init() {

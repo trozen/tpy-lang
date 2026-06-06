@@ -40,7 +40,7 @@ struct Holder {
 
     // def __init__(self, p: Point, n: Int32) -> None:
     Holder() = default;
-    explicit Holder(const Point& p, int32_t n) : data(std::tuple<Point, int32_t>{Point(p), n}) {}
+    explicit Holder(const Point& p, int32_t n) : data(::tpy::tuple_to_storage<std::tuple<Point, int32_t>>(std::tuple<Point, int32_t>{Point(p), n})) {}
 
     // def __repr__(self) -> str:
     std::string __repr__() const;

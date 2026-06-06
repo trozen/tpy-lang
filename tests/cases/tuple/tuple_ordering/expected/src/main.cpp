@@ -53,13 +53,13 @@ void test_nocopy_ordering() {
     // r3 = Rank(3)
     Rank r3 = Rank(3);
     // print((r1, r2) < (r1, r3))
-    std::cout << ::tpy::print_bool((std::tuple<Rank&, Rank&>{r1, r2} < std::tuple<Rank&, Rank&>{r1, r3})) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::tuple_lt(std::tuple<Rank*, Rank*>{&(r1), &(r2)}, std::tuple<Rank*, Rank*>{&(r1), &(r3)})) << "\n";
     // print((r1, r2) >= (r1, r3))
-    std::cout << ::tpy::print_bool((std::tuple<Rank&, Rank&>{r1, r2} >= std::tuple<Rank&, Rank&>{r1, r3})) << "\n";
+    std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<Rank*, Rank*>{&(r1), &(r2)}, std::tuple<Rank*, Rank*>{&(r1), &(r3)}))) << "\n";
     // print((r1, r2, r3) >= (r1, r2, r3))
-    std::cout << ::tpy::print_bool((std::tuple<Rank&, Rank&, Rank&>{r1, r2, r3} >= std::tuple<Rank&, Rank&, Rank&>{r1, r2, r3})) << "\n";
+    std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)}, std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)}))) << "\n";
     // print((r1, r2, r3) == (r1, r2, r3))
-    std::cout << ::tpy::print_bool((std::tuple<Rank&, Rank&, Rank&>{r1, r2, r3} == std::tuple<Rank&, Rank&, Rank&>{r1, r2, r3})) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::tuple_eq(std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)}, std::tuple<Rank*, Rank*, Rank*>{&(r1), &(r2), &(r3)})) << "\n";
 }
 
 void __tpy_init() {

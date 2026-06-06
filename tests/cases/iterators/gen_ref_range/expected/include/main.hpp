@@ -32,12 +32,12 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 
 inline auto my_enumerate(std::vector<Point>& items) {
-    return ::tpy::make_generator<std::tuple<int32_t, Point&>>(
-        [&items, __i = int32_t(0), __stop = static_cast<int32_t>(::tpy::__len__(items))]() mutable -> std::optional<std::tuple<int32_t, Point&>> {
+    return ::tpy::make_generator<std::tuple<int32_t, Point*>>(
+        [&items, __i = int32_t(0), __stop = static_cast<int32_t>(::tpy::__len__(items))]() mutable -> std::optional<std::tuple<int32_t, Point*>> {
             while (__i < __stop) {
                 int32_t i = __i++;
-                auto __val = std::tuple<int32_t, Point&>{i, items[static_cast<std::size_t>(i)]};
-                return std::optional<std::tuple<int32_t, Point&>>(__val);
+                auto __val = std::tuple<int32_t, Point*>{i, &(items[static_cast<std::size_t>(i)])};
+                return std::optional<std::tuple<int32_t, Point*>>(__val);
             }
             return std::nullopt;
         }

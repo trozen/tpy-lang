@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def update(h: Holder, p: Point) -> None:
 void update(Holder& h, const Point& p) {
     // h.data = (copy(p), Int32(99))
-    h.data = std::tuple<Point, int32_t>{Point(p), 99};
+    h.data = ::tpy::tuple_to_storage<std::tuple<Point, int32_t>>(std::tuple<Point, int32_t>{Point(p), 99});
 }
 
 // def main() -> None:

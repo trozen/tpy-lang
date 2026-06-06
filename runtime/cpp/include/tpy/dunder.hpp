@@ -569,6 +569,16 @@ uint64_t __hash__(const T& x) {
     return x.__hash__().hash();
 }
 
+// A `T*` value is a tuple / Optional borrow slot, not a raw address: hash the
+// referent (a null pointer-repr Optional slot hashes as None). char* keeps its
+// dedicated overload above. Defined after the user-type __hash__ templates so
+// the dependent `__hash__(*x)` call resolves to them at instantiation.
+template<typename T>
+    requires (!std::is_same_v<std::remove_cv_t<T>, char>)
+uint64_t __hash__(const T* x) {
+    return x == nullptr ? __hash__(std::monostate{}) : __hash__(*x);
+}
+
 // =============================================
 // tpy::hash_combine -- Boost-style hash combining for dataclass __hash__
 // =============================================

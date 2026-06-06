@@ -37,7 +37,7 @@ from ..parse import (
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
     TpyNoneLiteral,
     TpyFieldAccess, TpyFunction, TupleElemCapture,
-    TpyMatch, TpyBinOp, TpyIfExpr,
+    TpyMatch, TpyBinOp, TpyIfExpr, TpyNamedExpr,
 )
 from ..coercions import CoercionContext
 from ..namespace import BindingKind
@@ -61,7 +61,7 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
     from .protocols import ProtocolChecker
 
-from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root
+from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, register_binding_borrow, ephemeral_borrow_root
 from .expressions import _collect_body_name_refs, _collect_body_local_defs
 from .local_deduction import collect_pending_source_types
 from tpyc import modules as builtin_modules
@@ -581,6 +581,12 @@ class StatementAnalyzer:
                     literal.elem_capture.append(CR)
                 else:
                     literal.elem_capture.append(R)
+                    # A REF-captured non-value element takes the source's
+                    # address into a mutable `T*` tuple slot; a source param
+                    # can't stay the default `const T&` borrow (mirrors the
+                    # return-context marking above).
+                    for tup_root in addr_taken_roots(elem):
+                        self.ctx.mark_param_mutated(tup_root)
 
     def _save_ns_var_types(self) -> dict[str, TpyType]:
         """Save namespace variable types for later restoration."""
@@ -889,10 +895,51 @@ class StatementAnalyzer:
                 # on the enclosing method and break const callers.
                 if expected is not None:
                     returns_borrowing_view = is_borrowing_view_type(expected)
-                    if not expected.is_value_type() or returns_borrowing_view:
-                        for ret_root in addr_taken_roots(stmt.value):
-                            if not returns_borrowing_view:
-                                self.ctx.mark_param_mutated(ret_root)
+                    # A tuple is a value type, but its borrow form hands out
+                    # mutable element pointers into the source storage -- the
+                    # root must stay non-const and the borrow be recorded.
+                    expected_bare = unwrap_readonly(expected)
+                    returns_borrow_tuple = (
+                        isinstance(expected_bare, TupleType)
+                        and expected_bare.has_pointer_repr_element())
+                    if (not expected.is_value_type() or returns_borrowing_view
+                            or returns_borrow_tuple):
+                        ret_lit = (stmt.value.expr
+                                   if isinstance(stmt.value, TpyCoerce)
+                                   else stmt.value)
+                        # A readonly tuple return hands out const element
+                        # pointers -- borrow provenance is recorded but no
+                        # write access is granted (like a borrowing view).
+                        ro_tuple = (returns_borrow_tuple
+                                    and isinstance(expected, ReadonlyType))
+                        if (returns_borrow_tuple
+                                and isinstance(ret_lit, TpyTupleLiteral)):
+                            # addr_taken_roots has no tuple-literal case; the
+                            # borrow roots are exactly the pointer-repr
+                            # elements' roots (value elements are copied into
+                            # the slot, not borrowed).
+                            ret_roots = [
+                                (root, not ro_tuple and not isinstance(
+                                    expected_bare.element_types[i],
+                                    ReadonlyType))
+                                for i, el in enumerate(ret_lit.elements)
+                                if i < len(expected_bare.element_types)
+                                and TupleType._element_is_pointer_repr(
+                                    expected_bare.element_types[i])
+                                for root in addr_taken_roots(el)
+                            ]
+                        else:
+                            ret_roots = [(root, not ro_tuple)
+                                         for root in addr_taken_roots(stmt.value)]
+                        for ret_root, grants_write in ret_roots:
+                            if not returns_borrowing_view and grants_write:
+                                # through_field: a returned reference grants
+                                # the caller write access, so the climb must
+                                # reach a field-path borrow root (`b = o.f;
+                                # return b` -> o), matching the direct
+                                # `return o.f` form.
+                                self.ctx.mark_param_mutated(
+                                    ret_root, through_field=True)
                             self.ctx.mark_param_returned(ret_root)  # 8b: track which param storage the return borrows
                         # 8b rule 3: transitive return -- if returning the result of a call
                         # whose return_borrows_from is known, propagate the borrow contract.
@@ -2629,37 +2676,51 @@ class StatementAnalyzer:
 
     def _is_ephemeral_borrow_loop_source(self, iterable_type: TpyType) -> bool:
         """True if iterating this source hands out frame-slot-rooted borrows whose
-        validity ends at the next iteration step -- a generator / `Iterator[T]`
-        value whose element is a non-value borrow (BORROW_REF). Container sources
-        (list/dict/Span/user `__iter__`) are durable and excluded; so is
-        `Iterator[Own[T]]` (owned, moved out) and value-type elements.
+        validity ends with the producer -- a generator / `Iterator[T]` value
+        whose element is a non-value borrow (BORROW_REF) or a borrow-form tuple
+        (`std::tuple<..., T*>` whose pointers root in the producer's frame).
+        Container sources (list/dict/Span/user `__iter__`) are durable and
+        excluded; so is `Iterator[Own[T]]` (owned, moved out) and value-type
+        elements.
         """
         inner = unwrap_readonly(unwrap_ref_type(iterable_type))
-        # Ephemeral exactly when the source hands out the plain val_or_ref borrow
-        # slot (a bare reference element). Optional / Union / readonly / value
-        # elements keep their own (non-frame-slot-borrow) representation and are
-        # not ephemeral -- yield_uses_borrow_slot is the single shared gate.
+        # Ephemeral when the source hands out the plain val_or_ref borrow slot
+        # (a bare reference element) OR a pointer-element borrow tuple. Optional
+        # / Union / readonly / value elements keep their own representation and
+        # are not ephemeral.
         if isinstance(inner, GenExprType):
-            return yield_uses_borrow_slot(inner.element_type)
+            return self._elem_is_ephemeral_borrow(inner.element_type)
         if not (is_protocol_type(inner) and isinstance(inner, NominalType)
                 and inner.qualified_name() == "typing.Iterator" and inner.type_args):
             return False
         raw_elem = inner.type_args[0]
         if not isinstance(raw_elem, TpyType):
             return False
-        return yield_uses_borrow_slot(raw_elem)
+        return self._elem_is_ephemeral_borrow(raw_elem)
+
+    @staticmethod
+    def _elem_is_ephemeral_borrow(elem_type: TpyType) -> bool:
+        """A yielded element whose representation borrows the producer's frame:
+        the scalar val_or_ref slot, or a pointer-element borrow tuple."""
+        if yield_uses_borrow_slot(elem_type):
+            return True
+        peeled = unwrap_readonly(unwrap_ref_type(elem_type))
+        return (isinstance(peeled, TupleType)
+                and peeled.has_pointer_repr_element())
 
     def _mark_ephemeral_loop_targets(self, stmt: TpyForEach, ephemeral_src: bool) -> set[str]:
-        """Stamp the loop var of an ephemeral borrow yield, returning the names
-        added to ephemeral_borrow_vars (so the caller can drop them after the loop
-        body). Only scalar plain-reference sources are ephemeral here: a tuple
-        element source never qualifies (`yield_uses_borrow_slot` excludes tuples,
-        so `ephemeral_src` is False for `for a, b in ...`), and a tuple-borrow
-        member that escapes is caught by the existing dangling-return check (its
-        unpack targets are not provenance-broadened in a generator)."""
+        """Stamp the loop var of an ephemeral borrow yield -- and, for a
+        tuple-unpack loop, the unpack target names (each aliases the producer's
+        frame through the synthetic tuple var) -- returning the names added to
+        ephemeral_borrow_vars (so the caller can drop them after the loop
+        body)."""
         if not ephemeral_src:
             return set()
         added = {stmt.var}
+        if stmt.is_tuple_unpack and stmt.body:
+            unpack = stmt.body[0]
+            if isinstance(unpack, TpyTupleUnpack):
+                added |= {t for t in unpack.targets if t is not None}
         self.ctx.func.ephemeral_borrow_vars |= added
         return added
 
@@ -2683,18 +2744,32 @@ class StatementAnalyzer:
         )
 
     def _ephemeral_root_name(self, expr: 'TpyExpr | None') -> 'str | None':
-        """Return the ephemeral-borrow var name `expr` reads from, else None.
+        """Return the ephemeral-borrow var name `expr` reads from, else None
+        (see `sema.context.ephemeral_borrow_root`)."""
+        return ephemeral_borrow_root(self.ctx.func.ephemeral_borrow_vars, expr)
 
-        A bare ephemeral name, or a field/subscript chain rooted in one (storing
-        `x.field` retains a borrow into the same stale slot). A `.clone()` /
-        copy-producing call breaks the borrow, so calls are not roots."""
-        if isinstance(expr, TpyCoerce):
-            return self._ephemeral_root_name(expr.expr)
-        if isinstance(expr, TpyName):
-            return expr.name if expr.name in self.ctx.func.ephemeral_borrow_vars else None
-        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
-            return self._ephemeral_root_name(expr.obj)
-        return None
+    def _update_ephemeral_alias_fact(self, name: str,
+                                     var_type: 'TpyType | None',
+                                     init_expr: 'TpyExpr | None') -> None:
+        """Propagate (or clear) the ephemeral-borrow fact through an aliasing
+        binding: `q = p` (or `q = p.field` for a non-value field) of an
+        ephemeral loop var is the same stale-slot borrow under another name,
+        so escapes through the alias must reject like the direct form. Value
+        bindings COPY and carry no fact; any other rebind clears it.
+        """
+        is_alias = False
+        if init_expr is not None and var_type is not None:
+            var_bare = unwrap_readonly(var_type)
+            aliasing_shape = (
+                not var_type.is_value_type()
+                or (isinstance(var_bare, TupleType)
+                    and var_bare.has_pointer_repr_element()))
+            if aliasing_shape:
+                is_alias = self._ephemeral_root_name(init_expr) is not None
+        if is_alias:
+            self.ctx.func.ephemeral_borrow_vars.add(name)
+        else:
+            self.ctx.func.ephemeral_borrow_vars.discard(name)
 
     def _analyze_yield(self, stmt: TpyYield) -> None:
         """Analyze a yield statement in a generator function."""
@@ -2709,8 +2784,23 @@ class StatementAnalyzer:
             coercion_ctx=CoercionContext.RETURN)
         # Re-yielding an ephemeral borrow onward (consumed from an inner
         # generator/iterator) past its iteration step would let the outer
-        # consumer read a stale slot -- reject unless copied out.
-        self._reject_ephemeral_escape(stmt.value, "yield")
+        # consumer read a stale slot -- reject unless copied out. EXCEPTION:
+        # the direct relay of an ephemeral borrow TUPLE (`for pair in src:
+        # yield pair`) is sound -- the inner source lives in THIS generator's
+        # frame, and the outer consumer's use of the relayed borrow lasts one
+        # step of THIS generator, which is within the source's lifetime. The
+        # allowance is yield-only and does not mark the var durable: return /
+        # retention escapes still reject below and in `_analyze_return`.
+        inner_val = (stmt.value.expr if isinstance(stmt.value, TpyCoerce)
+                     else stmt.value)
+        is_direct_tuple_relay = (
+            isinstance(inner_val, TpyName)
+            and inner_val.name in self.ctx.func.ephemeral_borrow_vars
+            and isinstance(unwrap_readonly(unwrap_ref_type(
+                self.ctx.get_expr_type(inner_val) or elem_type)), TupleType)
+        )
+        if not is_direct_tuple_relay:
+            self._reject_ephemeral_escape(stmt.value, "yield")
         # Declaration-driven yield ABI: a plain-reference borrow yield (the
         # val_or_ref<T> slot) hands out a reference, so the yielded source must
         # outlive the frame -- the same rooting rule as returning a reference,
@@ -3271,10 +3361,11 @@ class StatementAnalyzer:
             self.ctx.func.current_scope.define(stmt.name, var_type)
         # Reassignment revives a consumed variable
         self.ctx.func.consumed_vars.discard(stmt.name)
-        # Flag the local if it's bound to a tuple literal with a non-value member
-        # (fresh -> dangle, or durable -> silent copy at a later bare-name
-        # yield/return); clears on any other reassignment.
+        # Flag the local if it's bound to a tuple literal with a FRESH
+        # non-value member (would dangle at a later bare-name yield/return);
+        # clears on any other reassignment.
         self.compat.update_tuple_member_local_facts(stmt.name, var_type, stmt.init)
+        self._update_ephemeral_alias_fact(stmt.name, var_type, stmt.init)
         # Reassigning a loop variable prevents const-ref binding
         if existing_type is not None:
             self.ctx.mark_loop_var_mutated(stmt.name)
@@ -3299,34 +3390,23 @@ class StatementAnalyzer:
         # retarget logic above keeps the chain valid across reassignments.
         if (stmt.init is not None
                 and var_type is not None):
-            if not var_type.is_value_type():
+            # A pointer-repr tuple is a value type, but binding it from an
+            # lvalue source ALIASES the source's non-value elements (codegen
+            # binds a reference / copies element pointers), so it needs the
+            # same borrow registration and deferred mutation-marking as a
+            # scalar element borrow. Literal/call inits stay unregistered:
+            # literals own their captures, calls return owning rvalues.
+            init_unwrapped = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
+            var_bare = unwrap_readonly(var_type)
+            borrow_tuple_alias = (
+                var_type.is_value_type()
+                and isinstance(var_bare, TupleType)
+                and var_bare.has_pointer_repr_element()
+                and isinstance(init_unwrapped,
+                               (TpyName, TpySubscript, TpyFieldAccess)))
+            if not var_type.is_value_type() or borrow_tuple_alias:
                 # Non-value lvalue: y = x, v = items[i], v = obj.field
-                init_unwrapped = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
-                root = _borrow_storage_root(stmt.init)
-                if root is not None:
-                    if isinstance(init_unwrapped, TpySubscript):
-                        kind = BorrowKind.ELEMENT
-                    elif isinstance(init_unwrapped, TpyFieldAccess):
-                        kind = BorrowKind.FIELD
-                    else:
-                        kind = BorrowKind.ALIAS
-                    bt.add_borrow(root, stmt.name, kind)
-                    # 8a.5: defer marking the source as mutated until the borrower is
-                    # actually written through. Deferral applies to:
-                    # - ELEMENT borrows (v = items[i])
-                    # - ALIAS/FIELD borrows whose root traces back to an ELEMENT borrow
-                    #   (w = v, x = w where v = items[i]) -- checked transitively.
-                    # PTR/ITER borrows and chains not rooted at an ELEMENT mark immediately.
-                    if not (kind == BorrowKind.ELEMENT
-                            or bt.is_deferred_borrow(root)):
-                        self.ctx.mark_param_mutated(root)
-                else:
-                    # _borrow_storage_root returned None: init is not a simple name/
-                    # subscript/field (e.g. or/and/ternary, or a deep chain like
-                    # outer.inner[i]). Use addr_taken_roots to find all root params
-                    # and mark them T& (not const T&) since we're aliasing into them.
-                    for alias_root in addr_taken_roots(stmt.init):
-                        self.ctx.mark_param_mutated(alias_root)
+                register_binding_borrow(self.ctx, stmt.name, stmt.init)
             elif isinstance(var_type, PtrType):
                 # take_ptr(x) / Ptr(x) borrows x's storage even though Ptr is a value type
                 init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
@@ -3881,6 +3961,45 @@ class StatementAnalyzer:
                     msg = f"copies {inner} into {dest}; use copy() to make this explicit"
                 self.ctx.warning(msg, stmt)
                 copy_warning_fired = True
+            # A tuple is a value type, but storing one whose elements are
+            # pointer-repr COPIES each such element into the owned slot
+            # (tuple_to_storage) where CPython aliases -- warn per element,
+            # matching the tuple-literal capture warnings. Literal sources
+            # are warned by _annotate_tuple_elem_capture; Own elements move
+            # and are not pointer-repr, so they are skipped by the filter.
+            tgt_tuple = unwrap_qualifiers(target_type)
+            val_peeled = stmt.value
+            while isinstance(val_peeled, (TpyCoerce, TpyNamedExpr)):
+                val_peeled = (val_peeled.expr
+                              if isinstance(val_peeled, TpyCoerce)
+                              else val_peeled.value)
+            if (isinstance(tgt_tuple, TupleType)
+                    and tgt_tuple.has_pointer_repr_element()
+                    and not isinstance(val_peeled, TpyTupleLiteral)
+                    and stmt.loc is not None
+                    and not target_is_any
+                    and not self.compat.is_copy_call(stmt.value)
+                    # An owning-call rvalue (Own[tuple] / per-element-Own
+                    # return) is a fresh unshared temporary: the elements
+                    # move in, nothing aliases them -- mirrors the scalar
+                    # Own-from-call exemption.
+                    and not self.compat._is_owning_tuple_call(stmt.value)):
+                dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
+                for i, et in enumerate(tgt_tuple.element_types):
+                    if not TupleType._element_is_pointer_repr(et):
+                        continue
+                    if self.ctx.is_type_non_copyable(et):
+                        raise self.ctx.error(
+                            f"cannot copy non-copyable type '{et}' into {dest} "
+                            f"(tuple element {i}){NOCOPY_REMEDIATION_HINT}",
+                            stmt
+                        )
+                    self.ctx.warning(
+                        f"copies {et} into {dest} (tuple element {i}); "
+                        f"use copy() to make this explicit",
+                        stmt
+                    )
+                    copy_warning_fired = True
             # Own[T] param stored in a field/container — mark as consumed
             if isinstance(stmt.value, TpyName) and stmt.value.name in self.ctx.func.current_param_names:
                 self.ctx.mark_own_param_consumed(stmt.value.name)
@@ -3943,6 +4062,8 @@ class StatementAnalyzer:
             # Reassignment revives a consumed variable
             self.ctx.func.consumed_vars.discard(stmt.target.name)
             self.compat.update_tuple_member_local_facts(
+                stmt.target.name, target_type, stmt.value)
+            self._update_ephemeral_alias_fact(
                 stmt.target.name, target_type, stmt.value)
             # Borrow tracking: reassignment breaks aliases in both directions.
             # Retarget runs before remove_borrower so borrowers of the target

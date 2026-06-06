@@ -36,12 +36,23 @@ struct StaticStr {
 
 inline StaticStr static_str(std::string_view s) { return StaticStr{s}; }
 
+// TPy tuple borrow ABI: non-value elements arrive as pointers
+// (std::tuple<DeferredStr*, ...>); deref them, pass values through.
+template<typename A>
+decltype(auto) log_arg(A&& a) {
+    if constexpr (std::is_pointer_v<std::remove_cvref_t<A>>) {
+        return (*a);
+    } else {
+        return std::forward<A>(a);
+    }
+}
+
 // Generic log dispatch: receives format string + tuple of typed args
 template<typename T>
 void log_dispatch(const LogHandle& handle, std::string_view fmt, T&& args) {
     std::cout << handle.name << ": " << fmt << "\n";
     std::apply([](auto&&... a) {
-        ((std::cout << "  " << a << "\n"), ...);
+        ((std::cout << "  " << log_arg(a) << "\n"), ...);
     }, std::forward<T>(args));
 }
 
