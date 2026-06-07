@@ -24,6 +24,7 @@ from ..type_def_registry import (
     find_factory_by_simple_name, find_factory_in_module,
 )
 from .type_resolver import TypeResolver
+from .desugar_suspensions import desugar_suspension_positions
 
 if TYPE_CHECKING:
     from ..typesys import TpyType
@@ -994,6 +995,15 @@ class Parser:
                     top_level_stmts.extend(stmt)
                 else:
                     top_level_stmts.append(stmt)
+
+        # Pre-sema: rewrite suspensions out of conditional / repeated
+        # expression positions so evaluation order survives the
+        # resumable-frame lowering (see desugar_suspensions).
+        for func in functions:
+            desugar_suspension_positions(func)
+        for record in records:
+            for method in record.methods:
+                desugar_suspension_positions(method)
 
         return TpyModule(records=records, functions=functions, protocols=protocols, enums=enums, top_level_stmts=top_level_stmts, source_lines=self.source_lines, imports=imports, tpy_star_import=self._imports.tpy_star_import, star_imports=self._imports.star_imports, user_module_imports=user_module_imports, module_aliases=module_aliases, bare_module_imports=bare_module_imports, type_aliases=type_aliases, parse_warnings=self._warnings, recursive_union_names=self._recursive_union_names)
 

@@ -1,0 +1,1 @@
+main.py:17: error: Type mismatch in reassignment to '__await_ternary_0': expected int, got str

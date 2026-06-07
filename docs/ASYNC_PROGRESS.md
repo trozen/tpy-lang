@@ -642,17 +642,23 @@ composability blockers):
   the dead one is safe. Saves ~10 generated lines per such case in
   snapshots.
 
-**Known limitations** (lifter semantic bugs in non-statement
-positions, pre-existing but only reachable after M3):
-
-- The await lifter mishandles short-circuit operators (`a or
-  await b()` evaluates both unconditionally), loop conditions
-  (`while await cond():` lifts to a pre-loop vardecl so the
-  condition is evaluated ONCE), and comprehensions. Filed in
-  BUGS.md; correct fix needs structural rewrites (`a or await b`
-  -> ternary, `while await cond()` -> `while True: cond_val =
-  await cond(); if not cond_val: break`). Pre-existing in the
-  lifter; the cases just didn't reach codegen before M3.
+**Await evaluation-order in conditional / repeated positions (FIXED).**
+The await lifter used to hoist a nested `await` to a *preceding* statement
+unconditionally, which is only correct in evaluated-once positions. In
+short-circuit operands (`a or await b()`), ternary branches, chained
+comparisons, and `while` conditions that changed evaluation order
+(skipped operand ran anyway; loop condition ran once -> infinite loop).
+Fixed by a pre-sema suspension-expression desugar
+(`tpyc/parse/desugar_suspensions.py`): it rewrites those positions into
+statement-position suspensions guarded by explicit control flow (`while
+True: __c = await cond(); if cond: BODY else: ELSE; break`; short-circuit
+and chained-compare lower to bool temps; ternary to per-branch
+assignments), so sema computes narrowing / liveness / borrow / type facts
+on the lowered form and the existing CFG handles it. Tests under
+`tests/cases/async/await_*`. Remaining gaps: `await` inside a
+comprehension (rejected; full support tracked in TODO.md) and
+divergent-type ternary branches (rejected with an imperfect diagnostic,
+BUGS.md).
 
 ### M4 SHIPPED -- async methods on user classes (M5 prerequisite)
 

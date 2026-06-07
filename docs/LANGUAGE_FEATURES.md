@@ -5665,9 +5665,17 @@ Send/Sync rules for built-in types:
   going through the caller's storage form (no separate specialization
   needed). Value-type awaitables are moved into the frame; reference-type
   awaitables are stored as borrowed frame pointers so object identity is
-  preserved across a suspension. Awaits in non-statement positions (call
-  args, BinOps, conditions) are lifted to preceding `__await_lift_<n>`
-  vardecls.
+  preserved across a suspension. Awaits in unconditional non-statement positions (call
+  args, BinOps, conditions evaluated once) are lifted to preceding
+  `__await_lift_<n>` vardecls. Awaits in *conditional / repeated*
+  positions -- short-circuit `and`/`or` operands, ternary branches,
+  chained comparisons, and `while` conditions -- are first rewritten by a
+  pre-sema desugar (`tpyc/parse/desugar_suspensions.py`) into
+  statement-position suspensions guarded by explicit control flow, so
+  Python evaluation order is preserved (the skipped short-circuit operand
+  is not awaited; the loop condition is re-evaluated each iteration).
+  `await` inside a comprehension and divergent-type ternary branches are
+  rejected (see TODO.md / BUGS.md).
   **Arbitrary `await` placement** (v1.5): `await` is allowed inside
   `if` / `elif` / `else` branches (including nested), `while` loop
   bodies (including with `break` / `continue` from nested if-branches),

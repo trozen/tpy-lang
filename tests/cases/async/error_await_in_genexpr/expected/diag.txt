@@ -1,0 +1,1 @@
+main.py:12: error: `await` inside a comprehension or generator expression is not yet supported; bind the awaited values to a list first (e.g. `tmp = [await f(x) for x in xs]` is not supported -- use an explicit loop with `result.append(await f(x))`).

@@ -1,0 +1,10 @@
+eval or1-left
+r1 5
+eval or2-left
+eval or2-right-run
+r2 7
+eval and1-left
+r3 0
+eval and2-left
+eval and2-right-run
+r4 8
