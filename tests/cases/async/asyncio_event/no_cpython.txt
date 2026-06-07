@@ -1,3 +1,4 @@
 TPy's asyncio.Event is directly awaitable (`await event`); CPython's
-asyncio.Event requires `await event.wait()`. TPy can't yet define
-`async def` methods on classes (see tests/cases/async/error_async_method).
+asyncio.Event requires `await event.wait()`. This case exercises the
+direct-await TPy shorthand, which CPython rejects. The CPython-shape
+`await event.wait()` is covered by asyncio_event_wait (cpy-enabled).

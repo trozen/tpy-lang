@@ -1,0 +1,2 @@
+Awaits an Event field directly (`await self.evt`), the TPy direct-await
+shorthand; CPython's asyncio.Event requires `await self.evt.wait()`.

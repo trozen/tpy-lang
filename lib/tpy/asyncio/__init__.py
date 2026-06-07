@@ -698,12 +698,9 @@ class Event:
     """Boolean completion signal -- the no-payload analog of Future.
     Single-awaiter v1.
 
-    `set` / `clear` / `is_set` match CPython. Divergence: TPy's Event
-    is directly awaitable (`await event`) where CPython requires
-    `await event.wait()`. A CPython-shape `wait()` would need an
-    `async def wait(self): await self`, which fails to compile: awaiting
-    `self` infers a const `self` while `__poll__` mutates it. Event tests
-    therefore use the direct-await form and need `no_cpython.txt`.
+    `set` / `clear` / `is_set` / `wait` match CPython. TPy also allows
+    awaiting the Event directly (`await event`) as a shorthand for
+    `await event.wait()`.
     """
 
     _is_set: bool
@@ -717,6 +714,12 @@ class Event:
 
     def is_set(self) -> bool:
         return self._is_set
+
+    async def wait(self) -> bool:
+        """Block until set; returns True (CPython parity). `await event`
+        is the TPy shorthand."""
+        await self
+        return True
 
     def set(self) -> None:
         if self._is_set:

@@ -2253,16 +2253,42 @@ class ExpressionAnalyzer:
         # matching so the inner Task[T] / Awaitable conformance check fires.
         unwrapped = unwrap_own(unwrap_ref_type(operand_type))
         if isinstance(unwrapped, NominalType):
-            inner = self._extract_awaitable_inner(unwrapped)
+            inner, poll_is_readonly = self._extract_awaitable_inner(unwrapped)
             if inner is not None:
                 if isinstance(inner, TpyType):
                     expr.awaited_task_inner = inner
+                    # `await x` polls `x.__poll__(waker)`; a non-readonly
+                    # __poll__ mutates the awaitable, so awaiting a durable
+                    # operand mutates its root. Mark it -- otherwise a method
+                    # whose only self-touch is `await self` / `await self.f`
+                    # is mis-inferred @readonly and captures a const receiver
+                    # the mutating __poll__ can't use.
+                    if not poll_is_readonly:
+                        self._mark_await_operand_mutated(operand)
                     return inner
         raise self.ctx.error(
             "await operand must be a direct call to an async def, a "
             "Task[T] / Future[T], or a value of a type with a "
             "`__poll__(self, waker: Waker) -> Own[Poll[T]]` method",
             expr)
+
+    def _mark_await_operand_mutated(self, operand) -> None:
+        """Mark the durable root of an awaited operand mutated.
+
+        Called when the awaitable's `__poll__` is non-readonly. Mirrors the
+        non-readonly method-call receiver marking in `MethodAnalyzer`: the
+        await is, for mutation purposes, an `operand.__poll__(waker)` call.
+        A rvalue operand (fresh coro from `await f()`) has no durable root
+        and is left alone.
+        """
+        from .statements import _root_name_of_expr
+        obj_root = _root_name_of_expr(operand)
+        if obj_root is None:
+            return
+        self.ctx.mark_loop_var_mutated(obj_root)
+        self.ctx.mark_param_mutated(obj_root)
+        storage = self.ctx.func.borrow_tracker.effective_storage(obj_root)
+        self.ctx.mark_all_view_borrowers_mutated(storage)
 
     def _unwrap_awaitable_return(self, ret_type: 'TpyType') -> 'TpyType':
         """Strip `Awaitable[T]` / `Cancellable[T]` wrapping from an async
@@ -2276,25 +2302,29 @@ class ExpressionAnalyzer:
             return ret.type_args[0]
         return ret
 
-    def _extract_awaitable_inner(self, typ) -> 'TpyType | None':
-        """Return the awaited type T if `typ` conforms to Awaitable[T],
-        else None.
+    def _extract_awaitable_inner(self, typ) -> 'tuple[TpyType | None, bool]':
+        """Return `(T, poll_is_readonly)` if `typ` conforms to Awaitable[T],
+        else `(None, True)`.
 
         Structural: any record with `__poll__(self, waker: Waker) -> Own[Poll[T]]`.
         Covers tpy.Task[T] (qname `tpy.Task` -> the @builtin_type stub in
         asyncio._executor), user-defined Future[T] / Event-like types, and
         any other record that satisfies the Awaitable protocol. The Own
         wrapper is required because Poll[T] is @nocopy (v1.2 step 5).
+
+        `poll_is_readonly` is the chosen `__poll__` overload's readonly-ness:
+        a non-readonly `__poll__` mutates the awaitable, so awaiting a durable
+        operand (`await self` / `await self.field`) mutates the operand's root.
         """
         from ..typesys import NominalType, TpyType as _TpyType
         # Structural: look up the record and check for a __poll__ method
         # whose signature matches Awaitable[T].
         record_info = self.ctx.registry.get_record_for_type(typ)
         if record_info is None:
-            return None
+            return (None, True)
         poll_overloads = record_info.get_method_overloads("__poll__")
         if not poll_overloads:
-            return None
+            return (None, True)
         # Pick the first overload whose return type is Poll[T] for some T.
         # Substitute the record's class-level type params with typ.type_args
         # so `Future[Int32]` returns Int32, not the type-var T.
@@ -2322,8 +2352,9 @@ class ExpressionAnalyzer:
                 # Recursively substitute T -> typ.type_args[i] -- handles
                 # both bare TypeParamRef and nested shapes like list[T],
                 # tuple[T, U], etc.
-                return _substitute_type_params(ret.type_args[0], type_subst)
-        return None
+                return (_substitute_type_params(ret.type_args[0], type_subst),
+                        bool(fi.is_readonly))
+        return (None, True)
 
     def _method_call_receiver_type(self, call) -> 'NominalType | None':
         """For a TpyMethodCall whose receiver resolves to a known record,

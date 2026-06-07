@@ -5735,9 +5735,9 @@ Send/Sync rules for built-in types:
   `set_result` / `set_exception`; `Future[None]` works after the
   position-aware-None compiler fix lowered `None` type-args to
   `std::monostate`. `asyncio.Event` is the no-payload completion-signal
-  primitive: `set` / `clear` / `is_set` match CPython, but TPy's Event
-  is directly awaitable (`await event`) whereas CPython requires
-  `await event.wait()`.
+  primitive: `set` / `clear` / `is_set` / `wait` match CPython
+  (`await event.wait()`); TPy additionally allows awaiting the Event
+  directly (`await event`) as a shorthand.
   `tpy.coro.poll_once(aw)` is a synchronous one-step driver useful for
   tests and non-asyncio contexts; sema-types `f()` (for `async def f`)
   as `Cancellable[T]` (a `@dynamic` protocol with `__poll__` + `cancel`,
