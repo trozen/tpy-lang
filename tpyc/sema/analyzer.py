@@ -2831,6 +2831,11 @@ class SemanticAnalyzer:
             return (f"'{rec.name}' has '__del__' and required '__init__' "
                     f"parameters")
         for fld in rec.fields:
+            # Kept in lockstep with `_record_default_ctor_is_deleted`: a field
+            # with an in-class initializer never blocks default construction,
+            # so it can't be the cause we attribute here.
+            if fld.default_expr is not None:
+                continue
             if self._field_type_blocks_default_ctor(fld.type):
                 inner = self._explain_field_type_blocks_default_ctor(
                     fld.type, _visited)
@@ -2869,6 +2874,10 @@ class SemanticAnalyzer:
         if del_suppresses_default_ctor(rec):
             return True
         for fld in rec.fields:
+            # An in-class initializer makes the field default-constructible
+            # regardless of whether its type has a zero-arg C++ ctor.
+            if fld.default_expr is not None:
+                continue
             if self._field_type_blocks_default_ctor(fld.type, _visited):
                 return True
         # Route parents through the field-type predicate so generic

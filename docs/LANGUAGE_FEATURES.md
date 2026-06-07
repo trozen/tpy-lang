@@ -3744,6 +3744,7 @@ Without the tag, calling such a generic with only an empty container produces a 
 
 ### Definition
 - **Working**: Typed fields
+- **Working**: In-class field defaults -- constant expressions (literals, `None`, fixed-int constructors) and **enum members** (`c: Color = Color.RED` emits the C++ constant initializer `Color c = Color::RED;`, qualified for cross-module enums and honoring `@native` member renames). The default's enum must match the field's declared type -- `c: Color = Mode.A` is rejected at registration. A field with an explicit default never blocks zero-arg construction, even when its type alone is not default-constructible (the sema/codegen default-constructibility walks skip fields that carry a default)
 - **Working**: `__init__`
 - **Working**: Instance methods
 - **Working**: Generic classes (Python 3.12+ syntax)

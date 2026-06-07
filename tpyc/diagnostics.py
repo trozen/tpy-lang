@@ -66,9 +66,14 @@ class Diagnostic:
     loc: SourceLocation | None = None
 
     def format(self, filename: str = "<unknown>") -> str:
-        """Format diagnostic with file:line prefix."""
+        """Format diagnostic with file:line prefix.
+
+        A location that carries its own file (e.g. a frontend plugin's
+        diagnostics, which point into the DSL source) wins over the
+        caller-supplied fallback name."""
         if self.loc:
-            return f"{filename}:{self.loc.line}: {self.level.value}: {self.message}"
+            name = self.loc.file or filename
+            return f"{name}:{self.loc.line}: {self.level.value}: {self.message}"
         return f"{filename}: {self.level.value}: {self.message}"
 
 

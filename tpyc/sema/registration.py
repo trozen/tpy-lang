@@ -56,7 +56,7 @@ from ..parse import (
 from ..namespace import NameBinding, BindingKind
 from ..type_def_registry import (
     is_fixed_int_type, is_fstr_type, int_traits_of,
-    attach_dynamic_type_def, TypeCategory, EnumInfo,
+    attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of,
     factory_qnames_in_module, protocol_info_of,
     is_str_type, is_borrowing_view_type,
 )
@@ -73,6 +73,7 @@ if TYPE_CHECKING:
     from .context import SemanticContext
     from .type_ops import TypeOperations
     from .protocols import ProtocolChecker
+    from ..typesys import TypeRegistry
 
 from tpyc import modules as builtin_modules
 from .. import qnames
@@ -119,10 +120,47 @@ def _contains_self_type(typ: TpyType) -> bool:
     return any(_contains_self_type(inner) for inner in typ.inner_types())
 
 
-def _validate_const_field_default(expr: TpyExpr, loc: object) -> None:
+def _enum_default_matches_field(field_type: TpyType, member_info: EnumInfo) -> bool:
+    """True if `field_type` admits an enum-member default of `member_info`.
+
+    Walks Optional/Union wrappers so `c: Color | None = Color.RED` is still
+    accepted; bare non-enum field types yield False. EnumInfo identity is
+    canonical per enum (one TypeDef payload), so `is` distinguishes
+    `Color` from a same-shaped sibling enum."""
+    if enum_info_of(field_type) is member_info:
+        return True
+    return any(_enum_default_matches_field(inner, member_info)
+               for inner in field_type.inner_types())
+
+
+def _validate_const_field_default(expr: TpyExpr, loc: object,
+                                  registry: 'TypeRegistry | None' = None,
+                                  field_type: TpyType | None = None) -> None:
     """Validate that a field default expression is a compile-time constant."""
     if expr_to_cpp_default(expr) is not None:
         return
+    # Enum members are constants: `c: Color = Color.RED` emits a C++
+    # constant initializer. Type-aware: the base name must resolve to a
+    # registered enum and the member must exist.
+    if (registry is not None and isinstance(expr, TpyFieldAccess)
+            and isinstance(expr.obj, TpyName)):
+        enum_t = registry.get_enum(expr.obj.name)
+        if enum_t is not None:
+            info = enum_info_of(enum_t)
+            if info is not None and expr.field in info.members:
+                # Reject a member from a different enum than the field type
+                # (`status: Color = Mode.A`): codegen would emit a
+                # type-mismatched initializer that C++ then rejects opaquely.
+                if (field_type is not None
+                        and not _enum_default_matches_field(field_type, info)):
+                    raise SemanticError(
+                        f"Default '{expr.obj.name}.{expr.field}' has enum type "
+                        f"'{expr.obj.name}', which does not match the declared "
+                        f"field type '{field_type}'", loc)
+                return
+            raise SemanticError(
+                f"'{expr.field}' is not a member of enum "
+                f"'{expr.obj.name}'", loc)
     # Resolved call from a macro module (e.g. field()) used outside its macro
     if isinstance(expr, (TpyCall, TpyMethodCall)) and getattr(expr, 'resolved_import', None) is not None:
         mod, name = expr.resolved_import
@@ -961,7 +999,8 @@ class TypeRegistrar:
         # Validate field defaults are const (after macros have transformed them)
         for fld in record.fields:
             if fld.default_expr is not None and not fld.is_factory_default:
-                _validate_const_field_default(fld.default_expr, fld.loc)
+                _validate_const_field_default(
+                    fld.default_expr, fld.loc, self.ctx.registry, fld.type)
 
         init_params = []
         if record.init_method:

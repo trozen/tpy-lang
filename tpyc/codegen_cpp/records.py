@@ -28,7 +28,7 @@ from ..parse import (
 from ..namespace import Namespace
 
 from .. import qnames
-from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, escape_cpp_name
+from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, escape_cpp_name, enum_cpp_name
 from .functions import factory_default_to_cpp
 from .resumable_cfg import ResumableShape
 from ..type_def_registry import (
@@ -318,6 +318,15 @@ class RecordGenerator:
                 if val == "std::nullopt" and isinstance(fld.type, PtrType):
                     val = "nullptr"
                 default = f" = {val}"
+            elif fld.default_expr is not None and not fld.is_factory_default:
+                # Non-literal constant defaults (the enum-member shape that
+                # registration validated, e.g. `c: Color = Color.RED`).
+                # Rendered directly with the canonical enum qualifier --
+                # the default expr is never sema-analyzed, so the generic
+                # gen_expr path (which needs resolved facts) can't be used.
+                init = self._render_enum_member_default(fld.default_expr)
+                if init is not None:
+                    default = f" = {init}"
             elif fld.is_factory_default:
                 default = f" = {factory_default_to_cpp(fld.type)}"
             out.write(f"{INDENT}{cpp_type} {escape_cpp_name(fld.name)}{default};\n")
@@ -1326,6 +1335,23 @@ class RecordGenerator:
             loc,
         )
 
+    def _render_enum_member_default(self, expr) -> str | None:
+        """C++ for a validated enum-member field default
+        (`Color.RED` -> `tpyapp::mod::Color::RED`), or None when the
+        expr isn't that shape (registration would have rejected it)."""
+        if not (isinstance(expr, TpyFieldAccess)
+                and isinstance(expr.obj, TpyName)):
+            return None
+        enum_type = self.ctx.analyzer.registry.get_enum(expr.obj.name)
+        if enum_type is None:
+            return None
+        einfo = enum_info_of(enum_type)
+        member_cpp = (einfo.cpp_member_name_map.get(expr.field, expr.field)
+                      if einfo is not None else expr.field)
+        cur_module = self.ctx.analyzer.ctx.module_name
+        return (f"{enum_cpp_name(enum_type, cur_module, einfo=einfo)}"
+                f"::{member_cpp}")
+
     def _all_fields_default_constructible(self, record: TpyRecord) -> bool:
         """Check if all own fields and the parent (if any) are C++-default-constructible.
 
@@ -1344,7 +1370,8 @@ class RecordGenerator:
         # Template classes: C++ handles the constraint at instantiation time.
         if record.type_params:
             return True
-        if not all(self._fld_type_cpp_default_constructible(fld.type) for fld in record.fields):
+        if not all(self._fld_type_cpp_default_constructible(fld.type)
+                   for fld in record.fields if fld.default_expr is None):
             return False
         record_info = self.ctx.analyzer.ctx.registry.get_record(record.name)
         if record_info is not None:

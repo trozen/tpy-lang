@@ -3928,6 +3928,12 @@ class Parser:
                 return self._get_default_value(node.args[0])
             args = ", ".join(str(self._get_default_value(a)) for a in node.args)
             return f"{node.func.id}({args})"
+        elif isinstance(node, ast.Attribute):
+            # Enum-member defaults (`c: Color = Color.RED`): no parse-time
+            # rendering. Codegen's _render_enum_member_default emits the
+            # qualified enum name directly (the expr is never sema-analyzed,
+            # so the generic gen_expr path can't be used).
+            return None
         return "0"
 
 # ---------------------------------------------------------------------------

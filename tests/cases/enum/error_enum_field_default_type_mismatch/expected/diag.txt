@@ -1,0 +1,1 @@
+main.py:18: error: Default 'Mode.A' has enum type 'Mode', which does not match the declared field type 'Color'

@@ -1,0 +1,1 @@
+main.py:12: error: 'PURPLE' is not a member of enum 'Color'

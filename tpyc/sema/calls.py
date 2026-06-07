@@ -5119,6 +5119,12 @@ class CallAnalyzer:
         for parent in record.parents:
             check(parent, f"parent '{parent}'")
         for fld in record.fields:
+            # A field with an explicit constant default never blocks
+            # zero-arg construction: codegen emits it as an in-class
+            # initializer, so the field type's own default-constructibility
+            # is irrelevant.
+            if fld.default_expr is not None:
+                continue
             check(fld.type, f"field '{fld.name}'")
 
     def _can_defer_generic_inference(self, record: RecordInfo, expr: TpyCall) -> bool:

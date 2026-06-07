@@ -575,6 +575,10 @@ class ProtocolChecker:
                     if not self._is_default_constructible(p):
                         return False
                 for fld in record.fields:
+                    # An in-class initializer makes the field
+                    # default-constructible regardless of its type's ctor.
+                    if fld.default_expr is not None:
+                        continue
                     if not self._is_default_constructible(fld.type):
                         return False
                 return True
