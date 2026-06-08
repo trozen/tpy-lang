@@ -3239,13 +3239,13 @@ class StatementAnalyzer:
                         else:
                             self.deduction.track_view_reassign_source(stmt.name, inner_init, vf)
                     var_type = existing_type
-                    if isinstance(inner_existing, LiteralType):
-                        # LiteralType additionally runs coerce_expr so out-of-set
-                        # literal RHS is rejected. (PendingViewType silently widens --
-                        # tracked in BUGS.md.)
-                        stmt.init = self.compat.coerce_expr(stmt.init, inner_init, var_type,
-                                                            f"reassignment to '{stmt.name}'",
-                                                            coercion_ctx=CoercionContext.ASSIGN)
+                    # Must run after view tracking (above) so the coercion node
+                    # doesn't hide the owned-vs-borrow source from it; without
+                    # this an incompatible RHS (str view <- int) was accepted
+                    # here and only failed at the C++ step.
+                    stmt.init = self.compat.coerce_expr(stmt.init, inner_init, var_type,
+                                                        f"reassignment to '{stmt.name}'",
+                                                        coercion_ctx=CoercionContext.ASSIGN)
                 else:
                     var_type = self.deduction.resolve_reassignment_target_type(
                         stmt.name, inner_existing, inner_init, init_expr=stmt.init

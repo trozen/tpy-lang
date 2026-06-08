@@ -1597,3 +1597,20 @@ or eliminating the C++ compiler dependency), the MIR is ready.
     forward pre-IR if the migration is not imminent is the sema-side
     provenance consolidation (one BindingProvenance record replacing the
     four per-name fact sets; TODO.md entry carries the decision rule).
+
+    Scope extension: str/bytes VIEW locals belong under this umbrella too,
+    even though they are value types lowered by a separate mechanism today
+    (the `str_vars`/`bytes_vars` view-tracking facts + a binary
+    view-XOR-owned-per-variable decision, e.g. `mark_view_reassigned_from_owned`
+    promoting the whole local to `std::string`). The place/slot model says
+    the variable stays the borrow form (`string_view`) and an owned-source
+    assignment lands in a storage slot bound to it, with the fold collapsing
+    to plain `std::string` when the slot is the only source (today's
+    always-owned behavior). The win over the current binary choice is the
+    MIXED case -- a local fed by a literal/param in one branch and an owned
+    temporary in another no longer materializes the borrowed branches into
+    `std::string`. As with the rest of item 11 this is fold-dependent (the
+    fold must collapse the common always-view and always-owned cases or both
+    regress to two C++ variables), so it is IR-era, not a pre-IR change. The
+    current binary mechanism is sound (extra copy in mixed cases, never a
+    dangle), so this is a quality/uniformity gain, not a correctness fix.

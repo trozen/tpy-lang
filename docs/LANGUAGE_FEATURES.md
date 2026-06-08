@@ -519,6 +519,10 @@ def peek(data: StrView) -> StrView:    # string_view in, string_view out
 - Cannot use `+=` (would dangle -- use `str` or `String` for mutable strings)
 - Returning a `StrView` referencing a local or temporary is an error
 
+Reassigning an inferred string local to an incompatible type is a sema error
+(`s = "asd"; s = 5`), not a deferred C++ build failure -- consistent with how
+scalar locals reject incompatible rebinds.
+
 When a generic type parameter `T` is inferred from a string literal, sema picks
 `T = str` (storage form `std::string`), not `T = StrView`. The auto-downgrade
 to `StrView` was unsound (it could silently demote owned-string returns through
@@ -611,6 +615,9 @@ items: list[bytes] = [b"alice", b"bob"]
 x = items[0]           # BytesView (no mutation follows)
 items.append(b"carol")  # source mutated -> x becomes owned bytes
 ```
+
+As with strings, reassigning an inferred bytes local to an incompatible type
+is a sema error (`b = b"hi"; b = 5`), not a deferred C++ build failure.
 
 Bytes literals passed as function arguments also use static storage, avoiding heap allocation:
 
@@ -5538,7 +5545,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
 - **Working**: Global variables (typed)
 - **Working**: Contextual type inference from assignment/return/nested-call context for generic functions, record constructors, and module-type constructors; partial explicit type args; `_` wildcard type arguments
 - **Working**: `global` keyword for explicit global mutation from functions
-- **Working**: `:=` walrus operator (assignment expression) -- `if`, `while`, `and`/`or` chains, general expression positions. Value types use `T x{}`; non-value types use `std::optional<T>` wrapping. Comprehension scope leak (PEP 572) supported.
+- **Working**: `:=` walrus operator (assignment expression) -- `if`, `while`, `and`/`or` chains, general expression positions. Value types use `T x{}`; non-value types use `std::optional<T>` wrapping. Comprehension scope leak (PEP 572) supported. Reassigning an existing local via `:=` is type-checked against the local's type for value-typed locals (scalars, str/bytes, views, Optional-of-value); reassigning an existing non-value local via `:=` is rejected (use a separate assignment) -- see BUGS.md.
 - **Working**: PEP 484 string type annotations (`def f() -> "ClassName"`, `def f(x: "ClassName")`, `children: list["Tree"]`). Strings are re-parsed as Python expressions at parse time and resolved by the same deferred type-resolver pass as bare annotations -- forward references to classes/aliases defined later in the same module work for names, generics (`"list[T]"`), and unions (`"A | B"`). A string that is not a valid Python expression is rejected with a clean tpyc diagnostic (no SyntaxError leak). `from __future__ import annotations` is accepted and ignored: it is a CPython runtime directive (PEP 563) that does not affect `ast.parse` output, so tpyc sees the same annotation AST nodes whether the import is present or not.
 
 ---

@@ -5958,8 +5958,11 @@ class ExpressionGenerator:
                               f"({value_code})")
 
         # Emit pre-declaration only once per function (walrus_pre_declared
-        # is not snapshot/restored across branches, unlike declared_vars)
-        need_predecl = expr.target not in self.ctx.walrus_pre_declared
+        # is not snapshot/restored across branches, unlike declared_vars).
+        # A name already declared by another path (var-decl, or an earlier
+        # walrus) is a reassignment -- assign in place, don't redeclare.
+        need_predecl = (expr.target not in self.ctx.walrus_pre_declared
+                        and expr.target not in self.ctx.declared_vars)
         if need_predecl:
             self.ctx.walrus_pre_declared.add(expr.target)
             cpp_type = self.types.type_to_cpp(value_type)

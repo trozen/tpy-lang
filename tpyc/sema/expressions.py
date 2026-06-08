@@ -14,7 +14,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, RecordInfo,
     NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, AnyType, OptionalType, UnionType, VoidType,
-    ReadonlyType, unwrap_readonly, unwrap_qualifiers, is_any_str_type, PendingStrType, PendingViewType,
+    ReadonlyType, unwrap_readonly, unwrap_qualifiers, is_any_str_type, PendingStrType, PendingViewType, LiteralType,
     ValueForm,
     is_any_bytes_type, PendingBytesType,
     make_union,
@@ -26,7 +26,7 @@ from ..typesys import (
     PendingGenericInstanceType, unwrap_ref_type, make_ref, RefType,
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
-    unwrap_own, is_readonly_span,
+    unwrap_own, is_readonly_span, view_family_for_type,
     yield_uses_borrow_slot,
     RecursiveAliasInstanceType, recursive_union_alternatives)
 from ..parse import (
@@ -2420,13 +2420,44 @@ class ExpressionAnalyzer:
 
         existing = target_scope.lookup(name)
         if existing is not None:
-            # Reassignment via walrus -- keep existing type
-            pass
+            # Reassignment via walrus keeps the existing type and validates the
+            # RHS against it, mirroring the var-decl reassignment path.
+            inner_existing = unwrap_readonly(existing)
+            inner_value = unwrap_readonly(value_type)
+            borrow_tuple_existing = (isinstance(inner_existing, TupleType)
+                                     and inner_existing.has_pointer_repr_element())
+            if not inner_existing.is_value_type() or borrow_tuple_existing:
+                # Non-value (and pointer-repr-tuple) locals live in a storage
+                # form (T* / std::optional<T> / borrow slot) the walrus binding
+                # path can't reassign in place without the var-decl rebind
+                # machinery; reject rather than emit a conflicting redeclaration.
+                raise self.ctx.error(
+                    f"walrus reassignment of non-value local '{name}' is not "
+                    f"supported yet; use a separate assignment statement",
+                    expr)
+            # Cheap isinstance pre-filter before the qualified_name() lookup in
+            # view_family_for_type, matching the var-decl reassignment path.
+            vf = (view_family_for_type(inner_existing)
+                  if isinstance(inner_existing, (PendingViewType, LiteralType))
+                  else None)
+            if vf is not None and vf.is_any_member(inner_value):
+                ded = self.compat.deduction
+                if not ded.is_view_compatible_source(expr.value, inner_value):
+                    ded.mark_view_reassigned_from_owned(name, vf)
+                else:
+                    ded.track_view_reassign_source(name, inner_value, vf)
+            expr.value = self.compat.coerce_expr(
+                expr.value, inner_value, inner_existing,
+                f"reassignment to '{name}'",
+                coercion_ctx=CoercionContext.ASSIGN)
+            resolved = existing
+            result_type = existing
         else:
             # New binding
             target_scope.define(name, resolved)
             if self.ctx.func.current_ns:
                 self.ctx.func.current_ns.bind_variable(name, resolved)
+            result_type = value_type
 
         self.ctx.func.definitely_assigned.add(name)
         self.ctx.func.rvalue_vars.add(name)
@@ -2465,7 +2496,7 @@ class ExpressionAnalyzer:
         else:
             eph.discard(name)
 
-        return value_type
+        return result_type
 
     def _analyze_if_expr(
         self, expr: TpyIfExpr, type_hint: TpyType | None = None,
