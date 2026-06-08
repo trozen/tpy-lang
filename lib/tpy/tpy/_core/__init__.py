@@ -22,4 +22,4 @@ from ._bytes_view import BytesView
 # varargs is pulled in only so the compiler registers its builtin record; it
 # reaches the `tpy` root via a private `_varargs` alias (see tpy/__init__).
 from ._containers import Span, Array, Ptr, SpanIter, varargs
-from ._functions import span, deref, take_ptr, make_default, copy, copy_iter, own_iter, try_parse
+from ._functions import span, deref, take_ptr, make_default, copy, copy_iter, own_iter, try_parse, assert_send, assert_sync

@@ -54,6 +54,7 @@ from ..parse import (
     TpyNoneLiteral, TpyStrLiteral, collect_name_refs,
 )
 from ..namespace import NameBinding, BindingKind
+from .send_chain import why_not_send, why_not_sync, render_chain
 from ..type_def_registry import (
     is_fixed_int_type, is_fstr_type, int_traits_of,
     attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of,
@@ -2145,13 +2146,19 @@ class TypeRegistrar:
                 (f for f in record_info.fields if not field_ok(f.type)), None)
             if offending is not None:
                 detail = f"field '{offending.name}: {offending.type}'"
+                offending_type = offending.type
             else:
                 parent = next(
                     (p for p in record_info.parents if not field_ok(p)), None)
                 detail = f"base class '{parent}'"
+                offending_type = parent
+            send = trait == "Send"
+            chain = (why_not_send(offending_type) if send
+                     else why_not_sync(offending_type)) if offending_type is not None else None
+            chain_detail = f"\n{render_chain(chain, send)}" if chain is not None else ""
             raise SemanticError(
                 f"Class '{record.name}' declares {trait} but {detail} is "
-                f"not {trait}",
+                f"not {trait}{chain_detail}",
                 record.loc)
 
     def _check_throwable_conformance(self, record: TpyRecord, record_info: 'RecordInfo') -> None:

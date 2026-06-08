@@ -1,1 +1,2 @@
 main.py:4: error: Class 'Bad' declares Sync but field 'xs: list[Int32]' is not Sync
+list[Int32] is not Sync (mutable container, aliased cross-thread mutation is unsynchronized)

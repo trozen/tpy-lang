@@ -34,6 +34,7 @@ from ._core import (
     # Functions
     span, deref, take_ptr, make_default,
     copy, copy_iter, own_iter, try_parse,
+    assert_send, assert_sync,
 )
 # `Task` / `Waker` / `Poll` / `Awaitable` / `poll_*` are not re-exported
 # here -- importing from `tpy` would force every consumer to include
@@ -79,6 +80,7 @@ __all__ = [
     # Functions
     "span", "deref", "take_ptr", "make_default",
     "copy", "copy_iter", "own_iter", "try_parse",
+    "assert_send", "assert_sync",
     "CancelledError",
     # I/O
     "BinaryIO", "open_text", "open_binary",

@@ -6,7 +6,7 @@
 |-------|-------|--------|
 | **Phase 1** | `is_send` / `is_sync` traits on all built-in types (runtime + sema), auto-derivation for user records (fields + base class), `Send` / `Sync` marker `Protocol`s in `tpy` | Done |
 | **Phase 2** | Marker-layer gap closing (closures, coroutine/generator frames, union forms), tightened rules, `Send[T]` / `Sync[T]` marker wrappers covering `Callable[...]` and `@dynamic` protocols, explicit opt-in / opt-out syntax, `# tpyc:` annotations + test group locking auto-derivation | Done (per-record C++ trait mirror deferred -- see Implementation Notes) |
-| **Phase 3** | Diagnostic surface (`tpy.assert_send[T]`, `--explain-send`, inline chain at enforcement sites) | Planned |
+| **Phase 3** | Diagnostic surface (`tpy.assert_send[T]`, `--explain-send`, inline chain at enforcement sites) | Done |
 | **Phase 4** | First enforcement site: `Channel[T]` (intra-process, `T: Send`) on top of the single-threaded executor; covers SPSC and MPSC | Planned |
 | **Phase 5** | Multi-threaded executor; `Task[T]` requires `Send` frame for migration; `thread.spawn(fn)` requiring `Send` closure | Planned (v3+) |
 | **Phase 6** | `Arc[T]` (atomic shared ownership), synchronization primitives (`Mutex[T]`, `RwLock[T]`), `Sync`-required borrow sites | Planned (v3+) |
@@ -459,7 +459,7 @@ gained an explicit `is_sync=False` override (step A review finding).
 
 **Effort:** S-M. Phase 2 ships type-system parsing/sema for two new wrapper types (`Send[T]`, `Sync[T]`), a new typesys form (`FrameType`), Send/Sync auto-derive integration for opt-in/opt-out decorators, and the storage-form slot walk. **No new C++ templates** -- the Send/Sync wrappers are sema-only; the C++ representation of `Send[T]` / `Sync[T]` is the same as bare `T`. Sema fires Send/Sync checks wherever the user writes `Send[T]` / `Sync[T]` as an expected type or `T: Send` / `T: Sync` as a generic bound (so Phase 2 tests for `Send[Callable[...]]` / `Send[Pet]` construction work immediately, against the user-explicit annotations the tests use). Concurrency-API enforcement sites (`Channel[T]` with `T: Send` bound; `thread.spawn`; Task migration) arrive in Phase 4+ -- but those are new APIs whose parameter types reuse Phase 2's bound-checking machinery; no additional enforcement code. Codegen does need a small change for the user-record `tpy::is_send<UserT>` / `tpy::is_sync<UserT>` specialization emission (one-line emit per record).
 
-### Phase 3 -- diagnostics
+### Phase 3 -- diagnostics (DONE)
 
 1. OQ6: implement the shared `why_not_send(t) / why_not_sync(t)` chain-walker over typesys.
 2. Wire the chain into Send/Sync error messages everywhere they fire (preparation for Phase 4 enforcement, even though there are no firing sites yet in Phase 3).
@@ -467,6 +467,14 @@ gained an explicit `is_sync=False` override (step A review finding).
 4. `tpyc --explain-send T` / `--explain-sync T` CLI flag, renderer over the chain-walker.
 
 **Effort:** S. The walker is the work; the three surfaces are thin renderers. OQ5 (`@dynamic` adapter Send-encoding) shipped in Phase 2 alongside `Send[Callable[...]]`, so no additional adapter work in Phase 3.
+
+**As implemented:**
+
+- Walker lives in `tpyc/sema/send_chain.py`. It is **oracle-driven**: it never re-derives the boolean, calling `t.is_send()` / `t.is_sync()` as the single source of truth and only attributing an already-False answer to the sub-components carrying it (record fields/bases under use-site `type_args`, container type-args, union members, tuple elements, wrapper payloads, frame slots), bottoming out in a per-form leaf reason. Adding a new Send/Sync-bearing `TpyType` needs one arm in `_attribute` + `_leaf_reason`, not a second copy of the rule.
+- `assert_send` / `assert_sync` are `@builtin_function` declarations (`lib/tpy/tpy/_core/_functions.py`) checked in `sema/calls.py` (`_analyze_send_sync_assertion`) and elided in codegen (`TpyCall.compile_time_assert`, skipped in `codegen_cpp/statements.py`). CPython stubs in `lib/cpy/tpy/__init__.py` make them subscriptable no-ops.
+- Inline chains are wired at the three Phase-2 firing sites: the `Send[T]` / `Sync[T]` conversion check (`sema/compatibility.py`), the `T: Send` / `T: Sync` bound check (`sema/calls.py:validate_type_param_bounds`), and the `class Foo(Send)` opt-in check (`sema/registration.py`). The resolve-time `Send[Ptr]` marker error keeps its existing single-line message.
+- `tpyc --explain-send TYPE` / `--explain-sync TYPE` (`tpyc/explain.py`) resolves `TYPE` through the entry module's real `TypeResolver` (so user records, imports, and generic forms resolve as in an annotation), then renders the chain.
+- **Known limitation:** at the erased-callable / closure conversion sites the chain reports the static-type reason ("erased callable may capture non-Send state") rather than naming the specific non-Send captured slot; surfacing the per-value `FrameType` slot chain there is a follow-up (tracked with the `Send[Iterator[T]]` / `Send[Cancellable[T]]` annotation surface, Phase 3/4).
 
 ### Phase 4 -- first enforcement: Channel[T]
 

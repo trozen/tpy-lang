@@ -5677,8 +5677,14 @@ The full marker-layer design lives in `docs/SEND_SYNC_DESIGN.md`; Phase 2
 - **Working**: test annotations `# tpyc: is_send(yes|no)` / `is_sync(...)`
   (declaration lines) and `# tpyc: frame_send(yes|no)` / `frame_sync(...)`
   (async/generator def lines)
-- **Planned**: diagnostic chain walker (`why_not_send`), `tpy.assert_send[T]()`,
-  `--explain-send` (Phase 3); enforcement at channel/spawn/task boundaries (Phase 4+)
+- **Working (Phase 3)**: diagnostic surface. `tpy.assert_send[T]()` /
+  `tpy.assert_sync[T]()` are zero-cost compile-time assertions (no emission;
+  CPython no-ops) that fail the build with a why-not chain when `T` is not
+  Send / Sync. The same chain is appended to the Send/Sync enforcement-site
+  errors (`Send[T]` conversion, `T: Send` bound, `class Foo(Send)` opt-in).
+  `tpyc --explain-send TYPE` / `--explain-sync TYPE` prints the structural
+  derivation for any named type (e.g. `list[Order]`).
+- **Planned**: enforcement at channel/spawn/task boundaries (Phase 4+)
 
 Send/Sync rules for built-in types:
 

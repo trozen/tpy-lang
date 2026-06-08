@@ -45,6 +45,7 @@ from pathlib import Path
 
 from .parse import ParseError
 from .sema import SemanticError, DiagnosticLevel
+from .explain import explain_send_sync
 from .codegen_cpp import CodeGenOptions, CodeGenError
 from .compiler import (
     Compiler, CompileError, CompilerNotFoundError, BuildLayout, CppCompilerConfig,
@@ -276,6 +277,10 @@ def _run_cli(is_runner: bool) -> int:
                              "TPY_STDLIB_ROADMAP.md, TPY_API_REFERENCE.md) into DIR and print "
                              "an AGENTS.md snippet to stdout")
     parser.add_argument("--dump-code", action="store_true", help="Print generated C++ to stdout")
+    parser.add_argument("--explain-send", metavar="TYPE",
+                        help="Print the Send derivation tree for TYPE (e.g. 'list[Order]') and exit")
+    parser.add_argument("--explain-sync", metavar="TYPE",
+                        help="Print the Sync derivation tree for TYPE and exit")
     parser.add_argument(
         "--default-int",
         choices=DEFAULT_INT_CHOICES,
@@ -352,6 +357,7 @@ def _run_cli(is_runner: bool) -> int:
             args.build or args.exec or args.dump_code or args.repl
             or args.info or args.print_types
             or args.install_agent_docs is not None
+            or args.explain_send is not None or args.explain_sync is not None
             or args.cxx == "list"
         )
         if not has_action:
@@ -498,8 +504,9 @@ def _run_cli(is_runner: bool) -> int:
         parser.error("--dump-code cannot be combined with --build or --exec")
     if args.jobs is not None and args.jobs < 1:
         parser.error("-j/--jobs must be a positive integer")
+    explain_type = args.explain_send or args.explain_sync
     building = args.build or args.exec
-    quiet = args.dump_code or args.quiet
+    quiet = args.dump_code or args.quiet or explain_type is not None
     explicit_output = bool(args.output)
     n_jobs = args.jobs or os.cpu_count() or 1
     progress = ProgressPrinter(enabled=not quiet)
@@ -567,6 +574,11 @@ def _run_cli(is_runner: bool) -> int:
 
         if has_errors:
             return 1
+
+        if explain_type is not None:
+            return explain_send_sync(
+                compiled_modules, compiler, explain_type,
+                send=args.explain_send is not None)
 
         # Print warnings immediately when not building (no summary to defer to)
         if not building:

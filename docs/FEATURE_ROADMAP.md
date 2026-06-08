@@ -104,7 +104,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| E1 | Send/Sync markers | S-M | 🚧 Phase 1 done; Phases 2-6 + open questions in [`docs/SEND_SYNC_DESIGN.md`](SEND_SYNC_DESIGN.md) | [IV](#thread-safety-markers-send--sync) |
+| E1 | Send/Sync markers | S-M | 🚧 Phases 1-3 done (markers + wrappers + diagnostics); Phases 4-6 (enforcement) in [`docs/SEND_SYNC_DESIGN.md`](SEND_SYNC_DESIGN.md) | [IV](#thread-safety-markers-send--sync) |
 | E2 | Container mutation during iteration | S-M | Done | [IV](#container-mutation-during-iteration) |
 | E3 | del statement | S-M | Done | [VI](#del-statement-explicit-destruction) |
 | E4 | Ptr escape analysis | XL | 🚧 Partial | [IV](#ptrt-escape-analysis--lifetime-tracking) |
@@ -1316,9 +1316,13 @@ with `Sendable` -- years of warnings and gradual migration. The compiler already
 `is_value_type`. Extending to `is_sendable` (value types + types with only sendable fields)
 is incremental.
 
-**Current state**: Phase 1 done. `is_send` and `is_sync` auto-derivation markers
-on all built-in types (`type_traits.hpp`). Records auto-derive Send/Sync based on
-field types. Infrastructure ready for enforcement when concurrency arrives.
+**Current state**: Phases 1-3 done. `is_send` / `is_sync` auto-derivation on all
+built-in types (`type_traits.hpp`) and records; `Send[T]` / `Sync[T]` marker
+wrappers, `T: Send` bounds, opt-in/opt-out decorators (Phase 2); and the
+diagnostic surface -- `assert_send[T]()` / `assert_sync[T]()` compile-time
+assertions, why-not chains at enforcement sites, and `tpyc --explain-send`
+(Phase 3). Enforcement sites (Channel/spawn/Task) arrive with concurrency
+(Phase 4+). See `docs/SEND_SYNC_DESIGN.md`.
 
 **Dependencies**: None -- markers added now, enforce when concurrency arrives.
 

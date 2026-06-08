@@ -599,6 +599,21 @@ def try_parse(enum_cls, name: str):
     return None
 
 
+class _CompileTimeAssertMeta(type):
+    """`assert_send[T]()` / `assert_sync[T]()` are compile-time-only in
+    TurboPython; under CPython they are no-ops (no static trait model)."""
+    def __getitem__(cls, t):
+        return cls
+
+    def __call__(cls):
+        return None
+
+
+class assert_send(metaclass=_CompileTimeAssertMeta): ...
+
+class assert_sync(metaclass=_CompileTimeAssertMeta): ...
+
+
 # ---------------------------------------------------------------------------
 # Protocols
 # ---------------------------------------------------------------------------

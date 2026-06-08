@@ -101,6 +101,9 @@ COPY = "tpy.copy"
 COPY_ITER = "tpy.copy_iter"
 OWN_ITER = "tpy.own_iter"
 TRY_PARSE = "tpy.try_parse"
+# Compile-time Send/Sync assertions; checked in sema, elided in codegen.
+ASSERT_SEND = "tpy.assert_send"
+ASSERT_SYNC = "tpy.assert_sync"
 
 # -- tpy protocols --
 NATIVE_ITERABLE = "tpy.NativeIterable"

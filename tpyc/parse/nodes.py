@@ -339,6 +339,7 @@ class TpyCall(TpyExpr):
     isinstance_deref_depth: int = 0
     cast_target_type: TpyType | None = None  # Set by sema for typing.cast(T, x): the resolved target type
     cast_source_is_any: bool = False         # Set by sema for typing.cast: True iff source's static type is Any
+    compile_time_assert: bool = False        # Set by sema for assert_send[T]()/assert_sync[T](): checked in sema, elided in codegen
     macro_expansion: 'TpyExpr | None' = None  # Set by sema: replacement expr from @call_macro
     dunder_call: 'TpyMethodCall | None' = None  # Set by sema: obj(args) -> obj.__call__(args)
     # D16 v1.5: try/catch lambda forms. Inner __getattr__ call is stored here;

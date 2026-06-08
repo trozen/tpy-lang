@@ -50,6 +50,7 @@ from .overloads import (
 from .statements import _root_name_of_expr, _is_self_call_deferred
 from .protocols import dynamic_dispatch_type_conforms
 from .type_ops import partial_substitute, post_substitute_hint, seeded_arg_hint
+from .send_chain import why_not_send, why_not_sync, render_chain
 from ..macro_api import MacroArg, MacroFStringPart, CallMacroContext, TypeInfo, _is_static_str
 from ..macro_loader import expand_call_macro
 
@@ -417,7 +418,17 @@ def validate_type_param_bounds(
             if not satisfies_bound(type_arg, bound):
                 raise error_fn(
                     f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
-                    f"for type parameter '{param_name}' of '{func_name}'")
+                    f"for type parameter '{param_name}' of '{func_name}'"
+                    f"{_send_sync_bound_detail(bound, type_arg)}")
+
+
+def _send_sync_bound_detail(bound: TpyType, type_arg: TpyType) -> str:
+    """Why-not chain appended to a failing `T: Send` / `T: Sync` bound."""
+    send = getattr(bound, "name", None) == "Send"
+    if not send and getattr(bound, "name", None) != "Sync":
+        return ""
+    chain = why_not_send(type_arg) if send else why_not_sync(type_arg)
+    return f"\n{render_chain(chain, send)}" if chain is not None else ""
 
 
 _REPR_TEMPLATE = "::tpy::repr_of({0})"
@@ -1140,6 +1151,10 @@ class CallAnalyzer:
             return self._analyze_tpy_own_iter(expr)
         if qname == "tpy.try_parse":
             return self._analyze_tpy_try_parse(expr)
+        if qname == qnames.ASSERT_SEND:
+            return self._analyze_send_sync_assertion(expr, send=True)
+        if qname == qnames.ASSERT_SYNC:
+            return self._analyze_send_sync_assertion(expr, send=False)
         if qname == "builtins.isinstance":
             return self._analyze_isinstance(expr)
         if qname == "typing.cast":
@@ -1575,6 +1590,36 @@ class CallAnalyzer:
             qualified_name="tpy.try_parse",
         )
         return OptionalType(enum_type)
+
+    def _analyze_send_sync_assertion(self, expr: TpyCall, send: bool) -> TpyType:
+        """assert_send[T]() / assert_sync[T](): zero-cost compile-time trait
+        check. Fails with a why-not chain when T does not hold; elided in
+        codegen (see TpyCall.compile_time_assert)."""
+        name = "assert_send" if send else "assert_sync"
+        trait = "Send" if send else "Sync"
+        self._reject_kwargs_for_builtin(expr, name)
+        if expr.args:
+            raise self.ctx.error(f"{name}() takes no value arguments", expr)
+        self._validate_explicit_type_args(expr, 1)
+        if len(expr.type_args) != 1 or expr.type_args[0] is None:
+            raise self.ctx.error(
+                f"{name}[T]() requires exactly one type argument", expr)
+        target = expr.type_args[0]
+        holds = target.is_send() if send else target.is_sync()
+        if not holds:
+            chain = why_not_send(target) if send else why_not_sync(target)
+            detail = render_chain(chain, send) if chain is not None else f"{target} is not {trait}"
+            raise self.ctx.error(f"{name} assertion failed: {detail}", expr)
+        expr.compile_time_assert = True
+        expr.resolved_function_info = FunctionInfo(
+            name=name,
+            params=[],
+            return_type=VOID,
+            is_builtin_function=True,
+            special_handling=True,
+            qualified_name=qnames.ASSERT_SEND if send else qnames.ASSERT_SYNC,
+        )
+        return VOID
 
     def _resolve_isinstance_type(
         self, name: str, expr: TpyCall, *, allow_any: bool = False,

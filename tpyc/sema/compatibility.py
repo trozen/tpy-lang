@@ -22,6 +22,7 @@ from ..typesys import (
     is_callable_type, is_integer_type, is_any_float_type, is_readonly_span,
     is_polymorphic_class_type, SendType, SyncType, unwrap_send_sync)
 from .frame_traits import frame_traits_of_function
+from .send_chain import why_not_send, why_not_sync, render_chain
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
@@ -470,9 +471,12 @@ class TypeCompatibility:
                     holds = frame_traits[0] if isinstance(expected, SendType) \
                         else frame_traits[1]
             if not holds:
+                is_send = isinstance(expected, SendType)
+                chain = why_not_send(actual) if is_send else why_not_sync(actual)
+                detail = f"\n{render_chain(chain, is_send)}" if chain is not None else ""
                 return CompatError(
                     f"'{actual}' is not {trait} -- cannot use it where "
-                    f"'{expected}' is expected in {context}", loc)
+                    f"'{expected}' is expected in {context}{detail}", loc)
             return self._check_compat(
                 unwrap_send_sync(actual), expected.wrapped, context, loc,
                 source_expr, is_return, coercion_ctx, target_is_storage_form)

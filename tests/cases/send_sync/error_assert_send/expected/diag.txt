@@ -1,0 +1,3 @@
+main.py:13: error: assert_send assertion failed: list[Order] is not Send
++-- Order
+    +-- field 'handler: Ptr[Int32]' is not Send (raw pointer, no ownership guarantee)

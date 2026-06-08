@@ -544,6 +544,8 @@ class StatementGenerator:
         elif isinstance(stmt, TpyExprStmt):
             if isinstance(stmt.expr, TpyStrLiteral):
                 return None  # Skip docstrings
+            if isinstance(stmt.expr, TpyCall) and stmt.expr.compile_time_assert:
+                return None  # assert_send/assert_sync: checked in sema, no emission
             if self._get_error_return_fi(stmt.expr):
                 return self._gen_error_return_stmt_block(
                     self._gen_error_return_call(stmt.expr), indent)

@@ -1,1 +1,3 @@
 main.py:24: error: 'ViewPet' is not Send -- cannot use it where 'Send[Pet]' is expected in argument 'p'
+ViewPet is not Send
++-- field 's: StrView' is not Send (non-owning view borrows originating-thread storage)

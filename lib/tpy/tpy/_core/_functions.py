@@ -38,3 +38,13 @@ def own_iter[T](x: T) -> T: ...
 
 @builtin_function("tpy.try_parse")
 def try_parse(enum_type, name: str): ...
+
+
+# Compile-time Send/Sync assertions: `assert_send[T]()` is a zero-cost static
+# check that fails compilation (with a why-not chain) when T is not Send.
+# Checked in sema, elided in codegen.
+@builtin_function("tpy.assert_send")
+def assert_send[T]() -> None: ...
+
+@builtin_function("tpy.assert_sync")
+def assert_sync[T]() -> None: ...

@@ -168,6 +168,13 @@ class TypeResolver:
     # Public entry point
     # ------------------------------------------------------------------
 
+    def parse_type_ref(self, type_string: str) -> ResolverInputNode:
+        """Parse a type-expression string into a resolver input node, ready
+        for `resolve()`. Wraps the parser's annotation walker so callers (e.g.
+        the `--explain-send` CLI) don't reach into parser internals."""
+        node = ast.parse(type_string, mode="eval").body
+        return self._parser._parse_type_ref(node, type_param_scope={})
+
     def resolve(
         self, ref: ResolverInputNode,
         type_param_scope: dict[str, TypeParamKind] | None = None,

@@ -1,1 +1,2 @@
 main.py:4: error: Class 'Order' declares Send but field 'h: Ptr[Int32]' is not Send
+Ptr[Int32] is not Send (raw pointer, no ownership guarantee)

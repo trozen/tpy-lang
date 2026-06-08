@@ -1,0 +1,1 @@
+main.py:6: error: assert_sync assertion failed: list[Int32] is not Sync (mutable container, aliased cross-thread mutation is unsynchronized)
