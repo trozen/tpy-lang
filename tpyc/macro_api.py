@@ -429,6 +429,43 @@ class _MacroContextBase:
             return TypeInfo.from_tpy_type(enum_t)
         return _resolve_record_name(self._ctx, name)
 
+    def lookup_function_signatures(self, name: str) -> list[Signature] | None:
+        """Signatures -- one per overload -- of a free function visible in
+        the current module (module-local or imported under that local
+        name/alias), or None if `name` is not a known function.
+
+        Each Signature carries the overload's ordered (param_name, type)
+        list and its return type, so a macro can type a value by the slot
+        it flows into (params) or by the function it is returned from
+        (return_type). The caller chooses the overload policy: a slot-typing
+        macro takes the single-overload case (`len(sigs) == 1`); an
+        overload-aware resolver (e.g. query matching) inspects them all.
+        Visibility matches what the module's own call sites see at this
+        point of sema.
+        """
+        overloads = self._ctx.registry.get_function(name)
+        if overloads is None:
+            # special_handling functions skip register_function_group, so the
+            # registry won't see them by name; fall back to the imported-name
+            # map the way this module's own call sites resolve them.
+            src = self._ctx.imported_names.get(name)
+            if src is not None:
+                mod_info = self._ctx.registry.get_module(src[0])
+                if mod_info is not None:
+                    overloads = mod_info.functions.get(src[1])
+        if not overloads:
+            return None
+        return [
+            Signature(
+                params=tuple(
+                    (p.name, TypeInfo.from_tpy_type(p.type))
+                    for p in fi.params),
+                return_type=(TypeInfo.from_tpy_type(fi.return_type)
+                             if fi.return_type is not None else None),
+            )
+            for fi in overloads
+        ]
+
     def qualified_name(self, type_info: TypeInfo) -> str:
         """Module-qualified type name (e.g. 'log_infra.LogHandle').
 
@@ -1249,6 +1286,17 @@ class TypeInfo:
 # ---------------------------------------------------------------------------
 # FieldInfo -- read-only wrapper around typesys.FieldInfo
 # ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class Signature:
+    """A callable's parameters and return type as a macro sees them.
+
+    `params` mirrors FunctionMacroContext.params (ordered (name, type);
+    type is None only if a param carries no annotation).
+    """
+    params: tuple[tuple[str, TypeInfo | None], ...]
+    return_type: TypeInfo | None
+
 
 @dataclass
 class FieldInfo:

@@ -177,6 +177,10 @@ class ClassInfo:
     def set_match_args(self, names: list[str]) -> None: ...
     def warning(self, msg: str, loc=None) -> None: ...
     def error(self, msg: str, loc=None) -> NoReturn: ...
+
+class Signature:                                 # one overload of a callable
+    params: tuple[tuple[str, TypeInfo | None], ...]  # ordered (name, type); type None only if unannotated
+    return_type: TypeInfo | None                 # None when no return type is recorded
 ```
 
 Call-site macros receive a `CallMacroContext` with call-site context and type
@@ -197,6 +201,7 @@ class CallMacroContext:
     def qualified_name(type_info) -> str: ...            # "module.TypeName"
     def get_record_fields(name: str) -> list[FieldInfo] | None: ...    # for match_args records
     def lookup_imported_name(name: str) -> TypeInfo | None: ...        # module-visible record/enum by name
+    def lookup_function_signatures(name: str) -> list[Signature] | None: ...  # visible free function's overloads (Signature: params + return_type); None if unknown
 
     # AST helpers
     def self_field(name) -> Expr: ...                    # AST for self.<name>
@@ -633,7 +638,14 @@ Context surface:
   resolves a method's return type or `None`; `qualified_name(type)` renders a
   type's module-qualified name; `lookup_imported_name(name)` resolves a
   module-visible record or enum (module-local or imported under that local
-  name/alias) to a `TypeInfo`, or `None`.
+  name/alias) to a `TypeInfo`, or `None`; `lookup_function_signatures(name)`
+  returns a module-visible free function's overloads as a list of `Signature`
+  (each carrying the overload's `(param_name, type)` list and `return_type`),
+  or `None` when the name is not a known function -- so a value flowing into a
+  typed call slot can be typed by that slot (or by the function it is returned
+  from). The caller picks the overload policy: take the single-overload case,
+  or inspect them all (e.g. overload-aware query matching). The same
+  `Signature` shape is intended to back a future method-overload lookup.
 - *Mutation:* `annotate_local(name, type)` sets a local's declared type at its
   introducing statement (TPy parses `x = expr` as an untyped `TpyVarDecl`, so
   this sets that decl's `.type`; a `TpyAssign` re-bind is converted to a
