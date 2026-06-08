@@ -1231,6 +1231,38 @@ class SemanticAnalyzer:
                 func,
             )
 
+    def _collect_generator_locals(
+        self, func: TpyFunction, local_ns: Namespace, *, exclude_self: bool,
+    ) -> None:
+        """Hoist function-level locals into `func.generator_locals` for
+        resumable-frame struct generation (locals living across a yield /
+        await suspension become frame fields).
+
+        Excludes params, `self` (methods), and `global`-declared names -- a
+        global lives in the module slot, so a frame field would shadow it and
+        swallow writes. Must run after `resolve_all` so resolved (not
+        Pending*) types reach the frame fields. Shared by the free-function
+        and method paths so the exclusion policy can't drift between them.
+        """
+        param_names = {pname for pname, _ in func.params}
+        global_decls = self.ctx.func.global_declarations
+
+        def keep(name: str) -> bool:
+            return (name not in param_names and name not in global_decls
+                    and not (exclude_self and name == "self"))
+
+        locals_dict: dict[str, 'TpyType'] = {}
+        for name, binding in local_ns.all_bindings().items():
+            if keep(name) and binding.type is not None:
+                locals_dict[name] = binding.type
+        for name, (vtype, _, _) in self.ctx.func.pending_loop_vars.items():
+            if keep(name) and vtype is not None:
+                locals_dict[name] = vtype
+        _assert_no_pending_locals(locals_dict, func.name)
+        _extract_proto_param_forwarding(
+            locals_dict, func, self.ctx.func.write_history)
+        func.generator_locals = list(locals_dict.items())
+
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
         # Stub functions (extern imports with ... body) have no body to analyze
@@ -1300,25 +1332,12 @@ class SemanticAnalyzer:
         scan = self.stmts._prescan_and_analyze_body(func, resolved_params, scope, local_ns)
         self.deduction.resolve_all()
 
-        # Collect generator/async local variables for struct field generation.
-        # Same hoisting policy: every function-level local becomes a struct
-        # field. Async coros use the same `func.generator_locals` slot; the
-        # field-rewrite path in expressions/statements is shared via the
+        # Async coros use the same `func.generator_locals` slot as generators;
+        # the field-rewrite path in expressions/statements is shared via the
         # in_generator_body flag (the `in_async_coro_body` flag steers only
         # the return-statement rewrite).
         if func.is_generator or func.is_async:
-            param_names = {pname for pname, _ in func.params}
-            locals_dict: dict[str, 'TpyType'] = {}
-            for name, binding in local_ns.all_bindings().items():
-                if name not in param_names and binding.type is not None:
-                    locals_dict[name] = binding.type
-            for name, (vtype, _, _) in self.ctx.func.pending_loop_vars.items():
-                if name not in param_names and vtype is not None:
-                    locals_dict[name] = vtype
-            _assert_no_pending_locals(locals_dict, func.name)
-            _extract_proto_param_forwarding(
-                locals_dict, func, self.ctx.func.write_history)
-            func.generator_locals = list(locals_dict.items())
+            self._collect_generator_locals(func, local_ns, exclude_self=False)
 
         # Finalize nested def escape analysis
         self._finalize_nested_def_escapes()
@@ -2525,24 +2544,8 @@ class SemanticAnalyzer:
 
             self.deduction.resolve_all()
 
-            # Collect generator / async-coro local variables for struct field
-            # generation (locals that may live across yield / await suspensions
-            # are hoisted to the resumable-frame struct). Must run after
-            # resolve_all so the resolved (not Pending*) types reach the frame
-            # fields; mirrors the free-function path.
             if method.is_generator or method.is_async:
-                param_names = {pname for pname, _ in method.params}
-                locals_dict: dict[str, 'TpyType'] = {}
-                for name, binding in local_ns.all_bindings().items():
-                    if name not in param_names and name != "self" and binding.type is not None:
-                        locals_dict[name] = binding.type
-                for name, (vtype, _, _) in self.ctx.func.pending_loop_vars.items():
-                    if name not in param_names and name != "self" and vtype is not None:
-                        locals_dict[name] = vtype
-                _assert_no_pending_locals(locals_dict, method.name)
-                _extract_proto_param_forwarding(
-                    locals_dict, method, self.ctx.func.write_history)
-                method.generator_locals = list(locals_dict.items())
+                self._collect_generator_locals(method, local_ns, exclude_self=True)
 
             # Store Phase 1 local mutation facts on method FunctionInfo.
             # For @overload methods, get_method() returns overloads[0] (the first

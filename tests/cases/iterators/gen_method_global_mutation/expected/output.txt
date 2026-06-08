@@ -1,0 +1,3 @@
+x = 0 emitted = 1
+x = 1 emitted = 2
+x = 2 emitted = 3
