@@ -13,6 +13,7 @@ from ..typesys import (
     PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType,
     unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
+    collapse_tuple_own_elements,
     LiteralType,
     ViewTypeFamily, view_family_for_type,
     PendingGenericInstanceType, contains_fn_type,
@@ -3274,6 +3275,15 @@ class StatementAnalyzer:
             if (stmt.name in self.ctx.func.current_reassigned_vars
                     or self.ctx.is_top_level):
                 var_type = unwrap_ref_type(var_type)
+            # A reassigned per-element-Own tuple local must model the unified
+            # borrow type, not owning storage (else an alias rebind copies
+            # where CPython aliases). Recorded on the decl node so codegen
+            # reads the collapsed type instead of re-deriving Own from init.
+            if stmt.name in self.ctx.func.current_reassigned_vars:
+                collapsed = collapse_tuple_own_elements(var_type)
+                if collapsed is not var_type:
+                    var_type = collapsed
+                    self.ctx.var_types[id(stmt)] = var_type
             # Track inferred writes for potential future retro-validation.
             self.deduction.record_write(stmt.name, stmt.init, init_type)
             # Annotate tuple literal element capture modes (local context)

@@ -2435,6 +2435,26 @@ def own_tuple_target(expected: 'TpyType') -> 'TupleType | None':
     return None
 
 
+def collapse_tuple_own_elements(var_type: 'TpyType') -> 'TpyType':
+    """Collapse per-element `Own[T]` -> `T` in a tuple type.
+
+    A reassigned tuple local takes one borrow-form C++ shape
+    (`std::tuple<..., T*>`) across all bindings so an alias rebind aliases
+    the source like CPython; a per-element `Own[T]` slot would otherwise
+    keep it on owning storage form and copy the alias. Collapsing to the
+    unified borrow type lets sema and codegen agree on the borrow-slot path.
+    """
+    inner = unwrap_readonly(var_type)
+    if not isinstance(inner, TupleType):
+        return var_type
+    if not any(isinstance(et, OwnType) for et in inner.element_types):
+        return var_type
+    collapsed = TupleType(tuple(
+        et.wrapped if isinstance(et, OwnType) else et
+        for et in inner.element_types))
+    return ReadonlyType(collapsed) if isinstance(var_type, ReadonlyType) else collapsed
+
+
 @dataclass(frozen=True)
 class NoneType(TpyType):
     """Type of the `None` literal at value-bearing positions (generic
