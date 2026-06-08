@@ -1,1 +1,0 @@
-main.py:26: error: Cannot bind tuple local 't' to both an owning value (a call returning Own[...] elements) and a reference to existing storage -- the two need different representations. Use a separate local for the owning result.

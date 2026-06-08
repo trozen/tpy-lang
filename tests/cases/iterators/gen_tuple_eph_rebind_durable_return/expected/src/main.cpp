@@ -39,7 +39,7 @@ std::tuple<int32_t, Box*> pick(Holder& h) {
         if (!__r_1.has_value()) break;
         auto&& p = ::tpy::unwrap_ref(*__r_1);
         // q = p
-        auto q = p;
+        std::tuple<int32_t, Box*> q = p;
         // q = h.pair
         q = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
         // return q

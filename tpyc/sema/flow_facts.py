@@ -151,6 +151,11 @@ class FlowFacts:
     # Hazard fact: (local name, dangerous element index) for tuple locals owning
     # a fresh non-value member (see sema.context).
     owns_fresh_tuple_member_vars: frozenset[tuple[str, int]] = frozenset()
+    # Hazard fact: tuple locals bound from an owning-tuple call (Own[tuple] /
+    # per-element-Own). Flow-sensitive so a branch-mixed binding (`if c: t =
+    # make_pair() else: t = h.pair`) does not leak the owning kind into the
+    # else-arm; the boundary return check rejects when possibly-owning.
+    owning_storage_tuple_vars: frozenset[str] = frozenset()
     # Borrow map: (storage_name, borrower_name, BorrowKind) triples.
     # "__for_iter" is used as the borrower for implicit for-loop iterator borrows.
     borrows: frozenset[tuple[str, str, BorrowKind]] = frozenset()
@@ -193,6 +198,10 @@ class FlowFacts:
             ),
             owns_fresh_tuple_member_vars=_merge_sets(
                 then.owns_fresh_tuple_member_vars, else_.owns_fresh_tuple_member_vars,
+                then_term, else_term, _MergePolicy.UNION,
+            ),
+            owning_storage_tuple_vars=_merge_sets(
+                then.owning_storage_tuple_vars, else_.owning_storage_tuple_vars,
                 then_term, else_term, _MergePolicy.UNION,
             ),
             borrows=_merge_borrow_triples(

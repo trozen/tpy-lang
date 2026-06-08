@@ -24,7 +24,7 @@ from ..parse import (
     TpyDictLiteral, TpySetLiteral, TpyDictComprehension, TpySetComprehension,
     TpyGeneratorExpression,
     TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpySlice, TpyCall, TpyName, TpyFieldAccess,
-    TpyIfExpr,
+    TpyIfExpr, TpyAssign, TpyVarDecl, TpyStmt,
 )
 from ..namespace import Namespace, BindingKind
 from ..type_def_registry import (
@@ -546,6 +546,11 @@ class LocalCppForm(Enum):
         from another storage-form source, `Own[tuple[T|None, ...]]` params.
         Wraps via `tpy::tuple_to_pointer` when feeding pointer-form tuple
         params/destructure targets.
+      * `BORROW_TUPLE` -- `std::tuple<..., T*>` borrow form. A reassigned /
+        branch-hoisted pointer-repr tuple local: it aliases storage (its
+        element pointers), an owning-call RHS materializes into a storage
+        slot, and a storage-form lvalue RHS lifts via `tpy::tuple_to_pointer`.
+        The tuple analog of a scalar rvalue-reassigned `POINTER` local.
       * `VALUE` -- everything else (value types, T& ref-bound locals,
         plain non-value locals rendered via T&).
     """
@@ -555,6 +560,7 @@ class LocalCppForm(Enum):
     VALUE_VARIANT = auto()
     PTR_VARIANT = auto()
     STORAGE_TUPLE = auto()
+    BORROW_TUPLE = auto()
     VALUE = auto()
 
 
@@ -666,6 +672,13 @@ class CodeGenContext:
     # Walrus locals holding the owning STORAGE tuple form: their
     # storage_form_tuple_locals membership must survive the same restores.
     walrus_storage_tuple_locals: set[str] = field(default_factory=set)
+    # Owning-slot name for a function-scope tuple slot (a branch-hoisted owning
+    # tuple local, or a reassigned-borrow walrus) whose `rebind_slots` mapping
+    # must survive branch-scope restores. The slot decl is function-scope
+    # (pending_hoist_decls / temps), but rebind_slots IS snapshot/restored, so
+    # without this a sibling branch would allocate a SECOND slot for the same
+    # local. Re-applied to rebind_slots in restore_local_scope.
+    persistent_rebind_slots: dict[str, str] = field(default_factory=dict)
     global_names: set[str] = field(default_factory=set)
     current_ns: Namespace | None = None
     in_method: bool = False
@@ -798,6 +811,13 @@ class CodeGenContext:
     # borrow form -- the storage<->pointer wrap must NOT fire when writing into
     # them (the local IS the borrow, not a storage slot).
     borrow_form_tuple_locals: set[str] = field(default_factory=set)
+    # Subset of borrow_form_tuple_locals declared with const element pointers
+    # (`std::tuple<..., const T*>`) because at least one binding source is a
+    # const-storage location. Codegen derives this as the OR over every source
+    # feeding the local (final post-inference const), and every tuple_to_pointer
+    # lift into the local must target this const borrow type; a write through a
+    # const element is rejected in sema. Populated by `_compute_borrow_tuple_const`.
+    const_borrow_form_tuple_locals: set[str] = field(default_factory=set)
 
     # --- Comprehension-local variable names ---
     # Loop variables inside comprehensions shadow globals during element
@@ -1049,6 +1069,7 @@ class CodeGenContext:
         self.storage_form_tuple_locals = set()
         self.const_storage_form_tuple_locals = set()
         self.borrow_form_tuple_locals = set()
+        self.const_borrow_form_tuple_locals = set()
         self.storage_form_optional_locals = set()
         self.const_storage_form_optional_locals = set()
         self.slots.reset()
@@ -1089,6 +1110,7 @@ class CodeGenContext:
         self.assign_narrowed_types = {}
         self.literal_facts = {}
         self.walrus_pre_declared = set()
+        self.persistent_rebind_slots = {}
         self.walrus_deref_rewrites = {}
         self.walrus_storage_tuple_locals = set()
         self.overload_terminated = False
@@ -1154,6 +1176,7 @@ class CodeGenContext:
         # classification of walrus storage-tuple locals alive with them.
         self.narrowed_vars.update(self.walrus_deref_rewrites)
         self.storage_form_tuple_locals.update(self.walrus_storage_tuple_locals)
+        self.rebind_slots.update(self.persistent_rebind_slots)
         self.declared_persistent_aliases = snap.declared_persistent_aliases.copy()
 
     def register_walrus_deref(self, name: str, deref: str) -> None:
@@ -1579,6 +1602,7 @@ class CodeGenContext:
                     or obj in self.const_indirect_locals)
         if isinstance(expr, TpyName):
             return (expr.name in self.const_storage_form_tuple_locals
+                    or expr.name in self.const_borrow_form_tuple_locals
                     or expr.name in self.const_ref_params
                     or expr.name in self.const_indirect_locals)
         return False
@@ -1640,6 +1664,8 @@ class CodeGenContext:
             return LocalCppForm.PTR_VARIANT
         if name in self.storage_form_tuple_locals:
             return LocalCppForm.STORAGE_TUPLE
+        if name in self.borrow_form_tuple_locals:
+            return LocalCppForm.BORROW_TUPLE
         if name in self.pointer_locals:
             return LocalCppForm.POINTER
         return LocalCppForm.VALUE
@@ -1864,6 +1890,45 @@ class CodeGenContext:
         """
         return self.generator_forwarded_locals.get(name, name)
 
+    def owning_generator_tuple_locals(self, func: 'TpyFunction') -> set[str]:
+        """Generator/async frame locals that are OWNING pointer-repr tuples
+        (bound from an `Own[tuple[...]]` call, never reassigned).
+
+        Such a local owns its element storage, so its frame field must be a
+        `tpy::frame_slot<std::tuple<..., T>>` (storage form) -- a borrow-form
+        `std::tuple<..., T*>` field can't hold the owned elements and the
+        owning rvalue can't be address-taken into it. Aliasing tuple locals
+        (bound from a storage lvalue) stay borrow form. The reassigned mix
+        (owning + alias in a resumable body) is not yet handled here -- it
+        needs both a slot field and a borrow field.
+        """
+        scan = self.analyzer.function_scan_results.get(id(func))
+        reassigned = scan.reassigned if scan is not None else set()
+        gen_names = {n for n, _ in (func.generator_locals or [])}
+        owning: set[str] = set()
+
+        def visit(stmts: list[TpyStmt]) -> None:
+            for stmt in stmts:
+                src = None
+                if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
+                    name, src = stmt.name, stmt.init
+                elif (isinstance(stmt, TpyAssign)
+                      and isinstance(stmt.target, TpyName)):
+                    name, src = stmt.target.name, stmt.value
+                else:
+                    name = None
+                if (name is not None and src is not None
+                        and name in gen_names and name not in reassigned):
+                    inner = src.expr if isinstance(src, TpyCoerce) else src
+                    if (isinstance(inner, (TpyCall, TpyMethodCall))
+                            and self.is_storage_form_source(inner)):
+                        owning.add(name)
+                for body in stmt.sub_bodies():
+                    visit(body)
+
+        visit(func.body)
+        return owning
+
     def setup_resumable_frame_locals(self, func: 'TpyFunction') -> None:
         """Populate `pointer_locals`, `generator_optional_fields`, and
         `generator_frame_slot_locals` for a resumable-frame body
@@ -1902,8 +1967,21 @@ class CodeGenContext:
         if not func.generator_locals:
             return
 
+        owning_tuples = self.owning_generator_tuple_locals(func)
         for lname, ltype in func.generator_locals:
             ltype_inner = unwrap_ref_type(ltype)
+            # An OWNING pointer-repr tuple local is backed by a storage
+            # `tpy::frame_slot<std::tuple<..., T>>` field (emplace writes,
+            # `(*name)` reads), like any other owning non-value frame local --
+            # not a borrow-form field (which can't hold the owned elements).
+            if lname in owning_tuples:
+                self.generator_optional_fields.add(lname)
+                self.generator_frame_slot_locals.add(lname)
+                # The frame slot holds the tuple BY VALUE (storage form), so
+                # element reads use `.` not `->` -- mark it a storage-form
+                # source like the sync owning local.
+                self.storage_form_tuple_locals.add(lname)
+                continue
             # Borrow-form tuple frame fields are declared std::tuple<..., T*>
             # (gen_coro_struct), so assignments from storage sources need the
             # element-wise pointer lift like any borrow-form local. Pointer-form

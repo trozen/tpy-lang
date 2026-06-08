@@ -34,8 +34,9 @@ from ..parse import (
     TpyAssert, TpyBoolLiteral, TpyArrayLiteral,
     TpyFieldAccess, TpyMethodCall,
     TpyBinOp, TpyCall, TpyIntLiteral, TpyUnaryOp, TpyCoerce, TpyIfExpr,
-    TpyMatch,
+    TpyMatch, TpyNamedExpr,
 )
+from dataclasses import fields as dc_fields
 from ..namespace import Namespace
 from ..symbol_binding import SymbolKind
 from ..sema.context import PENDING_CONTAINER_TYPES
@@ -259,7 +260,92 @@ class StatementGenerator:
                         rec_info, qname=rec_info.qualified_name())
                 else:
                     self.ctx.current_method_record_type = NominalType(owning_record_name)
+        self._compute_borrow_tuple_const(func)
         return scan
+
+    def _compute_borrow_tuple_const(self, func: TpyFunction) -> None:
+        """Populate `const_borrow_form_tuple_locals`: borrow-form tuple locals
+        whose declared element pointers must be `const T*` because some binding
+        source is a const-storage location.
+
+        Codegen runs after Phase-2 const inference, so each source's final
+        const-ness is known here. The declared const must be at least as const
+        as every source feeding the local (mutable->const lift is safe,
+        const->mutable would not compile); we therefore OR const over all
+        bindings. A bare-name source feeding from another borrow-form tuple
+        carries that local's const, so iterate to a fixpoint over name chains.
+        """
+        bindings: dict[str, list[TpyExpr]] = {}
+
+        def collect(stmts: list[TpyStmt]) -> None:
+            for stmt in stmts:
+                if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
+                    record(stmt.name, stmt.init)
+                elif (isinstance(stmt, TpyAssign)
+                      and isinstance(stmt.target, TpyName)):
+                    record(stmt.target.name, stmt.value)
+                # Walrus (`(t := src)`) binds too -- in conditions, values, etc.
+                for e in stmt.exprs():
+                    for tgt, src in _walrus_bindings(e):
+                        record(tgt, src)
+                for body in stmt.sub_bodies():
+                    collect(body)
+
+        def record(tgt: str, src: TpyExpr) -> None:
+            if tgt not in self.ctx.reassigned_vars and tgt not in self.ctx.hoisted_vars:
+                return
+            st = self.ctx.analyzer.get_expr_type(src)
+            stb = (unwrap_readonly(unwrap_ref_type(st))
+                   if st is not None else None)
+            if isinstance(stb, TupleType) and stb.has_pointer_repr_element():
+                bindings.setdefault(tgt, []).append(src)
+
+        def _walrus_bindings(expr: TpyExpr | None):
+            """Yield (target, value) for every walrus node in `expr` (generic
+            dataclass-field recursion, like prescan's walrus scan)."""
+            if expr is None:
+                return
+            if isinstance(expr, TpyNamedExpr):
+                yield expr.target, expr.value
+            for f in dc_fields(expr):
+                val = getattr(expr, f.name)
+                if isinstance(val, TpyExpr):
+                    yield from _walrus_bindings(val)
+                elif isinstance(val, list):
+                    for item in val:
+                        if isinstance(item, TpyExpr):
+                            yield from _walrus_bindings(item)
+
+        collect(func.body)
+        if not bindings:
+            return
+        const_set = self.ctx.const_borrow_form_tuple_locals
+        changed = True
+        while changed:
+            changed = False
+            for name, srcs in bindings.items():
+                if name in const_set:
+                    continue
+                if any(self._tuple_source_is_const(s) for s in srcs):
+                    const_set.add(name)
+                    changed = True
+
+    def _tuple_source_is_const(self, src: TpyExpr) -> bool:
+        """Whether a borrow-tuple binding source reads from const storage.
+
+        A ternary feeds whichever arm runs, so it is const if either arm is.
+        An explicit `readonly[...]` source (readonly param / field / return) is
+        const even though it is not in `const_ref_params`: its element pointers
+        lift as `const T*`, so the borrow local must declare them const.
+        """
+        inner = self.ctx.unwrap_copy(src)
+        if isinstance(inner, TpyIfExpr):
+            return (self._tuple_source_is_const(inner.then_expr)
+                    or self._tuple_source_is_const(inner.else_expr))
+        if self.ctx.is_const_storage_source(inner):
+            return True
+        st = self.ctx.analyzer.get_expr_type(inner)
+        return isinstance(st, ReadonlyType)
 
     def gen_body(self, out: TextIO, body: list[TpyStmt],
                  params: list[tuple[str, TpyType]], return_type: TpyType,
@@ -1560,10 +1646,15 @@ class StatementGenerator:
             expr, yield_type, self.ctx.unwrap_copy(yield_stmt.value))
 
     def _maybe_wrap_tuple_to_pointer(self, expr: str, target_type: TpyType | None,
-                                      source: TpyExpr | None = None) -> str:
+                                      source: TpyExpr | None = None,
+                                      const: bool = False) -> str:
         """Wrap a storage-form tuple expression with tuple_to_pointer if the
         target slot is std::tuple<T*, ...> (borrow form) and the source reads
         from a storage location. Mirror of `_maybe_wrap_tuple_to_storage`.
+
+        The lifted borrow type must match the destination local's declared
+        const-ness (see `_compute_borrow_tuple_const`): `const` forces const
+        element pointers; a const source also implies them.
         """
         if target_type is None:
             return expr
@@ -1573,7 +1664,66 @@ class StatementGenerator:
             return expr
         if source is None or not self.ctx.is_storage_form_source(source):
             return expr
-        return f"::tpy::tuple_to_pointer<{self.types.tuple_borrow_cpp(unwrapped)}>({expr})"
+        is_const = const or self.ctx.is_const_storage_source(source)
+        borrow_cpp = self.types.tuple_borrow_cpp(unwrapped, const=is_const)
+        return f"::tpy::tuple_to_pointer<{borrow_cpp}>({expr})"
+
+    def _tuple_owning_slot(self, name: str, var_type: TpyType | None,
+                           indent: str) -> tuple[str, str]:
+        """Return (slot_name, prefix_decl) for the storage slot backing an
+        owning-call binding of borrow-form tuple local `name`.
+
+        The slot is `std::optional<std::tuple<..., T>>` (storage form); the
+        owning rvalue is `.emplace`d into it and the local aliases the slot via
+        `tuple_to_pointer`. Hoisted/branch-hoisted locals put the slot in
+        `pending_hoist_decls` (function scope) so it outlives the branch; a
+        straight-line local declares it inline. Reused across rebinds via
+        `rebind_slots` so a later owning RHS emplaces into the same slot.
+        """
+        existing = self.ctx.rebind_slots.get(name)
+        if existing is not None:
+            return existing, ""
+        storage_cpp = unwrap_readonly(unwrap_ref_type(var_type)).to_cpp_stored()
+        slot = self.ctx.slots.next_slot()
+        self.ctx.rebind_slots[name] = slot
+        slot_opt = f"std::optional<{storage_cpp}>"
+        if (name in self.ctx.hoisted_vars
+                or name in self.ctx.branch_hoisted_vars):
+            static_kw = "static " if self.ctx.slots.global_scope else ""
+            self.ctx.pending_hoist_decls.append(f"{static_kw}{slot_opt} {slot};\n")
+            # The function-scope slot is shared across branches; keep its
+            # rebind_slots mapping alive past branch-scope restores so a
+            # sibling arm reuses it instead of allocating a second slot.
+            self.ctx.persistent_rebind_slots[name] = slot
+            return slot, ""
+        return slot, f"{indent}{slot_opt} {slot};\n"
+
+    def _borrow_tuple_rhs(self, name: str, init: TpyExpr,
+                          var_type: TpyType | None, elem_const: bool,
+                          indent: str) -> tuple[str, str]:
+        """Return (prefix_decl, rhs_expr) for assigning `init` into the
+        borrow-form tuple local `name` (`std::tuple<..., T*>`).
+
+        Owning-call RHS -> `.emplace` into a storage slot, then lift the slot
+        (lvalue) to the borrow form; storage-form lvalue RHS -> element-wise
+        `tuple_to_pointer` lift; borrow-form RHS (literal / pointer-form local)
+        -> assign directly. All lifts target the local's declared const-ness.
+        """
+        inner = self.ctx.unwrap_copy(init)
+        init_expr = self.expressions.gen_expr(init, var_type)
+        # An owning-call RHS (Own[tuple] / per-element-Own return) is a dying
+        # rvalue -- materialize a slot rather than take its address. The
+        # owning-call shape is exactly is_storage_form_source for a call node.
+        owning_call = (isinstance(inner, (TpyCall, TpyMethodCall))
+                       and self.ctx.is_storage_form_source(inner))
+        if owning_call:
+            borrow_cpp = self.types.tuple_borrow_cpp(
+                unwrap_readonly(unwrap_ref_type(var_type)), const=elem_const)
+            slot, prefix = self._tuple_owning_slot(name, var_type, indent)
+            return prefix, (f"::tpy::tuple_to_pointer<{borrow_cpp}>"
+                            f"({slot}.emplace({init_expr}))")
+        return "", self._maybe_wrap_tuple_to_pointer(
+            init_expr, var_type, inner, const=elem_const)
 
     def _typed_brace_init(self, init_expr: str,
                           target_type: TpyType | None) -> str:
@@ -1721,19 +1871,21 @@ class StatementGenerator:
                     return self._gen_pointer_local_rebind(stmt.name, cpp_type, stmt.init, var_type, indent)
                 if form is LocalCppForm.PTR_VARIANT:
                     return self._gen_ptr_variant_local_reassign(stmt, var_type, cpp_name, indent)
+                if form is LocalCppForm.BORROW_TUPLE:
+                    # The local IS the borrow (std::tuple<..., T*>): an
+                    # owning-call RHS materializes into the storage slot, a
+                    # storage-form lvalue RHS lifts element-wise to pointers,
+                    # a borrow-form RHS assigns directly. Lifts match the
+                    # local's declared const-ness.
+                    elem_const = stmt.name in self.ctx.const_borrow_form_tuple_locals
+                    prefix, rhs = self._borrow_tuple_rhs(
+                        stmt.name, stmt.init, var_type, elem_const, indent)
+                    return f"{prefix}{indent}{cpp_name} = {rhs};\n"
                 # String x = x + y -> x += y for buffer reuse
                 if result := self._try_str_inplace_append(stmt.name, cpp_name, stmt.init, var_type, indent):
                     return result
                 init_expr = self.expressions.gen_expr(stmt.init, var_type)
-                if stmt.name in self.ctx.borrow_form_tuple_locals:
-                    # The local IS the borrow (std::tuple<..., T*>): a
-                    # storage-form RHS (field, subscript, storage local) is
-                    # lifted element-wise to pointers; a borrow-form RHS
-                    # assigns directly.
-                    init_expr = self._maybe_wrap_tuple_to_pointer(
-                        init_expr, var_type, self.ctx.unwrap_copy(stmt.init))
-                else:
-                    init_expr = self._maybe_wrap_tuple_to_storage(init_expr, var_type, stmt.init)
+                init_expr = self._maybe_wrap_tuple_to_storage(init_expr, var_type, stmt.init)
                 return f"{indent}{cpp_name} = {init_expr};\n"
             return None
 
@@ -1749,6 +1901,20 @@ class StatementGenerator:
         if (stmt.init is not None
                 and isinstance(target_type, TupleType)
                 and target_type.has_pointer_repr_element()):
+            # A REASSIGNED pointer-repr tuple local has one fixed C++ shape
+            # across all its bindings: borrow form (`std::tuple<..., T*>`). An
+            # owning-call RHS materializes into a function-local storage slot
+            # and the local aliases it; storage lvalue / borrow sources lift /
+            # assign as usual. This subsumes the owning-storage and the
+            # alias-rebind cases under one representation (the tuple analog of
+            # the scalar rvalue-reassigned pointer-local model).
+            if stmt.name in self.ctx.reassigned_vars:
+                self.ctx.borrow_form_tuple_locals.add(stmt.name)
+                elem_const = stmt.name in self.ctx.const_borrow_form_tuple_locals
+                borrow_cpp = self.types.tuple_borrow_cpp(target_type, const=elem_const)
+                prefix, rhs = self._borrow_tuple_rhs(
+                    stmt.name, stmt.init, target_type, elem_const, indent)
+                return f"{prefix}{indent}{borrow_cpp} {cpp_name} = {rhs};\n"
             if self.ctx.is_storage_form_source(stmt.init):
                 self.ctx.storage_form_tuple_locals.add(stmt.name)
             else:
@@ -1766,13 +1932,6 @@ class StatementGenerator:
                                     target_type.element_types[i])
                                 for i, cap in enumerate(init_inner.elem_capture))):
                     self.ctx.storage_form_tuple_locals.add(stmt.name)
-            # A reassigned local first bound from a BORROW-form source (loop
-            # var, pointer-form local, ref-captured literal) keeps the borrow
-            # C++ shape across rebinds, so a later storage-form RHS must take
-            # the element-wise lift on the reassignment path.
-            if (stmt.name not in self.ctx.storage_form_tuple_locals
-                    and stmt.name in self.ctx.reassigned_vars):
-                self.ctx.borrow_form_tuple_locals.add(stmt.name)
 
         # A storage-form tuple local bound from an LVALUE storage source
         # aliases the source (CPython shares the elements): bind a reference
@@ -1797,10 +1956,12 @@ class StatementGenerator:
                     return f"{indent}auto&& {cpp_name} = {init_expr};\n"
                 self.ctx.storage_form_tuple_locals.discard(stmt.name)
                 self.ctx.borrow_form_tuple_locals.add(stmt.name)
+                elem_const = stmt.name in self.ctx.const_borrow_form_tuple_locals
                 init_expr = self.expressions.gen_expr(stmt.init, target_type)
                 init_expr = self._maybe_wrap_tuple_to_pointer(
-                    init_expr, target_type, self.ctx.unwrap_copy(stmt.init))
-                borrow_cpp = self.types.tuple_borrow_cpp(target_type)
+                    init_expr, target_type, self.ctx.unwrap_copy(stmt.init),
+                    const=elem_const)
+                borrow_cpp = self.types.tuple_borrow_cpp(target_type, const=elem_const)
                 return f"{indent}{borrow_cpp} {cpp_name} = {init_expr};\n"
 
         cpp_type = self._resolve_cpp_type(stmt)
@@ -4523,8 +4684,19 @@ class StatementGenerator:
                     # Borrow-form tuple local: forward-declare `std::tuple<..., T*>`
                     # (default-constructs, pointers null) so branch assignments
                     # alias rather than copy. Its writes stay borrow form.
+                    # const iff any binding source is const storage (the decl
+                    # must be at least as const as every source feeding it; see
+                    # `_compute_borrow_tuple_const`).
+                    # branch_hoisted so an owning-call binding in a branch puts
+                    # its storage slot in pending_hoist_decls (function scope) --
+                    # a block-scoped slot would leave this function-scoped local
+                    # dangling after the branch.
                     self.ctx.borrow_form_tuple_locals.add(name)
-                    borrow_cpp = self.types.tuple_borrow_cpp(resolve_type, const=is_const)
+                    self.ctx.branch_hoisted_vars.add(name)
+                    elem_const = is_const or name in self.ctx.const_borrow_form_tuple_locals
+                    if elem_const:
+                        self.ctx.const_borrow_form_tuple_locals.add(name)
+                    borrow_cpp = self.types.tuple_borrow_cpp(resolve_type, const=elem_const)
                     out.write(f"{indent}{borrow_cpp} {name};\n")
                 else:
                     out.write(f"{indent}{cpp_type} {name};\n")

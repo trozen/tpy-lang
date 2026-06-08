@@ -2343,49 +2343,18 @@ class TypeCompatibility:
                 fresh = self._derive_tuple_member_hazards(tt, init_expr)
                 if tt.has_pointer_repr_element():
                     owning = self._derive_owning_storage(init_expr)
-                    self._reject_owning_alias_rebind(name, owning, init_expr)
         self.ctx.func.owns_fresh_tuple_member_vars.pop(name, None)
         if fresh is not None:
             self.ctx.func.owns_fresh_tuple_member_vars[name] = fresh
+        # Flow-sensitive (snapshot + UNION merge): a branch-mixed or rebinding
+        # local is owning on the merge iff any reaching path bound it owning;
+        # the boundary return-root check rejects a bare-name return then. An
+        # owning-call RHS materializes into a function-local storage slot in
+        # codegen, so the local itself stays borrow form across the mix.
         if owning:
             self.ctx.func.owning_storage_tuple_vars.add(name)
         else:
             self.ctx.func.owning_storage_tuple_vars.discard(name)
-
-    def _reject_owning_alias_rebind(self, name: str, new_owning: bool,
-                                    init_expr: TpyExpr) -> None:
-        """Reject rebinding a tuple local between OWNING storage and a
-        storage ALIAS.
-
-        The C++ local has one fixed shape: an owning binding is the storage
-        form (it holds the elements), an aliasing binding is a reference /
-        borrow form (it points into other storage). Rebinding across the two
-        would either silently copy the aliased source into the owned slot
-        (CPython aliases) or take addresses into a dying temporary -- there
-        is no sound single shape, so require a separate local.
-        """
-        inner = _peel_value_wrappers(init_expr)
-        was_owning = name in self.ctx.func.owning_storage_tuple_vars
-        was_alias = (self.ctx.func.borrow_tracker.borrow_kind_of(name)
-                     is not None)
-        new_alias = (not new_owning
-                     and isinstance(inner, (TpyName, TpySubscript,
-                                            TpyFieldAccess)))
-        if (was_owning and new_alias) or (was_alias and new_owning):
-            # Also reached by branch-mixed FIRST bindings (`if c: t =
-            # make_pair() else: t = h.pair`) -- the fact is not yet
-            # flow-snapshot, so the then-arm's kind leaks into the else-arm
-            # check. The wording covers both shapes; the scalar-style
-            # rvalue-slot design that would ACCEPT all of them is tracked
-            # in BUGS.md.
-            raise self.ctx.error(
-                f"Cannot bind tuple local '{name}' to both an owning value "
-                f"(a call returning Own[...] elements) and a reference to "
-                f"existing storage -- the two need different "
-                f"representations. Use a separate local for the owning "
-                f"result.",
-                init_expr
-            )
 
     @staticmethod
     def _is_owning_tuple_call(expr: TpyExpr) -> bool:
@@ -2529,12 +2498,18 @@ class TypeCompatibility:
             # element storage (bound from an owning-tuple call), where the
             # lift would point into the dying owner.
             bt = self.ctx.func.borrow_tracker
-            if self._borrow_chain_enters_storage(bt, inner.name):
+            owning = self.ctx.func.owning_storage_tuple_vars
+            # Owning takes precedence: a local bound from an owning-tuple call
+            # on ANY reaching path (UNION-merged) points into a function-local
+            # slot that dies at return -- unsafe even if another path aliases
+            # param storage (a branch-mixed local also carries that path's
+            # FIELD borrow, which would otherwise mask the owning path here).
+            if (inner.name in owning
+                    or bt.effective_storage(inner.name) in owning):
+                dangles = True
+            elif self._borrow_chain_enters_storage(bt, inner.name):
                 src = bt.effective_storage_through_borrows(inner.name)
                 dangles = not self._name_is_param_or_global(_storage_root(src))
-            elif (bt.effective_storage(inner.name)
-                    in self.ctx.func.owning_storage_tuple_vars):
-                dangles = True
             else:
                 it = self.ctx.func.loop_var_iterable.get(inner.name)
                 if it is not None:

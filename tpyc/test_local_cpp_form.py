@@ -26,6 +26,7 @@ def _make_ctx(**overrides) -> SimpleNamespace:
         optional_locals=set(),
         ptr_variant_locals=set(),
         storage_form_tuple_locals=set(),
+        borrow_form_tuple_locals=set(),
         storage_form_optional_locals=set(),
         current_func_params={},
     )
@@ -64,6 +65,18 @@ class TestLocalCppFormClassification:
 
     def test_storage_tuple(self):
         ctx = _make_ctx(storage_form_tuple_locals={"t"})
+        assert _form(ctx, "t") is LocalCppForm.STORAGE_TUPLE
+
+    def test_borrow_tuple(self):
+        # Reassigned / branch-hoisted pointer-repr tuple local: borrow form.
+        ctx = _make_ctx(borrow_form_tuple_locals={"t"})
+        assert _form(ctx, "t") is LocalCppForm.BORROW_TUPLE
+
+    def test_storage_tuple_priority_over_borrow_tuple(self):
+        # An owning generator tuple lands in both sets (storage frame slot,
+        # value element access); STORAGE_TUPLE must win so reads use `.`.
+        ctx = _make_ctx(storage_form_tuple_locals={"t"},
+                        borrow_form_tuple_locals={"t"})
         assert _form(ctx, "t") is LocalCppForm.STORAGE_TUPLE
 
     def test_storage_optional(self):

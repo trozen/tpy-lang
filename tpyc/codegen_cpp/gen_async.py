@@ -1034,6 +1034,7 @@ class AsyncCoroCodegen:
         # Hoisted local fields (mirrors generator behavior).
         if func.generator_locals:
             owning_str = state.with_owning_str_targets
+            owning_tuple_locals = self.ctx.owning_generator_tuple_locals(func)
             pointer_form_names: set[str] = set()
             for info in state.for_loop_info.values():
                 if info.pointer_form_loop_var is not None:
@@ -1076,6 +1077,14 @@ class AsyncCoroCodegen:
                     # of a tuple-unpack (`__for_tup`) is itself a value tuple.
                     inner_cpp = self.types.type_to_cpp(ltype_inner)
                     out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
+                elif lname in owning_tuple_locals:
+                    # OWNING pointer-repr tuple local: the frame must hold the
+                    # element storage, so use a storage `frame_slot<std::tuple
+                    # <..., T>>` (emplace writes, `(*name)` reads) -- a borrow
+                    # `std::tuple<..., T*>` field can't own, and the owning
+                    # rvalue can't be address-taken into it.
+                    storage_cpp = ltype_inner.to_cpp_stored()
+                    out.write(f"{INDENT}::tpy::frame_slot<{storage_cpp}> {cpp_name};\n")
                 elif (isinstance(ltype_inner, TupleType)
                         and ltype_inner.has_pointer_repr_element()
                         and not lname.startswith("__for_tup_")):

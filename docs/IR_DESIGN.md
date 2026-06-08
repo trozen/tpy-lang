@@ -1559,8 +1559,8 @@ or eliminating the C++ compiler dependency), the MIR is ready.
     `std::optional<T>` optional-locals (deferred init, sync), the walrus
     variants of each, `tpy::frame_slot<T>` (resumable frames),
     `std::tuple<..., T*>` borrow-form tuple locals, and storage-form tuple
-    locals -- tracked across `LocalCppForm` plus side sets
-    (`borrow_form_tuple_locals` has no classifier variant at all). Each
+    locals -- tracked across `LocalCppForm` (now including `BORROW_TUPLE`)
+    plus side sets that remain the classifier's backing store. Each
     mechanism re-implements init-deferral, rebinding, and aliasing slightly
     differently (operator= vs emplace vs lift), which is where the
     `optional` brace-init corruption class, the default-construct-before-
@@ -1584,11 +1584,13 @@ or eliminating the C++ compiler dependency), the MIR is ready.
     (`frame_slot<T>` in sync bodies too, with the state-aware-destruction
     TODO removing its alive bool) or keep `optional<T>` for sync --
     uniformity favors the former; decide when the fold pass exists so the
-    choice is measurable. Pre-IR stopgaps this item replaces: the tuple
-    rvalue-slot design and the owning/alias mix rejection (BUGS.md), the
-    `BORROW_TUPLE` classifier gap, and the eager per-site binding
-    decisions in `_gen_var_decl_code` / `_gen_named_expr` / the loop
-    binders. Recommendation: make places-with-late-representation the MIR
+    choice is measurable. Pre-IR stopgaps this item subsumes: the tuple
+    rvalue-slot design + owning/alias mix (landed pre-IR -- borrow-form
+    slot + flow-correct owning fact + `BORROW_TUPLE`, with the side sets
+    still the backing store rather than a unified place model), and the
+    eager per-site binding decisions in `_gen_var_decl_code` /
+    `_gen_named_expr` / the loop binders that it leaves scattered.
+    Recommendation: make places-with-late-representation the MIR
     locals model (the natural reading of `Place`/`LoanInfo` above), and
     treat the C++ emission of each representation as a small backend menu
     the fold pass picks from. Sequencing (agreed): the representation

@@ -5953,6 +5953,14 @@ class ExpressionGenerator:
         borrow_tuple = (isinstance(tuple_bare, TupleType)
                         and tuple_bare.has_pointer_repr_element())
         storage_rvalue = False
+        # A REASSIGNED walrus tuple local takes borrow form so a later rebind
+        # to a storage alias aliases rather than copies (like the VarDecl
+        # reassign-borrow path); an owning-call value materializes into a slot
+        # the borrow local aliases. A non-reassigned owning walrus keeps the
+        # owning storage form below.
+        reassigned_borrow = (borrow_tuple
+                             and expr.target in self.ctx.reassigned_vars)
+        elem_const = expr.target in self.ctx.const_borrow_form_tuple_locals
         if borrow_tuple:
             val_src = self.ctx.unwrap_copy(expr.value)
             if isinstance(val_src, TpyCoerce):
@@ -5961,7 +5969,7 @@ class ExpressionGenerator:
                 storage_rvalue = self.ctx.is_storage_form_source(val_src)
             elif self.ctx.is_storage_form_source(val_src):
                 value_code = (f"::tpy::tuple_to_pointer"
-                              f"<{self.types.tuple_borrow_cpp(tuple_bare)}>"
+                              f"<{self.types.tuple_borrow_cpp(tuple_bare, const=elem_const)}>"
                               f"({value_code})")
 
         # Emit pre-declaration only once per function (walrus_pre_declared
@@ -5970,6 +5978,12 @@ class ExpressionGenerator:
         # walrus) is a reassignment -- assign in place, don't redeclare.
         need_predecl = (expr.target not in self.ctx.walrus_pre_declared
                         and expr.target not in self.ctx.declared_vars)
+        # A branch-hoisted target is already forward-declared at function scope
+        # by _emit_branch_decls, so need_predecl is False here -- but a
+        # reassigned-borrow owning slot is independent of that decl and must
+        # still be allocated (see the slot block after this one).
+        rb_hoisted = (expr.target in self.ctx.branch_hoisted_vars
+                      or expr.target in self.ctx.hoisted_vars)
         if need_predecl:
             self.ctx.walrus_pre_declared.add(expr.target)
             cpp_type = self.types.type_to_cpp(value_type)
@@ -5978,6 +5992,15 @@ class ExpressionGenerator:
                 inner_cpp = self.types.type_to_cpp(value_type.inner)
                 self.ctx.temps.declare_named(cpp_name, f"{inner_cpp}*", init="nullptr")
                 self.ctx.pointer_locals.add(expr.target)
+            elif reassigned_borrow:
+                # The borrow local (`std::tuple<..., T*>`); the owning slot it
+                # aliases is allocated below, independent of need_predecl. A
+                # branch-hoisted target skips this decl (already forward-
+                # declared at function scope) -- but is_hoisted => need_predecl
+                # False, so we only reach here for the same-block case.
+                self.ctx.temps.declare_named(
+                    cpp_name,
+                    self.types.tuple_borrow_cpp(tuple_bare, const=elem_const))
             elif borrow_tuple and storage_rvalue:
                 # Deferred-init slot like the non-value branch below: a bare
                 # storage-tuple decl would default-construct every element
@@ -5996,6 +6019,22 @@ class ExpressionGenerator:
                 self.ctx.temps.declare_named(cpp_name, f"std::optional<{cpp_type}>")
                 self.ctx.register_walrus_deref(expr.target, f"(*{cpp_name})")
 
+        # Owning slot for a reassigned-borrow walrus -- allocated independent of
+        # need_predecl (idempotent): a branch-hoisted target has need_predecl
+        # False but still needs its function-scope owning slot, and a later
+        # sibling-branch occurrence reuses it (the rvalue-slot return path reads
+        # rebind_slots[target]). Function scope when hoisted, else a temp.
+        if reassigned_borrow and expr.target not in self.ctx.rebind_slots:
+            slot = self.ctx.slots.next_slot()
+            self.ctx.rebind_slots[expr.target] = slot
+            self.ctx.persistent_rebind_slots[expr.target] = slot
+            slot_opt = f"std::optional<{self.types.tuple_storage_cpp(tuple_bare)}>"
+            if rb_hoisted:
+                static_kw = "static " if self.ctx.slots.global_scope else ""
+                self.ctx.pending_hoist_decls.append(f"{static_kw}{slot_opt} {slot};\n")
+            else:
+                self.ctx.temps.declare_named(slot, slot_opt)
+
         # Always ensure tracking state is set (may have been cleared by
         # restore_local_scope between branches)
         self.ctx.declared_vars.add(expr.target)
@@ -6003,12 +6042,23 @@ class ExpressionGenerator:
         self.ctx.var_types[expr.target] = value_type
         if isinstance(value_type, OptionalType) and value_type.uses_pointer_repr():
             self.ctx.pointer_locals.add(expr.target)
-        if borrow_tuple and storage_rvalue:
+        if reassigned_borrow:
+            self.ctx.borrow_form_tuple_locals.add(expr.target)
+        elif borrow_tuple and storage_rvalue:
             self.ctx.storage_form_tuple_locals.add(expr.target)
             self.ctx.walrus_storage_tuple_locals.add(expr.target)
         elif borrow_tuple:
             self.ctx.borrow_form_tuple_locals.add(expr.target)
 
+        if reassigned_borrow:
+            borrow_cpp = self.types.tuple_borrow_cpp(tuple_bare, const=elem_const)
+            if storage_rvalue:
+                slot = self.ctx.rebind_slots[expr.target]
+                rhs = (f"::tpy::tuple_to_pointer<{borrow_cpp}>"
+                       f"({slot}.emplace({value_code}))")
+            else:
+                rhs = value_code
+            return f"({cpp_name} = {rhs}, {cpp_name})"
         if borrow_tuple and storage_rvalue:
             return f"({cpp_name} = {value_code}, *{cpp_name})"
         if not value_type.is_value_type() and not isinstance(value_type, OptionalType):

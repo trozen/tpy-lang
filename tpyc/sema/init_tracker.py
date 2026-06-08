@@ -35,6 +35,7 @@ class InitTracker:
             narrowed_types=frozenset(self.ctx.func.narrowed_types.items()),
             consumed_vars=frozenset(self.ctx.func.consumed_vars),
             owns_fresh_tuple_member_vars=frozenset(self.ctx.func.owns_fresh_tuple_member_vars.items()),
+            owning_storage_tuple_vars=frozenset(self.ctx.func.owning_storage_tuple_vars),
             borrows=self.ctx.func.borrow_tracker.freeze(),
             value_ranges=frozenset(self.ctx.func.value_ranges.items()),
         )
@@ -53,6 +54,7 @@ class InitTracker:
         self.ctx.func.narrowed_types = dict(state.narrowed_types)
         self.ctx.func.consumed_vars = set(state.consumed_vars)
         self.ctx.func.owns_fresh_tuple_member_vars = dict(state.owns_fresh_tuple_member_vars)
+        self.ctx.func.owning_storage_tuple_vars = set(state.owning_storage_tuple_vars)
         self.ctx.func.borrow_tracker.restore_from_frozen(state.borrows)
         self.ctx.func.value_ranges = dict(state.value_ranges)
 
@@ -122,6 +124,7 @@ class InitTracker:
         self.ctx.func.narrowed_types = dict(before.narrowed_types)
         self.ctx.func.consumed_vars = set(before.consumed_vars)
         self.ctx.func.owns_fresh_tuple_member_vars = dict(before.owns_fresh_tuple_member_vars)
+        self.ctx.func.owning_storage_tuple_vars = set(before.owning_storage_tuple_vars)
         self.ctx.func.borrow_tracker.restore_from_frozen(before.borrows)
         self.ctx.func.value_ranges = dict(before.value_ranges)
         if condition_type_facts is not None:
@@ -150,6 +153,9 @@ class InitTracker:
         # owned-fresh inside the loop stays flagged after it -- the inverse of
         # the monotone kill-facts' intersect, so no dangle is dropped).
         body_end_owns_fresh = dict(self.ctx.func.owns_fresh_tuple_member_vars)
+        # Owning-storage is a hazard fact too: an owning binding inside the loop
+        # must survive after it (union body-end in, like owns-fresh).
+        body_end_owning = set(self.ctx.func.owning_storage_tuple_vars)
         self.restore(before)
         self.ctx.func.non_null_ptr_vars &= body_end_nn_ptr
         self.ctx.func.param_provenance_vars &= body_end_param_prov
@@ -157,3 +163,4 @@ class InitTracker:
         self.ctx.func.narrowed_types = dict(body_end_narrowed & before.narrowed_types)
         for name, idx in body_end_owns_fresh.items():
             self.ctx.func.owns_fresh_tuple_member_vars.setdefault(name, idx)
+        self.ctx.func.owning_storage_tuple_vars |= body_end_owning
