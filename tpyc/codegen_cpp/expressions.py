@@ -15,7 +15,7 @@ from ..typesys import (
     NominalType, AliasRef, RecursiveAliasInstanceType, recursive_union_alternatives,
     PtrType, OwnType, OptionalType, NoneType, AnyType, make_array,
     PendingListType, ListRepeatType,
-    TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_own, unwrap_qualifiers, unwrap_optional_own, unwrap_send_sync, UnionType, VoidType, make_union, union_none_narrow,
+    TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_own, unwrap_qualifiers, unwrap_optional_own, unwrap_send_sync, collapse_tuple_own_elements, UnionType, VoidType, make_union, union_none_narrow,
     TupleType, CallableType, ValueForm,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
@@ -5939,6 +5939,12 @@ class ExpressionGenerator:
     def _gen_named_expr(self, expr: TpyNamedExpr) -> str:
         """Generate walrus operator: (x := value) -> inline C++ assignment."""
         value_type = self.types.get_resolved_type(expr)
+        # A reassigned per-element-Own tuple local takes the unified borrow type
+        # (Own[T] element -> T), mirroring the VarDecl path, so the decl, the
+        # var_types fact, and later narrowed element access all agree on the
+        # pointer-repr shape rather than owning storage.
+        if expr.target in self.ctx.reassigned_vars:
+            value_type = collapse_tuple_own_elements(value_type)
         cpp_name = escape_cpp_name(expr.target)
         value_code = self.gen_expr(expr.value, value_type)
 

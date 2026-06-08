@@ -1,0 +1,1 @@
+main.py:25: error: walrus reassignment of non-value local 't' is not supported yet; use a separate assignment statement

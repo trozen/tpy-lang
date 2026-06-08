@@ -26,7 +26,7 @@ from ..typesys import (
     PendingGenericInstanceType, unwrap_ref_type, unwrap_send_sync, make_ref, RefType,
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
-    unwrap_own, is_readonly_span,
+    unwrap_own, is_readonly_span, collapse_tuple_own_elements,
     yield_uses_borrow_slot,
     RecursiveAliasInstanceType, recursive_union_alternatives)
 from ..parse import (
@@ -2421,6 +2421,13 @@ class ExpressionAnalyzer:
         elif isinstance(resolved, PendingViewType):
             resolved = resolved.family.owned_type
 
+        # Mirror the VarDecl path: a reassigned per-element-Own tuple local takes
+        # the unified borrow type (Own[T] element -> T) so the walrus first
+        # binding agrees with later rebinds / narrowed accesses, rather than
+        # keeping owning storage while an access expects pointer-repr.
+        if name in self.ctx.func.current_reassigned_vars:
+            resolved = collapse_tuple_own_elements(resolved)
+
         # PEP 572: walrus in comprehension leaks to enclosing function scope
         target_scope = self.ctx.func.current_scope
         levels = self.ctx.in_comprehension
@@ -2453,7 +2460,16 @@ class ExpressionAnalyzer:
             target_scope.define(name, resolved)
             if self.ctx.func.current_ns:
                 self.ctx.func.current_ns.bind_variable(name, resolved)
-            result_type = value_type
+            # For a collapsed per-element-Own borrow tuple, the walrus result
+            # must be the collapsed type so `(t := ...)[i]` element access
+            # agrees with the pointer-repr decl; other bindings keep the raw
+            # value type (preserving literal-ness etc.).
+            res_bare = unwrap_readonly(resolved)
+            if (isinstance(res_bare, TupleType)
+                    and res_bare.has_pointer_repr_element()):
+                result_type = resolved
+            else:
+                result_type = value_type
 
         self.ctx.func.definitely_assigned.add(name)
         self.ctx.func.rvalue_vars.add(name)
