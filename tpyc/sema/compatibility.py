@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, Optional
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, ListRepeatType,
-    PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, UnknownElementType,
+    PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, UnknownElementType,
+    view_family_for_type,
     LiteralType, LiteralValue, LiteralTag, FLOAT, make_list, make_dict, make_set,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NominalType, AliasRef, RecursiveAliasInstanceType, TypeParamRef, NoneType, AnyType, OptionalType, UnionType,
@@ -1347,6 +1348,122 @@ class TypeCompatibility:
         )
         self.ctx.set_expr_type(coerced, expected)
         return coerced
+
+    def coerce_reassignment(
+        self, name: str, existing_type: TpyType, value_type: TpyType,
+        value_expr: TpyExpr, err_node,
+    ) -> tuple[TpyType, TpyExpr]:
+        """Single entry point for local-reassignment compatibility, so the
+        per-shape rules can't drift between the var-decl and walrus paths.
+
+        Returns (resolved_target_type, coerced_value_expr); raises on an
+        incompatible RHS. Callers keep their own var_types / declared-type
+        sync and storage bookkeeping.
+        """
+        inner_existing = unwrap_readonly(existing_type)
+        inner_value = unwrap_readonly(value_type)
+        ctx = f"reassignment to '{name}'"
+
+        if isinstance(inner_existing, PendingGenericInstanceType):
+            raise self.ctx.error(
+                f"Cannot reassign '{name}' while its generic type is still "
+                f"being inferred; add explicit type arguments to the constructor",
+                err_node)
+
+        # PendingList: track size (list-vs-array decision) and check element
+        # compatibility -- coerce_expr can't model pending-list-vs-pending-list,
+        # so the element check lives here.
+        if isinstance(inner_existing, PendingListType):
+            if isinstance(inner_value, PendingListType):
+                if inner_existing.size != inner_value.size:
+                    self.deduction.mark_list_different_size(inner_existing.literal_id)
+                    self.deduction.mark_list_different_size(inner_value.literal_id)
+                else:
+                    self.deduction.link_list_literals(
+                        inner_existing.literal_id, inner_value.literal_id)
+            err = self._reassign_list_element_compat(
+                inner_existing, inner_value, value_expr, ctx)
+            if err is not None:
+                raise self.ctx.error(err.message, err_node)
+            return existing_type, value_expr
+
+        # str/bytes view family: track owned-vs-borrow provenance (so an owned
+        # source promotes the local to owned storage) before coercing.
+        if (isinstance(inner_existing, (PendingViewType, LiteralType))
+                and (vf := view_family_for_type(inner_existing)) is not None):
+            if vf.is_any_member(inner_value):
+                if not self.deduction.is_view_compatible_source(value_expr, inner_value):
+                    self.deduction.mark_view_reassigned_from_owned(name, vf)
+                else:
+                    self.deduction.track_view_reassign_source(name, inner_value, vf)
+            coerced = self.coerce_expr(
+                value_expr, inner_value, inner_existing, ctx,
+                coercion_ctx=CoercionContext.ASSIGN)
+            return existing_type, coerced
+
+        # Non-pending: resolve the target type, then either upgrade an
+        # IntLiteral-seeded local (no coerce -- caller syncs var_types) or
+        # coerce the RHS against the resolved type.
+        var_type = self.deduction.resolve_reassignment_target_type(
+            name, inner_existing, inner_value, init_expr=value_expr)
+        coerced = value_expr
+        if not (isinstance(inner_existing, IntLiteralType) and is_integer_type(var_type)):
+            coerced = self.coerce_expr(
+                value_expr, inner_value, var_type, ctx,
+                coercion_ctx=CoercionContext.ASSIGN)
+        # Readonly status flows from the value expression.
+        if isinstance(value_type, ReadonlyType) and not var_type.is_value_type():
+            if isinstance(var_type, OptionalType):
+                var_type = OptionalType(ReadonlyType(var_type.inner))
+            else:
+                var_type = ReadonlyType(var_type)
+        return var_type, coerced
+
+    def _reassign_list_element_compat(
+        self, existing_pl: PendingListType, value_type: TpyType,
+        value_expr: TpyExpr, context: str,
+    ) -> 'CompatError | None':
+        """Element compatibility for reassigning a PendingList local.
+
+        Permissive on widening (accepts either coercion direction) to avoid
+        regressing the prior accept-everything behavior; the point is only to
+        catch cross-category mismatches (list[int] <- list[str] / non-list).
+        The display-typed message avoids leaking the internal PendingList repr.
+        """
+        loc = getattr(value_expr, "loc", None)
+        new_elem_raw = self._list_like_element(value_type)
+        if new_elem_raw is None:
+            return CompatError(
+                f"Type mismatch in {context}: expected "
+                f"list[{self._default_resolve_element(existing_pl.element_type)}], "
+                f"got {value_type}", loc)
+        existing_elem = self._default_resolve_element(existing_pl.element_type)
+        new_elem = self._default_resolve_element(new_elem_raw)
+        if existing_elem == new_elem:
+            return None
+        # source_expr=None: these probe the *element* types, so the list RHS
+        # node must not drive _check_compat's expr-identity side effects
+        # (retro-widen / set_expr_type / mutable-lvalue marking).
+        fwd = self._check_compat(new_elem, existing_elem, context, loc, None,
+                                 False, CoercionContext.ASSIGN,
+                                 target_is_storage_form=True)
+        if not isinstance(fwd, CompatError):
+            return None
+        bwd = self._check_compat(existing_elem, new_elem, context, loc, None,
+                                 False, CoercionContext.ASSIGN,
+                                 target_is_storage_form=True)
+        if not isinstance(bwd, CompatError):
+            return None
+        return CompatError(
+            f"Type mismatch in {context}: expected list[{existing_elem}], "
+            f"got list[{new_elem}]", loc)
+
+    def _list_like_element(self, t: TpyType) -> 'TpyType | None':
+        if isinstance(t, PendingListType):
+            return t.element_type
+        if is_list(t) or is_array(t):
+            return t.type_args[0]
+        return None
 
     def _maybe_raise_literal_local_range(
         self, expr: TpyName, actual: TpyType, expected: TpyType, context: str,

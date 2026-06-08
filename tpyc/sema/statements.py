@@ -3221,78 +3221,18 @@ class StatementAnalyzer:
                     fresh = self.ctx.func.current_scope.lookup(stmt.name)
                     if fresh is not None and fresh != existing_type:
                         existing_type = fresh
-                # Unwrap ReadonlyType for reassignment type resolution and
-                # coercion -- this is a binding, not passing by reference.
-                inner_existing = unwrap_readonly(existing_type)
-                inner_init = unwrap_readonly(init_type)
-                # PendingGenericInstanceType: reject reassignment while pending
-                if isinstance(inner_existing, PendingGenericInstanceType):
-                    raise self.ctx.error(
-                        f"Cannot reassign '{stmt.name}' while its generic type is still "
-                        f"being inferred; add explicit type arguments to the constructor",
-                        stmt,
-                    )
-                # PendingListType reassignment: different sizes force list
-                if isinstance(inner_existing, PendingListType):
-                    if isinstance(inner_init, PendingListType):
-                        if inner_existing.size != inner_init.size:
-                            self.deduction.mark_list_different_size(inner_existing.literal_id)
-                            self.deduction.mark_list_different_size(inner_init.literal_id)
-                        else:
-                            self.deduction.link_list_literals(inner_existing.literal_id, inner_init.literal_id)
-                    var_type = existing_type
-                # View-family reassignment (PendingViewType or LiteralType[str/bytes]).
-                # Pre-filter with cheap isinstance tuple so non-view reassignments
-                # (records / lists / dicts) skip the qualified_name() lookup inside
-                # view_family_for_type.
-                elif (isinstance(inner_existing, (PendingViewType, LiteralType))
-                        and (vf := view_family_for_type(inner_existing)) is not None):
-                    if vf.is_any_member(inner_init):
-                        if not self.deduction.is_view_compatible_source(stmt.init, inner_init):
-                            self.deduction.mark_view_reassigned_from_owned(stmt.name, vf)
-                        else:
-                            self.deduction.track_view_reassign_source(stmt.name, inner_init, vf)
-                    var_type = existing_type
-                    # Must run after view tracking (above) so the coercion node
-                    # doesn't hide the owned-vs-borrow source from it; without
-                    # this an incompatible RHS (str view <- int) was accepted
-                    # here and only failed at the C++ step.
-                    stmt.init = self.compat.coerce_expr(stmt.init, inner_init, var_type,
-                                                        f"reassignment to '{stmt.name}'",
-                                                        coercion_ctx=CoercionContext.ASSIGN)
-                else:
-                    var_type = self.deduction.resolve_reassignment_target_type(
-                        stmt.name, inner_existing, inner_init, init_expr=stmt.init
-                    )
-                    # Reassignment: check if we need to upgrade IntLiteralType
-                    if isinstance(inner_existing, IntLiteralType) and is_integer_type(var_type):
-                        # Upgrade from IntLiteralType to concrete type
-                        # Update var_types so codegen knows the resolved type
-                        orig_decl = self.ctx.func.var_decl_by_name.get(stmt.name)
-                        if orig_decl:
-                            self.ctx.var_types[id(orig_decl)] = var_type
-                    else:
-                        # Normal reassignment: use existing type, check compatibility
-                        stmt.init = self.compat.coerce_expr(stmt.init, inner_init, var_type,
-                                                             f"reassignment to '{stmt.name}'",
-                                                             coercion_ctx=CoercionContext.ASSIGN)
-                    # Readonly status flows from the value expression
-                    if isinstance(init_type, ReadonlyType) and not var_type.is_value_type():
-                        if isinstance(var_type, OptionalType):
-                            var_type = OptionalType(ReadonlyType(var_type.inner))
-                        else:
-                            var_type = ReadonlyType(var_type)
-                    if var_type != existing_type:
-                        # Keep original declaration's resolved type in sync for codegen.
-                        resolved = unwrap_readonly(var_type)
-                        orig_decl = self.ctx.func.var_decl_by_name.get(stmt.name)
-                        if orig_decl:
-                            self.ctx.var_types[id(orig_decl)] = resolved
-                        # Retroactively update declared_var_types for earlier lines
-                        # so # tpyc: type() reflects the final variable type.
-                        for key in self.ctx.declared_var_types:
-                            if key[1] == stmt.name:
-                                self.ctx.declared_var_types[key] = resolved
+                var_type, stmt.init = self.compat.coerce_reassignment(
+                    stmt.name, existing_type, init_type, stmt.init, stmt)
+                if var_type != existing_type:
+                    # Keep codegen and `# tpyc: type()` in sync with the
+                    # original declaration when the resolved type changed.
+                    resolved = unwrap_readonly(var_type)
+                    orig_decl = self.ctx.func.var_decl_by_name.get(stmt.name)
+                    if orig_decl:
+                        self.ctx.var_types[id(orig_decl)] = resolved
+                    for key in self.ctx.declared_var_types:
+                        if key[1] == stmt.name:
+                            self.ctx.declared_var_types[key] = resolved
             else:
                 # New variable: resolve IntLiteralType/FloatLiteralType.
                 if isinstance(init_type, IntLiteralType):

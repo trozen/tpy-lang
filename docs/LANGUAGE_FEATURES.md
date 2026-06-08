@@ -696,6 +696,11 @@ Context-dependent inference for Python-first semantics:
 | Explicit annotation `x: list[T]` | `list` | `std::vector` | User opted into dynamic list |
 | Return type `-> Own[list[T]]` | `list` | `std::vector` | Return type context propagates to literal |
 
+List reassignment is element-type-checked (independent of the size-widening
+above): `x = [1, 2]; x = ["a"]` is a sema error (`expected list[Int32], got
+list[str]`), like the equivalent scalar/str rebind. Numeric element widening
+is still accepted.
+
 This gives the best of both worlds:
 - **Python semantics by default**: Globals behave like Python module variables (mutable, shareable)
 - **Performance for locals**: Function-local arrays stay on the stack when safe
