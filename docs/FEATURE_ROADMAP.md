@@ -1230,6 +1230,22 @@ Phase 5: Audit of str type checks.
 
 ## IV. Safety & Effects
 
+### Coroutine/Task borrow safety (gated on IR/regions)
+
+A `create_task`'d coroutine captures its reference-typed args by reference and
+is driven by the event loop independently of the spawning frame, so borrowing a
+local into one that escapes (or is never joined) dangles -- today a silent
+footgun (see BUGS.md). The right shape is a **lifetime feature**, not a
+borrow-tracker special case: `create_task` declares a run-stable /
+`'static`-equivalent **bound on its coroutine argument** (Rust's
+`spawn: F: 'static`), enforced by the general region checker so a user's own
+`spawn` is safe with no compiler edits; and a structured **`TaskGroup`** API
+(cf. `std::thread::scope`) lets a task borrow a local *and* be proven joined at
+block exit. Blocked on the THIR/MIR region work -- a prototype escape+discharge
+check (branch `async-borrow-escape`) confirmed the boundary but had to hardcode
+`Task`/`gather` and key on string roots, which fights the migration, so it was
+not merged. **Effort**: L (rides on region inference; `TaskGroup` is its own M).
+
 ### @noalloc Enforcement
 
 `@noalloc` is parsed and stored but zero enforcement exists. This is a core TPy
