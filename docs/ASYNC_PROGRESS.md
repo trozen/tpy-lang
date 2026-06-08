@@ -1233,13 +1233,22 @@ polymorphic exception storage.
 
 ## v1.x milestone: asyncio runtime TPy port (must precede v1.5)
 
-The v1 asyncio runtime (Executor + run loop + spawn registration + sleep
-timer) is implemented in C++ for v1 shipping speed. The design doc
-specifies the executor as `~150-200 lines of TPy`; that port is a v1.x
-milestone, not deferred indefinitely. **Must land before v1.5 starts**:
-`gather`, `wait_for`, `async with`, `async for` all want to be TPy code,
-and porting them on top of a still-C++ executor would mean writing more
-C++ template machinery only to throw it away.
+**STATUS: COMPLETE.** The Executor, run loop, spawn registration, sleep
+timer, *and* the type-erasure stack (`TaskState[T]`, `Task[T]`,
+`Poll[T]`, the coroutine-frame erasure) are all pure TPy. What remains
+in C++ is `runtime/cpp/include/tpy/async.hpp` (76 lines): the
+`CancelledError` exception type and the `poll_with_cancel` resume-case
+helper template that every coro frame's codegen emits -- neither is
+runtime logic, both belong in C++ by design. See the per-phase history
+below and the "Type-erasure stack ported to TPy" section for the final
+shape.
+
+The v1 asyncio runtime was originally implemented in C++ for v1 shipping
+speed. The design doc specifies the executor as `~150-200 lines of TPy`;
+that port was a v1.x milestone, **gated before v1.5** because `gather`,
+`wait_for`, `async with`, `async for` all want to be TPy code, and
+porting them on top of a still-C++ executor would have meant writing
+more C++ template machinery only to throw it away.
 
 ### Phase 0 -- DONE
 
@@ -1323,9 +1332,9 @@ in one PR. The TPy `Executor` is implemented in
 `tpy::Executor`; runtime callers (`make_user_task`,
 `executor_register_timer_seconds`, `Waker::wake()`, `async_run`) still
 talk to the C++ struct. Phase 3 swings asyncio.run onto the TPy
-executor; Phase 4 deletes the dead C++ struct. Keeps `make_user_task`,
-`AnyTask`/`AnyTaskImpl`, `TaskState`, `Task` in C++ (see "Blocked"
-below).
+executor; Phase 4 deletes the dead C++ struct. As of Phase 2 this kept
+`make_user_task`, `AnyTask`/`AnyTaskImpl`, `TaskState`, `Task` in C++;
+all were later ported (see "Type-erasure stack ported to TPy" below).
 
 **Sub-step 2.1 (DONE) -- `Slot` leaf class.** Three fields
 (`box: AnyTaskBox`, `generation: UInt32`, `runnable: bool`) and an
@@ -1608,8 +1617,8 @@ see "v1.2 step 1" section below):
   `tests/cases/async/tpy_executor_smoke/` etc.
 - `tpy::AnyTask`, `tpy::AnyTaskBox`, `tpy::TaskState<T>`,
   `tpy::TaskStateImpl<T, CoroT>`, `tpy::Task<T>` -- the type-erased
-  task machinery. Each will move to TPy if/when the compiler features
-  in the "Blocked" section below land.
+  task machinery. As of Phase 4 this stayed in C++; all of it has since
+  moved to TPy (see "Type-erasure stack ported to TPy" below).
 - `tpy::Poll<T>`, `tpy::Waker`, `tpy::CancelledError`,
   `tpy::ExecutorHandle`, `tpy::ExecutorOps` -- primitives and runtime
   dispatch infrastructure.
@@ -2017,52 +2026,59 @@ Sema/codegen fixes required to land this:
    collapse to natural `Executor` / `Awaker` params once the analyzer
    rule lands.
 
-The follow-on remaining v1.2 cleanup items (timer-heap, etc.) are
-described in the "Blocked" section below.
+The final shape of the ported type-erasure stack (and the handful of
+pieces that stay C++ by design) is described in the "Type-erasure stack
+ported to TPy" section below.
 
-### Blocked -- stays C++ until compiler features land
+### Type-erasure stack ported to TPy -- DONE
 
-These pieces depend on language features TPy doesn't have today.
-Listing them so we don't accidentally try to move them and waste
-binding work:
+The pieces this section once listed as "blocked until compiler features
+land" have all been ported, once generic `@dynamic` protocols and `Rc[T]`
+shipped. Final shape (all in `lib/tpy/asyncio/_executor.py` unless noted):
 
-- `make_user_task<T, CoroT>` -- thin templated factory; stays C++ as
-  ~10-line helper. Constructs `AsyncFrameImpl<T, CoroT>`,
-  `shared_ptr<TaskState<T>>`, and an `AnyTaskBox`. Returns the box
-  for the TPy executor to spawn.
-- `Task<T>::from_coro<CoroT>` -- generic factory; stays C++.
-- `AsyncFrameBase<T>` virtual base + `AsyncFrameImpl<T, CoroT>` -- the
-  generic-over-T type-erasure machinery. Generic `@dynamic` protocols
-  now exist (see `docs/DYNAMIC_PROTOCOL_DESIGN.md` step 12), so this
-  C++ scaffolding can be replaced with a `@dynamic Awaitable[T]` +
-  `Adapter[Awaitable[T], CoroT]` pair from TPy. Port not yet wired.
-- `TaskState<T>` -- `Rc[T]` is now available (`tplib.Rc`,
-  `::tpy::Rc<T>` runtime template), so `TaskState[T]` can be ported.
-  Port not yet wired -- TaskState's logic is small and the C++ shape
-  already works.
-- `Poll<T>` storage -- stays C++ (primitive with void / reference /
-  move-only / non-default-constructible specializations).
-- The main-coro spawn closure in `async_run` -- captures
-  `shared_ptr<frame>` + `shared_ptr<TaskValueSlot<ResultT>>` + a
-  `has_result` flag. Generic-over-ResultT closure construction is
-  C++-template territory; stays as a small templated helper.
+- `TaskState[T]` -- TPy class on `Rc[TaskState[T]]`, holding the erased
+  coroutine frame as `Box[Cancellable[T]] | None` plus a cached
+  result/exception. Replaces the C++ `shared_ptr<TaskState<T>>`.
+- `Task[T]` -- TPy `@nocopy` generic class wrapping `Rc[TaskState[T]]`,
+  shared with the executor's slot table for spawned tasks. Replaces
+  `tpy::Task<T>` and its `from_coro<CoroT>` factory (now the TPy
+  `task_from_coro[T]` / `make_executor_owned_task[T]`).
+- Coroutine-frame type-erasure -- the `@dynamic Cancellable[T]` protocol
+  (`lib/tpy/tpy/coro/__init__.py`, `cancel()` + `__poll__(Waker) ->
+  Poll[T]`) stored as `Box[Cancellable[T]]`. Replaces the C++
+  `AsyncFrameBase<T>` / `AsyncFrameImpl<T, CoroT>` virtual-base
+  machinery (the generic-`@dynamic`-protocol replacement the old note
+  anticipated).
+- `Poll[T]` -- pure TPy (`lib/tpy/tpy/_core/_types.py`). No C++
+  definition remains.
+- `make_user_task` / the main-coro spawn closure in `async_run` -- gone;
+  `asyncio.run` is pure TPy (`run[T]` + `_run_drain_main_task`), see
+  Phase 3 and v1.2 step 1 above.
 
-### Compiler gaps that, when closed, expand what's portable
+What genuinely stays in C++ (`runtime/cpp/include/tpy/async.hpp`, 76
+lines), not portable and not worth porting:
+
+- `CancelledError : BaseException` -- an exception type.
+- `poll_with_cancel(sub, cancel_pending, waker)` -- the resume-case
+  helper template every async-def coro frame's codegen emits; a
+  frame-shape codegen helper, not runtime logic.
+
+### Compiler features that unblocked the port (history)
 
 - **Generic `@dynamic` protocols** -- shipped (see
   `docs/DYNAMIC_PROTOCOL_DESIGN.md` step 12). Adapter codegen emits a
-  per-T-instantiation vtable; each `Adapter[Awaitable[Int32]]` is a
-  distinct runtime type. Now usable to replace `AsyncFrameBase` /
-  `AsyncFrameImpl`; port not yet wired.
+  per-T-instantiation vtable; each `Adapter[Cancellable[Int32]]` is a
+  distinct runtime type. Used to replace `AsyncFrameBase` /
+  `AsyncFrameImpl`.
 - **Shared-ownership smart pointer in TPy** -- `Rc[T]` shipped as a
   pure-TPy class in `lib/tpy/tplib/rc.py` (uses `tpy.unsafe` for the
   heap block). Non-atomic single-threaded refcount; `@nocopy` with
-  explicit `.clone()`. Construct via `Rc.new(value)`. Unblocks the
-  `TaskState[T]` TPy port. Atomic `Arc[T]` for multi-threaded use is a
-  v3+ item.
-- **`thread_local` storage in TPy**. Would let the executor's
-  `current_executor` move out of C++ entirely. Low priority since the
-  v1 executor is single-threaded.
+  explicit `.clone()`. Construct via `Rc.new(value)`. Backs
+  `TaskState[T]`. Atomic `Arc[T]` for multi-threaded use is a v3+ item.
+- **`thread_local` storage in TPy** -- still absent; the executor's
+  `_current_executor` is a plain module global (single-process v1
+  trade-off, see v1.2 step 6). Reverting to thread-local is gated on
+  this landing. Low priority since the v1 executor is single-threaded.
 - **`tpy.coro.poll_once`** -- shipped. Real TPy body
   `def poll_once[T](aw: Awaitable[T]) -> Poll[T]: return aw.poll(Waker())`
   in `lib/tpy/tpy/coro/__init__.py`, plus a CPython stub at
