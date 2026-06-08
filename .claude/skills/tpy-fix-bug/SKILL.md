@@ -105,6 +105,18 @@ that crashed." Examples of well-formed root-cause statements:
 If you can't state the root cause in one sentence at the architectural
 level, you haven't finished Phase 2.
 
+**Missing feature, not violated invariant.** Sometimes the root cause is
+that the behavior was never designed -- the code path doesn't exist, not
+that an existing invariant is broken. That's a different problem: bug-fix
+mode assumes a correct design exists to restore, but here there is none
+to restore. When the root cause reads as "this capability is
+unimplemented" rather than "this invariant is violated," stop here. Do
+not continue into Phases 4-7 -- designing a feature without the design
+gate is exactly what `/tpy-add-feature` exists to prevent. Surface the
+finding to the user and recommend re-entering via `/tpy-add-feature`,
+carrying forward the reproducer (Phase 1) and the root-cause statement
+(this phase) so the design pass starts from what you've already learned.
+
 ## Phase 4: Survey related features (architectural bugs only)
 
 The same root cause typically produces multiple symptoms. Find them
@@ -228,7 +240,9 @@ Add alternatives ONLY when they are genuinely present in the analysis:
 - a **patch + tracked BUGS.md follow-up**, when the architectural fix is
   too costly for the current context;
 - a **redesign-the-feature** path, when the architectural fix is awkward
-  in revealing ways (the feature may not fit the existing design);
+  in revealing ways (the feature may not fit the existing design) -- hand
+  off to `/tpy-add-feature` for the design pass rather than force-fitting
+  a fix;
 - a **more-analysis** path, when something material is genuinely
   unresolved.
 
