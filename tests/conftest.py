@@ -27,6 +27,7 @@ UPDATE_EXPECTED = os.environ.get("UPDATE_EXPECTED", "").lower() in ("1", "true")
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from tpyc.cli import get_module_name
 from tpyc.codegen_cpp import CodeGenOptions, CodeGenError
+from tpyc.compilation_context import activate_compiler
 from tpyc.parse import Parser, ParseError
 from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from tpyc.compiler import (
@@ -642,6 +643,10 @@ class CompileResult:
     div_zero_facts: dict[tuple[int, str], bool] | None = None
     # Cast safety facts (from sema), for # tpyc: cast_safe/cast_checked validation
     cast_safe_facts: dict[tuple[int, str], bool] | None = None
+    # (is_send, is_sync) per declared variable, for # tpyc: is_send/is_sync validation
+    send_sync_facts: dict[tuple[int, str], tuple[bool, bool]] | None = None
+    # (frame is_send, is_sync) per async/generator def, for # tpyc: frame_send/frame_sync
+    frame_facts: dict[tuple[int, str], tuple[bool, bool]] | None = None
     # Linker flags from # tpy: link() directives
     link_flags: list[str] = field(default_factory=list)
     # Third-party (link_third_party) build inputs: include dirs for the C
@@ -845,6 +850,22 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
         cpp_path = layout.cpp_path(entry_module.name)
         ctx = entry_module.analyzer.ctx if entry_module.analyzer else None
         declared_var_types = ctx.declared_var_types if ctx else None
+        # is_send()/is_sync() consult the active compiler's dynamic TypeDef
+        # view, so the walk must run inside the compiler context.
+        send_sync_facts = None
+        frame_facts = None
+        if ctx is not None:
+            from tpyc.sema.frame_traits import frame_traits_of_function
+            with activate_compiler(compiler):
+                if declared_var_types is not None:
+                    send_sync_facts = {
+                        key: (t.is_send(), t.is_sync())
+                        for key, t in declared_var_types.items()
+                    }
+                frame_facts = {
+                    key: frame_traits_of_function(fi)
+                    for key, fi in ctx.frame_fact_fns.items()
+                }
         ptr_deref_facts = ctx.ptr_deref_facts if ctx else None
         subscript_bounds_facts = ctx.subscript_bounds_facts if ctx else None
         div_zero_facts = ctx.div_zero_facts if ctx else None
@@ -863,6 +884,8 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
                              subscript_bounds_facts=subscript_bounds_facts,
                              div_zero_facts=div_zero_facts,
                              cast_safe_facts=cast_safe_facts,
+                             send_sync_facts=send_sync_facts,
+                             frame_facts=frame_facts,
                              link_flags=link_flags,
                              third_party_include_dirs=list(tp_plan.extra_include_dirs),
                              third_party_link_flags=list(tp_plan.extra_link_flags),
@@ -1763,6 +1786,146 @@ def validate_cast_annotations(
             errors.append(
                 f"Line {ann.line}: expected cast to '{ann.type_name}' to be cast_checked "
                 f"but range check is skipped (proven safe)"
+            )
+
+    return errors
+
+
+@dataclass
+class SendSyncAnnotation:
+    """A Send/Sync annotation from source code (# tpyc: is_send/is_sync(yes|no))."""
+    line: int
+    trait: str  # "is_send" or "is_sync"
+    expected: bool
+
+
+def parse_send_sync_annotations(source: str) -> list[SendSyncAnnotation]:
+    """Parse # tpyc: is_send(yes|no) and # tpyc: is_sync(yes|no) annotations.
+
+    Both may appear in one comment: # tpyc: is_send(yes) is_sync(no)
+    """
+    annotations = []
+    comment_re = re.compile(r'#\s*tpyc:(.*)$')
+    trait_re = re.compile(r'\b(is_send|is_sync)\(\s*(yes|no)\s*\)')
+
+    for lineno, line in enumerate(source.splitlines(), start=1):
+        stripped = line.lstrip()
+        if stripped.startswith('#'):
+            continue
+        comment = comment_re.search(line)
+        if not comment:
+            continue
+        for match in trait_re.finditer(comment.group(1)):
+            annotations.append(SendSyncAnnotation(
+                line=lineno,
+                trait=match.group(1),
+                expected=(match.group(2) == "yes"),
+            ))
+
+    return annotations
+
+
+def validate_send_sync_annotations(
+    src_file: Path,
+    send_sync_facts: dict[tuple[int, str], tuple[bool, bool]],
+) -> list[str]:
+    """Validate # tpyc: is_send/is_sync annotations against the declared
+    variable's computed traits.
+
+    The annotation sits on a variable declaration (or for-loop) line, like
+    # tpyc: type(...). Returns list of validation errors (empty if all pass).
+    """
+    source = src_file.read_text()
+    annotations = parse_send_sync_annotations(source)
+    errors = []
+
+    for ann in annotations:
+        line_text = source.splitlines()[ann.line - 1]
+        var_match = _VAR_NAME_RE.match(line_text) or _FOR_LOOP_VAR_RE.match(line_text)
+        if not var_match:
+            errors.append(f"Line {ann.line}: could not extract variable name from line")
+            continue
+        var_name = var_match.group(1)
+
+        facts = send_sync_facts.get((ann.line, var_name))
+        if facts is None:
+            errors.append(
+                f"Line {ann.line}: no declared type found for '{var_name}'"
+            )
+            continue
+
+        actual = facts[0] if ann.trait == "is_send" else facts[1]
+        if actual != ann.expected:
+            errors.append(
+                f"Line {ann.line}: expected {ann.trait}({'yes' if ann.expected else 'no'}) "
+                f"for '{var_name}' but compiler says "
+                f"{ann.trait}({'yes' if actual else 'no'})"
+            )
+
+    return errors
+
+
+_DEF_NAME_RE = re.compile(r'\s*(?:async\s+)?def\s+(\w+)')
+
+
+def parse_frame_annotations(source: str) -> list[SendSyncAnnotation]:
+    """Parse # tpyc: frame_send(yes|no) / frame_sync(yes|no) annotations
+    (on async def / generator def lines)."""
+    annotations = []
+    comment_re = re.compile(r'#\s*tpyc:(.*)$')
+    trait_re = re.compile(r'\b(frame_send|frame_sync)\(\s*(yes|no)\s*\)')
+
+    for lineno, line in enumerate(source.splitlines(), start=1):
+        stripped = line.lstrip()
+        if stripped.startswith('#'):
+            continue
+        comment = comment_re.search(line)
+        if not comment:
+            continue
+        for match in trait_re.finditer(comment.group(1)):
+            annotations.append(SendSyncAnnotation(
+                line=lineno,
+                trait=match.group(1),
+                expected=(match.group(2) == "yes"),
+            ))
+
+    return annotations
+
+
+def validate_frame_annotations(
+    src_file: Path,
+    frame_facts: dict[tuple[int, str], tuple[bool, bool]],
+) -> list[str]:
+    """Validate # tpyc: frame_send/frame_sync annotations against the
+    function's computed FrameType traits. The annotation sits on the
+    `def` / `async def` line. Returns list of validation errors.
+    """
+    source = src_file.read_text()
+    annotations = parse_frame_annotations(source)
+    errors = []
+
+    for ann in annotations:
+        line_text = source.splitlines()[ann.line - 1]
+        def_match = _DEF_NAME_RE.match(line_text)
+        if not def_match:
+            errors.append(f"Line {ann.line}: could not extract function name from line")
+            continue
+        fn_name = def_match.group(1)
+
+        facts = frame_facts.get((ann.line, fn_name))
+        if facts is None:
+            errors.append(
+                f"Line {ann.line}: no frame recorded for '{fn_name}' "
+                f"(only async / generator defs carry frames)"
+            )
+            continue
+
+        actual = facts[0] if ann.trait == "frame_send" else facts[1]
+        if actual != ann.expected:
+            errors.append(
+                f"Line {ann.line}: expected {ann.trait}({'yes' if ann.expected else 'no'}) "
+                f"for '{fn_name}' but compiler says "
+                f"{ann.trait}({'yes' if actual else 'no'})"
             )
 
     return errors

@@ -23,7 +23,7 @@ from ..typesys import (
     resolve_int_literals, CallableType, make_fn_type, is_fn_type,
     INT32, FLOAT, STR, FSTR, STRVIEW, CHAR, BOOL, BIGINT, NONE, BASIC_SLICE, SLICE, BYTES, BYTESVIEW, UINT8,
     is_protocol_type, container_to_str_template, contains_type_param,
-    PendingGenericInstanceType, unwrap_ref_type, make_ref, RefType,
+    PendingGenericInstanceType, unwrap_ref_type, unwrap_send_sync, make_ref, RefType,
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
     unwrap_own, is_readonly_span, view_family_for_type,
@@ -55,6 +55,7 @@ from ..type_def_registry import (
     find_factory_by_simple_name, protocol_info_of,
 )
 from ..namespace import BindingKind, NameBinding
+from .frame_traits import build_closure_frame
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
@@ -365,15 +366,18 @@ class ExpressionAnalyzer:
 
         type_hint = unwrap_ref_type(type_hint)
 
-        # Lambda with Fn/Callable type hint: infer param types from the hint
-        if isinstance(expr, TpyLambda) and is_callable_type(type_hint):
-            typ = self._analyze_lambda_with_fn_hint(expr, type_hint)
+        # Lambda with Fn/Callable type hint: infer param types from the hint.
+        # Send/Sync markers constrain the conversion (checked by
+        # _check_compat), not the callable's shape -- see through them here.
+        lambda_hint = unwrap_send_sync(type_hint)
+        if isinstance(expr, TpyLambda) and is_callable_type(lambda_hint):
+            typ = self._analyze_lambda_with_fn_hint(expr, lambda_hint)
             self.ctx.set_expr_type(expr, typ)
             return typ
 
         # Named function reference with Fn/Callable hint: resolve as function value.
         # Unwrap OwnType so that e.g. list.append(Own[Callable[...]]) works.
-        fn_hint = type_hint.wrapped if isinstance(type_hint, OwnType) else type_hint
+        fn_hint = lambda_hint.wrapped if isinstance(lambda_hint, OwnType) else lambda_hint
         if isinstance(expr, TpyName) and is_callable_type(fn_hint):
             result = self._try_resolve_function_ref(expr, fn_hint)
             if result is not None:
@@ -2211,6 +2215,8 @@ class ExpressionAnalyzer:
             # registry still carries unsubstituted TypeParamRefs.
             resolved_fi = getattr(operand, "resolved_function_info", None)
             source_fi = resolved_fi if resolved_fi is not None else async_fi
+            # Frame Send/Sync: the sub-coro is stored inline in this frame
+            self.ctx.func.current_awaited_subframes.append(async_fi)
             return self._unwrap_awaitable_return(source_fi.return_type)
 
         # Type-erased path: analyze operand. Supported v1 erased forms:
@@ -2247,6 +2253,7 @@ class ExpressionAnalyzer:
                 if owner_type is not None:
                     expr.awaited_method_owner_type = owner_type
                 if mfi.return_type is not None:
+                    self.ctx.func.current_awaited_subframes.append(mfi)
                     return self._unwrap_awaitable_return(mfi.return_type)
         # An Own[Task[T]] rvalue (e.g. `await asyncio.create_task(...)`)
         # is a valid await operand -- strip the Own[] before structural
@@ -2257,6 +2264,9 @@ class ExpressionAnalyzer:
             if inner is not None:
                 if isinstance(inner, TpyType):
                     expr.awaited_task_inner = inner
+                    # Erased awaitable (Task / Future / structural): sema
+                    # cannot classify the stored frame -- non-Send.
+                    self.ctx.func.current_awaited_subframes.append(None)
                     # `await x` polls `x.__poll__(waker)`; a non-readonly
                     # __poll__ mutates the awaitable, so awaiting a durable
                     # operand mutates its root. Mark it -- otherwise a method
@@ -3640,6 +3650,13 @@ class ExpressionAnalyzer:
         # Fn (template) stays inline; captures by reference are safe.
         if isinstance(fn_type, CallableType) and not fn_type.is_template:
             expr.captures_by_value = True
+        # Send/Sync frame fact: classify the capture list so conversion
+        # sites (Send[Callable[...]] slots) can consult the concrete frame.
+        by_ref = not expr.captures_by_value
+        expr.frame_type = build_closure_frame([
+            (name, self._lookup_capture_type(name), by_ref)
+            for name in captured
+        ])
 
         # Check return type compatibility (allow implicit coercions like int literal -> Int32)
         if isinstance(fn_type.return_type, TypeParamRef):
@@ -3669,6 +3686,15 @@ class ExpressionAnalyzer:
 
         expr.inferred_return_type = fn_type.return_type
         return fn_type
+
+    def _lookup_capture_type(self, name: str) -> 'TpyType | None':
+        """Declared type of a lambda-captured outer local (None when the
+        binding is not a plain variable -- classified conservatively)."""
+        ns = self.ctx.func.current_ns
+        binding = ns.lookup(name) if ns else None
+        if binding is not None and binding.kind == BindingKind.VARIABLE:
+            return binding.type
+        return None
 
     # --- Function references ---
 

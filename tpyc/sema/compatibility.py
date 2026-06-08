@@ -19,12 +19,13 @@ from ..typesys import (
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     CallableType, is_fn_type, RefType, unwrap_ref_type,
     is_callable_type, is_integer_type, is_any_float_type, is_readonly_span,
-    is_polymorphic_class_type)
+    is_polymorphic_class_type, SendType, SyncType, unwrap_send_sync)
+from .frame_traits import frame_traits_of_function
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyStrLiteral, TpyBytesLiteral,
-    TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyNamedExpr, SourceLocation
+    TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyLambda, TpyNamedExpr, SourceLocation
 )
 
 
@@ -373,6 +374,23 @@ class TypeCompatibility:
             raise SemanticError(result.message, result.loc)
         return result
 
+    def _value_frame_traits(self, source_expr: TpyExpr | None) -> tuple[bool, bool] | None:
+        """(is_send, is_sync) of the concrete captured-state frame behind a
+        value expression, when sema knows it: a lambda's capture list, or a
+        function reference's FunctionInfo (free function / nested def).
+        None when no frame fact is available (conservative caller default).
+        """
+        if isinstance(source_expr, TpyLambda):
+            frame = source_expr.frame_type
+            if frame is not None:
+                return (frame.is_send(), frame.is_sync())
+            return None
+        if isinstance(source_expr, TpyName):
+            fi = getattr(source_expr, "function_ref_info", None)
+            if fi is not None:
+                return frame_traits_of_function(fi)
+        return None
+
     def _resolve_recursive_refs(self, typ: TpyType) -> TpyType:
         """Resolve AliasRef self-references to recursive union aliases.
 
@@ -434,6 +452,35 @@ class TypeCompatibility:
         if actual == expected:
             if not (isinstance(actual, OwnType) and isinstance(source_expr, TpyName)):
                 return None
+        # Send[T] / Sync[T] marker wrappers. The wrapper has no C++
+        # representation; the conversion into a marker-typed slot is the
+        # assertion site (markers persist post-resolution only around
+        # erased types, where the trait is a per-value property).
+        if isinstance(expected, (SendType, SyncType)):
+            trait = "Send" if isinstance(expected, SendType) else "Sync"
+            holds = actual.is_send() if isinstance(expected, SendType) \
+                else actual.is_sync()
+            if not holds:
+                # Erased callables answer non-Send at the type level; the
+                # concrete value may still qualify via its captured-state
+                # frame (lambda capture list / function-ref FunctionInfo).
+                frame_traits = self._value_frame_traits(source_expr)
+                if frame_traits is not None:
+                    holds = frame_traits[0] if isinstance(expected, SendType) \
+                        else frame_traits[1]
+            if not holds:
+                return CompatError(
+                    f"'{actual}' is not {trait} -- cannot use it where "
+                    f"'{expected}' is expected in {context}", loc)
+            return self._check_compat(
+                unwrap_send_sync(actual), expected.wrapped, context, loc,
+                source_expr, is_return, coercion_ctx, target_is_storage_form)
+        if isinstance(actual, (SendType, SyncType)):
+            # Marker-typed value into an unmarked slot: the marker only adds
+            # a guarantee, so it converts freely to the bare type.
+            return self._check_compat(
+                actual.wrapped, expected, context, loc, source_expr,
+                is_return, coercion_ctx, target_is_storage_form)
         # CallableType (Fn and Callable): inner param/return types may carry
         # Own/Ref qualifiers from FI that don't affect callable contract compatibility.
         if (is_callable_type(actual)

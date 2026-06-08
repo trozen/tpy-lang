@@ -1411,6 +1411,8 @@ class Parser:
         is_nocopy = False
         builtin_type_key: str | None = None
         is_indirecting = False
+        send_override: bool | None = None
+        sync_override: bool | None = None
         pending_macros: list[tuple[str, dict[str, Any]]] = []
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"class '{node.name}'")
@@ -1435,6 +1437,11 @@ class Parser:
             elif qname == qnames.NOCOPY:
                 self._validate_decorator_args(qname, arg, dec)
                 is_nocopy = True
+            elif qname in self._SEND_SYNC_DECORATOR_MAP:
+                self._validate_decorator_args(qname, arg, dec)
+                send_override, sync_override = self._apply_send_sync_override(
+                    qname, send_override, sync_override,
+                    f"Class '{node.name}'", node)
             elif qname == qnames.BUILTIN_TYPE:
                 pos, _ = self._validate_decorator_args(qname, arg, dec)
                 builtin_type_key = pos
@@ -1636,7 +1643,7 @@ class Parser:
         # Restore scopes
         self._type_param_scope = old_scope
         self._nested_type_scope = old_nested_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, is_indirecting=is_indirecting, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, is_indirecting=is_indirecting, send_override=send_override, sync_override=sync_override, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,
@@ -2027,6 +2034,33 @@ class Parser:
         qnames.NATIVE: RecordLinkage.NATIVE,
     }
 
+    # @unsafe_send / @unsafe_sync force the trait to True; @nosend /
+    # @nosync force it to False. Valid on records and on def / async def /
+    # generator / nested def (lambdas can't be decorated).
+    # qname -> (is_sync_trait, forced_value). @unsafe_* force True, @no*
+    # force False; the flag picks which of the two override slots it sets.
+    _SEND_SYNC_DECORATOR_MAP: dict[str, tuple[bool, bool]] = {
+        qnames.UNSAFE_SEND: (False, True),
+        qnames.NOSEND: (False, False),
+        qnames.UNSAFE_SYNC: (True, True),
+        qnames.NOSYNC: (True, False),
+    }
+
+    def _apply_send_sync_override(
+        self, qname: str, send_override: 'bool | None',
+        sync_override: 'bool | None', target: str, node,
+    ) -> 'tuple[bool | None, bool | None]':
+        """Fold a Send/Sync override decorator into the (send, sync) pair,
+        rejecting a second decorator targeting the same trait."""
+        is_sync, value = self._SEND_SYNC_DECORATOR_MAP[qname]
+        if (sync_override if is_sync else send_override) is not None:
+            raise ParseError(
+                f"{target} has contradictory "
+                f"{'Sync' if is_sync else 'Send'}-override decorators", node)
+        if is_sync:
+            return send_override, value
+        return value, sync_override
+
     _METHOD_LINKAGE_MAP: dict[str, FunctionLinkage] = {
         qnames.NATIVE: FunctionLinkage.NATIVE,
     }
@@ -2053,6 +2087,8 @@ class Parser:
         is_property_setter = False
         property_setter_name: str | None = None
         native_cpp_return_type: str | None = None
+        send_override: bool | None = None
+        sync_override: bool | None = None
         for dec in node.decorator_list:
             # Detect @prop_name.setter / @prop_name.deleter before general resolution
             func_node_check = dec.func if isinstance(dec, ast.Call) else dec
@@ -2091,6 +2127,10 @@ class Parser:
                 cpp_template = pos
             elif qname == qnames.NATIVE_PRESERVES_REFS:
                 native_preserves_refs = True
+            elif qname in self._SEND_SYNC_DECORATOR_MAP:
+                send_override, sync_override = self._apply_send_sync_override(
+                    qname, send_override, sync_override,
+                    f"Method '{node.name}'", node)
             elif qname in self._METHOD_LINKAGE_MAP:
                 method_linkage = self._METHOD_LINKAGE_MAP[qname]
                 if isinstance(pos, tuple):
@@ -2361,6 +2401,8 @@ class Parser:
             error_return=error_return,
             is_generator=is_generator,
             self_annotation=self_annotation,
+            send_override=send_override,
+            sync_override=sync_override,
             loc=self._loc(node)
         )
         return method
@@ -2399,6 +2441,8 @@ class Parser:
         native_name: str | None = None
         cpp_template: str | None = None
         native_cpp_return_type: str | None = None
+        send_override: bool | None = None
+        sync_override: bool | None = None
         pending_macros: list[tuple[str, dict[str, Any]]] = []
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"function '{node.name}'")
@@ -2422,6 +2466,10 @@ class Parser:
                 error_return = pos.name
             elif qname == qnames.VALUE_PTR_COERCION:
                 value_ptr_coercion = True
+            elif qname in self._SEND_SYNC_DECORATOR_MAP:
+                send_override, sync_override = self._apply_send_sync_override(
+                    qname, send_override, sync_override,
+                    f"Function '{node.name}'", node)
             elif qname == qnames.CPP_TEMPLATE:
                 cpp_template = pos
             elif qname == qnames.BUILTIN_DECORATOR:
@@ -2679,6 +2727,8 @@ class Parser:
             builtin_function_key=builtin_function_key,
             is_generator=is_generator,
             is_async=is_async,
+            send_override=send_override,
+            sync_override=sync_override,
             pending_macros=pending_macros,
             loc=self._loc(node)
         )
@@ -2840,7 +2890,8 @@ class Parser:
         if resolved:
             module, original = resolved
             if module == "tpy":
-                if original in ("Ptr", "Own", "readonly", "auto_readonly", "auto_own"):
+                if original in ("Ptr", "Own", "readonly", "auto_readonly",
+                                "auto_own", "Send", "Sync"):
                     inner_ref = self._parse_type_ref(node.slice, type_param_scope)
                     return TpyTypeRef(f"tpy:{original}", (inner_ref,), loc)
                 if original == "Fn":

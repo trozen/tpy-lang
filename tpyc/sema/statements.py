@@ -2373,7 +2373,21 @@ class StatementAnalyzer:
             name=func.name,
             params=param_infos,
             return_type=return_type,
+            send_override=func.send_override,
+            sync_override=func.sync_override,
         )
+        # Send/Sync frame fact: capture list with declared types. Nonlocal
+        # names are by-ref captures (non-Send); plain captures copy by value
+        # when the def escapes to Callable.
+        def _capture_type(name: str) -> 'TpyType | None':
+            ns = self.ctx.func.current_ns
+            b = ns.lookup(name) if ns else None
+            return b.type if (b is not None
+                              and b.kind == BindingKind.VARIABLE) else None
+        fi.frame_captures = [
+            (name, _capture_type(name), name in nonlocal_names)
+            for name in captured
+        ]
 
         # Bind as FUNCTION in the local namespace
         if self.ctx.func.current_ns:

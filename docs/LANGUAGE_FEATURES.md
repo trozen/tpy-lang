@@ -5632,20 +5632,55 @@ Unknown directives produce a warning. Directives after the first line of code pr
 
 ### Thread Safety Markers (Send/Sync)
 
+The full marker-layer design lives in `docs/SEND_SYNC_DESIGN.md`; Phase 2
+(marker-layer correctness, wrappers, bounds, frames, override kit) is done.
+
 - **Working**: `is_send()` / `is_sync()` methods on all types in the type system
 - **Working**: Auto-derivation for user records based on field types
   - A record is Send if all fields are Send (safe to transfer across threads)
   - A record is Sync if all fields are Sync (safe to share references across threads)
   - Parent class Send/Sync status is also considered
-- **Working**: `Send` and `Sync` marker protocols in `tpy` module (for future explicit opt-in)
+  - Generic records answer per concrete instantiation (use-site field walk)
+- **Working**: `Send[T]` / `Sync[T]` marker wrapper types. For non-erased
+  types the wrapper is a static assertion checked at resolve time
+  (`Send[Int32]` is just `Int32`; `Send[Ptr[Int32]]` is a compile error).
+  For erased types (`Callable[...]`, `@dynamic` protocols) the wrapper
+  persists sema-side with the same C++ representation as the bare type, and
+  the assertion fires at every erasing conversion against the concrete
+  value. Canonicalization (resolver-time): distributes over unions /
+  optionals, idempotent, `Send` floats outside `Sync`, markers float
+  outside `readonly` / `Own`.
+- **Working**: `T: Send` / `T: Sync` generic bounds on functions and records
+  (conformance is the type's own derived trait).
+- **Working**: closure/coroutine/generator frame classification (`FrameType`).
+  A lambda / nested def / free function converts into `Send[Callable[...]]`
+  when its captured-state frame is Send (no captures, by-value captures of
+  Send types); borrowed/view captures reject. Async coroutines and
+  generators classify their frame slots (params, hoisted locals, awaited
+  sub-frames) conservatively: anything sema cannot classify makes the frame
+  non-Send/non-Sync.
+- **Working**: opt-in / opt-out kit: `class Foo(Send)` (checked claim --
+  errors naming the offending field if the structural answer disagrees),
+  `@unsafe_send` / `@unsafe_sync` (force true; records and function
+  frames), `@nosend` / `@nosync` (force false). Contradictory or redundant
+  combinations on one target are rejected.
+- **Working**: `Send[Pet]` for `@dynamic` protocols -- same Adapter /
+  RefAdapter representation as bare `Pet`; the concrete argument's
+  Send-ness is checked at the erasing conversion (pointee-level assertion;
+  see SEND_SYNC_DESIGN.md OQ5 for the pointee-vs-handle model).
 - **Working**: C++ `is_send<T>` / `is_sync<T>` traits and `Send` / `Sync` concepts in runtime
-- **Planned**: Enforcement at channel/shared-reference boundaries (Phase 4)
+- **Working**: test annotations `# tpyc: is_send(yes|no)` / `is_sync(...)`
+  (declaration lines) and `# tpyc: frame_send(yes|no)` / `frame_sync(...)`
+  (async/generator def lines)
+- **Planned**: diagnostic chain walker (`why_not_send`), `tpy.assert_send[T]()`,
+  `--explain-send` (Phase 3); enforcement at channel/spawn/task boundaries (Phase 4+)
 
 Send/Sync rules for built-in types:
 
 | Type | Send | Sync | Notes |
 |------|------|------|-------|
 | Value types (Int32, bool, float, str, ...) | Yes | Yes | Copied, no aliasing |
+| `bytearray` | Yes | No | Mutable buffer; same Sync rule as `list[T]` |
 | `Ptr[T]` | No | No | Raw pointer, no ownership guarantee |
 | `Ptr[readonly[T]]` | No | Yes (if T Sync) | Read-only shared access |
 | `list[T]` | Yes (if T Send) | No | Mutable container |
@@ -5653,7 +5688,9 @@ Send/Sync rules for built-in types:
 | `Array[T, N]` | Yes (if T Send) | Yes (if T Sync) | Fixed-size |
 | `Span[T]` / `Span[readonly[T]]` | No | ReadOnly: Yes (if T Sync) | Non-owning view |
 | `StrView` | No | Yes | Non-owning read-only view |
-| `readonly[T]` | Same as T | Yes (if T Send or Sync) | Immutable wrapper |
+| `readonly[T]` | Same as T | Yes (if T Sync) | Borrow-side restriction, not a freeze |
+| `Own[T]` | Yes (if T Send) | No | Single-owner move slot |
+| `Callable[[...], R]` | No | No | Erased closure; opt in via `Send[Callable[...]]` |
 | `tuple[T1, T2, ...]` | Yes (if all Ti Send) | Yes (if all Ti Sync) | Composite |
 
 - **Working (v1)**: `async`/`await` -> resumable-frame state machines.

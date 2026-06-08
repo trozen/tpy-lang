@@ -6,6 +6,7 @@
 from ._bootstrap import (
     # Decorators / type modifiers
     readonly, noalloc, nocopy, pure, inline, dynamic, error_return,
+    unsafe_send, unsafe_sync, nosend, nosync,
     Own, Fn,
 )
 from ._core import (
@@ -62,6 +63,7 @@ __all__ = [
     "Own", "Fn",
     # Decorators / type modifiers
     "readonly", "noalloc", "nocopy", "pure", "inline", "dynamic", "error_return",
+    "unsafe_send", "unsafe_sync", "nosend", "nosync",
     "auto_readonly", "auto_own",  # parser keywords (no .py stub)
     # Structural protocols
     "Truthy", "Stringable", "Representable",

@@ -1,0 +1,5 @@
+speak: 3
+speak: 7
+bare: 3
+own: 5
+local: 3

@@ -17,7 +17,7 @@ from ..typesys import (
     polymorphic_source_is_pointer, polymorphic_subclass_into_optional,
     polymorphic_source_inner,
     is_polymorphic_subclass_fact, ALL_FIXED_INTS,
-    ReadonlyType, unwrap_readonly, unwrap_optional_own, TypeParamRef, UnionType, LiteralType, LiteralTag,
+    ReadonlyType, unwrap_readonly, unwrap_optional_own, unwrap_send_sync, TypeParamRef, UnionType, LiteralType, LiteralTag,
     is_own_pointer_repr_optional,
     resolve_int_literals,
     error_return_to_cpp, qualify_exception_name, is_return_exception,
@@ -924,7 +924,8 @@ class StatementGenerator:
         if target_type is not None:
             # Strip Ref and ReadonlyType -- C++ reference semantics are
             # handled by codegen binding (T& / auto&), not by the type itself.
-            target_type = unwrap_readonly(unwrap_ref_type(target_type))
+            # Send/Sync markers (canonically outermost) have no C++ shape.
+            target_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(target_type)))
             if isinstance(target_type, OwnType):
                 target_type = target_type.wrapped
             target_type = resolve_int_literals(target_type, self.ctx.analyzer.ctx.default_int_for_literal)

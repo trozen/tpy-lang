@@ -1,0 +1,1 @@
+main.py:5: error: @unsafe_send is redundant with the 'Send' base class on 'C' -- use one or the other

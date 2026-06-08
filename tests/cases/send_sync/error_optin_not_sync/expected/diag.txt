@@ -1,0 +1,1 @@
+main.py:4: error: Class 'Bad' declares Sync but field 'xs: list[Int32]' is not Sync

@@ -1,0 +1,1 @@
+main.py:4: error: `Send[Ptr[Int32]]`: 'Ptr[Int32]' is not Send

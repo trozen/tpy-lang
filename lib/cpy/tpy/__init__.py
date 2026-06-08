@@ -479,6 +479,26 @@ def nocopy(cls):
     return cls
 
 
+def unsafe_send(target):
+    """No-op in CPython. The compiler forces the Send answer to true."""
+    return target
+
+
+def unsafe_sync(target):
+    """No-op in CPython. The compiler forces the Sync answer to true."""
+    return target
+
+
+def nosend(target):
+    """No-op in CPython. The compiler forces the Send answer to false."""
+    return target
+
+
+def nosync(target):
+    """No-op in CPython. The compiler forces the Sync answer to false."""
+    return target
+
+
 def dynamic(cls):
     """Decorator marking a protocol for dynamic dispatch.
 
@@ -646,13 +666,21 @@ class Default(_Protocol):
 
 
 class Send(_Protocol):
-    """Marker for types safe to transfer across threads."""
-    pass
+    """Marker for types safe to transfer across threads.
+
+    Subscript form Send[T] is the marker wrapper; erases to T in CPython.
+    """
+    def __class_getitem__(cls, item):
+        return item
 
 
 class Sync(_Protocol):
-    """Marker for types safe to share references across threads."""
-    pass
+    """Marker for types safe to share references across threads.
+
+    Subscript form Sync[T] is the marker wrapper; erases to T in CPython.
+    """
+    def __class_getitem__(cls, item):
+        return item
 
 
 class ReturnException(_Protocol):

@@ -1,0 +1,1 @@
+main.py:14: error: 'Callable[[Int32], None]' is not Send -- cannot use it where 'Send[Callable[[Int32], None]]' is expected in argument 'cb'

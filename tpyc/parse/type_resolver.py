@@ -22,6 +22,7 @@ from ..typesys import (
     TpyType, NominalType, AliasRef, PtrType, OwnType, ReadonlyType, AutoReadonlyType,
     AutoOwnType, FinalType, ClassVarType, OptionalType, VoidType, UnionType, TupleType,
     CallableType, make_union, make_fn_type,
+    SendType, SyncType, make_send_marker, make_sync_marker, MarkerAssertionError,
     TypeParamRef, TypeParamKind, LiteralType, LiteralTag,
     INT32, VOID, NONE, STR, STRING, STRVIEW, CHAR, BYTES, BYTEARRAY, BYTESVIEW,
     BOOL, FLOAT, FLOAT32, BIGINT, SELF, BASIC_SLICE, SLICE, ANY, AnyType,
@@ -48,6 +49,29 @@ if TYPE_CHECKING:
 # only need name membership use a local `_FIXED_INT_NAMES` frozenset
 # instead of pulling in the singleton values.
 _FIXED_INT_MAP: dict[str, TpyType] = {str(t): t for t in ALL_FIXED_INTS}
+
+
+def _refloat_markers(
+    inner: TpyType, build: Callable[[TpyType], TpyType], loc: SourceLocation,
+) -> TpyType:
+    """Build a readonly/Own wrapper over `inner`, floating any Send/Sync
+    markers back outside it (canonical order: markers outermost), e.g.
+    readonly[Send[T]] -> Send[readonly[T]]."""
+    has_send = has_sync = False
+    base = inner
+    while isinstance(base, (SendType, SyncType)):
+        has_send = has_send or isinstance(base, SendType)
+        has_sync = has_sync or isinstance(base, SyncType)
+        base = base.wrapped
+    result = build(base)
+    try:
+        if has_sync:
+            result = make_sync_marker(result)
+        if has_send:
+            result = make_send_marker(result)
+    except MarkerAssertionError as e:
+        raise ParseError(str(e), loc=loc)
+    return result
 
 
 def _is_ptr_shaped(t: TpyType) -> bool:
@@ -323,22 +347,31 @@ class TypeResolver:
         # generic path where the resolver's unresolved-name error fires.
         if ref.args and name in (
             "tpy:Ptr", "tpy:Own", "tpy:readonly", "tpy:auto_readonly",
-            "tpy:auto_own", "typing:Optional", "typing:Final", "typing:ClassVar",
+            "tpy:auto_own", "tpy:Send", "tpy:Sync",
+            "typing:Optional", "typing:Final", "typing:ClassVar",
         ):
             inner_arg = ref.args[0]
             assert not isinstance(inner_arg, int), \
                 f"structural wrapper {name} cannot take int arg"
-            # Own/Ptr/readonly/auto_* are value-bearing slots (Own[None] etc.
-            # must produce NoneType). Optional/Final/ClassVar keep the outer
-            # context: Optional preserves the union-marker semantics, Final/
-            # ClassVar are annotation modifiers at whatever depth they appear.
+            # Own/Ptr/readonly/auto_*/Send/Sync are value-bearing slots
+            # (Own[None] etc. must produce NoneType). Optional/Final/ClassVar
+            # keep the outer context: Optional preserves the union-marker
+            # semantics, Final/ClassVar are annotation modifiers at whatever
+            # depth they appear.
             inner_is_type_arg = name in (
                 "tpy:Ptr", "tpy:Own", "tpy:readonly",
-                "tpy:auto_readonly", "tpy:auto_own",
+                "tpy:auto_readonly", "tpy:auto_own", "tpy:Send", "tpy:Sync",
             ) or is_type_arg
             inner = self.resolve(
                 inner_arg, type_param_scope, is_type_arg=inner_is_type_arg,
             )
+            if name in ("tpy:Send", "tpy:Sync"):
+                try:
+                    if name == "tpy:Send":
+                        return make_send_marker(inner)
+                    return make_sync_marker(inner)
+                except MarkerAssertionError as e:
+                    raise ParseError(str(e), loc=ref.loc)
             if name == "tpy:Ptr":
                 if isinstance(inner, ReadonlyType):
                     return PtrType(inner.wrapped, is_readonly=True)
@@ -349,9 +382,9 @@ class TypeResolver:
                         "Own[Any] is redundant -- Any is already owning",
                         loc=ref.loc,
                     )
-                return OwnType(inner)
+                return _refloat_markers(inner, OwnType, ref.loc)
             if name == "tpy:readonly":
-                return ReadonlyType(inner)
+                return _refloat_markers(inner, ReadonlyType, ref.loc)
             if name == "tpy:auto_readonly":
                 return AutoReadonlyType(inner)
             if name == "tpy:auto_own":

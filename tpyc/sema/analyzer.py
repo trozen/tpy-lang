@@ -1181,6 +1181,24 @@ class SemanticAnalyzer:
                 return ReadonlyType(ptype)
         return ptype
 
+    def _stamp_frame_materials(self, func: TpyFunction, fi: 'FunctionInfo') -> None:
+        """Copy Send/Sync frame-classification materials onto the
+        FunctionInfo at body-analysis end (sema/frame_traits.py resolves them
+        lazily -- awaited sub-frames may belong to later-analyzed bodies).
+        Also registers the fi for # tpyc: frame_send/frame_sync validation.
+        """
+        if not (func.is_generator or func.is_async):
+            return
+        fi.frame_locals = list(func.generator_locals or [])
+        local_names = {name for name, _ in fi.frame_locals}
+        fi.frame_loop_var_names = frozenset(
+            name for name in self.ctx.func.pending_loop_vars
+            if name in local_names
+        )
+        fi.frame_subframes = list(self.ctx.func.current_awaited_subframes)
+        if func.loc is not None:
+            self.ctx.frame_fact_fns[(func.loc.line, func.name)] = fi
+
     def _warn_unconsumed_own_params(self, func: TpyFunction) -> None:
         """Warn when Own[T] params are never consumed (stored, forwarded, or returned)."""
         if func.is_stub:
@@ -1321,6 +1339,7 @@ class SemanticAnalyzer:
         if (func_info is not None
                 and func_info.direct_mutated_params is None
                 and func_info.originating_module == self.ctx.module_name):
+            self._stamp_frame_materials(func, func_info)
             param_list = [pname for pname, _ in func.params]
             direct = frozenset(
                 i for i, pname in enumerate(param_list)
@@ -2548,6 +2567,7 @@ class SemanticAnalyzer:
                 if (method_fi is not None
                         and method_fi.direct_mutated_params is None
                         and method_fi.originating_module == self.ctx.module_name):
+                    self._stamp_frame_materials(method, method_fi)
                     param_list = [pname for pname, _ in method.params]
                     direct = frozenset(
                         i for i, pname in enumerate(param_list)

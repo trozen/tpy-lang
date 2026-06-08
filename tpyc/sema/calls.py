@@ -25,6 +25,7 @@ from ..typesys import (
     CallableType, is_fn_type, unwrap_ref_type,
     is_integer_type, is_any_int_type,
     is_callable_type, is_float_type, is_readonly_span, varargs_is_readonly, unwrap_qualifiers,
+    unwrap_send_sync,
     param_has_mutable_borrow_surface, contains_type_param,
     del_suppresses_default_ctor)
 from ..parse import (
@@ -822,6 +823,8 @@ class CallAnalyzer:
                     # Strip Own[T] -- Own is a storage property, not a type distinction
                     if isinstance(var_type, OwnType):
                         var_type = var_type.wrapped
+                    # Send/Sync markers add a guarantee, not callability
+                    var_type = unwrap_send_sync(var_type)
                     if is_fn_type(var_type):
                         return self._analyze_fn_type_call(expr, var_type)
                     if isinstance(var_type, CallableType):
@@ -3501,7 +3504,9 @@ class CallAnalyzer:
             # supplied to 2+ Fn-bearing candidates already route through
             # regime C's per-candidate trial, so dropping the hint here
             # doesn't break legitimate body-type inference.
-            if hint is not None and is_callable_type(hint) and isinstance(arg, (TpyName, TpyLambda)):
+            if (hint is not None
+                    and is_callable_type(unwrap_send_sync(hint))
+                    and isinstance(arg, (TpyName, TpyLambda))):
                 hint = None
             arg_types.append(self.expr.analyze_call_arg(arg, hint))
         return arg_types
@@ -3830,7 +3835,7 @@ class CallAnalyzer:
 
         # Per-Fn-slot trial.
         for slot in fn_slots:
-            ptype = unwrap_ref_type(func.params[slot.param_index].type)
+            ptype = unwrap_send_sync(unwrap_ref_type(func.params[slot.param_index].type))
             hint = (partial_substitute(ptype, partial_inferred)
                     if func.is_generic() else ptype)
             if not is_callable_type(hint):
@@ -5231,6 +5236,7 @@ class CallAnalyzer:
         callee_type = self.expr.analyze_expr(expr.func)
         if isinstance(callee_type, OwnType):
             callee_type = callee_type.wrapped
+        callee_type = unwrap_send_sync(callee_type)
         if is_fn_type(callee_type):
             return self._analyze_fn_type_call(expr, callee_type)
         if isinstance(callee_type, CallableType):

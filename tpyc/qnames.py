@@ -65,6 +65,10 @@ DYNAMIC = "tpy.dynamic"
 ERROR_RETURN = "tpy.error_return"
 AUTO_READONLY = "tpy.auto_readonly"
 AUTO_OWN = "tpy.auto_own"
+UNSAFE_SEND = "tpy.unsafe_send"
+UNSAFE_SYNC = "tpy.unsafe_sync"
+NOSEND = "tpy.nosend"
+NOSYNC = "tpy.nosync"
 
 # -- typing --
 PROTOCOL = "typing.Protocol"

@@ -562,6 +562,8 @@ class TpyLambda(TpyExpr):
     captured_names: list[str] = field(default_factory=list)
     captures_by_value: bool = False  # True for Callable context (captures escape)
     readonly_params: bool = False  # True when params should be const (key functions)
+    # Set by sema: capture-list FrameType for Send/Sync conversion checks
+    frame_type: 'TpyType | None' = None
 
     def children(self) -> list[TpyExpr]:
         # Lambda creates its own scope; outer walks should not recurse into
@@ -1283,6 +1285,10 @@ class TpyFunction:
     forwarded_locals: 'dict[str, str] | None' = None  # Set by sema: hoisted local -> backing static-protocol param it forwards to
     is_async: bool = False  # Set by parser: `async def`. Lowered to a state-machine
                             # struct conforming to Awaitable[T] in PR 3 (codegen).
+    # Send/Sync frame overrides: True from @unsafe_send/@unsafe_sync,
+    # False from @nosend/@nosync, None = structural classification
+    send_override: bool | None = None
+    sync_override: bool | None = None
     # Set by `ClassInfo.add_method` for any function added through the macro
     # API. Lets sema diagnostics distinguish synthesized methods (e.g.
     # @dataclass __init__) from user-written ones, so messages can point the
@@ -1380,6 +1386,10 @@ class TpyRecord:
     # User TPy records with a Ptr[T] field do NOT set this -- the field walk
     # infers indirection structurally.
     is_indirecting: bool = False
+    # Send/Sync trait overrides: True from @unsafe_send/@unsafe_sync,
+    # False from @nosend/@nosync, None = structural auto-derive
+    send_override: bool | None = None
+    sync_override: bool | None = None
     pending_macros: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     # Callbacks registered via `ClassInfo.defer_until_macros_complete()`.
     # Run after the eager macro pass so a macro can inspect the final

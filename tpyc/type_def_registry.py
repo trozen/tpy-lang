@@ -716,6 +716,10 @@ def _populate() -> None:
     ))
     register(TypeDef(
         "builtins.bytearray", TC.BYTES, is_value_type=True,
+        # Mutable buffer: same Sync rule as list[T]. is_value_type only
+        # reflects C++ copy semantics, so the value-type Sync default
+        # (immutability) does not apply.
+        is_sync=False,
         cpp_formatter=lambda args: "std::vector<uint8_t>",
         param_cpp_formatter=lambda args: "const std::vector<uint8_t>&",
         param_mut_cpp_formatter=lambda args: "std::vector<uint8_t>&",

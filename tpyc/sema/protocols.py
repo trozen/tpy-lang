@@ -249,6 +249,18 @@ class ProtocolChecker:
         Returns STRUCTURAL only when the method/field walk at the tail is the
         sole path that succeeded. Returns None when actual does not conform.
         """
+        # Send / Sync conformance is the type's own derived trait. Checked
+        # before the qualifier unwrap below: Own[T] / readonly[T] / Send[T]
+        # have their own Send/Sync answers distinct from bare T's.
+        if protocol.name in ("Send", "Sync"):
+            qname = protocol.qualified_name()
+            if qname == qnames.SEND:
+                return (ProtocolConformanceKind.EXPLICIT
+                        if actual.is_send() else None)
+            if qname == qnames.SYNC:
+                return (ProtocolConformanceKind.EXPLICIT
+                        if actual.is_sync() else None)
+
         # Unwrap ownership/const/ref wrappers -- readonly[T], Own[T], Ref[T]
         # conform to any protocol that T conforms to.
         unwrapped = unwrap_qualifiers(actual)

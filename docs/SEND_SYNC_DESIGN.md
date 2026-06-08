@@ -5,13 +5,15 @@
 | Phase | Scope | Status |
 |-------|-------|--------|
 | **Phase 1** | `is_send` / `is_sync` traits on all built-in types (runtime + sema), auto-derivation for user records (fields + base class), `Send` / `Sync` marker `Protocol`s in `tpy` | Done |
-| **Phase 2** | Marker-layer gap closing (closures, coroutine/generator frames, union forms), tightened rules, `Send[T]` / `Sync[T]` marker wrappers covering `Callable[...]` and `@dynamic` protocols, explicit opt-in / opt-out syntax, `# tpyc:` annotations + test group locking auto-derivation | Planned |
+| **Phase 2** | Marker-layer gap closing (closures, coroutine/generator frames, union forms), tightened rules, `Send[T]` / `Sync[T]` marker wrappers covering `Callable[...]` and `@dynamic` protocols, explicit opt-in / opt-out syntax, `# tpyc:` annotations + test group locking auto-derivation | Done (per-record C++ trait mirror deferred -- see Implementation Notes) |
 | **Phase 3** | Diagnostic surface (`tpy.assert_send[T]`, `--explain-send`, inline chain at enforcement sites) | Planned |
 | **Phase 4** | First enforcement site: `Channel[T]` (intra-process, `T: Send`) on top of the single-threaded executor; covers SPSC and MPSC | Planned |
 | **Phase 5** | Multi-threaded executor; `Task[T]` requires `Send` frame for migration; `thread.spawn(fn)` requiring `Send` closure | Planned (v3+) |
 | **Phase 6** | `Arc[T]` (atomic shared ownership), synchronization primitives (`Mutex[T]`, `RwLock[T]`), `Sync`-required borrow sites | Planned (v3+) |
 
 Phases 2 and 3 are independent of any concurrency runtime and should land first. Phase 4 forces the open questions in Phase 2/3 to be answered against a concrete enforcement site; the rest is gated on the multi-threaded executor decision in `docs/ASYNC_DESIGN.md`.
+
+Phase 2 landed on the `send-sync-phase2` branch (steps A-F: tightenings + test annotations, wrappers + bounds, FrameType, decorator kit, `Send[Pet]`, runtime span traits). Naming note: the doc's pre-implementation text says `Coroutine[T]` for the async call-result type; the implemented surface type is `Cancellable[T]` (`sema/registration.py` wraps every async def's return type in it).
 
 ## Problem Statement
 
@@ -52,8 +54,9 @@ The table consolidates what's in `runtime/cpp/include/tpy/type_traits.hpp`, `tpy
 | Type form | Send | Sync | Notes |
 |-----------|------|------|-------|
 | Owning value types (`int`, `Int32`, `bool`, `float`, `Char`, ...) | Yes | Yes | Copied at every boundary; no aliasing |
-| Dual-form value types (`str`, `bytes`, `bytearray`) | Yes | Yes | TPy storage form is owned (`std::string`, `std::vector<uint8_t>`); param form is a borrow view (`std::string_view`, `std::span<const uint8_t>`). Send-ness applies to the storage form -- transferring `str` ownership moves the underlying buffer. Frame slots that store the borrow form follow the OQ3 storage-form rules. |
-| Pure non-owning views (`tpy.StrView`, `tpy.BytesView`) | No | Yes | Pure view types; always borrow originating-thread storage. Sema explicitly overrides `is_send=False, is_sync=True` in `type_def_registry.py:602, 638`. |
+| Dual-form value types (`str`, `bytes`) | Yes | Yes | Immutable. TPy storage form is owned (`std::string`, `std::vector<uint8_t>`); param form is a borrow view (`std::string_view`, `std::span<const uint8_t>`). Send-ness applies to the storage form -- transferring `str` ownership moves the underlying buffer. Frame slots that store the borrow form follow the OQ3 storage-form rules. |
+| `bytearray` | Yes | No | Mutable buffer (`std::vector<uint8_t>`) -- same Sync rule as `list[T]`. Its `is_value_type` flag only reflects C++ copy semantics, so the value-type Sync default (which assumes immutability) does not apply; the registry carries an explicit `is_sync=False`. |
+| Pure non-owning views (`tpy.StrView`, `tpy.BytesView`) | No | Yes | Pure view types; always borrow originating-thread storage. Sema explicitly overrides `is_send=False, is_sync=True` on their TypeDefs in `type_def_registry.py`. |
 | `Ptr[T]` | No | No | Raw mutable pointer, no ownership guarantee |
 | `Ptr[readonly[T]]` | No | Yes (if `T` Sync) | Read-only shared access |
 | `Own[T]` | If `T` Send | No (single-owner; tightened from current `wrapped.is_sync()` -- see Implementation Notes) | Move-only single-owner; sharing readonly aliases of an `Own[T]` slot doesn't make semantic sense |
@@ -122,7 +125,7 @@ Each is expanded below with semantics and the alternatives that were rejected.
 
 ### OQ1. `readonly[T].is_sync()` -- tighten the current rule? **[DECIDED: tighten]**
 
-**Current rule** (`tpyc/typesys.py:1280`): `wrapped.is_send() or wrapped.is_sync()`. Reasoning was "Send means no aliasing; freezing via readonly removes the mutation, so it's safe to share."
+**Phase 1 rule** (`ReadonlyType.is_sync` in `tpyc/typesys.py`): `wrapped.is_send() or wrapped.is_sync()`. Reasoning was "Send means no aliasing; freezing via readonly removes the mutation, so it's safe to share." **Tightened in Phase 2 step A.**
 
 **Problem:** `readonly` is a borrow-side restriction, not a deep freeze. A `readonly[list[int]]` parameter is reachable through other non-readonly aliases. From the perspective of "is it safe for two threads to hold this *handle*", yes -- but only if the underlying object is in fact Sync. Today `list[int]` is not Sync, so the lift is unsound.
 
@@ -132,7 +135,7 @@ Each is expanded below with semantics and the alternatives that were rejected.
 
 ### OQ2. `Callable[[...], R]` -- erased closures **[DECIDED: Send[T] marker wrapper]**
 
-**Current state:** `CallableType` (`tpyc/typesys.py:2819`) has `is_value_type() = True` and no `is_send` / `is_sync` override, so the default rule returns Send=True / Sync=True for every `Callable[...]`. This is **wrong** -- erased callables can capture non-Send state (the C++ `std::function` carries the captured closure, which may borrow originating-thread memory). Phase 2 explicitly overrides `CallableType.is_send() = is_sync() = False` for bare `Callable[...]`; opting into Send is via the `Send[Callable[...]]` wrapper. This also addresses the "callback field on a sendable record" pattern, where there is no `Fn[...]` workaround (Fn is template-only, not valid in field position).
+**Phase 1 state:** `CallableType` (`tpyc/typesys.py`) had `is_value_type() = True` and no `is_send` / `is_sync` override, so the default rule returned Send=True / Sync=True for every `Callable[...]`. This was **wrong** -- erased callables can capture non-Send state (the C++ `std::function` carries the captured closure, which may borrow originating-thread memory). Phase 2 step A explicitly overrides `CallableType.is_send() = is_sync() = False` for bare `Callable[...]`; opting into Send is via the `Send[Callable[...]]` wrapper. This also addresses the "callback field on a sendable record" pattern, where there is no `Fn[...]` workaround (Fn is template-only, not valid in field position).
 
 **Decision:** Introduce a marker-wrapper type `Send[T]` that asserts Send-ness at every construction site. Mirrors `readonly[T]`'s shape -- standard Python subscript syntax, no new operators. **Sema-only wrapper -- no new C++ templates emitted.** The C++ representation of `Send[T]` is identical to bare `T`; the Send-ness is enforced at construction-site / boundary points by sema (channel send, spawn, etc.). Same machinery solves OQ5 for `@dynamic` protocols: `Send[Pet]` is the type-system tag that requires the concrete `T` to be Send when the Adapter is constructed.
 
@@ -181,9 +184,9 @@ See [[language-design-versatile-pythonic]] for the design preference that drove 
 
 `Sync[T]` mirrors `Send[T]` with the same dual semantics (sema-side assertion on non-erased `T`; sema-side assertion at the erased-value construction site for `Callable`/`@dynamic` `T`), the same canonicalization rules, and the same auto-derive integration. Everything below applies to both wrappers.
 
-**Canonical wrapper order at parse time** (mirrors `readonly[T]`'s existing normalization, e.g. `readonly[T | None]` -> `readonly[T] | None`):
+**Canonical wrapper order at resolve time** (mirrors `readonly[T]`'s existing normalization, e.g. `readonly[T | None]` -> `readonly[T] | None` -- which also lives in the type resolver, not the parser; implemented by `make_send_marker` / `make_sync_marker` in `typesys.py` called from the resolver's wrapper arms):
 
-| Outer (parsed) | Canonical (after parse-time rewrite) | Note |
+| Outer (parsed) | Canonical (after resolve-time rewrite) | Note |
 |-----------------|-------------------------------------|------|
 | `Send[T \| None]` | `Send[T] \| None` | Send distributes over union; doesn't apply to None |
 | `Send[A \| B]` | `Send[A] \| Send[B]` | Send distributes over union |
@@ -200,9 +203,9 @@ See [[language-design-versatile-pythonic]] for the design preference that drove 
 - `Send[T]` / `Sync[T]` are valid in every position a non-wrapped type is valid: params, locals, returns, fields, type-args, generic bounds.
 - For non-erased `T` the wrapper is a **static assertion** (`Send[Int32]` == `Int32`; `Send[Ptr[Buf]]` is a compile error).
 - For erased `T` (`Callable`, `@dynamic` protocol like `Pet`) the wrapper is a **sema-side Send/Sync assertion** on the concrete impl that gets erased -- see OQ2 / OQ5. No runtime representation change; the C++ type is the same as bare `T`.
-- Canonicalization happens once at parse time; sema and codegen see canonical forms only. The type-printer emits canonical forms back to the user.
+- Canonicalization happens once at resolve time; sema and codegen see canonical forms only. The type-printer emits canonical forms back to the user. Generic substitution re-canonicalizes (a `Send[T]` wrapper erases when the substituted concrete type is statically Send).
 
-**Why canonical-at-parse:** matches the `readonly[T | None]` precedent already shipped; gives one canonical representation per type so structural equality and the typesys.is_send/is_sync rules stay simple. Avoids "are these equivalent" comparisons at sema time.
+**Why canonical-at-resolve:** matches the `readonly[T | None]` precedent already shipped; gives one canonical representation per type so structural equality and the typesys.is_send/is_sync rules stay simple. Avoids "are these equivalent" comparisons at sema time.
 
 ### OQ3. Captured-state Send/Sync -- coroutines, generators, lambdas, closures **[DECIDED: unified FrameType]**
 
@@ -278,6 +281,8 @@ Mirrors Rust's `unsafe impl Send for MyFuture {}`. Legitimate cases:
 No. Generator codegen migration onto the async path's resumable-frame abstraction is already a planned refactor (see `docs/ASYNC_DESIGN.md` and TODO.md), but it's **codegen-internal**. FrameType is a typesys abstraction; it only needs the slot list, which sema already tracks for both paths (the set of locals that persist across yield/await). Phase 2 can ship FrameType wired into both `gen_generators.py` and `gen_async.py` independently.
 
 **Soft action during Phase 2:** factor slot extraction into a shared `extract_frame_slots(fn)` helper called from both codegens. Becomes a single point of truth that the eventual generator migration consolidates onto mechanically rather than re-deriving.
+
+**As implemented (Phase 2 step C):** the classifier lives in `tpyc/sema/frame_traits.py` as a sema-side conservative mirror of `gen_async._classify_params` + the hoisted-local decision tree, rather than a literal extraction from codegen (extracting would have churned async/generator emission; true unification is deferred to the generator-onto-resumable-frame migration). Frame materials (hoisted locals, loop-var names, awaited sub-frame FunctionInfos, nested-def captures) are stamped on `FunctionInfo` at body-analysis end and resolve lazily -- awaited callees may be analyzed later; a greatest-fixed-point cycle guard handles mutually-awaiting coroutines. Lambdas carry their classified frame on the AST node (`TpyLambda.frame_type`). The invariant: any slot or await operand sema cannot classify makes the frame non-Send and non-Sync; relaxations are individual, tested decisions. Per-value consultation happens at Send/Sync conversion sites via the source expression (lambda node / `function_ref_info`), not via a `concrete_frame` field on surface types -- `Send[Iterator[T]]` / `Send[Cancellable[T]]` as user annotations wait for the first enforcement or assertion surface (Phase 3/4).
 
 **Alternatives considered (rejected):**
 
@@ -363,6 +368,8 @@ This mirrors Rust: `Send` is a marker the compiler knows about; `Box<T>` lives i
 
 **Mapping to Rust:** `Send[Pet]` parameter ~ `&dyn Pet + Send`. `Box[Send[Pet]]` (post-Box[P]) ~ `Box<dyn Pet + Send>`. Bare `Pet` ~ `&dyn Pet` (no Send requirement).
 
+**Two-level model: pointee vs handle (Phase 2 decision).** `Send[Pet]` asserts a property of the *pointee*: the concrete type erased behind the adapter is Send. It does **not** assert that the adapter *handle* itself is transferable. The handle's own Send-ness is a property of its form: `tpy::RefAdapter<Pet, T>` borrows the originating object (never Send as a handle, exactly like `&dyn Pet + Send` in Rust -- the reference itself is only Send if the pointee is Sync); an owning `tpy::Adapter<Pet, T>` or `Box[Send[Pet]]` owns its payload (handle Send iff the concrete `T` is Send -- which the wrapper already guarantees). Phase 2 enforces only the pointee level, at every conversion/construction site that erases a concrete value into a `Send[Pet]` slot. Phase 5 thread-boundary sites must check **both** levels: the pointee assertion (already carried by the wrapper) AND that the handle form is owning (owning Adapter / `Box[Send[Pet]]`, not RefAdapter). A `Send[Pet]` *parameter* therefore does not by itself license cross-thread transfer -- it licenses constructing owned Send-tagged storage from it.
+
 **Alternatives considered (rejected):**
 
 - *Promote `Adapter[P]` to a TPy-level type (e.g. `Send[Adapter[Pet]]`)*. **Rejected**: leaks a codegen detail into the surface; users would have to learn `Adapter[P]` as a TPy type that has no precedent (bare `Pet` already means erased today).
@@ -431,20 +438,24 @@ The marker layer is unobservable until something *uses* it. The planned sites, i
 - `sema/registration.py` auto-derive for user records.
 - `Send` / `Sync` Protocol markers in `lib/tpy`.
 
-### Phase 2 -- marker-layer correctness + opt-in/opt-out + tests
+### Phase 2 -- marker-layer correctness + opt-in/opt-out + tests (DONE)
+
+All items below landed (steps A-F), with two scope notes: the per-record
+C++ trait mirror was deferred (Implementation Notes), and `bytearray`
+gained an explicit `is_sync=False` override (step A review finding).
 
 1. OQ1: tighten `ReadonlyType.is_sync()` to `wrapped.is_sync()`.
 2. Tighten `OwnType.is_sync()` to always-False (table-vs-code mismatch identified in validation review; aligns code with the rules table).
-3. OQ2: `CallableType.is_send() = is_sync() = False` for bare `Callable[...]`; introduce `Send[T]` / `Sync[T]` marker wrapper types with dual erased/assertion semantics; canonical wrapper order at parse time (Send/Sync outermost, distributing over union/optional); add `T: Send` / `T: Sync` bound support in PEP 695 generic param syntax.
-4. OQ3: introduce `FrameType` covering coroutines, generators, lambdas, closures uniformly. **Storage-form slot semantics** (frame slots reflect literal C++ struct field types, not user param annotations). Slot list extracted via a shared `extract_frame_slots(fn)` helper called from both `gen_async.py` and `gen_generators.py` (lays groundwork for the later generator-onto-resumable-frame migration without coupling Phase 2 to it). Extend `@unsafe_send` to function definitions as the escape hatch.
+3. OQ2: `CallableType.is_send() = is_sync() = False` for bare `Callable[...]`; introduce `Send[T]` / `Sync[T]` marker wrapper types with dual erased/assertion semantics; canonical wrapper order at resolve time (Send/Sync outermost, distributing over union/optional); add `T: Send` / `T: Sync` bound support in PEP 695 generic param syntax.
+4. OQ3: introduce `FrameType` covering coroutines, generators, lambdas, closures uniformly. **Storage-form slot semantics** (frame slots reflect literal C++ struct field types, not user param annotations). Shipped as the sema-side classifier in `sema/frame_traits.py` -- a conservative mirror of codegen's shapes rather than a helper extracted from both codegens; see the OQ3 "As implemented" note. Extend `@unsafe_send` to function definitions as the escape hatch.
 5. OQ4: `Send` / `Sync` Protocol opt-in (with structural verification), `@unsafe_send` / `@unsafe_sync` opt-in unsafe, `@nosend` / `@nosync` opt-out. All four decorator-form attachments (`@unsafe_*` and `@nosend`/`@nosync`) apply to records AND to `def` / `async def` / generator function / nested `def` definitions (forces FrameType to the asserted answer). Lambdas can't be decorated -- users lift to `def` to use any of these.
 6. OQ5: `Send[Pet]` for `@dynamic` protocols -- valid wherever bare `Pet` is valid today (params/locals). **Sema-only**: codegen emits the existing `tpy::Adapter` / `tpy::RefAdapter` templates; sema enforces the Send constraint at the construction site that creates the Adapter. No new C++ templates needed. **No compiler dependency on Box.**
 7. Add `# tpyc: is_send(yes/no)` / `is_sync(yes/no)` test annotations.
 8. New test group `tests/cases/send_sync/` covering: every built-in type form, user records with mixed-Send fields, opt-in success/failure, opt-out, generic record monomorphization, union/tuple/optional shapes, coroutine/generator/lambda/closure Send-ness with mixed-Send captures, `Send[Callable[...]]` and `Send[Pet]` construction, canonical wrapper ordering.
 9. Update `docs/LANGUAGE_FEATURES.md` Send/Sync section to match Phase 2 rules.
-10. **Runtime trait mirror for `std::span`.** `runtime/cpp/include/tpy/type_traits.hpp` today specializes `is_send` / `is_sync` for `T*`, `const T*`, `std::string_view`, `std::vector`, `std::array`, `ordered_map`, `ordered_set`, `SpanIter`. It does **not** specialize for `std::span<T>` / `std::span<const T>`, but the sema rules table promises `Span[T]` non-Send / non-Sync and `Span[readonly[T]]` Sync-if-T-Sync. Phase 2 adds the matching `std::span` specializations so hand-written C++ that constrains on `tpy::Send<std::span<...>>` / `tpy::Sync<std::span<...>>` agrees with sema. Same applies to `Send`/`Sync`-required user-record specializations also missing today.
+10. **Runtime trait mirror for `std::span`.** Done: `type_traits.hpp` now specializes `is_send` (false) and `is_sync` (false for `std::span<T>`, element-Sync for `std::span<const T>`), matching the sema rules table. The user-record specializations remain deferred with the per-record mirror (Implementation Notes).
 
-  Additionally: confirm the value-type-default Send/Sync answer for `builtins.str`, `builtins.bytes`, `builtins.bytearray` still agrees with the rules table. Today these are dual-form value types with no explicit Send/Sync override, defaulting to Send=Yes/Sync=Yes via the value-type rule -- which is the intended answer for their storage form. The borrow-form behavior is handled by FrameType storage-form semantics (OQ3), not by changing the underlying type's Send/Sync answer.
+  Additionally: confirm the value-type-default Send/Sync answer for `builtins.str` and `builtins.bytes` still agrees with the rules table. These are immutable dual-form value types with no explicit Send/Sync override, defaulting to Send=Yes/Sync=Yes via the value-type rule -- the intended answer for their storage form. `builtins.bytearray` is the mutable member of the family and carries an explicit `is_sync=False` registry override (landed in step A) -- the value-type default assumes immutability, which doesn't hold for it. The borrow-form behavior is handled by FrameType storage-form semantics (OQ3), not by changing the underlying type's Send/Sync answer.
 
 **Effort:** S-M. Phase 2 ships type-system parsing/sema for two new wrapper types (`Send[T]`, `Sync[T]`), a new typesys form (`FrameType`), Send/Sync auto-derive integration for opt-in/opt-out decorators, and the storage-form slot walk. **No new C++ templates** -- the Send/Sync wrappers are sema-only; the C++ representation of `Send[T]` / `Sync[T]` is the same as bare `T`. Sema fires Send/Sync checks wherever the user writes `Send[T]` / `Sync[T]` as an expected type or `T: Send` / `T: Sync` as a generic bound (so Phase 2 tests for `Send[Callable[...]]` / `Send[Pet]` construction work immediately, against the user-explicit annotations the tests use). Concurrency-API enforcement sites (`Channel[T]` with `T: Send` bound; `thread.spawn`; Task migration) arrive in Phase 4+ -- but those are new APIs whose parameter types reuse Phase 2's bound-checking machinery; no additional enforcement code. Codegen does need a small change for the user-record `tpy::is_send<UserT>` / `tpy::is_sync<UserT>` specialization emission (one-line emit per record).
 
@@ -490,14 +501,14 @@ Gated on `docs/ASYNC_DESIGN.md` v3+ decision. Adds:
 ## Implementation Notes
 
 - The trait names `is_send` / `is_sync` are stable across sema, runtime, and the user-facing `Send` / `Sync` Protocols. Don't rename.
-- The auto-derive answer is sema-side; codegen mirrors it via emitted `tpy::is_send<UserT>` / `tpy::is_sync<UserT>` specializations so hand-written C++ in `runtime/cpp/include/tpy/` can SFINAE / concept-constrain. Phase 2 wires the mirror (currently absent).
+- The auto-derive answer is sema-side. The codegen-emitted `tpy::is_send<UserT>` / `tpy::is_sync<UserT>` per-record mirror (so hand-written C++ can SFINAE / concept-constrain on user records) is **deferred out of Phase 2**: nothing consumes it yet, and emitting it would regenerate every record-bearing snapshot. Revisit when the first hand-written C++ consumer appears; emit only for explicitly-marked records if possible.
 - **Two enforcement axes -- when does a Send/Sync diagnostic fire?**
   - *User-explicit Send/Sync sites* (Phase 2): wherever the user writes `Send[T]` / `Sync[T]` as an expected type (param annotation, field type, return type, type-arg, generic bound), sema fires the check at every conversion / construction / assignment. So `cb: Send[Callable[[], None]] = my_lambda` checks `my_lambda` is Send-conforming at the assignment; `def greet(p: Send[Pet])` checks at the call site; `def spawn[F: Send[Pet]]` checks at the generic-bound resolution. This machinery is fully in Phase 2.
   - *Concurrency-API sites* (Phase 4+): `Channel[T]`, `thread.spawn(fn)`, `Task[T]` migration. These are new types/APIs that *use* the Phase 2 machinery -- their parameters are annotated `Send[T]` or have `T: Send` bounds, so the check is just Phase 2's bound-checking machinery firing at the new API surface. No additional enforcement code; just the new API types.
-- Phase 2 introduces **no new C++ templates**. `Send[T]` and `Sync[T]` have the same C++ representation as bare `T`; the check is sema-side. The only codegen change is the per-record `tpy::is_send<UserT>` / `tpy::is_sync<UserT>` specialization emission so hand-written C++ can SFINAE/concept-constrain (one-line emit per record).
-- **`FrameType` typesys home:** lives in `tpyc/typesys.py` alongside `CallableType` / `OwnType` / `ReadonlyType`. Attached to a definition via a `frame_type` field on `FunctionInfo` (for async/generator/nested-def) and an equivalent slot on the lambda AST node. The user-facing surface types (`Coroutine[T]`, `Iterator[T]`, `Callable[...]`) gain a `concrete_frame: FrameType | None` field consulted by `Send[T]` / `Sync[T]` checks at use sites.
+- Phase 2 introduced **no new C++ templates**. `Send[T]` and `Sync[T]` have the same C++ representation as bare `T`; the check is sema-side (the per-record trait mirror is deferred, see above).
+- **`FrameType` typesys home:** lives in `tpyc/typesys.py` alongside `CallableType` / `OwnType` / `ReadonlyType`; classification logic in `tpyc/sema/frame_traits.py`. Attached via `frame_type` (+ raw frame materials) on `FunctionInfo` for async/generator/nested-def and via `TpyLambda.frame_type` on the lambda AST node. Send/Sync conversion checks consult the concrete value's frame through the source expression (see the OQ3 "As implemented" note); surface types carry no `concrete_frame` field.
 - **`Sync[T]` parallels `Send[T]`** with identical canonicalization rules and identical erased/assertion duality. Where this doc names `Send[T]` for brevity (e.g., `Send[Callable[...]]`, `Send[Pet]`), the same shape exists for `Sync[T]`.
-- **Own[T] tightening:** `OwnType.is_sync()` (`tpyc/typesys.py:1217`) changes from `wrapped.is_sync()` to always-False in Phase 2. Aligns with the rules table; Own represents single-owner move semantics for which Sync-shareability is a category error.
+- **Own[T] tightening:** `OwnType.is_sync()` (`tpyc/typesys.py`) changed from `wrapped.is_sync()` to always-False in Phase 2 step A. Aligns with the rules table; Own represents single-owner move semantics for which Sync-shareability is a category error.
 - **Generic-record substitution:** `NominalType.is_send()` / `is_sync()` walks `record.fields` and `record.parents` under `type_params -> type_args` substitution on every query for generic records, with a re-entrancy guard for self-referential generics (greatest-fixed-point semantics). Non-generic records use the cached registration-time bool. Sema's registration predicate (`tpyc/sema/registration.py`) accepts a field whose type contains a TypeParamRef as conservatively-OK; the use-site walker is the source of truth.
 
 ## Cross-references

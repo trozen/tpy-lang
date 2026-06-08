@@ -9,9 +9,11 @@ from .compiler import Compiler, BuildLayout
 from .compilation_context import activate_compiler
 from .diagnostics import SemanticError
 from .typesys import (
-    INT32, INT64, BIGINT, BOOL, FLOAT, STR, STRVIEW, CHAR, VOID,
+    INT32, INT64, BIGINT, BOOL, FLOAT, STR, STRVIEW, CHAR, VOID, BYTEARRAY,
     PtrType, make_span, make_list, make_dict, make_array, OptionalType,
-    TupleType, UnionType, OwnType, ReadonlyType, NominalType,
+    TupleType, UnionType, OwnType, ReadonlyType, NominalType, CallableType,
+    SendType, SyncType, make_send_marker, make_sync_marker, make_fn_type,
+    MarkerAssertionError, TypeParamRef, make_union,
 )
 
 # Stdlib path needed for from_source when code uses primitive type methods
@@ -201,17 +203,21 @@ class TestSendSync:
 
     # -- Own: delegates to wrapped --
 
-    def test_own_delegates(self):
+    def test_own_send_delegates_sync_false(self):
         assert OwnType(make_list(INT32)).is_send()
-        assert not OwnType(make_list(INT32)).is_sync()
+        # Own[T] is never Sync: single-owner move slot, sharing readonly
+        # aliases of it is a category error regardless of T.
+        assert not OwnType(make_array(INT32, 4)).is_sync()
 
-    # -- readonly: makes mutable containers Sync --
+    # -- readonly: borrow-side restriction only, no Send->Sync lift --
 
-    def test_readonly_makes_sync(self):
+    def test_readonly_no_send_to_sync_lift(self):
+        # The object may be mutated through other non-readonly aliases,
+        # so readonly[list[Int32]] is NOT Sync even though list is Send.
         assert not make_list(INT32).is_sync()
-        assert ReadonlyType(make_list(INT32)).is_sync()
+        assert not ReadonlyType(make_list(INT32)).is_sync()
 
-    def test_readonly_of_readonly_ptr_is_sync(self):
+    def test_readonly_of_sync_stays_sync(self):
         rop = PtrType(INT32, is_readonly=True)
         assert not rop.is_send()
         assert rop.is_sync()
@@ -220,6 +226,131 @@ class TestSendSync:
     def test_readonly_of_non_send_not_sync(self):
         # readonly[list[Ptr[T]]]: Ptr not Send, so list not Send, not Sync
         assert not ReadonlyType(make_list(PtrType(INT32))).is_sync()
+
+    # -- Callable: erased closure may capture non-Send state --
+
+    def test_callable_not_send_not_sync(self):
+        cb = CallableType((INT32,), VOID)
+        assert not cb.is_send()
+        assert not cb.is_sync()
+
+    # -- bytearray: mutable buffer, same Sync rule as list --
+
+    def test_bytearray_send_not_sync(self):
+        assert BYTEARRAY.is_send()
+        assert not BYTEARRAY.is_sync()
+
+    # -- frame slots: a tuple with reference elements lowers to a borrow-
+    # pointer field (std::tuple<T*, ...>), so its slot is non-Send even when
+    # the tuple's storage-form is_send() is True. (list[Int32] is the
+    # registry-free stand-in for a Send-but-non-value element.)
+
+    def test_frame_slot_borrow_tuple_not_send(self):
+        from .sema.frame_traits import param_slot
+        borrow = TupleType((make_list(INT32), make_list(INT32)))
+        assert borrow.is_send()  # storage-form says Send...
+        s = param_slot("p", borrow)
+        assert not s.send and not s.sync  # ...but the borrow slot is not
+
+    def test_frame_slot_readonly_borrow_tuple_not_send(self):
+        from .sema.frame_traits import param_slot
+        s = param_slot("p", ReadonlyType(TupleType((make_list(INT32), make_list(INT32)))))
+        assert not s.send and not s.sync  # readonly wrapper must be seen through
+
+    def test_frame_slot_value_tuple_stays_send(self):
+        from .sema.frame_traits import param_slot
+        s = param_slot("p", TupleType((INT32, INT32)))
+        assert s.send and s.sync  # value elements -> owned storage, Send
+
+    def test_frame_slot_union_element_tuple_conservative(self):
+        # A union-element tuple is actually stored OWNED by codegen
+        # (std::tuple<std::variant<A, B>, ...>), so it could be Send. We
+        # classify it non-Send anyway: _value_slot_traits gates on the wider
+        # has_ref_elements() rather than codegen's has_pointer_repr_element()
+        # (which excludes unions). This pins the intentional over-conservatism
+        # -- do NOT "align with codegen" by tightening here without the shared
+        # storage-form predicate (see TODO.md), or you risk a false-Send on a
+        # shape that genuinely does borrow.
+        from .sema.frame_traits import param_slot
+        s = param_slot("p", TupleType((UnionType((make_list(INT32), STR)), INT32)))
+        assert not s.send and not s.sync
+
+
+class TestSendSyncMarkerCanonicalization:
+    """make_send_marker / make_sync_marker canonicalization rules."""
+
+    def _cb(self):
+        return CallableType((INT32,), VOID)
+
+    # -- non-erased types: static assertion, wrapper erases --
+
+    def test_send_of_send_type_erases(self):
+        assert make_send_marker(INT32) == INT32
+        assert make_send_marker(make_list(INT32)) == make_list(INT32)
+
+    def test_sync_of_sync_type_erases(self):
+        assert make_sync_marker(INT32) == INT32
+
+    def test_assertion_failure_raises(self):
+        with pytest.raises(MarkerAssertionError):
+            make_send_marker(PtrType(INT32))
+        with pytest.raises(MarkerAssertionError):
+            make_sync_marker(make_list(INT32))
+
+    def test_lenient_keeps_wrapper(self):
+        m = make_send_marker(PtrType(INT32), lenient=True)
+        assert isinstance(m, SendType)
+
+    # -- erased types (Callable): wrapper persists --
+
+    def test_callable_persists(self):
+        m = make_send_marker(self._cb())
+        assert isinstance(m, SendType)
+        assert m.is_send() and not m.is_sync()
+        s = make_sync_marker(self._cb())
+        assert isinstance(s, SyncType)
+        assert s.is_sync() and not s.is_send()
+
+    def test_idempotent(self):
+        m = make_send_marker(make_send_marker(self._cb()))
+        assert isinstance(m, SendType)
+        assert not isinstance(m.wrapped, SendType)
+
+    def test_send_floats_outside_sync(self):
+        # Sync[Send[T]] and Send[Sync[T]] both canonicalize to Send[Sync[T]]
+        a = make_sync_marker(make_send_marker(self._cb()))
+        b = make_send_marker(make_sync_marker(self._cb()))
+        assert a == b
+        assert isinstance(a, SendType) and isinstance(a.wrapped, SyncType)
+        assert a.is_send() and a.is_sync()
+
+    def test_distributes_over_optional(self):
+        m = make_send_marker(OptionalType(self._cb()))
+        assert isinstance(m, OptionalType)
+        assert isinstance(m.inner, SendType)
+
+    def test_erases_inside_union_of_send_types(self):
+        u = make_union(INT32, STR)
+        assert make_send_marker(u) == u
+
+    def test_fn_template_rejected(self):
+        with pytest.raises(MarkerAssertionError):
+            make_send_marker(make_fn_type((INT32,), VOID))
+
+    def test_cpp_representation_identical(self):
+        cb = self._cb()
+        m = make_send_marker(cb)
+        assert m.to_cpp() == cb.to_cpp()
+        assert m.to_cpp_param_type() == cb.to_cpp_param_type()
+        assert m.is_value_type() == cb.is_value_type()
+
+    def test_substitution_recanonicalizes(self):
+        # Send[T] substituted with a concrete Send type erases the wrapper
+        m = SendType(TypeParamRef("T"))
+        assert m.with_inner_types((INT32,)) == INT32
+        # ...and keeps it (lenient) for a non-Send concrete type
+        kept = m.with_inner_types((PtrType(INT32),))
+        assert isinstance(kept, SendType)
 
 
 class TestSendSyncRecordDerivation:

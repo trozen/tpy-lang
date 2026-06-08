@@ -1,0 +1,1 @@
+main.py:4: error: Class 'Order' declares Send but field 'h: Ptr[Int32]' is not Send

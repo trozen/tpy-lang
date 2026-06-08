@@ -1266,6 +1266,8 @@ class TypeRegistrar:
                 is_method=True,
                 is_async=method.is_async,
                 is_generator=method.is_generator,
+                send_override=method.send_override,
+                sync_override=method.sync_override,
                 is_staticmethod=method.is_staticmethod,
                 is_property_getter=method.is_property_getter,
                 is_property_setter=method.is_property_setter,
@@ -1664,6 +1666,8 @@ class TypeRegistrar:
             is_native_c=is_native_c,
             is_indirecting=record.is_indirecting,
             is_nocopy=record.is_nocopy,
+            send_override=record.send_override,
+            sync_override=record.sync_override,
             match_args=(
                 record._macro_cls_info.get_match_args()
                 if hasattr(record, '_macro_cls_info') and record._macro_cls_info is not None
@@ -1987,6 +1991,12 @@ class TypeRegistrar:
 
         # Validate protocol implementations
         for protocol in record_info.implemented_protocols:
+            # Send/Sync opt-in markers are validated by the auto-derive
+            # below (_check_marker_claim names the offending field); the
+            # generic conformance check would consult is_send/is_sync
+            # before they are derived.
+            if protocol.qualified_name() in (qnames.SEND, qnames.SYNC):
+                continue
             protocol_info = protocol_info_of(protocol)
             if protocol_info is None:
                 raise SemanticError(
@@ -2073,6 +2083,30 @@ class TypeRegistrar:
         for p in record_info.parents:
             is_send = is_send and (p.is_send() or contains_type_param(p))
             is_sync = is_sync and (p.is_sync() or contains_type_param(p))
+
+        # Opt-in markers (`class Foo(Send)`) assert the structural answer is
+        # true and lock the contract: silently adding a non-Send field later
+        # errors instead of quietly flipping the derived answer. Decorator
+        # overrides on the same trait are mutually exclusive with the marker
+        # (@unsafe_* is redundant with it; @nosend/@nosync contradicts it).
+        for protocol in record_info.implemented_protocols:
+            qn = protocol.qualified_name()
+            if qn == qnames.SEND:
+                self._check_marker_claim(
+                    record, record_info, "Send", is_send,
+                    record_info.send_override,
+                    lambda t: t.is_send() or contains_type_param(t))
+            elif qn == qnames.SYNC:
+                self._check_marker_claim(
+                    record, record_info, "Sync", is_sync,
+                    record_info.sync_override,
+                    lambda t: t.is_sync() or contains_type_param(t))
+
+        # Decorator overrides force the answer regardless of fields.
+        if record_info.send_override is not None:
+            is_send = record_info.send_override
+        if record_info.sync_override is not None:
+            is_sync = record_info.sync_override
         record_info.is_send = is_send
         record_info.is_sync = is_sync
 
@@ -2088,6 +2122,37 @@ class TypeRegistrar:
             if proto_info is not None:
                 supertypes.update(proto_info.transitive_supertypes)
         record_info.transitive_supertypes = frozenset(supertypes)
+
+    def _check_marker_claim(
+        self, record: TpyRecord, record_info: 'RecordInfo', trait: str,
+        structural_ok: bool, override: 'bool | None', field_ok,
+    ) -> None:
+        """Validate a `class Foo(Send)` / `class Foo(Sync)` opt-in marker:
+        the structural derivation must agree (the claim is checked, not
+        trusted), and trait-override decorators on the same record are
+        rejected (redundant for @unsafe_*, contradictory for @no*)."""
+        unsafe_dec = f"@unsafe_{trait.lower()}"
+        opt_out_dec = f"@no{trait.lower()}"
+        if override is not None:
+            relation = "is redundant with" if override else "contradicts"
+            dec = unsafe_dec if override else opt_out_dec
+            raise SemanticError(
+                f"{dec} {relation} the '{trait}' base class on "
+                f"'{record.name}' -- use one or the other",
+                record.loc)
+        if not structural_ok:
+            offending = next(
+                (f for f in record_info.fields if not field_ok(f.type)), None)
+            if offending is not None:
+                detail = f"field '{offending.name}: {offending.type}'"
+            else:
+                parent = next(
+                    (p for p in record_info.parents if not field_ok(p)), None)
+                detail = f"base class '{parent}'"
+            raise SemanticError(
+                f"Class '{record.name}' declares {trait} but {detail} is "
+                f"not {trait}",
+                record.loc)
 
     def _check_throwable_conformance(self, record: TpyRecord, record_info: 'RecordInfo') -> None:
         """Materialize Throwable-implementer facts on RecordInfo and apply
@@ -2922,6 +2987,8 @@ class TypeRegistrar:
             is_inline=func.is_inline,
             is_async=func.is_async,
             is_generator=func.is_generator,
+            send_override=func.send_override,
+            sync_override=func.sync_override,
             linkage=fi_linkage,
             native_name=func.native_name,
             native_cpp_return_type=func.native_cpp_return_type,

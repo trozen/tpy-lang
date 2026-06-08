@@ -9,6 +9,7 @@
 #include <array>
 #include <cstdint>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -95,7 +96,9 @@ concept Copyable = std::is_copy_constructible_v<T>;
  *
  * Send types can be safely moved to another thread. All value types are Send
  * by default. Raw pointers and non-owning views are not Send.
- * User records specialize this trait when auto-derived by the compiler.
+ * Sema owns the authoritative per-type answer; codegen-emitted per-record
+ * specializations mirroring it are deferred until hand-written C++ needs
+ * to constrain on user records.
  */
 template<typename T> struct is_send : is_value_type<T> {};
 
@@ -105,6 +108,9 @@ template<typename T> struct is_send<const T*> : std::false_type {};
 
 // string_view is not Send (borrows from another string)
 template<> struct is_send<std::string_view> : std::false_type {};
+
+// span is not Send (non-owning view of another container's storage)
+template<typename T, std::size_t E> struct is_send<std::span<T, E>> : std::false_type {};
 
 // SpanIter borrows from a span -- not safe to transfer or share
 template<typename T> struct is_send<SpanIter<T>> : std::false_type {};
@@ -134,7 +140,8 @@ concept Send = is_send<T>::value;
  *
  * Sync types can be safely referenced from multiple threads. Immutable types
  * are Sync. Mutable containers (vector, ordered_map) are not Sync.
- * User records specialize this trait when auto-derived by the compiler.
+ * Sema owns the authoritative per-type answer; see is_send above for the
+ * per-record mirror status.
  */
 template<typename T> struct is_sync : is_value_type<T> {};
 
@@ -148,6 +155,10 @@ template<typename T, typename A> struct is_sync<std::vector<T, A>> : std::false_
 template<typename K, typename V> struct is_sync<ordered_map<K, V>> : std::false_type {};
 template<typename T> struct is_sync<ordered_set<T>> : std::false_type {};
 template<typename T, std::size_t N> struct is_sync<std::array<T, N>> : is_sync<T> {};
+
+// Mutable span is not Sync; a read-only span is Sync if the element is
+template<typename T, std::size_t E> struct is_sync<std::span<T, E>> : std::false_type {};
+template<typename T, std::size_t E> struct is_sync<std::span<const T, E>> : is_sync<T> {};
 
 // SpanIter has mutable index_ state, not safe to share
 template<typename T> struct is_sync<SpanIter<T>> : std::false_type {};

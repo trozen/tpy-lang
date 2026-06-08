@@ -12,7 +12,7 @@ from ..typesys import (
     TpyType, NominalType, OwnType, OptionalType, PendingListType, PendingDictType, PendingSetType,
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly, UnknownElementType,
-    PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, unwrap_qualifiers, is_any_int_type,
+    PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, unwrap_qualifiers, unwrap_send_sync, is_any_int_type,
     is_callable_type,
     RecordInfo,
     contains_type_param,
@@ -578,11 +578,13 @@ class MethodAnalyzer:
         is_optional_field = False
         for fld in rec.fields:
             if fld.name == expr.method:
-                fld_type = fld.type
+                # Send/Sync markers constrain stores into the field, not calls
+                fld_type = unwrap_send_sync(fld.type)
                 if isinstance(fld_type, CallableType):
                     callable_type = fld_type
-                elif isinstance(fld_type, OptionalType) and isinstance(fld_type.inner, CallableType):
-                    callable_type = fld_type.inner
+                elif isinstance(fld_type, OptionalType) and isinstance(
+                        unwrap_send_sync(fld_type.inner), CallableType):
+                    callable_type = unwrap_send_sync(fld_type.inner)
                     is_optional_field = True
                 break
         if callable_type is None:
@@ -732,7 +734,9 @@ class MethodAnalyzer:
         # Unwrap RefType, ReadonlyType, remembering the flag for enforcement.
         # Also check declared scope type: isinstance narrowing may strip ReadonlyType
         # from the expr type while the scope binding preserves it.
-        obj_type = unwrap_ref_type(obj_type)
+        # Send/Sync markers (canonically outermost) constrain stores into the
+        # slot, not receiver dispatch -- strip before the readonly check.
+        obj_type = unwrap_send_sync(unwrap_ref_type(obj_type))
         is_readonly_receiver = isinstance(obj_type, ReadonlyType)
         if not is_readonly_receiver and isinstance(expr.obj, TpyName):
             is_readonly_receiver = self.ctx.is_readonly_name(expr.obj.name)

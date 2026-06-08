@@ -1023,6 +1023,8 @@ class NominalType(TpyType):
         rec = td.record
         if rec is None:
             return self.is_value_type()
+        if rec.send_override is not None:
+            return rec.send_override
         if not rec.type_params:
             return rec.is_send
         # Generic record: re-walk under use-site type_args. The cycle
@@ -1051,6 +1053,8 @@ class NominalType(TpyType):
         rec = td.record
         if rec is None:
             return self.is_value_type()
+        if rec.sync_override is not None:
+            return rec.sync_override
         if not rec.type_params:
             return rec.is_sync
         if self in _evaluating_sync:
@@ -1443,7 +1447,9 @@ class OwnType(TpyType):
         return self.wrapped.is_send()
 
     def is_sync(self) -> bool:
-        return self.wrapped.is_sync()
+        # Single-owner move slot; sharing readonly aliases of an Own[T]
+        # slot is a category error regardless of T.
+        return False
 
     def to_cpp_param_type(self) -> str:
         if is_dyn_protocol(self.wrapped):
@@ -1514,9 +1520,9 @@ class ReadonlyType(TpyType):
         return self.wrapped.is_send()
 
     def is_sync(self) -> bool:
-        # readonly prevents mutation, so a Send type frozen by readonly is
-        # safe to share (effectively Sync). Already-Sync types stay Sync.
-        return self.wrapped.is_send() or self.wrapped.is_sync()
+        # readonly restricts this handle only -- the object may be mutated
+        # through other non-readonly aliases, so no Send->Sync lift.
+        return self.wrapped.is_sync()
 
     def to_cpp_param_type(self) -> str:
         # Readonly params use the const version of the wrapped type
@@ -1599,7 +1605,8 @@ def yield_uses_borrow_slot(elem_type: 'TpyType') -> bool:
 
 
 def unwrap_qualifiers(typ: 'TpyType') -> 'TpyType':
-    """Strip ReadonlyType, OwnType, and RefType wrappers."""
+    """Strip Send/Sync markers, ReadonlyType, OwnType, and RefType wrappers."""
+    typ = unwrap_send_sync(typ)
     if isinstance(typ, RefType):
         typ = typ.wrapped
     if isinstance(typ, ReadonlyType):
@@ -1607,6 +1614,234 @@ def unwrap_qualifiers(typ: 'TpyType') -> 'TpyType':
     if isinstance(typ, OwnType):
         typ = typ.wrapped
     return typ
+
+
+class MarkerAssertionError(Exception):
+    """A Send[T] / Sync[T] static assertion failed at canonicalization time.
+
+    Callers holding a source location convert it to ParseError/SemanticError.
+    """
+
+
+@dataclass(frozen=True)
+class _MarkerType(TpyType):
+    """Base for the Send[T] / Sync[T] marker wrappers.
+
+    Sema-only: the C++ representation is identical to the wrapped type, so
+    every emission method delegates. A marker persists after resolution only
+    when the trait is a per-value property the type can't answer statically
+    (erased Callable / @dynamic protocols, unsubstituted type params); for
+    everything else make_send_marker / make_sync_marker check the assertion
+    and erase the wrapper at resolve time.
+    """
+    wrapped: TpyType
+
+    def to_cpp(self) -> str:
+        return self.wrapped.to_cpp()
+
+    def is_value_type(self) -> bool:
+        return self.wrapped.is_value_type()
+
+    def needs_wrapper(self) -> bool:
+        return self.wrapped.needs_wrapper()
+
+    def to_cpp_param_type(self) -> str:
+        return self.wrapped.to_cpp_param_type()
+
+    def to_cpp_param(self, name: str) -> str:
+        return self.wrapped.to_cpp_param(name)
+
+    def to_cpp_const_param(self, name: str) -> str:
+        return self.wrapped.to_cpp_const_param(name)
+
+    def to_cpp_return(self) -> str:
+        return self.wrapped.to_cpp_return()
+
+    def to_cpp_return_const(self) -> str:
+        return self.wrapped.to_cpp_return_const()
+
+    def to_cpp_stored(self) -> str:
+        return self.wrapped.to_cpp_stored()
+
+    def is_ref_param(self) -> bool:
+        return self.wrapped.is_ref_param()
+
+    def param_needs_copy_for_reassign(self) -> bool:
+        return self.wrapped.param_needs_copy_for_reassign()
+
+    def get_element_type(self) -> Optional['TpyType']:
+        return self.wrapped.get_element_type()
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.wrapped,)
+
+
+@dataclass(frozen=True)
+class SendType(_MarkerType):
+    """Send[T]: asserts values entering this slot are Send."""
+
+    def is_send(self) -> bool:
+        return True
+
+    def is_sync(self) -> bool:
+        return self.wrapped.is_sync()
+
+    def __str__(self) -> str:
+        return f"Send[{self.wrapped}]"
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        # Generic substitution may replace a wrapped TypeParamRef with a
+        # concrete type; re-canonicalize so non-erased Send types erase the
+        # wrapper. Lenient: with no diagnostic channel here, a failed
+        # assertion keeps the wrapper, and conversion-site checks reject
+        # every incoming value instead.
+        return make_send_marker(types[0], lenient=True)
+
+
+@dataclass(frozen=True)
+class SyncType(_MarkerType):
+    """Sync[T]: asserts values entering this slot are Sync."""
+
+    def is_send(self) -> bool:
+        return self.wrapped.is_send()
+
+    def is_sync(self) -> bool:
+        return True
+
+    def __str__(self) -> str:
+        return f"Sync[{self.wrapped}]"
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return make_sync_marker(types[0], lenient=True)
+
+
+def unwrap_send_sync(typ: 'TpyType') -> 'TpyType':
+    """Strip Send[T] / Sync[T] marker wrappers (canonically outermost)."""
+    while isinstance(typ, _MarkerType):
+        typ = typ.wrapped
+    return typ
+
+
+def _marker_persists(t: 'TpyType') -> bool:
+    """Whether Send/Sync-ness of `t` is a per-value property (erased impl
+    or unsubstituted type param) rather than a static type-level fact."""
+    base = t
+    while isinstance(base, (ReadonlyType, OwnType, RefType, _MarkerType)):
+        base = base.wrapped
+    if isinstance(base, CallableType) and not base.is_template:
+        return True
+    if is_dyn_protocol(base):
+        return True
+    return isinstance(base, TypeParamRef)
+
+
+def _make_marker(inner: 'TpyType', trait: str, *, lenient: bool) -> 'TpyType':
+    """Shared canonicalization for Send[inner] / Sync[inner].
+
+    - distributes over unions and optionals (None stays unwrapped)
+    - idempotent; both markers stack with Send canonically outermost
+    - persistent for erased/type-param inner (assertion fires per value at
+      conversion sites)
+    - otherwise a static assertion: returns inner when the trait holds,
+      raises MarkerAssertionError when not (lenient callers keep the
+      wrapper instead, so conversion sites reject every incoming value)
+    """
+    is_send_marker = trait == "Send"
+    if isinstance(inner, OptionalType):
+        return OptionalType(_make_marker(inner.inner, trait, lenient=lenient))
+    if isinstance(inner, UnionType):
+        return make_union(*(
+            m if isinstance(m, VoidType) else _make_marker(m, trait, lenient=lenient)
+            for m in inner.members
+        ))
+    if isinstance(inner, CallableType) and inner.is_template:
+        raise MarkerAssertionError(
+            f"{trait}[Fn[...]] is not supported -- Fn lowers to a template "
+            f"parameter; constrain it with a generic bound instead "
+            f"(e.g. `def f[F: {trait}](fn: F)`)"
+        )
+    if is_send_marker:
+        if isinstance(inner, SendType):
+            return inner
+        if isinstance(inner, SyncType):
+            return SendType(inner)
+    else:
+        if isinstance(inner, SyncType):
+            return inner
+        if isinstance(inner, SendType):
+            # Canonical order: Send outermost (Sync[Send[T]] -> Send[Sync[T]])
+            return SendType(_make_marker(inner.wrapped, "Sync", lenient=lenient))
+    if _marker_persists(inner):
+        return SendType(inner) if is_send_marker else SyncType(inner)
+    holds = inner.is_send() if is_send_marker else inner.is_sync()
+    if holds:
+        return inner
+    if lenient:
+        return SendType(inner) if is_send_marker else SyncType(inner)
+    raise MarkerAssertionError(
+        f"`{trait}[{inner}]`: '{inner}' is not {trait}"
+    )
+
+
+@dataclass(frozen=True)
+class FrameSlot:
+    """One captured-state slot of a FrameType.
+
+    `send`/`sync` are the slot's storage-shape-aware traits -- a borrow-form
+    slot (T&, raw pointer, view of caller storage) is non-Send regardless of
+    T; an owned slot follows T's own traits. `type` is kept so diagnostics
+    can name the offending slot; it may be None for synthesized slots.
+    """
+    name: str
+    send: bool
+    sync: bool
+    type: Optional['TpyType'] = None
+
+
+@dataclass(frozen=True)
+class FrameType(TpyType):
+    """Captured-state structural form behind coroutines, generators,
+    lambdas, and nested closures (docs/SEND_SYNC_DESIGN.md OQ3).
+
+    Internal to sema -- never written by users and never emitted; the C++
+    shape is the codegen frame struct / lambda capture. Slots reflect the
+    storage form actually emitted, conservatively: any captured state that
+    sema cannot classify sets `unclassified`, which forces non-Send and
+    non-Sync (relaxations are individual, tested decisions).
+
+    Sub-frames (awaited coroutines, delegated generators) are not slots
+    here; they live as FunctionInfo.frame_subframes and are ANDed in by
+    sema/frame_traits.py's recursive walk.
+    """
+    slots: tuple[FrameSlot, ...]
+    kind: str  # "coroutine" | "generator" | "closure"
+    unclassified: bool = False
+
+    def is_send(self) -> bool:
+        return not self.unclassified and all(s.send for s in self.slots)
+
+    def is_sync(self) -> bool:
+        return not self.unclassified and all(s.sync for s in self.slots)
+
+    def is_value_type(self) -> bool:
+        return False
+
+    def to_cpp(self) -> str:
+        raise RuntimeError("FrameType has no C++ spelling; it mirrors the "
+                           "codegen-emitted frame struct")
+
+    def __str__(self) -> str:
+        return f"<{self.kind} frame: {len(self.slots)} slots>"
+
+
+def make_send_marker(inner: 'TpyType', *, lenient: bool = False) -> 'TpyType':
+    """Canonicalize Send[inner]; see _make_marker."""
+    return _make_marker(inner, "Send", lenient=lenient)
+
+
+def make_sync_marker(inner: 'TpyType', *, lenient: bool = False) -> 'TpyType':
+    """Canonicalize Sync[inner]; see _make_marker."""
+    return _make_marker(inner, "Sync", lenient=lenient)
 
 
 @dataclass(frozen=True)
@@ -3471,6 +3706,14 @@ class CallableType(TpyType):
     def is_value_type(self) -> bool:
         return True
 
+    def is_send(self) -> bool:
+        # The erased closure may capture non-Send state; opting in is via
+        # the Send[Callable[...]] wrapper checked at the construction site.
+        return False
+
+    def is_sync(self) -> bool:
+        return False
+
     def inner_types(self) -> tuple[TpyType, ...]:
         return self.param_types + (self.return_type,)
 
@@ -4185,6 +4428,12 @@ class RecordInfo:
     is_value_type: bool = False   # True for ValueType marker protocol
     is_send: bool = False         # True if record is Send (all fields Send + parent Send); derived by sema
     is_sync: bool = False         # True if record is Sync (all fields Sync + parent Sync); derived by sema
+    # Decorator overrides: True from @unsafe_send/@unsafe_sync, False from
+    # @nosend/@nosync, None = structural auto-derive. Consulted by the
+    # generic-record per-instantiation walk in NominalType.is_send/is_sync;
+    # for non-generic records registration folds them into is_send/is_sync.
+    send_override: bool | None = None
+    sync_override: bool | None = None
     has_del: bool = False           # True if class declares __del__ (needs drop flag)
     has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)
     builtin_type_key: str | None = None  # e.g. "builtins.list" -- links .py class to type_factory
@@ -4394,6 +4643,25 @@ class FunctionInfo:
     # return_borrows_from): these never feed back into mutation analysis.
     const_borrow_params: Optional[frozenset[int]] = None
     deep_const_borrow_params: Optional[frozenset[int]] = None
+    # Send/Sync frame facts (docs/SEND_SYNC_DESIGN.md OQ3). frame_type is the
+    # memoized own-slot classification, computed lazily by sema/frame_traits.py
+    # from the raw materials below (lazy because awaited sub-frames may
+    # belong to functions whose bodies are analyzed later).
+    # - frame_locals: hoisted locals (mirror of the AST generator_locals)
+    # - frame_loop_var_names: locals that codegen may lower to raw-pointer
+    #   slots -- classified conservatively as non-Send
+    # - frame_subframes: FunctionInfos of awaited/delegated coroutines;
+    #   a None entry is an unclassifiable await (forces non-Send)
+    # - frame_captures: (name, type, by_ref) capture list for nested defs
+    frame_type: Optional['FrameType'] = None
+    frame_locals: Optional[list[tuple[str, 'TpyType']]] = None
+    frame_loop_var_names: frozenset = frozenset()
+    frame_subframes: Optional[list] = None
+    frame_captures: Optional[list[tuple[str, 'TpyType', bool]]] = None
+    # Decorator overrides for the frame answer: True from @unsafe_send /
+    # @unsafe_sync, False from @nosend/@nosync, None = structural
+    send_override: bool | None = None
+    sync_override: bool | None = None
 
     @property
     def root(self) -> 'FunctionInfo':

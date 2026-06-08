@@ -661,6 +661,10 @@ class FunctionTrackingState:
     # at body-analysis end; consumed by param-signature codegen to suppress
     # the `const T&` default so the `&param -> T*` store type-checks.
     current_addr_escape_param_names: set[str] = field(default_factory=set)
+    # Awaited sub-frame FunctionInfos for Send/Sync frame classification
+    # (sema/frame_traits.py). A None entry is an await whose operand frame sema
+    # cannot classify (Task / structural awaitable) -- forces non-Send.
+    current_awaited_subframes: list = field(default_factory=list)
 
 
 @dataclass
@@ -706,6 +710,10 @@ class SemanticContext:
     subscript_bounds_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
     div_zero_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
     cast_safe_facts: dict[tuple[int, str], bool] = field(default_factory=dict)
+    # (def line, func name) -> FunctionInfo, for # tpyc: frame_send/frame_sync.
+    # Holds the fi, not the answer -- frame traits resolve lazily because
+    # awaited sub-frames may belong to bodies analyzed later.
+    frame_fact_fns: dict = field(default_factory=dict)
 
     # --- Import tracking ---
     imports: dict[str, set[tuple[str, str]] | None | str] = field(default_factory=dict)

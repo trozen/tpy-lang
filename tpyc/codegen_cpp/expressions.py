@@ -15,7 +15,7 @@ from ..typesys import (
     NominalType, AliasRef, RecursiveAliasInstanceType, recursive_union_alternatives,
     PtrType, OwnType, OptionalType, NoneType, AnyType, make_array,
     PendingListType, ListRepeatType,
-    TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_own, unwrap_qualifiers, unwrap_optional_own, UnionType, VoidType, make_union, union_none_narrow,
+    TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_own, unwrap_qualifiers, unwrap_optional_own, unwrap_send_sync, UnionType, VoidType, make_union, union_none_narrow,
     TupleType, CallableType, ValueForm,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
@@ -539,7 +539,7 @@ class ExpressionGenerator:
         if isinstance(recv, TpySubscript):
             obj_type = self.ctx.get_expr_type(recv.obj)
             if obj_type is not None:
-                elem = obj_type.get_element_type()
+                elem = unwrap_send_sync(obj_type.get_element_type())
                 if isinstance(elem, OwnType) and is_dyn_protocol(elem.wrapped):
                     return True
         return False
@@ -764,6 +764,9 @@ class ExpressionGenerator:
 
     def _gen_dynamic_protocol_arg(self, arg: TpyExpr, ptype: TpyType) -> str | None:
         """If ptype is a @dynamic protocol, return the wrapped arg expression. Otherwise None."""
+        # Send[Pet] has the same Adapter/RefAdapter representation as bare
+        # Pet -- the marker was enforced by sema at this conversion.
+        ptype = unwrap_send_sync(ptype)
         if isinstance(ptype, OwnType) and is_dyn_protocol(ptype.wrapped):
             return self._gen_dynamic_protocol_own_arg(arg, ptype.wrapped)
 
@@ -800,15 +803,19 @@ class ExpressionGenerator:
         TypeParamRefs from the call's inferred type args or, for method
         calls, the receiver's record-level type args.
         """
-        declared = self._get_cpp_declared_type(arg)
+        # Send/Sync markers persist around @dynamic-wrapping Own; they don't
+        # change the C++ shape, so strip before the OwnType dispatch.
+        declared = unwrap_send_sync(self._get_cpp_declared_type(arg))
         if isinstance(declared, OwnType):
             return declared
         fi = getattr(arg, 'resolved_function_info', None)
-        if fi is None or not isinstance(fi.return_type, OwnType):
+        fi_return = unwrap_send_sync(fi.return_type) if (
+            fi is not None and fi.return_type is not None) else None
+        if not isinstance(fi_return, OwnType):
             return None
-        inner = fi.return_type.wrapped
+        inner = fi_return.wrapped
         if not isinstance(inner, TypeParamRef):
-            return fi.return_type
+            return fi_return
         ta = getattr(arg, 'inferred_type_args', None)
         if ta and fi.type_params:
             sub = dict(zip(fi.type_params, ta)).get(inner.name)

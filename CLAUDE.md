@@ -138,6 +138,8 @@ tests/cases/<group>/<case>/
    - `# tpyc: type(TypeName)` -- assert inferred type (e.g. `s = "hello"  # tpyc: type(StrView)`). Supports regex with `/pattern/` syntax. Comp-phase only, not validated in update mode.
    - `# tpyc: non_null(var)` -- assert `var` is proven non-null at this ptr dereference (skips `deref_check`). Comp-phase only.
    - `# tpyc: nullable(var)` -- assert `var` is NOT proven non-null at this ptr dereference (uses `deref_check`). Comp-phase only.
+   - `# tpyc: is_send(yes|no)` / `is_sync(yes|no)` -- assert the declared variable's Send/Sync trait (on a declaration or for-loop line). Comp-phase only.
+   - `# tpyc: frame_send(yes|no)` / `frame_sync(yes|no)` -- assert an async/generator function's FrameType traits (on the `def` line). Comp-phase only.
 4. Run `uv run python tests/update_snapshots.py {name}` to generate expected outputs.
 5. Run `uv run pytest -k {name}` to verify.
 

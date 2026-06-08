@@ -1,0 +1,1 @@
+main.py:5: error: @nosend contradicts the 'Send' base class on 'B' -- use one or the other

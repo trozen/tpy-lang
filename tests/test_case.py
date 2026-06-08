@@ -32,6 +32,8 @@ from conftest import (
     validate_bounds_annotations,
     validate_div_annotations,
     validate_cast_annotations,
+    validate_send_sync_annotations,
+    validate_frame_annotations,
     parse_annotations,
     check_or_update,
     discover_cases,
@@ -193,6 +195,14 @@ def test_case(case_dir, main_src, request):
                 pytest.fail("\n".join(errs), pytrace=False)
         if result.cast_safe_facts is not None:
             errs = validate_cast_annotations(main_src, result.cast_safe_facts)
+            if errs:
+                pytest.fail("\n".join(errs), pytrace=False)
+        if result.send_sync_facts is not None:
+            errs = validate_send_sync_annotations(main_src, result.send_sync_facts)
+            if errs:
+                pytest.fail("\n".join(errs), pytrace=False)
+        if result.frame_facts is not None:
+            errs = validate_frame_annotations(main_src, result.frame_facts)
             if errs:
                 pytest.fail("\n".join(errs), pytrace=False)
 
