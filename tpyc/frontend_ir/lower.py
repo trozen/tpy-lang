@@ -958,8 +958,15 @@ def _lower_expr(
                 if la is None:
                     return None
                 args.append(la)
+            kwargs: dict = {}
+            for kw_name, kw_value in expr.kwargs:
+                la = _lower_expr(kw_value, name_to_origin, plugin_name, fm,
+                                 diags)
+                if la is None:
+                    return None
+                kwargs[kw_name] = la
             mcall = TpyMethodCall(
-                obj=obj, method=expr.callee.ident, args=args,
+                obj=obj, method=expr.callee.ident, args=args, kwargs=kwargs,
             )
             mcall.loc = loc
             return mcall
