@@ -2864,6 +2864,13 @@ class StatementGenerator:
         for i, name in enumerate(stmt.targets):
             if name is None:
                 continue
+            # An Own[T] element moved out of the source tuple is a movable
+            # owned local; promote it into movable_locals so a later use moves
+            # (std::move) instead of copying -- mirrors the TpyVarDecl/TpyAssign
+            # promotion paths. sema_movable_locals already gates to owned,
+            # non-hoisted, non-lvalue-reassigned targets.
+            if name in self.ctx.sema_movable_locals:
+                self.ctx.movable_locals.add(name)
             target_type = stmt.target_types[i]
             # Ref in target type means reference binding -- unwrap for C++ type
             # since the binding mode (ref/const_ref/value) is handled below.
@@ -2992,6 +2999,14 @@ class StatementGenerator:
                 # No-op for plain T& elements from regular tuples.
                 get_expr = f"::tpy::unwrap_ref({get_expr})"
             if stmt.is_owned[i]:
+                # Each owned element is move-constructed into its own local out
+                # of the materialized source tuple. Cheap, but for the
+                # all-fresh-owned-non-reassigned case a C++17 structured binding
+                # (`auto [a, b] = src;`) would drop the named temp and both
+                # element moves. Not worth a parallel emit path until codegen
+                # quality here matters -- structured bindings can't be
+                # reassigned, frame-hoisted, or used for the borrow/optional/
+                # union element forms this loop also handles.
                 get_expr = f"std::move({get_expr})"
 
             if stmt.is_new[i]:

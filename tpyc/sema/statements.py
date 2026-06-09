@@ -3696,6 +3696,18 @@ class StatementAnalyzer:
                 self.init.mark_assigned(name)
                 self.narrowing.update_after_write(name, elem_type, elem_type, elem_expr)
                 stmt.is_new.append(True)
+                # An Own[T] element is moved out of the source tuple, so the
+                # fresh target is an owned movable local -- same status as a
+                # single-assign owned rvalue (`x = make_one()`), registered the
+                # same way. (Codegen moves the element out for an rvalue source;
+                # a named-source tuple is copied first -- a separate gap, see
+                # BUGS.md.) Narrower than the single-assign path on purpose:
+                # gated to non-reassigned targets, since a reassigned target
+                # becomes a T* pointer-local with different movability.
+                if owned and name not in self.ctx.func.current_reassigned_vars:
+                    self.ctx.func.rvalue_vars.add(name)
+                    self.ctx.func.owned_locals.add(name)
+                    self.ctx.func.ever_owned_locals.add(name)
             if stmt.loc:
                 display_type = unwrap_own(elem_type) if elem_type else elem_type
                 self.ctx.declared_var_types[(stmt.loc.line, name)] = display_type

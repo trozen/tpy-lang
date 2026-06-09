@@ -1,0 +1,1 @@
+main.py:24: error: @nocopy type 'Counter' is used after this point and cannot be moved into 'c: Own[Counter]'. Remove later uses or restructure the code.

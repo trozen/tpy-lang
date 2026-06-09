@@ -1222,7 +1222,13 @@ class SemanticAnalyzer:
                 if (bound is not None and isinstance(bound, NominalType)
                         and bound.qualified_name() == "tpy.ValueType"):
                     continue
-            # @nocopy types: Own is the only way to pass them
+            # @nocopy types are lifetime-significant: taking Own[T] to
+            # consume-by-drop (hand it off, let the callee's scope-end dtor
+            # run it) is a legitimate ownership use. Drop is the "consume"
+            # the store/forward/return check doesn't model, so don't flag it.
+            # (These types CAN be borrowed via a plain param; the suppression
+            # is about avoiding false positives on the dispose pattern, not
+            # about Own being the only way to pass them.)
             if self.ctx.is_type_nocopy(own.wrapped):
                 continue
             self.ctx.warning(
