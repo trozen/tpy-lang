@@ -1,0 +1,7 @@
+locked0: False
+locked1: True
+locked2: False
+caught release-unheld
+caught, locked: False
+after raise: False
+count: 5

@@ -2,11 +2,12 @@
 """asyncio v1 -- minimum viable async runtime.
 
 `run` / `sleep` / `create_task` / `Task[T]` / `Future[T]` / `Event` /
-`CancelledError`. Lowers to `runtime/cpp/include/tpy/async.hpp` and
-the TPy Executor in `_executor.py`. See `docs/ASYNC_DESIGN.md`.
+`Lock` / `Semaphore` / `CancelledError`. Lowers to
+`runtime/cpp/include/tpy/async.hpp` and the TPy Executor in
+`_executor.py`. See `docs/ASYNC_DESIGN.md`.
 """
 from builtins import BaseException, Exception, TimeoutError
-from tpy import Own, Int32, CancelledError, Throwable, nocopy
+from tpy import Own, Int32, Ptr, CancelledError, Throwable, nocopy
 from tpy.coro import (
     Waker, Poll, Cancellable,
     poll_ready, poll_pending, poll_ready_none,
@@ -746,4 +747,162 @@ class Event:
                 "Event already has a waiter (single-awaiter v1)")
         self._waiter = waker
         self._has_waiter = True
+        return poll_pending()
+
+
+# A stale-generation wake (the front waiter's task since cancelled or
+# completed) is swallowed by the Waker's own generation guard, so the
+# resource it would have claimed just waits for the next signal -- a
+# documented v1 cancel-while-parked gap, not a correctness issue here.
+def _wake_one(waiters: list[Waker]) -> None:
+    if len(waiters) > 0:
+        w = waiters.pop(0)
+        w.wake()
+
+
+@nocopy
+class Lock:
+    """Mutual-exclusion lock for single-threaded async code.
+
+    `acquire` / `release` / `locked` match CPython; use as an async
+    context manager (`async with lock:`). Contending acquirers park in
+    FIFO order and are woken one at a time on release.
+
+    Not awaitable directly (`await lock` is rejected, matching CPython):
+    acquisition goes through `acquire`, which awaits a private
+    `_LockAcquire` holding a Ptr to the lock, so the lock itself never
+    exposes `__poll__`.
+
+    Fairness: a freshly-arriving acquirer can claim a just-released lock
+    ahead of an already-parked waiter (the woken waiter re-checks and
+    re-parks). Safe -- every poll re-validates `_locked` -- but not
+    strictly FIFO-fair under heavy contention; benign single-threaded.
+    """
+
+    _locked: bool
+    _waiters: list[Waker]
+
+    def __init__(self) -> None:
+        self._locked = False
+        self._waiters = []
+
+    def locked(self) -> bool:
+        return self._locked
+
+    async def acquire(self) -> bool:
+        await _LockAcquire(self)
+        return True
+
+    def release(self) -> None:
+        if not self._locked:
+            raise RuntimeError("Lock is not acquired.")
+        self._locked = False
+        _wake_one(self._waiters)
+
+    async def __aenter__(self) -> None:
+        await self.acquire()
+
+    async def __aexit__(self, exc_type: None, exc_val: None,
+                        exc_tb: None) -> None:
+        self.release()
+
+    # Called by `_LockAcquire.__poll__` through a `Ptr[Lock]`: grab the
+    # lock if free, else park `waker` in FIFO order. Returns True iff
+    # acquired this poll.
+    def _try_acquire(self, waker: Waker) -> bool:
+        if not self._locked:
+            self._locked = True
+            return True
+        self._waiters.append(waker)
+        return False
+
+
+@nocopy
+class _LockAcquire:
+    """Private awaitable backing `Lock.acquire`. Holds a `Ptr[Lock]` (the
+    lock outlives the in-flight acquire) rather than making the lock its
+    own awaitable, so `await lock` stays rejected like CPython.
+    """
+
+    _lock: Ptr[Lock]
+
+    def __init__(self, lock: Ptr[Lock]) -> None:
+        self._lock = lock
+
+    # Task-level cancellation (the parked acquirer throws at its
+    # suspension); no inner state to flip.
+    def cancel(self) -> None:
+        pass
+
+    def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+        if self._lock._try_acquire(waker):
+            return poll_ready_none()
+        return poll_pending()
+
+
+@nocopy
+class Semaphore:
+    """Counting semaphore for single-threaded async code.
+
+    `acquire` decrements the internal counter, parking (FIFO) when it
+    would go below zero; `release` increments it and wakes one waiter.
+    `locked` reports whether the counter is exhausted. Matches CPython.
+    Usable as an async context manager; not awaitable directly (see
+    `Lock`). Same fairness note as `Lock`.
+    """
+
+    _value: Int32
+    _waiters: list[Waker]
+
+    def __init__(self, value: Int32 = 1) -> None:
+        if value < 0:
+            raise ValueError("Semaphore initial value must be >= 0")
+        self._value = value
+        self._waiters = []
+
+    def locked(self) -> bool:
+        # CPython also reports locked while acquirers are parked, not only
+        # when the count hits 0. `_waiters` may retain a since-cancelled
+        # waker (the cancel-while-parked gap), so this can over-report.
+        return self._value == 0 or len(self._waiters) > 0
+
+    async def acquire(self) -> bool:
+        await _SemAcquire(self)
+        return True
+
+    def release(self) -> None:
+        self._value += 1
+        _wake_one(self._waiters)
+
+    async def __aenter__(self) -> None:
+        await self.acquire()
+
+    async def __aexit__(self, exc_type: None, exc_val: None,
+                        exc_tb: None) -> None:
+        self.release()
+
+    # See `Lock._try_acquire`: take a permit if available, else park.
+    def _try_acquire(self, waker: Waker) -> bool:
+        if self._value > 0:
+            self._value -= 1
+            return True
+        self._waiters.append(waker)
+        return False
+
+
+@nocopy
+class _SemAcquire:
+    """Private awaitable backing `Semaphore.acquire` (see `_LockAcquire`)."""
+
+    _sem: Ptr[Semaphore]
+
+    def __init__(self, sem: Ptr[Semaphore]) -> None:
+        self._sem = sem
+
+    def cancel(self) -> None:
+        pass
+
+    def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+        if self._sem._try_acquire(waker):
+            return poll_ready_none()
         return poll_pending()

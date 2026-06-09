@@ -96,6 +96,8 @@ Adds the patterns most async code actually needs. Built on v1's frame model; no 
 | `gather` (homogeneous) | `def gather[T](*tasks: Task[T]) -> Own[_GatherFuture[T]]` -- variadic-positional homogeneous form (all tasks share `T`). Sync factory returning the existing `_GatherFuture[T]` awaitable as `Own[...]` (same pattern as `await create_task(coro)` returning a `Task[T]`); each Task is Rc-cloned into an owned list before constructing the future. After `await`, the user observes a `list[T]` of results in input order. Sidesteps the async-def `*args` codegen gap (BUGS.md) by being sync. **SHIPPED v1.5 M9.** |
 | `gather` (heterogeneous) | CPython-shape variadic-tuple form `gather[*Ts](*coros) -> tuple[*Ts]`; needs variadic generics + the async-def `*args` codegen fix in BUGS.md. Will coexist with the homogeneous shapes as an overload (different positional element-type pattern) when both prerequisites land. |
 | `gather_list` | `async def gather_list[T](tasks: list[Task[T]]) -> list[T]` runs N already-spawned tasks concurrently and returns their results in input order. On the first sub-task failure (or outer cancel) `_GatherFuture[T]` propagates `cancel()` to the still-pending siblings, waits for them to settle, then re-raises the first exception observed. TPy-only entry alongside `gather(*tasks)` -- CPython's `gather` is heterogeneous-tuple-shaped. Implementation: hand-written `_GatherFuture[T]` Rc-clones each Task handle into an owned list, then polls each unsettled task on every cycle with the awaiter's shared waker. `Task[T]` grows a `clone()` method (one refcount bump on the underlying TaskState). Outer-cancel observation inside still-running sub-tasks is prompt (the cancel-runnable-mark hook on `Task.cancel()` schedules the slot for immediate poll via a per-Task Waker stamped at `create_task` time, **M10**). **SHIPPED v1.5 M9-M10.** |
+| `gather_list_settled` / `Settled[T]` | `async def gather_list_settled[T](tasks: list[Task[T]]) -> list[Settled[T]]` -- the `return_exceptions=True` analog: every task is run to completion and each result is reported as a `Settled[T]` record (exactly one of `value` / `exception` populated). The record shape sidesteps the `T | BaseException` union-in-container slicing + `isinstance(x, Box[Throwable])` gaps; callers discriminate on `entry.exception is not None`. **SHIPPED (gather_settled follow-on).** |
+| `Event` | `asyncio.Event` -- boolean completion signal (the no-payload analog of `Future`). `set` / `clear` / `is_set` / `wait` match CPython; `await event` is a TPy shorthand for `await event.wait()`. Single-awaiter v1. Built on the same `Waker`-parking shape as `Future[T]`. (Listed under v2 sync primitives below, but shipped early alongside the gather/wait_for work since it needs no new machinery.) **SHIPPED.** |
 | `wait_for` | `async def wait_for[T](coro: Own[Cancellable[T]], timeout: float) -> T` races the inner coroutine against a steady-clock deadline. On expiry, cancels the inner and pumps it through any `finally`-with-await cleanup before raising `TimeoutError`. Inner exceptions other than `CancelledError` propagate unchanged. Non-positive `timeout` triggers the deadline on first poll (matches CPython). Outer-cancel of a `wait_for` task propagates through to the inner -- the resume-case cancel-check (in every async-def coro frame, M8) calls `cancel()` on the in-flight sub-coro before polling, so the inner observes `CancelledError` at its suspension point and can run `finally`-with-await cleanup before the cancellation surfaces. Implementation: `_WaitForFuture[T]` hand-written awaitable holds the inner as `Box[Cancellable[T]]` constructed directly from the moved-in `coro` param. **SHIPPED v1.5 M8.** |
 | `TimeoutError` | Built-in exception type. Re-exported from `builtins`; the C++ side is `tpy::TimeoutError` inheriting `Exception`. **SHIPPED v1.5 M8.** (`StopAsyncIteration` shipped in v1.5 M6.) |
 
@@ -105,7 +107,7 @@ Library breadth + first real I/O. Each item is sized to land independently.
 
 | Item | Description |
 |------|-------------|
-| Sync primitives | `Lock`, `Event`, `Queue`, `Semaphore`. Built on `Future[T]`. |
+| Sync primitives | `Lock` and `Semaphore` **SHIPPED** (FIFO `list[Waker]` waiter queue, usable as `async with`; mirror the early-shipped `Event`). `Queue` and `BoundedSemaphore` remain -- `BoundedSemaphore` (a `Semaphore` subclass) is blocked on the inherited-`async def` coro-struct-naming bug (BUGS.md). All built on the same `Waker`-parking shape. |
 | Multi-awaiter `Future[T]` | If single-awaiter v1 turns out to be limiting in practice. |
 | Task introspection | `Task.add_done_callback`, `get_name`, `set_name`, `done`, `result`, `exception`. |
 | Public `Reactor` protocol | Designed against the first concrete backend's needs (not before). |
@@ -666,13 +668,14 @@ Exception storage uses `std::exception_ptr` to preserve the dynamic type after c
 ### What works under both (v1 + v1.5)
 
 - `async def`, `await`, `async with`, `async for`.
-- `import asyncio`; `from asyncio import run, sleep, gather, gather_list, create_task, wait_for, Task, Future, CancelledError, TimeoutError`. (`gather` is the homogeneous variadic form; the heterogeneous `gather[*Ts]` tuple shape remains deferred.)
+- `import asyncio`; `from asyncio import run, sleep, gather, gather_list, create_task, wait_for, Task, Future, Event, Lock, Semaphore, CancelledError, TimeoutError`. (`gather` is the homogeneous variadic form; the heterogeneous `gather[*Ts]` tuple shape remains deferred.)
+- `Event` / `Lock` / `Semaphore` via their `acquire`/`release`/`set`/`wait`/`locked` API and `async with`. `Lock`/`Semaphore` are not awaitable directly (`await lock` is rejected, matching CPython) -- acquisition goes through `acquire` / `async with`. (`Event` does allow the `await event` shorthand, a TPy extension, since waiting on an Event has no acquire-without-release footgun.)
 - The methods on `Task[T]` and `Future[T]` that v1/v1.5 ships.
 
 ### What does not match (until v2+)
 
 - `Task.add_done_callback`, `Task.get_loop`, `Task.get_name`, `Task.set_name` -- v2.
-- `asyncio.Lock`, `Event`, `Queue`, `Semaphore` -- v2.
+- `asyncio.Queue`, `BoundedSemaphore` -- v2 (`BoundedSemaphore` blocked on the inherited-`async def` coro-struct-naming bug, BUGS.md).
 - Multi-awaiter `Future`: v2.
 - Repeated `await future` after done: v2 (with multi-awaiter).
 - The `loop = asyncio.get_event_loop()` pattern -- TPy has no public `Executor` API.

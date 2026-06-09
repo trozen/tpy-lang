@@ -1,0 +1,5 @@
+locked0: False
+locked_full: True
+locked_extra: False
+peak: 2
+caught negative
