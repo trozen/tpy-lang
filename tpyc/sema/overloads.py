@@ -17,7 +17,7 @@ from ..typesys import (
     PendingBytesType, TupleType, UnknownElementType,
     NominalType, PtrType, OwnType, ReadonlyType, RefType, CallableType, is_fn_type, VoidType, NoneType,
     OptionalType,
-    unwrap_ref_type,
+    unwrap_ref_type, strip_own_type_args,
     is_callable_type, is_float_type, is_integer_type, is_any_float_type,
     contains_type_param,
 )
@@ -336,8 +336,7 @@ def _classify_strict_match(
     # Copy warnings are emitted later by check_type_compatible.
     if (isinstance(param_inner, NominalType) and not is_protocol_type(param_inner)
             and any(isinstance(a, OwnType) for a in param_inner.inner_types())):
-        stripped_inner = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_inner.inner_types())
-        stripped_param = param_inner.with_inner_types(stripped_inner)
+        stripped_param = strip_own_type_args(param_inner)
         return (MatchTier.EXACT_CONCRETE, 0) if arg_inner == stripped_param else None
     return None
 
@@ -550,8 +549,7 @@ def type_matches_with_coercion(
     # Symmetric with the same block in type_matches_strict.
     if (isinstance(param_inner, NominalType) and not is_protocol_type(param_inner)
             and any(isinstance(a, OwnType) for a in param_inner.inner_types())):
-        stripped_inner = tuple(a.wrapped if isinstance(a, OwnType) else a for a in param_inner.inner_types())
-        stripped_param = param_inner.with_inner_types(stripped_inner)
+        stripped_param = strip_own_type_args(param_inner)
         return arg_inner == stripped_param
     return False
 

@@ -1,0 +1,1 @@
+main.py:15: warning: copies Item elements; use copy_iter() to make this explicit (or copy() to copy the entire container)

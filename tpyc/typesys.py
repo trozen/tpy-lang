@@ -1581,6 +1581,15 @@ def unwrap_own(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def strip_own_type_args(typ: 'NominalType') -> 'NominalType':
+    """Strip a top-level Own[...] from each of a nominal type's args
+    (`Iterable[Own[X]]` -> `Iterable[X]`). An Own-wrapped type arg signals
+    copy/ownership semantics for the copy-semantics conformance check, not a
+    distinct element type, so both sides are stripped before structural match."""
+    return typ.with_inner_types(
+        tuple(unwrap_own(a) for a in typ.inner_types()))
+
+
 def yield_uses_borrow_slot(elem_type: 'TpyType') -> bool:
     """Whether a generator / genexpr yield of this element uses the plain
     `val_or_ref<T>` borrow slot -- i.e. a bare reference type (record / class)

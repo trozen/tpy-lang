@@ -15,7 +15,7 @@ from ..typesys import (
     LiteralType, LiteralValue, LiteralTag, FLOAT, make_list, make_dict, make_set,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NominalType, AliasRef, RecursiveAliasInstanceType, TypeParamRef, NoneType, AnyType, OptionalType, UnionType,
-    is_protocol_type, is_dyn_protocol, unwrap_own, unwrap_readonly, unwrap_optional_own,
+    is_protocol_type, is_dyn_protocol, unwrap_own, strip_own_type_args, unwrap_readonly, unwrap_optional_own,
     contains_type_param,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     CallableType, is_fn_type, RefType, unwrap_ref_type,
@@ -742,10 +742,21 @@ class TypeCompatibility:
         if (isinstance(expected, NominalType)
                 and expected.inner_types()
                 and any(isinstance(a, OwnType) for a in expected.inner_types())):
-            stripped_inner = tuple(a.wrapped if isinstance(a, OwnType) else a for a in expected.inner_types())
-            stripped_expected = expected.with_inner_types(stripped_inner)
+            stripped_expected = strip_own_type_args(expected)
             # Own[T] actual means caller acknowledged ownership transfer -- no warning.
-            actual_inner = actual.wrapped if isinstance(actual, OwnType) else actual
+            actual_inner = unwrap_own(actual)
+            # Symmetric with the expected-side strip: an actual that itself
+            # carries Own in its type args (e.g. Iterator[Own[T]]) already
+            # yields owned elements, so strip those too -- otherwise it would be
+            # compared element-wise (Own[T]) against the bare-T stripped
+            # expected and wrongly fail. Provides-Own means no implicit copy.
+            actual_provides_own = (
+                isinstance(actual_inner, NominalType)
+                and bool(actual_inner.inner_types())
+                and any(isinstance(a, OwnType) for a in actual_inner.inner_types())
+            )
+            if actual_provides_own:
+                actual_inner = strip_own_type_args(actual_inner)
             if is_protocol_type(expected):
                 structurally_ok = bool(
                     self.protocols and self.protocols.type_conforms_to_protocol(actual_inner, stripped_expected)
@@ -761,6 +772,7 @@ class TypeCompatibility:
                                 and not isinstance(source_expr, TpyName))
                 if (source_expr is not None
                         and not explicit_own
+                        and not actual_provides_own
                         and not self.is_copy_call(source_expr)):
                     is_lvalue_src = self.is_lvalue(source_expr)
                     # Suppress at last use: no observable semantic divergence from
