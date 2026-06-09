@@ -430,6 +430,63 @@ remain available for when the user wants to control the representation.
 
 ---
 
+### `memoryview` (deferred -- valuable part is lifetime-gated)
+
+CPython-compatible `memoryview(...)` builtin. **Deferred** after a design pass: the
+*safe* subset is near-redundant with `BytesView`, and the *valuable* subset is a
+lifetime feature that belongs with the region work below.
+
+What a design+spike (branch `feat-memoryview`) established, so a future attempt
+starts warm:
+
+- **Implement as pure TPy, not hand-written C++.** A `@builtin_type`-with-body
+  record (no `@native`) emits a real C++ struct from its TPy body -- confirmed by
+  spike; precedent is `asyncio._executor.Task`/`TaskState`. `@builtin_type` is
+  pure name/registry binding, orthogonal to `@native`. (`_BLOCKED_BUILTINS` in
+  `macro_loader.py` is the macro sandbox allowlist, unrelated.)
+- **Read-only memoryview adds little over `BytesView`** -- same zero-copy const
+  byte view, just a CPython builtin *name* and a buffer-introspection API
+  (`.tobytes/.readonly/.nbytes/...`) instead of `BytesView`'s text API
+  (`decode/find/split`). Only real benefit: ported code calling bare
+  `memoryview(b)` compiles.
+- **The new capability -- writable views over `bytearray` (`mv[i] = x` writes
+  through), `.obj`, real `release()`, resize-safety -- is an ownership/lifetime
+  feature**, the same root cause as Coroutine/Task borrow safety below. A
+  span/`Ptr`-backed view dangles when the source local drops or the `bytearray`
+  resizes; CPython prevents this via a refcounted export-lock that TPy's
+  `bytes`/`bytearray` don't have. Faithful keep-alive needs either a copy (not a
+  view) or `Rc`/an export-counter -- not v1-sized. Building a documented-unsafe
+  writable view under a trusted CPython name is the wrong tradeoff.
+- **Two storage models surfaced:** (a) `BytesView | Span[UInt8]` variant +
+  runtime readonly check; (b) Codex's exporter-backed `obj:bytes|bytearray` +
+  offset/length/readonly/released, deriving spans per-access -- gives cheap
+  `.obj` + soft resize-detection but needs a borrowed-reference field
+  (`Ptr`/`Ref[T]`) and still dangles without refcounting.
+- **Open prerequisites for any attempt:** (1) bytearray must *provably* select
+  the writable arm (both `bytes`/`bytearray` coerce to `BytesView`; overload
+  exactness is correctness-critical -- needs a `.readonly == False` test);
+  (2) the unqualified `memoryview(...)` -> record-constructor path needs
+  root-causing -- no `@builtin_type`-with-body record is built via a bare
+  `Name(...)` today (`Task` uses factories), so the path may not exist;
+  (3) negative-index / slice normalization should reuse existing
+  `bytes`/`list_slice` helpers (gets Python slice semantics for free).
+- The principled generalization beyond bytes is generic `memoryview[T]` over the
+  `Spannable[T]` protocol (typed buffers like `list[T]`, `Array[T,N]`), matching
+  CPython's buffer-exporter set -- **not** a type-erased "any object via
+  `tpy.unsafe` reinterpret" view, which diverges from CPython (it rejects
+  non-buffer objects) and is unsafe for non-POD element types.
+
+Cross-ref: shares its blocker with **Coroutine/Task borrow safety (gated on
+IR/regions)** (Section IV) and the **Mutable Span + `__span__`** primitive above.
+
+**Dependencies**: THIR/MIR region work (for the writable/lifetime-safe form);
+`Ref[T]` (for the exporter-backed model).
+
+**Effort**: M for read-only-only (low value); L for the faithful writable form
+(rides on regions).
+
+---
+
 ### Enums
 
 **Done.** Int-based enums (`enum class` in C++) with `auto()`, `Enum.member` access,

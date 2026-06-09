@@ -62,9 +62,7 @@
 #   - `getrandbits(0)` raises `ValueError`. CPython returns 0 for k=0;
 #     supporting it would require special-casing the BigInt zero return
 #     and is rarely used. Match CPython if a real workload needs it.
-#   - `choice([])` raises `ValueError`. CPython raises `IndexError`; TPy
-#     doesn't yet have `IndexError` as a catchable type (STDLIB_ROADMAP
-#     "builtins" section). Switch to `IndexError` once it lands.
+#   - `choice([])` raises `IndexError`, matching CPython.
 #
 # Uses `UInt32.add_wrap / sub_wrap / mul_wrap / shl_wrap` for the modular
 # arithmetic MT needs (TPy's +/-/*/<< on fixed-width ints are
@@ -361,8 +359,7 @@ class Random:
     def choice[T](self, seq: list[T]) -> T:
         n: Int32 = Int32(len(seq))
         if n == 0:
-            # ValueError instead of CPython's IndexError -- see caveats.
-            raise ValueError("Cannot choose from an empty sequence")
+            raise IndexError("Cannot choose from an empty sequence")
         return copy(seq[Int32(self._randbelow(UInt32(n)))])
 
     def shuffle[T](self, seq: list[T]) -> None:

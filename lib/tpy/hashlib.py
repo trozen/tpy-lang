@@ -26,9 +26,6 @@
 #
 # Language / compiler gaps hit while porting SHA-256 (see BUGS.md for
 # detail; none of them are hashlib-specific, but they shaped this file):
-#   - Free function with a `bytearray` param + `.append()` inside gets
-#     auto-inferred as const, producing "discards qualifiers" C++ errors.
-#     Worked around by inlining `_pack_be32` into `digest()`.
 #   - Forward-ref string annotations (`-> "SHA256"`) fail parse; class is
 #     defined before the factory to avoid them.
 #
@@ -67,6 +64,12 @@ _SHA256_K: list[UInt32] = [
 
 def _load_be32(data: bytes, off: Int32) -> UInt32:
     return (UInt32(data[off]) << 24) | (UInt32(data[off + 1]) << 16) | (UInt32(data[off + 2]) << 8) | UInt32(data[off + 3])
+
+def _pack_be32(out: bytearray, v: UInt32) -> None:
+    out.append(UInt8((v >> 24) & UInt32(0xFF)))
+    out.append(UInt8((v >> 16) & UInt32(0xFF)))
+    out.append(UInt8((v >> 8) & UInt32(0xFF)))
+    out.append(UInt8(v & UInt32(0xFF)))
 
 class SHA256:
     h: list[UInt32]
@@ -172,11 +175,7 @@ class SHA256:
         out: bytearray = bytearray()
         i = 0
         while i < 8:
-            v: UInt32 = clone.h[i]
-            out.append(UInt8((v >> 24) & UInt32(0xFF)))
-            out.append(UInt8((v >> 16) & UInt32(0xFF)))
-            out.append(UInt8((v >> 8) & UInt32(0xFF)))
-            out.append(UInt8(v & UInt32(0xFF)))
+            _pack_be32(out, clone.h[i])
             i += 1
         return bytes(out)
 

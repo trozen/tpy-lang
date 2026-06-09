@@ -193,7 +193,7 @@ ramps up.
 
 | Tracker entry | Effect on stdlib | Blocks |
 |---|---|---|
-| _open verification, no entry yet_: Module-level mutable state across compilation units. Verified working for regular stdlib modules with a reference-type module-level singleton (e.g. `random`'s shared RNG instance); still needs checking for facade-routed or reassignment-based patterns -- file as a bug if a real failure is reproduced. | Single source of truth for per-process state | `logging` (handlers registry), `sys.path`, `warnings` |
+| _open verification, no entry yet_: Module-level mutable state across compilation units. Verified working for a reference-type module-level singleton (e.g. `random`'s shared RNG instance) and for `global`-reassignment of a value-typed module variable; facade-routed patterns still unverified -- file as a bug if a real failure is reproduced. | Single source of truth for per-process state | `logging` (handlers registry), `sys.path`, `warnings` |
 
 The original "stdlib enablement" workstream (variable re-exports through
 native_module facades, init chain propagation, `import pkg.sub` + attribute
@@ -1084,7 +1084,9 @@ v1.5 M9: SHIPPED. Two homogeneous entrypoints sharing one `_GatherFuture[T]` eng
 
 Pending (v1.5): CPython-shape *heterogeneous* variadic `gather`, partial / nested try-around-await (see BUGS.md for the specific CFG-build limits).
 
-v1.5 M1: SHIPPED. Sync `with` upgraded to CPython-shape `__exit__(self, exc_type, exc_val, exc_tb) -> bool | None`; `bool` return suppresses, `None` is cleanup-only. Class-based exception dispatch via `isinstance(exc_val, X)` is deferred to M2 (blocked on `Optional[BaseException]` slicing -- see `BUGS.md`).
+v1.5 M1: SHIPPED. Sync `with` upgraded to CPython-shape `__exit__(self, exc_type, exc_val, exc_tb) -> bool | None`; `bool` return suppresses, `None` is cleanup-only.
+
+v1.5 M2: SHIPPED. Class-based exception dispatch via `isinstance(exc_val, X)` in `__exit__` (the `Optional[BaseException]` slicing blocker M1 deferred to M2 was resolved by Phase 20). Bare and early-return-narrowed `isinstance` on `BaseException` / `Optional[BaseException]` params both dispatch correctly. See `docs/ASYNC_PROGRESS.md` M2.
 
 Pending (v2+): I/O reactor (epoll on Linux, kqueue on BSD/macOS, IOCP on Windows), `asyncio.Queue`, async generators, `@error_return` async, `__await__` adaptation, multi-thread executor.
 

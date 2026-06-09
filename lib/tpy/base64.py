@@ -22,8 +22,9 @@
 #      to flow across the if/while. Generic compiler work; helps every
 #      stdlib byte-level loop. Tracked in TODO.md.
 #   2. Pre-size the output bytearray to the known final length instead
-#      of growing via push_back. Needs `bytearray.reserve()` (not yet
-#      exposed).
+#      of growing via push_back. CPython's `bytearray` has no `reserve`,
+#      so this needs an internal capacity-hint primitive (a public
+#      `bytearray.reserve()` would diverge from CPython) -- deferred.
 #   3. Fuse the `_filter_b64_input` + `_b64_decode` passes in lax mode
 #      (validate=False) -- single walk, skip non-alphabet chars as
 #      encountered.

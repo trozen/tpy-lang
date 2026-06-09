@@ -15,8 +15,7 @@
 #   - No `key=` arg on nsmallest/nlargest.
 #     TODO: thread `Callable[[T], K: Comparable]` through, matches CPython.
 #   - merge(*iterables, key=, reverse=) not implemented.
-#     Blocked on variadic-in-method-call codegen (same gate as math.hypot
-#     variadic) plus a generator-driven n-way iterator-heads heap.
+#     Needs a generator-driven n-way iterator-heads heap.
 #
 # Codegen perf gap affecting this module (see TODO.md "Missed optimizations" and
 # `docs/IR_DESIGN.md` "Open Questions" item 8):
