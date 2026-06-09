@@ -91,6 +91,10 @@ class ResumableFuncState:
     with_prescanned: bool = False
     with_uid_map: 'dict[int, list[int]]' = field(default_factory=dict)
     with_fields: 'list[tuple[str, str]]' = field(default_factory=list)
+    # `__with_ctx_<n>` field names whose manager is borrowed (reference-type
+    # lvalue): the frame field is a `T*` bound to the original, not an owning
+    # `frame_slot<T>` copy. See TpyWithItem.manager_borrowed.
+    with_borrowed_fields: 'set[str]' = field(default_factory=set)
     with_owning_str_targets: 'set[str]' = field(default_factory=set)
     async_with_struct_names: 'dict[int, tuple[str, str]]' = field(default_factory=dict)
     # try/finally prescan (_prescan_resumable_try_finally)

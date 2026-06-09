@@ -3380,6 +3380,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
   - Multiple context managers: `with a() as x, b() as y:` -- nested try/catch blocks, inner exits first (LIFO)
   - Name reuse: `with a() as f: ... with b() as f: ...` -- second block rebinds via pointer-local indirection
   - `with expr:` (no `as`) -- enter/exit without binding
+  - **Manager binding**: a reference-type lvalue manager (`with mgr:` / `with self.mgr:`) is *borrowed* -- `__enter__`/`__exit__` act on the original object, so their mutations are visible afterward (matching CPython); a `@nocopy` manager works. An rvalue manager (`with Lock():`) and a value-type manager are owned by the block (copied -- a value type crosses a `with` as a value boundary). Same rule applies to `async with`.
 
 ### Other
 - **Working**: `return`, `pass`

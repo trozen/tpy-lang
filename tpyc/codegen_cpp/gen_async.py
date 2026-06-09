@@ -1120,9 +1120,14 @@ class AsyncCoroCodegen:
             out.write(f"{INDENT}::tpy::frame_slot<{ftype}> {fname};\n")
 
         # Context-manager fields for CFG-decomposed `with`-with-await
-        # bodies. One frame_slot<T> per WithItem.
+        # bodies. One per WithItem: an owning `frame_slot<T>` for a
+        # by-value manager, or a `T*` borrow for a reference-type lvalue
+        # manager (so __enter__/__exit__ act on the original, not a copy).
         for fname, ftype in state.with_fields:
-            out.write(f"{INDENT}::tpy::frame_slot<{ftype}> {fname};\n")
+            if fname in state.with_borrowed_fields:
+                out.write(f"{INDENT}{ftype}* {fname} = nullptr;\n")
+            else:
+                out.write(f"{INDENT}::tpy::frame_slot<{ftype}> {fname};\n")
 
         # In-flight exception slots for CFG-decomposed try-finally-with-
         # await bodies. std::exception_ptr default-constructs
@@ -1947,6 +1952,8 @@ class AsyncCoroCodegen:
                                 loc=s.loc)
                         ctx_cpp = self.types.type_to_cpp(unwrap_ref_type(ctx_t))
                         fields_out.append((f"__with_ctx_{cur_n}", ctx_cpp))
+                        if item.manager_borrowed:
+                            state.with_borrowed_fields.add(f"__with_ctx_{cur_n}")
                         # For async-with, compute the qualified C++ names
                         # of the __aenter__ / __aexit__ coro structs so
                         # struct-emit and _emit_suspend can look them up
@@ -3119,7 +3126,8 @@ class AsyncCoroCodegen:
     def _emit_with_enter(self, out: "TextIO", indent: str,
                                 stmt: 'rcfg.WithEnter') -> None:
         """Emit the with-stmt setup sequence:
-            __with_ctx_<n>.emplace(<context_expr>);
+            __with_ctx_<n>.emplace(<context_expr>);     # owned (rvalue) manager
+            __with_ctx_<n> = &(<context_expr>);         # borrowed (lvalue) manager
             <target> = (*__with_ctx_<n>).__enter__();   # if target
             (*__with_ctx_<n>).__enter__();              # else
         """
@@ -3127,7 +3135,10 @@ class AsyncCoroCodegen:
         item = stmt.item
         ctx_expr = self.expressions.gen_expr(item.context_expr)
         self.ctx.temps.flush(out, indent)
-        out.write(f"{indent}__with_ctx_{ctx_n}.emplace({ctx_expr});\n")
+        if item.manager_borrowed:
+            out.write(f"{indent}__with_ctx_{ctx_n} = &({ctx_expr});\n")
+        else:
+            out.write(f"{indent}__with_ctx_{ctx_n}.emplace({ctx_expr});\n")
         if item.target is not None:
             target = escape_cpp_name(item.target)
             enter_call = f"(*__with_ctx_{ctx_n}).__enter__()"
@@ -3144,17 +3155,21 @@ class AsyncCoroCodegen:
 
     def _emit_async_with_setup(self, out: "TextIO", indent: str,
                                  stmt: 'rcfg.AsyncWithSetup') -> None:
-        """Emit the async-with frame-slot population:
-            __with_ctx_<n>.emplace(<context_expr>);
-        (Construction into a `tpy::frame_slot<CM>` frame field;
-        `frame_slot::operator=` is deleted, so writes go through
-        `.emplace(...)`.) Subsequent Yield BBs (aenter/aexit) emplace
-        `__sub_<i>` with `(*__with_ctx_<n>, ...)`."""
+        """Emit the async-with frame-field population:
+            __with_ctx_<n>.emplace(<context_expr>);   # owned: frame_slot<CM>
+            __with_ctx_<n> = &(<context_expr>);        # borrowed lvalue: CM*
+        (An owned manager is a `tpy::frame_slot<CM>` whose `operator=` is
+        deleted, so writes go through `.emplace(...)`; a borrowed lvalue is a
+        `CM*` field bound by address.) Subsequent Yield BBs (aenter/aexit)
+        emplace `__sub_<i>` with `(*__with_ctx_<n>, ...)`."""
         ctx_n = stmt.ctx_n
         item = stmt.item
         ctx_expr = self.expressions.gen_expr(item.context_expr)
         self.ctx.temps.flush(out, indent)
-        out.write(f"{indent}__with_ctx_{ctx_n}.emplace({ctx_expr});\n")
+        if item.manager_borrowed:
+            out.write(f"{indent}__with_ctx_{ctx_n} = &({ctx_expr});\n")
+        else:
+            out.write(f"{indent}__with_ctx_{ctx_n}.emplace({ctx_expr});\n")
 
     def _emit_with_exit(self, out: "TextIO", indent: str,
                                region: 'rcfg.WithRegion',

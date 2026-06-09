@@ -3087,7 +3087,10 @@ class StatementGenerator:
             ctx_ids.append(n)
 
             ctx_expr = self.expressions.gen_expr(item.context_expr)
-            out.write(f"{indent}auto __ctx_{n} = {ctx_expr};\n")
+            # Borrow an lvalue manager (`auto&`) so __enter__/__exit__ act on
+            # the original; own an rvalue manager (`auto`).
+            ctx_bind = "auto&" if item.manager_borrowed else "auto"
+            out.write(f"{indent}{ctx_bind} __ctx_{n} = {ctx_expr};\n")
 
             if item.target is not None:
                 assert item.enter_type is not None

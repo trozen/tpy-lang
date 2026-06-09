@@ -2124,6 +2124,19 @@ class StatementAnalyzer:
         self._propagate_for_loop_scope(stmt, inner_scope, elem_type)
         # `async for` parser already rejects orelse; nothing to analyze.
 
+    def _mark_with_manager_mutated(self, manager: 'TpyExpr') -> None:
+        """Mark the durable root of a borrowed `with` manager mutated, so a
+        non-readonly __enter__/__exit__ doesn't bind it `const`. (See
+        _mark_await_operand_mutated -- the same receiver-mutation shape.)
+        """
+        obj_root = _root_name_of_expr(manager)
+        if obj_root is None:
+            return
+        self.ctx.mark_loop_var_mutated(obj_root)
+        self.ctx.mark_param_mutated(obj_root)
+        storage = self.ctx.func.borrow_tracker.effective_storage(obj_root)
+        self.ctx.mark_all_view_borrowers_mutated(storage)
+
     def _analyze_with(self, stmt: TpyWith) -> None:
         """Analyze a with statement (context managers).
 
@@ -2150,6 +2163,17 @@ class StatementAnalyzer:
         for item in stmt.items:
             ctx_type = unwrap_own(unwrap_ref_type(self.expr.analyze_expr(item.context_expr)))
 
+            # A reference-type lvalue manager must be borrowed by the
+            # with-region, not copied into the ctx slot -- otherwise
+            # __enter__/__exit__ mutate a throwaway copy (and @nocopy managers
+            # can't be copied at all). A value-type manager stays bound by
+            # value: a `with` block is a value boundary, so it's copied like
+            # any value type crossing one (see the ValueType-immutability TODO).
+            # Rvalue managers are also bound by value (the block owns them).
+            item.manager_borrowed = (
+                self.compat.is_lvalue(item.context_expr)
+                and not ctx_type.is_value_type())
+
             # Look up __[a]enter__ / __[a]exit__ on the context manager type.
             record_info = self.ctx.registry.get_record_for_type(ctx_type)
             err_node = item.context_expr
@@ -2174,6 +2198,17 @@ class StatementAnalyzer:
             # `async def`. In sync `with`, neither should be.
             enter_info = enter_overloads[0]
             exit_info = exit_overloads[0]
+
+            # A borrowed manager whose __[a]enter__ / __[a]exit__ mutates
+            # self must be bound non-const, so mark its durable root mutated
+            # (mirrors the non-readonly method-call / await-operand receiver
+            # marking). Without this the manager's param/local can be
+            # inferred const and the borrow binds `const T&`, failing on the
+            # mutating enter/exit call.
+            if item.manager_borrowed and not (
+                    enter_info.is_readonly and exit_info.is_readonly):
+                self._mark_with_manager_mutated(item.context_expr)
+
             if stmt.is_async:
                 if not enter_info.is_async:
                     raise self.ctx.error(

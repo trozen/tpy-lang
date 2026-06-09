@@ -984,6 +984,9 @@ class TpyWithItem:
     # (i.e. the body inspects exceptions). False when exc_val: None.
     # Codegen call site passes &__exc / nullptr when True, else {}.
     exit_takes_exc_val: bool = False
+    # Set by sema: True iff the manager is an lvalue, so the with-region must
+    # borrow it -- a by-value ctx slot would mutate a throwaway copy.
+    manager_borrowed: bool = False
 
 
 @dataclass
