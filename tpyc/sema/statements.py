@@ -468,7 +468,7 @@ class StatementAnalyzer:
                 continue
             elem = literal.elements[i]
 
-            # Value types, Own[T], and TypeParamRef are always VALUE
+            # Value types, Own[T], and TypeParamRef are always VALUE.
             if et.is_value_type() or isinstance(et, (OwnType, TypeParamRef)):
                 literal.elem_capture.append(V)
                 continue
@@ -877,6 +877,14 @@ class StatementAnalyzer:
                         # Annotate per-element capture mode (ref/value/const_ref)
                         self._annotate_tuple_elem_capture(
                             stmt.value, tuple_target, is_return=True)
+                # A tuple LOCAL returned by name: the literal-element check
+                # above never ran, so consult the construction-time
+                # plain-borrow-into-Own hazard for each Own slot.
+                elif isinstance(stmt.value, TpyName):
+                    tuple_target = own_tuple_target(expected)
+                    if tuple_target is not None:
+                        self.compat.check_name_borrow_into_own(
+                            stmt.value.name, tuple_target, stmt.value, "return")
                 # Returning an ephemeral generator/iterator borrow lets it escape
                 # its iteration step -- reject with the copy-out fix (before the
                 # generic dangling check so the specific message wins).

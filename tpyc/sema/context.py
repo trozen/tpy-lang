@@ -630,6 +630,15 @@ class FunctionTrackingState:
     # resolved through the borrow tracker at the boundary check.
     owning_storage_tuple_vars: set[str] = field(default_factory=set)
 
+    # (name, element-idx) for tuple locals whose element is a plain borrowed
+    # reference (param/attr/non-last-use, not copy(), not an owned last-use
+    # move). A later NAME return/pass into an `Own[T]` slot would deref-COPY
+    # the borrow -- the implicit copy the scalar `Own[T]` return rejects -- so
+    # the boundary checks consult this per Own slot (literal forms check
+    # inline). Flow-sensitive (UNION-merged) so a borrow-into-own on ANY
+    # reaching path is caught.
+    borrow_into_own_hazards: set[tuple[str, int]] = field(default_factory=set)
+
 
     # --- Variable declaration tracking (per-function) ---
     var_decl_by_name: dict[str, 'TpyVarDecl'] = field(default_factory=dict)

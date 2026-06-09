@@ -156,6 +156,10 @@ class FlowFacts:
     # make_pair() else: t = h.pair`) does not leak the owning kind into the
     # else-arm; the boundary return check rejects when possibly-owning.
     owning_storage_tuple_vars: frozenset[str] = frozenset()
+    # Hazard fact: (local name, element index) for tuple locals whose element
+    # is a plain borrowed reference -- rejected/warned if the local is later
+    # returned/passed/stored by NAME into an Own[T] slot (see sema.context).
+    borrow_into_own_hazards: frozenset[tuple[str, int]] = frozenset()
     # Borrow map: (storage_name, borrower_name, BorrowKind) triples.
     # "__for_iter" is used as the borrower for implicit for-loop iterator borrows.
     borrows: frozenset[tuple[str, str, BorrowKind]] = frozenset()
@@ -202,6 +206,10 @@ class FlowFacts:
             ),
             owning_storage_tuple_vars=_merge_sets(
                 then.owning_storage_tuple_vars, else_.owning_storage_tuple_vars,
+                then_term, else_term, _MergePolicy.UNION,
+            ),
+            borrow_into_own_hazards=_merge_sets(
+                then.borrow_into_own_hazards, else_.borrow_into_own_hazards,
                 then_term, else_term, _MergePolicy.UNION,
             ),
             borrows=_merge_borrow_triples(

@@ -2428,6 +2428,16 @@ class CallAnalyzer:
             self._check_own_tuple_literal_arg(arg, peeled_ptype, pname)
             self._warn_unnecessary_copy(arg)
             return
+        # A tuple LOCAL passed by NAME into a tuple param with Own slots: the
+        # literal element check above never ran, so consult the
+        # construction-time plain-borrow-into-Own hazard per Own slot.
+        if isinstance(arg, TpyName):
+            name_target = own_tuple_target(ptype)
+            if (name_target is not None
+                    and any(isinstance(et, OwnType)
+                            for et in name_target.element_types)):
+                self.compat.check_name_borrow_into_own(
+                    arg.name, name_target, arg, "pass")
         own_ptype = unwrap_optional_own(ptype)
         if own_ptype is None:
             return

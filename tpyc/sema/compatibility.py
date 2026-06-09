@@ -2458,15 +2458,24 @@ class TypeCompatibility:
         """
         fresh = None
         owning = False
+        borrow_into_own: list[int] = []
         if init_expr is not None and var_type is not None:
             tt = unwrap_readonly(var_type)
             if isinstance(tt, TupleType):
                 fresh = self._derive_tuple_member_hazards(tt, init_expr)
                 if tt.has_pointer_repr_element():
                     owning = self._derive_owning_storage(init_expr)
+                borrow_into_own = self._derive_borrow_into_own_hazards(init_expr)
         self.ctx.func.owns_fresh_tuple_member_vars.pop(name, None)
         if fresh is not None:
             self.ctx.func.owns_fresh_tuple_member_vars[name] = fresh
+        # Per-element plain-borrow hazard (rebind clears the name's old pairs
+        # first). Checked at a later NAME return/arg/store into an Own[T] slot.
+        self.ctx.func.borrow_into_own_hazards = {
+            (n, i) for (n, i) in self.ctx.func.borrow_into_own_hazards if n != name
+        }
+        for i in borrow_into_own:
+            self.ctx.func.borrow_into_own_hazards.add((name, i))
         # Flow-sensitive (snapshot + UNION merge): a branch-mixed or rebinding
         # local is owning on the merge iff any reaching path bound it owning;
         # the boundary return-root check rejects a bare-name return then. An
@@ -2510,6 +2519,76 @@ class TypeCompatibility:
         if isinstance(inner, TpyName):
             return inner.name in self.ctx.func.owning_storage_tuple_vars
         return self._is_owning_tuple_call(inner)
+
+    def _derive_borrow_into_own_hazards(self, init_expr: TpyExpr) -> list[int]:
+        """Indices whose element is a PLAIN borrowed reference (param /
+        attribute / non-last-use local) -- a copy into an Own[T] slot, not a
+        move. An element that is an explicit copy(), a fresh rvalue, a value
+        type, an owned last-use (move), or an Own-typed source is NOT a hazard.
+
+        Dispatches on provenance like `_derive_tuple_member_hazards`: a literal
+        scans its elements; a bare-name alias inherits the source local's
+        recorded hazards; a ternary UNIONs both arms (the result aliases
+        either). Other inits (calls) carry no hazard -- a callee returns an
+        owning/durable tuple, not a borrow of the caller's data.
+        """
+        inner = init_expr.expr if isinstance(init_expr, TpyCoerce) else init_expr
+        if isinstance(inner, TpyIfExpr):
+            return sorted(
+                set(self._derive_borrow_into_own_hazards(inner.then_expr))
+                | set(self._derive_borrow_into_own_hazards(inner.else_expr)))
+        if isinstance(inner, TpyName):
+            return sorted(i for (n, i) in self.ctx.func.borrow_into_own_hazards
+                          if n == inner.name)
+        if not isinstance(inner, TpyTupleLiteral):
+            return []
+        return [i for i, elem in enumerate(inner.elements)
+                if self.elem_is_plain_borrow(elem)]
+
+    def elem_is_plain_borrow(self, elem: TpyExpr) -> bool:
+        """Whether `elem` is a plain borrowed reference that would COPY (not
+        move) into an Own[T] slot -- the per-element analog of the scalar
+        `check_own_lvalue_into_own` borrowed-source rejection, scoped to plain
+        references (Own-typed and nocopy sources are handled elsewhere)."""
+        if self.is_copy_call(elem):
+            return False
+        if not self.is_lvalue(elem):
+            return False
+        raw = self.ctx.get_raw_expr_type(_peel_value_wrappers(elem))
+        if raw is None:
+            return False
+        unwrapped = unwrap_ref_type(raw)
+        if isinstance(unwrapped, OwnType) or unwrapped.is_value_type():
+            return False
+        # Owned local at its last use moves into the slot -- not a copy.
+        if (isinstance(elem, TpyName)
+                and id(elem) in self.ctx.all_last_uses
+                and self._is_owned_var(elem.name)):
+            return False
+        return True
+
+    def check_name_borrow_into_own(self, name: str, tuple_type: TupleType,
+                                   expr: TpyExpr, action: str) -> None:
+        """Reject when a tuple LOCAL referenced by `name` feeds a plain-borrow
+        element into an `Own[T]` slot of the contextual `tuple_type` -- the
+        implicit copy the scalar `Own[T]` and the literal-tuple forms already
+        gate. The literal forms check inline; this covers the deferred NAME
+        path via the construction-time hazard fact (`borrow_into_own_hazards`).
+        `action` is "return" or "pass" (verb only); the field-literal warning
+        path lives inline in `_annotate_tuple_elem_capture`."""
+        for i, et in enumerate(tuple_type.element_types):
+            if not isinstance(et, OwnType):
+                continue
+            if (name, i) not in self.ctx.func.borrow_into_own_hazards:
+                continue
+            verb = "return" if action == "return" else "pass"
+            raise self.ctx.error(
+                f"Cannot {verb} borrowed value as tuple element {i} "
+                f"Own[{et.wrapped}] without explicit copy(). The source is "
+                f"borrowed (parameter, attribute, or non-last-use variable); "
+                f"use 'copy(...)' to make an owned copy.",
+                expr,
+            )
 
     def _derive_tuple_member_hazards(
             self, tt: TupleType, expr: TpyExpr) -> int | None:
