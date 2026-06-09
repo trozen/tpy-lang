@@ -668,10 +668,20 @@ def _lower_record(
             if m.property_name is not None:
                 lowered.property_name = m.property_name
         methods.append(lowered)
+    # Thread the IR base through as a TpyTypeRef so the post-parse resolve_refs
+    # + registration ancestor-walk inherit the base's fields/methods, exactly
+    # as a parser-produced `class D(B)` does. Single inheritance only.
+    bases: list[TpyTypeRef] = []
+    if rec.base is not None:
+        base_ref = _lower_type(rec.base, plugin_name, fm, diags)
+        if base_ref is None:
+            return None, None
+        bases.append(base_ref)
     tpy_rec = TpyRecord(
         name=rec.name,
         fields=field_infos,
         methods=methods,
+        bases=bases,
     )
     # RecordInfo's `module` is the public module qname; entry-point
     # modules use `__main__` (matches sema's `ctx.module_name` rename
