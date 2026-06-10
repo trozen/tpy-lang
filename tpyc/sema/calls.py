@@ -6,8 +6,11 @@ Function and constructor call analysis.
 
 from __future__ import annotations
 import copy
+from contextlib import contextmanager
 from dataclasses import dataclass, replace as dc_replace
-from typing import Callable, NoReturn, TYPE_CHECKING
+from typing import Callable, Iterator, NoReturn, TYPE_CHECKING
+
+from ..compilation_context import require_current_compiler
 
 from ..typesys import (
     TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, own_tuple_target, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
@@ -17,7 +20,7 @@ from ..typesys import (
     LiteralType, LiteralValue, LiteralTag, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, is_void_like_type, ParamInfo, ReadonlyType,
     UNKNOWN_ELEMENT, UnknownElementType, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
-    UnionType, VOID, BIGINT, BOOL, STR, INT32, AnyType, ANY, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union,
+    UnionType, VOID, BIGINT, BOOL, STR, INT32, AnyType, ANY, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union, ensure_qualified,
     is_any_str_type, container_to_str_template, error_return_matches,
     is_protocol_union, protocol_union_protocols,
     MutationCallEdge,
@@ -251,10 +254,72 @@ def resolve_kwargs_init_params(
     return resolve_kwargs(expr_args, expr_kwargs, params, func_name, error_fn, call_loc=call_loc)
 
 
+def _cross_module_cpp_overlay(
+    types: list[TpyType], ctx: 'SemanticContext'
+) -> dict[str, str]:
+    """Map each cross-module record short-name reachable in `types` to its
+    qualified C++ name. Needed because the {T}/{cpp} cpp_template render runs
+    at sema, where `native_cpp_names` (codegen's per-module qualification map)
+    is still empty -- without this a cross-module element would render as its
+    bare short name and fail the C++ build. Qualifies by the record's defining
+    module, mirroring codegen's native_cpp_names population (incl. @native
+    records' native_name); same-module / builtin records stay bare."""
+    from ..codegen_cpp.context import qualified_cpp_name  # local import: avoid sema->codegen_cpp cycle (cf. typesys.py)
+    registry = ctx.registry
+    current_module = ctx.module_name
+    overlay: dict[str, str] = {}
+    seen: set[int] = set()
+
+    def walk(t: TpyType) -> None:
+        if id(t) in seen:
+            return
+        seen.add(id(t))
+        if isinstance(t, NominalType):
+            info = registry.get_record_for_type(t)
+            qual = (registry.record_qualification(info, current_module)
+                    if info is not None else None)
+            if qual is not None:  # cross-module, non-builtin
+                if info.is_native:
+                    # Match codegen: @native records render to their native_name;
+                    # a native record without one stays bare (unregistered).
+                    if info.native_name:
+                        overlay[t.name] = ensure_qualified(info.native_name)
+                else:
+                    overlay[t.name] = qualified_cpp_name(*qual)
+        for inner in t.inner_types():
+            walk(inner)
+
+    for t in types:
+        walk(t)
+    return overlay
+
+
+@contextmanager
+def _native_cpp_names_overlay(overlay: dict[str, str]) -> Iterator[None]:
+    """Temporarily overlay `native_cpp_names` so a sema-time type render
+    qualifies cross-module names, then restore. The map is otherwise populated
+    per-module at codegen and empty during sema."""
+    if not overlay:
+        yield
+        return
+    nmap = require_current_compiler().native_cpp_names
+    saved = {k: nmap.get(k) for k in overlay}
+    nmap.update(overlay)
+    try:
+        yield
+    finally:
+        for k, prev in saved.items():
+            if prev is None:
+                nmap.pop(k, None)
+            else:
+                nmap[k] = prev
+
+
 def _resolve_cpp_template_type_params(
     fi: FunctionInfo,
     type_params: dict[str, TpyType] | None = None,
     result_type: TpyType | None = None,
+    ctx: 'SemanticContext | None' = None,
 ) -> FunctionInfo:
     """Substitute type param placeholders and {cpp} in cpp_template.
 
@@ -268,14 +333,26 @@ def _resolve_cpp_template_type_params(
         return fi
     if not type_params and not result_type:
         return fi
-    template = fi.cpp_template
-    if result_type is not None and "{cpp}" in template:
-        template = template.replace("{cpp}", result_type.to_cpp())
-    if type_params:
-        for name, typ in type_params.items():
-            placeholder = f"{{{name}}}"
-            if placeholder in template:
-                template = template.replace(placeholder, typ.to_cpp_stored())
+    # The substitution renders types to C++ HERE (sema), but
+    # NominalType.to_cpp() qualifies a cross-module record only via the
+    # native_cpp_names map, which codegen populates per-module and which is
+    # empty at sema. Overlay the qualified cross-module names so a transitively
+    # reached element (e.g. finditer's Match) doesn't bake its bare short name.
+    overlay: dict[str, str] = {}
+    if ctx is not None:
+        render_types = list(type_params.values()) if type_params else []
+        if result_type is not None:
+            render_types.append(result_type)
+        overlay = _cross_module_cpp_overlay(render_types, ctx)
+    with _native_cpp_names_overlay(overlay):
+        template = fi.cpp_template
+        if result_type is not None and "{cpp}" in template:
+            template = template.replace("{cpp}", result_type.to_cpp())
+        if type_params:
+            for name, typ in type_params.items():
+                placeholder = f"{{{name}}}"
+                if placeholder in template:
+                    template = template.replace(placeholder, typ.to_cpp_stored())
     if template == fi.cpp_template:
         return fi
     return dc_replace(fi, cpp_template=template, canonical_fi=fi.root)
@@ -1035,7 +1112,7 @@ class CallAnalyzer:
                                     # may contain val_or_ref wrappers.
                                     clean_params = extract_type_params(result_type)
                                     expr.resolved_function_info = _resolve_cpp_template_type_params(
-                                        ctor, clean_params, result_type=result_type)
+                                        ctor, clean_params, result_type=result_type, ctx=self.ctx)
                                 self._validate_lvalue_params(expr)
                                 self._check_ctor_arg_compatibility(expr, ctor, arg_types, inferred_params)
                                 return result_type
@@ -1050,7 +1127,7 @@ class CallAnalyzer:
                                     if ctor.cpp_template or ctor.native_function:
                                         hint_params = extract_type_params(hint)
                                         expr.resolved_function_info = _resolve_cpp_template_type_params(
-                                            ctor, hint_params, result_type=hint)
+                                            ctor, hint_params, result_type=hint, ctx=self.ctx)
                                     self._validate_lvalue_params(expr)
                                     self._check_ctor_arg_compatibility(expr, ctor, arg_types, inferred_params)
                                     return hint
@@ -2658,7 +2735,7 @@ class CallAnalyzer:
             if not rejected:
                 if fully_checked and (ctor.cpp_template or ctor.native_function):
                     expr.resolved_function_info = _resolve_cpp_template_type_params(
-                        ctor, inferred, result_type=expr.call_type)
+                        ctor, inferred, result_type=expr.call_type, ctx=self.ctx)
                 return
         # Arg type compatible with target (e.g. dict[K,V]({...}), list[T](other_list))
         if len(arg_types) == 1 and self.compat.is_type_compatible(arg_types[0], expr.call_type):
@@ -3002,7 +3079,7 @@ class CallAnalyzer:
                         f"[{ret_tr.min_value}, {ret_tr.max_value}]",
                         expr,
                     )
-            expr.resolved_function_info = _resolve_cpp_template_type_params(ctor, result_type=ret)
+            expr.resolved_function_info = _resolve_cpp_template_type_params(ctor, result_type=ret, ctx=self.ctx)
             self._check_cast_safe(expr, ctor, arg_types, ret)
             # Borrowing views (StrView/BytesView/Span/SpanIter) need call_type
             # populated so downstream dangling/provenance checks can see
@@ -3026,7 +3103,7 @@ class CallAnalyzer:
             raise self._ambiguous_overload_error(expr, init_overloads[0].name, e)
         if matched:
             ret = record_type or matched.return_type
-            expr.resolved_function_info = _resolve_cpp_template_type_params(matched, result_type=ret)
+            expr.resolved_function_info = _resolve_cpp_template_type_params(matched, result_type=ret, ctx=self.ctx)
             self._check_cast_safe(expr, matched, arg_types, ret)
             if is_borrowing_view_type(ret):
                 expr.call_type = ret
