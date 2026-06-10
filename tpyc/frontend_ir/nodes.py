@@ -315,8 +315,21 @@ class NoneLit:
     loc: Loc | None = None
 
 
+@dataclass
+class Conditional:
+    """Ternary conditional expression: `then if cond else else_`.
+    Lowers to TpyIfExpr. The frontend-IR analog of a source-level
+    ternary -- a plugin emits it for any source construct that selects
+    between two values by a boolean."""
+    kind: str = field(default="Conditional", init=False)
+    cond: "Expr" = None  # type: ignore[assignment]
+    then: "Expr" = None  # type: ignore[assignment]
+    else_: "Expr" = None  # type: ignore[assignment]
+    loc: Loc | None = None
+
+
 Expr = Union[StrLit, BoolLit, IntLit, FloatLit, Name, Call, BinOp, UnaryOp,
-             Compare, Attr, Subscript, SetLit, ListLit, NoneLit]
+             Compare, Attr, Subscript, SetLit, ListLit, NoneLit, Conditional]
 
 
 # --- Statements -----------------------------------------------------------

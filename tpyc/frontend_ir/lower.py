@@ -42,6 +42,7 @@ from ..parse.nodes import (
     TpyForEach,
     TpyFunction,
     TpyIf,
+    TpyIfExpr,
     TpyImport,
     TpyIntLiteral,
     TpyLiteralPattern,
@@ -81,6 +82,7 @@ from .nodes import (
     CallableType,
     CmpOpKind,
     Compare,
+    Conditional,
     Continue,
     Decorator,
     Enum,
@@ -1073,6 +1075,15 @@ def _lower_expr(
         return out
     if isinstance(expr, NoneLit):
         out = TpyNoneLiteral()
+        out.loc = loc
+        return out
+    if isinstance(expr, Conditional):
+        cond = _lower_expr(expr.cond, name_to_origin, plugin_name, fm, diags)
+        then = _lower_expr(expr.then, name_to_origin, plugin_name, fm, diags)
+        else_ = _lower_expr(expr.else_, name_to_origin, plugin_name, fm, diags)
+        if cond is None or then is None or else_ is None:
+            return None
+        out = TpyIfExpr(condition=cond, then_expr=then, else_expr=else_)
         out.loc = loc
         return out
     if isinstance(expr, Compare):
