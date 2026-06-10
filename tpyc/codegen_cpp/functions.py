@@ -879,7 +879,7 @@ class FunctionGenerator:
                         out.write("\n")
                 else:
                     for stub in overload_stubs:
-                        self._gen_overload_specialized_function(out, func, stub)
+                        self._gen_overload_specialized_function(out, func, stub, in_header=True)
                         out.write("\n")
                 return True
             return False
@@ -1109,7 +1109,8 @@ class FunctionGenerator:
         out.write("}\n")
 
     def _gen_overload_specialized_function(
-        self, out: TextIO, impl: TpyFunction, stub: TpyFunction,
+        self, out: TextIO, impl: TpyFunction, stub: TpyFunction, *,
+        in_header: bool = False,
     ) -> None:
         """Generate a specialized C++ function for one @overload stub.
 
@@ -1121,6 +1122,13 @@ class FunctionGenerator:
         filled in by the impl's defaults. Each missing param becomes a
         local variable at the top of the body and, when its default's type
         narrows the impl param, contributes a narrowing fact.
+
+        Template-ness is derived from the STUB, not the impl, so it matches
+        the forward declaration: a non-generic overload of a generic impl
+        emits a non-template definition (else the called non-template symbol
+        is never defined). Such a definition is header-only (the impl being a
+        template routes the whole group to the header), so it is `inline` to
+        stay ODR-safe -- hence the `in_header` flag.
         """
         self.ctx.emit_preceding_comments(out, stub.loc)
         self.ctx.emit_source_comment(out, stub.loc)
@@ -1130,7 +1138,7 @@ class FunctionGenerator:
 
         overload_types = self._build_overload_narrowing(impl, stub, missing_params, impl_defaults)
 
-        is_generic = bool(impl.type_params)
+        is_generic = bool(stub.type_params)
         rp = self._get_reassigned_params(impl)
         mp = self._get_func_mutated_params(impl)
         proto_params = self.protocols.get_all_protocol_params(stub.params)
@@ -1139,24 +1147,25 @@ class FunctionGenerator:
 
         if is_generic or has_proto_params:
             out.write(self.protocols.gen_combined_template_header(
-                impl.type_params, proto_params, impl.type_param_bounds,
+                stub.type_params, proto_params, stub.type_param_bounds,
                 emit_defaults=False,
             ))
             ret_type = self._resolve_return_type(stub.return_type)
-            params = (self.gen_params_with_protocols(stub.params, impl.type_params,
+            params = (self.gen_params_with_protocols(stub.params, stub.type_params,
                                                      mutated_params=mp)
                       if has_proto_params or has_dynamic
-                      else self.gen_params(stub.params, impl.type_params,
+                      else self.gen_params(stub.params, stub.type_params,
                                            reassigned_params=rp, mutated_params=mp,
                                            use_readonly_params=stub.is_readonly, func=stub))
             out.write(f"{ret_type} {escape_cpp_name(stub.name)}({params}) {{\n")
         else:
             ret_type = self._resolve_return_type(stub.return_type)
             params = (self.gen_params_with_protocols(stub.params, mutated_params=mp) if has_dynamic
-                      else self.gen_params(stub.params, impl.type_params,
+                      else self.gen_params(stub.params, stub.type_params,
                                            reassigned_params=rp, mutated_params=mp,
                                            use_readonly_params=stub.is_readonly, func=stub))
-            out.write(f"{ret_type} {escape_cpp_name(stub.name)}({params}) {{\n")
+            inline_kw = "inline " if in_header else ""
+            out.write(f"{inline_kw}{ret_type} {escape_cpp_name(stub.name)}({params}) {{\n")
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         for pname, ptype in stub.params:
