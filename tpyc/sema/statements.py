@@ -3278,15 +3278,7 @@ class StatementAnalyzer:
                     # Unwrap ReadonlyType for coercion -- readonly is tracked
                     # via type deduction, not the compatibility check.
                     inner_init = unwrap_readonly(init_type)
-                    # A reassigned per-element-Own tuple local collapses to
-                    # borrow form (it aliases its elements); coerce the init
-                    # against that collapsed target, else the per-element
-                    # `T -> Own[T]` check spuriously warns the borrow init
-                    # "copies into owned storage".
-                    coerce_target = stmt.type
-                    if stmt.name in self.ctx.func.current_reassigned_vars:
-                        coerce_target = collapse_tuple_own_elements(stmt.type)
-                    stmt.init = self.compat.coerce_expr(stmt.init, inner_init, coerce_target,
+                    stmt.init = self.compat.coerce_expr(stmt.init, inner_init, stmt.type,
                                                          f"variable '{stmt.name}'",
                                                          coercion_ctx=CoercionContext.INIT)
                 var_type = stmt.type
@@ -3395,20 +3387,6 @@ class StatementAnalyzer:
             )
         else:
             raise self.ctx.error(f"Variable '{stmt.name}' has no type annotation and no initializer", stmt)
-
-        # An annotated reassigned per-element-Own tuple local (incl. the
-        # nullable `tuple[..., Own[T]] | None` form) takes the unified borrow
-        # type just like the inferred path above, so an alias rebind aliases
-        # the source instead of copying. The inferred branch handles its own
-        # collapse before tuple-capture annotation; this covers the annotated
-        # `elif stmt.type` path that bypasses it, keeping sema's recorded type
-        # consistent with the borrow shape codegen emits.
-        if (stmt.type is not None
-                and stmt.name in self.ctx.func.current_reassigned_vars):
-            collapsed = collapse_tuple_own_elements(var_type)
-            if collapsed is not var_type:
-                var_type = collapsed
-                self.ctx.var_types[id(stmt)] = var_type
 
         # Deferred type inference for new locals (PendingViewType, list alias, etc.)
         if not is_global_declared and existing_type is None:
