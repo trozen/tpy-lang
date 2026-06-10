@@ -14,6 +14,7 @@ from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce
 from ..parse.nodes import TpyStrLiteral, TpyBytesLiteral, TpySubscript, TpyFieldAccess, TpyBinOp, TpyIfExpr
 from ..typesys import (
 
+    collapse_tuple_own_elements,
     DictLiteralInfo,
     make_dict,
     FloatLiteralType,
@@ -166,6 +167,25 @@ class LocalTypeDeduction:
                 raise SemanticError(msg, e.loc) from e
 
     def resolve_reassignment_target_type(
+        self,
+        name: str,
+        existing_type: TpyType,
+        init_type: TpyType,
+        init_expr: TpyExpr | None = None,
+    ) -> TpyType:
+        """Resolve target type for a reassignment write.
+
+        A reassigned per-element-`Own` tuple local takes the collapsed borrow
+        type (it aliases its elements, it does not own them). Collapse the
+        resolved target once here so every reassignment caller -- the compat
+        check, the bare-assign scope update, aug-assign -- agrees on the borrow
+        shape codegen emits; no-op for any other type.
+        """
+        resolved = self._resolve_reassignment_target_type_raw(
+            name, existing_type, init_type, init_expr)
+        return collapse_tuple_own_elements(resolved)
+
+    def _resolve_reassignment_target_type_raw(
         self,
         name: str,
         existing_type: TpyType,

@@ -28,6 +28,7 @@ def _adopt_skeleton(skeleton, full):
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type, AnyType, PtrType, RefType,
+    type_contains_own,
     IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span, make_varargs,
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR, try_unwrap_class_constant,
     is_void_like_type,
@@ -882,6 +883,15 @@ class TypeRegistrar:
             if isinstance(fld.type, TypeParamRef) and fld.type.kind == TypeParamKind.INT:
                 raise SemanticError(
                     f"Integer type parameter '{fld.type.name}' cannot be used as a type annotation",
+                    loc=fld.loc
+                )
+            # A field owns its value inline regardless, so Own on a field is
+            # redundant (Own selects an owned shape only where the default is a
+            # borrow -- parameter/return types, or `Optional[Own[T]]` locals).
+            if type_contains_own(fld.type):
+                raise SemanticError(
+                    f"Own[T] is redundant in this field type ('{fld.type}'): a "
+                    f"field owns its value inline -- remove the Own.",
                     loc=fld.loc
                 )
             # Hashable-conformance check is deferred to the second-pass

@@ -14,7 +14,7 @@ class Container[T]:
 
 
 class Holder:
-    c: Own[Container[set["Point"]]]
+    c: Container[set["Point"]]
 
     def __init__(self) -> None:
         self.c = Container(set())

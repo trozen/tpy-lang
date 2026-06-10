@@ -15,7 +15,7 @@ def make_point() -> Own[Point]:
 
 def main():
     # Own[T] is not allowed for variable declarations
-    p: Own[Point] = make_point()  # tpyc: error(/Own.*cannot be used as a variable/)
+    p: Own[Point] = make_point()  # tpyc: error(/Own\[T\] is redundant in this variable type/)
     print(42)
 
 

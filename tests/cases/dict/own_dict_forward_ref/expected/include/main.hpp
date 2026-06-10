@@ -52,7 +52,7 @@ namespace tpyapp::main {
 
 // class Holder:
 struct Holder {
-    // counts: Own[dict["Point", Int32]]
+    // counts: dict["Point", Int32]
     ::tpy::ordered_map<Point, int32_t> counts;
 
     // def __init__(self) -> None:

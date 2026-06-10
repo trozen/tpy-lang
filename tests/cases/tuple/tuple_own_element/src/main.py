@@ -15,7 +15,7 @@ def make_pair(p: Point) -> tuple[Int32, Own[Point]]:
 
 def main() -> None:
     p = Point(Int32(1), Int32(2))
-    t: tuple[Int32, Own[Point]] = (Int32(0), p)
+    t: tuple[Int32, Point] = (Int32(0), p)
     print(t[0])
     print(t[1])
 

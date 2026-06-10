@@ -10,8 +10,8 @@ void main() {
     Handle a = Handle(7);
     // b = Handle(Int32(8))
     Handle b = Handle(8);
-    // pair: tuple[Own[Handle], Own[Handle]] = (a, b)  # tpyc: ok
-    std::tuple<Handle, Handle> pair = std::tuple<Handle, Handle>{std::move(a), std::move(b)};
+    // pair: tuple[Handle, Handle] = (a, b)  # tpyc: ok
+    auto pair = std::tuple<Handle, Handle>{std::move(a), std::move(b)};
     // print(pair[0].fd)
     std::cout << std::get<0>(pair).fd << "\n";
     // print(pair[1].fd)

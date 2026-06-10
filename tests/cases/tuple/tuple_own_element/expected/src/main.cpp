@@ -14,8 +14,8 @@ std::tuple<int32_t, Point> make_pair(const Point& p) {
 void main() {
     // p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
-    // t: tuple[Int32, Own[Point]] = (Int32(0), p)
-    std::tuple<int32_t, Point> t = std::tuple<int32_t, Point>{0, std::move(p)};
+    // t: tuple[Int32, Point] = (Int32(0), p)
+    auto t = std::tuple<int32_t, Point>{0, std::move(p)};
     // print(t[0])
     std::cout << std::get<0>(t) << "\n";
     // print(t[1])

@@ -1,20 +1,19 @@
-# Regression: Holder declared BEFORE Point with a field `Own[set["Point"]]`
+# Regression: Holder declared BEFORE Point with a field `set["Point"]`
 # (string forward ref). Exercises both halves of the fix:
-#   1. Sema-side flag-forwarding through OwnType -- pre-fix, validate_type's
-#      OwnType branch reset `check_hashable_constraints` from False to True
-#      and fired the hashable gate before Point's `__hash__`/`__eq__` were
-#      registered, false-rejecting Point.
+#   1. Sema-side flag-forwarding -- pre-fix, validate_type fired the hashable
+#      gate before Point's `__hash__`/`__eq__` were registered, false-rejecting
+#      Point.
 #   2. Codegen-side class emit ordering -- pre-fix, the topo sort considered
 #      only inheritance dependencies, emitting Holder before Point (and its
 #      `std::hash<Point>` specialization) which made C++ fail with
 #      `static_assert(__is_invocable<const std::hash<Point>&, ...>)`. The
 #      hash-element dependency edge added to `sort_records_by_inheritance`
 #      now reorders Point ahead of Holder.
-from tpy import Own, Int32, UInt64
+from tpy import Int32, UInt64
 
 
 class Holder:
-    s: Own[set["Point"]]
+    s: set["Point"]
 
     def __init__(self) -> None:
         self.s = set()

@@ -1,8 +1,8 @@
 # A nullable borrow-form tuple local (`tuple[..., ref] | None`) lowers to
 # std::optional<std::tuple<..., T*>>: the inner tuple takes borrow form so its
 # reference elements ALIAS the storage source on rebind (matching CPython)
-# instead of copying. Covers: storage-source init + rebind (a), per-element-Own
-# call init then alias rebind (b), None init + conditional rebind (c), a local
+# instead of copying. Covers: storage-source init + rebind (a), owning-call
+# init then alias rebind (b), None init + conditional rebind (c), a local
 # FIRST-DECLARED inside a branch (d, the hoisted-decl path), and a SECOND
 # owning-call reassignment (e, the negative guard: re-owning must not spuriously
 # warn a copy). The alias cases (a-d) mutate through the narrowed alias and
@@ -40,7 +40,7 @@ def alias_storage() -> int:
 
 
 def alias_after_owning_call(h: Holder) -> None:
-    t: tuple[int, Own[Box]] | None = make_pair(9)
+    t: tuple[int, Box] | None = make_pair(9)
     # The rebind aliases h.pair (mutation below is observed on the source in
     # main); the local collapses to borrow form, so coercing the borrow source
     # against it must NOT warn about copying into owned storage.
@@ -75,7 +75,7 @@ def reowned(v: int) -> int:
     # Reassigning from a SECOND owning call: the owning rvalue materializes into
     # a slot the local aliases, so this is NOT a copy-into-owned -- it must not
     # warn (the negative guard for the collapse-the-reassignment-target fix).
-    t: tuple[int, Own[Box]] | None = make_pair(9)
+    t: tuple[int, Box] | None = make_pair(9)
     t = make_pair(v)  # tpyc: ok
     if t is not None:
         t[1].val = 50

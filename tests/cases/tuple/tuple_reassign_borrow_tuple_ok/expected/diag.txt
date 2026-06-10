@@ -1,0 +1,1 @@
+main.py:19: warning: copies Box into field (tuple element 1); use copy() to make this explicit

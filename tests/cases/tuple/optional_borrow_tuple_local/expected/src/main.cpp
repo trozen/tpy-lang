@@ -31,7 +31,7 @@ std::tuple<::tpy::BigInt, Box> make_pair(const ::tpy::BigInt& v) {
 
 // def alias_after_owning_call(h: Holder) -> None:
 void alias_after_owning_call(Holder& h) {
-    // t: tuple[int, Own[Box]] | None = make_pair(9)
+    // t: tuple[int, Box] | None = make_pair(9)
     std::optional<std::tuple<::tpy::BigInt, Box>> __slot_1;
     std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(make_pair(::tpy::BigInt(9))))};
     // # The rebind aliases h.pair (mutation below is observed on the source in
@@ -94,7 +94,7 @@ void alias_after_owning_call(Holder& h) {
     // # Reassigning from a SECOND owning call: the owning rvalue materializes into
     // # a slot the local aliases, so this is NOT a copy-into-owned -- it must not
     // # warn (the negative guard for the collapse-the-reassignment-target fix).
-    // t: tuple[int, Own[Box]] | None = make_pair(9)
+    // t: tuple[int, Box] | None = make_pair(9)
     std::optional<std::tuple<::tpy::BigInt, Box>> __slot_1;
     std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(make_pair(::tpy::BigInt(9))))};
     // t = make_pair(v)  # tpyc: ok

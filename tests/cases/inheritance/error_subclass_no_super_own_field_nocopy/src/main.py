@@ -1,7 +1,7 @@
-# OwnType branch of `_field_type_blocks_default_ctor`: a base with an
-# `Own[Resource]` field where Resource is @nocopy+__del__. Storage-form
-# Own[T] holds T inline, so the wrapped type's default ctor controls
-# the enclosing default ctor. Subclass without super() must be rejected.
+# `_field_type_blocks_default_ctor`: a base with a `Resource` field where
+# Resource is @nocopy+__del__. The field's type controls the enclosing
+# default ctor: Resource has __del__ and a required __init__, so Base has
+# no default ctor. Subclass without super() must be rejected.
 from tpy import Own, Ptr, Int32, nocopy
 from tpy.unsafe import unsafe_alloc, unsafe_free, unsafe_init, unsafe_drop
 
@@ -20,7 +20,7 @@ class Resource:
 
 
 class Base:
-    res: Own[Resource]
+    res: Resource
 
     def __init__(self, r: Own[Resource]) -> None:
         self.res = r

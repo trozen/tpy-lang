@@ -13,7 +13,7 @@ from ..typesys import (
     PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType,
     unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
-    collapse_tuple_own_elements,
+    collapse_tuple_own_elements, type_contains_own,
     LiteralType,
     ViewTypeFamily, view_family_for_type,
     PendingGenericInstanceType, contains_fn_type,
@@ -2986,10 +2986,13 @@ class StatementAnalyzer:
             # at a local should surface "Own[T] not allowed as variable",
             # not "use Optional[T] or Box[T]" -- the user can't use either
             # in a local context either).
-            if isinstance(stmt.type, OwnType):
+            if type_contains_own(stmt.type):
                 raise self.ctx.error(
-                    f"Own[{stmt.type.wrapped}] cannot be used as a variable type. "
-                    f"Use '{stmt.type.wrapped}' instead (Own[T] is for parameters and return types only)",
+                    f"Own[T] is redundant in this variable type ('{stmt.type}'): a "
+                    f"local owns its value inline -- remove the Own (use copy() or "
+                    f"an owning call if you need an owned copy). Own selects an "
+                    f"owned shape only at a borrow-default position: parameter / "
+                    f"return types, or 'Optional[Own[T]]'.",
                     stmt
                 )
             if isinstance(stmt.type, ReadonlyType):
@@ -3275,7 +3278,15 @@ class StatementAnalyzer:
                     # Unwrap ReadonlyType for coercion -- readonly is tracked
                     # via type deduction, not the compatibility check.
                     inner_init = unwrap_readonly(init_type)
-                    stmt.init = self.compat.coerce_expr(stmt.init, inner_init, stmt.type,
+                    # A reassigned per-element-Own tuple local collapses to
+                    # borrow form (it aliases its elements); coerce the init
+                    # against that collapsed target, else the per-element
+                    # `T -> Own[T]` check spuriously warns the borrow init
+                    # "copies into owned storage".
+                    coerce_target = stmt.type
+                    if stmt.name in self.ctx.func.current_reassigned_vars:
+                        coerce_target = collapse_tuple_own_elements(stmt.type)
+                    stmt.init = self.compat.coerce_expr(stmt.init, inner_init, coerce_target,
                                                          f"variable '{stmt.name}'",
                                                          coercion_ctx=CoercionContext.INIT)
                 var_type = stmt.type

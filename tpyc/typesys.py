@@ -1581,6 +1581,33 @@ def unwrap_own(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def type_contains_own(typ: 'TpyType', _under_optional: bool = False) -> bool:
+    """True if a *redundant* `OwnType` appears anywhere in the type tree.
+
+    `Own[T]` only ever selects an owned C++ shape. A storage position (local
+    variable or field) owns its value inline regardless, so an `Own` there is
+    redundant -- EXCEPT `Optional[Own[T]]`: a local `Optional[T]` defaults to a
+    BORROW (`T*`), so the `Own` directly under the `Optional` is the load-bearing
+    selector for an OWNED nullable (`std::optional<T>`), not redundant. The
+    exemption is for that direct `Optional`->`Own` shape only -- `Own` nested
+    under a tuple/union/nominal (`tuple[..., Own[T]] | None`) collapses anyway,
+    so the flag does not propagate into those branches.
+    """
+    if isinstance(typ, OwnType):
+        return not _under_optional
+    if isinstance(typ, OptionalType):
+        return type_contains_own(typ.inner, _under_optional=True)
+    if isinstance(typ, (ReadonlyType, AutoReadonlyType, RefType)):
+        return type_contains_own(typ.wrapped, _under_optional)
+    if isinstance(typ, UnionType):
+        return any(type_contains_own(m) for m in typ.members)
+    if isinstance(typ, TupleType):
+        return any(type_contains_own(e) for e in typ.element_types)
+    if isinstance(typ, NominalType):
+        return any(type_contains_own(a) for a in typ.type_args)
+    return False
+
+
 def coro_struct_owner(owning_type_qname: 'str | None',
                       receiver: 'NominalType',
                       receiver_record: 'RecordInfo | None' = None) -> 'NominalType':

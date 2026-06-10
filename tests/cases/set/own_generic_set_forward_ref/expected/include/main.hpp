@@ -71,7 +71,7 @@ namespace tpyapp::main {
 
 // class Holder:
 struct Holder {
-    // c: Own[Container[set["Point"]]]
+    // c: Container[set["Point"]]
     Container<::tpy::ordered_set<Point>> c;
 
     // def __init__(self) -> None:

@@ -52,7 +52,7 @@ namespace tpyapp::main {
 
 // class Holder:
 struct Holder {
-    // s: Own[set["Point"]]
+    // s: set["Point"]
     ::tpy::ordered_set<Point> s;
 
     // def __init__(self) -> None:
