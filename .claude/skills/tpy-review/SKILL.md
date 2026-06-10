@@ -199,11 +199,11 @@ Only after explicit approval:
 - Run targeted `uv run pytest -k <pattern>` for cases plausibly affected as you make changes. After all items are applied, run `uv run pytest` once to confirm nothing else regressed.
 - If a fix changes expected output for *existing* test snapshots, consult the user before running `update_snapshots.py` (per CLAUDE.md's snapshot policy).
 
-Do NOT commit, stage, or push -- the user reviews your changes before commit per CLAUDE.md.
+Once all approved items in this round are applied and the suite is green, commit them as a SINGLE commit, following the branch-aware policy in CLAUDE.md (auto-commit on a temporary working branch; ask first on `master`/`main` or any branch tracking a remote). One commit for the whole review round -- never a separate tiny commit per finding/item. Do NOT push. (The single-commit rule is the point: this is an automated review pass, so batching its applied fixes into one commit is fine and expected -- what to avoid is the per-remark commit spam.)
 
 ## Important
 
 - During the review phase (steps 1-9), do NOT run `uv run pytest`, regenerate snapshots, or make code changes. Specialists are forbidden from these and so are you. The developer runs the suite before requesting review; flag concerns rather than verifying via pytest.
 - Step 10 (post-approval execution) is the ONLY phase where code changes and pytest are allowed, and only on the user-approved subset.
-- Do NOT commit, stage, push, or otherwise modify the user's git state -- not during review, not during execution.
+- Never commit during the review phase (steps 1-9). Commit only at the END of step 10, once, for the whole round (branch-aware per CLAUDE.md: auto-commit on a temporary working branch, ask elsewhere). Never make a separate commit per finding/item, and never push.
 - Do NOT regenerate snapshots unless an approved "Handle now" item explicitly calls for it, and ask first.
