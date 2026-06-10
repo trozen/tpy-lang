@@ -136,7 +136,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 |---|---------|--------|--------|---------|
 | G1 | async/await + minimal asyncio | XL | 🚧 v1 shipped -- see [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md); design in [`docs/ASYNC_DESIGN.md`](ASYNC_DESIGN.md) | [IX](#asyncawait-or-alternative-model) |
 | G1.5 | asyncio runtime port C++ -> TPy | M | 🚧 Phase 0 done (SleepFuture); Phases 1-4 + blockers tracked in [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md#v1x-milestone-asyncio-runtime-tpy-port-must-precede-v15). **Must precede v1.5 work** so `gather`/`wait_for`/`async with` are written as TPy on a TPy executor. | [IX](#asyncawait-or-alternative-model) |
-| G2 | Channels | L | 🆕 Not started | [IX](#channels) |
+| G2 | Channels | L | 🟡 SPSC done (Send/Sync Phase 4) | [IX](#channels) |
 
 Phases are not strictly sequential -- items from different phases can be interleaved
 based on what's most needed. E1 (Send/Sync markers) is recommended early regardless
@@ -3272,6 +3272,12 @@ Full design in [`docs/ASYNC_DESIGN.md`](ASYNC_DESIGN.md). Summary:
 
 Go-style channels for inter-thread communication. Fixed-size channels are a natural
 fit for `@noalloc` contexts.
+
+**Current state**: SPSC `channel[T: Send](cap) -> (Sender[T], Receiver[T])`
+shipped as the first Send/Sync enforcement site (Phase 4) -- intra-process on
+the single-threaded executor, `Rc`-backed FIFO ring, blocking async
+`send`/`recv`, explicit `close()`. See `docs/CHANNEL_DESIGN.md`. MPSC, `try_send`,
+and the Arc-backed cross-thread channel are deferred.
 
 ### Thread Safety
 

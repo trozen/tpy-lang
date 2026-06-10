@@ -1,0 +1,3 @@
+Imports tpy.channel, which has no lib/cpy stub (it builds on the asyncio
+executor primitives); the case can't run under CPython. The capacity panic
+is verified by the exec phase.

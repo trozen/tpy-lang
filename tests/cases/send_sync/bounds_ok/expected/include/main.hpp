@@ -7,16 +7,16 @@
 
 namespace tpyapp::main {
 
-template<::tpy::Send T> struct Channel;
+template<typename T> struct Channel;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-template<::tpy::Send T>
+template<typename T>
 int32_t use(::tpy::param_val_or_ref_t<T> x);
 void main();
 
 // class Channel[T: Send]:
-template<::tpy::Send T>
+template<typename T>
 struct Channel {
     // item: T
     T item;
@@ -34,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Channel<T>& obj) {
 }
 
 // def use[T: Send](x: T) -> Int32:
-template<::tpy::Send T>
+template<typename T>
 int32_t use(::tpy::param_val_or_ref_t<T> x) {
     // return 1
     return 1;

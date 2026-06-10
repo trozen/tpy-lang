@@ -15,6 +15,7 @@ from ..typesys import (
     protocol_union_has_none, unwrap_ref_type,
 )
 from ..parse import TpyProtocol, TpyRecord
+from .. import qnames
 from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, qualified_cpp_name
 from ..type_def_registry import is_str_type, protocol_info_of, is_subtype
 from ..symbol_binding import lookup_imported, SymbolKind
@@ -48,6 +49,24 @@ def protocol_param_template_name(pname: str) -> str:
     sites are independent of the resumable frame.)
     """
     return f"T_{pname}"
+
+
+def is_marker_only_bound(bound: NominalType) -> bool:
+    """True for the Send / Sync marker-protocol bounds, which must lower to an
+    unconstrained `typename T` rather than a C++ concept constraint.
+
+    Unlike `ValueType` / `Copyable` (whose traits C++ codegen actually consumes
+    -- pass-by-value vs reference, `.clone()` validity -- and which therefore
+    carry an emitted/std per-record signal), Send/Sync drive no codegen decision:
+    they are a pure compile-time safety gate that sema evaluates via
+    `satisfies_bound`. Generated C++ never reads `is_send<T>` for a user record,
+    so emitting a per-record `is_send`/`is_sync` mirror would be compile-time
+    bloat with no consumer, and the `requires Send<T>` it would satisfy is
+    redundant with the sema check that already ran. So a Send/Sync bound is
+    deliberately sema-only and must not lower to a C++ constraint. Same canonical
+    identity `sema/protocols.py` uses for these markers.
+    """
+    return bound.qualified_name() in qnames.SEMA_ONLY_MARKER_PROTOCOLS
 
 
 class ProtocolGenerator:
@@ -341,7 +360,8 @@ class ProtocolGenerator:
             kind = type_param_kinds[i] if type_param_kinds and i < len(type_param_kinds) else TypeParamKind.TYPE
             if kind == TypeParamKind.INT:
                 template_parts.append(f"std::size_t {tp}")
-            elif tp in type_param_bounds and is_protocol_type(type_param_bounds[tp]):
+            elif (tp in type_param_bounds and is_protocol_type(type_param_bounds[tp])
+                    and not is_marker_only_bound(type_param_bounds[tp])):
                 bound = type_param_bounds[tp]
                 concept_name = self.get_concept_name(bound)
                 if bound.type_args:
@@ -392,7 +412,8 @@ class ProtocolGenerator:
         # Add type parameters for generic functions (with optional bounds)
         for tp in type_params:
             if (type_param_bounds and tp in type_param_bounds
-                    and is_protocol_type(type_param_bounds[tp])):
+                    and is_protocol_type(type_param_bounds[tp])
+                    and not is_marker_only_bound(type_param_bounds[tp])):
                 bound = type_param_bounds[tp]
                 concept_name = self.get_concept_name(bound)
                 if bound.type_args:

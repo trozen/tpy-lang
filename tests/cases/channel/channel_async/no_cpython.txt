@@ -1,0 +1,4 @@
+Channel runs on TPy's single-threaded asyncio executor; there is no
+lib/cpy/asyncio stub (same as the other asyncio_* runtime cases), so this
+case can't be driven under CPython. The Send enforcement is covered by the
+comp-phase error_channel_not_send case.

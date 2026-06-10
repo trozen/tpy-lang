@@ -424,9 +424,10 @@ def validate_type_param_bounds(
 
 def _send_sync_bound_detail(bound: TpyType, type_arg: TpyType) -> str:
     """Why-not chain appended to a failing `T: Send` / `T: Sync` bound."""
-    send = getattr(bound, "name", None) == "Send"
-    if not send and getattr(bound, "name", None) != "Sync":
+    qname = bound.qualified_name() if isinstance(bound, NominalType) else None
+    if qname not in qnames.SEMA_ONLY_MARKER_PROTOCOLS:
         return ""
+    send = qname == qnames.SEND
     chain = why_not_send(type_arg) if send else why_not_sync(type_arg)
     return f"\n{render_chain(chain, send)}" if chain is not None else ""
 

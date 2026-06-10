@@ -5686,7 +5686,15 @@ The full marker-layer design lives in `docs/SEND_SYNC_DESIGN.md`; Phase 2
   errors (`Send[T]` conversion, `T: Send` bound, `class Foo(Send)` opt-in).
   `tpyc --explain-send TYPE` / `--explain-sync TYPE` prints the structural
   derivation for any named type (e.g. `list[Order]`).
-- **Planned**: enforcement at channel/spawn/task boundaries (Phase 4+)
+- **Working (Phase 4)**: first enforcement site -- `Channel[T]`. The
+  `channel[T: Send](cap) -> (Sender[T], Receiver[T])` factory (in
+  `tpy.channel`) rejects a non-Send payload via its `T: Send` bound, with the
+  why-not chain. SPSC, `Rc`-backed FIFO ring on the single-threaded async
+  executor; blocking `await tx.send(v)` / `await rx.recv()` and explicit
+  `tx.close()` (`recv` raises `ChannelClosed` once closed + drained). See
+  `docs/CHANNEL_DESIGN.md`.
+- **Planned**: enforcement at spawn / task-migration boundaries (Phase 5+,
+  multi-threaded executor); MPSC channels; `Arc[T]` / `Mutex[T]` (Phase 6)
 
 Send/Sync rules for built-in types:
 

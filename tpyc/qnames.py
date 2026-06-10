@@ -113,6 +113,12 @@ VALUE_TYPE = "tpy.ValueType"
 COPYABLE = "tpy.Copyable"
 SEND = "tpy.Send"
 SYNC = "tpy.Sync"
+# The sema-only marker protocols: their conformance is a compiler-derived trait
+# (is_send / is_sync) that no C++ codegen consumes, so a `T: Send` / `T: Sync`
+# bound is enforced entirely in sema and must NOT lower to a C++ concept
+# constraint (see codegen `is_marker_only_bound`). Membership source of truth,
+# derived from the SEND / SYNC atoms above.
+SEMA_ONLY_MARKER_PROTOCOLS = frozenset({SEND, SYNC})
 DEFAULT = "tpy.Default"
 COVARIANT = "tpy.Covariant"
 RETURN_EXCEPTION = "tpy.ReturnException"

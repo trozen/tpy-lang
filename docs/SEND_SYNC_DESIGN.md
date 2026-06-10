@@ -7,7 +7,7 @@
 | **Phase 1** | `is_send` / `is_sync` traits on all built-in types (runtime + sema), auto-derivation for user records (fields + base class), `Send` / `Sync` marker `Protocol`s in `tpy` | Done |
 | **Phase 2** | Marker-layer gap closing (closures, coroutine/generator frames, union forms), tightened rules, `Send[T]` / `Sync[T]` marker wrappers covering `Callable[...]` and `@dynamic` protocols, explicit opt-in / opt-out syntax, `# tpyc:` annotations + test group locking auto-derivation | Done (per-record C++ trait mirror deferred -- see Implementation Notes) |
 | **Phase 3** | Diagnostic surface (`tpy.assert_send[T]`, `--explain-send`, inline chain at enforcement sites) | Done |
-| **Phase 4** | First enforcement site: `Channel[T]` (intra-process, `T: Send`) on top of the single-threaded executor; covers SPSC and MPSC | Planned |
+| **Phase 4** | First enforcement site: `Channel[T]` (intra-process, `T: Send`) on top of the single-threaded executor | Done (SPSC; MPSC deferred -- see `docs/CHANNEL_DESIGN.md`) |
 | **Phase 5** | Multi-threaded executor; `Task[T]` requires `Send` frame for migration; `thread.spawn(fn)` requiring `Send` closure | Planned (v3+) |
 | **Phase 6** | `Arc[T]` (atomic shared ownership), synchronization primitives (`Mutex[T]`, `RwLock[T]`), `Sync`-required borrow sites | Planned (v3+) |
 
@@ -476,14 +476,30 @@ gained an explicit `is_sync=False` override (step A review finding).
 - `tpyc --explain-send TYPE` / `--explain-sync TYPE` (`tpyc/explain.py`) resolves `TYPE` through the entry module's real `TypeResolver` (so user records, imports, and generic forms resolve as in an annotation), then renders the chain.
 - **Known limitation:** at the erased-callable / closure conversion sites the chain reports the static-type reason ("erased callable may capture non-Send state") rather than naming the specific non-Send captured slot; surfacing the per-value `FrameType` slot chain there is a follow-up (tracked with the `Send[Iterator[T]]` / `Send[Cancellable[T]]` annotation surface, Phase 3/4).
 
-### Phase 4 -- first enforcement: Channel[T]
+### Phase 4 -- first enforcement: Channel[T] (DONE)
 
-1. Design channel API in a separate doc (`docs/CHANNEL_DESIGN.md` -- not started).
-2. `Channel[T]` requires `T: Send`. Diagnostic message routes through Phase 3's chain-print.
-3. Single-threaded backing: SPSC or MPSC ring buffer in `runtime/cpp/include/tpy/`. Channel send/recv is a buffer push/pop; no synchronization needed yet.
-4. Test cases covering Send check at channel construction and channel-send sites.
+Design: `docs/CHANNEL_DESIGN.md`. Shipped:
 
-**Effort:** L (channel design space is large; this is a separate doc).
+1. `channel[T: Send](cap) -> (Sender[T], Receiver[T])` -- Rust-style split,
+   SPSC, `Rc`-backed FIFO ring on `UninitHeapStorage`; blocking `send`/`recv`
+   via the single-waiter park model; explicit `close()`.
+2. The `T: Send` bound on the `channel` factory is the enforcement -- it rides
+   the Phase-2 bound machinery and the Phase-3 why-not-send chain. **No
+   channel-specific enforcement code.**
+3. The channel itself is TPy library code (`lib/tpy/tpy/channel.py`); no new
+   C++ runtime. Two compiler changes were needed along the way, both general:
+   the owned-tuple-unpack move-out feature (unblocks `tx, rx = channel(cap)`),
+   and suppressing the C++ concept constraint for `Send`/`Sync` marker bounds
+   (they are sema-only; the per-record `is_send` C++ trait stays deferred).
+4. Tests in `tests/cases/channel/`: `error_channel_not_send` (bound failure +
+   chain), `channel_async` (producer/consumer, blocking, close), and
+   `panic_channel_capacity`.
+
+**Deferred** (tracked in `docs/CHANNEL_DESIGN.md` / `BUGS.md`): MPSC
+(`Sender.clone()` + waker queue), `try_send`/`try_recv`, capacity-0 rendezvous,
+and the Arc-backed cross-thread channel (Phase 6).
+
+**Effort:** was L; landed as library code + tests + two general compiler fixes.
 
 ### Phase 5 -- multi-threaded executor
 
