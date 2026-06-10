@@ -3312,7 +3312,12 @@ class ExpressionAnalyzer:
         # Tuple indexing: t[0], t[-1] -- compile-time constant index only
         actual_for_tuple = unwrap_readonly(inner_obj_type)
         if isinstance(actual_for_tuple, TupleType):
-            return self._analyze_tuple_subscript(expr, actual_for_tuple)
+            elem = self._analyze_tuple_subscript(expr, actual_for_tuple)
+            # Without projecting readonly onto the element, a write through
+            # `t[i]` of a readonly tuple is silently accepted.
+            if isinstance(inner_obj_type, ReadonlyType) and not elem.is_value_type():
+                elem = ReadonlyType(unwrap_readonly(elem))
+            return elem
 
         # Slice: obj[start:stop]
         if isinstance(expr.index, TpySlice):

@@ -1175,7 +1175,17 @@ class SemanticAnalyzer:
         Wraps non-value types with ReadonlyType in @readonly contexts.
         """
         if isinstance(ptype, ReadonlyType) and ptype.wrapped.is_value_type():
-            return ptype.wrapped
+            inner = ptype.wrapped
+            # A tuple with borrow-form (reference) elements aliases the
+            # caller's objects rather than copying them, so its readonly must
+            # survive -- it is the const protecting those aliased elements.
+            # has_ref_elements covers every borrowed element kind (records,
+            # pointer-variant unions, recursive-union wrappers), not just
+            # bare-pointer-repr ones. Other value types are genuinely copied,
+            # where stripping readonly is a safe no-op.
+            if isinstance(inner, TupleType) and inner.has_ref_elements():
+                return ptype
+            return inner
         if is_readonly_ctx and not isinstance(ptype, ReadonlyType):
             if not ptype.is_value_type():
                 return ReadonlyType(ptype)

@@ -1,0 +1,4 @@
+asum: 7
+after: 104
+gsum: 104
+pick: 4
