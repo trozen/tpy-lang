@@ -1,0 +1,1 @@
+main.py:27: error: inherited async method on generic base 'Box' is not yet supported here: its type parameters are not bound to concrete types (this happens with a generic subclass of a generic base, or a multi-level generic inheritance chain); flatten the hierarchy or make the base concrete

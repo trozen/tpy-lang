@@ -1582,7 +1582,8 @@ def unwrap_own(typ: 'TpyType') -> 'TpyType':
 
 
 def coro_struct_owner(owning_type_qname: 'str | None',
-                      receiver: 'NominalType') -> 'NominalType':
+                      receiver: 'NominalType',
+                      receiver_record: 'RecordInfo | None' = None) -> 'NominalType':
     """Owner NominalType for naming a method's coro / resumable-frame struct.
 
     The struct is emitted once, for the method's DEFINING record. When the
@@ -1591,9 +1592,21 @@ def coro_struct_owner(owning_type_qname: 'str | None',
     `__coro_<Base>_<method>` (which exists) rather than
     `__coro_<Subclass>_<method>` (which is never emitted). For an own method
     the receiver is returned unchanged, preserving class-level type_args.
+
+    A generic base needs its concrete type args too (`__coro_Box_fetch<int32_t>`,
+    not a bare `__coro_Box_fetch`). The receiver's MRO carries that binding --
+    `IntBox(Box[Int32])` records `Box[Int32]` in `mro_ancestors` -- so when a
+    `receiver_record` is supplied, re-base onto the matching bound ancestor.
+    Without it (or for a non-generic base, where the ancestor has no type args)
+    fall back to the bare base name.
     """
     if owning_type_qname is None or owning_type_qname == receiver.qualified_name():
         return receiver
+    if receiver_record is not None:
+        for anc in receiver_record.mro_ancestors:
+            if (isinstance(anc, NominalType)
+                    and anc.qualified_name() == owning_type_qname):
+                return anc
     base_name = owning_type_qname.rsplit(".", 1)[-1]
     return NominalType(base_name, _module_qname=owning_type_qname)
 

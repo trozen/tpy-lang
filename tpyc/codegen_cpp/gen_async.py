@@ -1758,7 +1758,7 @@ class AsyncCoroCodegen:
                                 "(internal: sema didn't populate "
                                 "stmt.async_aiter_type)", loc=s.loc)
                         struct_names_out[cur_uid] = self._sub_struct_qualname(
-                            s.async_aiter_type, "__anext__")
+                            s.async_aiter_type, "__anext__", loc=s.loc)
                         info = GeneratorForInfo(
                             uid=cur_uid, strategy="async_for", fields=[])
                     else:
@@ -1921,7 +1921,8 @@ class AsyncCoroCodegen:
             self, owner: 'NominalType | None', method: str,
             inferred_type_args: 'tuple[TpyType, ...] | None' = None,
             *, module_qual: str | None = None,
-            extra_template_args: 'list[str] | None' = None) -> str:
+            extra_template_args: 'list[str] | None' = None,
+            loc=None) -> str:
         """Build the C++ name of the sub-coro struct generated for a
         statically-resolved await (free function or method).
 
@@ -1951,6 +1952,21 @@ class AsyncCoroCodegen:
                        if "::" in ns_prefix else "")
             owner_name = owner.name
             if owner.type_args:
+                # A call/await site must name the base coro struct with concrete
+                # type args. An unbound TypeParamRef here means the MRO-resolved
+                # owner's args were not bound to concrete types -- compute_mro_
+                # ancestors records each base with the defining class's own type
+                # params, so a generic subclass of a generic base (Child[U](Box[U]))
+                # or a multi-level chain (C(B[Int32]) where B[U](A[U])) leaves them
+                # unbound. Emit a clean diagnostic rather than ill-formed C++.
+                if any(isinstance(ta, TypeParamRef) for ta in owner.type_args):
+                    raise CodeGenError(
+                        f"inherited async method on generic base '{owner.name}' "
+                        "is not yet supported here: its type parameters are not "
+                        "bound to concrete types (this happens with a generic "
+                        "subclass of a generic base, or a multi-level generic "
+                        "inheritance chain); flatten the hierarchy or make the "
+                        "base concrete", loc=loc)
                 inner_cpps = [self.types.type_to_cpp(ta)
                               for ta in owner.type_args]
                 owner_args_suffix = "<" + ", ".join(inner_cpps) + ">"
@@ -2117,8 +2133,10 @@ class AsyncCoroCodegen:
                             aenter_owner = item.aenter_owner_type or ctx_inner
                             aexit_owner = item.aexit_owner_type or ctx_inner
                             struct_names_out[cur_n] = (
-                                self._sub_struct_qualname(aenter_owner, "__aenter__"),
-                                self._sub_struct_qualname(aexit_owner, "__aexit__"),
+                                self._sub_struct_qualname(
+                                    aenter_owner, "__aenter__", loc=s.loc),
+                                self._sub_struct_qualname(
+                                    aexit_owner, "__aexit__", loc=s.loc),
                             )
                         if item.target is not None:
                             enter_t = (unwrap_ref_type(item.enter_type)
@@ -2255,7 +2273,8 @@ class AsyncCoroCodegen:
                 await_node.awaited_async_func_name,
                 inferred_type_args,
                 module_qual=module_qual,
-                extra_template_args=extra_template_args)
+                extra_template_args=extra_template_args,
+                loc=await_node.loc)
         elif await_node.awaited_task_inner is not None:
             operand_type = self.ctx.get_expr_type(await_node.value)
             if operand_type is None:

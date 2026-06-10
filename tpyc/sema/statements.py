@@ -12,7 +12,7 @@ from ..typesys import (
     FinalType,
     PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
     ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType,
-    unwrap_readonly, unwrap_own, coro_struct_owner, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
+    unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
     collapse_tuple_own_elements,
     LiteralType,
     ViewTypeFamily, view_family_for_type,
@@ -2043,6 +2043,11 @@ class StatementAnalyzer:
                 f"Type '{iterable_inner}' cannot be used as an async "
                 f"iterable (missing __aiter__ method)", stmt.iterable)
         aiter_info = aiter_overloads[0]
+        # An inherited __aiter__ reports its self-type with a generic base's
+        # unbound T; bind it so aiter_type carries concrete args.
+        if isinstance(iterable_inner, NominalType):
+            _, aiter_info = self.type_ops.bind_inherited_coro_method(
+                aiter_info, iterable_inner, record_info)
         if aiter_info.is_async:
             raise self.ctx.error(
                 f"`__aiter__` on '{iterable_inner}' must be a sync "
@@ -2068,11 +2073,12 @@ class StatementAnalyzer:
                 f"Async iterator '{aiter_type}' is missing `__anext__` "
                 f"method", stmt.iterable)
         anext_info = anext_overloads[0]
-        # Codegen reads this to name the __anext__ sub-coro struct. Use
-        # __anext__'s DEFINING record (an ancestor when the iterator inherits
-        # it), not the iterator subclass -- the struct exists only there.
-        stmt.async_aiter_type = coro_struct_owner(
-            anext_info.owning_type_qname, aiter_type)
+        # Codegen reads async_aiter_type to name the __anext__ sub-coro struct;
+        # it must be __anext__'s DEFINING record (an ancestor when the iterator
+        # inherits it), since the struct exists only there. Binding also gives
+        # the loop variable the concrete element type instead of a base's T.
+        stmt.async_aiter_type, anext_info = self.type_ops.bind_inherited_coro_method(
+            anext_info, aiter_type, aiter_record)
         if not anext_info.is_async:
             raise self.ctx.error(
                 f"`__anext__` on '{aiter_type}' must be `async def` "
@@ -2213,6 +2219,16 @@ class StatementAnalyzer:
             enter_info = enter_overloads[0]
             exit_info = exit_overloads[0]
 
+            # An inherited __[a]enter__/__[a]exit__ from a generic base reports
+            # the base's unbound T; bind it so the `as` target / exit-suppress
+            # type is concrete and codegen can name the async sub-coro struct.
+            enter_owner = exit_owner = None
+            if isinstance(ctx_type, NominalType):
+                enter_owner, enter_info = self.type_ops.bind_inherited_coro_method(
+                    enter_info, ctx_type, record_info)
+                exit_owner, exit_info = self.type_ops.bind_inherited_coro_method(
+                    exit_info, ctx_type, record_info)
+
             # A borrowed manager whose __[a]enter__ / __[a]exit__ mutates
             # self must be bound non-const, so mark its durable root mutated
             # (mirrors the non-readonly method-call / await-operand receiver
@@ -2223,14 +2239,9 @@ class StatementAnalyzer:
                     enter_info.is_readonly and exit_info.is_readonly):
                 self._mark_with_manager_mutated(item.context_expr)
 
-            # For `async with`, the __aenter__/__aexit__ sub-coro structs are
-            # named from each method's DEFINING record (an ancestor when the
-            # manager type inherits them), not the manager's subclass type.
-            if stmt.is_async and isinstance(ctx_type, NominalType):
-                item.aenter_owner_type = coro_struct_owner(
-                    enter_info.owning_type_qname, ctx_type)
-                item.aexit_owner_type = coro_struct_owner(
-                    exit_info.owning_type_qname, ctx_type)
+            if stmt.is_async and enter_owner is not None:
+                item.aenter_owner_type = enter_owner
+                item.aexit_owner_type = exit_owner
 
             if stmt.is_async:
                 if not enter_info.is_async:

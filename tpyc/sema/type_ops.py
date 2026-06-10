@@ -18,7 +18,7 @@ from ..typesys import (
     unwrap_ref_type, unwrap_qualifiers, RefType, is_dyn_protocol,
     is_polymorphic_class_type, is_dynamic_dispatch_inner,
     is_callable_type, is_integer_type, is_float_type, is_void_like_type,
-    contains_type_param,
+    contains_type_param, coro_struct_owner,
 )
 from ..coercions import resolve_coercion, CoercionContext
 from ..diagnostics import SemanticError, nocopy_container_elem_error
@@ -1842,8 +1842,35 @@ class TypeOperations:
             # @auto_readonly pair, whose receiver demotion is conditional on
             # whether the call result is actually mutated.
             is_auto_readonly_mutable_clone=method.is_auto_readonly_mutable_clone,
+            # The defining-record identity is invariant under type-arg
+            # substitution; codegen needs it to name a generic method's coro
+            # struct after the base (e.g. __coro_Box_fetch) rather than the
+            # subclass when the method is inherited.
+            owning_type_qname=method.owning_type_qname,
             canonical_fi=method.root,
         )
+
+    def bind_inherited_coro_method(
+        self, method: FunctionInfo, receiver: TpyType,
+        receiver_record: 'RecordInfo | None',
+    ) -> 'tuple[NominalType, FunctionInfo]':
+        """Resolve an async/iterator dunder fetched via the parent-walk
+        (`get_method_overloads_with_parents`, which does not substitute type
+        args) to its MRO-bound owner and signature.
+
+        The bound owner (e.g. `Box[Int32]` for a `Box[T]` method inherited by a
+        concrete subclass) supplies the concrete args codegen needs to name the
+        base's templated coro struct, and substituting the signature gives the
+        await/with/for bind variable the concrete element type instead of the
+        base's unbound `T`. Returns the bound owner plus the signature
+        substituted with that binding (unchanged when the owner has no args).
+        """
+        owner = coro_struct_owner(
+            method.owning_type_qname, receiver, receiver_record)
+        subst = self.build_type_substitution(owner)
+        if subst:
+            method = self.substitute_method_type_params(method, subst)
+        return owner, method
 
     def get_deref_target_type(self, typ: TpyType, is_readonly: bool = False) -> TpyType | None:
         """If typ has __deref__(), return resolved return type. Else None."""

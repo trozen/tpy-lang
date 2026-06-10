@@ -2252,7 +2252,8 @@ class ExpressionAnalyzer:
                 owner_type = self._method_call_receiver_type(operand)
                 if owner_type is not None:
                     expr.awaited_method_owner_type = coro_struct_owner(
-                        mfi.owning_type_qname, owner_type)
+                        mfi.owning_type_qname, owner_type,
+                        self.ctx.registry.get_record_for_type(owner_type))
                 if mfi.return_type is not None:
                     self.ctx.func.current_awaited_subframes.append(mfi)
                     return self._unwrap_awaitable_return(mfi.return_type)
