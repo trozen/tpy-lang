@@ -1,0 +1,1 @@
+main.py:16: error: Own[T] is redundant in this field type ('Own[Box] | None'): a field owns its value inline -- remove the Own.

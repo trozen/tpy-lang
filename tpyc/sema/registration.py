@@ -886,9 +886,10 @@ class TypeRegistrar:
                     loc=fld.loc
                 )
             # A field owns its value inline regardless, so Own on a field is
-            # redundant (Own selects an owned shape only where the default is a
-            # borrow -- parameter/return types, or `Optional[Own[T]]` locals).
-            if type_contains_own(fld.type):
+            # redundant -- including `Optional[Own[T]]`, since a field
+            # `Optional[T]` is `std::optional<T>` either way (the borrow default
+            # that makes the exemption load-bearing exists only for locals).
+            if type_contains_own(fld.type, allow_optional_own=False):
                 raise SemanticError(
                     f"Own[T] is redundant in this field type ('{fld.type}'): a "
                     f"field owns its value inline -- remove the Own.",

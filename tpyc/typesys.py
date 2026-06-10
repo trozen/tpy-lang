@@ -1581,30 +1581,40 @@ def unwrap_own(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
-def type_contains_own(typ: 'TpyType', _under_optional: bool = False) -> bool:
+def type_contains_own(typ: 'TpyType', _under_optional: bool = False,
+                      allow_optional_own: bool = True) -> bool:
     """True if a *redundant* `OwnType` appears anywhere in the type tree.
 
     `Own[T]` only ever selects an owned C++ shape. A storage position (local
     variable or field) owns its value inline regardless, so an `Own` there is
-    redundant -- EXCEPT `Optional[Own[T]]`: a local `Optional[T]` defaults to a
-    BORROW (`T*`), so the `Own` directly under the `Optional` is the load-bearing
-    selector for an OWNED nullable (`std::optional<T>`), not redundant. The
-    exemption is for that direct `Optional`->`Own` shape only -- `Own` nested
-    under a tuple/union/nominal (`tuple[..., Own[T]] | None`) collapses anyway,
-    so the flag does not propagate into those branches.
+    redundant -- EXCEPT, for a LOCAL, `Optional[Own[T]]`: a local `Optional[T]`
+    defaults to a BORROW (`T*`), so the `Own` directly under the `Optional` is
+    the load-bearing selector for an OWNED nullable (`std::optional<T>`). A
+    FIELD `Optional[T]` is `std::optional<T>` regardless, so the exemption does
+    not apply there -- callers validating a field pass `allow_optional_own=False`
+    to reject `Optional[Own[T]]` too. The exemption is for the direct
+    `Optional`->`Own` shape only -- `Own` nested under a tuple/union/nominal
+    (`tuple[..., Own[T]] | None`) collapses anyway, so `_under_optional` does
+    not propagate into those branches. `allow_optional_own`, by contrast, IS
+    threaded into them so a nested `Optional`->`Own` (e.g. `tuple[Optional[
+    Own[T]]]`) still consults it -- the threading is load-bearing, not dead.
     """
     if isinstance(typ, OwnType):
-        return not _under_optional
+        return not (_under_optional and allow_optional_own)
     if isinstance(typ, OptionalType):
-        return type_contains_own(typ.inner, _under_optional=True)
+        return type_contains_own(typ.inner, _under_optional=True,
+                                 allow_optional_own=allow_optional_own)
     if isinstance(typ, (ReadonlyType, AutoReadonlyType, RefType)):
-        return type_contains_own(typ.wrapped, _under_optional)
+        return type_contains_own(typ.wrapped, _under_optional, allow_optional_own)
     if isinstance(typ, UnionType):
-        return any(type_contains_own(m) for m in typ.members)
+        return any(type_contains_own(m, allow_optional_own=allow_optional_own)
+                   for m in typ.members)
     if isinstance(typ, TupleType):
-        return any(type_contains_own(e) for e in typ.element_types)
+        return any(type_contains_own(e, allow_optional_own=allow_optional_own)
+                   for e in typ.element_types)
     if isinstance(typ, NominalType):
-        return any(type_contains_own(a) for a in typ.type_args)
+        return any(type_contains_own(a, allow_optional_own=allow_optional_own)
+                   for a in typ.type_args)
     return False
 
 
