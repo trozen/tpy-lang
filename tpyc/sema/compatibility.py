@@ -20,6 +20,7 @@ from ..typesys import (
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     CallableType, is_fn_type, RefType, unwrap_ref_type,
     is_callable_type, is_integer_type, is_any_float_type, is_readonly_span,
+    collapse_tuple_own_elements,
     is_polymorphic_class_type, SendType, SyncType, unwrap_send_sync)
 from .frame_traits import frame_traits_of_function
 from .send_chain import why_not_send, why_not_sync, render_chain
@@ -1422,6 +1423,12 @@ class TypeCompatibility:
         # coerce the RHS against the resolved type.
         var_type = self.deduction.resolve_reassignment_target_type(
             name, inner_existing, inner_value, init_expr=value_expr)
+        # A reassigned per-element-Own tuple local collapses to borrow form (it
+        # aliases, it does not own its elements), so coerce the RHS against the
+        # collapsed type the local actually takes -- not the un-collapsed
+        # `tuple[..., Own[T]]`, whose per-element `T -> Own[T]` check spuriously
+        # flags a borrow-source rebind as "copies into owned storage".
+        var_type = collapse_tuple_own_elements(var_type)
         coerced = value_expr
         if not (isinstance(inner_existing, IntLiteralType) and is_integer_type(var_type)):
             coerced = self.coerce_expr(

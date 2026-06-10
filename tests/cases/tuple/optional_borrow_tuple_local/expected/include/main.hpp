@@ -17,6 +17,7 @@ std::tuple<::tpy::BigInt, Box> make_pair(const ::tpy::BigInt& v);
 void alias_after_owning_call(Holder& h);
 ::tpy::BigInt conditional(Holder& h, bool flag);
 ::tpy::BigInt branch_declared(Holder& h, bool flag);
+::tpy::BigInt reowned(const ::tpy::BigInt& v);
 void main();
 
 // class Box:

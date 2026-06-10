@@ -2,10 +2,12 @@
 # std::optional<std::tuple<..., T*>>: the inner tuple takes borrow form so its
 # reference elements ALIAS the storage source on rebind (matching CPython)
 # instead of copying. Covers: storage-source init + rebind (a), per-element-Own
-# call init then alias rebind (b), None init + conditional rebind (c), and a
-# local FIRST-DECLARED inside a branch (d, the hoisted-decl path). Each case
-# mutates through the narrowed alias and observes the change on the shared
-# source to force the value-vs-reference distinction.
+# call init then alias rebind (b), None init + conditional rebind (c), a local
+# FIRST-DECLARED inside a branch (d, the hoisted-decl path), and a SECOND
+# owning-call reassignment (e, the negative guard: re-owning must not spuriously
+# warn a copy). The alias cases (a-d) mutate through the narrowed alias and
+# observe the change on the shared source to force the value-vs-reference
+# distinction.
 from tpy import Own
 
 
@@ -40,9 +42,9 @@ def alias_storage() -> int:
 def alias_after_owning_call(h: Holder) -> None:
     t: tuple[int, Own[Box]] | None = make_pair(9)
     # The rebind aliases h.pair (mutation below is observed on the source in
-    # main), but sema spuriously warns it copies -- a known-wrong diagnostic
-    # tracked in BUGS.md (the remediation it suggests would defeat the alias).
-    t = h.pair  # tpyc: warning(/copies tuple\[int, Box\] into owned storage/)
+    # main); the local collapses to borrow form, so coercing the borrow source
+    # against it must NOT warn about copying into owned storage.
+    t = h.pair  # tpyc: ok
     if t is not None:
         t[1].val = 77
 
@@ -69,6 +71,18 @@ def branch_declared(h: Holder, flag: bool) -> int:
     return h.pair[1].val
 
 
+def reowned(v: int) -> int:
+    # Reassigning from a SECOND owning call: the owning rvalue materializes into
+    # a slot the local aliases, so this is NOT a copy-into-owned -- it must not
+    # warn (the negative guard for the collapse-the-reassignment-target fix).
+    t: tuple[int, Own[Box]] | None = make_pair(9)
+    t = make_pair(v)  # tpyc: ok
+    if t is not None:
+        t[1].val = 50
+        return t[0] + t[1].val
+    return -1
+
+
 def main() -> None:
     print(alias_storage())
 
@@ -84,6 +98,8 @@ def main() -> None:
     h5 = Holder(Box(2))
     print(branch_declared(h5, True))   # 55 -- aliased through branch-declared local
     print(branch_declared(h5, False))  # 55 -- stayed nullopt, source unchanged
+
+    print(reowned(5))  # 5 + 50 = 55 -- re-owned, no spurious copy warning
 
 
 main()

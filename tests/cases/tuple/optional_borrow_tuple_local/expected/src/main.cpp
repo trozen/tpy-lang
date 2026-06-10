@@ -35,9 +35,9 @@ void alias_after_owning_call(Holder& h) {
     std::optional<std::tuple<::tpy::BigInt, Box>> __slot_1;
     std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(make_pair(::tpy::BigInt(9))))};
     // # The rebind aliases h.pair (mutation below is observed on the source in
-    // # main), but sema spuriously warns it copies -- a known-wrong diagnostic
-    // # tracked in BUGS.md (the remediation it suggests would defeat the alias).
-    // t = h.pair  # tpyc: warning(/copies tuple\[int, Box\] into owned storage/)
+    // # main); the local collapses to borrow form, so coercing the borrow source
+    // # against it must NOT warn about copying into owned storage.
+    // t = h.pair  # tpyc: ok
     t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(h.pair)};
     // if t is not None:
     if ((t.has_value())) {
@@ -89,6 +89,27 @@ void alias_after_owning_call(Holder& h) {
     return std::get<1>(h.pair).val;
 }
 
+// def reowned(v: int) -> int:
+::tpy::BigInt reowned(const ::tpy::BigInt& v) {
+    // # Reassigning from a SECOND owning call: the owning rvalue materializes into
+    // # a slot the local aliases, so this is NOT a copy-into-owned -- it must not
+    // # warn (the negative guard for the collapse-the-reassignment-target fix).
+    // t: tuple[int, Own[Box]] | None = make_pair(9)
+    std::optional<std::tuple<::tpy::BigInt, Box>> __slot_1;
+    std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(make_pair(::tpy::BigInt(9))))};
+    // t = make_pair(v)  # tpyc: ok
+    t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(make_pair(v)))};
+    // if t is not None:
+    if ((t.has_value())) {
+        // t[1].val = 50
+        std::get<1>((*t))->val = ::tpy::BigInt(50);
+        // return t[0] + t[1].val
+        return ((std::get<0>((*t))) + (std::get<1>((*t))->val));
+    }
+    // return -1
+    return ::tpy::BigInt(-1);
+}
+
 // def main() -> None:
 void main() {
     // print(alias_storage())
@@ -113,6 +134,8 @@ void main() {
     std::cout << branch_declared(h5, true) << "\n";
     // print(branch_declared(h5, False))  # 55 -- stayed nullopt, source unchanged
     std::cout << branch_declared(h5, false) << "\n";
+    // print(reowned(5))  # 5 + 50 = 55 -- re-owned, no spurious copy warning
+    std::cout << reowned(::tpy::BigInt(5)) << "\n";
 }
 
 void __tpy_init() {
