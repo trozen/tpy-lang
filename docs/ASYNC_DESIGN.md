@@ -107,7 +107,7 @@ Library breadth + first real I/O. Each item is sized to land independently.
 
 | Item | Description |
 |------|-------------|
-| Sync primitives | `Lock` and `Semaphore` **SHIPPED** (FIFO `list[Waker]` waiter queue, usable as `async with`; mirror the early-shipped `Event`). `Queue` and `BoundedSemaphore` remain -- `BoundedSemaphore` (a `Semaphore` subclass) is now unblocked (the inherited-`async def` coro-struct-naming bug is fixed). All built on the same `Waker`-parking shape. |
+| Sync primitives | `Lock`, `Semaphore`, `Queue` **SHIPPED** (FIFO `list[Waker]` waiter queue, `async with` for the locks; `Queue[T]` adds getter/putter/joiner waiter sets + `maxsize`/`join`/`task_done`). `BoundedSemaphore` (a `Semaphore` subclass) remains -- now unblocked (the inherited-`async def` coro-struct-naming bug is fixed). All built on the same `Waker`-parking shape. |
 | Multi-awaiter `Future[T]` | If single-awaiter v1 turns out to be limiting in practice. |
 | Task introspection | `Task.add_done_callback`, `get_name`, `set_name`, `done`, `result`, `exception`. |
 | Public `Reactor` protocol | Designed against the first concrete backend's needs (not before). |
@@ -665,17 +665,18 @@ Exception storage uses `std::exception_ptr` to preserve the dynamic type after c
 
 ## CPython compatibility
 
-### What works under both (v1 + v1.5)
+### What works under both (v1 + v1.5 + v2 sync primitives)
 
 - `async def`, `await`, `async with`, `async for`.
-- `import asyncio`; `from asyncio import run, sleep, gather, gather_list, create_task, wait_for, Task, Future, Event, Lock, Semaphore, CancelledError, TimeoutError`. (`gather` is the homogeneous variadic form; the heterogeneous `gather[*Ts]` tuple shape remains deferred.)
+- `import asyncio`; `from asyncio import run, sleep, gather, gather_list, create_task, wait_for, Task, Future, Event, Lock, Semaphore, Queue, QueueEmpty, QueueFull, CancelledError, TimeoutError`. (`gather` is the homogeneous variadic form; the heterogeneous `gather[*Ts]` tuple shape remains deferred.)
+- `Queue[T]` via `put`/`get`/`put_nowait`/`get_nowait`/`qsize`/`empty`/`full`/`join`/`task_done` and `maxsize` (`QueueEmpty`/`QueueFull` on the nowait paths).
 - `Event` / `Lock` / `Semaphore` via their `acquire`/`release`/`set`/`wait`/`locked` API and `async with`. `Lock`/`Semaphore` are not awaitable directly (`await lock` is rejected, matching CPython) -- acquisition goes through `acquire` / `async with`. (`Event` does allow the `await event` shorthand, a TPy extension, since waiting on an Event has no acquire-without-release footgun.)
 - The methods on `Task[T]` and `Future[T]` that v1/v1.5 ships.
 
 ### What does not match (until v2+)
 
 - `Task.add_done_callback`, `Task.get_loop`, `Task.get_name`, `Task.set_name` -- v2.
-- `asyncio.Queue`, `BoundedSemaphore` -- v2 (both implementable now; `BoundedSemaphore` is a `Semaphore` subclass, unblocked since the inherited-`async def` coro-struct-naming fix).
+- `asyncio.BoundedSemaphore` -- v2 (a `Semaphore` subclass; unblocked since the inherited-`async def` coro-struct-naming fix).
 - Multi-awaiter `Future`: v2.
 - Repeated `await future` after done: v2 (with multi-awaiter).
 - The `loop = asyncio.get_event_loop()` pattern -- TPy has no public `Executor` API.

@@ -5810,6 +5810,9 @@ Send/Sync rules for built-in types:
   directly (`await event`) as a shorthand. `asyncio.Lock` and
   `asyncio.Semaphore` are the v2 sync primitives (FIFO waiter queue,
   `acquire` / `release` / `locked`, usable as `async with`).
+  `asyncio.Queue[T]` is a bounded FIFO (`put` / `get` block on
+  full / empty; `put_nowait` / `get_nowait` raise `QueueFull` /
+  `QueueEmpty`; `qsize` / `empty` / `full` / `join` / `task_done`).
   `tpy.coro.poll_once(aw)` is a synchronous one-step driver useful for
   tests and non-asyncio contexts; sema-types `f()` (for `async def f`)
   as `Cancellable[T]` (a `@dynamic` protocol with `__poll__` + `cancel`,

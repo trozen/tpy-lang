@@ -1,0 +1,8 @@
+empty: True full: False qsize: 0 maxsize: 2
+got: [0, 1, 2, 3, 4]
+joined again
+caught task_done
+get_nowait: 99
+caught empty
+caught full
+unbounded full: False qsize: 2

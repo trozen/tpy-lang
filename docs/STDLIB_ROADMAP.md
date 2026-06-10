@@ -156,7 +156,7 @@ Examples of the policy in action:
 | [`pickle`](#pickle) | P2 | Blocked | 0% | -- | Needs dynamic type info + `io` |
 | [`shelve`](#shelve) | P3 | Blocked | 0% | -- | Needs pickle |
 | [`inspect`](#inspect) | P2 | Blocked | 0% | -- | Needs runtime type/func introspection |
-| [`asyncio`](#asyncio) | P1 | Partial | ~35% | pure | v1: `run`/`sleep`/`create_task`/`Task[T]`/`Future[T]`/`Event`/`CancelledError` + thread-local executor with slot table, runnable deque, timer min-heap, cancel-drain at run-end. v1.5 M5+M6: `async with` (cleanup-only), `async for` + `StopAsyncIteration`. v1.5 M8: `wait_for`/`TimeoutError`. v1.5 M9: `gather(*tasks)` (homogeneous variadic-positional) + `gather_list(tasks)` (homogeneous list shape). v2 sync primitives: `Lock`, `Semaphore` (FIFO `list[Waker]` waiter queue, `async with`-capable). Missing: `Queue`, `BoundedSemaphore` (a `Semaphore` subclass -- now unblocked, the inherited-async-def coro-struct naming bug is fixed); CPython-shape *heterogeneous* variadic `gather[*Ts](*coros) -> tuple[*Ts]` (needs variadic generics + async-def `*args` codegen); I/O reactor (v2); multi-thread (v3+) |
+| [`asyncio`](#asyncio) | P1 | Partial | ~35% | pure | v1: `run`/`sleep`/`create_task`/`Task[T]`/`Future[T]`/`Event`/`CancelledError` + thread-local executor with slot table, runnable deque, timer min-heap, cancel-drain at run-end. v1.5 M5+M6: `async with` (cleanup-only), `async for` + `StopAsyncIteration`. v1.5 M8: `wait_for`/`TimeoutError`. v1.5 M9: `gather(*tasks)` (homogeneous variadic-positional) + `gather_list(tasks)` (homogeneous list shape). v2 sync primitives: `Lock`, `Semaphore`, `Queue` (FIFO `list[Waker]` waiter queue; `Queue[T]` adds getter/putter/joiner waiter sets + `maxsize`/`put`/`get`/`*_nowait`/`join`/`task_done`). Missing: `BoundedSemaphore` (a `Semaphore` subclass -- now unblocked, the inherited-async-def coro-struct naming bug is fixed); CPython-shape *heterogeneous* variadic `gather[*Ts](*coros) -> tuple[*Ts]` (needs variadic generics + async-def `*args` codegen); I/O reactor (v2); multi-thread (v3+) |
 | [`threading`](#threading) | P1 | Blocked | 0% | -- | Needs threading primitives |
 | [`multiprocessing`](#multiprocessing) | P2 | Blocked | 0% | -- | Needs process spawning + IPC |
 | [`subprocess`](#subprocess) | P1 | Blocked | 0% | -- | Needs process spawning |
@@ -1088,7 +1088,7 @@ v1.5 M1: SHIPPED. Sync `with` upgraded to CPython-shape `__exit__(self, exc_type
 
 v1.5 M2: SHIPPED. Class-based exception dispatch via `isinstance(exc_val, X)` in `__exit__` (the `Optional[BaseException]` slicing blocker M1 deferred to M2 was resolved by Phase 20). Bare and early-return-narrowed `isinstance` on `BaseException` / `Optional[BaseException]` params both dispatch correctly. See `docs/ASYNC_PROGRESS.md` M2.
 
-Pending (v2+): I/O reactor (epoll on Linux, kqueue on BSD/macOS, IOCP on Windows), `asyncio.Queue`, async generators, `@error_return` async, `__await__` adaptation, multi-thread executor.
+Pending (v2+): I/O reactor (epoll on Linux, kqueue on BSD/macOS, IOCP on Windows), async generators, `@error_return` async, `__await__` adaptation, multi-thread executor.
 
 v1.1 runtime port: SHIPPED. Executor body + `Task` + `Future` moved from `runtime/cpp/include/tpy/async.hpp` to `lib/tpy/asyncio/_executor.py`, dispatched from C++ via a thread-local `ExecutorOps` function-pointer table.
 

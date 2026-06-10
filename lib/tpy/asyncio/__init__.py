@@ -2,7 +2,7 @@
 """asyncio v1 -- minimum viable async runtime.
 
 `run` / `sleep` / `create_task` / `Task[T]` / `Future[T]` / `Event` /
-`Lock` / `Semaphore` / `CancelledError`. Lowers to
+`Lock` / `Semaphore` / `Queue[T]` / `CancelledError`. Lowers to
 `runtime/cpp/include/tpy/async.hpp` and the TPy Executor in
 `_executor.py`. See `docs/ASYNC_DESIGN.md`.
 """
@@ -760,6 +760,14 @@ def _wake_one(waiters: list[Waker]) -> None:
         w.wake()
 
 
+# Wake every parked waiter and clear the queue -- for a broadcast condition
+# where, once it holds, every parked waiter should proceed.
+def _wake_all(waiters: list[Waker]) -> None:
+    for w in waiters:
+        w.wake()
+    waiters.clear()
+
+
 @nocopy
 class Lock:
     """Mutual-exclusion lock for single-threaded async code.
@@ -904,5 +912,128 @@ class _SemAcquire:
 
     def __poll__(self, waker: Waker) -> Own[Poll[None]]:
         if self._sem._try_acquire(waker):
+            return poll_ready_none()
+        return poll_pending()
+
+
+class QueueEmpty(Exception):
+    pass
+
+
+class QueueFull(Exception):
+    pass
+
+
+@nocopy
+class Queue[T]:
+    """FIFO async queue. `put`/`get` block (park, FIFO) when the queue is
+    full / empty; `put_nowait`/`get_nowait` raise `QueueFull`/`QueueEmpty`
+    instead. `maxsize <= 0` is unbounded. `join` blocks until every item
+    delivered by `put` has been marked done via `task_done`. Matches
+    CPython; single-threaded, same fairness note as `Lock`.
+
+    Built on the `Waker`-parking mechanism: getters park while empty,
+    putters while full, joiners while work is outstanding. Not awaitable
+    directly (acquisition is via `get` / `put`).
+    """
+
+    _items: list[T]
+    # Public, like CPython's Queue.maxsize; <= 0 means unbounded.
+    maxsize: Int32
+    _getters: list[Waker]
+    _putters: list[Waker]
+    _joiners: list[Waker]
+    _unfinished: Int32
+
+    def __init__(self, maxsize: Int32 = 0) -> None:
+        self._items = []
+        self.maxsize = maxsize
+        self._getters = []
+        self._putters = []
+        self._joiners = []
+        self._unfinished = 0
+
+    def qsize(self) -> Int32:
+        return len(self._items)
+
+    def empty(self) -> bool:
+        return len(self._items) == 0
+
+    def full(self) -> bool:
+        return self.maxsize > 0 and len(self._items) >= self.maxsize
+
+    def put_nowait(self, item: Own[T]) -> None:
+        if self.full():
+            raise QueueFull("Queue full")
+        self._items.append(item)
+        self._unfinished += 1
+        _wake_one(self._getters)
+
+    def get_nowait(self) -> Own[T]:
+        if self.empty():
+            raise QueueEmpty("Queue empty")
+        # A slot is about to free; wake a parked putter before the pop (it
+        # re-polls later, by which point this synchronous pop has run).
+        _wake_one(self._putters)
+        return self._items.pop(0)
+
+    async def put(self, item: Own[T]) -> None:
+        await _QueueWait[T](self, 1)
+        self.put_nowait(item)
+
+    async def get(self) -> Own[T]:
+        await _QueueWait[T](self, 0)
+        return self.get_nowait()
+
+    def task_done(self) -> None:
+        if self._unfinished <= 0:
+            raise ValueError("task_done() called too many times")
+        self._unfinished -= 1
+        if self._unfinished == 0:
+            _wake_all(self._joiners)
+
+    async def join(self) -> None:
+        await _QueueWait[T](self, 2)
+
+    # Called by `_QueueWait.__poll__` through a `Ptr[Queue[T]]`. Returns
+    # True if the awaited condition holds now; else parks `waker` and
+    # returns False. kind: 0 = get (non-empty), 1 = put (not full),
+    # 2 = join (no unfinished tasks).
+    def _wait_ready(self, kind: Int32, waker: Waker) -> bool:
+        if kind == 0:
+            if len(self._items) > 0:
+                return True
+            self._getters.append(waker)
+            return False
+        if kind == 1:
+            if not self.full():
+                return True
+            self._putters.append(waker)
+            return False
+        if self._unfinished == 0:
+            return True
+        self._joiners.append(waker)
+        return False
+
+
+@nocopy
+class _QueueWait[T]:
+    """Private awaitable backing `Queue.get` / `put` / `join` (see
+    `_LockAcquire`). Holds a `Ptr[Queue[T]]`; the `kind` selects the park
+    condition checked by `Queue._wait_ready`.
+    """
+
+    _q: Ptr[Queue[T]]
+    _kind: Int32
+
+    def __init__(self, q: Ptr[Queue[T]], kind: Int32) -> None:
+        self._q = q
+        self._kind = kind
+
+    def cancel(self) -> None:
+        pass
+
+    def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+        if self._q._wait_ready(self._kind, waker):
             return poll_ready_none()
         return poll_pending()
