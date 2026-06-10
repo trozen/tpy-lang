@@ -63,6 +63,60 @@ inline auto each(std::vector<T>& xs) {
     );
 }
 
+// @overload
+// def total(xs: Iterable[Own[Int32]]) -> Int32: ...
+template<::tpystd::typing::Iterable<int32_t> T_xs>
+int32_t total(T_xs&& xs) {
+    // s = 0
+    int32_t s = 0;
+    // for x in xs:  # tpyc: ok
+    auto& __src_0 = xs;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
+        // s += x
+        s = ::tpy::add_check<int32_t>(s, x);
+    }
+    // return s
+    return s;
+}
+
+// @overload
+// def total(xs: Int32) -> Int32: ...
+inline int32_t total(int32_t xs) {
+    // return xs
+    return xs;
+}
+
+// @overload
+// def keysum(xs: Iterable[Own[Item]]) -> Int32: ...
+template<::tpystd::typing::Iterable<Item> T_xs>
+int32_t keysum(T_xs&& xs) {
+    // s = 0
+    int32_t s = 0;
+    // for it in xs:
+    auto& __src_0 = xs;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        const auto& it = ::tpy::unwrap_ref(*__r_1);
+        // s += it.key
+        s = ::tpy::add_check<int32_t>(s, it.key);
+    }
+    // return s
+    return s;
+}
+
+// @overload
+// def keysum(xs: Int32) -> Int32: ...
+inline int32_t keysum(int32_t xs) {
+    // return xs
+    return xs;
+}
+
 
 void __tpy_init();
 } // namespace tpyapp::main

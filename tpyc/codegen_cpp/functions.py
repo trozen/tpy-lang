@@ -746,13 +746,29 @@ class FunctionGenerator:
                     return True
         return False
 
-    def is_template_function(self, func: TpyFunction) -> bool:
-        """Check if a function needs a C++ template (generic type params, protocol params, or Fn params)."""
+    def _signature_is_template(self, func: TpyFunction) -> bool:
+        """Per-signature template test -- the building block of the group-aware
+        is_template_function, which also folds in an @overload group's stubs."""
         if func.type_params:
             return True
         if self.protocols.get_all_protocol_params(func.params):
             return True
         if any(is_fn_type(pt) for _, pt in func.params):
+            return True
+        return False
+
+    def is_template_function(self, func: TpyFunction) -> bool:
+        """Check if a function emits any C++ template definition.
+
+        For an @overload implementation the group is header-only if ANY stub is
+        a template, even when the impl signature is not: a template stub must be
+        emitted (and stay instantiable) in the header, else a cross-module call
+        finds no instantiation. The header-vs-.cpp routing keys on this, so it
+        must reflect the whole group, not just the impl signature."""
+        if self._signature_is_template(func):
+            return True
+        stubs = self.ctx.analyzer.overload_groups.get(id(func))
+        if stubs and any(self._signature_is_template(s) for s in stubs):
             return True
         return False
 
@@ -870,9 +886,9 @@ class FunctionGenerator:
         overload_stubs = self.ctx.analyzer.overload_groups.get(id(func))
         if overload_stubs:
             is_literal_only = self._overload_stubs_are_literal_only(overload_stubs, func)
-            is_generic = bool(func.type_params)
-            has_proto_params = bool(self.protocols.get_all_protocol_params(func.params))
-            if is_generic or has_proto_params:
+            # Header-only when any stub (or the impl) is a template: a template
+            # stub must be defined in the header to stay instantiable cross-module.
+            if self.is_template_function(func):
                 if is_literal_only:
                     for stub in overload_stubs:
                         self._gen_literal_specialized_function(out, func, stub)

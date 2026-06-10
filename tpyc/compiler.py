@@ -2091,10 +2091,19 @@ class Compiler:
             # `FunctionGenerator.is_template_function` so the gate's
             # set of "templated" functions matches what codegen
             # actually emits inline.
+            # An @overload group is header-emitted when ANY stub is a template,
+            # even if the impl signature is not -- mirror codegen's group-aware
+            # routing so the impl's signature (the union covering every stub) is
+            # still gated. Index template stubs by name (the impl shares it).
+            template_stub_fn_names = {
+                f.name for f in compiled.ast.functions
+                if f.is_overload_stub and _is_template_emitted_in_header(f)
+            }
             for func in compiled.ast.functions:
                 if func.is_overload_stub:
                     continue
-                if not _is_template_emitted_in_header(func):
+                if not (_is_template_emitted_in_header(func)
+                        or func.name in template_stub_fn_names):
                     continue
                 self._check_signature_for_cross_cycle_by_value(
                     func, member, scc, compiled,

@@ -4,20 +4,12 @@
 namespace tpyapp::main {
 
 
-
-
 // def main() -> None:
 void main() {
     // nums: list[Int32] = [3, 1, 2]
     std::vector<int32_t> nums = {3, 1, 2};
-    // print(total(each(nums)))    # tpyc: ok
-    auto __tmp_1 = each<int32_t>(nums);
-    std::cout << total(__tmp_1) << "\n";
-    // items: list[Item] = [Item(3), Item(1), Item(2)]
-    std::vector<Item> items = {Item(3), Item(1), Item(2)};
-    // print(keysum(each(items)))  # tpyc: ok
-    auto __tmp_2 = each<Item>(items);
-    std::cout << keysum(__tmp_2) << "\n";
+    // print(total(nums))
+    std::cout << ::tpyapp::agg::total(::tpy::own_iter(std::move(nums))) << "\n";
 }
 
 void __tpy_init() {
@@ -25,6 +17,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Cross-module call of a template (protocol-param) overload: guards that
+    // # agg.total's Iterable[Own[Int32]] overload instantiates here (header, not .cpp).
+    // from agg import total
+    ::tpyapp::agg::__tpy_init();
     // main()
     main();
 }
