@@ -922,6 +922,16 @@ class GeneratorCodegen:
         Non-value types are captured by reference (&name) to preserve
         Python's reference semantics. Names in `exclude` are skipped
         (e.g. the iterable param when it's copied into __src).
+
+        Lifetime invariant: a varargs pack captured by value copies the
+        fat-pointer struct, whose `indirect_` member still points into the
+        caller's `__tmp_N` array (`std::array<T*, N>` -- the primary
+        `varargs<T>` template's indirect form, not the direct-only value
+        specialization). `__tmp_N` lives at the caller's frame scope, so
+        the generator is safe to use across statements within that frame;
+        the hazard is the generator ESCAPING the frame -- returned, or
+        stored in a container that outlives the call -- which leaves the
+        captured pack dangling. Unenforced today (see BUGS.md).
         """
         captures = []
         for pname, ptype in params:

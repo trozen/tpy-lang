@@ -147,7 +147,7 @@ Examples of the policy in action:
 | [`logging`](#logging) | P2 | Missing | 0% | -- | Module-level state + handler architecture |
 | [`configparser`](#configparser) | P2 | Missing | 0% | -- | Depends on `io` |
 | [`urllib.parse`](#urllibparse) | P2 | Missing | 0% | -- | Pure-TPy candidate; no network dependency |
-| [`heapq`](#heapq) | P2 | Partial | ~90% | pure | Pure TPy over `list[T: Comparable]`. All non-variadic ops done; `merge(*iterables)` unblocked by variadic-in-method-call fix, still needs a generator-based iterator-heads heap |
+| [`heapq`](#heapq) | P2 | Partial | ~92% | pure | Pure TPy over `list[T: Comparable]`. All non-variadic ops + `merge(*iterables: list[T])` (lazy, stable n-way merge). `merge` gaps vs CPython: inputs must be `list[T]` not arbitrary iterables (needs dynamic-iterator erasure + protocol varargs), and `key=`/`reverse=` absent (`key=` blocked on the readonly-through-generic-T callable gap in BUGS.md; `reverse=` a cheap follow-up) |
 | [`copy`](#copy) | P2 | Missing | 0% | -- | `copy()` deep semantics need intrinsic support |
 | [`textwrap`](#textwrap) | P2 | Missing | 0% | -- | Pure TPy candidate |
 | [`decimal`](#decimal) | P2 | Missing | 0% | -- | Large surface; candidate for BigInt-based pure impl or native lib |
@@ -1015,7 +1015,7 @@ CPython's algorithm (sift-up/sift-down) line-for-line; heap items ordered by
 | `heapreplace` | Done | Pop then push in one step |
 | `nsmallest(n, a)` | Done | Heap-based O(n + k log n). Takes `list[T]` (CPython accepts `Iterable[T]`). Body uses `a.copy()` which requires list semantics; a switch to `Iterable[T]` would need `list(a)` materialization plus a story for the empty-input generic-T case (CPython returns `[]`; TPy would error on T inference). Deferred to when empty-iterable generic inference is resolved |
 | `nlargest(n, a)` | Done | Sort-based O(n log n). Size-k-heap variant (O(n log k)) is a perf follow-up. Same `list[T]` vs `Iterable[T]` gap as `nsmallest` |
-| `merge(*iterables, key=None, reverse=False)` | Missing | N-way merge; needs a generator-based iterator-heads heap (variadic-in-method-call gap is now fixed) |
+| `merge(*iterables)` | Done | Lazy, stable n-way merge over `list[T]` inputs via a per-input cursor scan (O(inputs)/elem vs CPython's O(log inputs) heap; inputs compared in place). Returns `Iterator[Own[T]]` -- yields owned copies, so reference-type results collect into a list with no implicit-copy warning, diverging from CPython's identity-preserving aliasing. Gaps: arbitrary iterables (needs dynamic-iterator erasure + protocol varargs), `key=`/`reverse=` (`key=` blocked on the readonly-through-generic-T callable gap; `reverse=` a cheap follow-up), bare `merge()` needs explicit `T` |
 | `key=` arg on `nlargest`/`nsmallest` | Missing | Needs `Callable[[T], K: Comparable]` threading; straightforward add once prioritized |
 
 Design note: CPython's `heapq` operates on any mutable sequence; TPy restricts
@@ -1027,7 +1027,7 @@ and copy semantics for reference types. T must be copyable -- `@nocopy`
 element types fail at C++ compile time with a deleted-copy-constructor
 error today (clean sema diagnostic tracked in `BUGS.md`).
 
-Tests: `cases/stdlib/heapq`, `cases/stdlib/heapq_ref_type`.
+Tests: `cases/stdlib/heapq`, `cases/stdlib/heapq_ref_type`, `cases/stdlib/heapq_merge`, `cases/stdlib/heapq_merge_ref_copy`, `cases/stdlib/error_heapq_merge_no_args`.
 
 ### copy
 
