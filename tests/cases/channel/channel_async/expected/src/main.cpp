@@ -120,12 +120,12 @@ __coro_consumer consumer(::tpystd::tpy::channel::Receiver<Counter> rx) {
     case S_INITIAL: {
         // tx, rx = channel[Counter](2)
         auto __tup_1 = ::tpystd::tpy::channel::channel<Counter>(2);
-        ::tpystd::tpy::channel::Sender<Counter> tx = std::move(std::get<0>(__tup_1));
-        ::tpystd::tpy::channel::Receiver<Counter> rx = std::move(std::get<1>(__tup_1));
+        tx.emplace(std::move(std::get<0>(__tup_1)));
+        rx.emplace(std::move(std::get<1>(__tup_1)));
         // p = asyncio.create_task(producer(tx))
-        p.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer(std::move(tx)))));
+        p.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer(std::move((*tx))))));
         // c = asyncio.create_task(consumer(rx))
-        c.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(consumer(std::move(rx)))));
+        c.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(consumer(std::move((*rx))))));
         // await p
         __sub_0 = &((*p));
         __state = S_RESUME_0;

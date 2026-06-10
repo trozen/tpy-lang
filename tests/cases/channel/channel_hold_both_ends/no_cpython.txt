@@ -1,0 +1,3 @@
+Channel runs on TPy's single-threaded asyncio executor; there is no
+lib/cpy/asyncio stub (same as the other asyncio_* runtime cases and
+channel_async), so this case can't be driven under CPython.

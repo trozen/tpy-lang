@@ -929,6 +929,14 @@ class CodeGenContext:
     # For-loops with yields in state machine generators: keyed by id(TpyForEach)
     # Values are GeneratorForInfo (not imported here to avoid circular dep)
     generator_for_loop_info: dict[int, object] = field(default_factory=dict)
+    # Statement-level borrow-alias frame locals (single-assign / tuple-unpack
+    # targets aliasing existing storage). Seeded into pointer_locals by
+    # setup_resumable_frame_locals so the frame field is a `T*` alias, not an
+    # owning frame_slot<T>. Populated by _classify_pointer_alias_locals.
+    generator_pointer_alias_locals: set[str] = field(default_factory=set)
+    # Subset whose source is const: seeded into const_indirect_locals so the
+    # field is `const T*` and reads stay const-correct.
+    generator_const_pointer_alias_locals: set[str] = field(default_factory=set)
     # When generating a generator method's __next__() body, self -> __self
     generator_self_ref: str | None = None
 
@@ -1982,6 +1990,16 @@ class CodeGenContext:
             # as a pointer-form loop var.
             self.pointer_locals.update(info.pointer_form_unpack_targets)
             self.generator_borrow_form_loop_vars.update(info.pointer_form_unpack_targets)
+
+        # Statement-level borrow aliases (single-assign `a = items[0]`,
+        # tuple-unpack `a, b = first_two(items)`): same `T*`-alias dispatch as
+        # a pointer-form loop var, so the alias survives the suspension instead
+        # of being value-copied into the frame.
+        self.pointer_locals.update(self.generator_pointer_alias_locals)
+        self.generator_borrow_form_loop_vars.update(
+            self.generator_pointer_alias_locals)
+        self.const_indirect_locals.update(
+            self.generator_const_pointer_alias_locals)
 
         if not func.generator_locals:
             return

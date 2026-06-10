@@ -27,7 +27,7 @@ from ..namespace import Namespace
 from ..parse.nodes import (
     TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl, TpyReturn,
     TpyExprStmt, TpyName, TpyExpr, TpyTry, TpyExceptHandler, TpyCall,
-    TpyMethodCall, TpyFieldAccess, TpyForEach, TpyWith,
+    TpyMethodCall, TpyFieldAccess, TpyForEach, TpyWith, TpyTupleUnpack,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyCoerce,
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
@@ -1040,6 +1040,9 @@ class AsyncCoroCodegen:
                 if info.pointer_form_loop_var is not None:
                     pointer_form_names.add(info.pointer_form_loop_var)
                 pointer_form_names.update(info.pointer_form_unpack_targets)
+            # Statement-level borrow aliases (single-assign / tuple-unpack)
+            # also get a `T*` field rather than an owning frame_slot<T>.
+            pointer_form_names.update(self._classify_pointer_alias_locals(func))
             for lname, ltype in func.generator_locals:
                 ltype_inner = unwrap_ref_type(ltype)
                 cpp_name = escape_cpp_name(lname)
@@ -1076,7 +1079,10 @@ class AsyncCoroCodegen:
                     # emit. Checked before is_value_type because the loop var
                     # of a tuple-unpack (`__for_tup`) is itself a value tuple.
                     inner_cpp = self.types.type_to_cpp(ltype_inner)
-                    out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
+                    const_pfx = ("const " if lname in
+                                 state.const_pointer_alias_locals else "")
+                    out.write(
+                        f"{INDENT}{const_pfx}{inner_cpp}* {cpp_name} = nullptr;\n")
                 elif lname in owning_tuple_locals:
                     # OWNING pointer-repr tuple local: the frame must hold the
                     # element storage, so use a storage `frame_slot<std::tuple
@@ -1266,6 +1272,8 @@ class AsyncCoroCodegen:
         old_frame_slot_locals = self.ctx.generator_frame_slot_locals
         old_borrow_form_loop_vars = self.ctx.generator_borrow_form_loop_vars
         old_for_info = self.ctx.generator_for_loop_info
+        old_pointer_alias_locals = self.ctx.generator_pointer_alias_locals
+        old_const_pointer_alias_locals = self.ctx.generator_const_pointer_alias_locals
         old_self_ref = self.ctx.generator_self_ref
         old_movable_locals = self.ctx.movable_locals
         old_in_method = self.ctx.in_method
@@ -1292,6 +1300,12 @@ class AsyncCoroCodegen:
         # inside `setup_body_scope` below) seeds non-value loop vars into
         # `pointer_locals`. Empty for bodies with no CFG-decomposed for-loop.
         self.ctx.generator_for_loop_info = rcfg.resumable_state(func).for_loop_info
+        # Seeds pointer_locals inside setup_resumable_frame_locals (called by
+        # setup_body_scope below) so borrow-alias frame locals get a `T*` slot.
+        self.ctx.generator_pointer_alias_locals = (
+            self._classify_pointer_alias_locals(func))
+        self.ctx.generator_const_pointer_alias_locals = (
+            rcfg.resumable_state(func).const_pointer_alias_locals)
 
         local_ns = Namespace(parent=self.ctx.analyzer.global_ns)
         for pname, ptype in func.params:
@@ -1358,6 +1372,8 @@ class AsyncCoroCodegen:
             self.ctx.generator_frame_slot_locals = old_frame_slot_locals
             self.ctx.generator_borrow_form_loop_vars = old_borrow_form_loop_vars
             self.ctx.generator_for_loop_info = old_for_info
+            self.ctx.generator_pointer_alias_locals = old_pointer_alias_locals
+            self.ctx.generator_const_pointer_alias_locals = old_const_pointer_alias_locals
             self.ctx.generator_self_ref = old_self_ref
             self.ctx.movable_locals = old_movable_locals
             self.ctx.in_method = old_in_method
@@ -1790,6 +1806,116 @@ class AsyncCoroCodegen:
         state.for_info_by_uid = info_by_uid
         state.for_prescanned = True
         return uid_map
+
+    def _classify_pointer_alias_locals(self, func: TpyFunction) -> 'set[str]':
+        """Frame locals that are borrow ALIASES of existing storage, so their
+        frame field must be a `T*` (aliasing the source) rather than an owning
+        `frame_slot<T>` (which would copy across the suspension -- a silent
+        reference-copy divergence from CPython).
+
+        Two binding shapes, mirroring how sync codegen renders them as
+        references (`Box& a = items[0]` / `auto&& a = tuple_elem_ref(...)`):
+          - single-assign `a = <lvalue>` of a plain non-value type, and
+          - tuple-unpack borrow targets (`stmt.is_ref[i]`).
+
+        Const sources (readonly params, const tuple elements) join
+        `const_pointer_alias_locals` so the field is `const T*`. Exception-
+        handler bindings are excluded: the caught exception is only live inside
+        the handler, so aliasing it across a suspension could dangle -- they
+        keep the safe owning copy. Owning bindings (`a = Box(1)`, Own[T]
+        elements, value types) also keep the owning frame_slot path.
+
+        Cached on the resumable state; consumed by `gen_coro_struct` (field
+        type) and `setup_resumable_frame_locals` (pointer_locals membership).
+        Idempotent across the struct + body passes.
+        """
+        state = rcfg.resumable_state(func)
+        if state.pointer_alias_prescanned:
+            return state.pointer_alias_locals
+        state.pointer_alias_prescanned = True
+        if not func.generator_locals:
+            return state.pointer_alias_locals
+        frame_local_types = {n: t for n, t in func.generator_locals}
+        aliases = state.pointer_alias_locals
+        const_aliases = state.const_pointer_alias_locals
+        body = self._effective_body(func)
+
+        exc_bindings: set[str] = set()
+
+        def collect_exc(stmts: 'list[TpyStmt]') -> None:
+            for s in stmts:
+                if isinstance(s, TpyTry):
+                    for h in s.handlers:
+                        if h.binding is not None:
+                            exc_bindings.add(h.binding)
+                if hasattr(s, "sub_bodies"):
+                    for b in s.sub_bodies():
+                        collect_exc(b)
+
+        collect_exc(body)
+
+        def root_name(expr: 'TpyExpr | None') -> 'str | None':
+            # Walk `.obj` (field access / subscript) down to the base name.
+            cur = expr
+            while cur is not None and not isinstance(cur, TpyName):
+                cur = getattr(cur, "obj", None)
+            return cur.name if isinstance(cur, TpyName) else None
+
+        def walk(stmts: 'list[TpyStmt]') -> None:
+            for s in stmts:
+                if isinstance(s, TpyVarDecl):
+                    ltype = frame_local_types.get(s.name)
+                    # Exclude any source rooted at an exception-handler binding
+                    # (`e`, `e.inner`, ...): the caught exception is handler-
+                    # scoped and may not survive a suspension stably, so a frame
+                    # pointer into it could dangle -- keep the owning copy.
+                    src_is_exc = root_name(s.init) in exc_bindings
+                    if (ltype is not None and s.init is not None
+                            and not src_is_exc
+                            and self.statements._is_plain_nonvalue(
+                                unwrap_ref_type(ltype))
+                            and not self.ctx.is_rvalue_source(s.init)):
+                        aliases.add(s.name)
+                        if self.statements._is_const_indirect(
+                                unwrap_ref_type(ltype), s.init, s):
+                            const_aliases.add(s.name)
+                elif isinstance(s, TpyTupleUnpack):
+                    # For-loop element unpacks (`idx, it = __for_tup`) already
+                    # get pointer-form slots via the loop machinery's
+                    # pointer_form_unpack_targets; skip them here so they keep
+                    # that path (and the `&std::get` emit) unchanged.
+                    src_is_loop_holder = (
+                        isinstance(s.value, TpyName)
+                        and s.value.name.startswith("__for_tup_"))
+                    # A frame `T*` alias is sound only when the source resolves
+                    # to storage outliving the frame: a stable lvalue (name /
+                    # field, bound by-ref) or a call/method-call returning a
+                    # borrow tuple (`std::tuple<T*, ...>` -- pointers to external
+                    # storage). A value-tuple rvalue temp (a tuple literal ->
+                    # `std::tuple<T, ...>`) would leave the alias pointing into
+                    # a destroyed stack temporary across the suspension, so it
+                    # falls back to the owning-copy path instead.
+                    src_safe_to_alias = (
+                        not self.ctx.is_rvalue_source(s.value)
+                        or isinstance(s.value, (TpyCall, TpyMethodCall)))
+                    if not src_is_loop_holder and src_safe_to_alias:
+                        src_const = self.statements._unpack_source_has_const_slots(s)
+                        for i, tname in enumerate(s.targets):
+                            if (tname is not None and tname in frame_local_types
+                                    and i < len(s.is_ref) and s.is_ref[i]
+                                    and self.statements._is_plain_nonvalue(
+                                        unwrap_ref_type(frame_local_types[tname]))):
+                                aliases.add(tname)
+                                elem_const = src_const or (
+                                    i < len(s.is_const_ref) and s.is_const_ref[i])
+                                if elem_const:
+                                    const_aliases.add(tname)
+                if hasattr(s, "sub_bodies"):
+                    for b in s.sub_bodies():
+                        walk(b)
+
+        walk(body)
+        return aliases
 
     def _sub_struct_qualname(
             self, owner: 'NominalType | None', method: str,

@@ -106,6 +106,8 @@ struct __coro_consumer {
 struct __coro_main_co {
     int32_t __state;
     bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::tpy::channel::Sender<Counter>> tx;
+    ::tpy::frame_slot<::tpystd::tpy::channel::Receiver<Counter>> rx;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> p;
     ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> c;
     ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_0 = nullptr;

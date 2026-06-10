@@ -97,6 +97,19 @@ class ResumableFuncState:
     with_borrowed_fields: 'set[str]' = field(default_factory=set)
     with_owning_str_targets: 'set[str]' = field(default_factory=set)
     async_with_struct_names: 'dict[int, tuple[str, str]]' = field(default_factory=dict)
+    # borrow-alias prescan (_classify_pointer_alias_locals): non-value
+    # statement-level locals -- single-assign aliases (`a = items[0]`) and
+    # tuple-unpack borrow targets (`a, b = first_two(items)`) -- that alias
+    # existing storage. Stored as `T*` frame slots so the alias (and the
+    # mutation visibility CPython guarantees) survives a suspension, instead
+    # of a value-copying `frame_slot<T>`. Mirrors the for-loop pointer_form
+    # classification (pointer_form_loop_var / pointer_form_unpack_targets).
+    pointer_alias_prescanned: bool = False
+    pointer_alias_locals: 'set[str]' = field(default_factory=set)
+    # Subset of pointer_alias_locals whose source is const (readonly param /
+    # const tuple element): the frame field is `const T*` and the local joins
+    # const_indirect_locals so downstream reads stay const-correct.
+    const_pointer_alias_locals: 'set[str]' = field(default_factory=set)
     # try/finally prescan (_prescan_resumable_try_finally)
     try_finally_prescanned: bool = False
     try_finally_uid_map: 'dict[int, int]' = field(default_factory=dict)

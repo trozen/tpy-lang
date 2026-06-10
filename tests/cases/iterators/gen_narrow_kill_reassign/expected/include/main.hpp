@@ -19,6 +19,7 @@ void main();
 struct __gen_gen {
     int32_t __state;
     std::variant<::tpy::BigInt, std::string> a;
+    ::tpy::BigInt n;
 
     enum : int32_t {
         S_INITIAL = 0,

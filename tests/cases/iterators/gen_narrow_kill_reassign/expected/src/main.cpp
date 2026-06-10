@@ -30,7 +30,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
         // a, n = remake()
         auto __tup_1 = remake();
         a = std::get<0>(__tup_1);
-        const ::tpy::BigInt& n = std::get<1>(__tup_1);
+        n = std::get<1>(__tup_1);
         // yield "rebound"
         __state = S_RESUME_1;
         return "rebound";

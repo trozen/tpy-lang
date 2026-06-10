@@ -3737,6 +3737,12 @@ class StatementAnalyzer:
                 elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
                 stmt.target_types[i] = elem_type
                 self.ctx.func.current_scope.define(name, elem_type)
+                # Bind into the codegen namespace too (mirrors _analyze_var_decl
+                # and the top-level unpack branch); the resumable-frame hoist
+                # reads `current_ns.all_bindings()`, so a target left only in
+                # `current_scope` vanishes across an await/yield suspension.
+                if self.ctx.func.current_ns:
+                    self.ctx.func.current_ns.bind_variable(name, elem_type)
                 self.init.mark_assigned(name)
                 self.narrowing.update_after_write(name, elem_type, elem_type, elem_expr)
                 stmt.is_new.append(True)

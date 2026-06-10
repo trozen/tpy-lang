@@ -5773,6 +5773,17 @@ Send/Sync rules for built-in types:
   peephole inside async functions; peepholes still apply to non-async
   for-loops). The CFG infrastructure is shape-neutral and the future
   generator migration consumes the same module.
+  Function-level locals become frame fields so they survive a
+  suspension, including **destructuring-assignment targets**
+  (`a, b = make_pair()`): value targets get a value field, `Own[T]`
+  targets an owning `frame_slot<T>` (moved out of the consumed tuple),
+  and a **borrow alias** -- a non-value local aliasing existing storage,
+  whether single-assign (`a = items[0]`) or a tuple-unpack borrow target
+  (`a, b = first_two(items)`) -- a `T*` (or `const T*`) field aliasing the
+  live source, so mutation through it after the suspension is visible on
+  the source, matching CPython (a value-copy field would silently diverge).
+  An exception-handler binding aliased into a local keeps an owning copy
+  (the caught exception is only live inside the handler).
   Nested suspending `finally` works (the inner `AsyncFinallyExit`
   forwards any pending exception or pending return into the outer's
   parking slots before transitioning to the outer's finally entry).
