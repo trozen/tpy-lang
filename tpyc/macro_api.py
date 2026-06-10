@@ -666,11 +666,13 @@ class FunctionMacroContext(_MacroContextBase):
     """
 
     def __init__(self, ctx: SemanticContext, func: TpyFunction,
-                 module_qname: str, loc: Any = None) -> None:
+                 module_qname: str, loc: Any = None,
+                 module_data: Any = None) -> None:
         super().__init__(
             ctx, loc if loc is not None else getattr(func, "loc", None))
         self._func = func
         self._module_qname = module_qname
+        self._module_data = module_data
 
     @property
     def function_name(self) -> str:
@@ -681,6 +683,15 @@ class FunctionMacroContext(_MacroContextBase):
     def module_qname(self) -> str:
         """Qualified name of the enclosing module."""
         return self._module_qname
+
+    @property
+    def module_data(self) -> Any:
+        """Opaque module-scoped payload the frontend plugin attached via
+        `FrontendModule.macro_data` (None for parser-produced modules).
+        How a macro-hosting plugin hands per-module data (lookup tables,
+        resolver state) to its own `@function_macro` without smuggling
+        non-`Expr` objects through decorator kwargs."""
+        return self._module_data
 
     @property
     def params(self) -> list[tuple[str, TypeInfo | None]]:

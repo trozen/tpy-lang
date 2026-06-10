@@ -12,7 +12,7 @@ resolver needs.
 """
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from ..macro_api import FunctionMacroContext, MacroError
 from ..diagnostics import SemanticError
@@ -24,8 +24,12 @@ if TYPE_CHECKING:
 
 def run_function_macros(
     func: 'TpyFunction', ctx: 'SemanticContext', module_qname: str,
+    module_data: 'Any' = None,
 ) -> None:
     """Resolve and apply `@function_macro` decorators on `func` in place.
+
+    `module_data` is the enclosing module's opaque plugin payload
+    (`TpyModule.macro_data`), surfaced to each macro as `ctx.module_data`.
 
     No-op when the function carries no pending macros.
     """
@@ -45,7 +49,8 @@ def run_function_macros(
         macro_fn = registry.get_function_macro(mod_name, fn_name)
         if macro_fn is None:
             raise SemanticError(f"Unknown function macro '{qname}'", func.loc)
-        fmctx = FunctionMacroContext(ctx, func, module_qname, loc=func.loc)
+        fmctx = FunctionMacroContext(ctx, func, module_qname, loc=func.loc,
+                                     module_data=module_data)
         try:
             macro_fn(fmctx, **kwargs)
         except MacroError as e:

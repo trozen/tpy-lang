@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Union
+from typing import Any, Union
 
 
 API_VERSION = 1
@@ -519,6 +519,27 @@ Stmt = Union[ExprStmt, VarDecl, Assign, If, While, RepeatUntil,
              ForRange, ForEach, Match, Return, Raise, Break, Continue]
 
 
+# --- Decorators ----------------------------------------------------------
+
+
+@dataclass
+class Decorator:
+    """A decorator on a declaration (`Function`, `Record`, `Enum`,
+    `EnumValue`, `Field`, `Constant`).
+
+    `name` is the dotted decorator name (`"tpy.native"`,
+    `"mylang.dataclass"`); lowering routes it via the compiler-owned
+    decorator registry (`frontend_ir/decorators.py`). Arguments are IR
+    expressions -- a decorator carries *declarative* config only. Data a
+    macro needs that isn't expressible as an `Expr` (arbitrary
+    plugin-computed Python) rides `FrontendModule.macro_data`, not here.
+    """
+    name: str = ""
+    args: tuple[Expr, ...] = ()
+    kwargs: tuple[tuple[str, Expr], ...] = ()
+    loc: Loc | None = None
+
+
 # --- Enum declarations ---------------------------------------------------
 
 
@@ -604,8 +625,9 @@ class Function:
     field is kept on the node so lowering can route correctly once
     records exist. `type_params` is reserved for future milestones.
 
-    `decorators` carries `(module, name, kwargs)` tuples; lowering threads
-    them into `TpyFunction.pending_macros` so sema applies them as
+    `decorators` carries typed `Decorator` IR nodes; lowering resolves
+    each through the decorator registry and threads `MACRO`-routed ones
+    into `TpyFunction.pending_macros` so sema applies them as
     `@function_macro`s. Only supported on free functions -- a decorator on
     a method is rejected at lowering (methods are not scanned by the
     function-macro phase), mirroring the parser's method-decorator error.
@@ -721,3 +743,10 @@ class FrontendModule:
     functions: tuple["Function", ...] = ()
     top_level_stmts: tuple[Stmt, ...] = ()
     directives: FrontendDirectives = field(default_factory=FrontendDirectives)
+    # Opaque, module-scoped Python payload a plugin hands to its own
+    # compile-time macros (e.g. a resolver's lookup tables). Lowering
+    # threads it onto `TpyModule.macro_data`; the function-macro phase
+    # exposes it as `ctx.module_data`. Not an IR `Expr` and never
+    # inspected by lowering -- macros run under CPython, so arbitrary
+    # objects are fine.
+    macro_data: Any = None

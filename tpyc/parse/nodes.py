@@ -1549,6 +1549,11 @@ class TpyModule:
     # module_class_names, type_alias_names, reverse_module_aliases,
     # bare_module_imports).
     resolver: 'Any | None' = None
+    # Opaque, module-scoped payload a frontend plugin hands to its own
+    # `@function_macro`s (set by lowering from `FrontendModule.macro_data`;
+    # always None for parser-produced modules). The function-macro phase
+    # exposes it as `ctx.module_data`.
+    macro_data: 'Any' = None
 
     def all_records(self) -> list[TpyRecord]:
         """All records including nested, in definition order (depth-first)."""
