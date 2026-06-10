@@ -1980,9 +1980,17 @@ class AsyncCoroCodegen:
                             # Generic CMs are rejected at sema today (see
                             # registration.py); the helper handles type_args
                             # so this prescan stays robust if that lifts.
+                            # Name each sub-coro struct from the method's
+                            # DEFINING record (sema-stamped; an ancestor when
+                            # the manager inherits __aenter__/__aexit__), not
+                            # the manager's subclass type -- the struct exists
+                            # only for the definer. Falls back to the manager
+                            # type for own methods (owner == ctx_inner).
+                            aenter_owner = item.aenter_owner_type or ctx_inner
+                            aexit_owner = item.aexit_owner_type or ctx_inner
                             struct_names_out[cur_n] = (
-                                self._sub_struct_qualname(ctx_inner, "__aenter__"),
-                                self._sub_struct_qualname(ctx_inner, "__aexit__"),
+                                self._sub_struct_qualname(aenter_owner, "__aenter__"),
+                                self._sub_struct_qualname(aexit_owner, "__aexit__"),
                             )
                         if item.target is not None:
                             enter_t = (unwrap_ref_type(item.enter_type)

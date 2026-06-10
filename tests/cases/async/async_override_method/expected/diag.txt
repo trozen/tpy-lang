@@ -1,0 +1,1 @@
+main.py:13: warning: Method 'Derived.val' hides 'Base.val' -- any 'Base' reference will call 'Base.val', not 'Derived.val' (differs from Python's dynamic dispatch); make 'Base' a @dynamic protocol for runtime dispatch

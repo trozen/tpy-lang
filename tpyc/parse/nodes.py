@@ -888,7 +888,7 @@ class TpyForEach(TpyStmt):
     hoist_loop_var: bool = False  # set by sema: loop var used after loop, needs pre-declaration
     consuming_iter_fi: 'FunctionInfo | None' = None  # set by sema: consuming __iter__ overload at last use
     is_async: bool = False  # Set by parser: `async for` (lowers to __aiter__/await __anext__ inside async def)
-    async_aiter_type: 'NominalType | None' = None  # set by sema for async-for: resolved aiter record (return of __aiter__())
+    async_aiter_type: 'NominalType | None' = None  # set by sema for async-for: the DEFINING record of __anext__ (an ancestor of the iterator when inherited), used by codegen to name the __anext__ coro struct
 
     def exprs(self) -> list[TpyExpr]:
         return [self.iterable]
@@ -987,6 +987,12 @@ class TpyWithItem:
     # Set by sema: True iff the manager is an lvalue, so the with-region must
     # borrow it -- a by-value ctx slot would mutate a throwaway copy.
     manager_borrowed: bool = False
+    # Set by sema for `async with`: the DEFINING record of __aenter__ /
+    # __aexit__ (an ancestor of the manager type when inherited). Codegen
+    # names the sub-coro struct from these, not the manager's subclass type
+    # -- the struct is emitted once, for the defining record.
+    aenter_owner_type: 'NominalType | None' = field(default=None, kw_only=True)
+    aexit_owner_type: 'NominalType | None' = field(default=None, kw_only=True)
 
 
 @dataclass

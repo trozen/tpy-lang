@@ -107,7 +107,7 @@ Library breadth + first real I/O. Each item is sized to land independently.
 
 | Item | Description |
 |------|-------------|
-| Sync primitives | `Lock` and `Semaphore` **SHIPPED** (FIFO `list[Waker]` waiter queue, usable as `async with`; mirror the early-shipped `Event`). `Queue` and `BoundedSemaphore` remain -- `BoundedSemaphore` (a `Semaphore` subclass) is blocked on the inherited-`async def` coro-struct-naming bug (BUGS.md). All built on the same `Waker`-parking shape. |
+| Sync primitives | `Lock` and `Semaphore` **SHIPPED** (FIFO `list[Waker]` waiter queue, usable as `async with`; mirror the early-shipped `Event`). `Queue` and `BoundedSemaphore` remain -- `BoundedSemaphore` (a `Semaphore` subclass) is now unblocked (the inherited-`async def` coro-struct-naming bug is fixed). All built on the same `Waker`-parking shape. |
 | Multi-awaiter `Future[T]` | If single-awaiter v1 turns out to be limiting in practice. |
 | Task introspection | `Task.add_done_callback`, `get_name`, `set_name`, `done`, `result`, `exception`. |
 | Public `Reactor` protocol | Designed against the first concrete backend's needs (not before). |
@@ -675,7 +675,7 @@ Exception storage uses `std::exception_ptr` to preserve the dynamic type after c
 ### What does not match (until v2+)
 
 - `Task.add_done_callback`, `Task.get_loop`, `Task.get_name`, `Task.set_name` -- v2.
-- `asyncio.Queue`, `BoundedSemaphore` -- v2 (`BoundedSemaphore` blocked on the inherited-`async def` coro-struct-naming bug, BUGS.md).
+- `asyncio.Queue`, `BoundedSemaphore` -- v2 (both implementable now; `BoundedSemaphore` is a `Semaphore` subclass, unblocked since the inherited-`async def` coro-struct-naming fix).
 - Multi-awaiter `Future`: v2.
 - Repeated `await future` after done: v2 (with multi-awaiter).
 - The `loop = asyncio.get_event_loop()` pattern -- TPy has no public `Executor` API.

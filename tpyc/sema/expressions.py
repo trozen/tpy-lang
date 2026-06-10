@@ -26,7 +26,7 @@ from ..typesys import (
     PendingGenericInstanceType, unwrap_ref_type, unwrap_send_sync, make_ref, RefType,
     is_integer_type, is_any_int_type, is_union_or_optional_type,
     is_callable_type, is_float_type, is_any_float_type, is_numeric_type,
-    unwrap_own, is_readonly_span, collapse_tuple_own_elements,
+    unwrap_own, coro_struct_owner, is_readonly_span, collapse_tuple_own_elements,
     yield_uses_borrow_slot,
     RecursiveAliasInstanceType, recursive_union_alternatives)
 from ..parse import (
@@ -2251,7 +2251,8 @@ class ExpressionAnalyzer:
                 expr.awaited_async_func_name = mfi.name
                 owner_type = self._method_call_receiver_type(operand)
                 if owner_type is not None:
-                    expr.awaited_method_owner_type = owner_type
+                    expr.awaited_method_owner_type = coro_struct_owner(
+                        mfi.owning_type_qname, owner_type)
                 if mfi.return_type is not None:
                     self.ctx.func.current_awaited_subframes.append(mfi)
                     return self._unwrap_awaitable_return(mfi.return_type)

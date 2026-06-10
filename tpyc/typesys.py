@@ -1581,6 +1581,23 @@ def unwrap_own(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def coro_struct_owner(owning_type_qname: 'str | None',
+                      receiver: 'NominalType') -> 'NominalType':
+    """Owner NominalType for naming a method's coro / resumable-frame struct.
+
+    The struct is emitted once, for the method's DEFINING record. When the
+    method is inherited (its `owning_type_qname` differs from the receiver's
+    qname), re-base onto the defining record so call/await sites name
+    `__coro_<Base>_<method>` (which exists) rather than
+    `__coro_<Subclass>_<method>` (which is never emitted). For an own method
+    the receiver is returned unchanged, preserving class-level type_args.
+    """
+    if owning_type_qname is None or owning_type_qname == receiver.qualified_name():
+        return receiver
+    base_name = owning_type_qname.rsplit(".", 1)[-1]
+    return NominalType(base_name, _module_qname=owning_type_qname)
+
+
 def strip_own_type_args(typ: 'NominalType') -> 'NominalType':
     """Strip a top-level Own[...] from each of a nominal type's args
     (`Iterable[Own[X]]` -> `Iterable[X]`). An Own-wrapped type arg signals
