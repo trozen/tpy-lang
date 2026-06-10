@@ -1,0 +1,2 @@
+main.py:22: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
+main.py:20: warning: Own[Box] param 'ob' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

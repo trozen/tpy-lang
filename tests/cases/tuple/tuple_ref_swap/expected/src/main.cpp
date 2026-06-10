@@ -15,9 +15,9 @@ void main() {
     // p = Point(Int32(1), Int32(2))
     Point p = Point(1, 2);
     // t = (p, Int32(10))
-    auto t = std::tuple<Point*, int32_t>{&(p), 10};
+    auto t = std::tuple<Point, int32_t>{std::move(p), 10};
     // result = swap(t)
-    auto result = swap(t);
+    auto result = swap(::tpy::tuple_to_pointer<std::tuple<Point*, int32_t>>(t));
     // print(result[0])
     std::cout << std::get<0>(result) << "\n";
     // print(result[1].x)

@@ -562,6 +562,13 @@ class StatementAnalyzer:
                 continue
             if not self.compat.is_lvalue(elem):
                 literal.elem_capture.append(V)
+            elif self.compat.is_owned_last_use_move(elem):
+                # An owned local/param at its last use MOVES into the slot, so
+                # the local OWNS the moved element (storage form) -- the local
+                # analog of the field auto-move (above) and the scalar Own[T]
+                # transfer. Consuming it here clears the unconsumed-Own warning.
+                self.compat.check_own_consumption(elem)
+                literal.elem_capture.append(V)
             else:
                 # A ref-tuple of a non-copyable element (`tuple<T&, ...>`) has
                 # no path to a value tuple later -- the C++ conversion fails
@@ -3367,6 +3374,20 @@ class StatementAnalyzer:
         else:
             raise self.ctx.error(f"Variable '{stmt.name}' has no type annotation and no initializer", stmt)
 
+        # An annotated reassigned per-element-Own tuple local (incl. the
+        # nullable `tuple[..., Own[T]] | None` form) takes the unified borrow
+        # type just like the inferred path above, so an alias rebind aliases
+        # the source instead of copying. The inferred branch handles its own
+        # collapse before tuple-capture annotation; this covers the annotated
+        # `elif stmt.type` path that bypasses it, keeping sema's recorded type
+        # consistent with the borrow shape codegen emits.
+        if (stmt.type is not None
+                and stmt.name in self.ctx.func.current_reassigned_vars):
+            collapsed = collapse_tuple_own_elements(var_type)
+            if collapsed is not var_type:
+                var_type = collapsed
+                self.ctx.var_types[id(stmt)] = var_type
+
         # Deferred type inference for new locals (PendingViewType, list alias, etc.)
         if not is_global_declared and existing_type is None:
             var_type = self._infer_new_local_type(
@@ -3421,10 +3442,17 @@ class StatementAnalyzer:
             # literals own their captures, calls return owning rvalues.
             init_unwrapped = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
             var_bare = unwrap_readonly(var_type)
+            # A nullable borrow-form tuple (`tuple[..., T] | None`) aliases its
+            # source's reference elements just like the bare tuple form, so it
+            # needs the same borrow registration -- a later write through the
+            # narrowed local (`t[1].val = ...`) must propagate to the source.
+            is_ptr_repr_tuple_var = (
+                (isinstance(var_bare, TupleType) and var_bare.has_pointer_repr_element())
+                or (isinstance(var_bare, OptionalType)
+                    and var_bare.wraps_pointer_repr_tuple()))
             borrow_tuple_alias = (
                 var_type.is_value_type()
-                and isinstance(var_bare, TupleType)
-                and var_bare.has_pointer_repr_element()
+                and is_ptr_repr_tuple_var
                 and isinstance(init_unwrapped,
                                (TpyName, TpySubscript, TpyFieldAccess)))
             if not var_type.is_value_type() or borrow_tuple_alias:

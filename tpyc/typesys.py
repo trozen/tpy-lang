@@ -2471,6 +2471,12 @@ def collapse_tuple_own_elements(var_type: 'TpyType') -> 'TpyType':
     unified borrow type lets sema and codegen agree on the borrow-slot path.
     """
     inner = unwrap_readonly(var_type)
+    if isinstance(inner, OptionalType):
+        collapsed_inner = collapse_tuple_own_elements(inner.inner)
+        if collapsed_inner is inner.inner:
+            return var_type
+        rewrapped = inner.with_inner(collapsed_inner)
+        return ReadonlyType(rewrapped) if isinstance(var_type, ReadonlyType) else rewrapped
     if not isinstance(inner, TupleType):
         return var_type
     if not any(isinstance(et, OwnType) for et in inner.element_types):
@@ -2677,6 +2683,18 @@ class OptionalType(TpyType):
         if self.force_pointer_repr:
             return True
         return not self.inner.is_value_type()
+
+    def wraps_pointer_repr_tuple(self) -> bool:
+        """True when this Optional wraps a tuple that has a pointer-repr element.
+
+        `tuple[..., Box] | None` is a value type (tuples always are), so
+        `uses_pointer_repr()` is False and it stays `std::optional<...>`. But the
+        inner tuple has a borrow form (`std::tuple<..., T*>`) distinct from its
+        storage form, so a nullable local of this type takes the borrow-form
+        inner shape (`std::optional<std::tuple<..., T*>>`) and aliases reference
+        elements on rebind rather than copying them.
+        """
+        return isinstance(self.inner, TupleType) and self.inner.has_pointer_repr_element()
 
     def value_form(self) -> 'ValueForm':
         # Keyed on the C++ shape (uses_pointer_repr), NOT is_value_type: a

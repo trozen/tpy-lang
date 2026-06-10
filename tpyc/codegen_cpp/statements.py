@@ -22,7 +22,7 @@ from ..typesys import (
     resolve_int_literals,
     error_return_to_cpp, qualify_exception_name, is_return_exception,
     unwrap_ref_type, RefType, unwrap_qualifiers,
-    is_void_like_type,
+    is_void_like_type, collapse_tuple_own_elements,
 )
 from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign, TpyDelItem, TpyDelVar, TpyDelAttr, TpyExprStmt, TpyReturn, TpyYield,
@@ -276,10 +276,23 @@ class StatementGenerator:
         carries that local's const, so iterate to a fixpoint over name chains.
         """
         bindings: dict[str, list[TpyExpr]] = {}
+        # Nullable-borrow-tuple locals tracked separately: their const set is
+        # const_optional_borrow_tuple_locals (the inner tuple sits behind a
+        # std::optional, but const-ness is inferred from the same sources).
+        opt_bindings: dict[str, list[TpyExpr]] = {}
+
+        # A nullable-borrow-tuple local is identified by its TARGET type
+        # (`tuple[..., T] | None`), not the source: a rebind source is often a
+        # plain `tuple[..., T]` field, but the local stays the optional form.
+        optional_targets: set[str] = set()
 
         def collect(stmts: list[TpyStmt]) -> None:
             for stmt in stmts:
                 if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
+                    tt = self._resolve_target_type(stmt)
+                    if (isinstance(tt, OptionalType)
+                            and tt.wraps_pointer_repr_tuple()):
+                        optional_targets.add(stmt.name)
                     record(stmt.name, stmt.init)
                 elif (isinstance(stmt, TpyAssign)
                       and isinstance(stmt.target, TpyName)):
@@ -297,7 +310,14 @@ class StatementGenerator:
             st = self.ctx.analyzer.get_expr_type(src)
             stb = (unwrap_readonly(unwrap_ref_type(st))
                    if st is not None else None)
-            if isinstance(stb, TupleType) and stb.has_pointer_repr_element():
+            is_ptr_repr_tuple = (
+                (isinstance(stb, TupleType) and stb.has_pointer_repr_element())
+                or (isinstance(stb, OptionalType) and stb.wraps_pointer_repr_tuple()))
+            if not is_ptr_repr_tuple:
+                return
+            if tgt in optional_targets:
+                opt_bindings.setdefault(tgt, []).append(src)
+            else:
                 bindings.setdefault(tgt, []).append(src)
 
         def _walrus_bindings(expr: TpyExpr | None):
@@ -317,18 +337,23 @@ class StatementGenerator:
                             yield from _walrus_bindings(item)
 
         collect(func.body)
-        if not bindings:
+        if not bindings and not opt_bindings:
             return
-        const_set = self.ctx.const_borrow_form_tuple_locals
+        # Fixpoint over both kinds together: a name chain can cross between a
+        # plain borrow-tuple local and a nullable one, and `is_const_storage_source`
+        # (consulted via `_tuple_source_is_const`) reads both const sets.
+        pairs = [(bindings, self.ctx.const_borrow_form_tuple_locals),
+                 (opt_bindings, self.ctx.const_optional_borrow_tuple_locals)]
         changed = True
         while changed:
             changed = False
-            for name, srcs in bindings.items():
-                if name in const_set:
-                    continue
-                if any(self._tuple_source_is_const(s) for s in srcs):
-                    const_set.add(name)
-                    changed = True
+            for binds, const_set in pairs:
+                for name, srcs in binds.items():
+                    if name in const_set:
+                        continue
+                    if any(self._tuple_source_is_const(s) for s in srcs):
+                        const_set.add(name)
+                        changed = True
 
     def _tuple_source_is_const(self, src: TpyExpr) -> bool:
         """Whether a borrow-tuple binding source reads from const storage.
@@ -1024,6 +1049,13 @@ class StatementGenerator:
                 target_type = resolved
             elif isinstance(target_type, PendingViewType):
                 target_type = self.types._resolve_pending_view(target_type)
+            # A reassigned per-element-Own tuple local (including the nullable
+            # `tuple[..., Own[T]] | None` form) takes the unified borrow shape
+            # so an alias rebind aliases the source instead of copying. Sema
+            # records this on inferred decls; an annotated decl reaches codegen
+            # with the raw `stmt.type`, so re-apply the collapse here.
+            if stmt.name in self.ctx.reassigned_vars:
+                target_type = collapse_tuple_own_elements(target_type)
         return target_type
 
     def _resolve_pending_container(self, typ: TpyType) -> TpyType | None:
@@ -1727,6 +1759,29 @@ class StatementGenerator:
         return "", self._maybe_wrap_tuple_to_pointer(
             init_expr, var_type, inner, const=elem_const)
 
+    def _optional_borrow_tuple_rhs(self, name: str, init: TpyExpr | None,
+                                   inner_tuple: TpyType, elem_const: bool,
+                                   opt_cpp: str, indent: str) -> tuple[str, str]:
+        """Return (prefix_decl, rhs_expr) for binding `init` into a nullable
+        borrow-form tuple local `name` (`std::optional<std::tuple<..., T*>>`).
+
+        `None` -> `std::nullopt`; otherwise reuse `_borrow_tuple_rhs` (which
+        produces the `std::tuple<..., T*>` borrow value, materializing an
+        owning-call RHS into a storage slot) and wrap the result in the
+        optional. The inner tuple aliases its reference elements so a rebind
+        does not copy them (matching CPython).
+        """
+        if init is None:
+            return "", "std::nullopt"
+        inner = self.ctx.unwrap_copy(init)
+        if isinstance(inner, TpyCoerce):
+            inner = inner.expr
+        if isinstance(inner, TpyNoneLiteral):
+            return "", "std::nullopt"
+        prefix, borrow_rhs = self._borrow_tuple_rhs(
+            name, init, inner_tuple, elem_const, indent)
+        return prefix, f"{opt_cpp}{{{borrow_rhs}}}"
+
     def _typed_brace_init(self, init_expr: str,
                           target_type: TpyType | None) -> str:
         """Make a brace-init expression self-describing by prefixing its
@@ -1883,6 +1938,18 @@ class StatementGenerator:
                     prefix, rhs = self._borrow_tuple_rhs(
                         stmt.name, stmt.init, var_type, elem_const, indent)
                     return f"{prefix}{indent}{cpp_name} = {rhs};\n"
+                if form is LocalCppForm.OPTIONAL_BORROW_TUPLE:
+                    # Nullable BORROW_TUPLE: assign the optional-wrapped borrow
+                    # lift (alias) or std::nullopt for None. The inner tuple is
+                    # the borrow form so reference elements alias on rebind.
+                    inner_tuple = (var_type.inner
+                                   if isinstance(var_type, OptionalType) else var_type)
+                    elem_const = stmt.name in self.ctx.const_optional_borrow_tuple_locals
+                    opt_cpp = (f"std::optional<"
+                               f"{self.types.tuple_borrow_cpp(inner_tuple, const=elem_const)}>")
+                    prefix, rhs = self._optional_borrow_tuple_rhs(
+                        stmt.name, stmt.init, inner_tuple, elem_const, opt_cpp, indent)
+                    return f"{prefix}{indent}{cpp_name} = {rhs};\n"
                 # String x = x + y -> x += y for buffer reuse
                 if result := self._try_str_inplace_append(stmt.name, cpp_name, stmt.init, var_type, indent):
                     return result
@@ -1900,6 +1967,20 @@ class StatementGenerator:
         self.ctx.var_types[stmt.name] = target_type
         if self.ctx.current_ns and target_type:
             self.ctx.current_ns.bind_variable(stmt.name, target_type)
+        if (isinstance(target_type, OptionalType)
+                and target_type.wraps_pointer_repr_tuple()):
+            # Nullable borrow-form tuple: `std::optional<std::tuple<..., T*>>`.
+            # The optional wraps the BORROW-form inner tuple so reference
+            # elements ALIAS storage on rebind (matching CPython) instead of
+            # copying. Same lift machinery as BORROW_TUPLE, lifted into / out
+            # of the std::optional; `None` init -> std::nullopt.
+            self.ctx.optional_borrow_tuple_locals.add(stmt.name)
+            elem_const = stmt.name in self.ctx.const_optional_borrow_tuple_locals
+            inner_borrow = self.types.tuple_borrow_cpp(target_type.inner, const=elem_const)
+            opt_cpp = f"std::optional<{inner_borrow}>"
+            prefix, rhs = self._optional_borrow_tuple_rhs(
+                stmt.name, stmt.init, target_type.inner, elem_const, opt_cpp, indent)
+            return f"{prefix}{indent}{opt_cpp} {cpp_name} = {rhs};\n"
         if (stmt.init is not None
                 and isinstance(target_type, TupleType)
                 and target_type.has_pointer_repr_element()):
@@ -4718,6 +4799,22 @@ class StatementGenerator:
                         self.ctx.const_borrow_form_tuple_locals.add(name)
                     borrow_cpp = self.types.tuple_borrow_cpp(resolve_type, const=elem_const)
                     out.write(f"{indent}{borrow_cpp} {name};\n")
+                elif (isinstance(var_type, OptionalType)
+                        and var_type.wraps_pointer_repr_tuple()):
+                    # Nullable borrow-form tuple first-declared in a branch:
+                    # forward-declare `std::optional<std::tuple<..., T*>>`
+                    # (default nullopt) and register the tracking set so branch
+                    # assignments take the OPTIONAL_BORROW_TUPLE path (alias, not
+                    # copy). Mirrors the main-path decl; branch_hoisted so an
+                    # owning-call binding's slot is function-scoped (parallel to
+                    # the BORROW_TUPLE arm above).
+                    self.ctx.optional_borrow_tuple_locals.add(name)
+                    self.ctx.branch_hoisted_vars.add(name)
+                    elem_const = is_const or name in self.ctx.const_optional_borrow_tuple_locals
+                    if elem_const:
+                        self.ctx.const_optional_borrow_tuple_locals.add(name)
+                    inner_borrow = self.types.tuple_borrow_cpp(var_type.inner, const=elem_const)
+                    out.write(f"{indent}std::optional<{inner_borrow}> {name};\n")
                 else:
                     out.write(f"{indent}{cpp_type} {name};\n")
 

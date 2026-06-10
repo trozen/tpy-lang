@@ -639,6 +639,14 @@ class FunctionTrackingState:
     # reaching path is caught.
     borrow_into_own_hazards: set[tuple[str, int]] = field(default_factory=set)
 
+    # (name, element-idx) for tuple locals whose element is an OWNED source
+    # (Own-typed param/return or an owned local) bound by reference rather than
+    # moved (not at last use, not copy()). A later NAME return/pass into an
+    # `Own[T]` slot deref-COPIES it into owned storage -- the warned analog of
+    # the plain-borrow reject above, mirroring the scalar `T -> Own[T]` copy
+    # warning. Flow-sensitive (UNION-merged) like the reject hazard.
+    copies_into_own_hazards: set[tuple[str, int]] = field(default_factory=set)
+
 
     # --- Variable declaration tracking (per-function) ---
     var_decl_by_name: dict[str, 'TpyVarDecl'] = field(default_factory=dict)

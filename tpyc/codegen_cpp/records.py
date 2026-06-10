@@ -1223,11 +1223,19 @@ class RecordGenerator:
                 fld_type = field_types[field_name]
                 # Unwrap copy() in member init -- init list copies implicitly
                 source = self.ctx.unwrap_copy(stmt.value)
+                # A copy() of a pointer-repr tuple goes through _gen_copy_expr
+                # (storage form, element-wise value copy) rather than the
+                # unwrapped borrow-form literal, which mismatches a const source.
+                # The result is already storage form, so skip the wrap below.
+                copy_storage_tuple = (source is not stmt.value
+                                      and isinstance(fld_type, TupleType)
+                                      and fld_type.has_pointer_repr_element())
                 # A member-initializer-list expression has no place to declare
                 # temps; if `gen_expr` registers any, demote the assignment to
                 # the body where the next `temps.flush` can emit them.
                 checkpoint = self.ctx.temps.checkpoint()
-                value = self.expressions.gen_expr(source, fld_type)
+                value = self.expressions.gen_expr(
+                    stmt.value if copy_storage_tuple else source, fld_type)
                 if self.ctx.temps.rollback_to(checkpoint):
                     demote(field_name, stmt.loc,
                            "the initializer expression requires a codegen "
@@ -1278,7 +1286,8 @@ class RecordGenerator:
                 # and skip the wrap.
                 if (isinstance(fld_type, TupleType)
                         and fld_type.has_pointer_repr_element()
-                        and not self.ctx.is_storage_form_source(source)):
+                        and not self.ctx.is_storage_form_source(source)
+                        and not copy_storage_tuple):
                     fld_cpp = self.types.type_to_cpp(fld_type)
                     value = f"::tpy::tuple_to_storage<{fld_cpp}>({value})"
                 # Pointer-variant param -> value-variant field: deref+copy.

@@ -15,7 +15,7 @@ std::tuple<Tree<int32_t>, int32_t> own_escape() {
     // leaf: Tree[Int32] = 5
     Tree<int32_t> leaf = 5;
     // pair = (leaf, 0)
-    auto pair = std::tuple<Tree<int32_t>&, int32_t>{leaf, 0};
+    auto pair = std::tuple<Tree<int32_t>, int32_t>{std::move(leaf), 0};
     // return pair
     return pair;
 }

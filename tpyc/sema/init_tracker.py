@@ -37,6 +37,7 @@ class InitTracker:
             owns_fresh_tuple_member_vars=frozenset(self.ctx.func.owns_fresh_tuple_member_vars.items()),
             owning_storage_tuple_vars=frozenset(self.ctx.func.owning_storage_tuple_vars),
             borrow_into_own_hazards=frozenset(self.ctx.func.borrow_into_own_hazards),
+            copies_into_own_hazards=frozenset(self.ctx.func.copies_into_own_hazards),
             borrows=self.ctx.func.borrow_tracker.freeze(),
             value_ranges=frozenset(self.ctx.func.value_ranges.items()),
         )
@@ -57,6 +58,7 @@ class InitTracker:
         self.ctx.func.owns_fresh_tuple_member_vars = dict(state.owns_fresh_tuple_member_vars)
         self.ctx.func.owning_storage_tuple_vars = set(state.owning_storage_tuple_vars)
         self.ctx.func.borrow_into_own_hazards = set(state.borrow_into_own_hazards)
+        self.ctx.func.copies_into_own_hazards = set(state.copies_into_own_hazards)
         self.ctx.func.borrow_tracker.restore_from_frozen(state.borrows)
         self.ctx.func.value_ranges = dict(state.value_ranges)
 
@@ -128,6 +130,7 @@ class InitTracker:
         self.ctx.func.owns_fresh_tuple_member_vars = dict(before.owns_fresh_tuple_member_vars)
         self.ctx.func.owning_storage_tuple_vars = set(before.owning_storage_tuple_vars)
         self.ctx.func.borrow_into_own_hazards = set(before.borrow_into_own_hazards)
+        self.ctx.func.copies_into_own_hazards = set(before.copies_into_own_hazards)
         self.ctx.func.borrow_tracker.restore_from_frozen(before.borrows)
         self.ctx.func.value_ranges = dict(before.value_ranges)
         if condition_type_facts is not None:
@@ -162,6 +165,7 @@ class InitTracker:
         # Borrow-into-Own hazard: same UNION-in policy -- a plain-borrow element
         # bound inside the loop stays flagged after it.
         body_end_borrow_own = set(self.ctx.func.borrow_into_own_hazards)
+        body_end_copies_own = set(self.ctx.func.copies_into_own_hazards)
         self.restore(before)
         self.ctx.func.non_null_ptr_vars &= body_end_nn_ptr
         self.ctx.func.param_provenance_vars &= body_end_param_prov
@@ -171,3 +175,4 @@ class InitTracker:
             self.ctx.func.owns_fresh_tuple_member_vars.setdefault(name, idx)
         self.ctx.func.owning_storage_tuple_vars |= body_end_owning
         self.ctx.func.borrow_into_own_hazards |= body_end_borrow_own
+        self.ctx.func.copies_into_own_hazards |= body_end_copies_own

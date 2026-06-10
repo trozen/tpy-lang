@@ -1277,6 +1277,7 @@ class AsyncCoroCodegen:
         # on exit.
         old_pointer_locals = self.ctx.pointer_locals
         old_borrow_form_tuple_locals = self.ctx.borrow_form_tuple_locals
+        old_optional_borrow_tuple_locals = self.ctx.optional_borrow_tuple_locals
         old_type_param_bounds = self.ctx.current_type_param_bounds
 
         # Reset frame-specific fields before setup_body_scope, since the
@@ -1363,6 +1364,7 @@ class AsyncCoroCodegen:
             self.ctx.current_method_record_type = old_method_record
             self.ctx.pointer_locals = old_pointer_locals
             self.ctx.borrow_form_tuple_locals = old_borrow_form_tuple_locals
+            self.ctx.optional_borrow_tuple_locals = old_optional_borrow_tuple_locals
             self.ctx.current_type_param_bounds = old_type_param_bounds
 
     def gen_coro_finally_top_def(self, out: "TextIO", func: TpyFunction,

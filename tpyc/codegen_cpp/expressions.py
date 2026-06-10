@@ -640,6 +640,22 @@ class ExpressionGenerator:
             if self.ctx.is_ptr_variant_union(var_type):
                 val_cpp = self.types.type_to_cpp(var_type)
                 return f"::tpy::to_value_variant<{val_cpp}>({arg.name})"
+        # copy() of a WHOLE tuple with a reference element: build the storage
+        # form directly (element-wise value copy) instead of routing through a
+        # borrow-form literal + tuple_to_storage, which mismatches a const
+        # source (`&const_ref` is `const T*` vs the `T*` slot) and spells a
+        # malformed `std::tuple<<literal>, ...>` from the unresolved arg type.
+        if isinstance(arg_type, TupleType) and arg_type.has_pointer_repr_element():
+            storage_cpp = self.types.tuple_storage_cpp(arg_type)
+            if isinstance(arg, TpyTupleLiteral):
+                # Each element straight into its value slot: a value element
+                # copies, a reference element copy-constructs into the `T` slot.
+                parts = [self.gen_expr_deref(e, self.types.get_resolved_type(e))
+                         for e in arg.elements]
+                return f"{storage_cpp}{{{', '.join(parts)}}}"
+            # A tuple local / field / subscript source: deref-copy each element
+            # into storage (identity-copy for an already-storage source).
+            return f"::tpy::tuple_to_storage<{storage_cpp}>({self.gen_expr(arg)})"
         arg_expr = self.gen_expr_deref(arg)
         # Record constructors are prvalues — already an rvalue, no copy needed
         if isinstance(arg, TpyCall) and isinstance(arg.func, TpyName) and self.ctx.analyzer.registry.get_record(arg.func_name):
@@ -1005,6 +1021,18 @@ class ExpressionGenerator:
             slot_is_storage = isinstance(tuple_ptype_inner, OwnType)
             if slot_is_storage:
                 tuple_ptype_inner = unwrap_readonly(unwrap_ref_type(tuple_ptype_inner.wrapped))
+            elif (isinstance(tuple_ptype_inner, TupleType)
+                    and not isinstance(arg, TpyTupleLiteral)
+                    and any(isinstance(unwrap_readonly(e), OwnType)
+                            for e in tuple_ptype_inner.element_types)):
+                # A per-element-Own tuple param is storage form (std::tuple<
+                # ..., T>): collapse Own[T]->T so a borrow-form arg (a tuple
+                # local that didn't move the element in) gets a tuple_to_storage
+                # copy, matching the scalar T->Own[T] copy. A literal arg is
+                # already built storage form (its Own slots are VALUE-captured),
+                # so it needs no wrap and is excluded here.
+                slot_is_storage = True
+                tuple_ptype_inner = collapse_tuple_own_elements(tuple_ptype_inner)
             if (isinstance(tuple_ptype_inner, TupleType)
                     and tuple_ptype_inner.has_pointer_repr_element()):
                 arg_is_storage = self.ctx.is_storage_form_source(arg)

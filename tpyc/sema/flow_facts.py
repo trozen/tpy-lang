@@ -160,6 +160,10 @@ class FlowFacts:
     # is a plain borrowed reference -- rejected/warned if the local is later
     # returned/passed/stored by NAME into an Own[T] slot (see sema.context).
     borrow_into_own_hazards: frozenset[tuple[str, int]] = frozenset()
+    # (name, idx) for an owned source bound by reference -- WARNED (copies into
+    # owned storage) if the local is later returned/passed by NAME into an
+    # Own[T] slot. The warn analog of borrow_into_own_hazards.
+    copies_into_own_hazards: frozenset[tuple[str, int]] = frozenset()
     # Borrow map: (storage_name, borrower_name, BorrowKind) triples.
     # "__for_iter" is used as the borrower for implicit for-loop iterator borrows.
     borrows: frozenset[tuple[str, str, BorrowKind]] = frozenset()
@@ -210,6 +214,10 @@ class FlowFacts:
             ),
             borrow_into_own_hazards=_merge_sets(
                 then.borrow_into_own_hazards, else_.borrow_into_own_hazards,
+                then_term, else_term, _MergePolicy.UNION,
+            ),
+            copies_into_own_hazards=_merge_sets(
+                then.copies_into_own_hazards, else_.copies_into_own_hazards,
                 then_term, else_term, _MergePolicy.UNION,
             ),
             borrows=_merge_borrow_triples(

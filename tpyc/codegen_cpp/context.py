@@ -551,6 +551,11 @@ class LocalCppForm(Enum):
         element pointers), an owning-call RHS materializes into a storage
         slot, and a storage-form lvalue RHS lifts via `tpy::tuple_to_pointer`.
         The tuple analog of a scalar rvalue-reassigned `POINTER` local.
+      * `OPTIONAL_BORROW_TUPLE` -- `std::optional<std::tuple<..., T*>>`. A
+        nullable BORROW_TUPLE: `tuple[..., Box] | None` local whose inner tuple
+        takes borrow form so reference elements alias storage on rebind. Same
+        storage<->pointer wrap as BORROW_TUPLE but lifted into / out of the
+        `std::optional`; narrowed access derefs via `*t`; `t = None` is nullopt.
       * `VALUE` -- everything else (value types, T& ref-bound locals,
         plain non-value locals rendered via T&).
     """
@@ -561,6 +566,7 @@ class LocalCppForm(Enum):
     PTR_VARIANT = auto()
     STORAGE_TUPLE = auto()
     BORROW_TUPLE = auto()
+    OPTIONAL_BORROW_TUPLE = auto()
     VALUE = auto()
 
 
@@ -818,6 +824,14 @@ class CodeGenContext:
     # lift into the local must target this const borrow type; a write through a
     # const element is rejected in sema. Populated by `_compute_borrow_tuple_const`.
     const_borrow_form_tuple_locals: set[str] = field(default_factory=set)
+    # Nullable borrow-form tuple locals: `tuple[..., Box] | None` declared as
+    # `std::optional<std::tuple<..., T*>>`. The optional wraps the borrow-form
+    # inner tuple so reference elements ALIAS storage on rebind (matching
+    # CPython) rather than copying. Parallel to borrow_form_tuple_locals but
+    # the value lives behind `std::optional` (narrowed access derefs via `*t`).
+    optional_borrow_tuple_locals: set[str] = field(default_factory=set)
+    # Subset of optional_borrow_tuple_locals with const element pointers.
+    const_optional_borrow_tuple_locals: set[str] = field(default_factory=set)
 
     # --- Comprehension-local variable names ---
     # Loop variables inside comprehensions shadow globals during element
@@ -1070,6 +1084,8 @@ class CodeGenContext:
         self.const_storage_form_tuple_locals = set()
         self.borrow_form_tuple_locals = set()
         self.const_borrow_form_tuple_locals = set()
+        self.optional_borrow_tuple_locals = set()
+        self.const_optional_borrow_tuple_locals = set()
         self.storage_form_optional_locals = set()
         self.const_storage_form_optional_locals = set()
         self.slots.reset()
@@ -1603,6 +1619,7 @@ class CodeGenContext:
         if isinstance(expr, TpyName):
             return (expr.name in self.const_storage_form_tuple_locals
                     or expr.name in self.const_borrow_form_tuple_locals
+                    or expr.name in self.const_optional_borrow_tuple_locals
                     or expr.name in self.const_ref_params
                     or expr.name in self.const_indirect_locals)
         return False
@@ -1666,6 +1683,8 @@ class CodeGenContext:
             return LocalCppForm.STORAGE_TUPLE
         if name in self.borrow_form_tuple_locals:
             return LocalCppForm.BORROW_TUPLE
+        if name in self.optional_borrow_tuple_locals:
+            return LocalCppForm.OPTIONAL_BORROW_TUPLE
         if name in self.pointer_locals:
             return LocalCppForm.POINTER
         return LocalCppForm.VALUE

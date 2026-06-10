@@ -27,6 +27,7 @@ def _make_ctx(**overrides) -> SimpleNamespace:
         ptr_variant_locals=set(),
         storage_form_tuple_locals=set(),
         borrow_form_tuple_locals=set(),
+        optional_borrow_tuple_locals=set(),
         storage_form_optional_locals=set(),
         current_func_params={},
     )
@@ -70,6 +71,19 @@ class TestLocalCppFormClassification:
     def test_borrow_tuple(self):
         # Reassigned / branch-hoisted pointer-repr tuple local: borrow form.
         ctx = _make_ctx(borrow_form_tuple_locals={"t"})
+        assert _form(ctx, "t") is LocalCppForm.BORROW_TUPLE
+
+    def test_optional_borrow_tuple(self):
+        # Nullable borrow-form tuple local (`tuple[..., T] | None`):
+        # std::optional<std::tuple<..., T*>>.
+        ctx = _make_ctx(optional_borrow_tuple_locals={"t"})
+        assert _form(ctx, "t") is LocalCppForm.OPTIONAL_BORROW_TUPLE
+
+    def test_borrow_tuple_priority_over_optional_borrow_tuple(self):
+        # A name in both sets resolves to the plain borrow tuple form (the
+        # earlier-checked set); the two are producer-disjoint in practice.
+        ctx = _make_ctx(borrow_form_tuple_locals={"t"},
+                        optional_borrow_tuple_locals={"t"})
         assert _form(ctx, "t") is LocalCppForm.BORROW_TUPLE
 
     def test_storage_tuple_priority_over_borrow_tuple(self):
