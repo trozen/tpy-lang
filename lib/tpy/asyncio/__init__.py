@@ -2,7 +2,8 @@
 """asyncio v1 -- minimum viable async runtime.
 
 `run` / `sleep` / `create_task` / `Task[T]` / `Future[T]` / `Event` /
-`Lock` / `Semaphore` / `Queue[T]` / `CancelledError`. Lowers to
+`Lock` / `Semaphore` / `BoundedSemaphore` / `Queue[T]` /
+`CancelledError`. Lowers to
 `runtime/cpp/include/tpy/async.hpp` and the TPy Executor in
 `_executor.py`. See `docs/ASYNC_DESIGN.md`.
 """
@@ -861,12 +862,18 @@ class Semaphore:
 
     _value: Int32
     _waiters: list[Waker]
+    # Upper bound for release(); -1 means unbounded (plain Semaphore). The
+    # bound lives here, gated in release(), rather than in a BoundedSemaphore
+    # override -- TPy uses static method dispatch, so an override would only
+    # fire through a BoundedSemaphore-typed reference (and warns about it).
+    _bound: Int32
 
     def __init__(self, value: Int32 = 1) -> None:
         if value < 0:
             raise ValueError("Semaphore initial value must be >= 0")
         self._value = value
         self._waiters = []
+        self._bound = -1
 
     def locked(self) -> bool:
         # CPython also reports locked while acquirers are parked, not only
@@ -879,6 +886,8 @@ class Semaphore:
         return True
 
     def release(self) -> None:
+        if self._bound >= 0 and self._value >= self._bound:
+            raise ValueError("BoundedSemaphore released too many times")
         self._value += 1
         _wake_one(self._waiters)
 
@@ -914,6 +923,21 @@ class _SemAcquire:
         if self._sem._try_acquire(waker):
             return poll_ready_none()
         return poll_pending()
+
+
+class BoundedSemaphore(Semaphore):
+    """A `Semaphore` whose `release` raises `ValueError` if it would raise
+    the counter above its initial value -- catches a release/acquire
+    imbalance. Matches CPython. (The bound check is the gated path in
+    `Semaphore.release`; see the `_bound` field there.)
+    """
+
+    def __init__(self, value: Int32 = 1) -> None:
+        if value < 0:
+            raise ValueError("Semaphore initial value must be >= 0")
+        self._value = value
+        self._waiters = []
+        self._bound = value
 
 
 class QueueEmpty(Exception):

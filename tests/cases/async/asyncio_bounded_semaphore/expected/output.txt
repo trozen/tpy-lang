@@ -1,0 +1,6 @@
+locked0: False
+locked_full: True
+caught over-release
+peak: 2
+caught zero over-release
+caught negative

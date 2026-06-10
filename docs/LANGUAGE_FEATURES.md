@@ -5807,11 +5807,12 @@ Send/Sync rules for built-in types:
   `std::monostate`. `asyncio.Event` is the no-payload completion-signal
   primitive: `set` / `clear` / `is_set` / `wait` match CPython
   (`await event.wait()`); TPy additionally allows awaiting the Event
-  directly (`await event`) as a shorthand. `asyncio.Lock` and
-  `asyncio.Semaphore` are the v2 sync primitives (FIFO waiter queue,
-  `acquire` / `release` / `locked`, usable as `async with`).
-  `asyncio.Queue[T]` is a bounded FIFO (`put` / `get` block on
-  full / empty; `put_nowait` / `get_nowait` raise `QueueFull` /
+  directly (`await event`) as a shorthand. `asyncio.Lock`,
+  `asyncio.Semaphore`, and `asyncio.BoundedSemaphore` are the v2 sync
+  primitives (FIFO waiter queue, `acquire` / `release` / `locked`,
+  usable as `async with`; `BoundedSemaphore.release` rejects an
+  over-release). `asyncio.Queue[T]` is a bounded FIFO (`put` / `get`
+  block on full / empty; `put_nowait` / `get_nowait` raise `QueueFull` /
   `QueueEmpty`; `qsize` / `empty` / `full` / `join` / `task_done`).
   `tpy.coro.poll_once(aw)` is a synchronous one-step driver useful for
   tests and non-asyncio contexts; sema-types `f()` (for `async def f`)
