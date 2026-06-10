@@ -5660,7 +5660,10 @@ The full marker-layer design lives in `docs/SEND_SYNC_DESIGN.md`; Phase 2
   optionals, idempotent, `Send` floats outside `Sync`, markers float
   outside `readonly` / `Own`.
 - **Working**: `T: Send` / `T: Sync` generic bounds on functions and records
-  (conformance is the type's own derived trait).
+  (conformance is the type's own derived trait). A `Send`/`Sync`-bounded type
+  parameter also satisfies that marker bound when forwarded to a nested generic
+  (e.g. `inner[T](x)` inside `def outer[T: Send]`) -- the bound guarantees the
+  substituted type is Send/Sync.
 - **Working**: closure/coroutine/generator frame classification (`FrameType`).
   A lambda / nested def / free function converts into `Send[Callable[...]]`
   when its captured-state frame is Send (no captures, by-value captures of

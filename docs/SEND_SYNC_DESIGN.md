@@ -487,10 +487,12 @@ Design: `docs/CHANNEL_DESIGN.md`. Shipped:
    the Phase-2 bound machinery and the Phase-3 why-not-send chain. **No
    channel-specific enforcement code.**
 3. The channel itself is TPy library code (`lib/tpy/tpy/channel.py`); no new
-   C++ runtime. Two compiler changes were needed along the way, both general:
-   the owned-tuple-unpack move-out feature (unblocks `tx, rx = channel(cap)`),
-   and suppressing the C++ concept constraint for `Send`/`Sync` marker bounds
-   (they are sema-only; the per-record `is_send` C++ trait stays deferred).
+   C++ runtime. Three general compiler changes were needed along the way:
+   the owned-tuple-unpack move-out feature (unblocks `tx, rx = channel(cap)`);
+   suppressing the C++ concept constraint for `Send`/`Sync` marker bounds (they
+   are sema-only; the per-record `is_send` C++ trait stays deferred); and
+   making a `Send`/`Sync`-bounded type param satisfy that marker bound when
+   forwarded to a nested generic (so the internal records can carry `T: Send`).
 4. Tests in `tests/cases/channel/`: `error_channel_not_send` (bound failure +
    chain), `channel_async` (producer/consumer, blocking, close), and
    `panic_channel_capacity`.
@@ -499,7 +501,7 @@ Design: `docs/CHANNEL_DESIGN.md`. Shipped:
 (`Sender.clone()` + waker queue), `try_send`/`try_recv`, capacity-0 rendezvous,
 and the Arc-backed cross-thread channel (Phase 6).
 
-**Effort:** was L; landed as library code + tests + two general compiler fixes.
+**Effort:** was L; landed as library code + tests + three general compiler fixes.
 
 ### Phase 5 -- multi-threaded executor
 

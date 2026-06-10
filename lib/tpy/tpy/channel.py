@@ -24,7 +24,7 @@ class ChannelClosed(Exception):
 
 
 @nocopy
-class _ChanState[T]:
+class _ChanState[T: Send]:
     """Shared ring buffer + park slots. Reached only through `Rc` handles
     held by `Sender` / `Receiver`."""
     _buf: UninitHeapStorage[T]
@@ -92,7 +92,7 @@ class _ChanState[T]:
 
 
 @nocopy
-class _Recv[T]:
+class _Recv[T: Send]:
     """Awaitable produced by `Receiver.recv()`. Ready with the popped value
     when data is present; raises `ChannelClosed` once closed and drained;
     parks the receiver otherwise."""
@@ -117,7 +117,7 @@ class _Recv[T]:
 
 
 @nocopy
-class _Send[T]:
+class _Send[T: Send]:
     """Awaitable produced by `Sender.send(value)`. Holds the pending value
     across suspension; pushes it once space frees; raises `ChannelClosed`
     if the receiver is gone."""
@@ -152,7 +152,7 @@ class _Send[T]:
 
 
 @nocopy
-class Sender[T]:
+class Sender[T: Send]:
     """The sending half. SPSC: not clonable in v1."""
     _state: Rc[_ChanState[T]]
 
@@ -173,7 +173,7 @@ class Sender[T]:
 
 
 @nocopy
-class Receiver[T]:
+class Receiver[T: Send]:
     """The receiving half."""
     _state: Rc[_ChanState[T]]
 

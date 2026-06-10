@@ -1,0 +1,1 @@
+main.py:6: warning: Own[T] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

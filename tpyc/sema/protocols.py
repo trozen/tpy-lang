@@ -254,12 +254,22 @@ class ProtocolChecker:
         # have their own Send/Sync answers distinct from bare T's.
         if protocol.name in ("Send", "Sync"):
             qname = protocol.qualified_name()
-            if qname == qnames.SEND:
+            if qname in qnames.SEMA_ONLY_MARKER_PROTOCOLS:
+                # A type parameter bounded by this marker satisfies the marker
+                # bound by reflexive forward-conformance: the bound guarantees
+                # the substituted type is Send/Sync (so `inner[T](x)` inside
+                # `outer[T: Send]` is valid). Exact-qname match only -- unlike
+                # the protocol arm below, this does not follow a marker's
+                # sub-protocols (none exist); revisit if the hierarchy grows.
+                if isinstance(actual, TypeParamRef):
+                    abound = self.type_ops.get_type_param_bound(actual.name)
+                    return (ProtocolConformanceKind.EXPLICIT
+                            if abound is not None
+                            and abound.qualified_name() == qname else None)
+                send = qname == qnames.SEND
                 return (ProtocolConformanceKind.EXPLICIT
-                        if actual.is_send() else None)
-            if qname == qnames.SYNC:
-                return (ProtocolConformanceKind.EXPLICIT
-                        if actual.is_sync() else None)
+                        if (actual.is_send() if send else actual.is_sync())
+                        else None)
 
         # Unwrap ownership/const/ref wrappers -- readonly[T], Own[T], Ref[T]
         # conform to any protocol that T conforms to.

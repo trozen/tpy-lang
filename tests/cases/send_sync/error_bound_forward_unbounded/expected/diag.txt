@@ -1,0 +1,2 @@
+main.py:11: error: Type argument 'T' does not satisfy bound 'Send' for type parameter 'T' of 'needs_send'
+T is not Send (unresolved type parameter 'T')
