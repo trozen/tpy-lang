@@ -21,7 +21,9 @@ from typing import Any, Iterable
 from ..diagnostics import Diagnostic, DiagnosticLevel
 from ..frontend_diagnostics import FrontendDiagnostic, FrontendDiagnosticCategory
 from ..parse.nodes import (
+    FunctionLinkage,
     ModuleDirectives,
+    RecordLinkage,
     SourceLocation,
     TpyArrayLiteral,
     TpyAsPattern,
@@ -64,6 +66,8 @@ from ..parse.nodes import (
     TpyWildcardPattern,
 )
 from ..typesys import FieldInfo, RecordInfo
+from .decorators import (
+    DecoratorEntry, DecoratorRegistryError, DecoratorRoute, build_registry)
 from .resolver_adapter import make_plugin_resolver
 from .nodes import (
     API_VERSION,
@@ -78,8 +82,10 @@ from .nodes import (
     CmpOpKind,
     Compare,
     Continue,
+    Decorator,
     Enum,
     EnumValue,
+    Expr,
     ExprStmt,
     Field,
     FloatLit,
@@ -186,6 +192,7 @@ def lower_module(
     plugin_diagnostics: Iterable[Diagnostic] = (),
     *,
     is_entry_point: bool = False,
+    decorator_manifest: tuple[DecoratorEntry, ...] = (),
 ) -> LoweredFrontend:
     """Lower a FrontendModule produced by a plugin to a TpyModule.
 
@@ -197,6 +204,10 @@ def lower_module(
     `__main__` (matching sema's `ctx.module_name = "__main__"` rename)
     so resolver-side placeholders agree with sema's
     `attach_dynamic_type_def` registrations downstream.
+
+    `decorator_manifest` is the plugin's `decorator_manifest` ClassVar;
+    it is merged with TPy core's built-in decorators to route each
+    emitted `Decorator` (see `frontend_ir/decorators.py`).
     """
     diags: list[FrontendDiagnostic] = []
 
@@ -227,6 +238,15 @@ def lower_module(
             plugin_name, fm,
             "FrontendModule.qname is empty",
         ))
+        return LoweredFrontend(module=None, diagnostics=diags)
+
+    # Merge TPy core's built-in decorators with the plugin's manifest. A
+    # conflicting redefinition is a plugin-authoring error -- surface it
+    # as PLUGIN_IR_INVALID rather than crashing the compiler.
+    try:
+        registry = build_registry(tuple(decorator_manifest))
+    except DecoratorRegistryError as e:
+        diags.append(_ir_invalid(plugin_name, fm, str(e)))
         return LoweredFrontend(module=None, diagnostics=diags)
 
     # Imports: build the four dicts the parser/sema expect and emit
@@ -319,7 +339,7 @@ def lower_module(
     record_class_names: set[str] = set()
     for rec in fm.records:
         lowered_rec, rinfo = _lower_record(
-            rec, plugin_name, fm, diags, qname_prefix)
+            rec, plugin_name, fm, diags, qname_prefix, registry)
         if lowered_rec is None or rinfo is None:
             continue
         tpy_records.append(lowered_rec)
@@ -351,7 +371,8 @@ def lower_module(
     # walking top_level_stmts keeps things tidy.
     tpy_functions: list[TpyFunction] = []
     for fn in fm.functions:
-        lowered_fn = _lower_function(fn, name_to_origin, plugin_name, fm, diags)
+        lowered_fn = _lower_function(
+            fn, name_to_origin, plugin_name, fm, diags, registry=registry)
         if lowered_fn is not None:
             tpy_functions.append(lowered_fn)
 
@@ -392,6 +413,7 @@ def lower_module(
         star_imports=star_imports,
         directives=directives,
         resolver=resolver,
+        macro_data=fm.macro_data,
     )
     return LoweredFrontend(module=module, diagnostics=diags)
 
@@ -611,12 +633,144 @@ def _is_known_record_name(name: str, fm: FrontendModule) -> bool:
     return any(rec.name == name for rec in fm.records)
 
 
+@dataclass
+class _NativeSpec:
+    """Resolved `tpy.native` decorator. `symbol` is the C++ name (None for
+    a bare `@native`; sema normalizes to the decl name). Mirrors the
+    parser's `@native` handling (`parse/parser.py`) -- both feed the same
+    `TpyFunction`/`TpyRecord` native fields and the same codegen path."""
+    symbol: str | None = None
+    function: bool = False
+
+
+# Sentinel distinguishing "not a literal node" from a literal whose value
+# is None (a `NoneLit`).
+_NO_LITERAL = object()
+
+
+def _decorator_literal(expr: Expr) -> object:
+    """Python value of a literal IR `Expr`, or `_NO_LITERAL` when `expr`
+    is not a literal node. Decorator args/kwargs carry declarative config
+    only -- arbitrary plugin data rides `FrontendModule.macro_data`."""
+    if isinstance(expr, NoneLit):
+        return None
+    if isinstance(expr, (StrLit, BoolLit, IntLit, FloatLit)):
+        return expr.value
+    return _NO_LITERAL
+
+
+def _native_spec(
+    dec: Decorator, plugin_name: str, fm: FrontendModule,
+    diags: list[FrontendDiagnostic],
+) -> _NativeSpec | None:
+    """Read a `tpy.native` Decorator into a `_NativeSpec`: an optional
+    positional C++ symbol string and a `function: bool` kwarg."""
+    symbol: str | None = None
+    if dec.args:
+        if len(dec.args) != 1:
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                f"@native takes at most one positional argument (the C++ "
+                f"symbol), got {len(dec.args)}"))
+            return None
+        val = _decorator_literal(dec.args[0])
+        if not isinstance(val, str):
+            diags.append(_ir_invalid(
+                plugin_name, fm, "@native symbol must be a string literal"))
+            return None
+        symbol = val
+    function = False
+    for key, vexpr in dec.kwargs:
+        if key == "function":
+            val = _decorator_literal(vexpr)
+            if not isinstance(val, bool):
+                diags.append(_ir_invalid(
+                    plugin_name, fm,
+                    "@native(function=...) must be a bool literal"))
+                return None
+            function = val
+        else:
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                f"@native: unsupported keyword {key!r} (v1 supports the "
+                f"positional symbol and `function`)"))
+            return None
+    return _NativeSpec(symbol=symbol, function=function)
+
+
+def _route_decorators(
+    decorators: tuple[Decorator, ...], target_kind: str,
+    registry: dict[str, DecoratorEntry], plugin_name: str,
+    fm: FrontendModule, diags: list[FrontendDiagnostic],
+) -> tuple[list[tuple[str, dict]], _NativeSpec | None] | None:
+    """Resolve a declaration's IR `Decorator`s via the registry into
+    `(pending_macros, native_spec)`. Returns None on a routing error
+    (diagnostic already appended). Unknown names are rejected -- no
+    silent passthrough (FRONTEND_PLUGIN_DESIGN.md)."""
+    pending_macros: list[tuple[str, dict]] = []
+    native: _NativeSpec | None = None
+    for dec in decorators:
+        if not isinstance(dec, Decorator):
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                f"decorator must be a frontend_ir Decorator node, got {dec!r}"))
+            return None
+        entry = registry.get(dec.name)
+        if entry is None:
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                f"unknown decorator {dec.name!r}: not in the decorator "
+                f"registry (a plugin declares custom decorators via its "
+                f"decorator_manifest)"))
+            return None
+        if target_kind not in entry.target_kinds:
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                f"decorator {dec.name!r} is not valid on a {target_kind} "
+                f"(allowed: {', '.join(entry.target_kinds)})"))
+            return None
+        if entry.route is DecoratorRoute.BUILTIN_LOWERING:
+            if dec.name != "tpy.native":
+                diags.append(_ir_invalid(
+                    plugin_name, fm,
+                    f"builtin decorator {dec.name!r} has no IR lowering yet"))
+                return None
+            if native is not None:
+                diags.append(_ir_invalid(
+                    plugin_name, fm, "duplicate @native decorator"))
+                return None
+            native = _native_spec(dec, plugin_name, fm, diags)
+            if native is None:
+                return None
+        else:  # MACRO -> pending_macros (literal kwargs only)
+            if dec.args:
+                diags.append(_ir_invalid(
+                    plugin_name, fm,
+                    f"macro decorator {dec.name!r}: positional args are not "
+                    f"supported (use keyword args; non-literal data rides "
+                    f"macro_data)"))
+                return None
+            kwargs: dict = {}
+            for key, vexpr in dec.kwargs:
+                val = _decorator_literal(vexpr)
+                if val is _NO_LITERAL:
+                    diags.append(_ir_invalid(
+                        plugin_name, fm,
+                        f"macro decorator {dec.name!r}: keyword {key!r} must "
+                        f"be a literal (non-literal data rides macro_data)"))
+                    return None
+                kwargs[key] = val
+            pending_macros.append((dec.name, kwargs))
+    return pending_macros, native
+
+
 def _lower_record(
     rec: Record,
     plugin_name: str,
     fm: FrontendModule,
     diags: list[FrontendDiagnostic],
     qname_prefix: str,
+    registry: dict[str, DecoratorEntry],
 ) -> tuple[TpyRecord | None, RecordInfo | None]:
     """Lower an IR `Record` to a `TpyRecord` plus the parallel
     `RecordInfo` the resolver registry consumes.
@@ -650,7 +804,8 @@ def _lower_record(
         return None, None
     methods: list[TpyFunction] = []
     for m in rec.methods:
-        lowered = _lower_function(m, {}, plugin_name, fm, diags, is_method=True)
+        lowered = _lower_function(
+            m, {}, plugin_name, fm, diags, is_method=True, registry=registry)
         if lowered is None:
             return None, None
         lowered.is_method = True
@@ -677,11 +832,29 @@ def _lower_record(
         if base_ref is None:
             return None, None
         bases.append(base_ref)
+    routed = _route_decorators(
+        rec.decorators, "record", registry, plugin_name, fm, diags)
+    if routed is None:
+        return None, None
+    pending_macros, native = routed
+    rec_linkage = RecordLinkage.DEFAULT
+    rec_native_name: str | None = None
+    if native is not None:
+        if native.function:
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                "@native(function=...) is not valid on a record"))
+            return None, None
+        rec_linkage = RecordLinkage.NATIVE
+        rec_native_name = native.symbol
     tpy_rec = TpyRecord(
         name=rec.name,
         fields=field_infos,
         methods=methods,
         bases=bases,
+        linkage=rec_linkage,
+        native_name=rec_native_name,
+        pending_macros=pending_macros,
     )
     # RecordInfo's `module` is the public module qname; entry-point
     # modules use `__main__` (matches sema's `ctx.module_name` rename
@@ -704,6 +877,8 @@ def _lower_function(
     fm: FrontendModule,
     diags: list[FrontendDiagnostic],
     is_method: bool = False,
+    *,
+    registry: dict[str, DecoratorEntry],
 ) -> TpyFunction | None:
     """Lower a frontend `Function` to a `TpyFunction`. Plugins emit
     functions whose params already carry resolved types (NamedType /
@@ -735,37 +910,44 @@ def _lower_function(
             return None
     body = _lower_stmt_list(
         fn.body, name_to_origin, plugin_name, fm, diags)
-    # Decorators are lowered into pending_macros so a plugin can apply a
-    # @function_macro to an emitted function -- the parser-side decorator
-    # path never runs for lowered functions. Sema's pass-5.5 function-macro
-    # phase resolves and runs them, exactly as for a source decorator.
-    # Only module-level functions are scanned there, so a decorator on a
-    # method would be set and silently never run; reject it loudly, as the
-    # parser does for any method decorator.
-    if is_method and fn.decorators:
+    routed = _route_decorators(
+        fn.decorators, "function", registry, plugin_name, fm, diags)
+    if routed is None:
+        return None
+    pending_macros, native = routed
+    # Function macros run only on module-level free functions (sema's
+    # pass-5.5 doesn't scan methods), so a macro decorator on a method
+    # would silently never fire -- reject it, as the parser does. A
+    # BUILTIN_LOWERING `@native`, by contrast, IS valid on a method (it
+    # becomes method linkage, not a macro).
+    if is_method and pending_macros:
         diags.append(_ir_invalid(
             plugin_name, fm,
-            f"method {fn.name!r}: decorators (function macros) are not "
+            f"method {fn.name!r}: function-macro decorators are not "
             f"supported on methods"))
         return None
-    pending_macros: list[tuple[str, dict[str, Any]]] = []
-    for dec in fn.decorators:
-        if (not isinstance(dec, tuple) or len(dec) != 3
-                or not isinstance(dec[0], str) or not isinstance(dec[1], str)
-                or not isinstance(dec[2], dict)):
-            diags.append(_ir_invalid(
-                plugin_name, fm,
-                f"function {fn.name!r}: decorator must be a "
-                f"(module, name, kwargs) tuple, got {dec!r}"))
-            return None
-        module, name, kwargs = dec
-        pending_macros.append((f"{module}.{name}", dict(kwargs)))
+    linkage = FunctionLinkage.DEFAULT
+    native_name: str | None = None
+    native_function = False
+    is_stub = False
+    if native is not None:
+        # @native lowers to the same fields the parser sets for source
+        # `@native`: NATIVE linkage + the C++ symbol, and is_stub so
+        # codegen emits a declaration only (the body lives in C++).
+        linkage = FunctionLinkage.NATIVE
+        native_name = native.symbol
+        native_function = native.function
+        is_stub = True
     return TpyFunction(
         name=fn.name,
         params=params,
         return_type=return_type,
         body=body,
         pending_macros=pending_macros,
+        linkage=linkage,
+        native_name=native_name,
+        native_function=native_function,
+        is_stub=is_stub,
     )
 
 

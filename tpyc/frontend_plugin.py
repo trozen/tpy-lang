@@ -2,8 +2,9 @@
 
 See `docs/FRONTEND_PLUGIN_DESIGN.md` for the contract specification.
 
-M1 scope: plugin discovery + WorkspaceContext + registry. Decorator
-manifests are accepted but unused (no registry yet). Subprocess-helper
+M1 scope: plugin discovery + WorkspaceContext + registry. A plugin's
+`decorator_manifest` is merged into the compiler-owned decorator
+registry at lowering (`frontend_ir/decorators.py`). Subprocess-helper
 SubprocessPlugin is future work.
 """
 
@@ -17,6 +18,7 @@ from pathlib import Path
 from typing import ClassVar, Iterable
 
 from .diagnostics import Diagnostic, DiagnosticLevel
+from .frontend_ir.decorators import DecoratorEntry
 from .frontend_ir.nodes import API_VERSION, FrontendModule
 
 
@@ -77,7 +79,7 @@ class FrontendPlugin(ABC):
     api_version: ClassVar[int] = API_VERSION
     name: ClassVar[str] = ""
     extensions: ClassVar[tuple[str, ...]] = ()
-    decorator_manifest: ClassVar[tuple] = ()
+    decorator_manifest: ClassVar[tuple[DecoratorEntry, ...]] = ()
 
     def __init__(self, options: dict[str, str]) -> None:
         self.options = options

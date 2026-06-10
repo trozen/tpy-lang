@@ -3530,7 +3530,8 @@ class SemanticAnalyzer:
         methods reject the decorator at parse time.
         """
         for func in list(module.functions):
-            run_function_macros(func, self.ctx, self.ctx.module_name)
+            run_function_macros(func, self.ctx, self.ctx.module_name,
+                                module_data=module.macro_data)
 
     def _expand_builder_traces(self, module: TpyModule) -> None:
         """Pass 5.5: walk every record-method body and free-function body

@@ -663,10 +663,15 @@ sema (errors if unregistered). Genuinely unresolved decorator names still
 error at parse; method (record-body) decorators are unchanged.
 
 Plugin-emitted functions get the same treatment: a frontend plugin sets
-`Function.decorators=((module, name, kwargs), ...)` in its IR, and lowering
-(`frontend_ir/lower.py`) threads those into `TpyFunction.pending_macros` -- the
-parser-side decorator path never runs for lowered functions, so this is how a
-frontend plugin applies a function macro to a function it emits.
+`Function.decorators` to typed `Decorator` IR nodes, and lowering
+(`frontend_ir/lower.py`) resolves each through the decorator registry
+(`frontend_ir/decorators.py`), threading `MACRO`-routed ones into
+`TpyFunction.pending_macros` -- the parser-side decorator path never runs for
+lowered functions, so this is how a frontend plugin applies a function macro to
+a function it emits. A plugin can also hand its macros an opaque, module-scoped
+Python payload via `FrontendModule.macro_data`; lowering threads it onto
+`TpyModule.macro_data`, and the function-macro phase exposes it as
+`ctx.module_data`.
 
 `lookup_imported_name` (identifier -> resolved `TypeInfo` for *module-visible
 user types* -- the load-bearing downstream-slot signal) and `enum_members` are

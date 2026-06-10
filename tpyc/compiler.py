@@ -1608,6 +1608,7 @@ class Compiler:
             plugin_name=plugin.name,
             plugin_diagnostics=output.diagnostics,
             is_entry_point=is_entry_point,
+            decorator_manifest=plugin.decorator_manifest,
         )
         for fd in lowered.diagnostics:
             self.diagnostics.append(fd.diagnostic)

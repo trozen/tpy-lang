@@ -703,23 +703,31 @@ Behavior at lowering:
 
 v1 supports only two routes (`BUILTIN_LOWERING` and `MACRO`) because
 those are the only routes for which TPy's existing AST has destinations:
-`TpyFunction` consumes builtin decorators into typed flags
-(`tpyc/parse/nodes.py:1071`); `TpyRecord` carries `pending_macros`
-(`tpyc/parse/nodes.py:1230`). Routes that pass arbitrary metadata
-through to sema or runtime (e.g. for plugin-runtime decorators that
-are not macros and not TPy builtins) need new AST storage; they are
-deferred to future requirements.
+`TpyFunction` / `TpyRecord` consume builtin decorators into typed flags /
+linkage; both also carry `pending_macros`. Routes that pass arbitrary
+*decorator* metadata through to sema or runtime (plugin-runtime
+decorators that are neither macros nor TPy builtins) still need new AST
+storage and are deferred. Arbitrary *module-scoped* data a plugin's own
+macros need does **not** ride a decorator -- it rides
+`FrontendModule.macro_data` (surfaced as `ctx.module_data`), so a
+decorator's `args`/`kwargs` stay declarative `Expr`s.
+
+Status: built for `BUILTIN_LOWERING(tpy.native)` (function + record) and
+`MACRO` (function + record). The IR carries decorators only as the typed
+`Decorator` node above; the earlier raw `(module, name, kwargs)` tuple
+form is gone.
 
 The two routes also have different valid `target_kinds`:
 
 - **`BUILTIN_LOWERING`** can target `function`, `record`, `field`,
   `enum`, `enum_value`, or `constant` -- TPy core picks where each
-  recognized builtin decorator's effect lands.
-- **`MACRO`** is **record-level only** in v1. TPy class macros run on
-  records via `pending_macros`; there is no equivalent slot on
-  `TpyFunction`, `Field`, `Enum`, `EnumValue`, or `Constant`. A
-  `DecoratorEntry` with `route=MACRO` and any non-record target kind
-  is a manifest-load error.
+  recognized builtin decorator's effect lands. v1 wires `tpy.native`
+  (function + record).
+- **`MACRO`** targets `function` (`@function_macro`, run at sema pass
+  5.5 on module-level free functions) and `record` (`@class_macro`, run
+  via the record's `pending_macros`); both have a `pending_macros` slot.
+  `Field`, `Enum`, `EnumValue`, and `Constant` have none, so a
+  `DecoratorEntry` with `route=MACRO` on those is a manifest-load error.
 
 For v1, plugin-runtime decorators must therefore be either:
 - TPy class macros (`@class_macro`, registered as `MACRO`,
