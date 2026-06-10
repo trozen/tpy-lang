@@ -8,9 +8,9 @@ namespace tpyapp::main {
 void main() {
     // tree: Tree[int] = [1, [2, 3], 4]
     Tree<::tpy::BigInt> tree = std::vector<Tree<::tpy::BigInt>>{1, std::vector<Tree<::tpy::BigInt>>{2, 3}, 4};
-    // # Explicit Holder[int]: ctor inference does not yet deduce T through a
-    // # nested Box[Tree[T]] arg (see BUGS.md).
-    // h: Holder[int] = Holder(Box(tree))
+    // # Ctor type-arg inference deduces T=int through the nested Box[Tree[T]]
+    // # arg -- no explicit Holder[int] annotation needed.
+    // h = Holder(Box(tree))
     Holder<::tpy::BigInt> h = Holder<::tpy::BigInt>(::tpystd::tplib::box::Box<Tree<::tpy::BigInt>>(std::move(tree)));
     // print(leaf_count(h.data.get()))
     std::cout << leaf_count<::tpy::BigInt>(h.data.get()) << "\n";

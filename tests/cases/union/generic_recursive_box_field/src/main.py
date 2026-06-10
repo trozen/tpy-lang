@@ -28,9 +28,9 @@ def leaf_count[T](t: Tree[T]) -> Int32:
 
 def main() -> None:
     tree: Tree[int] = [1, [2, 3], 4]
-    # Explicit Holder[int]: ctor inference does not yet deduce T through a
-    # nested Box[Tree[T]] arg (see BUGS.md).
-    h: Holder[int] = Holder(Box(tree))
+    # Ctor type-arg inference deduces T=int through the nested Box[Tree[T]]
+    # arg -- no explicit Holder[int] annotation needed.
+    h = Holder(Box(tree))
     print(leaf_count(h.data.get()))
 
 
