@@ -3535,6 +3535,17 @@ passed via a generic outer parameter (whose expression carries an implicit
 `Ref[T]` wrapper) infers the protocol's type arg the same way it would for a
 locally constructed value.
 
+**Owned-context args**: an `Own[T]` parameter or a record constructor argument
+holds the storage form, not a borrow, so inference canonicalizes the arg to
+storage form (strips `Ref` -- recursing into tuple elements -- and `readonly`)
+before binding the type param. A subscript of a non-value `list[T]` analyzes to
+the element borrow form (`Ref[T]`), so without this `Entry(copy(src[i]))` inside
+a generic function would infer `Entry[Ref[T]]` rather than `Entry[T]` (and a
+two-arg call like `heappush(heap, Entry(copy(src[i])))` would then fail
+inference outright). A bare value passed into an `Own[T]` param keeps its
+reference form, so val_or_ref reference passing (`map(identity, ...)`) is
+unaffected.
+
 **Contextual Type Inference**: When arguments don't fully determine all type
 parameters, the expected type from context (assignment annotation, return type,
 reassignment, field assignment) fills in the remaining params:

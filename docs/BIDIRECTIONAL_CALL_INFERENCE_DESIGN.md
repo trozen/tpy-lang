@@ -39,6 +39,7 @@ unsafe_cast[UInt32](p)               # T explicit, U from arg (partial type args
 |-----------|-------------|
 | Coercion-aware return-type matching | Allow numeric widening when matching return type against expected type. Type param inference always produces exact matches today. |
 | Overload filtering by return type | When multiple overloads match arguments, use expected return type as a filter. Overloads are distinguished by argument types today. |
+| Joint inference: pending arg co-resolved by a sibling arg | A pending-typed local (`heap = []`) passed to a generic call alongside an arg that fixes the type param (`heappush(heap, Entry(...))`) should resolve the local from the co-inferred param. The directional matcher resolves one arg at a time with no shared unification variable, so this is deferred to HM-style constraint solving. Has a real use case (generic index-heap); IR-gated -- see `IR_DESIGN.md` "What THIR/MIR unblocks". |
 
 ## Design Principles
 
