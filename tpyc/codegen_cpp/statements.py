@@ -478,7 +478,10 @@ class StatementGenerator:
         if self.ctx.current_stmt_line > 0 and hasattr(stmt, 'loc') and stmt.loc:
             self.ctx.current_stmt_line = stmt.loc.line
 
-        self.ctx.emit_inline_comments(out, stmt.loc, indent)
+        # A multi-statement desugar (e.g. tuple-literal unpack) flags its
+        # non-first statements so the shared source comment is emitted once.
+        comment_loc = None if getattr(stmt, 'no_source_comment', False) else stmt.loc
+        self.ctx.emit_inline_comments(out, comment_loc, indent)
 
         # Compound statements - delegate to handlers (they flush before their header)
         if isinstance(stmt, TpyIf):
@@ -523,7 +526,7 @@ class StatementGenerator:
             # Simple statements - single flush point for all
             code = self._gen_simple_stmt(stmt, indent)
             if code is not None:
-                self.ctx.emit_source_comment(out, stmt.loc, indent)
+                self.ctx.emit_source_comment(out, comment_loc, indent)
                 self.ctx.temps.flush(out, indent)
                 out.write(code)
             # Assignment narrowing for union VarDecl
@@ -909,6 +912,17 @@ class StatementGenerator:
             fi = init.resolved_function_info
             if fi is not None and fi.is_readonly and self.ctx._call_returns_cpp_ref(fi, init.obj):
                 return True
+        # An alias of a const-inferred source must also bind const, else a
+        # mutable reference/pointer would be taken from a const source. Sound
+        # because a const source implies the alias is never written through --
+        # a write would have marked the source mutated via the borrow chain.
+        # Covers the pointer-local (Optional) branch, which the T&-branch
+        # call-site propagation does not reach.
+        if isinstance(init, TpyName) and (
+                init.name in self.ctx.const_ref_params
+                or init.name in self.ctx.const_indirect_locals
+                or init.name in self.ctx.deep_const_borrow_params):
+            return True
         return False
 
     def _is_dynamic_protocol_type(self, target_type: TpyType | None) -> bool:

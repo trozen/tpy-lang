@@ -410,10 +410,13 @@ def register_binding_borrow(ctx: 'SemanticContext', name: str,
     aliases into them, so they must stay `T&`, not `const T&`).
 
     8a.5: marking the source mutated is DEFERRED until the borrower is
-    actually written through for ELEMENT borrows (v = items[i]) and for
-    ALIAS/FIELD borrows whose root traces back to an ELEMENT borrow
-    (w = v, x = w where v = items[i] -- checked transitively). PTR/ITER
-    borrows and chains not rooted at an ELEMENT mark immediately.
+    actually written through for ELEMENT borrows (v = items[i]) and for ALIAS
+    borrows (b = y) -- a read-only alias must not force its source mutable. A
+    genuine write through the borrower (b.x = 1, or passing b to a mutating
+    callee) re-marks the source via mark_param_mutated's full borrow-chain
+    follow, so deferral stays sound. FIELD borrows defer only when their root
+    traces back to an ELEMENT borrow (checked transitively); PTR/ITER borrows
+    and field aliases not rooted at an ELEMENT mark immediately.
     """
     init_unwrapped = (init_expr.expr if isinstance(init_expr, TpyCoerce)
                       else init_expr)
@@ -432,7 +435,8 @@ def register_binding_borrow(ctx: 'SemanticContext', name: str,
         kind = BorrowKind.ALIAS
     bt = ctx.func.borrow_tracker
     bt.add_borrow(root, name, kind)
-    if not (kind == BorrowKind.ELEMENT or bt.is_deferred_borrow(root)):
+    if not (kind in (BorrowKind.ELEMENT, BorrowKind.ALIAS)
+            or bt.is_deferred_borrow(root)):
         ctx.mark_param_mutated(root)
 
 

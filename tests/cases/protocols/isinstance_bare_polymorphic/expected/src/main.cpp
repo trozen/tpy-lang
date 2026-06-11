@@ -5,14 +5,14 @@ namespace tpyapp::main {
 
 
 // def speak(p: Pet) -> str:
-std::string speak(Pet& p) {
+std::string speak(const Pet& p) {
     // # Single-fact isinstance: pre-bound via C++17 if-init clause; the bool
     // # check reduces to `__p_ptr != nullptr` and the narrowed read routes
     // # through `(*__p_ptr).bark()` (no separate ref local).
     // if isinstance(p, Dog):  # tpyc: ok
-    if (Dog* __p_ptr = dynamic_cast<Dog*>(&p); (__p_ptr != nullptr)) {
+    if (const Dog* __p_ptr = dynamic_cast<const Dog*>(&p); (__p_ptr != nullptr)) {
         // narrowed = p  # tpyc: type(Dog)
-        Dog& narrowed = (*__p_ptr);
+        const Dog& narrowed = (*__p_ptr);
         // return "DOG: " + narrowed.bark()
         return (::tpy::str_concat("DOG: ", narrowed.bark()));
     }

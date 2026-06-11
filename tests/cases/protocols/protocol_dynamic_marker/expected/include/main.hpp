@@ -28,7 +28,7 @@ struct Sub;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string classify(Root* r);
+std::string classify(const Root* r);
 void main();
 
 // class Root(Tagged):

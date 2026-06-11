@@ -44,21 +44,19 @@ void main() {
     std::cout << ::tpy::ListPrinter(parts) << "\n";
     // # asymmetric widths (200 fits Int16 but not Int8) -- both resolve to Int32.
     // p, q = 4, 5  # tpyc: type(Int32)
-    auto __tup_1 = std::tuple<int32_t, int32_t>{4, 5};
-    int32_t p = std::get<0>(__tup_1);
-    int32_t q = std::get<1>(__tup_1);
+    int32_t p = 4;
+    int32_t q = 5;
     // p2, q2 = 1, 200  # tpyc: type(Int32)
-    auto __tup_2 = std::tuple<int32_t, int32_t>{1, 200};
-    int32_t p2 = std::get<0>(__tup_2);
-    int32_t q2 = std::get<1>(__tup_2);
+    int32_t p2 = 1;
+    int32_t q2 = 200;
     // print(str(p), str(q), str(p2), str(q2))
     std::cout << ::tpy::fixed_to_str<int32_t>(p) << " " << ::tpy::fixed_to_str<int32_t>(q) << " " << ::tpy::fixed_to_str<int32_t>(p2) << " " << ::tpy::fixed_to_str<int32_t>(q2) << "\n";
     // t = (6, 7)  # tpyc: type(tuple[Int32, Int32])
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{6, 7};
     // r, s = t  # tpyc: type(Int32)
-    const auto& __tup_3 = t;
-    int32_t r = std::get<0>(__tup_3);
-    int32_t s = std::get<1>(__tup_3);
+    const auto& __tup_1 = t;
+    int32_t r = std::get<0>(__tup_1);
+    int32_t s = std::get<1>(__tup_1);
     // print(str(r), str(s))
     std::cout << ::tpy::fixed_to_str<int32_t>(r) << " " << ::tpy::fixed_to_str<int32_t>(s) << "\n";
     // pairs = [(1, 2), (3, 4)]  # tpyc: type(Array[tuple[Int32, Int32], 2])
@@ -70,9 +68,9 @@ void main() {
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_0 = *__beg_1;
         // for u, v in pairs:  # tpyc: type(Int32)
-        const auto& __tup_4 = __for_tup_0;
-        int32_t u = std::get<0>(__tup_4);
-        int32_t v = std::get<1>(__tup_4);
+        const auto& __tup_2 = __for_tup_0;
+        int32_t u = std::get<0>(__tup_2);
+        int32_t v = std::get<1>(__tup_2);
         // print(str(u), str(v))
         std::cout << ::tpy::fixed_to_str<int32_t>(u) << " " << ::tpy::fixed_to_str<int32_t>(v) << "\n";
     }

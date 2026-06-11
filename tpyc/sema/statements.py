@@ -3816,6 +3816,28 @@ class StatementAnalyzer:
                 display_type = unwrap_own(elem_type) if elem_type else elem_type
                 self.ctx.declared_var_types[(stmt.loc.line, name)] = display_type
 
+        # Warn when a tuple-LITERAL unpack copies a reference-type lvalue
+        # element: CPython aliases the element, but the value-tuple
+        # materialization here copies it -- a silent value-vs-reference
+        # divergence. Flat function-body unpacks are desugared to aliasing
+        # single-assigns in the parser and never reach this handler; this
+        # covers the residual the desugar deliberately leaves on the copy
+        # path: module/class top-level. Fresh rvalue elements (calls,
+        # constructors) are correctly copied, so only lvalue elements
+        # (name / subscript / field) warn.
+        if isinstance(stmt.value, TpyTupleLiteral):
+            for i, name in enumerate(stmt.targets):
+                if name is None or not stmt.is_ref[i] or i >= len(stmt.value.elements):
+                    continue
+                elem = stmt.value.elements[i]
+                if isinstance(elem, TpyCoerce):
+                    elem = elem.expr
+                if isinstance(elem, (TpyName, TpySubscript, TpyFieldAccess)):
+                    self.ctx.warning(
+                        f"tuple-literal unpack copies reference-type element "
+                        f"'{name}' instead of aliasing it (CPython aliases); "
+                        f"bind it on its own line to alias", stmt)
+
         # Register element-borrow edges so a later mutation through an
         # unpacked target (a, b = p; a.x = ...) traces back to the source
         # tuple's storage. Mirrors the deferred-element-ref pattern used for

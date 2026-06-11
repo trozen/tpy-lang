@@ -689,6 +689,9 @@ class TpyAwait(TpyExpr):
 class TpyStmt:
     """Base class for statements."""
     loc: SourceLocation | None = field(default=None, kw_only=True)
+    # Set on the non-first statements of a multi-statement desugar (e.g. a
+    # tuple-literal unpack) so codegen emits the shared source comment once.
+    no_source_comment: bool = field(default=False, kw_only=True)
 
     def exprs(self) -> list[TpyExpr]:
         """Return direct child expressions for generic tree walking."""

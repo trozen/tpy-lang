@@ -30,7 +30,7 @@ struct Bird;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string speak(Pet& p);
+std::string speak(const Pet& p);
 std::string kind(const Pet& p);
 std::string classify_const(const Pet& p);
 std::string assert_dog(const Pet& p);

@@ -8,15 +8,15 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // x, y = 0.0, 0.0
-    auto __tup_1 = std::tuple<double, double>{0.0, 0.0};
-    double x = std::get<0>(__tup_1);
-    double y = std::get<1>(__tup_1);
+    double x = 0.0;
+    double y = 0.0;
     // for i in range(3):
     for (int32_t i = 0; i < 3; ++i) {
         // x, y = x + 1.0, y + 2.0
-        auto __tup_2 = std::tuple<double, double>{((x) + (1.0)), ((y) + (2.0))};
-        x = std::get<0>(__tup_2);
-        y = std::get<1>(__tup_2);
+        double __unpack_0_0 = ((x) + (1.0));
+        double __unpack_0_1 = ((y) + (2.0));
+        x = __unpack_0_0;
+        y = __unpack_0_1;
     }
     // print(x)
     std::cout << ::tpy::print_float(x) << "\n";

@@ -454,6 +454,12 @@ class Parser:
         self._reverse_module_aliases: dict[str, str] = {}
         self._for_unpack_counter: int = 0
         self._multi_assign_counter: int = 0
+        self._tuple_unpack_counter: int = 0
+        # Depth of function/method bodies currently being parsed. A
+        # tuple-literal unpack desugars to per-element single-assigns only
+        # inside a function body; module/class top-level keeps TpyTupleUnpack
+        # (globals have distinct decl handling).
+        self._fn_body_depth: int = 0
         # Schemas derived from @builtin_decorator stubs (populated by compiler
         # from previously-parsed modules, or from same-file definitions)
         self._decorator_schemas: dict[str, _DecoratorArgSchema] = dict(decorator_schemas) if decorator_schemas else {}
@@ -2320,11 +2326,11 @@ class Parser:
             # @overload methods may be bodyless (`...` / `pass`, paired with a
             # trailing impl) or carry their own body (self-contained overload
             # variant -- sema validates that a group is all-bodied or all-bodyless).
-            body = [] if is_overload_stub_body else self._parse_body(node.body)
+            body = [] if is_overload_stub_body else self._parse_function_body(node.body)
         elif is_stub:
             body = []
         else:
-            body = self._parse_body(node.body)
+            body = self._parse_function_body(node.body)
 
         # Detect generator methods (yield in body)
         is_generator = _body_contains_yield(body)
@@ -2644,7 +2650,7 @@ class Parser:
             # @overload functions may be bodyless (`...` / `pass`, paired with a
             # trailing impl) or carry their own body (self-contained overload
             # variant -- sema validates that a group is all-bodied or all-bodyless).
-            body = [] if is_overload_stub_body else self._parse_body(node.body)
+            body = [] if is_overload_stub_body else self._parse_function_body(node.body)
         elif linkage in (FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C):
             if not (self._is_stub_body(node.body)):
                 display = self._LINKAGE_DISPLAY_NAMES.get(linkage, linkage.value)
@@ -2658,9 +2664,9 @@ class Parser:
                 raise ParseError(
                     f"@export function '{node.name}' must have a body (it exports a TPy function)",
                     node)
-            body = self._parse_body(node.body)
+            body = self._parse_function_body(node.body)
         else:
-            body = self._parse_body(node.body)
+            body = self._parse_function_body(node.body)
 
         # Restore the scope
         self._type_param_scope = old_scope
@@ -3126,6 +3132,93 @@ class Parser:
         except ParseError as e:
             return (), e.message
 
+    def _maybe_desugar_tuple_literal_unpack(
+            self, targets: list[str | None], value: ast.expr,
+            loc: 'SourceLocation | None') -> 'list[TpyStmt] | None':
+        """Desugar a flat tuple-literal unpack `a, b = (e0, e1)` into per-element
+        single-assigns, or return None to keep the TpyTupleUnpack path.
+
+        A reference element of a value-tuple unpack is COPIED, not aliased --
+        a silent divergence from CPython (which aliases). Single-assigns reuse
+        the borrow/const/move machinery that aliases reference elements
+        correctly.
+
+        Two lowerings. When the RHS is all simple, non-self-referential
+        elements (bare names / literals), bind directly (`a = e0; b = e1`):
+        such elements cannot raise/suspend and no target is read by the RHS,
+        so left-to-right bind matches Python -- and a single-assign of a
+        reference name still aliases. Otherwise (a target is read by the RHS
+        as in a swap `a, b = (b, a)`, or an element can raise/await/yield
+        mid-unpack -- a subscript raises a catchable IndexError, a call can
+        raise) evaluate every element into a hidden temp FIRST, then bind the
+        targets, preserving "evaluate the whole RHS before binding any target"
+        (a later raise leaves earlier visible targets unbound) and making
+        swaps correct without a special case. `_` targets are evaluated for
+        side effects and dropped.
+
+        Restricted to flat unpacks inside a function body: module/class
+        top-level keeps TpyTupleUnpack (globals have distinct decl handling)
+        and is the residual reference-copy case sema's copy warning reports.
+        An arity-mismatched RHS also keeps TpyTupleUnpack so sema emits the
+        arity error; nested-target and starred forms are already rejected
+        earlier (parse errors), so they never reach the desugar.
+        """
+        if self._fn_body_depth == 0:
+            return None
+        if not isinstance(value, ast.Tuple):
+            return None
+        elts = value.elts
+        if len(elts) != len(targets):
+            return None
+        if any(isinstance(e, ast.Starred) for e in elts):
+            return None
+
+        # Direct bind is sound only when no element can raise/suspend after an
+        # earlier target binds (bare name / literal) and no target is read by
+        # the RHS (a swap/self-reference needs the all-then-bind temp form).
+        target_names = {t for t in targets if t is not None}
+        simple = all(isinstance(e, (ast.Name, ast.Constant)) for e in elts)
+        reads_target = any(
+            isinstance(node, ast.Name) and node.id in target_names
+            for e in elts for node in ast.walk(e))
+        result: list[TpyStmt] = []
+        if simple and not reads_target:
+            for target, elt in zip(targets, elts):
+                elt_expr = self._parse_expr(elt)
+                if target is None:
+                    result.append(TpyExprStmt(elt_expr, loc=loc))
+                else:
+                    result.append(TpyVarDecl(target, None, elt_expr, loc=loc))
+        else:
+            n = self._tuple_unpack_counter
+            self._tuple_unpack_counter += 1
+            evals: list[TpyStmt] = []
+            binds: list[TpyStmt] = []
+            for i, (target, elt) in enumerate(zip(targets, elts)):
+                elt_expr = self._parse_expr(elt)
+                if target is None:
+                    evals.append(TpyExprStmt(elt_expr, loc=loc))
+                    continue
+                temp = f"__unpack_{n}_{i}"
+                evals.append(TpyVarDecl(temp, None, elt_expr, loc=loc))
+                binds.append(TpyVarDecl(target, None, TpyName(temp, loc=loc), loc=loc))
+            result = evals + binds
+        # Every statement keeps the unpack's loc so sema records each target's
+        # declared type and diagnostics point at the source line; only the
+        # first emits the shared source comment, the rest are suppressed.
+        for stmt in result[1:]:
+            stmt.no_source_comment = True
+        return result
+
+    def _parse_function_body(self, nodes: list[ast.stmt]) -> list[TpyStmt]:
+        """Parse a function/method body, tracking that we are inside one so a
+        tuple-literal unpack may desugar to per-element single-assigns."""
+        self._fn_body_depth += 1
+        try:
+            return self._parse_body(nodes)
+        finally:
+            self._fn_body_depth -= 1
+
     def _parse_body(self, nodes: list[ast.stmt]) -> list[TpyStmt]:
         """Parse a list of statements, flattening any multi-statement expansions."""
         result: list[TpyStmt] = []
@@ -3167,6 +3260,9 @@ class Parser:
                         raise ParseError(
                             "Tuple unpacking targets must be simple variable names", node)
                     targets.append(None if elt.id == "_" else elt.id)
+                desugared = self._maybe_desugar_tuple_literal_unpack(targets, node.value, loc)
+                if desugared is not None:
+                    return desugared
                 value = self._parse_expr(node.value)
                 return TpyTupleUnpack(targets=targets, value=value, loc=loc)
             target = self._parse_expr(node.targets[0])

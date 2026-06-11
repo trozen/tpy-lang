@@ -11,9 +11,9 @@ int32_t consume(Point&& p) {
 }
 
 // def test(a: Point) -> Int32:
-int32_t test(Point& a) {
+int32_t test(const Point& a) {
     // b = a  # lvalue init -> T& reference (Tier 2)
-    Point& b = a;
+    const Point& b = a;
     // return consume(b)  # tpyc: warning(/copies.*into owned storage/)
     auto __tmp_1 = b;
     return consume(std::move(__tmp_1));

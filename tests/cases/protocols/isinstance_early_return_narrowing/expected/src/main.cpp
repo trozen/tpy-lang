@@ -5,32 +5,32 @@ namespace tpyapp::main {
 
 
 // def bare_negative(p: Pet) -> str:
-std::string bare_negative(Pet& p) {
+std::string bare_negative(const Pet& p) {
     // # Negative-guard early-return: post-guard p narrows to Dog via cast-and-cache
     // # at the outer scope. Source is Pet& -- polymorphic_cast_arg emits &p.
     // if not isinstance(p, Dog):  # tpyc: ok
-    if ((!((dynamic_cast<Dog*>(&p) != nullptr)))) {
+    if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
         // return "non-dog"
         return "non-dog";
     }
-    Dog& __p = *dynamic_cast<Dog*>(&p);
+    const Dog& __p = *dynamic_cast<const Dog*>(&p);
     // narrowed = p  # tpyc: type(Dog)
-    Dog& narrowed = __p;
+    const Dog& narrowed = __p;
     // return narrowed.bark()
     return narrowed.bark();
 }
 
 // def bare_raise(p: Pet) -> str:
-std::string bare_raise(Pet& p) {
+std::string bare_raise(const Pet& p) {
     // # Same shape, raise instead of return.
     // if not isinstance(p, Dog):  # tpyc: ok
-    if ((!((dynamic_cast<Dog*>(&p) != nullptr)))) {
+    if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
         // raise ValueError("expected Dog")
         throw ::tpy::ValueError("expected Dog");
     }
-    Dog& __p = *dynamic_cast<Dog*>(&p);
+    const Dog& __p = *dynamic_cast<const Dog*>(&p);
     // narrowed = p  # tpyc: type(Dog)
-    Dog& narrowed = __p;
+    const Dog& narrowed = __p;
     // return narrowed.bark()
     return narrowed.bark();
 }
@@ -51,20 +51,20 @@ std::string bare_const(const Pet& p) {
 }
 
 // def optional_negative(p: Optional[Pet]) -> str:
-std::string optional_negative(Pet* p) {
+std::string optional_negative(const Pet* p) {
     // # Optional-source: lowered to Pet*; cast input is `p` (already pointer).
     // # The narrowed (Dog) post-guard path is comp-only -- constructing
     // # Optional[Pet] from a Dog rvalue is Phase-20-rejected as slicing. The
     // # guard-failing branch is reachable via a None literal and is exercised
     // # at runtime below.
     // if not isinstance(p, Dog):  # tpyc: ok
-    if ((!((dynamic_cast<Dog*>(p) != nullptr)))) {
+    if ((!((dynamic_cast<const Dog*>(p) != nullptr)))) {
         // return "none-or-non-dog"
         return "none-or-non-dog";
     }
-    Dog& __p = *dynamic_cast<Dog*>(p);
+    const Dog& __p = *dynamic_cast<const Dog*>(p);
     // narrowed = p  # tpyc: type(Dog)
-    Dog& narrowed = __p;
+    const Dog& narrowed = __p;
     // return narrowed.bark()
     return narrowed.bark();
 }
@@ -84,94 +84,94 @@ std::string positive_then_more(const Pet& p) {
 }
 
 // def sequential_negative(p: Pet) -> str:
-std::string sequential_negative(Pet& p) {
+std::string sequential_negative(const Pet& p) {
     // # Two chained negative-guard early-returns on the same variable. The first
     // # cast-and-cache aliases p as `const Dog& __p`; the second binds to a fresh
     // # `const WatchDog& __p_2` (suffix avoids C++ redecl), and post-second-guard
     // # reads of p route to __p_2. The cast input for both stays anchored to the
     // # original Pet& source via polymorphic_cast_arg, not chained through __p.
     // if not isinstance(p, Dog):  # tpyc: ok
-    if ((!((dynamic_cast<Dog*>(&p) != nullptr)))) {
+    if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
         // return "non-dog"
         return "non-dog";
     }
-    Dog& __p = *dynamic_cast<Dog*>(&p);
+    const Dog& __p = *dynamic_cast<const Dog*>(&p);
     // nd = p  # tpyc: type(Dog)
-    Dog& nd = __p;
+    const Dog& nd = __p;
     // if not isinstance(p, WatchDog):  # tpyc: ok
-    if ((!((dynamic_cast<WatchDog*>(&p) != nullptr)))) {
+    if ((!((dynamic_cast<const WatchDog*>(&p) != nullptr)))) {
         // return "DOG: " + nd.bark()
         return (::tpy::str_concat("DOG: ", nd.bark()));
     }
-    WatchDog& __p_2 = *dynamic_cast<WatchDog*>(&p);
+    const WatchDog& __p_2 = *dynamic_cast<const WatchDog*>(&p);
     // nw = p  # tpyc: type(WatchDog)
-    WatchDog& nw = __p_2;
+    const WatchDog& nw = __p_2;
     // return "WATCH: " + nw.alert()
     return (::tpy::str_concat("WATCH: ", nw.alert()));
 }
 
 // def triple_chain(p: Pet) -> str:
-std::string triple_chain(Pet& p) {
+std::string triple_chain(const Pet& p) {
     // # Three-level chain on the same variable exercises the multi-bump path
     // # in `_fresh_alias_local`: `__p` -> `__p_2` -> `__p_3`.
     // if not isinstance(p, Dog):  # tpyc: ok
-    if ((!((dynamic_cast<Dog*>(&p) != nullptr)))) {
+    if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
         // return "non-dog"
         return "non-dog";
     }
-    Dog& __p = *dynamic_cast<Dog*>(&p);
+    const Dog& __p = *dynamic_cast<const Dog*>(&p);
     // if not isinstance(p, WatchDog):  # tpyc: ok
-    if ((!((dynamic_cast<WatchDog*>(&p) != nullptr)))) {
+    if ((!((dynamic_cast<const WatchDog*>(&p) != nullptr)))) {
         // return "dog only"
         return "dog only";
     }
-    WatchDog& __p_2 = *dynamic_cast<WatchDog*>(&p);
+    const WatchDog& __p_2 = *dynamic_cast<const WatchDog*>(&p);
     // if not isinstance(p, GuardDog):  # tpyc: ok
-    if ((!((dynamic_cast<GuardDog*>(&p) != nullptr)))) {
+    if ((!((dynamic_cast<const GuardDog*>(&p) != nullptr)))) {
         // return "watch only"
         return "watch only";
     }
-    GuardDog& __p_3 = *dynamic_cast<GuardDog*>(&p);
+    const GuardDog& __p_3 = *dynamic_cast<const GuardDog*>(&p);
     // g = p  # tpyc: type(GuardDog)
-    GuardDog& g = __p_3;
+    const GuardDog& g = __p_3;
     // return "guard: " + g.patrol()
     return (::tpy::str_concat("guard: ", g.patrol()));
 }
 
 // def assert_then_assert(p: Pet) -> str:
-std::string assert_then_assert(Pet& p) {
+std::string assert_then_assert(const Pet& p) {
     // # Two persistent emits at the same C++ scope via the assert path. Both
     // # route through _emit_isinstance_extractions with persistent=True, so
     // # the second alias must bump to __p_2 -- same mechanism, different
     // # caller from the early-return shape.
     // assert isinstance(p, Dog)  # tpyc: ok
-    if (!((dynamic_cast<Dog*>(&p) != nullptr))) ::tpy::raise_assertion_error();
-    Dog& __p = *dynamic_cast<Dog*>(&p);
+    if (!((dynamic_cast<const Dog*>(&p) != nullptr))) ::tpy::raise_assertion_error();
+    const Dog& __p = *dynamic_cast<const Dog*>(&p);
     // assert isinstance(p, WatchDog)  # tpyc: ok
-    if (!((dynamic_cast<WatchDog*>(&p) != nullptr))) ::tpy::raise_assertion_error();
-    WatchDog& __p_2 = *dynamic_cast<WatchDog*>(&p);
+    if (!((dynamic_cast<const WatchDog*>(&p) != nullptr))) ::tpy::raise_assertion_error();
+    const WatchDog& __p_2 = *dynamic_cast<const WatchDog*>(&p);
     // w = p  # tpyc: type(WatchDog)
-    WatchDog& w = __p_2;
+    const WatchDog& w = __p_2;
     // return "ASSERT-WATCH: " + w.alert()
     return (::tpy::str_concat("ASSERT-WATCH: ", w.alert()));
 }
 
 // def assert_then_early_return(p: Pet) -> str:
-std::string assert_then_early_return(Pet& p) {
+std::string assert_then_early_return(const Pet& p) {
     // # Cross-call-site combination: assert (persistent) then early-return
     // # (persistent). narrowed_vars state set by the assert must survive into
     // # the early-return picker so its bump finds a fresh name.
     // assert isinstance(p, Dog)  # tpyc: ok
-    if (!((dynamic_cast<Dog*>(&p) != nullptr))) ::tpy::raise_assertion_error();
-    Dog& __p = *dynamic_cast<Dog*>(&p);
+    if (!((dynamic_cast<const Dog*>(&p) != nullptr))) ::tpy::raise_assertion_error();
+    const Dog& __p = *dynamic_cast<const Dog*>(&p);
     // if not isinstance(p, WatchDog):  # tpyc: ok
-    if ((!((dynamic_cast<WatchDog*>(&p) != nullptr)))) {
+    if ((!((dynamic_cast<const WatchDog*>(&p) != nullptr)))) {
         // return "ASSERT-DOG: " + p.bark()
         return (::tpy::str_concat("ASSERT-DOG: ", __p.bark()));
     }
-    WatchDog& __p_2 = *dynamic_cast<WatchDog*>(&p);
+    const WatchDog& __p_2 = *dynamic_cast<const WatchDog*>(&p);
     // w = p  # tpyc: type(WatchDog)
-    WatchDog& w = __p_2;
+    const WatchDog& w = __p_2;
     // return "ASSERT-EARLY-WATCH: " + w.alert()
     return (::tpy::str_concat("ASSERT-EARLY-WATCH: ", w.alert()));
 }
@@ -351,7 +351,7 @@ std::string narrow_in_with_body(const Pet& p) {
 }
 
 // def safe_raise(p: Pet) -> str:
-std::string safe_raise(Pet& p) {
+std::string safe_raise(const Pet& p) {
     // # Wrap bare_raise to exercise the raise path at runtime without aborting.
     // try:
     {

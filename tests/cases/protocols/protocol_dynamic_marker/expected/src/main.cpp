@@ -5,16 +5,16 @@ namespace tpyapp::main {
 
 
 // def classify(r: Optional[Root]) -> str:
-std::string classify(Root* r) {
+std::string classify(const Root* r) {
     // if r is None:
     if ((r == nullptr)) {
         // return "<none>"
         return "<none>";
     }
     // if isinstance(r, Sub):  # tpyc: ok -- dynamic_cast through Tagged-rooted chain
-    if (Sub* __r_ptr = dynamic_cast<Sub*>(r); (__r_ptr != nullptr)) {
+    if (const Sub* __r_ptr = dynamic_cast<const Sub*>(r); (__r_ptr != nullptr)) {
         // narrowed = r  # tpyc: type(Sub)
-        Sub& narrowed = (*__r_ptr);
+        const Sub& narrowed = (*__r_ptr);
         // return f"sub:{narrowed.name}:{narrowed.extra}"
         return std::format("sub:{}:{}", narrowed.name, (narrowed.extra).to_string());
     }

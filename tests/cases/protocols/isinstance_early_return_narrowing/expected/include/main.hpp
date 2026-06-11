@@ -32,22 +32,22 @@ struct CM;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::string bare_negative(Pet& p);
-std::string bare_raise(Pet& p);
+std::string bare_negative(const Pet& p);
+std::string bare_raise(const Pet& p);
 std::string bare_const(const Pet& p);
-std::string optional_negative(Pet* p);
+std::string optional_negative(const Pet* p);
 std::string positive_then_more(const Pet& p);
-std::string sequential_negative(Pet& p);
-std::string triple_chain(Pet& p);
-std::string assert_then_assert(Pet& p);
-std::string assert_then_early_return(Pet& p);
+std::string sequential_negative(const Pet& p);
+std::string triple_chain(const Pet& p);
+std::string assert_then_assert(const Pet& p);
+std::string assert_then_early_return(const Pet& p);
 std::string sibling_vars(const Pet& p, const Pet& q);
 std::string narrow_in_for_body(const Pet& p, const ::tpy::BigInt& n);
 std::string narrow_in_while_body(const Pet& p);
 std::string narrow_in_try_body(const Pet& p);
 std::string narrow_in_match_case(const Pet& p, const ::tpy::BigInt& label);
 std::string narrow_in_with_body(const Pet& p);
-std::string safe_raise(Pet& p);
+std::string safe_raise(const Pet& p);
 void main();
 
 // class Pet(Tagged):

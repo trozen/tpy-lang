@@ -12,7 +12,7 @@ struct Point;
 inline constexpr std::string_view __name__ = "__main__";
 
 int32_t consume(Point&& p);
-int32_t test(Point& a);
+int32_t test(const Point& a);
 
 // class Point:
 struct Point {

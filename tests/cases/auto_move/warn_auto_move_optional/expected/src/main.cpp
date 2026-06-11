@@ -11,9 +11,9 @@ int32_t consume(Point&& p) {
 }
 
 // def test(a: Point | None) -> Int32:
-int32_t test(Point* a) {
+int32_t test(const Point* a) {
     // q: Point | None = a
-    Point* q = a;
+    const Point* q = a;
     // assert q is not None
     if (!((q != nullptr))) ::tpy::raise_assertion_error();
     // return consume(q)  # tpyc: warning(/copies.*into owned storage/)
