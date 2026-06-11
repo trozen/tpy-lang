@@ -373,6 +373,18 @@ class Assign:
 
 
 @dataclass
+class AugAssign:
+    """Augmented assignment: `target <op>= value` (`x += 1`). `op` is the
+    underlying binary operator; logical and/or are rejected at lowering (no
+    `&&=`/`||=` form), every other binop has an augmented form."""
+    kind: str = field(default="AugAssign", init=False)
+    target: "Expr" = None  # type: ignore[assignment]
+    op: BinOpKind = BinOpKind.ADD
+    value: "Expr" = None  # type: ignore[assignment]
+    loc: Loc | None = None
+
+
+@dataclass
 class If:
     """`if cond then-body else else-body`. `else_body` is `()` when
     there is no else clause."""
@@ -528,7 +540,7 @@ class Continue:
     loc: Loc | None = None
 
 
-Stmt = Union[ExprStmt, VarDecl, Assign, If, While, RepeatUntil,
+Stmt = Union[ExprStmt, VarDecl, Assign, AugAssign, If, While, RepeatUntil,
              ForRange, ForEach, Match, Return, Raise, Break, Continue]
 
 

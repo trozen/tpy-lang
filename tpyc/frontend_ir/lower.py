@@ -28,6 +28,7 @@ from ..parse.nodes import (
     TpyArrayLiteral,
     TpyAsPattern,
     TpyAssign,
+    TpyAugAssign,
     TpyBinOp,
     TpyCallableRef,
     TpyClassPattern,
@@ -74,6 +75,7 @@ from .nodes import (
     API_VERSION,
     Assign,
     Attr,
+    AugAssign,
     BinOp,
     BinOpKind,
     BoolLit,
@@ -150,6 +152,11 @@ _BINOP_OP_STR: dict[BinOpKind, str] = {
     BinOpKind.LOGICAL_AND: "&&",
     BinOpKind.LOGICAL_OR: "||",
 }
+
+# Logical and/or are the only binops with no augmented-assignment form.
+_NON_AUGMENTABLE_OPS: frozenset[BinOpKind] = frozenset({
+    BinOpKind.LOGICAL_AND, BinOpKind.LOGICAL_OR,
+})
 
 _UNARYOP_OP_STR: dict[UnaryOpKind, str] = {
     UnaryOpKind.POS: "+",
@@ -456,6 +463,24 @@ def _lower_stmt(
         if target is None or value is None:
             return None
         return TpyAssign(target=target, value=value, loc=loc)
+    if isinstance(stmt, AugAssign):
+        # `_BINOP_OP_STR` is shared with BinOp-expression lowering and carries
+        # the logical ops, which have no `&&=`/`||=` augmented form (the Python
+        # parser never produces one). Reject them at the boundary so a plugin
+        # gets a clear diagnostic rather than an opaque sema error; every other
+        # binop has an augmented form (mirrors the parser's `_BINOP_TO_STR`).
+        op_str = _BINOP_OP_STR.get(stmt.op)
+        if op_str is None or stmt.op in _NON_AUGMENTABLE_OPS:
+            diags.append(_ir_invalid(
+                plugin_name, fm,
+                f"BinOpKind {stmt.op} has no augmented-assignment form",
+            ))
+            return None
+        target = _lower_expr(stmt.target, name_to_origin, plugin_name, fm, diags)
+        value = _lower_expr(stmt.value, name_to_origin, plugin_name, fm, diags)
+        if target is None or value is None:
+            return None
+        return TpyAugAssign(target=target, op=op_str, value=value, loc=loc)
     if isinstance(stmt, If):
         cond = _lower_expr(stmt.cond, name_to_origin, plugin_name, fm, diags)
         if cond is None:
