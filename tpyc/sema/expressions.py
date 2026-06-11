@@ -295,9 +295,11 @@ class ExpressionAnalyzer:
         elif isinstance(expr, TpyCall):
             typ = self.calls.analyze_call(expr)
             self.narrowing.invalidate_field_facts_for_call(expr)
+            self.narrowing.invalidate_closure_written_facts()
         elif isinstance(expr, TpyMethodCall):
             typ = self.methods.analyze_method_call(expr)
             self.narrowing.invalidate_field_facts_for_method_call(expr)
+            self.narrowing.invalidate_closure_written_facts()
         elif isinstance(expr, TpyFieldAccess):
             typ = self._analyze_field_access(expr)
         elif isinstance(expr, TpyArrayLiteral):

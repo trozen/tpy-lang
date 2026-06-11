@@ -13,9 +13,9 @@ Point* get_ptr(Point* p) {
 // # Function parameter: provenance unknown, must null-check
 // def read_via_param(p: Ptr[Point]) -> None:
 void read_via_param(Point* p) {
-    // print(p.x)
+    // print(p.x)  # tpyc: nullable(p)
     std::cout << ::tpy::deref_check(p).x << "\n";
-    // print(p.sum())
+    // print(p.sum())  # tpyc: non_null(p)
     std::cout << p->sum() << "\n";
 }
 
@@ -26,43 +26,43 @@ void main() {
     // # Local Ptr from lvalue: provably non-null, skip null check
     // p: Ptr[Point] = pt
     Point* p = &pt;
-    // print(p.x)
+    // print(p.x)  # tpyc: non_null(p)
     std::cout << p->x << "\n";
-    // print(p.y)
+    // print(p.y)  # tpyc: non_null(p)
     std::cout << p->y << "\n";
-    // print(p.sum())
+    // print(p.sum())  # tpyc: non_null(p)
     std::cout << p->sum() << "\n";
     // # Local Ptr[readonly[...]] from lvalue: provably non-null, skip null check
     // cp: Ptr[readonly[Point]] = pt
     const Point* cp = &pt;
-    // print(cp.x)
+    // print(cp.x)  # tpyc: non_null(cp)
     std::cout << cp->x << "\n";
     // # Coercion: Ptr[T] -> Ptr[readonly[T]] preserves non-null provenance
     // cp2: Ptr[readonly[Point]] = p
     const Point* cp2 = p;
-    // print(cp2.y)
+    // print(cp2.y)  # tpyc: non_null(cp2)
     std::cout << cp2->y << "\n";
     // # Propagated provenance: q copies from known non-null p
     // q: Ptr[Point] = p
     Point* q = p;
-    // print(q.y)
+    // print(q.y)  # tpyc: non_null(q)
     std::cout << q->y << "\n";
     // # Unknown source: function return clears non-null provenance
     // r: Ptr[Point] = get_ptr(p)
     Point* r = get_ptr(p);
-    // print(r.x)
+    // print(r.x)  # tpyc: nullable(r)
     std::cout << ::tpy::deref_check(r).x << "\n";
     // # Reassignment from unknown clears provenance
     // p = get_ptr(q)
     p = get_ptr(q);
-    // print(p.x)
+    // print(p.x)  # tpyc: nullable(p)
     std::cout << ::tpy::deref_check(p).x << "\n";
     // # Re-establish provenance
     // pt2: Point = Point(Int32(30), Int32(40))
     Point pt2 = Point(30, 40);
     // p = take_ptr(pt2)
     p = &pt2;
-    // print(p.x)
+    // print(p.x)  # tpyc: non_null(p)
     std::cout << p->x << "\n";
     // # Pass to function (param has unknown provenance inside)
     // read_via_param(p)

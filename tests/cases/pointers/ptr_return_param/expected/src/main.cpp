@@ -26,11 +26,11 @@ void main() {
     Point local = Point(10, 20);
     // p1: Ptr[Point] = addr_param(local)
     Point* p1 = addr_param(local);
-    // print(p1.x)
+    // print(p1.x)  # tpyc: nullable(p1)
     std::cout << ::tpy::deref_check(p1).x << "\n";
     // p2: Ptr[Point] = addr_global()
     Point* p2 = addr_global();
-    // print(p2.y)
+    // print(p2.y)  # tpyc: nullable(p2)
     std::cout << ::tpy::deref_check(p2).y << "\n";
 }
 

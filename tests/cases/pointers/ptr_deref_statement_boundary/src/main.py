@@ -14,22 +14,22 @@ class A:
 
 def cross_statement(p: Ptr[A]) -> None:
     # First statement checks; subsequent statements elide.
-    print(p.x)
-    print(p.y)
-    print(p.x + p.y)
+    print(p.x)  # tpyc: nullable(p)
+    print(p.y)  # tpyc: non_null(p)
+    print(p.x + p.y)  # tpyc: non_null(p)
 
 def within_expression(p: Ptr[A]) -> None:
     # First use of p across all statements in this function:
     # both operands must check -- evaluation order unspecified.
-    print(p.x + p.y)
+    print(p.x + p.y)  # tpyc: nullable(p)
     # Now p is proven non-null; subsequent accesses elide.
-    print(p.x + p.y)
+    print(p.x + p.y)  # tpyc: non_null(p)
 
 def assign_first(p: Ptr[A]) -> None:
     # RHS evaluated before LHS, but it's the first use overall:
     # both sides must check. After this statement, p is non-null.
-    p.x = p.y + 1
-    p.x = p.y + 2
+    p.x = p.y + 1  # tpyc: nullable(p)
+    p.x = p.y + 2  # tpyc: non_null(p)
 
 def main() -> None:
     a = A(10, 20)

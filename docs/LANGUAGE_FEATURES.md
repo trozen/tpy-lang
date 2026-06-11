@@ -1067,7 +1067,9 @@ Multi-hop chains are supported — if `Box.__deref__() -> Ref` and `Ref.__deref_
 - Field-path narrowing: `if self.ptr_field is not None:` / `if obj.field is not None:` (dotted paths at any depth)
 - Assignment from a known non-null variable
 
-Narrowing supports negation and `and`/`or` composition. Branch merging uses intersection (non-null only if all paths agree). Reassignment from an unknown source (e.g., function return) clears non-null provenance. Field-path narrowing is invalidated by method calls on the receiver object, field writes, or passing the object to a function by mutable reference.
+Narrowing supports negation and `and`/`or` composition. Branch merging uses intersection (non-null only if all paths agree). Reassignment from an unknown source (e.g., function return) clears non-null provenance. Field-path narrowing is invalidated by method calls on the receiver object, field writes, or passing the object to a function by mutable reference -- and equally through any local statically known to alias the receiver.
+
+Narrowing facts (and value-range facts driving bounds/div-zero check elision) are killed at every control-flow meet where some path may have invalidated them: loop body entry drops facts for names the body may write (the back-edge re-enters after the kill), `except` handlers drop facts the try body may have killed (an exception can be thrown at any point in it), `finally` bodies run under all-paths entry facts, and any call kills facts for names a previously-defined closure writes via `nonlocal`. Dropped facts mean the runtime check is emitted (warning for Optional access) -- re-prove with a guard or `assert` inside the region to elide it.
 
 **C++ interop:** User-defined types with `__deref__()` get `operator*()` generated in C++, enabling `*box` syntax from C++ code.
 

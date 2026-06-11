@@ -18,6 +18,7 @@ from .parse import (
     TpyNestedDef,
     TpyFStringValue, TpyComprehensionGenerator,
     TpyDictLiteral, TpySetLiteral, TpyTupleLiteral, TpyFString,
+    TpyDelVar, TpyDelAttr, TpyDelItem, TpyNonlocal, TpyGlobal,
 )
 
 
@@ -252,3 +253,185 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                         declared.add(item.target)
         for body in stmt.sub_bodies():
             _scan_stmts(body, declared, result)
+
+
+@dataclass
+class FactKills:
+    """Conservative syntactic over-approximation of the flow facts a body
+    may invalidate (narrowing, ptr non-null, value ranges).
+
+    Applied at control-flow meets where single-pass analysis would otherwise
+    resurrect facts the body kills: loop body entry (back-edge), except
+    handler entry (mid-try exception), finally entry (any-path exception).
+    """
+    # Names that may be rebound: kills the name's own facts, its deref-view
+    # fact, all field facts rooted at it, and its value range.
+    names: set[str] = field(default_factory=set)
+    # Dotted field paths written directly (obj.field = ...): kills the path's
+    # facts and all deeper paths, but not the root name's own facts.
+    paths: set[str] = field(default_factory=set)
+    # Names/paths whose *contents* may be mutated through a call (method
+    # receivers, reference-type call args): kills field facts under the key
+    # and len-derived ranges, but not the key's own narrowing.
+    receivers: set[str] = field(default_factory=set)
+
+    def __bool__(self) -> bool:
+        return bool(self.names or self.paths or self.receivers)
+
+    def update(self, other: 'FactKills') -> None:
+        self.names |= other.names
+        self.paths |= other.paths
+        self.receivers |= other.receivers
+
+
+def _kills_in_expr(expr: TpyExpr | None, kills: FactKills) -> None:
+    if expr is None:
+        return
+    if isinstance(expr, TpyNamedExpr):
+        kills.names.add(expr.target)
+    elif isinstance(expr, TpyMethodCall):
+        key = _expr_to_narrowing_key(expr.obj)
+        if key is not None:
+            kills.receivers.add(key)
+    if isinstance(expr, (TpyCall, TpyMethodCall)):
+        for arg in expr.args:
+            if isinstance(arg, TpyName):
+                kills.receivers.add(arg.name)
+        for kw_val in getattr(expr, "kwargs", {}).values():
+            if isinstance(kw_val, TpyName):
+                kills.receivers.add(kw_val.name)
+    for f in dc_fields(expr):
+        val = getattr(expr, f.name)
+        if isinstance(val, TpyExpr):
+            _kills_in_expr(val, kills)
+        elif isinstance(val, TpyComprehensionGenerator):
+            _kills_in_expr(val.iterable, kills)
+            for cond in val.conditions:
+                _kills_in_expr(cond, kills)
+        elif isinstance(val, list):
+            for item in val:
+                if isinstance(item, TpyExpr):
+                    _kills_in_expr(item, kills)
+                elif isinstance(item, TpyFStringValue):
+                    _kills_in_expr(item.expr, kills)
+        elif isinstance(val, dict):
+            for v in val.values():
+                if isinstance(v, TpyExpr):
+                    _kills_in_expr(v, kills)
+
+
+def _kills_assign_target(target: TpyExpr, kills: FactKills) -> None:
+    if isinstance(target, TpyName):
+        kills.names.add(target.name)
+    elif isinstance(target, TpyFieldAccess):
+        key = _expr_to_narrowing_key(target)
+        if key is not None:
+            kills.paths.add(key)
+        else:
+            root = _expr_root_name(target)
+            if root is not None:
+                kills.receivers.add(root)
+    elif isinstance(target, TpySubscript):
+        root = _expr_root_name(target.obj)
+        if root is not None:
+            kills.receivers.add(root)
+
+
+def _expr_root_name(expr: TpyExpr) -> str | None:
+    while isinstance(expr, TpyFieldAccess):
+        expr = expr.obj
+    if isinstance(expr, TpyName):
+        return expr.name
+    return None
+
+
+def alias_group(aliases: dict[str, str], name: str) -> set[str]:
+    """All names statically known to alias ``name`` (from the prescan
+    alias map, alias -> source), including ``name`` itself.
+
+    A mutation through any member reaches every member -- they are the
+    same object -- so fact invalidation must cover the whole group.
+    Rebinding a member does NOT affect the others (use only for
+    mutation-driven kills, never for rebinds).
+    """
+    group = {name}
+    cur = name
+    while cur in aliases and aliases[cur] not in group:
+        cur = aliases[cur]
+        group.add(cur)
+    changed = True
+    while changed:
+        changed = False
+        for a, s in aliases.items():
+            if s in group and a not in group:
+                group.add(a)
+                changed = True
+    return group
+
+
+def _collect_nested_def_writes(stmts: list[TpyStmt], kills: FactKills) -> None:
+    """Names a nested def may rebind in the enclosing scope (nonlocal/global)."""
+    for stmt in stmts:
+        if isinstance(stmt, (TpyNonlocal, TpyGlobal)):
+            kills.names.update(stmt.names)
+        if isinstance(stmt, TpyNestedDef):
+            _collect_nested_def_writes(stmt.func.body, kills)
+        for body in stmt.sub_bodies():
+            _collect_nested_def_writes(body, kills)
+
+
+def collect_fact_kills(stmts: list[TpyStmt],
+                       extra_exprs: 'tuple[TpyExpr, ...] | list[TpyExpr]' = ()
+                       ) -> FactKills:
+    """Collect the fact kill-set of a statement body (recursive).
+
+    ``extra_exprs`` covers re-evaluated expressions that are part of the
+    same control-flow cycle but not of the body (a while-loop condition).
+    """
+    kills = FactKills()
+    _collect_fact_kills(stmts, kills)
+    for e in extra_exprs:
+        _kills_in_expr(e, kills)
+    return kills
+
+
+def _collect_fact_kills(stmts: list[TpyStmt], kills: FactKills) -> None:
+    for stmt in stmts:
+        if isinstance(stmt, TpyVarDecl):
+            kills.names.add(stmt.name)
+        elif isinstance(stmt, (TpyAssign, TpyAugAssign)):
+            _kills_assign_target(stmt.target, kills)
+        elif isinstance(stmt, TpyTupleUnpack):
+            for name in stmt.targets:
+                if name is not None:
+                    kills.names.add(name)
+        elif isinstance(stmt, TpyForEach):
+            kills.names.add(stmt.var)
+        elif isinstance(stmt, TpyWith):
+            for item in stmt.items:
+                if item.target is not None:
+                    kills.names.add(item.target)
+        elif isinstance(stmt, TpyDelVar):
+            kills.names.update(stmt.names)
+        elif isinstance(stmt, TpyDelAttr):
+            for t in stmt.targets:
+                key = _expr_to_narrowing_key(t)
+                if key is not None:
+                    kills.paths.add(key)
+        elif isinstance(stmt, TpyDelItem):
+            for t in stmt.targets:
+                root = _expr_root_name(t.obj)
+                if root is not None:
+                    kills.receivers.add(root)
+        elif isinstance(stmt, TpyGlobal):
+            kills.names.update(stmt.names)
+        elif isinstance(stmt, TpyNestedDef):
+            # Calls anywhere in the cycle may invoke the closure; treat its
+            # nonlocal/global targets as killable. Body otherwise not scanned
+            # (separate scope).
+            _collect_nested_def_writes(stmt.func.body, kills)
+            continue
+        for expr in stmt.exprs():
+            _kills_in_expr(expr, kills)
+        for body in stmt.sub_bodies():
+            _collect_fact_kills(body, kills)

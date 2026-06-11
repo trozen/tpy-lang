@@ -9,6 +9,6 @@ class Point:
 
 def main() -> None:
     p: Ptr[readonly[Point]] = Ptr[readonly[Point]]()
-    print(p.x)
+    print(p.x)  # tpyc: nullable(p)
 
 main()

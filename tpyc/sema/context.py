@@ -543,6 +543,10 @@ class FunctionTrackingState:
     current_reassigned_vars: set[str] = field(default_factory=set)
     current_lvalue_reassigned: set[str] = field(default_factory=set)
     current_aug_assigned_vars: set[str] = field(default_factory=set)
+    # alias -> source for simple name-init locals (prescan alias_sources).
+    # Consulted when invalidating field facts: a mutation through one name
+    # of an alias group invalidates facts rooted at every member.
+    current_alias_sources: dict[str, str] = field(default_factory=dict)
 
     # --- Definite-assignment tracking ---
     definitely_assigned: set[str] = field(default_factory=set)
@@ -573,6 +577,10 @@ class FunctionTrackingState:
     nested_def_name: str | None = None
     outer_scope_locals: set[str] = field(default_factory=set)
     current_nonlocal_names: set[str] = field(default_factory=set)
+    # Union of nonlocal targets across all nested defs analyzed so far in
+    # this function: any later call may invoke such a closure and rebind
+    # these names, so check-elision facts for them die at every call site.
+    closure_written_names: set[str] = field(default_factory=set)
     nested_def_names: set[str] = field(default_factory=set)
     nested_def_escapes: set[str] = field(default_factory=set)
     nested_def_nodes: dict[str, 'TpyNestedDef'] = field(default_factory=dict)

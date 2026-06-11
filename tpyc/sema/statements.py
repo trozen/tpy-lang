@@ -43,7 +43,10 @@ from ..parse import (
 from ..coercions import CoercionContext
 from ..namespace import BindingKind
 from ..symbol_binding import SymbolKind, lookup_imported
-from ..prescan import ScanResult, scan_reassigned_vars, parse_deref_view_key
+from ..prescan import (
+    ScanResult, scan_reassigned_vars, parse_deref_view_key,
+    FactKills, collect_fact_kills,
+)
 from ..liveness import analyze_last_uses
 from ..parse.nodes import VarLinkage
 from .context import addr_taken_roots, expr_yields_non_null_ptr
@@ -1105,6 +1108,8 @@ class StatementAnalyzer:
                 self.init.apply_loop_entry_facts(
                     before,
                     condition_type_facts=then_type_facts,
+                    kills=collect_fact_kills(stmt.body,
+                                             extra_exprs=[stmt.condition]),
                 )
                 # Applied separately from apply_loop_entry_facts because
                 # that method only handles type narrowing, not ptr non-null.
@@ -1137,7 +1142,8 @@ class StatementAnalyzer:
                 consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
                 ns_types_before_foreach = self._save_ns_var_types()
                 with self.scopes.loop_scope() as inner_scope:
-                    self.init.apply_loop_entry_facts(before)
+                    self.init.apply_loop_entry_facts(
+                        before, kills=collect_fact_kills(stmt.body))
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, inner_scope.depth, is_foreach=True):
                         for s in stmt.body:
                             self.analyze_stmt(s)
@@ -1178,7 +1184,8 @@ class StatementAnalyzer:
                 consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
                 ns_types_before_foreach = self._save_ns_var_types()
                 with self.scopes.loop_scope() as inner_scope:
-                    self.init.apply_loop_entry_facts(before)
+                    self.init.apply_loop_entry_facts(
+                        before, kills=collect_fact_kills(stmt.body))
                     # Track range facts for loop variable from range() calls
                     self._track_for_range_facts(stmt)
                     bt = self.ctx.func.borrow_tracker
@@ -1740,17 +1747,59 @@ class StatementAnalyzer:
         else:
             self._analyze_try_throw(stmt)
 
+    def _analyze_finally_body(self, stmt: TpyTry,
+                              try_kills: FactKills | None = None) -> None:
+        """Analyze a finally body under all-paths entry facts.
+
+        The finally runs on the normal path AND on any mid-try (or
+        mid-handler) exception, so check-elision facts the try/else/handler
+        bodies may have killed -- or only established -- must not be assumed
+        inside it. After the body, normal-path facts are restored for the
+        code following the try statement (they hold whenever control flows
+        past it normally), minus whatever the finally body itself killed.
+
+        ``try_kills`` lets callers that already scanned the try body for
+        handler entry pass the result in instead of re-scanning.
+        """
+        if not stmt.finally_body:
+            return
+        entry_kills = FactKills()
+        entry_kills.update(try_kills if try_kills is not None
+                           else collect_fact_kills(stmt.try_body))
+        if stmt.else_body:
+            entry_kills.update(collect_fact_kills(stmt.else_body))
+        for h in stmt.handlers:
+            entry_kills.update(collect_fact_kills(h.body))
+        normal_narrowed = dict(self.ctx.func.narrowed_types)
+        normal_non_null = set(self.ctx.func.non_null_ptr_vars)
+        normal_ranges = dict(self.ctx.func.value_ranges)
+        self.init.apply_fact_kills(entry_kills)
+        prev_in_finally = self.ctx.in_finally
+        self.ctx.in_finally = True
+        for s in stmt.finally_body:
+            self.analyze_stmt(s)
+        self.ctx.in_finally = prev_in_finally
+        # Re-union the normal path: replay the finally body's own kills on
+        # the normal-path snapshot, then let facts the finally established
+        # take precedence.
+        after_narrowed = self.ctx.func.narrowed_types
+        after_non_null = self.ctx.func.non_null_ptr_vars
+        after_ranges = self.ctx.func.value_ranges
+        self.ctx.func.narrowed_types = normal_narrowed
+        self.ctx.func.non_null_ptr_vars = normal_non_null
+        self.ctx.func.value_ranges = normal_ranges
+        self.init.apply_fact_kills(collect_fact_kills(stmt.finally_body))
+        self.ctx.func.narrowed_types.update(after_narrowed)
+        self.ctx.func.non_null_ptr_vars |= after_non_null
+        self.ctx.func.value_ranges.update(after_ranges)
+
     def _analyze_try_finally_only(self, stmt: TpyTry) -> None:
         """Analyze try/finally with no except handlers."""
         scope_before = set(self.ctx.func.current_scope.bindings.keys())
         for s in stmt.try_body:
             self.analyze_stmt(s)
         try_bindings = dict(self.ctx.func.current_scope.bindings)
-        prev_in_finally = self.ctx.in_finally
-        self.ctx.in_finally = True
-        for s in stmt.finally_body:
-            self.analyze_stmt(s)
-        self.ctx.in_finally = prev_in_finally
+        self._analyze_finally_body(stmt)
         # Hoist try-body variables so they're accessible in the finally body.
         # Mark as hoisted so non-value types use pointer indirection.
         branch_new = set(try_bindings.keys()) - scope_before
@@ -1814,10 +1863,14 @@ class StatementAnalyzer:
         then_terminated = self.ctx.func.init_terminated
         try_bindings = dict(self.ctx.func.current_scope.bindings)
 
-        # Restore to pre-try state for except branch
+        # Restore to pre-try state for except branch. An exception can be
+        # thrown at ANY point in the try body, so facts the body may have
+        # killed must not be assumed in the handler.
         self.ctx.func.current_scope.bindings = dict(bindings_before)
         self._restore_ns_var_types(ns_types_before)
         self.init.restore(before)
+        try_kills = collect_fact_kills(stmt.try_body)
+        self.init.apply_fact_kills(try_kills)
         self.ctx.func.current_consumed_own_params = consumed_before.copy()
 
         # Register except binding -- use find_record_by_qname because
@@ -1851,11 +1904,7 @@ class StatementAnalyzer:
             consumed_after_then, consumed_after_else)
 
         # Analyze finally body (runs on all paths, doesn't affect branch merging)
-        prev_in_finally = self.ctx.in_finally
-        self.ctx.in_finally = True
-        for s in stmt.finally_body:
-            self.analyze_stmt(s)
-        self.ctx.in_finally = prev_in_finally
+        self._analyze_finally_body(stmt, try_kills)
 
         # Hoist all declarations for goto-based dispatch
         all_bindings = dict(try_bindings)
@@ -1914,12 +1963,16 @@ class StatementAnalyzer:
         consumed_after_then = self.ctx.func.current_consumed_own_params.copy()
         then_terminated = self.ctx.func.init_terminated
 
-        # Analyze each except handler as a separate branch from pre-try state
+        # Analyze each except handler as a separate branch from pre-try state.
+        # An exception can be thrown at ANY point in the try body, so facts
+        # the body may have killed must not be assumed in any handler.
+        try_kills = collect_fact_kills(stmt.try_body)
         handler_states: list[tuple] = []
         for i, h in enumerate(stmt.handlers):
             self.ctx.func.current_scope.bindings = dict(bindings_before)
             self._restore_ns_var_types(ns_types_before)
             self.init.restore(before)
+            self.init.apply_fact_kills(try_kills)
             self.ctx.func.current_consumed_own_params = consumed_before.copy()
 
             record = handler_records[i]
@@ -1971,11 +2024,7 @@ class StatementAnalyzer:
         self.ctx.func.current_consumed_own_params = result_consumed
 
         # Analyze finally body
-        prev_in_finally = self.ctx.in_finally
-        self.ctx.in_finally = True
-        for s in stmt.finally_body:
-            self.analyze_stmt(s)
-        self.ctx.in_finally = prev_in_finally
+        self._analyze_finally_body(stmt, try_kills)
 
         # Throw-tier uses C++ try/catch with proper scoping -- no goto hoisting
         # needed in general. BUT try-body variables must be hoisted when:
@@ -2105,7 +2154,8 @@ class StatementAnalyzer:
         consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
         ns_types_before = self._save_ns_var_types()
         with self.scopes.loop_scope() as inner_scope:
-            self.init.apply_loop_entry_facts(before)
+            self.init.apply_loop_entry_facts(
+                before, kills=collect_fact_kills(stmt.body))
             self.ctx.func.mutated_loop_vars.discard(stmt.var)
             self.ctx.func.consumed_loop_vars.discard(stmt.var)
             # Register an ITER borrow on a named iterable so structural
@@ -2381,6 +2431,7 @@ class StatementAnalyzer:
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
         self.ctx.func.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
         self.ctx.func.current_aug_assigned_vars = scan.aug_assigned.copy()
+        self.ctx.func.current_alias_sources = dict(scan.alias_sources)
 
         # Analyze body
         for stmt in func.body:
@@ -2432,6 +2483,9 @@ class StatementAnalyzer:
             # (covers nonlocal declarations at any nesting depth)
             nonlocal_names = self.ctx.func.current_nonlocal_names.copy()
         stmt.nonlocal_names = nonlocal_names
+        # After the scope restore: any later call in the enclosing function
+        # may invoke this closure, killing facts for its nonlocal targets.
+        self.ctx.func.closure_written_names |= nonlocal_names
 
         # Compute captures: free variables that come from outer scope
         free_names = _collect_body_name_refs(func.body)

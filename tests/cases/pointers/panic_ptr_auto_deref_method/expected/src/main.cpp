@@ -8,7 +8,7 @@ namespace tpyapp::main {
 void main() {
     // p: Ptr[Counter] = Ptr[Counter]()
     Counter* p = static_cast<Counter*>(nullptr);
-    // print(p.get_value())
+    // print(p.get_value())  # tpyc: nullable(p)
     std::cout << ::tpy::deref_check(p).get_value() << "\n";
 }
 

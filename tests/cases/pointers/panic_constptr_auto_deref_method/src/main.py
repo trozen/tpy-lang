@@ -9,6 +9,6 @@ class Counter:
 
 def main() -> None:
     p: Ptr[readonly[Counter]] = Ptr[readonly[Counter]]()
-    print(p.__len__())
+    print(p.__len__())  # tpyc: nullable(p)
 
 main()

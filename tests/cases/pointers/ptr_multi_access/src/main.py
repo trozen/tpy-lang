@@ -11,11 +11,11 @@ class Point:
 
 def use_fields(p: Ptr[Point]) -> None:
     # Multiple field accesses on same pointer in one expression
-    print(p.x + p.y)
+    print(p.x + p.y)  # tpyc: nullable(p)
 
 def use_methods(p: Ptr[Point]) -> None:
     # Method + field access on same pointer
-    print(p.sum(), p.x)
+    print(p.sum(), p.x)  # tpyc: nullable(p)
 
 def test() -> None:
     pt: Point = Point(3, 7)

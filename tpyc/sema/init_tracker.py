@@ -10,6 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .flow_facts import FlowFacts
+from ..prescan import FactKills, alias_group, deref_view_key
 
 if TYPE_CHECKING:
     from ..typesys import TpyType
@@ -107,17 +108,76 @@ class InitTracker:
         self.ctx.func.param_provenance_vars.discard(name)
         self.ctx.func.safe_to_return_vars.discard(name)
 
+    def apply_fact_kills(self, kills: FactKills) -> None:
+        """Drop check-elision facts the given kill-set may invalidate.
+
+        Touches only the UB-driving fact families (type narrowing, ptr
+        non-null, value ranges); definite-assignment and the hazard sets
+        are managed by their own merge policies.
+        """
+        f = self.ctx.func
+
+        def _sweep(killed_key: str, kill_self: bool) -> None:
+            prefix = killed_key + "."
+            for k in [k for k in f.narrowed_types
+                      if k.startswith(prefix)
+                      or (kill_self and (k == killed_key
+                                         or k == deref_view_key(killed_key)))]:
+                del f.narrowed_types[k]
+            if not kill_self:
+                # Contents may change behind the key; the deref-view payload
+                # narrowing reaches through it, so it dies even when the
+                # key's own narrowing survives.
+                f.narrowed_types.pop(deref_view_key(killed_key), None)
+            for k in [k for k in f.non_null_ptr_vars
+                      if k.startswith(prefix) or (kill_self and k == killed_key)]:
+                f.non_null_ptr_vars.discard(k)
+            for k in [k for k in f.value_ranges
+                      if k.startswith(prefix) or (kill_self and k == killed_key)]:
+                del f.value_ranges[k]
+            root = killed_key.split(".", 1)[0]
+            for k in [k for k, v in f.value_ranges.items()
+                      if v.hi_len_of in (killed_key, root)]:
+                del f.value_ranges[k]
+
+        # Rebinds (names) kill only the spelled name's facts -- rebinding one
+        # alias does not touch the others. Mutations (paths, receivers) reach
+        # the shared object, so they kill across the static alias group,
+        # mirroring NarrowingTracker._invalidate_field_facts. Coverage is
+        # deliberately a superset of the live path: _sweep also clears
+        # dotted-key value ranges and deref-view keys under receivers, which
+        # the live invalidation never keys today -- if dotted range facts are
+        # ever added, extend the live path too or it under-invalidates.
+        aliases = f.current_alias_sources
+        for name in kills.names:
+            _sweep(name, kill_self=True)
+        for path in kills.paths:
+            root, _, rest = path.partition(".")
+            for alias_root in alias_group(aliases, root):
+                _sweep(f"{alias_root}.{rest}" if rest else alias_root,
+                       kill_self=True)
+        for recv in kills.receivers:
+            root, _, rest = recv.partition(".")
+            for alias_root in alias_group(aliases, root):
+                _sweep(f"{alias_root}.{rest}" if rest else alias_root,
+                       kill_self=False)
+
     def apply_loop_entry_facts(
         self,
         before: FlowFacts,
         condition_type_facts: dict[str, TpyType] | None = None,
+        kills: FactKills | None = None,
     ) -> None:
         """Apply flow facts at loop body entry.
 
         Restores the state from just before the loop, so that outer
         narrowing proven by enclosing if-blocks is preserved inside the
-        loop body. Any additional narrowing the loop condition itself
-        proves (e.g. ``while x is not None``) is layered on top.
+        loop body. The body's kill-set is then applied (the back-edge may
+        re-enter the body after the facts were invalidated -- single-pass
+        analysis has no fixpoint, so killed facts must not be assumed at
+        entry). Any additional narrowing the loop condition itself proves
+        (e.g. ``while x is not None``) is layered on top last, since the
+        condition is re-proven on every iteration.
         """
         self.ctx.func.definitely_assigned = set(before.definitely_assigned)
         self.ctx.func.init_terminated = False
@@ -133,6 +193,8 @@ class InitTracker:
         self.ctx.func.copies_into_own_hazards = set(before.copies_into_own_hazards)
         self.ctx.func.borrow_tracker.restore_from_frozen(before.borrows)
         self.ctx.func.value_ranges = dict(before.value_ranges)
+        if kills is not None:
+            self.apply_fact_kills(kills)
         if condition_type_facts is not None:
             self.ctx.func.narrowed_types.update(condition_type_facts)
 

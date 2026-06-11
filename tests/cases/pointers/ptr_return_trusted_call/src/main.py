@@ -48,10 +48,10 @@ def main() -> None:
     b: Ptr[Point] = via_alias()
     c: Ptr[Point] = via_both_branches(True)
     d: Ptr[Point] = via_ternary(False)
-    print(a.x)
-    print(b.y)
-    print(c.x)
-    print(d.y)
+    print(a.x)  # tpyc: nullable(a)
+    print(b.y)  # tpyc: nullable(b)
+    print(c.x)  # tpyc: nullable(c)
+    print(d.y)  # tpyc: nullable(d)
 
 
 main()

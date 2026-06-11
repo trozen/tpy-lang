@@ -22,7 +22,7 @@ from ..parse import (
 )
 from .literal_utils import literal_value_from_expr
 from .value_range import ValueRange
-from ..prescan import match_is_none, _expr_to_narrowing_key, deref_view_key
+from ..prescan import match_is_none, _expr_to_narrowing_key, deref_view_key, alias_group
 from ..namespace import BindingKind
 from ..diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
 from ..type_def_registry import protocol_info_of
@@ -722,15 +722,37 @@ class NarrowingTracker:
             return
         self.ctx.func.narrowed_types[name] = self._optional_inner_type(target_type)
 
+    def _alias_group(self, name: str) -> set[str]:
+        """All names statically known to alias ``name`` (simple name-init
+        locals, from prescan's alias map), including ``name`` itself."""
+        return alias_group(self.ctx.func.current_alias_sources, name)
+
     def _invalidate_field_facts(self, name: str) -> None:
-        """Remove all field narrowing facts rooted at the given variable name."""
-        prefix = name + "."
-        stale = [k for k in self.ctx.func.narrowed_types if k.startswith(prefix)]
-        for k in stale:
-            del self.ctx.func.narrowed_types[k]
-        stale_ptr = [k for k in self.ctx.func.non_null_ptr_vars if k.startswith(prefix)]
-        for k in stale_ptr:
-            self.ctx.func.non_null_ptr_vars.discard(k)
+        """Remove all field narrowing facts rooted at the given variable name
+        or at any name statically aliasing it."""
+        for root in self._alias_group(name):
+            prefix = root + "."
+            stale = [k for k in self.ctx.func.narrowed_types if k.startswith(prefix)]
+            for k in stale:
+                del self.ctx.func.narrowed_types[k]
+            stale_ptr = [k for k in self.ctx.func.non_null_ptr_vars if k.startswith(prefix)]
+            for k in stale_ptr:
+                self.ctx.func.non_null_ptr_vars.discard(k)
+
+    def invalidate_closure_written_facts(self) -> None:
+        """Kill facts for names a previously-analyzed closure may rebind.
+
+        Called at every call site: sema cannot know which call invokes the
+        closure (directly, via a local binding, or through another callee),
+        so any call may run `nonlocal x; x = ...` and falsify x's facts.
+        """
+        for name in self.ctx.func.closure_written_names:
+            self.ctx.func.narrowed_types.pop(name, None)
+            self.ctx.func.narrowed_types.pop(deref_view_key(name), None)
+            self._invalidate_field_facts(name)
+            self.ctx.func.non_null_ptr_vars.discard(name)
+            self.ctx.func.value_ranges.pop(name, None)
+            self._invalidate_len_ranges(name)
 
     def invalidate_for_field_write(self, target: TpyExpr) -> None:
         """Invalidate narrowing facts for sub-paths when a field is written.
@@ -742,22 +764,27 @@ class NarrowingTracker:
         Ptr non-null facts ARE cleared for the written key itself, since a
         field write always introduces a potentially-null pointer value.
         """
-        key = _expr_to_narrowing_key(target)
-        if key is None or "." not in key:
+        full_key = _expr_to_narrowing_key(target)
+        if full_key is None or "." not in full_key:
             return
-        prefix = key + "."
-        stale = [k for k in self.ctx.func.narrowed_types if k.startswith(prefix)]
-        for k in stale:
-            del self.ctx.func.narrowed_types[k]
-        self.ctx.func.non_null_ptr_vars.discard(key)
-        stale_ptr = [k for k in self.ctx.func.non_null_ptr_vars if k.startswith(prefix)]
-        for k in stale_ptr:
-            self.ctx.func.non_null_ptr_vars.discard(k)
+        root, rest = full_key.split(".", 1)
+        for alias_root in self._alias_group(root):
+            key = f"{alias_root}.{rest}"
+            prefix = key + "."
+            stale = [k for k in self.ctx.func.narrowed_types if k.startswith(prefix)]
+            for k in stale:
+                del self.ctx.func.narrowed_types[k]
+            self.ctx.func.non_null_ptr_vars.discard(key)
+            stale_ptr = [k for k in self.ctx.func.non_null_ptr_vars if k.startswith(prefix)]
+            for k in stale_ptr:
+                self.ctx.func.non_null_ptr_vars.discard(k)
 
     def _invalidate_len_ranges(self, name: str) -> None:
-        """Remove range facts whose symbolic bound references len(name)."""
+        """Remove range facts whose symbolic bound references len(name)
+        (or the length of any name statically aliasing it)."""
+        group = self._alias_group(name)
         stale = [k for k, v in self.ctx.func.value_ranges.items()
-                 if v.hi_len_of == name]
+                 if v.hi_len_of in group]
         for k in stale:
             del self.ctx.func.value_ranges[k]
 

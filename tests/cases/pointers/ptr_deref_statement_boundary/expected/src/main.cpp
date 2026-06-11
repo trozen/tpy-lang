@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def cross_statement(p: Ptr[A]) -> None:
 void cross_statement(A* p) {
     // # First statement checks; subsequent statements elide.
-    // print(p.x)
+    // print(p.x)  # tpyc: nullable(p)
     std::cout << ::tpy::deref_check(p).x << "\n";
-    // print(p.y)
+    // print(p.y)  # tpyc: non_null(p)
     std::cout << p->y << "\n";
-    // print(p.x + p.y)
+    // print(p.x + p.y)  # tpyc: non_null(p)
     std::cout << (::tpy::add_check<int32_t>(p->x, p->y)) << "\n";
 }
 
@@ -19,10 +19,10 @@ void cross_statement(A* p) {
 void within_expression(A* p) {
     // # First use of p across all statements in this function:
     // # both operands must check -- evaluation order unspecified.
-    // print(p.x + p.y)
+    // print(p.x + p.y)  # tpyc: nullable(p)
     std::cout << (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y)) << "\n";
     // # Now p is proven non-null; subsequent accesses elide.
-    // print(p.x + p.y)
+    // print(p.x + p.y)  # tpyc: non_null(p)
     std::cout << (::tpy::add_check<int32_t>(p->x, p->y)) << "\n";
 }
 
@@ -30,9 +30,9 @@ void within_expression(A* p) {
 void assign_first(A* p) {
     // # RHS evaluated before LHS, but it's the first use overall:
     // # both sides must check. After this statement, p is non-null.
-    // p.x = p.y + 1
+    // p.x = p.y + 1  # tpyc: nullable(p)
     ::tpy::deref_check(p).x = (::tpy::add_check<int32_t>(::tpy::deref_check(p).y, 1));
-    // p.x = p.y + 2
+    // p.x = p.y + 2  # tpyc: non_null(p)
     p->x = (::tpy::add_check<int32_t>(p->y, 2));
 }
 

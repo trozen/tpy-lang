@@ -64,13 +64,13 @@ void main() {
     Point* c = via_both_branches(true);
     // d: Ptr[Point] = via_ternary(False)
     Point* d = via_ternary(false);
-    // print(a.x)
+    // print(a.x)  # tpyc: nullable(a)
     std::cout << ::tpy::deref_check(a).x << "\n";
-    // print(b.y)
+    // print(b.y)  # tpyc: nullable(b)
     std::cout << ::tpy::deref_check(b).y << "\n";
-    // print(c.x)
+    // print(c.x)  # tpyc: nullable(c)
     std::cout << ::tpy::deref_check(c).x << "\n";
-    // print(d.y)
+    // print(d.y)  # tpyc: nullable(d)
     std::cout << ::tpy::deref_check(d).y << "\n";
 }
 

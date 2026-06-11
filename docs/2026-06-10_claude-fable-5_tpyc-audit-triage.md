@@ -4,6 +4,17 @@ Companion to `2026-06-10_claude-fable-5_tpyc-compiler-audit.md`. Ordered by
 (severity x how idiomatic the triggering code is). "Blast radius" counts verified
 findings collapsed by the fix; theme names refer to the full report.
 
+## Status
+
+Updated as fixes land. The full report is a point-in-time record and is not
+edited; residual gaps from partial fixes are tracked in `BUGS.md`.
+
+| # | Root cause | Status |
+|---|------------|--------|
+| 1 | Flow facts survive paths that kill them | **fixed** -- `fix-flow-fact-kill-sets` (kill-sets at loop/handler/finally meets); residuals in BUGS.md: codegen CFG kill gap, readonly back-edge rebind, finally definite-assignment |
+| 2 | Narrowing not invalidated by calls/aliases | **fixed** -- same branch (closure-nonlocal kill at call sites, alias-group invalidation); residuals in BUGS.md: rebound-alias group, field-access call args, module globals |
+| 3-15 | -- | open |
+
 ---
 
 **1. Flow facts survive paths that kill them** -- `init_tracker.apply_loop_entry_facts`, except/finally analyzed from pre-try / end-of-try state, no back-edge kill.

@@ -21,8 +21,8 @@ def addr_global() -> Ptr[Point]:
 def main() -> None:
     local: Point = Point(10, 20)
     p1: Ptr[Point] = addr_param(local)
-    print(p1.x)
+    print(p1.x)  # tpyc: nullable(p1)
     p2: Ptr[Point] = addr_global()
-    print(p2.y)
+    print(p2.y)  # tpyc: nullable(p2)
 
 main()

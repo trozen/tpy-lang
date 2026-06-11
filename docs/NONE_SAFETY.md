@@ -129,46 +129,64 @@ Unproven optional access emits:
 
 ## Known Limitations
 
-- Narrowing only works on local variable names. Field access (`obj.field`) and
-  subscript access (`items[i]`) are NOT narrowed -- they require explicit
-  binding to a local variable first:
+- Narrowing applies to local variable names and dotted field paths
+  (`obj.field`, `obj.a.b` -- see the field-narrowing tests). Field-path
+  facts are invalidated aggressively: any method call on the receiver (or
+  on a static alias of it), any write to the path or a prefix of it, or
+  passing the object by mutable reference kills the fact. Subscript
+  access (`items[i]`) gets only limited fact tracking; binding to a local
+  first remains the reliable pattern:
   ```python
-  # Won't narrow (field/subscript access is a new evaluation each time):
-  if obj.field is not None:
-      obj.field.method()  # warning + runtime check
-
-  # Correct pattern (bind to local, then narrow):
   val = obj.field
   if val is not None:
       val.method()  # narrowed, no warning
   ```
-- This is by design: field access and subscripts are function calls
-  (`__getattr__`, `__getitem__`) that may return different values on
-  repeated evaluation, especially in multi-threaded environments.
 - Effect contract support is partial: `@readonly` exists, but full effect lattice/inference is not implemented.
 - Ordering operators (`<`, `>`, `<=`, `>=`) across mixed Optional/non-Optional values are still conservative (warning + runtime check), matching Python 3 which raises TypeError for `None < 5`.
 - `==`/`!=` with Optional value-type operands are None-safe: no warning, no runtime panic. `None == 5` evaluates to `False`, `None != 5` to `True` (delegated to C++ `std::optional` comparison).
 
 ## Design Decisions (Locked)
 
-- Narrowing only applies to local variable names (not fields or subscripts).
 - Safety rule: narrow aggressively, invalidate more aggressively.
-- Do not trust repeated reads of fields/subscripts -- they are function calls
-  that may return different values each time (threading, user-defined types).
-- Users must bind to a local variable for narrowing (explicit, sound).
+- Field-path narrowing exists but is killed by any operation that could
+  mutate the object behind the path (method calls, mutable passes, writes,
+  alias-group mutations); when in doubt, bind to a local.
 - Keep behavior explicit; emit warnings and keep runtime checks when proof is missing.
 
-## Planned (Detailed)
+## Implemented Flow-Fact Semantics
 
 ### Loop Stress Semantics
 
 - Implemented:
   - conservative loop-entry fact application
   - `while` condition re-proves name Optional facts for loop body entry
+  - body kill-set applied at loop entry: a pre-loop fact (narrowing, ptr
+    non-null, value range) is dropped when the body may write the name --
+    the back-edge can re-enter the body after the fact was invalidated, so
+    single-pass analysis must not assume it (`prescan.collect_fact_kills`
+    + `InitTracker.apply_fact_kills`)
   - targeted loop stress tests covering reassignment, `continue`, `break`, nested merges, and short-circuit conditions
 - Rule:
   - treat loop body facts as iteration-local unless re-proven by current iteration condition.
+  - treat pre-loop facts as body-entry facts only for names the body cannot write.
   - if safety proof is not present at use site, keep warning + runtime null checks.
+
+### Exception-Path and Call-Site Soundness
+
+The same kill-set discipline applies at every other control-flow meet
+where a fact may have died on some path:
+
+- `except` handlers: analyzed from pre-try state MINUS the try body's
+  kill-set (an exception can be thrown at any point in the try body).
+- `finally` bodies: analyzed under all-paths entry facts (try/else/handler
+  kill-sets applied); the normal-path facts are restored for code after
+  the statement, minus whatever the finally body itself killed.
+- Call sites: once a nonlocal-writing closure has been defined, every
+  subsequent call kills facts for its nonlocal targets (any call may
+  invoke the closure). Field facts are invalidated for the whole static
+  alias group of a mutated receiver/argument, not just the spelled name.
+
+## Planned (Detailed)
 
 ### User-Defined Collections and Effects (Future)
 
