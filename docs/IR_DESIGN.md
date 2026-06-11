@@ -121,6 +121,21 @@ in the current model.
 - **Generic str/bytes ABI perf split (Open Questions item 8).** **[perf, not
   correctness]** generic-`T`-over-`str` materializes `std::string` at each call site.
   Documented; low priority.
+- **Joint generic inference: a pending-typed arg co-resolved by a sibling argument.**
+  **[ergonomics, not correctness]** An untyped empty-container local (`heap = []` ->
+  `PendingList[???]`) passed to a generic free function alongside an argument that fixes
+  the type parameter is not resolved: for `heappush(heap, Entry(copy(src[i])))` against
+  `heappush[X](heap: list[X], item: Own[X])`, `X = Entry[T]` is inferable from `item`, but
+  `match_type_with_inference` is directional (param <- one arg at a time) with no shared
+  unification variable tying `heap`'s pending element to `X`, so the local stays
+  `PendingList[???]` and the call is rejected. Forward-from-usage deduction already covers
+  the method-call shape (`xs.append(5)`) and the concrete expected-type shape (`f(x)` where
+  `f` wants `Container[Int32]`) -- see `BIDIRECTIONAL_CALL_INFERENCE_DESIGN.md` Phase 3a --
+  but the joint case (co-resolve a pending arg with a type param determined by a *sibling*
+  arg, then write the result back onto the local) is the HM-style constraint-solving step
+  that doc defers to "Phase 3+". Natural on MIR's unification-variable model; awkward to
+  bolt onto the directional AST matcher. Workaround: annotate the local
+  (`heap: list[Entry[T]] = []`). Surfaced reviewing the owned-storage-form inference fix.
 
 ---
 

@@ -49,6 +49,22 @@ def partial_substitute(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
     return typ.map_inner_types(lambda t: partial_substitute(t, subst))
 
 
+def to_owned_storage_form(typ: TpyType) -> TpyType:
+    """Canonicalize an inference argument bound into an OWNED context.
+
+    An owned slot -- an ``Own[T]`` parameter or a record constructor argument
+    (records store fields by value) -- holds the storage form, never a borrow
+    or a const view. A subscript of a non-value ``list[T]`` analyzes to the
+    element *borrow form* (``Ref[T]``, recursing per-element for tuples), so
+    without this an owned binding infers ``Ref[T]`` instead of ``T`` -- which
+    then conflicts with the same param inferred as bare ``T`` elsewhere and
+    defeats inference (e.g. ``Entry[Ref[T]]`` vs ``Entry[T]``). ``unwrap_ref_type``
+    already recurses into tuples, so nested borrow elements are canonicalized
+    too. Must NOT be used on the bare-param / Fn-return path, where ``Ref`` is
+    deliberately preserved for reference passing (``map(identity, ...)``)."""
+    return unwrap_readonly(unwrap_ref_type(typ))
+
+
 def post_substitute_hint(
     ptype: TpyType, subst: dict[str, TpyType],
 ) -> TpyType | None:
@@ -820,6 +836,9 @@ class TypeOperations:
 
         # Own[T] wrapper on argument -- unwrap before matching.
         # Own is an ownership marker (e.g. from copy()), not a distinct type.
+        # Remember it was explicitly owned: an Own[T] param binding such an arg
+        # may strip an incidental inner borrow (see the Own[T] param branch).
+        arg_was_owned = isinstance(arg_type, OwnType)
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
 
@@ -933,11 +952,19 @@ class TypeOperations:
                 param_type.return_type, arg_type.return_type, inferred)
 
         # Own[T] wrapper -- unwrap and match T against arg (any type can be owned).
-        # Also strip readonly: readonly[T] passed to Own[T] is an implicit copy.
+        # arg_type has already had a top-level Own stripped above.
         if isinstance(param_type, OwnType):
-            inner_arg = arg_type.wrapped if isinstance(arg_type, OwnType) else arg_type
-            if isinstance(inner_arg, ReadonlyType):
-                inner_arg = inner_arg.wrapped
+            if arg_was_owned:
+                # An explicitly-owned arg (copy() / a fresh constructor result)
+                # holds the storage form, so an inner borrow is incidental:
+                # canonicalize Own[Ref[T]] (e.g. copy() of a subscript) to T
+                # rather than binding the param to Ref[T].
+                inner_arg = to_owned_storage_form(arg_type)
+            else:
+                # A bare arg keeps its Ref: a val_or_ref value passed into an
+                # Own[T] param is an implicit copy whose reference form the
+                # copy-warning / reference-passing path still needs.
+                inner_arg = unwrap_readonly(arg_type)
             return self.match_type_with_inference(
                 param_type.wrapped, inner_arg, inferred
             )
@@ -1398,7 +1425,11 @@ class TypeOperations:
                 if arg is not None:
                     inferred[tp] = arg
         for (pname, ptype, _), arg_type in zip(record.init_params, arg_types):
-            if not self.match_type_with_inference(ptype, arg_type, inferred):
+            # A record field is owned storage, so a constructor arg binds the
+            # storage form -- a borrowed element (Ref[T]) must not leak into the
+            # record's type argument (Record[Ref[T]]).
+            if not self.match_type_with_inference(
+                    ptype, to_owned_storage_form(arg_type), inferred):
                 return None
 
         # Fallback: infer remaining params from expected type
