@@ -3213,6 +3213,11 @@ class StatementGenerator:
             ctx_ids.append(n)
 
             ctx_expr = self.expressions.gen_expr(item.context_expr)
+            # A global manager already renders as `CM*`; deref so the `auto&`
+            # bind sees a `CM&` and the later `.`-accesses resolve.
+            if (item.manager_borrowed
+                    and self.ctx.is_already_pointer_source(item.context_expr)):
+                ctx_expr = f"*({ctx_expr})"
             # Borrow an lvalue manager (`auto&`) so __enter__/__exit__ act on
             # the original; own an rvalue manager (`auto`).
             ctx_bind = "auto&" if item.manager_borrowed else "auto"

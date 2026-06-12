@@ -27,7 +27,8 @@ from ..namespace import Namespace
 from ..parse.nodes import (
     TpyFunction, TpyAwait, TpyStmt, TpyAssign, TpyVarDecl, TpyReturn,
     TpyExprStmt, TpyName, TpyExpr, TpyTry, TpyExceptHandler, TpyCall,
-    TpyMethodCall, TpyFieldAccess, TpyForEach, TpyWith, TpyTupleUnpack,
+    TpyMethodCall, TpyFieldAccess, TpyForEach, TpyWith, TpyWithItem,
+    TpyTupleUnpack,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
     TpyNoneLiteral, TpyCoerce,
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
@@ -3280,20 +3281,14 @@ class AsyncCoroCodegen:
 
     def _emit_with_enter(self, out: "TextIO", indent: str,
                                 stmt: 'rcfg.WithEnter') -> None:
-        """Emit the with-stmt setup sequence:
-            __with_ctx_<n>.emplace(<context_expr>);     # owned (rvalue) manager
-            __with_ctx_<n> = &(<context_expr>);         # borrowed (lvalue) manager
+        """Emit the with-stmt setup sequence (manager bind via
+        `_emit_with_ctx_bind`, then the `__enter__` call):
             <target> = (*__with_ctx_<n>).__enter__();   # if target
             (*__with_ctx_<n>).__enter__();              # else
         """
         ctx_n = stmt.ctx_n
         item = stmt.item
-        ctx_expr = self.expressions.gen_expr(item.context_expr)
-        self.ctx.temps.flush(out, indent)
-        if item.manager_borrowed:
-            out.write(f"{indent}__with_ctx_{ctx_n} = &({ctx_expr});\n")
-        else:
-            out.write(f"{indent}__with_ctx_{ctx_n}.emplace({ctx_expr});\n")
+        self._emit_with_ctx_bind(out, indent, ctx_n, item)
         if item.target is not None:
             target = escape_cpp_name(item.target)
             enter_call = f"(*__with_ctx_{ctx_n}).__enter__()"
@@ -3310,19 +3305,25 @@ class AsyncCoroCodegen:
 
     def _emit_async_with_setup(self, out: "TextIO", indent: str,
                                  stmt: 'rcfg.AsyncWithSetup') -> None:
-        """Emit the async-with frame-field population:
-            __with_ctx_<n>.emplace(<context_expr>);   # owned: frame_slot<CM>
-            __with_ctx_<n> = &(<context_expr>);        # borrowed lvalue: CM*
-        (An owned manager is a `tpy::frame_slot<CM>` whose `operator=` is
-        deleted, so writes go through `.emplace(...)`; a borrowed lvalue is a
-        `CM*` field bound by address.) Subsequent Yield BBs (aenter/aexit)
-        emplace `__sub_<i>` with `(*__with_ctx_<n>, ...)`."""
-        ctx_n = stmt.ctx_n
-        item = stmt.item
+        """Populate the async-with `__with_ctx_<n>` frame field. Subsequent
+        Yield BBs (aenter/aexit) emplace `__sub_<i>` with
+        `(*__with_ctx_<n>, ...)`."""
+        self._emit_with_ctx_bind(out, indent, stmt.ctx_n, stmt.item)
+
+    def _emit_with_ctx_bind(self, out: "TextIO", indent: str, ctx_n: int,
+                            item: TpyWithItem) -> None:
+        """Populate the `__with_ctx_<n>` frame field for a (sync or async)
+        with-region: emplace an owned `frame_slot<CM>` manager (whose
+        `operator=` is deleted), or bind a borrowed `CM*`. A global manager
+        already renders as `CM*`, so the borrowed bind must not re-take its
+        address (would double-pointer)."""
         ctx_expr = self.expressions.gen_expr(item.context_expr)
         self.ctx.temps.flush(out, indent)
         if item.manager_borrowed:
-            out.write(f"{indent}__with_ctx_{ctx_n} = &({ctx_expr});\n")
+            if self.ctx.is_already_pointer_source(item.context_expr):
+                out.write(f"{indent}__with_ctx_{ctx_n} = {ctx_expr};\n")
+            else:
+                out.write(f"{indent}__with_ctx_{ctx_n} = &({ctx_expr});\n")
         else:
             out.write(f"{indent}__with_ctx_{ctx_n}.emplace({ctx_expr});\n")
 
@@ -3377,6 +3378,10 @@ class AsyncCoroCodegen:
         if stmt.is_async:
             iter_cpp = self.expressions.gen_expr(stmt.iterable_expr)
             self.ctx.temps.flush(out, indent)
+            # A global iterable already renders as `Src*`; deref so the
+            # `.__aiter__()` call resolves rather than hitting `.`-on-pointer.
+            if self.ctx.is_already_pointer_source(stmt.iterable_expr):
+                iter_cpp = f"*({iter_cpp})"
             out.write(f"{indent}__for_itr_{uid}.emplace(({iter_cpp}).__aiter__());\n")
             return
         info = self._for_info(func, uid)
@@ -3768,7 +3773,12 @@ class AsyncCoroCodegen:
         elif payload.mode is rcfg.AwaitMode.BORROWED:
             operand_cpp = self.expressions.gen_expr(payload.operand_expr)
             self.ctx.temps.flush(out, indent)
-            out.write(f"{indent}{sub} = &({operand_cpp});\n")
+            # A global / pointer-alias loop var already renders as `T*`;
+            # re-taking its address would double-pointer the sub-future field.
+            if self.ctx.is_already_pointer_source(payload.operand_expr):
+                out.write(f"{indent}{sub} = {operand_cpp};\n")
+            else:
+                out.write(f"{indent}{sub} = &({operand_cpp});\n")
         else:
             raise CodeGenError(f"unknown await mode {payload.mode!r}",
                                loc=None)

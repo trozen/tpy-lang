@@ -1,0 +1,5 @@
+Module-global Future is created at import time, before any event
+loop exists; CPython binds a Future to the running loop and rejects
+awaiting one created outside it ("attached to a different loop"). The
+module-global slot is exactly what this test exercises, so the CPython
+phase is skipped.
