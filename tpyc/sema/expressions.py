@@ -164,6 +164,35 @@ def _find_dict_member(ut: TpyType) -> NominalType | None:
     return None
 
 
+# Largest fixed comprehension that still resolves to a stack Array. Above
+# this the per-element pack expansion in tpy::array_from_index (and the stack
+# footprint) outweigh the heap save, so resolution falls back to list.
+_COMP_ARRAY_MAX_SIZE = 1024
+
+
+def _expr_has_error_return_call(expr: TpyExpr) -> bool:
+    """True when the (analyzed) expression contains a call resolved to an
+    @error_return function. Mirrors the condition codegen's
+    _maybe_error_return_unwrap dispatches on (resolved_function_info with an
+    error_return_type), so consumers can tell whether emitting the expression
+    will produce a function-targeting unwrap."""
+    fi = getattr(expr, 'resolved_function_info', None)
+    if fi is not None and fi.error_return_type:
+        return True
+    # A property read hides its getter call outside children() (codegen emits
+    # the sema-attached property_getter_call, not the field access itself).
+    # dyn_getattr_call is the other hidden call but needs no traversal ONLY
+    # because registration bans @error_return on dyn-attr dunders; revisit
+    # here if that ban is ever relaxed.
+    getter = getattr(expr, 'property_getter_call', None)
+    if getter is not None and _expr_has_error_return_call(getter):
+        return True
+    for child in (expr.children() if hasattr(expr, "children") else ()):
+        if _expr_has_error_return_call(child):
+            return True
+    return False
+
+
 class ExpressionAnalyzer:
     """Core expression analysis."""
 
@@ -3062,16 +3091,29 @@ class ExpressionAnalyzer:
         if gen.conditions:
             return None
 
+        # The Array build evaluates the element expression inside the
+        # array_from_index lambda; an @error_return call's unwrap emits a
+        # function-targeting `return`/`goto` (codegen's
+        # _maybe_error_return_unwrap) that would mistarget from a lambda
+        # body, so such elements stay on the inline vector path.
+        if _expr_has_error_return_call(expr.element_expr):
+            return None
+
         # range(N) or range(start, stop) with literal args
         if isinstance(gen.iterable, TpyCall) and gen.iterable.func_name == "range":
-            return self._range_literal_size(gen.iterable)
+            size = self._range_literal_size(gen.iterable)
+        else:
+            # Array[T, N] source -- size is known from the type
+            iterable_type = unwrap_readonly(self.ctx.get_expr_type(gen.iterable))
+            size = iterable_type.type_args[1] if is_array(iterable_type) else None
 
-        # Array[T, N] source -- size is known from the type
-        iterable_type = unwrap_readonly(self.ctx.get_expr_type(gen.iterable))
-        if is_array(iterable_type):
-            return iterable_type.type_args[1]
-
-        return None
+        # array_from_index expands an N-element braced-init-list at C++
+        # template-instantiation time; cap N so a huge literal range doesn't
+        # become a compile-time / object-size cliff (the vector path is O(1)
+        # emitted code regardless of N).
+        if size is not None and size > _COMP_ARRAY_MAX_SIZE:
+            return None
+        return size
 
     @staticmethod
     def _try_int_literal(expr: TpyExpr) -> int | None:

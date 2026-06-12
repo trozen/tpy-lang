@@ -4591,6 +4591,12 @@ class ExpressionGenerator:
         elem_type = self._resolve_int_literal(expr.result_elem_type)
         cpp_elem = self.types.type_to_cpp(elem_type)
 
+        # Sema's container resolution decides Array-vs-list and stamps the
+        # result on the expr; consumers that emit without a target type (e.g.
+        # the frame-slot decl path) must still follow that resolution.
+        if target_type is None:
+            target_type = self.ctx.get_expr_type(expr)
+
         if is_array(target_type):
             return self._gen_array_comprehension(expr, elem_type, cpp_elem, target_type.type_args[1])
 
@@ -4608,7 +4614,15 @@ class ExpressionGenerator:
     def _gen_array_comprehension(self, expr: TpyListComprehension,
                                   elem_type: TpyType, cpp_elem: str,
                                   size: int) -> str:
-        """Generate comprehension as GCC stmt-expr producing std::array with indexed assignment."""
+        """Generate comprehension as tpy::array_from_index aggregate construction.
+
+        The element expression runs inside a per-index lambda so each result is
+        constructed directly into its slot: no element default-construction or
+        assignment anywhere in the build (exactly-N evaluation, CPython parity;
+        works for move-only / non-default-constructible elements). Sema's
+        lambda-safety gate guarantees the element expression emits no
+        function-targeting control flow (@error_return unwrap return/goto).
+        """
         gen = expr.generator
         comp_names = self._enter_comp_scope(gen)
         try:
@@ -4619,64 +4633,60 @@ class ExpressionGenerator:
             ind1 = stmt_ind + INDENT
             ind2 = ind1 + INDENT
 
-            buf = io.StringIO()
-            buf.write(f"({{\n")
-            buf.write(f"{ind1}std::array<{cpp_elem}, {size}> __result;\n")
-
-            is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func_name == "range"
-            nargs = len(gen.iterable.args) if is_range else 0
+            n = self.ctx.iter_counter
+            self.ctx.iter_counter += 1
             cpp_var = escape_cpp_name(gen.var)
 
-            if is_range and nargs <= 2:
-                sema_elem = builtin_modules.get_iterable_element_type(
-                    self.types.get_resolved_type(gen.iterable), registry=self.ctx.analyzer.registry)
-                if sema_elem is not None and isinstance(sema_elem, IntLiteralType):
-                    sema_elem = self.ctx.analyzer.ctx.default_int_type
-                if sema_elem is None:
-                    sema_elem = self.ctx.analyzer.ctx.default_int_type
+            sema_elem = builtin_modules.get_iterable_element_type(
+                self.types.get_resolved_type(gen.iterable), registry=self.ctx.analyzer.registry)
+            if sema_elem is None or isinstance(sema_elem, IntLiteralType):
+                sema_elem = self.ctx.analyzer.ctx.default_int_type
+
+            is_range = isinstance(gen.iterable, TpyCall) and gen.iterable.func_name == "range"
+            buf = io.StringIO()
+
+            if is_range:
+                # Sema proved literal bounds (_try_comp_array_size), so start
+                # and step are literals: inline them as index arithmetic. The
+                # functional cast (not static_cast) also covers BigInt.
                 cpp_iter_type = sema_elem.to_cpp()
-
-                if nargs == 1:
-                    buf.write(f"{ind1}for ({cpp_iter_type} {cpp_var} = 0; {cpp_var} < {size}; ++{cpp_var}) {{\n")
+                args = gen.iterable.args
+                idx = f"{cpp_iter_type}(__i_{n})"
+                if len(args) == 1:
+                    var_init = idx
                 else:
-                    start_code = self.gen_expr_deref(gen.iterable.args[0])
-                    buf.write(f"{ind1}const {cpp_iter_type} __start_0 = {start_code};\n")
-                    buf.write(f"{ind1}for ({cpp_iter_type} {cpp_var} = __start_0, __idx_0 = 0;"
-                              f" __idx_0 < {size}; ++{cpp_var}, ++__idx_0) {{\n")
-                idx_expr = cpp_var if nargs == 1 else "__idx_0"
-                buf.write(f"{ind2}__result[static_cast<std::size_t>({idx_expr})] = {insert_code};\n")
+                    start_code = self.gen_expr_deref(args[0])
+                    if len(args) == 2:
+                        var_init = f"{start_code} + {idx}"
+                    else:
+                        step_code = self.gen_expr_deref(args[2])
+                        var_init = f"{start_code} + {idx} * ({step_code})"
+                buf.write(f"::tpy::array_from_index<{cpp_elem}, {size}>("
+                          f"[&](std::size_t __i_{n}) -> {cpp_elem} {{\n")
+                buf.write(f"{ind1}{cpp_iter_type} {cpp_var} = {var_init};\n")
+                buf.write(f"{ind1}return {insert_code};\n")
+                buf.write(f"{stmt_ind}}})")
+                return buf.getvalue()
+
+            # Array[T, N] source -- random-access indexing. The source is
+            # evaluated once in a stmt-expr prelude (outside the lambda) so
+            # an lvalue source is borrowed, not copied.
+            iterable_code = self.gen_expr_deref(gen.iterable)
+            obj_binding = "auto&" if self._comp_is_lvalue(gen.iterable) else "auto"
+            src_elem = f"__obj_{n}[__i_{n}]"
+
+            buf.write(f"({{\n")
+            buf.write(f"{ind1}{obj_binding} __obj_{n} = {iterable_code};\n")
+            buf.write(f"{ind1}::tpy::array_from_index<{cpp_elem}, {size}>("
+                      f"[&](std::size_t __i_{n}) -> {cpp_elem} {{\n")
+            if gen.unpack_vars is not None:
+                self._emit_inline_tuple_unpack(buf, gen, sema_elem, ind2, source_expr=src_elem)
+            elif sema_elem.is_value_type():
+                buf.write(f"{ind2}{sema_elem.to_cpp()} {cpp_var} = {src_elem};\n")
             else:
-                # Array/container source -- begin/end loop with index counter
-                n = self.ctx.iter_counter
-                self.ctx.iter_counter += 1
-                iterable_code = self.gen_expr_deref(gen.iterable)
-                is_lvalue = self._comp_is_lvalue(gen.iterable)
-                obj_binding = "auto&" if is_lvalue else "auto"
-
-                sema_elem = builtin_modules.get_iterable_element_type(
-                    self.types.get_resolved_type(gen.iterable), registry=self.ctx.analyzer.registry)
-                if sema_elem is not None and isinstance(sema_elem, IntLiteralType):
-                    sema_elem = self.ctx.analyzer.ctx.default_int_type
-                if sema_elem is None:
-                    sema_elem = self.ctx.analyzer.ctx.default_int_type
-
-                buf.write(f"{ind1}{obj_binding} __obj_{n} = {iterable_code};\n")
-                buf.write(f"{ind1}auto __beg_{n} = __obj_{n}.begin();\n")
-                buf.write(f"{ind1}auto __end_{n} = __obj_{n}.end();\n")
-                buf.write(f"{ind1}for (size_t __idx_{n} = 0; __beg_{n} != __end_{n}; ++__beg_{n}, ++__idx_{n}) {{\n")
-
-                if gen.unpack_vars is not None:
-                    self._gen_comp_tuple_unpack(buf, gen, sema_elem, ind2, n)
-                elif sema_elem.is_value_type():
-                    cpp_iter_elem = sema_elem.to_cpp()
-                    buf.write(f"{ind2}{cpp_iter_elem} {cpp_var} = *__beg_{n};\n")
-                else:
-                    buf.write(f"{ind2}auto&& {cpp_var} = *__beg_{n};\n")
-
-                buf.write(f"{ind2}__result[__idx_{n}] = {insert_code};\n")
-
-            buf.write(f"{ind1}}}\n")
-            buf.write(f"{ind1}std::move(__result);\n")
+                buf.write(f"{ind2}auto&& {cpp_var} = {src_elem};\n")
+            buf.write(f"{ind2}return {insert_code};\n")
+            buf.write(f"{ind1}}});\n")
             buf.write(f"{stmt_ind}}})")
 
             return buf.getvalue()

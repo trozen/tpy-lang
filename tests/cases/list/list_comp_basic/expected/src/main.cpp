@@ -73,14 +73,9 @@ void main() {
     std::cout << ::tpy::ListPrinter(xs) << "\n";
     // # Comprehension as function argument
     // print([x + 1 for x in range(3)])
-    std::cout << ::tpy::ListPrinter(({
-        std::vector<int32_t> __result;
-        const int32_t __stop_5 = 3;
-        if (__stop_5 > 0) __result.reserve(static_cast<size_t>(__stop_5));
-        for (int32_t x = 0; x < __stop_5; ++x) {
-            __result.push_back((::tpy::add_check<int32_t>(x, 1)));
-        }
-        std::move(__result);
+    std::cout << ::tpy::ListPrinter(::tpy::array_from_index<int32_t, 3>([&](std::size_t __i_5) -> int32_t {
+        int32_t x = int32_t(__i_5);
+        return (::tpy::add_check<int32_t>(x, 1));
     })) << "\n";
     // # String comprehension
     // words: list[str] = ["hello", "world"]

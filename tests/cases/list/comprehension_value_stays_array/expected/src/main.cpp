@@ -7,20 +7,14 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // nums = [i for i in range(4)]  # tpyc: type(/Array\[Int32, 4\]/)
-    std::array<int32_t, 4> nums = ({
-        std::array<int32_t, 4> __result;
-        for (int32_t i = 0; i < 4; ++i) {
-            __result[static_cast<std::size_t>(i)] = i;
-        }
-        std::move(__result);
+    std::array<int32_t, 4> nums = ::tpy::array_from_index<int32_t, 4>([&](std::size_t __i_0) -> int32_t {
+        int32_t i = int32_t(__i_0);
+        return i;
     });
     // pts = [Point(i) for i in range(4)]  # tpyc: type(/Array\[Point, 4\]/)
-    std::array<Point, 4> pts = ({
-        std::array<Point, 4> __result;
-        for (int32_t i = 0; i < 4; ++i) {
-            __result[static_cast<std::size_t>(i)] = Point(i);
-        }
-        std::move(__result);
+    std::array<Point, 4> pts = ::tpy::array_from_index<Point, 4>([&](std::size_t __i_1) -> Point {
+        int32_t i = int32_t(__i_1);
+        return Point(i);
     });
     // print(len(nums) + len(pts))
     std::cout << (::tpy::add_check<int32_t>(::tpy::__len__(nums), ::tpy::__len__(pts))) << "\n";

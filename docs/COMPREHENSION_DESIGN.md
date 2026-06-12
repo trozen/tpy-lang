@@ -421,12 +421,18 @@ Supported sources:
 
 Uses `PendingListType` for deferred resolution -- automatically falls back to
 `list[T]` if the variable is mutated (e.g. `.append()`), passed to a `list[T]`
-parameter, or explicitly annotated as `list[T]`.
+parameter, explicitly annotated as `list[T]`, or when the element expression
+reaches an `@error_return` callable (the unwrap's `return`/`goto` cannot cross
+the array builder's lambda).
 
-Codegen strategies:
-- `range(N)`: simple counter loop with indexed assignment
-- `range(start, stop)`: counter loop with start offset
-- `range(start, stop, step)` and `Array[T,N]`: begin/end iterator with index counter
+Codegen strategies (all via `tpy::array_from_index<T, N>(f)` -- aggregate
+construction, element expression evaluated exactly N times left-to-right,
+each result constructed in place; no element default ctor or assignment):
+- `range(...)` with literal args: per-index lambda binds the loop var as
+  `start + i * step` index arithmetic
+- `Array[T,N]` source: stmt-expr prelude borrows the source once, the lambda
+  binds from `__obj[i]` (random access); tuple-unpack shares the inline
+  unpack helper with the vector path
 
 ---
 

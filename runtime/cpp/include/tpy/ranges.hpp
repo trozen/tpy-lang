@@ -13,6 +13,7 @@
 #include <iterator>
 #include <ranges>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "next_iter.hpp"
@@ -152,6 +153,23 @@ Container from_range(R&& range) {
     } else {
         return Container(std::ranges::begin(range), std::ranges::end(range));
     }
+}
+
+/**
+ * array_from_index<T, N> - Build a std::array by aggregate construction.
+ *
+ * Calls f(0), f(1), ..., f(N-1) left-to-right (braced-init-list sequencing)
+ * and constructs each result directly into its slot (guaranteed elision).
+ * Unlike the default-construct-then-assign pattern this runs no element
+ * default constructor and needs no assignment operator, so it works for
+ * move-only and non-default-constructible element types and evaluates the
+ * element expression exactly N times (CPython parity for comprehensions).
+ */
+template<typename T, std::size_t N, typename F>
+std::array<T, N> array_from_index(F&& f) {
+    return [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+        return std::array<T, N>{f(Is)...};
+    }(std::make_index_sequence<N>{});
 }
 
 /**

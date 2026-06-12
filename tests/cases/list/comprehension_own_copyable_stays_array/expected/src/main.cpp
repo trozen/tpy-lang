@@ -13,21 +13,18 @@ Point make(int32_t i) {
 // def main() -> None:
 void main() {
     // pts = [make(i) for i in range(4)]  # tpyc: type(/Array\[Point, 4\]/)
-    std::array<Point, 4> pts = ({
-        std::array<Point, 4> __result;
-        for (int32_t i = 0; i < 4; ++i) {
-            __result[static_cast<std::size_t>(i)] = make(i);
-        }
-        std::move(__result);
+    std::array<Point, 4> pts = ::tpy::array_from_index<Point, 4>([&](std::size_t __i_0) -> Point {
+        int32_t i = int32_t(__i_0);
+        return make(i);
     });
     // total = 0
     int32_t total = 0;
     // for p in pts:
-    auto& __obj_0 = pts;
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        const auto& p = *__beg_0;
+    auto& __obj_1 = pts;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        const auto& p = *__beg_1;
         // total += p.x
         total = ::tpy::add_check<int32_t>(total, p.x);
     }

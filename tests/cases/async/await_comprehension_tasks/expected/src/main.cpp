@@ -29,15 +29,10 @@ __coro_work work(int32_t n) {
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // tasks = [asyncio.create_task(work(i)) for i in range(4)]  # tpyc: type(/list\[Task/)
-        tasks.emplace(({
-            std::vector<::tpystd::asyncio::_executor::Task<int32_t>> __result;
-            const int32_t __stop_0 = 4;
-            if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-            for (int32_t i = 0; i < __stop_0; ++i) {
-                __result.push_back(::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(work(i))));
-            }
-            std::move(__result);
+        // tasks = [asyncio.create_task(work(i)) for i in range(4)]  # tpyc: type(/Array\[Task/)
+        tasks.emplace(::tpy::array_from_index<::tpystd::asyncio::_executor::Task<int32_t>, 4>([&](std::size_t __i_0) -> ::tpystd::asyncio::_executor::Task<int32_t> {
+            int32_t i = int32_t(__i_0);
+            return ::tpystd::asyncio::create_task<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(work(i)));
         }));
         // total = 0
         total = 0;
@@ -91,8 +86,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # A comprehension building Task[T] handles (Own, @nocopy) resolves to list and
-    // # the Own element collapses to storage form, so the await-loop compiles.
+    // # A comprehension building Task[T] handles (Own, @nocopy) resolves to a stack
+    // # Array (aggregate construction handles the nocopy elements) and the Own
+    // # element collapses to storage form, so the await-loop borrows each Task.
     // import asyncio
     ::tpystd::asyncio::__tpy_init();
     // main()

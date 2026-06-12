@@ -1980,8 +1980,9 @@ codegen strategy, and future extensions (dict/set comprehensions, generator expr
 filter clause. Codegen uses IIFE pattern (`[&]() { ... }()`). Supports range() counter
 optimization and begin/end iteration for native containers. Tuple unpacking in generators,
 annotation propagation, and Array optimization have all shipped (a fixed-length comprehension
-of a default-constructible, copyable element produces a stack `std::array`; non-copyable /
-non-default-constructible elements fall back to `std::vector`).
+produces a stack `std::array` built by aggregate construction via `tpy::array_from_index` --
+exactly-N in-place element construction, so non-copyable / non-default-constructible elements
+are included; only elements calling `@error_return` functions stay on the `std::vector` path).
 
 **Dependencies**: None for basic form. Filter clause needs bool coercion (done).
 

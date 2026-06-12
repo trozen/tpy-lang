@@ -142,12 +142,9 @@ void __tpy_init() {
     r6 = &__global_slot_7;
     // # Array comprehension path (range-based, promotes to std::array)
     // r7: Array[int, 5] = [x * x for x in range(5)]
-    static std::array<::tpy::BigInt, 5> __global_slot_8 = ({
-        std::array<::tpy::BigInt, 5> __result;
-        for (int32_t x = 0; x < 5; ++x) {
-            __result[static_cast<std::size_t>(x)] = ::tpy::BigInt((::tpy::mul_check<int32_t>(x, x)));
-        }
-        std::move(__result);
+    static std::array<::tpy::BigInt, 5> __global_slot_8 = ::tpy::array_from_index<::tpy::BigInt, 5>([&](std::size_t __i_5) -> ::tpy::BigInt {
+        int32_t x = int32_t(__i_5);
+        return ::tpy::BigInt((::tpy::mul_check<int32_t>(x, x)));
     });
     r7 = &__global_slot_8;
     // main()
