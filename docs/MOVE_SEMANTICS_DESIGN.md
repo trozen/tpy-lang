@@ -322,8 +322,22 @@ The backward pass re-activates detached aliases at the reassignment point so cod
 it still checks. Only handles top-level reassignments in the same block (not inside
 nested if/for); conditional reassignments conservatively keep alias checking active.
 
-Only tracks simple name-to-name aliases. Field-access aliases (`alias = h.field`)
-are not tracked (future work if needed).
+The liveness alias map tracks name-to-name aliases plus field/subscript-chain
+aliases (`alias = h.field`, `n = xs[0]` -- recorded against the chain's root
+name in `prescan.chain_alias_sources`), all with the detach-on-reassign and
+dead-alias precision above. Borrows the map cannot represent syntactically --
+call results borrowing an argument (`return_borrows_from`), generator objects
+storing their iterable by reference -- are handled at the consume site
+instead: `compat.is_auto_move_use` consults the BorrowTracker and demotes the
+move to the copy path (retracting the last-use mark so codegen agrees) when
+such a borrower exists. Invariant shared by the three analyses: every
+BorrowTracker borrower name must be either a prescan-map alias (liveness
+models it), a liveness-invisible borrower (gates the move), or an explicitly
+excluded sentinel like `"__for_iter"` -- a new borrower naming convention
+must pick its bucket consciously or it silently widens/narrows the gate.
+Known residuals (forward-referenced callees whose borrow facts are not yet
+analyzed, borrows hidden inside nested call arguments, loop-var aliases
+outliving their loop) are tracked in BUGS.md "Safety / borrow checker".
 
 ### Phase 6: Box[T] as library type
 

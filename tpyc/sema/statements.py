@@ -45,7 +45,7 @@ from ..namespace import BindingKind
 from ..symbol_binding import SymbolKind, lookup_imported
 from ..prescan import (
     ScanResult, scan_reassigned_vars, parse_deref_view_key,
-    FactKills, collect_fact_kills,
+    FactKills, collect_fact_kills, liveness_alias_sources,
 )
 from ..liveness import analyze_last_uses
 from ..parse.nodes import VarLinkage
@@ -397,9 +397,7 @@ class StatementAnalyzer:
                 and value.resolved_function_info.qualified_name == "tpy.copy"):
             return
         inner = value.args[0]
-        if (isinstance(inner, TpyName)
-                and id(inner) in self.ctx.all_last_uses
-                and self.compat._is_owned_var(inner.name)):
+        if self.compat.is_auto_move_use(inner):
             self.ctx.warning(
                 f"unnecessary copy() -- '{inner.name}' is at its last use and would be moved automatically",
                 value,
@@ -482,9 +480,7 @@ class StatementAnalyzer:
                 elem_val_type = self.ctx.get_raw_expr_type(elem)
                 # Last-use of an owned local moves into the slot (matches
                 # scalar `self.f = local` auto-move) -- no copy, no warning.
-                is_auto_moved = (isinstance(elem, TpyName)
-                                 and id(elem) in self.ctx.all_last_uses
-                                 and self.compat._is_owned_var(elem.name))
+                is_auto_moved = self.compat.is_auto_move_use(elem)
                 should_warn = False
                 if elem_val_type is not None and isinstance(elem_val_type, (RefType, OwnType)):
                     if not self.compat.is_copy_call(elem) and not is_auto_moved:
@@ -1375,9 +1371,7 @@ class StatementAnalyzer:
                 if (loop_var_needs_ownership
                         and not stmt.hoist_loop_var
                         and not unwrapped.is_value_type()
-                        and isinstance(stmt.iterable, TpyName)
-                        and id(stmt.iterable) in self.ctx.all_last_uses
-                        and self.compat._is_owned_var(stmt.iterable.name)):
+                        and self.compat.is_auto_move_use(stmt.iterable)):
                     consuming_fi = self._find_consuming_iter(inner_iterable_type)
                     if consuming_fi is not None:
                         stmt.consuming_iter_fi = consuming_fi
@@ -2427,11 +2421,13 @@ class StatementAnalyzer:
 
         # Prescan for reassigned variables + last-use liveness
         scan = scan_reassigned_vars(func.body, pre_declared=param_names)
-        self.ctx.all_last_uses |= analyze_last_uses(func.body, scan.alias_sources)
+        self.ctx.all_last_uses |= analyze_last_uses(
+            func.body, liveness_alias_sources(scan))
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
         self.ctx.func.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
         self.ctx.func.current_aug_assigned_vars = scan.aug_assigned.copy()
         self.ctx.func.current_alias_sources = dict(scan.alias_sources)
+        self.ctx.func.current_chain_alias_sources = dict(scan.chain_alias_sources)
 
         # Analyze body
         for stmt in func.body:
@@ -3608,8 +3604,7 @@ class StatementAnalyzer:
                         and existing_type is None
                         and stmt.name not in self.ctx.func.current_reassigned_vars
                         and stmt.init.name not in self.ctx.func.current_reassigned_vars
-                        and id(stmt.init) in self.ctx.all_last_uses
-                        and self.compat._is_owned_var(stmt.init.name)
+                        and self.compat.is_auto_move_use(stmt.init)
                         and var_type is not None
                         and not var_type.is_value_type()
                         and not (isinstance(var_type, OptionalType) and var_type.uses_pointer_repr())
@@ -4668,7 +4663,7 @@ class StatementAnalyzer:
         if scope_type is not None and scope_type.is_value_type():
             return False
         # Skip at last-use of movable var
-        if id(expr) in self.ctx.all_last_uses and self.compat._is_owned_var(expr.name):
+        if self.compat.is_auto_move_use(expr):
             return False
         if scope_type is None:
             return False

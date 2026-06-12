@@ -74,7 +74,7 @@ from .calls import CallAnalyzer
 from .methods import MethodAnalyzer
 from .statements import StatementAnalyzer
 
-from ..prescan import ScanResult, scan_reassigned_vars
+from ..prescan import ScanResult, scan_reassigned_vars, liveness_alias_sources
 from ..liveness import analyze_last_uses
 from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
@@ -3060,11 +3060,13 @@ class SemanticAnalyzer:
         self.top_level_scan_result = scan_reassigned_vars(stmts)
         # Last-use analysis for auto-move (shared with codegen)
         self.ctx.all_last_uses |= analyze_last_uses(
-            stmts, self.top_level_scan_result.alias_sources)
+            stmts, liveness_alias_sources(self.top_level_scan_result))
         self.ctx.func.current_reassigned_vars = self.top_level_scan_result.reassigned.copy()
         self.ctx.func.current_lvalue_reassigned = self.top_level_scan_result.lvalue_reassigned.copy()
         self.ctx.func.current_aug_assigned_vars = self.top_level_scan_result.aug_assigned.copy()
         self.ctx.func.current_alias_sources = dict(self.top_level_scan_result.alias_sources)
+        self.ctx.func.current_chain_alias_sources = dict(
+            self.top_level_scan_result.chain_alias_sources)
 
         for stmt in stmts:
             self.stmts.analyze_stmt(stmt)

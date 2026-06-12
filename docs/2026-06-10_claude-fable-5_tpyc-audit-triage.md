@@ -15,7 +15,8 @@ edited; residual gaps from partial fixes are tracked in `BUGS.md`.
 | 2 | Narrowing not invalidated by calls/aliases | **fixed** -- same branch (closure-nonlocal kill at call sites, alias-group invalidation); residuals in BUGS.md: rebound-alias group, field-access call args, module globals |
 | 3 | Optional-match non-None patterns as catch-alls | **fixed** -- B15/B16/B21 (per-side coverage in sema, None routed to wildcard/capture arms in codegen, CPython capture semantics); also fixed B17 (non-enumerable scalar exhaustiveness) and the non-exhaustive fall-through flow-state merge. Residuals in BUGS.md: no missing-return check (pre-existing, now more visible), Optional or-pattern as-binding |
 | 4 | match arm-dispatch codegen structurally fragile | **fixed** -- G1 (break past switch), G8 (numbered subjects), B73 (byte-based string buckets, incl. enum try_parse sibling), B18/B19/B20 (guard lowering unified on bindings-first standalone-if + goto, incl. two latent siblings: dropped guards on optimized-Optional capture arms, string-switch guarded-prefix bind-after-guard), B22 (guarded-union case None), B23 (storage-form Optional subject lift). G2 (dangling arm bindings on subject mutation) split out per approval -- filed in BUGS.md Safety, needs the BorrowTracker place/loan design |
-| 5-15 | -- | open |
+| 5 | Auto-move fires on alias-blind liveness | **fixed** -- `fix-auto-move-borrow-gate` (liveness walk fixes for B28/B32/B33, chain-alias suppression for B30+subscript, consume-site BorrowTracker gate for B29/B31); residuals in BUGS.md Safety section: forward-referenced borrowing callees, nested-call-arg borrows (create_task shape) |
+| 6-15 | -- | open |
 
 ---
 
@@ -81,4 +82,4 @@ edited; residual gaps from partial fixes are tracked in `BUGS.md`.
 
 ---
 
-**Sequencing suggestion**: 1+2 first (one prescan kill-set mechanism covers both, removes the largest UB class), then 3+4 together (one match-lowering pass), then 8's posonly fix (trivial, silent-wrong-values), then 5's conservative gate. 7, 9, 10 are each "build the chokepoint, then migrate sites" projects. 14 and 15 can ride along with the THIR migration. 6-item `finally` work and 12 are self-contained. Design decisions needed (not patches): Optional-of-tuple form (report theme: borrow-vs-storage), `a[:]` aliasing-vs-copy, byte-based string semantics documentation (G50).
+**Sequencing suggestion** (items 1-5 are done -- see Status): 8's posonly fix next (trivial, silent-wrong-values). 7, 9, 10 are each "build the chokepoint, then migrate sites" projects. 14 and 15 can ride along with the THIR migration. 6-item `finally` work and 12 are self-contained. Design decisions needed (not patches): Optional-of-tuple form (report theme: borrow-vs-storage), `a[:]` aliasing-vs-copy, byte-based string semantics documentation (G50).

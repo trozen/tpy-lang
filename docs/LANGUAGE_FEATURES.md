@@ -1366,8 +1366,9 @@ Auto-move does NOT apply to:
 - Field accesses (`self.x`)
 - Top-level (module scope) non-value-type variables
 - Variables used across loop iterations
+- Variables with a live borrower: a name/field/subscript alias still used later (`a = o.inner; take(o); a.read()`), a live result of a borrowing call (`n = first(xs)`), a live un-exhausted generator over the variable (`g = gen(xs)`), a by-reference nested-def capture used after the def, or a context manager consumed inside its own `with` body (`__exit__` still reads it). These consumes fall back to a copy with the `copies ... into owned storage` warning (`@nocopy` types error instead). A borrower that is itself dead before the consume does not suppress the move for name/field/subscript aliases.
 
-The analysis is conservative: if unsure whether a variable is at its last use (e.g., used inside a loop body that may iterate multiple times), the compiler does NOT auto-move and requires explicit `copy()` as before. Last-use analysis covers `with` and `try`/`except`/`finally` bodies; a value read on an exception path stays live across the whole try body (never auto-moved early).
+The analysis is conservative: if unsure whether a variable is at its last use (e.g., used inside a loop body that may iterate multiple times), the compiler does NOT auto-move and requires explicit `copy()` as before. Last-use analysis covers `with` and `try`/`except`/`finally` bodies; a value read on an exception path stays live across the whole try body (never auto-moved early). Known borrow-suppression residuals (forward-referenced borrowing callees, borrows hidden inside nested call arguments such as `asyncio.create_task(coro(xs))`) are tracked in BUGS.md.
 
 **Branch handling**: If a variable is used in both branches of an if/else and not used after, both branches get auto-move:
 

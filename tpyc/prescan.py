@@ -32,6 +32,13 @@ class ScanResult:
     # alias_name -> source_name for lvalue-initialized, non-reassigned variables
     # with simple TpyName init (T& reference candidates).
     alias_sources: dict[str, str] = field(default_factory=dict)
+    # alias_name -> root_name for field/subscript-chain inits (a = o.inner,
+    # n = xs[0]): the binding references INTO the root's storage, so moving
+    # the root while the alias is live dangles it. Kept separate from
+    # alias_sources because that map also feeds del codegen and flow-fact
+    # kill groups, which expect whole-object name-to-name aliases only;
+    # this map is merged in solely for last-use liveness suppression.
+    chain_alias_sources: dict[str, str] = field(default_factory=dict)
     # Variables initially aliased from another name (before reassignment cleanup).
     # Used by del codegen to avoid destroying through a pointer that may
     # still point at the source variable's storage.
@@ -60,7 +67,18 @@ def scan_reassigned_vars(stmts: list[TpyStmt],
     # Reassigned vars become T* pointers, not T& refs -- remove from alias map
     for name in result.reassigned:
         result.alias_sources.pop(name, None)
+        result.chain_alias_sources.pop(name, None)
     return result
+
+
+def liveness_alias_sources(result: ScanResult) -> dict[str, str]:
+    """Alias map for last-use liveness: name-to-name aliases plus
+    field/subscript-chain root aliases (both reference the source's storage,
+    so both must suppress auto-move of the source while live).
+    """
+    if not result.chain_alias_sources:
+        return result.alias_sources
+    return {**result.chain_alias_sources, **result.alias_sources}
 
 
 def _expr_to_narrowing_key(expr: TpyExpr) -> str | None:
@@ -212,6 +230,10 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                         and isinstance(stmt.init, TpyName)
                         and stmt.init.name != stmt.name):
                     result.alias_sources[stmt.name] = stmt.init.name
+                elif stmt.init is not None:
+                    root = chain_root_name(stmt.init)
+                    if root is not None and root != stmt.name:
+                        result.chain_alias_sources[stmt.name] = root
         elif isinstance(stmt, TpyAssign):
             if isinstance(stmt.target, TpyName) and stmt.target.name in declared:
                 result.reassigned.add(stmt.target.name)
@@ -343,6 +365,17 @@ def _expr_root_name(expr: TpyExpr) -> str | None:
     if isinstance(expr, TpyName):
         return expr.name
     return None
+
+
+def chain_root_name(expr: TpyExpr) -> str | None:
+    """Root TpyName of a pure field/subscript chain (o.inner, xs[0],
+    o.items[0].inner -> the root name), or None when the chain bottoms out
+    in anything else (call results are handled by the borrow tracker, not
+    the prescan alias map).
+    """
+    while isinstance(expr, (TpyFieldAccess, TpySubscript)):
+        expr = expr.obj
+    return expr.name if isinstance(expr, TpyName) else None
 
 
 def alias_group(aliases: dict[str, str], name: str) -> set[str]:

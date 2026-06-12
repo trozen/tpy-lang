@@ -280,6 +280,30 @@ class BorrowTracker:
             for b in borrowers
         )
 
+    def has_borrowers_outside(self, storage: str, known_aliases: set[str]) -> bool:
+        """Any borrower of ``storage`` (including its dotted field paths)
+        not in ``known_aliases``. Bind-based aliases are modeled by
+        last-use liveness itself (with dead-alias precision); every other
+        borrower -- call-result borrows recorded from return_borrows_from,
+        ``__for_iter`` iterator borrows -- is invisible to liveness, so
+        moving ``storage`` is unsound while one exists.
+        """
+        prefix = storage + "."
+        for key, borrowers in self.borrows.items():
+            if key != storage and not key.startswith(prefix):
+                continue
+            for b in borrowers:
+                # "__for_iter" never expires (loops don't remove it) and is
+                # redundant here: an in-body consume of the iterable is kept
+                # live by the loop fixpoint in liveness, and a post-loop
+                # consume is safe -- gating on it would also block the
+                # loop's own consuming-iteration activation.
+                if b == "__for_iter":
+                    continue
+                if b not in known_aliases:
+                    return True
+        return False
+
     def effective_storage(self, name: str) -> str:
         """Resolve alias chains to find the underlying storage.
 
@@ -551,6 +575,11 @@ class FunctionTrackingState:
     # Consulted when invalidating field facts: a mutation through one name
     # of an alias group invalidates facts rooted at every member.
     current_alias_sources: dict[str, str] = field(default_factory=dict)
+    # alias -> root for field/subscript-chain-init locals (prescan
+    # chain_alias_sources). Together with current_alias_sources these are
+    # the borrowers last-use liveness models itself; the auto-move gate
+    # only demotes on borrowers OUTSIDE this set.
+    current_chain_alias_sources: dict[str, str] = field(default_factory=dict)
 
     # --- Definite-assignment tracking ---
     definitely_assigned: set[str] = field(default_factory=set)

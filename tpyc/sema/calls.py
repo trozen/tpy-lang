@@ -1600,9 +1600,7 @@ class CallAnalyzer:
         # the container, so using it afterwards is use-after-move.
         arg = expr.args[0]
         if isinstance(arg, TpyName):
-            is_last_use = id(arg) in self.ctx.all_last_uses
-            is_movable = self.compat._is_owned_var(arg.name)
-            if not is_last_use or not is_movable:
+            if not self.compat.is_auto_move_use(arg):
                 self.ctx.warning(
                     f"own_iter() consumes '{arg.name}' -- "
                     f"using it afterwards is undefined behavior. "
@@ -2440,10 +2438,7 @@ class CallAnalyzer:
             return
         if isinstance(arg_type, TypeParamRef):
             return
-        is_last_use_movable = (isinstance(arg, TpyName)
-                               and id(arg) in self.ctx.all_last_uses
-                               and self.compat._is_owned_var(arg.name))
-        if is_last_use_movable:
+        if self.compat.is_auto_move_use(arg):
             self.compat.check_own_consumption(arg)
             return
         if self._is_nocopy_type(arg_type):
@@ -2476,9 +2471,7 @@ class CallAnalyzer:
                 and arg.resolved_function_info.qualified_name == "tpy.copy"):
             return
         inner = arg.args[0]
-        if (isinstance(inner, TpyName)
-                and id(inner) in self.ctx.all_last_uses
-                and self.compat._is_owned_var(inner.name)):
+        if self.compat.is_auto_move_use(inner):
             self.compat.check_own_consumption(arg)
             self.ctx.warning(
                 f"unnecessary copy() -- '{inner.name}' is at its last use and would be moved automatically",

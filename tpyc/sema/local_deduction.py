@@ -442,6 +442,11 @@ class LocalTypeDeduction:
         if not isinstance(arg_expr, TpyName):
             return
         param_type = unwrap_ref_type(param_type)
+        # Own[list[T]] consumes by value but still requires vector storage --
+        # without the unwrap the literal resolves to std::array and the
+        # call site fails the C++ build (mirrors mark_list_return_context).
+        if isinstance(param_type, OwnType):
+            param_type = param_type.wrapped
 
         if isinstance(arg_type, PendingListType):
             literal_id = self.ctx.func.variable_to_literal.get(arg_expr.name)

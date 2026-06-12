@@ -663,7 +663,9 @@ class ExpressionAnalyzer:
         if name in self.ctx.func.current_param_names:
             if name not in self.ctx.func.current_reassigned_vars:
                 # Strip Own at last-use for auto-move (same as before)
-                if isinstance(result, OwnType) and id(expr) in self.ctx.all_last_uses:
+                if (isinstance(result, OwnType)
+                        and id(expr) in self.ctx.all_last_uses
+                        and not self.compat.demoted_by_hidden_borrow(expr)):
                     return result.wrapped
                 return result
         # Locals: derive OwnType from owned_locals set.
@@ -675,7 +677,8 @@ class ExpressionAnalyzer:
                 and name in self.ctx.func.owned_locals
                 and name not in self.ctx.func.hoisted_vars
                 and name not in self.ctx.func.loop_vars):
-            if id(expr) not in self.ctx.all_last_uses:
+            if (id(expr) not in self.ctx.all_last_uses
+                    or self.compat.demoted_by_hidden_borrow(expr)):
                 return OwnType(result)
         return result
 

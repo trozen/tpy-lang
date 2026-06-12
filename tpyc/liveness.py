@@ -18,8 +18,8 @@ from __future__ import annotations
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
     TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyRaise,
-    TpyMatch, TpyNestedDef, TpyDelVar, TpyTry, TpyWith,
-    TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr,
+    TpyMatch, TpyNestedDef, TpyDelVar, TpyTry, TpyWith, TpyNonlocal,
+    TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr, TpyFunction,
 )
 
 # source_name -> set[alias_name] reverse map
@@ -50,13 +50,79 @@ def analyze_last_uses(
         _compute_alias_detachment(stmts, source_aliases, alias_sources)
         if alias_sources else (set(), {})
     )
-    live: set[str] = set()
+    # A nested def captures by reference and stays callable until function
+    # end, so its captured names are live on every path after (and at) the
+    # def. Seeding them here protects reads AFTER the def site -- the
+    # backward walk only re-adds them when it reaches the def statement,
+    # which protects reads before it. A reassignment between the def and a
+    # later consume still kills the seed, which is sound: the closure reads
+    # the rebound variable, not the old object.
+    live: set[str] = _collect_nested_def_captures(stmts)
     last_uses: set[int] = set()
     _analyze_stmts_backward(
         stmts, live, last_uses, source_aliases,
         detached_aliases, first_reassign_pos,
     )
     return last_uses
+
+
+def _collect_nested_def_captures(stmts: list[TpyStmt]) -> set[str]:
+    """Names captured by any nested def anywhere in the body (recursive).
+
+    Liveness runs before sema's capture analysis populates
+    TpyNestedDef.captured_names, so this uses a syntactic free-name
+    over-approximation instead. Surplus names (globals, builtins) are
+    harmless: they are never movable locals of the enclosing function.
+    """
+    captured: set[str] = set()
+    for stmt in stmts:
+        if isinstance(stmt, TpyNestedDef):
+            captured |= _free_names_approx(stmt.func)
+        for body in stmt.sub_bodies():
+            captured |= _collect_nested_def_captures(body)
+    return captured
+
+
+def _free_names_approx(func: TpyFunction) -> set[str]:
+    """Names a nested def reads from its enclosing scope: body reads minus
+    its params and minus names it assigns (an assigned name is local in
+    Python unless declared nonlocal, and reading a local before assignment
+    is an UnboundLocalError, so read+assigned implies local).
+    """
+    params = {name for name, _ in func.params}
+    reads: set[str] = set()
+    assigned: set[str] = set()
+    forced: set[str] = set()
+
+    def walk(body: list[TpyStmt]) -> None:
+        for s in body:
+            if isinstance(s, TpyVarDecl):
+                assigned.add(s.name)
+            elif isinstance(s, TpyTupleUnpack):
+                assigned.update(n for n in s.targets if n is not None)
+            elif isinstance(s, TpyAssign) and isinstance(s.target, TpyName):
+                assigned.add(s.target.name)
+            elif isinstance(s, TpyForEach):
+                assigned.add(s.var)
+            elif isinstance(s, TpyWith):
+                assigned.update(
+                    i.target for i in s.items if i.target is not None)
+            elif isinstance(s, TpyTry):
+                assigned.update(
+                    h.binding for h in s.handlers if h.binding is not None)
+            elif isinstance(s, TpyNonlocal):
+                forced.update(s.names)
+            elif isinstance(s, TpyNestedDef):
+                forced.update(_free_names_approx(s.func))
+            walrus: set[str] = set()
+            for e in s.exprs():
+                reads.update(n.name for n in _collect_reads_expr(e, walrus))
+            assigned.update(walrus)
+            for b in s.sub_bodies():
+                walk(b)
+
+    walk(func.body)
+    return (reads - assigned - params) | forced
 
 
 # -- Alias map helpers --------------------------------------------------------
@@ -255,31 +321,33 @@ def _analyze_stmt(
                 live.discard(name)
 
     elif isinstance(stmt, TpyAssign):
-        # Reads from the value
-        _process_reads(stmt.value, live, last_uses, source_aliases, detached_aliases)
-        # Reads from target sub-expressions (subscript index, field obj)
+        # Value and target sub-expression reads form one C++ full-expression;
+        # process them together so the multi-occurrence suppression sees both.
+        exprs: list[TpyExpr] = [stmt.value]
         if isinstance(stmt.target, TpySubscript):
-            _process_reads(stmt.target.obj, live, last_uses, source_aliases, detached_aliases)
-            _process_reads(stmt.target.index, live, last_uses, source_aliases, detached_aliases)
+            exprs.append(stmt.target.obj)
+            exprs.append(stmt.target.index)
         elif isinstance(stmt.target, TpyFieldAccess):
-            _process_reads(stmt.target.obj, live, last_uses, source_aliases, detached_aliases)
+            exprs.append(stmt.target.obj)
+        _process_reads_multi(exprs, live, last_uses, source_aliases, detached_aliases)
         # Kill: if target is a plain name, it's redefined
-        elif isinstance(stmt.target, TpyName):
+        if isinstance(stmt.target, TpyName):
             live.discard(stmt.target.name)
 
     elif isinstance(stmt, TpyAugAssign):
         # AugAssign (e.g. x += 1) reads the target AND the value
-        _process_reads(stmt.value, live, last_uses, source_aliases, detached_aliases)
+        exprs = [stmt.value]
         if isinstance(stmt.target, TpySubscript):
-            _process_reads(stmt.target.obj, live, last_uses, source_aliases, detached_aliases)
-            _process_reads(stmt.target.index, live, last_uses, source_aliases, detached_aliases)
+            exprs.append(stmt.target.obj)
+            exprs.append(stmt.target.index)
         elif isinstance(stmt.target, TpyFieldAccess):
-            _process_reads(stmt.target.obj, live, last_uses, source_aliases, detached_aliases)
+            exprs.append(stmt.target.obj)
         elif isinstance(stmt.target, TpyName):
             # x += val reads x, then writes x
-            _process_reads(stmt.target, live, last_uses, source_aliases, detached_aliases)
+            exprs.append(stmt.target)
             # Don't kill: the read happens before the write in the same stmt,
             # and the prescan handles aug-assign separately.
+        _process_reads_multi(exprs, live, last_uses, source_aliases, detached_aliases)
 
     elif isinstance(stmt, TpyReturn):
         # Terminating: nothing reached after the return is live. Clear first
@@ -295,8 +363,8 @@ def _analyze_stmt(
         # live, then process the raised exception's own reads so an earlier
         # consume of a var read here is not misread as last-use.
         live.clear()
-        for expr in stmt.exprs():
-            _process_reads(expr, live, last_uses, source_aliases, detached_aliases)
+        _process_reads_multi(
+            list(stmt.exprs()), live, last_uses, source_aliases, detached_aliases)
 
     elif isinstance(stmt, TpyWith):
         _analyze_with(stmt, live, last_uses, source_aliases, detached_aliases)
@@ -319,11 +387,12 @@ def _analyze_stmt(
 
     else:
         # Non-terminating, non-defining statements (yield, expr-stmt, assert,
-        # del-item, del-attr, ...): process every read-bearing child expression.
+        # del-item, del-attr, ...): process every read-bearing child expression
+        # in one pass (a statement is one C++ full-expression for sequencing).
         # Routing through exprs() means a future read-bearing statement is
         # covered automatically rather than silently dropping its reads.
-        for expr in stmt.exprs():
-            _process_reads(expr, live, last_uses, source_aliases, detached_aliases)
+        _process_reads_multi(
+            list(stmt.exprs()), live, last_uses, source_aliases, detached_aliases)
 
 
 def _analyze_if(
@@ -484,11 +553,26 @@ def _analyze_with(
     detached_aliases: set[str],
 ) -> None:
     """Analyze a with statement. `__exit__` runs after the body on every path
-    but reads only the context manager, not body locals, so the body is a
-    plain sequential block: recurse it, kill the `as` targets (bound at
-    entry), then process the context-manager expressions (evaluated at entry).
+    and reads the context manager, so the manager's root names are live
+    across the whole body -- a consume of the manager inside its own body
+    must never be a last use (the epilogue would call `__exit__` on a
+    moved-from object). The body is otherwise a plain sequential block:
+    recurse it, kill the `as` targets (bound at entry), then process the
+    context-manager expressions (evaluated at entry).
     """
+    mgr_roots: set[str] = set()
+    for item in stmt.items:
+        for node in _collect_reads_expr(item.context_expr):
+            mgr_roots.add(node.name)
+    live |= mgr_roots
     _analyze_stmts_backward(stmt.body, live, last_uses, source_aliases, detached_aliases)
+    # A body-internal kill (reassignment of the manager var) drops the seed
+    # above; retract any marks the body walk still handed to manager reads --
+    # __exit__ reads the manager on every path, so none can be a last use.
+    if mgr_roots:
+        for node in _all_read_names(stmt.body):
+            if node.name in mgr_roots:
+                last_uses.discard(id(node))
     for item in reversed(stmt.items):
         if item.target is not None:
             live.discard(item.target)
@@ -661,6 +745,11 @@ def _compute_stmt_live_only(stmt: TpyStmt, live: set[str]) -> None:
                 live.add(node.name)
 
     elif isinstance(stmt, TpyWith):
+        # Manager roots stay live across the body (__exit__ reads them) --
+        # mirrors _analyze_with's seed.
+        for item in stmt.items:
+            for node in _collect_reads_expr(item.context_expr):
+                live.add(node.name)
         _compute_live_only(stmt.body, live)
         for item in reversed(stmt.items):
             if item.target is not None:
@@ -710,8 +799,27 @@ def _process_reads(
     detached_aliases: set[str],
 ) -> None:
     """Collect name reads in an expression, mark last uses, update live set."""
+    _process_reads_multi([expr], live, last_uses, source_aliases, detached_aliases)
+
+
+def _process_reads_multi(
+    exprs: list[TpyExpr],
+    live: set[str],
+    last_uses: set[int],
+    source_aliases: _Aliases,
+    detached_aliases: set[str],
+) -> None:
+    """Like _process_reads, but over all of one statement's expressions at
+    once. The multi-occurrence suppression below must see every read the
+    statement emits into a single C++ full-expression -- splitting value and
+    target reads into separate calls let a consume in the value be marked
+    last-use while the target read of the same variable was sequenced
+    indeterminately around it (e.g. `d[len(b.items)] = k.take(b)`).
+    """
     walrus_defs: set[str] = set()
-    reads = _collect_reads_expr(expr, walrus_defs)
+    reads: list[TpyName] = []
+    for expr in exprs:
+        reads.extend(_collect_reads_expr(expr, walrus_defs))
     if not reads and not walrus_defs:
         return
 

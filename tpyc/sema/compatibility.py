@@ -1598,9 +1598,37 @@ class TypeCompatibility:
 
     def _is_auto_moved(self, source_expr: 'TpyExpr | None') -> bool:
         """Last-use of an owned local: auto-move makes the copy invisible."""
-        return (isinstance(source_expr, TpyName)
-                and id(source_expr) in self.ctx.all_last_uses
-                and self._is_owned_var(source_expr.name))
+        return self.is_auto_move_use(source_expr)
+
+    def is_auto_move_use(self, expr: 'TpyExpr | None') -> bool:
+        """Single authority for "this name read auto-moves": a last-use mark
+        on an owned local/param whose storage has no borrower that liveness
+        cannot see. Bind-based aliases (b = a, a = o.inner, n = xs[0]) are
+        in the prescan alias maps and modeled by the liveness walk itself
+        with dead-alias precision; call-result borrows (return_borrows_from)
+        and iterator borrows are not, so any such borrower demotes the move
+        to the copy path. The mark is retracted on demotion so codegen
+        (which reads all_last_uses directly) lands on the same decision.
+        """
+        if not (isinstance(expr, TpyName)
+                and id(expr) in self.ctx.all_last_uses
+                and self._is_owned_var(expr.name)):
+            return False
+        return not self.demoted_by_hidden_borrow(expr)
+
+    def demoted_by_hidden_borrow(self, expr: TpyName) -> bool:
+        """The borrow-gate primitive: when ``expr``'s storage has a borrower
+        the liveness alias maps cannot see, retract the last-use mark (sema
+        and codegen both read all_last_uses, so the copy fallback is
+        consistent) and return True. Callers check the mark themselves --
+        this only decides and applies the demotion.
+        """
+        known = (self.ctx.func.current_alias_sources.keys()
+                 | self.ctx.func.current_chain_alias_sources.keys())
+        if self.ctx.func.borrow_tracker.has_borrowers_outside(expr.name, known):
+            self.ctx.all_last_uses.discard(id(expr))
+            return True
+        return False
 
     def _warns_copy_into_any(self, inner: TpyType) -> bool:
         """Reference types whose into-Any storage silently copies.
@@ -1636,8 +1664,7 @@ class TypeCompatibility:
         - copy(): explicit copy transfers ownership of the param's value
         """
         if isinstance(expr, TpyName):
-            if (id(expr) in self.ctx.all_last_uses
-                    and self._is_owned_var(expr.name)):
+            if self.is_auto_move_use(expr):
                 self.ctx.mark_own_param_consumed(expr.name)
             return
         if self.is_copy_call(expr) and isinstance(expr, TpyCall) and expr.args:
@@ -1696,10 +1723,7 @@ class TypeCompatibility:
                 and isinstance(expr, TpyFieldAccess)
                 and isinstance(expr.obj, TpyName) and expr.obj.name == "self"):
             return
-        is_auto_moved = (isinstance(expr, TpyName)
-                         and id(expr) in self.ctx.all_last_uses
-                         and self._is_owned_var(expr.name))
-        if is_auto_moved:
+        if self.is_auto_move_use(expr):
             self.check_own_consumption(expr)
             return
         expr_type = self.ctx.get_expr_type(expr)
@@ -2618,9 +2642,7 @@ class TypeCompatibility:
         (the local then OWNS the moved element) rather than borrowing. Mirrors
         the scalar field/return auto-move; the local-context elem-capture and
         the owning-storage derivation share this condition."""
-        return (isinstance(elem, TpyName)
-                and id(elem) in self.ctx.all_last_uses
-                and self._is_owned_var(elem.name))
+        return self.is_auto_move_use(elem)
 
     def elem_is_plain_borrow(self, elem: TpyExpr) -> bool:
         """Whether `elem` is a plain borrowed reference that would COPY (not
