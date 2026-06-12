@@ -444,7 +444,7 @@ class LocalTypeDeduction:
         param_type = unwrap_ref_type(param_type)
         # Own[list[T]] consumes by value but still requires vector storage --
         # without the unwrap the literal resolves to std::array and the
-        # call site fails the C++ build (mirrors mark_list_return_context).
+        # call site fails the C++ build (mirrors mark_container_return_context).
         if isinstance(param_type, OwnType):
             param_type = param_type.wrapped
 
@@ -505,23 +505,50 @@ class LocalTypeDeduction:
             if value_id in self.ctx.list_literals:
                 self.ctx.list_literals[value_id].is_mutated = True
 
-    def mark_list_return_context(self, return_expr: TpyExpr, return_type: TpyType) -> None:
-        """Track return-type context for list literal inference."""
+    def mark_container_return_context(self, return_expr: TpyExpr, return_type: TpyType) -> None:
+        """Track return-type context for list/dict/set literal inference.
+
+        Mirror of ``mark_container_param_context`` for the return position: an
+        empty container returned (`d = {}; return d` with `-> dict[K, V]`)
+        resolves its element/key/value from the declared return type, just as
+        passing it to a typed parameter does.
+        """
         return_type = unwrap_ref_type(return_type)
         if isinstance(return_type, OwnType):
             return_type = return_type.wrapped
 
         if isinstance(return_expr, TpyCoerce):
             return_expr = return_expr.expr
+        if not isinstance(return_expr, TpyName):
+            return
+        var_name = return_expr.name
 
-        if isinstance(return_expr, TpyName):
-            var_name = return_expr.name
-            literal_id = self.ctx.func.variable_to_literal.get(var_name)
-            if literal_id is not None and literal_id in self.ctx.list_literals:
-                info = self.ctx.list_literals[literal_id]
-                if is_list(return_type):
-                    info.passed_to_list_param = True
-                    info.coerced_element_type = return_type.type_args[0]
+        literal_id = self.ctx.func.variable_to_literal.get(var_name)
+        if literal_id is not None and literal_id in self.ctx.list_literals and is_list(return_type):
+            info = self.ctx.list_literals[literal_id]
+            info.passed_to_list_param = True
+            info.coerced_element_type = return_type.type_args[0]
+            return
+
+        dict_id = self.ctx.func.variable_to_dict_literal.get(var_name)
+        if dict_id is not None and is_dict(return_type):
+            info = self.ctx.dict_literals.get(dict_id)
+            if info is not None:
+                widened = self._widen_inferred_type(info.key_type, return_type.type_args[0])
+                if widened is not None:
+                    info.key_type = widened
+                widened = self._widen_inferred_type(info.value_type, return_type.type_args[1])
+                if widened is not None:
+                    info.value_type = widened
+            return
+
+        set_id = self.ctx.func.variable_to_set_literal.get(var_name)
+        if set_id is not None and is_set(return_type):
+            info = self.ctx.set_literals.get(set_id)
+            if info is not None:
+                widened = self._widen_inferred_type(info.element_type, return_type.type_args[0])
+                if widened is not None:
+                    info.element_type = widened
 
     def register_list_alias(self, var_name: str, init_type: PendingListType, decl_line: int | None = None) -> PendingListType:
         """Register alias relationship when b = a where a is a PendingListType.

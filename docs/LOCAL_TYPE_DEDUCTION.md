@@ -163,8 +163,10 @@ and the candidate type is pending/ambiguous:
 - Int literal passed to `Int64` param -> candidate narrows to `Int64`
 
 **Return type:** If the variable is returned and the function has a
-declared return type, use it to inform deduction:
+declared return type, use it to inform deduction (list / dict / set alike):
 - `return xs` where return type is `list[T]` -> xs is `list[T]`
+- `return d` where return type is `dict[K, V]` -> d is `dict[K, V]`
+- `return s` where return type is `set[T]` -> s is `set[T]`
 
 **Conflicting usage:** If param passes / returns demand conflicting
 types, error. In the face of ambiguity, refuse the temptation to guess --
@@ -250,6 +252,8 @@ three separate passes.
 | `x = [1,2,3]; x = [4,5]` (different sizes) | list[Int32] |
 | `x = [1,2]; x.append(big_int64)` | list[Int64] |
 | `x = [1,2,3]; return x` (return type `list[T]`) | list[T] |
+| `d = {}; return d` (return type `dict[K, V]`) | dict[K, V] |
+| `s = set(); return s` (return type `set[T]`) | set[T] |
 | `a = [1,2,3]; b = a; b.append(4)` -> a also list | list[Int32] |
 
 ### Errors (by design)

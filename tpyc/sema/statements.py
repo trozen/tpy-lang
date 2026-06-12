@@ -863,8 +863,8 @@ class StatementAnalyzer:
                 stmt.value_type = ret_type
                 stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
                                                       coercion_ctx=CoercionContext.RETURN, is_return=True)
-                # Track return-type context for pending list deduction
-                self.deduction.mark_list_return_context(stmt.value, expected)
+                # Track return-type context for pending list/dict/set deduction
+                self.deduction.mark_container_return_context(stmt.value, expected)
                 # Warn when a method copies a str field on return
                 self._warn_str_field_return_copy(stmt.value, expected)
                 # Check for lvalue returned as Own[T] without explicit copy()
