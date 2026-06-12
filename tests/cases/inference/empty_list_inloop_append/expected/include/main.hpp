@@ -12,6 +12,7 @@ struct Counter;
 inline constexpr std::string_view __name__ = "__main__";
 
 std::vector<int32_t> collect_for(const std::vector<int32_t>& xs);
+std::vector<int64_t> widen_collect(const std::vector<int32_t>& xs);
 std::vector<int32_t> collect_while(int32_t n);
 std::vector<int32_t> collect_cond(const std::vector<int32_t>& xs);
 template<typename T>

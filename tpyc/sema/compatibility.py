@@ -1051,39 +1051,49 @@ class TypeCompatibility:
         if isinstance(actual, PendingListType):
             # Compatible with list[T] if element types are compatible
             if is_list(expected):
-                # An as-yet-unknown element defers to resolve_all (mirrors the
-                # dict/set leniency below): when the only evidence is an in-loop
-                # .append(), loop_scope reverts the binding to Unknown but the
-                # fact survives in list_literals.
-                if isinstance(actual.element_type, UnknownElementType):
-                    return None
                 e_elem = expected.type_args[0]
-                if actual.element_type == e_elem:
+                # The variable's binding may have been reverted to Unknown by
+                # loop_scope even though an in-loop .append() recorded the
+                # element on list_literals. Consult that canonical fact so an
+                # in-loop-pinned list is validated against the use site exactly
+                # as a straight-line one is; defer to resolve_all only when the
+                # element is genuinely still unknown (which resolve_all errors on).
+                actual_elem = actual.element_type
+                if isinstance(actual_elem, UnknownElementType):
+                    canon = self.ctx.list_literals.get(actual.literal_id)
+                    if canon is not None and not isinstance(canon.element_type, UnknownElementType):
+                        actual_elem = canon.element_type
+                    else:
+                        return None
+                if actual_elem == e_elem:
                     return None
-                if isinstance(actual.element_type, IntLiteralType) and is_integer_type(e_elem):
+                if isinstance(actual_elem, IntLiteralType) and is_integer_type(e_elem):
                     return None
                 # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64).
                 # Subclass coercion excluded: storing Child in list[Base] silently
                 # slices objects (same invariance as dict/set).
                 both_records = (
-                    isinstance(actual.element_type, NominalType) and actual.element_type.is_user_record
+                    isinstance(actual_elem, NominalType) and actual_elem.is_user_record
                     and isinstance(e_elem, NominalType) and e_elem.is_user_record
                 )
                 if both_records:
                     # Explicit error: avoid leaking PendingList internal repr in the generic message.
                     return CompatError(
-                        f"Type mismatch in {context}: expected {e_elem}, got {actual.element_type}", loc)
+                        f"Type mismatch in {context}: expected {e_elem}, got {actual_elem}", loc)
                 else:
                     # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64).
                     # Container element slot is storage form -- no address-take
                     # mark should fire even if the inner type is pointer-repr Optional.
                     result = self._check_compat(
-                        actual.element_type, e_elem,
+                        actual_elem, e_elem,
                         context, loc, source_expr, is_return, coercion_ctx,
                         target_is_storage_form=True,
                     )
                     if not isinstance(result, CompatError):
                         return None  # element coercion is a probe, not propagated
+                    # Definite mismatch: report it cleanly (see both_records above).
+                    return CompatError(
+                        f"Type mismatch in {context}: expected {e_elem}, got {actual_elem}", loc)
             # Compatible with Array[T, N] if element types and sizes match
             if is_array(expected):
                 if self.type_ops and self.type_ops.pending_list_matches_array(actual, expected):
@@ -1119,18 +1129,36 @@ class TypeCompatibility:
                 if isinstance(actual.element_type, IntLiteralType) and is_integer_type(expected.type_args[0]):
                     return None
 
-        # Allow PendingDictType compatibility during first phase (before resolution)
+        # Allow PendingDictType compatibility during first phase (before resolution).
+        # Consult dict_literals for a key/value the binding lost to a loop_scope
+        # revert (see the PendingList branch above); defer only when genuinely
+        # unknown, else report the mismatch cleanly here.
         if isinstance(actual, PendingDictType) and is_dict(expected):
             e_k, e_v = expected.type_args[0], expected.type_args[1]
-            key_ok = isinstance(actual.key_type, UnknownElementType) or _container_elem_matches(actual.key_type, e_k)
-            val_ok = isinstance(actual.value_type, UnknownElementType) or _container_elem_matches(actual.value_type, e_v)
+            canon = self.ctx.dict_literals.get(actual.literal_id)
+            a_k = actual.key_type
+            if isinstance(a_k, UnknownElementType) and canon is not None:
+                a_k = canon.key_type
+            a_v = actual.value_type
+            if isinstance(a_v, UnknownElementType) and canon is not None:
+                a_v = canon.value_type
+            key_ok = isinstance(a_k, UnknownElementType) or _container_elem_matches(a_k, e_k)
+            val_ok = isinstance(a_v, UnknownElementType) or _container_elem_matches(a_v, e_v)
             if key_ok and val_ok:
                 return None
+            return CompatError(
+                f"Type mismatch in {context}: expected {expected}, got dict[{a_k}, {a_v}]", loc)
 
-        # Allow PendingSetType compatibility during first phase (before resolution)
+        # Allow PendingSetType compatibility during first phase (before resolution).
         if isinstance(actual, PendingSetType) and is_set(expected):
-            if isinstance(actual.element_type, UnknownElementType) or _container_elem_matches(actual.element_type, expected.type_args[0]):
+            canon = self.ctx.set_literals.get(actual.literal_id)
+            a_e = actual.element_type
+            if isinstance(a_e, UnknownElementType) and canon is not None:
+                a_e = canon.element_type
+            if isinstance(a_e, UnknownElementType) or _container_elem_matches(a_e, expected.type_args[0]):
                 return None
+            return CompatError(
+                f"Type mismatch in {context}: expected {expected}, got set[{a_e}]", loc)
 
         # DictType compatibility: key and value types must match exactly.
         # Own[V] stripping is handled by _container_elem_matches.

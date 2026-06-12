@@ -1,0 +1,1 @@
+main.py:10: error: Type mismatch in return value: expected dict[Int32, str], got dict[Int32, Int32]

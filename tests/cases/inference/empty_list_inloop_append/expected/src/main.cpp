@@ -21,6 +21,25 @@ std::vector<int32_t> collect_for(const std::vector<int32_t>& xs) {
     return out;
 }
 
+// def widen_collect(xs: list[Int32]) -> Own[list[Int64]]:
+std::vector<int64_t> widen_collect(const std::vector<int32_t>& xs) {
+    // # In-loop Int32 element must still widen to the declared Int64 -- the
+    // # canonical-element use-site check allows coercion, not just exact match.
+    // out = []
+    std::vector<int64_t> out = std::vector<int64_t>{};
+    // for x in xs:
+    auto& __obj_0 = xs;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
+        // out.append(x)
+        out.push_back(x);
+    }
+    // return out
+    return out;
+}
+
 // def collect_while(n: Int32) -> Own[list[Int32]]:
 std::vector<int32_t> collect_while(int32_t n) {
     // out = []
@@ -88,14 +107,17 @@ void main() {
     // print(len(collect_for([1, 2, 3])))
     std::vector<int32_t> __tmp_1 = {1, 2, 3};
     std::cout << ::tpy::__len__(collect_for(__tmp_1)) << "\n";
+    // print(len(widen_collect([1, 2, 3])))
+    std::vector<int32_t> __tmp_2 = {1, 2, 3};
+    std::cout << ::tpy::__len__(widen_collect(__tmp_2)) << "\n";
     // print(len(collect_while(4)))
     std::cout << ::tpy::__len__(collect_while(4)) << "\n";
     // print(len(collect_cond([1, 2, 3, 4])))
-    std::vector<int32_t> __tmp_2 = {1, 2, 3, 4};
-    std::cout << ::tpy::__len__(collect_cond(__tmp_2)) << "\n";
+    std::vector<int32_t> __tmp_3 = {1, 2, 3, 4};
+    std::cout << ::tpy::__len__(collect_cond(__tmp_3)) << "\n";
     // print(len(generic_collect([5, 6])))
-    std::vector<int32_t> __tmp_3 = {5, 6};
-    std::cout << ::tpy::__len__(generic_collect<int32_t>(__tmp_3)) << "\n";
+    std::vector<int32_t> __tmp_4 = {5, 6};
+    std::cout << ::tpy::__len__(generic_collect<int32_t>(__tmp_4)) << "\n";
     // # in-loop-only pinned list reaching a typed param rather than a return
     // acc = []
     std::vector<int32_t> acc = std::vector<int32_t>{};
@@ -112,8 +134,8 @@ void main() {
     std::cout << total(acc) << "\n";
     // # the reference-type element is materialized and mutable in the result
     // got = collect_refs([Counter(1), Counter(2)])
-    std::vector<Counter> __tmp_4 = {Counter(1), Counter(2)};
-    std::vector<Counter> got = collect_refs(__tmp_4);
+    std::vector<Counter> __tmp_5 = {Counter(1), Counter(2)};
+    std::vector<Counter> got = collect_refs(__tmp_5);
     // got[0].n = 99
     ::tpy::__getitem__(got, 0).n = 99;
     // print(got[0].n)
