@@ -15,6 +15,13 @@ argv: list[str] = _get_sys_argv()
 # a 32-bit target would need a per-target constant.
 maxsize: Final[int] = 9223372036854775807
 
+# TPy targets little-endian (x86-64 / ARM64), same assumption as maxsize.
+byteorder: Final[str] = "little"
+
+# U+10FFFF -- fixed by the Unicode standard, so target-independent (unlike
+# maxsize / byteorder).
+maxunicode: Final[int] = 0x10FFFF
+
 
 @native("tpy::StdStream")
 class _StdStream:

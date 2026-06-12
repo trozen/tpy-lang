@@ -4834,7 +4834,7 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
   - Qualified type annotations work: `tp.Int32`, `t.Optional[tp.Int32]`, `typing.Protocol`
 - **Working**: Submodule namespace binding -- `from pkg import submod` binds `submod` as a usable namespace. Qualified calls (`submod.fn(...)`), record constructors (`submod.RecordName(...)`), and type annotations (`field: submod.RecordName`) all resolve through the submodule's exports. Aliased form (`from pkg import submod as alias`) works the same way.
 - **Working**: `import pkg.sub` then `pkg.sub.X` for both function calls and variable / constant access (`pkg.sub.fn()`, `pkg.sub.CONST`).
-- **Working**: `import sys` - system module with `sys.argv`, `sys.stdout`, `sys.stderr`, `sys.exit(code)`, `sys.maxsize`
+- **Working**: `import sys` - system module with `sys.argv`, `sys.stdout`, `sys.stderr`, `sys.exit(code)`, `sys.maxsize`, `sys.byteorder`, `sys.maxunicode`
 - **Working**: `import math` - mathematical functions
 - **Working**: Namespace wrapping for modules (each module gets its own C++ namespace)
 - **Working**: User-defined modules (multi-file projects)
@@ -5174,7 +5174,7 @@ Currently working with a stable surface:
 |---|---|
 | `math` | Partial (~50%). Thin libc bindings + pure TPy helpers |
 | `time` | Stub (`time()`, `sleep()`). More planned |
-| `sys` | Stub (`argv`, `stdout`, `stderr`, `exit`, `maxsize`). More planned |
+| `sys` | Stub (`argv`, `stdout`, `stderr`, `exit`, `maxsize`, `byteorder`, `maxunicode`). More planned |
 | `random` | Stub (`random()`, `seed()`). Target: pure-TPy Mersenne Twister |
 | `bisect` | Done. Pure TPy over the `Comparable` protocol |
 | `functools` | Partial. 3-arg `reduce(func, a, initial)` only. See STDLIB_ROADMAP.md for blocked items |

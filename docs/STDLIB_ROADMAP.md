@@ -416,7 +416,7 @@ absolute timing values are non-deterministic).
 ### sys
 
 Current: `lib/tpy/sys.py` -- native; `argv`, `stdout`, `stderr`, `exit`,
-`maxsize`.
+`maxsize`, `byteorder`, `maxunicode`.
 
 | Item | Status | Notes |
 |---|---|---|
@@ -429,11 +429,12 @@ Current: `lib/tpy/sys.py` -- native; `argv`, `stdout`, `stderr`, `exit`,
 | `path` | Missing | List; relates to import machinery (TPy resolves at compile time, so semantics differ) |
 | `modules` | Missing | Not meaningful under static compilation |
 | `maxsize` | Done | Pure-TPy `int` constant, CPython's 64-bit value (`2**63 - 1`) |
-| `byteorder` | Missing | Compile-time constant |
+| `byteorder` | Done | Pure-TPy `str` constant `"little"` (TPy targets little-endian x86-64 / ARM64) |
+| `maxunicode` | Done | Pure-TPy `int` constant `1114111` (U+10FFFF, target-independent) |
 | `getsizeof` | Missing | Hard: sizes differ from CPython (inline fields vs boxed) |
 | `executable` | Missing | `argv[0]` / `/proc/self/exe` |
 
-Tests: `sys_argv`, `sys_maxsize`, `kwargs_print_file_std`.
+Tests: `sys_argv`, `sys_maxsize`, `sys_byteorder`, `kwargs_print_file_std`.
 
 ### os
 
