@@ -8,8 +8,8 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<int32_t> __coro_slow::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        // await asyncio.sleep(0.005)
-        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.005)));
+        // await asyncio.sleep(1.0)
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(1.0)));
         __state = S_RESUME_0;
         continue;
     }

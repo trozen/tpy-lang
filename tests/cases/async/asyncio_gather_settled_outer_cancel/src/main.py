@@ -10,7 +10,9 @@ from tpy import Int32
 
 
 async def slow() -> Int32:
-    await asyncio.sleep(0.005)
+    # 1s never elapses -- the outer cancel lands at ~1ms; the wide margin
+    # keeps the cancel-before-completion race deterministic under load.
+    await asyncio.sleep(1.0)
     return Int32(0)
 
 

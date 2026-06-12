@@ -117,12 +117,14 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
         e.emplace(::tpystd::asyncio::Event());
         // print(e.is_set())
         std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
-        // asyncio.create_task(consumer(e))
-        ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(consumer((*e))));
+        // # Await the consumer task (not a sleep) so the test can't race the
+        // # scheduler under load: main resumes only after "consumer woke".
+        // t = asyncio.create_task(consumer(e))
+        t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(consumer((*e)))));
         // asyncio.create_task(producer(e))
         ::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(producer((*e))));
-        // await asyncio.sleep(0.005)
-        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.005)));
+        // await t
+        __sub_0 = &((*t));
         __state = S_RESUME_0;
         continue;
     }
@@ -130,7 +132,7 @@ __coro_fast_path_consumer fast_path_consumer(::tpystd::asyncio::Event& e) {
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
-        __sub_0.reset();
+        __sub_0 = nullptr;
         // print(e.is_set())
         std::cout << ::tpy::print_bool((*e).is_set()) << "\n";
         // e.clear()

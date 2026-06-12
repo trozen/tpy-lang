@@ -11,7 +11,9 @@ from tpy import Int32, Own
 
 async def slow() -> Int32:
     try:
-        await asyncio.sleep(0.05)
+        # 1s never elapses -- the canceller fires at ~2ms; the wide margin
+        # keeps the cancel-before-completion race deterministic under load.
+        await asyncio.sleep(1.0)
         return Int32(1)
     except asyncio.CancelledError:
         # Propagate so the gather observes it and collects it.

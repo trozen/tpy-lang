@@ -103,7 +103,8 @@ struct __coro_main_coro {
     bool __cancel_pending;
     ::tpy::frame_slot<::tpystd::asyncio::Event> e_fast;
     ::tpy::frame_slot<::tpystd::asyncio::Event> e;
-    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> t;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_0 = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,

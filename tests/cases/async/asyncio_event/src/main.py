@@ -32,9 +32,11 @@ async def main_coro() -> None:
 
     e = Event()
     print(e.is_set())
-    asyncio.create_task(consumer(e))
+    # Await the consumer task (not a sleep) so the test can't race the
+    # scheduler under load: main resumes only after "consumer woke".
+    t = asyncio.create_task(consumer(e))
     asyncio.create_task(producer(e))
-    await asyncio.sleep(0.005)
+    await t
     print(e.is_set())
     e.clear()
     print(e.is_set())
