@@ -100,7 +100,9 @@ in the current model.
   - Bare-Optional yield missing the storage->pointer bridge (BUGS.md).
   Several smaller cases in this class *were* closed pre-IR by extending consumer-side
   predicates -- but each one touched another dispatch site, which is exactly the cost the
-  IR fact removes.
+  IR fact removes. The same fact also dissolves the sema `Ref[T]` wrapper, which today
+  co-exists with codegen's positional re-derivation as a second borrow-form oracle
+  (Open Questions item 12).
 - **Path-insensitive borrow checking (Motivation problem 3).** The AST borrow checker
   merges borrow states conservatively at join points (union over branches), so a move on
   one path conflicts with a borrow on a mutually-exclusive path -- false positives a
@@ -235,7 +237,9 @@ THIRSyntheticField
 
 THIRParam
   name: str
-  type: TpyType                        # fully resolved (Own[T], readonly[T], etc.)
+  type: TpyType                        # fully resolved (Own[T], readonly[T], etc.);
+                                       # no Ref[T] -- dissolved into form facts
+                                       # (Open Questions item 12)
   default: THIRExpr | None
   is_mutated: bool                     # from mutation analysis
 ```
@@ -1631,3 +1635,28 @@ or eliminating the C++ compiler dependency), the MIR is ready.
     regress to two C++ variables), so it is IR-era, not a pre-IR change. The
     current binary mechanism is sound (extra copy in mixed cases, never a
     dangle), so this is a quality/uniformity gain, not a correctness fix.
+
+12. **Fate of the sema `Ref[T]` wrapper.** `RefType` is the sema-level
+    "borrowed, not owned" marker: auto-inserted by `make_ref` on
+    function/method params and returns, field/subscript access results, and
+    iterator elements; never user-written. Production is centralized and
+    disciplined, but consumption is split between two oracles: codegen
+    strips the wrapper at function entry (`var_types` is built via
+    `unwrap_ref_type`) and re-derives borrow-ness positionally from
+    `is_value_type()`, while compatibility treats `Ref[T] ~ T` in both
+    directions and inference canonicalizes it away per position
+    (`to_owned_storage_form` for owned slots, `to_bare_slot_form` for
+    bare-T slots, both in `sema/type_ops.py`). The strip-to-consume ratio
+    across the compiler is roughly 8:1. What genuinely rides on the wrapper
+    today: copy-into-storage detection (warning when a borrow is silently
+    copied into a field/container), generic reference preservation
+    (`U=Ref[Point]` -> `val_or_ref<Point>` for iterator combinators and
+    `map(identity, ...)`), and lambda trailing return types (`-> T&`).
+    Decision: keep `RefType` until THIR, but treat it as FROZEN -- do not
+    extend it to new positions (each one adds strip sites and
+    inference-leak surface); new borrow-form facts go on AST nodes per the
+    migration rules in CLAUDE.md. At THIR lowering, `Ref[T]` dissolves into
+    the explicit form fact of items 9 and 11: the borrow-vs-storage form
+    tag plus explicit conversion nodes carries everything the wrapper
+    encodes, THIR types do not contain `RefType`, and the stripping fabric
+    disappears with it.

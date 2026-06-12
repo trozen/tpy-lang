@@ -61,8 +61,24 @@ def to_owned_storage_form(typ: TpyType) -> TpyType:
     defeats inference (e.g. ``Entry[Ref[T]]`` vs ``Entry[T]``). ``unwrap_ref_type``
     already recurses into tuples, so nested borrow elements are canonicalized
     too. Must NOT be used on the bare-param / Fn-return path, where ``Ref`` is
-    deliberately preserved for reference passing (``map(identity, ...)``)."""
+    deliberately preserved for reference passing (``map(identity, ...)``).
+    Sibling rule for non-owned bare-T slots: ``to_bare_slot_form``."""
     return unwrap_readonly(unwrap_ref_type(typ))
+
+
+def to_bare_slot_form(typ: TpyType) -> TpyType:
+    """Canonicalize an inference argument bound into a bare-T template slot.
+
+    Some generic positions render as bare ``T`` in C++ with no reference
+    indirection of their own: ``varargs<T>`` elements (no val_or_ref
+    indirection) and ``Ptr[T]`` pointees (the pointer already carries the
+    indirection). A borrow leaking into such a slot renders as illegal
+    ``varargs<T&>`` or redundant ``Ptr[T&]``, so strip ``Ref`` (recursing
+    into tuples). Unlike ``to_owned_storage_form``, ``readonly`` is kept --
+    it stays meaningful as constness in these slots. As there, the
+    bare-param / Fn-return path must NOT use this: ``Ref`` is deliberately
+    preserved there for reference passing."""
+    return unwrap_ref_type(typ)
 
 
 def post_substitute_hint(
@@ -723,10 +739,10 @@ class TypeOperations:
             return typ
         # Use map_inner_types for types that have inner types
         result = typ.map_inner_types(lambda t: self.substitute_type_params(t, subst))
-        # Ptr[Ref[T]] -> Ptr[T]: Ref inside Ptr is redundant (Ptr is
-        # already a pointer; the Ref from make_ref should not nest).
+        # A pointee is a bare-T slot: a Ref bound from inference must not
+        # nest as Ptr[Ref[T]] (see to_bare_slot_form).
         if isinstance(result, PtrType) and isinstance(result.pointee, RefType):
-            result = PtrType(result.pointee.wrapped, result.is_readonly)
+            result = PtrType(to_bare_slot_form(result.pointee), result.is_readonly)
         return result
 
     def build_type_substitution(self, record_type: TpyType) -> dict[str, TpyType | int]:
@@ -1286,18 +1302,14 @@ class TypeOperations:
                 break
             ptype = p.type
             if p.is_variadic and is_varargs(unwrap_ref_type(ptype)):
-                # Variadic param: match each remaining arg against element type.
-                # `elem_type` is bare T (the Span[T] wrapping was stripped), so
-                # strip Ref from the arg side too -- otherwise a non-value arg
-                # whose analyzed type is `Ref[Box]` (e.g. a borrowed param)
-                # binds T=Ref[Box], which renders as illegal `varargs<Box&>`.
-                # The non-variadic ref-param path gets this via the Ref-vs-Ref
-                # strip in match_type_with_inference; varargs use bare-T params
-                # (`varargs<T>`, no val_or_ref indirection) so they need the
-                # equivalent strip explicitly here.
+                # Variadic param: match each remaining arg against element
+                # type. `varargs<T>` elements are bare-T slots, so canonicalize
+                # the arg side (see to_bare_slot_form) -- the non-variadic
+                # ref-param path gets the equivalent strip via the Ref-vs-Ref
+                # rule in match_type_with_inference.
                 elem_type = unwrap_readonly(unwrap_ref_type(ptype).type_args[0])
                 while arg_idx < len(arg_types):
-                    arg_t = unwrap_ref_type(arg_types[arg_idx])
+                    arg_t = to_bare_slot_form(arg_types[arg_idx])
                     if not self.match_type_with_inference(elem_type, arg_t, inferred):
                         return None
                     arg_idx += 1
