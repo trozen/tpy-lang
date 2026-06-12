@@ -1367,12 +1367,12 @@ Generated C++: `consume(std::move(p))`
 Auto-move applies to:
 - **Tier 1 locals** (rvalue-initialized, not reassigned)
 - **`Own[T]` parameters** (caller gave up ownership)
-- **Reassigned locals** when all assignments are rvalue (emits `std::move((*p))` through the pointer)
+- **Reassigned locals** when every assignment is a value-creating rvalue (emits `std::move((*p))` through the pointer)
 
 Auto-move does NOT apply to:
 - Regular parameters (borrowed by reference)
 - T& reference locals (lvalue-initialized aliases)
-- Reassigned locals with any lvalue assignment (may alias borrowed storage)
+- Reassigned locals with any borrow-source assignment -- not only a name/field/subscript lvalue, but also a reference-returning call or a ternary of reference lvalues (the source aliases existing storage, so a move would steal from it)
 - Field accesses (`self.x`)
 - Top-level (module scope) non-value-type variables
 - Variables used across loop iterations

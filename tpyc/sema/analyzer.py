@@ -1435,6 +1435,13 @@ class SemanticAnalyzer:
                 continue
             if name in self.ctx.func.current_reassigned_vars and name in self.ctx.func.current_lvalue_reassigned:
                 continue
+            # Reassigned to a borrow source (reference-returning call, ternary
+            # of lvalues). The prescan's lvalue_reassigned can't see these (no
+            # type info, so it classifies them as rvalue), so they reach here
+            # via ever_owned; an auto-move at a later last use would steal from
+            # the aliased source.
+            if name in self.ctx.func.borrow_reassigned_vars:
+                continue
             movable.add(name)
         if movable:
             self.function_movable_locals[id(func)] = movable

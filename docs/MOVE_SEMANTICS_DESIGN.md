@@ -339,6 +339,18 @@ Known residuals (forward-referenced callees whose borrow facts are not yet
 analyzed, borrows hidden inside nested call arguments, loop-var aliases
 outliving their loop) are tracked in BUGS.md "Safety / borrow checker".
 
+A reassignment to a borrow source is a fourth, simpler barrier. A local
+owned at one binding (so it is in `ever_owned_locals`, from which the
+function-wide movable set is built) but later reassigned from a borrow --
+not only an lvalue (name/field/subscript) but a reference-returning call or
+a ternary of reference lvalues, which the prescan classifies as an rvalue
+because it has no type info -- is recorded in `borrow_reassigned_vars` and
+subtracted from the movable set. Without it, codegen would `std::move` the
+alias at the local's last use and steal the source. The set is an add-only
+accumulator (mirrors `ever_owned_locals`): a local that cycles back to owned
+stays barred, which is conservative (a copy is always sound) but pessimises
+that rare pattern.
+
 ### Phase 6: Box[T] as library type
 
 - Define `Box[T]` in std lib (.py file with native backing)

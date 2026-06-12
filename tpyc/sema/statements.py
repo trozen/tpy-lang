@@ -3675,6 +3675,12 @@ class StatementAnalyzer:
                     self.ctx.func.ever_owned_locals.add(stmt.name)
                 else:
                     self.ctx.func.owned_locals.discard(stmt.name)
+                    # A reassignment to a borrow source makes the var an alias;
+                    # bar it from the function-wide movable set (ever_owned
+                    # would otherwise keep a once-owned local movable, and an
+                    # auto-move at its last use would steal from the source).
+                    if existing_type is not None:
+                        self.ctx.func.borrow_reassigned_vars.add(stmt.name)
         if stmt.init and _needs_provenance_tracking(var_type):
             self.init.mark_provenance(stmt.name, self.compat.is_param_derived_expr(stmt.init))
             self.init.mark_safe_to_return(
@@ -4264,6 +4270,12 @@ class StatementAnalyzer:
                     self.ctx.func.ever_owned_locals.add(stmt.target.name)
                 else:
                     self.ctx.func.owned_locals.discard(stmt.target.name)
+                    # Borrow-source reassignment bars the var from the movable
+                    # set. Unlike the var-decl branch this needs no
+                    # existing-var guard: a TpyAssign with a bare-name target is
+                    # always a reassignment (a first bare-name bind is a
+                    # TpyVarDecl).
+                    self.ctx.func.borrow_reassigned_vars.add(stmt.target.name)
 
         # Tuples are immutable -- reject element assignment
         if isinstance(stmt.target, TpySubscript):

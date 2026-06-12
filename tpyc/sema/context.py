@@ -565,6 +565,10 @@ class FunctionTrackingState:
     # save/restore (not in FlowFacts). Used to compute the exported
     # movable_locals set at function end.
     ever_owned_locals: set[str] = field(default_factory=set)
+    # Accumulator (survives FlowFacts like ever_owned_locals): locals
+    # reassigned from a borrow-producing source, so no longer safely movable
+    # even if they were owned earlier. Subtracted from the movable set.
+    borrow_reassigned_vars: set[str] = field(default_factory=set)
     move_through_vars: set[str] = field(default_factory=set)
 
     # --- Prescan / last-use ---
