@@ -934,6 +934,7 @@ divergence -- they tighten valid-but-buggy CPython into a compile error.
 | Non-exhaustive union match | `non-exhaustive match on '...'; missing: Bird` |
 | Non-exhaustive enum match | `non-exhaustive match on '...'; missing: Color.BLUE` |
 | Non-exhaustive Optional match | `non-exhaustive match on '...'; missing: None, Point` (each uncovered side reported) |
+| Subject storage mutated under live bindings | `'h.pet' is mutated in this arm while pattern bindings borrow its storage; the bindings dangle (undefined behavior). ...` (field/element subjects; arm body or guard; syntactic -- aliases evade, see BUGS.md) |
 | Non-enumerable scalar subject without a catch-all | `non-exhaustive match on '...'; no unconditional catch-all arm` |
 
 ---

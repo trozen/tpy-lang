@@ -20,6 +20,7 @@ from .parse import (
     TpyIf, TpyWhile, TpyForEach, TpyReturn, TpyBreak, TpyRaise,
     TpyMatch, TpyNestedDef, TpyDelVar, TpyTry, TpyWith, TpyNonlocal,
     TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr, TpyFunction,
+    TpyBoolLiteral, TpyAssert,
 )
 
 # source_name -> set[alias_name] reverse map
@@ -230,10 +231,13 @@ def stmts_terminate(stmts: list[TpyStmt]) -> bool:
                 and last.is_exhaustive
                 and all(stmts_terminate(case.body) for case in last.cases))
     if isinstance(last, TpyTry):
+        # A finally body that itself terminates (return/raise) runs last on
+        # every exit path, so the whole statement terminates regardless of
+        # the try body.
+        if last.finally_body and stmts_terminate(last.finally_body):
+            return True
         # try-finally only (no handlers): try-body terminating is enough.
-        # The finally re-throws on exception; a finally body that itself
-        # terminates only changes behavior if the try body fell through,
-        # which we don't analyze here (conservative: ignore finally-body).
+        # The finally re-throws on exception.
         if not last.handlers:
             return stmts_terminate(last.try_body)
         # try with handlers: terminates iff try-body terminates AND every
@@ -248,6 +252,35 @@ def stmts_terminate(stmts: list[TpyStmt]) -> bool:
         if any(item.exit_can_suppress for item in last.items):
             return False
         return stmts_terminate(last.body)
+    if isinstance(last, TpyWhile):
+        # `while True:` with no break targeting this loop never falls
+        # through (it returns/raises from inside or runs forever).
+        return (isinstance(last.condition, TpyBoolLiteral)
+                and last.condition.value is True
+                and not _has_loop_break(last.body))
+    if isinstance(last, TpyAssert):
+        # `assert False` lowers to an unconditional raise (TPy asserts are
+        # never compiled out), so it terminates like a raise statement.
+        return (isinstance(last.condition, TpyBoolLiteral)
+                and last.condition.value is False)
+    return False
+
+
+def _has_loop_break(stmts: list[TpyStmt]) -> bool:
+    """Any break in `stmts` that would target the enclosing loop (does not
+    descend into nested loops, whose breaks target themselves)."""
+    for stmt in stmts:
+        if isinstance(stmt, TpyBreak):
+            return True
+        if isinstance(stmt, (TpyWhile, TpyForEach)):
+            # Breaks inside a nested loop's body target that loop, but its
+            # else clause runs outside it -- a break there targets ours.
+            if _has_loop_break(stmt.orelse):
+                return True
+            continue
+        for body in stmt.sub_bodies():
+            if _has_loop_break(body):
+                return True
     return False
 
 

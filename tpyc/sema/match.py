@@ -26,7 +26,8 @@ from ..type_def_registry import (
     is_enum_type, enum_info_of,
 )
 from ..parse import (
-    TpyName, TpyFieldAccess,
+    TpyName, TpyFieldAccess, TpySubscript, TpyMethodCall, TpyIntLiteral,
+    TpyAssign, TpyAugAssign, TpyNestedDef, TpyExpr, TpyStmt,
     TpyMatch, TpyMatchCase, TpyPattern, TpyWildcardPattern, TpyCapturePattern,
     TpyClassPattern, TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
 )
@@ -37,6 +38,36 @@ if TYPE_CHECKING:
     from .context import SemanticContext
     from .expressions import ExpressionAnalyzer
     from .statements import StatementAnalyzer
+
+
+def _expr_path_parts(expr: TpyExpr) -> tuple[str, ...] | None:
+    """Syntactic key for a name/field/subscript chain; None for anything
+    else. Non-literal indices key as '[*]' (may alias any index)."""
+    if isinstance(expr, TpyName):
+        return (expr.name,)
+    if isinstance(expr, TpyFieldAccess):
+        base = _expr_path_parts(expr.obj)
+        return None if base is None else base + (f".{expr.field}",)
+    if isinstance(expr, TpySubscript):
+        base = _expr_path_parts(expr.obj)
+        if base is None:
+            return None
+        if isinstance(expr.index, TpyIntLiteral):
+            return base + (f"[{expr.index.value}]",)
+        return base + ("[*]",)
+    return None
+
+
+def _parts_may_alias(a: tuple[str, ...], b: tuple[str, ...]) -> bool:
+    if len(a) != len(b):
+        return False
+    for x, y in zip(a, b):
+        if x == y:
+            continue
+        if x.startswith("[") and y.startswith("[") and "[*]" in (x, y):
+            continue
+        return False
+    return True
 
 
 def _subst_type_params(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
@@ -297,6 +328,13 @@ class MatchAnalyzer:
             for s in case.body:
                 self.stmts.analyze_stmt(s)
 
+            # Arm bindings are auto& borrows into the subject's storage;
+            # the borrow tracker does not yet model them as loans, so warn
+            # on the directly visible storage mutations.
+            if (pattern_bindings
+                    and isinstance(stmt.subject, (TpyFieldAccess, TpySubscript))):
+                self._warn_arm_subject_mutation(case, stmt.subject)
+
             arm_states.append(self.stmts.init.save())
             arm_consumed.append((self.ctx.func.current_consumed_own_params.copy(), self.ctx.func.init_terminated))
             arm_bindings.append(dict(self.ctx.func.current_scope.bindings))
@@ -441,6 +479,87 @@ class MatchAnalyzer:
                 name: self.ctx.func.current_scope.lookup(name)
                 for name in sorted(predecl)
             }
+
+    def _warn_arm_subject_mutation(
+        self, case: TpyMatchCase, subject: TpyExpr,
+    ) -> None:
+        """Warn when an arm with pattern bindings mutates the storage the
+        bindings borrow (field reassign, container realloc): the C++
+        bindings dangle where CPython would keep the old object alive.
+        Syntactic check only -- aliases, calls that mutate the root
+        indirectly, and user-record methods (whose invalidation verdict
+        covers structural mutation only) are not seen.
+        """
+        subj_parts = _expr_path_parts(subject)
+        if subj_parts is None:
+            return
+        offender = self._find_subject_mutation(case.body, case.guard, subj_parts)
+        if offender is not None:
+            self.ctx.warning(
+                f"'{''.join(subj_parts)}' is mutated in this arm while "
+                f"pattern bindings borrow its storage; the bindings dangle "
+                f"(undefined behavior). Copy the bound values before "
+                f"mutating", offender)
+
+    def _find_subject_mutation(
+        self, body: list[TpyStmt], guard: TpyExpr | None,
+        subj_parts: tuple[str, ...],
+    ) -> 'TpyStmt | TpyExpr | None':
+        """First statement/expression in the arm that overwrites the subject
+        path (or a prefix of it -- rebinding an owner destroys the storage)
+        or calls an invalidating method on the subject's base."""
+
+        def prefix_aliases(parts: tuple[str, ...] | None) -> bool:
+            if parts is None or len(parts) > len(subj_parts):
+                return False
+            return _parts_may_alias(parts, subj_parts[:len(parts)])
+
+        def assign_clashes(parts: tuple[str, ...] | None) -> bool:
+            # Rebinding the root NAME re-points a slot-model local/param;
+            # the old storage stays alive, so bindings do not dangle.
+            # Field/element targets overwrite the borrowed storage in place.
+            if parts is not None and len(parts) == 1:
+                return False
+            return prefix_aliases(parts)
+
+        def scan_expr(expr: TpyExpr) -> TpyExpr | None:
+            if isinstance(expr, TpyMethodCall):
+                recv = _expr_path_parts(expr.obj)
+                if recv is not None and prefix_aliases(recv):
+                    recv_type = self.ctx.get_expr_type(expr.obj)
+                    if (recv_type is not None
+                            and self.expr.methods._is_invalidating_method(
+                                unwrap_readonly(unwrap_ref_type(recv_type)),
+                                expr.method)):
+                        return expr
+            for child in expr.children():
+                hit = scan_expr(child)
+                if hit is not None:
+                    return hit
+            return None
+
+        def scan_stmts(stmts: list[TpyStmt]) -> 'TpyStmt | TpyExpr | None':
+            for s in stmts:
+                if isinstance(s, (TpyAssign, TpyAugAssign)):
+                    if assign_clashes(_expr_path_parts(s.target)):
+                        return s
+                if isinstance(s, TpyNestedDef):
+                    continue  # different frame; deferred execution
+                for e in s.exprs():
+                    hit = scan_expr(e)
+                    if hit is not None:
+                        return hit
+                for sub in s.sub_bodies():
+                    hit = scan_stmts(sub)
+                    if hit is not None:
+                        return hit
+            return None
+
+        if guard is not None:
+            hit = scan_expr(guard)
+            if hit is not None:
+                return hit
+        return scan_stmts(body)
 
     def _poly_dispatch_source(
         self, effective_type: TpyType,

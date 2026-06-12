@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, OwnType, ReadonlyType,
     FinalType,
     PendingListType, PendingDictType, make_list, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
-    ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType,
+    ListLiteralInfo, DictLiteralInfo, SetLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType, VoidType,
     unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
     collapse_tuple_own_elements, type_contains_own,
     LiteralType,
@@ -47,7 +47,7 @@ from ..prescan import (
     ScanResult, scan_reassigned_vars, parse_deref_view_key,
     FactKills, collect_fact_kills, liveness_alias_sources,
 )
-from ..liveness import analyze_last_uses
+from ..liveness import analyze_last_uses, stmts_terminate
 from ..parse.nodes import VarLinkage
 from .context import addr_taken_roots, expr_yields_non_null_ptr
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
@@ -2433,7 +2433,44 @@ class StatementAnalyzer:
         for stmt in func.body:
             self.analyze_stmt(stmt)
 
+        # End-of-body return enforcement runs after analysis: it consults
+        # facts the body sema just produced (match exhaustiveness drives
+        # stmts_terminate), and a materialized implicit `return None` must
+        # be analyzed in the end-of-body flow state. Appending after the
+        # analyze_last_uses prescan above is safe only because a bare None
+        # literal carries no liveness facts.
+        implicit_ret = self._materialize_implicit_return(func)
+        if implicit_ret is not None:
+            self.analyze_stmt(implicit_ret)
+
         return scan
+
+    def _materialize_implicit_return(self, func: TpyFunction) -> TpyReturn | None:
+        """The C++ body of a non-void function must return on every path
+        (falling off the end is UB), so a reachable end of body either
+        materializes Python's implicit `return None` as a real statement
+        (return type can hold None -- CPython/mypy semantics) or is a
+        compile error (mypy's "missing return statement"). Generators are
+        exempt: fall-through is StopIteration. Must run after body
+        analysis (match exhaustiveness feeds stmts_terminate); the caller
+        analyzes the returned statement.
+        """
+        if func.is_generator or func.is_stub:
+            return None
+        rt = unwrap_own(unwrap_ref_type(unwrap_readonly(func.return_type)))
+        if rt is None or isinstance(rt, (VoidType, NoneType)):
+            return None
+        if stmts_terminate(func.body):
+            return None
+        if isinstance(rt, OptionalType) or (
+                isinstance(rt, UnionType) and rt.has_none_member()):
+            ret = TpyReturn(value=TpyNoneLiteral(loc=func.loc), loc=func.loc)
+            func.body.append(ret)
+            return ret
+        raise self.ctx.error(
+            f"'{func.name}' can reach the end of the function without "
+            f"returning a value; declared return type is '{rt}' "
+            f"(return or raise on every path)", func)
 
     def _analyze_nested_def(self, stmt: TpyNestedDef) -> None:
         """Analyze a nested function definition."""

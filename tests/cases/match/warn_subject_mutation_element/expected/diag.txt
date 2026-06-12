@@ -1,0 +1,1 @@
+main.py:24: warning: 'xs[0]' is mutated in this arm while pattern bindings borrow its storage; the bindings dangle (undefined behavior). Copy the bound values before mutating

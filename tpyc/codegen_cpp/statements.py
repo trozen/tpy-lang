@@ -3570,8 +3570,14 @@ class StatementGenerator:
             boundary = self.ctx.async_pending_return_boundary
             assert target_state is not None
             if pending_slot is not None and stmt.value is not None:
-                ret_cpp = self.ctx.async_coro_return_cpp or "void"
-                expr_cpp = self.expressions.gen_expr_deref(stmt.value)
+                if isinstance(stmt.value, TpyNoneLiteral):
+                    # The pending slot is storage form: None needs the
+                    # target-typed spelling, not the borrow-form nullptr
+                    # (same rule as the direct-return branch below).
+                    expr_cpp = self.expressions.gen_expr(
+                        stmt.value, target_type=ret_type)
+                else:
+                    expr_cpp = self.expressions.gen_expr_deref(stmt.value)
                 out.write(f"{indent}this->{pending_slot} = {expr_cpp};\n")
             out.write(f"{indent}this->{pending_flag} = true;\n")
             # Walk finally frames pushed by regions INSIDE the CFG-
@@ -3599,7 +3605,14 @@ class StatementGenerator:
                     f"{indent}::tpy::tpy_panic(\"non-void async def used bare return\");\n")
             else:
                 ret_cpp = self.ctx.async_coro_return_cpp or "void"
-                expr_cpp = self.expressions.gen_expr_deref(stmt.value)
+                if isinstance(stmt.value, TpyNoneLiteral):
+                    # The coroutine return slot is storage form, so None
+                    # needs the target-typed spelling (std::nullopt /
+                    # monostate), not the borrow-form nullptr.
+                    expr_cpp = self.expressions.gen_expr(
+                        stmt.value, target_type=ret_type)
+                else:
+                    expr_cpp = self.expressions.gen_expr_deref(stmt.value)
                 # Bind to a local first so `std::move` has a typed source:
                 # `std::move({1, 2, 3})` (braced initializer) doesn't compile
                 # because the template parameter can't be deduced.
