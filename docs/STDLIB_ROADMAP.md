@@ -131,7 +131,7 @@ Examples of the policy in action:
 | [`json`](#json) | P0 | Partial | ~70% | pure | `loads` / `dumps` + `JSONDecodeError` done over a recursive union `JsonValue`. CPython byte-compatible across cpy phase. Missing: `load(fp)` / `dump(obj, fp)` (needs `io`), `JSONEncoder` / `JSONDecoder`, most `dumps`/`loads` kwargs |
 | [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub (with `count`)/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, bytes input, compile cache |
 | [`collections`](#collections) | P0 | Missing | 0% | -- | OrderedDict trivial (have ordered_map); deque needs C++ struct; Counter/defaultdict/namedtuple need macros |
-| [`itertools`](#itertools) | P0 | Missing | 0% | -- | C++ primitives exist in `runtime/itertools.hpp`; needs Python-surface module |
+| [`itertools`](#itertools) | P0 | Missing | 0% | pure | Pure-TPy generators from scratch (no runtime primitives exist); `chain` blocked on proto-iterable-in-generator, `product` family on variadic tuples |
 | [`functools`](#functools) | P0 | Partial | ~25% | pure | `reduce(func, a, initial)`, `reduce(func, a)`, `total_ordering` done. `cmp_to_key`, `wraps` blocked on specific compiler / macro-infrastructure gaps (see section). partial/lru_cache/singledispatch/cached_property/partialmethod need closures + macros |
 | [`random`](#random) | P1 | Partial | ~90% | pure | Pure-TPy MT19937 + CPython's distribution suite, byte-identical to CPython on the same seed. Done: `Random` class, `random`, `seed(Int32)` (negatives mapped to abs), `seed()` no-arg auto-seed via OS entropy, `getrandbits(k)` for arbitrary k, `randint`, `randrange`, `randbytes`, `choice`, `shuffle`, `uniform`, `triangular`, `gauss`, `normalvariate`, `lognormvariate`, `expovariate`, `paretovariate`, `weibullvariate`, `gammavariate`, `betavariate`, `vonmisesvariate`. Missing: `choices`/`sample`/`SystemRandom`/`binomialvariate`/`getstate` (Tier 3). See module docstring TODOs |
 | [`struct`](#struct) | P1 | Partial | ~60% | macro | unpack/calcsize only; `pack` needs statement-expr or buffer builder |
@@ -624,12 +624,18 @@ Tests:
 
 ### itertools
 
-**Missing** as a Python-surface module, but most primitives exist in
-`runtime/cpp/include/tpy/itertools.hpp`: `chain`, `zip_longest`, `islice`,
-`repeat`, `cycle`, `product`, `combinations`, `permutations`, `groupby`.
-
-Existing builtins `enumerate`, `zip`, `reversed`, `map`, `filter` live in
-`itertools.hpp` too (as builtins, not `itertools.*`).
+**Missing.** No itertools primitives exist in the runtime --
+`runtime/cpp/include/tpy/itertools.hpp` holds only the *builtin* iterator
+machinery (`enumerate`, `zip`, `map`, `filter`, `reversed`), not
+`chain`/`islice`/`cycle`/`product`/etc. (verified 2026-06-12). The module
+must be written as pure-TPy generators from scratch (the policy-aligned
+approach). Pure-TPy infinite generators (`count`/`cycle`/`repeat`) and
+iterable-consuming generators work; the lazy-stop functions
+(`islice`/`takewhile`/`dropwhile`) need a generator-loop `break`/`continue`,
+which now lowers correctly (was a simple-generator-peephole bug). `chain`
+over `*iterables` is still blocked by the proto-iterable-in-generator
+limitation (see BUGS.md); the variadic-tuple `product`/`permutations`/
+`combinations` family is blocked on variadic tuples.
 
 | Item | Status | Notes |
 |---|---|---|

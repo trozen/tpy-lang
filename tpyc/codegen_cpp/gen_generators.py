@@ -7,6 +7,7 @@ from typing import Callable, TYPE_CHECKING
 from ..parse.nodes import (
     TpyFunction, TpyYield, TpyStmt, TpyWhile, TpyForEach, TpyReturn, TpyVarDecl,
     TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpyTupleUnpack,
+    TpyBreak, TpyContinue,
 )
 from ..typesys import IntLiteralType, OptionalType, OwnType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_readonly, unwrap_ref_type, yield_uses_borrow_slot
 from tpyc import modules as builtin_modules
@@ -57,6 +58,37 @@ def _contains_return(stmts: list[TpyStmt]) -> bool:
             return True
         for body in stmt.sub_bodies():
             if _contains_return(body):
+                return True
+    return False
+
+
+def _for_range_uses_counter_loop(for_stmt: TpyForEach) -> bool:
+    """A `for x in range(...)` the simple-generator peephole emits as a real
+    counter `while` loop -- which only happens for range with <= 2 args. A
+    3-arg `range(a, b, step)` falls to the iterator-pull branch (no real C++
+    loop), so break/continue can't bind there. The eligibility predicate and
+    the emit path must agree on this, hence one shared helper.
+    """
+    it = for_stmt.iterable
+    return (isinstance(it, TpyCall) and it.func_name == "range"
+            and len(it.args) <= 2)
+
+
+def _contains_loop_control(stmts: list[TpyStmt]) -> bool:
+    """Whether `stmts` (a loop body) contains a break/continue targeting that
+    enclosing loop -- reachable without descending into a nested for/while
+    (whose own break/continue bind to the inner loop; a nested loop's `orelse`
+    runs in the enclosing scope, so it is still checked).
+    """
+    for stmt in stmts:
+        if isinstance(stmt, (TpyBreak, TpyContinue)):
+            return True
+        if isinstance(stmt, (TpyForEach, TpyWhile)):
+            if _contains_loop_control(stmt.orelse):
+                return True
+            continue
+        for body in stmt.sub_bodies():
+            if _contains_loop_control(body):
                 return True
     return False
 
@@ -141,11 +173,27 @@ class GeneratorCodegen:
             loop_body = last.body
         else:
             return False
-        # The single yield must be a direct child of the loop body
-        for stmt in loop_body:
-            if isinstance(stmt, TpyYield):
-                return True
-        return False
+        # The single yield must be a direct child of the loop body.
+        yield_idx = next((i for i, s in enumerate(loop_body)
+                          if isinstance(s, TpyYield)), None)
+        if yield_idx is None:
+            return False
+        # break/continue targeting the generator's own loop is only emittable by
+        # the peephole branches that wrap the body in a real C++ loop (while,
+        # for-range), and only BEFORE the yield -- the peephole runs post-yield
+        # code before the return, so a post-yield break/continue preempts the
+        # value. The for-over-iterable branches pull one element per call with no
+        # loop at all. Route the cases the peephole can't express to the
+        # resumable lowering, which models loops via a real CFG.
+        has_real_loop = (isinstance(last, TpyWhile)
+                         or (isinstance(last, TpyForEach)
+                             and _for_range_uses_counter_loop(last)))
+        if not has_real_loop:
+            if _contains_loop_control(loop_body):
+                return False
+        elif _contains_loop_control(loop_body[yield_idx + 1:]):
+            return False
+        return True
 
     def gen_simple_generator_inline(self, out: TextIO, func: TpyFunction,
                                     record_name: str | None = None) -> None:
@@ -289,7 +337,7 @@ class GeneratorCodegen:
         self.ctx.indent_level = 2 + extra
 
         # Determine iteration strategy
-        is_range = isinstance(for_stmt.iterable, TpyCall) and for_stmt.iterable.func_name == "range"
+        is_range = _for_range_uses_counter_loop(for_stmt)
         iter_elem = for_stmt.elem_type
         if iter_elem and isinstance(iter_elem, IntLiteralType):
             iter_elem = self.ctx.analyzer.ctx.default_int_type
@@ -324,7 +372,7 @@ class GeneratorCodegen:
         # Indentation helpers adjusted for method nesting
         I = lambda n: INDENT * (n + extra)
 
-        if is_range and len(for_stmt.iterable.args) <= 2:
+        if is_range:
             # range(n) or range(start, stop): counter in lambda captures
             range_call = for_stmt.iterable
             nargs = len(range_call.args)
