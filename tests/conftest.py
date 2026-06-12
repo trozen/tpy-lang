@@ -22,6 +22,11 @@ import pytest
 
 # When set, tests update expected files instead of comparing
 UPDATE_EXPECTED = os.environ.get("UPDATE_EXPECTED", "").lower() in ("1", "true")
+# Keep linked per-case test binaries after a passing exec phase. Default
+# is to delete them: nothing reads a stale binary (exec skips via
+# fingerprints or rebuilds from scratch), so the only effect of keeping
+# them is ~2.3MB x ~3000 cases of dead executables per worktree.
+KEEP_TEST_BINARIES = os.environ.get("TPY_KEEP_TEST_BINARIES", "").lower() in ("1", "true")
 
 # Import the compiler
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -1244,6 +1249,11 @@ def write_fingerprints(case_dir: Path, fingerprints: dict[str, str]) -> None:
     path.write_text(json.dumps(fingerprints, indent=2, sort_keys=True) + "\n")
 
 
+def case_binary_path(build_dir: Path, module_name: str) -> Path:
+    """Path where a case's linked debug binary lives (existing or not)."""
+    return BuildLayout(build_dir, module_name, build_variant="debug").binary_path()
+
+
 def build_and_run(build_dir: Path, module_name: str,
                   all_cpp_files: list[Path] | None = None,
                   extra_src_files: list[Path] | None = None,
@@ -1348,7 +1358,7 @@ def build_and_run(build_dir: Path, module_name: str,
         success=(result.returncode == 0),
         stdout=result.stdout,
         stderr=result.stderr,
-        returncode=result.returncode
+        returncode=result.returncode,
     )
 
 

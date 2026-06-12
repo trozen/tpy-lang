@@ -87,6 +87,8 @@ uv run python tests/update_snapshots.py -k hello # Same, for a specific case
 
 `--update-snapshots` (or the equivalent `UPDATE_EXPECTED=1` env var) implies `--force-exec` so output.txt, panic.txt, generated code, and `.fingerprints` are all regenerated in one pass.
 
+Linked per-case test binaries are deleted after a passing exec phase (they are never reused -- exec either skips via fingerprints or rebuilds; this keeps `tests/cases/` from accumulating gigabytes of dead executables). A failing exec keeps its binary for debugging; set `TPY_KEEP_TEST_BINARIES=1` to keep all of them.
+
 ### Agent testing workflow
 
 **CPU awareness**: never start a new test run while a previous one is still running. Either wait, or kill it (`pkill -f pytest`). Concurrent test suites saturate all cores and slow everything down for all agents and the user.

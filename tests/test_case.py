@@ -12,6 +12,9 @@ Flags:
     --update-snapshots   Regenerate expected files + fingerprints; implies
                          --force-exec. Equivalent to UPDATE_EXPECTED=1.
     UPDATE_EXPECTED=1    Env-var form of --update-snapshots (for CI / wrappers).
+    TPY_KEEP_TEST_BINARIES=1  Keep linked per-case binaries after a passing
+                         exec phase (default: deleted -- nothing reads them
+                         and they accumulate ~2.3MB per case).
 """
 
 import shutil
@@ -22,6 +25,8 @@ import pytest
 
 from conftest import (
     UPDATE_EXPECTED,
+    KEEP_TEST_BINARIES,
+    case_binary_path,
     get_module_name,
     plugin_extensions_for,
     compile_with_diagnostics,
@@ -295,6 +300,17 @@ def test_case(case_dir, main_src, request):
             f"(run update_snapshots.py -k {case_dir.name})",
             stacklevel=1,
         )
+
+    # Exec checks passed (failures raise above): drop the linked binary
+    # unless explicitly kept. Rebuilds don't read it, so retaining it only
+    # accumulates dead executables across the corpus. Swept on the skip
+    # path too, so binaries left by older harness versions (or by runs
+    # with TPY_KEEP_TEST_BINARIES=1) disappear on the next suite run.
+    if not KEEP_TEST_BINARIES:
+        try:
+            case_binary_path(build_dir, module_name).unlink(missing_ok=True)
+        except OSError:
+            pass
 
     # Warn when exec re-ran due to per-case extra_src fingerprint mismatch
     # (test passed, but next run will re-execute until fingerprint is refreshed).
