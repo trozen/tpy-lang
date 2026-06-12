@@ -213,7 +213,7 @@ inline User User::from_json(std::string_view __s) {
         {
             auto __try_tmp_2 = User::__json_decode__(__reader);
             if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
-            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_2)));
+            __result = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_2));
         }
         goto __after_try_1;
         // except tplib.json.parser.JsonError:
@@ -316,7 +316,7 @@ inline WithDefault WithDefault::from_json(std::string_view __s) {
         {
             auto __try_tmp_4 = WithDefault::__json_decode__(__reader);
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
-            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_4)));
+            __result = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_4));
         }
         goto __after_try_3;
         // except tplib.json.parser.JsonError:
@@ -419,7 +419,7 @@ inline Base Base::from_json(std::string_view __s) {
         {
             auto __try_tmp_6 = Base::__json_decode__(__reader);
             if (!__try_tmp_6.has_value()) { __err_opt_5 = std::move(__try_tmp_6.error()); goto __except_5; }
-            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_6)));
+            __result = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_6));
         }
         goto __after_try_5;
         // except tplib.json.parser.JsonError:
@@ -529,7 +529,7 @@ inline Extended Extended::from_json(std::string_view __s) {
         {
             auto __try_tmp_8 = Extended::__json_decode__(__reader);
             if (!__try_tmp_8.has_value()) { __err_opt_7 = std::move(__try_tmp_8.error()); goto __except_7; }
-            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_8)));
+            __result = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_8));
         }
         goto __after_try_7;
         // except tplib.json.parser.JsonError:

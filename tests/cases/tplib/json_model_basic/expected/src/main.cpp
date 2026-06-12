@@ -97,7 +97,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
         {
             auto __try_tmp_4 = __reader.read_key_raw();
             if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_4);
+            __key = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         auto& __match_subject_1 = __key;
         if (__match_subject_1 == "name") {
@@ -105,7 +105,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
             {
                 auto __try_tmp_5 = __reader.read_str();
                 if (!__try_tmp_5.has_value()) return ::tpy::make_unexpected(__try_tmp_5.error());
-                __name_1 = ::tpy::unwrap_ref(*__try_tmp_5);
+                __name_1 = ::tpy::unwrap_ref_move(*__try_tmp_5);
             }
             name = __name_1;
         } else if (__match_subject_1 == "age") {
@@ -113,7 +113,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
             {
                 auto __try_tmp_6 = __reader.read_int();
                 if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
-                __raw_3 = ::tpy::unwrap_ref(*__try_tmp_6);
+                __raw_3 = ::tpy::unwrap_ref_move(*__try_tmp_6);
             }
             int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
             age = __age_2;
@@ -122,7 +122,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
             {
                 auto __try_tmp_7 = __reader.read_bool();
                 if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
-                __active_4 = ::tpy::unwrap_ref(*__try_tmp_7);
+                __active_4 = ::tpy::unwrap_ref_move(*__try_tmp_7);
             }
             active = __active_4;
         } else if (__match_subject_1 == "email") {
@@ -136,7 +136,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
                 {
                     auto __try_tmp_9 = __reader.read_str();
                     if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
-                    __email_5 = ::tpy::unwrap_ref(*__try_tmp_9);
+                    __email_5 = ::tpy::unwrap_ref_move(*__try_tmp_9);
                 }
                 email = __email_5;
             }

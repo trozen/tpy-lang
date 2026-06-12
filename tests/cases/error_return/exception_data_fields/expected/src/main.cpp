@@ -27,7 +27,7 @@ void main() {
         {
             auto __try_tmp_2 = parse("ok");
             if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
-            v = ::tpy::unwrap_ref(*__try_tmp_2);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
         // print(v)
@@ -51,7 +51,7 @@ void main() {
         {
             auto __try_tmp_4 = parse("bad");
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
-            v2 = ::tpy::unwrap_ref(*__try_tmp_4);
+            v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
         // print(v2)
@@ -78,7 +78,7 @@ void main() {
         {
             auto __try_tmp_6 = parse("bad");
             if (!__try_tmp_6.has_value()) goto __except_5;
-            v3 = ::tpy::unwrap_ref(*__try_tmp_6);
+            v3 = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
         // else:
         // print(v3)

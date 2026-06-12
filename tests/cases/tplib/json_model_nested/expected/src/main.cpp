@@ -139,7 +139,7 @@ std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address::__json
         {
             auto __try_tmp_6 = __reader.read_key_raw();
             if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_6);
+            __key = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
         auto& __match_subject_1 = __key;
         if (__match_subject_1 == "street") {
@@ -147,7 +147,7 @@ std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address::__json
             {
                 auto __try_tmp_7 = __reader.read_str();
                 if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
-                __street_1 = ::tpy::unwrap_ref(*__try_tmp_7);
+                __street_1 = ::tpy::unwrap_ref_move(*__try_tmp_7);
             }
             street = __street_1;
         } else if (__match_subject_1 == "city") {
@@ -155,7 +155,7 @@ std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address::__json
             {
                 auto __try_tmp_8 = __reader.read_str();
                 if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
-                __city_2 = ::tpy::unwrap_ref(*__try_tmp_8);
+                __city_2 = ::tpy::unwrap_ref_move(*__try_tmp_8);
             }
             city = __city_2;
         } else {
@@ -202,7 +202,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
         {
             auto __try_tmp_12 = __reader.read_key_raw();
             if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_12);
+            __key = ::tpy::unwrap_ref_move(*__try_tmp_12);
         }
         auto& __match_subject_1 = __key;
         if (__match_subject_1.size() >= 2) {
@@ -213,7 +213,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     {
                         auto __try_tmp_13 = __reader.read_str();
                         if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
-                        __name_1 = ::tpy::unwrap_ref(*__try_tmp_13);
+                        __name_1 = ::tpy::unwrap_ref_move(*__try_tmp_13);
                     }
                     name = __name_1;
                     goto __match_end_2;
@@ -228,7 +228,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         {
                             auto __try_tmp_15 = __reader.read_str();
                             if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
-                            __elem_13 = ::tpy::unwrap_ref(*__try_tmp_15);
+                            __elem_13 = ::tpy::unwrap_ref_move(*__try_tmp_15);
                         }
                         std::string __tmp_1{__elem_13};
                         tags.push_back(std::move(__tmp_1));
@@ -250,7 +250,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         {
                             auto __try_tmp_18 = __reader.read_str_raw();
                             if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
-                            __estr_34 = ::tpy::unwrap_ref(*__try_tmp_18);
+                            __estr_34 = ::tpy::unwrap_ref_move(*__try_tmp_18);
                         }
                         std::optional<Role> __parsed_35 = ::tpy::EnumUtil<Role>::try_parse(__estr_34);
                         if ((!__parsed_35.has_value())) {
@@ -269,7 +269,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     {
                         auto __try_tmp_19 = __reader.read_float();
                         if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
-                        __score_4 = ::tpy::unwrap_ref(*__try_tmp_19);
+                        __score_4 = ::tpy::unwrap_ref_move(*__try_tmp_19);
                     }
                     score = __score_4;
                     goto __match_end_2;
@@ -279,7 +279,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     {
                         auto __try_tmp_20 = __reader.read_bool();
                         if (!__try_tmp_20.has_value()) return ::tpy::make_unexpected(__try_tmp_20.error());
-                        __active_7 = ::tpy::unwrap_ref(*__try_tmp_20);
+                        __active_7 = ::tpy::unwrap_ref_move(*__try_tmp_20);
                     }
                     active = __active_7;
                     goto __match_end_2;
@@ -294,7 +294,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         {
                             auto __try_tmp_22 = __reader.read_int();
                             if (!__try_tmp_22.has_value()) return ::tpy::make_unexpected(__try_tmp_22.error());
-                            __raw_15 = ::tpy::unwrap_ref(*__try_tmp_22);
+                            __raw_15 = ::tpy::unwrap_ref_move(*__try_tmp_22);
                         }
                         int32_t __elem_14 = ::tpy::int_cast_check<int32_t>(__raw_15);
                         scores.push_back(__elem_14);
@@ -312,7 +312,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     {
                         auto __try_tmp_24 = Address::__json_decode__(__reader);
                         if (!__try_tmp_24.has_value()) return ::tpy::make_unexpected(__try_tmp_24.error());
-                        address = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_24)));
+                        address = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_24));
                     }
                     goto __match_end_2;
                 }
@@ -329,13 +329,13 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         {
                             auto __try_tmp_26 = __reader.read_key();
                             if (!__try_tmp_26.has_value()) return ::tpy::make_unexpected(__try_tmp_26.error());
-                            __dk_20 = ::tpy::unwrap_ref(*__try_tmp_26);
+                            __dk_20 = ::tpy::unwrap_ref_move(*__try_tmp_26);
                         }
                         int64_t __raw_22;
                         {
                             auto __try_tmp_27 = __reader.read_int();
                             if (!__try_tmp_27.has_value()) return ::tpy::make_unexpected(__try_tmp_27.error());
-                            __raw_22 = ::tpy::unwrap_ref(*__try_tmp_27);
+                            __raw_22 = ::tpy::unwrap_ref_move(*__try_tmp_27);
                         }
                         int32_t __dv_21 = ::tpy::int_cast_check<int32_t>(__raw_22);
                         ::tpy::__setitem__(metadata, __dk_20, __dv_21);
@@ -356,7 +356,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         {
                             auto __try_tmp_30 = __reader.read_key();
                             if (!__try_tmp_30.has_value()) return ::tpy::make_unexpected(__try_tmp_30.error());
-                            __dk_23 = ::tpy::unwrap_ref(*__try_tmp_30);
+                            __dk_23 = ::tpy::unwrap_ref_move(*__try_tmp_30);
                         }
                         std::vector<int32_t> __dv_25 = std::vector<int32_t>{};
                         {
@@ -368,7 +368,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                             {
                                 auto __try_tmp_32 = __reader.read_int();
                                 if (!__try_tmp_32.has_value()) return ::tpy::make_unexpected(__try_tmp_32.error());
-                                __raw_27 = ::tpy::unwrap_ref(*__try_tmp_32);
+                                __raw_27 = ::tpy::unwrap_ref_move(*__try_tmp_32);
                             }
                             int32_t __elem_26 = ::tpy::int_cast_check<int32_t>(__raw_27);
                             __dv_25.push_back(__elem_26);
@@ -393,7 +393,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     {
                         auto __try_tmp_35 = __reader.read_int();
                         if (!__try_tmp_35.has_value()) return ::tpy::make_unexpected(__try_tmp_35.error());
-                        __raw_3 = ::tpy::unwrap_ref(*__try_tmp_35);
+                        __raw_3 = ::tpy::unwrap_ref_move(*__try_tmp_35);
                     }
                     int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
                     age = __age_2;
@@ -407,7 +407,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     {
                         auto __try_tmp_36 = __reader.read_str();
                         if (!__try_tmp_36.has_value()) return ::tpy::make_unexpected(__try_tmp_36.error());
-                        __raw_9 = ::tpy::unwrap_ref(*__try_tmp_36);
+                        __raw_9 = ::tpy::unwrap_ref_move(*__try_tmp_36);
                     }
                     ::tpy::BigInt __big_id_8 = ::tpy::BigInt::from_str(__raw_9);
                     big_id = __big_id_8;
@@ -426,7 +426,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         {
                             auto __try_tmp_38 = Address::__json_decode__(__reader);
                             if (!__try_tmp_38.has_value()) return ::tpy::make_unexpected(__try_tmp_38.error());
-                            alt_address = &*(__slot_2 = std::move(::tpy::unwrap_ref(*__try_tmp_38)));
+                            alt_address = &*(__slot_2 = ::tpy::unwrap_ref_move(*__try_tmp_38));
                         }
                     }
                     goto __match_end_2;
@@ -445,7 +445,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         {
                             auto __try_tmp_40 = __reader.read_str();
                             if (!__try_tmp_40.has_value()) return ::tpy::make_unexpected(__try_tmp_40.error());
-                            __email_36 = ::tpy::unwrap_ref(*__try_tmp_40);
+                            __email_36 = ::tpy::unwrap_ref_move(*__try_tmp_40);
                         }
                         email = __email_36;
                     }
@@ -459,7 +459,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     {
                         auto __try_tmp_41 = __reader.read_str_raw();
                         if (!__try_tmp_41.has_value()) return ::tpy::make_unexpected(__try_tmp_41.error());
-                        __estr_11 = ::tpy::unwrap_ref(*__try_tmp_41);
+                        __estr_11 = ::tpy::unwrap_ref_move(*__try_tmp_41);
                     }
                     std::optional<Role> __parsed_12 = ::tpy::EnumUtil<Role>::try_parse(__estr_11);
                     if ((!__parsed_12.has_value())) {
@@ -479,7 +479,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         {
                             auto __try_tmp_43 = __reader.read_str_raw();
                             if (!__try_tmp_43.has_value()) return ::tpy::make_unexpected(__try_tmp_43.error());
-                            __estr_18 = ::tpy::unwrap_ref(*__try_tmp_43);
+                            __estr_18 = ::tpy::unwrap_ref_move(*__try_tmp_43);
                         }
                         std::optional<Role> __parsed_19 = ::tpy::EnumUtil<Role>::try_parse(__estr_18);
                         if ((!__parsed_19.has_value())) {
@@ -503,7 +503,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     {
                         auto __try_tmp_46 = __reader.read_int();
                         if (!__try_tmp_46.has_value()) return ::tpy::make_unexpected(__try_tmp_46.error());
-                        __raw_29 = ::tpy::unwrap_ref(*__try_tmp_46);
+                        __raw_29 = ::tpy::unwrap_ref_move(*__try_tmp_46);
                     }
                     int32_t __t0_28 = ::tpy::int_cast_check<int32_t>(__raw_29);
                     if ((__reader.has_next() == false)) {
@@ -513,7 +513,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     {
                         auto __try_tmp_47 = __reader.read_int();
                         if (!__try_tmp_47.has_value()) return ::tpy::make_unexpected(__try_tmp_47.error());
-                        __raw_31 = ::tpy::unwrap_ref(*__try_tmp_47);
+                        __raw_31 = ::tpy::unwrap_ref_move(*__try_tmp_47);
                     }
                     int32_t __t1_30 = ::tpy::int_cast_check<int32_t>(__raw_31);
                     if ((__reader.has_next() == false)) {
@@ -523,7 +523,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     {
                         auto __try_tmp_48 = __reader.read_str();
                         if (!__try_tmp_48.has_value()) return ::tpy::make_unexpected(__try_tmp_48.error());
-                        __t2_32 = ::tpy::unwrap_ref(*__try_tmp_48);
+                        __t2_32 = ::tpy::unwrap_ref_move(*__try_tmp_48);
                     }
                     {
                         auto __try_tmp_49 = __reader.read_array_end();
@@ -540,7 +540,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     {
                         auto __try_tmp_50 = __reader.read_float();
                         if (!__try_tmp_50.has_value()) return ::tpy::make_unexpected(__try_tmp_50.error());
-                        __raw_6 = ::tpy::unwrap_ref(*__try_tmp_50);
+                        __raw_6 = ::tpy::unwrap_ref_move(*__try_tmp_50);
                     }
                     float __precision_5 = static_cast<float>(__raw_6);
                     precision = __precision_5;
@@ -556,7 +556,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         {
                             auto __try_tmp_52 = Address::__json_decode__(__reader);
                             if (!__try_tmp_52.has_value()) return ::tpy::make_unexpected(__try_tmp_52.error());
-                            __elem_16 = ::tpy::unwrap_ref(*__try_tmp_52);
+                            __elem_16 = ::tpy::unwrap_ref_move(*__try_tmp_52);
                         }
                         friends.push_back(__elem_16);
                     }

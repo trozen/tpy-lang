@@ -31,7 +31,7 @@ std::expected<int32_t, MyErr> caller(int32_t x) {
                     std::cout << "cleanup-1" << "\n";
                     return ::tpy::make_unexpected(__try_tmp_1.error());
                 }
-                y = ::tpy::unwrap_ref(*__try_tmp_1);
+                y = ::tpy::unwrap_ref_move(*__try_tmp_1);
             }
             // return y
             // print("cleanup-1")
@@ -61,7 +61,7 @@ std::expected<int32_t, MyErr> caller_assign(int32_t x) {
                     std::cout << "cleanup-2" << "\n";
                     return ::tpy::make_unexpected(__try_tmp_2.error());
                 }
-                z = ::tpy::unwrap_ref(*__try_tmp_2);
+                z = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
             // return z
             // print("cleanup-2")
@@ -110,7 +110,7 @@ void main() {
         {
             auto __try_tmp_5 = caller(-1);
             if (!__try_tmp_5.has_value()) goto __except_4;
-            v = ::tpy::unwrap_ref(*__try_tmp_5);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
         // else:
         // print(v)
@@ -128,7 +128,7 @@ void main() {
         {
             auto __try_tmp_7 = caller(3);
             if (!__try_tmp_7.has_value()) goto __except_6;
-            v = ::tpy::unwrap_ref(*__try_tmp_7);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
         // else:
         // print(v)
@@ -146,7 +146,7 @@ void main() {
         {
             auto __try_tmp_9 = caller_assign(-1);
             if (!__try_tmp_9.has_value()) goto __except_8;
-            v = ::tpy::unwrap_ref(*__try_tmp_9);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_9);
         }
         // else:
         // print(v)

@@ -12,14 +12,14 @@ std::expected<::tpy::BigInt, ::tpyapp::errors_impl::ParseError> parse_pair(std::
     {
         auto __try_tmp_1 = ::tpyapp::errors_impl::parse_int(a);
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
-        x = ::tpy::unwrap_ref(*__try_tmp_1);
+        x = ::tpy::unwrap_ref_move(*__try_tmp_1);
     }
     // y = parse_int(b)
     ::tpy::BigInt y;
     {
         auto __try_tmp_2 = ::tpyapp::errors_impl::parse_int(b);
         if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
-        y = ::tpy::unwrap_ref(*__try_tmp_2);
+        y = ::tpy::unwrap_ref_move(*__try_tmp_2);
     }
     // return x + y
     return ((x) + (y));
@@ -34,7 +34,7 @@ void main() {
         {
             auto __try_tmp_4 = parse_pair("10", "20");
             if (!__try_tmp_4.has_value()) goto __except_3;
-            v = ::tpy::unwrap_ref(*__try_tmp_4);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
         // print(v)
@@ -53,7 +53,7 @@ void main() {
         {
             auto __try_tmp_6 = parse_pair("10", "");
             if (!__try_tmp_6.has_value()) goto __except_5;
-            v2 = ::tpy::unwrap_ref(*__try_tmp_6);
+            v2 = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
         // else:
         // print(v2)

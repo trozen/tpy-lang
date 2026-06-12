@@ -168,7 +168,7 @@ inline std::expected<Seconds, ::tpystd::tplib::json::parser::JsonError> Seconds:
     {
         auto __try_tmp_1 = reader.read_int();
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
-        raw = ::tpy::unwrap_ref(*__try_tmp_1);
+        raw = ::tpy::unwrap_ref_move(*__try_tmp_1);
     }
     // return Seconds(Int32(raw))
     return Seconds(::tpy::int_cast_check<int32_t>(raw));
@@ -191,7 +191,7 @@ inline Event Event::from_json(std::string_view __s) {
         {
             auto __try_tmp_3 = Event::__json_decode__(__reader);
             if (!__try_tmp_3.has_value()) { __err_opt_2 = std::move(__try_tmp_3.error()); goto __except_2; }
-            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_3)));
+            __result = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_3));
         }
         goto __after_try_2;
         // except tplib.json.parser.JsonError:
@@ -303,7 +303,7 @@ inline Schedule Schedule::from_json(std::string_view __s) {
         {
             auto __try_tmp_5 = Schedule::__json_decode__(__reader);
             if (!__try_tmp_5.has_value()) { __err_opt_4 = std::move(__try_tmp_5.error()); goto __except_4; }
-            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_5)));
+            __result = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_5));
         }
         goto __after_try_4;
         // except tplib.json.parser.JsonError:

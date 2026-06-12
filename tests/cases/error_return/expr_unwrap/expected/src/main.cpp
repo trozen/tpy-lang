@@ -85,7 +85,7 @@ void main() {
         {
             auto __try_tmp_10 = add("10", "20");
             if (!__try_tmp_10.has_value()) goto __except_9;
-            v = ::tpy::unwrap_ref(*__try_tmp_10);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_10);
         }
         // else:
         // print(v)
@@ -105,7 +105,7 @@ void main() {
         {
             auto __try_tmp_12 = add("10", "");
             if (!__try_tmp_12.has_value()) goto __except_11;
-            v2 = ::tpy::unwrap_ref(*__try_tmp_12);
+            v2 = ::tpy::unwrap_ref_move(*__try_tmp_12);
         }
         goto __after_try_11;
         // except E:
@@ -122,7 +122,7 @@ void main() {
         {
             auto __try_tmp_14 = mul3("2", "3", "4");
             if (!__try_tmp_14.has_value()) goto __except_13;
-            v3 = ::tpy::unwrap_ref(*__try_tmp_14);
+            v3 = ::tpy::unwrap_ref_move(*__try_tmp_14);
         }
         // else:
         // print(v3)
@@ -142,7 +142,7 @@ void main() {
         {
             auto __try_tmp_16 = as_arg("-5");
             if (!__try_tmp_16.has_value()) goto __except_15;
-            v4 = ::tpy::unwrap_ref(*__try_tmp_16);
+            v4 = ::tpy::unwrap_ref_move(*__try_tmp_16);
         }
         // else:
         // print(v4)
@@ -162,7 +162,7 @@ void main() {
         {
             auto __try_tmp_18 = greet("hello");
             if (!__try_tmp_18.has_value()) goto __except_17;
-            v5 = ::tpy::unwrap_ref(*__try_tmp_18);
+            v5 = ::tpy::unwrap_ref_move(*__try_tmp_18);
         }
         // else:
         // print(v5)
@@ -181,7 +181,7 @@ void main() {
         {
             auto __try_tmp_20 = greet("");
             if (!__try_tmp_20.has_value()) goto __except_19;
-            v6 = ::tpy::unwrap_ref(*__try_tmp_20);
+            v6 = ::tpy::unwrap_ref_move(*__try_tmp_20);
         }
         goto __after_try_19;
         // except E:
@@ -198,7 +198,7 @@ void main() {
         {
             auto __try_tmp_22 = modify(::tpy::BigInt(1), ::tpy::BigInt(2));
             if (!__try_tmp_22.has_value()) goto __except_21;
-            v7 = ::tpy::unwrap_ref(*__try_tmp_22);
+            v7 = ::tpy::unwrap_ref_move(*__try_tmp_22);
         }
         // else:
         // print(v7.x)
@@ -219,7 +219,7 @@ void main() {
         {
             auto __try_tmp_24 = modify(::tpy::BigInt(-1), ::tpy::BigInt(2));
             if (!__try_tmp_24.has_value()) goto __except_23;
-            v8 = ::tpy::unwrap_ref(*__try_tmp_24);
+            v8 = ::tpy::unwrap_ref_move(*__try_tmp_24);
         }
         goto __after_try_23;
         // except E:
@@ -290,7 +290,7 @@ void test_as_binding() {
         {
             auto __try_tmp_32 = checked_add("10", "20");
             if (!__try_tmp_32.has_value()) { __err_opt_31 = std::move(__try_tmp_32.error()); goto __except_31; }
-            v = ::tpy::unwrap_ref(*__try_tmp_32);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_32);
         }
         // else:
         // print(v)
@@ -313,7 +313,7 @@ void test_as_binding() {
         {
             auto __try_tmp_34 = checked_add("10", "?");
             if (!__try_tmp_34.has_value()) { __err_opt_33 = std::move(__try_tmp_34.error()); goto __except_33; }
-            v2 = ::tpy::unwrap_ref(*__try_tmp_34);
+            v2 = ::tpy::unwrap_ref_move(*__try_tmp_34);
         }
         goto __after_try_33;
         // except ParseErr:
@@ -333,7 +333,7 @@ void test_as_binding() {
         {
             auto __try_tmp_36 = checked_add("", "5");
             if (!__try_tmp_36.has_value()) { __err_opt_35 = std::move(__try_tmp_36.error()); goto __except_35; }
-            v3 = ::tpy::unwrap_ref(*__try_tmp_36);
+            v3 = ::tpy::unwrap_ref_move(*__try_tmp_36);
         }
         goto __after_try_35;
         // except ParseErr:

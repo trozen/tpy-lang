@@ -338,7 +338,7 @@ inline Base Base::from_json(std::string_view __s) {
         {
             auto __try_tmp_2 = Base::__json_decode__(__reader);
             if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
-            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_2)));
+            __result = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_2));
         }
         goto __after_try_1;
         // except tplib.json.parser.JsonError:
@@ -450,7 +450,7 @@ inline WithDefaults WithDefaults::from_json(std::string_view __s) {
         {
             auto __try_tmp_4 = WithDefaults::__json_decode__(__reader);
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
-            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_4)));
+            __result = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_4));
         }
         goto __after_try_3;
         // except tplib.json.parser.JsonError:
@@ -562,7 +562,7 @@ inline Tagged Tagged::from_json(std::string_view __s) {
         {
             auto __try_tmp_6 = Tagged::__json_decode__(__reader);
             if (!__try_tmp_6.has_value()) { __err_opt_5 = std::move(__try_tmp_6.error()); goto __except_5; }
-            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_6)));
+            __result = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_6));
         }
         goto __after_try_5;
         // except tplib.json.parser.JsonError:
@@ -665,7 +665,7 @@ inline User User::from_json(std::string_view __s) {
         {
             auto __try_tmp_8 = User::__json_decode__(__reader);
             if (!__try_tmp_8.has_value()) { __err_opt_7 = std::move(__try_tmp_8.error()); goto __except_7; }
-            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_8)));
+            __result = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_8));
         }
         goto __after_try_7;
         // except tplib.json.parser.JsonError:
@@ -768,7 +768,7 @@ inline Extended Extended::from_json(std::string_view __s) {
         {
             auto __try_tmp_10 = Extended::__json_decode__(__reader);
             if (!__try_tmp_10.has_value()) { __err_opt_9 = std::move(__try_tmp_10.error()); goto __except_9; }
-            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_10)));
+            __result = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_10));
         }
         goto __after_try_9;
         // except tplib.json.parser.JsonError:
@@ -871,7 +871,7 @@ inline Scored Scored::from_json(std::string_view __s) {
         {
             auto __try_tmp_12 = Scored::__json_decode__(__reader);
             if (!__try_tmp_12.has_value()) { __err_opt_11 = std::move(__try_tmp_12.error()); goto __except_11; }
-            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_12)));
+            __result = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_12));
         }
         goto __after_try_11;
         // except tplib.json.parser.JsonError:
@@ -974,7 +974,7 @@ inline Admin Admin::from_json(std::string_view __s) {
         {
             auto __try_tmp_14 = Admin::__json_decode__(__reader);
             if (!__try_tmp_14.has_value()) { __err_opt_13 = std::move(__try_tmp_14.error()); goto __except_13; }
-            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_14)));
+            __result = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_14));
         }
         goto __after_try_13;
         // except tplib.json.parser.JsonError:

@@ -73,13 +73,13 @@ void consume_two(T_it& it) {
         {
             auto __try_tmp_2 = ::tpy::next(it);
             if (!__try_tmp_2.has_value()) goto __except_1;
-            a = ::tpy::unwrap_ref(*__try_tmp_2);
+            a = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // b = next(it)
         {
             auto __try_tmp_3 = ::tpy::next(it);
             if (!__try_tmp_3.has_value()) goto __except_1;
-            b = ::tpy::unwrap_ref(*__try_tmp_3);
+            b = ::tpy::unwrap_ref_move(*__try_tmp_3);
         }
         // print(a)
         std::cout << a << "\n";

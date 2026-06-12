@@ -48,7 +48,7 @@ void test_try_load() {
         {
             auto __try_tmp_4 = Item::try_load_json("/tmp/_tpy_test_json_io3.json");
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
-            c = ::tpy::unwrap_ref(*__try_tmp_4);
+            c = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // print(c.name)
         std::cout << c->name << "\n";
@@ -88,7 +88,7 @@ void test_try_load_bad() {
         {
             auto __try_tmp_6 = Item::try_load_json("/tmp/_tpy_test_json_io_bad.json");
             if (!__try_tmp_6.has_value()) { __err_opt_5 = std::move(__try_tmp_6.error()); goto __except_5; }
-            c = ::tpy::unwrap_ref(*__try_tmp_6);
+            c = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
         // print(c.name)
         std::cout << c->name << "\n";
@@ -118,7 +118,7 @@ std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decod
         {
             auto __try_tmp_8 = __reader.read_key_raw();
             if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_8);
+            __key = ::tpy::unwrap_ref_move(*__try_tmp_8);
         }
         auto& __match_subject_1 = __key;
         if (__match_subject_1 == "name") {
@@ -126,7 +126,7 @@ std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decod
             {
                 auto __try_tmp_9 = __reader.read_str();
                 if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
-                __name_1 = ::tpy::unwrap_ref(*__try_tmp_9);
+                __name_1 = ::tpy::unwrap_ref_move(*__try_tmp_9);
             }
             name = __name_1;
         } else if (__match_subject_1 == "count") {
@@ -134,7 +134,7 @@ std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decod
             {
                 auto __try_tmp_10 = __reader.read_int();
                 if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
-                __raw_3 = ::tpy::unwrap_ref(*__try_tmp_10);
+                __raw_3 = ::tpy::unwrap_ref_move(*__try_tmp_10);
             }
             int32_t __count_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
             count = __count_2;
@@ -143,7 +143,7 @@ std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decod
             {
                 auto __try_tmp_11 = __reader.read_bool();
                 if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
-                __active_4 = ::tpy::unwrap_ref(*__try_tmp_11);
+                __active_4 = ::tpy::unwrap_ref_move(*__try_tmp_11);
             }
             active = __active_4;
         } else {

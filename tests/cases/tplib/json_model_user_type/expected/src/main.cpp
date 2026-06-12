@@ -90,7 +90,7 @@ std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::__json_dec
         {
             auto __try_tmp_7 = __reader.read_key_raw();
             if (!__try_tmp_7.has_value()) return ::tpy::make_unexpected(__try_tmp_7.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_7);
+            __key = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
         auto& __match_subject_1 = __key;
         if (__match_subject_1 == "name") {
@@ -98,14 +98,14 @@ std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::__json_dec
             {
                 auto __try_tmp_8 = __reader.read_str();
                 if (!__try_tmp_8.has_value()) return ::tpy::make_unexpected(__try_tmp_8.error());
-                __name_1 = ::tpy::unwrap_ref(*__try_tmp_8);
+                __name_1 = ::tpy::unwrap_ref_move(*__try_tmp_8);
             }
             name = __name_1;
         } else if (__match_subject_1 == "when") {
             {
                 auto __try_tmp_9 = Seconds::__json_decode__(__reader);
                 if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
-                when = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_9)));
+                when = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_9));
             }
         } else {
             {
@@ -139,7 +139,7 @@ std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__js
         {
             auto __try_tmp_13 = __reader.read_key_raw();
             if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_13);
+            __key = ::tpy::unwrap_ref_move(*__try_tmp_13);
         }
         auto& __match_subject_1 = __key;
         if (__match_subject_1 == "events") {
@@ -152,7 +152,7 @@ std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__js
                 {
                     auto __try_tmp_15 = Event::__json_decode__(__reader);
                     if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(__try_tmp_15.error());
-                    __elem_1 = ::tpy::unwrap_ref(*__try_tmp_15);
+                    __elem_1 = ::tpy::unwrap_ref_move(*__try_tmp_15);
                 }
                 events.push_back(__elem_1);
             }
@@ -164,7 +164,7 @@ std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__js
             {
                 auto __try_tmp_17 = Seconds::__json_decode__(__reader);
                 if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
-                default_duration = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_17)));
+                default_duration = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_17));
             }
         } else if (__match_subject_1 == "deadline") {
             if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
@@ -176,7 +176,7 @@ std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__js
                 {
                     auto __try_tmp_19 = Seconds::__json_decode__(__reader);
                     if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
-                    deadline = &*(__slot_2 = std::move(::tpy::unwrap_ref(*__try_tmp_19)));
+                    deadline = &*(__slot_2 = ::tpy::unwrap_ref_move(*__try_tmp_19));
                 }
             }
         } else {

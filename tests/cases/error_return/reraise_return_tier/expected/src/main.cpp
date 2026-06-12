@@ -27,7 +27,7 @@ std::expected<int32_t, NotFound> outer(std::string_view key) {
         {
             auto __try_tmp_2 = inner(key);
             if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
-            v = ::tpy::unwrap_ref(*__try_tmp_2);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         goto __after_try_1;
         // except NotFound:
@@ -56,7 +56,7 @@ void main() {
         {
             auto __try_tmp_4 = outer("x");
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
-            v = ::tpy::unwrap_ref(*__try_tmp_4);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
         // print(v)
@@ -80,7 +80,7 @@ void main() {
         {
             auto __try_tmp_6 = outer("y");
             if (!__try_tmp_6.has_value()) { __err_opt_5 = std::move(__try_tmp_6.error()); goto __except_5; }
-            v2 = ::tpy::unwrap_ref(*__try_tmp_6);
+            v2 = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
         // else:
         // print(v2)

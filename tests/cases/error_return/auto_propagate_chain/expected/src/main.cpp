@@ -28,14 +28,14 @@ std::expected<int32_t, NotFound> lookup_twice(const std::vector<int32_t>& items,
     {
         auto __try_tmp_1 = lookup(items, a);
         if (!__try_tmp_1.has_value()) return ::tpy::make_unexpected(__try_tmp_1.error());
-        ia = ::tpy::unwrap_ref(*__try_tmp_1);
+        ia = ::tpy::unwrap_ref_move(*__try_tmp_1);
     }
     // ib = lookup(items, b)
     int32_t ib;
     {
         auto __try_tmp_2 = lookup(items, b);
         if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
-        ib = ::tpy::unwrap_ref(*__try_tmp_2);
+        ib = ::tpy::unwrap_ref_move(*__try_tmp_2);
     }
     // return ia + ib
     return (::tpy::add_check<int32_t>(ia, ib));
@@ -57,7 +57,7 @@ std::expected<int32_t, NotFound> lookup_sum(const std::vector<int32_t>& items, c
         {
             auto __try_tmp_3 = lookup_twice(items, t, t);
             if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
-            idx = ::tpy::unwrap_ref(*__try_tmp_3);
+            idx = ::tpy::unwrap_ref_move(*__try_tmp_3);
         }
         // total += idx
         total = ::tpy::add_check<int32_t>(total, idx);
@@ -79,7 +79,7 @@ void main() {
         {
             auto __try_tmp_5 = lookup_sum(items, __tmp_1);
             if (!__try_tmp_5.has_value()) goto __except_4;
-            v = ::tpy::unwrap_ref(*__try_tmp_5);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
         // else:
         // print(v)
@@ -100,7 +100,7 @@ void main() {
         {
             auto __try_tmp_7 = lookup_sum(items, __tmp_2);
             if (!__try_tmp_7.has_value()) goto __except_6;
-            v2 = ::tpy::unwrap_ref(*__try_tmp_7);
+            v2 = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
         // else:
         // print(v2)

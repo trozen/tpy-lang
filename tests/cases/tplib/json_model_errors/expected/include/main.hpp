@@ -111,7 +111,7 @@ inline Item Item::from_json(std::string_view __s) {
         {
             auto __try_tmp_2 = Item::__json_decode__(__reader);
             if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
-            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_2)));
+            __result = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_2));
         }
         goto __after_try_1;
         // except tplib.json.parser.JsonError:

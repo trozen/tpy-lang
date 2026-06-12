@@ -137,7 +137,7 @@ std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decod
         {
             auto __try_tmp_10 = __reader.read_key_raw();
             if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_10);
+            __key = ::tpy::unwrap_ref_move(*__try_tmp_10);
         }
         auto& __match_subject_1 = __key;
         if (__match_subject_1 == "name") {
@@ -145,7 +145,7 @@ std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decod
             {
                 auto __try_tmp_11 = __reader.read_str();
                 if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
-                __name_1 = ::tpy::unwrap_ref(*__try_tmp_11);
+                __name_1 = ::tpy::unwrap_ref_move(*__try_tmp_11);
             }
             name = __name_1;
         } else if (__match_subject_1 == "color") {
@@ -153,7 +153,7 @@ std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decod
             {
                 auto __try_tmp_12 = __reader.read_str_raw();
                 if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
-                __estr_3 = ::tpy::unwrap_ref(*__try_tmp_12);
+                __estr_3 = ::tpy::unwrap_ref_move(*__try_tmp_12);
             }
             std::optional<Color> __parsed_4 = ::tpy::EnumUtil<Color>::try_parse(__estr_3);
             if ((!__parsed_4.has_value())) {

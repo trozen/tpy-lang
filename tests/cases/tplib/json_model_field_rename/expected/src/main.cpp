@@ -59,7 +59,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
         {
             auto __try_tmp_10 = __reader.read_key_raw();
             if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_10);
+            __key = ::tpy::unwrap_ref_move(*__try_tmp_10);
         }
         auto& __match_subject_1 = __key;
         if (__match_subject_1 == "firstName") {
@@ -67,7 +67,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
             {
                 auto __try_tmp_11 = __reader.read_str();
                 if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
-                __first_name_1 = ::tpy::unwrap_ref(*__try_tmp_11);
+                __first_name_1 = ::tpy::unwrap_ref_move(*__try_tmp_11);
             }
             first_name = __first_name_1;
         } else if (__match_subject_1 == "lastName") {
@@ -75,7 +75,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
             {
                 auto __try_tmp_12 = __reader.read_str();
                 if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
-                __last_name_2 = ::tpy::unwrap_ref(*__try_tmp_12);
+                __last_name_2 = ::tpy::unwrap_ref_move(*__try_tmp_12);
             }
             last_name = __last_name_2;
         } else if (__match_subject_1 == "age") {
@@ -83,7 +83,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
             {
                 auto __try_tmp_13 = __reader.read_int();
                 if (!__try_tmp_13.has_value()) return ::tpy::make_unexpected(__try_tmp_13.error());
-                __raw_4 = ::tpy::unwrap_ref(*__try_tmp_13);
+                __raw_4 = ::tpy::unwrap_ref_move(*__try_tmp_13);
             }
             int32_t __age_3 = ::tpy::int_cast_check<int32_t>(__raw_4);
             age = __age_3;
@@ -125,7 +125,7 @@ std::expected<WithDefault, ::tpystd::tplib::json::parser::JsonError> WithDefault
         {
             auto __try_tmp_17 = __reader.read_key_raw();
             if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_17);
+            __key = ::tpy::unwrap_ref_move(*__try_tmp_17);
         }
         auto& __match_subject_1 = __key;
         if (__match_subject_1 == "lbl") {
@@ -133,7 +133,7 @@ std::expected<WithDefault, ::tpystd::tplib::json::parser::JsonError> WithDefault
             {
                 auto __try_tmp_18 = __reader.read_str();
                 if (!__try_tmp_18.has_value()) return ::tpy::make_unexpected(__try_tmp_18.error());
-                __label_1 = ::tpy::unwrap_ref(*__try_tmp_18);
+                __label_1 = ::tpy::unwrap_ref_move(*__try_tmp_18);
             }
             label = __label_1;
         } else if (__match_subject_1 == "note") {
@@ -147,7 +147,7 @@ std::expected<WithDefault, ::tpystd::tplib::json::parser::JsonError> WithDefault
                 {
                     auto __try_tmp_20 = __reader.read_str();
                     if (!__try_tmp_20.has_value()) return ::tpy::make_unexpected(__try_tmp_20.error());
-                    __note_2 = ::tpy::unwrap_ref(*__try_tmp_20);
+                    __note_2 = ::tpy::unwrap_ref_move(*__try_tmp_20);
                 }
                 note = __note_2;
             }
@@ -156,7 +156,7 @@ std::expected<WithDefault, ::tpystd::tplib::json::parser::JsonError> WithDefault
             {
                 auto __try_tmp_21 = __reader.read_int();
                 if (!__try_tmp_21.has_value()) return ::tpy::make_unexpected(__try_tmp_21.error());
-                __raw_4 = ::tpy::unwrap_ref(*__try_tmp_21);
+                __raw_4 = ::tpy::unwrap_ref_move(*__try_tmp_21);
             }
             int32_t __score_3 = ::tpy::int_cast_check<int32_t>(__raw_4);
             score = __score_3;
@@ -202,7 +202,7 @@ std::expected<Base, ::tpystd::tplib::json::parser::JsonError> Base::__json_decod
         {
             auto __try_tmp_25 = __reader.read_key_raw();
             if (!__try_tmp_25.has_value()) return ::tpy::make_unexpected(__try_tmp_25.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_25);
+            __key = ::tpy::unwrap_ref_move(*__try_tmp_25);
         }
         auto& __match_subject_1 = __key;
         if (__match_subject_1 == "id") {
@@ -210,7 +210,7 @@ std::expected<Base, ::tpystd::tplib::json::parser::JsonError> Base::__json_decod
             {
                 auto __try_tmp_26 = __reader.read_int();
                 if (!__try_tmp_26.has_value()) return ::tpy::make_unexpected(__try_tmp_26.error());
-                __raw_2 = ::tpy::unwrap_ref(*__try_tmp_26);
+                __raw_2 = ::tpy::unwrap_ref_move(*__try_tmp_26);
             }
             int32_t __item_id_1 = ::tpy::int_cast_check<int32_t>(__raw_2);
             item_id = __item_id_1;
@@ -240,7 +240,7 @@ std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extended::__js
         {
             auto __try_tmp_30 = __reader.read_key_raw();
             if (!__try_tmp_30.has_value()) return ::tpy::make_unexpected(__try_tmp_30.error());
-            __key = ::tpy::unwrap_ref(*__try_tmp_30);
+            __key = ::tpy::unwrap_ref_move(*__try_tmp_30);
         }
         auto& __match_subject_1 = __key;
         if (__match_subject_1 == "id") {
@@ -248,7 +248,7 @@ std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extended::__js
             {
                 auto __try_tmp_31 = __reader.read_int();
                 if (!__try_tmp_31.has_value()) return ::tpy::make_unexpected(__try_tmp_31.error());
-                __raw_2 = ::tpy::unwrap_ref(*__try_tmp_31);
+                __raw_2 = ::tpy::unwrap_ref_move(*__try_tmp_31);
             }
             int32_t __item_id_1 = ::tpy::int_cast_check<int32_t>(__raw_2);
             item_id = __item_id_1;
@@ -257,7 +257,7 @@ std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extended::__js
             {
                 auto __try_tmp_32 = __reader.read_str();
                 if (!__try_tmp_32.has_value()) return ::tpy::make_unexpected(__try_tmp_32.error());
-                __label_3 = ::tpy::unwrap_ref(*__try_tmp_32);
+                __label_3 = ::tpy::unwrap_ref_move(*__try_tmp_32);
             }
             label = __label_3;
         } else {

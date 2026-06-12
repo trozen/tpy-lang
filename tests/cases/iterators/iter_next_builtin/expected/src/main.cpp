@@ -18,7 +18,7 @@ void main() {
         {
             auto __try_tmp_5 = ::tpy::next(it);
             if (!__try_tmp_5.has_value()) goto __except_4;
-            v = ::tpy::unwrap_ref(*__try_tmp_5);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
         // print(v)
         std::cout << v << "\n";
@@ -26,7 +26,7 @@ void main() {
         {
             auto __try_tmp_6 = ::tpy::next(it);
             if (!__try_tmp_6.has_value()) goto __except_4;
-            v = ::tpy::unwrap_ref(*__try_tmp_6);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_6);
         }
         // print(v)
         std::cout << v << "\n";
@@ -34,7 +34,7 @@ void main() {
         {
             auto __try_tmp_7 = ::tpy::next(it);
             if (!__try_tmp_7.has_value()) goto __except_4;
-            v = ::tpy::unwrap_ref(*__try_tmp_7);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
         // print(v)
         std::cout << v << "\n";
@@ -42,7 +42,7 @@ void main() {
         {
             auto __try_tmp_8 = ::tpy::next(it);
             if (!__try_tmp_8.has_value()) goto __except_4;
-            v = ::tpy::unwrap_ref(*__try_tmp_8);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_8);
         }
         // print(v)
         std::cout << v << "\n";

@@ -27,7 +27,7 @@ void main() {
             {
                 auto __try_tmp_2 = lookup("x");
                 if (!__try_tmp_2.has_value()) goto __except_1;
-                v = ::tpy::unwrap_ref(*__try_tmp_2);
+                v = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
             // else:
             // print(v)
@@ -55,7 +55,7 @@ void main() {
             {
                 auto __try_tmp_4 = lookup("y");
                 if (!__try_tmp_4.has_value()) goto __except_3;
-                v2 = ::tpy::unwrap_ref(*__try_tmp_4);
+                v2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
             }
             // else:
             // print(v2)

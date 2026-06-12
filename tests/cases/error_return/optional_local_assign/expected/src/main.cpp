@@ -27,7 +27,7 @@ int32_t run(bool ok) {
         {
             auto __try_tmp_2 = decode(ok);
             if (!__try_tmp_2.has_value()) goto __except_1;
-            b = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_2)));
+            b = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_2));
         }
         goto __after_try_1;
         // except Bad:

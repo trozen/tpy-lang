@@ -45,14 +45,14 @@ std::expected<int32_t, ParseError> parse_two_digits(std::string_view a, std::str
     {
         auto __try_tmp_2 = parse_digit(a);
         if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(__try_tmp_2.error());
-        x = ::tpy::unwrap_ref(*__try_tmp_2);
+        x = ::tpy::unwrap_ref_move(*__try_tmp_2);
     }
     // y = parse_digit(b)
     int32_t y;
     {
         auto __try_tmp_3 = parse_digit(b);
         if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(__try_tmp_3.error());
-        y = ::tpy::unwrap_ref(*__try_tmp_3);
+        y = ::tpy::unwrap_ref_move(*__try_tmp_3);
     }
     // return x * 10 + y
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(x, 10)), y));
@@ -67,7 +67,7 @@ void main() {
         {
             auto __try_tmp_5 = parse_two_digits("1", "0");
             if (!__try_tmp_5.has_value()) goto __except_4;
-            v = ::tpy::unwrap_ref(*__try_tmp_5);
+            v = ::tpy::unwrap_ref_move(*__try_tmp_5);
         }
         // else:
         // print(v)
@@ -86,7 +86,7 @@ void main() {
         {
             auto __try_tmp_7 = parse_two_digits("x", "0");
             if (!__try_tmp_7.has_value()) goto __except_6;
-            v2 = ::tpy::unwrap_ref(*__try_tmp_7);
+            v2 = ::tpy::unwrap_ref_move(*__try_tmp_7);
         }
         // else:
         // print(v2)

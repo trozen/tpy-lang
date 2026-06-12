@@ -21,7 +21,7 @@ void main() {
             {
                 auto __try_tmp_2 = it.__next__();
                 if (!__try_tmp_2.has_value()) goto __except_1;
-                v = ::tpy::unwrap_ref(*__try_tmp_2);
+                v = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
             goto __after_try_1;
             // except StopIteration:

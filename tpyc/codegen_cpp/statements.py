@@ -4108,26 +4108,38 @@ class StatementGenerator:
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_error_goto(f"{indent}{INDENT}", tmp, label)
-        out += self._error_return_assign_to_name(stmt.name, f"::tpy::unwrap_ref(*{tmp})", f"{indent}{INDENT}")
+        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}")
         out += f"{indent}}}\n"
 
         return out
 
-    def _error_return_target_assign(self, target: 'TpyExpr', value: str, indent: str) -> str:
+    @staticmethod
+    def _error_return_success_expr(tmp: str) -> str:
+        """The expected temp dies at the end of the emitted block, so owned
+        payloads must move out; unwrap_ref_move keeps val_or_ref (borrow)
+        payloads as plain lvalue references so a borrowed source is never
+        moved from.
+        """
+        return f"::tpy::unwrap_ref_move(*{tmp})"
+
+    def _error_return_target_assign(self, target: 'TpyExpr', tmp: str, indent: str) -> str:
         """Assign an unwrapped @error_return result to an assignment target."""
         if isinstance(target, TpyName):
-            return self._error_return_assign_to_name(target.name, value, indent)
-        return f"{indent}{self.expressions.gen_expr(target)} = {value};\n"
+            return self._error_return_assign_to_name(target.name, tmp, indent)
+        return f"{indent}{self.expressions.gen_expr(target)} = {self._error_return_success_expr(tmp)};\n"
 
-    def _error_return_assign_to_name(self, name: str, value: str, indent: str) -> str:
-        # A pointer-repr Optional / pointer local needs its owned result moved
+    def _error_return_assign_to_name(self, name: str, tmp: str, indent: str) -> str:
+        # A pointer-repr Optional / pointer local needs its result materialized
         # into the rebind slot and re-pointed -- a direct `T* = T` is ill-formed.
+        # unwrap_ref_move already carries the value category (T&& owned, T&
+        # borrow), so no extra std::move: it would steal from a borrowed source.
         cpp_name = escape_cpp_name(name)
+        value = self._error_return_success_expr(tmp)
         slot = self.ctx.rebind_slots.get(name)
         if name in self.ctx.pointer_locals and slot is not None:
             is_optional_slot = slot not in self.ctx.plain_rebind_slots
             rhs = self._ptr_from_rvalue_slot(
-                slot, f"std::move({value})", is_opt_field=False,
+                slot, value, is_opt_field=False,
                 is_optional_slot=is_optional_slot)
             return f"{indent}{cpp_name} = {rhs};\n"
         return f"{indent}{cpp_name} = {value};\n"
@@ -4152,7 +4164,7 @@ class StatementGenerator:
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_error_goto(f"{indent}{INDENT}", tmp, label)
         out += self._error_return_target_assign(
-            stmt.target, f"::tpy::unwrap_ref(*{tmp})", f"{indent}{INDENT}")
+            stmt.target, tmp, f"{indent}{INDENT}")
         out += f"{indent}}}\n"
 
         return out
@@ -4186,7 +4198,7 @@ class StatementGenerator:
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_propagate_check(f"{indent}{INDENT}", tmp)
-        out += self._error_return_assign_to_name(stmt.name, f"::tpy::unwrap_ref(*{tmp})", f"{indent}{INDENT}")
+        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}")
         out += f"{indent}}}\n"
 
         return out
@@ -4204,7 +4216,7 @@ class StatementGenerator:
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_propagate_check(f"{indent}{INDENT}", tmp)
         out += self._error_return_target_assign(
-            stmt.target, f"::tpy::unwrap_ref(*{tmp})", f"{indent}{INDENT}")
+            stmt.target, tmp, f"{indent}{INDENT}")
         out += f"{indent}}}\n"
 
         return out
@@ -4233,7 +4245,7 @@ class StatementGenerator:
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
-        out += self._error_return_assign_to_name(stmt.name, f"::tpy::unwrap_ref(*{tmp})", f"{indent}{INDENT}")
+        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}")
         out += f"{indent}}}\n"
 
         return out
@@ -4249,7 +4261,7 @@ class StatementGenerator:
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
         out += self._error_return_target_assign(
-            stmt.target, f"::tpy::unwrap_ref(*{tmp})", f"{indent}{INDENT}")
+            stmt.target, tmp, f"{indent}{INDENT}")
         out += f"{indent}}}\n"
 
         return out

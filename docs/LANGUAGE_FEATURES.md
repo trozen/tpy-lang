@@ -5632,6 +5632,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - Branch-aware flow analysis (narrowing, init tracking, variable hoisting)
   - Expression-level unwrap: `@error_return` calls work in sub-expression position (function arguments, binary operators, method chaining) -- uses GCC/Clang statement expressions (`({ ... })`) for inline unwrap with early return. This is a non-standard C++ extension supported by GCC, Clang, and all LLVM-based compilers but not MSVC.
   - Non-value return types use `val_or_ref<T>` inside `std::expected` to preserve reference semantics (pointer-based storage, same approach as iterator `__next__()`)
+  - Statement-level unwrap moves owned success payloads out of the dying `std::expected` (`unwrap_ref_move`), so `@nocopy` results bind to locals/fields without a copy; borrowed (`val_or_ref`) payloads are never moved from
   - `__next__` methods auto-apply `@error_return(StopIteration)` -- for-loops use direct `std::expected` check
   - Built-in exceptions (`StopIteration`, `Exception`, `BaseException`) emit as `::tpy::X` in C++ to avoid clashes with user-defined classes of the same name
   - See `docs/ERROR_RETURN_DESIGN.md` and `docs/EXCEPTION_DESIGN.md` for full design

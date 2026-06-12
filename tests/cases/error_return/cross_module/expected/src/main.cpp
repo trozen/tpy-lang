@@ -14,7 +14,7 @@ void main() {
         {
             auto __try_tmp_2 = ::tpyapp::errors::find(__tmp_1, 20);
             if (!__try_tmp_2.has_value()) goto __except_1;
-            idx = ::tpy::unwrap_ref(*__try_tmp_2);
+            idx = ::tpy::unwrap_ref_move(*__try_tmp_2);
         }
         // else:
         // print(idx)
@@ -34,7 +34,7 @@ void main() {
         {
             auto __try_tmp_4 = ::tpyapp::errors::find(__tmp_2, 99);
             if (!__try_tmp_4.has_value()) goto __except_3;
-            idx2 = ::tpy::unwrap_ref(*__try_tmp_4);
+            idx2 = ::tpy::unwrap_ref_move(*__try_tmp_4);
         }
         // else:
         // print(idx2)
