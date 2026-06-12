@@ -1,1 +1,1 @@
-main.py:18: error: Cannot pass readonly[Box] as mutable Box in argument 'b'
+main.py:16: error: for-loop rebind of reference-type variable 'e' is not yet supported; rename the loop variable

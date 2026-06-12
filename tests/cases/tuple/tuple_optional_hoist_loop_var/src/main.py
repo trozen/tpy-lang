@@ -1,9 +1,6 @@
 # Hoisted loop variable iterating a storage-form container: the
-# storage_form_tuple_locals flag added by the outer var-decl must
-# persist past the loop body, so a post-loop use still emits the
-# tuple_to_pointer wrap. (TPy and CPython diverge on hoist-and-rebind
-# semantics for for-loops; this test verifies TPy compiles + runs the
-# pattern, but the post-loop value is TPy-specific.)
+# storage_form_tuple_locals flag from the outer var-decl must persist
+# past the loop, and the rebound var holds the LAST element (CPython).
 from tpy import Int32
 
 

@@ -7,7 +7,6 @@
 
 namespace tpyapp::lib {
 
-extern std::vector<std::string>* __all__;
 inline constexpr std::string_view __name__ = "lib";
 
 void real_fn();

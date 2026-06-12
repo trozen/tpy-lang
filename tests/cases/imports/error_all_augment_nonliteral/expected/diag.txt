@@ -1,0 +1,1 @@
+main.py:5: error: __all__ += value is not a compile-time literal

@@ -1,0 +1,1 @@
+main.py:5: error: for-loop rebinds existing variable 'x' of type 'str' with elements of type 'Int32'; rename the loop variable or match the types

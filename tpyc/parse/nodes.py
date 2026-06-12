@@ -1289,6 +1289,7 @@ class TpyFunction:
     type_param_defaults: dict[str, str] = field(default_factory=dict)  # e.g. {"T": "tpy.extern.DefaultInt"}
     defaults: list['TpyExpr | None'] = field(default_factory=list)  # len == len(params); None = no default
     keyword_only_start: int | None = None  # index into params where keyword-only begins
+    num_posonly_params: int = 0  # leading params before a '/' separator (self excluded)
     vararg_name: str | None = None  # name of *args parameter
     vararg_type: 'TpyType | TypeRefNode | None' = None  # element type T from *args: T
     kwarg_name: str | None = None  # name of **kwargs parameter

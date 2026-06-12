@@ -3,8 +3,6 @@
 
 namespace tpyapp::helpers {
 
-// __all__ = ["public_add", "Pair"]
-std::vector<std::string>* __all__{};
 
 // def public_add(a: Int32, b: Int32) -> Int32:
 int32_t public_add(int32_t a, int32_t b) {
@@ -23,9 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // __all__ = ["public_add", "Pair"]
-    static std::vector<std::string> __global_slot_1 = {"public_add", "Pair"};
-    __all__ = &__global_slot_1;
 }
 
 } // namespace tpyapp::helpers

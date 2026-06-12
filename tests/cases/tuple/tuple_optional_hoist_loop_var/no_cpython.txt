@@ -1,7 +1,0 @@
-TPy doesn't rebind a hoisted loop var to the last iterated element
-the way CPython does -- the for-loop body redeclares the var via
-auto&& inside its block, so the outer var keeps its pre-loop value.
-This test verifies the TPy storage-form-flag persistence fix; the
-post-loop value mismatch with CPython is a separate, silent semantic
-divergence tracked in BUGS.md ("for x in items: silently shadows an
-outer same-named local").

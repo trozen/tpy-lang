@@ -3,8 +3,6 @@
 
 namespace tpyapp::outer {
 
-// __all__ = ["shared_helper"]
-std::vector<std::string>* __all__{};
 
 void __tpy_init() {
     static bool initialized = false;
@@ -16,9 +14,6 @@ void __tpy_init() {
     // # though it is not locally defined in this module.
     // from inner import shared_helper
     ::tpyapp::inner::__tpy_init();
-    // __all__ = ["shared_helper"]
-    static std::vector<std::string> __global_slot_1 = {"shared_helper"};
-    __all__ = &__global_slot_1;
 }
 
 } // namespace tpyapp::outer

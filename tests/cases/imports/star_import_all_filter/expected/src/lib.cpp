@@ -3,17 +3,12 @@
 
 namespace tpyapp::lib {
 
-// __all__ = ["Public"]
-std::vector<std::string>* __all__{};
 
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    // __all__ = ["Public"]
-    static std::vector<std::string> __global_slot_1 = {"Public"};
-    __all__ = &__global_slot_1;
 }
 
 } // namespace tpyapp::lib

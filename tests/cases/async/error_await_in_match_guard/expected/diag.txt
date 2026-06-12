@@ -1,0 +1,1 @@
+main.py:13: error: 'await' in a match-case guard is not supported; assign the awaited value to a local before the match

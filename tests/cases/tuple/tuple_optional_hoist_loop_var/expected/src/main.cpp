@@ -27,17 +27,17 @@ void main() {
     // items: list[tuple[T | None, T | None]] = [(t1, None), (None, None)]
     std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{&(t1), nullptr}), ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{nullptr, nullptr})};
     // last = items[0]
-    auto&& last = ::tpy::__getitem__(items, 0);
+    std::tuple<T*, T*> last = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(::tpy::__getitem__(items, 0));
     // for last in items:
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& last = *__beg_0;
+        last = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(*__beg_0);
         // pass
     }
     // consume(last)
-    consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(last));
+    consume(last);
 }
 
 void __tpy_init() {

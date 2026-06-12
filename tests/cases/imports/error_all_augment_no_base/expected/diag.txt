@@ -1,0 +1,1 @@
+main.py:3: error: __all__ += without a prior __all__ assignment

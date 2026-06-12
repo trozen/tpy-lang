@@ -1,0 +1,2 @@
+main.py:8: warning: exception chaining ('raise ... from ...') is not modeled; the cause is dropped
+main.py:15: warning: context suppression ('raise ... from None') is not modeled; TPy does not chain exceptions

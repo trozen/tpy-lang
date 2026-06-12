@@ -909,10 +909,11 @@ class ProtocolChecker:
         protocol: NominalType,
         method_name: str,
         self_type: TpyType | None = None,
-    ) -> tuple[list[tuple[str, TpyType]], TpyType, str | None, list] | None:
+    ) -> tuple[list[tuple[str, TpyType]], TpyType, str | None, list, int] | None:
         """Get a method's signature from a protocol.
 
-        Returns (params, return_type, cpp_template, param_defaults) with Self
+        Returns (params, return_type, cpp_template, param_defaults,
+        num_posonly_params) with Self
         substituted, or None if not found. Searches the protocol and all its
         parent protocols. `param_defaults` is the parallel default list (None
         per required param, TpyExpr per optional param); empty when no defaults
@@ -951,7 +952,9 @@ class ProtocolChecker:
                 # .py protocols don't have cpp templates; use dunder map
                 if cpp_template is None:
                     cpp_template = get_dunder_cpp_template(method_name)
-                return (params, return_type, cpp_template, method_sig.param_defaults)
+                return (params, return_type, cpp_template,
+                        method_sig.param_defaults,
+                        method_sig.num_posonly_params)
 
         return None
 

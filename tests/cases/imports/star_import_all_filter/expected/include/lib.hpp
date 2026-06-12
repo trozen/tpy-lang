@@ -10,7 +10,6 @@ namespace tpyapp::lib {
 struct Public;
 struct Hidden;
 
-extern std::vector<std::string>* __all__;
 inline constexpr std::string_view __name__ = "lib";
 
 // class Public:

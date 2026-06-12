@@ -1233,7 +1233,8 @@ class TypeRegistrar:
             method_param_infos = [
                 ParamInfo(n, t,
                           default_expr=method_defaults[i] if i < len(method_defaults) else None,
-                          keyword_only=(kw_start is not None and i >= kw_start))
+                          keyword_only=(kw_start is not None and i >= kw_start),
+                          positional_only=i < method.num_posonly_params)
                 for i, (n, t) in enumerate(method_params)
             ]
             # *args goes before keyword-only params so call-site arg packing
@@ -2702,6 +2703,7 @@ class TypeRegistrar:
                 readonly_opt_out=msig.readonly_opt_out,
                 cpp_template=msig.cpp_template,
                 param_defaults=msig.param_defaults,
+                num_posonly_params=msig.num_posonly_params,
             ))
         info = ProtocolInfo(
             name=protocol.name,
@@ -2978,7 +2980,8 @@ class TypeRegistrar:
                 param_infos.append(ParamInfo(func.vararg_name, span_type, is_variadic=True))
             param_infos.append(ParamInfo(n, t,
                       default_expr=func_defaults[i] if i < len(func_defaults) else None,
-                      keyword_only=is_kwonly))
+                      keyword_only=is_kwonly,
+                      positional_only=i < func.num_posonly_params))
         # *args with no keyword-only params: append at end
         if func.vararg_name is not None and resolved_vararg_type is not None and (kw_start is None or kw_start >= len(resolved_params)):
             span_type = _vararg_span_type(resolved_vararg_type)
@@ -3177,7 +3180,8 @@ class TypeRegistrar:
                 ParamInfo(n, t,
                           default_expr=func_defaults[i] if i < len(func_defaults) else None,
                           keyword_only=(func.keyword_only_start is not None
-                                        and i >= func.keyword_only_start))
+                                        and i >= func.keyword_only_start),
+                          positional_only=i < func.num_posonly_params)
                 for i, (n, t) in enumerate(resolved_params)
             ]
             if func.vararg_name is not None and func.vararg_type is not None:

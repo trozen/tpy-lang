@@ -14,26 +14,27 @@ Obj make() {
 void main() {
     // # del alias from constructor
     // a = b = Obj(5)
-    Obj b = Obj(::tpy::BigInt(5));
-    Obj& a = b;
+    Obj a = Obj(::tpy::BigInt(5));
+    Obj b = std::move(a);
     // del a
     // print(b.val)
     std::cout << b.val << "\n";
     // # del alias from function return
     // c = d = make()
-    Obj d = make();
-    Obj& c = d;
+    Obj c = make();
+    Obj d = std::move(c);
     // del c
     // print(d.val)
     std::cout << d.val << "\n";
     // # del alias, then reassign
     // e = f = Obj(99)
-    Obj f = Obj(::tpy::BigInt(99));
-    std::optional<Obj> __slot_1;
-    Obj* e = &(f);
+    Obj __slot_1 = Obj(::tpy::BigInt(99));
+    std::optional<Obj> __slot_2;
+    Obj* e = &__slot_1;
+    Obj& f = (*e);
     // del e
     // e = Obj(0)
-    e = &*(__slot_1 = Obj(::tpy::BigInt(0)));
+    e = &*(__slot_2 = Obj(::tpy::BigInt(0)));
     // print(e.val, f.val)
     std::cout << e->val << " " << f.val << "\n";
     // # regular alias (not multi-assign)
@@ -46,8 +47,8 @@ void main() {
     std::cout << g.val << "\n";
     // # del source that has alias: alias preserved
     // i = j = Obj(50)
-    Obj j = Obj(::tpy::BigInt(50));
-    Obj i = std::move(j);
+    Obj i = Obj(::tpy::BigInt(50));
+    Obj& j = i;
     // del j
     // print(i.val)
     std::cout << i.val << "\n";

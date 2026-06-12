@@ -10,7 +10,6 @@ namespace tpyapp::outer {
 
 using ::tpyapp::inner::shared_helper;
 
-extern std::vector<std::string>* __all__;
 inline constexpr std::string_view __name__ = "outer";
 
 void __tpy_init();

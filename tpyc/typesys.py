@@ -4622,6 +4622,7 @@ class ParamInfo:
     default_expr: 'Any | None' = None  # TpyExpr from parser; None = required param
     keyword_only: bool = False  # True for params after * separator
     is_variadic: bool = False  # True for *args param (type Span[T], or Span[readonly[T]] for readonly *args)
+    positional_only: bool = False  # True for params before a '/' separator
 
     @property
     def has_default(self) -> bool:
@@ -4962,6 +4963,7 @@ class MethodSignature:
     readonly_opt_out: bool = False
     cpp_template: str | None = None
     param_defaults: list = field(default_factory=list)  # list[TpyExpr | None]
+    num_posonly_params: int = 0  # leading params before a '/' separator (self excluded)
 
 
 @dataclass

@@ -14,44 +14,44 @@ Obj make_obj(const ::tpy::BigInt& v) {
 void main() {
     // # Value types: three-way
     // a = b = c = 10
-    int32_t c = 10;
-    int32_t a = c;
-    int32_t b = c;
+    int32_t a = 10;
+    int32_t b = a;
+    int32_t c = a;
     // print(a, b, c)
     std::cout << a << " " << b << " " << c << "\n";
     // # Value types: expression
     // x = y = 2 + 3
-    int32_t y = ::tpy::add_check<int32_t>(2, 3);
-    int32_t x = y;
+    int32_t x = ::tpy::add_check<int32_t>(2, 3);
+    int32_t y = x;
     // print(x, y)
     std::cout << x << " " << y << "\n";
     // # Value types: reassignment
     // a = b = 99
-    b = 99;
-    a = b;
+    a = 99;
+    b = a;
     // print(a, b, c)
     std::cout << a << " " << b << " " << c << "\n";
     // # Value types: independent after assignment
     // p = q = r = 100
-    int32_t r = 100;
-    int32_t p = r;
-    int32_t q = r;
+    int32_t p = 100;
+    int32_t q = p;
+    int32_t r = p;
     // r = 200
     r = 200;
     // print(p, q, r)
     std::cout << p << " " << q << " " << r << "\n";
     // # Object type: aliasing (both usable, mutations visible)
     // o1 = o2 = Obj(5)
-    Obj o2 = Obj(::tpy::BigInt(5));
-    Obj& o1 = o2;
+    Obj o1 = Obj(::tpy::BigInt(5));
+    Obj& o2 = o1;
     // o1.val = 10
     o1.val = ::tpy::BigInt(10);
     // print(o1.val, o2.val)
     std::cout << o1.val << " " << o2.val << "\n";
     // # Object from function call: evaluated once, aliased
     // o3 = o4 = make_obj(42)
-    Obj o4 = make_obj(::tpy::BigInt(42));
-    Obj& o3 = o4;
+    Obj o3 = make_obj(::tpy::BigInt(42));
+    Obj& o4 = o3;
     // o3.val = 0
     o3.val = ::tpy::BigInt(0);
     // print(o3.val, o4.val)
@@ -73,17 +73,18 @@ void main() {
     // pair2 = Pair()
     Pair pair2 = Pair();
     // pair2.y = w = 88
-    int32_t w = 88;
-    pair2.y = ::tpy::BigInt(w);
+    int32_t __ma_1 = 88;
+    pair2.y = ::tpy::BigInt(__ma_1);
+    int32_t w = __ma_1;
     // print(pair2.y, w)
     std::cout << pair2.y << " " << w << "\n";
     // # Two field targets (synthetic temp)
     // pair3 = Pair()
     Pair pair3 = Pair();
     // pair3.x = pair3.y = 55
-    int32_t __ma_1 = 55;
-    pair3.x = ::tpy::BigInt(__ma_1);
-    pair3.y = ::tpy::BigInt(__ma_1);
+    int32_t __ma_2 = 55;
+    pair3.x = ::tpy::BigInt(__ma_2);
+    pair3.y = ::tpy::BigInt(__ma_2);
     // print(pair3.x, pair3.y)
     std::cout << pair3.x << " " << pair3.y << "\n";
     // # Property: setter called, getter not called, anchor gets raw value
@@ -98,20 +99,21 @@ void main() {
     // cl2 = Clamped()
     Clamped cl2 = Clamped();
     // cl2.val = m = 200
-    int32_t m = 200;
-    cl2.set_val(m);
+    int32_t __ma_3 = 200;
+    cl2.set_val(__ma_3);
+    int32_t m = __ma_3;
     // print(m, cl2.val)
     std::cout << m << " " << cl2.val() << "\n";
     // # String values
     // s1 = s2 = "hello"
-    std::string_view s2 = "hello";
-    std::string_view s1 = s2;
+    std::string_view s1 = "hello";
+    std::string_view s2 = s1;
     // print(s1, s2)
     std::cout << s1 << " " << s2 << "\n";
     // # List aliasing
     // xs = ys = [1, 2, 3]
-    std::vector<int32_t> ys = {1, 2, 3};
-    std::vector<int32_t>& xs = ys;
+    std::vector<int32_t> xs = {1, 2, 3};
+    std::vector<int32_t>& ys = xs;
     // xs.append(4)
     xs.push_back(4);
     // print(xs)

@@ -51,18 +51,6 @@ def foreach_shadow_safe() -> None:
         saved = p  # tpyc: ok
     print(saved.x, saved.y)
 
-# Param name reused as for-each var: param depth should be restored
-# after the loop, not stuck at the for-each depth.
-def param_reused_as_loop_var(p: Point) -> None:
-    items: list[Point] = [Point(5, 6)]
-    saved: Point = Point(0, 0)
-    for p in items:
-        saved = p  # tpyc: ok
-    # After loop, p's depth is restored to param depth (1).
-    # Assigning param to saved is safe (same depth).
-    saved = p  # tpyc: ok
-    print(saved.x, saved.y)
-
 # Sequential loops with same var name: first loop's depth must not
 # leak into second loop.
 def sequential_loops_same_var() -> None:
@@ -139,7 +127,6 @@ loop_rvalue_ok()
 foreach_outer_container()
 value_type_ok()
 foreach_shadow_safe()
-# param_reused_as_loop_var: compile-only test (CPython scoping divergence)
 sequential_loops_same_var()
 same_scope_ok()
 lvalue_init_rvalue_rebind()

@@ -1167,6 +1167,7 @@ class StatementAnalyzer:
             if enum_type is not None:
                 stmt.enum_iterable = enum_type
                 elem_type = enum_type
+                self._check_loop_var_rebind(stmt, elem_type)
                 self._record_for_loop_var_type(stmt, elem_type)
                 before = self.init.save()
                 consumed_before_loop = self.ctx.func.current_consumed_own_params.copy()
@@ -1362,6 +1363,7 @@ class StatementAnalyzer:
                     self.ctx.func.mutated_loop_vars.discard(stmt.var)
                     self.ctx.func.consumed_loop_vars.discard(stmt.var)
                     self.ctx.func.deferred_loop_copy_warnings.pop(stmt.var, None)
+                    self._check_loop_var_rebind(stmt, elem_type)
                     self._record_for_loop_var_type(stmt, elem_type)
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
                         for s in stmt.body:
@@ -2176,6 +2178,7 @@ class StatementAnalyzer:
             line=(stmt.loc.line if stmt.loc else None),
         )
         stmt.elem_type = make_ref(elem_type)
+        self._check_loop_var_rebind(stmt, elem_type)
         self._record_for_loop_var_type(stmt, elem_type)
 
         before = self.init.save()
@@ -2632,6 +2635,39 @@ class StatementAnalyzer:
             return
         self.ctx.declared_var_types[(stmt.loc.line, stmt.var)] = (
             resolve_int_literals(elem_type, self.ctx.default_int_for_literal))
+
+    def _check_loop_var_rebind(self, stmt: TpyForEach, elem_type: TpyType) -> None:
+        """A for-loop over an existing assigned local REBINDS it in CPython
+        (the var holds the last element after the loop). Value types route
+        through the hoisted-loop-var emission so codegen assigns the
+        existing C++ local instead of declaring a fresh loop-scope shadow.
+        Reference types are rejected: the hoisted assignment cannot express
+        the per-iteration aliasing CPython gives (and writing through a
+        reference param would mutate the caller's object) -- that needs the
+        borrow-tracked pointer binding design.
+        """
+        if (stmt.is_tuple_unpack
+                or stmt.var in self.ctx.func.global_declarations
+                or stmt.var not in self.ctx.func.definitely_assigned):
+            return
+        existing = self.ctx.func.current_scope.lookup(stmt.var)
+        if existing is None:
+            return
+        exist_bare = self._resolve_literal_type(
+            unwrap_readonly(unwrap_ref_type(existing)))
+        if not exist_bare.is_value_type():
+            raise self.ctx.error(
+                f"for-loop rebind of reference-type variable '{stmt.var}' "
+                f"is not yet supported; rename the loop variable", stmt)
+        elem_bare = self._resolve_literal_type(
+            unwrap_readonly(unwrap_ref_type(unwrap_own(elem_type))))
+        if exist_bare != elem_bare:
+            raise self.ctx.error(
+                f"for-loop rebinds existing variable '{stmt.var}' of "
+                f"type '{exist_bare}' with elements of type "
+                f"'{elem_bare}'; rename the loop variable or match "
+                f"the types", stmt)
+        stmt.hoist_loop_var = True
 
     def _propagate_loop_body_vars(self, stmt: TpyStmt,
                                    inner_scope: 'Scope',

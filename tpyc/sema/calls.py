@@ -180,6 +180,10 @@ def resolve_kwargs(
     for kw_name in expr_kwargs:
         if kw_name not in name_to_index:
             raise error_fn(f"'{func_name}' got unexpected keyword argument '{kw_name}'")
+        if params[name_to_index[kw_name]].positional_only:
+            raise error_fn(
+                f"'{func_name}' parameter '{kw_name}' is positional-only "
+                f"and cannot be passed by keyword")
 
     # Validate no kwarg overlaps with a positional arg (skip keyword-only params)
     for param_name, idx in name_to_index.items():

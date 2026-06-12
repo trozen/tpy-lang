@@ -1,5 +1,5 @@
-# @readonly: loop var initialized from param, then shadowed by for-each --
-# after loop, still readonly (conservative merge with pre-loop state).
+# @readonly: an alias of the readonly param cannot be rebound by a
+# for-each (reference-type rebind is rejected outright).
 from tpy import Int32, readonly
 
 class Box:
@@ -13,6 +13,6 @@ def mut(b: Box) -> None:
 @readonly
 def f(p: Box, xs: list[Box]) -> None:
     e = p
-    for e in xs:
+    for e in xs:  # tpyc: error(/for-loop rebind of reference-type variable 'e'/)
         pass
-    mut(e)  # tpyc: error(/readonly/)
+    mut(e)

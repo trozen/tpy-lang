@@ -9,7 +9,6 @@ namespace tpyapp::helpers {
 
 struct Pair;
 
-extern std::vector<std::string>* __all__;
 inline constexpr std::string_view __name__ = "helpers";
 
 int32_t public_add(int32_t a, int32_t b);

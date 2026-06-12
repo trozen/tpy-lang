@@ -7,8 +7,6 @@ namespace tpyapp::lib {
 int32_t PUBLIC_VAL{};
 // HIDDEN_VAL: Int32 = 99
 int32_t HIDDEN_VAL{};
-// __all__ = ["PUBLIC_VAL"]
-std::vector<std::string>* __all__{};
 
 void __tpy_init() {
     static bool initialized = false;
@@ -19,9 +17,6 @@ void __tpy_init() {
     PUBLIC_VAL = 7;
     // HIDDEN_VAL: Int32 = 99
     HIDDEN_VAL = 99;
-    // __all__ = ["PUBLIC_VAL"]
-    static std::vector<std::string> __global_slot_1 = {"PUBLIC_VAL"};
-    __all__ = &__global_slot_1;
 }
 
 } // namespace tpyapp::lib

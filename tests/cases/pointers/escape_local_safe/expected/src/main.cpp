@@ -88,7 +88,9 @@ void foreach_shadow_safe() {
     // for i in range(1):
     for (int32_t i = 0; i < 1; ++i) {
         // p: Point = Point(i, i)
-        Point p = Point(i, i);
+        Point __slot_2 = Point(i, i);
+        std::optional<Point> __slot_3;
+        Point* p = &__slot_2;
         // pass
     }
     // for p in items:
@@ -100,32 +102,6 @@ void foreach_shadow_safe() {
         // saved = p  # tpyc: ok
         saved = &(p);
     }
-    // print(saved.x, saved.y)
-    std::cout << saved->x << " " << saved->y << "\n";
-}
-
-// # Param name reused as for-each var: param depth should be restored
-// # after the loop, not stuck at the for-each depth.
-// def param_reused_as_loop_var(p: Point) -> None:
-void param_reused_as_loop_var(Point& p) {
-    // items: list[Point] = [Point(5, 6)]
-    std::vector<Point> items = {Point(5, 6)};
-    // saved: Point = Point(0, 0)
-    Point __slot_1 = Point(0, 0);
-    Point* saved = &__slot_1;
-    // for p in items:
-    auto __obj_0 = ::tpy::own_iter(std::move(items));
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& p = *__beg_0;
-        // saved = p  # tpyc: ok
-        saved = &(p);
-    }
-    // # After loop, p's depth is restored to param depth (1).
-    // # Assigning param to saved is safe (same depth).
-    // saved = p  # tpyc: ok
-    saved = &(p);
     // print(saved.x, saved.y)
     std::cout << saved->x << " " << saved->y << "\n";
 }
@@ -307,7 +283,6 @@ void __tpy_init() {
     value_type_ok();
     // foreach_shadow_safe()
     foreach_shadow_safe();
-    // # param_reused_as_loop_var: compile-only test (CPython scoping divergence)
     // sequential_loops_same_var()
     sequential_loops_same_var();
     // same_scope_ok()

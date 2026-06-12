@@ -264,7 +264,14 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
             # Do NOT recurse into nested body (separate scope)
         # Recurse into sub-bodies (if/while/for/with)
         if isinstance(stmt, TpyForEach):
-            declared.add(stmt.var)
+            # A for-loop over an existing local REBINDS it (CPython: the
+            # var holds the last element after the loop); a fresh var is a
+            # declaration. Mirrors the with-as handling below.
+            if stmt.var in declared:
+                result.reassigned.add(stmt.var)
+                result.rvalue_reassigned.add(stmt.var)
+            else:
+                declared.add(stmt.var)
         if isinstance(stmt, TpyWith):
             for item in stmt.items:
                 if item.target is not None:

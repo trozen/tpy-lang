@@ -54,22 +54,51 @@ def read_module_all(tree: ast.Module) -> 'tuple[frozenset[str], SourceLocation] 
     `from M import *` against the source's per-attribute table.
     """
     all_value = None
+    extra_names: set[str] = set()
     for node in ast.iter_child_nodes(tree):
         if isinstance(node, ast.Assign):
             for target in node.targets:
                 if isinstance(target, ast.Name) and target.id == "__all__":
                     all_value = node.value
+                    extra_names.clear()
         elif (isinstance(node, ast.AnnAssign)
               and isinstance(node.target, ast.Name)
               and node.target.id == "__all__" and node.value):
             all_value = node.value
+            extra_names.clear()
+        elif (isinstance(node, ast.AugAssign)
+              and isinstance(node.target, ast.Name)
+              and node.target.id == "__all__"):
+            # `__all__ += [...]` extends the export set; anything dynamic
+            # must be loud (silently dropping it surfaced as a misleading
+            # unknown-name error at the import site).
+            if all_value is None:
+                raise NonLiteralAllError(
+                    "__all__ += without a prior __all__ assignment", node.value)
+            if not isinstance(node.op, ast.Add):
+                raise NonLiteralAllError(
+                    "__all__ only supports '+=' augmented assignment", node.value)
+            try:
+                extra_names.update(ast.literal_eval(node.value))
+            except (ValueError, TypeError):
+                raise NonLiteralAllError(
+                    "__all__ += value is not a compile-time literal", node.value)
+        elif (isinstance(node, ast.Expr)
+              and isinstance(node.value, ast.Call)
+              and isinstance(node.value.func, ast.Attribute)
+              and isinstance(node.value.func.value, ast.Name)
+              and node.value.func.value.id == "__all__"):
+            raise NonLiteralAllError(
+                "__all__ method mutation is not supported; "
+                "use '__all__ += [...]'", node.value)
     if all_value is None:
         return None
     try:
-        names = frozenset(ast.literal_eval(all_value))
+        names = frozenset(ast.literal_eval(all_value)) | extra_names
     except (ValueError, TypeError):
         raise NonLiteralAllError(
-            "__all__ is not a compile-time literal", all_value)
+            "__all__ is not a compile-time literal (must be a "
+            "list / tuple / set of string literals)", all_value)
     return names, SourceLocation(all_value.lineno, all_value.col_offset)
 
 

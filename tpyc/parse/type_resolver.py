@@ -983,7 +983,7 @@ class TypeResolver:
                 raise SemanticError(
                     f"Generic type alias '{attr}' requires type arguments: "
                     f"{attr}[{', '.join(alias_info.type_params)}]",
-                    loc=ref.loc,
+                    loc=loc,
                 )
             return alias_info.body
         if mod_info.protocols and attr in mod_info.protocols:

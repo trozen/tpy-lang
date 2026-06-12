@@ -436,6 +436,13 @@ def _check_no_return_value_in_generator(
             _check_no_return_value_in_generator(child_body, func_name)
 
 
+def _positional_ast_args(node: 'ast.FunctionDef | ast.AsyncFunctionDef') -> 'list[ast.arg]':
+    """All positional params in declaration order. CPython's ast splits
+    them into posonlyargs (before '/') and args; dropping posonlyargs
+    silently mis-binds calls, so every signature walk must use this."""
+    return list(node.args.posonlyargs) + list(node.args.args)
+
+
 class Parser:
     """Parser for TurboPython source code."""
 
@@ -492,6 +499,16 @@ class Parser:
             col = getattr(node, 'col_offset', 0)
             return SourceLocation(line=node.lineno, column=col)
         return None
+
+    @staticmethod
+    def _is_module_all_stmt(node: ast.AST) -> bool:
+        if isinstance(node, ast.Assign):
+            return any(isinstance(t, ast.Name) and t.id == "__all__"
+                       for t in node.targets)
+        if isinstance(node, (ast.AnnAssign, ast.AugAssign)):
+            return (isinstance(node.target, ast.Name)
+                    and node.target.id == "__all__")
+        return False
 
     def _warn(self, message: str, node: ast.AST | None = None) -> None:
         """Record a parser warning."""
@@ -686,9 +703,9 @@ class Parser:
         try:
             module_all_result = read_module_all(tree)
         except NonLiteralAllError as exc:
-            raise ParseError(
+            raise ParseError(str(exc) or (
                 "__all__ is not a compile-time literal (must be a "
-                "list / tuple / set of string literals)",
+                "list / tuple / set of string literals)"),
                 exc.node)
         module = self._parse_module(tree)
         if module_all_result is not None:
@@ -987,6 +1004,11 @@ class Parser:
                 seen_non_import = True
                 self._register_type_alias(node.targets[0].id, node.value, type_aliases)
             else:
+                # `__all__` statements are compile-time export metadata
+                # (captured by read_module_all); they must not compile to
+                # runtime code.
+                if self._is_module_all_stmt(node):
+                    continue
                 # Skip docstrings and pass statements for late import detection
                 if not self._is_ignorable_for_import_order(node):
                     seen_non_import = True
@@ -1832,7 +1854,7 @@ class Parser:
 
                 # Parse method signature (body should be ... or pass)
                 params = []
-                for i, arg in enumerate(item.args.args):
+                for i, arg in enumerate(_positional_ast_args(item)):
                     if i == 0:
                         if arg.arg != "self":
                             raise ParseError(f"First parameter of protocol method '{item.name}' must be 'self'", item)
@@ -1863,6 +1885,8 @@ class Parser:
                     is_readonly=is_readonly,
                     readonly_opt_out=readonly_opt_out,
                     param_defaults=param_defaults,
+                    num_posonly_params=self._count_posonly_params(
+                        item, has_self=True),
                 ))
             elif isinstance(item, ast.AnnAssign):
                 # Field declaration: name: Type
@@ -2163,7 +2187,7 @@ class Parser:
             if is_staticmethod:
                 raise ParseError(f"@property cannot be combined with @staticmethod on method '{node.name}'", node)
             # Getter: only self param, must have return type
-            params_without_self = [a for a in node.args.args if a.arg != "self"]
+            params_without_self = [a for a in _positional_ast_args(node) if a.arg != "self"]
             if params_without_self:
                 raise ParseError(f"@property getter '{node.name}' must take only 'self' parameter", node)
             if node.returns is None:
@@ -2172,7 +2196,7 @@ class Parser:
             if is_staticmethod:
                 raise ParseError(f"@property setter cannot be combined with @staticmethod on method '{node.name}'", node)
             # Setter: self + one value param
-            params_without_self = [a for a in node.args.args if a.arg != "self"]
+            params_without_self = [a for a in _positional_ast_args(node) if a.arg != "self"]
             if len(params_without_self) != 1:
                 raise ParseError(f"@property setter '{node.name}' must take exactly one value parameter (plus self)", node)
         if auto_readonly:
@@ -2217,9 +2241,10 @@ class Parser:
         params = []
         has_self = not is_staticmethod
         self_annotation = None  # Resolved self type; consumed by sema.method_expansion.
-        n_non_self = len(node.args.args) - (1 if has_self else 0)
+        positional_args = _positional_ast_args(node)
+        n_non_self = len(positional_args) - (1 if has_self else 0)
         is_exit_method = node.name == "__exit__" and has_self and n_non_self == 3
-        args_iter = iter(enumerate(node.args.args))
+        args_iter = iter(enumerate(positional_args))
         for i, arg in args_iter:
             if i == 0 and has_self:
                 # Non-static methods must have 'self' as first parameter
@@ -2395,6 +2420,7 @@ class Parser:
             type_param_bounds=method_type_param_bounds,
             defaults=defaults,
             keyword_only_start=keyword_only_start,
+            num_posonly_params=self._count_posonly_params(node, has_self=has_self),
             vararg_name=vararg_name,
             vararg_type=vararg_type,
             kwarg_name=kwarg_name,
@@ -2553,7 +2579,7 @@ class Parser:
         if builtin_function_key is not None:
             # @builtin_function stubs: params are illustrative only,
             # type annotations not required (sema handles everything)
-            for arg in node.args.args:
+            for arg in _positional_ast_args(node):
                 # @builtin_function params are illustrative stubs; sema
                 # handles the real types specially.  Missing annotations
                 # emit a `TpyTypeRef("None")` placeholder that the
@@ -2565,7 +2591,7 @@ class Parser:
                 )
                 params.append((arg.arg, param_type))
         else:
-            for arg in node.args.args:
+            for arg in _positional_ast_args(node):
                 if arg.annotation is None:
                     raise ParseError(f"Parameter '{arg.arg}' must have type annotation", node)
                 param_type = self._parse_type_ref(arg.annotation, type_param_scope)
@@ -2719,6 +2745,7 @@ class Parser:
             type_param_defaults=type_param_defaults,
             defaults=defaults,
             keyword_only_start=keyword_only_start,
+            num_posonly_params=self._count_posonly_params(node, has_self=False),
             vararg_name=vararg_name,
             vararg_type=vararg_type,
             kwarg_name=kwarg_name,
@@ -3381,6 +3408,18 @@ class Parser:
 
     def _parse_raise(self, node: ast.Raise, loc: SourceLocation | None) -> TpyStmt:
         """Parse a raise statement: raise E, raise E(args), or bare raise."""
+        if node.cause is not None:
+            # TPy's exception model has no __cause__/__context__; dropping
+            # the clause silently would change meaning without a trace.
+            if (isinstance(node.cause, ast.Constant)
+                    and node.cause.value is None):
+                self._warn(
+                    "context suppression ('raise ... from None') is not "
+                    "modeled; TPy does not chain exceptions", node)
+            else:
+                self._warn(
+                    "exception chaining ('raise ... from ...') is not "
+                    "modeled; the cause is dropped", node)
         exc = node.exc
         if exc is None:
             # Bare raise (re-raise) -- validated by sema to be inside except block
@@ -3480,18 +3519,18 @@ class Parser:
                 raise ParseError(
                     "Tuple unpacking not supported in multiple assignment", node)
         value_expr = self._parse_expr(node.value)
-        # Find rightmost Name target to use as anchor
-        anchor: ast.Name | None = None
-        for t in reversed(node.targets):
-            if isinstance(t, ast.Name):
-                anchor = t
-                break
+        # CPython evaluates the value once, then assigns targets LEFT to
+        # right; anchoring on a later name would run earlier targets'
+        # subexpressions after it. Anchor on the first target when it is a
+        # name, else on a synthetic temp.
+        anchor: ast.Name | None = (
+            node.targets[0] if isinstance(node.targets[0], ast.Name) else None)
         stmts: list[TpyStmt] = []
         if anchor is not None:
             anchor_name = anchor.id
             stmts.append(TpyVarDecl(anchor_name, None, value_expr, loc=loc))
         else:
-            # No name target -- introduce synthetic temp
+            # First target is not a name -- introduce synthetic temp
             anchor_name = f"__ma_{self._multi_assign_counter}"
             self._multi_assign_counter += 1
             stmts.append(TpyVarDecl(anchor_name, None, value_expr, loc=loc))
@@ -3998,6 +4037,17 @@ class Parser:
             f"(literal, None, fixed-int constructor like Int32(5), "
             f"or a Final[T] module constant)", node)
 
+    @staticmethod
+    def _count_posonly_params(node: 'ast.FunctionDef | ast.AsyncFunctionDef',
+                              has_self: bool) -> int:
+        """Positional-only param count as an index into the parsed params
+        list (self, when present, sits in posonlyargs but not in params)."""
+        n = len(node.args.posonlyargs)
+        if (has_self and n > 0
+                and node.args.posonlyargs[0].arg == "self"):
+            n -= 1
+        return n
+
     def _parse_param_defaults(self, node: ast.FunctionDef, params: list,
                               skip_self: bool = False,
                               type_param_scope: dict | None = None,
@@ -4013,8 +4063,9 @@ class Parser:
         n_positional = len(params) - n_kwonly
         ast_defaults = node.args.defaults
 
-        # In methods, self is skipped from params but still counted in node.args.args
-        num_ast_args = len(node.args.args)
+        # In methods, self is skipped from params but still counted here.
+        # Defaults right-align over posonlyargs + args combined.
+        num_ast_args = len(_positional_ast_args(node))
         # defaults are right-aligned with the full args list
         num_no_default = num_ast_args - len(ast_defaults) if ast_defaults else num_ast_args
 
@@ -4150,7 +4201,7 @@ class FragmentParser(Parser):
                     f"got {len(funcs)}", tree)
             func_node = funcs[0]
             # Detect method: first param named 'self'.
-            args = func_node.args.args
+            args = _positional_ast_args(func_node)
             has_self = bool(args and args[0].arg == "self")
             if has_self:
                 # Route through `_parse_method` so method-specific state

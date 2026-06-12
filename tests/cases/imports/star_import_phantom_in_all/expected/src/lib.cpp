@@ -3,8 +3,6 @@
 
 namespace tpyapp::lib {
 
-// __all__ = ["real_fn", "phantom_name"]
-std::vector<std::string>* __all__{};
 
 // def real_fn() -> None:
 void real_fn() {
@@ -17,9 +15,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // __all__ = ["real_fn", "phantom_name"]
-    static std::vector<std::string> __global_slot_1 = {"real_fn", "phantom_name"};
-    __all__ = &__global_slot_1;
 }
 
 } // namespace tpyapp::lib

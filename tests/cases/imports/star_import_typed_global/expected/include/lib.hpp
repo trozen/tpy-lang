@@ -9,7 +9,6 @@ namespace tpyapp::lib {
 
 extern int32_t PUBLIC_VAL;
 extern int32_t HIDDEN_VAL;
-extern std::vector<std::string>* __all__;
 inline constexpr std::string_view __name__ = "lib";
 
 void __tpy_init();

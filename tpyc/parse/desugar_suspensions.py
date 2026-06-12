@@ -33,7 +33,7 @@ from dataclasses import fields, is_dataclass
 from .nodes import (
     TpyStmt, TpyExpr, TpyName, TpyAwait, TpyBinOp, TpyIfExpr, TpyChainedCompare,
     TpyBoolLiteral, TpyAssign, TpyVarDecl, TpyIf, TpyWhile, TpyBreak,
-    TpyMatch, TpyWith, SourceLocation,
+    TpyMatch, TpyWith, TpyAssert, TpyUnaryOp, SourceLocation,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
     TpyGeneratorExpression, TpyFunction, ParseError,
 )
@@ -92,6 +92,12 @@ class _Desugarer:
         if isinstance(stmt, TpyWhile):
             return self._while(stmt)
 
+        # `assert` is special: the message is evaluated only on failure (a
+        # conditional position), so an awaiting message must not be hoisted
+        # before the statement like a once-evaluated field.
+        if isinstance(stmt, TpyAssert) and _has_await(stmt.message):
+            return self._assert(stmt)
+
         # Recurse into compound sub-bodies first (innermost suspensions are
         # rewritten before the enclosing statement's own expressions).
         self._recurse_sub_bodies(stmt)
@@ -118,6 +124,15 @@ class _Desugarer:
                     h.body = self.body(h.body)
         if isinstance(stmt, TpyMatch):
             for case in stmt.cases:
+                # A guard runs only when its pattern matched and earlier
+                # guards failed; a faithful rewrite would decompose the
+                # whole match, so reject with a workaround instead of
+                # letting the codegen lifter emit invalid C++.
+                if _has_await(case.guard):
+                    raise ParseError(
+                        "'await' in a match-case guard is not supported; "
+                        "assign the awaited value to a local before the "
+                        "match", loc=case.guard.loc)
                 if case.body:
                     case.body = self.body(case.body)
 
@@ -147,6 +162,20 @@ class _Desugarer:
                 p, new = self._lower(item.context_expr)
                 prefix.extend(p)
                 item.context_expr = new
+
+    def _assert(self, stmt: TpyAssert) -> list[TpyStmt]:
+        """`assert C, M` with an awaiting M lowers to `if not C: <M's
+        prelude>; assert False, M_val` -- the passing path never runs the
+        message's suspension (CPython evaluates the message only on
+        failure). The condition stays a once-evaluated prelude position."""
+        cond_prefix, cond_val = self._lower(stmt.condition)
+        msg_prefix, msg_val = self._lower(stmt.message)
+        fail = TpyAssert(condition=TpyBoolLiteral(False, loc=stmt.loc),
+                         message=msg_val, loc=stmt.loc)
+        guard = TpyIf(condition=TpyUnaryOp("!", cond_val, loc=stmt.loc),
+                      then_body=[*msg_prefix, fail],
+                      else_body=[], loc=stmt.loc)
+        return [*cond_prefix, guard]
 
     def _while(self, stmt: TpyWhile) -> list[TpyStmt]:
         # Recurse into the body / else first.

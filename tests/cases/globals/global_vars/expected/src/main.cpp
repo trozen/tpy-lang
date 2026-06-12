@@ -126,7 +126,8 @@ void __tpy_init() {
     // print(i)
     std::cout << i << "\n";
     // for i in range(0, 2):
-    for (int32_t i = 0; i < 2; ++i) {
+    for (int32_t __range_1 = 0; __range_1 < 2; ++__range_1) {
+        i = __range_1;
         // print(i)
         std::cout << i << "\n";
     }
@@ -143,7 +144,7 @@ void __tpy_init() {
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
-        int32_t x = *__beg_2;
+        x = *__beg_2;
         // print(x)
         std::cout << x << "\n";
     }

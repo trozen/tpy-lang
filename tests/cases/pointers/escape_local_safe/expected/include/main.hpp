@@ -16,7 +16,6 @@ void loop_rvalue_ok();
 void foreach_outer_container();
 void value_type_ok();
 void foreach_shadow_safe();
-void param_reused_as_loop_var(Point& p);
 void sequential_loops_same_var();
 void same_scope_ok();
 void lvalue_init_rvalue_rebind();

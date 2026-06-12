@@ -110,7 +110,7 @@ For demangled C++ type names in messages (e.g. `tpy::BigInt` instead of
 | Feature | Notes |
 |---------|-------|
 | Multiple return exception types | `@error_return(E1, E2)` -- `std::expected<T, std::variant<E1, E2>>` |
-| Exception chaining | `raise X from Y` -- low priority, niche use case |
+| Exception chaining | `raise X from Y` -- currently parses with a warning and the cause is dropped (`__cause__`/`__context__` are not modeled); full chaining is low priority, niche use case |
 | `except ReturnException as e` | Bind catch-all value -- needs type-erased wrapper or variant; distant future |
 | `@noalloc` interaction | `@noalloc` functions can use `@error_return` (zero-cost) but cannot throw C++ exceptions |
 | Custom base exception classes | User-defined exception hierarchies with `except BaseClass` catching subclasses |

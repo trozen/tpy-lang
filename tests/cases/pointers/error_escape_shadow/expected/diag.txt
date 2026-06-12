@@ -1,1 +1,1 @@
-main.py:19: error: reference to 'p' may outlive its storage; use copy(p) for a safe copy
+main.py:18: error: for-loop rebind of reference-type variable 'p' is not yet supported; rename the loop variable

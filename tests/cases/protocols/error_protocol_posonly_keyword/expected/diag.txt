@@ -1,0 +1,1 @@
+main.py:17: error: 'scale' parameter 'a' is positional-only and cannot be passed by keyword
