@@ -380,6 +380,10 @@ class CodeGenerator:
         seen_globals: dict[str, TpyType | None] = {}
         for stmt in module.top_level_stmts:
             if isinstance(stmt, TpyVarDecl):
+                if stmt.module_init_local:
+                    # A synthetic init-scoped temp: emitted as a __tpy_init local
+                    # by the body codegen, not hoisted to a module global.
+                    continue
                 if stmt.name not in seen_globals:
                     # Store the type for this global
                     var_type = resolve_stmt_type_cascade(stmt, self.analyzer, self.types)

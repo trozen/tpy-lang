@@ -1983,8 +1983,14 @@ class TypeCompatibility:
                 return True
             # Fallback: rvalue_vars covers move-through vars and
             # reassigned-but-all-rvalue vars not wrapped with OwnType.
-            # Hoisted vars are not movable (T* pointer-locals).
-            if name in self.ctx.func.rvalue_vars and name not in self.ctx.func.hoisted_vars:
+            # Hoisted vars are not movable (T* pointer-locals). Require
+            # owned_locals too: a borrow-producing init (reference-returning
+            # call, ternary/and-or of reference lvalues) lands in rvalue_vars
+            # for hoist eligibility but is a `T&` alias -- moving out of it
+            # would corrupt the aliased source.
+            if (name in self.ctx.func.rvalue_vars
+                    and name in self.ctx.func.owned_locals
+                    and name not in self.ctx.func.hoisted_vars):
                 if name in self.ctx.func.current_reassigned_vars:
                     return name not in self.ctx.func.current_lvalue_reassigned
                 return True

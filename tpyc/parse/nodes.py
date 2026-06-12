@@ -727,6 +727,10 @@ class TpyVarDecl(TpyStmt):
     # TODO: is_final (and linkage) could be generalized into a modifiers set
     # (e.g. modifiers: set[str]) to avoid per-feature boolean fields
     is_final: bool = False  # Set by sema for Final[T] constant globals
+    # A synthetic temp scoped to its enclosing init/function body -- never
+    # promote it to a module global even at top level (set by the tuple-unpack
+    # desugar for its hidden evaluate-all-then-bind temps).
+    module_init_local: bool = field(default=False, kw_only=True)
     # Set by sema: union assignment narrowing facts for codegen
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
 

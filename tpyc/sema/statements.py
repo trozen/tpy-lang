@@ -66,6 +66,7 @@ if TYPE_CHECKING:
     from .protocols import ProtocolChecker
 
 from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, register_binding_borrow, ephemeral_borrow_root
+from ..value_category import is_rvalue_source
 from .expressions import _collect_body_name_refs, _collect_body_local_defs
 from .local_deduction import collect_pending_source_types
 from tpyc import modules as builtin_modules
@@ -3148,9 +3149,11 @@ class StatementAnalyzer:
                     stmt
                 )
 
-        if self.ctx.is_top_level and not stmt.is_final:
-            type_hint = str(stmt.type) if stmt.type else "<type>"
-            self._warn_all_caps_without_final(stmt.name, type_hint, stmt)
+        # Declared-type ALL_CAPS decls warn here with the concrete annotation;
+        # an inferred (unannotated) decl warns after its init type is known
+        # (below), so the suggestion can name that type instead of "<type>".
+        if self.ctx.is_top_level and not stmt.is_final and stmt.type:
+            self._warn_all_caps_without_final(stmt.name, str(stmt.type), stmt)
 
         # Protocol types can only be used for function parameters, not variables
         # Exception: @dynamic protocols can be used as variable types
@@ -3316,6 +3319,12 @@ class StatementAnalyzer:
                 # Use annotation as hint, or existing type for reassignments
                 type_hint = stmt.type if stmt.type else existing_type
                 init_type = self.expr.analyze_expr_with_hint(stmt.init, type_hint)
+
+            # Unannotated top-level ALL_CAPS: now that the init type is known,
+            # the Final-suggestion can name it (the annotated case warned above).
+            if (self.ctx.is_top_level and not stmt.is_final and stmt.type is None
+                    and init_type is not None):
+                self._warn_all_caps_without_final(stmt.name, str(init_type), stmt)
 
             # Deferred Final constant check: runs after init analysis so that
             # @call_macro expansions are available via macro_expansion attr.
@@ -3655,9 +3664,13 @@ class StatementAnalyzer:
                     self.ctx.func.owned_locals.discard(stmt.name)
             else:
                 self.ctx.func.rvalue_vars.add(stmt.name)
-                # Track ownership: rvalue-init from value-creating expression
-                # (constructor, Own return) vs reference-returning call.
-                if not self._is_reference_returning_call(stmt.init):
+                # Owned only when the init genuinely creates a value (constructor,
+                # Own return, literal, op). A borrow-producing init that codegen
+                # renders as a `T&` alias -- a reference-returning call, or a
+                # ternary/and-or of reference lvalues -- must NOT be owned, or a
+                # later move-out would corrupt the aliased source. Same predicate
+                # codegen uses for the `T&`-vs-value rendering (value_category).
+                if is_rvalue_source(self.ctx, stmt.init):
                     self.ctx.func.owned_locals.add(stmt.name)
                     self.ctx.func.ever_owned_locals.add(stmt.name)
                 else:
@@ -3692,43 +3705,6 @@ class StatementAnalyzer:
         if stmt.loc:
             display_type = unwrap_ref_type(unwrap_own(var_type)) if var_type else var_type
             self.ctx.declared_var_types[(stmt.loc.line, stmt.name)] = display_type
-
-    def _is_reference_returning_call(self, expr: TpyExpr | None) -> bool:
-        """Check if an expression is a function call that returns a reference.
-
-        Returns True for function/method calls that return non-Own non-value
-        types (i.e., they return references to existing storage).
-        Returns False for constructors, Own[T] returns, value returns, and
-        non-call expressions.
-        """
-        if expr is None:
-            return False
-        if isinstance(expr, TpyCoerce):
-            return self._is_reference_returning_call(expr.expr)
-        if isinstance(expr, (TpyCall, TpyMethodCall)):
-            # Constructor calls always create new values
-            if isinstance(expr, TpyCall) and expr.call_type is not None:
-                return False
-            fi = expr.resolved_function_info
-            if fi is not None and fi.return_type is not None:
-                rt = fi.return_type
-                # Own[T] returns are value-creating (ownership transfer)
-                if isinstance(rt, OwnType):
-                    return False
-                # Value types are always by-value
-                if rt.is_value_type():
-                    return False
-                # User-defined record constructors: call_type is None (not set
-                # by the constructor resolution path) but fi resolves to __init__
-                # or has the record's name as the function name.
-                if fi.name == "__init__":
-                    return False
-                if (isinstance(expr, TpyCall) and isinstance(expr.func, TpyName)
-                        and self.ctx.registry.find_record(expr.func.name) is not None):
-                    return False
-                # Non-Own non-value return = reference
-                return True
-        return False
 
     def _analyze_tuple_unpack(self, stmt: TpyTupleUnpack) -> None:
         """Analyze tuple unpacking: a, b = expr."""
@@ -3851,10 +3827,11 @@ class StatementAnalyzer:
         # Warn when a tuple-LITERAL unpack copies a reference-type lvalue
         # element: CPython aliases the element, but the value-tuple
         # materialization here copies it -- a silent value-vs-reference
-        # divergence. Flat function-body unpacks are desugared to aliasing
-        # single-assigns in the parser and never reach this handler; this
-        # covers the residual the desugar deliberately leaves on the copy
-        # path: module/class top-level. Fresh rvalue elements (calls,
+        # divergence. The parser desugars flat tuple-literal unpacks to
+        # aliasing single-assigns (function-body and module top level), so
+        # they never reach this handler; this remains a guardrail for the
+        # macro-built path (macro_api.tuple_unpack constructs TpyTupleUnpack
+        # directly, bypassing the desugar). Fresh rvalue elements (calls,
         # constructors) are correctly copied, so only lvalue elements
         # (name / subscript / field) warn.
         if isinstance(stmt.value, TpyTupleLiteral):
@@ -4280,7 +4257,9 @@ class StatementAnalyzer:
                 self.ctx.func.owned_locals.discard(stmt.target.name)
             else:
                 self.ctx.func.rvalue_vars.add(stmt.target.name)
-                if not self._is_reference_returning_call(stmt.value):
+                # See the var-decl branch: owned only for a genuine value-creating
+                # init, not a borrow-producing one rendered `T&`.
+                if is_rvalue_source(self.ctx, stmt.value):
                     self.ctx.func.owned_locals.add(stmt.target.name)
                     self.ctx.func.ever_owned_locals.add(stmt.target.name)
                 else:

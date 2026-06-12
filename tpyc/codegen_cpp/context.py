@@ -33,6 +33,11 @@ from ..type_def_registry import (
 from ..symbol_binding import lookup_imported, SymbolKind
 from ..modules.type_resolution import is_native_iterable
 from ..compilation_context import get_current_compiler
+from ..value_category import (
+    is_rvalue_source as _is_rvalue_source_shared,
+    call_returns_cpp_ref as _call_returns_cpp_ref_shared,
+    _CONTAINER_LITERAL_NODES,
+)
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
@@ -392,21 +397,6 @@ DUNDER_TO_BINARY_OP: dict[str, str] = {
     "__and__": "&", "__or__": "|", "__xor__": "^",
     "__lshift__": "<<", "__rshift__": ">>",
 }
-
-# Container/generator-shaped expressions whose gen_expr emits a value
-# (`vector<T>{...}`, `ordered_map<K, V>{...}`, generator state struct, ...)
-# regardless of the target type. Distinct from pointer-emit rvalues
-# (function calls returning T*, pointer-local names) which already yield
-# stable pointer storage. Codegen sites initializing a pointer-form slot
-# from an Optional source use this to decide whether to materialize a
-# named slot before taking address.
-_CONTAINER_LITERAL_NODES: tuple = (
-    TpyArrayLiteral, TpyListRepeat, TpyListComprehension,
-    TpyDictLiteral, TpySetLiteral,
-    TpyDictComprehension, TpySetComprehension,
-    TpyGeneratorExpression,
-)
-
 
 class SlotState:
     """Manages unique slot names for pointer-local backing storage."""
@@ -2115,104 +2105,10 @@ class CodeGenContext:
         return f"(*{rendered})"
 
     def _call_returns_cpp_ref(self, fi: FunctionInfo | None, obj: TpyExpr | None = None) -> bool:
-        """True if this function/method call returns a C++ lvalue reference (T&).
-
-        User-defined functions/methods with non-value, non-generic, non-owning
-        return types emit T& in C++ (via to_cpp_return()). Everything else --
-        native imports, @native record methods, TypeParamRef (val_or_ref_t<T>),
-        Own[T], Optional[T] -- uses value semantics.
-        """
-        if fi is None or fi.is_native_import:
-            return False
-        # Record constructors return rvalue temporaries, never C++ T&. The
-        # bare `fi.return_type is the record class` test below would otherwise
-        # mis-classify a constructor for a non-value-type class as returning
-        # by reference -- triggering `T& var = T()` indirection at the call
-        # site, which fails to bind. Set in _set_record_constructor_info.
-        if fi.is_constructor:
-            return False
-        if obj is not None:
-            # Methods on @native records have unknown C++ return convention.
-            raw_obj_type = self.analyzer.get_expr_type(obj)
-            obj_type = unwrap_readonly(raw_obj_type) if raw_obj_type is not None else None
-            rec = self.analyzer.registry.get_record_for_type(obj_type) if obj_type else None
-            if rec is None and isinstance(obj, TpyName):
-                rec = self.analyzer.registry.get_record(obj.name)
-            if rec is not None and rec.is_native:
-                return False
-        rt = unwrap_ref_type(fi.return_type)
-        return (rt is not None
-                and not rt.is_value_type()
-                and not isinstance(rt, (TypeParamRef, OwnType, OptionalType, UnionType))
-                and not is_protocol_type(rt))
+        return _call_returns_cpp_ref_shared(self.analyzer, fi, obj)
 
     def is_rvalue_source(self, expr: TpyExpr) -> bool:
-        """Check if an expression produces an rvalue (needs a stack slot).
-
-        Rvalues: constructor calls, Own[T] returns, literals, binop/unop results,
-        field access on rvalue objects (member of temporary).
-        Lvalues: variable names, field access on lvalues, subscript, function returning T&.
-
-        For pointer-local init: rvalue -> new slot, lvalue -> take address.
-        """
-        # Names are lvalues (either pointer-locals, params, or globals)
-        if isinstance(expr, TpyName):
-            return False
-        # Field access: rvalue iff the object is rvalue (member of temporary)
-        if isinstance(expr, TpyFieldAccess):
-            return self.is_rvalue_source(expr.obj)
-        # Subscript into containers is an lvalue (returns T&).
-        # Exception: slice calls (e.g. list_stepped_slice) may return by value.
-        if isinstance(expr, TpySubscript):
-            if expr.slice_function_info is not None:
-                return not self._call_returns_cpp_ref(expr.slice_function_info)
-            return False
-        # Ternary: lvalue iff both arms are lvalues (C++ ternary with two lvalue
-        # arms is itself an lvalue). Uses OR semantics: rvalue if either arm is
-        # rvalue, since _gen_if_expr emits arms inline with no temp materialization
-        # (unlike _gen_logical_value which materializes rvalue arms into auto&& temps).
-        if isinstance(expr, TpyIfExpr):
-            result_type = self.analyzer.get_expr_type(expr)
-            if result_type and not result_type.is_value_type():
-                return (self.is_rvalue_source(expr.then_expr)
-                        or self.is_rvalue_source(expr.else_expr))
-        # Logical and/or with operand-return semantics: rvalue temps are
-        # materialized into named variables by _gen_logical_value, so the
-        # result is only an rvalue when both operands are rvalues.
-        if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
-            result_type = self.analyzer.get_expr_type(expr)
-            if not is_bool_type(result_type):
-                return self.is_rvalue_source(expr.left) and self.is_rvalue_source(expr.right)
-        # Constructor calls, literals, ops are rvalues. Listed explicitly to
-        # avoid relying on the `return True` fallthrough below for the
-        # container-literal family -- preserves the listing as the canonical
-        # set of rvalue-yielding expression shapes.
-        if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
-                             TpyBoolLiteral, TpyNoneLiteral,
-                             TpyBinOp, TpyUnaryOp)):
-            return True
-        if isinstance(expr, _CONTAINER_LITERAL_NODES):
-            return True
-        if isinstance(expr, TpyMethodCall):
-            return not self._call_returns_cpp_ref(expr.resolved_function_info, expr.obj)
-        # Coercions: depends on inner expr
-        if isinstance(expr, TpyCoerce):
-            return self.is_rvalue_source(expr.expr)
-        # Function calls
-        if isinstance(expr, TpyCall):
-            # Expression callees -> rvalue
-            if not isinstance(expr.func, TpyName):
-                return True
-            # Record constructors -> rvalue
-            if self.analyzer.registry.get_record(expr.func_name):
-                return True
-            # Generic type constructors -> rvalue
-            if expr.call_type is not None:
-                return True
-            if self.analyzer.registry.get_function(expr.func_name) is not None:
-                return not self._call_returns_cpp_ref(expr.resolved_function_info)
-            return True  # Default: treat unknown calls as rvalue
-        return True  # Default: rvalue
+        return _is_rvalue_source_shared(self.analyzer, expr)
 
     def is_container_literal_expr(self, expr: TpyExpr) -> bool:
         """Predicate form of `_CONTAINER_LITERAL_NODES`; see the constant

@@ -455,11 +455,6 @@ class Parser:
         self._for_unpack_counter: int = 0
         self._multi_assign_counter: int = 0
         self._tuple_unpack_counter: int = 0
-        # Depth of function/method bodies currently being parsed. A
-        # tuple-literal unpack desugars to per-element single-assigns only
-        # inside a function body; module/class top-level keeps TpyTupleUnpack
-        # (globals have distinct decl handling).
-        self._fn_body_depth: int = 0
         # Schemas derived from @builtin_decorator stubs (populated by compiler
         # from previously-parsed modules, or from same-file definitions)
         self._decorator_schemas: dict[str, _DecoratorArgSchema] = dict(decorator_schemas) if decorator_schemas else {}
@@ -2326,11 +2321,11 @@ class Parser:
             # @overload methods may be bodyless (`...` / `pass`, paired with a
             # trailing impl) or carry their own body (self-contained overload
             # variant -- sema validates that a group is all-bodied or all-bodyless).
-            body = [] if is_overload_stub_body else self._parse_function_body(node.body)
+            body = [] if is_overload_stub_body else self._parse_body(node.body)
         elif is_stub:
             body = []
         else:
-            body = self._parse_function_body(node.body)
+            body = self._parse_body(node.body)
 
         # Detect generator methods (yield in body)
         is_generator = _body_contains_yield(body)
@@ -2650,7 +2645,7 @@ class Parser:
             # @overload functions may be bodyless (`...` / `pass`, paired with a
             # trailing impl) or carry their own body (self-contained overload
             # variant -- sema validates that a group is all-bodied or all-bodyless).
-            body = [] if is_overload_stub_body else self._parse_function_body(node.body)
+            body = [] if is_overload_stub_body else self._parse_body(node.body)
         elif linkage in (FunctionLinkage.NATIVE, FunctionLinkage.NATIVE_C):
             if not (self._is_stub_body(node.body)):
                 display = self._LINKAGE_DISPLAY_NAMES.get(linkage, linkage.value)
@@ -2664,9 +2659,9 @@ class Parser:
                 raise ParseError(
                     f"@export function '{node.name}' must have a body (it exports a TPy function)",
                     node)
-            body = self._parse_function_body(node.body)
+            body = self._parse_body(node.body)
         else:
-            body = self._parse_function_body(node.body)
+            body = self._parse_body(node.body)
 
         # Restore the scope
         self._type_param_scope = old_scope
@@ -3156,15 +3151,16 @@ class Parser:
         swaps correct without a special case. `_` targets are evaluated for
         side effects and dropped.
 
-        Restricted to flat unpacks inside a function body: module/class
-        top-level keeps TpyTupleUnpack (globals have distinct decl handling)
-        and is the residual reference-copy case sema's copy warning reports.
-        An arity-mismatched RHS also keeps TpyTupleUnpack so sema emits the
-        arity error; nested-target and starred forms are already rejected
-        earlier (parse errors), so they never reach the desugar.
+        Applies at both function-body and module top level: a module-level
+        single-assign already aliases reference names and subscripts, so the
+        same per-element lowering fixes the global-unpack reference-copy at
+        top level too. Class-body tuple targets never reach here (rejected as
+        "Invalid field declaration" before _parse_stmt). An arity-mismatched
+        RHS keeps TpyTupleUnpack so sema emits the arity error; nested-target
+        and starred forms are already rejected earlier (parse errors), so they
+        never reach the desugar. The sema copy warning still guards the
+        macro-built TpyTupleUnpack path (macro_api.tuple_unpack bypasses this).
         """
-        if self._fn_body_depth == 0:
-            return None
         if not isinstance(value, ast.Tuple):
             return None
         elts = value.elts
@@ -3200,7 +3196,9 @@ class Parser:
                     evals.append(TpyExprStmt(elt_expr, loc=loc))
                     continue
                 temp = f"__unpack_{n}_{i}"
-                evals.append(TpyVarDecl(temp, None, elt_expr, loc=loc))
+                # The temp is live only between eval and bind; keep it a local
+                # of the enclosing body (incl. module __tpy_init), never a global.
+                evals.append(TpyVarDecl(temp, None, elt_expr, loc=loc, module_init_local=True))
                 binds.append(TpyVarDecl(target, None, TpyName(temp, loc=loc), loc=loc))
             result = evals + binds
         # Every statement keeps the unpack's loc so sema records each target's
@@ -3209,15 +3207,6 @@ class Parser:
         for stmt in result[1:]:
             stmt.no_source_comment = True
         return result
-
-    def _parse_function_body(self, nodes: list[ast.stmt]) -> list[TpyStmt]:
-        """Parse a function/method body, tracking that we are inside one so a
-        tuple-literal unpack may desugar to per-element single-assigns."""
-        self._fn_body_depth += 1
-        try:
-            return self._parse_body(nodes)
-        finally:
-            self._fn_body_depth -= 1
 
     def _parse_body(self, nodes: list[ast.stmt]) -> list[TpyStmt]:
         """Parse a list of statements, flattening any multi-statement expansions."""

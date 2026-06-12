@@ -2,10 +2,11 @@
 
 The aliasing behavior of the desugar is exercised end-to-end by the snippet
 cases under tests/cases/tuple/ and tests/cases/async/. These unit tests pin
-the parser-level shape (flat function-body unpacks desugar; module-level and
-non-flat forms do not) and the sema warning for the residual top-level
-reference-copy case -- which can't be a snippet exec case because module-level
-reference unpacks don't yet build (see BUGS.md)."""
+the parser-level shape: flat tuple-literal unpacks desugar to per-element
+single-assigns at both function-body and module top level; non-flat forms
+(name source, arity mismatch) keep TpyTupleUnpack. The sema copy warning now
+guards only the macro-built path (macro_api.tuple_unpack), since every parser
+producer either desugars or carries an arity error."""
 
 from . import get_lib_dir
 from .compiler import Compiler
@@ -89,14 +90,19 @@ class TestDesugarShape:
         assert any(isinstance(s, TpyVarDecl) and s.name.startswith("__unpack_")
                    for s in body)
 
-    def test_module_level_unpack_not_desugared(self):
+    def test_module_level_unpack_desugars(self):
+        # A module-level flat tuple-literal unpack desugars too: the global
+        # single-assigns alias reference elements (CPython parity) and avoid
+        # the global-unpack T*->T copy.
         _, modules = _compile(
             "from tpy import Int32\n"
             "a, b = (Int32(1), Int32(2))\n"
             "print(a)\n"
         )
-        assert any(isinstance(s, TpyTupleUnpack)
-                   for s in _entry(modules).ast.top_level_stmts)
+        top = _entry(modules).ast.top_level_stmts
+        assert not any(isinstance(s, TpyTupleUnpack) for s in top)
+        assert {s.name for s in top
+                if isinstance(s, TpyVarDecl) and s.name in ("a", "b")} == {"a", "b"}
 
     def test_name_source_unpack_not_desugared(self):
         # Only a tuple-LITERAL RHS desugars; a name source keeps the node.
@@ -112,10 +118,13 @@ class TestDesugarShape:
 
 
 class TestResidualCopyWarning:
-    """A tuple-literal unpack left on the copy path (module-level) warns when
-    it copies a reference-type lvalue element."""
+    """The parser desugars module-level tuple-literal unpacks to aliasing
+    single-assigns, so the sema copy warning no longer fires on the parser
+    path -- it remains only as a guardrail for the macro-built unpack."""
 
-    def test_module_level_reference_unpack_warns(self):
+    def test_module_level_reference_unpack_aliases_no_warning(self):
+        # Reference elements now alias via the desugar; the residual-copy
+        # warning must NOT fire (the old residual is fixed at module scope).
         _, modules = _compile(
             "from tpy import Int32\n"
             "class C:\n"
@@ -127,7 +136,9 @@ class TestResidualCopyWarning:
             "a, b = (g0, g1)\n"
         )
         warns = _warnings(modules)
-        assert any("copies reference-type element" in w for w in warns), warns
+        assert not any("copies reference-type element" in w for w in warns), warns
+        top = _entry(modules).ast.top_level_stmts
+        assert not any(isinstance(s, TpyTupleUnpack) for s in top)
 
     def test_module_level_value_unpack_does_not_warn(self):
         # Value-type elements copy correctly either way -- no warning.

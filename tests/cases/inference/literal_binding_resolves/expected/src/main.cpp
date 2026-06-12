@@ -87,9 +87,8 @@ void __tpy_init() {
     // # expression analysis: str() picks int32_t (not int8_t), and tuple-unpack
     // # locals get a concrete C++ type (not the literal value as a "type").
     // a, b = 1, 2  # tpyc: type(Int32)
-    auto __tup_1 = std::tuple<int32_t, int32_t>{1, 2};
-    a = std::get<0>(__tup_1);
-    b = std::get<1>(__tup_1);
+    a = 1;
+    b = 2;
     // main()
     main();
 }

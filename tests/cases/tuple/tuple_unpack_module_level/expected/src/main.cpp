@@ -69,33 +69,36 @@ void __tpy_init() {
     std::cout << b << "\n";
     // # Unpack from tuple literal
     // x, y = Int32(100), Int32(200)
-    auto __tup_2 = std::tuple<int32_t, int32_t>{100, 200};
-    x = std::get<0>(__tup_2);
-    y = std::get<1>(__tup_2);
+    int32_t __unpack_0_0 = 100;
+    int32_t __unpack_0_1 = 200;
+    x = __unpack_0_0;
+    y = __unpack_0_1;
     // print(x)
     std::cout << x << "\n";
     // print(y)
     std::cout << y << "\n";
     // first, _, last = get_triple()
-    auto __tup_3 = get_triple();
-    first = std::get<0>(__tup_3);
-    last = std::get<2>(__tup_3);
+    auto __tup_2 = get_triple();
+    first = std::get<0>(__tup_2);
+    last = std::get<2>(__tup_2);
     // print(first)
     std::cout << first << "\n";
     // print(last)
     std::cout << last << "\n";
     // # Globals referenced from a function body
     // lo, hi = Int32(0), Int32(99)
-    auto __tup_4 = std::tuple<int32_t, int32_t>{0, 99};
-    lo = std::get<0>(__tup_4);
-    hi = std::get<1>(__tup_4);
+    int32_t __unpack_1_0 = 0;
+    int32_t __unpack_1_1 = 99;
+    lo = __unpack_1_0;
+    hi = __unpack_1_1;
     // use_globals()
     use_globals();
     // # ALL_CAPS triggers Final warning
     // LO, HI = Int32(0), Int32(99)  # tpyc: warning(/ALL_CAPS/)
-    auto __tup_5 = std::tuple<int32_t, int32_t>{0, 99};
-    LO = std::get<0>(__tup_5);
-    HI = std::get<1>(__tup_5);
+    int32_t __unpack_2_0 = 0;
+    int32_t __unpack_2_1 = 99;
+    LO = __unpack_2_0;
+    HI = __unpack_2_1;
     // print(LO)
     std::cout << LO << "\n";
     // print(HI)

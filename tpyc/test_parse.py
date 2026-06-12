@@ -301,3 +301,19 @@ class TestUserModuleStarImport:
         module = p.parse("from tpy import *\ndef f(x: Int32) -> Int32:\n    return x\n")
         assert module.tpy_star_import is True
         assert "tpy" in module.star_imports
+
+
+class TestClassBodyTupleTargetRejected:
+    """A tuple-target assignment in a class body is a field-declaration parse
+    error, never a tuple unpack -- so the module-level unpack desugar (which
+    aliases reference globals) has no class-scope counterpart to handle."""
+
+    def test_bare_tuple_target(self):
+        p = Parser()
+        with pytest.raises(ParseError, match="Invalid field declaration"):
+            p.parse("class K:\n    a, b = 1, 2\n")
+
+    def test_parenthesized_tuple_target(self):
+        p = Parser()
+        with pytest.raises(ParseError, match="Invalid field declaration"):
+            p.parse("class K:\n    a, b = (1, 2)\n")

@@ -27,19 +27,17 @@ void __tpy_init() {
     // from functools import total_ordering
     ::tpystd::functools::__tpy_init();
     // a, b = Outer(Int32(1)), Outer(Int32(2))
-    auto __tup_1 = std::tuple<Outer, Outer>{Outer(1), Outer(2)};
-    static Outer __global_slot_1 = ::tpy::unwrap_ref(std::get<0>(__tup_1));
-    a = &__global_slot_1;
-    static Outer __global_slot_2 = ::tpy::unwrap_ref(std::get<1>(__tup_1));
-    b = &__global_slot_2;
+    Outer __unpack_0_0 = Outer(1);
+    Outer __unpack_0_1 = Outer(2);
+    a = &(__unpack_0_0);
+    b = &(__unpack_0_1);
     // print(a < b, a <= b, a > b, a >= b, a == Outer(Int32(1)))
     std::cout << ::tpy::print_bool((((*a)) < ((*b)))) << " " << ::tpy::print_bool((((*a)) <= ((*b)))) << " " << ::tpy::print_bool((((*a)) > ((*b)))) << " " << ::tpy::print_bool((((*a)) >= ((*b)))) << " " << ::tpy::print_bool((((*a)) == (Outer(1)))) << "\n";
     // c, d = Inner(Int32(1)), Inner(Int32(2))
-    auto __tup_2 = std::tuple<Inner, Inner>{Inner(1), Inner(2)};
-    static Inner __global_slot_3 = ::tpy::unwrap_ref(std::get<0>(__tup_2));
-    c = &__global_slot_3;
-    static Inner __global_slot_4 = ::tpy::unwrap_ref(std::get<1>(__tup_2));
-    d = &__global_slot_4;
+    Inner __unpack_1_0 = Inner(1);
+    Inner __unpack_1_1 = Inner(2);
+    c = &(__unpack_1_0);
+    d = &(__unpack_1_1);
     // print(c < d, c <= d, c > d, c >= d, c == Inner(Int32(1)))
     std::cout << ::tpy::print_bool((((*c)) < ((*d)))) << " " << ::tpy::print_bool((((*c)) <= ((*d)))) << " " << ::tpy::print_bool((((*c)) > ((*d)))) << " " << ::tpy::print_bool((((*c)) >= ((*d)))) << " " << ::tpy::print_bool((((*c)) == (Inner(1)))) << "\n";
 }
