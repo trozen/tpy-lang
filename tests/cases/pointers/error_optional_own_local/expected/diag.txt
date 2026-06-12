@@ -1,0 +1,1 @@
+main.py:18: error: Own[T] is redundant in this variable type ('Own[Box] | None'): a local owns its value inline and moves it out at its last use -- remove the Own (use copy() or an owning call if you need an owned copy). Own selects an owned shape only at a borrow-default position: parameter / return types.

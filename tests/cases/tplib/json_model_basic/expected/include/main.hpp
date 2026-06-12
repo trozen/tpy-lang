@@ -89,13 +89,14 @@ inline std::string User::__repr__() const {
 
 inline User User::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-    std::optional<User> __result = std::nullopt;
+    std::optional<User> __slot_1;
+    User* __result = nullptr;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_1;
         {
             auto __try_tmp_2 = User::__json_decode__(__reader);
             if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_2);
+            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_2)));
         }
         goto __after_try_1;
         // except tplib.json.parser.JsonError:
@@ -106,8 +107,8 @@ inline User User::from_json(std::string_view __s) {
         }
         __after_try_1:;
     }
-    if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
-    return (*__result);
+    if (!((__result != nullptr))) ::tpy::raise_assertion_error("json: unreachable");
+    return std::move((*__result));
 }
 
 inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_from_json(std::string_view __s) {

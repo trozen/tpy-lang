@@ -224,6 +224,15 @@ applied per element (`tuple[Own[T_ref], T_value, ...]`); the
 move/copy decision at the call site is then made per the same
 per-element auto-move + copy-required rules as field assignments.
 
+An owning `T | None` (pointer-repr Optional) **local** keeps the borrow
+form (`T*` + a function-scope materialization slot) -- so reference
+aliasing matches CPython (`x = A; y = x; x = B` leaves `y` on `A`) -- but
+at its **last use** it MOVES its slot's value into an owned sink (field /
+container / `Own[T]` param / matching `Own[T] | None` return) via
+`ptr_to_optional_move`, rather than copying. An aliased or non-last-use
+value still copies. So `T | None` is the owned-nullable local spelling;
+`Own` is unnecessary (and rejected) on a local.
+
 You almost never write or think about this distinction directly --
 the compiler picks the right form per slot and emits the conversions
 silently. This auto-lift runs at any pointer-form consumer site
@@ -302,7 +311,7 @@ Full mapping of TurboPython types to their C++ representation. Where parameter r
 | `Ptr[readonly[T]]` | `const T*` |
 | `Ptr[None]` / `Ptr[readonly[None]]` | `void*` / `const void*` (preserves the C/C++ opaque-pointer idiom for `@native` interop, despite `None` lowering to `std::monostate` at other type-argument positions) |
 | `Ptr[P]` where `P` is a `@dynamic` protocol | `P*` (pointer to the @dynamic base class). Non-owning polymorphic reference; method calls dispatch through `P`'s vtable. Static (non-`@dynamic`) protocols are rejected as pointer element types -- they have no runtime representation. See `docs/DYNAMIC_PROTOCOL_DESIGN.md` for the owning siblings (`Box[P]` / `Rc[P]`). |
-| `Own[T]` | `T` (by value; valid only in param/return types, or as `Optional[Own[T]]` for an owned nullable local -- rejected on fields, which own inline regardless) |
+| `Own[T]` | `T` (by value; valid only in param/return types -- rejected on locals and fields, which own their value inline. An owned nullable local is just `T \| None`: it owns the value and moves it out at its last use; no `Own` spelling) |
 | `Box[T]` | TPy class wrapping `Ptr[T]` (heap-allocated owning container); `@nocopy`, explicit `.clone()` to duplicate. Construct via `Box(value)` where `value: Own[T]`. |
 | `Rc[T]` | TPy class wrapping `Ptr[_RcCellBase]` (strong/weak counters + virtual bookkeeping) + `Ptr[T]` (payload, aliases into the cell's inline storage); `@nocopy`, explicit `.clone()` to share. Construct via `Rc.new(value)`. One heap allocation per `Rc.new` -- the cell is generic `_RcCell[U]` (derived from `@dynamic _RcCellBase`) and holds the payload inline via `UninitArrayStorage[U, 1]`. Works for both concrete T and abstract `@dynamic` P; structural conformers of a `@dynamic` T are wrapped at the call site as `Adapter<T, U>` so the inline storage holds a type that inherits T's vtable. |
 | `Weak[T]` | Non-owning companion to `Rc[T]`; shares the cell but doesn't keep the payload alive. `@nocopy`. Mint via `rc.downgrade()`; recover a strong handle (or None) via `weak.upgrade()`. |
@@ -1333,7 +1342,7 @@ def main():
 
 The temp is an lvalue, so it binds to both `T&` and `const T&` params. This is create-lend-drop: the value is owned only for the duration of the call. (Ownership *transfer* still requires an `Own[T]` param, which moves instead of lending.)
 
-**Note**: `Own[T]` selects an *owned* C++ shape, which only matters where the default is a borrow. It is rejected anywhere in a **local variable or field annotation** -- including nested (`tuple[..., Own[T]]`, `Own[dict[...]]` fields) -- because a local or field owns its value inline regardless, so the `Own` is redundant; use the plain type (`T`, `tuple[..., T]`). The one exception is **`Optional[Own[T]]` as a LOCAL**: a local `Optional[T]` (non-value `T`) defaults to a borrow (`T*`), so `Optional[Own[T]]` is the spelling for an *owned* nullable local (`std::optional<T>`) -- still valid. A *field* `Optional[T]` is `std::optional<T>` regardless, so `Optional[Own[T]]` is rejected on fields too. `Own[T]` stays valid in parameter and return types (the ownership-transfer boundaries), including per-element in tuples (`tuple[Own[T], ...]`).
+**Note**: `Own[T]` selects an *owned* C++ shape, which only matters where the default is a borrow. It is rejected anywhere in a **local variable or field annotation** -- including nested (`tuple[..., Own[T]]`, `Own[dict[...]]` fields) and `Optional[Own[T]]` -- because a local or field owns its value inline regardless, so the `Own` is redundant; use the plain type (`T`, `tuple[..., T]`, `T | None`). A local `T | None` (non-value `T`) keeps the borrow form (`T*` + slot, so aliasing matches CPython) and moves its value out at its last use into owned sinks -- no `Own` needed. `Own[T]` stays valid in parameter and return types (the ownership-transfer boundaries), including per-element in tuples (`tuple[Own[T], ...]`).
 
 #### Auto-Move at Last Use (Working)
 

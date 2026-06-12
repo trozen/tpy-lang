@@ -355,21 +355,12 @@ def _build_json_decode(cls: ClassInfo, all_fields: list[FieldInfo]) -> Function:
     for fld in all_fields:
         default = _build_field_default(fld)
         if default is not None:
-            # For Optional[NonValueType] fields, use Optional[Own[T]] so the
-            # C++ repr is std::optional<T> (value) rather than T* (pointer).
-            fld_raw = fld.type.raw_type
-            inner_opt = fld.type.unwrap_optional()
-            if inner_opt is not None and not inner_opt.is_value_type:
-                fld_raw = types.optional(types.own(inner_opt.raw_type))
-            body.append(ast.var_decl(fld.name, type=fld_raw, init=default))
+            # Plain `T | None`: Own is rejected on a local (it moves out at
+            # last use into the constructor call regardless).
+            body.append(ast.var_decl(fld.name, type=fld.type.raw_type, init=default))
         elif fld.type.is_record or fld.type.is_enum or fld.type.is_tuple:
-            # Use Optional[Own[T]] for non-value types so the C++ repr is
-            # std::optional<T> (value semantics) rather than T* (pointer repr).
-            inner = fld.type.raw_type
-            if not fld.type.is_value_type:
-                inner = types.own(inner)
             body.append(ast.var_decl(
-                fld.name, type=types.optional(inner), init=ast.none_lit(),
+                fld.name, type=types.optional(fld.type.raw_type), init=ast.none_lit(),
             ))
             required_fields.append(fld.name)
         else:
@@ -441,11 +432,9 @@ def _build_from_json(cls: ClassInfo) -> Function:
     """
     cls_type = types.named(cls.name)
     ret_type = cls_type if cls_type.is_value_type() else types.own(cls_type)
-    # Use Optional[Own[T]] for the result variable to avoid pointer-repr
-    # issues and ensure the value is definitely available after try/except.
+    # Plain `T | None` result local (Own is rejected on a local); it moves out
+    # on the `Own[T] | None` return.
     inner = cls_type
-    if not cls_type.is_value_type():
-        inner = types.own(cls_type)
     result_var = "__result"
     body: list[Stmt] = [
         ast.var_decl("__reader", type=types.named("JsonReader"),

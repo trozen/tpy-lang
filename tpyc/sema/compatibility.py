@@ -712,6 +712,21 @@ class TypeCompatibility:
                     whole = resolve_coercion(actual_inner, expected, ctx_for_coerce)
                     if whole is not None:
                         return whole
+            # Optional[T] -> Optional[Own[T]]: ownership transfer wrapped in
+            # Optional (e.g. returning an owned `Foo | None` local as
+            # `Own[Foo] | None`). Compare the INNERS so the bare T -> Own[T]
+            # coercion applies its ownership semantics (move at last use,
+            # copy-warn / @nocopy-reject otherwise) to the optional source.
+            # (`Own[Foo | None]` -- OwnType outer -- is handled by the OwnType
+            # branch below, which matches the whole Optional after unwrap.)
+            if (isinstance(actual_inner, OptionalType)
+                    and isinstance(expected.inner, OwnType)
+                    and not isinstance(actual_inner.inner, OwnType)):
+                inner_result = self._check_compat(
+                    actual_inner.inner, expected.inner, context, loc,
+                    source_expr, is_return, coercion_ctx, target_is_storage_form)
+                if inner_result is None:
+                    return None
             result = self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
             # Rewrap inner-mismatch errors with the declared Optional types so
             # the diagnostic reads `expected str | None, got StrView | None`

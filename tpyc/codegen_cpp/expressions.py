@@ -704,14 +704,18 @@ class ExpressionGenerator:
             return f"::tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
         return None
 
-    def _maybe_move(self, expr: TpyExpr, gen_code: str) -> str:
-        """Wrap in std::move() if expr is a last-use of a movable local."""
+    def _is_last_use_movable(self, expr: TpyExpr) -> bool:
+        """True if expr is the last use of a movable (owned, non-hoisted) local."""
         inner = expr
         while isinstance(inner, TpyCoerce):
             inner = inner.expr
-        if (isinstance(inner, TpyName)
+        return (isinstance(inner, TpyName)
                 and inner.name in self.ctx.movable_locals
-                and id(inner) in self.ctx.analyzer.ctx.all_last_uses):
+                and id(inner) in self.ctx.analyzer.ctx.all_last_uses)
+
+    def _maybe_move(self, expr: TpyExpr, gen_code: str) -> str:
+        """Wrap in std::move() if expr is a last-use of a movable local."""
+        if self._is_last_use_movable(expr):
             return f"std::move({gen_code})"
         return gen_code
 
@@ -1069,6 +1073,16 @@ class ExpressionGenerator:
                     return consuming
             own = unwrap_optional_own(ptype_inner)
             if own is not None:
+                # Own[T] | None param (storage `std::optional<T>`): a pointer-repr
+                # Optional local arg (`T*` + slot) must be wrapped into the
+                # optional -- moving its slot value at last use -- not std::move'd
+                # as a bare pointer (which would mismatch the optional slot).
+                if (isinstance(ptype_inner, OptionalType)
+                        and self.ctx.is_indirect_name(arg)):
+                    ptr = self.gen_expr(arg)
+                    helper = ("ptr_to_optional_move"
+                              if self._is_last_use_movable(arg) else "ptr_to_optional")
+                    return f"::tpy::{helper}({ptr})"
                 moved = self._maybe_move(arg, gen_arg)
                 if moved is gen_arg and _is_simple_lvalue(arg):
                     # cpp_template callees (push_back, insert, etc.) accept

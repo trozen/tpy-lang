@@ -1253,14 +1253,20 @@ class RecordGenerator:
                         if pname == source_expr.name and is_bytes_type(ptype):
                             value = f"::tpy::bytes_copy({value})"
                             break
-                # Auto-move Own[T] params at last use in member init list.
+                # Auto-move Own[T] (and Own[T] | None, a std::optional<T> by
+                # value) params at last use in the member init list. The source
+                # is gated to a PARAM (the loop below), so last-use is sufficient
+                # without the movable_locals / alias-suppression guard that
+                # _is_last_use_movable applies to locals: an Own param is storage
+                # form, so a `q = p` aliasing attempt copies rather than aliasing,
+                # leaving no live borrow that the move could dangle.
                 inner = source
                 while isinstance(inner, TpyCoerce):
                     inner = inner.expr
                 if (isinstance(inner, TpyName)
                         and id(inner) in self.ctx.analyzer.ctx.all_last_uses):
                     for pname, ptype in init_method.params:
-                        if pname == inner.name and isinstance(unwrap_readonly(ptype), OwnType):
+                        if pname == inner.name and unwrap_optional_own(unwrap_readonly(ptype)) is not None:
                             value = f"std::move({value})"
                             break
                 # T* sources need conversion to std::optional<T>; field access (std::optional<T>) doesn't.
@@ -1271,7 +1277,7 @@ class RecordGenerator:
                     source_is_own_optional = False
                     if isinstance(source, TpyName):
                         for pname, ptype in init_method.params:
-                            if pname == source.name and isinstance(ptype, OwnType):
+                            if pname == source.name and unwrap_optional_own(ptype) is not None:
                                 source_is_own_optional = True
                                 break
                     if not source_is_own_optional and not isinstance(source, TpyFieldAccess):

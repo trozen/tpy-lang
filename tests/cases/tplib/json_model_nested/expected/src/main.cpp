@@ -184,7 +184,8 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
     bool active = false;
     ::tpy::BigInt big_id = ::tpy::BigInt(0);
     std::optional<Role> role = std::nullopt;
-    std::optional<Address> address = std::nullopt;
+    std::optional<Address> __slot_1;
+    Address* address = nullptr;
     std::vector<std::string> tags = std::vector<std::string>{};
     std::vector<int32_t> scores = std::vector<int32_t>{};
     std::vector<Address> friends = std::vector<Address>{};
@@ -193,7 +194,8 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
     ::tpy::ordered_map<std::string, std::vector<int32_t>> nested_map = ::tpy::ordered_map<std::string, std::vector<int32_t>>();
     std::optional<std::tuple<int32_t, int32_t, std::string>> coord = std::nullopt;
     std::optional<Role> backup_role = std::nullopt;
-    std::optional<Address> alt_address = std::nullopt;
+    std::optional<Address> __slot_2;
+    Address* alt_address = nullptr;
     std::optional<std::string> email = std::nullopt;
     while (__reader.has_next()) {
         std::string_view __key;
@@ -310,7 +312,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     {
                         auto __try_tmp_24 = Address::__json_decode__(__reader);
                         if (!__try_tmp_24.has_value()) return ::tpy::make_unexpected(__try_tmp_24.error());
-                        address = ::tpy::unwrap_ref(*__try_tmp_24);
+                        address = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_24)));
                     }
                     goto __match_end_2;
                 }
@@ -424,7 +426,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         {
                             auto __try_tmp_38 = Address::__json_decode__(__reader);
                             if (!__try_tmp_38.has_value()) return ::tpy::make_unexpected(__try_tmp_38.error());
-                            alt_address = ::tpy::unwrap_ref(*__try_tmp_38);
+                            alt_address = &*(__slot_2 = std::move(::tpy::unwrap_ref(*__try_tmp_38)));
                         }
                     }
                     goto __match_end_2;
@@ -584,15 +586,13 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
     if ((!role.has_value())) {
         return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'role'"));
     }
-    if ((!address.has_value())) {
+    if ((address == nullptr)) {
         return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'address'"));
     }
     if ((!coord.has_value())) {
         return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'coord'"));
     }
-    auto __tmp_2 = (*address);
-    auto __tmp_3 = alt_address;
-    return Profile(name, age, score, precision, active, big_id, (*role), std::move(__tmp_2), std::move(tags), std::move(scores), std::move(friends), std::move(roles), std::move(metadata), std::move(nested_map), (*coord), backup_role, std::move(__tmp_3), email);
+    return Profile(name, age, score, precision, active, big_id, (*role), std::move((*address)), std::move(tags), std::move(scores), std::move(friends), std::move(roles), std::move(metadata), std::move(nested_map), (*coord), backup_role, std::move(alt_address ? std::optional<Address>(std::move(*alt_address)) : std::nullopt), email);
 }
 
 void Profile::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {

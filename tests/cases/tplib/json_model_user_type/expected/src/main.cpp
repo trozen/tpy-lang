@@ -83,7 +83,8 @@ std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::__json_dec
         if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
     }
     std::string name = "";
-    std::optional<Seconds> when = std::nullopt;
+    std::optional<Seconds> __slot_1;
+    Seconds* when = nullptr;
     while (__reader.has_next()) {
         std::string_view __key;
         {
@@ -104,7 +105,7 @@ std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::__json_dec
             {
                 auto __try_tmp_9 = Seconds::__json_decode__(__reader);
                 if (!__try_tmp_9.has_value()) return ::tpy::make_unexpected(__try_tmp_9.error());
-                when = ::tpy::unwrap_ref(*__try_tmp_9);
+                when = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_9)));
             }
         } else {
             {
@@ -117,11 +118,10 @@ std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::__json_dec
         auto __try_tmp_11 = __reader.read_object_end();
         if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(__try_tmp_11.error());
     }
-    if ((!when.has_value())) {
+    if ((when == nullptr)) {
         return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'when'"));
     }
-    auto __tmp_1 = (*when);
-    return Event(name, std::move(__tmp_1));
+    return Event(name, std::move((*when)));
 }
 
 std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
@@ -130,8 +130,10 @@ std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__js
         if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
     }
     std::vector<Event> events = std::vector<Event>{};
-    std::optional<Seconds> default_duration = std::nullopt;
-    std::optional<Seconds> deadline = std::nullopt;
+    std::optional<Seconds> __slot_1;
+    Seconds* default_duration = nullptr;
+    std::optional<Seconds> __slot_2;
+    Seconds* deadline = nullptr;
     while (__reader.has_next()) {
         std::string_view __key;
         {
@@ -162,7 +164,7 @@ std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__js
             {
                 auto __try_tmp_17 = Seconds::__json_decode__(__reader);
                 if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
-                default_duration = ::tpy::unwrap_ref(*__try_tmp_17);
+                default_duration = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_17)));
             }
         } else if (__match_subject_1 == "deadline") {
             if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
@@ -174,7 +176,7 @@ std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__js
                 {
                     auto __try_tmp_19 = Seconds::__json_decode__(__reader);
                     if (!__try_tmp_19.has_value()) return ::tpy::make_unexpected(__try_tmp_19.error());
-                    deadline = ::tpy::unwrap_ref(*__try_tmp_19);
+                    deadline = &*(__slot_2 = std::move(::tpy::unwrap_ref(*__try_tmp_19)));
                 }
             }
         } else {
@@ -188,12 +190,10 @@ std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__js
         auto __try_tmp_21 = __reader.read_object_end();
         if (!__try_tmp_21.has_value()) return ::tpy::make_unexpected(__try_tmp_21.error());
     }
-    if ((!default_duration.has_value())) {
+    if ((default_duration == nullptr)) {
         return ::tpy::make_unexpected(::tpystd::tplib::json::parser::JsonError("missing required field 'default_duration'"));
     }
-    auto __tmp_2 = (*default_duration);
-    auto __tmp_3 = deadline;
-    return Schedule(std::move(events), std::move(__tmp_2), std::move(__tmp_3));
+    return Schedule(std::move(events), std::move((*default_duration)), std::move(deadline ? std::optional<Seconds>(std::move(*deadline)) : std::nullopt));
 }
 
 void Schedule::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __writer) const {

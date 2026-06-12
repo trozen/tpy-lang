@@ -3036,13 +3036,13 @@ class StatementAnalyzer:
             # at a local should surface "Own[T] not allowed as variable",
             # not "use Optional[T] or Box[T]" -- the user can't use either
             # in a local context either).
-            if type_contains_own(stmt.type):
+            if type_contains_own(stmt.type, allow_optional_own=False):
                 raise self.ctx.error(
                     f"Own[T] is redundant in this variable type ('{stmt.type}'): a "
-                    f"local owns its value inline -- remove the Own (use copy() or "
-                    f"an owning call if you need an owned copy). Own selects an "
-                    f"owned shape only at a borrow-default position: parameter / "
-                    f"return types, or 'Optional[Own[T]]'.",
+                    f"local owns its value inline and moves it out at its last use "
+                    f"-- remove the Own (use copy() or an owning call if you need an "
+                    f"owned copy). Own selects an owned shape only at a borrow-default "
+                    f"position: parameter / return types.",
                     stmt
                 )
             if isinstance(stmt.type, ReadonlyType):

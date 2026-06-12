@@ -624,6 +624,16 @@ class StatementGenerator:
                     if not ret_type.uses_pointer_repr():
                         if isinstance(ret_value, TpyNoneLiteral):
                             return self._make_return(indent, "std::nullopt")
+                        # A pointer-repr Optional local (`T*` + slot) returned as a
+                        # storage Optional (`Own[T] | None`): wrap the slot into
+                        # std::optional<T>, moving its value at last use rather than
+                        # copying (correct for @nocopy; ownership transfers out).
+                        if self.ctx.is_indirect_name(ret_value):
+                            value = self.expressions.gen_expr(ret_value)
+                            helper = ("ptr_to_optional_move"
+                                      if self.expressions._is_last_use_movable(ret_value)
+                                      else "ptr_to_optional")
+                            return self._make_return(indent, f"::tpy::{helper}({value})")
                         ret_expr = self.expressions.gen_expr_deref(ret_value, ret_type)
                         return self._make_return(indent, ret_expr)
                     ret_expr = self.expressions._optional_pointer_form_value(ret_value, ret_type)
@@ -2297,9 +2307,14 @@ class StatementGenerator:
                     value = self.expressions.gen_expr(stmt.value)
                     value = self.expressions._maybe_move(stmt.value, value)
                     return f"{indent}{target} = {value};\n"
-                # Value source is T* (pointer-local, function returning Optional) -> wrap
+                # Value source is T* (pointer-local, function returning Optional) -> wrap.
+                # A movable owned local at its last use MOVES its pointee into the
+                # field (ptr_to_optional_move) rather than copying -- correct for
+                # @nocopy and avoids a silent copy where ownership transfers.
                 if self.ctx.is_indirect_name(stmt.value):
                     value = self.expressions.gen_expr(stmt.value)
+                    if self.expressions._is_last_use_movable(stmt.value):
+                        return f"{indent}{target} = ::tpy::ptr_to_optional_move({value});\n"
                     return f"{indent}{target} = ::tpy::ptr_to_optional({value});\n"
                 raw_val_type = self.ctx.get_expr_type(stmt.value)
                 val_type = raw_val_type.wrapped if isinstance(raw_val_type, OwnType) else raw_val_type
@@ -4080,10 +4095,29 @@ class StatementGenerator:
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_error_goto(f"{indent}{INDENT}", tmp, label)
-        out += f"{indent}{INDENT}{cpp_name} = ::tpy::unwrap_ref(*{tmp});\n"
+        out += self._error_return_assign_to_name(stmt.name, f"::tpy::unwrap_ref(*{tmp})", f"{indent}{INDENT}")
         out += f"{indent}}}\n"
 
         return out
+
+    def _error_return_target_assign(self, target: 'TpyExpr', value: str, indent: str) -> str:
+        """Assign an unwrapped @error_return result to an assignment target."""
+        if isinstance(target, TpyName):
+            return self._error_return_assign_to_name(target.name, value, indent)
+        return f"{indent}{self.expressions.gen_expr(target)} = {value};\n"
+
+    def _error_return_assign_to_name(self, name: str, value: str, indent: str) -> str:
+        # A pointer-repr Optional / pointer local needs its owned result moved
+        # into the rebind slot and re-pointed -- a direct `T* = T` is ill-formed.
+        cpp_name = escape_cpp_name(name)
+        slot = self.ctx.rebind_slots.get(name)
+        if name in self.ctx.pointer_locals and slot is not None:
+            is_optional_slot = slot not in self.ctx.plain_rebind_slots
+            rhs = self._ptr_from_rvalue_slot(
+                slot, f"std::move({value})", is_opt_field=False,
+                is_optional_slot=is_optional_slot)
+            return f"{indent}{cpp_name} = {rhs};\n"
+        return f"{indent}{cpp_name} = {value};\n"
 
     def _gen_error_return_assign(self, stmt: TpyAssign, indent: str) -> str:
         """Generate an assignment where the RHS is an @error_return call.
@@ -4100,12 +4134,12 @@ class StatementGenerator:
         label = self.ctx.try_except_label
 
         call_cpp = self._gen_error_return_call(stmt.value)
-        target_cpp = self.expressions.gen_expr(stmt.target)
 
         out = f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_error_goto(f"{indent}{INDENT}", tmp, label)
-        out += f"{indent}{INDENT}{target_cpp} = ::tpy::unwrap_ref(*{tmp});\n"
+        out += self._error_return_target_assign(
+            stmt.target, f"::tpy::unwrap_ref(*{tmp})", f"{indent}{INDENT}")
         out += f"{indent}}}\n"
 
         return out
@@ -4139,7 +4173,7 @@ class StatementGenerator:
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_propagate_check(f"{indent}{INDENT}", tmp)
-        out += f"{indent}{INDENT}{cpp_name} = ::tpy::unwrap_ref(*{tmp});\n"
+        out += self._error_return_assign_to_name(stmt.name, f"::tpy::unwrap_ref(*{tmp})", f"{indent}{INDENT}")
         out += f"{indent}}}\n"
 
         return out
@@ -4152,12 +4186,12 @@ class StatementGenerator:
         tmp = f"__try_tmp_{self.ctx.try_except_counter}"
 
         call_cpp = self._gen_error_return_call(stmt.value)
-        target_cpp = self.expressions.gen_expr(stmt.target)
 
         out = f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_propagate_check(f"{indent}{INDENT}", tmp)
-        out += f"{indent}{INDENT}{target_cpp} = ::tpy::unwrap_ref(*{tmp});\n"
+        out += self._error_return_target_assign(
+            stmt.target, f"::tpy::unwrap_ref(*{tmp})", f"{indent}{INDENT}")
         out += f"{indent}}}\n"
 
         return out
@@ -4186,7 +4220,7 @@ class StatementGenerator:
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
-        out += f"{indent}{INDENT}{cpp_name} = ::tpy::unwrap_ref(*{tmp});\n"
+        out += self._error_return_assign_to_name(stmt.name, f"::tpy::unwrap_ref(*{tmp})", f"{indent}{INDENT}")
         out += f"{indent}}}\n"
 
         return out
@@ -4197,12 +4231,12 @@ class StatementGenerator:
         tmp = f"__try_tmp_{self.ctx.try_except_counter}"
 
         call_cpp = self._gen_error_return_call(stmt.value)
-        target_cpp = self.expressions.gen_expr(stmt.target)
 
         out = f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
-        out += f"{indent}{INDENT}{target_cpp} = ::tpy::unwrap_ref(*{tmp});\n"
+        out += self._error_return_target_assign(
+            stmt.target, f"::tpy::unwrap_ref(*{tmp})", f"{indent}{INDENT}")
         out += f"{indent}}}\n"
 
         return out

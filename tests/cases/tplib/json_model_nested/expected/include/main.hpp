@@ -179,13 +179,14 @@ inline std::string Address::__repr__() const {
 
 inline Address Address::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-    std::optional<Address> __result = std::nullopt;
+    std::optional<Address> __slot_1;
+    Address* __result = nullptr;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_1;
         {
             auto __try_tmp_2 = Address::__json_decode__(__reader);
             if (!__try_tmp_2.has_value()) { __err_opt_1 = std::move(__try_tmp_2.error()); goto __except_1; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_2);
+            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_2)));
         }
         goto __after_try_1;
         // except tplib.json.parser.JsonError:
@@ -196,8 +197,8 @@ inline Address Address::from_json(std::string_view __s) {
         }
         __after_try_1:;
     }
-    if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
-    return (*__result);
+    if (!((__result != nullptr))) ::tpy::raise_assertion_error("json: unreachable");
+    return std::move((*__result));
 }
 
 inline std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address::try_from_json(std::string_view __s) {
@@ -299,13 +300,14 @@ inline std::string Profile::__repr__() const {
 
 inline Profile Profile::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-    std::optional<Profile> __result = std::nullopt;
+    std::optional<Profile> __slot_1;
+    Profile* __result = nullptr;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_3;
         {
             auto __try_tmp_4 = Profile::__json_decode__(__reader);
             if (!__try_tmp_4.has_value()) { __err_opt_3 = std::move(__try_tmp_4.error()); goto __except_3; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_4);
+            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_4)));
         }
         goto __after_try_3;
         // except tplib.json.parser.JsonError:
@@ -316,8 +318,8 @@ inline Profile Profile::from_json(std::string_view __s) {
         }
         __after_try_3:;
     }
-    if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
-    return (*__result);
+    if (!((__result != nullptr))) ::tpy::raise_assertion_error("json: unreachable");
+    return std::move((*__result));
 }
 
 inline std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::try_from_json(std::string_view __s) {

@@ -184,13 +184,14 @@ inline std::string Event::__repr__() const {
 
 inline Event Event::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-    std::optional<Event> __result = std::nullopt;
+    std::optional<Event> __slot_1;
+    Event* __result = nullptr;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_2;
         {
             auto __try_tmp_3 = Event::__json_decode__(__reader);
             if (!__try_tmp_3.has_value()) { __err_opt_2 = std::move(__try_tmp_3.error()); goto __except_2; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_3);
+            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_3)));
         }
         goto __after_try_2;
         // except tplib.json.parser.JsonError:
@@ -201,8 +202,8 @@ inline Event Event::from_json(std::string_view __s) {
         }
         __after_try_2:;
     }
-    if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
-    return (*__result);
+    if (!((__result != nullptr))) ::tpy::raise_assertion_error("json: unreachable");
+    return std::move((*__result));
 }
 
 inline std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::try_from_json(std::string_view __s) {
@@ -295,13 +296,14 @@ inline std::string Schedule::__repr__() const {
 
 inline Schedule Schedule::from_json(std::string_view __s) {
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
-    std::optional<Schedule> __result = std::nullopt;
+    std::optional<Schedule> __slot_1;
+    Schedule* __result = nullptr;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_4;
         {
             auto __try_tmp_5 = Schedule::__json_decode__(__reader);
             if (!__try_tmp_5.has_value()) { __err_opt_4 = std::move(__try_tmp_5.error()); goto __except_4; }
-            __result = ::tpy::unwrap_ref(*__try_tmp_5);
+            __result = &*(__slot_1 = std::move(::tpy::unwrap_ref(*__try_tmp_5)));
         }
         goto __after_try_4;
         // except tplib.json.parser.JsonError:
@@ -312,8 +314,8 @@ inline Schedule Schedule::from_json(std::string_view __s) {
         }
         __after_try_4:;
     }
-    if (!((__result.has_value()))) ::tpy::raise_assertion_error("json: unreachable");
-    return (*__result);
+    if (!((__result != nullptr))) ::tpy::raise_assertion_error("json: unreachable");
+    return std::move((*__result));
 }
 
 inline std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::try_from_json(std::string_view __s) {

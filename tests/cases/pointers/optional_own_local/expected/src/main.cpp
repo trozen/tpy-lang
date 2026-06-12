@@ -12,14 +12,15 @@ Box make_box(const ::tpy::BigInt& v) {
 
 // def main() -> None:
 void main() {
-    // t: Optional[Own[Box]] = make_box(5)  # tpyc: ok
-    std::optional<Box> t = make_box(::tpy::BigInt(5));
+    // t: Box | None = make_box(5)  # tpyc: ok
+    Box __slot_1 = make_box(::tpy::BigInt(5));
+    Box* t = &__slot_1;
     // if t is not None:
-    if ((t.has_value())) {
+    if ((t != nullptr)) {
         // t.val += 1
-        (*t).val = ((*t).val) + (::tpy::BigInt(1));
+        t->val = (t->val) + (::tpy::BigInt(1));
         // print(t.val)
-        std::cout << (*t).val << "\n";
+        std::cout << t->val << "\n";
     }
 }
 

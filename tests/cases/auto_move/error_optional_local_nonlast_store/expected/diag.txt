@@ -1,0 +1,1 @@
+main.py:24: error: cannot copy Foo into field of type 'Foo | None'; target is non-copyable (use Own[...] to transfer ownership, copy() if a copy is truly intended, or let auto-move apply at last use)
