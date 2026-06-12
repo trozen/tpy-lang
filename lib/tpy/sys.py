@@ -1,5 +1,6 @@
 # sys module: argv requires runtime init (not native_module)
 # tpy: cpp_namespace("tpystd::sys")
+from typing import Final
 from tpy import Int32
 from tpy.extern import native
 
@@ -9,6 +10,10 @@ def _get_sys_argv() -> list[str]: ...
 
 
 argv: list[str] = _get_sys_argv()
+
+# CPython's value on 64-bit platforms (2**63 - 1). TPy targets 64-bit;
+# a 32-bit target would need a per-target constant.
+maxsize: Final[int] = 9223372036854775807
 
 
 @native("tpy::StdStream")

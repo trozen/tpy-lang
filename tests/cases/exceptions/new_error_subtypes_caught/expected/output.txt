@@ -1,0 +1,6 @@
+via OSError: denied
+via ArithmeticError: bad fp
+via RuntimeError: too deep
+exact EOFError: no more input
+eof via Exception: eof again
+perm via Exception: perm again

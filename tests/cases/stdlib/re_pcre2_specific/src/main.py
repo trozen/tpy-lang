@@ -15,6 +15,8 @@ def main() -> None:
     # CPython would treat $1 as literal text; PCRE2 expands to the capture.
     print(f"sub-bref-1={sub(r'(\w+)', '[$1]', 'foo bar baz')}")
     print(f"sub-bref-2={sub(r'(\w+)\s+(\w+)', '$2 $1', 'hello world')}")
+    # Backref expansion also works on the counted (non-global) path.
+    print(f"sub-bref-count={sub(r'(\w+)', '[$1]', 'foo bar baz', count=2)}")
 
     # ---------- groups() returns list[str] (vs CPython tuple) ----------
     p: Pattern = compile(r"(\d+)-(\d+)-(\d+)")

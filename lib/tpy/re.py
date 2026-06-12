@@ -27,9 +27,6 @@ TODO(v2): items deferred to a follow-up slice -- each is independent:
     back-compat). Add when we hit a real divergence -- candidates:
     `\1`-style backrefs in `sub` replacements, `(?#comment)` syntax,
     a few Unicode property edge cases.
-  * `count` arg on `Pattern.sub` / module-level `sub` (limit number of
-    replacements). Naive impl: walk finditer + manual splice; cleaner:
-    a single `pcre2_substitute` call in non-global mode, looped.
   * `Match.span` / `start` / `end` returning `int` (BigInt) instead of
     `Int32` to match CPython exactly. Today they return `Int32` -- in
     practice tuple printing happens to match CPython, but type inference
@@ -108,6 +105,27 @@ def _pcre2_error_msg(errcode: Int32) -> str:
     if n < 0:
         return "unknown error"
     return unsafe_str_from_buf(unsafe_cast(buf.ptr()), UInt64(n))
+
+
+def _utf8_advance(data: Ptr[readonly[UInt8]], offset: UInt64,
+                  length: UInt64) -> UInt64:
+    """Advance one UTF-8 character past `offset`. Empty-match bump-along
+    cannot step a bare byte: PCRE2 runs in UTF mode by default and rejects
+    an offset that lands mid-character. TPy str is well-formed UTF-8, so the
+    lead byte alone determines the width. At/after the end, step one so the
+    caller's loop still terminates."""
+    if offset >= length:
+        return offset + 1
+    lead = unsafe_load(data, UInt32.trunc(offset))
+    if lead < 0xC0:        # ASCII (< 0x80) or a stray continuation byte
+        return offset + 1
+    if lead < 0xE0:
+        return offset + 2
+    if lead < 0xF0:
+        return offset + 3
+    if lead < 0xF8:
+        return offset + 4
+    return offset + 1      # invalid lead byte; defensive
 
 
 @nocopy
@@ -323,10 +341,9 @@ class Pattern:
             # mstart/mend are read before the yield moves `md` into the
             # Match, so the post-resume bump-along still has the offsets.
             yield Match(md, subject, rc)
-            # Bump-along by one byte on zero-width match to avoid an
-            # infinite loop.
+            # Bump-along on zero-width match to avoid an infinite loop.
             if mend == mstart:
-                offset = mend + 1
+                offset = _utf8_advance(s_data, mend, sub_len)
             else:
                 offset = mend
 
@@ -342,17 +359,12 @@ class Pattern:
             out.append(m.group(Int32(0)))
         return out
 
-    def sub(self, repl: str, subject: str) -> str:
-        """Replace every match of the pattern in `subject` with `repl`.
-        PCRE2-native backref syntax: $1..$9, ${name}.
-
-        TODO(v2): support CPython's `count` parameter (limit number of
-        replacements). Naive: walk finditer + manual splice; cleaner: loop
-        `pcre2_substitute` in non-global mode `count` times.
-
-        TODO(v2): translate CPython's `\\1`-style backref syntax in `repl`
-        to PCRE2's `$1` so users can copy regex code over without
-        rewriting replacements. Today `\\1` is treated as a literal."""
+    def _substitute(self, repl: str, subject: str, opts: UInt32,
+                    md: Ptr[pcre2.MatchData]) -> str:
+        """One pcre2_substitute call (plus the buffer-resize retry).
+        `opts` selects the mode: SUBSTITUTE_GLOBAL replaces every match;
+        SUBSTITUTE_MATCHED replaces exactly the match already sitting in
+        `md` (pass None for md in global mode)."""
         sub_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
         repl_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(repl))
         # `outlen` is both input (buffer capacity PCRE2 reads on entry) and
@@ -366,11 +378,10 @@ class Pattern:
         cap = UInt64(len(subject) * 2 + len(repl) + 16)
         outlen: UInt64 = cap
         outbuf = UninitHeapStorage[UInt8](UInt32.trunc(cap))
-        opts = pcre2.PCRE2_SUBSTITUTE_GLOBAL | pcre2.PCRE2_SUBSTITUTE_OVERFLOW_LENGTH
         rc = pcre2.substitute(
             self._code.get(), sub_data, UInt64(len(subject)),
-            0, opts, None, self._mctx.get(),
-            repl_data, UInt64(len(repl)),
+            0, opts | pcre2.PCRE2_SUBSTITUTE_OVERFLOW_LENGTH, md,
+            self._mctx.get(), repl_data, UInt64(len(repl)),
             outbuf.ptr(), take_ptr(outlen),
         )
         if rc == pcre2.PCRE2_ERROR_NOMEMORY:
@@ -382,7 +393,7 @@ class Pattern:
             outbuf = UninitHeapStorage[UInt8](UInt32.trunc(outlen))
             rc = pcre2.substitute(
                 self._code.get(), sub_data, UInt64(len(subject)),
-                0, pcre2.PCRE2_SUBSTITUTE_GLOBAL, None,
+                0, opts, md,
                 self._mctx.get(), repl_data, UInt64(len(repl)),
                 outbuf.ptr(), take_ptr(outlen),
             )
@@ -390,37 +401,85 @@ class Pattern:
             raise error(_pcre2_error_msg(rc))
         return unsafe_str_from_buf(unsafe_cast(outbuf.ptr()), outlen)
 
-    def split(self, subject: str, maxsplit: Int32 = 0) -> Own[list[str]]:
-        """Split `subject` at each match. `maxsplit=0` means no limit."""
-        out: list[str] = []
-        offset: UInt64 = 0
-        splits: Int32 = 0
-        sub_len = UInt64(len(subject))
-        s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(subject))
+    def sub(self, repl: str, subject: str, count: Int32 = 0) -> str:
+        """Replace matches of the pattern in `subject` with `repl`.
+        PCRE2-native backref syntax: $1..$9, ${name}. `count` limits the
+        number of replacements; 0 replaces all, negative replaces none
+        (CPython behavior).
+
+        TODO(v2): translate CPython's `\\1`-style backref syntax in `repl`
+        to PCRE2's `$1` so users can copy regex code over without
+        rewriting replacements. Today `\\1` is treated as a literal."""
+        if count == 0:
+            return self._substitute(
+                repl, subject, pcre2.PCRE2_SUBSTITUTE_GLOBAL, None)
+        if count < 0:
+            return subject
         md_raw = pcre2.match_data_create_from_pattern(self._code.get(), None)
         if md_raw is None:
             raise error("out of memory allocating match data")
         md = _OwnedMatchData(md_raw)
-        while offset <= sub_len:
-            if maxsplit > Int32(0) and splits >= maxsplit:
+        # Match-then-substitute loop, one replacement per iteration, on a
+        # working copy that grows/shrinks as replacements land. Advancement
+        # mirrors PCRE2's own global-substitute algorithm (which matches
+        # CPython 3.7+): after an empty match, first retry a NON-empty
+        # match anchored at the same position, and only then skip one
+        # character forward.
+        result: str = subject
+        offset: UInt64 = 0
+        remaining = count
+        prev_empty = False
+        while remaining > 0:
+            s_len = UInt64(len(result))
+            if offset > s_len:
                 break
-            rc = pcre2.match(self._code.get(), s_data, sub_len, offset,
-                             0, md.get(), self._mctx.get())
+            s_data: Ptr[readonly[UInt8]] = unsafe_cast(unsafe_ptr(result))
+            mopts: UInt32 = 0
+            if prev_empty:
+                mopts = pcre2.PCRE2_NOTEMPTY_ATSTART | pcre2.PCRE2_ANCHORED
+            rc = pcre2.match(self._code.get(), s_data, s_len, offset,
+                             mopts, md.get(), self._mctx.get())
             if rc < 0:
                 if rc == pcre2.PCRE2_ERROR_NOMATCH:
+                    if prev_empty:
+                        offset = _utf8_advance(s_data, offset, s_len)
+                        prev_empty = False
+                        continue
                     break
-                raise error(_pcre2_error_msg(rc))   # md drops
+                raise error(_pcre2_error_msg(rc))
             ovec = pcre2.get_ovector_pointer(md.get())
             mstart = unsafe_load(ovec, 0)
             mend = unsafe_load(ovec, 1)
-            out.append(subject[Int32.trunc(offset):Int32.trunc(mstart)])
-            if mend == mstart:
-                offset = mend + 1
-            else:
-                offset = mend
+            old_len = s_len
+            result = self._substitute(
+                repl, result, pcre2.PCRE2_SUBSTITUTE_MATCHED, md.get())
+            # Next attempt starts right after the replacement text. The
+            # add-before-subtract order keeps the unsigned arithmetic
+            # non-negative when the replacement shrinks the string.
+            offset = mend + UInt64(len(result)) - old_len
+            prev_empty = mend == mstart
+            remaining -= 1
+        return result      # md drops at end of scope
+
+    def split(self, subject: str, maxsplit: Int32 = 0) -> Own[list[str]]:
+        """Split `subject` at each match. `maxsplit=0` means no limit.
+
+        Driven off finditer: each piece is the text between the previous
+        match's end and the current match's start. Routing through finditer
+        keeps zero-width matches enumerating the same positions CPython
+        splits at -- a hand-rolled bump-along here would slice from the
+        advanced scan offset and silently drop the inter-match text."""
+        out: list[str] = []
+        last: Int32 = 0
+        splits: Int32 = 0
+        for m in self.finditer(subject):
+            if maxsplit > Int32(0) and splits >= maxsplit:
+                break
+            out.append(subject[last:m.start()])
+            last = m.end()
             splits += Int32(1)
-        out.append(subject[Int32.trunc(offset):])
-        return out      # md drops at end of scope
+        out.append(subject[last:])
+        return out
 
 
 # ---------- Module-level wrappers ----------
@@ -447,9 +506,9 @@ def findall(pattern: str, subject: str,
             flags: Int32 = NOFLAG) -> Own[list[str]]:
     return Pattern(pattern, flags).findall(subject)
 
-def sub(pattern: str, repl: str, subject: str,
+def sub(pattern: str, repl: str, subject: str, count: Int32 = 0,
         flags: Int32 = NOFLAG) -> str:
-    return Pattern(pattern, flags).sub(repl, subject)
+    return Pattern(pattern, flags).sub(repl, subject, count)
 
 def split(pattern: str, subject: str, maxsplit: Int32 = Int32(0),
           flags: Int32 = NOFLAG) -> Own[list[str]]:

@@ -1,0 +1,11 @@
+aN b22 c333
+aN bN c333
+aN bN cN
+aN bN cN
+a1 b22 c333
+xyzxyza
+-a-bc
+--abc
+---b
+aBa B b
+aBa B B

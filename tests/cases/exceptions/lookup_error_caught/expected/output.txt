@@ -1,0 +1,5 @@
+caught lookup: list index out of range
+caught lookup: dict miss
+caught exception: by hand
+index via Exception: list index out of range
+key via Exception

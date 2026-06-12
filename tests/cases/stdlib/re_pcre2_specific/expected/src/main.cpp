@@ -12,6 +12,9 @@ void main() {
     std::cout << std::format("sub-bref-1={}", ::tpystd::re::sub("(\\w+)", "[$1]", "foo bar baz")) << "\n";
     // print(f"sub-bref-2={sub(r'(\w+)\s+(\w+)', '$2 $1', 'hello world')}")
     std::cout << std::format("sub-bref-2={}", ::tpystd::re::sub("(\\w+)\\s+(\\w+)", "$2 $1", "hello world")) << "\n";
+    // # Backref expansion also works on the counted (non-global) path.
+    // print(f"sub-bref-count={sub(r'(\w+)', '[$1]', 'foo bar baz', count=2)}")
+    std::cout << std::format("sub-bref-count={}", ::tpystd::re::sub("(\\w+)", "[$1]", "foo bar baz", 2)) << "\n";
     // # ---------- groups() returns list[str] (vs CPython tuple) ----------
     // p: Pattern = compile(r"(\d+)-(\d+)-(\d+)")
     ::tpystd::re::Pattern p = ::tpystd::re::compile("(\\d+)-(\\d+)-(\\d+)");

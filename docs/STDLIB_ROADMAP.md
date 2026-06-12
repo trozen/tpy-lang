@@ -120,16 +120,16 @@ Examples of the policy in action:
 
 | Module | Priority | Status | % | Approach | Blockers / Notes |
 |---|---|---|---|---|---|
-| [`builtins`](#builtins) | P0 | Partial | ~75% | mixed | Implicit import. Core types + most common functions + most exception types present and catchable (`Index/Key/Value/Type/Attribute/Assertion/OS/FileNotFound/ZeroDivision/Overflow/Arithmetic/Runtime/NotImplemented/Memory/StopIteration`); fixed-int arithmetic overflow stays panic by design (future policy switch). Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, `callable`, `id`, `type(x)` runtime. D16 dyn-attrs (`getattr`/`setattr`/`delattr`/`hasattr` for both literal and runtime names) fully shipped. See [builtins](#builtins) for per-item status |
+| [`builtins`](#builtins) | P0 | Partial | ~75% | mixed | Implicit import. Core types + most common functions + most exception types present and catchable (`Index/Key/Lookup/Value/Type/Attribute/Assertion/OS/FileNotFound/Permission/ZeroDivision/Overflow/FloatingPoint/Arithmetic/Runtime/Recursion/EOF/NotImplemented/Memory/StopIteration`); fixed-int arithmetic overflow stays panic by design (future policy switch). Missing: `frozenset`, `complex`, `memoryview`, `input`, `format`, `ascii`, `callable`, `id`, `type(x)` runtime. D16 dyn-attrs (`getattr`/`setattr`/`delattr`/`hasattr` for both literal and runtime names) fully shipped. See [builtins](#builtins) for per-item status |
 | [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for fsum/sumprod/dist; `prod` has Int32 / int (BigInt) / float overloads). Remaining gap: tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time` all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
-| [`sys`](#sys) | P0 | Stub | ~15% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr` done; needs `stdin`/`exit`/`path`/`version_info` |
+| [`sys`](#sys) | P0 | Stub | ~20% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr`, `exit`, `maxsize` done; needs `stdin`/`path`/`version_info` |
 | [`os`](#os) | P0 | Missing | 0% | -- | Needs filesystem wrapper + path handling |
 | [`os.path`](#ospath) | P0 | Missing | 0% | -- | Independent of `os`; candidate for pure TPy over C++ `<filesystem>` |
 | [`pathlib`](#pathlib) | P0 | Missing | 0% | -- | Class-heavy; depends on filesystem bindings |
 | [`io`](#io) | P0 | Partial | ~30% | pure | `StringIO` / `BytesIO` (chunked storage, write/read/readline/seek/tell/truncate/iter/context-manager). `Readable` / `Writable` / `BinaryReadable` / `BinaryWritable` protocols on tpy core, re-exported from `io`. Missing: `IOBase` ABC hierarchy (deliberately deferred -- protocols cover the static-dispatch use case), `TextIOWrapper`, `io.SEEK_SET/CUR/END` constants (collide with `<cstdio>` macros), encoding/newline/errors kwargs, `read(size=-1)` arg |
 | [`json`](#json) | P0 | Partial | ~70% | pure | `loads` / `dumps` + `JSONDecodeError` done over a recursive union `JsonValue`. CPython byte-compatible across cpy phase. Missing: `load(fp)` / `dump(obj, fp)` (needs `io`), `JSONEncoder` / `JSONDecoder`, most `dumps`/`loads` kwargs |
-| [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, `count` arg on sub, bytes input, compile cache |
+| [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub (with `count`)/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, bytes input, compile cache |
 | [`collections`](#collections) | P0 | Missing | 0% | -- | OrderedDict trivial (have ordered_map); deque needs C++ struct; Counter/defaultdict/namedtuple need macros |
 | [`itertools`](#itertools) | P0 | Missing | 0% | -- | C++ primitives exist in `runtime/itertools.hpp`; needs Python-surface module |
 | [`functools`](#functools) | P0 | Partial | ~25% | pure | `reduce(func, a, initial)`, `reduce(func, a)`, `total_ordering` done. `cmp_to_key`, `wraps` blocked on specific compiler / macro-infrastructure gaps (see section). partial/lru_cache/singledispatch/cached_property/partialmethod need closures + macros |
@@ -321,14 +321,14 @@ helper-API surface.
 | `RuntimeError` | Done (class-only) | Class exposed for `raise RuntimeError(...)` in user code; no runtime panic sites migrated |
 | `NotImplementedError` | Done (class-only) | Class exposed for `raise NotImplementedError(...)` |
 | `MemoryError` | Done (class-only) | Class exposed; the BigInt OOM panic deliberately stays panic (catching MemoryError is fragile) |
-| `FloatingPointError`, `RecursionError` | Missing | Niche; not currently raised by TPy runtime |
-| `LookupError` | Missing | Base of IndexError/KeyError; not yet exposed |
+| `FloatingPointError`, `RecursionError` | Done (class-only) | Classes exposed for user `raise`; no runtime sites raise them (inherit `ArithmeticError` / `RuntimeError` per CPython) |
+| `LookupError` | Done | Base of `IndexError`/`KeyError`, matching CPython's hierarchy. `except LookupError` catches either subtype |
 | `NameError`, `UnboundLocalError` | Not applicable | Compile-time concerns |
 | `ImportError`, `ModuleNotFoundError` | Not applicable | Import failures are compile-time today |
 | `UnicodeError` and subtypes | Missing | TPy has few encoding-panic sites today |
 | `SystemExit`, `KeyboardInterrupt`, `GeneratorExit` | Missing | Control-flow exceptions; need signal/runtime support |
 | `SystemError` | Missing | Internal-interpreter notion not directly applicable |
-| `EOFError`, `PermissionError` | Missing | I/O error hierarchy follow-ups |
+| `EOFError`, `PermissionError` | Done (class-only) | Classes exposed for user `raise`; no runtime sites raise them yet (`PermissionError` inherits `OSError` per CPython) |
 | `TimeoutError` | Done | Built-in re-export of `tpy::TimeoutError` (inherits `Exception`); raised by `asyncio.wait_for` |
 
 **Sentinels**
@@ -415,7 +415,8 @@ absolute timing values are non-deterministic).
 
 ### sys
 
-Current: `lib/tpy/sys.py` -- native; `argv`, `stdout`, `stderr`, `exit`.
+Current: `lib/tpy/sys.py` -- native; `argv`, `stdout`, `stderr`, `exit`,
+`maxsize`.
 
 | Item | Status | Notes |
 |---|---|---|
@@ -427,12 +428,12 @@ Current: `lib/tpy/sys.py` -- native; `argv`, `stdout`, `stderr`, `exit`.
 | `version`, `version_info` | Missing | Already in `tpy.version`; could re-export |
 | `path` | Missing | List; relates to import machinery (TPy resolves at compile time, so semantics differ) |
 | `modules` | Missing | Not meaningful under static compilation |
-| `maxsize` | Missing | `PTRDIFF_MAX` constant |
+| `maxsize` | Done | Pure-TPy `int` constant, CPython's 64-bit value (`2**63 - 1`) |
 | `byteorder` | Missing | Compile-time constant |
 | `getsizeof` | Missing | Hard: sizes differ from CPython (inline fields vs boxed) |
 | `executable` | Missing | `argv[0]` / `/proc/self/exe` |
 
-Tests: `sys_argv`, `kwargs_print_file_std`.
+Tests: `sys_argv`, `sys_maxsize`, `kwargs_print_file_std`.
 
 ### os
 
@@ -579,8 +580,8 @@ Architecture (no C++ wrapper layer, no pcre2.h in TPy-generated TUs):
 | `search`, `match`, `fullmatch` | Done | Return `Optional[Own[Match]]` |
 | `findall` | Done | List of group-0 strings. Doesn't yet return captures-tuples for grouped patterns (CPython divergence) |
 | `finditer` | Done | Lazy generator yielding `Own[Match]` (like CPython) |
-| `sub` | Partial | Global replacement only; CPython's `count` arg deferred. Backref syntax is PCRE2-native (`$1`, `${name}`), not CPython's `\1` -- syntax translator deferred |
-| `split`, `split(maxsplit=)` | Done | |
+| `sub`, `sub(count=)` | Partial | `count` limits replacements (0 = all, negative = none), matching CPython including empty-match advancement. Backref syntax is PCRE2-native (`$1`, `${name}`), not CPython's `\1` -- syntax translator deferred |
+| `split`, `split(maxsplit=)` | Done | Driven off `finditer`; zero-width patterns and multibyte (UTF-8) input split CPython-identically |
 | `Match.group(int)`, `start`, `end`, `span` | Done | All returning `Int32` offsets and TPy `str` slices |
 | `Match.groups()` | Partial | Returns `list[str]` instead of tuple (varadic-tuple support pending) |
 | `Match.group("name")`, `groupdict` | Missing | Needs PCRE2 nametable walk |

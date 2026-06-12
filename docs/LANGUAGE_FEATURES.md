@@ -4834,7 +4834,7 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
   - Qualified type annotations work: `tp.Int32`, `t.Optional[tp.Int32]`, `typing.Protocol`
 - **Working**: Submodule namespace binding -- `from pkg import submod` binds `submod` as a usable namespace. Qualified calls (`submod.fn(...)`), record constructors (`submod.RecordName(...)`), and type annotations (`field: submod.RecordName`) all resolve through the submodule's exports. Aliased form (`from pkg import submod as alias`) works the same way.
 - **Working**: `import pkg.sub` then `pkg.sub.X` for both function calls and variable / constant access (`pkg.sub.fn()`, `pkg.sub.CONST`).
-- **Working**: `import sys` - system module with `sys.argv`
+- **Working**: `import sys` - system module with `sys.argv`, `sys.stdout`, `sys.stderr`, `sys.exit(code)`, `sys.maxsize`
 - **Working**: `import math` - mathematical functions
 - **Working**: Namespace wrapping for modules (each module gets its own C++ namespace)
 - **Working**: User-defined modules (multi-file projects)
@@ -5174,7 +5174,7 @@ Currently working with a stable surface:
 |---|---|
 | `math` | Partial (~50%). Thin libc bindings + pure TPy helpers |
 | `time` | Stub (`time()`, `sleep()`). More planned |
-| `sys` | Stub (`argv` only). More planned |
+| `sys` | Stub (`argv`, `stdout`, `stderr`, `exit`, `maxsize`). More planned |
 | `random` | Stub (`random()`, `seed()`). Target: pure-TPy Mersenne Twister |
 | `bisect` | Done. Pure TPy over the `Comparable` protocol |
 | `functools` | Partial. 3-arg `reduce(func, a, initial)` only. See STDLIB_ROADMAP.md for blocked items |
@@ -5628,7 +5628,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - `@error_return(E)` requires E to be a `ReturnException` type: `class MyError(Exception, ReturnException): pass`
   - `ReturnException` is a marker protocol that splits exception types into return (zero-cost) vs throw (C++ exceptions) categories
   - `StopIteration` is a built-in `ReturnException` type; user-defined types opt in via `ReturnException` marker
-  - `BaseException`/`Exception`/`ValueError`/`OSError`/`FileNotFoundError`/`AttributeError`/`AssertionError`/`IndexError`/`KeyError`/`TypeError`/`NotImplementedError`/`ArithmeticError`/`ZeroDivisionError`/`OverflowError`/`RuntimeError`/`MemoryError`/`StopAsyncIteration`/`CancelledError` are throw-tier; `StopIteration` is `ReturnException` (return-tier, used via `std::expected<T, E>`). All defined as `@native` classes in `lib/tpy/_builtins/_exceptions.py`, mapping to `::tpy::` runtime structs (inherit from `std::exception`). `ArithmeticError` is the parent of `ZeroDivisionError` and `OverflowError`, matching CPython's hierarchy. `CancelledError` inherits `BaseException` directly (not `Exception`) so `except Exception` does not silently swallow it. `StopAsyncIteration` is the loop-termination signal for `async for`.
+  - `BaseException`/`Exception`/`ValueError`/`OSError`/`FileNotFoundError`/`PermissionError`/`AttributeError`/`AssertionError`/`LookupError`/`IndexError`/`KeyError`/`TypeError`/`NotImplementedError`/`ArithmeticError`/`ZeroDivisionError`/`OverflowError`/`FloatingPointError`/`RuntimeError`/`RecursionError`/`EOFError`/`MemoryError`/`StopAsyncIteration`/`CancelledError` are throw-tier; `StopIteration` is `ReturnException` (return-tier, used via `std::expected<T, E>`). All defined as `@native` classes in `lib/tpy/_builtins/_exceptions.py`, mapping to `::tpy::` runtime structs (inherit from `std::exception`). The base/subtype edges match CPython's hierarchy: `ArithmeticError` parents `ZeroDivisionError`/`OverflowError`/`FloatingPointError`, `LookupError` parents `IndexError`/`KeyError`, `OSError` parents `FileNotFoundError`/`PermissionError`, `RuntimeError` parents `RecursionError`. `CancelledError` inherits `BaseException` directly (not `Exception`) so `except Exception` does not silently swallow it. `StopAsyncIteration` is the loop-termination signal for `async for`.
   - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`; `raise E(args)` passes constructor arguments
   - Callers must use `try/except E` or be `@error_return(E)` themselves (auto-propagation)
   - `try/except/else` supported; `except E as e` binds the error value for field access

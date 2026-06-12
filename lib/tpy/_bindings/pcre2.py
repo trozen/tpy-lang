@@ -65,9 +65,14 @@ PCRE2_UCP:                          Final[UInt32] = 0x00020000
 PCRE2_ANCHORED:                     Final[UInt32] = 0x80000000
 PCRE2_ENDANCHORED:                  Final[UInt32] = 0x20000000
 
+# Match-time option: reject an empty match at the start offset (the
+# advance-after-empty-match step of global substitution semantics).
+PCRE2_NOTEMPTY_ATSTART:             Final[UInt32] = 0x00000008
+
 # Match-step option for pcre2_substitute.
 PCRE2_SUBSTITUTE_GLOBAL:            Final[UInt32] = 0x00000100
 PCRE2_SUBSTITUTE_OVERFLOW_LENGTH:   Final[UInt32] = 0x00001000
+PCRE2_SUBSTITUTE_MATCHED:           Final[UInt32] = 0x00010000
 
 # pcre2_jit_compile selector: full JIT for normal matching.
 PCRE2_JIT_COMPLETE:                 Final[UInt32] = 0x00000001

@@ -1,5 +1,6 @@
 sub-bref-1=[foo] [bar] [baz]
 sub-bref-2=world hello
+sub-bref-count=[foo] [bar] baz
 groups=['2024', '01', '15']
 nocap-groups=[]
 ok

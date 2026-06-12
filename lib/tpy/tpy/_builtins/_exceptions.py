@@ -59,6 +59,10 @@ class OSError(Exception):
 class FileNotFoundError(OSError):
     def __init__(self, message: str = "") -> None: ...
 
+@native("tpy::PermissionError")
+class PermissionError(OSError):
+    def __init__(self, message: str = "") -> None: ...
+
 @native("tpy::AttributeError")
 class AttributeError(Exception):
     def __init__(self, message: str = "") -> None: ...
@@ -67,12 +71,16 @@ class AttributeError(Exception):
 class AssertionError(Exception):
     def __init__(self, message: str = "") -> None: ...
 
+@native("tpy::LookupError")
+class LookupError(Exception):
+    def __init__(self, message: str = "") -> None: ...
+
 @native("tpy::IndexError")
-class IndexError(Exception):
+class IndexError(LookupError):
     def __init__(self, message: str = "") -> None: ...
 
 @native("tpy::KeyError")
-class KeyError(Exception):
+class KeyError(LookupError):
     def __init__(self, message: str = "") -> None: ...
 
 @native("tpy::ArithmeticError")
@@ -87,6 +95,10 @@ class ZeroDivisionError(ArithmeticError):
 class OverflowError(ArithmeticError):
     def __init__(self, message: str = "") -> None: ...
 
+@native("tpy::FloatingPointError")
+class FloatingPointError(ArithmeticError):
+    def __init__(self, message: str = "") -> None: ...
+
 @native("tpy::TypeError")
 class TypeError(Exception):
     def __init__(self, message: str = "") -> None: ...
@@ -97,6 +109,14 @@ class NotImplementedError(Exception):
 
 @native("tpy::RuntimeError")
 class RuntimeError(Exception):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::RecursionError")
+class RecursionError(RuntimeError):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::EOFError")
+class EOFError(Exception):
     def __init__(self, message: str = "") -> None: ...
 
 @native("tpy::MemoryError")
