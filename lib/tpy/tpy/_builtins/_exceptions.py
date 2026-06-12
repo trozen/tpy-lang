@@ -143,3 +143,11 @@ class TimeoutError(Exception):
 @native("tpy::CancelledError")
 class CancelledError(BaseException):
     def __init__(self, message: str = "") -> None: ...
+
+# GeneratorExit inherits BaseException directly (not Exception), like
+# CPython, so `except Exception` does not swallow a generator close.
+# Passed as exc_val to with.__exit__ when an abandoned generator/
+# coroutine frame's destructor closes a suspended `with` region.
+@native("tpy::GeneratorExit")
+class GeneratorExit(BaseException):
+    def __init__(self, message: str = "") -> None: ...

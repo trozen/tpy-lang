@@ -48,18 +48,20 @@ void main() {
     // items: list[Int32] = [1, 2, 3]
     std::vector<int32_t> items = {1, 2, 3};
     // for x in doubled(items):
-    auto __src_0 = doubled(items);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = doubled(items);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
         // items.append(42)  # tpyc: warning(/Mutation of 'items' while iterating/)
         items.push_back(42);
         // break  # break immediately so the mutation doesn't corrupt the iterator
         break;
+        }
     }
 }
 

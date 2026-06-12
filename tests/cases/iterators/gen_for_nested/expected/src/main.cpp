@@ -57,16 +57,18 @@ __gen_matrix matrix(std::vector<int32_t>& rows, std::vector<int32_t>& cols) {
 // def main():
 void main() {
     // for x in matrix([1, 2], [3, 4, 5]):
-    std::vector<int32_t> __tmp_1 = {1, 2};
-    std::vector<int32_t> __tmp_2 = {3, 4, 5};
-    auto __src_0 = matrix(__tmp_1, __tmp_2);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        std::vector<int32_t> __tmp_1 = {1, 2};
+        std::vector<int32_t> __tmp_2 = {3, 4, 5};
+        auto __src_0 = matrix(__tmp_1, __tmp_2);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
 }
 

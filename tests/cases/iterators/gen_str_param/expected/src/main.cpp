@@ -35,14 +35,16 @@ __gen_greetings greetings(std::string_view name) {
 // def main() -> None:
 void main() {
     // for g in greetings("world"):
-    auto __src_0 = greetings("world");
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        std::string_view g = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = greetings("world");
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view g = ::tpy::unwrap_ref(*__r_1);
         // print(g)
         std::cout << g << "\n";
+        }
     }
 }
 

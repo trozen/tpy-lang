@@ -24,34 +24,39 @@ void main() {
     std::vector<int32_t> vals = {10, 20};
     // # my_map: non-value type
     // for p in my_map(identity, pts):
-    auto __src_0 = my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const auto& p = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const auto& p = ::tpy::unwrap_ref(*__r_1);
         // print(p)
         std::cout << p << "\n";
+        }
     }
     // # my_map: value type
     // for v in my_map(double, vals):
-    auto __src_2 = my_map<int32_t, int32_t>(double_, vals);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = my_map<int32_t, int32_t>(double_, vals);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_3);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // # my_enumerate over list
     // for i, p in my_enumerate(pts):
-    auto __src_4 = my_enumerate<Point>(pts);
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_5);
+    {
+        auto __src_4 = my_enumerate<Point>(pts);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_5);
         // # my_enumerate over list
         // for i, p in my_enumerate(pts):
         auto& __tup_1 = __for_tup_0;
@@ -59,16 +64,18 @@ void main() {
         auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         // print(i, p)
         std::cout << i << " " << p << "\n";
+        }
     }
     // # Composition: my_enumerate(my_map(...))
     // for i, p in my_enumerate(my_map(identity, pts)):
-    auto __tmp_1 = my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
-    auto __src_6 = my_enumerate<::tpy::val_or_ref<Point>>(__tmp_1);
-    auto&& __itr_6 = ::tpy::__iter__(__src_6);
-    for (;;) {
-        auto __r_7 = __itr_6.__next__();
-        if (!__r_7.has_value()) break;
-        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_7);
+    {
+        auto __tmp_1 = my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
+        auto __src_6 = my_enumerate<::tpy::val_or_ref<Point>>(__tmp_1);
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_7);
         // # Composition: my_enumerate(my_map(...))
         // for i, p in my_enumerate(my_map(identity, pts)):
         auto& __tup_2 = __for_tup_1;
@@ -76,15 +83,17 @@ void main() {
         auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
         // print(i, p)
         std::cout << i << " " << p << "\n";
+        }
     }
     // # Composition: builtin enumerate(my_map(...))
     // for j, q in enumerate(my_map(identity, pts)):
-    auto __src_8 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
-    auto&& __itr_8 = ::tpy::__iter__(__src_8);
-    for (;;) {
-        auto __r_9 = __itr_8.__next__();
-        if (!__r_9.has_value()) break;
-        auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_9);
+    {
+        auto __src_8 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
+        auto&& __itr_8 = ::tpy::__iter__(__src_8);
+        for (;;) {
+            auto __r_9 = __itr_8.__next__();
+            if (!__r_9.has_value()) break;
+            auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_9);
         // # Composition: builtin enumerate(my_map(...))
         // for j, q in enumerate(my_map(identity, pts)):
         auto& __tup_3 = __for_tup_2;
@@ -92,16 +101,18 @@ void main() {
         auto&& q = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
         // print(j, q)
         std::cout << j << " " << q << "\n";
+        }
     }
     // # Mutation through composed user generators proves reference preservation
     // for k, r in my_enumerate(my_map(identity, pts)):
-    auto __tmp_2 = my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
-    auto __src_10 = my_enumerate<::tpy::val_or_ref<Point>>(__tmp_2);
-    auto&& __itr_10 = ::tpy::__iter__(__src_10);
-    for (;;) {
-        auto __r_11 = __itr_10.__next__();
-        if (!__r_11.has_value()) break;
-        auto&& __for_tup_3 = ::tpy::unwrap_ref(*__r_11);
+    {
+        auto __tmp_2 = my_map<Point, ::tpy::val_or_ref<Point>>(identity, pts);
+        auto __src_10 = my_enumerate<::tpy::val_or_ref<Point>>(__tmp_2);
+        auto&& __itr_10 = ::tpy::__iter__(__src_10);
+        for (;;) {
+            auto __r_11 = __itr_10.__next__();
+            if (!__r_11.has_value()) break;
+            auto&& __for_tup_3 = ::tpy::unwrap_ref(*__r_11);
         // # Mutation through composed user generators proves reference preservation
         // for k, r in my_enumerate(my_map(identity, pts)):
         auto& __tup_4 = __for_tup_3;
@@ -109,6 +120,7 @@ void main() {
         auto&& r = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_4)));
         // r.x += 100
         r.x = ::tpy::add_check<int32_t>(r.x, 100);
+        }
     }
     // for pt in pts:
     auto& __obj_12 = pts;

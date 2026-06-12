@@ -48,6 +48,7 @@ __coro_cleanup cleanup() {
 
 // async def caller() -> int:
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         __state = S_JOIN_2;
@@ -127,6 +128,10 @@ __coro_cleanup cleanup() {
         continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
     }
     __builtin_unreachable();
 }

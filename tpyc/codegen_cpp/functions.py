@@ -1001,7 +1001,7 @@ class FunctionGenerator:
             for pname, ptype in func.params:
                 local_ns.bind_variable(pname, ptype)
             self.statements.gen_body(out, func.body, func.params, func.return_type,
-                                     func, local_ns)
+                                     func, local_ns, return_cpp=ret_type)
             out.write("}\n")
             return
 
@@ -1049,7 +1049,8 @@ class FunctionGenerator:
         self.statements.gen_body(out, func.body, func.params, func.return_type,
                                  func, local_ns,
                                  const_ref_params=crp,
-                                 deep_const_borrow_params=dcbp)
+                                 deep_const_borrow_params=dcbp,
+                                 return_cpp=ret_type)
 
         out.write("}\n")
 
@@ -1118,7 +1119,8 @@ class FunctionGenerator:
             self.statements.gen_body(out, impl.body, impl.params, stub.return_type,
                                      impl, local_ns,
                                      const_ref_params=crp,
-                                     deep_const_borrow_params=dcbp)
+                                     deep_const_borrow_params=dcbp,
+                                     return_cpp=ret_type)
         finally:
             self.ctx.literal_overload_facts = {}
 
@@ -1203,7 +1205,8 @@ class FunctionGenerator:
             self.statements.gen_body(out, impl.body, stub.params, stub.return_type,
                                      impl, local_ns,
                                      const_ref_params=crp,
-                                     deep_const_borrow_params=dcbp)
+                                     deep_const_borrow_params=dcbp,
+                                     return_cpp=ret_type)
         finally:
             self.ctx.overload_param_types = {}
             self.ctx.overload_missing_param_locals = []
@@ -1681,7 +1684,8 @@ class FunctionGenerator:
                                  record_type_param_bounds=record_type_param_bounds,
                                  const_ref_params=method_crp,
                                  deep_const_borrow_params=method_dcbp,
-                                 owning_record_name=record_name if not static else None)
+                                 owning_record_name=record_name if not static else None,
+                                 return_cpp=ret_type)
         self.ctx.in_consuming_method = prev_consuming
 
         out.write(f"{sig_indent}}}\n")

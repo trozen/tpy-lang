@@ -9,24 +9,28 @@ void main() {
     // f = Foo()
     Foo f = Foo();
     // for v in f.items(42):
-    auto __src_0 = f.items<int32_t>(42);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = f.items<int32_t>(42);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // for s in f.items("hi"):
-    auto __src_2 = f.items<std::string>("hi");
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = f.items<std::string>("hi");
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_3);
         // print(s)
         std::cout << s << "\n";
+        }
     }
 }
 

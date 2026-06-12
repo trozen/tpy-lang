@@ -16,7 +16,7 @@ void main();
 
 // Generator: counted
 struct __gen_counted {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<::tpy::BigInt>& xs;
     ::tpy::BigInt x;
     ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::BigInt>>> __for_it_0;
@@ -33,6 +33,20 @@ struct __gen_counted {
 
     __gen_counted(std::vector<::tpy::BigInt>& xs)
         : __state(S_INITIAL), xs(xs) {}
+
+    __gen_counted(__gen_counted&&) = default;
+    ~__gen_counted() {
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                this->__finally_0();
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_counted& __iter__() { return *this; }

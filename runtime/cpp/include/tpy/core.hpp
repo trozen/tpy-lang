@@ -68,6 +68,15 @@ struct MemoryError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTU
 struct StopIteration : Exception { TPY_THROWABLE_VIRTUALS(StopIteration) };
 struct StopAsyncIteration : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(StopAsyncIteration) };
 struct TimeoutError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(TimeoutError) };
+// Inherits BaseException (not Exception) like CPython, so `except
+// Exception:` does not swallow a generator close. Constructed by the
+// abandonment-cleanup destructor of resumable frames and passed to
+// with.__exit__ as exc_val.
+struct GeneratorExit : BaseException {
+    GeneratorExit() : BaseException("GeneratorExit") {}
+    using BaseException::BaseException;
+    TPY_THROWABLE_VIRTUALS(GeneratorExit)
+};
 
 // Forward decl: raise_fixedint_overflow (below) calls tpy_panic, whose
 // definition lives later in this header.

@@ -51,14 +51,16 @@ void main() {
     // rows: list[tuple[Int32, Item]] = [(1, Item(0)), (2, Item(0))]
     std::vector<std::tuple<int32_t, Item>> rows = {::tpy::tuple_to_storage<std::tuple<int32_t, Item>>(std::tuple<int32_t, Item>{1, Item(0)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Item>>(std::tuple<int32_t, Item>{2, Item(0)})};
     // for v in process(rows):
-    auto __src_0 = process(rows);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = process(rows);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // # Mutations through the unpacked reference propagated to the source.
     // print(rows[0][1].n, rows[1][1].n)

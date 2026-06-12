@@ -19,18 +19,20 @@ std::vector<int32_t> get_scores() {
 // def main() -> None:
 void main() {
     // for name, score in zip(get_names(), get_scores()):
-    auto __src_0 = ::tpy::builtin_zip<std::string, int32_t>(get_names(), get_scores());
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = ::tpy::builtin_zip<std::string, int32_t>(get_names(), get_scores());
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for name, score in zip(get_names(), get_scores()):
         const auto& __tup_1 = __for_tup_0;
         std::string_view name = std::get<0>(__tup_1);
         int32_t score = std::get<1>(__tup_1);
         // print(name, score)
         std::cout << name << " " << score << "\n";
+        }
     }
 }
 

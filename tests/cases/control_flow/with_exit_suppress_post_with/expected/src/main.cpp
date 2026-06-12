@@ -16,8 +16,9 @@ namespace tpyapp::main {
             throw ::tpy::ValueError("boom");
         }
         // return 100
+        ::tpy::BigInt __tpy_ret_0 = ::tpy::BigInt(100);
         __ctx_1.__exit__({}, nullptr, {});
-        return ::tpy::BigInt(100);
+        return __tpy_ret_0;
     } catch (::tpy::BaseException& __exc_1) {
         if (!__ctx_1.__exit__({}, &__exc_1, {})) throw;
     } catch (...) {

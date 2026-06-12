@@ -1,0 +1,4 @@
+CPython runs the suspending finally up to its yield, then raises and
+prints RuntimeError("generator ignored GeneratorExit"); TPy skips the
+suspending finally on abandonment (compile-time warning). Acknowledged
+divergence -- see LANGUAGE_FEATURES.md on generator abandonment.

@@ -48,14 +48,16 @@ void main() {
     // data = [Node(1), Node(2), Node(3)]
     std::vector<Node> data = {Node(1), Node(2), Node(3)};
     // for v in doubled(data):
-    auto __src_0 = doubled(data);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = doubled(data);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
 }
 

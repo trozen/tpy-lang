@@ -9,7 +9,8 @@ void main() {
     // data = [Node(1), Node(2), Node(3)]
     std::array<Node, 3> data = {Node(::tpy::BigInt(1)), Node(::tpy::BigInt(2)), Node(::tpy::BigInt(3))};
     // for b in (n for n in data):
-    auto __src_0 = [&data]() {
+    {
+        auto __src_0 = [&data]() {
         auto& __src = data;
         return ::tpy::make_generator<::tpy::val_or_ref<Node>>(
             [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<::tpy::val_or_ref<Node>> {
@@ -21,13 +22,14 @@ void main() {
             }
         );
     }();
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& b = ::tpy::unwrap_ref(*__r_1);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& b = ::tpy::unwrap_ref(*__r_1);
         // b.val = b.val + 100
         b.val = ((b.val) + (::tpy::BigInt(100)));
+        }
     }
     // for n in data:
     auto& __obj_2 = data;

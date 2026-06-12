@@ -6,6 +6,7 @@ namespace tpyapp::main {
 
 // async def background() -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_background::__poll__(::tpystd::coro::Waker waker) {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         __state = S_JOIN_1;
@@ -44,6 +45,10 @@ namespace tpyapp::main {
         }
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
     }
     __builtin_unreachable();
 }

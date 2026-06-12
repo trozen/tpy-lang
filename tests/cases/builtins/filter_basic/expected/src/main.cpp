@@ -16,49 +16,57 @@ void main() {
     std::array<int32_t, 6> nums = {1, 2, 3, 4, 5, 6};
     // # named function
     // for x in filter(is_even, nums):
-    auto __src_0 = ::tpy::builtin_filter<int32_t>(is_even, nums);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = ::tpy::builtin_filter<int32_t>(is_even, nums);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // # lambda
     // for x in filter(lambda x: x > 3, nums):
-    auto __src_2 = ::tpy::builtin_filter<int32_t>([](int32_t x) -> bool { return (x > 3); }, nums);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = ::tpy::builtin_filter<int32_t>([](int32_t x) -> bool { return (x > 3); }, nums);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_3);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // # filter to empty result
     // for x in filter(lambda x: x > 100, nums):
-    auto __src_4 = ::tpy::builtin_filter<int32_t>([](int32_t x) -> bool { return (x > 100); }, nums);
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_5);
+    {
+        auto __src_4 = ::tpy::builtin_filter<int32_t>([](int32_t x) -> bool { return (x > 100); }, nums);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_5);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // # filter over empty list
     // empty: list[Int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
     // for x in filter(is_even, empty):
-    auto __src_6 = ::tpy::builtin_filter<int32_t>(is_even, empty);
-    auto&& __itr_6 = ::tpy::__iter__(__src_6);
-    for (;;) {
-        auto __r_7 = __itr_6.__next__();
-        if (!__r_7.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_7);
+    {
+        auto __src_6 = ::tpy::builtin_filter<int32_t>(is_even, empty);
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_7);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // # chained: filter + list constructor
     // result = list(filter(lambda x: x % 2 != 0, nums))

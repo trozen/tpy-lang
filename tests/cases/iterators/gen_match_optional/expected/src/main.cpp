@@ -58,26 +58,30 @@ __gen_gen gen(std::optional<::tpy::BigInt> x) {
 // def main() -> None:
 void main() {
     // for y in gen(None):
-    auto __src_0 = gen(std::nullopt);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = gen(std::nullopt);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_1);
         // print(y)
         std::cout << y << "\n";
+        }
     }
     // print("--")
     std::cout << "--" << "\n";
     // for y in gen(4):
-    auto __src_2 = gen(4);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = gen(4);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_3);
         // print(y)
         std::cout << y << "\n";
+        }
     }
 }
 

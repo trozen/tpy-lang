@@ -25,7 +25,7 @@ void main();
 
 // Async coroutine: coro
 struct __coro_coro {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -38,6 +38,20 @@ struct __coro_coro {
 
     __coro_coro()
         : __state(S_INITIAL), __cancel_pending(false) {}
+
+    __coro_coro(__coro_coro&&) = default;
+    ~__coro_coro() {
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                this->__finally_0();
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned coroutine");
+        }
+    }
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

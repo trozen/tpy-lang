@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
 
 // Generator: gen_with_outer_return_in_finally
 struct __gen_gen_with_outer_return_in_finally {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<CM> __with_ctx_0;
     bool __finally_stop = false;
 
@@ -59,6 +59,22 @@ struct __gen_gen_with_outer_return_in_finally {
     __gen_gen_with_outer_return_in_finally()
         : __state(S_INITIAL) {}
 
+    __gen_gen_with_outer_return_in_finally(__gen_gen_with_outer_return_in_finally&&) = default;
+    ~__gen_gen_with_outer_return_in_finally() {
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                this->__finally_0();
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_with_outer_return_in_finally& __iter__() { return *this; }
     void __finally_0();
@@ -70,7 +86,7 @@ struct __gen_gen_with_outer_return_in_finally {
 
 // Generator: gen_nested_with_return_in_finally
 struct __gen_gen_nested_with_return_in_finally {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::frame_slot<CM> __with_ctx_0;
     ::tpy::frame_slot<CM> __with_ctx_1;
     bool __finally_stop = false;
@@ -89,6 +105,23 @@ struct __gen_gen_nested_with_return_in_finally {
 
     __gen_gen_nested_with_return_in_finally()
         : __state(S_INITIAL) {}
+
+    __gen_gen_nested_with_return_in_finally(__gen_gen_nested_with_return_in_finally&&) = default;
+    ~__gen_gen_nested_with_return_in_finally() {
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                this->__finally_0();
+                (*__with_ctx_1).__exit__({}, &__tpy_ge, {});
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_nested_with_return_in_finally& __iter__() { return *this; }

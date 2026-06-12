@@ -20,7 +20,7 @@ void main();
 
 // Generator: gen_return_normal
 struct __gen_gen_return_normal {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __finally_stop = false;
 
     enum : int32_t {
@@ -34,6 +34,20 @@ struct __gen_gen_return_normal {
     __gen_gen_return_normal()
         : __state(S_INITIAL) {}
 
+    __gen_gen_return_normal(__gen_gen_return_normal&&) = default;
+    ~__gen_gen_return_normal() {
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                this->__finally_0();
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_return_normal& __iter__() { return *this; }
     void __finally_0();
@@ -45,7 +59,7 @@ struct __gen_gen_return_normal {
 
 // Generator: gen_return_suppresses_exc
 struct __gen_gen_return_suppresses_exc {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __finally_stop = false;
 
     enum : int32_t {
@@ -58,6 +72,20 @@ struct __gen_gen_return_suppresses_exc {
     __gen_gen_return_suppresses_exc()
         : __state(S_INITIAL) {}
 
+    __gen_gen_return_suppresses_exc(__gen_gen_return_suppresses_exc&&) = default;
+    ~__gen_gen_return_suppresses_exc() {
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                this->__finally_0();
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_return_suppresses_exc& __iter__() { return *this; }
     void __finally_0();
@@ -69,7 +97,7 @@ struct __gen_gen_return_suppresses_exc {
 
 // Generator: gen_return_in_loop
 struct __gen_gen_return_in_loop {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t i;
     ::tpy::frame_slot<int32_t> __for_i_0;
     ::tpy::frame_slot<int32_t> __for_stop_0;
@@ -86,6 +114,20 @@ struct __gen_gen_return_in_loop {
 
     __gen_gen_return_in_loop()
         : __state(S_INITIAL) {}
+
+    __gen_gen_return_in_loop(__gen_gen_return_in_loop&&) = default;
+    ~__gen_gen_return_in_loop() {
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                this->__finally_0();
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_return_in_loop& __iter__() { return *this; }

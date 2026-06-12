@@ -90,14 +90,16 @@ void test_rvalue_span() {
     // total: Int32 = 0
     int32_t total = 0;
     // for x in MutBuffer():
-    auto __src_0 = MutBuffer();
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = MutBuffer();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // total += x
         total = ::tpy::add_check<int32_t>(total, x);
+        }
     }
     // print(total)
     std::cout << total << "\n";

@@ -284,70 +284,82 @@ __gen_kill kill(std::variant<::tpy::BigInt, std::string> a) {
 // def main() -> None:
 void main() {
     // for s in voices(Dog()):
-    Dog __tmp_1 = Dog();
-    auto __src_0 = voices(std::variant<Cat*, Dog*>{&__tmp_1});
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_1);
+    {
+        Dog __tmp_1 = Dog();
+        auto __src_0 = voices(std::variant<Cat*, Dog*>{&__tmp_1});
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_1);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // for s in voices(Cat()):
-    Cat __tmp_2 = Cat();
-    auto __src_2 = voices(std::variant<Cat*, Dog*>{&__tmp_2});
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_3);
+    {
+        Cat __tmp_2 = Cat();
+        auto __src_2 = voices(std::variant<Cat*, Dog*>{&__tmp_2});
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_3);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // for s in capture(Dog()):
-    Dog __tmp_3 = Dog();
-    auto __src_4 = capture(std::variant<Cat*, Dog*>{&__tmp_3});
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_5);
+    {
+        Dog __tmp_3 = Dog();
+        auto __src_4 = capture(std::variant<Cat*, Dog*>{&__tmp_3});
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_5);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // for s in guarded(42, True):
-    std::variant<::tpy::BigInt, std::string> __tmp_4 = 42;
-    auto __src_6 = guarded(__tmp_4, true);
-    auto&& __itr_6 = ::tpy::__iter__(__src_6);
-    for (;;) {
-        auto __r_7 = __itr_6.__next__();
-        if (!__r_7.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_7);
+    {
+        std::variant<::tpy::BigInt, std::string> __tmp_4 = 42;
+        auto __src_6 = guarded(__tmp_4, true);
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_7);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // for s in guarded(3, False):
-    std::variant<::tpy::BigInt, std::string> __tmp_5 = 3;
-    auto __src_8 = guarded(__tmp_5, false);
-    auto&& __itr_8 = ::tpy::__iter__(__src_8);
-    for (;;) {
-        auto __r_9 = __itr_8.__next__();
-        if (!__r_9.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_9);
+    {
+        std::variant<::tpy::BigInt, std::string> __tmp_5 = 3;
+        auto __src_8 = guarded(__tmp_5, false);
+        auto&& __itr_8 = ::tpy::__iter__(__src_8);
+        for (;;) {
+            auto __r_9 = __itr_8.__next__();
+            if (!__r_9.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_9);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // for s in kill(5):
-    std::variant<::tpy::BigInt, std::string> __tmp_6 = 5;
-    auto __src_10 = kill(__tmp_6);
-    auto&& __itr_10 = ::tpy::__iter__(__src_10);
-    for (;;) {
-        auto __r_11 = __itr_10.__next__();
-        if (!__r_11.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_11);
+    {
+        std::variant<::tpy::BigInt, std::string> __tmp_6 = 5;
+        auto __src_10 = kill(__tmp_6);
+        auto&& __itr_10 = ::tpy::__iter__(__src_10);
+        for (;;) {
+            auto __r_11 = __itr_10.__next__();
+            if (!__r_11.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_11);
         // print(s)
         std::cout << s << "\n";
+        }
     }
 }
 

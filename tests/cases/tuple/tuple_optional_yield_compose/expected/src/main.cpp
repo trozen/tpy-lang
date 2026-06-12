@@ -11,13 +11,14 @@ void main() {
     // # Mutate through the relayed yielded tuple -- mutation must flow back
     // # through both generator boundaries to `points`.
     // for a, b in relay(first_only(points)):
-    auto __tmp_1 = first_only(points);
-    auto __src_0 = relay(__tmp_1);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __tmp_1 = first_only(points);
+        auto __src_0 = relay(__tmp_1);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // # Mutate through the relayed yielded tuple -- mutation must flow back
         // # through both generator boundaries to `points`.
         // for a, b in relay(first_only(points)):
@@ -28,6 +29,7 @@ void main() {
         if ((a != nullptr)) {
             // a.x = a.x * 10
             a->x = (::tpy::mul_check<int32_t>(a->x, 10));
+        }
         }
     }
     // for p in points:

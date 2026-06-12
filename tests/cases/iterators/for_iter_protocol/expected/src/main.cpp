@@ -14,14 +14,16 @@ void __tpy_init() {
 
     // # 1. Container with __iter__ in for-loop
     // for x in NumberRange(0, 5):
-    auto __src_0 = NumberRange(0, 5);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = NumberRange(0, 5);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // # 2. Can iterate again (fresh iterator each time)
     // nums = NumberRange(10, 13)

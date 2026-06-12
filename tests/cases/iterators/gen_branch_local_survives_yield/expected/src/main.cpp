@@ -84,44 +84,52 @@ __gen_gen_match gen_match(::tpy::BigInt n) {
 // def main() -> None:
 void main() {
     // for y in gen_if(5):
-    auto __src_0 = gen_if(::tpy::BigInt(5));
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = gen_if(::tpy::BigInt(5));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_1);
         // print(y)
         std::cout << y << "\n";
+        }
     }
     // for y in gen_match(5):
-    auto __src_2 = gen_match(::tpy::BigInt(5));
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = gen_match(::tpy::BigInt(5));
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_3);
         // print(y)
         std::cout << y << "\n";
+        }
     }
     // for y in gen_if(0):
-    auto __src_4 = gen_if(::tpy::BigInt(0));
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_5);
+    {
+        auto __src_4 = gen_if(::tpy::BigInt(0));
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_5);
         // print(y)
         std::cout << y << "\n";
+        }
     }
     // for y in gen_match(0):
-    auto __src_6 = gen_match(::tpy::BigInt(0));
-    auto&& __itr_6 = ::tpy::__iter__(__src_6);
-    for (;;) {
-        auto __r_7 = __itr_6.__next__();
-        if (!__r_7.has_value()) break;
-        const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_7);
+    {
+        auto __src_6 = gen_match(::tpy::BigInt(0));
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_7);
         // print(y)
         std::cout << y << "\n";
+        }
     }
 }
 

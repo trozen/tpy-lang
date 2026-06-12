@@ -32,18 +32,20 @@ __gen_gen gen() {
 // def pick(h: Holder) -> tuple[Int32, Box]:
 std::tuple<int32_t, Box*> pick(Holder& h) {
     // for p in gen():
-    auto __src_0 = gen();
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& p = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = gen();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& p = ::tpy::unwrap_ref(*__r_1);
         // q = p
         std::tuple<int32_t, Box*> q = p;
         // q = h.pair
         q = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
         // return q
         return q;
+        }
     }
     // raise RuntimeError("empty")
     throw ::tpy::RuntimeError("empty");

@@ -26,12 +26,13 @@ void main() {
     std::vector<int32_t> vals = {10, 20};
     // # Non-value types through map
     // for a, b in zip(map(identity, pts1), map(identity, pts2)):
-    auto __src_0 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, ::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts2));
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, ::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts2));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // # Non-value types through map
         // for a, b in zip(map(identity, pts1), map(identity, pts2)):
         auto& __tup_1 = __for_tup_0;
@@ -39,15 +40,17 @@ void main() {
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         // print(a, b)
         std::cout << a << " " << b << "\n";
+        }
     }
     // # Mixed: non-value and value types
     // for p, v in zip(map(identity, pts1), map(double, vals)):
-    auto __src_2 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, int32_t>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<int32_t, int32_t>(double_, vals));
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, int32_t>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<int32_t, int32_t>(double_, vals));
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
         // # Mixed: non-value and value types
         // for p, v in zip(map(identity, pts1), map(double, vals)):
         auto& __tup_2 = __for_tup_1;
@@ -55,15 +58,17 @@ void main() {
         int32_t v = std::get<1>(__tup_2);
         // print(p, v)
         std::cout << p << " " << v << "\n";
+        }
     }
     // # Mutation through composed references proves no copy
     // for a, b in zip(map(identity, pts1), map(identity, pts2)):
-    auto __src_4 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, ::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts2));
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
+    {
+        auto __src_4 = ::tpy::builtin_zip<::tpy::val_or_ref<Point>, ::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts1), ::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts2));
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
         // # Mutation through composed references proves no copy
         // for a, b in zip(map(identity, pts1), map(identity, pts2)):
         auto& __tup_3 = __for_tup_2;
@@ -73,6 +78,7 @@ void main() {
         a.x = ::tpy::add_check<int32_t>(a.x, 100);
         // b.y += 200
         b.y = ::tpy::add_check<int32_t>(b.y, 200);
+        }
     }
     // for pt in pts1:
     auto& __obj_6 = pts1;

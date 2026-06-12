@@ -37,14 +37,16 @@ void main() {
     // box = Box(Int32(7))
     ::tpystd::tplib::box::Box<int32_t> box = ::tpystd::tplib::box::Box<int32_t>(7);
     // for v in drain(box):
-    auto __src_0 = drain(std::move(box));
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = drain(std::move(box));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
 }
 

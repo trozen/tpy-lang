@@ -66,7 +66,7 @@ struct __coro_value {
 
 // Async coroutine: caller
 struct __coro_caller {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     ::tpy::BigInt x;
     std::string label;
@@ -83,6 +83,21 @@ struct __coro_caller {
 
     __coro_caller()
         : __state(S_INITIAL), __cancel_pending(false) {}
+
+    __coro_caller(__coro_caller&&) = default;
+    ~__coro_caller() {
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned coroutine");
+        }
+    }
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

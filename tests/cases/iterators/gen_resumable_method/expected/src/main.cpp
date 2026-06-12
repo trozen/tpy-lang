@@ -11,29 +11,34 @@ void main() {
     // data: list[Int32] = [1, 2]
     std::vector<int32_t> data = {1, 2};
     // for v in s.windowed(data):
-    auto __src_0 = s.windowed(data);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = s.windowed(data);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // for v in s.doubled():
-    auto __src_2 = s.doubled();
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = s.doubled();
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_3);
         // print(v)
         std::cout << v << "\n";
+        }
     }
 }
 
 // def windowed(self, xs: list[Int32]) -> Iterator[Int32]:  # tpyc: ok
 std::expected<int32_t, ::tpy::StopIteration> __gen_Source_windowed::__next__() {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         // i = 0
@@ -92,6 +97,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Source_windowed::__next__() {
         }
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
     }
     __builtin_unreachable();
 }

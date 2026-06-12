@@ -9,18 +9,20 @@ void main() {
     // total = 0
     ::tpy::BigInt total = ::tpy::BigInt(0);
     // for i, pair in g(3):
-    auto __src_0 = g(::tpy::BigInt(3));
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = g(::tpy::BigInt(3));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for i, pair in g(3):
         const auto& __tup_1 = __for_tup_0;
         const ::tpy::BigInt& i = std::get<0>(__tup_1);
         const std::tuple<::tpy::BigInt, Box>& pair = std::get<1>(__tup_1);
         // total = total + pair[1].val
         total = ((::tpy::BigInt(total)) + (std::get<1>(pair).val));
+        }
     }
     // print(total)
     std::cout << total << "\n";

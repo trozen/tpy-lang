@@ -13,11 +13,12 @@ int32_t nested_return() {
             {
                 try {
                     // return 10
+                    int32_t __tpy_ret_0 = 10;
                     // print("inner")
                     std::cout << "inner" << "\n";
                     // print("outer")
                     std::cout << "outer" << "\n";
-                    return 10;
+                    return __tpy_ret_0;
                 } catch (...) {
                     // print("inner")
                     std::cout << "inner" << "\n";

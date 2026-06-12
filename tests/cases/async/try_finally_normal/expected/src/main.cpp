@@ -27,6 +27,7 @@ __coro_sub sub() {
 
 // async def main_coro() -> None:
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         __state = S_JOIN_1;
@@ -60,6 +61,10 @@ __coro_sub sub() {
         continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
     }
     __builtin_unreachable();
 }

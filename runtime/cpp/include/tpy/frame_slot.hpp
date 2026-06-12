@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <new>
 #include <type_traits>
 #include <utility>
@@ -26,6 +27,42 @@
 #include "core.hpp"
 
 namespace tpy {
+
+// State discriminant for resumable frames that carry a cleanup
+// destructor (pending finally / with.__exit__ on abandonment). A plain
+// int32_t state would survive memberwise move, so the moved-from frame's
+// destructor would re-run cleanup; this wrapper's move resets the source
+// to MOVED_FROM (no state enumerator uses negative values), letting the
+// frame keep `F(F&&) = default` without codegen enumerating its fields.
+class frame_state {
+public:
+    static constexpr int32_t MOVED_FROM = -1;
+
+    explicit frame_state(int32_t v) noexcept : v_(v) {}
+
+    frame_state(const frame_state&) = delete;
+    frame_state& operator=(const frame_state&) = delete;
+
+    frame_state(frame_state&& other) noexcept : v_(other.v_) {
+        other.v_ = MOVED_FROM;
+    }
+    frame_state& operator=(frame_state&& other) noexcept {
+        v_ = other.v_;
+        if (this != &other) {
+            other.v_ = MOVED_FROM;
+        }
+        return *this;
+    }
+
+    frame_state& operator=(int32_t v) noexcept {
+        v_ = v;
+        return *this;
+    }
+    operator int32_t() const noexcept { return v_; }
+
+private:
+    int32_t v_;
+};
 
 template <typename T>
 class frame_slot {

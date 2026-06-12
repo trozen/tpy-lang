@@ -6,6 +6,7 @@ namespace tpyapp::main {
 
 // def counted(xs: list[int]) -> Iterator[int]:
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counted::__next__() {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         __for_it_0.emplace((xs).begin());
@@ -55,6 +56,10 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counted::__next__() {
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
     __builtin_unreachable();
 }
 
@@ -71,15 +76,17 @@ __gen_counted counted(std::vector<::tpy::BigInt>& xs) {
 // def main():
 void main() {
     // for v in counted([1, 2, 99, 3]):
-    std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 99, 3};
-    auto __src_0 = counted(__tmp_1);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
+    {
+        std::vector<::tpy::BigInt> __tmp_1 = {1, 2, 99, 3};
+        auto __src_0 = counted(__tmp_1);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
 }
 

@@ -326,7 +326,8 @@ helper-API surface.
 | `NameError`, `UnboundLocalError` | Not applicable | Compile-time concerns |
 | `ImportError`, `ModuleNotFoundError` | Not applicable | Import failures are compile-time today |
 | `UnicodeError` and subtypes | Missing | TPy has few encoding-panic sites today |
-| `SystemExit`, `KeyboardInterrupt`, `GeneratorExit` | Missing | Control-flow exceptions; need signal/runtime support |
+| `GeneratorExit` | Done | Inherits `BaseException` directly (CPython hierarchy); raisable/catchable, and constructed by the frame destructor as `__exit__`'s exc_val when an abandoned generator/coroutine closes a suspended `with` region |
+| `SystemExit`, `KeyboardInterrupt` | Missing | Control-flow exceptions; need signal/runtime support |
 | `SystemError` | Missing | Internal-interpreter notion not directly applicable |
 | `EOFError`, `PermissionError` | Done (class-only) | Classes exposed for user `raise`; no runtime sites raise them yet (`PermissionError` inherits `OSError` per CPython) |
 | `TimeoutError` | Done | Built-in re-export of `tpy::TimeoutError` (inherits `Exception`); raised by `asyncio.wait_for` |

@@ -11,28 +11,32 @@ void __tpy_init() {
 
     // # 1. Direct use in for-loop (structural detection)
     // for x in Counter(5):
-    auto __src_0 = Counter(5);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = Counter(5);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // print(sum_iter(Counter(5)))
     auto __tmp_1 = Counter(5);
     std::cout << sum_iter(__tmp_1) << "\n";
     // # 3. Empty iterator
     // for x in Counter(0):
-    auto __src_2 = Counter(0);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = Counter(0);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_3);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // print("done")
     std::cout << "done" << "\n";

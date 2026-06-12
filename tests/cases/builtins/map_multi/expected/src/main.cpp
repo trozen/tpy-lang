@@ -39,14 +39,16 @@ void main() {
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_map_n<int32_t>([](int32_t a, int32_t b, int32_t c) -> int32_t { return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(a, b)), c)); }, std::array<int32_t, 2>{1, 2}, std::array<int32_t, 2>{10, 20}, std::array<int32_t, 2>{100, 200}))) << "\n";
     // # Lazy iteration (two-iterable)
     // for v in map(add, xs, ys):
-    auto __src_0 = ::tpy::builtin_map_n<int32_t>(add, xs, ys);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = ::tpy::builtin_map_n<int32_t>(add, xs, ys);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
 }
 

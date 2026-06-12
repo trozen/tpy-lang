@@ -11,12 +11,13 @@ void main() {
     // items: list[P] = [P(1), P(2), P(3)]
     std::vector<P> items = {P(1), P(2), P(3)};
     // for a, b in h.pairs(items):
-    auto __src_0 = h.pairs(items);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = h.pairs(items);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for a, b in h.pairs(items):
         auto& __tup_1 = __for_tup_0;
         P* a = std::get<0>(__tup_1);
@@ -25,6 +26,7 @@ void main() {
         if ((a != nullptr)) {
             // print(a.x)
             std::cout << a->x << "\n";
+        }
         }
     }
 }

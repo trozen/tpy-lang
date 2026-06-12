@@ -15,15 +15,17 @@ void main() {
     // r1: list[Int32] = []
     std::vector<int32_t> r1 = std::vector<int32_t>{};
     // for x in heapq.merge(a, b, c):
-    std::array<const std::vector<int32_t>*, 3> __tmp_1{&a, &b, &c};
-    auto __src_0 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_1));
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        std::array<const std::vector<int32_t>*, 3> __tmp_1{&a, &b, &c};
+        auto __src_0 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_1));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // r1.append(x)
         r1.push_back(std::move(x));
+        }
     }
     // print(r1)
     std::cout << ::tpy::ListPrinter(r1) << "\n";
@@ -33,15 +35,17 @@ void main() {
     // r2: list[Int32] = []
     std::vector<int32_t> r2 = std::vector<int32_t>{};
     // for x in heapq.merge(empty, b, empty):
-    std::array<const std::vector<int32_t>*, 3> __tmp_2{&empty, &b, &empty};
-    auto __src_2 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_2));
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_3);
+    {
+        std::array<const std::vector<int32_t>*, 3> __tmp_2{&empty, &b, &empty};
+        auto __src_2 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_2));
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_3);
         // r2.append(x)
         r2.push_back(std::move(x));
+        }
     }
     // print(r2)
     std::cout << ::tpy::ListPrinter(r2) << "\n";
@@ -49,15 +53,17 @@ void main() {
     // r2b: list[Int32] = []
     std::vector<int32_t> r2b = std::vector<int32_t>{};
     // for x in heapq.merge(empty, empty):
-    std::array<const std::vector<int32_t>*, 2> __tmp_3{&empty, &empty};
-    auto __src_4 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_3));
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_5);
+    {
+        std::array<const std::vector<int32_t>*, 2> __tmp_3{&empty, &empty};
+        auto __src_4 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_3));
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_5);
         // r2b.append(x)
         r2b.push_back(std::move(x));
+        }
     }
     // print(r2b)
     std::cout << ::tpy::ListPrinter(r2b) << "\n";
@@ -67,15 +73,17 @@ void main() {
     // r3: list[Int32] = []
     std::vector<int32_t> r3 = std::vector<int32_t>{};
     // for x in heapq.merge(one):
-    std::array<const std::vector<int32_t>*, 1> __tmp_4{&one};
-    auto __src_6 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_4));
-    auto&& __itr_6 = ::tpy::__iter__(__src_6);
-    for (;;) {
-        auto __r_7 = __itr_6.__next__();
-        if (!__r_7.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_7);
+    {
+        std::array<const std::vector<int32_t>*, 1> __tmp_4{&one};
+        auto __src_6 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_4));
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_7);
         // r3.append(x)
         r3.push_back(std::move(x));
+        }
     }
     // print(r3)
     std::cout << ::tpy::ListPrinter(r3) << "\n";
@@ -87,15 +95,17 @@ void main() {
     // r4: list[Int32] = []
     std::vector<int32_t> r4 = std::vector<int32_t>{};
     // for x in heapq.merge(d1, d2):
-    std::array<const std::vector<int32_t>*, 2> __tmp_5{&d1, &d2};
-    auto __src_8 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_5));
-    auto&& __itr_8 = ::tpy::__iter__(__src_8);
-    for (;;) {
-        auto __r_9 = __itr_8.__next__();
-        if (!__r_9.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_9);
+    {
+        std::array<const std::vector<int32_t>*, 2> __tmp_5{&d1, &d2};
+        auto __src_8 = ::tpystd::heapq::merge<int32_t>(::tpy::varargs<const std::vector<int32_t>>(__tmp_5));
+        auto&& __itr_8 = ::tpy::__iter__(__src_8);
+        for (;;) {
+            auto __r_9 = __itr_8.__next__();
+            if (!__r_9.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_9);
         // r4.append(x)
         r4.push_back(std::move(x));
+        }
     }
     // print(r4)
     std::cout << ::tpy::ListPrinter(r4) << "\n";

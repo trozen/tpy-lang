@@ -8,28 +8,32 @@ namespace tpyapp::main {
 void main() {
     // # Two instantiations to exercise template monomorphization twice.
     // for x in two_yields(1, 2):
-    int32_t __tmp_1 = 1;
-    int32_t __tmp_2 = 2;
-    auto __src_0 = two_yields<int32_t>(__tmp_1, __tmp_2);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        int32_t __tmp_1 = 1;
+        int32_t __tmp_2 = 2;
+        auto __src_0 = two_yields<int32_t>(__tmp_1, __tmp_2);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // for s in two_yields("x", "y"):
-    std::string __tmp_3 = "x";
-    std::string __tmp_4 = "y";
-    auto __src_2 = two_yields<std::string>(__tmp_3, __tmp_4);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_3);
+    {
+        std::string __tmp_3 = "x";
+        std::string __tmp_4 = "y";
+        auto __src_2 = two_yields<std::string>(__tmp_3, __tmp_4);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_3);
         // print(s)
         std::cout << s << "\n";
+        }
     }
 }
 

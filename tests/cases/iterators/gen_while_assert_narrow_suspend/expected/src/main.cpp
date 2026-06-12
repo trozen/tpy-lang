@@ -93,26 +93,30 @@ __gen_checked checked(std::variant<::tpy::BigInt, std::string> a) {
 // def main() -> None:
 void main() {
     // for s in loop(5):
-    std::variant<::tpy::BigInt, std::string> __tmp_1 = 5;
-    auto __src_0 = loop(__tmp_1);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_1);
+    {
+        std::variant<::tpy::BigInt, std::string> __tmp_1 = 5;
+        auto __src_0 = loop(__tmp_1);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_1);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // for s in checked(7):
-    std::variant<::tpy::BigInt, std::string> __tmp_2 = 7;
-    auto __src_2 = checked(__tmp_2);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_3);
+    {
+        std::variant<::tpy::BigInt, std::string> __tmp_2 = 7;
+        auto __src_2 = checked(__tmp_2);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_3);
         // print(s)
         std::cout << s << "\n";
+        }
     }
 }
 

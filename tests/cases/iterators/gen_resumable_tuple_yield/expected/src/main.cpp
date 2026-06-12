@@ -89,14 +89,16 @@ void main() {
     // items = [P(1), P(2), P(3)]
     std::vector<P> items = {P(1), P(2), P(3)};
     // for pair in pairs(items):
-    auto __src_0 = pairs(items);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& pair = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = pairs(items);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& pair = ::tpy::unwrap_ref(*__r_1);
         // show(pair)
         show(pair);
+        }
     }
 }
 

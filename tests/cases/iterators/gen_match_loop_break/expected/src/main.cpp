@@ -88,15 +88,17 @@ __gen_gen gen(std::vector<::tpy::BigInt>& items) {
 // def main() -> None:
 void main() {
     // for y in gen([3, 20, 0, 5]):
-    std::vector<::tpy::BigInt> __tmp_1 = {3, 20, 0, 5};
-    auto __src_0 = gen(__tmp_1);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_1);
+    {
+        std::vector<::tpy::BigInt> __tmp_1 = {3, 20, 0, 5};
+        auto __src_0 = gen(__tmp_1);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& y = ::tpy::unwrap_ref(*__r_1);
         // print(y)
         std::cout << y << "\n";
+        }
     }
 }
 

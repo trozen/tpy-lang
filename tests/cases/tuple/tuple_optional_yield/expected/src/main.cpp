@@ -9,12 +9,13 @@ void main() {
     // items = [P(1), P(2), P(3)]
     std::vector<P> items = {P(1), P(2), P(3)};
     // for a, b in gen_for(items):
-    auto __src_0 = gen_for(items);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = gen_for(items);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for a, b in gen_for(items):
         auto& __tup_1 = __for_tup_0;
         P* a = std::get<0>(__tup_1);
@@ -24,14 +25,16 @@ void main() {
             // print(a.x)
             std::cout << a->x << "\n";
         }
+        }
     }
     // for a, b in gen_range(items):
-    auto __src_2 = gen_range(items);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = gen_range(items);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
         // for a, b in gen_range(items):
         auto& __tup_2 = __for_tup_1;
         P* a = std::get<0>(__tup_2);
@@ -41,14 +44,16 @@ void main() {
             // print(a.x)
             std::cout << a->x << "\n";
         }
+        }
     }
     // for a, b in gen_while(items, Int32(2)):
-    auto __src_4 = gen_while(items, 2);
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
+    {
+        auto __src_4 = gen_while(items, 2);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
         // for a, b in gen_while(items, Int32(2)):
         auto& __tup_3 = __for_tup_2;
         P* a = std::get<0>(__tup_3);
@@ -57,6 +62,7 @@ void main() {
         if ((a != nullptr)) {
             // print(a.x)
             std::cout << a->x << "\n";
+        }
         }
     }
 }

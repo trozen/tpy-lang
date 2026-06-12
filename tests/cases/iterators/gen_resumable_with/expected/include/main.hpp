@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tracer& obj) {
 
 // Generator: gen_with_yield
 struct __gen_gen_with_yield {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<::tpy::BigInt>& xs;
     ::tpy::BigInt x;
     ::tpy::frame_slot<::tpy::begin_iter_t<std::vector<::tpy::BigInt>>> __for_it_0;
@@ -58,6 +58,21 @@ struct __gen_gen_with_yield {
 
     __gen_gen_with_yield(std::vector<::tpy::BigInt>& xs)
         : __state(S_INITIAL), xs(xs) {}
+
+    __gen_gen_with_yield(__gen_gen_with_yield&&) = default;
+    ~__gen_gen_with_yield() {
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen_with_yield& __iter__() { return *this; }

@@ -45,14 +45,16 @@ __gen_gen gen() {
 // def main() -> None:
 void main() {
     // for n in gen():
-    auto __src_0 = gen();
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t n = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = gen();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t n = ::tpy::unwrap_ref(*__r_1);
         // print(n)
         std::cout << n << "\n";
+        }
     }
 }
 

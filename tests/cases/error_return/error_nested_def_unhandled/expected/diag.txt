@@ -1,0 +1,1 @@
+main.py:21: error: call to 'find' may return 'NotFound' which must be handled with try/except

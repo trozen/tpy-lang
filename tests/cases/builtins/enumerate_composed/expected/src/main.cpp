@@ -24,12 +24,13 @@ void main() {
     std::vector<int32_t> vals = {10, 20};
     // # Non-value type through map: val_or_ref<Point> in tuple
     // for i, p in enumerate(map(identity, pts)):
-    auto __src_0 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // # Non-value type through map: val_or_ref<Point> in tuple
         // for i, p in enumerate(map(identity, pts)):
         auto& __tup_1 = __for_tup_0;
@@ -37,15 +38,17 @@ void main() {
         auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         // print(i, p)
         std::cout << i << " " << p << "\n";
+        }
     }
     // # Value type through map: no val_or_ref wrapping
     // for j, v in enumerate(map(double, vals)):
-    auto __src_2 = ::tpy::builtin_enumerate<int32_t>(::tpy::builtin_map<int32_t, int32_t>(double_, vals));
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = ::tpy::builtin_enumerate<int32_t>(::tpy::builtin_map<int32_t, int32_t>(double_, vals));
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
         // # Value type through map: no val_or_ref wrapping
         // for j, v in enumerate(map(double, vals)):
         const auto& __tup_2 = __for_tup_1;
@@ -53,15 +56,17 @@ void main() {
         int32_t v = std::get<1>(__tup_2);
         // print(j, v)
         std::cout << j << " " << v << "\n";
+        }
     }
     // # Mutation through composed reference proves no copy
     // for k, q in enumerate(map(identity, pts)):
-    auto __src_4 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
+    {
+        auto __src_4 = ::tpy::builtin_enumerate<::tpy::val_or_ref<Point>>(::tpy::builtin_map<Point, ::tpy::val_or_ref<Point>>(identity, pts));
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
         // # Mutation through composed reference proves no copy
         // for k, q in enumerate(map(identity, pts)):
         auto& __tup_3 = __for_tup_2;
@@ -69,6 +74,7 @@ void main() {
         auto&& q = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
         // q.x += 100
         q.x = ::tpy::add_check<int32_t>(q.x, 100);
+        }
     }
     // for pt in pts:
     auto& __obj_6 = pts;

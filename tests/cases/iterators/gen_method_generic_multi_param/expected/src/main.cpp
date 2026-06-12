@@ -9,14 +9,16 @@ void main() {
     // p = Pair("hi", 100)
     Pair<std::string, int32_t> p = Pair<std::string, int32_t>("hi", 100);
     // for x in p.stream(3):
-    auto __src_0 = p.stream(3);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = p.stream(3);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
 }
 

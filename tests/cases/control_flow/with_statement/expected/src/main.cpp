@@ -126,8 +126,9 @@ std::string early_return_helper() {
         // r.log("before return")
         r.log("before return");
         // return "result"
+        std::string __tpy_ret_0 = "result";
         __ctx_7.__exit__({}, nullptr, {});
-        return "result";
+        return __tpy_ret_0;
     } catch (::tpy::BaseException& __exc_7) {
         __ctx_7.__exit__({}, &__exc_7, {});
         throw;
@@ -163,14 +164,16 @@ std::string nested_with_all_return(bool flag) {
             // if flag:
             if (flag) {
                 // return "yes"
+                std::string __tpy_ret_0 = "yes";
                 __ctx_9.__exit__({}, nullptr, {});
                 __ctx_8.__exit__({}, nullptr, {});
-                return "yes";
+                return __tpy_ret_0;
             }
             // return "no"
+            std::string __tpy_ret_1 = "no";
             __ctx_9.__exit__({}, nullptr, {});
             __ctx_8.__exit__({}, nullptr, {});
-            return "no";
+            return __tpy_ret_1;
         } catch (::tpy::BaseException& __exc_9) {
             __ctx_9.__exit__({}, &__exc_9, {});
             throw;

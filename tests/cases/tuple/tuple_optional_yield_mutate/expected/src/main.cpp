@@ -9,12 +9,13 @@ void main() {
     // points = [P(1), P(2), P(3)]
     std::vector<P> points = {P(1), P(2), P(3)};
     // for a, b in pairs(points):
-    auto __src_0 = pairs(points);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = pairs(points);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for a, b in pairs(points):
         auto& __tup_1 = __for_tup_0;
         P* a = std::get<0>(__tup_1);
@@ -23,6 +24,7 @@ void main() {
         if ((a != nullptr)) {
             // a.x = a.x * 10
             a->x = (::tpy::mul_check<int32_t>(a->x, 10));
+        }
         }
     }
     // for p in points:

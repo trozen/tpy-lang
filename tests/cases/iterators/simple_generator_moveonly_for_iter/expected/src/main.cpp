@@ -7,15 +7,17 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // for t in make_toks(ints(3)):
-    auto __tmp_1 = ints(3);
-    auto __src_0 = make_toks(__tmp_1);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const auto& t = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __tmp_1 = ints(3);
+        auto __src_0 = make_toks(__tmp_1);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const auto& t = ::tpy::unwrap_ref(*__r_1);
         // print(t.v)
         std::cout << t.v << "\n";
+        }
     }
 }
 

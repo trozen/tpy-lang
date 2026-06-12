@@ -1,0 +1,2 @@
+main.py:10: warning: 'yield' inside 'finally': this cleanup will not run if the generator is abandoned before exhaustion (e.g. 'break' out of a for loop over it)
+main.py:20: warning: 'yield' inside 'finally': this cleanup will not run if the generator is abandoned before exhaustion (e.g. 'break' out of a for loop over it)

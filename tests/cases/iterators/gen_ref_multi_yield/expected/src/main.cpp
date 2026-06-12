@@ -51,14 +51,16 @@ void main() {
     // # element. Each element is yielded twice, so both yields alias the same Box
     // # and the +10 applies twice per element.
     // for b in twice(data):
-    auto __src_0 = twice(data);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& b = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = twice(data);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& b = ::tpy::unwrap_ref(*__r_1);
         // b.val = b.val + 10
         b.val = ((b.val) + (::tpy::BigInt(10)));
+        }
     }
     // for d in data:
     auto& __obj_2 = data;

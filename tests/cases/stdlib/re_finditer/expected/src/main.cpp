@@ -9,26 +9,30 @@ void main() {
     // p = re.compile(r"\d+")
     ::tpystd::re::Pattern p = ::tpystd::re::compile("\\d+");
     // for m in p.finditer("a12b345c6"):
-    auto __src_0 = p.finditer("a12b345c6");
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const auto& m = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = p.finditer("a12b345c6");
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const auto& m = ::tpy::unwrap_ref(*__r_1);
         // print(m.group(0), m.start(), m.end())
         std::cout << m.group(0) << " " << m.start() << " " << m.end() << "\n";
+        }
     }
     // total = 0
     int32_t total = 0;
     // for m in p.finditer("xx 7 yy 88 zz 900"):
-    auto __src_2 = p.finditer("xx 7 yy 88 zz 900");
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        const auto& m = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = p.finditer("xx 7 yy 88 zz 900");
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            const auto& m = ::tpy::unwrap_ref(*__r_3);
         // total += int(m.group(0))
         total = ::tpy::add_check<int32_t>(total, (::tpy::BigInt::from_str(m.group(0))).to_fixed_check<int32_t>());
+        }
     }
     // print(total)
     std::cout << total << "\n";
@@ -36,14 +40,16 @@ void main() {
     // n = 0
     int32_t n = 0;
     // for m in p.finditer("no digits here"):
-    auto __src_4 = p.finditer("no digits here");
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        const auto& m = ::tpy::unwrap_ref(*__r_5);
+    {
+        auto __src_4 = p.finditer("no digits here");
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            const auto& m = ::tpy::unwrap_ref(*__r_5);
         // n += 1
         n = ::tpy::add_check<int32_t>(n, 1);
+        }
     }
     // print(n)
     std::cout << n << "\n";

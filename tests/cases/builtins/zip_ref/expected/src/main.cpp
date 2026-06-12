@@ -11,12 +11,13 @@ void main() {
     // scales = [10, 20]
     std::array<int32_t, 2> scales = {10, 20};
     // for p, s in zip(points, scales):
-    auto __src_0 = ::tpy::builtin_zip<Point, int32_t>(points, scales);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = ::tpy::builtin_zip<Point, int32_t>(points, scales);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for p, s in zip(points, scales):
         auto& __tup_1 = __for_tup_0;
         auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
@@ -25,6 +26,7 @@ void main() {
         p.x = ::tpy::mul_check<int32_t>(p.x, s);
         // p.y *= s
         p.y = ::tpy::mul_check<int32_t>(p.y, s);
+        }
     }
     // for p in points:
     auto& __obj_2 = points;

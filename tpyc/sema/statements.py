@@ -1555,10 +1555,10 @@ class StatementAnalyzer:
         """Analyze a raise statement (return-tier, throw-tier, or bare re-raise)."""
         # Bare raise (re-raise)
         if stmt.exception_type is None and stmt.raise_expr is None:
-            if self.ctx.in_except_tier is None:
+            if self.ctx.func.in_except_tier is None:
                 raise self.ctx.error(
                     "bare 'raise' is only valid inside an 'except' block", stmt)
-            if self.ctx.in_except_tier == "return" and not self.ctx.in_except_has_binding:
+            if self.ctx.func.in_except_tier == "return" and not self.ctx.func.in_except_has_binding:
                 raise self.ctx.error(
                     "bare 'raise' in return-tier except requires 'as' binding "
                     "(e.g. 'except E as e') to capture the error value",
@@ -1804,11 +1804,11 @@ class StatementAnalyzer:
         normal_non_null = set(self.ctx.func.non_null_ptr_vars)
         normal_ranges = dict(self.ctx.func.value_ranges)
         self.init.apply_fact_kills(entry_kills)
-        prev_in_finally = self.ctx.in_finally
-        self.ctx.in_finally = True
+        prev_in_finally = self.ctx.func.in_finally
+        self.ctx.func.in_finally = True
         for s in stmt.finally_body:
             self.analyze_stmt(s)
-        self.ctx.in_finally = prev_in_finally
+        self.ctx.func.in_finally = prev_in_finally
         # Re-union the normal path: replay the finally body's own kills on
         # the normal-path snapshot, then let facts the finally established
         # take precedence.
@@ -1830,15 +1830,21 @@ class StatementAnalyzer:
             self.analyze_stmt(s)
         try_bindings = dict(self.ctx.func.current_scope.bindings)
         self._analyze_finally_body(stmt)
-        # Hoist try-body variables so they're accessible in the finally body.
-        # Mark as hoisted so non-value types use pointer indirection.
-        branch_new = set(try_bindings.keys()) - scope_before
+        # Hoist try-body variables so they're accessible in the finally body,
+        # and finally-body first bindings so the duplicated finally emissions
+        # (catch path / normal path / return sites) all assign one function-
+        # scope slot -- which also keeps them visible after the try, per
+        # Python scoping. Mark as hoisted so non-value types use pointer
+        # indirection.
+        all_bindings = dict(try_bindings)
+        all_bindings.update(self.ctx.func.current_scope.bindings)
+        branch_new = set(all_bindings.keys()) - scope_before
         predecl = branch_new - self.ctx.func.global_declarations
         if predecl:
             self.ctx.if_branch_decls[id(stmt)] = {
-                name: try_bindings[name]
+                name: all_bindings[name]
                 for name in sorted(predecl)
-                if name in try_bindings
+                if name in all_bindings
             }
             self.ctx.func.hoisted_vars |= predecl
 
@@ -1874,17 +1880,17 @@ class StatementAnalyzer:
                     f"Unknown error type '{handler.exception_type}'", stmt)
 
         # Set try context so call analysis can allow error_return calls
-        prev_try_error = self.ctx.try_except_error_type
+        prev_try_error = self.ctx.func.try_except_error_type
         if is_return_exception_catch_all:
-            self.ctx.try_except_error_type = "*"
+            self.ctx.func.try_except_error_type = "*"
         else:
-            self.ctx.try_except_error_type = qualify_exception_name(
+            self.ctx.func.try_except_error_type = qualify_exception_name(
                 handler.exception_type, self.ctx.registry, self.ctx.module_name)
 
         for s in stmt.try_body:
             self.analyze_stmt(s)
 
-        self.ctx.try_except_error_type = prev_try_error
+        self.ctx.func.try_except_error_type = prev_try_error
 
         for s in stmt.else_body:
             self.analyze_stmt(s)
@@ -1913,14 +1919,14 @@ class StatementAnalyzer:
                 self.init.mark_assigned(handler.binding)
 
         # Set in_except_tier for bare raise validation
-        prev_except_tier = self.ctx.in_except_tier
-        prev_has_binding = self.ctx.in_except_has_binding
-        self.ctx.in_except_tier = "return"
-        self.ctx.in_except_has_binding = handler.binding is not None
+        prev_except_tier = self.ctx.func.in_except_tier
+        prev_has_binding = self.ctx.func.in_except_has_binding
+        self.ctx.func.in_except_tier = "return"
+        self.ctx.func.in_except_has_binding = handler.binding is not None
         for s in handler.body:
             self.analyze_stmt(s)
-        self.ctx.in_except_tier = prev_except_tier
-        self.ctx.in_except_has_binding = prev_has_binding
+        self.ctx.func.in_except_tier = prev_except_tier
+        self.ctx.func.in_except_has_binding = prev_has_binding
 
         if handler.binding and handler.binding in self.ctx.func.current_scope.bindings:
             del self.ctx.func.current_scope.bindings[handler.binding]
@@ -2011,11 +2017,11 @@ class StatementAnalyzer:
                 self.ctx.func.current_scope.bindings[h.binding] = exc_type
                 self.init.mark_assigned(h.binding)
 
-            prev_except_tier = self.ctx.in_except_tier
-            self.ctx.in_except_tier = "throw"
+            prev_except_tier = self.ctx.func.in_except_tier
+            self.ctx.func.in_except_tier = "throw"
             for s in h.body:
                 self.analyze_stmt(s)
-            self.ctx.in_except_tier = prev_except_tier
+            self.ctx.func.in_except_tier = prev_except_tier
 
             if h.binding and h.binding in self.ctx.func.current_scope.bindings:
                 del self.ctx.func.current_scope.bindings[h.binding]
@@ -2053,8 +2059,16 @@ class StatementAnalyzer:
                 result_consumed &= c
         self.ctx.func.current_consumed_own_params = result_consumed
 
-        # Analyze finally body
+        # Analyze finally body. Bindings first introduced by the finally
+        # body hoist with the try-body vars below: the duplicated finally
+        # emissions (catch path / normal path / return sites) all need one
+        # function-scope slot, which also keeps them visible after the try,
+        # per Python scoping.
+        pre_finally_names = set(self.ctx.func.current_scope.bindings.keys())
         self._analyze_finally_body(stmt, try_kills)
+        finally_new = {
+            name: t for name, t in self.ctx.func.current_scope.bindings.items()
+            if name not in pre_finally_names and name not in scope_before}
 
         # Throw-tier uses C++ try/catch with proper scoping -- no goto hoisting
         # needed in general. BUT try-body variables must be hoisted when:
@@ -2066,17 +2080,20 @@ class StatementAnalyzer:
         needs_hoist = (stmt.finally_body or stmt.else_body
                        or (all_handlers_terminate and not self.ctx.func.init_terminated))
         self.ctx.func.current_scope.bindings = dict(try_bindings)
+        self.ctx.func.current_scope.bindings.update(finally_new)
         if needs_hoist:
-            branch_new = set(try_bindings.keys()) - scope_before
+            all_bindings = dict(try_bindings)
+            all_bindings.update(finally_new)
+            branch_new = set(all_bindings.keys()) - scope_before
             for h in stmt.handlers:
                 if h.binding:
                     branch_new.discard(h.binding)
             predecl = branch_new - self.ctx.func.global_declarations
             if predecl:
                 self.ctx.if_branch_decls[id(stmt)] = {
-                    name: try_bindings[name]
+                    name: all_bindings[name]
                     for name in sorted(predecl)
-                    if name in try_bindings
+                    if name in all_bindings
                 }
                 self.ctx.func.hoisted_vars |= predecl
 
@@ -3025,6 +3042,16 @@ class StatementAnalyzer:
         func = self.ctx.func.current_function
         if func is None or not func.is_generator:
             raise self.ctx.error("'yield' can only be used inside a generator function", stmt)
+        if self.ctx.func.in_finally:
+            # The frame destructor runs pending finally bodies on
+            # abandonment, but a finally that itself suspends cannot run
+            # inside a destructor -- it is silently skipped there.
+            # (CPython runs it up to this yield, then raises and ignores
+            # RuntimeError("generator ignored GeneratorExit").)
+            self.ctx.warning(
+                "'yield' inside 'finally': this cleanup will not run if "
+                "the generator is abandoned before exhaustion (e.g. "
+                "'break' out of a for loop over it)", stmt)
         elem_type = func.generator_yield_type
         assert elem_type is not None
         yield_type = self.expr.analyze_expr_with_hint(stmt.value, elem_type)

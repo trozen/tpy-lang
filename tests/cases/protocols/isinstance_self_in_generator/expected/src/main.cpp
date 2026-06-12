@@ -11,44 +11,52 @@ void main() {
     // d = Dog("fido")
     Dog d = Dog("fido");
     // for s in p.ro_names():
-    auto __src_0 = p.ro_names();
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = p.ro_names();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_1);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // for s in d.ro_names():
-    auto __src_2 = d.ro_names();
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = d.ro_names();
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_3);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // for v in p.counts():
-    auto __src_4 = p.counts();
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_5);
+    {
+        auto __src_4 = p.counts();
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_5);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // for v in d.counts():
-    auto __src_6 = d.counts();
-    auto&& __itr_6 = ::tpy::__iter__(__src_6);
-    for (;;) {
-        auto __r_7 = __itr_6.__next__();
-        if (!__r_7.has_value()) break;
-        const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_7);
+    {
+        auto __src_6 = d.counts();
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_7);
         // print(v)
         std::cout << v << "\n";
+        }
     }
 }
 

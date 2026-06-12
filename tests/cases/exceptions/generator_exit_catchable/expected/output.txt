@@ -1,0 +1,2 @@
+caught: closing
+BaseException caught it

@@ -57,7 +57,7 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 
 // Generator: gen
 struct __gen_gen {
-    int32_t __state;
+    ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
     ::tpy::frame_slot<Item> v;
@@ -75,6 +75,22 @@ struct __gen_gen {
 
     __gen_gen(int32_t n_)
         : __state(S_INITIAL), n(std::move(n_)) {}
+
+    __gen_gen(__gen_gen&&) = default;
+    ~__gen_gen() {
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+            case S_RESUME_1:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

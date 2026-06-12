@@ -1,0 +1,10 @@
+1
+cleanup temp
+after temp
+1
+after named
+cleanup named
+1
+2
+cleanup full
+after full

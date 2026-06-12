@@ -12,27 +12,31 @@ void main() {
     std::variant<Cat, Dog> __slot_1 = Dog();
     std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // for s in z.voices(pet):
-    auto __src_0 = z.voices(pet);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = z.voices(pet);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_1);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // other: Dog | Cat = Cat()
     std::variant<Cat, Dog> __slot_2 = Cat();
     std::variant<Cat*, Dog*> other = ::tpy::to_ptr_variant(__slot_2);
     // for s in z.names(other):
-    auto __src_2 = z.names(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(other));
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = z.names(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(other));
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_3);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // print(z.seen)
     std::cout << z.seen << "\n";

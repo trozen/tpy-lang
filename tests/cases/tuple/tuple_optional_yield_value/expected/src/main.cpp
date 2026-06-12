@@ -9,12 +9,13 @@ void main() {
     // items = [Int32(1), Int32(2), Int32(3)]
     std::vector<int32_t> items = {1, 2, 3};
     // for a, b in gen_value_pairs(items):
-    auto __src_0 = gen_value_pairs(items);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = gen_value_pairs(items);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for a, b in gen_value_pairs(items):
         const auto& __tup_1 = __for_tup_0;
         std::optional<int32_t> a = std::get<0>(__tup_1);
@@ -23,6 +24,7 @@ void main() {
         if ((a.has_value())) {
             // print(a)
             std::cout << ::tpy::print_optional_val(a) << "\n";
+        }
         }
     }
 }

@@ -70,14 +70,16 @@ void main() {
     // data: list[tuple[Optional[P], Optional[P]]] = [(P(1), None), (None, P(4))]
     std::vector<std::tuple<std::optional<P>, std::optional<P>>> data = {::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P*>{P(1), nullptr})), ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P*, P>{nullptr, P(4)}))};
     // for v in gen(data):
-    auto __src_0 = gen(data);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = gen(data);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
 }
 

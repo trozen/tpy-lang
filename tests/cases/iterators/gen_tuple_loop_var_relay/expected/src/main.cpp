@@ -9,12 +9,13 @@ void main() {
     // first = True
     bool first = true;
     // for q in relay():
-    auto __src_0 = relay();
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& q = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = relay();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& q = ::tpy::unwrap_ref(*__r_1);
         // if first:
         if (first) {
             // q[1].val = 99
@@ -25,6 +26,7 @@ void main() {
         } else {
             // print(q[1].val)
             std::cout << std::get<1>(q)->val << "\n";
+        }
         }
     }
 }

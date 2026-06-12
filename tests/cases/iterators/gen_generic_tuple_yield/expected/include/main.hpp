@@ -19,7 +19,7 @@ void main();
 // Generator: zip_pairs
 template <typename K, typename V>
 struct __gen_zip_pairs {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::vector<K>& ks;
     std::vector<V>& vs;
     int32_t i;
@@ -36,6 +36,20 @@ struct __gen_zip_pairs {
     __gen_zip_pairs(std::vector<K>& ks, std::vector<V>& vs)
         : __state(S_INITIAL), ks(ks), vs(vs) {}
 
+    __gen_zip_pairs(__gen_zip_pairs&&) = default;
+    ~__gen_zip_pairs() {
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                this->__finally_0();
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
     std::expected<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>, ::tpy::StopIteration> __next__();
     __gen_zip_pairs& __iter__() { return *this; }
     void __finally_0();
@@ -47,6 +61,7 @@ struct __gen_zip_pairs {
 // def zip_pairs[K, V](ks: list[K], vs: list[V]) -> Iterator[tuple[K, V]]:  # tpyc: ok
 template <typename K, typename V>
 std::expected<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>, ::tpy::StopIteration> __gen_zip_pairs<K, V>::__next__() {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         // i = 0
@@ -95,6 +110,10 @@ std::expected<std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>, ::tpy:
         }
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
     }
     __builtin_unreachable();
 }

@@ -6,6 +6,7 @@ namespace tpyapp::main {
 
 // def gen(n: int) -> Iterator[int]:
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         __state = S_JOIN_2;
@@ -81,6 +82,10 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
     __builtin_unreachable();
 }
 
@@ -97,26 +102,30 @@ __gen_gen gen(::tpy::BigInt n) {
 // def main() -> None:
 void main() {
     // for v in gen(0):
-    auto __src_0 = gen(::tpy::BigInt(0));
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = gen(::tpy::BigInt(0));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // print("--")
     std::cout << "--" << "\n";
     // for v in gen(5):
-    auto __src_2 = gen(::tpy::BigInt(5));
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = gen(::tpy::BigInt(5));
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_3);
         // print(v)
         std::cout << v << "\n";
+        }
     }
 }
 

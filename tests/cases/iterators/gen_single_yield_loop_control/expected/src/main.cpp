@@ -311,92 +311,108 @@ __gen_post_continue post_continue(std::vector<int32_t>& items) {
 // def main() -> None:
 void main() {
     // for v in take([10, 20, 30, 40], 2):
-    std::vector<int32_t> __tmp_1 = {10, 20, 30, 40};
-    auto __src_0 = take(__tmp_1, 2);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_1);
+    {
+        std::vector<int32_t> __tmp_1 = {10, 20, 30, 40};
+        auto __src_0 = take(__tmp_1, 2);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // for v in evens([1, 2, 3, 4, 5, 6]):
-    std::vector<int32_t> __tmp_2 = {1, 2, 3, 4, 5, 6};
-    auto __src_2 = evens(__tmp_2);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_3);
+    {
+        std::vector<int32_t> __tmp_2 = {1, 2, 3, 4, 5, 6};
+        auto __src_2 = evens(__tmp_2);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_3);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // for v in stride():
-    auto __src_4 = stride();
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_5);
+    {
+        auto __src_4 = stride();
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_5);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // for v in upto_range(10):
-    auto __src_6 = upto_range(10);
-    auto&& __itr_6 = ::tpy::__iter__(__src_6);
-    for (;;) {
-        auto __r_7 = __itr_6.__next__();
-        if (!__r_7.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_7);
+    {
+        auto __src_6 = upto_range(10);
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_7);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // for v in upto_while():
-    auto __src_8 = upto_while();
-    auto&& __itr_8 = ::tpy::__iter__(__src_8);
-    for (;;) {
-        auto __r_9 = __itr_8.__next__();
-        if (!__r_9.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_9);
+    {
+        auto __src_8 = upto_while();
+        auto&& __itr_8 = ::tpy::__iter__(__src_8);
+        for (;;) {
+            auto __r_9 = __itr_8.__next__();
+            if (!__r_9.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_9);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // for v in iter_post_break([10, 20, 30]):
-    std::vector<int32_t> __tmp_3 = {10, 20, 30};
-    auto __src_10 = iter_post_break(__tmp_3);
-    auto&& __itr_10 = ::tpy::__iter__(__src_10);
-    for (;;) {
-        auto __r_11 = __itr_10.__next__();
-        if (!__r_11.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_11);
+    {
+        std::vector<int32_t> __tmp_3 = {10, 20, 30};
+        auto __src_10 = iter_post_break(__tmp_3);
+        auto&& __itr_10 = ::tpy::__iter__(__src_10);
+        for (;;) {
+            auto __r_11 = __itr_10.__next__();
+            if (!__r_11.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_11);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // for v in post_continue([3, -1, 5]):
-    std::vector<int32_t> __tmp_4 = {3, -1, 5};
-    auto __src_12 = post_continue(__tmp_4);
-    auto&& __itr_12 = ::tpy::__iter__(__src_12);
-    for (;;) {
-        auto __r_13 = __itr_12.__next__();
-        if (!__r_13.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_13);
+    {
+        std::vector<int32_t> __tmp_4 = {3, -1, 5};
+        auto __src_12 = post_continue(__tmp_4);
+        auto&& __itr_12 = ::tpy::__iter__(__src_12);
+        for (;;) {
+            auto __r_13 = __itr_12.__next__();
+            if (!__r_13.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_13);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // lim = Limiter(2)
     Limiter lim = Limiter(2);
     // nums: list[Int32] = [-1, 5, -2, 7, 9]
     std::vector<int32_t> nums = {-1, 5, -2, 7, 9};
     // for v in lim.first_positives(nums):
-    auto __src_14 = lim.first_positives(nums);
-    auto&& __itr_14 = ::tpy::__iter__(__src_14);
-    for (;;) {
-        auto __r_15 = __itr_14.__next__();
-        if (!__r_15.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_15);
+    {
+        auto __src_14 = lim.first_positives(nums);
+        auto&& __itr_14 = ::tpy::__iter__(__src_14);
+        for (;;) {
+            auto __r_15 = __itr_14.__next__();
+            if (!__r_15.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_15);
         // print(v)
         std::cout << v << "\n";
+        }
     }
 }
 

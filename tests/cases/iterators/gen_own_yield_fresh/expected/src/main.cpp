@@ -9,14 +9,16 @@ void main() {
     // total = 0
     ::tpy::BigInt total = ::tpy::BigInt(0);
     // for b in boxes(4):
-    auto __src_0 = boxes(::tpy::BigInt(4));
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const auto& b = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = boxes(::tpy::BigInt(4));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const auto& b = ::tpy::unwrap_ref(*__r_1);
         // total = total + b.val
         total = ((::tpy::BigInt(total)) + (b.val));
+        }
     }
     // print(total)
     std::cout << total << "\n";

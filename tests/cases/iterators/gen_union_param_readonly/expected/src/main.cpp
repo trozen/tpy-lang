@@ -68,15 +68,17 @@ __gen_names names(std::variant<const Cat*, const Dog*> a) {
 // def main() -> None:
 void main() {
     // for s in names(Dog("rex")):
-    Dog __tmp_1 = Dog("rex");
-    auto __src_0 = names(std::variant<const Cat*, const Dog*>{&__tmp_1});
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_1);
+    {
+        Dog __tmp_1 = Dog("rex");
+        auto __src_0 = names(std::variant<const Cat*, const Dog*>{&__tmp_1});
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_1);
         // print(s)
         std::cout << s << "\n";
+        }
     }
 }
 

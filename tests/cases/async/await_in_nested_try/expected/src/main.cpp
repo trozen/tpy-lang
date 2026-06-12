@@ -46,6 +46,7 @@ __coro_fail fail() {
 
 // async def go() -> Int32:
 ::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         __state = S_JOIN_1;
@@ -59,11 +60,11 @@ __coro_fail fail() {
                 x = std::move(__r0).value();
                 __sub_0.reset();
                 // return x
+                int32_t __tpy_async_ret_0 = x;
                 this->__finally_1();
                 this->__finally_0();
                 __state = S_DONE;
-                int32_t __tpy_async_ret = x;
-                return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+                return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret_0));
             } catch (const ::tpy::ValueError&) {
                 __sub_0.reset();
                 try {
@@ -95,11 +96,11 @@ __coro_fail fail() {
             y = std::move(__r1).value();
             __sub_1.reset();
             // return y
+            int32_t __tpy_async_ret_1 = y;
             this->__finally_1();
             this->__finally_0();
             __state = S_DONE;
-            int32_t __tpy_async_ret = y;
-            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret_1));
         } catch (...) {
             __sub_1.reset();
             this->__finally_1();
@@ -126,6 +127,10 @@ __coro_fail fail() {
         continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
     }
     __builtin_unreachable();
 }

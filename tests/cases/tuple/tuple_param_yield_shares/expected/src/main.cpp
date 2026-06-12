@@ -32,14 +32,16 @@ void main() {
     // b = Box(5)
     Box b = Box(5);
     // for pair in gen((1, b)):
-    auto __src_0 = gen(std::tuple<int32_t, Box*>{1, &(b)});
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& pair = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = gen(std::tuple<int32_t, Box*>{1, &(b)});
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& pair = ::tpy::unwrap_ref(*__r_1);
         // pair[1].val = 99
         std::get<1>(pair)->val = 99;
+        }
     }
     // print(b.val)
     std::cout << b.val << "\n";

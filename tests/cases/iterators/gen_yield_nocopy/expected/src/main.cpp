@@ -9,14 +9,16 @@ void main() {
     // data = [Handle(1), Handle(2)]
     std::vector<Handle> data = ::tpy::make_vector<Handle>(Handle(1), Handle(2));
     // for h in handles(data):
-    auto __src_0 = handles(data);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& h = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = handles(data);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& h = ::tpy::unwrap_ref(*__r_1);
         // h.fd = h.fd + 10
         h.fd = (::tpy::add_check<int32_t>(h.fd, 10));
+        }
     }
     // for h in data:
     auto& __obj_2 = data;

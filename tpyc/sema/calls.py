@@ -4684,7 +4684,7 @@ class CallAnalyzer:
         if func.error_return_type is None:
             return
         # Inside matching try/except (or except ReturnException catch-all)
-        ctx_error_type = self.ctx.try_except_error_type
+        ctx_error_type = self.ctx.func.try_except_error_type
         if error_return_matches(ctx_error_type, func.error_return_type) or ctx_error_type == "*":
             return
         # Auto-propagation: caller has matching @error_return(E), not inside a try/except

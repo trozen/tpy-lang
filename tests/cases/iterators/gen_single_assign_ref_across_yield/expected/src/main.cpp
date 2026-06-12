@@ -41,14 +41,16 @@ void main() {
     // items = [Box(1)]
     std::vector<Box> items = {Box(::tpy::BigInt(1))};
     // for v in g(items):
-    auto __src_0 = g(items);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = g(items);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // print(items[0].n)
     std::cout << ::tpy::__getitem__(items, 0).n << "\n";

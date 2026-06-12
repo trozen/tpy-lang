@@ -9,14 +9,16 @@ void main() {
     // h = Holder()
     Holder h = Holder();
     // for v in h.bump():
-    auto __src_0 = h.bump();
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = h.bump();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // print(h.nodes[0].val, h.nodes[1].val)
     std::cout << ::tpy::__getitem__(h.nodes, 0).val << " " << ::tpy::__getitem__(h.nodes, 1).val << "\n";

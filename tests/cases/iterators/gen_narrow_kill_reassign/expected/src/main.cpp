@@ -80,15 +80,17 @@ __gen_gen gen(std::variant<::tpy::BigInt, std::string> a) {
 // def main() -> None:
 void main() {
     // for s in gen(5):
-    std::variant<::tpy::BigInt, std::string> __tmp_1 = 5;
-    auto __src_0 = gen(__tmp_1);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_1);
+    {
+        std::variant<::tpy::BigInt, std::string> __tmp_1 = 5;
+        auto __src_0 = gen(__tmp_1);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_1);
         // print(s)
         std::cout << s << "\n";
+        }
     }
 }
 

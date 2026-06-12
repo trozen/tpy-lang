@@ -43,23 +43,27 @@ void main() {
     // g = greetings(make_name())  # tpyc: warning(/borrows from temporary/)
     auto g = greetings(make_name());
     // for msg in greetings(make_name()):  # tpyc: warning(/borrows from temporary/)
-    auto __src_0 = greetings(make_name());
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        std::string_view msg = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = greetings(make_name());
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view msg = ::tpy::unwrap_ref(*__r_1);
         // pass
+        }
     }
     // for msg in greetings("world"):  # tpyc: ok (string literal is static)
-    auto __src_2 = greetings("world");
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        std::string_view msg = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = greetings("world");
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view msg = ::tpy::unwrap_ref(*__r_3);
         // print(msg)
         std::cout << msg << "\n";
+        }
     }
 }
 

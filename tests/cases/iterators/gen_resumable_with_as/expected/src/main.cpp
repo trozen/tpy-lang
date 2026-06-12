@@ -6,6 +6,7 @@ namespace tpyapp::main {
 
 // def gen(n: Int32) -> Iterator[Int32]:
 std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0.emplace(Resource(7));
@@ -79,6 +80,10 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
     __builtin_unreachable();
 }
 
@@ -91,14 +96,16 @@ __gen_gen gen(int32_t n) {
 // def main() -> None:
 void main() {
     // for x in gen(3):
-    auto __src_0 = gen(3);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = gen(3);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
 }
 

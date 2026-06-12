@@ -6,6 +6,7 @@ Shared state and utilities for C++ code generation.
 
 from __future__ import annotations
 import re
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Callable, Iterator, Literal, TextIO, TYPE_CHECKING
@@ -704,6 +705,12 @@ class CodeGenContext:
     # enables `isinstance(self, Sub)` polymorphic-dispatch routing in codegen.
     current_method_record_type: 'TpyType | None' = None
     current_return_type: TpyType | None = None
+    # Exact C++ spelling of the current function's emitted return type
+    # (signature source of truth, including std::expected wrapping and
+    # method special cases). Read by _make_return to type the pre-finally
+    # return-value temp; 'auto' would reject the braced / std::nullopt
+    # spellings some return sites pass.
+    current_return_cpp: str | None = None
     # Generator yield type. Set at generator-body entry points (state-machine
     # __next__, simple-for/simple-while inline lambdas) and read by all yield
     # emission sites so they share one source of truth instead of threading
@@ -1138,6 +1145,7 @@ class CodeGenContext:
         self.current_ns = None
         self.indent_level = 0
         self.current_return_type = None
+        self.current_return_cpp = None
         self.current_yield_type = None
         self.current_error_return = None
         self.error_return_stmt_handled = False
@@ -1227,6 +1235,100 @@ class CodeGenContext:
         self.storage_form_tuple_locals.update(self.walrus_storage_tuple_locals)
         self.rebind_slots.update(self.persistent_rebind_slots)
         self.declared_persistent_aliases = snap.declared_persistent_aliases.copy()
+
+    @contextmanager
+    def nested_def_emission_scope(self, return_type: TpyType | None,
+                                  return_cpp: str | None,
+                                  error_return_cpp: str | None) -> 'Iterator[None]':
+        """Isolate per-function emission context across a nested-def body.
+
+        A nested def emits as a C++ lambda inside the enclosing function's
+        body, but it is its own function: a `return` inside it must not walk
+        the OUTER finally_stack (inlining the outer finally into the lambda),
+        an @error_return call must not `goto` the enclosing function's
+        except label, and async/generator frame emission modes must not
+        apply to the lambda body. Save/clear everything reset_scope
+        initializes per function except local-scope state (the caller
+        handles that via snapshot_local_scope) and name counters (which
+        must keep incrementing across the boundary).
+        """
+        saved = (
+            self.finally_stack,
+            self.try_except_label,
+            self.try_except_err_opt,
+            self.in_except_tier,
+            self.loop_else_labels,
+            self.loop_break_labels,
+            self.match_switch_depth,
+            self.current_return_type,
+            self.current_return_cpp,
+            self.current_error_return,
+            self.error_return_stmt_handled,
+            self.in_async_coro_body,
+            self.in_generator_resumable_body,
+            self.in_generator_finally_helper,
+            self.async_coro_return_cpp,
+            self.async_coro_done_state,
+            self.generator_resumable_done_state,
+            self.current_yield_type,
+            self.async_pending_return_flag,
+            self.async_pending_return_slot,
+            self.async_pending_return_target_state,
+            self.async_pending_return_boundary,
+            self.in_property_getter,
+            self.in_consuming_method,
+        )
+        self.finally_stack = []
+        self.try_except_label = None
+        self.try_except_err_opt = None
+        self.in_except_tier = None
+        self.loop_else_labels = []
+        self.loop_break_labels = []
+        self.match_switch_depth = 0
+        self.current_return_type = return_type
+        self.current_return_cpp = return_cpp
+        self.current_error_return = error_return_cpp
+        self.error_return_stmt_handled = False
+        self.in_async_coro_body = False
+        self.in_generator_resumable_body = False
+        self.in_generator_finally_helper = False
+        self.async_coro_return_cpp = None
+        self.async_coro_done_state = None
+        self.generator_resumable_done_state = None
+        self.current_yield_type = None
+        self.async_pending_return_flag = None
+        self.async_pending_return_slot = None
+        self.async_pending_return_target_state = None
+        self.async_pending_return_boundary = 0
+        self.in_property_getter = False
+        self.in_consuming_method = False
+        try:
+            yield
+        finally:
+            (self.finally_stack,
+             self.try_except_label,
+             self.try_except_err_opt,
+             self.in_except_tier,
+             self.loop_else_labels,
+             self.loop_break_labels,
+             self.match_switch_depth,
+             self.current_return_type,
+             self.current_return_cpp,
+             self.current_error_return,
+             self.error_return_stmt_handled,
+             self.in_async_coro_body,
+             self.in_generator_resumable_body,
+             self.in_generator_finally_helper,
+             self.async_coro_return_cpp,
+             self.async_coro_done_state,
+             self.generator_resumable_done_state,
+             self.current_yield_type,
+             self.async_pending_return_flag,
+             self.async_pending_return_slot,
+             self.async_pending_return_target_state,
+             self.async_pending_return_boundary,
+             self.in_property_getter,
+             self.in_consuming_method) = saved
 
     def register_walrus_deref(self, name: str, deref: str) -> None:
         """Install the `(*slot)` read rewrite for a walrus optional-slot local

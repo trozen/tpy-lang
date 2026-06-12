@@ -21,14 +21,16 @@ void main() {
         std::cout << x << "\n";
     }
     // for p in r.pairs():
-    auto __src_2 = r.pairs();
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        int32_t p = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = r.pairs();
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            int32_t p = ::tpy::unwrap_ref(*__r_3);
         // print(p)
         std::cout << p << "\n";
+        }
     }
 }
 

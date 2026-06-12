@@ -27,6 +27,7 @@ __coro_value value(::tpy::BigInt n) {
 
 // async def caller() -> int:
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0.emplace(Tracer("A"));
@@ -75,6 +76,10 @@ __coro_value value(::tpy::BigInt n) {
         continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
     }
     __builtin_unreachable();
 }

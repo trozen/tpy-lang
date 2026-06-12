@@ -11,14 +11,16 @@ void main() {
     // s = Source()
     Source s = Source();
     // for x in s.values():
-    auto __src_0 = s.values();
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = s.values();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print("x =", x, "emitted =", emitted)
         std::cout << "x =" << " " << x << " " << "emitted =" << " " << emitted << "\n";
+        }
     }
 }
 

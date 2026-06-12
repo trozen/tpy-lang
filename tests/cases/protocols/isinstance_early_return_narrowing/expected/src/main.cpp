@@ -331,8 +331,9 @@ std::string narrow_in_with_body(const Pet& p) {
         // if not isinstance(p, Dog):
         if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
             // return "with non-dog"
+            std::string __tpy_ret_0 = "with non-dog";
             __ctx_1.__exit__({}, nullptr, {});
-            return "with non-dog";
+            return __tpy_ret_0;
         }
         const Dog& __p = *dynamic_cast<const Dog*>(&p);
         // result = "WITH-DOG: " + p.bark()

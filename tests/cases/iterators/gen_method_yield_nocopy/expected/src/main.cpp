@@ -9,14 +9,16 @@ void main() {
     // b = Box()
     Box b = Box();
     // for h in b.each():
-    auto __src_0 = b.each();
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& h = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = b.each();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& h = ::tpy::unwrap_ref(*__r_1);
         // h.fd = h.fd + 10
         h.fd = (::tpy::add_check<int32_t>(h.fd, 10));
+        }
     }
     // for h in b.items:
     auto& __obj_2 = b.items;

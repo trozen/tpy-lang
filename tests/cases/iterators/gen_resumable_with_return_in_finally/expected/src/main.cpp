@@ -6,6 +6,7 @@ namespace tpyapp::main {
 
 // def gen_with_outer_return_in_finally() -> Iterator[int]:
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_outer_return_in_finally::__next__() {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0.emplace(CM("outer"));
@@ -78,6 +79,10 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_outer_return_i
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
     __builtin_unreachable();
 }
 
@@ -94,6 +99,7 @@ __gen_gen_with_outer_return_in_finally gen_with_outer_return_in_finally() {
 
 // def gen_nested_with_return_in_finally() -> Iterator[int]:
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_nested_with_return_in_finally::__next__() {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0.emplace(CM("outer"));
@@ -222,6 +228,10 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_nested_with_return_
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
     __builtin_unreachable();
 }
 
@@ -241,26 +251,30 @@ void main() {
     // print("--- gen_with_outer_return_in_finally ---")
     std::cout << "--- gen_with_outer_return_in_finally ---" << "\n";
     // for x in gen_with_outer_return_in_finally():
-    auto __src_0 = gen_with_outer_return_in_finally();
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = gen_with_outer_return_in_finally();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // print("--- gen_nested_with_return_in_finally ---")
     std::cout << "--- gen_nested_with_return_in_finally ---" << "\n";
     // for x in gen_nested_with_return_in_finally():
-    auto __src_2 = gen_nested_with_return_in_finally();
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = gen_nested_with_return_in_finally();
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_3);
         // print(x)
         std::cout << x << "\n";
+        }
     }
 }
 

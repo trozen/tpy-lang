@@ -64,28 +64,32 @@ __gen_describe describe(std::variant<Cat*, Dog*> a) {
 void main() {
     // # First call passes a temporary, second a named local -- both must stay live.
     // for s in describe(Dog("rex")):
-    Dog __tmp_1 = Dog("rex");
-    auto __src_0 = describe(std::variant<Cat*, Dog*>{&__tmp_1});
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_1);
+    {
+        Dog __tmp_1 = Dog("rex");
+        auto __src_0 = describe(std::variant<Cat*, Dog*>{&__tmp_1});
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_1);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // pet: Dog | Cat = Cat("tom")
     std::variant<Cat, Dog> __slot_1 = Cat("tom");
     std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // for s in describe(pet):
-    auto __src_2 = describe(pet);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = describe(pet);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_3);
         // print(s)
         std::cout << s << "\n";
+        }
     }
 }
 

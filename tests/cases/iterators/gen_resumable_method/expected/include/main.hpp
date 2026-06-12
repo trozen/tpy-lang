@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
 
 // Generator: Source.windowed
 struct __gen_Source_windowed {
-    int32_t __state;
+    ::tpy::frame_state __state;
     const Source& __self;
     std::vector<int32_t>& xs;
     int32_t i;
@@ -55,6 +55,21 @@ struct __gen_Source_windowed {
 
     __gen_Source_windowed(const Source& __self, std::vector<int32_t>& xs)
         : __state(S_INITIAL), __self(__self), xs(xs) {}
+
+    __gen_Source_windowed(__gen_Source_windowed&&) = default;
+    ~__gen_Source_windowed() {
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+            case S_RESUME_1:
+                this->__finally_0();
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_Source_windowed& __iter__() { return *this; }

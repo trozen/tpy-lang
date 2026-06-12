@@ -56,14 +56,16 @@ void main() {
     std::variant<Cat, Dog> __slot_1 = Dog();
     std::variant<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     // for v in codes(pet):
-    auto __src_0 = codes(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(pet));
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = codes(::tpy::ptr_variant_to_const<std::variant<const Cat*, const Dog*>>(pet));
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
 }
 

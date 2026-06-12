@@ -16,7 +16,7 @@ void main();
 
 // Generator: gen
 struct __gen_gen {
-    int32_t __state;
+    ::tpy::frame_state __state;
     ::tpy::BigInt n;
 
     enum : int32_t {
@@ -33,6 +33,22 @@ struct __gen_gen {
 
     __gen_gen(::tpy::BigInt n_)
         : __state(S_INITIAL), n(std::move(n_)) {}
+
+    __gen_gen(__gen_gen&&) = default;
+    ~__gen_gen() {
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+            case S_RESUME_1:
+            case S_RESUME_2:
+                this->__finally_0();
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

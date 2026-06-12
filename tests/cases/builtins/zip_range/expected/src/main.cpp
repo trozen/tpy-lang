@@ -11,27 +11,30 @@ void main() {
     // names = ["alice", "bob", "charlie"]
     std::array<std::string, 3> names = {"alice", "bob", "charlie"};
     // for i, name in zip(range(3), names):
-    auto __src_0 = ::tpy::builtin_zip<int32_t, std::string>(::tpy::Range<int32_t>(3), names);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = ::tpy::builtin_zip<int32_t, std::string>(::tpy::Range<int32_t>(3), names);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for i, name in zip(range(3), names):
         const auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);
         std::string_view name = std::get<1>(__tup_1);
         // print(i, name)
         std::cout << i << " " << name << "\n";
+        }
     }
     // # two ranges
     // for a, b in zip(range(4), range(10, 14)):
-    auto __src_2 = ::tpy::builtin_zip<int32_t, int32_t>(::tpy::Range<int32_t>(4), ::tpy::Range<int32_t>(10, 14));
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = ::tpy::builtin_zip<int32_t, int32_t>(::tpy::Range<int32_t>(4), ::tpy::Range<int32_t>(10, 14));
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
         // # two ranges
         // for a, b in zip(range(4), range(10, 14)):
         const auto& __tup_2 = __for_tup_1;
@@ -39,6 +42,7 @@ void main() {
         int32_t b = std::get<1>(__tup_2);
         // print(a, b)
         std::cout << a << " " << b << "\n";
+        }
     }
 }
 

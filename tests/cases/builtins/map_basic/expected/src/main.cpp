@@ -22,49 +22,57 @@ void main() {
     std::array<int32_t, 5> nums = {1, 2, 3, 4, 5};
     // # named function
     // for x in map(double, nums):
-    auto __src_0 = ::tpy::builtin_map<int32_t, int32_t>(double_, nums);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = ::tpy::builtin_map<int32_t, int32_t>(double_, nums);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // # lambda
     // for x in map(lambda x: x + 10, nums):
-    auto __src_2 = ::tpy::builtin_map<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 10)); }, nums);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = ::tpy::builtin_map<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 10)); }, nums);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_3);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // # type-changing map (Int32 -> str)
     // for s in map(to_str, nums):
-    auto __src_4 = ::tpy::builtin_map<int32_t, std::string>(to_str, nums);
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_5);
+    {
+        auto __src_4 = ::tpy::builtin_map<int32_t, std::string>(to_str, nums);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_5);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // # map over empty list
     // empty: list[Int32] = []
     std::vector<int32_t> empty = std::vector<int32_t>{};
     // for x in map(double, empty):
-    auto __src_6 = ::tpy::builtin_map<int32_t, int32_t>(double_, empty);
-    auto&& __itr_6 = ::tpy::__iter__(__src_6);
-    for (;;) {
-        auto __r_7 = __itr_6.__next__();
-        if (!__r_7.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_7);
+    {
+        auto __src_6 = ::tpy::builtin_map<int32_t, int32_t>(double_, empty);
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_7);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // # chained: map + list constructor
     // result = list(map(lambda x: x * x, nums))

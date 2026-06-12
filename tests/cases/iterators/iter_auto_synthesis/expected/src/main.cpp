@@ -8,14 +8,16 @@ namespace tpyapp::main {
 void main() {
     // # Auto-synthesized __iter__ enables for-loop
     // for x in SimpleIter(4):
-    auto __src_0 = SimpleIter(4);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = SimpleIter(4);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // print("done")
     std::cout << "done" << "\n";

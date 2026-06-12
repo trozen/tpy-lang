@@ -27,16 +27,18 @@ std::expected<int32_t, MyErr> caller(int32_t x) {
             {
                 auto __try_tmp_1 = fallible(x);
                 if (!__try_tmp_1.has_value()) {
+                    std::expected<int32_t, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_1.error());
                     // print("cleanup-1")
                     std::cout << "cleanup-1" << "\n";
-                    return ::tpy::make_unexpected(__try_tmp_1.error());
+                    return __tpy_ret_0;
                 }
                 y = ::tpy::unwrap_ref_move(*__try_tmp_1);
             }
             // return y
+            std::expected<int32_t, MyErr> __tpy_ret_1 = y;
             // print("cleanup-1")
             std::cout << "cleanup-1" << "\n";
-            return y;
+            return __tpy_ret_1;
         } catch (...) {
             // print("cleanup-1")
             std::cout << "cleanup-1" << "\n";
@@ -57,16 +59,18 @@ std::expected<int32_t, MyErr> caller_assign(int32_t x) {
             {
                 auto __try_tmp_2 = fallible(x);
                 if (!__try_tmp_2.has_value()) {
+                    std::expected<int32_t, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_2.error());
                     // print("cleanup-2")
                     std::cout << "cleanup-2" << "\n";
-                    return ::tpy::make_unexpected(__try_tmp_2.error());
+                    return __tpy_ret_0;
                 }
                 z = ::tpy::unwrap_ref_move(*__try_tmp_2);
             }
             // return z
+            std::expected<int32_t, MyErr> __tpy_ret_1 = z;
             // print("cleanup-2")
             std::cout << "cleanup-2" << "\n";
-            return z;
+            return __tpy_ret_1;
         } catch (...) {
             // print("cleanup-2")
             std::cout << "cleanup-2" << "\n";
@@ -85,9 +89,10 @@ std::expected<void, MyErr> caller_stmt(int32_t x) {
             {
                 auto __try_tmp_3 = fallible(x);
                 if (!__try_tmp_3.has_value()) {
+                    std::expected<void, MyErr> __tpy_ret_0 = ::tpy::make_unexpected(__try_tmp_3.error());
                     // print("cleanup-3")
                     std::cout << "cleanup-3" << "\n";
-                    return ::tpy::make_unexpected(__try_tmp_3.error());
+                    return __tpy_ret_0;
                 }
             }
         } catch (...) {

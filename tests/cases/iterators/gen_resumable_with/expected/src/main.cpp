@@ -6,6 +6,7 @@ namespace tpyapp::main {
 
 // def gen_with_yield(xs: list[int]) -> Iterator[int]:
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_yield::__next__() {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         __with_ctx_0.emplace(Tracer("g"));
@@ -64,6 +65,10 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_yield::__next_
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
     __builtin_unreachable();
 }
 
@@ -76,15 +81,17 @@ __gen_gen_with_yield gen_with_yield(std::vector<::tpy::BigInt>& xs) {
 // def main():
 void main() {
     // for v in gen_with_yield([10, 20, 30]):
-    std::vector<::tpy::BigInt> __tmp_1 = {10, 20, 30};
-    auto __src_0 = gen_with_yield(__tmp_1);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
+    {
+        std::vector<::tpy::BigInt> __tmp_1 = {10, 20, 30};
+        auto __src_0 = gen_with_yield(__tmp_1);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
 }
 

@@ -9,18 +9,20 @@ void main() {
     // data = [Box(1), Box(2), Box(3)]
     std::vector<Box> data = {Box(::tpy::BigInt(1)), Box(::tpy::BigInt(2)), Box(::tpy::BigInt(3))};
     // for i, b in g(data):
-    auto __src_0 = g(data);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = g(data);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for i, b in g(data):
         auto& __tup_1 = __for_tup_0;
         const ::tpy::BigInt& i = std::get<0>(__tup_1);
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         // b.val = b.val + 100
         b.val = ((b.val) + (::tpy::BigInt(100)));
+        }
     }
     // for box in data:
     auto& __obj_2 = data;

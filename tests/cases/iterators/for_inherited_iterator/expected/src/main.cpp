@@ -11,25 +11,29 @@ void __tpy_init() {
 
     // # 1. for-loop over child inheriting __next__() from parent
     // for x in DoubleCounter(3):
-    auto __src_0 = DoubleCounter(3);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = DoubleCounter(3);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // # 2. for-loop over multi-level child
     // for x in GrandChild(2):
-    auto __src_2 = GrandChild(2);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = GrandChild(2);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_3);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // # 3. Verify output matches
     // print("done")

@@ -10,14 +10,16 @@ void main() {
     Dog __tmp_1 = Dog("rex");
     Box b = Box(std::variant<Cat*, Dog*>{&__tmp_1});
     // for s in b.describe():
-    auto __src_0 = b.describe();
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = b.describe();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_1);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // print("--")
     std::cout << "--" << "\n";
@@ -25,14 +27,16 @@ void main() {
     Cat __tmp_2 = Cat(::tpy::BigInt(9));
     Box b2 = Box(std::variant<Cat*, Dog*>{&__tmp_2});
     // for s in b2.describe():
-    auto __src_2 = b2.describe();
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = b2.describe();
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_3);
         // print(s)
         std::cout << s << "\n";
+        }
     }
 }
 

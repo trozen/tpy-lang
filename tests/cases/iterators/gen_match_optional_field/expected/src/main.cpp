@@ -51,29 +51,33 @@ __gen_gen gen(Box& b) {
 // def main() -> None:
 void main() {
     // for x in gen(Box(Inner(7))):
-    Inner __tmp_1 = Inner(::tpy::BigInt(7));
-    Box __tmp_2 = Box(&(__tmp_1));
-    auto __src_0 = gen(__tmp_2);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
+    {
+        Inner __tmp_1 = Inner(::tpy::BigInt(7));
+        Box __tmp_2 = Box(&(__tmp_1));
+        auto __src_0 = gen(__tmp_2);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // print("--")
     std::cout << "--" << "\n";
     // for x in gen(Box(None)):
-    Box __tmp_3 = Box(nullptr);
-    auto __src_2 = gen(__tmp_3);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_3);
+    {
+        Box __tmp_3 = Box(nullptr);
+        auto __src_2 = gen(__tmp_3);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            const ::tpy::BigInt& x = ::tpy::unwrap_ref(*__r_3);
         // print(x)
         std::cout << x << "\n";
+        }
     }
 }
 

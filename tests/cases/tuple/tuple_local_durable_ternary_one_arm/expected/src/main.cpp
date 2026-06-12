@@ -38,14 +38,16 @@ void main() {
     // other = Box(0)
     Box other = Box(0);
     // for pair in gen((0, other), shared, False):
-    auto __src_0 = gen(std::tuple<int32_t, Box*>{0, &(other)}, shared, false);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& pair = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = gen(std::tuple<int32_t, Box*>{0, &(other)}, shared, false);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& pair = ::tpy::unwrap_ref(*__r_1);
         // pair[1].val = 99
         std::get<1>(pair)->val = 99;
+        }
     }
     // print(shared.val)
     std::cout << shared.val << "\n";

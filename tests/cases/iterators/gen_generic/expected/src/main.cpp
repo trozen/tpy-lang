@@ -8,72 +8,81 @@ namespace tpyapp::main {
 void main() {
     // # Generic while-generator with value type
     // for x in repeat(42, 3):
-    int32_t __tmp_1 = 42;
-    auto __src_0 = repeat<int32_t>(__tmp_1, 3);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        int32_t __tmp_1 = 42;
+        auto __src_0 = repeat<int32_t>(__tmp_1, 3);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
     // # Generic while-generator with str
     // for s in repeat("hi", 2):
-    std::string __tmp_2 = "hi";
-    auto __src_2 = repeat<std::string>(__tmp_2, 2);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_3);
+    {
+        std::string __tmp_2 = "hi";
+        auto __src_2 = repeat<std::string>(__tmp_2, 2);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_3);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // # Generic for-generator (enumerate) over list[str]
     // words = ["hello", "world", "foo"]
     std::array<std::string, 3> words = {"hello", "world", "foo"};
     // for i, w in enumerate(words):
-    auto __src_4 = enumerate<std::string>(words);
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_5);
+    {
+        auto __src_4 = enumerate<std::string>(words);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_5);
         // for i, w in enumerate(words):
         const auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);
         std::string_view w = std::get<1>(__tup_1);
         // print(i, w)
         std::cout << i << " " << w << "\n";
+        }
     }
     // # enumerate over list[Int32]
     // nums = [10, 20, 30]
     std::array<int32_t, 3> nums = {10, 20, 30};
     // for i, n in enumerate(nums):
-    auto __src_6 = enumerate<int32_t>(nums);
-    auto&& __itr_6 = ::tpy::__iter__(__src_6);
-    for (;;) {
-        auto __r_7 = __itr_6.__next__();
-        if (!__r_7.has_value()) break;
-        auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_7);
+    {
+        auto __src_6 = enumerate<int32_t>(nums);
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_7);
         // for i, n in enumerate(nums):
         const auto& __tup_2 = __for_tup_1;
         int32_t i = std::get<0>(__tup_2);
         int32_t n = std::get<1>(__tup_2);
         // print(i, n)
         std::cout << i << " " << n << "\n";
+        }
     }
     // # compose: enumerate directly over repeat (generator over generator)
     // for i, s in enumerate(repeat("x", 3)):
-    std::string __tmp_3 = "x";
-    auto __tmp_4 = repeat<std::string>(__tmp_3, 3);
-    auto __src_8 = enumerate<std::string>(__tmp_4);
-    auto&& __itr_8 = ::tpy::__iter__(__src_8);
-    for (;;) {
-        auto __r_9 = __itr_8.__next__();
-        if (!__r_9.has_value()) break;
-        const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_9);
+    {
+        std::string __tmp_3 = "x";
+        auto __tmp_4 = repeat<std::string>(__tmp_3, 3);
+        auto __src_8 = enumerate<std::string>(__tmp_4);
+        auto&& __itr_8 = ::tpy::__iter__(__src_8);
+        for (;;) {
+            auto __r_9 = __itr_8.__next__();
+            if (!__r_9.has_value()) break;
+            const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_9);
         // # compose: enumerate directly over repeat (generator over generator)
         // for i, s in enumerate(repeat("x", 3)):
         const auto& __tup_3 = __for_tup_2;
@@ -81,6 +90,7 @@ void main() {
         std::string_view s = std::get<1>(__tup_3);
         // print(i, s)
         std::cout << i << " " << s << "\n";
+        }
     }
 }
 

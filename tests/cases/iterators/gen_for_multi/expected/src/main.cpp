@@ -72,15 +72,17 @@ __gen_multi multi(std::vector<int32_t>& items, int32_t n) {
 // def main():
 void main() {
     // for x in multi([1, 2, 3], 4):
-    std::vector<int32_t> __tmp_1 = {1, 2, 3};
-    auto __src_0 = multi(__tmp_1, 4);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        std::vector<int32_t> __tmp_1 = {1, 2, 3};
+        auto __src_0 = multi(__tmp_1, 4);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
 }
 

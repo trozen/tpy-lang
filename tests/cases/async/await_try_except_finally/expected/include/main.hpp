@@ -65,7 +65,7 @@ struct __coro_fail {
 
 // Async coroutine: go
 struct __coro_go {
-    int32_t __state;
+    ::tpy::frame_state __state;
     bool __cancel_pending;
     bool should_fail;
     int32_t result;
@@ -88,6 +88,22 @@ struct __coro_go {
 
     __coro_go(bool should_fail_)
         : __state(S_INITIAL), __cancel_pending(false), should_fail(std::move(should_fail_)) {}
+
+    __coro_go(__coro_go&&) = default;
+    ~__coro_go() {
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+            case S_RESUME_1:
+            case S_RESUME_2:
+                this->__finally_0();
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned coroutine");
+        }
+    }
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

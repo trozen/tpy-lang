@@ -126,7 +126,8 @@ class StatementGenerator:
                          record_type_param_bounds: dict[str, TpyType] | None = None,
                          const_ref_params: set[str] | None = None,
                          deep_const_borrow_params: set[str] | None = None,
-                         owning_record_name: str | None = None) -> 'ScanResult | None':
+                         owning_record_name: str | None = None,
+                         return_cpp: str | None = None) -> 'ScanResult | None':
         """Reset per-scope ctx state and repopulate it for the given function.
 
         Shared by gen_body (sync + simple-gen + multi-yield-gen) and async
@@ -231,6 +232,7 @@ class StatementGenerator:
         self.ctx.current_ns = local_ns
         self.ctx.indent_level = indent_level
         self.ctx.current_return_type = return_type
+        self.ctx.current_return_cpp = return_cpp
         # Set current_yield_type for generator bodies so yield-emission sites
         # don't need it threaded through their call signatures. Skipped for
         # sema-errored generators (no resolved yield type) -- leaves the
@@ -380,7 +382,8 @@ class StatementGenerator:
                  record_type_param_bounds: dict[str, TpyType] | None = None,
                  const_ref_params: set[str] | None = None,
                  deep_const_borrow_params: set[str] | None = None,
-                 owning_record_name: str | None = None) -> None:
+                 owning_record_name: str | None = None,
+                 return_cpp: str | None = None) -> None:
         """Generate the body of a function or method.
 
         Handles scope setup, body buffering, hoist-decl prepending, and cleanup.
@@ -393,6 +396,7 @@ class StatementGenerator:
             const_ref_params=const_ref_params,
             deep_const_borrow_params=deep_const_borrow_params,
             owning_record_name=owning_record_name,
+            return_cpp=return_cpp,
         )
 
         # Emit mutable local copies for reassigned const-ref params (BigInt, str)
@@ -3353,6 +3357,7 @@ class StatementGenerator:
         return_type = self.types.resolve_type(func.return_type)
         if isinstance(return_type, VoidType):
             ret_annotation = ""
+            ret_cpp = None
         else:
             ret_cpp = self.types.type_to_cpp(return_type)
             ret_annotation = f" -> {ret_cpp}"
@@ -3367,11 +3372,16 @@ class StatementGenerator:
         # Emit lambda header
         out.write(f"{indent}auto {name} = {capture}({params_str}){ret_annotation} {{\n")
 
-        # Increase indent and generate body
+        # Increase indent and generate body. The emission scope isolates
+        # per-function context (finally_stack, try/except labels, async/
+        # generator modes, return facts) -- the lambda is its own function,
+        # not a block of the enclosing one.
         self.ctx.indent_level += 1
         try:
-            for s in func.body:
-                self.gen_stmt(out, s)
+            with self.ctx.nested_def_emission_scope(
+                    func.return_type, ret_cpp, None):
+                for s in func.body:
+                    self.gen_stmt(out, s)
         finally:
             self.ctx.indent_level -= 1
             self.ctx.restore_local_scope(scope_snap)
@@ -3527,10 +3537,23 @@ class StatementGenerator:
         return terminated
 
     def _make_try_finally_emit(self, stmt: TpyTry) -> tuple[Callable[[TextIO, str], None], bool]:
-        """Build an emit callback and terminates flag for a try/finally's body."""
+        """Build an emit callback and terminates flag for a try/finally's body.
+
+        The finally body is emitted several times (catch path, normal path,
+        and inline at every return/break/continue site), each into its own
+        C++ scope. Snapshot/restore the local-scope state around each copy
+        so per-copy artifacts (narrowing aliases, rebind slots) from one
+        emission can't leak into the next, which lives in a scope where
+        they were never declared. Finally-body first bindings are hoisted
+        by sema, so every copy assigns the same pre-declared slot.
+        """
         def emit(o: TextIO, ind: str) -> None:
-            for s in stmt.finally_body:
-                self.gen_stmt(o, s)
+            snap = self.ctx.snapshot_local_scope()
+            try:
+                for s in stmt.finally_body:
+                    self.gen_stmt(o, s)
+            finally:
+                self.ctx.restore_local_scope(snap)
         last = stmt.finally_body[-1] if stmt.finally_body else None
         terminates = isinstance(last, (TpyRaise, TpyReturn))
         return emit, terminates
@@ -3542,8 +3565,27 @@ class StatementGenerator:
         before the actual `return ...;`. If a finally body itself terminates
         (via raise/return), the trailing return is suppressed (the body
         already transferred control).
+
+        Python evaluates the return expression BEFORE finally bodies (and
+        `with` `__exit__`) run -- and still evaluates it when a finally
+        overrides the return. With frames active, capture the value into a
+        temp typed with the signature spelling first ('auto' cannot hold
+        the braced / std::nullopt spellings some return sites pass), then
+        run the chain, then return the temp (implicit move: local).
         """
         out = io.StringIO()
+        if expr is not None and self.ctx.finally_stack:
+            tmp = f"__tpy_ret_{self.ctx.iter_counter}"
+            self.ctx.iter_counter += 1
+            ret_cpp = self.ctx.current_return_cpp or "auto"
+            chain = io.StringIO()
+            terminated = self._emit_finally_chain(chain, indent)
+            maybe_unused = "[[maybe_unused]] " if terminated else ""
+            out.write(f"{indent}{maybe_unused}{ret_cpp} {tmp} = {expr};\n")
+            out.write(chain.getvalue())
+            if not terminated:
+                out.write(f"{indent}return {tmp};\n")
+            return out.getvalue()
         terminated = self._emit_finally_chain(out, indent)
         if terminated:
             return out.getvalue()
@@ -3591,8 +3633,27 @@ class StatementGenerator:
                 out.write(f"{indent}continue;\n")
             return out.getvalue()
         # Walk enclosing finally chain (try/with around an `await` or just a
-        # return inside try/finally). Same machinery as sync _make_return.
-        terminated = self._emit_finally_chain(out, indent)
+        # return inside try/finally). Same machinery as sync _make_return:
+        # the return value must be captured BEFORE the chain runs (Python
+        # evaluates the return expression first, then finally bodies).
+        ret_tmp: str | None = None
+        ret_cpp = self.ctx.async_coro_return_cpp or "void"
+        if (not isinstance(ret_type, VoidType) and stmt.value is not None
+                and self.ctx.finally_stack):
+            if isinstance(stmt.value, TpyNoneLiteral):
+                expr_cpp = self.expressions.gen_expr(
+                    stmt.value, target_type=ret_type)
+            else:
+                expr_cpp = self.expressions.gen_expr_deref(stmt.value)
+            ret_tmp = f"__tpy_async_ret_{self.ctx.iter_counter}"
+            self.ctx.iter_counter += 1
+            chain = io.StringIO()
+            terminated = self._emit_finally_chain(chain, indent)
+            maybe_unused = "[[maybe_unused]] " if terminated else ""
+            out.write(f"{indent}{maybe_unused}{ret_cpp} {ret_tmp} = {expr_cpp};\n")
+            out.write(chain.getvalue())
+        else:
+            terminated = self._emit_finally_chain(out, indent)
         if terminated:
             return out.getvalue()
         out.write(f"{indent}__state = {done_state};\n")
@@ -3605,23 +3666,23 @@ class StatementGenerator:
                 out.write(
                     f"{indent}::tpy::tpy_panic(\"non-void async def used bare return\");\n")
             else:
-                ret_cpp = self.ctx.async_coro_return_cpp or "void"
-                if isinstance(stmt.value, TpyNoneLiteral):
-                    # The coroutine return slot is storage form, so None
-                    # needs the target-typed spelling (std::nullopt /
-                    # monostate), not the borrow-form nullptr.
-                    expr_cpp = self.expressions.gen_expr(
-                        stmt.value, target_type=ret_type)
-                else:
-                    expr_cpp = self.expressions.gen_expr_deref(stmt.value)
-                # Bind to a local first so `std::move` has a typed source:
-                # `std::move({1, 2, 3})` (braced initializer) doesn't compile
-                # because the template parameter can't be deduced.
-                tmp = "__tpy_async_ret"
-                out.write(f"{indent}{ret_cpp} {tmp} = {expr_cpp};\n")
+                if ret_tmp is None:
+                    if isinstance(stmt.value, TpyNoneLiteral):
+                        # The coroutine return slot is storage form, so None
+                        # needs the target-typed spelling (std::nullopt /
+                        # monostate), not the borrow-form nullptr.
+                        expr_cpp = self.expressions.gen_expr(
+                            stmt.value, target_type=ret_type)
+                    else:
+                        expr_cpp = self.expressions.gen_expr_deref(stmt.value)
+                    # Bind to a local first so `std::move` has a typed source:
+                    # `std::move({1, 2, 3})` (braced initializer) doesn't
+                    # compile because the template parameter can't be deduced.
+                    ret_tmp = "__tpy_async_ret"
+                    out.write(f"{indent}{ret_cpp} {ret_tmp} = {expr_cpp};\n")
                 out.write(
                     f"{indent}return ::tpystd::tpy::Poll<{ret_cpp}>::ready("
-                    f"std::move({tmp}));\n")
+                    f"std::move({ret_tmp}));\n")
         return out.getvalue()
 
     def _make_generator_resumable_return(self, stmt: TpyReturn,
@@ -5219,13 +5280,23 @@ class StatementGenerator:
                 // body
             }
         """
+        scope_outer: str | None = None
         if iter_name is None:
             n = self.ctx.iter_counter
             self.ctx.iter_counter += 1
             iter_name = f"__iter_{n}"
             r_name = f"__r_{n}"
 
-            src_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
+            is_lvalue_src = self._is_lvalue_iterable(stmt.iterable)
+            if not is_lvalue_src:
+                # Temporary iterable: brace-scope the loop so the temp dies
+                # at loop exit, like CPython's refcount drop -- observable
+                # when the iterator owns cleanup (a generator frame's
+                # pending finally, a file handle).
+                scope_outer = indent
+                out.write(f"{indent}{{\n")
+                indent = indent + INDENT
+            src_binding = "auto&" if is_lvalue_src else "auto"
             self.ctx.temps.flush(out, indent)
             out.write(f"{indent}{src_binding} {iter_name} = {iterable_expr};\n")
         else:
@@ -5252,6 +5323,8 @@ class StatementGenerator:
         out.write(f"{inner_indent}{binding}\n")
 
         self._gen_loop_body(out, stmt, indent, elem_type, consuming=consuming)
+        if scope_outer is not None:
+            out.write(f"{scope_outer}}}\n")
 
     def _gen_direct_next_loop_with_iter(self, out: TextIO, stmt: TpyForEach, indent: str,
                                          iterable_expr: str, elem_type: TpyType,
@@ -5266,8 +5339,18 @@ class StatementGenerator:
         self.ctx.iter_counter += 1
         src_name = f"__src_{n}"
         iter_name = f"__itr_{n}"
-        src_binding = "auto&" if self._is_lvalue_iterable(stmt.iterable) else "auto"
+        is_lvalue_src = self._is_lvalue_iterable(stmt.iterable)
+        src_binding = "auto&" if is_lvalue_src else "auto"
 
+        scope_outer: str | None = None
+        if not is_lvalue_src:
+            # Temporary iterable: brace-scope the loop so the temp dies at
+            # loop exit, like CPython's refcount drop -- observable when
+            # the source owns cleanup (a generator frame's pending finally,
+            # a file handle).
+            scope_outer = indent
+            out.write(f"{indent}{{\n")
+            indent = indent + INDENT
         self.ctx.temps.flush(out, indent)
         out.write(f"{indent}{src_binding} {src_name} = {iterable_expr};\n")
         # auto&& preserves reference returns from __iter__ (iterator-shaped
@@ -5281,6 +5364,8 @@ class StatementGenerator:
 
         self._gen_direct_next_loop(out, stmt, indent, iterable_expr, elem_type,
                                    call=next_call, iter_name=iter_name)
+        if scope_outer is not None:
+            out.write(f"{scope_outer}}}\n")
 
     @staticmethod
     def _unwrap_coerce(expr: TpyExpr) -> TpyExpr:

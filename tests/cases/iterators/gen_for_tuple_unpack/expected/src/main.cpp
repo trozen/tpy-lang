@@ -145,42 +145,48 @@ __gen_multi multi(std::vector<std::tuple<int32_t, int32_t>>& p1, std::vector<std
 // def main():
 void main() {
     // for v in sums([(1, 2), (3, 4), (5, 6)]):
-    std::vector<std::tuple<int32_t, int32_t>> __tmp_1 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}, std::tuple<int32_t, int32_t>{5, 6}};
-    auto __src_0 = sums(__tmp_1);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_1);
+    {
+        std::vector<std::tuple<int32_t, int32_t>> __tmp_1 = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}, std::tuple<int32_t, int32_t>{5, 6}};
+        auto __src_0 = sums(__tmp_1);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // print("---")
     std::cout << "---" << "\n";
     // for v in firsts([(10, 20), (30, 40)]):
-    std::vector<std::tuple<int32_t, int32_t>> __tmp_2 = {std::tuple<int32_t, int32_t>{10, 20}, std::tuple<int32_t, int32_t>{30, 40}};
-    auto __src_2 = firsts(__tmp_2);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_3);
+    {
+        std::vector<std::tuple<int32_t, int32_t>> __tmp_2 = {std::tuple<int32_t, int32_t>{10, 20}, std::tuple<int32_t, int32_t>{30, 40}};
+        auto __src_2 = firsts(__tmp_2);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_3);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // print("---")
     std::cout << "---" << "\n";
     // for v in multi([(1, 2)], [(3, 4), (5, 6)]):
-    std::vector<std::tuple<int32_t, int32_t>> __tmp_3 = {std::tuple<int32_t, int32_t>{1, 2}};
-    std::vector<std::tuple<int32_t, int32_t>> __tmp_4 = {std::tuple<int32_t, int32_t>{3, 4}, std::tuple<int32_t, int32_t>{5, 6}};
-    auto __src_4 = multi(__tmp_3, __tmp_4);
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        int32_t v = ::tpy::unwrap_ref(*__r_5);
+    {
+        std::vector<std::tuple<int32_t, int32_t>> __tmp_3 = {std::tuple<int32_t, int32_t>{1, 2}};
+        std::vector<std::tuple<int32_t, int32_t>> __tmp_4 = {std::tuple<int32_t, int32_t>{3, 4}, std::tuple<int32_t, int32_t>{5, 6}};
+        auto __src_4 = multi(__tmp_3, __tmp_4);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_5);
         // print(v)
         std::cout << v << "\n";
+        }
     }
 }
 

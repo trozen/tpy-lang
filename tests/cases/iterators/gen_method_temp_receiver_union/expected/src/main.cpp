@@ -7,28 +7,32 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // for s in Box(Dog()).describe():
-    Dog __tmp_1 = Dog();
-    Box __tmp_2 = Box(std::variant<Cat*, Dog*>{&__tmp_1});
-    auto __src_0 = __tmp_2.describe();
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_1);
+    {
+        Dog __tmp_1 = Dog();
+        Box __tmp_2 = Box(std::variant<Cat*, Dog*>{&__tmp_1});
+        auto __src_0 = __tmp_2.describe();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_1);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // for s in Box(Cat()).describe():
-    Cat __tmp_3 = Cat();
-    Box __tmp_4 = Box(std::variant<Cat*, Dog*>{&__tmp_3});
-    auto __src_2 = __tmp_4.describe();
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_3);
+    {
+        Cat __tmp_3 = Cat();
+        Box __tmp_4 = Box(std::variant<Cat*, Dog*>{&__tmp_3});
+        auto __src_2 = __tmp_4.describe();
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_3);
         // print(s)
         std::cout << s << "\n";
+        }
     }
 }
 

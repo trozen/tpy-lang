@@ -24,14 +24,16 @@ void main() {
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpy::builtin_filter_truthy<int32_t>(std::array<int32_t, 3>{0, 0, 0}))) << "\n";
     // # Lazy iteration
     // for x in filter(None, [0, 1, 0, 2]):
-    auto __src_0 = ::tpy::builtin_filter_truthy<int32_t>(std::array<int32_t, 4>{0, 1, 0, 2});
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        int32_t x = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = ::tpy::builtin_filter_truthy<int32_t>(std::array<int32_t, 4>{0, 1, 0, 2});
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_1);
         // print(x)
         std::cout << x << "\n";
+        }
     }
 }
 

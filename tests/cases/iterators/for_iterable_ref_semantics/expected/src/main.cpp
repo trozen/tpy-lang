@@ -29,14 +29,16 @@ void main() {
     // pts3: list[Point] = [Point(5, 6)]
     std::vector<Point> pts3 = {Point(::tpy::BigInt(5), ::tpy::BigInt(6))};
     // for v in gen_double_x(pts3):
-    auto __src_0 = gen_double_x(pts3);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = gen_double_x(pts3);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
     // print(pts3[0].x)
     std::cout << ::tpy::__getitem__(pts3, 0).x << "\n";

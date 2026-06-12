@@ -6,6 +6,7 @@ namespace tpyapp::main {
 
 // async def coro() -> Int32:
 ::tpystd::tpy::Poll<int32_t> __coro_coro::__poll__(::tpystd::coro::Waker waker) {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         __state = S_JOIN_0;
@@ -18,10 +19,10 @@ namespace tpyapp::main {
             (void)std::move(__r0).value();
             __sub_0.reset();
             // return Int32(99)
+            int32_t __tpy_async_ret_0 = 99;
             this->__finally_0();
             __state = S_DONE;
-            int32_t __tpy_async_ret = 99;
-            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret_0));
         } catch (...) {
             __sub_0.reset();
             this->__finally_0();
@@ -40,6 +41,10 @@ namespace tpyapp::main {
         }
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
     }
     __builtin_unreachable();
 }

@@ -1023,8 +1023,15 @@ class AsyncCoroCodegen:
         out.write(f"struct {struct_name} {{\n")
 
         # State integer (shared) + per-shape extra state (async adds the
-        # cancel flag).
-        out.write(f"{INDENT}int32_t __state;\n")
+        # cancel flag). Frames with abandonment cleanup (a destructor that
+        # runs pending finallies / with.__exit__) use ::tpy::frame_state so
+        # the defaulted move ctor neuters the source state -- a moved-from
+        # frame's destructor must not re-run cleanup.
+        dtor_cases = self._dtor_cleanup_cases(cfg)
+        if dtor_cases:
+            out.write(f"{INDENT}::tpy::frame_state __state;\n")
+        else:
+            out.write(f"{INDENT}int32_t __state;\n")
         self._emit_resumable_extra_state_fields(out)
 
         # Captured param fields
@@ -1182,6 +1189,9 @@ class AsyncCoroCodegen:
         init_parts.extend(p.ctor_init() for p in ctor_params)
         out.write(f"{INDENT}{struct_name}({ctor_param_list})\n")
         out.write(f"{INDENT}{INDENT}: {', '.join(init_parts)} {{}}\n\n")
+
+        if dtor_cases:
+            self._emit_frame_dtor(out, struct_name, dtor_cases)
 
         # Body-method forward declaration + per-shape extra methods.
         out.write(f"{INDENT}{self._resumable_body_method_fwd_decl(func)};\n")
@@ -2427,6 +2437,13 @@ class AsyncCoroCodegen:
         case_entries = self._compute_case_entries(cfg)
         self.ctx.indent_level = 1
         inner = self.ctx.indent()
+        # Frames with an abandonment-cleanup destructor must not be left
+        # at a suspended state when an exception escapes -- the unwind
+        # already ran the active regions' cleanup, so a later destruction
+        # would re-run it. Mark the frame done before propagating.
+        has_dtor = bool(self._dtor_cleanup_cases(cfg))
+        if has_dtor:
+            out.write(f"{inner}try {{\n")
         if cfg.yield_sites:
             out.write(f"{inner}while (true) switch (__state) {{\n")
         else:
@@ -2441,6 +2458,11 @@ class AsyncCoroCodegen:
             out.write(f"{inner}}}\n")
         self._emit_resumable_done_case(out, inner)
         out.write(f"{inner}}}\n")
+        if has_dtor:
+            out.write(f"{inner}}} catch (...) {{\n")
+            out.write(f"{inner}{INDENT}__state = S_DONE;\n")
+            out.write(f"{inner}{INDENT}throw;\n")
+            out.write(f"{inner}}}\n")
         out.write(f"{inner}__builtin_unreachable();\n")
         self.ctx.indent_level = 0
 
@@ -2616,6 +2638,84 @@ class AsyncCoroCodegen:
             elif isinstance(region, rcfg.WithRegion):
                 helpers.append(("with", region))
         return helpers
+
+    def _dtor_cleanup_cases(self, cfg: 'rcfg.CFG') -> list[tuple[str, list]]:
+        """Per suspended resume state, the cleanup actions (innermost-
+        first) the frame destructor must run when the frame is dropped
+        while suspended there -- the C++ analog of CPython closing a
+        suspended generator (GeneratorExit running pending finallies and
+        with.__exit__). States with nothing pending are omitted; when the
+        result is empty no destructor is emitted at all.
+
+        CFG-based finallies (the finally body itself suspends) cannot run
+        inside a destructor and are skipped here; sema warns at the
+        yield-in-finally site instead.
+        """
+        cases: list[tuple[str, list]] = []
+        for y in cfg.yield_sites:
+            bb = cfg.blocks[y.resume_bb]
+            actions = list(reversed(
+                self._finally_helpers_for_region_stack(bb.region_stack)))
+            if actions:
+                label = _StateLabel(_StateKind.RESUME, y.suspension_index)
+                cases.append((label.cpp_name(), actions))
+        return cases
+
+    def _emit_frame_dtor(self, out: "TextIO", struct_name: str,
+                         dtor_cases: list[tuple[str, list]]) -> None:
+        """Emit the abandonment-cleanup destructor plus the defaulted move
+        ctor it suppresses (frame_state neuters the moved-from source, so
+        memberwise move stays safe without enumerating frame fields).
+
+        Cleanup code raising during destruction panics: the destructor is
+        noexcept and CPython's print-and-ignore has no TPy analog --
+        fail-fast is the documented divergence.
+        """
+        kind = ("generator" if self._is_generator_shape() else "coroutine")
+        out.write(f"{INDENT}{struct_name}({struct_name}&&) = default;\n")
+        out.write(f"{INDENT}~{struct_name}() {{\n")
+        inner = INDENT * 2
+        body = INDENT * 3
+        action_ind = INDENT * 4
+        # CPython closes a suspended generator by throwing GeneratorExit
+        # into it, so __exit__ observes an exceptional exit. Mirror the
+        # contract: pass a GeneratorExit as exc_val to every with-region
+        # __exit__ that takes one. The suppression bool is discarded --
+        # nothing can resume inside a destructor.
+        needs_ge = any(
+            tag == "with" and payload.item.exit_takes_exc_val
+            for _, actions in dtor_cases
+            for tag, payload in actions)
+        if needs_ge:
+            out.write(f"{inner}::tpy::GeneratorExit __tpy_ge{{}};\n")
+        out.write(f"{inner}try {{\n")
+        out.write(f"{body}switch (__state) {{\n")
+        # Group states sharing an identical cleanup chain under one body.
+        def chain_key(actions: list) -> tuple:
+            return tuple((tag, payload if tag == "helper" else id(payload))
+                         for tag, payload in actions)
+        grouped: dict[tuple, tuple[list[str], list]] = {}
+        for state_name, actions in dtor_cases:
+            entry = grouped.setdefault(chain_key(actions), ([], actions))
+            entry[0].append(state_name)
+        for state_names, actions in grouped.values():
+            for sn in state_names:
+                out.write(f"{body}case {sn}:\n")
+            for tag, payload in actions:
+                if tag == "helper":
+                    out.write(f"{action_ind}this->{payload}();\n")
+                else:
+                    self._emit_with_exit(out, action_ind, payload,
+                                         on_exception=False,
+                                         exc_val_cpp="&__tpy_ge")
+            out.write(f"{action_ind}break;\n")
+        out.write(f"{body}default: break;\n")
+        out.write(f"{body}}}\n")
+        out.write(f"{inner}}} catch (...) {{\n")
+        out.write(f"{body}::tpy::tpy_panic(\"exception in 'finally' cleanup "
+                  f"while destroying abandoned {kind}\");\n")
+        out.write(f"{inner}}}\n")
+        out.write(f"{INDENT}}}\n\n")
 
     def _pending_return_info_for_region_stack(
             self, region_stack: tuple) -> 'tuple[str, str | None, int, int] | None':
@@ -3329,14 +3429,19 @@ class AsyncCoroCodegen:
 
     def _emit_with_exit(self, out: "TextIO", indent: str,
                                region: 'rcfg.WithRegion',
-                               on_exception: bool) -> None:
+                               on_exception: bool,
+                               exc_val_cpp: str | None = None) -> None:
         """Emit a single `__exit__` call. `on_exception=True` passes the
         catch-bound `__exc_<n>` (or `nullptr` when sema marked
         exit_takes_exc_val=False); otherwise passes the "normal exit"
-        args (all empty / nullptr)."""
+        args (all empty / nullptr). `exc_val_cpp` overrides the exc_val
+        argument when the manager takes one -- the frame destructor uses
+        it to pass the GeneratorExit it constructed for the close."""
         item = region.item
         n = region.ctx_n
-        if on_exception and item.exit_takes_exc_val:
+        if item.exit_takes_exc_val and exc_val_cpp is not None:
+            exc_arg = exc_val_cpp
+        elif on_exception and item.exit_takes_exc_val:
             exc_arg = f"&__exc_{n}"
         elif item.exit_takes_exc_val:
             exc_arg = "nullptr"

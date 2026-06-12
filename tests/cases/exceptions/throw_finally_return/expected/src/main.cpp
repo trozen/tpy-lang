@@ -10,9 +10,10 @@ int32_t return_from_try() {
     {
         try {
             // return 42
+            int32_t __tpy_ret_0 = 42;
             // print("finally 1")
             std::cout << "finally 1" << "\n";
-            return 42;
+            return __tpy_ret_0;
         } catch (...) {
             // print("finally 1")
             std::cout << "finally 1" << "\n";
@@ -31,9 +32,10 @@ int32_t return_from_except() {
                 throw ::tpy::ValueError("err");
             } catch (const ::tpy::ValueError&) {
                 // return 99
+                int32_t __tpy_ret_0 = 99;
                 // print("finally 2")
                 std::cout << "finally 2" << "\n";
-                return 99;
+                return __tpy_ret_0;
             }
         } catch (...) {
             // print("finally 2")
@@ -51,24 +53,27 @@ std::string return_from_multiple_paths(bool flag) {
             // if flag:
             if (flag) {
                 // return "yes"
+                std::string __tpy_ret_0 = "yes";
                 // print("finally 3")
                 std::cout << "finally 3" << "\n";
-                return "yes";
+                return __tpy_ret_0;
             }
             // for i in range(3):
             for (int32_t i = 0; i < 3; ++i) {
                 // if i == 1:
                 if ((i == 1)) {
                     // return "loop"
+                    std::string __tpy_ret_2 = "loop";
                     // print("finally 3")
                     std::cout << "finally 3" << "\n";
-                    return "loop";
+                    return __tpy_ret_2;
                 }
             }
             // return "default"
+            std::string __tpy_ret_3 = "default";
             // print("finally 3")
             std::cout << "finally 3" << "\n";
-            return "default";
+            return __tpy_ret_3;
         } catch (...) {
             // print("finally 3")
             std::cout << "finally 3" << "\n";
@@ -85,14 +90,16 @@ std::optional<int32_t> return_optional(bool flag) {
             // if flag:
             if (flag) {
                 // return Int32(7)
+                std::optional<int32_t> __tpy_ret_0 = 7;
                 // print("finally 4")
                 std::cout << "finally 4" << "\n";
-                return 7;
+                return __tpy_ret_0;
             }
             // return None
+            std::optional<int32_t> __tpy_ret_1 = std::nullopt;
             // print("finally 4")
             std::cout << "finally 4" << "\n";
-            return std::nullopt;
+            return __tpy_ret_1;
         } catch (...) {
             // print("finally 4")
             std::cout << "finally 4" << "\n";

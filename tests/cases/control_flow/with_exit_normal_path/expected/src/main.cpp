@@ -31,8 +31,9 @@ void fall_through() {
     auto x = __ctx_2.__enter__();
     try {
         // return x
+        ::tpy::BigInt __tpy_ret_0 = x;
         __ctx_2.__exit__({}, nullptr, {});
-        return x;
+        return __tpy_ret_0;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
         throw;

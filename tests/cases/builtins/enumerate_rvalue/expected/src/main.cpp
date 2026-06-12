@@ -14,12 +14,13 @@ std::vector<std::string> make_words() {
 void main() {
     // # rvalue: function call result passed directly
     // for i, s in enumerate(make_words()):
-    auto __src_0 = ::tpy::builtin_enumerate<std::string>(make_words());
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = ::tpy::builtin_enumerate<std::string>(make_words());
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // # rvalue: function call result passed directly
         // for i, s in enumerate(make_words()):
         const auto& __tup_1 = __for_tup_0;
@@ -27,15 +28,17 @@ void main() {
         std::string_view s = std::get<1>(__tup_1);
         // print(i, s)
         std::cout << i << " " << s << "\n";
+        }
     }
     // # rvalue with start
     // for i, s in enumerate(make_words(), 10):
-    auto __src_2 = ::tpy::builtin_enumerate_start<std::string>(make_words(), 10);
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        const auto& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
+    {
+        auto __src_2 = ::tpy::builtin_enumerate_start<std::string>(make_words(), 10);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            const auto& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
         // # rvalue with start
         // for i, s in enumerate(make_words(), 10):
         const auto& __tup_2 = __for_tup_1;
@@ -43,12 +46,14 @@ void main() {
         std::string_view s = std::get<1>(__tup_2);
         // print(i, s)
         std::cout << i << " " << s << "\n";
+        }
     }
     // # rvalue: list() from generator expression.
     // nums = [1, 2, 3]
     std::array<int32_t, 3> nums = {1, 2, 3};
     // for i, s in enumerate(list(str(x) for x in nums)):
-    auto __src_4 = ::tpy::builtin_enumerate<std::string>(::tpy::construct<std::vector<std::string>>([&nums]() {
+    {
+        auto __src_4 = ::tpy::builtin_enumerate<std::string>(::tpy::construct<std::vector<std::string>>([&nums]() {
         auto& __src = nums;
         return ::tpy::make_generator<std::string>(
             [__beg = __src.begin(), __end = __src.end()]() mutable -> std::optional<std::string> {
@@ -60,17 +65,18 @@ void main() {
             }
         );
     }()));
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
         // for i, s in enumerate(list(str(x) for x in nums)):
         const auto& __tup_3 = __for_tup_2;
         int32_t i = std::get<0>(__tup_3);
         std::string_view s = std::get<1>(__tup_3);
         // print(i, s)
         std::cout << i << " " << s << "\n";
+        }
     }
 }
 

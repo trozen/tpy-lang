@@ -7,15 +7,17 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // for v in Counter(3).each():
-    Counter __tmp_1 = Counter(::tpy::BigInt(3));
-    auto __src_0 = __tmp_1.each();
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
+    {
+        Counter __tmp_1 = Counter(::tpy::BigInt(3));
+        auto __src_0 = __tmp_1.each();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
         // print(v)
         std::cout << v << "\n";
+        }
     }
 }
 

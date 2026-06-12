@@ -40,7 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const Suppressor& obj) {
 
 // Generator: gen
 struct __gen_gen {
-    int32_t __state;
+    ::tpy::frame_state __state;
     std::string s;
     ::tpy::frame_slot<Suppressor> __with_ctx_0;
 
@@ -55,6 +55,21 @@ struct __gen_gen {
 
     __gen_gen()
         : __state(S_INITIAL) {}
+
+    __gen_gen(__gen_gen&&) = default;
+    ~__gen_gen() {
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
 
     std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
     __gen_gen& __iter__() { return *this; }

@@ -588,25 +588,28 @@ void process(std::string_view path) {
 
 ### `finally` Codegen
 
-`finally` uses a duplication pattern: the finally body is emitted twice -- once inside `catch(...)` (exception path, followed by `throw;` for zero-cost re-throw), once at a goto label (normal path). No `std::exception_ptr` allocation, no `__pending` variable:
+`finally` uses a duplication pattern: the finally body is emitted once inside `catch(...)` (exception path, followed by `throw;` for zero-cost re-throw), once on the normal fall-through path, and inline at every `return`/`break`/`continue` site inside the try body. No goto labels, no `std::exception_ptr` allocation, no shared `__pending` variable:
 
 ```cpp
 try {
     // try body
-    // "return X" becomes: __retval = X; goto __finally;
-    // "break" becomes: goto __finally_break;  (separate label with own copy)
+    // "return X" becomes:
+    //     RetCpp __tpy_ret_N = X;   // value captured BEFORE cleanup
+    //     cleanup();                // inline finally copy
+    //     return __tpy_ret_N;
+    // "break"/"continue" emit the inline finally copy, then break/continue.
 } catch (...) {
     cleanup();  // finally body (exception-path copy)
     throw;      // re-throw original exception (zero-cost)
 }
-__finally:;
-cleanup();      // finally body (normal-path copy)
-if (__retval) return (*__retval);  // non-void only
+cleanup();      // finally body (normal fall-through copy)
 ```
+
+The return expression is evaluated into `__tpy_ret_N` (typed with the function's emitted return type) before the finally bodies run -- Python evaluates the return value first, then `finally`. When the finally body itself returns/raises, the pending return expression is still evaluated (side effects happen) and the captured value is discarded (`[[maybe_unused]]`). Finally-body first bindings are hoisted to function scope by sema, so every emitted copy assigns the same slot and the variable stays visible after the `try`, per Python scoping.
 
 For throw-tier try/except/finally, an outer try/catch wraps the inner try/catch + handlers to capture exceptions escaping handlers (including re-raises).
 
-Nested try/finally blocks propagate via shared `__retval` (for return) or chained goto labels (for break/continue). Inner `throw;` naturally feeds the outer catch.
+Nested try/finally blocks compose naturally: an exit-site emission walks the active `FinallyContext` stack from innermost outward, and an inner `throw;` feeds the outer catch.
 
 ### Base Class Catching
 

@@ -40,14 +40,16 @@ void main() {
     // c = Box(2)
     Box c = Box(2);
     // for pair in gen(b, c, True):
-    auto __src_0 = gen(b, c, true);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& pair = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = gen(b, c, true);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& pair = ::tpy::unwrap_ref(*__r_1);
         // pair[1].val = 99
         std::get<1>(pair)->val = 99;
+        }
     }
     // print(b.val, c.val)
     std::cout << b.val << " " << c.val << "\n";

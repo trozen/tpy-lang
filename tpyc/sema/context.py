@@ -530,6 +530,17 @@ class FunctionTrackingState:
     current_ns: Namespace | None = None
     loop_depth: int = 0
 
+    # --- try/except control flow (per-function: a nested def must not
+    #     inherit the enclosing function's handler context, or its
+    #     @error_return calls pass the must-handle check and emit gotos
+    #     to labels outside the lambda) ---
+    try_except_error_type: str | None = None
+    in_except_tier: Literal["return", "throw"] | None = None
+    # Whether the current except handler has an 'as e' binding (needed for return-tier re-raise)
+    in_except_has_binding: bool = False
+    # True when analyzing a finally body
+    in_finally: bool = False
+
     # --- List/dict/set literal tracking ---
     variable_to_literal: dict[str, int] = field(default_factory=dict)
     pending_resolutions: list[int] = field(default_factory=list)
@@ -867,12 +878,6 @@ class SemanticContext:
     in_comprehension: int = 0
     sc_and_walrus: set[str] = field(default_factory=set)
     sc_or_walrus: set[str] = field(default_factory=set)
-    try_except_error_type: str | None = None
-    in_except_tier: Literal["return", "throw"] | None = None
-    # Whether the current except handler has an 'as e' binding (needed for return-tier re-raise)
-    in_except_has_binding: bool = False
-    # True when analyzing a finally body (raise is not allowed there)
-    in_finally: bool = False
     is_top_level: bool = False
     # REPL mode: allow @error_return calls at top level (unwrap with panic)
     allow_top_level_error_unwrap: bool = False

@@ -110,14 +110,16 @@ int32_t pick(const std::tuple<const Tag*, const Tag*>& p1, const std::tuple<cons
         // total = 0
         total = 0;
         // for v in gsum((a, b)):
-        auto __src_0 = gsum(std::tuple<const Tag*, const Tag*>{&((*a)), &((*b))});
-        auto&& __itr_0 = ::tpy::__iter__(__src_0);
-        for (;;) {
-            auto __r_1 = __itr_0.__next__();
-            if (!__r_1.has_value()) break;
-            int32_t v = ::tpy::unwrap_ref(*__r_1);
+        {
+            auto __src_0 = gsum(std::tuple<const Tag*, const Tag*>{&((*a)), &((*b))});
+            auto&& __itr_0 = ::tpy::__iter__(__src_0);
+            for (;;) {
+                auto __r_1 = __itr_0.__next__();
+                if (!__r_1.has_value()) break;
+                int32_t v = ::tpy::unwrap_ref(*__r_1);
             // total += v
             total = ::tpy::add_check<int32_t>(total, v);
+            }
         }
         // print("gsum:", total)
         std::cout << "gsum:" << " " << total << "\n";

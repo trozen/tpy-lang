@@ -9,37 +9,43 @@ void main() {
     // o = Owner()
     Owner o = Owner();
     // for s in o.voices(Dog()):
-    Dog __tmp_1 = Dog();
-    auto __src_0 = o.voices(std::variant<Cat*, Dog*>{&__tmp_1});
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_1);
+    {
+        Dog __tmp_1 = Dog();
+        auto __src_0 = o.voices(std::variant<Cat*, Dog*>{&__tmp_1});
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_1);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // for s in o.voices(Cat()):
-    Cat __tmp_2 = Cat();
-    auto __src_2 = o.voices(std::variant<Cat*, Dog*>{&__tmp_2});
-    auto&& __itr_2 = ::tpy::__iter__(__src_2);
-    for (;;) {
-        auto __r_3 = __itr_2.__next__();
-        if (!__r_3.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_3);
+    {
+        Cat __tmp_2 = Cat();
+        auto __src_2 = o.voices(std::variant<Cat*, Dog*>{&__tmp_2});
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_3);
         // print(s)
         std::cout << s << "\n";
+        }
     }
     // for s in o.first(Cat()):
-    Cat __tmp_3 = Cat();
-    auto __src_4 = o.first(std::variant<Cat*, Dog*>{&__tmp_3});
-    auto&& __itr_4 = ::tpy::__iter__(__src_4);
-    for (;;) {
-        auto __r_5 = __itr_4.__next__();
-        if (!__r_5.has_value()) break;
-        std::string_view s = ::tpy::unwrap_ref(*__r_5);
+    {
+        Cat __tmp_3 = Cat();
+        auto __src_4 = o.first(std::variant<Cat*, Dog*>{&__tmp_3});
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            std::string_view s = ::tpy::unwrap_ref(*__r_5);
         // print(s)
         std::cout << s << "\n";
+        }
     }
 }
 

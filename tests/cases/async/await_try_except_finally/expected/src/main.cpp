@@ -46,6 +46,7 @@ __coro_fail fail() {
 
 // async def go(should_fail: bool) -> Int32:
 ::tpystd::tpy::Poll<int32_t> __coro_go::__poll__(::tpystd::coro::Waker waker) {
+    try {
     while (true) switch (__state) {
     case S_INITIAL: {
         // result = Int32(0)
@@ -196,6 +197,10 @@ __coro_fail fail() {
         }
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
     }
     __builtin_unreachable();
 }

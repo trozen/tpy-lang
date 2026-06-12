@@ -9,18 +9,20 @@ void main() {
     // points = [Point(1, 2), Point(3, 4)]
     std::vector<Point> points = {Point(1, 2), Point(3, 4)};
     // for i, p in my_enumerate(points):
-    auto __src_0 = my_enumerate(points);
-    auto&& __itr_0 = ::tpy::__iter__(__src_0);
-    for (;;) {
-        auto __r_1 = __itr_0.__next__();
-        if (!__r_1.has_value()) break;
-        auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+    {
+        auto __src_0 = my_enumerate(points);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
         // for i, p in my_enumerate(points):
         auto& __tup_1 = __for_tup_0;
         int32_t i = std::get<0>(__tup_1);
         auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         // p.x = (i + 1) * 10
         p.x = (::tpy::mul_check<int32_t>((::tpy::add_check<int32_t>(i, 1)), 10));
+        }
     }
     // for p in points:
     auto& __obj_2 = points;
