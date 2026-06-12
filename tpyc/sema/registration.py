@@ -1301,6 +1301,16 @@ class TypeRegistrar:
                 is_auto_readonly_mutable_clone=method.is_auto_readonly_mutable_clone,
                 originating_module=self.ctx.module_name,
             )
+            if method.is_generator:
+                # Same registration-time stamp as generator free functions.
+                # The frame also stores the receiver by reference, but -1 is
+                # NOT stamped: return_borrows_from containing -1 blocks
+                # readonly inference (a self-borrowing return pins non-const),
+                # which would flip every generator method non-readonly; the
+                # receiver borrow is tracked in BUGS.md instead.
+                func_info.return_borrows_from = (
+                    self.generator_borrow_param_indices(
+                        [t for _, t in method_params]))
             # @inline: store the body expression for call-site inlining.
             # Body must be a single call statement. Cloned and substituted at call sites.
             if method.is_inline and not method.is_stub:
@@ -2826,6 +2836,21 @@ class TypeRegistrar:
                     protocol.loc
                 )
 
+    @staticmethod
+    def generator_borrow_param_indices(
+            param_types: 'list[TpyType]') -> frozenset[int]:
+        """Param indices a generator's returned frame borrows: the frame
+        stores non-value params as T& references and str params as
+        string_view, so the generator object borrows those arguments.
+        Signature-derived, so it is exact at registration time -- callers
+        analyzed before the generator's body still see the right facts.
+        """
+        return frozenset(
+            i for i, ptype in enumerate(param_types)
+            if not ptype.is_value_type() or is_str_type(ptype)
+            or is_borrowing_view_type(ptype)
+        )
+
     def register_function(self, func: TpyFunction) -> None:
         """Register a function."""
         # Allow TypeParamRef in params/return for generic functions
@@ -3030,6 +3055,14 @@ class TypeRegistrar:
             originating_module=(None if func.builtin_function_key
                                 else self.ctx.module_name),
         )
+        if func.is_generator:
+            # Set at registration (exact, signature-derived): a caller whose
+            # body is analyzed before this generator's would otherwise see
+            # return_borrows_from=None and the auto-move gate would miss the
+            # frame's reference captures. Finalize unions body-derived facts
+            # on top.
+            info.return_borrows_from = self.generator_borrow_param_indices(
+                [t for _, t in resolved_params])
         # @inline: store body for call-site inlining
         if func.is_inline and not func.is_stub:
             non_doc = [s for s in func.body

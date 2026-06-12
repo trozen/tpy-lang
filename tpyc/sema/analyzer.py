@@ -765,6 +765,12 @@ class SemanticAnalyzer:
         self._expand_function_macros(module)
         self._expand_builder_traces(module)
 
+        # Bodies analyzed below still carry return_borrows_from=None for
+        # ordering reasons (caller above callee); seed the pending set so
+        # call-result binds from them register a conservative OPAQUE borrow
+        # instead of silently assuming "borrows nothing".
+        self._seed_pending_borrow_fact_fis(module)
+
         # Sixth pass: analyze record methods (including nested records)
         for record in module.all_records():
             self._analyze_record_methods(record)
@@ -784,6 +790,39 @@ class SemanticAnalyzer:
             self._PHASE_REGISTER_SIGNATURES,
             self._PHASE_ANALYZE_BODIES,
         )
+
+    def _seed_pending_borrow_fact_fis(self, module: TpyModule) -> None:
+        """Collect the FunctionInfos whose bodies the passes below will
+        analyze, mirroring their skip conditions and FI lookups -- exactly
+        the FIs whose return_borrows_from=None means "not yet", never
+        "opaque stub". Entries become inert once finalize fills the fact.
+        """
+        pending = self.ctx.pending_borrow_fact_fis
+        pending.clear()
+        for record in module.all_records():
+            record_info = self.ctx.registry.get_record(record.name)
+            if record_info is None:
+                continue
+            for method in record.methods:
+                if method.is_stub:
+                    continue
+                method_fi = record_info.get_method(method.name)
+                if method_fi is None and method.is_property_getter:
+                    prop = record_info.properties.get(method.name)
+                    method_fi = prop.getter if prop is not None else None
+                elif method_fi is None and method.is_property_setter:
+                    prop = record_info.properties.get(method.property_name)
+                    method_fi = prop.setter if prop is not None else None
+                if method_fi is not None and method_fi.return_borrows_from is None:
+                    pending.add(id(method_fi))
+        for func in module.functions:
+            if func.is_inline and not func.is_stub:
+                continue
+            if func.is_overload_stub and func.is_stub:
+                continue
+            func_overloads = self.ctx.registry.get_function(func.name)
+            if func_overloads and func_overloads[-1].return_borrows_from is None:
+                pending.add(id(func_overloads[-1]))
 
     def run_phase2_fixpoint(self, module: TpyModule) -> None:
         """Sub-phase 5: call-graph mutation-fact propagation + readonly
@@ -1403,13 +1442,12 @@ class SemanticAnalyzer:
                 if pname in self.ctx.func.current_addr_escape_param_names
             )
             # Generator functions: the returned struct stores non-value params
-            # as T& references (or &ref lambda captures), and str params as
-            # string_view, so the result borrows from those params
+            # as T& references (or &ref lambda captures), and str/view params
+            # as views of the argument's storage, so the result borrows from
+            # those params (the same set registration stamped up front).
             if func.is_generator:
-                gen_borrows = frozenset(
-                    i for i, (_, ptype) in enumerate(func.params)
-                    if not ptype.is_value_type() or is_str_type(ptype) or is_str_view_type(ptype)
-                )
+                gen_borrows = TypeRegistrar.generator_borrow_param_indices(
+                    [ptype for _, ptype in func.params])
                 if gen_borrows:
                     func_info.return_borrows_from = func_info.return_borrows_from | gen_borrows
 
@@ -2620,6 +2658,13 @@ class SemanticAnalyzer:
                     )
                     if "self" in self.ctx.func.current_returned_param_names:
                         returned = returned | frozenset([-1])
+                    # Generator methods: union the frame's param captures,
+                    # mirroring the free-function finalize. The frame's self
+                    # reference is deliberately not represented as -1 (it
+                    # would block readonly inference); see BUGS.md.
+                    if method.is_generator:
+                        returned = returned | TypeRegistrar.generator_borrow_param_indices(
+                            [ptype for _, ptype in method.params])
                     method_fi.return_borrows_from = returned
                     method_fi.addr_escapes_params = frozenset(
                         i for i, pname in enumerate(param_list)

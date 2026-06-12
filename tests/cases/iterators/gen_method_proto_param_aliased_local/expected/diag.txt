@@ -1,0 +1,1 @@
+main.py:28: warning: Mutation of 'data' while borrowed ('append' may invalidate references)

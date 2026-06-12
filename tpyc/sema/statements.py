@@ -116,6 +116,24 @@ def _is_dangling_temporary_arg(expr: TpyExpr) -> bool:
     return False
 
 
+def _signature_may_return_borrow(fi: 'FunctionInfo') -> bool:
+    """Whether a function's declared return type could carry a reference
+    into an argument's storage. Own[T] hands over a fresh value and value
+    types are copied out, so neither can borrow; views (str/StrView/
+    BytesView/Span) are value types that DO reference foreign storage, and
+    a tuple may carry borrow-form elements. Unresolved generics stay
+    conservative.
+    """
+    ret = unwrap_ref_type(unwrap_readonly(fi.return_type))
+    if isinstance(ret, (OwnType, VoidType, NoneType)):
+        return False
+    if is_str_type(ret) or is_borrowing_view_type(ret):
+        return True
+    if isinstance(ret, (TupleType, TypeParamRef)):
+        return True
+    return not ret.is_value_type()
+
+
 def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyExpr) -> None:
     """Register borrow from function call return value (8b).
 
@@ -137,9 +155,24 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         obj = expr.property_getter_call.obj
     else:
         return
-    if fi is None or fi.return_borrows_from is None:
+    if fi is None:
         return
     bt = ctx.func.borrow_tracker
+    if fi.return_borrows_from is None:
+        # The callee's body has not been analyzed yet (forward reference in
+        # this module), so whether the result borrows an argument is
+        # unknown. Assume it does: register an OPAQUE borrow from every
+        # name-rooted argument so the auto-move gate demotes a later
+        # consume to the copy path. Opaque stubs (native, builtin,
+        # cpp_template, bodyless overloads) are not in the pending set --
+        # for them None keeps meaning "borrows nothing".
+        if (id(fi) in ctx.pending_borrow_fact_fis
+                and _signature_may_return_borrow(fi)):
+            for src in ([obj] if obj is not None else []) + list(args):
+                root = _borrow_storage_root(src)
+                if root is not None and root != borrower:
+                    bt.add_borrow(root, borrower, BorrowKind.OPAQUE)
+        return
     for idx in fi.return_borrows_from:
         if idx == -1 and obj is not None:
             root = _borrow_storage_root(obj)

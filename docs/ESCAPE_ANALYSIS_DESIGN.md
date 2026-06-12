@@ -64,7 +64,7 @@ Integer range tracking (11) can proceed in parallel with borrow checking (6).
 | Borrow metadata export | Not needed while compiler has source; design keeps contracts serializable for future use | [9](#9-borrow-metadata-export) |
 | View type borrow tracking | Generalize hardcoded Span/Ptr/StrView borrow tracking to user types. Two approaches: (1) field-level annotation marking which field borrows from the outside -- lets the compiler trace borrow flow through constructors; (2) class-level marker protocol (`View`) -- simpler but less precise. Field-level is more useful (closer to Rust's lifetime-on-field) without requiring full lifetime machinery. Prior art: C++ `[[gsl::Pointer]]`, Rust lifetimes. Will likely come up when designing tpy standard library types. | -- |
 | 8b-A: `return_borrows_from` Phase 2 propagation | Rule 3 (transitive return inference) silently skips forward-defined callees. Fix: record `ReturnCallEdge`s in Phase 1 and propagate `return_borrows_from` in Phase 2 alongside `mutated_params`. Fixes cross-module correctness and exported metadata. | [Future Extensions](#future-extensions) |
-| 8b-B: Deferred call-site borrow registration | Same-module callers miss the borrow registration when the wrapper's contract is a forward ref. Requires a second Phase 1 pass or pending-registration records replayed post-Phase 2. High complexity for a narrow pattern. Depends on 8b-A. | [Future Extensions](#future-extensions) |
+| 8b-B: Deferred call-site borrow registration | Same-module callers miss the borrow registration when the wrapper's contract is a forward ref. Requires a second Phase 1 pass or pending-registration records replayed post-Phase 2. High complexity for a narrow pattern. Depends on 8b-A. Partially covered: the AUTO-MOVE GATE subset is handled by conservative `BorrowKind.OPAQUE` registration for pending same-module callees (see MOVE_SEMANTICS_DESIGN.md); the mutation-conflict check described here remains open. | [Future Extensions](#future-extensions) |
 | `@may_reallocate` / declarative borrow contracts | Currently the compiler hardcodes which built-in methods are structural (append, insert, del, ...) vs in-place (subscript write). Moving built-in types to `.py` files requires a declarative annotation -- `@may_reallocate` on methods that can invalidate element references, `@return_borrows_from` on methods that return element refs. Unannotated mutating methods default to conservative (structural). For user types, both annotations are inferred transitively (same Phase 1/2 propagation as `mutated_params`) -- no explicit annotation needed on well-structured wrappers. Requires field-level borrow flow tracking (View type item) for the transitive case. Prior art: C++ iterator invalidation rules (prose only, unenforced); Rust makes all `&mut self` methods invalidate borrows (simpler but more restrictive). | [Future Extensions](#future-extensions) |
 
 ### Already Done
@@ -1132,6 +1132,12 @@ pattern where a caller both uses a forward-wrapper's result AND structurally mut
 source in the same function body. In practice, forward wrappers are library/utility code
 and their callers are defined later, so Extension A alone provides correctness for the
 common case.
+
+Note: the AUTO-MOVE subset of this problem is covered separately -- a bind from a
+same-module callee whose body is not yet analyzed registers a conservative
+`BorrowKind.OPAQUE` borrow that suppresses auto-move of the argument (see
+MOVE_SEMANTICS_DESIGN.md). OPAQUE deliberately does not feed the mutation-conflict
+check this section describes, so Extension B's scope is unchanged.
 
 ### Declarative Borrow Contracts (`@may_reallocate`, `@return_borrows_from`)
 

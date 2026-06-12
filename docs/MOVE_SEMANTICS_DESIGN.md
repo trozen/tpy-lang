@@ -335,9 +335,18 @@ BorrowTracker borrower name must be either a prescan-map alias (liveness
 models it), a liveness-invisible borrower (gates the move), or an explicitly
 excluded sentinel like `"__for_iter"` -- a new borrower naming convention
 must pick its bucket consciously or it silently widens/narrows the gate.
-Known residuals (forward-referenced callees whose borrow facts are not yet
-analyzed, borrows hidden inside nested call arguments, loop-var aliases
-outliving their loop) are tracked in BUGS.md "Safety / borrow checker".
+
+Forward references: a generator's borrow set is signature-derived and
+stamped on its FunctionInfo at registration, so callers analyzed before its
+body see exact facts. For other bodied same-module callees the analyzer
+seeds `pending_borrow_fact_fis`; a bind whose callee fact is still None and
+whose signature could return a borrow registers a conservative
+`BorrowKind.OPAQUE` borrow (gates the move; excluded from
+mutation-invalidation and alias-identity logic), which a later-analyzed
+body's exact facts supersede naturally. Known residuals (cross-module
+import cycles, borrows hidden inside nested call arguments, loop-var
+aliases outliving their loop) are tracked in BUGS.md "Safety / borrow
+checker".
 
 A reassignment to a borrow source is a fourth, simpler barrier. A local
 owned at one binding (so it is in `ever_owned_locals`, from which the

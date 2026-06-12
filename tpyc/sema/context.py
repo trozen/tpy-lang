@@ -145,15 +145,22 @@ class BorrowKind(Enum):
     ITER = "iter"         # for-loop iterator
     ELEMENT = "element"   # subscript element reference
     PTR = "ptr"           # pointer into storage
+    # Possible borrow of unknown shape: the callee's body (and so its
+    # return_borrows_from fact) is not analyzed yet, so the bind is assumed
+    # to borrow. Gates auto-move of the storage like any borrow, but carries
+    # no element/alias semantics -- it must not feed mutation-invalidation
+    # warnings or storage-identity (alias) chains.
+    OPAQUE = "opaque"
 
 
-# Restrictiveness order: PTR/ITER/ELEMENT > FIELD > ALIAS. Used by retarget
-# logic to promote a chained borrow to the most-restrictive kind in the chain
-# (an ALIAS of an ELEMENT borrower is invalidated by structural mutation of
-# the source container) and by FlowFacts borrow merging.
+# Restrictiveness order: PTR/ITER/ELEMENT > FIELD/OPAQUE > ALIAS. Used by
+# retarget logic to promote a chained borrow to the most-restrictive kind in
+# the chain (an ALIAS of an ELEMENT borrower is invalidated by structural
+# mutation of the source container) and by FlowFacts borrow merging.
 BORROW_KIND_RANK: dict[BorrowKind, int] = {
     BorrowKind.ALIAS: 0,
     BorrowKind.FIELD: 1,
+    BorrowKind.OPAQUE: 1,
     BorrowKind.ITER: 2,
     BorrowKind.ELEMENT: 3,
     BorrowKind.PTR: 3,
@@ -230,9 +237,15 @@ class BorrowTracker:
                     child_kind = self.borrow_kinds.pop((storage, b), None)
                     if child_kind is None:
                         continue
-                    promoted = (child_kind
-                                if BORROW_KIND_RANK[child_kind] >= BORROW_KIND_RANK[upstream_kind]
-                                else upstream_kind)
+                    # An OPAQUE borrow has no element/alias shape to promote:
+                    # rank-promoting it into the invalidating set would mint
+                    # exactly the mutation warnings the kind exists to avoid.
+                    if child_kind is BorrowKind.OPAQUE:
+                        promoted = BorrowKind.OPAQUE
+                    else:
+                        promoted = (child_kind
+                                    if BORROW_KIND_RANK[child_kind] >= BORROW_KIND_RANK[upstream_kind]
+                                    else upstream_kind)
                     existing = self.borrow_kinds.get((upstream, b))
                     if existing is None or BORROW_KIND_RANK[promoted] > BORROW_KIND_RANK[existing]:
                         self.borrows.setdefault(upstream, set()).add(b)
@@ -871,6 +884,14 @@ class SemanticContext:
 
     # --- Last-use tracking (shared with codegen, persists across functions) ---
     all_last_uses: set[int] = field(default_factory=set)
+
+    # id(FunctionInfo) of this module's bodied functions/methods whose body
+    # analysis has not run yet -- their return_borrows_from is still None
+    # for ordering reasons, not because they cannot borrow. A call-result
+    # bind from one of these registers a conservative OPAQUE borrow; once
+    # the body is analyzed the fact becomes a frozenset and the set entry
+    # is naturally inert (the None check short-circuits first).
+    pending_borrow_fact_fis: set[int] = field(default_factory=set)
 
     # --- Consuming method tracking ---
     in_consuming_method: bool = False

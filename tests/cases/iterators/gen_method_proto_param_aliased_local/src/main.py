@@ -3,10 +3,8 @@
 # plus the deduced template arg T_it). The static-protocol param is aliased
 # into a local then iterated across yields; the alias forwards to the captured
 # param, reusing T_it. Borrow-forcing: the source is mutated before iteration
-# and the appended element is observed (a copy would miss it). NB: method
-# generators don't yet emit the `while borrowed` lint that the free-function
-# form does (pre-existing borrow-tracker gap, BUGS.md) -- the borrow itself is
-# sound, so output parity is the value-vs-reference guard here.
+# and the appended element is observed (a copy would miss it); the mutation
+# also fires the `while borrowed` lint, matching the free-function form.
 from typing import Iterator, Iterable
 from tpy import Int32
 
