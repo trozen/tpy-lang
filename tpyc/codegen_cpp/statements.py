@@ -161,6 +161,7 @@ class StatementGenerator:
         self.ctx.hoisted_vars = self.ctx.analyzer.function_hoisted_vars.get(id(func), set())
         self.ctx.move_through_vars = self.ctx.analyzer.function_move_through_vars.get(id(func), set())
         self.ctx.sema_movable_locals = self.ctx.analyzer.function_movable_locals.get(id(func), set())
+        self.ctx.sema_ever_owned_locals = self.ctx.analyzer.function_ever_owned_locals.get(id(func), set())
         # Optional non-value params are T* / const T* in C++ -- need pointer-local treatment (->)
         for pname, ptype in params:
             actual = unwrap_readonly(ptype)
@@ -4095,20 +4096,13 @@ class StatementGenerator:
 
         fi = self._get_error_return_fi(stmt.init)
         var_type = fi.return_type if fi else stmt.type
-
-        # Declare variable before the goto to avoid "crosses initialization" error
-        is_new_var = stmt.name not in self.ctx.declared_vars
-        if is_new_var and var_type:
-            cpp_type = unwrap_ref_type(var_type).to_cpp()
-            out = f"{indent}{cpp_type} {cpp_name};\n"
-            self.ctx.declared_vars.add(stmt.name)
-        else:
-            out = ""
+        aliases = self._error_return_result_aliases(stmt.init)
+        out = self._error_return_decl_prefix(stmt, var_type, indent, aliases)
 
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_error_goto(f"{indent}{INDENT}", tmp, label)
-        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}")
+        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}", aliases)
         out += f"{indent}}}\n"
 
         return out
@@ -4122,18 +4116,59 @@ class StatementGenerator:
         """
         return f"::tpy::unwrap_ref_move(*{tmp})"
 
-    def _error_return_target_assign(self, target: 'TpyExpr', tmp: str, indent: str) -> str:
+    def _error_return_result_aliases(self, expr: 'TpyExpr') -> bool:
+        """True when the @error_return callee returns a borrow (the expected
+        payload is a val_or_ref pointer to storage that outlives the call) --
+        the unwrap must alias that storage, not copy it (CPython mutation
+        visibility). Same value-category predicate the non-error_return
+        binding paths use."""
+        inner = expr
+        while isinstance(inner, TpyCoerce):
+            inner = inner.expr
+        fi = self._get_error_return_fi(inner)
+        if fi is None:
+            return False
+        obj = inner.obj if isinstance(inner, TpyMethodCall) else None
+        return self.ctx._call_returns_cpp_ref(fi, obj)
+
+    def _error_return_decl_prefix(self, stmt: TpyVarDecl, var_type: 'TpyType | None',
+                                  indent: str, aliases: bool) -> str:
+        """Pre-declare the bound local before the unwrap block (the goto /
+        early return would cross an initialized declaration). A borrow-
+        aliasing result declares a pointer that will point at the live
+        source instead of owned storage."""
+        if stmt.name in self.ctx.declared_vars or not var_type:
+            return ""
+        self.ctx.declared_vars.add(stmt.name)
+        cpp_name = escape_cpp_name(stmt.name)
+        if aliases:
+            const_pfx = "const " if self._is_const_indirect(var_type, stmt.init, stmt) else ""
+            if const_pfx:
+                self.ctx.const_indirect_locals.add(stmt.name)
+            self.ctx.pointer_locals.add(stmt.name)
+            bare = unwrap_readonly(unwrap_ref_type(var_type))
+            return f"{indent}{const_pfx}{bare.to_cpp()}* {cpp_name};\n"
+        return f"{indent}{unwrap_ref_type(var_type).to_cpp()} {cpp_name};\n"
+
+    def _error_return_target_assign(self, target: 'TpyExpr', tmp: str, indent: str,
+                                    aliases: bool = False) -> str:
         """Assign an unwrapped @error_return result to an assignment target."""
         if isinstance(target, TpyName):
-            return self._error_return_assign_to_name(target.name, tmp, indent)
+            return self._error_return_assign_to_name(target.name, tmp, indent, aliases)
         return f"{indent}{self.expressions.gen_expr(target)} = {self._error_return_success_expr(tmp)};\n"
 
-    def _error_return_assign_to_name(self, name: str, tmp: str, indent: str) -> str:
+    def _error_return_assign_to_name(self, name: str, tmp: str, indent: str,
+                                     aliases: bool = False) -> str:
+        cpp_name = escape_cpp_name(name)
+        if aliases and name in self.ctx.pointer_locals:
+            # Borrow result: point at the live source the val_or_ref payload
+            # wraps. Owned storage (or the rebind slot) would copy and sever
+            # the alias.
+            return f"{indent}{cpp_name} = &(::tpy::unwrap_ref(*{tmp}));\n"
         # A pointer-repr Optional / pointer local needs its result materialized
         # into the rebind slot and re-pointed -- a direct `T* = T` is ill-formed.
         # unwrap_ref_move already carries the value category (T&& owned, T&
         # borrow), so no extra std::move: it would steal from a borrowed source.
-        cpp_name = escape_cpp_name(name)
         value = self._error_return_success_expr(tmp)
         slot = self.ctx.rebind_slots.get(name)
         if name in self.ctx.pointer_locals and slot is not None:
@@ -4164,7 +4199,8 @@ class StatementGenerator:
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_error_goto(f"{indent}{INDENT}", tmp, label)
         out += self._error_return_target_assign(
-            stmt.target, tmp, f"{indent}{INDENT}")
+            stmt.target, tmp, f"{indent}{INDENT}",
+            self._error_return_result_aliases(stmt.value))
         out += f"{indent}}}\n"
 
         return out
@@ -4186,19 +4222,13 @@ class StatementGenerator:
 
         fi = self._get_error_return_fi(stmt.init)
         var_type = fi.return_type if fi else stmt.type
-
-        is_new_var = stmt.name not in self.ctx.declared_vars
-        if is_new_var and var_type:
-            cpp_type = unwrap_ref_type(var_type).to_cpp()
-            out = f"{indent}{cpp_type} {cpp_name};\n"
-            self.ctx.declared_vars.add(stmt.name)
-        else:
-            out = ""
+        aliases = self._error_return_result_aliases(stmt.init)
+        out = self._error_return_decl_prefix(stmt, var_type, indent, aliases)
 
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_propagate_check(f"{indent}{INDENT}", tmp)
-        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}")
+        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}", aliases)
         out += f"{indent}}}\n"
 
         return out
@@ -4216,7 +4246,8 @@ class StatementGenerator:
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += self._gen_propagate_check(f"{indent}{INDENT}", tmp)
         out += self._error_return_target_assign(
-            stmt.target, tmp, f"{indent}{INDENT}")
+            stmt.target, tmp, f"{indent}{INDENT}",
+            self._error_return_result_aliases(stmt.value))
         out += f"{indent}}}\n"
 
         return out
@@ -4233,19 +4264,13 @@ class StatementGenerator:
 
         fi = self._get_error_return_fi(stmt.init)
         var_type = fi.return_type if fi else stmt.type
-
-        is_new_var = stmt.name not in self.ctx.declared_vars
-        if is_new_var and var_type:
-            cpp_type = unwrap_ref_type(var_type).to_cpp()
-            out = f"{indent}{cpp_type} {cpp_name};\n"
-            self.ctx.declared_vars.add(stmt.name)
-        else:
-            out = ""
+        aliases = self._error_return_result_aliases(stmt.init)
+        out = self._error_return_decl_prefix(stmt, var_type, indent, aliases)
 
         out += f"{indent}{{\n"
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
-        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}")
+        out += self._error_return_assign_to_name(stmt.name, tmp, f"{indent}{INDENT}", aliases)
         out += f"{indent}}}\n"
 
         return out
@@ -4261,7 +4286,8 @@ class StatementGenerator:
         out += f"{indent}{INDENT}auto {tmp} = {call_cpp};\n"
         out += f"{indent}{INDENT}if (!{tmp}.has_value()) ::tpy::tpy_panic(\"unhandled error return\");\n"
         out += self._error_return_target_assign(
-            stmt.target, tmp, f"{indent}{INDENT}")
+            stmt.target, tmp, f"{indent}{INDENT}",
+            self._error_return_result_aliases(stmt.value))
         out += f"{indent}}}\n"
 
         return out
@@ -4804,6 +4830,34 @@ class StatementGenerator:
             for ty in type_facts.values()
         )
 
+    def _branch_stmt_binding_inits(self, stmt: TpyStmt, name: str) -> list[TpyExpr]:
+        """Collect the init expressions of every statement-level binding
+        (TpyVarDecl / name-target TpyAssign) of `name` under a branch stmt.
+        With-as and for-loop bindings are deliberately not statement-level:
+        they have their own binding machinery, and their sources (the ctx
+        object, the per-iteration element) do not permit a pointer decl."""
+        inits: list[TpyExpr] = []
+
+        def scan(stmts: list[TpyStmt]) -> None:
+            for s in stmts:
+                init = None
+                if isinstance(s, TpyVarDecl) and s.name == name:
+                    init = s.init
+                elif (isinstance(s, TpyAssign) and isinstance(s.target, TpyName)
+                      and s.target.name == name):
+                    init = s.value
+                if init is not None:
+                    inner = init
+                    while isinstance(inner, TpyCoerce):
+                        inner = inner.expr
+                    inits.append(inner)
+                for b in s.sub_bodies():
+                    scan(b)
+
+        for b in stmt.sub_bodies():
+            scan(b)
+        return inits
+
     def _emit_branch_decls(self, out: TextIO, stmt: TpyStmt, indent: str) -> None:
         """Pre-declare variables first declared inside if/elif/match branches."""
         branch_decls = self.ctx.analyzer.if_branch_decls.get(id(stmt), {})
@@ -4859,21 +4913,38 @@ class StatementGenerator:
                 self.ctx.var_types[name] = var_type
                 if self.ctx.current_ns and var_type:
                     self.ctx.current_ns.bind_variable(name, var_type)
-                if self._is_plain_nonvalue(var_type) and name not in self.ctx.reassigned_vars:
-                    # Non-value, not reassigned: std::optional<T> avoids
-                    # pointer indirection and unnecessary default construction.
+                # A plain non-value local bound only by statement-level
+                # borrows (never a fresh rvalue) must alias, not own: the
+                # optional-storage form would copy and sever the alias.
+                # With-as / for-loop bindings are not statement-level and
+                # keep the owned form (their sources die with the block /
+                # rebind per iteration).
+                borrow_inits: list[TpyExpr] = []
+                if (self._is_plain_nonvalue(var_type)
+                        and name not in self.ctx.sema_ever_owned_locals):
+                    borrow_inits = self._branch_stmt_binding_inits(stmt, name)
+                if (self._is_plain_nonvalue(var_type)
+                        and name not in self.ctx.reassigned_vars
+                        and not borrow_inits):
+                    # Non-value, not reassigned, rvalue-bound: std::optional<T>
+                    # avoids pointer indirection and unnecessary default
+                    # construction.
                     self.ctx.pointer_locals.add(name)
                     self.ctx.optional_locals.add(name)
                     if is_const:
                         self.ctx.const_indirect_locals.add(name)
                     self.ctx.movable_locals.add(name)
                     out.write(f"{indent}std::optional<{cpp_type}> {name};\n")
-                elif self._needs_indirection(var_type, name, None):
-                    # Reassigned non-value: T* pointer-local with slot storage.
-                    # Mark as branch-hoisted so _gen_pointer_local_rebind puts
+                elif borrow_inits or self._needs_indirection(var_type, name, None):
+                    # Reassigned or borrow-bound non-value: T* pointer-local
+                    # (with slot storage for rvalue rebinds). Mark as
+                    # branch-hoisted so _gen_pointer_local_rebind puts
                     # rvalue slots into pending_hoist_decls (not block-scoped).
                     self.ctx.pointer_locals.add(name)
                     self.ctx.branch_hoisted_vars.add(name)
+                    is_const = is_const or any(
+                        self._is_const_indirect(var_type, init, None)
+                        for init in borrow_inits)
                     if is_const:
                         self.ctx.const_indirect_locals.add(name)
                     if name in self.ctx.sema_movable_locals:

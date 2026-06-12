@@ -288,6 +288,10 @@ class SemanticAnalyzer:
         # Per-function movable locals (owned, not hoisted/loop/lvalue-reassigned)
         self.function_movable_locals: dict[int, set[str]] = {}
 
+        # Per-function locals ever bound to a fresh rvalue. A name absent here
+        # is borrow-only: its storage must alias the source, never own a copy.
+        self.function_ever_owned_locals: dict[int, set[str]] = {}
+
         # Per-function `global x` declarations (for codegen)
         self.function_global_decls: dict[int, set[str]] = {}
 
@@ -1483,6 +1487,8 @@ class SemanticAnalyzer:
             movable.add(name)
         if movable:
             self.function_movable_locals[id(func)] = movable
+        if self.ctx.func.ever_owned_locals:
+            self.function_ever_owned_locals[id(func)] = self.ctx.func.ever_owned_locals.copy()
         if self.ctx.func.global_declarations:
             self.function_global_decls[id(func)] = self.ctx.func.global_declarations.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)

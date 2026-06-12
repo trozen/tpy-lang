@@ -28,13 +28,13 @@ void main() {
     // p = Point(1, 2)
     Point p = Point(1, 2);
     // try:
-    std::optional<Point> result;
+    Point* result;
     {
         // result = modify(p)
         {
             auto __try_tmp_3 = modify(p);
             if (!__try_tmp_3.has_value()) goto __except_2;
-            result = ::tpy::unwrap_ref_move(*__try_tmp_3);
+            result = &(::tpy::unwrap_ref(*__try_tmp_3));
         }
         // else:
         // print(result.x)

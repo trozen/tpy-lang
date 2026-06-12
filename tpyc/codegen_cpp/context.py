@@ -804,6 +804,10 @@ class CodeGenContext:
     # --- Auto-move tracking (last-use -> std::move) ---
     movable_locals: set[str] = field(default_factory=set)
     sema_movable_locals: set[str] = field(default_factory=set)
+    # Locals ever bound to a fresh rvalue (sema fact). A branch-declared
+    # non-value local absent here is borrow-only and must not get owned
+    # storage -- its decl form is a pointer that aliases the source.
+    sema_ever_owned_locals: set[str] = field(default_factory=set)
 
     # --- Reference-bound locals (T& aliases -- del must not move-sink) ---
     # ref_bound_locals grows during codegen as T& decls are emitted -> in LocalScopeSnap.

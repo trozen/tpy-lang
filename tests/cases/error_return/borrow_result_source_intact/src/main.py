@@ -1,9 +1,9 @@
-# A BORROW returned from an @error_return callable must never be moved from:
-# the source object stays intact after assigning the result to a pointer-repr
-# `T | None` local, a plain storage local, and a field. The targets receive a
-# COPY for now (intended here; the copy-vs-alias divergence from CPython is
-# tracked in BUGS.md as the @error_return borrow-copy entry), so this test
-# only reads -- it guards source integrity, not aliasing.
+# A BORROW returned from an @error_return callable ALIASES the source when
+# bound to a local (pointer-repr `T | None` or plain): mutations through the
+# local are visible on the source (CPython parity) and the source is never
+# moved from. A FIELD target still receives a warned copy (copy() is the
+# escape hatch), so the field leg only reads -- mutating h.dest would
+# diverge from CPython's aliasing there (tracked acknowledged divergence).
 from tpy import Int32, error_return, ReturnException
 
 
@@ -42,19 +42,19 @@ def main() -> None:
 
     q: Source | None = None
     try:
-        q = h.view()  # pointer-repr local: rebind slot must not steal from h.src
+        q = h.view()
     except E:
         print("error")
     if q is not None:
-        print(len(q.items))
+        q.items.append(4)
     print(len(h.src.items))
 
     v = Source()
     try:
-        v = h.view()  # direct assign path: no rebind slot involved
+        v = h.view()
     except E:
         print("error")
-    print(len(v.items))
+    v.items.append(5)
     print(len(h.src.items))
 
     h.grab()

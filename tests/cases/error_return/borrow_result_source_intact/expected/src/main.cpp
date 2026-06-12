@@ -13,11 +13,11 @@ void main() {
     Source* q = nullptr;
     // try:
     {
-        // q = h.view()  # pointer-repr local: rebind slot must not steal from h.src
+        // q = h.view()
         {
             auto __try_tmp_4 = h.view();
             if (!__try_tmp_4.has_value()) goto __except_3;
-            q = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_4));
+            q = &(::tpy::unwrap_ref(*__try_tmp_4));
         }
         goto __after_try_3;
         // except E:
@@ -28,8 +28,8 @@ void main() {
     }
     // if q is not None:
     if ((q != nullptr)) {
-        // print(len(q.items))
-        std::cout << ::tpy::__len__(q->items) << "\n";
+        // q.items.append(4)
+        q->items.push_back(4);
     }
     // print(len(h.src.items))
     std::cout << ::tpy::__len__(h.src.items) << "\n";
@@ -39,11 +39,11 @@ void main() {
     Source* v = &__slot_2;
     // try:
     {
-        // v = h.view()  # direct assign path: no rebind slot involved
+        // v = h.view()
         {
             auto __try_tmp_6 = h.view();
             if (!__try_tmp_6.has_value()) goto __except_5;
-            v = &*(__slot_3 = ::tpy::unwrap_ref_move(*__try_tmp_6));
+            v = &(::tpy::unwrap_ref(*__try_tmp_6));
         }
         goto __after_try_5;
         // except E:
@@ -52,8 +52,8 @@ void main() {
         std::cout << "error" << "\n";
         __after_try_5:;
     }
-    // print(len(v.items))
-    std::cout << ::tpy::__len__(v->items) << "\n";
+    // v.items.append(5)
+    v->items.push_back(5);
     // print(len(h.src.items))
     std::cout << ::tpy::__len__(h.src.items) << "\n";
     // h.grab()

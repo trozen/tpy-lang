@@ -42,13 +42,13 @@ void main() {
     // h = Holder([1, 2])
     Holder h = Holder(std::vector<Tree<int32_t>>{1, 2});
     // try:
-    std::optional<Tree<int32_t>> v;
+    const Tree<int32_t>* v;
     {
         // v = h.view()
         {
             auto __try_tmp_2 = h.view();
             if (!__try_tmp_2.has_value()) goto __except_1;
-            v = ::tpy::unwrap_ref_move(*__try_tmp_2);
+            v = &(::tpy::unwrap_ref(*__try_tmp_2));
         }
         // print(leaf_count(v))
         std::cout << leaf_count((*v)) << "\n";
