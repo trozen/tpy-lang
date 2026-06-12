@@ -43,6 +43,8 @@ In all cases: never `--amend`, rebase, force-push, or commit changes you didn't 
 
 **Feature discipline.** Same coupling cuts the other way for new work: features that don't consider sibling concepts and existing patterns produce duplication that's expensive to unwind (e.g. a new narrowing rule that handles `Optional` but not `Union`, a new ownership form that fits methods but not generators, a new emit path that duplicates an existing codegen helper). For any new-feature or feature-extension work, invoke `/tpy-add-feature` to walk through the design procedure before writing code. The skill starts with a scope assessment (trivial / localized / architectural) and gates the depth of design accordingly. The user must see and approve the design before any implementation beyond trivial changes. When time pressure pushes you to skip the design phase, push back once -- a wrong design is much harder to unwind than a wrong fix.
 
+**Autonomous backlog handling.** `/tpy-next` selects and fully handles one bounded backlog item end-to-end (analysis, implementation, review, merge-ready squash branch). Invoking it is a standing approval ONLY for work passing its eligibility gate (trivial/localized, High confidence, CPython-parity clean, bounded snapshot churn); design decisions, new warnings/escape hatches, and architectural work still stop and present per the rules above. The merge into master always remains the user's.
+
 ### Common commands
 
 ```bash
