@@ -150,6 +150,25 @@ because of momentum.
 
 ## Phase 5: Sketch the architectural fix
 
+**Precedent check first -- ALL classifications, including localized.**
+Before writing any new mechanism, grep for existing code that already
+solves the same sub-problem: an invalidation helper, a conversion
+routine, a predicate, an emit path, a tracker. The compiler is old
+enough that most sub-problems have a prior solution; a fix that
+hand-rolls a parallel version of one creates a mirror that silently
+drifts (the recurring slop class: duplicated predicates between sema
+and codegen, parallel sweep logic in two trackers). The sketch must
+either name the existing helper it reuses/extends, or state why none
+fits. "I didn't look" is not a reason.
+
+**Fix the class, not the instance.** If Phase 4 found sibling
+manifestations of the same root cause, the default recommendation is
+the fix that covers the whole class -- a chokepoint helper every site
+routes through beats per-site patches. Recommending the
+single-instance fix requires (a) a stated reason the general fix is
+disproportionate now, and (b) BUGS.md entries for every sibling left
+unfixed.
+
 The change that fixes the root cause. Note:
 
 - **Blast radius:** which files, which phases.
@@ -164,6 +183,71 @@ generated code legitimately changes) as a cost. It's mechanical
 follow-through; the `--update-snapshots` workflow exists exactly so this
 is cheap. If many snapshots will regenerate, mention it factually
 ("~50 snapshots will regenerate") without framing it as a downside.
+
+### CPython-parity assessment
+
+When the fix changes what *accepted* code does (not merely what is
+accepted or rejected), dispatch ONE `cpython-parity` agent with the
+Phase 1 reproducer and the proposed post-fix semantics. Ask it to state
+CPython's observable behavior for the same source and a verdict per
+divergence class:
+
+- **reference-vs-copy / aliasing and mutation visibility** (fields,
+  container elements, tuples, unions, captures, match bindings, walrus,
+  loop variables) -- historically the largest divergence source
+- **evaluation order and side-effect count** (args including kwargs in
+  written order; assert messages only on failure; operands once)
+- **exception semantics** (catchable exception vs panic; finally /
+  `__exit__` ordering and coverage on all exit paths; chaining)
+- **scoping and binding lifetime** (loop vars rebind the enclosing
+  scope; closure capture semantics; del)
+- **numeric and string semantics** (arbitrary precision vs fixed width;
+  division; byte-vs-codepoint indexing)
+- **equality / identity / truthiness** (cross-type `==`, `is`,
+  container truthiness)
+- **accepted-then-ignored syntax** (Python syntax that parses but loses
+  meaning must error or warn -- never silently drop)
+
+The verdict gates the design:
+
+- **Match** -- observable behavior equals CPython's. Done.
+- **Acknowledged divergence** -- unavoidable under TPy's model. The
+  design MUST then include all three: (a) a compile-time diagnostic at
+  the divergence site, (b) an explicit user spelling that acknowledges
+  or avoids it and silences the diagnostic (the escape hatch -- the
+  model is the field-assignment copy warning silenced by `copy()`), and
+  (c) a `docs/LANGUAGE_FEATURES.md` note. A divergence missing any of
+  the three is an incomplete design, not a smaller one.
+- **Silent divergence** -- never an acceptable outcome; rework the
+  design or surface it to the user as an explicit decision to make.
+
+When an acknowledged divergence needs an escape hatch, reuse the
+existing acknowledgment spellings (`copy()`, `.clone()`, an explicit
+annotation, a directive) before minting a new one -- the
+acknowledgment surface should stay as coherent as the type surface.
+
+Skip the agent only when the fix is purely rejects-valid (changes
+diagnostics, not behavior) or internal (refactor, perf) -- and say so
+in the report.
+
+### Plan the regression tests
+
+Sketch the test plan with the fix, not after approval:
+
+- **Reproducer test** -- the Phase 1 case as a snapshot test, named by
+  its observed post-fix mode (`panic_` for a now-checked runtime
+  failure, `error_` for a now-rejected program, `warn_`-style
+  annotations for a new diagnostic).
+- **Inverse test -- required, not optional.** A happy-path case proving
+  the fix does not over-trigger: the nearest valid code that must keep
+  compiling cleanly / keep its facts / keep its old output. Soundness
+  fixes are judged as much by what they leave alone as by what they
+  catch.
+- **Sibling tests** for every class member the fix covers (one per
+  construct family is enough; the fix-the-class rule above decides the
+  set).
+- Reference-type cases follow CLAUDE.md's mutate-after-the-boundary
+  rule -- a read-only test is parity-blind and can hide a silent copy.
 
 ## Phase 6: Patch alternative (only if needed)
 
@@ -203,9 +287,34 @@ readable in under a minute. Cover (each in one line or two):
 - Classification (trivial / localized / architectural)
 - Root cause (architectural-level, one sentence)
 - Proposed fix (which files / phases, shape of the change)
+- Precedent (the existing helper/pattern the fix reuses or extends --
+  or "new mechanism, because <reason>")
+- Tests (one line: reproducer + inverse + sibling cases from Phase 5's
+  plan; existing snapshots that will change, so the approval covers
+  regeneration)
+- Confidence (see the scale below)
+- CPython parity (one line: match / acknowledged divergence with its
+  warning + escape hatch / skipped-because-rejects-valid)
 - Patch alternative (only if Phase 6 produced one)
 - Adjacent issues surfaced during analysis (brief)
 - Proposed branch (see below)
+
+**Confidence scale.** Rate the recommended approach and say what caps
+it -- the rating is about the *fix design*, not the bug's existence:
+
+- **High** -- root cause reproduced and verified in code; sibling
+  survey done (or N/A); no unverified assumption left that could
+  change the fix's shape.
+- **Medium** -- root cause solid but at least one material assumption
+  is unverified (name it: an uninspected consumer, an untested sibling,
+  an interaction taken on faith from docs/comments).
+- **Low** -- diagnosis rests on inference or conflicting evidence, or
+  the blast radius is unexplored.
+
+For Medium and Low, also name the cheapest probe that would raise the
+rating (a snippet to compile, a file to read, a test to run). A Low
+rating on an architectural fix means the default recommendation is the
+more-analysis path, not the fix.
 
 Beyond that leading reproducer, do NOT paste large code excerpts,
 internal trace dumps, or full file lists. The small illustrative
@@ -264,6 +373,24 @@ alternative), create the proposed branch (if any) with
 `git checkout -b <new-branch> master` and start implementing -- one
 approval covers both the fix direction and the branch. Do not push,
 force, or use `-D`.
+
+**Definition of done.** The fix is complete when ALL of these hold --
+the final report states each:
+
+- The Phase 1 reproducer re-run shows the designed post-fix behavior;
+  the report includes before/after.
+- The Phase 5 test plan landed (reproducer + inverse + siblings) and
+  the full suite is green (targeted `-k` runs during development; one
+  full `uv run pytest` at the end).
+- `BUGS.md`: the entry this fix closes is REMOVED (not struck
+  through); residuals and unfixed siblings are filed.
+- The area's docs are grepped for claims the fix falsifies (the
+  relevant `docs/*_DESIGN.md`, `LANGUAGE_FEATURES.md`, safety docs) and
+  corrected in the same commit -- behavior changes routinely outlive
+  stale doc claims about the old behavior.
+- Snapshot changes to existing tests match what the approval
+  enumerated; anything beyond it goes back to the user before
+  `update_snapshots.py`.
 
 ## Throughout: track new issues uncovered
 

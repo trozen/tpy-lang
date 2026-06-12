@@ -25,6 +25,14 @@ sentence and proceed. If the request is ambiguous, ask the user to
 identify it before starting Phase 0 -- the cost of a round-trip is much
 lower than designing for the wrong feature.
 
+**Defect, not feature.** If restating (or designing) reveals the
+request is really a defect in an existing feature -- the capability
+exists but misbehaves -- stop and recommend re-entering via
+`/tpy-fix-bug`, carrying the minimal example and what you've learned.
+Feature mode would design around the bug instead of fixing it. (The
+inverse gate exists in `/tpy-fix-bug`'s Phase 3 for
+missing-feature-not-violated-invariant.)
+
 ## Phase 0: Scope assessment
 
 Before anything else, classify the work and state the classification:
@@ -103,6 +111,18 @@ pattern." A fresh-context survey catches patterns the main thread
 misses due to momentum.
 
 ## Phase 3: Sketch the design
+
+**Precedent check first -- ALL classifications, including localized.**
+The localized classification *claims* the feature "follows an existing
+template"; this is where that claim gets cashed. Grep for the existing
+feature most similar in shape (same boundary, same type family, same
+emit pattern) and read it. Name it in the design: the template being
+followed, the helper being extended, or -- if genuinely nothing fits --
+"new pattern, because <reason>". A localized feature whose author
+can't point at its template is an architectural feature that skipped
+the survey. This is the single cheapest defense against the recurring
+slop class (parallel emit paths, re-derived predicates, near-identical
+sema rules that drift apart).
 
 Where each piece of the feature lives:
 
@@ -190,10 +210,60 @@ Stop and consider before presenting:
   propagation are the usual size-proportional-cliff offenders. Even
   if benchmarks on the current test corpus look fine, consider
   worst-case scaling.
-- **CPython compat:** is the feature dual-target? If not, what's the
-  justification?
 - **Blast radius:** files, phases, snapshots. Quantify if possible
   ("~30 snapshots will regenerate, all expected").
+- **Sliced scope:** if the design deliberately ships a subset of the
+  sibling matrix (functions now, generators later; Optional now, Union
+  later), the excluded cells are LISTED in the design and filed in
+  `TODO.md` as part of the same approval -- "handled for X but not its
+  sibling Y" is the recurring decay pattern, and unlisted exclusions
+  read as oversights to the next audit.
+
+### CPython-parity assessment
+
+Run this for any feature whose surface is valid Python (i.e. CPython
+also executes the Phase 1 example) -- which is most of them. Dispatch
+ONE `cpython-parity` agent with the Phase 1 minimal example and the
+designed semantics; ask for CPython's observable behavior on the same
+source and a verdict per divergence class:
+
+- **reference-vs-copy / aliasing and mutation visibility** (fields,
+  container elements, tuples, unions, captures, match bindings, walrus,
+  loop variables) -- historically the largest divergence source
+- **evaluation order and side-effect count** (left-to-right including
+  kwargs as written; conditional operands evaluated only when reached)
+- **exception semantics** (catchable vs panic; finally / `__exit__`
+  ordering and coverage; chaining)
+- **scoping and binding lifetime** (loop-var rebinding, closure
+  capture, del)
+- **numeric and string semantics** (precision/overflow, division,
+  byte-vs-codepoint)
+- **equality / identity / truthiness**
+- **accepted-then-ignored syntax** (parsed-but-meaning-dropped is never
+  acceptable -- error or warn)
+
+The verdict gates the design:
+
+- **Match** -- done.
+- **Acknowledged divergence** -- unavoidable under TPy's model; the
+  design MUST include all three: (a) a compile-time diagnostic at the
+  divergence site, (b) an explicit user spelling that acknowledges or
+  avoids it and silences the diagnostic (the escape hatch -- the model
+  is the field-assignment copy warning silenced by `copy()`), and (c)
+  a `docs/LANGUAGE_FEATURES.md` note. Missing any of the three makes
+  the design incomplete, not smaller.
+- **Silent divergence** -- never an acceptable design outcome; rework
+  or surface to the user as an explicit decision.
+
+When an acknowledged divergence needs an escape hatch, reuse the
+existing acknowledgment spellings (`copy()`, `.clone()`, an explicit
+annotation, a directive) before minting a new one -- the
+acknowledgment surface should stay as coherent as the type surface.
+
+TPy-only surfaces (`@native` interop, `Ptr` operations, directives)
+skip the agent -- say so in the report. The `lib/cpy/` stub plan from
+Phase 4 is the *test-time* half of the same contract; this check is
+the design-time half.
 
 Sometimes the cleanest design touches things in awkward ways. That is
 itself a signal: the feature may not fit the existing model well.
@@ -218,11 +288,33 @@ readable in under a minute. Cover (each in one line or two):
 
 - Classification (trivial / localized / architectural)
 - Invariant established (one sentence from Phase 3)
+- Precedent (the template/helper the design follows or extends -- or
+  "new pattern, because <reason>")
 - Phases touched (one line each: parser / sema / typesys / codegen / runtime / stdlib -- only the ones that apply)
 - Tests + docs plan (brief)
+- Confidence (see the scale below)
+- CPython parity (one line: match / acknowledged divergence with its
+  warning + escape hatch / TPy-only surface)
 - Risks (architectural only; brief)
 - Adjacent issues uncovered (brief)
 - Proposed branch (see below)
+
+**Confidence scale.** Rate the recommended design and say what caps
+it:
+
+- **High** -- the design extends a pattern verified in code; the
+  sibling survey is done (or N/A); no unverified assumption left that
+  could change the design's shape.
+- **Medium** -- the core design is solid but at least one material
+  assumption is unverified (name it: an uninspected emit path, an
+  untested sibling interaction, a runtime helper taken on faith).
+- **Low** -- the design rests on inference about how existing phases
+  behave, or the sibling space is unexplored.
+
+For Medium and Low, also name the cheapest probe that would raise the
+rating (a snippet to compile, a file to read, an existing test to
+inspect). A Low rating on an architectural design means the default
+recommendation is the more-analysis path, not the build.
 
 Beyond that leading example, do NOT paste large code sketches,
 exhaustive sibling-survey results, or full design-doc-style
@@ -274,6 +366,24 @@ alternative), create the proposed branch (if any) with
 `git checkout -b <new-branch> master` and start implementing -- one
 approval covers both the design and the branch. Do not push, force,
 or use `-D`.
+
+**Definition of done.** The feature is complete when ALL of these hold
+-- the final report states each:
+
+- The Phase 1 minimal example compiles and runs with the designed
+  semantics; the report shows it (and its output) working.
+- The Phase 4 test plan landed (happy path, errors, edge cases,
+  sibling interactions, CPython compat or `no_cpython.txt` with
+  reason) and the full suite is green (targeted `-k` during
+  development; one full `uv run pytest` at the end).
+- `docs/LANGUAGE_FEATURES.md` updated in the same commit; the area's
+  other docs grepped for claims the new behavior falsifies and
+  corrected.
+- Sliced-scope exclusions and adjacent issues are actually filed
+  (`TODO.md` / `BUGS.md`), not just mentioned in the report.
+- Snapshot changes to existing tests match what the approval
+  enumerated; anything beyond it goes back to the user before
+  `update_snapshots.py`.
 
 ## Throughout: track adjacent issues
 
