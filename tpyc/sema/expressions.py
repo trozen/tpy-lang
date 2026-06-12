@@ -3032,6 +3032,10 @@ class ExpressionAnalyzer:
         if kind == "set":
             self.type_ops.validate_hashable_container_elem(result_elem_type, "set element", expr.loc)
 
+        # Container elements are stored owned; collapse a per-element Own so the
+        # node field matches the storage slot. Own[DynProtocol] would otherwise
+        # render `unique_ptr<P>` here against a bare `P` slot.
+        result_elem_type = unwrap_own(result_elem_type)
         expr.result_elem_type = result_elem_type
 
         if kind == "list":

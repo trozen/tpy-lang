@@ -1979,7 +1979,9 @@ codegen strategy, and future extensions (dict/set comprehensions, generator expr
 **Current state**: Done (Phase 1+2). Single-generator list comprehensions with optional
 filter clause. Codegen uses IIFE pattern (`[&]() { ... }()`). Supports range() counter
 optimization and begin/end iteration for native containers. Tuple unpacking in generators,
-annotation propagation, and Array optimization are future phases.
+annotation propagation, and Array optimization have all shipped (a fixed-length comprehension
+of a default-constructible, copyable element produces a stack `std::array`; non-copyable /
+non-default-constructible elements fall back to `std::vector`).
 
 **Dependencies**: None for basic form. Filter clause needs bool coercion (done).
 

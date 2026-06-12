@@ -24,6 +24,7 @@ from ..typesys import (
     ListRepeatType,
     LiteralType,
     make_array,
+    del_suppresses_default_ctor,
     NoneType,
     OptionalType,
     OwnType,
@@ -44,6 +45,7 @@ from ..typesys import (
     STR,
     UnknownElementType,
     resolve_int_literals,
+    unwrap_own,
     unwrap_qualifiers,
     unwrap_ref_type,
 )
@@ -634,6 +636,20 @@ class LocalTypeDeduction:
         if info.variable_name and info.decl_line is not None:
             self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
 
+    def _elem_blocks_stack_array(self, elem_type: TpyType) -> bool:
+        """True when `elem_type` cannot back a stack `std::array` build.
+
+        The Array build default-constructs the buffer then index-assigns each
+        element; a nocopy element fails the assign and a default-ctor-suppressed
+        (`__del__`) record fails the construction. Reuses the predicates codegen
+        consults so the slot type and build path agree.
+        """
+        if self.ctx.is_type_nocopy(elem_type):
+            return True
+        record = self.ctx.registry.get_record_for_type(
+            unwrap_qualifiers(elem_type))
+        return record is not None and del_suppresses_default_ctor(record)
+
     def _resolve_pending_list_types(self) -> None:
         """Resolve all pending list types after function analysis.
 
@@ -702,6 +718,10 @@ class LocalTypeDeduction:
             if isinstance(elem_type, PendingViewType):
                 # Container elements are owned -- views can't be stored in a list.
                 elem_type = elem_type.family.owned_type
+            # Container elements store the owned value; the Own marker is a
+            # boundary annotation, not a storage type (comprehensions reach
+            # here with the element expr's `Own[T]` return type intact).
+            elem_type = unwrap_own(elem_type)
 
             # Determine resolved type
             is_repeat = isinstance(info.expr, TpyListRepeat)
@@ -726,6 +746,11 @@ class LocalTypeDeduction:
             elif info.size < 0:
                 # Variable count (repeat with non-constant N) -- stays lazy
                 resolved = ListRepeatType(elem_type)
+            elif self._elem_blocks_stack_array(elem_type):
+                # The Array build default-constructs the buffer and then
+                # index-assigns each element; a non-default-constructible or
+                # non-copyable element can do neither, so fall back to list.
+                resolved = make_list(elem_type)
             else:
                 # Default: Array (stack-allocated, no mutation detected)
                 resolved = make_array(elem_type, info.size)
