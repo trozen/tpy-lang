@@ -1036,6 +1036,12 @@ class TypeCompatibility:
         if isinstance(actual, PendingListType):
             # Compatible with list[T] if element types are compatible
             if is_list(expected):
+                # An as-yet-unknown element defers to resolve_all (mirrors the
+                # dict/set leniency below): when the only evidence is an in-loop
+                # .append(), loop_scope reverts the binding to Unknown but the
+                # fact survives in list_literals.
+                if isinstance(actual.element_type, UnknownElementType):
+                    return None
                 e_elem = expected.type_args[0]
                 if actual.element_type == e_elem:
                     return None
