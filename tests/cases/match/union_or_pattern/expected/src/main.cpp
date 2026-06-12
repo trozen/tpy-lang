@@ -7,8 +7,8 @@ namespace tpyapp::main {
 // def describe(a: Dog | Cat | Bird) -> str:
 std::string describe(const std::variant<Bird*, Cat*, Dog*> a) {
     // match a:
-    auto& __match_subject = a;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = a;
+    switch (__match_subject_1.index()) {
     // case Dog() | Cat():
     case 2:
     case 1:
@@ -19,7 +19,7 @@ std::string describe(const std::variant<Bird*, Cat*, Dog*> a) {
     }
     // case Bird():
     case 0: {
-        auto& __case_1 = *std::get<0>(__match_subject);
+        auto& __case_1 = *std::get<0>(__match_subject_1);
         // return "bird"
         return "bird";
         break;
@@ -33,11 +33,11 @@ std::string describe(const std::variant<Bird*, Cat*, Dog*> a) {
 // def with_default(a: Dog | Cat | Bird) -> str:
 std::string with_default(const std::variant<Bird*, Cat*, Dog*> a) {
     // match a:
-    auto& __match_subject = a;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = a;
+    switch (__match_subject_1.index()) {
     // case Dog():
     case 2: {
-        auto& __case_0 = *std::get<2>(__match_subject);
+        auto& __case_0 = *std::get<2>(__match_subject_1);
         // return "dog"
         return "dog";
         break;

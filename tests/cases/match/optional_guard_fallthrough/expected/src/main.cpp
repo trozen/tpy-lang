@@ -7,33 +7,50 @@ namespace tpyapp::main {
 // def with_wildcard(x: Optional[Int32], flag: bool) -> str:
 std::string with_wildcard(std::optional<int32_t> x, bool flag) {
     // match x:
-    auto& __match_subject = x;
+    auto& __match_subject_1 = x;
     // case None if flag:
-    if (!__match_subject.has_value() && flag) {
-        // return "none+flag"
-        return "none+flag";
+    if (!__match_subject_1.has_value()) {
+        if (flag) {
+            // return "none+flag"
+            return "none+flag";
+            goto __match_end_2;
+        }
+    }
     // case _:
-    } else {
+    {
         // return "other"
         return "other";
+        goto __match_end_2;
     }
+    __match_end_2:;
     ::std::unreachable();
 }
 
 // def with_capture(x: Optional[Int32], flag: bool) -> str:
 std::string with_capture(std::optional<int32_t> x, bool flag) {
     // match x:
-    auto& __match_subject = x;
+    auto& __match_subject_1 = x;
     // case None if flag:
-    if (!__match_subject.has_value() && flag) {
-        // return "none+flag"
-        return "none+flag";
-    // case v:
-    } else if (__match_subject.has_value()) {
-        auto& v = (*__match_subject);
-        // return str(v)
-        return ::tpy::fixed_to_str<int32_t>(v);
+    if (!__match_subject_1.has_value()) {
+        if (flag) {
+            // return "none+flag"
+            return "none+flag";
+            goto __match_end_2;
+        }
     }
+    // case v:
+    {
+        auto& v = __match_subject_1;
+        // if v is None:
+        if ((!v.has_value())) {
+            // return "none-noflag"
+            return "none-noflag";
+        }
+        // return str(v)
+        return ::tpy::fixed_to_str<int32_t>((*v));
+        goto __match_end_2;
+    }
+    __match_end_2:;
     ::std::unreachable();
 }
 
@@ -49,6 +66,8 @@ void main() {
     std::cout << with_wildcard(5, false) << "\n";
     // print(with_capture(None, True))
     std::cout << with_capture(std::nullopt, true) << "\n";
+    // print(with_capture(None, False))
+    std::cout << with_capture(std::nullopt, false) << "\n";
     // print(with_capture(Int32(5), True))
     std::cout << with_capture(5, true) << "\n";
     // print(with_capture(Int32(5), False))

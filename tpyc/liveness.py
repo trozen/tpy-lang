@@ -158,7 +158,10 @@ def stmts_terminate(stmts: list[TpyStmt]) -> bool:
         return (stmts_terminate(last.then_body)
                 and stmts_terminate(last.else_body))
     if isinstance(last, TpyMatch):
+        # A non-exhaustive match can fall through with no arm taken, so
+        # all-arms-terminate alone is not termination.
         return (bool(last.cases)
+                and last.is_exhaustive
                 and all(stmts_terminate(case.body) for case in last.cases))
     if isinstance(last, TpyTry):
         # try-finally only (no handlers): try-body terminating is enough.

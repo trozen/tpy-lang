@@ -38,9 +38,9 @@ void main() {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_Counter_items::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        auto& __match_subject = __self.n;
+        auto& __match_subject_1 = __self.n;
         // case 0:
-        if (__match_subject == 0) {
+        if (__match_subject_1 == 0) {
             // yield 10
             __state = S_RESUME_0;
             return ::tpy::BigInt(10);

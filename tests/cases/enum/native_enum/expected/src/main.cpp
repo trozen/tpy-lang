@@ -45,8 +45,8 @@ namespace tpyapp::main {
 // def label(e: E) -> str:
 std::string label(::ns::E e) {
     // match e:
-    auto& __match_subject = e;
-    switch (__match_subject) {
+    auto& __match_subject_1 = e;
+    switch (__match_subject_1) {
     // case E.A:
     case ::ns::E::A: {
         // return "first"

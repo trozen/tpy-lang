@@ -1,1 +1,1 @@
-main.py:3: warning: non-exhaustive match on 'bool'; missing: False (add 'case _:' to suppress)
+main.py:3: warning: non-exhaustive match on 'bool'; missing: False (add 'case _: pass' to suppress)

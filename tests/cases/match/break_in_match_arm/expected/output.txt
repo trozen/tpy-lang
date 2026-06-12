@@ -1,0 +1,13 @@
+p Red
+plain done
+e Red
+after else loop
+c Red
+c Blue
+w 0
+w 1
+w 2
+while done
+s a
+s bb
+str done

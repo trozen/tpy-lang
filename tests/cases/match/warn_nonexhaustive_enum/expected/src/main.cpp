@@ -49,8 +49,8 @@ namespace tpyapp::main {
 // def describe(c: Color) -> str:
 std::string describe(Color c) {
     // match c:  # tpyc: warning(/non-exhaustive match.*missing: Color.Blue.*case _:/)
-    auto& __match_subject = c;
-    switch (__match_subject) {
+    auto& __match_subject_1 = c;
+    switch (__match_subject_1) {
     // case Color.Red:
     case Color::Red: {
         // return "red"

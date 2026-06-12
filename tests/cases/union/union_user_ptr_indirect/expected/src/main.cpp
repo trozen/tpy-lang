@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def describe(e: Expr) -> str:
 std::string describe(const Expr& e) {
     // match e:
-    auto& __match_subject = e;
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = e;
+    switch (__match_subject_1.value.index()) {
     // case Lit(value=v):
     case 1: {
-        auto& __case_0 = std::get<1>(__match_subject.value);
+        auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& v = __case_0.value;
         // return "lit=" + str(v)
         return (::tpy::str_concat("lit=", (v).to_string()));

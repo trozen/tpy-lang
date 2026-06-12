@@ -13,11 +13,11 @@ std::expected<std::string, ::tpy::StopIteration> __gen_describe::__next__() {
         return "start";
     }
     case S_RESUME_0: {
-        auto& __match_subject = a;
-        switch (__match_subject.index()) {
+        auto& __match_subject_1 = a;
+        switch (__match_subject_1.index()) {
         // case Dog():
         case 1: {
-            auto& __case_0 = *std::get<1>(__match_subject);
+            auto& __case_0 = *std::get<1>(__match_subject_1);
             // yield "dog:" + a.sound()
             __state = S_RESUME_1;
             return (::tpy::str_concat("dog:", __case_0.sound()));
@@ -25,7 +25,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_describe::__next__() {
         }
         // case Cat():
         case 0: {
-            auto& __case_1 = *std::get<0>(__match_subject);
+            auto& __case_1 = *std::get<0>(__match_subject_1);
             // yield "cat:" + a.sound()
             __state = S_RESUME_2;
             return (::tpy::str_concat("cat:", __case_1.sound()));

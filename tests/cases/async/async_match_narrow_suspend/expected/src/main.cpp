@@ -8,11 +8,11 @@ namespace tpyapp::main {
 ::tpystd::tpy::Poll<std::string> __coro_voice::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        auto& __match_subject = a;
-        switch (__match_subject.index()) {
+        auto& __match_subject_1 = a;
+        switch (__match_subject_1.index()) {
         // case Dog():
         case 1: {
-            auto& __case_0 = *std::get<1>(__match_subject);
+            auto& __case_0 = *std::get<1>(__match_subject_1);
             // await asyncio.sleep(0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
@@ -21,7 +21,7 @@ namespace tpyapp::main {
         }
         // case Cat():
         case 0: {
-            auto& __case_1 = *std::get<0>(__match_subject);
+            auto& __case_1 = *std::get<0>(__match_subject_1);
             // return a.sound()
             __state = S_DONE;
             std::string __tpy_async_ret = __case_1.sound();

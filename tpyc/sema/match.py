@@ -139,6 +139,11 @@ class MatchAnalyzer:
         )
 
         had_wildcard = False
+        # Optional subjects have two coverage sides: a class pattern matches
+        # every non-None value but never None, while wildcard/capture match
+        # both. Exhaustiveness and unreachable-arm checks track each side.
+        covers_none = False
+        covers_value = False
         seen_types: set[str] = set()
         seen_values: set[object] = set()
         # Polymorphic dispatch: resolved arm types, in source order, for the
@@ -162,6 +167,27 @@ class MatchAnalyzer:
                 raise self.ctx.error(
                     "unreachable case after wildcard pattern", case.pattern
                 )
+            if is_optional and covers_value:
+                pat_top = case.pattern
+                if isinstance(pat_top, TpyAsPattern):
+                    pat_top = pat_top.pattern
+                is_value_only = (
+                    isinstance(pat_top, (TpyClassPattern, TpyValuePattern))
+                    or (isinstance(pat_top, TpyLiteralPattern)
+                        and pat_top.value is not None)
+                    or (isinstance(pat_top, TpyOrPattern)
+                        and not any(
+                            (isinstance(a, TpyLiteralPattern)
+                             and a.value is None)
+                            or isinstance(a, (TpyWildcardPattern,
+                                              TpyCapturePattern))
+                            for a in pat_top.patterns))
+                )
+                if is_value_only:
+                    raise self.ctx.error(
+                        "unreachable case: every non-None value is already "
+                        "matched by an earlier arm", case.pattern
+                    )
             # Restore state to pre-match for each arm
             self.stmts.init.restore(before)
             self.ctx.func.current_consumed_own_params = consumed_before.copy()
@@ -190,6 +216,7 @@ class MatchAnalyzer:
             elif is_optional:
                 self._analyze_pattern_optional(
                     case.pattern, effective_type, seen_values, pattern_bindings, stmt,
+                    none_covered=covers_none,
                 )
             else:
                 self._analyze_pattern_nonunion(
@@ -203,6 +230,17 @@ class MatchAnalyzer:
                 seen_poly[:] = saved_seen_poly  # type: ignore[index]
 
             for name, ty in pattern_bindings.items():
+                # A capture that binds the full Optional subject rebinds any
+                # same-named existing local to a wider type; the pre-declared
+                # C++ slot can't hold it, so reject at the TPy level.
+                existing = bindings_before.get(name)
+                if (existing is not None and isinstance(ty, OptionalType)
+                        and existing != ty):
+                    raise self.ctx.error(
+                        f"match capture '{name}' binds the full Optional "
+                        f"subject ('{ty}') but '{name}' already has type "
+                        f"'{existing}'; add a 'case None:' arm before it or "
+                        f"use a fresh name", case.pattern)
                 self.ctx.func.current_scope.define(name, ty)
                 self.stmts.init.mark_assigned(name)
                 if name not in self.ctx.func.var_scope_depth:
@@ -228,13 +266,19 @@ class MatchAnalyzer:
                 case.type_facts = self.stmts._filter_union_codegen_facts(narrowing_facts)
                 self.ctx.func.narrowed_types.update(narrowing_facts)
 
-            # Narrow Optional subject to inner type in non-None arms
+            # Narrow Optional subject to inner type in arms that cannot
+            # match None. A wildcard/capture arm DOES match None unless an
+            # earlier arm already took the None path.
             if is_optional and subject_name is not None:
                 pat = case.pattern
                 if isinstance(pat, TpyAsPattern):
                     pat = pat.pattern
                 is_none_arm = isinstance(pat, TpyLiteralPattern) and pat.value is None
-                if not is_none_arm:
+                may_match_none = (
+                    isinstance(pat, (TpyWildcardPattern, TpyCapturePattern))
+                    and not covers_none
+                )
+                if not is_none_arm and not may_match_none:
                     self.ctx.func.narrowed_types[subject_name] = effective_type.inner
 
             # Narrow Literal subject to matched value(s)
@@ -260,14 +304,45 @@ class MatchAnalyzer:
             pat = case.pattern
             if isinstance(pat, TpyAsPattern):
                 pat = pat.pattern
-            if isinstance(pat, (TpyWildcardPattern, TpyCapturePattern)) and case.guard is None:
+            if is_optional:
+                if case.guard is None:
+                    if isinstance(pat, (TpyWildcardPattern, TpyCapturePattern)):
+                        covers_none = True
+                        covers_value = True
+                    elif (isinstance(pat, TpyClassPattern)
+                          and not any(self._is_constraining_sub_pattern(sub)
+                                      for _, sub in pat.keywords)):
+                        # Matches every non-None value but never None.
+                        covers_value = True
+                    elif (isinstance(pat, TpyLiteralPattern)
+                          and pat.value is None):
+                        covers_none = True
+                    elif isinstance(pat, TpyOrPattern):
+                        for alt in pat.patterns:
+                            if isinstance(alt, TpyAsPattern):
+                                alt = alt.pattern
+                            if (isinstance(alt, TpyLiteralPattern)
+                                    and alt.value is None):
+                                covers_none = True
+                            elif isinstance(alt, (TpyWildcardPattern,
+                                                  TpyCapturePattern)):
+                                covers_none = True
+                                covers_value = True
+                            elif (isinstance(alt, TpyClassPattern)
+                                  and not any(
+                                      self._is_constraining_sub_pattern(sub)
+                                      for _, sub in alt.keywords)):
+                                covers_value = True
+                if covers_none and covers_value:
+                    had_wildcard = True
+            elif isinstance(pat, (TpyWildcardPattern, TpyCapturePattern)) and case.guard is None:
                 had_wildcard = True
             # Class pattern on concrete record with no conditions is always-matching.
             # Excludes polymorphic dispatch -- there `case Sub()` is a runtime
             # type test, not an always-true field match, so only a root-type arm
             # (handled below) is a catch-all.
             elif (not is_polymorphic
-                  and (is_record or is_optional) and isinstance(pat, TpyClassPattern)
+                  and is_record and isinstance(pat, TpyClassPattern)
                   and case.guard is None
                   and not any(self._is_constraining_sub_pattern(sub)
                               for _, sub in pat.keywords)):
@@ -286,6 +361,19 @@ class MatchAnalyzer:
         # an unconditional catch-all (wildcard or root-type arm).
         if is_polymorphic:
             missing = [] if had_wildcard else [None]  # type: ignore[list-item]
+        elif is_optional:
+            # Each side must be covered independently: a class/literal arm
+            # never matches None, and a None arm never matches a value.
+            missing = []
+            if not covers_none:
+                missing.append("None")
+            if not covers_value:
+                inner_missing = self._match_missing_cases(
+                    unwrap_readonly(effective_type.inner), seen_types, seen_values)
+                if inner_missing == [None]:
+                    missing.append(str(effective_type.inner))
+                else:
+                    missing.extend(inner_missing)
         else:
             missing = (
                 [] if had_wildcard
@@ -297,24 +385,28 @@ class MatchAnalyzer:
                 msg = (
                     f"non-exhaustive match on '{effective_type}'; "
                     f"no unconditional catch-all arm "
-                    f"(add 'case _:' to suppress)"
+                    f"(add 'case _: pass' to suppress)"
                 )
             else:
                 msg = (
                     f"non-exhaustive match on '{effective_type}'; "
                     f"missing: {', '.join(missing)} "
-                    f"(add 'case _:' to suppress)"
+                    f"(add 'case _: pass' to suppress)"
                 )
             self.ctx.warning(msg, stmt)
 
-        # Merge flow states across all arms
-        self._merge_match_arms(arm_states, before)
+        # Merge flow states across all arms. A non-exhaustive match can fall
+        # through with no arm taken, so the pre-match state joins the merge.
+        self._merge_match_arms(arm_states, before,
+                               can_fall_through=bool(missing))
 
         # Merge consumed Own[T] params: intersect non-terminated arms.
         # Terminated arms don't affect live continuation (same as if/else).
         if arm_consumed:
             live_sets = [s for s, terminated in arm_consumed if not terminated]
             dead_sets = [s for s, terminated in arm_consumed if terminated]
+            if missing:
+                live_sets.append(consumed_before)
             if live_sets:
                 merged_consumed = live_sets[0]
                 for s in live_sets[1:]:
@@ -534,24 +626,30 @@ class MatchAnalyzer:
 
     def _merge_match_arms(
         self, arm_states: list['FlowFacts'], before: 'FlowFacts',
+        can_fall_through: bool = False,
     ) -> None:
         """Merge flow states from multiple match arms.
 
         Uses the same logic as merge_branches: intersect definitely_assigned
-        across non-terminated arms, union across terminated arms.
+        across non-terminated arms, union across terminated arms. When the
+        match is non-exhaustive (`can_fall_through`), the pre-match state is
+        one of the merged paths.
         """
-        if not arm_states:
+        states = list(arm_states)
+        if can_fall_through:
+            states.append(before)
+        if not states:
             self.stmts.init.restore(before)
             return
-        if len(arm_states) == 1:
-            self.stmts.init.restore(arm_states[0])
+        if len(states) == 1:
+            self.stmts.init.restore(states[0])
             return
         # Pairwise merge: merge first two, then merge result with next, etc.
-        self.stmts.init.restore(arm_states[0])
-        for i in range(1, len(arm_states)):
+        self.stmts.init.restore(states[0])
+        for i in range(1, len(states)):
             current = self.stmts.init.save()
             self.stmts.init.restore(before)
-            self.stmts.init.merge_branches(current, arm_states[i])
+            self.stmts.init.merge_branches(current, states[i])
 
     def _match_missing_cases(
         self, subject_type: TpyType,
@@ -573,11 +671,6 @@ class MatchAnalyzer:
                 if (subject_type.name, name) not in seen_values
             ]
 
-        if isinstance(subject_type, OptionalType):
-            if None not in seen_values:
-                return ["None"]
-            return []
-
         if is_bool_type(subject_type):
             missing: list[str] = []
             if True not in seen_values:
@@ -597,7 +690,11 @@ class MatchAnalyzer:
         if isinstance(subject_type, NominalType) and subject_type.is_user_record:
             return [None]  # type: ignore[list-item]  # sentinel: no enumerable missing cases
 
-        return []
+        # Non-enumerable subjects (int/str/float/Char/...): exhaustiveness
+        # cannot be proven from literal arms, so a match without a catch-all
+        # must not be marked exhaustive (codegen would emit an unreachable
+        # tail on the fall-through path).
+        return [None]  # type: ignore[list-item]
 
     def _analyze_pattern(
         self, pattern: TpyPattern, subject_type: UnionType,
@@ -951,20 +1048,44 @@ class MatchAnalyzer:
     def _analyze_pattern_optional(
         self, pattern: TpyPattern, subject_type: OptionalType,
         seen_values: set[object], bindings: dict[str, TpyType], stmt: TpyMatch,
+        none_covered: bool = True,
     ) -> None:
-        """Analyze a pattern for Optional subjects."""
+        """Analyze a pattern for Optional subjects.
+
+        `none_covered`: an earlier unguarded arm already matched the None
+        side. A wildcard/capture arm matches None too (CPython), so its
+        binding carries the full Optional type unless None is already
+        covered -- then it soundly narrows to the inner type.
+        """
         if isinstance(pattern, TpyWildcardPattern):
             return
 
         elif isinstance(pattern, TpyCapturePattern):
-            # Capture matches the non-None value (case None: is a literal pattern)
-            bindings[pattern.name] = subject_type.inner
+            if none_covered:
+                bindings[pattern.name] = subject_type.inner
+            else:
+                pattern.binds_full_optional = True
+                bindings[pattern.name] = subject_type
 
         elif isinstance(pattern, TpyAsPattern):
+            # `case None as x:` has no value to bind; reject rather than
+            # silently binding the inner type (mirrors the union path).
+            if (isinstance(pattern.pattern, TpyLiteralPattern)
+                    and pattern.pattern.value is None):
+                raise self.ctx.error(
+                    "'as' binding not allowed on 'case None:'", pattern,
+                )
             self._analyze_pattern_optional(
                 pattern.pattern, subject_type, seen_values, bindings, stmt,
+                none_covered=none_covered,
             )
-            bindings[pattern.name] = subject_type.inner
+            if (isinstance(pattern.pattern,
+                           (TpyWildcardPattern, TpyCapturePattern))
+                    and not none_covered):
+                pattern.binds_full_optional = True
+                bindings[pattern.name] = subject_type
+            else:
+                bindings[pattern.name] = subject_type.inner
 
         elif isinstance(pattern, TpyLiteralPattern):
             if pattern.value is None:

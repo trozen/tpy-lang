@@ -8,298 +8,304 @@ namespace tpyapp::main {
 // def classify(s: str) -> str:
 std::string classify(std::string_view s) {
     // match s:
-    auto& __match_subject = s;
-    if (__match_subject.size() >= 2) {
-        switch (static_cast<unsigned char>(__match_subject[1])) {
+    auto& __match_subject_1 = s;
+    if (__match_subject_1.size() >= 2) {
+        switch (static_cast<unsigned char>(__match_subject_1[1])) {
         case 'a': {
             // case "cat":
-            if (__match_subject == "cat") {
+            if (__match_subject_1 == "cat") {
                 // return "animal"
                 return "animal";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'e': {
             // case "red":
-            if (__match_subject == "red") {
+            if (__match_subject_1 == "red") {
                 // return "color"
                 return "color";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'i': {
             // case "bird":
-            if (__match_subject == "bird") {
+            if (__match_subject_1 == "bird") {
                 // return "animal"
                 return "animal";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'l': {
             // case "blue":
-            if (__match_subject == "blue") {
+            if (__match_subject_1 == "blue") {
                 // return "color"
                 return "color";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'o': {
             // case "dog":
-            if (__match_subject == "dog") {
+            if (__match_subject_1 == "dog") {
                 // return "animal"
                 return "animal";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'r': {
             // case "green":
-            if (__match_subject == "green") {
+            if (__match_subject_1 == "green") {
                 // return "color"
                 return "color";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         }
     }
+    // case _:
     {
-        // case _:
         // return "unknown"
         return "unknown";
+        goto __match_end_2;
     }
-    __match_end_1:;
+    __match_end_2:;
     ::std::unreachable();
 }
 
 // def with_guard(cmd: str, verbose: bool) -> str:
 std::string with_guard(std::string_view cmd, bool verbose) {
     // match cmd:
-    auto& __match_subject = cmd;
+    auto& __match_subject_1 = cmd;
     // case "help" if verbose:
-    if (__match_subject == "help" && verbose) {
-        // return "verbose help"
-        return "verbose help";
-        goto __match_end_1;
+    if (__match_subject_1 == "help") {
+        if (verbose) {
+            // return "verbose help"
+            return "verbose help";
+            goto __match_end_2;
+        }
     }
-    if (__match_subject.size() >= 1) {
-        switch (static_cast<unsigned char>(__match_subject[0])) {
+    if (__match_subject_1.size() >= 1) {
+        switch (static_cast<unsigned char>(__match_subject_1[0])) {
         case 'h': {
             // case "help":
-            if (__match_subject == "help") {
+            if (__match_subject_1 == "help") {
                 // return "help"
                 return "help";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'l': {
             // case "load":
-            if (__match_subject == "load") {
+            if (__match_subject_1 == "load") {
                 // return "load"
                 return "load";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'q': {
             // case "quit":
-            if (__match_subject == "quit") {
+            if (__match_subject_1 == "quit") {
                 // return "quit"
                 return "quit";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'r': {
             // case "redo":
-            if (__match_subject == "redo") {
+            if (__match_subject_1 == "redo") {
                 // return "redo"
                 return "redo";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 's': {
             // case "save":
-            if (__match_subject == "save") {
+            if (__match_subject_1 == "save") {
                 // return "save"
                 return "save";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'u': {
             // case "undo":
-            if (__match_subject == "undo") {
+            if (__match_subject_1 == "undo") {
                 // return "undo"
                 return "undo";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         }
     }
+    // case s:
     {
-        // case s:
-        auto& s = __match_subject;
+        auto& s = __match_subject_1;
         // return "unknown: " + s
         return (::tpy::str_concat("unknown: ", s));
+        goto __match_end_2;
     }
-    __match_end_1:;
+    __match_end_2:;
     ::std::unreachable();
 }
 
 // def with_or(s: str) -> str:
 std::string with_or(std::string_view s) {
     // match s:
-    auto& __match_subject = s;
-    if (__match_subject.size() >= 2) {
-        switch (static_cast<unsigned char>(__match_subject[1])) {
+    auto& __match_subject_1 = s;
+    if (__match_subject_1.size() >= 2) {
+        switch (static_cast<unsigned char>(__match_subject_1[1])) {
         case 'a': {
             // case "cat" | "dog" | "bird":
-            if (__match_subject == "cat") {
+            if (__match_subject_1 == "cat") {
                 // return "animal"
                 return "animal";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'e': {
             // case "red" | "green" | "blue":
-            if (__match_subject == "red") {
+            if (__match_subject_1 == "red") {
                 // return "color"
                 return "color";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'i': {
             // case "cat" | "dog" | "bird":
-            if (__match_subject == "bird") {
+            if (__match_subject_1 == "bird") {
                 // return "animal"
                 return "animal";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'l': {
             // case "red" | "green" | "blue":
-            if (__match_subject == "blue") {
+            if (__match_subject_1 == "blue") {
                 // return "color"
                 return "color";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'n': {
             // case "one" | "two":
-            if (__match_subject == "one") {
+            if (__match_subject_1 == "one") {
                 // return "number"
                 return "number";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'o': {
             // case "cat" | "dog" | "bird":
-            if (__match_subject == "dog") {
+            if (__match_subject_1 == "dog") {
                 // return "animal"
                 return "animal";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'r': {
             // case "red" | "green" | "blue":
-            if (__match_subject == "green") {
+            if (__match_subject_1 == "green") {
                 // return "color"
                 return "color";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         case 'w': {
             // case "one" | "two":
-            if (__match_subject == "two") {
+            if (__match_subject_1 == "two") {
                 // return "number"
                 return "number";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
         }
     }
+    // case _:
     {
-        // case _:
         // return "other"
         return "other";
+        goto __match_end_2;
     }
-    __match_end_1:;
+    __match_end_2:;
     ::std::unreachable();
 }
 
 // def by_length(s: str) -> str:
 std::string by_length(std::string_view s) {
     // match s:
-    auto& __match_subject = s;
-    switch (__match_subject.size()) {
+    auto& __match_subject_1 = s;
+    switch (__match_subject_1.size()) {
     case 1: {
         // case "a":
-        if (__match_subject == "a") {
+        if (__match_subject_1 == "a") {
             // return "one"
             return "one";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     case 2: {
         // case "bb":
-        if (__match_subject == "bb") {
+        if (__match_subject_1 == "bb") {
             // return "two"
             return "two";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     case 3: {
         // case "ccc":
-        if (__match_subject == "ccc") {
+        if (__match_subject_1 == "ccc") {
             // return "three"
             return "three";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     case 4: {
         // case "dddd":
-        if (__match_subject == "dddd") {
+        if (__match_subject_1 == "dddd") {
             // return "four"
             return "four";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     case 5: {
         // case "eeeee":
-        if (__match_subject == "eeeee") {
+        if (__match_subject_1 == "eeeee") {
             // return "five"
             return "five";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     }
+    // case _:
     {
-        // case _:
         // return "other"
         return "other";
+        goto __match_end_2;
     }
-    __match_end_1:;
+    __match_end_2:;
     ::std::unreachable();
 }
 

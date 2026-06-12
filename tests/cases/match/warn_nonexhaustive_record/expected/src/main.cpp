@@ -7,17 +7,17 @@ namespace tpyapp::main {
 // def describe_guarded(p: Point) -> str:
 std::string describe_guarded(const Point& p) {
     // match p:  # tpyc: warning(/non-exhaustive match.*case _:/)
-    auto& __match_subject = p;
+    auto& __match_subject_1 = p;
     // case Point(x=x) if x > 0:
     {
-        auto& x = __match_subject.x;
+        auto& x = __match_subject_1.x;
         if ((x > 0)) {
             // return "positive x"
             return "positive x";
-            goto __match_end_1;
+            goto __match_end_2;
         }
     }
-    __match_end_1:;
+    __match_end_2:;
     // return "other"
     return "other";
 }
@@ -25,9 +25,9 @@ std::string describe_guarded(const Point& p) {
 // def describe_literal(p: Point) -> str:
 std::string describe_literal(const Point& p) {
     // match p:  # tpyc: warning(/non-exhaustive match.*case _:/)
-    auto& __match_subject = p;
+    auto& __match_subject_1 = p;
     // case Point(x=0):
-    if (__match_subject.x == 0) {
+    if (__match_subject_1.x == 0) {
         // return "origin-x"
         return "origin-x";
     }
@@ -38,11 +38,11 @@ std::string describe_literal(const Point& p) {
 // def describe_exhaustive(p: Point) -> str:
 std::string describe_exhaustive(const Point& p) {
     // match p:  # tpyc: ok
-    auto& __match_subject = p;
+    auto& __match_subject_1 = p;
     // case Point(x=x, y=y):
     {
-        auto& x = __match_subject.x;
-        auto& y = __match_subject.y;
+        auto& x = __match_subject_1.x;
+        auto& y = __match_subject_1.y;
         // return "point"
         return "point";
     }

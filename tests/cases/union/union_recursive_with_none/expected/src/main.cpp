@@ -7,8 +7,8 @@ namespace tpyapp::main {
 // def kind(v: V) -> str:
 std::string kind(const V& v) {
     // match v:
-    auto& __match_subject = v;
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = v;
+    switch (__match_subject_1.value.index()) {
     // case None:
     case 0: {
         // return "null"
@@ -17,7 +17,7 @@ std::string kind(const V& v) {
     }
     // case bool() as b:
     case 1: {
-        auto& __case_1 = std::get<1>(__match_subject.value);
+        auto& __case_1 = std::get<1>(__match_subject_1.value);
         auto& b = __case_1;
         // return "bool"
         return "bool";
@@ -25,7 +25,7 @@ std::string kind(const V& v) {
     }
     // case int() as n:
     case 3: {
-        auto& __case_2 = std::get<3>(__match_subject.value);
+        auto& __case_2 = std::get<3>(__match_subject_1.value);
         auto& n = __case_2;
         // return "int"
         return "int";
@@ -33,7 +33,7 @@ std::string kind(const V& v) {
     }
     // case str() as s:
     case 5: {
-        auto& __case_3 = std::get<5>(__match_subject.value);
+        auto& __case_3 = std::get<5>(__match_subject_1.value);
         auto& s = __case_3;
         // return "str"
         return "str";
@@ -41,7 +41,7 @@ std::string kind(const V& v) {
     }
     // case list() as items:
     case 4: {
-        auto& __case_4 = std::get<4>(__match_subject.value);
+        auto& __case_4 = std::get<4>(__match_subject_1.value);
         auto& items = __case_4;
         // return "list/" + str(len(items))
         return (::tpy::str_concat("list/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(items))));
@@ -49,7 +49,7 @@ std::string kind(const V& v) {
     }
     // case dict() as d:
     case 2: {
-        auto& __case_5 = std::get<2>(__match_subject.value);
+        auto& __case_5 = std::get<2>(__match_subject_1.value);
         auto& d = __case_5;
         // return "dict/" + str(len(d))
         return (::tpy::str_concat("dict/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(d))));
@@ -89,11 +89,11 @@ std::string kind_after_null_guard(const V& v) {
         return "null";
     }
     // match v:
-    auto& __match_subject = v;
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = v;
+    switch (__match_subject_1.value.index()) {
     // case bool() as b:
     case 1: {
-        auto& __case_0 = std::get<1>(__match_subject.value);
+        auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& b = __case_0;
         // return "bool"
         return "bool";
@@ -101,7 +101,7 @@ std::string kind_after_null_guard(const V& v) {
     }
     // case int() as n:
     case 3: {
-        auto& __case_1 = std::get<3>(__match_subject.value);
+        auto& __case_1 = std::get<3>(__match_subject_1.value);
         auto& n = __case_1;
         // return "int"
         return "int";
@@ -109,7 +109,7 @@ std::string kind_after_null_guard(const V& v) {
     }
     // case str() as s:
     case 5: {
-        auto& __case_2 = std::get<5>(__match_subject.value);
+        auto& __case_2 = std::get<5>(__match_subject_1.value);
         auto& s = __case_2;
         // return "str"
         return "str";
@@ -117,7 +117,7 @@ std::string kind_after_null_guard(const V& v) {
     }
     // case list() as items:
     case 4: {
-        auto& __case_3 = std::get<4>(__match_subject.value);
+        auto& __case_3 = std::get<4>(__match_subject_1.value);
         auto& items = __case_3;
         // return "list/" + str(len(items))
         return (::tpy::str_concat("list/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(items))));
@@ -125,7 +125,7 @@ std::string kind_after_null_guard(const V& v) {
     }
     // case dict() as d:
     case 2: {
-        auto& __case_4 = std::get<2>(__match_subject.value);
+        auto& __case_4 = std::get<2>(__match_subject_1.value);
         auto& d = __case_4;
         // return "dict/" + str(len(d))
         return (::tpy::str_concat("dict/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(d))));
@@ -138,8 +138,8 @@ std::string kind_after_null_guard(const V& v) {
 // def flat_kind(v: W) -> str:
 std::string flat_kind(const W& v) {
     // match v:
-    auto& __match_subject = v;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = v;
+    switch (__match_subject_1.index()) {
     // case None:
     case 0: {
         // return "null"
@@ -148,7 +148,7 @@ std::string flat_kind(const W& v) {
     }
     // case int() as n:
     case 1: {
-        auto& __case_1 = std::get<1>(__match_subject);
+        auto& __case_1 = std::get<1>(__match_subject_1);
         auto& n = __case_1;
         // return "i:" + str(n)
         return (::tpy::str_concat("i:", (n).to_string()));
@@ -156,7 +156,7 @@ std::string flat_kind(const W& v) {
     }
     // case str() as s:
     case 2: {
-        auto& __case_2 = std::get<2>(__match_subject);
+        auto& __case_2 = std::get<2>(__match_subject_1);
         auto& s = __case_2;
         // return "s:" + s
         return (::tpy::str_concat("s:", s));
@@ -178,75 +178,75 @@ std::string kind_guarded(const V& v) {
         return "null";
     }
     // match v:
-    auto& __match_subject = v;
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = v;
+    switch (__match_subject_1.value.index()) {
     case 1: {
-        auto& __case_1 = std::get<1>(__match_subject.value);
+        auto& __case_1 = std::get<1>(__match_subject_1.value);
         // case bool() as b if b:
         {
             auto& b = __case_1;
             if (b) {
                 // return "bool-true"
                 return "bool-true";
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case bool():
         {
             // return "bool-false"
             return "bool-false";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     case 2: {
-        auto& __case_2 = std::get<2>(__match_subject.value);
+        auto& __case_2 = std::get<2>(__match_subject_1.value);
         // case dict() as d:
         auto& d = __case_2;
         // return "dict/" + str(len(d))
         return (::tpy::str_concat("dict/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(d))));
-        goto __match_end_1;
+        goto __match_end_2;
         break;
     }
     case 3: {
-        auto& __case_3 = std::get<3>(__match_subject.value);
+        auto& __case_3 = std::get<3>(__match_subject_1.value);
         // case int() as n if n > 0:
         {
             auto& n = __case_3;
             if ((n > 0)) {
                 // return "int-pos"
                 return "int-pos";
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case int():
         {
             // return "int-nonpos"
             return "int-nonpos";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     case 4: {
-        auto& __case_4 = std::get<4>(__match_subject.value);
+        auto& __case_4 = std::get<4>(__match_subject_1.value);
         // case list() as items:
         auto& items = __case_4;
         // return "list/" + str(len(items))
         return (::tpy::str_concat("list/", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(items))));
-        goto __match_end_1;
+        goto __match_end_2;
         break;
     }
     case 5: {
-        auto& __case_5 = std::get<5>(__match_subject.value);
+        auto& __case_5 = std::get<5>(__match_subject_1.value);
         // case str() as s:
         auto& s = __case_5;
         // return "str/" + s
         return (::tpy::str_concat("str/", s));
-        goto __match_end_1;
+        goto __match_end_2;
         break;
     }
     }
-__match_end_1:;
+__match_end_2:;
     ::std::unreachable();
 }
 

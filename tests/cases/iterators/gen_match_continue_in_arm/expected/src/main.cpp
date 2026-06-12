@@ -28,14 +28,14 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         it = *((*__for_it_0))++;
-        auto& __match_subject = it;
+        auto& __match_subject_1 = it;
         // case 0:
-        if (__match_subject == 0) {
+        if (__match_subject_1 == 0) {
             __state = S_JOIN_0;
             continue;
         // case v:
         } else {
-            v = __match_subject;
+            v = __match_subject_1;
             // yield v
             __state = S_RESUME_0;
             return v;

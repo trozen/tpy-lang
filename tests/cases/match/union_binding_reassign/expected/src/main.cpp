@@ -8,11 +8,11 @@ namespace tpyapp::main {
 std::string describe(const std::variant<Cat*, Dog*> a) {
     // match a:
     std::string n;
-    auto& __match_subject = a;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = a;
+    switch (__match_subject_1.index()) {
     // case Dog(name=n):
     case 1: {
-        auto& __case_0 = *std::get<1>(__match_subject);
+        auto& __case_0 = *std::get<1>(__match_subject_1);
         n = __case_0.name;
         // n = "dog:" + n
         n = (::tpy::str_concat("dog:", n));
@@ -20,7 +20,7 @@ std::string describe(const std::variant<Cat*, Dog*> a) {
     }
     // case Cat(name=n):
     case 0: {
-        auto& __case_1 = *std::get<0>(__match_subject);
+        auto& __case_1 = *std::get<0>(__match_subject_1);
         n = __case_1.name;
         // n = "cat:" + n
         n = (::tpy::str_concat("cat:", n));

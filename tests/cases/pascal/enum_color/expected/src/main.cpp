@@ -56,8 +56,8 @@ void __tpy_init() {
     // c := Green;
     c = color::green;
     // case c of
-    auto& __match_subject = c;
-    switch (__match_subject) {
+    auto& __match_subject_1 = c;
+    switch (__match_subject_1) {
     // Red: writeln('red');
     case color::red: {
         // Red: writeln('red');

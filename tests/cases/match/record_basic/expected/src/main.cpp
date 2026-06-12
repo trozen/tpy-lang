@@ -7,25 +7,25 @@ namespace tpyapp::main {
 // def describe(p: Point) -> str:
 std::string describe(const Point& p) {
     // match p:
-    auto& __match_subject = p;
+    auto& __match_subject_1 = p;
     // case Point(x=0, y=0):
-    if (__match_subject.x == 0 && __match_subject.y == 0) {
+    if (__match_subject_1.x == 0 && __match_subject_1.y == 0) {
         // return "origin"
         return "origin";
     // case Point(x=x, y=0):
-    } else if (__match_subject.y == 0) {
-        auto& x = __match_subject.x;
+    } else if (__match_subject_1.y == 0) {
+        auto& x = __match_subject_1.x;
         // return "x-axis: " + str(x)
         return (::tpy::str_concat("x-axis: ", ::tpy::fixed_to_str<int32_t>(x)));
     // case Point(x=0, y=y):
-    } else if (__match_subject.x == 0) {
-        auto& y = __match_subject.y;
+    } else if (__match_subject_1.x == 0) {
+        auto& y = __match_subject_1.y;
         // return "y-axis: " + str(y)
         return (::tpy::str_concat("y-axis: ", ::tpy::fixed_to_str<int32_t>(y)));
     // case Point(x=x, y=y):
     } else {
-        auto& x = __match_subject.x;
-        auto& y = __match_subject.y;
+        auto& x = __match_subject_1.x;
+        auto& y = __match_subject_1.y;
         // return "(" + str(x) + ", " + str(y) + ")"
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(x))), ", ")), ::tpy::fixed_to_str<int32_t>(y))), ")"));
     }
@@ -37,9 +37,9 @@ std::string describe(const Point& p) {
 // def check_quadrant(p: Point) -> str:
 std::string check_quadrant(const Point& p) {
     // match p:
-    auto& __match_subject = p;
+    auto& __match_subject_1 = p;
     // case Point(x=0, y=0):
-    if (__match_subject.x == 0 && __match_subject.y == 0) {
+    if (__match_subject_1.x == 0 && __match_subject_1.y == 0) {
         // return "origin"
         return "origin";
     // case _:
@@ -55,13 +55,13 @@ std::string check_quadrant(const Point& p) {
 // def positional(p: Point) -> str:
 std::string positional(const Point& p) {
     // match p:
-    auto& __match_subject = p;
+    auto& __match_subject_1 = p;
     // case Point(0, 0):
-    if (__match_subject.x == 0 && __match_subject.y == 0) {
+    if (__match_subject_1.x == 0 && __match_subject_1.y == 0) {
         // return "origin"
         return "origin";
     // case Point(_, 0):
-    } else if (__match_subject.y == 0) {
+    } else if (__match_subject_1.y == 0) {
         // return "x-axis"
         return "x-axis";
     // case _:
@@ -77,10 +77,10 @@ std::string positional(const Point& p) {
 // def with_capture(p: Point) -> str:
 std::string with_capture(const Point& p) {
     // match p:
-    auto& __match_subject = p;
+    auto& __match_subject_1 = p;
     // case Point() as q:
     {
-        auto& q = __match_subject;
+        auto& q = __match_subject_1;
         // return "point: " + str(q.x) + ", " + str(q.y)
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("point: ", ::tpy::fixed_to_str<int32_t>(q.x))), ", ")), ::tpy::fixed_to_str<int32_t>(q.y)));
     }

@@ -35,9 +35,9 @@ void main() {
     // target = "\x00x"
     std::string_view target = std::string_view{"\000x", 2};
     // match target:
-    auto& __match_subject = target;
+    auto& __match_subject_1 = target;
     // case "\x00x":
-    if (__match_subject == std::string_view{"\000x", 2}) {
+    if (__match_subject_1 == std::string_view{"\000x", 2}) {
         // print("matched")
         std::cout << "matched" << "\n";
     // case _:

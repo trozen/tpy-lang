@@ -8,18 +8,18 @@ namespace tpyapp::main {
 // def classify(x: float) -> str:
 std::string classify(double x) {
     // match x:
-    auto& __match_subject = x;
+    auto& __match_subject_1 = x;
     // case 0.0:
-    if (__match_subject == 0.0) {
+    if (__match_subject_1 == 0.0) {
         // return "zero"
         return "zero";
     // case 1.0:
-    } else if (__match_subject == 1.0) {
+    } else if (__match_subject_1 == 1.0) {
         // return "one"
         return "one";
     // case other:
     } else {
-        auto& other = __match_subject;
+        auto& other = __match_subject_1;
         // return "other"
         return "other";
     }

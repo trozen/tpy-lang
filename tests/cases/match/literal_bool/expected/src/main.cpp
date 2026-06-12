@@ -8,13 +8,13 @@ namespace tpyapp::main {
 // def describe(b: bool) -> str:
 std::string describe(bool b) {
     // match b:
-    auto& __match_subject = b;
+    auto& __match_subject_1 = b;
     // case True:
-    if (__match_subject == true) {
+    if (__match_subject_1 == true) {
         // return "yes"
         return "yes";
     // case False:
-    } else if (__match_subject == false) {
+    } else if (__match_subject_1 == false) {
         // return "no"
         return "no";
     }

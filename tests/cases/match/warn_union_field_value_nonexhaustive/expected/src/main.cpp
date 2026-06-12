@@ -9,20 +9,20 @@ std::string describe(const std::variant<Cat*, Dog*> a) {
     // result = "none"
     std::string_view result = "none";
     // match a:  # tpyc: warning(/non-exhaustive match on 'Cat \| Dog'; missing: Cat, Dog/)
-    auto& __match_subject = a;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = a;
+    switch (__match_subject_1.index()) {
     case 1: {
-        auto& __case_1 = *std::get<1>(__match_subject);
+        auto& __case_1 = *std::get<1>(__match_subject_1);
         // case Dog(legs=4):
         if (__case_1.legs == 4) {
             // result = "quad dog"
             result = "quad dog";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     }
-__match_end_1:;
+__match_end_2:;
     // return result
     return std::string(result);
 }

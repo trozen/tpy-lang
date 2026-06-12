@@ -3651,6 +3651,17 @@ class StatementGenerator:
                           if self.ctx.loop_else_labels else None)
             if else_label:
                 out.write(f"{indent}goto {else_label};\n")
+            elif (self.ctx.match_switch_depth > 0
+                  and self.ctx.loop_break_labels):
+                # A match-lowering C++ switch sits between this break and
+                # the loop; a bare `break;` would exit the switch instead.
+                # (`continue` is unaffected: C++ continue passes through a
+                # switch to the enclosing loop.)
+                if not self.ctx.loop_break_labels[-1]:
+                    self.ctx.loop_break_labels[-1] = (
+                        f"__loop_break_{self.ctx.iter_counter}")
+                    self.ctx.iter_counter += 1
+                out.write(f"{indent}goto {self.ctx.loop_break_labels[-1]};\n")
             else:
                 out.write(f"{indent}break;\n")
         else:
@@ -4860,6 +4871,9 @@ class StatementGenerator:
             label = f"__after_else_{self.ctx.iter_counter}"
             self.ctx.iter_counter += 1
         self.ctx.loop_else_labels.append(label)
+        self.ctx.loop_break_labels.append("")
+        saved_switch_depth = self.ctx.match_switch_depth
+        self.ctx.match_switch_depth = 0
 
         cond = self.expressions.gen_truthy_expr(stmt.condition)
         self.ctx.temps.flush(out, indent)
@@ -4891,6 +4905,8 @@ class StatementGenerator:
         self.ctx.restore_literal_facts(lit_snap)
         out.write(f"{indent}}}\n")
         self.ctx.loop_else_labels.pop()
+        self.ctx.match_switch_depth = saved_switch_depth
+        break_label = self.ctx.loop_break_labels.pop()
 
         if has_else:
             self.ctx.emit_else_comment(out, stmt.orelse, indent)
@@ -4902,6 +4918,8 @@ class StatementGenerator:
             self.ctx.indent_level -= 1
             out.write(f"{indent}}}\n")
             out.write(f"{indent}{label}:;\n")
+        if break_label:
+            out.write(f"{indent}{break_label}:;\n")
 
     def _gen_loop_body(self, out: TextIO, stmt: TpyForEach, indent: str,
                         elem_type: TpyType | None,
@@ -5326,11 +5344,16 @@ class StatementGenerator:
             label = f"__after_else_{self.ctx.iter_counter}"
             self.ctx.iter_counter += 1
         self.ctx.loop_else_labels.append(label)
+        self.ctx.loop_break_labels.append("")
+        saved_switch_depth = self.ctx.match_switch_depth
+        self.ctx.match_switch_depth = 0
 
         self._gen_for_each_loop(out, stmt, indent)
         self.ctx.narrowed_vars = body_narrowed_snap
         self.ctx.declared_persistent_aliases = body_alias_snap
         self.ctx.loop_else_labels.pop()
+        self.ctx.match_switch_depth = saved_switch_depth
+        break_label = self.ctx.loop_break_labels.pop()
 
         if has_else:
             self.ctx.emit_else_comment(out, stmt.orelse, indent)
@@ -5342,6 +5365,8 @@ class StatementGenerator:
             self.ctx.indent_level -= 1
             out.write(f"{indent}}}\n")
             out.write(f"{indent}{label}:;\n")
+        if break_label:
+            out.write(f"{indent}{break_label}:;\n")
 
     def _gen_for_each_loop(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
         """Generate the loop part of a for-each (without else handling).

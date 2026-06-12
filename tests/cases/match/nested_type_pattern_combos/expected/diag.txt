@@ -1,2 +1,2 @@
 main.py:42: warning: copies Box[Int32] | Box[str] into field; use copy() to make this explicit
-main.py:28: warning: non-exhaustive match on 'Container | Int32'; missing: Container (add 'case _:' to suppress)
+main.py:28: warning: non-exhaustive match on 'Container | Int32'; missing: Container (add 'case _: pass' to suppress)

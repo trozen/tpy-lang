@@ -52,8 +52,8 @@ double area(shape* s) {
     // function area(var s: Shape): real;
     double __pascal_result = 0.0;
     // case s.kind of
-    auto __match_subject = ::tpy::deref_check(s).kind;
-    switch (__match_subject) {
+    auto __match_subject_1 = ::tpy::deref_check(s).kind;
+    switch (__match_subject_1) {
     // ScCircle: area := 3.14159 * s.radius * s.radius;
     case shapekind::sccircle: {
         // ScCircle: area := 3.14159 * s.radius * s.radius;

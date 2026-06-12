@@ -49,8 +49,8 @@ namespace tpyapp::main {
 // def classify(c: Color) -> str:
 std::string classify(Color c) {
     // match c:
-    auto& __match_subject = c;
-    switch (__match_subject) {
+    auto& __match_subject_1 = c;
+    switch (__match_subject_1) {
     // case Color.Red | Color.Blue:
     case Color::Red:
     case Color::Blue:
@@ -74,8 +74,8 @@ std::string classify(Color c) {
 // def check(c: Color, allow_red: bool) -> str:
 std::string check(Color c, bool allow_red) {
     // match c:
-    auto& __match_subject = c;
-    switch (__match_subject) {
+    auto& __match_subject_1 = c;
+    switch (__match_subject_1) {
     // case Color.Red if allow_red:
     case Color::Red: {
         if (allow_red) {
@@ -102,8 +102,8 @@ std::string check(Color c, bool allow_red) {
 // def mixed(c: Color, allow: bool) -> str:
 std::string mixed(Color c, bool allow) {
     // match c:
-    auto& __match_subject = c;
-    switch (__match_subject) {
+    auto& __match_subject_1 = c;
+    switch (__match_subject_1) {
     // case Color.Red | Color.Blue:
     case Color::Red:
     case Color::Blue:
@@ -118,11 +118,11 @@ std::string mixed(Color c, bool allow) {
             // return "guarded-green"
             return "guarded-green";
         }
-        goto __match_default_1;
+        goto __match_default_2;
         break;
     }
     // case _:
-    default: __match_default_1: {
+    default: __match_default_2: {
         // return "other"
         return "other";
         break;
@@ -136,8 +136,8 @@ std::string mixed(Color c, bool allow) {
 // def or_guard(c: Color, flag: bool) -> str:
 std::string or_guard(Color c, bool flag) {
     // match c:
-    auto& __match_subject = c;
-    switch (__match_subject) {
+    auto& __match_subject_1 = c;
+    switch (__match_subject_1) {
     // case Color.Red | Color.Blue if flag:
     case Color::Red:
     case Color::Blue:
@@ -146,11 +146,11 @@ std::string or_guard(Color c, bool flag) {
             // return "warm+flag"
             return "warm+flag";
         }
-        goto __match_default_1;
+        goto __match_default_2;
         break;
     }
     // case _:
-    default: __match_default_1: {
+    default: __match_default_2: {
         // return "other"
         return "other";
         break;
@@ -164,8 +164,8 @@ std::string or_guard(Color c, bool flag) {
 // def multi_guard(c: Color, x: bool, y: bool) -> str:
 std::string multi_guard(Color c, bool x, bool y) {
     // match c:
-    auto& __match_subject = c;
-    switch (__match_subject) {
+    auto& __match_subject_1 = c;
+    switch (__match_subject_1) {
     // case Color.Green if x:
     case Color::Green: {
         if (x) {

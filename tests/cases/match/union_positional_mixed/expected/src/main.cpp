@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def describe(s: Point | Label) -> None:
 void describe(const std::variant<Label*, Point*> s) {
     // match s:
-    auto& __match_subject = s;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = s;
+    switch (__match_subject_1.index()) {
     // case Point(px, py, z=pz):
     case 1: {
-        auto& __case_0 = *std::get<1>(__match_subject);
+        auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& px = __case_0.x;
         auto& py = __case_0.y;
         auto& pz = __case_0.z;
@@ -21,7 +21,7 @@ void describe(const std::variant<Label*, Point*> s) {
     }
     // case Label(t):
     case 0: {
-        auto& __case_1 = *std::get<0>(__match_subject);
+        auto& __case_1 = *std::get<0>(__match_subject_1);
         auto& t = __case_1.text;
         // print(t)
         std::cout << t << "\n";

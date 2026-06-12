@@ -1,1 +1,1 @@
-main.py:17: warning: non-exhaustive match on 'Bird | Cat | Dog'; missing: Bird (add 'case _:' to suppress)
+main.py:17: warning: non-exhaustive match on 'Bird | Cat | Dog'; missing: Bird (add 'case _: pass' to suppress)

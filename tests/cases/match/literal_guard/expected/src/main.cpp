@@ -8,28 +8,42 @@ namespace tpyapp::main {
 // def greet(s: str, formal: bool) -> str:
 std::string greet(std::string_view s, bool formal) {
     // match s:
-    auto& __match_subject = s;
+    auto& __match_subject_1 = s;
     // case "hello" if formal:
-    if (__match_subject == "hello" && formal) {
-        // return "Good day"
-        return "Good day";
+    if (__match_subject_1 == "hello") {
+        if (formal) {
+            // return "Good day"
+            return "Good day";
+            goto __match_end_2;
+        }
+    }
     // case "hello":
-    } else if (__match_subject == "hello") {
+    if (__match_subject_1 == "hello") {
         // return "Hey"
         return "Hey";
+        goto __match_end_2;
+    }
     // case "bye" if formal:
-    } else if (__match_subject == "bye" && formal) {
-        // return "Farewell"
-        return "Farewell";
+    if (__match_subject_1 == "bye") {
+        if (formal) {
+            // return "Farewell"
+            return "Farewell";
+            goto __match_end_2;
+        }
+    }
     // case "bye":
-    } else if (__match_subject == "bye") {
+    if (__match_subject_1 == "bye") {
         // return "Later"
         return "Later";
+        goto __match_end_2;
+    }
     // case _:
-    } else {
+    {
         // return "?"
         return "?";
+        goto __match_end_2;
     }
+    __match_end_2:;
     ::std::unreachable();
     // return ""
     return "";
@@ -38,20 +52,28 @@ std::string greet(std::string_view s, bool formal) {
 // def bucket(x: float) -> str:
 std::string bucket(double x) {
     // match x:
-    auto& __match_subject = x;
+    auto& __match_subject_1 = x;
     // case 0.0 if True:
-    if (__match_subject == 0.0 && true) {
-        // return "zero"
-        return "zero";
+    if (__match_subject_1 == 0.0) {
+        if (true) {
+            // return "zero"
+            return "zero";
+            goto __match_end_2;
+        }
+    }
     // case 1.0:
-    } else if (__match_subject == 1.0) {
+    if (__match_subject_1 == 1.0) {
         // return "one"
         return "one";
+        goto __match_end_2;
+    }
     // case _:
-    } else {
+    {
         // return "other"
         return "other";
+        goto __match_end_2;
     }
+    __match_end_2:;
     ::std::unreachable();
     // return ""
     return "";

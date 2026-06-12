@@ -39,9 +39,9 @@ template<typename T_items>
   requires (::tpystd::typing::Iterable<T_items, int32_t> || ::tpystd::tpy::Spannable<T_items, int32_t>)
 int32_t process(T_items& items, std::string_view tag) {
     // match tag:
-    auto& __match_subject = tag;
+    auto& __match_subject_1 = tag;
     // case "span_path":
-    if (__match_subject == "span_path") {
+    if (__match_subject_1 == "span_path") {
         // # Present so codegen emits the Spannable narrowing; not executed
         // # in main() below to keep the test CPython-compatible (list does
         // # not match the runtime_checkable Spannable protocol in CPython).
@@ -63,7 +63,7 @@ int32_t process(T_items& items, std::string_view tag) {
         // return total
         return total;
     // case "iter_path":
-    } else if (__match_subject == "iter_path") {
+    } else if (__match_subject_1 == "iter_path") {
         // # items is still the union here; narrow to Iterable to iterate.
         // # This body is emitted after "span_path" in codegen, which is
         // # where a leaked Spannable narrowing would manifest.

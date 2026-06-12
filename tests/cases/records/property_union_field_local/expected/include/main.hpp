@@ -73,18 +73,18 @@ inline std::string Holder::label() const {
     // v = self.sub
     std::variant<const A*, const B*> v = ::tpy::to_const_ptr_variant(this->sub);
     // match v:
-    auto& __match_subject = v;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = v;
+    switch (__match_subject_1.index()) {
     // case A(target=_):
     case 0: {
-        auto& __case_0 = *std::get<0>(__match_subject);
+        auto& __case_0 = *std::get<0>(__match_subject_1);
         // return "a"
         return "a";
         break;
     }
     // case B(filter_=_):
     case 1: {
-        auto& __case_1 = *std::get<1>(__match_subject);
+        auto& __case_1 = *std::get<1>(__match_subject_1);
         // return "b"
         return "b";
         break;

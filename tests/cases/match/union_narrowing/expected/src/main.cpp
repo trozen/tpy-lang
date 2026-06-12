@@ -7,18 +7,18 @@ namespace tpyapp::main {
 // def describe(s: Circle | Rect) -> None:
 void describe(const std::variant<Circle*, Rect*> s) {
     // match s:
-    auto& __match_subject = s;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = s;
+    switch (__match_subject_1.index()) {
     // case Circle():
     case 0: {
-        auto& __case_0 = *std::get<0>(__match_subject);
+        auto& __case_0 = *std::get<0>(__match_subject_1);
         // print(s.radius)
         std::cout << ::tpy::print_float(__case_0.radius) << "\n";
         break;
     }
     // case Rect():
     case 1: {
-        auto& __case_1 = *std::get<1>(__match_subject);
+        auto& __case_1 = *std::get<1>(__match_subject_1);
         // print(s.width * s.height)
         std::cout << ::tpy::print_float(((__case_1.width) * (__case_1.height))) << "\n";
         break;

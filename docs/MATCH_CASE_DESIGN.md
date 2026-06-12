@@ -327,11 +327,15 @@ non-exhaustive match (valid Python, but likely a bug).
 **Enum types**: every enum member must appear in at least one case's value
 pattern, OR a wildcard/capture case must exist. Same warning.
 
-**Optional types**: both the concrete type and `None` must be covered.
-Same warning.
+**Optional types**: both sides must be covered independently -- a class
+pattern covers every non-None value but never None; `case None:` covers
+only the None side; wildcard/capture cover both. The warning names the
+missing side(s) (`missing: None, Point`).
 
-**Primitive types** (`int`, `str`): infinite domain, no exhaustiveness
-check. Wildcard/capture case recommended but not required.
+**Primitive types** (`int`, `str`, `float`): infinite domain, so literal
+arms can never prove coverage -- a match without an unconditional
+catch-all arm warns (`no unconditional catch-all arm`) and falls through
+on the no-match path (no `std::unreachable()` tail).
 
 **Concrete record types**: no exhaustiveness check (only field-value
 matching, always needs a default).
@@ -769,16 +773,21 @@ if (true) {
 __match_end_1:;
 ```
 
-**String/float subjects with guards**: uses `&&` inlining in if/elif
-chains (switch not available for these types):
+**String/float/bool and Optional subjects with guards**: same
+standalone-`if` + `goto` shape as records/unions. Bindings are emitted
+before the guard (a guard may read its own captures), and a failed guard
+falls out of the arm block to the next arm -- including a later
+duplicate-literal arm:
 
 ```cpp
-// case "hello" if formal:
-if (__match_subject == "hello" && formal) { ... }
+// case "hello" as v if formal(v):
+if (__match_subject_1 == "hello") {
+    auto& v = __match_subject_1;
+    if (formal(v)) { ...; goto __match_end_2; }
+}
+// next arm...
+__match_end_2:;
 ```
-
-**Optional subjects with guards**: uses `&&` inlining (guards don't
-reference pattern bindings for Optional).
 
 ### Or-patterns
 
@@ -914,14 +923,18 @@ divergence -- they tighten valid-but-buggy CPython into a compile error.
 | Too many positional args | `'Point' accepts 2 positional patterns but 3 were given` |
 | Unknown field in keyword pattern | `'Circle' has no field 'width'` |
 | Unreachable case after wildcard | `unreachable case after wildcard pattern` |
+| Value-only arm after an Optional class catch-all | `unreachable case: every non-None value is already matched by an earlier arm` |
+| Optional capture re-typing an existing variable | `match capture 'x' binds the full Optional subject ('Int32 \| None') but 'x' already has type 'Int32'; ...` |
+| `as` binding on `case None:` | `'as' binding not allowed on 'case None:'` |
 
 ### Compile-time warnings
 
 | Condition | Message |
 |-----------|---------|
-| Non-exhaustive union match | `match is not exhaustive; missing case for: Bird` |
-| Non-exhaustive enum match | `match is not exhaustive; missing case for: Color.BLUE` |
-| Non-exhaustive Optional match | `match is not exhaustive; missing case for: None` |
+| Non-exhaustive union match | `non-exhaustive match on '...'; missing: Bird` |
+| Non-exhaustive enum match | `non-exhaustive match on '...'; missing: Color.BLUE` |
+| Non-exhaustive Optional match | `non-exhaustive match on '...'; missing: None, Point` (each uncovered side reported) |
+| Non-enumerable scalar subject without a catch-all | `non-exhaustive match on '...'; no unconditional catch-all arm` |
 
 ---
 

@@ -89,8 +89,8 @@ day d;
 
 void classify(day d) {
     // case d of
-    auto& __match_subject = d;
-    switch (__match_subject) {
+    auto& __match_subject_1 = d;
+    switch (__match_subject_1) {
     // Mon..Fri: writeln('weekday');
     case day::mon: {
         // Mon..Fri: writeln('weekday');
@@ -147,8 +147,8 @@ void __tpy_init() {
         // n := i;
         n = i;
         // case n of
-        auto& __match_subject = n;
-        switch (__match_subject) {
+        auto& __match_subject_1 = n;
+        switch (__match_subject_1) {
         // 0:        writeln('zero');
         case 0: {
             // 0:        writeln('zero');

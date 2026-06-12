@@ -7,14 +7,14 @@ namespace tpyapp::main {
 // def classify(x: Optional[Int32]) -> str:
 std::string classify(std::optional<int32_t> x) {
     // match x:
-    auto& __match_subject = x;
+    auto& __match_subject_1 = x;
     // case None:
-    if (!__match_subject.has_value()) {
+    if (!__match_subject_1.has_value()) {
         // return "nothing"
         return "nothing";
     } else {
-        auto& __match_inner = (*__match_subject);
-        switch (__match_inner) {
+        auto& __match_inner_1 = (*__match_subject_1);
+        switch (__match_inner_1) {
         // case 0:
         case 0: {
             // return "zero"
@@ -37,15 +37,15 @@ std::string classify(std::optional<int32_t> x) {
 // def describe(s: Optional[str]) -> str:
 std::string describe(std::optional<std::string_view> s) {
     // match s:
-    auto& __match_subject = s;
+    auto& __match_subject_1 = s;
     // case None:
-    if (!__match_subject.has_value()) {
+    if (!__match_subject_1.has_value()) {
         // return "none"
         return "none";
     } else {
-        auto& __match_inner = (*__match_subject);
+        auto& __match_inner_1 = (*__match_subject_1);
         // case "hello":
-        if (__match_inner == "hello") {
+        if (__match_inner_1 == "hello") {
             // return "greeting"
             return "greeting";
         // case _:

@@ -1,1 +1,1 @@
-main.py:5: warning: non-exhaustive match on 'Literal["r", "w", "rb"]'; missing: "rb" (add 'case _:' to suppress)
+main.py:5: warning: non-exhaustive match on 'Literal["r", "w", "rb"]'; missing: "rb" (add 'case _: pass' to suppress)

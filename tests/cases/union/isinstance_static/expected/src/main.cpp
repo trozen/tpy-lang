@@ -66,8 +66,8 @@ bool compound(int32_t x, bool flag) {
 // def match_guard(x: Int32) -> str:
 std::string match_guard(int32_t x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1) {
     // case _ if isinstance(x, Int32):
     default: {
         if (true) {

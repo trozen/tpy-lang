@@ -8,11 +8,11 @@ namespace tpyapp::main {
 std::expected<std::string, ::tpy::StopIteration> __gen_voices::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        auto& __match_subject = a;
-        switch (__match_subject.index()) {
+        auto& __match_subject_1 = a;
+        switch (__match_subject_1.index()) {
         // case Dog():
         case 1: {
-            auto& __case_0 = *std::get<1>(__match_subject);
+            auto& __case_0 = *std::get<1>(__match_subject_1);
             // yield "is-dog"
             __state = S_RESUME_0;
             return "is-dog";
@@ -20,7 +20,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_voices::__next__() {
         }
         // case Cat():
         case 0: {
-            auto& __case_1 = *std::get<0>(__match_subject);
+            auto& __case_1 = *std::get<0>(__match_subject_1);
             // yield a.sound()
             __state = S_RESUME_2;
             return __case_1.sound();
@@ -65,11 +65,11 @@ __gen_voices voices(std::variant<Cat*, Dog*> a) {
 std::expected<std::string, ::tpy::StopIteration> __gen_capture::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        auto& __match_subject = a;
-        switch (__match_subject.index()) {
+        auto& __match_subject_1 = a;
+        switch (__match_subject_1.index()) {
         // case Dog() as d:
         case 1: {
-            auto& __case_0 = *std::get<1>(__match_subject);
+            auto& __case_0 = *std::get<1>(__match_subject_1);
             d.emplace(__case_0);
             // yield "got-dog"
             __state = S_RESUME_0;
@@ -78,7 +78,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_capture::__next__() {
         }
         // case Cat():
         case 0: {
-            auto& __case_1 = *std::get<0>(__match_subject);
+            auto& __case_1 = *std::get<0>(__match_subject_1);
             // yield a.sound()
             __state = S_RESUME_2;
             return __case_1.sound();
@@ -123,17 +123,17 @@ __gen_capture capture(std::variant<Cat*, Dog*> a) {
 std::expected<std::string, ::tpy::StopIteration> __gen_guarded::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        auto& __match_subject = a;
-        switch (__match_subject.index()) {
+        auto& __match_subject_1 = a;
+        switch (__match_subject_1.index()) {
         case 0: {
-            auto& __case_0 = std::get<0>(__match_subject);
+            auto& __case_0 = std::get<0>(__match_subject_1);
             // case int() if allow:
             {
                 if (allow) {
                     // yield "big"
                     __state = S_RESUME_0;
                     return "big";
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
             }
             // case _:
@@ -141,7 +141,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_guarded::__next__() {
                 // yield "other"
                 __state = S_RESUME_2;
                 return "other";
-                goto __match_end_1;
+                goto __match_end_2;
             }
             break;
         }
@@ -150,11 +150,11 @@ std::expected<std::string, ::tpy::StopIteration> __gen_guarded::__next__() {
             // yield "other"
             __state = S_RESUME_2;
             return "other";
-            goto __match_end_1;
+            goto __match_end_2;
             break;
         }
         }
-__match_end_1:;
+__match_end_2:;
         __state = S_JOIN_0;
         continue;
     }
@@ -198,11 +198,11 @@ std::variant<::tpy::BigInt, std::string> remake() {
 std::expected<std::string, ::tpy::StopIteration> __gen_kill::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        auto& __match_subject = a;
-        switch (__match_subject.index()) {
+        auto& __match_subject_1 = a;
+        switch (__match_subject_1.index()) {
         // case int():
         case 0: {
-            auto& __case_0 = std::get<0>(__match_subject);
+            auto& __case_0 = std::get<0>(__match_subject_1);
             // yield "int:" + str(a + 1)
             __state = S_RESUME_0;
             return (::tpy::str_concat("int:", (((__case_0) + (::tpy::BigInt(1)))).to_string()));
@@ -228,11 +228,11 @@ std::expected<std::string, ::tpy::StopIteration> __gen_kill::__next__() {
         return "rebound";
     }
     case S_RESUME_1: {
-        auto& __match_subject = a;
-        switch (__match_subject.index()) {
+        auto& __match_subject_2 = a;
+        switch (__match_subject_2.index()) {
         // case str():
         case 1: {
-            auto& __case_0 = std::get<1>(__match_subject);
+            auto& __case_0 = std::get<1>(__match_subject_2);
             // yield "str:" + a
             __state = S_RESUME_2;
             return (::tpy::str_concat("str:", __case_0));

@@ -109,13 +109,31 @@ def expand_cpp_template(template: str, self_val: str, *args: str,
 
 
 def escape_cpp_string(value: str) -> str:
-    """Escape a Python string for use in a C++ string literal (double-quoted)."""
-    return (value.replace('\\', '\\\\')
-                 .replace('"', '\\"')
-                 .replace('\n', '\\n')
-                 .replace('\r', '\\r')
-                 .replace('\t', '\\t')
-                 .replace('\x00', '\\000'))
+    """Escape a Python string for use in a C++ string literal (double-quoted).
+
+    Non-ASCII characters emit as \\xNN escapes of their UTF-8 bytes so the
+    literal is byte-exact under any -finput-charset/-fexec-charset (TPy's
+    compile-time byte-based dispatch and lengths assume UTF-8). C++ hex
+    escapes are maximal-munch, so a literal hex digit directly after an
+    escaped byte needs a `" "` break (adjacent literals concatenate).
+    """
+    simple = {'\\': '\\\\', '"': '\\"', '\n': '\\n', '\r': '\\r',
+              '\t': '\\t', '\x00': '\\000'}
+    out: list[str] = []
+    pending_hex = False
+    for ch in value:
+        if ch in simple:
+            out.append(simple[ch])
+            pending_hex = False
+        elif ord(ch) >= 0x80:
+            out.append(''.join(f'\\x{b:02x}' for b in ch.encode('utf-8')))
+            pending_hex = True
+        else:
+            if pending_hex and ch in '0123456789abcdefABCDEF':
+                out.append('" "')
+            out.append(ch)
+            pending_hex = False
+    return ''.join(out)
 
 
 def cpp_bytes_literal_span(value: bytes) -> str:
@@ -1001,6 +1019,17 @@ class CodeGenContext:
     # pushed here so TpyBreak codegen can emit `goto label` instead of `break`.
     loop_else_labels: list[str] = field(default_factory=list)
 
+    # --- break-past-switch support ---
+    # match lowering emits C++ `switch` blocks that would capture a user
+    # `break;`. Each loop pushes "" here; when a break is emitted with
+    # match_switch_depth > 0 (a switch sits between the break and the
+    # innermost loop) the top entry is filled with a label name and the
+    # loop emits `label:;` after its closing brace. Loops save/zero
+    # match_switch_depth around their bodies; the switch-based match
+    # emitters increment it around arm-body emission.
+    loop_break_labels: list[str] = field(default_factory=list)
+    match_switch_depth: int = 0
+
     # --- Cross-module import tracking ---
     user_module_imports: set[str] = field(default_factory=set)
     all_user_modules: set[str] = field(default_factory=set)
@@ -1145,6 +1174,8 @@ class CodeGenContext:
         self.iter_counter = 0
         self.unpack_counter = 0
         self.loop_else_labels = []
+        self.loop_break_labels = []
+        self.match_switch_depth = 0
         self.loop_hoisted_vars = set()
         self.finally_stack = []
 

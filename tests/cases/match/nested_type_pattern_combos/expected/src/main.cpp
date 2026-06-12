@@ -8,11 +8,11 @@ namespace tpyapp::main {
 // def nested_param(x: Box[Box[str]] | Box[Box[Int32]]) -> str:
 std::string nested_param(const std::variant<Box<Box<int32_t>>*, Box<Box<std::string>>*> x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1.index()) {
     // case Box(value=Box(value=str() as v)):
     case 1: {
-        auto& __case_0 = *std::get<1>(__match_subject);
+        auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& v = __case_0.value.value;
         // return "string: " + v
         return (::tpy::str_concat("string: ", v));
@@ -20,7 +20,7 @@ std::string nested_param(const std::variant<Box<Box<int32_t>>*, Box<Box<std::str
     }
     // case Box(value=Box(value=Int32() as n)):
     case 0: {
-        auto& __case_1 = *std::get<0>(__match_subject);
+        auto& __case_1 = *std::get<0>(__match_subject_1);
         auto& n = __case_1.value.value;
         // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
@@ -33,17 +33,17 @@ std::string nested_param(const std::variant<Box<Box<int32_t>>*, Box<Box<std::str
 // def union_subj_union_field(x: Int32 | Container) -> str:
 std::string union_subj_union_field(const std::variant<Container*, int32_t*> x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1.index()) {
     case 0: {
-        auto& __case_0 = *std::get<0>(__match_subject);
+        auto& __case_0 = *std::get<0>(__match_subject_1);
         // case Container(value=str() as s):
         {
             if (std::holds_alternative<std::string>(__case_0.value)) {
                 auto& s = std::get<std::string>(__case_0.value);
                 // return "string: " + s
                 return (::tpy::str_concat("string: ", s));
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case Container(value=Int32() as n):
@@ -52,22 +52,22 @@ std::string union_subj_union_field(const std::variant<Container*, int32_t*> x) {
                 auto& n = std::get<int32_t>(__case_0.value);
                 // return "number: " + str(n)
                 return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         break;
     }
     case 1: {
-        auto& __case_1 = *std::get<1>(__match_subject);
+        auto& __case_1 = *std::get<1>(__match_subject_1);
         // case Int32() as n:
         auto& n = __case_1;
         // return "bare: " + str(n)
         return (::tpy::str_concat("bare: ", ::tpy::fixed_to_str<int32_t>(n)));
-        goto __match_end_1;
+        goto __match_end_2;
         break;
     }
     }
-__match_end_1:;
+__match_end_2:;
     // return ""  # unreachable in practice; sema flags the match as non-exhaustive
     return "";
 }
@@ -75,17 +75,17 @@ __match_end_1:;
 // def union_field_param(o: Outer) -> str:
 std::string union_field_param(const Outer& o) {
     // match o:
-    auto& __match_subject = o;
+    auto& __match_subject_1 = o;
     // case Outer(item=Box(value=str() as v)):
-    if (std::holds_alternative<Box<std::string>>(__match_subject.item)) {
-        auto& __field_match_subject_item = std::get<Box<std::string>>(__match_subject.item);
-        auto& v = __field_match_subject_item.value;
+    if (std::holds_alternative<Box<std::string>>(__match_subject_1.item)) {
+        auto& __field_match_subject_1_item = std::get<Box<std::string>>(__match_subject_1.item);
+        auto& v = __field_match_subject_1_item.value;
         // return "string: " + v
         return (::tpy::str_concat("string: ", v));
     // case Outer(item=Box(value=Int32() as n)):
-    } else if (std::holds_alternative<Box<int32_t>>(__match_subject.item)) {
-        auto& __field_match_subject_item = std::get<Box<int32_t>>(__match_subject.item);
-        auto& n = __field_match_subject_item.value;
+    } else if (std::holds_alternative<Box<int32_t>>(__match_subject_1.item)) {
+        auto& __field_match_subject_1_item = std::get<Box<int32_t>>(__match_subject_1.item);
+        auto& n = __field_match_subject_1_item.value;
         // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
     // case _:
@@ -105,15 +105,15 @@ void double_union(const std::vector<Tagged>& items) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& t = *__beg_0;
         // match t:
-        auto& __match_subject = t;
+        auto& __match_subject_1 = t;
         // case Tagged(label="s", inner=str() as s):
-        if (__match_subject.label == "s" && std::holds_alternative<std::string>(__match_subject.inner)) {
-            auto& s = std::get<std::string>(__match_subject.inner);
+        if (__match_subject_1.label == "s" && std::holds_alternative<std::string>(__match_subject_1.inner)) {
+            auto& s = std::get<std::string>(__match_subject_1.inner);
             // print("string: " + s)
             std::cout << (::tpy::str_concat("string: ", s)) << "\n";
         // case Tagged(label="n", inner=Int32() as n):
-        } else if (__match_subject.label == "n" && std::holds_alternative<int32_t>(__match_subject.inner)) {
-            auto& n = std::get<int32_t>(__match_subject.inner);
+        } else if (__match_subject_1.label == "n" && std::holds_alternative<int32_t>(__match_subject_1.inner)) {
+            auto& n = std::get<int32_t>(__match_subject_1.inner);
             // print("number: " + str(n))
             std::cout << (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n))) << "\n";
         // case _:

@@ -13,7 +13,9 @@ edited; residual gaps from partial fixes are tracked in `BUGS.md`.
 |---|------------|--------|
 | 1 | Flow facts survive paths that kill them | **fixed** -- `fix-flow-fact-kill-sets` (kill-sets at loop/handler/finally meets); residuals in BUGS.md: codegen CFG kill gap, readonly back-edge rebind, finally definite-assignment |
 | 2 | Narrowing not invalidated by calls/aliases | **fixed** -- same branch (closure-nonlocal kill at call sites, alias-group invalidation); residuals in BUGS.md: rebound-alias group, field-access call args, module globals |
-| 3-15 | -- | open |
+| 3 | Optional-match non-None patterns as catch-alls | **fixed** -- B15/B16/B21 (per-side coverage in sema, None routed to wildcard/capture arms in codegen, CPython capture semantics); also fixed B17 (non-enumerable scalar exhaustiveness) and the non-exhaustive fall-through flow-state merge. Residuals in BUGS.md: no missing-return check (pre-existing, now more visible), Optional or-pattern as-binding |
+| 4 | match arm-dispatch codegen structurally fragile | **fixed** -- G1 (break past switch), G8 (numbered subjects), B73 (byte-based string buckets, incl. enum try_parse sibling), B18/B19/B20 (guard lowering unified on bindings-first standalone-if + goto, incl. two latent siblings: dropped guards on optimized-Optional capture arms, string-switch guarded-prefix bind-after-guard), B22 (guarded-union case None), B23 (storage-form Optional subject lift). G2 (dangling arm bindings on subject mutation) split out per approval -- filed in BUGS.md Safety, needs the BorrowTracker place/loan design |
+| 5-15 | -- | open |
 
 ---
 

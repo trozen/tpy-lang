@@ -7,10 +7,10 @@ namespace tpyapp::main {
 // def classify(x: Optional[Int32]) -> str:
 std::string classify(std::optional<int32_t> x) {
     // match x:  # tpyc: warning(/non-exhaustive match.*missing: None.*case _:/)
-    auto& __match_subject = x;
-    if (__match_subject.has_value()) {
-        auto& __match_inner = (*__match_subject);
-        switch (__match_inner) {
+    auto& __match_subject_1 = x;
+    if (__match_subject_1.has_value()) {
+        auto& __match_inner_1 = (*__match_subject_1);
+        switch (__match_inner_1) {
         // case 0:
         case 0: {
             // return "zero"

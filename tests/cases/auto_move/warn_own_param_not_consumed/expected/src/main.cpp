@@ -98,8 +98,8 @@ int32_t match_partial_arm(Box&& b, int32_t x) {
     // result: Int32 = 0
     int32_t result = 0;
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1) {
     // case 1:
     case 1: {
         // h = Holder(b)
@@ -123,8 +123,8 @@ int32_t match_partial_arm(Box&& b, int32_t x) {
 // def match_all_arms(b: Own[Box], x: Int32) -> Int32:  # tpyc: ok
 int32_t match_all_arms(Box&& b, int32_t x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1) {
     // case 1:
     case 1: {
         // return forward(b)

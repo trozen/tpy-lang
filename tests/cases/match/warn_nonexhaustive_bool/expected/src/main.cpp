@@ -8,9 +8,9 @@ namespace tpyapp::main {
 // def describe(b: bool) -> str:
 std::string describe(bool b) {
     // match b:  # tpyc: warning(/non-exhaustive match.*missing: False.*case _:/)
-    auto& __match_subject = b;
+    auto& __match_subject_1 = b;
     // case True:
-    if (__match_subject == true) {
+    if (__match_subject_1 == true) {
         // return "yes"
         return "yes";
     }

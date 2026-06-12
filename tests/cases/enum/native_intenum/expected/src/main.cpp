@@ -45,8 +45,8 @@ namespace tpyapp::main {
 // def desc(d: Direction) -> str:
 std::string desc(::ns::dir_t d) {
     // match d:
-    auto& __match_subject = d;
-    switch (__match_subject) {
+    auto& __match_subject_1 = d;
+    switch (__match_subject_1) {
     // case Direction.UP:
     case ::ns::dir_t::UP: {
         // return "rising"

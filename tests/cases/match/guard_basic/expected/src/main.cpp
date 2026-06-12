@@ -7,48 +7,48 @@ namespace tpyapp::main {
 // def describe(a: Dog | Cat) -> str:
 std::string describe(const std::variant<Cat*, Dog*> a) {
     // match a:
-    auto& __match_subject = a;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = a;
+    switch (__match_subject_1.index()) {
     case 0: {
-        auto& __case_0 = *std::get<0>(__match_subject);
+        auto& __case_0 = *std::get<0>(__match_subject_1);
         // case Cat(name=n) if n == "Whiskers":
         {
             auto& n = __case_0.name;
             if ((n == "Whiskers")) {
                 // return "Whiskers the cat!"
                 return "Whiskers the cat!";
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case _:
         {
             // return "other"
             return "other";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     case 1: {
-        auto& __case_1 = *std::get<1>(__match_subject);
+        auto& __case_1 = *std::get<1>(__match_subject_1);
         // case Dog(name=n) if n == "Rex":
         {
             auto& n = __case_1.name;
             if ((n == "Rex")) {
                 // return "Rex the dog!"
                 return "Rex the dog!";
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case Dog():
         {
             // return "some dog"
             return "some dog";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     }
-__match_end_1:;
+__match_end_2:;
     ::std::unreachable();
     // return ""
     return "";

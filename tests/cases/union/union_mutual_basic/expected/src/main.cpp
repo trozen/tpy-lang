@@ -14,11 +14,11 @@ Expr make_lit(const ::tpy::BigInt& v) {
 // def eval_expr(e: Expr) -> int:
 ::tpy::BigInt eval_expr(const Expr& e) {
     // match e:
-    auto& __match_subject = e;
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = e;
+    switch (__match_subject_1.value.index()) {
     // case Lit(value=v):
     case 1: {
-        auto& __case_0 = std::get<1>(__match_subject.value);
+        auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& v = __case_0.value;
         // return v
         return v;
@@ -26,7 +26,7 @@ Expr make_lit(const ::tpy::BigInt& v) {
     }
     // case BinOp(left=l, op=op, right=r):
     case 0: {
-        auto& __case_1 = std::get<0>(__match_subject.value);
+        auto& __case_1 = std::get<0>(__match_subject_1.value);
         auto& l = __case_1.left;
         auto& op = __case_1.op;
         auto& r = __case_1.right;

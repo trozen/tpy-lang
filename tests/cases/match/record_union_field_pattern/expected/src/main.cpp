@@ -8,15 +8,15 @@ namespace tpyapp::main {
 // def describe(w: Wrapper) -> str:
 std::string describe(const Wrapper& w) {
     // match w:
-    auto& __match_subject = w;
+    auto& __match_subject_1 = w;
     // case Wrapper(pet=Cat() as c):
-    if (std::holds_alternative<Cat>(__match_subject.pet)) {
-        auto& c = std::get<Cat>(__match_subject.pet);
+    if (std::holds_alternative<Cat>(__match_subject_1.pet)) {
+        auto& c = std::get<Cat>(__match_subject_1.pet);
         // return "cat: " + c.name
         return (::tpy::str_concat("cat: ", c.name));
     // case Wrapper(pet=Dog() as d):
-    } else if (std::holds_alternative<Dog>(__match_subject.pet)) {
-        auto& d = std::get<Dog>(__match_subject.pet);
+    } else if (std::holds_alternative<Dog>(__match_subject_1.pet)) {
+        auto& d = std::get<Dog>(__match_subject_1.pet);
         // return "dog: " + d.name
         return (::tpy::str_concat("dog: ", d.name));
     // case _:
@@ -31,17 +31,17 @@ std::string describe(const Wrapper& w) {
 // def get_name(w: Wrapper) -> str:
 std::string get_name(const Wrapper& w) {
     // match w:
-    auto& __match_subject = w;
+    auto& __match_subject_1 = w;
     // case Wrapper(pet=Cat(name=n)):
-    if (std::holds_alternative<Cat>(__match_subject.pet)) {
-        auto& __field_match_subject_pet = std::get<Cat>(__match_subject.pet);
-        auto& n = __field_match_subject_pet.name;
+    if (std::holds_alternative<Cat>(__match_subject_1.pet)) {
+        auto& __field_match_subject_1_pet = std::get<Cat>(__match_subject_1.pet);
+        auto& n = __field_match_subject_1_pet.name;
         // return "cat " + n
         return (::tpy::str_concat("cat ", n));
     // case Wrapper(pet=Dog(name=n)):
-    } else if (std::holds_alternative<Dog>(__match_subject.pet)) {
-        auto& __field_match_subject_pet = std::get<Dog>(__match_subject.pet);
-        auto& n = __field_match_subject_pet.name;
+    } else if (std::holds_alternative<Dog>(__match_subject_1.pet)) {
+        auto& __field_match_subject_1_pet = std::get<Dog>(__match_subject_1.pet);
+        auto& n = __field_match_subject_1_pet.name;
         // return "dog " + n
         return (::tpy::str_concat("dog ", n));
     // case _:
@@ -56,9 +56,9 @@ std::string get_name(const Wrapper& w) {
 // def is_cat(w: Wrapper) -> str:
 std::string is_cat(const Wrapper& w) {
     // match w:
-    auto& __match_subject = w;
+    auto& __match_subject_1 = w;
     // case Wrapper(pet=Cat()):
-    if (std::holds_alternative<Cat>(__match_subject.pet)) {
+    if (std::holds_alternative<Cat>(__match_subject_1.pet)) {
         // return "yes"
         return "yes";
     // case _:
@@ -72,15 +72,15 @@ std::string is_cat(const Wrapper& w) {
 // def show_tagged(t: Tagged) -> str:
 std::string show_tagged(const Tagged& t) {
     // match t:
-    auto& __match_subject = t;
+    auto& __match_subject_1 = t;
     // case Tagged(tag="s", value=str() as v):
-    if (__match_subject.tag == "s" && std::holds_alternative<std::string>(__match_subject.value)) {
-        auto& v = std::get<std::string>(__match_subject.value);
+    if (__match_subject_1.tag == "s" && std::holds_alternative<std::string>(__match_subject_1.value)) {
+        auto& v = std::get<std::string>(__match_subject_1.value);
         // return "string: " + v
         return (::tpy::str_concat("string: ", v));
     // case Tagged(tag="n", value=Int32() as n):
-    } else if (__match_subject.tag == "n" && std::holds_alternative<int32_t>(__match_subject.value)) {
-        auto& n = std::get<int32_t>(__match_subject.value);
+    } else if (__match_subject_1.tag == "n" && std::holds_alternative<int32_t>(__match_subject_1.value)) {
+        auto& n = std::get<int32_t>(__match_subject_1.value);
         // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
     // case _:

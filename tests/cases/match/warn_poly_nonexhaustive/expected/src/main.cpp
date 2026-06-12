@@ -7,14 +7,14 @@ namespace tpyapp::main {
 // def describe(p: Pet) -> str:
 std::string describe(const Pet& p) {
     // match p:  # tpyc: warning(/non-exhaustive match.*no unconditional catch-all/)
-    auto& __match_subject = p;
+    auto& __match_subject_1 = p;
     // case Dog():
-    if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&__match_subject)) {
+    if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_0 = *__mpoly_0;
         // return "dog"
         return "dog";
     // case Cat():
-    } else if (const Cat* __mpoly_1 = dynamic_cast<const Cat*>(&__match_subject)) {
+    } else if (const Cat* __mpoly_1 = dynamic_cast<const Cat*>(&__match_subject_1)) {
         const Cat& __case_1 = *__mpoly_1;
         // return "cat"
         return "cat";

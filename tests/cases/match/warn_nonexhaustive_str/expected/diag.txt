@@ -1,0 +1,1 @@
+main.py:4: warning: non-exhaustive match on 'str'; no unconditional catch-all arm (add 'case _: pass' to suppress)

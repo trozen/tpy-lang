@@ -7,17 +7,17 @@ namespace tpyapp::main {
 // def classify(a: Dog | Cat, strict: bool) -> str:
 std::string classify(const std::variant<Cat*, Dog*> a, bool strict) {
     // match a:
-    auto& __match_subject = a;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = a;
+    switch (__match_subject_1.index()) {
     case 1: {
-        auto& __case_1 = *std::get<1>(__match_subject);
+        auto& __case_1 = *std::get<1>(__match_subject_1);
         // case Dog(name=n) if n == "Rex":
         {
             auto& n = __case_1.name;
             if ((n == "Rex")) {
                 // return "Rex!"
                 return "Rex!";
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case _ if strict:
@@ -25,14 +25,14 @@ std::string classify(const std::variant<Cat*, Dog*> a, bool strict) {
             if (strict) {
                 // return "strict other"
                 return "strict other";
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case _:
         {
             // return "other"
             return "other";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
@@ -42,19 +42,19 @@ std::string classify(const std::variant<Cat*, Dog*> a, bool strict) {
             if (strict) {
                 // return "strict other"
                 return "strict other";
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case _:
         {
             // return "other"
             return "other";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     }
-__match_end_1:;
+__match_end_2:;
     ::std::unreachable();
     // return ""
     return "";
@@ -63,19 +63,19 @@ __match_end_1:;
 // def as_guard(a: Dog | Cat) -> str:
 std::string as_guard(const std::variant<Cat*, Dog*> a) {
     // match a:
-    auto& __match_subject = a;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = a;
+    switch (__match_subject_1.index()) {
     case 0: {
-        auto& __case_0 = *std::get<0>(__match_subject);
+        auto& __case_0 = *std::get<0>(__match_subject_1);
         // case Cat(name=n):
         auto& n = __case_0.name;
         // return "cat: " + n
         return (::tpy::str_concat("cat: ", n));
-        goto __match_end_1;
+        goto __match_end_2;
         break;
     }
     case 1: {
-        auto& __case_1 = *std::get<1>(__match_subject);
+        auto& __case_1 = *std::get<1>(__match_subject_1);
         // case Dog(name=n) as d if n == "Buddy":
         {
             auto& n = __case_1.name;
@@ -83,7 +83,7 @@ std::string as_guard(const std::variant<Cat*, Dog*> a) {
             if ((n == "Buddy")) {
                 // return d.name + " the dog"
                 return (::tpy::str_concat(d.name, " the dog"));
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case Dog(name=n):
@@ -91,12 +91,12 @@ std::string as_guard(const std::variant<Cat*, Dog*> a) {
             auto& n = __case_1.name;
             // return "dog: " + n
             return (::tpy::str_concat("dog: ", n));
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     }
-__match_end_1:;
+__match_end_2:;
     ::std::unreachable();
     // return ""
     return "";

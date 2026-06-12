@@ -37,11 +37,11 @@ struct DictTree {
 template<typename K, typename V>
 int32_t leaf_count(const DictTree<K, V>& t) {
     // match t:
-    auto& __match_subject = t;
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = t;
+    switch (__match_subject_1.value.index()) {
     // case dict() as d:
     case 1: {
-        auto& d = std::get<1>(__match_subject.value);
+        auto& d = std::get<1>(__match_subject_1.value);
         // acc = 0
         int32_t acc = 0;
         // for v in d.values():

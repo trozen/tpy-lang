@@ -15,8 +15,8 @@ void __tpy_init() {
     int32_t __stop_0 = ::tpy::add_check<int32_t>(5, 1);
     for (int32_t i = 1; i < __stop_0; ++i) {
         // case i of
-        auto& __match_subject = i;
-        switch (__match_subject) {
+        auto& __match_subject_1 = i;
+        switch (__match_subject_1) {
         // 1: writeln('one');
         case 1: {
             // 1: writeln('one');

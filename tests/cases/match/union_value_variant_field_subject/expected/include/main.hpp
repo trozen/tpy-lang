@@ -73,11 +73,11 @@ inline std::ostream& operator<<(std::ostream& os, const W& obj) {
 // def get_label(self) -> str:
 inline std::string W::get_label() const {
     // match self.f:
-    auto& __match_subject = this->f;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = this->f;
+    switch (__match_subject_1.index()) {
     // case A(x=v):
     case 0: {
-        auto& __case_0 = std::get<0>(__match_subject);
+        auto& __case_0 = std::get<0>(__match_subject_1);
         auto& v = __case_0.x;
         // return "a:" + v
         return (::tpy::str_concat("a:", v));
@@ -85,7 +85,7 @@ inline std::string W::get_label() const {
     }
     // case B(y=v):
     case 1: {
-        auto& __case_1 = std::get<1>(__match_subject);
+        auto& __case_1 = std::get<1>(__match_subject_1);
         auto& v = __case_1.y;
         // return "b:" + v
         return (::tpy::str_concat("b:", v));

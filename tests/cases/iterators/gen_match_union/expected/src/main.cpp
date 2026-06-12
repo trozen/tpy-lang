@@ -40,11 +40,11 @@ void main() {
 std::expected<std::string, ::tpy::StopIteration> __gen_Box_describe::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        auto& __match_subject = __self.payload;
-        switch (__match_subject.index()) {
+        auto& __match_subject_1 = __self.payload;
+        switch (__match_subject_1.index()) {
         // case Dog(name=n):
         case 1: {
-            auto& __case_0 = std::get<1>(__match_subject);
+            auto& __case_0 = std::get<1>(__match_subject_1);
             n = __case_0.name;
             // yield "dog"
             __state = S_RESUME_0;
@@ -53,7 +53,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_describe::__next__() 
         }
         // case Cat() as c:
         case 0: {
-            c.emplace(std::get<0>(__match_subject));
+            c.emplace(std::get<0>(__match_subject_1));
             // yield "cat"
             __state = S_RESUME_2;
             return "cat";

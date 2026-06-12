@@ -99,8 +99,8 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
             if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
             __key = ::tpy::unwrap_ref(*__try_tmp_4);
         }
-        auto& __match_subject = __key;
-        if (__match_subject == "name") {
+        auto& __match_subject_1 = __key;
+        if (__match_subject_1 == "name") {
             std::string __name_1;
             {
                 auto __try_tmp_5 = __reader.read_str();
@@ -108,7 +108,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
                 __name_1 = ::tpy::unwrap_ref(*__try_tmp_5);
             }
             name = __name_1;
-        } else if (__match_subject == "age") {
+        } else if (__match_subject_1 == "age") {
             int64_t __raw_3;
             {
                 auto __try_tmp_6 = __reader.read_int();
@@ -117,7 +117,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
             }
             int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
             age = __age_2;
-        } else if (__match_subject == "active") {
+        } else if (__match_subject_1 == "active") {
             bool __active_4;
             {
                 auto __try_tmp_7 = __reader.read_bool();
@@ -125,7 +125,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
                 __active_4 = ::tpy::unwrap_ref(*__try_tmp_7);
             }
             active = __active_4;
-        } else if (__match_subject == "email") {
+        } else if (__match_subject_1 == "email") {
             if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                 {
                     auto __try_tmp_8 = __reader.read_null();

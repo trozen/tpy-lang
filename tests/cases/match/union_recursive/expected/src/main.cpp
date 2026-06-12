@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def describe(t: Tree) -> str:
 std::string describe(const Tree& t) {
     // match t:
-    auto& __match_subject = t;
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = t;
+    switch (__match_subject_1.value.index()) {
     // case Leaf(value=v):
     case 0: {
-        auto& __case_0 = std::get<0>(__match_subject.value);
+        auto& __case_0 = std::get<0>(__match_subject_1.value);
         auto& v = __case_0.value;
         // return "leaf=" + str(v)
         return (::tpy::str_concat("leaf=", (v).to_string()));

@@ -1,0 +1,1 @@
+main.py:14: warning: non-exhaustive match on 'Point | None'; missing: Point (add 'case _: pass' to suppress)

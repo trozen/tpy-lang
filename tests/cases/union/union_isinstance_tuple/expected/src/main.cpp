@@ -65,27 +65,27 @@ std::string single_member_tuple(const std::variant<A*, B*, C*> v) {
 // def match_guard(v: A | B | C) -> str:
 std::string match_guard(const std::variant<A*, B*, C*> v) {
     // match v:
-    auto& __match_subject = v;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = v;
+    switch (__match_subject_1.index()) {
     default: {
         // case _ if isinstance(v, (A, B)):
         {
             if ((std::holds_alternative<A*>(v) || std::holds_alternative<B*>(v))) {
                 // return "ab"
                 return "ab";
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case _:
         {
             // return "c"
             return "c";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     }
-__match_end_1:;
+__match_end_2:;
     ::std::unreachable();
 }
 

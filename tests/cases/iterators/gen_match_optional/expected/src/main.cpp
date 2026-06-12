@@ -8,17 +8,17 @@ namespace tpyapp::main {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        auto& __match_subject = x;
+        auto& __match_subject_1 = x;
         // case None:
-        if (!__match_subject.has_value()) {
+        if (!__match_subject_1.has_value()) {
             // yield -1
             __state = S_RESUME_0;
             return ::tpy::BigInt(-1);
         } else {
-            auto& __match_inner = (*__match_subject);
+            auto& __match_inner_1 = (*__match_subject_1);
             // case v:
             {
-                v = __match_inner;
+                v = __match_inner_1;
                 // yield v
                 __state = S_RESUME_1;
                 return v;

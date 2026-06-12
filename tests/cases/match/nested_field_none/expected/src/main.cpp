@@ -7,9 +7,9 @@ namespace tpyapp::main {
 // def describe(o: Outer) -> str:
 std::string describe(const Outer& o) {
     // match o:
-    auto& __match_subject = o;
+    auto& __match_subject_1 = o;
     // case Outer(inner=Inner(child=None)):  # tpyc: ok
-    if (!__match_subject.inner.child.has_value()) {
+    if (!__match_subject_1.inner.child.has_value()) {
         // return "empty inner"
         return "empty inner";
     // case _:

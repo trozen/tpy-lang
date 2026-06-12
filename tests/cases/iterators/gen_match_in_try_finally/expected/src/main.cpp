@@ -60,9 +60,9 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_JOIN_2: {
         try {
-            auto& __match_subject = n;
+            auto& __match_subject_1 = n;
             // case 0:
-            if (__match_subject == 0) {
+            if (__match_subject_1 == 0) {
                 // yield 10
                 __state = S_RESUME_0;
                 return ::tpy::BigInt(10);

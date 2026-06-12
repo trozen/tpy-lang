@@ -20,7 +20,7 @@ from .resumable_cfg import (
     ResumableShape, resumable_state,
 )
 
-from .context import CodeGenContext, CodeGenError, CodeGenOptions, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_char, escape_cpp_name
+from .context import CodeGenContext, CodeGenError, CodeGenOptions, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_name, cpp_string_literal_expr
 from .types import TypeResolver
 from .protocols import ProtocolGenerator
 from .builtins import BuiltinGenerator
@@ -29,7 +29,10 @@ from .statements import StatementGenerator
 from .records import RecordGenerator
 from .functions import FunctionGenerator
 from .type_resolution import resolve_stmt_type_cascade
-from .string_dispatch import find_best_discriminator, STRING_SWITCH_THRESHOLD
+from .string_dispatch import (
+    find_best_discriminator, discriminator_key, case_label,
+    STRING_SWITCH_THRESHOLD,
+)
 from ..symbol_binding import SymbolKind
 
 if TYPE_CHECKING:
@@ -2114,7 +2117,7 @@ class CodeGenerator:
             else:
                 for member_name in member_names:
                     out.write(
-                        f"    if (__name == \"{member_name}\") "
+                        f"    if (__name == {cpp_string_literal_expr(member_name)}) "
                         f"return {qualified}::{cpp_of(member_name)};\n"
                     )
             out.write(f"    return std::nullopt;\n")
@@ -2147,8 +2150,7 @@ class CodeGenerator:
         # Build bucket -> [member_name] mapping
         buckets: dict[int, list[str]] = {}
         for name in member_names:
-            key = len(name) if kind == "length" else ord(name[param])
-            buckets.setdefault(key, []).append(name)
+            buckets.setdefault(discriminator_key(name, kind, param), []).append(name)
 
         if kind == "length":
             out.write(f"    switch (__name.size()) {{\n")
@@ -2162,14 +2164,10 @@ class CodeGenerator:
 
         for disc_value in sorted(buckets.keys()):
             names = buckets[disc_value]
-            if kind == "char_at":
-                ch = chr(disc_value)
-                out.write(f"{case_indent}case '{escape_cpp_char(ch)}': {{\n")
-            else:
-                out.write(f"{case_indent}case {disc_value}: {{\n")
+            out.write(f"{case_indent}case {case_label(disc_value, kind)}: {{\n")
             for name in names:
                 out.write(
-                    f"{body_indent}if (__name == \"{name}\") "
+                    f"{body_indent}if (__name == {cpp_string_literal_expr(name)}) "
                     f"return {qualified}::{cpp_of(name)};\n"
                 )
             out.write(f"{body_indent}break;\n")

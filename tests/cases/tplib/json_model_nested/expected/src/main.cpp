@@ -141,8 +141,8 @@ std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address::__json
             if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(__try_tmp_6.error());
             __key = ::tpy::unwrap_ref(*__try_tmp_6);
         }
-        auto& __match_subject = __key;
-        if (__match_subject == "street") {
+        auto& __match_subject_1 = __key;
+        if (__match_subject_1 == "street") {
             std::string __street_1;
             {
                 auto __try_tmp_7 = __reader.read_str();
@@ -150,7 +150,7 @@ std::expected<Address, ::tpystd::tplib::json::parser::JsonError> Address::__json
                 __street_1 = ::tpy::unwrap_ref(*__try_tmp_7);
             }
             street = __street_1;
-        } else if (__match_subject == "city") {
+        } else if (__match_subject_1 == "city") {
             std::string __city_2;
             {
                 auto __try_tmp_8 = __reader.read_str();
@@ -202,11 +202,11 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
             if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(__try_tmp_12.error());
             __key = ::tpy::unwrap_ref(*__try_tmp_12);
         }
-        auto& __match_subject = __key;
-        if (__match_subject.size() >= 2) {
-            switch (static_cast<unsigned char>(__match_subject[1])) {
+        auto& __match_subject_1 = __key;
+        if (__match_subject_1.size() >= 2) {
+            switch (static_cast<unsigned char>(__match_subject_1[1])) {
             case 'a': {
-                if (__match_subject == "name") {
+                if (__match_subject_1 == "name") {
                     std::string __name_1;
                     {
                         auto __try_tmp_13 = __reader.read_str();
@@ -214,9 +214,9 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         __name_1 = ::tpy::unwrap_ref(*__try_tmp_13);
                     }
                     name = __name_1;
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
-                if (__match_subject == "tags") {
+                if (__match_subject_1 == "tags") {
                     {
                         auto __try_tmp_14 = __reader.read_array_start();
                         if (!__try_tmp_14.has_value()) return ::tpy::make_unexpected(__try_tmp_14.error());
@@ -235,9 +235,9 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         auto __try_tmp_16 = __reader.read_array_end();
                         if (!__try_tmp_16.has_value()) return ::tpy::make_unexpected(__try_tmp_16.error());
                     }
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
-                if (__match_subject == "backup_role") {
+                if (__match_subject_1 == "backup_role") {
                     if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                         {
                             auto __try_tmp_17 = __reader.read_null();
@@ -257,12 +257,12 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         Role __backup_role_33 = (*__parsed_35);
                         backup_role = __backup_role_33;
                     }
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
             case 'c': {
-                if (__match_subject == "score") {
+                if (__match_subject_1 == "score") {
                     double __score_4;
                     {
                         auto __try_tmp_19 = __reader.read_float();
@@ -270,9 +270,9 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         __score_4 = ::tpy::unwrap_ref(*__try_tmp_19);
                     }
                     score = __score_4;
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
-                if (__match_subject == "active") {
+                if (__match_subject_1 == "active") {
                     bool __active_7;
                     {
                         auto __try_tmp_20 = __reader.read_bool();
@@ -280,9 +280,9 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         __active_7 = ::tpy::unwrap_ref(*__try_tmp_20);
                     }
                     active = __active_7;
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
-                if (__match_subject == "scores") {
+                if (__match_subject_1 == "scores") {
                     {
                         auto __try_tmp_21 = __reader.read_array_start();
                         if (!__try_tmp_21.has_value()) return ::tpy::make_unexpected(__try_tmp_21.error());
@@ -301,23 +301,23 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         auto __try_tmp_23 = __reader.read_array_end();
                         if (!__try_tmp_23.has_value()) return ::tpy::make_unexpected(__try_tmp_23.error());
                     }
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
             case 'd': {
-                if (__match_subject == "address") {
+                if (__match_subject_1 == "address") {
                     {
                         auto __try_tmp_24 = Address::__json_decode__(__reader);
                         if (!__try_tmp_24.has_value()) return ::tpy::make_unexpected(__try_tmp_24.error());
                         address = ::tpy::unwrap_ref(*__try_tmp_24);
                     }
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
             case 'e': {
-                if (__match_subject == "metadata") {
+                if (__match_subject_1 == "metadata") {
                     {
                         auto __try_tmp_25 = __reader.read_object_start();
                         if (!__try_tmp_25.has_value()) return ::tpy::make_unexpected(__try_tmp_25.error());
@@ -342,9 +342,9 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         auto __try_tmp_28 = __reader.read_object_end();
                         if (!__try_tmp_28.has_value()) return ::tpy::make_unexpected(__try_tmp_28.error());
                     }
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
-                if (__match_subject == "nested_map") {
+                if (__match_subject_1 == "nested_map") {
                     {
                         auto __try_tmp_29 = __reader.read_object_start();
                         if (!__try_tmp_29.has_value()) return ::tpy::make_unexpected(__try_tmp_29.error());
@@ -381,12 +381,12 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         auto __try_tmp_34 = __reader.read_object_end();
                         if (!__try_tmp_34.has_value()) return ::tpy::make_unexpected(__try_tmp_34.error());
                     }
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
             case 'g': {
-                if (__match_subject == "age") {
+                if (__match_subject_1 == "age") {
                     int64_t __raw_3;
                     {
                         auto __try_tmp_35 = __reader.read_int();
@@ -395,12 +395,12 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     }
                     int32_t __age_2 = ::tpy::int_cast_check<int32_t>(__raw_3);
                     age = __age_2;
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
             case 'i': {
-                if (__match_subject == "big_id") {
+                if (__match_subject_1 == "big_id") {
                     std::string __raw_9;
                     {
                         auto __try_tmp_36 = __reader.read_str();
@@ -409,12 +409,12 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     }
                     ::tpy::BigInt __big_id_8 = ::tpy::BigInt::from_str(__raw_9);
                     big_id = __big_id_8;
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
             case 'l': {
-                if (__match_subject == "alt_address") {
+                if (__match_subject_1 == "alt_address") {
                     if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                         {
                             auto __try_tmp_37 = __reader.read_null();
@@ -427,12 +427,12 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                             alt_address = ::tpy::unwrap_ref(*__try_tmp_38);
                         }
                     }
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
             case 'm': {
-                if (__match_subject == "email") {
+                if (__match_subject_1 == "email") {
                     if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                         {
                             auto __try_tmp_39 = __reader.read_null();
@@ -447,12 +447,12 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         }
                         email = __email_36;
                     }
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
             case 'o': {
-                if (__match_subject == "role") {
+                if (__match_subject_1 == "role") {
                     std::string_view __estr_11;
                     {
                         auto __try_tmp_41 = __reader.read_str_raw();
@@ -465,9 +465,9 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     }
                     Role __role_10 = (*__parsed_12);
                     role = __role_10;
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
-                if (__match_subject == "roles") {
+                if (__match_subject_1 == "roles") {
                     {
                         auto __try_tmp_42 = __reader.read_array_start();
                         if (!__try_tmp_42.has_value()) return ::tpy::make_unexpected(__try_tmp_42.error());
@@ -490,9 +490,9 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         auto __try_tmp_44 = __reader.read_array_end();
                         if (!__try_tmp_44.has_value()) return ::tpy::make_unexpected(__try_tmp_44.error());
                     }
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
-                if (__match_subject == "coord") {
+                if (__match_subject_1 == "coord") {
                     {
                         auto __try_tmp_45 = __reader.read_array_start();
                         if (!__try_tmp_45.has_value()) return ::tpy::make_unexpected(__try_tmp_45.error());
@@ -528,12 +528,12 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         if (!__try_tmp_49.has_value()) return ::tpy::make_unexpected(__try_tmp_49.error());
                     }
                     coord = std::tuple<int32_t, int32_t, std::string>{__t0_28, __t1_30, __t2_32};
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
             case 'r': {
-                if (__match_subject == "precision") {
+                if (__match_subject_1 == "precision") {
                     double __raw_6;
                     {
                         auto __try_tmp_50 = __reader.read_float();
@@ -542,9 +542,9 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                     }
                     float __precision_5 = static_cast<float>(__raw_6);
                     precision = __precision_5;
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
-                if (__match_subject == "friends") {
+                if (__match_subject_1 == "friends") {
                     {
                         auto __try_tmp_51 = __reader.read_array_start();
                         if (!__try_tmp_51.has_value()) return ::tpy::make_unexpected(__try_tmp_51.error());
@@ -562,7 +562,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                         auto __try_tmp_53 = __reader.read_array_end();
                         if (!__try_tmp_53.has_value()) return ::tpy::make_unexpected(__try_tmp_53.error());
                     }
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
@@ -573,8 +573,9 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                 auto __try_tmp_54 = __reader.skip_value();
                 if (!__try_tmp_54.has_value()) return ::tpy::make_unexpected(__try_tmp_54.error());
             }
+            goto __match_end_2;
         }
-        __match_end_1:;
+        __match_end_2:;
     }
     {
         auto __try_tmp_55 = __reader.read_object_end();

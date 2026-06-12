@@ -50,8 +50,8 @@ namespace tpyapp::main {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        auto& __match_subject = c;
-        switch (__match_subject) {
+        auto& __match_subject_1 = c;
+        switch (__match_subject_1) {
         // case Color.RED:
         case Color::RED: {
             // yield 1

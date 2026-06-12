@@ -124,14 +124,14 @@ namespace tpyapp::main {
 // def describe(self) -> str:
 inline std::string Owner::describe() const {
     // match self.pet:  # tpyc: ok
-    auto& __match_subject = this->pet;
+    auto& __match_subject_1 = this->pet;
     // case Dog():
-    if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&(__match_subject.__deref__()))) {
+    if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&(__match_subject_1.__deref__()))) {
         const Dog& __case_0 = *__mpoly_0;
         // return "dog"
         return "dog";
     // case Snake() as s:
-    } else if (const Snake* __mpoly_1 = dynamic_cast<const Snake*>(&(__match_subject.__deref__()))) {
+    } else if (const Snake* __mpoly_1 = dynamic_cast<const Snake*>(&(__match_subject_1.__deref__()))) {
         const Snake& __case_1 = *__mpoly_1;
         auto& s = __case_1;
         // return "snake legs=" + str(s.legs)

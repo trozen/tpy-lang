@@ -46,14 +46,14 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_match::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
         // match n:
-        auto& __match_subject = n;
+        auto& __match_subject_1 = n;
         // case 0:
-        if (__match_subject == 0) {
+        if (__match_subject_1 == 0) {
             // r = 100
             r = 100;
         // case v:
         } else {
-            auto& v = __match_subject;
+            auto& v = __match_subject_1;
             // r = v + 1
             r = ((v) + (::tpy::BigInt(1)));
         }

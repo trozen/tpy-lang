@@ -7,20 +7,20 @@ namespace tpyapp::main {
 // def guarded(p: Point) -> str:
 std::string guarded(const Point& p) {
     // match p:
-    auto& __match_subject = p;
+    auto& __match_subject_1 = p;
     // case Point(x=0, y=0):
-    if (__match_subject.x == 0 && __match_subject.y == 0) {
+    if (__match_subject_1.x == 0 && __match_subject_1.y == 0) {
         // return "origin"
         return "origin";
-        goto __match_end_1;
+        goto __match_end_2;
     }
     // case Point(x=x) if x > 0:
     {
-        auto& x = __match_subject.x;
+        auto& x = __match_subject_1.x;
         if ((x > 0)) {
             // return "positive x"
             return "positive x";
-            goto __match_end_1;
+            goto __match_end_2;
         }
     }
     // case _:
@@ -28,7 +28,7 @@ std::string guarded(const Point& p) {
         // return "other"
         return "other";
     }
-    __match_end_1:;
+    __match_end_2:;
     ::std::unreachable();
     // return ""
     return "";
@@ -37,9 +37,9 @@ std::string guarded(const Point& p) {
 // def or_pattern(p: Point) -> str:
 std::string or_pattern(const Point& p) {
     // match p:
-    auto& __match_subject = p;
+    auto& __match_subject_1 = p;
     // case Point(x=0, y=0) | Point(x=1, y=1):
-    if ((__match_subject.x == 0 && __match_subject.y == 0) || (__match_subject.x == 1 && __match_subject.y == 1)) {
+    if ((__match_subject_1.x == 0 && __match_subject_1.y == 0) || (__match_subject_1.x == 1 && __match_subject_1.y == 1)) {
         // return "special"
         return "special";
     // case _:

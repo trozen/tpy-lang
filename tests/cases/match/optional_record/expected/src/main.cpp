@@ -45,21 +45,21 @@ namespace tpyapp::main {
 // def check_point(p: Optional[Point]) -> str:
 std::string check_point(const Point* p) {
     // match p:
-    auto& __match_subject = p;
+    auto& __match_subject_1 = p;
     // case None:
-    if (__match_subject == nullptr) {
+    if (__match_subject_1 == nullptr) {
         // return "none"
         return "none";
     } else {
-        auto& __match_inner = (*__match_subject);
+        auto& __match_inner_1 = (*__match_subject_1);
         // case Point(x=0, y=0):
-        if (__match_inner.x == 0 && __match_inner.y == 0) {
+        if (__match_inner_1.x == 0 && __match_inner_1.y == 0) {
             // return "origin"
             return "origin";
         // case Point(x=x, y=y):
         } else {
-            auto& x = __match_inner.x;
-            auto& y = __match_inner.y;
+            auto& x = __match_inner_1.x;
+            auto& y = __match_inner_1.y;
             // return str(x) + "," + str(y)
             return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(x), ",")), ::tpy::fixed_to_str<int32_t>(y)));
         }
@@ -72,14 +72,14 @@ std::string check_point(const Point* p) {
 // def check_color(c: Optional[Color]) -> str:
 std::string check_color(std::optional<Color> c) {
     // match c:
-    auto& __match_subject = c;
+    auto& __match_subject_1 = c;
     // case None:
-    if (!__match_subject.has_value()) {
+    if (!__match_subject_1.has_value()) {
         // return "none"
         return "none";
     } else {
-        auto& __match_inner = (*__match_subject);
-        switch (__match_inner) {
+        auto& __match_inner_1 = (*__match_subject_1);
+        switch (__match_inner_1) {
         // case Color.Red:
         case Color::Red: {
             // return "red"

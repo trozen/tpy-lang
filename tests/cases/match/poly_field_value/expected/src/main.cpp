@@ -7,29 +7,29 @@ namespace tpyapp::main {
 // def describe(p: Pet) -> str:
 std::string describe(const Pet& p) {
     // match p:
-    auto& __match_subject = p;
+    auto& __match_subject_1 = p;
     // case Dog(legs=4):  # tpyc: ok
-    if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&__match_subject)) {
+    if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_0 = *__mpoly_0;
         if (__case_0.legs == 4) {
             // return "quadruped dog"
             return "quadruped dog";
-            goto __match_end_1;
+            goto __match_end_2;
         }
     }
     // case Dog():
-    if (const Dog* __mpoly_1 = dynamic_cast<const Dog*>(&__match_subject)) {
+    if (const Dog* __mpoly_1 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_1 = *__mpoly_1;
         // return "other dog"
         return "other dog";
-        goto __match_end_1;
+        goto __match_end_2;
     }
     // case _:
     {
         // return "not a dog"
         return "not a dog";
     }
-    __match_end_1:;
+    __match_end_2:;
     ::std::unreachable();
 }
 

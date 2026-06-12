@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def depth(e: Expr) -> Int32:
 int32_t depth(const Expr& e) {
     // match e:
-    auto& __match_subject = e;
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = e;
+    switch (__match_subject_1.value.index()) {
     // case list() as items:
     case 1: {
-        auto& __case_0 = std::get<1>(__match_subject.value);
+        auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& items = __case_0;
         // best = 0
         int32_t best = 0;

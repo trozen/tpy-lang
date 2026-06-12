@@ -13,7 +13,7 @@ void main() {
             // # them unchanged. CPython by default would re-escape `é` to
             // # `é` on output.
             // v = json.loads('"caf\xe9"')
-            ::tpystd::json::JsonValue v = ::tpystd::json::loads("\"café\"");
+            ::tpystd::json::JsonValue v = ::tpystd::json::loads("\"caf\xc3\xa9\"");
             // print(json.dumps(v))
             std::cout << ::tpystd::json::dumps(v) << "\n";
         } catch (const ::tpystd::json::JSONDecodeError& e) {

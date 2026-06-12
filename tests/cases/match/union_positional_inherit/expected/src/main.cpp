@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def describe(s: Child | Other) -> None:
 void describe(const std::variant<Child*, Other*> s) {
     // match s:
-    auto& __match_subject = s;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = s;
+    switch (__match_subject_1.index()) {
     // case Child(a, b, c):
     case 0: {
-        auto& __case_0 = *std::get<0>(__match_subject);
+        auto& __case_0 = *std::get<0>(__match_subject_1);
         auto& a = __case_0.x;
         auto& b = __case_0.y;
         auto& c = __case_0.z;
@@ -21,7 +21,7 @@ void describe(const std::variant<Child*, Other*> s) {
     }
     // case Other(v):
     case 1: {
-        auto& __case_1 = *std::get<1>(__match_subject);
+        auto& __case_1 = *std::get<1>(__match_subject_1);
         auto& v = __case_1.v;
         // print(v)
         std::cout << ::tpy::print_float(v) << "\n";

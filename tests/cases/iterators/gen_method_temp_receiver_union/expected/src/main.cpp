@@ -41,8 +41,8 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Box_describe::__next__() 
         return "start";
     }
     case S_RESUME_0: {
-        auto& __match_subject = __self.payload;
-        switch (__match_subject.index()) {
+        auto& __match_subject_1 = __self.payload;
+        switch (__match_subject_1.index()) {
         // case Dog():
         case 1: {
             // yield "dog"

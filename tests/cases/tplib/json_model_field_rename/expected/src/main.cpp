@@ -61,8 +61,8 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
             if (!__try_tmp_10.has_value()) return ::tpy::make_unexpected(__try_tmp_10.error());
             __key = ::tpy::unwrap_ref(*__try_tmp_10);
         }
-        auto& __match_subject = __key;
-        if (__match_subject == "firstName") {
+        auto& __match_subject_1 = __key;
+        if (__match_subject_1 == "firstName") {
             std::string __first_name_1;
             {
                 auto __try_tmp_11 = __reader.read_str();
@@ -70,7 +70,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
                 __first_name_1 = ::tpy::unwrap_ref(*__try_tmp_11);
             }
             first_name = __first_name_1;
-        } else if (__match_subject == "lastName") {
+        } else if (__match_subject_1 == "lastName") {
             std::string __last_name_2;
             {
                 auto __try_tmp_12 = __reader.read_str();
@@ -78,7 +78,7 @@ std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::__json_decod
                 __last_name_2 = ::tpy::unwrap_ref(*__try_tmp_12);
             }
             last_name = __last_name_2;
-        } else if (__match_subject == "age") {
+        } else if (__match_subject_1 == "age") {
             int64_t __raw_4;
             {
                 auto __try_tmp_13 = __reader.read_int();
@@ -127,8 +127,8 @@ std::expected<WithDefault, ::tpystd::tplib::json::parser::JsonError> WithDefault
             if (!__try_tmp_17.has_value()) return ::tpy::make_unexpected(__try_tmp_17.error());
             __key = ::tpy::unwrap_ref(*__try_tmp_17);
         }
-        auto& __match_subject = __key;
-        if (__match_subject == "lbl") {
+        auto& __match_subject_1 = __key;
+        if (__match_subject_1 == "lbl") {
             std::string __label_1;
             {
                 auto __try_tmp_18 = __reader.read_str();
@@ -136,7 +136,7 @@ std::expected<WithDefault, ::tpystd::tplib::json::parser::JsonError> WithDefault
                 __label_1 = ::tpy::unwrap_ref(*__try_tmp_18);
             }
             label = __label_1;
-        } else if (__match_subject == "note") {
+        } else if (__match_subject_1 == "note") {
             if ((__reader.peek() == ::tpystd::tplib::json::parser::JsonToken::NONE)) {
                 {
                     auto __try_tmp_19 = __reader.read_null();
@@ -151,7 +151,7 @@ std::expected<WithDefault, ::tpystd::tplib::json::parser::JsonError> WithDefault
                 }
                 note = __note_2;
             }
-        } else if (__match_subject == "score") {
+        } else if (__match_subject_1 == "score") {
             int64_t __raw_4;
             {
                 auto __try_tmp_21 = __reader.read_int();
@@ -204,8 +204,8 @@ std::expected<Base, ::tpystd::tplib::json::parser::JsonError> Base::__json_decod
             if (!__try_tmp_25.has_value()) return ::tpy::make_unexpected(__try_tmp_25.error());
             __key = ::tpy::unwrap_ref(*__try_tmp_25);
         }
-        auto& __match_subject = __key;
-        if (__match_subject == "id") {
+        auto& __match_subject_1 = __key;
+        if (__match_subject_1 == "id") {
             int64_t __raw_2;
             {
                 auto __try_tmp_26 = __reader.read_int();
@@ -242,8 +242,8 @@ std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extended::__js
             if (!__try_tmp_30.has_value()) return ::tpy::make_unexpected(__try_tmp_30.error());
             __key = ::tpy::unwrap_ref(*__try_tmp_30);
         }
-        auto& __match_subject = __key;
-        if (__match_subject == "id") {
+        auto& __match_subject_1 = __key;
+        if (__match_subject_1 == "id") {
             int64_t __raw_2;
             {
                 auto __try_tmp_31 = __reader.read_int();
@@ -252,7 +252,7 @@ std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extended::__js
             }
             int32_t __item_id_1 = ::tpy::int_cast_check<int32_t>(__raw_2);
             item_id = __item_id_1;
-        } else if (__match_subject == "label") {
+        } else if (__match_subject_1 == "label") {
             std::string __label_3;
             {
                 auto __try_tmp_32 = __reader.read_str();

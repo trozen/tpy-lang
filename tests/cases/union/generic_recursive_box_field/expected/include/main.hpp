@@ -65,11 +65,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 template<typename T>
 int32_t leaf_count(const Tree<T>& t) {
     // match t:
-    auto& __match_subject = t;
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = t;
+    switch (__match_subject_1.value.index()) {
     // case list() as branches:
     case 1: {
-        auto& branches = std::get<1>(__match_subject.value);
+        auto& branches = std::get<1>(__match_subject_1.value);
         // total = 0
         int32_t total = 0;
         // for child in branches:

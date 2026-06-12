@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def classify(mode: Literal["r", "w", "rb", "wb"]) -> None:
 void classify(std::string_view mode) {
     // match mode:
-    auto& __match_subject = mode;
+    auto& __match_subject_1 = mode;
     // case "r" | "w":
-    if (__match_subject == "r" || __match_subject == "w") {
+    if ((__match_subject_1 == "r" || __match_subject_1 == "w")) {
         // print("text:" + mode)
         std::cout << (::tpy::str_concat("text:", mode)) << "\n";
     // case "rb" | "wb":
-    } else if (__match_subject == "rb" || __match_subject == "wb") {
+    } else if ((__match_subject_1 == "rb" || __match_subject_1 == "wb")) {
         // print("binary:" + mode)
         std::cout << (::tpy::str_concat("binary:", mode)) << "\n";
     }
@@ -22,9 +22,9 @@ void classify(std::string_view mode) {
 // def with_wildcard(mode: Literal["a", "b", "c"]) -> None:
 void with_wildcard(std::string_view mode) {
     // match mode:
-    auto& __match_subject = mode;
+    auto& __match_subject_1 = mode;
     // case "a":
-    if (__match_subject == "a") {
+    if (__match_subject_1 == "a") {
         // print("first")
         std::cout << "first" << "\n";
     // case _:

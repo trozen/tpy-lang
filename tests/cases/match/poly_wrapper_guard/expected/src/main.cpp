@@ -7,30 +7,30 @@ namespace tpyapp::main {
 // def describe(b: Box[Pet]) -> str:
 std::string describe(::tpystd::tplib::box::Box<Pet>& b) {
     // match b:  # tpyc: ok
-    auto& __match_subject = b;
+    auto& __match_subject_1 = b;
     // case Dog(n=k) if k > 0:
-    if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&(__match_subject.__deref__()))) {
+    if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&(__match_subject_1.__deref__()))) {
         Dog& __case_0 = *__mpoly_0;
         auto& k = __case_0.n;
         if ((k > 0)) {
             // return "dog+ " + str(k) + " legs=" + str(b.legs())
             return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("dog+ ", (k).to_string())), " legs=")), (__case_0.legs()).to_string()));
-            goto __match_end_1;
+            goto __match_end_2;
         }
     }
     // case Dog():
-    if (Dog* __mpoly_1 = dynamic_cast<Dog*>(&(__match_subject.__deref__()))) {
+    if (Dog* __mpoly_1 = dynamic_cast<Dog*>(&(__match_subject_1.__deref__()))) {
         Dog& __case_1 = *__mpoly_1;
         // return "dog0 legs=" + str(b.legs())
         return (::tpy::str_concat("dog0 legs=", (__case_1.legs()).to_string()));
-        goto __match_end_1;
+        goto __match_end_2;
     }
     // case _:
     {
         // return "other legs=" + str(b.legs())
         return (::tpy::str_concat("other legs=", (b.__deref__().legs()).to_string()));
     }
-    __match_end_1:;
+    __match_end_2:;
     ::std::unreachable();
 }
 

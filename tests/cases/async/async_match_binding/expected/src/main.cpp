@@ -29,16 +29,16 @@ __coro_sub sub(::tpy::BigInt n) {
 ::tpystd::tpy::Poll<::tpy::BigInt> __coro_caller::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {
-        auto& __match_subject = tag;
+        auto& __match_subject_1 = tag;
         // case 0:
-        if (__match_subject == 0) {
+        if (__match_subject_1 == 0) {
             // return await sub(1)
             __sub_0.emplace(::tpy::BigInt(1));
             __state = S_RESUME_0;
             continue;
         // case v:
         } else {
-            v = __match_subject;
+            v = __match_subject_1;
             // r = await sub(v)
             __sub_1.emplace(v);
             __state = S_RESUME_1;

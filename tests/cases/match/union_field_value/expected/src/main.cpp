@@ -7,23 +7,23 @@ namespace tpyapp::main {
 // def describe(a: Dog | Cat) -> str:
 std::string describe(const std::variant<Cat*, Dog*> a) {
     // match a:
-    auto& __match_subject = a;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = a;
+    switch (__match_subject_1.index()) {
     case 1: {
-        auto& __case_1 = *std::get<1>(__match_subject);
+        auto& __case_1 = *std::get<1>(__match_subject_1);
         // case Dog(legs=4):  # tpyc: ok
         {
             if (__case_1.legs == 4) {
                 // return "four-legged dog"
                 return "four-legged dog";
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case _:
         {
             // return "other"
             return "other";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
@@ -31,11 +31,11 @@ std::string describe(const std::variant<Cat*, Dog*> a) {
         // case _:
         // return "other"
         return "other";
-        goto __match_end_1;
+        goto __match_end_2;
         break;
     }
     }
-__match_end_1:;
+__match_end_2:;
     ::std::unreachable();
 }
 

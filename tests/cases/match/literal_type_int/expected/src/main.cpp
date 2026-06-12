@@ -7,8 +7,8 @@ namespace tpyapp::main {
 // def priority_label(level: Literal[1, 2, 3]) -> str:
 std::string priority_label(int32_t level) {
     // match level:
-    auto& __match_subject = level;
-    switch (__match_subject) {
+    auto& __match_subject_1 = level;
+    switch (__match_subject_1) {
     // case 1:
     case 1: {
         // return "low"

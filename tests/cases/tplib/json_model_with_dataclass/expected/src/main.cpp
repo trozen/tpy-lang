@@ -39,8 +39,8 @@ std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decod
             if (!__try_tmp_4.has_value()) return ::tpy::make_unexpected(__try_tmp_4.error());
             __key = ::tpy::unwrap_ref(*__try_tmp_4);
         }
-        auto& __match_subject = __key;
-        if (__match_subject == "name") {
+        auto& __match_subject_1 = __key;
+        if (__match_subject_1 == "name") {
             std::string __name_1;
             {
                 auto __try_tmp_5 = __reader.read_str();
@@ -48,7 +48,7 @@ std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::__json_decod
                 __name_1 = ::tpy::unwrap_ref(*__try_tmp_5);
             }
             name = __name_1;
-        } else if (__match_subject == "value") {
+        } else if (__match_subject_1 == "value") {
             int64_t __raw_3;
             {
                 auto __try_tmp_6 = __reader.read_int();

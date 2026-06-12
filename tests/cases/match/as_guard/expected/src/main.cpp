@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def literal_as_guard(x: Int32) -> str:
 std::string literal_as_guard(int32_t x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1) {
     // case 1 as y if y > 0:
     case 1: {
-        auto& y = __match_subject;
+        auto& y = __match_subject_1;
         if ((y > 0)) {
             // return "one positive"
             return "one positive";
@@ -36,11 +36,11 @@ std::string literal_as_guard(int32_t x) {
 // def wildcard_as_guard(x: Int32) -> str:
 std::string wildcard_as_guard(int32_t x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1) {
     // case _ as y if y > 10:
     default: {
-        auto& y = __match_subject;
+        auto& y = __match_subject_1;
         if ((y > 10)) {
             // return "big"
             return "big";

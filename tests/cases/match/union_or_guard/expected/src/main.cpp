@@ -7,14 +7,14 @@ namespace tpyapp::main {
 // def describe(a: Dog | Cat | Bird, verbose: bool) -> str:
 std::string describe(const std::variant<Bird*, Cat*, Dog*> a, bool verbose) {
     // match a:
-    auto& __match_subject = a;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = a;
+    switch (__match_subject_1.index()) {
     case 0: {
-        auto& __case_0 = *std::get<0>(__match_subject);
+        auto& __case_0 = *std::get<0>(__match_subject_1);
         // case Bird():
         // return "bird"
         return "bird";
-        goto __match_end_1;
+        goto __match_end_2;
         break;
     }
     case 1: {
@@ -23,14 +23,14 @@ std::string describe(const std::variant<Bird*, Cat*, Dog*> a, bool verbose) {
             if (verbose) {
                 // return "verbose pet"
                 return "verbose pet";
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case Dog() | Cat():
         {
             // return "pet"
             return "pet";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
@@ -40,19 +40,19 @@ std::string describe(const std::variant<Bird*, Cat*, Dog*> a, bool verbose) {
             if (verbose) {
                 // return "verbose pet"
                 return "verbose pet";
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case Dog() | Cat():
         {
             // return "pet"
             return "pet";
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     }
-__match_end_1:;
+__match_end_2:;
     ::std::unreachable();
     // return ""
     return "";
@@ -61,26 +61,26 @@ __match_end_1:;
 // def find(a: Dog | Cat | Bird) -> str:
 std::string find(const std::variant<Bird*, Cat*, Dog*> a) {
     // match a:
-    auto& __match_subject = a;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = a;
+    switch (__match_subject_1.index()) {
     case 0: {
-        auto& __case_0 = *std::get<0>(__match_subject);
+        auto& __case_0 = *std::get<0>(__match_subject_1);
         // case Bird(name=n):
         auto& n = __case_0.name;
         // return "bird: " + n
         return (::tpy::str_concat("bird: ", n));
-        goto __match_end_1;
+        goto __match_end_2;
         break;
     }
     case 1: {
-        auto& __case_1 = *std::get<1>(__match_subject);
+        auto& __case_1 = *std::get<1>(__match_subject_1);
         // case Dog(name=n) | Cat(name=n) if n == "Rex":
         {
             auto& n = __case_1.name;
             if ((n == "Rex")) {
                 // return "found Rex"
                 return "found Rex";
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case Dog(name=n) | Cat(name=n):
@@ -88,19 +88,19 @@ std::string find(const std::variant<Bird*, Cat*, Dog*> a) {
             auto& n = __case_1.name;
             // return "other pet: " + n
             return (::tpy::str_concat("other pet: ", n));
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     case 2: {
-        auto& __case_2 = *std::get<2>(__match_subject);
+        auto& __case_2 = *std::get<2>(__match_subject_1);
         // case Dog(name=n) | Cat(name=n) if n == "Rex":
         {
             auto& n = __case_2.name;
             if ((n == "Rex")) {
                 // return "found Rex"
                 return "found Rex";
-                goto __match_end_1;
+                goto __match_end_2;
             }
         }
         // case Dog(name=n) | Cat(name=n):
@@ -108,12 +108,12 @@ std::string find(const std::variant<Bird*, Cat*, Dog*> a) {
             auto& n = __case_2.name;
             // return "other pet: " + n
             return (::tpy::str_concat("other pet: ", n));
-            goto __match_end_1;
+            goto __match_end_2;
         }
         break;
     }
     }
-__match_end_1:;
+__match_end_2:;
     ::std::unreachable();
     // return ""
     return "";

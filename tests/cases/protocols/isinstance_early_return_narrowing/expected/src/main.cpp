@@ -289,9 +289,9 @@ std::string narrow_in_match_case(const Pet& p, const ::tpy::BigInt& label) {
     // # C++ `case N: { ... }` scope; aliases from one case must not be visible
     // # in sibling cases or post-match code.
     // match label:
-    auto& __match_subject = label;
+    auto& __match_subject_1 = label;
     // case 1:
-    if (__match_subject == 1) {
+    if (__match_subject_1 == 1) {
         // if not isinstance(p, Dog):
         if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
             // return "case1 non-dog"
@@ -301,7 +301,7 @@ std::string narrow_in_match_case(const Pet& p, const ::tpy::BigInt& label) {
         // return "case1 dog: " + p.bark()
         return (::tpy::str_concat("case1 dog: ", __p.bark()));
     // case 2:
-    } else if (__match_subject == 2) {
+    } else if (__match_subject_1 == 2) {
         // if not isinstance(p, Dog):
         if ((!((dynamic_cast<const Dog*>(&p) != nullptr)))) {
             // return "case2 non-dog"

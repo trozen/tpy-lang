@@ -24,13 +24,13 @@ std::string process__lit_rb__wb(std::string_view mode) {
 // def dispatch(mode: Literal["r", "w", "rb", "wb"]) -> None:
 void dispatch(std::string_view mode) {
     // match mode:
-    auto& __match_subject = mode;
+    auto& __match_subject_1 = mode;
     // case "r" | "w":
-    if (__match_subject == "r" || __match_subject == "w") {
+    if ((__match_subject_1 == "r" || __match_subject_1 == "w")) {
         // print(process(mode))
         std::cout << process__lit_r__w(mode) << "\n";
     // case "rb" | "wb":
-    } else if (__match_subject == "rb" || __match_subject == "wb") {
+    } else if ((__match_subject_1 == "rb" || __match_subject_1 == "wb")) {
         // print(process(mode))
         std::cout << process__lit_rb__wb(mode) << "\n";
     }

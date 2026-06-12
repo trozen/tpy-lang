@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def describe(w: W) -> str:
 std::string describe(const W& w) {
     // match w:
-    auto& __match_subject = w;
+    auto& __match_subject_1 = w;
     // case W(opt=None):  # tpyc: ok
-    if (!__match_subject.opt.has_value()) {
+    if (!__match_subject_1.opt.has_value()) {
         // return "opt-none"
         return "opt-none";
     // case W(uni=None):  # tpyc: ok
-    } else if (std::holds_alternative<std::monostate>(__match_subject.uni)) {
+    } else if (std::holds_alternative<std::monostate>(__match_subject_1.uni)) {
         // return "uni-none"
         return "uni-none";
     // case _:

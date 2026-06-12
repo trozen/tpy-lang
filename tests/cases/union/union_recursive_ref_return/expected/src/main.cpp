@@ -9,11 +9,11 @@ Expr g;
 // def leaf_count(e: readonly[Expr]) -> int:
 ::tpy::BigInt leaf_count(const Expr& e) {
     // match e:
-    auto& __match_subject = e;
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = e;
+    switch (__match_subject_1.value.index()) {
     // case list() as branches:
     case 1: {
-        auto& __case_0 = std::get<1>(__match_subject.value);
+        auto& __case_0 = std::get<1>(__match_subject_1.value);
         auto& branches = __case_0;
         // total = 0
         int32_t total = 0;

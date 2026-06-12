@@ -36,25 +36,32 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
             continue;
         }
         it = *((*__for_it_0))++;
-        auto& __match_subject = it;
+        auto& __match_subject_1 = it;
         // case 0:
-        if (__match_subject == 0) {
+        if (__match_subject_1 == 0) {
             __state = S_JOIN_1;
             continue;
-        // case v if v > 10:
+            goto __match_end_2;
         }
-        v = __match_subject;
-        if ((v > 10)) {
-            // yield v
-            __state = S_RESUME_0;
-            return v;
+        // case v if v > 10:
+        {
+            v = __match_subject_1;
+            if ((v > 10)) {
+                // yield v
+                __state = S_RESUME_0;
+                return v;
+                goto __match_end_2;
+            }
+        }
         // case v:
-        } else {
-            v = __match_subject;
+        {
+            v = __match_subject_1;
             // yield v
             __state = S_RESUME_2;
             return v;
+            goto __match_end_2;
         }
+        __match_end_2:;
         __state = S_JOIN_2;
         continue;
     }

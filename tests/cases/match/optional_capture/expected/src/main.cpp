@@ -7,17 +7,17 @@ namespace tpyapp::main {
 // def classify(x: Optional[Int32]) -> str:
 std::string classify(std::optional<int32_t> x) {
     // match x:
-    auto& __match_subject = x;
+    auto& __match_subject_1 = x;
     // case None:
-    if (!__match_subject.has_value()) {
+    if (!__match_subject_1.has_value()) {
         // return "none"
         return "none";
     } else {
-        auto& __match_inner = (*__match_subject);
-        switch (__match_inner) {
+        auto& __match_inner_1 = (*__match_subject_1);
+        switch (__match_inner_1) {
         // case v:
         default: {
-            auto& v = __match_inner;
+            auto& v = __match_inner_1;
             // return str(v)
             return ::tpy::fixed_to_str<int32_t>(v);
             break;
@@ -30,16 +30,16 @@ std::string classify(std::optional<int32_t> x) {
 // def describe(x: Optional[str]) -> str:
 std::string describe(std::optional<std::string_view> x) {
     // match x:
-    auto& __match_subject = x;
+    auto& __match_subject_1 = x;
     // case None:
-    if (!__match_subject.has_value()) {
+    if (!__match_subject_1.has_value()) {
         // return "empty"
         return "empty";
     } else {
-        auto& __match_inner = (*__match_subject);
+        auto& __match_inner_1 = (*__match_subject_1);
         // case s:
         {
-            auto& s = __match_inner;
+            auto& s = __match_inner_1;
             // return "got: " + s
             return (::tpy::str_concat("got: ", s));
         }

@@ -18,14 +18,14 @@ namespace tpyapp::main {
 // def describe(kind: int) -> str:
 std::string describe(const ::tpy::BigInt& kind) {
     // match make_box(kind):  # tpyc: ok
-    auto __match_subject = make_box(kind);
+    auto __match_subject_1 = make_box(kind);
     // case Dog():
-    if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&(__match_subject.__deref__()))) {
+    if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&(__match_subject_1.__deref__()))) {
         Dog& __case_0 = *__mpoly_0;
         // return "dog"
         return "dog";
     // case Snake() as s:
-    } else if (Snake* __mpoly_1 = dynamic_cast<Snake*>(&(__match_subject.__deref__()))) {
+    } else if (Snake* __mpoly_1 = dynamic_cast<Snake*>(&(__match_subject_1.__deref__()))) {
         Snake& __case_1 = *__mpoly_1;
         auto& s = __case_1;
         // return "snake legs=" + str(s.legs)

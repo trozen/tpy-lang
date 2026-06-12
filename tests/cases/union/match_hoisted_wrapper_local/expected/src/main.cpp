@@ -19,11 +19,11 @@ void grow(Tree<int32_t>& src) {
         v = &(src);
     }
     // match v:               # v lowers to a hoisted pointer-local Tree<Int32>*
-    auto& __match_subject = (*v);
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = (*v);
+    switch (__match_subject_1.value.index()) {
     // case list() as b:
     case 1: {
-        auto& b = std::get<1>(__match_subject.value);
+        auto& b = std::get<1>(__match_subject_1.value);
         // b.append(9)    # mutate through the arm -- must reach src
         b.push_back(9);
         break;
@@ -43,11 +43,11 @@ void main() {
     // grow(tree)
     grow(tree);
     // match tree:            # aliasing: tree grew to [1, 2, 3, 9]
-    auto& __match_subject = tree;
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = tree;
+    switch (__match_subject_1.value.index()) {
     // case list() as t:
     case 1: {
-        auto& t = std::get<1>(__match_subject.value);
+        auto& t = std::get<1>(__match_subject_1.value);
         // print(len(t))
         std::cout << ::tpy::__len__(t) << "\n";
         break;

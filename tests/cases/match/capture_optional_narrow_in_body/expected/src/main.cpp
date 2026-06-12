@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def describe(s: Build | Test) -> None:
 void describe(const std::variant<Build*, Test*> s) {
     // match s:
-    auto& __match_subject = s;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = s;
+    switch (__match_subject_1.index()) {
     // case Build(target=t, jobs=j):
     case 0: {
-        auto& __case_0 = *std::get<0>(__match_subject);
+        auto& __case_0 = *std::get<0>(__match_subject_1);
         auto& t = __case_0.target;
         auto& j = __case_0.jobs;
         // if t is not None:
@@ -28,7 +28,7 @@ void describe(const std::variant<Build*, Test*> s) {
     }
     // case Test(filter_=f):
     case 1: {
-        auto& __case_1 = *std::get<1>(__match_subject);
+        auto& __case_1 = *std::get<1>(__match_subject_1);
         auto& f = __case_1.filter_;
         // if f is not None:
         if ((f.has_value())) {

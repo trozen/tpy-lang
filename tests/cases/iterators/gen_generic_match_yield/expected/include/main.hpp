@@ -48,9 +48,9 @@ template <typename T>
 std::expected<T, ::tpy::StopIteration> __gen_gen<T>::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        auto& __match_subject = tag;
+        auto& __match_subject_1 = tag;
         // case 0:
-        if (__match_subject == 0) {
+        if (__match_subject_1 == 0) {
             // yield a
             __state = S_RESUME_0;
             return a;

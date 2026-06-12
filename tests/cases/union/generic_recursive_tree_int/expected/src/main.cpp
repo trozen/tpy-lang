@@ -7,11 +7,11 @@ namespace tpyapp::main {
 // def sum_leaves(t: Tree[int]) -> Int32:
 int32_t sum_leaves(const Tree<::tpy::BigInt>& t) {
     // match t:
-    auto& __match_subject = t;
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = t;
+    switch (__match_subject_1.value.index()) {
     // case list() as branches:
     case 1: {
-        auto& branches = std::get<1>(__match_subject.value);
+        auto& branches = std::get<1>(__match_subject_1.value);
         // total = 0
         int32_t total = 0;
         // for child in branches:
@@ -29,7 +29,7 @@ int32_t sum_leaves(const Tree<::tpy::BigInt>& t) {
     }
     // case int() as v:
     case 0: {
-        auto& v = std::get<0>(__match_subject.value);
+        auto& v = std::get<0>(__match_subject_1.value);
         // return v
         return (v).to_fixed_check<int32_t>();
         break;

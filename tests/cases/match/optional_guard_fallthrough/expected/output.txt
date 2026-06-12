@@ -3,5 +3,6 @@ other
 other
 other
 none+flag
+none-noflag
 5
 5

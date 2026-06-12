@@ -14,13 +14,13 @@ void classify_items(const std::vector<std::string>& items) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view item = *__beg_0;
         // match item:
-        auto& __match_subject = item;
+        auto& __match_subject_1 = item;
         // case "apple":
-        if (__match_subject == "apple") {
+        if (__match_subject_1 == "apple") {
             // print("fruit")
             std::cout << "fruit" << "\n";
         // case "carrot":
-        } else if (__match_subject == "carrot") {
+        } else if (__match_subject_1 == "carrot") {
             // print("vegetable")
             std::cout << "vegetable" << "\n";
         // case _:
@@ -40,63 +40,64 @@ void classify_many(const std::vector<std::string>& items) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view item = *__beg_0;
         // match item:
-        auto& __match_subject = item;
-        if (__match_subject.size() >= 1) {
-            switch (static_cast<unsigned char>(__match_subject[0])) {
+        auto& __match_subject_1 = item;
+        if (__match_subject_1.size() >= 1) {
+            switch (static_cast<unsigned char>(__match_subject_1[0])) {
             case 'b': {
                 // case "blue":
-                if (__match_subject == "blue") {
+                if (__match_subject_1 == "blue") {
                     // print("color")
                     std::cout << "color" << "\n";
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
             case 'c': {
                 // case "cat":
-                if (__match_subject == "cat") {
+                if (__match_subject_1 == "cat") {
                     // print("animal")
                     std::cout << "animal" << "\n";
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
             case 'd': {
                 // case "dog":
-                if (__match_subject == "dog") {
+                if (__match_subject_1 == "dog") {
                     // print("animal")
                     std::cout << "animal" << "\n";
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
             case 'g': {
                 // case "green":
-                if (__match_subject == "green") {
+                if (__match_subject_1 == "green") {
                     // print("color")
                     std::cout << "color" << "\n";
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
             case 'r': {
                 // case "red":
-                if (__match_subject == "red") {
+                if (__match_subject_1 == "red") {
                     // print("color")
                     std::cout << "color" << "\n";
-                    goto __match_end_1;
+                    goto __match_end_2;
                 }
                 break;
             }
             }
         }
+        // case other:
         {
-            // case other:
-            auto& other = __match_subject;
+            auto& other = __match_subject_1;
             // print("other: " + other)
             std::cout << (::tpy::str_concat("other: ", other)) << "\n";
+            goto __match_end_2;
         }
-        __match_end_1:;
+        __match_end_2:;
     }
 }
 

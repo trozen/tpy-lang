@@ -49,8 +49,8 @@ namespace tpyapp::main {
 // def describe(m: Mode) -> str:
 std::string describe(::cfg::Mode m) {
     // match m:
-    auto& __match_subject = m;
-    switch (__match_subject) {
+    auto& __match_subject_1 = m;
+    switch (__match_subject_1) {
     // case Mode.NONE_MODE:
     case ::cfg::Mode::None: {
         // return "off"

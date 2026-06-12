@@ -49,11 +49,11 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_voices::__next__() {
         return "start";
     }
     case S_RESUME_0: {
-        auto& __match_subject = a;
-        switch (__match_subject.index()) {
+        auto& __match_subject_1 = a;
+        switch (__match_subject_1.index()) {
         // case Dog():
         case 1: {
-            auto& __case_0 = *std::get<1>(__match_subject);
+            auto& __case_0 = *std::get<1>(__match_subject_1);
             // yield a.speak()
             __state = S_RESUME_1;
             return __case_0.speak();
@@ -61,7 +61,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_voices::__next__() {
         }
         // case Cat():
         case 0: {
-            auto& __case_1 = *std::get<0>(__match_subject);
+            auto& __case_1 = *std::get<0>(__match_subject_1);
             // yield a.speak()
             __state = S_RESUME_2;
             return __case_1.speak();
@@ -102,11 +102,11 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_names::__next__() {
         return "ro";
     }
     case S_RESUME_0: {
-        auto& __match_subject = a;
-        switch (__match_subject.index()) {
+        auto& __match_subject_1 = a;
+        switch (__match_subject_1.index()) {
         // case Dog():
         case 1: {
-            auto& __case_0 = *std::get<1>(__match_subject);
+            auto& __case_0 = *std::get<1>(__match_subject_1);
             // yield "dog"
             __state = S_RESUME_1;
             return "dog";
@@ -114,7 +114,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_Zoo_names::__next__() {
         }
         // case Cat():
         case 0: {
-            auto& __case_1 = *std::get<0>(__match_subject);
+            auto& __case_1 = *std::get<0>(__match_subject_1);
             // yield "cat"
             __state = S_RESUME_2;
             return "cat";

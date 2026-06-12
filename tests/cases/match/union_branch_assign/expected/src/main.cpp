@@ -8,11 +8,11 @@ namespace tpyapp::main {
 int32_t describe(const std::variant<Cat*, Dog*> a) {
     // match a:
     int32_t result;
-    auto& __match_subject = a;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = a;
+    switch (__match_subject_1.index()) {
     // case Dog(age=x):
     case 1: {
-        auto& __case_0 = *std::get<1>(__match_subject);
+        auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& x = __case_0.age;
         // result: Int32 = x
         result = x;

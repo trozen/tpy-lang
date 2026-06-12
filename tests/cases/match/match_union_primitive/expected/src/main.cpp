@@ -8,11 +8,11 @@ namespace tpyapp::main {
 // def describe(x: Int32 | str | Cat | Dog) -> str:
 std::string describe(const std::variant<Cat*, Dog*, int32_t*, std::string*> x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1.index()) {
     // case Int32() as n:
     case 2: {
-        auto& __case_0 = *std::get<2>(__match_subject);
+        auto& __case_0 = *std::get<2>(__match_subject_1);
         auto& n = __case_0;
         // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
@@ -20,7 +20,7 @@ std::string describe(const std::variant<Cat*, Dog*, int32_t*, std::string*> x) {
     }
     // case str() as s:
     case 3: {
-        auto& __case_1 = *std::get<3>(__match_subject);
+        auto& __case_1 = *std::get<3>(__match_subject_1);
         auto& s = __case_1;
         // return "string: " + s
         return (::tpy::str_concat("string: ", s));
@@ -28,7 +28,7 @@ std::string describe(const std::variant<Cat*, Dog*, int32_t*, std::string*> x) {
     }
     // case Cat(name=n):
     case 0: {
-        auto& __case_2 = *std::get<0>(__match_subject);
+        auto& __case_2 = *std::get<0>(__match_subject_1);
         auto& n = __case_2.name;
         // return "cat: " + n
         return (::tpy::str_concat("cat: ", n));
@@ -36,7 +36,7 @@ std::string describe(const std::variant<Cat*, Dog*, int32_t*, std::string*> x) {
     }
     // case Dog(name=n):
     case 1: {
-        auto& __case_3 = *std::get<1>(__match_subject);
+        auto& __case_3 = *std::get<1>(__match_subject_1);
         auto& n = __case_3.name;
         // return "dog: " + n
         return (::tpy::str_concat("dog: ", n));
@@ -49,18 +49,18 @@ std::string describe(const std::variant<Cat*, Dog*, int32_t*, std::string*> x) {
 // def depth(t: Tree) -> Int32:
 int32_t depth(const Tree& t) {
     // match t:
-    auto& __match_subject = t;
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = t;
+    switch (__match_subject_1.value.index()) {
     // case Int32():
     case 0: {
-        auto& __case_0 = std::get<0>(__match_subject.value);
+        auto& __case_0 = std::get<0>(__match_subject_1.value);
         // return 0
         return 0;
         break;
     }
     // case list() as children:
     case 1: {
-        auto& __case_1 = std::get<1>(__match_subject.value);
+        auto& __case_1 = std::get<1>(__match_subject_1.value);
         auto& children = __case_1;
         // m: Int32 = 0
         int32_t m = 0;
@@ -89,11 +89,11 @@ int32_t depth(const Tree& t) {
 // def unbox(x: Int32 | Box[str]) -> str:
 std::string unbox(const std::variant<Box<std::string>*, int32_t*> x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1.index()) {
     // case Int32() as n:
     case 1: {
-        auto& __case_0 = *std::get<1>(__match_subject);
+        auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& n = __case_0;
         // return str(n)
         return ::tpy::fixed_to_str<int32_t>(n);
@@ -101,7 +101,7 @@ std::string unbox(const std::variant<Box<std::string>*, int32_t*> x) {
     }
     // case Box() as b:
     case 0: {
-        auto& __case_1 = *std::get<0>(__match_subject);
+        auto& __case_1 = *std::get<0>(__match_subject_1);
         auto& b = __case_1;
         // return b.value
         return b.value;

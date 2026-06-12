@@ -7,8 +7,8 @@ namespace tpyapp::main {
 // def classify(x: Int32) -> str:
 std::string classify(int32_t x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1) {
     // case _ if x > 10:
     default: {
         if ((x > 10)) {
@@ -32,11 +32,11 @@ std::string classify(int32_t x) {
 // def describe(x: Int32) -> str:
 std::string describe(int32_t x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1) {
     // case n if n == 0:
     default: {
-        auto& n = __match_subject;
+        auto& n = __match_subject_1;
         if ((n == 0)) {
             // return "zero"
             return "zero";

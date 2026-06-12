@@ -32,17 +32,17 @@ std::string process__lit_rb(std::string_view mode) {
 // def dispatch(mode: Literal["r", "w", "rb"]) -> None:
 void dispatch(std::string_view mode) {
     // match mode:
-    auto& __match_subject = mode;
+    auto& __match_subject_1 = mode;
     // case "r":
-    if (__match_subject == "r") {
+    if (__match_subject_1 == "r") {
         // print(process(mode))
         std::cout << process__lit_r(mode) << "\n";
     // case "w":
-    } else if (__match_subject == "w") {
+    } else if (__match_subject_1 == "w") {
         // print(process(mode))
         std::cout << process__lit_w(mode) << "\n";
     // case "rb":
-    } else if (__match_subject == "rb") {
+    } else if (__match_subject_1 == "rb") {
         // print(process(mode))
         std::cout << process__lit_rb(mode) << "\n";
     }

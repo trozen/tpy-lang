@@ -11,18 +11,18 @@ void main() {
     // d = Dog("rex")
     Dog d = Dog("rex");
     // match p.choose(d):
-    auto __match_subject = p.choose(d);
-    switch (__match_subject.index()) {
+    auto __match_subject_1 = p.choose(d);
+    switch (__match_subject_1.index()) {
     // case Dog() as x:
     case 1: {
-        auto& x = *std::get<1>(__match_subject);
+        auto& x = *std::get<1>(__match_subject_1);
         // print(x.name)
         std::cout << x.name << "\n";
         break;
     }
     // case Cat() as y:
     case 0: {
-        auto& y = *std::get<0>(__match_subject);
+        auto& y = *std::get<0>(__match_subject_1);
         // print(y.name)
         std::cout << y.name << "\n";
         break;

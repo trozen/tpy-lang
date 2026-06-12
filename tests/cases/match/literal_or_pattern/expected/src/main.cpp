@@ -7,8 +7,8 @@ namespace tpyapp::main {
 // def classify_num(x: Int32) -> str:
 std::string classify_num(int32_t x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1) {
     // case 1 | 2 | 3:
     case 1:
     case 2:
@@ -41,13 +41,13 @@ std::string classify_num(int32_t x) {
 // def classify_str(s: str) -> str:
 std::string classify_str(std::string_view s) {
     // match s:
-    auto& __match_subject = s;
+    auto& __match_subject_1 = s;
     // case "hello" | "hi":
-    if (__match_subject == "hello" || __match_subject == "hi") {
+    if ((__match_subject_1 == "hello" || __match_subject_1 == "hi")) {
         // return "greeting"
         return "greeting";
     // case "bye" | "goodbye":
-    } else if (__match_subject == "bye" || __match_subject == "goodbye") {
+    } else if ((__match_subject_1 == "bye" || __match_subject_1 == "goodbye")) {
         // return "farewell"
         return "farewell";
     // case _:
@@ -63,13 +63,13 @@ std::string classify_str(std::string_view s) {
 // def classify_as(x: Int32) -> str:
 std::string classify_as(int32_t x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1) {
     // case 1 | 2 as n:
     case 1:
     case 2:
     {
-        auto& n = __match_subject;
+        auto& n = __match_subject_1;
         // return "small: " + str(n)
         return (::tpy::str_concat("small: ", ::tpy::fixed_to_str<int32_t>(n)));
         break;

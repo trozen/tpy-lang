@@ -8,18 +8,18 @@ namespace tpyapp::main {
 // def handle(cmd: str) -> str:
 std::string handle(std::string_view cmd) {
     // match cmd:
-    auto& __match_subject = cmd;
+    auto& __match_subject_1 = cmd;
     // case "quit":
-    if (__match_subject == "quit") {
+    if (__match_subject_1 == "quit") {
         // return "quitting"
         return "quitting";
     // case "help":
-    } else if (__match_subject == "help") {
+    } else if (__match_subject_1 == "help") {
         // return "showing help"
         return "showing help";
     // case other:
     } else {
-        auto& other = __match_subject;
+        auto& other = __match_subject_1;
         // return "unknown: " + other
         return (::tpy::str_concat("unknown: ", other));
     }

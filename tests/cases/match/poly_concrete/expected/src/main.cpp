@@ -7,19 +7,19 @@ namespace tpyapp::main {
 // def classify(a: Animal) -> str:
 std::string classify(const Animal& a) {
     // match a:  # tpyc: ok
-    auto& __match_subject = a;
+    auto& __match_subject_1 = a;
     // case Dog():
-    if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&__match_subject)) {
+    if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_0 = *__mpoly_0;
         // return "dog"
         return "dog";
     // case Snake():
-    } else if (const Snake* __mpoly_1 = dynamic_cast<const Snake*>(&__match_subject)) {
+    } else if (const Snake* __mpoly_1 = dynamic_cast<const Snake*>(&__match_subject_1)) {
         const Snake& __case_1 = *__mpoly_1;
         // return "snake legs=" + str(a.legs)
         return (::tpy::str_concat("snake legs=", (__case_1.legs).to_string()));
     // case Animal():
-    } else if (const Animal* __mpoly_2 = dynamic_cast<const Animal*>(&__match_subject)) {
+    } else if (const Animal* __mpoly_2 = dynamic_cast<const Animal*>(&__match_subject_1)) {
         const Animal& __case_2 = *__mpoly_2;
         // return "animal legs=" + str(a.legs)
         return (::tpy::str_concat("animal legs=", (__case_2.legs).to_string()));

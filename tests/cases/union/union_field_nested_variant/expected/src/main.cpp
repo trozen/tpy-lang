@@ -7,17 +7,17 @@ namespace tpyapp::main {
 // def describe_zoo(z: Zoo) -> str:
 std::string describe_zoo(const Zoo& z) {
     // match z:
-    auto& __match_subject = z;
+    auto& __match_subject_1 = z;
     // case Zoo(animal=Cat(name=n)):
-    if (std::holds_alternative<Cat>(__match_subject.animal)) {
-        auto& __field_match_subject_animal = std::get<Cat>(__match_subject.animal);
-        auto& n = __field_match_subject_animal.name;
+    if (std::holds_alternative<Cat>(__match_subject_1.animal)) {
+        auto& __field_match_subject_1_animal = std::get<Cat>(__match_subject_1.animal);
+        auto& n = __field_match_subject_1_animal.name;
         // return "cat: " + n
         return (::tpy::str_concat("cat: ", n));
     // case Zoo(animal=Dog(name=n)):
-    } else if (std::holds_alternative<Dog>(__match_subject.animal)) {
-        auto& __field_match_subject_animal = std::get<Dog>(__match_subject.animal);
-        auto& n = __field_match_subject_animal.name;
+    } else if (std::holds_alternative<Dog>(__match_subject_1.animal)) {
+        auto& __field_match_subject_1_animal = std::get<Dog>(__match_subject_1.animal);
+        auto& n = __field_match_subject_1_animal.name;
         // return "dog: " + n
         return (::tpy::str_concat("dog: ", n));
     // case _:

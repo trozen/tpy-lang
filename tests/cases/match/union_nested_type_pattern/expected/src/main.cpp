@@ -8,11 +8,11 @@ namespace tpyapp::main {
 // def unwrap(x: Box[str] | Box[Int32]) -> str:
 std::string unwrap(const std::variant<Box<int32_t>*, Box<std::string>*> x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1.index()) {
     // case Box(value=str() as v):
     case 1: {
-        auto& __case_0 = *std::get<1>(__match_subject);
+        auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& v = __case_0.value;
         // return "string: " + v
         return (::tpy::str_concat("string: ", v));
@@ -20,7 +20,7 @@ std::string unwrap(const std::variant<Box<int32_t>*, Box<std::string>*> x) {
     }
     // case Box(value=Int32() as n):
     case 0: {
-        auto& __case_1 = *std::get<0>(__match_subject);
+        auto& __case_1 = *std::get<0>(__match_subject_1);
         auto& n = __case_1.value;
         // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
@@ -34,18 +34,18 @@ std::string unwrap(const std::variant<Box<int32_t>*, Box<std::string>*> x) {
 // def describe(x: Box[str] | Box[Int32]) -> str:
 std::string describe(const std::variant<Box<int32_t>*, Box<std::string>*> x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1.index()) {
     // case Box(value=str()):
     case 1: {
-        auto& __case_0 = *std::get<1>(__match_subject);
+        auto& __case_0 = *std::get<1>(__match_subject_1);
         // return "is string"
         return "is string";
         break;
     }
     // case Box(value=Int32()):
     case 0: {
-        auto& __case_1 = *std::get<0>(__match_subject);
+        auto& __case_1 = *std::get<0>(__match_subject_1);
         // return "is number"
         return "is number";
         break;
@@ -57,11 +57,11 @@ std::string describe(const std::variant<Box<int32_t>*, Box<std::string>*> x) {
 // def mixed(x: Pair[str] | Pair[Int32]) -> str:
 std::string mixed(const std::variant<Pair<int32_t>*, Pair<std::string>*> x) {
     // match x:
-    auto& __match_subject = x;
-    switch (__match_subject.index()) {
+    auto& __match_subject_1 = x;
+    switch (__match_subject_1.index()) {
     // case Pair(first=str() as f, second=s):
     case 1: {
-        auto& __case_0 = *std::get<1>(__match_subject);
+        auto& __case_0 = *std::get<1>(__match_subject_1);
         auto& f = __case_0.first;
         auto& s = __case_0.second;
         // return f + " / " + s
@@ -70,7 +70,7 @@ std::string mixed(const std::variant<Pair<int32_t>*, Pair<std::string>*> x) {
     }
     // case Pair(first=Int32() as n, second=s):
     case 0: {
-        auto& __case_1 = *std::get<0>(__match_subject);
+        auto& __case_1 = *std::get<0>(__match_subject_1);
         auto& n = __case_1.first;
         auto& s = __case_1.second;
         // return str(n) + " / " + s

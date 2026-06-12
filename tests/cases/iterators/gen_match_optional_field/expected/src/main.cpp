@@ -8,10 +8,10 @@ namespace tpyapp::main {
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {
-        auto& __match_subject = b;
+        auto& __match_subject_1 = b;
         // case Box(maybe=v):
         {
-            v = ::tpy::optional_to_ptr(__match_subject.maybe);
+            v = ::tpy::optional_to_ptr(__match_subject_1.maybe);
             // yield 1
             __state = S_RESUME_0;
             return ::tpy::BigInt(1);

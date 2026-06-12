@@ -1054,6 +1054,10 @@ class TpyWildcardPattern(TpyPattern):
 class TpyCapturePattern(TpyPattern):
     """case x:"""
     name: str
+    # Optional-subject capture: True when the arm also matches None and the
+    # binding carries the full `T | None` subject (no earlier arm covered
+    # None); codegen then binds the subject instead of its dereference.
+    binds_full_optional: bool = False
 
 
 @dataclass
@@ -1092,6 +1096,9 @@ class TpyAsPattern(TpyPattern):
     """case P() as x:"""
     pattern: TpyPattern
     name: str
+    # See TpyCapturePattern.binds_full_optional (applies when the inner
+    # pattern is a wildcard/capture on an Optional subject).
+    binds_full_optional: bool = False
 
 
 @dataclass

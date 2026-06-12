@@ -23,11 +23,11 @@ std::tuple<Tree<int32_t>, int32_t> own_escape() {
 // def count(t: Tree[Int32]) -> Int32:
 int32_t count(const Tree<int32_t>& t) {
     // match t:
-    auto& __match_subject = t;
-    switch (__match_subject.value.index()) {
+    auto& __match_subject_1 = t;
+    switch (__match_subject_1.value.index()) {
     // case list() as b:
     case 1: {
-        auto& b = std::get<1>(__match_subject.value);
+        auto& b = std::get<1>(__match_subject_1.value);
         // return len(b)
         return ::tpy::__len__(b);
         break;
