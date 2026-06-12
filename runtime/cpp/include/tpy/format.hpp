@@ -25,6 +25,7 @@
 
 #include "core.hpp"
 #include "enum.hpp"
+#include "variant_ref.hpp"
 
 namespace tpy {
 
@@ -1002,6 +1003,16 @@ inline Dest borrow_value_elem(Src& s) {
     using DestNoRefCV = std::remove_cv_t<DestNoRef>;
     if constexpr (std::is_same_v<SrcD, DestNoRefCV>) {
         return s;
+    } else if constexpr (is_ptr_variant_v<DestNoRef> && is_variant_v<SrcD>
+                         && !is_ptr_variant_v<SrcD>) {
+        // Value-form union element (variant<A,B>) in the source tuple -> the
+        // borrow pointer variant slot: convert to a variant of pointers into
+        // the (lifetime-extended) source. Const-pointee dest takes a const src.
+        if constexpr (ptr_variant_const_pointee<DestNoRefCV>::value) {
+            return to_const_ptr_variant(s);
+        } else {
+            return to_ptr_variant(s);
+        }
     } else if constexpr (std::is_pointer_v<DestNoRef>
                           && !std::is_pointer_v<SrcD>) {
         return &s;

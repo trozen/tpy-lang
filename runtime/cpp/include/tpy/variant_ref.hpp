@@ -17,6 +17,36 @@
 
 namespace tpy {
 
+// Trait: is T a std::variant? Used by the per-element tuple borrow/storage
+// converters to dispatch a union element through the variant boundary helpers.
+template<typename T> struct is_variant : std::false_type {};
+template<typename... Ts> struct is_variant<std::variant<Ts...>> : std::true_type {};
+template<typename T>
+inline constexpr bool is_variant_v = is_variant<std::remove_cvref_t<T>>::value;
+
+// Trait: is T a pointer variant (every alternative is a pointer or monostate)?
+// Distinguishes the borrow form std::variant<A*, B*> from the storage form
+// std::variant<A, B>.
+template<typename T> struct is_ptr_variant : std::false_type {};
+template<typename... Ts> struct is_ptr_variant<std::variant<Ts...>>
+    : std::bool_constant<((std::is_pointer_v<Ts>
+                           || std::is_same_v<Ts, std::monostate>) && ...)> {};
+template<typename T>
+inline constexpr bool is_ptr_variant_v = is_ptr_variant<std::remove_cvref_t<T>>::value;
+
+// Trait: does this pointer variant have const pointees (std::variant<const A*,
+// ...>)? Selects to_const_ptr_variant vs to_ptr_variant. Every alternative must
+// be a const pointer or monostate (a borrow-form union tuple element is
+// uniform; requiring all alternatives keeps a hypothetical mixed-const variant
+// from silently const-upgrading the mutable ones).
+template<typename T> struct ptr_variant_const_pointee_impl : std::false_type {};
+template<typename... Ts> struct ptr_variant_const_pointee_impl<std::variant<Ts...>>
+    : std::bool_constant<((std::is_same_v<Ts, std::monostate>
+                           || (std::is_pointer_v<Ts>
+                               && std::is_const_v<std::remove_pointer_t<Ts>>)) && ...)> {};
+template<typename T>
+using ptr_variant_const_pointee = ptr_variant_const_pointee_impl<std::remove_cvref_t<T>>;
+
 namespace detail {
 
 // Map T -> T*, but monostate -> monostate

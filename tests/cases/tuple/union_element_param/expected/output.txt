@@ -1,0 +1,3 @@
+dog: 2
+cat: 3
+pass: 5

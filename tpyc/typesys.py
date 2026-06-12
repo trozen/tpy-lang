@@ -3349,11 +3349,13 @@ class TupleType(TpyType):
 
         A non-value element borrows as a bare pointer `T*` / `const T*` (a
         reference can't be a `std::tuple` member, and pointer form is both
-        constructible and aliasing). A pointer-variant union keeps its
-        `std::variant<A*, B*>` borrow form. OptionalType of a non-value inner
-        already lowers to `T*` via its own `to_cpp_return`. The `std::optional<T>`
-        / value-`T` storage forms are reserved for field/storage contexts and
-        reached via to_cpp() / to_cpp_stored()."""
+        constructible and aliasing). A pointer-variant union borrows as the
+        const pointer variant `std::variant<const A*, B const*>`: std::variant
+        has no mutable->const converting ctor, so this form must match the
+        call-site slot exactly (const is the read-borrow form). OptionalType of
+        a non-value inner already lowers to `T*` via its own `to_cpp_return`.
+        The `std::optional<T>` / value-`T` storage forms are reserved for
+        field/storage contexts and reached via to_cpp() / to_cpp_stored()."""
         if self._element_is_pointer_repr(t) and t.value_form() is ValueForm.BORROW_REF:
             peeled = unwrap_ref_type(t)
             is_const = const or isinstance(peeled, ReadonlyType)
@@ -3371,6 +3373,12 @@ class TupleType(TpyType):
             is_const = const or isinstance(peeled, ReadonlyType)
             trait = "::tpy::val_or_cptr_t" if is_const else "::tpy::val_or_ptr_t"
             return f"{trait}<{core.name}>"
+        # A pointer-variant union element always borrows as the const pointer
+        # variant: std::variant has no mutable->const converting ctor, so the
+        # call-site slot (which uses to_const_ptr_variant) and this param/return
+        # form must agree on const pointees regardless of the surrounding const.
+        if isinstance(core, UnionType) and core.uses_pointer_repr():
+            return t.to_cpp_return_const()
         return t.to_cpp_return_const() if const else t.to_cpp_return()
 
     def to_cpp_param_type(self) -> str:

@@ -5445,6 +5445,17 @@ class ExpressionGenerator:
                 else:
                     info.append((mode, et.to_cpp_return()))
                 continue
+            # A pointer-variant union element borrows as the const pointer
+            # variant std::variant<const A*, B const*> -- the runtime borrow
+            # helpers convert it via to_const_ptr_variant. Unlike a record's
+            # `T*`, std::variant has no mutable->const converting ctor, so the
+            # slot must match the param's const-pointee borrow form exactly;
+            # const is the read-borrow form (mutating a union tuple element
+            # needs narrowing, a separate path). Mirrors the Optional slot.
+            if (isinstance(et, UnionType) and et.uses_pointer_repr()
+                    and mode != TupleElemCapture.VALUE):
+                info.append((mode, et.to_cpp_return_const()))
+                continue
             # Plain non-value (BORROW_REF) element in a borrow slot: pointer
             # form `T*` / `const T*` (a reference can't be a std::tuple member;
             # pointer form aliases and is constructible). Pointer-variant
