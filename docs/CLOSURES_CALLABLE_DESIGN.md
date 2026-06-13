@@ -80,6 +80,18 @@ TPy provides two callable types with **explicit, different cost models**:
 This is analogous to Rust's `impl Fn(A, B) -> R` (static dispatch, monomorphized)
 vs `Box<dyn Fn(A, B) -> R>` (dynamic dispatch, heap-allocated).
 
+A callable contract says nothing about mutation, so calls through callable
+values are treated as opaque, potentially-mutating callees: non-value param
+types spell MUTABLE in the C++ signature (`std::function<void(std::vector<
+int32_t>&)>`), args run the normal coercion pipeline, and reference args
+are conservatively marked mutated for const inference and borrow warnings.
+The explicit non-mutating contract is `readonly[...]` inside the param list
+(`Callable[[readonly[list[Int32]]], None]` keeps `const&` and exempts the
+call from the conservative marks). Signature compatibility is contravariant
+in params, covariant in returns; bare generic slots (`Fn[[T], R]`) are
+exempt from the conservative mutation marks so generic combinators keep
+const container params.
+
 ### Type System
 
 One type in `typesys.py` with a mode flag (`is_template`) distinguishing

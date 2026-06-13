@@ -1,0 +1,4 @@
+main.py:59: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
+main.py:34: warning: Passing borrowed container 'xs' to non-readonly parameter 'arg1' (function may invalidate references)
+main.py:42: warning: Passing borrowed container 'xs' to non-readonly parameter 'arg1' (function may invalidate references)
+main.py:51: warning: Passing borrowed container 'xs' to non-readonly parameter 'arg1' (function may invalidate references)

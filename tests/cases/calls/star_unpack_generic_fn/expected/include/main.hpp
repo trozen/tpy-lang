@@ -12,7 +12,7 @@ template<typename T> struct Box;
 inline constexpr std::string_view __name__ = "__main__";
 
 template<typename T>
-int32_t proc(const std::function<int32_t(const Box<T>&)>& fn, ::tpy::varargs<const Box<T>> xs);
+int32_t proc(const std::function<int32_t(Box<T>&)>& fn, ::tpy::varargs<Box<T>> xs);
 void main();
 
 // @nocopy
@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 
 // def proc[T](fn: Callable[[Box[T]], Int32], *xs: Box[T]) -> Int32:
 template<typename T>
-int32_t proc(const std::function<int32_t(const Box<T>&)>& fn, ::tpy::varargs<const Box<T>> xs) {
+int32_t proc(const std::function<int32_t(Box<T>&)>& fn, ::tpy::varargs<Box<T>> xs) {
     // total: Int32 = 0
     int32_t total = 0;
     // for x in xs:
@@ -49,7 +49,7 @@ int32_t proc(const std::function<int32_t(const Box<T>&)>& fn, ::tpy::varargs<con
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        const auto& x = *__beg_0;
+        auto&& x = *__beg_0;
         // total += fn(x)
         total = ::tpy::add_check<int32_t>(total, fn(x));
     }

@@ -597,36 +597,10 @@ class MethodAnalyzer:
             if narrowing_key is None or narrowing_key not in self.ctx.func.narrowed_types:
                 self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
                 expr.needs_optional_runtime_check = True
-        if expr.kwargs:
-            raise self.ctx.error(
-                "Keyword arguments are not supported for Callable-typed fields "
-                "(Callable types have no parameter names)", expr)
-        if len(expr.args) != len(callable_type.param_types):
-            raise self.ctx.error(
-                f"Callable field '{expr.method}' expects {len(callable_type.param_types)} argument(s), "
-                f"got {len(expr.args)}",
-                expr
-            )
-        for i, (arg, expected_type) in enumerate(zip(expr.args, callable_type.param_types)):
-            arg_type = self.expr.analyze_expr_with_hint(arg, expected_type)
-            if arg_type != expected_type:
-                try:
-                    self.compat.check_type_compatible(
-                        arg_type, expected_type,
-                        f"argument {i + 1}", loc=expr.loc, source_expr=arg)
-                except SemanticError:
-                    raise self.ctx.error(
-                        f"Argument {i + 1}: expected '{expected_type}', got '{arg_type}'",
-                        expr
-                    )
-        expr.resolved_function_info = FunctionInfo(
-            name=expr.method,
-            params=[ParamInfo(f"__a{i}", t) for i, t in enumerate(callable_type.param_types)],
-            return_type=callable_type.return_type,
-            is_readonly=True,
-        )
+        ret = self.calls.analyze_callable_value_call(
+            expr, callable_type, expr.method, f"Callable field '{expr.method}'")
         expr.is_callable_field = True
-        return callable_type.return_type
+        return ret
 
     def analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
@@ -821,8 +795,12 @@ class MethodAnalyzer:
                         # Post-access narrowing: queued for flush at statement
                         # boundary (see pending_non_null_ptr_vars docstring).
                         self.ctx.func.pending_non_null_ptr_vars.add(obj_key)
-                # Enforce readonly: cannot call non-readonly method on readonly receiver
-                if is_readonly_receiver:
+                # Enforce readonly: cannot call non-readonly method on readonly
+                # receiver. Callable fields are exempt: the synthetic fi is
+                # non-readonly to model the CALLBACK's effects on its args,
+                # but invoking the field neither mutates the receiver nor
+                # needs a mutable one (std::function::operator() is const).
+                if is_readonly_receiver and not expr.is_callable_field:
                     info = expr.resolved_function_info
                     if info is not None and not info.is_readonly:
                         raise self.ctx.error(
@@ -842,7 +820,8 @@ class MethodAnalyzer:
                 # rooted back to the receiver at the mutation site, where
                 # _root_name_of_expr is transparent to the accessor call.
                 if (info is not None and not info.is_readonly
-                        and not info.is_auto_readonly_mutable_clone):
+                        and not info.is_auto_readonly_mutable_clone
+                        and not expr.is_callable_field):
                     obj_root = _root_name_of_expr(expr.obj)
                     if obj_root is not None:
                         self.ctx.mark_loop_var_mutated(obj_root)

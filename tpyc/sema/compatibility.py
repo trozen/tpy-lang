@@ -841,32 +841,36 @@ class TypeCompatibility:
                 loc
             )
 
-        # Callable object -> Fn/Callable: record with __call__ matching the signature
+        # Callable object -> Fn/Callable: record with a __call__ overload
+        # satisfying the expected signature (first declared match wins).
+        # Plain signature-to-signature matching, not resolve_overload --
+        # that machinery scores call-site ARG types; here two signatures
+        # are compared, with the same variance rule as Callable -> Fn.
         if isinstance(actual, NominalType) and is_callable_type(expected):
             record = self.ctx.registry.get_record_for_type(actual)
             if record:
                 overloads = self.ctx.registry.get_method_overloads_with_parents(record, "__call__")
                 if overloads:
-                    assert len(overloads) == 1, f"multiple __call__ overloads not supported"
-                    fi = overloads[0]
-                    if (len(fi.params) == len(expected.param_types)
-                            and all(p.type == e for (p, e) in zip(fi.params, expected.param_types))
-                            and (fi.return_type == expected.return_type
-                                 or isinstance(expected.return_type, VoidType))):
-                        return None
+                    for fi in overloads:
+                        if (len(fi.params) == len(expected.param_types)
+                                and self._callable_signature_satisfies(
+                                    tuple(p.type for p in fi.params), fi.return_type,
+                                    expected, loc)):
+                            return None
+                    candidates = "; ".join(
+                        f"({', '.join(str(p.type) for p in fi.params)}) -> {fi.return_type}"
+                        for fi in overloads)
                     return CompatError(
-                        f"'__call__' signature ({', '.join(str(p.type) for p in fi.params)}) -> {fi.return_type} "
-                        f"does not match {expected} in {context}",
+                        f"no '__call__' overload of '{actual}' matches {expected} "
+                        f"in {context} (candidates: {candidates})",
                         loc,
                     )
 
         # Callable -> Fn: std::function satisfies template requires clauses in C++
         if isinstance(actual, CallableType) and is_fn_type(expected):
             if (len(actual.param_types) == len(expected.param_types)
-                    and all(self._check_compat(a, e, "param", loc) is None
-                            for a, e in zip(actual.param_types, expected.param_types))
-                    and (self._check_compat(actual.return_type, expected.return_type, "return", loc) is None
-                         or isinstance(expected.return_type, VoidType))):
+                    and self._callable_signature_satisfies(
+                        actual.param_types, actual.return_type, expected, loc)):
                 return None
 
         # Inheritance: Child -> Parent (implicit value upcast, C++ handles slicing/ref binding)
@@ -1930,6 +1934,26 @@ class TypeCompatibility:
                 continue
             return False
         return False
+
+    def _callable_signature_satisfies(
+        self, actual_params: tuple[TpyType, ...], actual_return: TpyType,
+        expected: CallableType, loc: 'SourceLocation | None',
+    ) -> bool:
+        """Whether a concrete callable signature satisfies an expected
+        Fn/Callable contract. Function params are CONTRAVARIANT: the callee
+        must accept everything the contract may pass, so each expected param
+        must be compatible with the callee's declared param (e.g. a callee
+        taking Int32 | None satisfies Fn[[Int32], ...], not the reverse).
+        Returns are covariant; a void contract accepts any return.
+        """
+        if len(actual_params) != len(expected.param_types):
+            return False
+        if not all(self._check_compat(e, a, "param", loc) is None
+                   for a, e in zip(actual_params, expected.param_types)):
+            return False
+        return (self._check_compat(actual_return, expected.return_type,
+                                   "return", loc) is None
+                or isinstance(expected.return_type, VoidType))
 
     def _is_covariant_target(self, child: TpyType, parent: TpyType) -> bool:
         """Check if child -> parent is valid for covariant conversion.

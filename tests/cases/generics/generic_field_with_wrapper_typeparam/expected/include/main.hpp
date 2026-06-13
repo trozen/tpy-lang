@@ -24,7 +24,7 @@ struct W {
     std::variant<int32_t, T> via_union;
     // # T buried inside a Callable's param list -- new walker catches it.
     // via_callable: Callable[[T], Int32]
-    std::function<int32_t(const T&)> via_callable;
+    std::function<int32_t(::tpy::param_val_or_ref_t<T>)> via_callable;
     // # Sanity: T directly -- always caught.
     // direct: T
     T direct;

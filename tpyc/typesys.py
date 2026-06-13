@@ -3793,17 +3793,24 @@ class CallableType(TpyType):
 
     @staticmethod
     def _callable_param_cpp(t: 'TpyType') -> str:
-        """C++ type for a parameter in a std::function signature.
+        """C++ type for a parameter in a std::function / Fn requires signature.
 
         Uses to_cpp_param_type() for types that override it (str -> string_view,
-        BigInt -> const BigInt&), but ensures non-value types get const ref
-        (regular function params can be mutable ref, but std::function params
-        must accept rvalues and const-qualified arguments).
+        BigInt -> const BigInt&). Non-value params spell MUTABLE ref unless
+        wrapped readonly[...]: a callable contract says nothing about mutation,
+        so the callback must be allowed to mutate (CPython semantics), and the
+        permissive C++ direction is mutable -- a const-ref-taking callee
+        converts into a mutable-ref std::function slot, not vice versa.
+        readonly[T] params keep const ref (the explicit non-mutating contract).
         """
+        if isinstance(t, ReadonlyType):
+            cpp = t.wrapped.to_cpp_param_type()
+            if not t.wrapped.is_value_type() and not cpp.startswith("const "):
+                return f"const {t.wrapped.to_cpp()}&"
+            return cpp
         cpp = t.to_cpp_param_type()
-        # Ensure non-value types are const ref, not mutable ref
-        if not t.is_value_type() and not cpp.startswith("const "):
-            return f"const {t.to_cpp()}&"
+        if not t.is_value_type() and cpp.startswith("const "):
+            return f"{t.to_cpp()}&"
         return cpp
 
     def _std_function_sig(self) -> str:

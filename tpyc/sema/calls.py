@@ -2823,7 +2823,10 @@ class CallAnalyzer:
                     self.ctx.mark_all_view_borrowers_mutated(storage)
                 continue
             if effective_mp is None and effective_direct is None:
-                # Callee not yet analyzed (forward call) -- defer to Phase 2
+                # No mutation facts available: either a forward call (facts
+                # arrive in Phase 2) or a synthetic callable-value callee that
+                # has no body and never gains facts. Defer either way -- Phase
+                # 2 keeps the warning when facts stay absent (conservative).
                 if needs_check:
                     loc = getattr(expr, 'loc', None)
                     self.pending_borrow_checks.append((fi, i, storage, loc))
@@ -4560,13 +4563,21 @@ class CallAnalyzer:
         self, arg: TpyExpr, pname: str, ptype: TpyType, func_is_readonly: bool,
     ) -> TpyExpr:
         """Per-arg type check and coercion shared by the fixed and kwonly
-        branches of `_analyze_and_pack_varargs`. Returns the (possibly
-        rewrapped) expression to store back into the args list."""
+        branches of `_analyze_and_pack_varargs` and by callable-value calls.
+        Returns the (possibly rewrapped) expression to store back into the
+        args list."""
         arg_type = self.expr.analyze_expr_with_hint(arg, ptype)
         arg_type = self._restore_readonly_arg(arg, arg_type, func_is_readonly)
         if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
             arg_type = arg_type.wrapped
         self.check_own_param(arg, arg_type, pname, ptype)
+        # Pending literals/views resolve against the param context (a bare
+        # `[..]` literal passed to a list[T] slot must become list, not
+        # Array) -- same marks the non-variadic path applies.
+        if isinstance(arg_type, PENDING_CONTAINER_TYPES):
+            self.deduction.mark_container_param_context(arg, arg_type, ptype)
+        if isinstance(arg_type, PendingViewType):
+            self.deduction.mark_view_param_context(arg, ptype, arg_type.family)
         if (is_char_type(ptype) and is_any_str_type(arg_type)
                 and isinstance(arg, TpyStrLiteral) and len(arg.value) == 1):
             return arg
@@ -5397,45 +5408,72 @@ class CallAnalyzer:
 
     def _analyze_fn_type_call(self, expr: TpyCall, fn_type: CallableType) -> TpyType:
         """Analyze a call to a variable of Fn type."""
-        return self._analyze_typed_callable_call(expr, fn_type.param_types, fn_type.return_type, "Fn")
+        label = expr.func_name if isinstance(expr.func, TpyName) else "<expr>"
+        return self.analyze_callable_value_call(expr, fn_type, label, "Fn type")
 
     def _analyze_callable_type_call(self, expr: TpyCall, callable_type: CallableType) -> TpyType:
         """Analyze a call to a variable of Callable type."""
-        return self._analyze_typed_callable_call(expr, callable_type.param_types, callable_type.return_type, "Callable")
+        label = expr.func_name if isinstance(expr.func, TpyName) else "<expr>"
+        return self.analyze_callable_value_call(expr, callable_type, label, "Callable type")
 
-    def _analyze_typed_callable_call(
-        self, expr: TpyCall, param_types: tuple[TpyType, ...], return_type: TpyType, kind_name: str,
+    def analyze_callable_value_call(
+        self, expr: TpyCall | TpyMethodCall, callable_type: CallableType,
+        label: str, desc: str,
     ) -> TpyType:
-        """Shared logic for calling Fn-typed and Callable-typed variables."""
+        """Shared pipeline for calls through callable VALUES -- Fn/Callable
+        typed params, locals, and fields.
+
+        The callee body is unknown to the compiler, so the synthetic
+        FunctionInfo is an opaque, potentially-mutating callee: args run the
+        same typecheck+coerce pipeline as direct calls (the coercion must be
+        applied, not just checked), and reference args bound to non-readonly
+        callable params are conservatively marked mutated. A callable value
+        has no body the call-graph can reach, so it never gains Phase-2
+        mutation facts; the eager marks below stand in for the mutation call
+        edges a direct call would record.
+        """
+        param_types = callable_type.param_types
+        return_type = callable_type.return_type
         if expr.kwargs:
             raise self.ctx.error(
-                f"Keyword arguments are not supported for {kind_name}-typed callables "
-                f"({kind_name} types have no parameter names)", expr)
+                f"Keyword arguments are not supported for {desc} "
+                f"(Callable/Fn types have no parameter names)", expr)
         if len(expr.args) != len(param_types):
             raise self.ctx.error(
-                f"{kind_name} type expects {len(param_types)} argument(s), "
+                f"{desc} expects {len(param_types)} argument(s), "
                 f"got {len(expr.args)}",
                 expr
             )
-        for i, (arg, expected_type) in enumerate(zip(expr.args, param_types)):
-            arg_type = self.expr.analyze_expr_with_hint(arg, expected_type)
-            if arg_type != expected_type:
-                try:
-                    self.compat.check_type_compatible(
-                        arg_type, expected_type,
-                        f"argument {i + 1}", loc=expr.loc, source_expr=arg)
-                except SemanticError:
-                    raise self.ctx.error(
-                        f"Argument {i + 1}: expected '{expected_type}', got '{arg_type}'",
-                        expr
-                    )
-        func_label = expr.func_name if isinstance(expr.func, TpyName) else "<expr>"
+        for i, ptype in enumerate(param_types):
+            expr.args[i] = self._typecheck_and_coerce_arg(
+                expr.args[i], f"arg{i + 1}", ptype, func_is_readonly=False)
         expr.resolved_function_info = FunctionInfo(
-            name=func_label,
-            params=[ParamInfo(f"__a{i}", t) for i, t in enumerate(param_types)],
+            name=label,
+            params=[ParamInfo(f"arg{i + 1}", t) for i, t in enumerate(param_types)],
             return_type=return_type,
-            is_readonly=True,
+            is_readonly=False,
         )
+        self._check_borrow_arg_conflicts(expr)
+        self._check_loop_var_arg_mutation(expr)
+        for i, ptype in enumerate(param_types):
+            if i >= len(expr.args):
+                break
+            if isinstance(ptype, ReadonlyType):
+                continue
+            if not param_has_mutable_borrow_surface(ptype):
+                continue
+            # Bare generic slots skip only the EAGER mutation mark (mirrors
+            # the tuple-slot rule in param_has_mutable_borrow_surface): a
+            # value-typed instantiation cannot mutate, and marking would cost
+            # const-ness on every generic combinator (`g(f, xs)` forwarding
+            # elements into f). The borrow-conflict check above is NOT skipped
+            # -- a live element borrow passed to a generic slot still warns.
+            if isinstance(unwrap_readonly(unwrap_ref_type(ptype)), TypeParamRef):
+                continue
+            arg_root = _root_name_of_expr(expr.args[i])
+            if arg_root is not None:
+                self.ctx.mark_param_mutated(arg_root, through_field=True)
+                self.ctx.mark_param_structurally_mutated(arg_root)
         return return_type
 
     # -- Call-site macro expansion --

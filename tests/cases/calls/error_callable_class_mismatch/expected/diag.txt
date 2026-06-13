@@ -1,1 +1,1 @@
-main.py:13: error: '__call__' signature (Int32, Int32) -> Int32 does not match Fn[[Int32], Int32] in argument 'f'
+main.py:13: error: no '__call__' overload of 'TakesTwo' matches Fn[[Int32], Int32] in argument 'f' (candidates: (Int32, Int32) -> Int32)

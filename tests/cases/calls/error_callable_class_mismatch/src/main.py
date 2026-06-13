@@ -10,6 +10,6 @@ def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:  # tpyc: ok
 
 def main():
     t = TakesTwo()
-    apply(t, 5)  # tpyc: error(/__call__.*does not match/)
+    apply(t, 5)  # tpyc: error(/no '__call__' overload .*matches/)
 
 main()

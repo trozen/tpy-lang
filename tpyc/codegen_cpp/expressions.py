@@ -6294,8 +6294,16 @@ class ExpressionGenerator:
         params = []
         for pname, ptype in zip(expr.param_names, expr.inferred_param_types):
             cpp_name = escape_cpp_name(pname)
-            if expr.captures_by_value or expr.readonly_params:
-                # Callable context or key function: const ref for non-value types
+            if expr.readonly_params:
+                # Key-function context (min/max/sorted): the runtime calls
+                # the key with const refs, so the params must spell const
+                # regardless of the callable-default mutability.
+                ro = ptype if isinstance(ptype, ReadonlyType) else ReadonlyType(ptype)
+                cpp_type_str = CallableType._callable_param_cpp(ro)
+                cpp_type = f"{cpp_type_str} {cpp_name}"
+            elif expr.captures_by_value:
+                # Callable context: match the std::function param spelling
+                # (mutable for non-readonly reference params).
                 cpp_type_str = CallableType._callable_param_cpp(ptype)
                 cpp_type = f"{cpp_type_str} {cpp_name}"
             else:

@@ -15,7 +15,7 @@ void main() {
     // items.append(Box(5))
     items.push_back(Box<int32_t>(5));
     // print(proc(lambda b: b.val, *items))
-    std::cout << proc<int32_t>([](const Box<int32_t>& b) -> int32_t { return b.val; }, ::tpy::varargs<const Box<int32_t>>(::tpy::as_span(items))) << "\n";
+    std::cout << proc<int32_t>([](Box<int32_t>& b) -> int32_t { return b.val; }, ::tpy::varargs<Box<int32_t>>(::tpy::as_mut_span(items))) << "\n";
 }
 
 void __tpy_init() {

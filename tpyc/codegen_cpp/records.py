@@ -1604,6 +1604,12 @@ class RecordGenerator:
         for method in record.methods:
             if method.name != "__call__":
                 continue
+            # An @overload group's impl is not emitted as-is (the per-stub
+            # specializations carry its body), so it must not get an
+            # operator() either -- the stubs' delegations cover every
+            # emitted __call__ signature, with matching const-ness.
+            if self.ctx.analyzer.overload_groups.get(id(method)):
+                continue
             ret_cpp = method.return_type.to_cpp()
             const_suffix = " const" if method.is_readonly else ""
             params_cpp = ", ".join(
