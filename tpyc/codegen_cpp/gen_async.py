@@ -48,6 +48,7 @@ from .gen_generators import GeneratorCodegen, GeneratorForInfo
 from ..type_def_registry import is_str_type, is_str_category, is_big_int_type
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
 from .protocols import protocol_param_template_name, fn_param_template_name
+from .functions import default_to_cpp
 from . import resumable_cfg as rcfg
 
 
@@ -655,8 +656,20 @@ class AsyncCoroCodegen:
             return bare
         return f"{bare}<{', '.join(all_args)}>"
 
-    def _emit_params_decl(self, func: TpyFunction) -> str:
-        return ", ".join(p.factory_param_decl() for p in self._classify_params(func))
+    def _emit_params_decl(self, func: TpyFunction, *,
+                          emit_defaults: bool = False) -> str:
+        # Defaults belong on the factory's forward declaration only -- the
+        # definition would redefine them (C++ error). Aligned to func.params
+        # (a free-function factory has no __self cparam).
+        defaults = func.defaults or []
+        parts: list[str] = []
+        for i, cp in enumerate(self._classify_params(func)):
+            decl = cp.factory_param_decl()
+            if (emit_defaults and i < len(defaults)
+                    and defaults[i] is not None):
+                decl += f" = {default_to_cpp(self.ctx, defaults[i], func.params[i][1])}"
+            parts.append(decl)
+        return ", ".join(parts)
 
     def _emit_method_params_decl(self, method: TpyFunction, record_name: str) -> str:
         """User-facing factory signature params for a generator/async *method*
@@ -703,7 +716,9 @@ class AsyncCoroCodegen:
     def gen_factory_forward_decl(self, out: "TextIO", func: TpyFunction) -> bool:
         return_type_name = self._struct_name_templated(func)
         self._emit_template_header(out, func)
-        params = self._emit_params_decl(func)
+        # Default arg values live on this forward decl (the canonical first
+        # declaration); `gen_factory`'s definition omits them.
+        params = self._emit_params_decl(func, emit_defaults=True)
         out.write(f"{return_type_name} {escape_cpp_name(func.name)}({params});\n")
         return True
 

@@ -138,11 +138,14 @@ class GeneratorCodegen:
         """Generate parameter list for a generator function, handling protocol params."""
         proto_params = self.functions.protocols.get_all_protocol_params(func.params)
         has_dynamic = self.functions._has_dynamic_protocol_params(func.params)
+        dfl = func.defaults if func.defaults else None
         if proto_params or has_dynamic:
             return self.functions.gen_params_with_protocols(
-                func.params, func.type_params, emit_defaults=emit_defaults)
+                func.params, func.type_params, emit_defaults=emit_defaults,
+                defaults=dfl)
         return self.functions.gen_params(func.params, func.type_params,
-                                         emit_defaults=emit_defaults, func=func)
+                                         emit_defaults=emit_defaults, func=func,
+                                         defaults=dfl)
 
     @staticmethod
     def gen_struct_name(func: TpyFunction, record_name: str | None = None) -> str:
