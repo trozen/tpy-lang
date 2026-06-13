@@ -49,7 +49,7 @@ from ..prescan import (
 )
 from ..liveness import analyze_last_uses, stmts_terminate
 from ..parse.nodes import VarLinkage
-from .context import addr_taken_roots, expr_yields_non_null_ptr
+from .context import addr_taken_roots, expr_yields_non_null_ptr, record_stmt_borrow_binding
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
@@ -2403,6 +2403,7 @@ class StatementAnalyzer:
                 )
                 item.enter_type = resolved
                 self.ctx.func.current_scope.define(item.target, resolved)
+                self.ctx.func.nonstmt_bound_names.add(item.target)
                 self.init.mark_assigned(item.target)
 
         # Analyze the body -- track new variable declarations so codegen
@@ -3758,6 +3759,7 @@ class StatementAnalyzer:
                 else:
                     self.ctx.func.rvalue_vars.discard(stmt.name)
                     self.ctx.func.owned_locals.discard(stmt.name)
+                    record_stmt_borrow_binding(self.ctx, stmt.name, var_type, stmt.init)
             else:
                 self.ctx.func.rvalue_vars.add(stmt.name)
                 # Owned only when the init genuinely creates a value (constructor,
@@ -3771,6 +3773,7 @@ class StatementAnalyzer:
                     self.ctx.func.ever_owned_locals.add(stmt.name)
                 else:
                     self.ctx.func.owned_locals.discard(stmt.name)
+                    record_stmt_borrow_binding(self.ctx, stmt.name, var_type, stmt.init)
                     # A reassignment to a borrow source makes the var an alias;
                     # bar it from the function-wide movable set (ever_owned
                     # would otherwise keep a once-owned local movable, and an
@@ -3858,6 +3861,7 @@ class StatementAnalyzer:
                 elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
                 self.ctx.global_scope.define(name, elem_type)
                 self.ctx.func.current_scope.define(name, elem_type)
+                self.ctx.func.nonstmt_bound_names.add(name)
                 self.init.mark_assigned(name)
                 self.narrowing.update_after_write(name, elem_type, elem_type, elem_expr)
                 if self.ctx.func.current_ns:
@@ -3901,6 +3905,7 @@ class StatementAnalyzer:
                 elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
                 stmt.target_types[i] = elem_type
                 self.ctx.func.current_scope.define(name, elem_type)
+                self.ctx.func.nonstmt_bound_names.add(name)
                 # Bind into the codegen namespace too (mirrors _analyze_var_decl
                 # and the top-level unpack branch); the resumable-frame hoist
                 # reads `current_ns.all_bindings()`, so a target left only in
@@ -4357,6 +4362,9 @@ class StatementAnalyzer:
             if self.compat.is_lvalue(stmt.value):
                 self.ctx.func.rvalue_vars.discard(stmt.target.name)
                 self.ctx.func.owned_locals.discard(stmt.target.name)
+                record_stmt_borrow_binding(
+                    self.ctx, stmt.target.name,
+                    self.ctx.get_expr_type(stmt.value), stmt.value)
             else:
                 self.ctx.func.rvalue_vars.add(stmt.target.name)
                 # See the var-decl branch: owned only for a genuine value-creating
@@ -4366,6 +4374,9 @@ class StatementAnalyzer:
                     self.ctx.func.ever_owned_locals.add(stmt.target.name)
                 else:
                     self.ctx.func.owned_locals.discard(stmt.target.name)
+                    record_stmt_borrow_binding(
+                        self.ctx, stmt.target.name,
+                        self.ctx.get_expr_type(stmt.value), stmt.value)
                     # Borrow-source reassignment bars the var from the movable
                     # set. Unlike the var-decl branch this needs no
                     # existing-var guard: a TpyAssign with a bare-name target is

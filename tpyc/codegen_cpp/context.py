@@ -687,6 +687,11 @@ class CodeGenContext:
     # Walrus locals holding the owning STORAGE tuple form: their
     # storage_form_tuple_locals membership must survive the same restores.
     walrus_storage_tuple_locals: set[str] = field(default_factory=set)
+    # Borrow-only walrus locals bound as T* pointers (decl is function-scope
+    # via temps): pointer_locals/declared membership (+ const) must survive
+    # the branch-scope restores like the rewrites above.
+    walrus_pointer_locals: set[str] = field(default_factory=set)
+    walrus_const_pointer_locals: set[str] = field(default_factory=set)
     # Owning-slot name for a function-scope tuple slot (a branch-hoisted owning
     # tuple local, or a reassigned-borrow walrus) whose `rebind_slots` mapping
     # must survive branch-scope restores. The slot decl is function-scope
@@ -815,6 +820,10 @@ class CodeGenContext:
     # non-value local absent here is borrow-only and must not get owned
     # storage -- its decl form is a pointer that aliases the source.
     sema_ever_owned_locals: set[str] = field(default_factory=set)
+    # Statement-level borrow bindings (sema fact): name -> any-const.
+    # Together with sema_ever_owned_locals this decides the branch
+    # pre-decl form; names bound by with-as/for/match are excluded by sema.
+    sema_stmt_borrow_decls: dict[str, bool] = field(default_factory=dict)
 
     # --- Reference-bound locals (T& aliases -- del must not move-sink) ---
     # ref_bound_locals grows during codegen as T& decls are emitted -> in LocalScopeSnap.
@@ -1065,6 +1074,21 @@ class CodeGenContext:
             seen.add(id(info))
             yield info
 
+    def is_plain_nonvalue(self, t: 'TpyType') -> bool:
+        """True for non-value types that need indirection (list, dict,
+        record, recursive-union wrapper). Unwraps Own[T] and excludes
+        pointer-repr Optional and ptr-variant Union, which have their own
+        codegen paths. Shared by the branch pre-decl form choice and the
+        walrus borrow arm so their eligibility guards cannot drift."""
+        check = t.wrapped if isinstance(t, OwnType) else t
+        if check.is_value_type():
+            return False
+        if isinstance(check, OptionalType) and check.uses_pointer_repr():
+            return False
+        if self.is_ptr_variant_union(check):
+            return False
+        return True
+
     def is_ptr_variant_union(self, typ: 'TpyType') -> bool:
         """Check if a union type uses pointer-variant representation.
 
@@ -1168,6 +1192,8 @@ class CodeGenContext:
         self.persistent_rebind_slots = {}
         self.walrus_deref_rewrites = {}
         self.walrus_storage_tuple_locals = set()
+        self.walrus_pointer_locals = set()
+        self.walrus_const_pointer_locals = set()
         self.overload_terminated = False
         # Note: overload_param_types and literal_overload_facts are NOT reset
         # here -- they're managed by the caller (set before gen_body, cleared
@@ -1233,6 +1259,10 @@ class CodeGenContext:
         # classification of walrus storage-tuple locals alive with them.
         self.narrowed_vars.update(self.walrus_deref_rewrites)
         self.storage_form_tuple_locals.update(self.walrus_storage_tuple_locals)
+        self.pointer_locals.update(self.walrus_pointer_locals)
+        self.declared_vars.update(self.walrus_pointer_locals)
+        self.local_scope_names.update(self.walrus_pointer_locals)
+        self.const_indirect_locals.update(self.walrus_const_pointer_locals)
         self.rebind_slots.update(self.persistent_rebind_slots)
         self.declared_persistent_aliases = snap.declared_persistent_aliases.copy()
 

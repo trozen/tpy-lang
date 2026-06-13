@@ -60,7 +60,8 @@ from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
-from .context import is_body_like_scope, register_binding_borrow, ephemeral_borrow_root
+from .context import is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding
+from ..value_category import is_rvalue_source
 from .narrowing import NarrowingTracker, deref_view_narrowed
 from .numeric_lattice import widen_numeric_types
 from .list_literals import IterableHelper
@@ -2496,6 +2497,25 @@ class ExpressionAnalyzer:
             target_scope.define(name, resolved)
             if self.ctx.func.current_ns:
                 self.ctx.func.current_ns.bind_variable(name, resolved)
+            # Mirror the VarDecl ownership classification for non-value
+            # bindings: a fresh rvalue is owned (feeds the branch-decl owned
+            # form and last-use moves); a borrow records the statement-level
+            # borrow fact and registers the alias for mutation tracking,
+            # exactly like `v = h.view()` would.
+            if not unwrap_readonly(resolved).is_value_type():
+                if is_rvalue_source(self.ctx, expr.value):
+                    self.ctx.func.owned_locals.add(name)
+                    self.ctx.func.ever_owned_locals.add(name)
+                else:
+                    record_stmt_borrow_binding(self.ctx, name, resolved, expr.value)
+                    register_binding_borrow(self.ctx, name, expr.value)
+                    val_inner = (expr.value.expr
+                                 if isinstance(expr.value, TpyCoerce)
+                                 else expr.value)
+                    # Local import: statements <-> expressions circular dodge
+                    # (same as _root_name_of_expr; see TODO).
+                    from .statements import _register_call_result_borrow
+                    _register_call_result_borrow(self.ctx, name, val_inner)
             # For a collapsed per-element-Own borrow tuple, the walrus result
             # must be the collapsed type so `(t := ...)[i]` element access
             # agrees with the pointer-repr decl; other bindings keep the raw

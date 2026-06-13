@@ -292,6 +292,11 @@ class SemanticAnalyzer:
         # is borrow-only: its storage must alias the source, never own a copy.
         self.function_ever_owned_locals: dict[int, set[str]] = {}
 
+        # Per-function statement-level borrow bindings (name -> any-const),
+        # excluding names also bound by non-statement kinds (with-as, for,
+        # match captures). Drives the branch pre-decl pointer (alias) form.
+        self.function_stmt_borrow_decls: dict[int, dict[str, bool]] = {}
+
         # Per-function `global x` declarations (for codegen)
         self.function_global_decls: dict[int, set[str]] = {}
 
@@ -1489,6 +1494,13 @@ class SemanticAnalyzer:
             self.function_movable_locals[id(func)] = movable
         if self.ctx.func.ever_owned_locals:
             self.function_ever_owned_locals[id(func)] = self.ctx.func.ever_owned_locals.copy()
+        borrow_decls = {
+            name: const
+            for name, const in self.ctx.func.stmt_borrow_decls.items()
+            if name not in self.ctx.func.nonstmt_bound_names
+        }
+        if borrow_decls:
+            self.function_stmt_borrow_decls[id(func)] = borrow_decls
         if self.ctx.func.global_declarations:
             self.function_global_decls[id(func)] = self.ctx.func.global_declarations.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)

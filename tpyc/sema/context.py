@@ -36,6 +36,7 @@ from ..parse import (
     TpyNestedDef, TpyNamedExpr,
 )
 from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
+from ..value_category import call_returns_cpp_ref
 
 # Tuple of all pending container types -- use in isinstance checks so adding
 # a new container type requires updating only this one constant.
@@ -477,6 +478,28 @@ def register_binding_borrow(ctx: 'SemanticContext', name: str,
         ctx.mark_param_mutated(root)
 
 
+def record_stmt_borrow_binding(ctx: 'SemanticContext', name: str,
+                               var_type: 'TpyType | None',
+                               init_expr: TpyExpr) -> None:
+    """Record a statement-level (var-decl / assign / walrus) borrow binding
+    of a non-value local, with its const verdict. Codegen's branch pre-decl
+    reads the accumulated fact to pick the pointer (alias) form for
+    borrow-only names -- materialized here so the form discriminator is
+    defined by sema, not re-derived by a codegen body walk."""
+    if var_type is None or unwrap_readonly(var_type).is_value_type():
+        return
+    inner = init_expr
+    while isinstance(inner, TpyCoerce):
+        inner = inner.expr
+    const = isinstance(ctx.get_expr_type(inner), ReadonlyType)
+    if not const and isinstance(inner, TpyMethodCall):
+        fi = inner.resolved_function_info
+        const = bool(fi is not None and fi.is_readonly
+                     and call_returns_cpp_ref(ctx, fi, inner.obj))
+    prev = ctx.func.stmt_borrow_decls.get(name, False)
+    ctx.func.stmt_borrow_decls[name] = prev or const
+
+
 class _ModuleInitSentinel:
     """Sentinel for module-level init context (not a real function, but not None either).
 
@@ -589,6 +612,16 @@ class FunctionTrackingState:
     # save/restore (not in FlowFacts). Used to compute the exported
     # movable_locals set at function end.
     ever_owned_locals: set[str] = field(default_factory=set)
+    # Statement-level borrow bindings (var-decl / assign / walrus):
+    # name -> any binding had a readonly/const source. A name bound ONLY
+    # this way (never a fresh rvalue, no non-statement binding) takes the
+    # pointer (alias) form at branch pre-decls. Accumulator like
+    # ever_owned_locals -- survives FlowFacts restores.
+    stmt_borrow_decls: dict[str, bool] = field(default_factory=dict)
+    # Names bound by non-statement binding kinds (with-as, for-loop var,
+    # match capture): their binding machinery owns the storage form, so
+    # they are never pointer-form-eligible at branch pre-decls.
+    nonstmt_bound_names: set[str] = field(default_factory=set)
     # Accumulator (survives FlowFacts like ever_owned_locals): locals
     # reassigned from a borrow-producing source, so no longer safely movable
     # even if they were owned earlier. Subtracted from the movable set.

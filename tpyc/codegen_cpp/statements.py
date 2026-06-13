@@ -163,6 +163,7 @@ class StatementGenerator:
         self.ctx.move_through_vars = self.ctx.analyzer.function_move_through_vars.get(id(func), set())
         self.ctx.sema_movable_locals = self.ctx.analyzer.function_movable_locals.get(id(func), set())
         self.ctx.sema_ever_owned_locals = self.ctx.analyzer.function_ever_owned_locals.get(id(func), set())
+        self.ctx.sema_stmt_borrow_decls = self.ctx.analyzer.function_stmt_borrow_decls.get(id(func), {})
         # Optional non-value params are T* / const T* in C++ -- need pointer-local treatment (->)
         for pname, ptype in params:
             actual = unwrap_readonly(ptype)
@@ -855,23 +856,11 @@ class StatementGenerator:
         return order
 
     def _is_plain_nonvalue(self, t: TpyType) -> bool:
-        """True for non-value types that need indirection (list, dict, record, etc.).
-
-        Unwraps Own[T] and excludes pointer-repr Optional and Union which
-        have their own codegen paths.
-        """
-        check = t.wrapped if isinstance(t, OwnType) else t
-        if check.is_value_type():
-            return False
-        if isinstance(check, OptionalType) and check.uses_pointer_repr():
-            return False
-        if self.ctx.is_ptr_variant_union(check):
-            return False
         # Recursive-union wrappers are reference types like records: a local
         # bound from a reference source (`g = h.get()`) binds `Tree<T>&`, a
         # fresh value (`t = [1, 2]`) stays by value -- the is_rvalue_source
         # rule in _needs_indirection draws that line (mirrors list/dict/record).
-        return True
+        return self.ctx.is_plain_nonvalue(t)
 
     def _needs_indirection(self, target_type: TpyType | None, name: str,
                             init: TpyExpr | None) -> bool:
@@ -4891,34 +4880,6 @@ class StatementGenerator:
             for ty in type_facts.values()
         )
 
-    def _branch_stmt_binding_inits(self, stmt: TpyStmt, name: str) -> list[TpyExpr]:
-        """Collect the init expressions of every statement-level binding
-        (TpyVarDecl / name-target TpyAssign) of `name` under a branch stmt.
-        With-as and for-loop bindings are deliberately not statement-level:
-        they have their own binding machinery, and their sources (the ctx
-        object, the per-iteration element) do not permit a pointer decl."""
-        inits: list[TpyExpr] = []
-
-        def scan(stmts: list[TpyStmt]) -> None:
-            for s in stmts:
-                init = None
-                if isinstance(s, TpyVarDecl) and s.name == name:
-                    init = s.init
-                elif (isinstance(s, TpyAssign) and isinstance(s.target, TpyName)
-                      and s.target.name == name):
-                    init = s.value
-                if init is not None:
-                    inner = init
-                    while isinstance(inner, TpyCoerce):
-                        inner = inner.expr
-                    inits.append(inner)
-                for b in s.sub_bodies():
-                    scan(b)
-
-        for b in stmt.sub_bodies():
-            scan(b)
-        return inits
-
     def _emit_branch_decls(self, out: TextIO, stmt: TpyStmt, indent: str) -> None:
         """Pre-declare variables first declared inside if/elif/match branches."""
         branch_decls = self.ctx.analyzer.if_branch_decls.get(id(stmt), {})
@@ -4977,16 +4938,17 @@ class StatementGenerator:
                 # A plain non-value local bound only by statement-level
                 # borrows (never a fresh rvalue) must alias, not own: the
                 # optional-storage form would copy and sever the alias.
-                # With-as / for-loop bindings are not statement-level and
-                # keep the owned form (their sources die with the block /
-                # rebind per iteration).
-                borrow_inits: list[TpyExpr] = []
-                if (self._is_plain_nonvalue(var_type)
-                        and name not in self.ctx.sema_ever_owned_locals):
-                    borrow_inits = self._branch_stmt_binding_inits(stmt, name)
+                # Sema materializes the fact (sema_stmt_borrow_decls excludes
+                # with-as / unpack-loop / match-capture names -- their binding
+                # machinery owns the storage form; single-target for-loop
+                # vars are not excluded, but a loop-var-only name has no
+                # statement-level binding and so never enters the fact).
+                borrow_only = (self._is_plain_nonvalue(var_type)
+                               and name not in self.ctx.sema_ever_owned_locals
+                               and name in self.ctx.sema_stmt_borrow_decls)
                 if (self._is_plain_nonvalue(var_type)
                         and name not in self.ctx.reassigned_vars
-                        and not borrow_inits):
+                        and not borrow_only):
                     # Non-value, not reassigned, rvalue-bound: std::optional<T>
                     # avoids pointer indirection and unnecessary default
                     # construction.
@@ -4996,16 +4958,14 @@ class StatementGenerator:
                         self.ctx.const_indirect_locals.add(name)
                     self.ctx.movable_locals.add(name)
                     out.write(f"{indent}std::optional<{cpp_type}> {name};\n")
-                elif borrow_inits or self._needs_indirection(var_type, name, None):
+                elif borrow_only or self._needs_indirection(var_type, name, None):
                     # Reassigned or borrow-bound non-value: T* pointer-local
                     # (with slot storage for rvalue rebinds). Mark as
                     # branch-hoisted so _gen_pointer_local_rebind puts
                     # rvalue slots into pending_hoist_decls (not block-scoped).
                     self.ctx.pointer_locals.add(name)
                     self.ctx.branch_hoisted_vars.add(name)
-                    is_const = is_const or any(
-                        self._is_const_indirect(var_type, init, None)
-                        for init in borrow_inits)
+                    is_const = is_const or self.ctx.sema_stmt_borrow_decls.get(name, False)
                     if is_const:
                         self.ctx.const_indirect_locals.add(name)
                     if name in self.ctx.sema_movable_locals:

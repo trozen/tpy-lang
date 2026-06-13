@@ -273,6 +273,7 @@ class MatchAnalyzer:
                         f"'{existing}'; add a 'case None:' arm before it or "
                         f"use a fresh name", case.pattern)
                 self.ctx.func.current_scope.define(name, ty)
+                self.ctx.func.nonstmt_bound_names.add(name)
                 self.stmts.init.mark_assigned(name)
                 if name not in self.ctx.func.var_scope_depth:
                     self.ctx.func.var_scope_depth[name] = self.ctx.func.current_scope.depth
@@ -462,6 +463,7 @@ class MatchAnalyzer:
             for name, ty in arm_b.items():
                 if name not in bindings_before:
                     self.ctx.func.current_scope.define(name, ty)
+                    self.ctx.func.nonstmt_bound_names.add(name)
 
         self.stmts._sync_promoted_var_types(
             set().union(*(set(b) for b in arm_bindings))

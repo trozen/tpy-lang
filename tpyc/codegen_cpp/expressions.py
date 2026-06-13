@@ -6041,6 +6041,38 @@ class ExpressionGenerator:
                               f"<{self.types.tuple_borrow_cpp(tuple_bare, const=elem_const)}>"
                               f"({value_code})")
 
+        # Borrow-only walrus target (sema stmt-borrow fact, never rvalue-
+        # bound): bind as a pointer to the live source -- owned storage
+        # would copy and sever the alias. Declared here for a condition
+        # walrus; a branch-declared target already has its pointer decl.
+        # A pointer-emitting source (pointer-local name) assigns directly.
+        if (expr.target in self.ctx.sema_stmt_borrow_decls
+                and expr.target not in self.ctx.sema_ever_owned_locals
+                and self.ctx.is_plain_nonvalue(unwrap_readonly(value_type))):
+            if (expr.target not in self.ctx.declared_vars
+                    and expr.target not in self.ctx.walrus_pre_declared):
+                self.ctx.walrus_pre_declared.add(expr.target)
+                is_const = self.ctx.sema_stmt_borrow_decls[expr.target]
+                base_cpp = self.types.type_to_cpp(unwrap_readonly(value_type))
+                const_pfx = "const " if is_const else ""
+                self.ctx.temps.declare_named(
+                    cpp_name, f"{const_pfx}{base_cpp}*", init="nullptr")
+                # The decl is function-scope (temps); memberships must
+                # survive branch-scope restores via the walrus registries.
+                self.ctx.walrus_pointer_locals.add(expr.target)
+                if is_const:
+                    self.ctx.const_indirect_locals.add(expr.target)
+                    self.ctx.walrus_const_pointer_locals.add(expr.target)
+            self.ctx.pointer_locals.add(expr.target)
+            self.ctx.declared_vars.add(expr.target)
+            self.ctx.local_scope_names.add(expr.target)
+            self.ctx.var_types[expr.target] = value_type
+            val_src = self.ctx.unwrap_copy(expr.value)
+            if (isinstance(val_src, TpyName)
+                    and val_src.name in self.ctx.pointer_locals):
+                return f"({cpp_name} = {value_code}, *{cpp_name})"
+            return f"({cpp_name} = &({value_code}), *{cpp_name})"
+
         # Emit pre-declaration only once per function (walrus_pre_declared
         # is not snapshot/restored across branches, unlike declared_vars).
         # A name already declared by another path (var-decl, or an earlier
