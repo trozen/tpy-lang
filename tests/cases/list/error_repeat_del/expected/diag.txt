@@ -1,0 +1,1 @@
+main.py:17: error: Cannot repeat an element of non-copyable type Res: repetition copies the element into every slot. Construct each slot instead, e.g. [... for _ in range(n)]

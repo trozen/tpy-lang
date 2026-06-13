@@ -4538,12 +4538,6 @@ class ExpressionGenerator:
         # [elements...] * N -> repeated sequence
         # Note: Empty list repetition [] * N is collapsed to [] in the parser
 
-        count = self.gen_expr_deref(expr.count)
-        count_type = self.ctx.analyzer.get_expr_type(expr.count)
-        # BigInt count needs conversion (IntLiteralType is already plain int)
-        if is_big_int_type(count_type):
-            count = f"{count}.to_fixed_check<int32_t>()"
-
         # Determine result type and element type.
         # For protocol targets and Span targets, use the resolved expr type:
         # protocols don't map to concrete C++ container types, and Span can't
@@ -4576,6 +4570,36 @@ class ExpressionGenerator:
             repeat_elems.append(self._wrap_for_owned_slot(self.gen_expr_deref(e, elem_type or e_resolved), e_resolved, elem_type))
         elements = ", ".join(repeat_elems)
         cpp_elem_type = elem_type.to_cpp() if elem_type else "auto"
+
+        if is_array(result_type):
+            # Aggregate construction (mirrors the comprehension build):
+            # evaluate the elements once, then copy each slot in place --
+            # from_range's array branch would default-construct the buffer
+            # first, running element-ctor side effects N spurious times.
+            n = self.ctx.iter_counter
+            self.ctx.iter_counter += 1
+            size = result_type.type_args[1]
+            k = len(repeat_elems)
+            stmt_ind = INDENT * self.ctx.indent_level
+            ind1 = stmt_ind + INDENT
+            buf = io.StringIO()
+            buf.write("({\n")
+            if k == 1:
+                buf.write(f"{ind1}{cpp_elem_type} __rep_{n} = {repeat_elems[0]};\n")
+                lam = f"[&](std::size_t) -> {cpp_elem_type} {{ return __rep_{n}; }}"
+            else:
+                buf.write(f"{ind1}std::array<{cpp_elem_type}, {k}> __rep_{n}{{{elements}}};\n")
+                lam = (f"[&](std::size_t __i_{n}) -> {cpp_elem_type} "
+                       f"{{ return __rep_{n}[__i_{n} % {k}]; }}")
+            buf.write(f"{ind1}::tpy::array_from_index<{cpp_elem_type}, {size}>({lam});\n")
+            buf.write(f"{stmt_ind}}})")
+            return buf.getvalue()
+
+        count = self.gen_expr_deref(expr.count)
+        count_type = self.ctx.analyzer.get_expr_type(expr.count)
+        # BigInt count needs conversion (IntLiteralType is already plain int)
+        if is_big_int_type(count_type):
+            count = f"{count}.to_fixed_check<int32_t>()"
         range_expr = f"::tpy::repeat_range<{cpp_elem_type}>({count}, {{{elements}}})"
 
         # Lazy: resolved to ListRepeatType -- emit bare repeat_range (no materialization)

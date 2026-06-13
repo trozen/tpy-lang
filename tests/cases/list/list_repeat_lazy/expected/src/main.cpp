@@ -38,7 +38,10 @@ void test_lazy_for_loop() {
 void test_direct_iterable_arg() {
     // # Pass repeat literal directly to Iterable param
     // consume([3] * 4)
-    auto __tmp_1 = ::tpy::from_range<std::array<int32_t, 4>>(::tpy::repeat_range<int32_t>(4, {3}));
+    auto __tmp_1 = ({
+        int32_t __rep_0 = 3;
+        ::tpy::array_from_index<int32_t, 4>([&](std::size_t) -> int32_t { return __rep_0; });
+    });
     consume(__tmp_1);
 }
 

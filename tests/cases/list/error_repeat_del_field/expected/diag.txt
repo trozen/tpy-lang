@@ -1,0 +1,1 @@
+main.py:24: error: Cannot repeat an element of non-copyable type Wrap: repetition copies the element into every slot. Construct each slot instead, e.g. [... for _ in range(n)]

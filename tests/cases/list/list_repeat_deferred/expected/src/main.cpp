@@ -8,15 +8,18 @@ namespace tpyapp::main {
 void test_array_resolution() {
     // # Unmutated repeat with constant count -> Array[Int32, 5]
     // x = [0] * 5  # tpyc: type(/Array\[/)
-    std::array<int32_t, 5> x = ::tpy::from_range<std::array<int32_t, 5>>(::tpy::repeat_range<int32_t>(5, {0}));
+    std::array<int32_t, 5> x = ({
+        int32_t __rep_0 = 0;
+        ::tpy::array_from_index<int32_t, 5>([&](std::size_t) -> int32_t { return __rep_0; });
+    });
     // print(len(x))
     std::cout << ::tpy::__len__(x) << "\n";
     // for v in x:
-    auto& __obj_0 = x;
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        int32_t v = *__beg_0;
+    auto& __obj_1 = x;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        int32_t v = *__beg_1;
         // print(v)
         std::cout << v << "\n";
     }
@@ -66,7 +69,10 @@ void test_annotated_list() {
 void test_subscript_stays_array() {
     // # Subscript on constant-count repeat -> stays Array (Array supports operator[])
     // w = [9] * 3  # tpyc: type(/Array\[/)
-    std::array<int32_t, 3> w = ::tpy::from_range<std::array<int32_t, 3>>(::tpy::repeat_range<int32_t>(3, {9}));
+    std::array<int32_t, 3> w = ({
+        int32_t __rep_0 = 9;
+        ::tpy::array_from_index<int32_t, 3>([&](std::size_t) -> int32_t { return __rep_0; });
+    });
     // print(w[0])
     std::cout << ::tpy::__getitem__(w, 0) << "\n";
     // print(w[1])

@@ -4654,10 +4654,13 @@ class Car(Vehicle, Printable, Measurable):
   - **Note**: `remove(value)` silently does nothing when value not found (Python raises `ValueError`)
   - `pop()` / `pop(index)` return `Own[T]` (ownership transfer), matching `dict.pop` / `set.pop`. For reference-type T this means the popped element is moved out cleanly; for value-type T the `Own[T]` resolves to plain `T` and the call is equivalent to a direct value return.
 - **Working**: List repetition: `[element] * N` and `[elements...] * N`
-  - Single-element: uses efficient fill constructor
-  - Multi-element: uses `tpy::repeat_range` to repeat the sequence N times
+  - Elements are evaluated once and copied into each slot (CPython aliases the
+    same object instead); a non-copyable element (`@nocopy` or `__del__`-bearing
+    record) is rejected with a sema error suggesting a per-slot comprehension
   - Deferred resolution for untyped locals via `PendingListType`:
-    - Constant count, unmutated -> `Array[T, N]` (stack-allocated, supports subscript)
+    - Constant count, unmutated -> `Array[T, N]` (stack-allocated, supports
+      subscript), built by aggregate construction via `tpy::array_from_index`
+      (no buffer default-construction; multi-element repeats index `i % k`)
     - Variable count, unmutated -> lazy `repeat[T]` (`tpy::repeat_range<T>`, no allocation)
     - Variable count with subscript -> auto-promoted to `list[T]`
     - Mutated (`.append()`, etc.) -> auto-promoted to `list[T]`

@@ -2959,6 +2959,19 @@ class ExpressionAnalyzer:
             if first_type != elem_type:
                 raise self.ctx.error(f"List repetition element {i} has type {elem_type}, expected {first_type}", expr)
 
+        # Repetition copies the element into every slot (CPython aliases),
+        # so a C++-copy-deleted element (@nocopy or __del__, directly or via
+        # fields/parents; __copy__ restores copyability) cannot back any
+        # repeat container; reject with guidance before C++ template errors.
+        for elem_type in elem_types:
+            if self.ctx.is_type_non_copyable(elem_type):
+                raise self.ctx.error(
+                    f"Cannot repeat an element of non-copyable type "
+                    f"{elem_type}: repetition copies the element into every "
+                    f"slot. Construct each slot instead, e.g. "
+                    f"[... for _ in range(n)]",
+                    expr)
+
         # Global context -> ListType (no deferred resolution)
         if self.ctx.func.current_function is None:
             return make_list(first_type)
