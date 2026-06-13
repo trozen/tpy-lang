@@ -43,11 +43,11 @@ _FRESH_COLLECTION_NODES = (
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
 )
-from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType
+from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType, is_fn_type
 from .gen_generators import GeneratorCodegen, GeneratorForInfo
 from ..type_def_registry import is_str_type, is_str_category, is_big_int_type
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
-from .protocols import protocol_param_template_name
+from .protocols import protocol_param_template_name, fn_param_template_name
 from . import resumable_cfg as rcfg
 
 
@@ -129,6 +129,13 @@ class _CoroParamKind(IntEnum):
         value; ctor takes `T&&` and moves in; the factory forwards via
         `std::move(name)`. Parallels STATIC_PROTOCOL minus the
         template-arg dance.
+    FN: `Fn[[...], R]` callable param. Concrete callable type is deduced
+        as an extra template arg `F_<pname>` (declared bare in the coro
+        template header); field stores it by value, ctor takes
+        `F_<pname>&&` and forwards. Identical mechanics to STATIC_PROTOCOL,
+        only the template-header constraint differs (a plain `typename`
+        vs a concept) -- mirrors the non-generator Fn handling in
+        `functions.py`.
     """
     REF = 0
     VALUE = 1
@@ -136,6 +143,7 @@ class _CoroParamKind(IntEnum):
     TYPE_PARAM = 3
     STATIC_PROTOCOL = 4
     OWNED_VALUE = 5
+    FN = 6
 
 
 @dataclass(frozen=True)
@@ -157,7 +165,7 @@ class _CoroParam:
         # name -- the factory body forwards by bare name.
         if self.kind is _CoroParamKind.REF:
             return f"{self.ctor_param_type}& {self.cpp_name}"
-        if self.kind is _CoroParamKind.STATIC_PROTOCOL:
+        if self.kind in (_CoroParamKind.STATIC_PROTOCOL, _CoroParamKind.FN):
             return f"{self.ctor_param_type}&& {self.cpp_name}"
         if self.kind is _CoroParamKind.OWNED_VALUE:
             return f"{self.ctor_param_type} {self.cpp_name}"
@@ -166,7 +174,7 @@ class _CoroParam:
     def ctor_param_decl(self) -> str:
         if self.kind is _CoroParamKind.REF:
             return f"{self.ctor_param_type}& {self.cpp_name}"
-        if self.kind is _CoroParamKind.STATIC_PROTOCOL:
+        if self.kind in (_CoroParamKind.STATIC_PROTOCOL, _CoroParamKind.FN):
             return f"{self.ctor_param_type}&& {self.cpp_name}_"
         if self.kind is _CoroParamKind.OWNED_VALUE:
             return f"{self.ctor_param_type}&& {self.cpp_name}_"
@@ -183,9 +191,9 @@ class _CoroParam:
             # std::move on it yields an rvalue that won't bind to the field
             # type for non-value Ts. Direct bind/copy is uniformly correct.
             return f"{self.cpp_name}({self.cpp_name}_)"
-        if self.kind is _CoroParamKind.STATIC_PROTOCOL:
-            # `T_<pname>` is the class template param, so the ctor's
-            # `T_<pname>&&` reference-collapses (a plain lvalue ref when the
+        if self.kind in (_CoroParamKind.STATIC_PROTOCOL, _CoroParamKind.FN):
+            # `T_<pname>` / `F_<pname>` is the class template param, so the
+            # ctor's `&&` reference-collapses (a plain lvalue ref when the
             # factory deduced a borrowed lvalue). Forward to bind both the
             # value and lvalue-ref cases; a bare std::move breaks the latter.
             return (f"{self.cpp_name}("
@@ -386,6 +394,11 @@ class AsyncCoroCodegen:
                 # Using `cpp_name` here would diverge when `pname`
                 # collides with a C++ keyword (e.g. `class` -> `class_`).
                 field_type = ctor_type = protocol_param_template_name(pname)
+            elif kind is _CoroParamKind.FN:
+                # Concrete callable type deduced as `F_<pname>` (declared in
+                # `_emit_template_header`); stored by value, forwarded via
+                # `F_<pname>&&` -- same shape as STATIC_PROTOCOL.
+                field_type = ctor_type = fn_param_template_name(pname)
             elif kind is _CoroParamKind.POINTER:
                 if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
                     field_type = ctor_type = ptype_inner.to_cpp_param_type()
@@ -440,6 +453,12 @@ class AsyncCoroCodegen:
         # `_protocol_template_parts` rejects the nullable shape instead.
         if self.functions.protocols.is_static_protocol_param(ptype):
             return _CoroParamKind.STATIC_PROTOCOL
+        # Fn callable: concrete type is deduced as an `F_<pname>` template arg
+        # (like a static protocol). Checked before is_value_type() -- a
+        # CallableType would otherwise route through type_to_cpp(), which a
+        # template-mode Fn cannot answer.
+        if is_fn_type(actual):
+            return _CoroParamKind.FN
         if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
             return _CoroParamKind.POINTER
         if self.ctx.is_ptr_variant_union(actual):
@@ -507,6 +526,16 @@ class AsyncCoroCodegen:
                 parts.append(f"{concept_name} {targ_name}")
         return parts
 
+    def _fn_template_parts(self, func: TpyFunction) -> list[str]:
+        """Template-header parts for `Fn` callable params: a bare
+        `typename F_<pname>` per param. The body's call site (`pred(x)`)
+        constrains the type by use; the non-generator path adds a
+        requires-clause for diagnostics, deferred here.
+        """
+        return [f"typename {fn_param_template_name(pname)}"
+                for pname, ptype in func.params
+                if is_fn_type(unwrap_readonly(unwrap_ref_type(ptype)))]
+
     def _record_template_args(self, record_name: str | None) -> tuple[str, ...]:
         """Type params of the enclosing record for a method, or () for a free
         function / method on a non-generic class. A method on `class Box[T]`
@@ -554,8 +583,10 @@ class AsyncCoroCodegen:
                                 *, indent: str = "",
                                 record_name: str | None = None) -> bool:
         proto_parts = self._protocol_template_parts(func)
+        fn_parts = self._fn_template_parts(func)
         record_parts = self._record_template_parts(record_name)
-        if not func.type_params and not proto_parts and not record_parts:
+        if (not func.type_params and not proto_parts and not fn_parts
+                and not record_parts):
             return False
         # Record's [T...] first so an outer Box<T> reads naturally; then the
         # method's own [U...]; then protocol-typed-param template args. The
@@ -568,6 +599,7 @@ class AsyncCoroCodegen:
         parts = list(record_parts)
         parts.extend(f"typename {tp}" for tp in func.type_params)
         parts.extend(proto_parts)
+        parts.extend(fn_parts)
         out.write(f"{indent}template <{', '.join(parts)}>\n")
         return True
 
@@ -589,9 +621,11 @@ class AsyncCoroCodegen:
         if record_parts:
             out.write(f"{indent}template <{', '.join(record_parts)}>\n")
         proto_parts = self._protocol_template_parts(func)
-        if func.type_params or proto_parts:
+        fn_parts = self._fn_template_parts(func)
+        if func.type_params or proto_parts or fn_parts:
             parts_list = [f"typename {tp}" for tp in func.type_params]
             parts_list.extend(proto_parts)
+            parts_list.extend(fn_parts)
             out.write(f"{indent}template <{', '.join(parts_list)}>\n")
 
     def _struct_name_templated(self, func: TpyFunction,
@@ -609,8 +643,12 @@ class AsyncCoroCodegen:
         own type params, then per-param `T_<pname>` static-protocol args.
         """
         bare = self.gen_struct_name(func, record_name)
-        extras = [p.field_type for p in self._classify_params(func, record_name)
+        cparams = self._classify_params(func, record_name)
+        # Order must match `_emit_template_header`: protocol args then Fn args.
+        extras = [p.field_type for p in cparams
                   if p.kind is _CoroParamKind.STATIC_PROTOCOL]
+        extras += [p.field_type for p in cparams
+                   if p.kind is _CoroParamKind.FN]
         all_args = (list(self._record_template_args(record_name))
                     + list(func.type_params) + extras)
         if not all_args:
@@ -1255,7 +1293,7 @@ class AsyncCoroCodegen:
         for cparam in self._classify_params(func, record_name):
             if cparam.cpp_name == "__self":
                 continue
-            if cparam.kind is _CoroParamKind.STATIC_PROTOCOL:
+            if cparam.kind in (_CoroParamKind.STATIC_PROTOCOL, _CoroParamKind.FN):
                 parts.append(
                     f"std::forward<{cparam.ctor_param_type}>({cparam.cpp_name})")
             elif cparam.kind is _CoroParamKind.OWNED_VALUE:
@@ -1353,7 +1391,8 @@ class AsyncCoroCodegen:
         # `is_value_type` resolves.
         for cparam in self._classify_params(func, record_name):
             if cparam.kind in (_CoroParamKind.STATIC_PROTOCOL,
-                               _CoroParamKind.OWNED_VALUE):
+                               _CoroParamKind.OWNED_VALUE,
+                               _CoroParamKind.FN):
                 self.ctx.movable_locals.add(cparam.cpp_name)
         if record_name:
             self.ctx.generator_self_ref = "__self"
@@ -1662,6 +1701,16 @@ class AsyncCoroCodegen:
         if state.cfg is not None:
             return state.cfg
         body = self._effective_body(func)
+        # The for-loop prescan resolves each loop's iterable type via the
+        # name-keyed `var_types`, which on entry still holds the
+        # previously-emitted function's locals/params -- so a second generator
+        # whose param shares a name inherits the stale type (e.g. a protocol
+        # param's `Iterable[T]` leaking onto a concrete `list` param of the
+        # same name). Seed `var_types` with THIS function's own params for the
+        # prescan window; `_resumable_frame_ctx` resets scope again for build.
+        saved_var_types = self.ctx.var_types
+        self.ctx.var_types = {pname: unwrap_ref_type(ptype)
+                              for pname, ptype in func.params}
         try:
             for_uid_map = self._prescan_resumable_for_loops(func, body)
             with_uid_map = self._prescan_with_stmts(func, body)
@@ -1683,6 +1732,8 @@ class AsyncCoroCodegen:
                 cfg = builder.build(body)
         except rcfg._CFGNotYetSupported as e:
             raise CodeGenError(e.msg, loc=e.loc)
+        finally:
+            self.ctx.var_types = saved_var_types
         # Stash the builder so callers (emit) can look up handler
         # entries via builder.get_handler_entry().
         state.cfg_builder = builder

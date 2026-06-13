@@ -51,6 +51,16 @@ def protocol_param_template_name(pname: str) -> str:
     return f"T_{pname}"
 
 
+def fn_param_template_name(pname: str) -> str:
+    """Deduced template-argument name for an `Fn` (callable) param in a
+    resumable coro/generator frame. Sibling of `protocol_param_template_name`:
+    same raw-`pname` discipline so the template-header declaration, the frame
+    field, and the struct instantiation all agree even for C++-keyword names.
+    Distinct `F_` prefix avoids colliding with a protocol param's `T_<pname>`.
+    """
+    return f"F_{pname}"
+
+
 def is_marker_only_bound(bound: NominalType) -> bool:
     """True for the Send / Sync marker-protocol bounds, which must lower to an
     unconstrained `typename T` rather than a C++ concept constraint.

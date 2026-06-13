@@ -633,10 +633,14 @@ must be written as pure-TPy generators from scratch (the policy-aligned
 approach). Pure-TPy infinite generators (`count`/`cycle`/`repeat`) and
 iterable-consuming generators work; the lazy-stop functions
 (`islice`/`takewhile`/`dropwhile`) need a generator-loop `break`/`continue`,
-which now lowers correctly (was a simple-generator-peephole bug). `chain`
-over `*iterables` is still blocked by the proto-iterable-in-generator
-limitation (see BUGS.md); the variadic-tuple `product`/`permutations`/
-`combinations` family is blocked on variadic tuples.
+which now lowers correctly (was a simple-generator-peephole bug). The
+predicate functions (`takewhile`/`dropwhile`/`filterfalse`/`starmap`) take
+an `Fn` (callable) param, which also now works in a resumable generator
+(was an internal codegen error); together with the generator-template-leak
+fix, a module of several such generators builds. `chain` over `*iterables`
+is still blocked by the proto-iterable-in-generator limitation (see
+BUGS.md); the variadic-tuple `product`/`permutations`/`combinations` family
+is blocked on variadic tuples.
 
 | Item | Status | Notes |
 |---|---|---|
