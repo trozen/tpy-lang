@@ -2737,8 +2737,16 @@ class StatementAnalyzer:
             if name in self.ctx.final_globals:
                 raise self.ctx.error(
                     f"Cannot use 'global' with Final variable '{name}'", stmt)
-            # Name must exist in global scope
+            # Bare (unannotated) globals land in global_ns but not global_scope
+            # (only typed globals are pre-registered there), so fall back to the
+            # namespace reads resolve against and mirror the binding in.
             global_type = self.ctx.global_scope.lookup(name)
+            if global_type is None and self.ctx.global_ns is not None:
+                binding = self.ctx.global_ns.lookup_local(name)
+                if (binding is not None and binding.kind == BindingKind.VARIABLE
+                        and binding.type is not None):
+                    global_type = binding.type
+                    self.ctx.global_scope.define(name, global_type)
             if global_type is None:
                 raise self.ctx.error(f"name '{name}' is not defined at module level", stmt)
             # Must not shadow a function parameter
