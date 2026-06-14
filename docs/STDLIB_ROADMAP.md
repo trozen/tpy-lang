@@ -131,7 +131,7 @@ Examples of the policy in action:
 | [`json`](#json) | P0 | Partial | ~70% | pure | `loads` / `dumps` + `JSONDecodeError` done over a recursive union `JsonValue`. CPython byte-compatible across cpy phase. Missing: `load(fp)` / `dump(obj, fp)` (needs `io`), `JSONEncoder` / `JSONDecoder`, most `dumps`/`loads` kwargs |
 | [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub (with `count`)/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, bytes input, compile cache |
 | [`collections`](#collections) | P0 | Missing | 0% | -- | OrderedDict trivial (have ordered_map); deque needs C++ struct; Counter/defaultdict/namedtuple need macros |
-| [`itertools`](#itertools) | P0 | Missing | 0% | pure | Pure-TPy generators from scratch (no runtime primitives exist); `chain` blocked on proto-iterable-in-generator, `product` family on variadic tuples |
+| [`itertools`](#itertools) | P0 | Partial | ~35% | pure | Done: count, repeat, cycle, islice(it, stop), takewhile, dropwhile, filterfalse. `chain`/`product` family blocked on variadic tuples; `starmap`/`accumulate`/`pairwise`/`compress` on distinct compiler gaps (filed in BUGS.md/TODO.md); `tee`/`groupby`/`batched` on buffering / runtime-sized tuples |
 | [`functools`](#functools) | P0 | Partial | ~25% | pure | `reduce(func, a, initial)`, `reduce(func, a)`, `total_ordering` done. `cmp_to_key`, `wraps` blocked on specific compiler / macro-infrastructure gaps (see section). partial/lru_cache/singledispatch/cached_property/partialmethod need closures + macros |
 | [`random`](#random) | P1 | Partial | ~90% | pure | Pure-TPy MT19937 + CPython's distribution suite, byte-identical to CPython on the same seed. Done: `Random` class, `random`, `seed(Int32)` (negatives mapped to abs), `seed()` no-arg auto-seed via OS entropy, `getrandbits(k)` for arbitrary k, `randint`, `randrange`, `randbytes`, `choice`, `shuffle`, `uniform`, `triangular`, `gauss`, `normalvariate`, `lognormvariate`, `expovariate`, `paretovariate`, `weibullvariate`, `gammavariate`, `betavariate`, `vonmisesvariate`. Missing: `choices`/`sample`/`SystemRandom`/`binomialvariate`/`getstate` (Tier 3). See module docstring TODOs |
 | [`struct`](#struct) | P1 | Partial | ~60% | macro | unpack/calcsize only; `pack` needs statement-expr or buffer builder |
@@ -625,32 +625,49 @@ Tests:
 
 ### itertools
 
-**Missing.** No itertools primitives exist in the runtime --
+**Partial.** `lib/tpy/itertools.py` ships seven pure-TPy generators:
+`count`, `repeat`, `cycle`, `islice` (single-arg `islice(it, stop)`),
+`takewhile`, `dropwhile`, `filterfalse`. No runtime primitives exist --
 `runtime/cpp/include/tpy/itertools.hpp` holds only the *builtin* iterator
-machinery (`enumerate`, `zip`, `map`, `filter`, `reversed`), not
-`chain`/`islice`/`cycle`/`product`/etc. (verified 2026-06-12). The module
-must be written as pure-TPy generators from scratch (the policy-aligned
-approach). Pure-TPy infinite generators (`count`/`cycle`/`repeat`) and
-iterable-consuming generators work; the lazy-stop functions
-(`islice`/`takewhile`/`dropwhile`) need a generator-loop `break`/`continue`,
-which now lowers correctly (was a simple-generator-peephole bug). The
-predicate functions (`takewhile`/`dropwhile`/`filterfalse`/`starmap`) take
-an `Fn` (callable) param, which also now works in a resumable generator
-(was an internal codegen error); together with the generator-template-leak
-fix, a module of several such generators builds. `chain` over `*iterables`
-is blocked on variadic tuples, as is the variadic-tuple
-`product`/`permutations`/`combinations` family.
+machinery (`enumerate`, `zip`, `map`, `filter`, `reversed`), so the module is
+pure-TPy generators from scratch (the policy-aligned approach). The
+lazy-stop functions use generator-loop `break`/`continue`, the predicate
+functions take an `Fn` (callable) param, and `islice`/`takewhile` *consume*
+another generator (`islice(repeat(...))`, `takewhile(pred, count())`) -- all
+of which now work after the generator-loop break/continue, Fn-param,
+template-leak, comprehension-iteration, and self-iterator-copy fixes.
+`repeat` takes `times: Optional[Int32] = None` (None = the unbounded form;
+a count of 0 or negative yields nothing, matching CPython). Deferred, each on
+a distinct compiler gap: `chain` / `product` / `permutations` / `combinations`
+(variadic tuples), `compress` (zip / cross-module-iterator-in-generator),
+`accumulate` (generic accumulator across the resumable frame),
+`pairwise` (`Optional[T]`-across-yield tuple miscompile),
+`starmap` (simple-peephole `Iterable`-param dangling capture for the 2-arg
+form; variadic form also needs variadic tuples), the `islice(start, stop[,
+step])` form (overloaded generators crash sema), `tee` / `groupby`
+(buffering). Each deferred gap is filed in BUGS.md / TODO.md.
+
+**Acknowledged divergences from CPython's C `itertools`** (inherent to pure-TPy
+generators, which can't alias elements across a `yield` the way the C module
+does): `cycle` buffers elements into an internal `list` (copies reference-type
+elements; CPython re-yields the same objects), and `repeat` copies its element
+at each yield -- so for a *reference-type* element, mutations to the original
+are not visible through cycled/repeated values (value-type elements, the common
+case, are unaffected). `islice(it, negative)` yields `[]` rather than raising
+`ValueError` as CPython does.
 
 | Item | Status | Notes |
 |---|---|---|
-| `count`, `cycle`, `repeat` | Missing | Need Python-visible wrappers |
-| `chain`, `chain.from_iterable` | Missing | Wrapper |
-| `compress`, `dropwhile`, `takewhile`, `filterfalse` | Missing | Pure TPy or wrapper |
-| `islice` | Missing | Wrapper |
-| `starmap`, `tee` | Missing | `tee` tricky (needs buffering) |
+| `count`, `cycle`, `repeat` | Done | Pure TPy; `repeat` is `repeat(obj, times: Optional[Int32]=None)` -- None is the unbounded form |
+| `takewhile`, `dropwhile`, `filterfalse` | Done | Pure TPy; `Fn` predicate param |
+| `islice` | Partial | `islice(it, stop)` only; the `(start, stop[, step])` form needs an overload (overloaded generators crash sema) |
+| `starmap` | Missing | 2-arg form blocked on the simple-peephole `Iterable`-param dangling-capture bug (BUGS.md); variadic form also needs variadic tuples |
+| `chain`, `chain.from_iterable` | Missing | Blocked on variadic tuples |
+| `compress` | Missing | Blocked on zip / cross-module-iterator-in-generator |
+| `tee` | Missing | Needs buffering |
 | `zip_longest` | Missing | Wrapper |
-| `product`, `permutations`, `combinations`, `combinations_with_replacement` | Missing | Wrapper |
-| `groupby`, `accumulate`, `pairwise`, `batched` | Missing | Wrapper / pure |
+| `product`, `permutations`, `combinations`, `combinations_with_replacement` | Missing | Blocked on variadic tuples |
+| `groupby`, `accumulate`, `pairwise`, `batched` | Missing | `accumulate` (generic accumulator), `pairwise` (`Optional[T]`-across-yield miscompile), `groupby` (buffering), `batched` (needs runtime-sized tuples; would diverge to `list`) |
 
 Key question: whether the module is pure TPy re-exporting C++ generators
 or `@native` thin shims. The @native qualification gap that previously
