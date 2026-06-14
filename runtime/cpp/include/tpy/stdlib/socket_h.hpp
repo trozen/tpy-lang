@@ -142,4 +142,11 @@ int tpy_errno();
 // exposing the error-code namespace.
 const char* tpy_last_resolve_error();
 
+// Toggle O_NONBLOCK on `fd` via fcntl (nonblocking != 0 sets it, 0 clears
+// it). Hidden behind a helper because <fcntl.h> defines the F_* / O_*
+// macros we keep out of TPy-generated TUs. Returns 0 on success, -1 on
+// error (caller reads tpy_errno()). Backs socket.socket.setblocking, the
+// prerequisite for using a socket with the asyncio reactor.
+int tpy_set_nonblocking(int fd, int nonblocking);
+
 }  // extern "C"

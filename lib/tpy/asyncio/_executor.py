@@ -14,15 +14,17 @@ thunks, no thread-local handle.
 """
 import heapq
 
-from typing import Protocol
+from typing import Final, Protocol
 from builtins import BaseException
 from time import monotonic, sleep_until_steady
-from tpy import Int32, Own, Ptr, Throwable, dynamic, nocopy, readonly
+from tpy import Int32, UInt32, Own, Ptr, Throwable, dynamic, nocopy, readonly
 from tpy.extern import builtin_type, cpp_template
 from tpy.coro import Awaker, Cancellable, Poll, Waker, poll_ready, poll_pending
 from tpy.mem import UninitArrayStorage
+from tpy.unsafe import unsafe_load
 from tplib import Box
 from tplib.rc import Rc
+from _bindings import posix_epoll, posix_socket
 
 
 # Type-erased task machinery is co-located with the executor (rather
@@ -308,6 +310,114 @@ class Slot:
         return self.box is None
 
 
+# epoll_ctl ops + the reactor's drain-batch size. Kept here (not in
+# posix_epoll.py, which stays declaration-only) the way socket.py hardcodes
+# the AF_* wire values. The EPOLLIN / EPOLLOUT interest masks live in
+# `asyncio/__init__.py` next to the fd-awaitable that passes them. The
+# batch size must equal kMaxBatch in runtime/cpp/src/stdlib/epoll_impl.cpp.
+_EPOLL_CTL_ADD: Final[Int32] = 1
+_EPOLL_CTL_DEL: Final[Int32] = 2
+_EPOLL_CTL_MOD: Final[Int32] = 3
+_REACTOR_BATCH: Final[Int32] = 64
+
+
+class Reactor(Protocol):
+    """The interface an asyncio I/O reactor implements.
+
+    A reactor turns fd readiness into `Waker` wakes: `register_fd` arms an
+    fd for an interest mask and parks a waker; `poll` blocks up to
+    `timeout_ms` for readiness and wakes the parked wakers of ready fds;
+    `unregister_fd` disarms an fd (cancellation / cleanup). `count` reports
+    how many fds are armed (the executor uses it to decide whether I/O is
+    a live wake source). `EpollReactor` is the only backend today.
+
+    (`register_fd` / `unregister_fd`, not `register` / `unregister`,
+    because `register` is a reserved C++ keyword and the structural-protocol
+    conformance concept would emit an unparseable `t.register(...)`.)
+
+    Designed against epoll; kqueue / io_uring backends would implement the
+    same surface. Making the executor's reactor field protocol-typed so a
+    user can swap a backend into `asyncio.run` is a deferred follow-up
+    (see TODO.md); the executor holds the concrete `EpollReactor` today.
+    """
+    def register_fd(self, fd: Int32, events: UInt32, waker: Waker) -> None: ...
+    def unregister_fd(self, fd: Int32) -> None: ...
+    def poll(self, timeout_ms: Int32) -> None: ...
+    def count(self) -> Int32: ...
+    def close(self) -> None: ...
+
+
+@nocopy
+class EpollReactor:
+    """epoll-backed `Reactor` (Linux). Owns an epoll fd and a single-waiter
+    `fd -> Waker` registry. Registration is one-shot: a fired fd is removed
+    from epoll before its waker is woken, so the fd-awaitable re-registers
+    on its next would-block. RAII-closes the epoll fd in `__del__`.
+
+    Single waiter per fd (read OR write at a time) is sufficient for the
+    current socket surface, where a coroutine awaits one direction at a
+    time. Independent read+write waiters on one fd is a deferred follow-up.
+    """
+
+    _epfd: Int32
+    _waiters: dict[Int32, Waker]
+    _out_fds: UninitArrayStorage[Int32, 64]
+    _out_events: UninitArrayStorage[UInt32, 64]
+
+    def __init__(self) -> None:
+        epfd = posix_epoll.epoll_create()
+        if epfd < 0:
+            raise RuntimeError("asyncio reactor: epoll_create failed")
+        self._epfd = epfd
+        self._waiters = {}
+        self._out_fds = UninitArrayStorage[Int32, 64]()
+        self._out_events = UninitArrayStorage[UInt32, 64]()
+
+    def __del__(self) -> None:
+        self.close()
+
+    def register_fd(self, fd: Int32, events: UInt32, waker: Waker) -> None:
+        # Re-arm with MOD if the fd is still tracked (a prior would-block
+        # that has not fired yet); ADD otherwise. `_waiters` membership
+        # mirrors epoll membership because `poll` removes both together.
+        if fd in self._waiters:
+            posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_MOD, fd, events)
+        else:
+            posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_ADD, fd, events)
+        self._waiters[fd] = waker
+
+    def unregister_fd(self, fd: Int32) -> None:
+        if fd in self._waiters:
+            posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_DEL, fd, 0)
+            del self._waiters[fd]
+
+    def count(self) -> Int32:
+        return len(self._waiters)
+
+    def poll(self, timeout_ms: Int32) -> None:
+        if len(self._waiters) == 0:
+            return
+        n = posix_epoll.epoll_wait(self._epfd, self._out_fds.ptr(),
+                                   self._out_events.ptr(),
+                                   _REACTOR_BATCH, timeout_ms)
+        i: Int32 = 0
+        while i < n:
+            fd = unsafe_load(self._out_fds.ptr(), UInt32(i))
+            # Disarm before waking (one-shot): the awaitable re-registers
+            # on its next would-block.
+            posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_DEL, fd, 0)
+            if fd in self._waiters:
+                w = self._waiters[fd]
+                del self._waiters[fd]
+                w.wake()
+            i += 1
+
+    def close(self) -> None:
+        if self._epfd >= 0:
+            posix_socket.close(self._epfd)
+            self._epfd = -1
+
+
 @nocopy
 class Executor(Awaker):
     """v1 asyncio executor: runnable-queue + timer-heap driver.
@@ -326,6 +436,10 @@ class Executor(Awaker):
     slots: list[Slot]
     runnable_q: list[Int32]
     timer_heap: list[TimerEntry]
+    # Lazily created on the first fd registration: a pure-timer / pure-CPU
+    # program never opens an epoll fd. The second wake source alongside the
+    # timer heap.
+    reactor: EpollReactor | None
 
     def __init__(self) -> None:
         # Backstop for `asyncio.run`'s nested-loop check: a non-null
@@ -339,9 +453,39 @@ class Executor(Awaker):
         self.slots = []
         self.runnable_q = []
         self.timer_heap = []
+        self.reactor = None
 
     def register_timer(self, deadline_seconds: float, waker: Waker) -> None:
         heapq.heappush(self.timer_heap, TimerEntry(deadline_seconds, waker))
+
+    # Lazily opens the reactor on the first fd registration so a pure-timer
+    # / pure-CPU program never allocates an epoll fd.
+    def register_fd(self, fd: Int32, events: UInt32, waker: Waker) -> None:
+        if self.reactor is None:
+            self.reactor = EpollReactor()
+        reactor = self.reactor
+        if reactor is not None:
+            reactor.register_fd(fd, events, waker)
+
+    def unregister_fd(self, fd: Int32) -> None:
+        reactor = self.reactor
+        if reactor is not None:
+            reactor.unregister_fd(fd)
+
+    # Milliseconds until the nearest timer fires (the epoll_wait timeout):
+    # -1 (block forever) when no timer is pending, 0 when one is already
+    # due, else the rounded-up delta. Capped to keep the Int32 from
+    # overflowing on far-future deadlines.
+    def _next_timer_timeout_ms(self) -> Int32:
+        if len(self.timer_heap) == 0:
+            return -1
+        delta = self.timer_heap[0].deadline - monotonic()
+        if delta <= 0.0:
+            return 0
+        ms = delta * 1000.0
+        if ms >= 2000000000.0:
+            return 2000000000
+        return Int32(ms) + 1
 
     # Mint a Waker stamped with the given slot identity. Used by
     # `asyncio.create_task` to stash a wake-handle on the Task so its
@@ -419,9 +563,21 @@ class Executor(Awaker):
         return False
 
     def wait_for_event(self) -> bool:
-        if len(self.timer_heap) == 0:
+        has_timer = len(self.timer_heap) > 0
+        reactor = self.reactor
+        fd_count: Int32 = 0
+        if reactor is not None:
+            fd_count = reactor.count()
+        if not has_timer and fd_count == 0:
             return False
-        sleep_until_steady(self.timer_heap[0].deadline)
+        if reactor is not None and fd_count > 0:
+            # Block in epoll_wait, bounded by the nearest timer (-1 ==
+            # forever when only fds are pending). Ready fds' wakers are
+            # woken inside poll(), marking their slots runnable for the
+            # next drain.
+            reactor.poll(self._next_timer_timeout_ms())
+        else:
+            sleep_until_steady(self.timer_heap[0].deadline)
         now = monotonic()
         while len(self.timer_heap) > 0 and self.timer_heap[0].deadline <= now:
             entry = heapq.heappop(self.timer_heap)
@@ -438,9 +594,9 @@ class Executor(Awaker):
                 return
             if not self.wait_for_event():
                 raise RuntimeError(
-                    "asyncio.run: no progress possible (coroutine "
-                    "returned Pending with no pending timers; v1 has "
-                    "no I/O reactor)")
+                    "asyncio.run: no progress possible (a coroutine "
+                    "returned Pending with no pending timers and no "
+                    "registered I/O)")
 
     def drain_spawned_with_cancel(self, skip_id: Int32,
                                   max_polls: Int32 = 8) -> None:

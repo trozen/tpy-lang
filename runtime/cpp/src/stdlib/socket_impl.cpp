@@ -25,6 +25,7 @@
 #include <cstring>
 #include <string>
 
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
@@ -99,6 +100,18 @@ int tpy_errno() {
 
 const char* tpy_last_resolve_error() {
     return g_resolve_err;
+}
+
+int tpy_set_nonblocking(int fd, int nonblocking) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0) {
+        return -1;
+    }
+    int updated = nonblocking ? (flags | O_NONBLOCK) : (flags & ~O_NONBLOCK);
+    if (fcntl(fd, F_SETFL, updated) < 0) {
+        return -1;
+    }
+    return 0;
 }
 
 }  // extern "C"

@@ -36,10 +36,11 @@ TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
     through `tpy_socket_constants()` helpers in socket_impl.cpp, or via
     per-platform Final declarations once TPy supports those.
 
-  * **Non-blocking I/O.** setblocking(False), settimeout(sec), EAGAIN /
-    EWOULDBLOCK handling. Belongs with the Phase 2 `selectors`
-    (epoll/kqueue) module -- non-blocking alone without a selector
-    isn't useful.
+  * **Non-blocking I/O.** `setblocking(False)` is done (toggles O_NONBLOCK
+    via fcntl); the EAGAIN/EWOULDBLOCK + selector handling lives in the
+    asyncio epoll reactor (`get_running_loop().sock_recv`/`sock_sendall`).
+    `settimeout(sec)` (timeout-based blocking I/O via SO_RCVTIMEO) is still
+    missing.
 
   * **setsockopt with struct values.** SO_RCVTIMEO / SO_SNDTIMEO take
     struct timeval; SO_LINGER takes struct linger. Only int-valued opts
@@ -66,11 +67,13 @@ TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
     socket, integrating with the io module. Needs our io module to
     grow a "adopt this fd" constructor.
 
-  * **SocketError vs OSError hierarchy.** CPython distinguishes
-    ConnectionRefusedError, ConnectionResetError, BlockingIOError etc.
-    as OSError subclasses keyed on errno. We raise plain SocketError
-    everywhere; users can branch on the message text but not on
-    isinstance of a specific subclass.
+  * **SocketError vs OSError hierarchy.** SocketError now subclasses
+    OSError, so `except OSError` catches socket failures (CPython-faithful).
+    Still missing: the errno-keyed subclasses CPython raises
+    (ConnectionRefusedError, ConnectionResetError, BlockingIOError, gaierror,
+    ...) and a structured `.errno` / `.strerror` attribute (we bake errno +
+    strerror into the message text only). Users can branch on `OSError` /
+    `SocketError` but not yet on a specific errno-keyed subclass.
 
   * **gethostbyname_ex, gethostbyaddr, getservbyname.** CPython legacy
     DNS APIs; low priority.
@@ -129,8 +132,16 @@ SHUT_RDWR: Final[Int32] = 2
 
 # ---------- SocketError ----------
 
-class SocketError(Exception):
-    """Raised on any libc socket-call failure. Carries errno + strerror."""
+class SocketError(OSError):
+    """Raised on any libc socket-call failure. Carries errno + strerror.
+
+    Subclasses `OSError` (not plain `Exception`) to match CPython, whose
+    socket module raises `OSError`: code written `except OSError` catches
+    these and ports to CPython unchanged. The distinct name is kept for
+    readable tracebacks and existing `except SocketError` users. The
+    errno-keyed `OSError` subclasses (`ConnectionRefusedError`, ...) and a
+    structured `.errno` attribute are still a follow-up (see module TODO).
+    """
     # Explicit __init__ + String param are compiler-gap workarounds mirroring
     # re.error; see module TODO above and BUGS.md.
     def __init__(self, message: String = "") -> None:
@@ -199,19 +210,22 @@ def _build_sockaddr_in(host: str, port: Int32) -> Own[SockaddrIn]:
                       unsafe_load(addr_u32_ptr, 0))
 
 
-# ---------- Socket class ----------
+# ---------- socket class ----------
+# Class name is lowercase `socket` to match CPython's `socket.socket`
+# exactly, so user code (and the asyncio reactor's sock_* helpers) ports to
+# CPython unchanged and the test cpy phase can run on CPython's real socket.
 
 _SOCKADDR_IN_LEN: Final[UInt32] = 16
 
 
 @nocopy
-class Socket:
+class socket:
     """A POSIX socket file descriptor with RAII cleanup.
 
     `fd` is the underlying OS descriptor; -1 means closed. @nocopy keeps
     ownership unique so close() runs exactly once in __del__. Obtain
-    Sockets via Socket(family, type) / create_connection / create_server
-    / accept; move with Own[Socket].
+    sockets via socket(family, type) / create_connection / create_server
+    / accept; move with Own[socket].
     """
 
     # Field default silences a sema "not initialized before ctor body"
@@ -249,6 +263,14 @@ class Socket:
         if posix_socket.shutdown(self.fd, how) < Int32(0):
             _raise_errno("shutdown")
 
+    def setblocking(self, flag: bool) -> None:
+        """Set blocking (True) or non-blocking (False) mode, like CPython.
+        Non-blocking is the prerequisite for using a socket with the
+        asyncio reactor (asyncio.get_running_loop().sock_recv/sendall)."""
+        nb = Int32(0) if flag else Int32(1)
+        if posix_socket.tpy_set_nonblocking(self.fd, nb) < Int32(0):
+            _raise_errno("setblocking")
+
     def bind(self, address: tuple[str, Int32]) -> None:
         host, port = address
         addr = _build_sockaddr_in(host, port)
@@ -266,7 +288,7 @@ class Socket:
         if posix_socket.listen(self.fd, backlog) < Int32(0):
             _raise_errno("listen")
 
-    def accept(self) -> tuple[Own[Socket], tuple[str, Int32]]:
+    def accept(self) -> tuple[Own[socket], tuple[str, Int32]]:
         """Block until a client connects, return `(conn, (host, port))`
         matching CPython's `socket.accept()` shape."""
         addr = SockaddrIn(0, 0, 0)
@@ -274,7 +296,7 @@ class Socket:
         new_fd = posix_socket.accept(self.fd, take_ptr(addr), take_ptr(addrlen))
         if new_fd < Int32(0):
             _raise_errno("accept")
-        conn = Socket(Int32(0), Int32(0), Int32(0), fileno=new_fd)
+        conn = socket(Int32(0), Int32(0), Int32(0), fileno=new_fd)
         peer = (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
                 Int32.trunc(posix_socket.ntohs(addr.sin_port)))
         return (conn, peer)
@@ -335,7 +357,7 @@ class Socket:
         return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
                 Int32.trunc(posix_socket.ntohs(addr.sin_port)))
 
-    def __enter__(self) -> Socket:
+    def __enter__(self) -> socket:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
@@ -346,7 +368,7 @@ class Socket:
 
 
 def socketpair(family: Int32 = AF_UNIX, type_: Int32 = SOCK_STREAM,
-               proto: Int32 = Int32(0)) -> tuple[Own[Socket], Own[Socket]]:
+               proto: Int32 = Int32(0)) -> tuple[Own[socket], Own[socket]]:
     """Create a pair of connected sockets via `::socketpair`.
 
     Defaults match CPython: AF_UNIX + SOCK_STREAM. Useful for in-process
@@ -354,24 +376,24 @@ def socketpair(family: Int32 = AF_UNIX, type_: Int32 = SOCK_STREAM,
     sv = UninitArrayStorage[Int32, 2]()
     if posix_socket.socketpair(family, type_, proto, sv.ptr()) < Int32(0):
         _raise_errno("socketpair")
-    a = Socket(Int32(0), Int32(0), Int32(0), fileno=unsafe_load(sv.ptr(), 0))
-    b = Socket(Int32(0), Int32(0), Int32(0), fileno=unsafe_load(sv.ptr(), 1))
+    a = socket(Int32(0), Int32(0), Int32(0), fileno=unsafe_load(sv.ptr(), 0))
+    b = socket(Int32(0), Int32(0), Int32(0), fileno=unsafe_load(sv.ptr(), 1))
     return (a, b)
 
 
-def create_connection(address: tuple[str, Int32]) -> Own[Socket]:
+def create_connection(address: tuple[str, Int32]) -> Own[socket]:
     """TCP client convenience: socket + connect."""
-    s = Socket(AF_INET, SOCK_STREAM, Int32(0))
+    s = socket(AF_INET, SOCK_STREAM, Int32(0))
     s.connect(address)
     return s
 
 
 def create_server(address: tuple[str, Int32],
                   backlog: Int32 = Int32(128),
-                  reuse_addr: bool = True) -> Own[Socket]:
+                  reuse_addr: bool = True) -> Own[socket]:
     """TCP server convenience: socket + SO_REUSEADDR + bind + listen.
     Caller loops on accept() to serve connections."""
-    s = Socket(AF_INET, SOCK_STREAM, Int32(0))
+    s = socket(AF_INET, SOCK_STREAM, Int32(0))
     if reuse_addr:
         s.setsockopt_int(SOL_SOCKET, SO_REUSEADDR, Int32(1))
     s.bind(address)

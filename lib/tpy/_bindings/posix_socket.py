@@ -149,6 +149,12 @@ def tpy_errno() -> Int32: ...
 @native("::tpy_last_resolve_error")
 def tpy_last_resolve_error() -> Ptr[readonly[UInt8]]: ...
 
+# Toggle O_NONBLOCK on `fd` (nonblocking != 0 sets it). Backs
+# socket.socket.setblocking; required before using a socket with the
+# asyncio reactor. Returns 0 on success, -1 on error (read tpy_errno).
+@native("::tpy_set_nonblocking")
+def tpy_set_nonblocking(fd: Int32, nonblocking: Int32) -> Int32: ...
+
 
 # ---------- Raw libc strerror ----------
 # Returns a human-readable description of `errnum`. Null-terminated C

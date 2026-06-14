@@ -12,7 +12,7 @@ Usage:
 
 from argparse import ArgumentParser
 from socket import (
-    Socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR,
+    socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR,
     create_server,
 )
 from tpy import Int32

@@ -110,9 +110,48 @@ Library breadth + first real I/O. Each item is sized to land independently.
 | Sync primitives | `Lock`, `Semaphore`, `BoundedSemaphore`, `Queue` **SHIPPED** (FIFO `list[Waker]` waiter queue, `async with` for the locks; mirror the early-shipped `Event`; `BoundedSemaphore` is a `Semaphore` subclass whose `release` rejects an over-release; `Queue[T]` adds getter/putter/joiner waiter sets + `maxsize`/`join`/`task_done`). All built on the same `Waker`-parking shape. |
 | Multi-awaiter `Future[T]` | If single-awaiter v1 turns out to be limiting in practice. |
 | Task introspection | `Task.add_done_callback`, `get_name`, `set_name`, `done`, `result`, `exception`. |
-| Public `Reactor` protocol | Designed against the first concrete backend's needs (not before). |
-| First I/O reactor | epoll on Linux. Defines fd-backed awaitables. |
-| asyncio streams | `StreamReader`, `StreamWriter`, `open_connection`, `start_server`. |
+| `Reactor` interface | **SHIPPED (M1)** -- the `Reactor` protocol in `asyncio/_executor.py`, designed against epoll. Concrete-typed on the executor for M1; making it a swap-in (`@dynamic` field + `asyncio.run` factory arg) is a follow-up. |
+| First I/O reactor | **SHIPPED (M1)** -- `EpollReactor` (epoll on Linux) + fd-backed awaitables (`_SockRecv` / `_SockSendAll`) + the low-level loop surface `asyncio.get_running_loop().sock_recv / sock_sendall` on non-blocking sockets (`socket.setblocking`). See "I/O reactor" below. |
+| asyncio streams | `StreamReader`, `StreamWriter`, `open_connection`, `start_server`. **(M2 follow-up, builds on the M1 reactor.)** |
+
+#### I/O reactor (v2 M1, SHIPPED)
+
+The reactor is the executor's second wake source alongside the timer heap.
+All TPy + a thin epoll binding -- no compiler changes.
+
+- **`Reactor` protocol** (`asyncio/_executor.py`): `register_fd(fd, events,
+  waker)` / `unregister_fd(fd)` / `poll(timeout_ms)` / `count()` / `close()`.
+  (`register_fd`, not `register` -- `register` is a reserved C++ keyword and
+  the structural-conformance concept would emit an unparseable
+  `t.register(...)`.) Designed against epoll; kqueue / io_uring backends
+  would implement the same surface.
+- **`EpollReactor`**: owns an epoll fd + a single-waiter `fd -> Waker`
+  registry. One-shot: a fired fd is `EPOLL_CTL_DEL`'d before its waker is
+  woken, so the awaitable re-arms on its next would-block. RAII-closes the
+  epoll fd. Single waiter per fd (read OR write at a time) suffices for the
+  M1 surface; independent read+write waiters on one fd is deferred.
+- **Executor integration**: a lazily-created `reactor` field (a pure-timer /
+  pure-CPU program never opens an epoll fd). `wait_for_event` blocks in
+  `epoll_wait` bounded by the nearest timer deadline (-1 == forever when
+  only fds are pending), then fires expired timers; it returns `False` (the
+  "no progress possible" condition) only when neither timers nor fds are
+  pending. The timer-only fast path keeps using `sleep_until_steady`.
+- **fd awaitables + surface**: `_SockRecv` / `_SockSendAll` are hand-written
+  awaitables (not `async def`s -- the retry loop parks by returning Pending +
+  arming the reactor, and an `async def` taking a `bytes` by-value param hits
+  a coro-frame storage-form gap, see BUGS.md). `EventLoop.sock_recv` /
+  `sock_sendall` are thin sync factories returning them (the
+  `gather(...) -> Own[...]` shape); `asyncio.get_running_loop()` returns the
+  `EventLoop`. `socket.socket.setblocking(False)` (an fcntl `O_NONBLOCK`
+  helper) is the prerequisite.
+- **epoll binding**: `lib/tpy/_bindings/posix_epoll.py` over flat
+  `tpy_epoll_*` wrappers in `runtime/cpp/src/stdlib/epoll_impl.cpp` (the real
+  `<sys/epoll.h>` lives only there -- the packed `struct epoll_event` and the
+  `EPOLL*` macros never enter a TPy-generated TU; mirrors `socket_impl.cpp`).
+
+Deferred (TODO.md): `sock_accept` / `sock_connect`; streams (M2); swap-in
+reactor (`@dynamic`-typed field + `asyncio.run` factory arg); independent
+read+write waiters on one fd; the `runnable_q` / per-fd structures' scaling.
 
 ### v3+ -- post-v2
 

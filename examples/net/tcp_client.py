@@ -13,7 +13,7 @@ Usage:
 """
 
 from argparse import ArgumentParser
-from socket import Socket, AF_INET, SOCK_STREAM, SHUT_WR
+from socket import socket, AF_INET, SOCK_STREAM, SHUT_WR
 from tpy import Int32
 
 
@@ -31,7 +31,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    sock = Socket(AF_INET, SOCK_STREAM)
+    sock = socket(AF_INET, SOCK_STREAM)
     sock.connect((args.host, args.port))
     print(f"connected to {sock.getpeername()}")
 

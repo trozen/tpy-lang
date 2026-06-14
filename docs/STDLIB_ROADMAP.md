@@ -156,7 +156,7 @@ Examples of the policy in action:
 | [`pickle`](#pickle) | P2 | Blocked | 0% | -- | Needs dynamic type info + `io` |
 | [`shelve`](#shelve) | P3 | Blocked | 0% | -- | Needs pickle |
 | [`inspect`](#inspect) | P2 | Blocked | 0% | -- | Needs runtime type/func introspection |
-| [`asyncio`](#asyncio) | P1 | Partial | ~40% | pure | v1: `run`/`sleep`/`create_task`/`Task[T]`/`Future[T]`/`Event`/`CancelledError` + thread-local executor with slot table, runnable deque, timer min-heap, cancel-drain at run-end. v1.5 M5+M6: `async with` (cleanup-only), `async for` + `StopAsyncIteration`. v1.5 M8: `wait_for`/`TimeoutError`. v1.5 M9: `gather(*tasks)` (homogeneous variadic-positional) + `gather_list(tasks)` (homogeneous list shape). v2 sync primitives: `Lock`, `Semaphore`, `BoundedSemaphore`, `Queue` (FIFO `list[Waker]` waiter queue, `async with`-capable; `BoundedSemaphore` is a `Semaphore` subclass rejecting over-release; `Queue[T]` adds getter/putter/joiner waiter sets + `maxsize`/`put`/`get`/`*_nowait`/`join`/`task_done`). Missing: CPython-shape *heterogeneous* variadic `gather[*Ts](*coros) -> tuple[*Ts]` (needs variadic generics + async-def `*args` codegen); I/O reactor (v2); multi-thread (v3+) |
+| [`asyncio`](#asyncio) | P1 | Partial | ~40% | pure | v1: `run`/`sleep`/`create_task`/`Task[T]`/`Future[T]`/`Event`/`CancelledError` + thread-local executor with slot table, runnable deque, timer min-heap, cancel-drain at run-end. v1.5 M5+M6: `async with` (cleanup-only), `async for` + `StopAsyncIteration`. v1.5 M8: `wait_for`/`TimeoutError`. v1.5 M9: `gather(*tasks)` (homogeneous variadic-positional) + `gather_list(tasks)` (homogeneous list shape). v2 sync primitives: `Lock`, `Semaphore`, `BoundedSemaphore`, `Queue` (FIFO `list[Waker]` waiter queue, `async with`-capable; `BoundedSemaphore` is a `Semaphore` subclass rejecting over-release; `Queue[T]` adds getter/putter/joiner waiter sets + `maxsize`/`put`/`get`/`*_nowait`/`join`/`task_done`). v2 I/O reactor M1: epoll `Reactor` (Linux) + `get_running_loop().sock_recv`/`sock_sendall` on non-blocking sockets (`socket.setblocking`), executor blocks in `epoll_wait` bounded by the timer heap. Missing: CPython-shape *heterogeneous* variadic `gather[*Ts](*coros) -> tuple[*Ts]` (needs variadic generics + async-def `*args` codegen); `sock_accept`/`sock_connect` + streams (`open_connection`/`start_server`, v2 M2); multi-thread (v3+) |
 | [`threading`](#threading) | P1 | Blocked | 0% | -- | Needs threading primitives |
 | [`multiprocessing`](#multiprocessing) | P2 | Blocked | 0% | -- | Needs process spawning + IPC |
 | [`subprocess`](#subprocess) | P1 | Blocked | 0% | -- | Needs process spawning |
@@ -1101,7 +1101,9 @@ v1.5 M1: SHIPPED. Sync `with` upgraded to CPython-shape `__exit__(self, exc_type
 
 v1.5 M2: SHIPPED. Class-based exception dispatch via `isinstance(exc_val, X)` in `__exit__` (the `Optional[BaseException]` slicing blocker M1 deferred to M2 was resolved by Phase 20). Bare and early-return-narrowed `isinstance` on `BaseException` / `Optional[BaseException]` params both dispatch correctly. See `docs/ASYNC_PROGRESS.md` M2.
 
-Pending (v2+): I/O reactor (epoll on Linux, kqueue on BSD/macOS, IOCP on Windows), async generators, `@error_return` async, `__await__` adaptation, multi-thread executor.
+v2 I/O reactor M1: SHIPPED. epoll `Reactor` (Linux) is the executor's second wake source: `EpollReactor` owns an epoll fd + a single-waiter `fd -> Waker` registry (one-shot arming); `Executor.wait_for_event` blocks in `epoll_wait` bounded by the nearest timer deadline. Low-level surface: `asyncio.get_running_loop().sock_recv(sock, n)` / `sock_sendall(sock, data)` on a non-blocking socket (`socket.socket.setblocking(False)`, an fcntl `O_NONBLOCK` helper), backed by hand-written `_SockRecv` / `_SockSendAll` awaitables. Binding via `lib/tpy/_bindings/posix_epoll.py` + `runtime/cpp/src/stdlib/epoll_impl.cpp` (flat `tpy_epoll_*` wrappers; `<sys/epoll.h>` confined to the .cpp). See `docs/ASYNC_DESIGN.md` "I/O reactor".
+
+Pending (v2+): `sock_accept` / `sock_connect` + streams (`open_connection` / `start_server`, M2); swap-in reactor (`@dynamic`-typed executor field + `asyncio.run` factory arg); additional reactors (kqueue on BSD/macOS, IOCP on Windows); async generators, `@error_return` async, `__await__` adaptation, multi-thread executor.
 
 v1.1 runtime port: SHIPPED. Executor body + `Task` + `Future` moved from `runtime/cpp/include/tpy/async.hpp` to `lib/tpy/asyncio/_executor.py`, dispatched from C++ via a thread-local `ExecutorOps` function-pointer table.
 
@@ -1152,14 +1154,14 @@ Architecture (mirrors the re / PCRE2 split):
   * `lib/tpy/_bindings/posix_socket.py` -- pure `@native` 1:1 bindings over
     the libc C ABI + the three runtime helpers. `@native(binding="C")
     class SockaddrIn` mirrors the struct for typed field access.
-  * `lib/tpy/socket.py` -- facade. `Socket` class (`@nocopy`, RAII via
+  * `lib/tpy/socket.py` -- facade. `socket` class (`@nocopy`, RAII via
     `__del__` closing the fd), SocketError, constants, create_connection
     / create_server, gethostbyname, with-statement support.
 
 | Item | Status | Notes |
 |---|---|---|
-| `Socket(family, type, proto)` | Done | `@nocopy`, RAII close in `__del__`. Use `Socket(AF_INET, SOCK_STREAM)` or `create_connection` / `create_server`; a CPython-style module-level `socket()` factory is a future addition |
-| `bind`, `connect`, `listen`, `accept` | Done | `accept() -> tuple[Own[Socket], tuple[str, Int32]]` matches CPython's `(conn, (host, port))` shape |
+| `socket(family, type, proto)` | Done | `@nocopy`, RAII close in `__del__`. Class name is lowercase `socket` to match CPython's `socket.socket` exactly. Use `socket(AF_INET, SOCK_STREAM)` or `create_connection` / `create_server` |
+| `bind`, `connect`, `listen`, `accept` | Done | `accept() -> tuple[Own[socket], tuple[str, Int32]]` matches CPython's `(conn, (host, port))` shape |
 | `send`, `sendall`, `recv` | Done | `send` returns `Int32` (truncated from `ssize_t`); realistic per-call sends are well under 2 GiB. `recv` returns a fresh `bytes` |
 | `close`, `shutdown`, `fileno` | Done | |
 | `setsockopt_int` | Done | Int-valued options only; struct options (`SO_RCVTIMEO`, `SO_LINGER`) deferred |
@@ -1167,13 +1169,14 @@ Architecture (mirrors the re / PCRE2 split):
 | `gethostbyname` | Done | Resolves via `getaddrinfo` behind `tpy_resolve_ipv4`; returns the first A record only |
 | `create_connection`, `create_server` | Done | TCP client/server convenience factories; `create_server` bundles SO_REUSEADDR + bind + listen |
 | `with socket(...) as s:` | Done | `__enter__` returns self, `__exit__` closes |
-| `SocketError` | Done | Wraps errno + strerror. Catchable both qualified (`except socket.SocketError`) and via `from socket import SocketError` |
+| `SocketError` | Done | Wraps errno + strerror. **Subclasses `OSError`** (matches CPython, whose socket raises `OSError`), so `except OSError` catches it and code ports to CPython unchanged. Still TPy-specific: the errno-keyed `OSError` subclasses (`ConnectionRefusedError`, ...) and a structured `.errno` attribute are a follow-up |
 | Constants (`AF_INET`, `SOCK_STREAM`, `SOL_SOCKET`, ...) | Done | Linux glibc values hardcoded. macOS/BSD values differ -- deferred |
-| `socketpair()` | Done | Defaults to `AF_UNIX` + `SOCK_STREAM`; returns `tuple[Own[Socket], Own[Socket]]` |
+| `socketpair()` | Done | Defaults to `AF_UNIX` + `SOCK_STREAM`; returns `tuple[Own[socket], Own[socket]]` |
+| `setblocking` | Done | Toggles `O_NONBLOCK` via fcntl; the prerequisite for using a socket with the asyncio epoll reactor (`get_running_loop().sock_recv`/`sock_sendall`) |
 | IPv6 / `AF_INET6` | Missing | Needs `SockaddrIn6` binding |
 | `AF_UNIX` | Missing | Needs `SockaddrUn` binding |
 | `sendto`, `recvfrom`, `recv_into` | Missing | UDP out-addr + recv-into-caller-buffer variants |
-| `setblocking`, `settimeout` | Missing | Non-blocking I/O belongs with Phase 2 `selectors` |
+| `settimeout` | Missing | Timeout-based blocking I/O (struct-valued `SO_RCVTIMEO`) |
 | `getaddrinfo` (full API) | Missing | Flat `tpy_resolve_ipv4` only today; multi-result walk needs typed records |
 | `makefile()` | Missing | Needs io module to grow "adopt this fd" |
 | Windows (Winsock2) | Missing | `SOCKET` unsigned, `WSAStartup`, `closesocket`, `WSAGetLastError` -- all in `#ifdef _WIN32` block inside socket_impl.cpp once we have Windows CI |

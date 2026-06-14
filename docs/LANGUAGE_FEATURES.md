@@ -5886,6 +5886,26 @@ Send/Sync rules for built-in types:
   At `asyncio.run` exit, remaining spawned tasks are cancelled and
   drained so wrapper-try `finally` blocks run for fire-and-forget
   tasks.
+- **Working (v2 I/O reactor M1, Linux)**: the executor gains a second wake
+  source -- an epoll `Reactor` -- alongside the timer heap. `EpollReactor`
+  owns an epoll fd + a single-waiter `fd -> Waker` registry (one-shot
+  arming); `Executor.wait_for_event` blocks in `epoll_wait` bounded by the
+  nearest timer deadline (forever when only fds are pending), so a coroutine
+  can wait on fd readiness without busy-looping. Low-level socket surface:
+  `asyncio.get_running_loop()` returns an `EventLoop`; `loop.sock_recv(sock,
+  n)` / `loop.sock_sendall(sock, data)` operate on a non-blocking socket
+  (`socket.socket.setblocking(False)`), trying the syscall and parking on
+  `EPOLLIN` / `EPOLLOUT` via the reactor on `EAGAIN`. Both are sync factories
+  returning hand-written `_SockRecv` / `_SockSendAll` awaitables (the
+  `gather(...) -> Own[...]` shape), so they sidestep the async-def
+  view-param coro-frame gap (BUGS.md). The `Reactor` protocol
+  (`register_fd` / `unregister_fd` / `poll` / `count` / `close`) is the
+  documented interface a backend implements; kqueue / io_uring backends and a
+  user swap-in are follow-ups. epoll binds through
+  `lib/tpy/_bindings/posix_epoll.py` over flat `tpy_epoll_*` wrappers in
+  `runtime/cpp/src/stdlib/epoll_impl.cpp`. `sock_accept` / `sock_connect`
+  and the streams layer (`open_connection` / `start_server`) are the v2 M2
+  follow-up.
 - **Working (v1.5 M4)**: async methods on user classes. `async def m(self, ...)`
   lowers to a per-record coro struct `__coro_<Record>_<method>` with
   `__self: <Record>&` captured as the first ctor arg (parallels
