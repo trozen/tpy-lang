@@ -674,7 +674,7 @@ void Profile::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __write
     auto __end_5 = __obj_5.end();
     for (; __beg_5 != __end_5; ++__beg_5) {
         auto&& __kv_38 = *__beg_5;
-        auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<std::string_view, std::vector<int32_t>*>>(__kv_38);
+        auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<std::string_view, const std::vector<int32_t>*>>(__kv_38);
         std::string_view __dk = std::get<0>(__tup_2);
         auto&& __dv = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
         __writer.key(__dk);

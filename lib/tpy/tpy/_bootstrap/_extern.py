@@ -31,6 +31,13 @@ def value_ptr_coercion(): ...
 @builtin_decorator("tpy.extern.native_preserves_refs")
 def native_preserves_refs(): ...
 
+# Marks an accessor whose Own[V] result is a copy where the method's CPython
+# namesake aliases -- so mutating the result is a silent no-op. sema warns at
+# such call sites (escape: copy(), or an aliasing accessor). Library-declared
+# so the compiler holds no per-type knowledge.
+@builtin_decorator("tpy.extern.copy_returns_warn")
+def copy_returns_warn(): ...
+
 # Workaround for Python 3.12 -- Python 3.13+ has native type param defaults
 # (PEP 696): def round[T = int](x: float) -> T: ...
 @builtin_decorator("tpy.extern.type_param_default")

@@ -30,6 +30,7 @@ from ..parse import (
 from ..namespace import Namespace, BindingKind
 from ..type_def_registry import (
     is_bool_type, is_dict, is_set, is_bytes_view_type, is_str_view_type,
+    is_borrowing_view_type,
 )
 from ..symbol_binding import lookup_imported, SymbolKind
 from ..modules.type_resolution import is_native_iterable
@@ -1870,6 +1871,15 @@ class CodeGenContext:
         if isinstance(iterable, TpyName):
             return (iterable.name in self.const_indirect_locals
                     or iterable.name in self.const_ref_params)
+        # Borrowing-view accessor call (d.items() / d.values()): the view's
+        # const-ness tracks the receiver's. Sema may have selected the
+        # mutable clone (receiver const-ness inferred only in Phase 2), so
+        # re-derive from the receiver at emit time.
+        if isinstance(iterable, TpyMethodCall) and iterable.obj is not None:
+            fi = iterable.resolved_function_info
+            if (fi is not None
+                    and is_borrowing_view_type(unwrap_ref_type(fi.return_type))):
+                return self.iteration_yields_const(iterable.obj)
         return False
 
     def register_frame_field_shadow(self, name: str) -> bool:
@@ -2147,6 +2157,11 @@ class CodeGenContext:
             # as a pointer-form loop var.
             self.pointer_locals.update(info.pointer_form_unpack_targets)
             self.generator_borrow_form_loop_vars.update(info.pointer_form_unpack_targets)
+            # Proxy-ref iterators (dict_items): the loop element is a
+            # borrow-form tuple field (std::tuple<..., T*>), not a `T*` --
+            # reads/unpacks must treat it as a value holding borrows.
+            if info.borrow_tuple_loop_var is not None:
+                self.borrow_form_tuple_locals.add(info.borrow_tuple_loop_var)
 
         # Statement-level borrow aliases (single-assign `a = items[0]`,
         # tuple-unpack `a, b = first_two(items)`): same `T*`-alias dispatch as
@@ -2240,8 +2255,8 @@ class CodeGenContext:
             return rendered
         return f"(*{rendered})"
 
-    def _call_returns_cpp_ref(self, fi: FunctionInfo | None, obj: TpyExpr | None = None) -> bool:
-        return _call_returns_cpp_ref_shared(self.analyzer, fi, obj)
+    def _call_returns_cpp_ref(self, fi: FunctionInfo | None) -> bool:
+        return _call_returns_cpp_ref_shared(self.analyzer, fi)
 
     def is_rvalue_source(self, expr: TpyExpr) -> bool:
         return _is_rvalue_source_shared(self.analyzer, expr)

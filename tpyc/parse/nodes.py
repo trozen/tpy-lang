@@ -1272,6 +1272,9 @@ class TpyFunction:
     native_name: str | None = None
     native_function: bool = False
     native_preserves_refs: bool = False
+    # @copy_returns_warn: Own[V] accessor that copies where its CPython
+    # namesake aliases, so sema warns at call sites.
+    copy_returns_warn: bool = False
     # @native(cpp_return_type=T) -- see FunctionInfo.native_cpp_return_type.
     native_cpp_return_type: str | None = None
     cpp_template: str | None = None

@@ -25,7 +25,7 @@ from ..diagnostics import SemanticError, nocopy_container_elem_error
 from .. import qnames
 from ..type_def_registry import (
     is_copy_iter, is_own_iter, is_array, is_span, is_varargs, is_list, is_dict, is_set,
-    is_enum_type,
+    is_enum_type, is_str_type, is_borrowing_view_type,
     get_type_def, find_factory_by_simple_name, protocol_info_of, is_subtype,
 )
 from ..parse import TpyFunction
@@ -40,6 +40,24 @@ if TYPE_CHECKING:
 
 _HASHABLE = NominalType("Hashable", is_protocol=True)
 _EQUATABLE = NominalType("Equatable", is_protocol=True)
+
+
+def signature_may_return_borrow(fi: 'FunctionInfo') -> bool:
+    """Whether a function's declared return type could carry a reference
+    into an argument's storage. Own[T] hands over a fresh value and value
+    types are copied out, so neither can borrow; views (str/StrView/
+    BytesView/Span) are value types that DO reference foreign storage, and
+    a tuple may carry borrow-form elements. Unresolved generics stay
+    conservative.
+    """
+    ret = unwrap_ref_type(unwrap_readonly(fi.return_type))
+    if isinstance(ret, (OwnType, VoidType, NoneType)):
+        return False
+    if is_str_type(ret) or is_borrowing_view_type(ret):
+        return True
+    if isinstance(ret, (TupleType, TypeParamRef)):
+        return True
+    return not ret.is_value_type()
 
 
 def partial_substitute(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
@@ -1866,6 +1884,7 @@ class TypeOperations:
             native_name=method.native_name,
             native_function=method.native_function,
             native_preserves_refs=method.native_preserves_refs,
+            copy_returns_warn=method.copy_returns_warn,
             cpp_template=method.cpp_template,
             value_ptr_coercion=method.value_ptr_coercion,
             error_return_type=method.error_return_type,

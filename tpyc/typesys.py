@@ -4688,6 +4688,7 @@ class FunctionInfo:
     native_name: Optional[str] = None
     native_function: bool = False  # @native("func", function=True) -> generates func(self, args)
     native_preserves_refs: bool = False  # non-readonly but doesn't invalidate iterators/refs
+    copy_returns_warn: bool = False  # Own[V] accessor copies where CPython aliases -> warn at call sites
     # @native(cpp_return_type=T): C++ side returns a wider/different type
     # than the declared TPy return. Codegen wraps the call in
     # static_cast<DECLARED_TPY_RETURN>(...) so -Wsign-conversion /

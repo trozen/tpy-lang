@@ -69,6 +69,7 @@ from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _
 from ..value_category import is_rvalue_source
 from .expressions import _collect_body_name_refs, _collect_body_local_defs
 from .local_deduction import collect_pending_source_types
+from .type_ops import signature_may_return_borrow as _signature_may_return_borrow
 from tpyc import modules as builtin_modules
 from tpyc import qnames
 from ..type_def_registry import (
@@ -114,24 +115,6 @@ def _is_dangling_temporary_arg(expr: TpyExpr) -> bool:
         return (_is_dangling_temporary_arg(expr.then_expr)
                 or _is_dangling_temporary_arg(expr.else_expr))
     return False
-
-
-def _signature_may_return_borrow(fi: 'FunctionInfo') -> bool:
-    """Whether a function's declared return type could carry a reference
-    into an argument's storage. Own[T] hands over a fresh value and value
-    types are copied out, so neither can borrow; views (str/StrView/
-    BytesView/Span) are value types that DO reference foreign storage, and
-    a tuple may carry borrow-form elements. Unresolved generics stay
-    conservative.
-    """
-    ret = unwrap_ref_type(unwrap_readonly(fi.return_type))
-    if isinstance(ret, (OwnType, VoidType, NoneType)):
-        return False
-    if is_str_type(ret) or is_borrowing_view_type(ret):
-        return True
-    if isinstance(ret, (TupleType, TypeParamRef)):
-        return True
-    return not ret.is_value_type()
 
 
 def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyExpr) -> None:

@@ -224,7 +224,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 | `str` | Done | Context-dependent `std::string` / `std::string_view` |
 | `bytes`, `bytearray` | Done | |
 | `list` | Done | `std::vector<T>` |
-| `dict` | Done | Insertion-ordered `tpy::ordered_map<K, V>` |
+| `dict` | Done | Insertion-ordered `tpy::ordered_map<K, V>`; items()/values()/setdefault alias (CPython semantics); two-arg get(k, default) copies reference values with a warning (BUGS.md tracks the borrow form) |
 | `set` | Done | Insertion-ordered `tpy::ordered_set<T>` |
 | `tuple` | Done | `std::tuple<...>` |
 | `range` | Done | `Range[T]` |

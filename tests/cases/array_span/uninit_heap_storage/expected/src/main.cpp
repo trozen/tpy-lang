@@ -60,19 +60,23 @@ void __tpy_init() {
     // points.init(1, Point(7, 8))
     points->init(1, Point(7, 8));
     // pt: Point = points.load(0)
-    static Point __global_slot_3 = points->load(0);
-    pt = &__global_slot_3;
+    pt = &(points->load(0));
     // print(pt.x)
     std::cout << pt->x << "\n";
     // print(pt.y)
     std::cout << pt->y << "\n";
     // pt2: Point = points.load(1)
-    static Point __global_slot_4 = points->load(1);
-    pt2 = &__global_slot_4;
+    pt2 = &(points->load(1));
     // print(pt2.x)
     std::cout << pt2->x << "\n";
     // print(pt2.y)
     std::cout << pt2->y << "\n";
+    // # load() aliases live storage (not a copy): mutating through the bound
+    // # result is observed on a fresh load of the same slot.
+    // pt.x = 99
+    pt->x = 99;
+    // print(points.load(0).x)
+    std::cout << points->load(0).x << "\n";
     // points.drop(0)
     points->drop(0);
     // points.drop(1)

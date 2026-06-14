@@ -2107,6 +2107,7 @@ class Parser:
         native_name: str | None = None
         native_function: bool = False
         native_preserves_refs: bool = False
+        copy_returns_warn: bool = False
         cpp_template: str | None = None
         is_property_getter = False
         is_property_setter = False
@@ -2152,6 +2153,8 @@ class Parser:
                 cpp_template = pos
             elif qname == qnames.NATIVE_PRESERVES_REFS:
                 native_preserves_refs = True
+            elif qname == qnames.COPY_RETURNS_WARN:
+                copy_returns_warn = True
             elif qname in self._SEND_SYNC_DECORATOR_MAP:
                 send_override, sync_override = self._apply_send_sync_override(
                     qname, send_override, sync_override,
@@ -2414,6 +2417,7 @@ class Parser:
             native_name=native_name,
             native_function=native_function,
             native_preserves_refs=native_preserves_refs,
+            copy_returns_warn=copy_returns_warn,
             native_cpp_return_type=native_cpp_return_type,
             cpp_template=cpp_template,
             type_params=method_type_params,

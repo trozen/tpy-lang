@@ -914,7 +914,7 @@ class StatementGenerator:
         # (TypeParamRef returns are handled separately via val_or_cref_t in _gen_local_var_decl.)
         if isinstance(init, TpyMethodCall):
             fi = init.resolved_function_info
-            if fi is not None and fi.is_readonly and self.ctx._call_returns_cpp_ref(fi, init.obj):
+            if fi is not None and fi.is_readonly and self.ctx._call_returns_cpp_ref(fi):
                 return True
         # An alias of a const-inferred source must also bind const, else a
         # mutable reference/pointer would be taken from a const source. Sound
@@ -3023,9 +3023,14 @@ class StatementGenerator:
                         out.write(
                             f"{indent}{cpp_name} = "
                             f"::tpy::optional_to_ptr({get_expr});\n")
-                    elif name in self.ctx.generator_pointer_alias_locals:
+                    elif (name in self.ctx.generator_pointer_alias_locals
+                          or (isinstance(stmt.value, TpyName)
+                              and stmt.value.name
+                              in self.ctx.borrow_form_tuple_locals)):
                         # Statement-level borrow alias (`a, b = first_two(xs)`
-                        # or `a, b = t` for a stable tuple local `t`).
+                        # or `a, b = t` for a stable tuple local `t`), or an
+                        # unpack from a borrow-form tuple loop element (proxy
+                        # iterators like dict_items).
                         # `tuple_elem_ref` normalizes either source-element
                         # shape to the live `T&` -- a borrow-tuple element
                         # (`std::tuple<T*, ...>`, from a call) is dereferenced,
@@ -3090,6 +3095,14 @@ class StatementGenerator:
                 self.ctx.declared_vars.add(name)
                 self.ctx.local_scope_names.add(name)
                 self.ctx.var_types[name] = target_type
+                if (name in self.ctx.loop_hoisted_vars
+                        and name in self.ctx.pointer_locals):
+                    # Post-loop-used target hoisted as a `T*` alias slot:
+                    # ASSIGN it (a fresh `auto&&` would shadow the hoisted
+                    # slot, leaving it disengaged for the post-loop read).
+                    out.write(f"{indent}{cpp_name} = &(::tpy::unwrap_ref("
+                              f"::tpy::tuple_elem_ref({get_expr})));\n")
+                    continue
                 # A fresh C++-local reference shadows any same-named resumable
                 # frame field; suppress the (*name) frame peel.
                 self.ctx.register_frame_field_shadow(name)
@@ -4178,8 +4191,7 @@ class StatementGenerator:
         fi = self._get_error_return_fi(inner)
         if fi is None:
             return False
-        obj = inner.obj if isinstance(inner, TpyMethodCall) else None
-        return self.ctx._call_returns_cpp_ref(fi, obj)
+        return self.ctx._call_returns_cpp_ref(fi)
 
     def _error_return_decl_prefix(self, stmt: TpyVarDecl, var_type: 'TpyType | None',
                                   indent: str, aliases: bool) -> str:
@@ -4935,6 +4947,27 @@ class StatementGenerator:
                 self.ctx.var_types[name] = var_type
                 if self.ctx.current_ns and var_type:
                     self.ctx.current_ns.bind_variable(name, var_type)
+                # A post-loop-used target of a borrow-ref tuple unpack
+                # (`for k, v in d.items(): ...; use(v)`) hoists in POINTER
+                # form: the per-iteration binding aliases the live container
+                # element, so the hoisted slot must hold that alias (CPython:
+                # the leaked loop var IS the last element). An owned
+                # std::optional hoist would stay disengaged -- the in-loop
+                # `auto&&` binding can't engage it -- making the post-loop
+                # read UB.
+                idx = (self._unpack_borrow_target_index(stmt, name)
+                       if isinstance(stmt, TpyForEach) and stmt.is_tuple_unpack
+                       and self._is_plain_nonvalue(var_type) else None)
+                if idx is not None:
+                    up = stmt.body[0]
+                    self.ctx.pointer_locals.add(name)
+                    t_const = bool(up.is_const_ref and idx < len(up.is_const_ref)
+                                   and up.is_const_ref[idx])
+                    if t_const:
+                        self.ctx.const_indirect_locals.add(name)
+                    const_pfx = "const " if t_const else ""
+                    out.write(f"{indent}{const_pfx}{cpp_type}* {name} = nullptr;\n")
+                    continue
                 # A plain non-value local bound only by statement-level
                 # borrows (never a fresh rvalue) must alias, not own: the
                 # optional-storage form would copy and sever the alias.
@@ -5018,6 +5051,24 @@ class StatementGenerator:
     def _is_loop_var_hoisted(self, stmt: TpyForEach) -> bool:
         """Check if the loop variable was hoisted for post-loop use."""
         return stmt.hoist_loop_var
+
+    @staticmethod
+    def _unpack_borrow_target_index(stmt: TpyForEach, name: str) -> int | None:
+        """Index of `name` among the loop's tuple-unpack targets when its
+        element binds as a borrow (Ref-typed / is_ref), else None."""
+        if not (stmt.is_tuple_unpack and stmt.body
+                and isinstance(stmt.body[0], TpyTupleUnpack)):
+            return None
+        up = stmt.body[0]
+        for i, tname in enumerate(up.targets):
+            if tname != name:
+                continue
+            if isinstance(up.target_types[i], RefType):
+                return i
+            if up.is_ref and i < len(up.is_ref) and up.is_ref[i]:
+                return i
+            return None
+        return None
 
     def _gen_while(self, out: TextIO, stmt: TpyWhile, indent: str) -> None:
         """Generate a while loop."""

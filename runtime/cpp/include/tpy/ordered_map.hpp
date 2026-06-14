@@ -120,7 +120,7 @@ public:
         bool operator!=(const value_iterator_impl& o) const { return node_ != o.node_; }
     };
 
-    // -- Tuple-items iterator (yields std::tuple<K,V> for tuple unpacking) ---
+    // -- Tuple-items iterator (yields tuples of refs for tuple unpacking) ---
 
     template<bool IsConst>
     class tuple_items_iterator_impl {
@@ -136,10 +136,14 @@ public:
 
         using iterator_category = std::forward_iterator_tag;
         using difference_type = std::ptrdiff_t;
+        // Proxy reference tuple (C++23 zip_view shape): elements reference
+        // the node so consumers alias the stored value (CPython `for k, v
+        // in d.items()` mutation semantics) instead of receiving a copy.
         using value_type = std::tuple<K, V>;
-        using reference = value_type;
+        using reference = std::tuple<const K&,
+            std::conditional_t<IsConst, const V&, V&>>;
 
-        value_type operator*() const { return {node_->key, node_->value}; }
+        reference operator*() const { return {node_->key, node_->value}; }
 
         tuple_items_iterator_impl& operator++() { node_ = node_->next; return *this; }
         tuple_items_iterator_impl operator++(int) { auto tmp = *this; node_ = node_->next; return tmp; }
@@ -152,7 +156,9 @@ public:
     using const_iterator = key_iterator_impl<true>;
     using items_iterator = items_iterator_impl<false>;
     using const_items_iterator = items_iterator_impl<true>;
+    using value_iterator = value_iterator_impl<false>;
     using const_value_iterator = value_iterator_impl<true>;
+    using tuple_items_iterator = tuple_items_iterator_impl<false>;
     using const_tuple_items_iterator = tuple_items_iterator_impl<true>;
 
     // -- Construction -------------------------------------------------------
@@ -302,10 +308,14 @@ public:
     const_items_iterator items_end() const { return const_items_iterator(nullptr); }
 
     // Values: iterate values only (for .values())
+    value_iterator values_begin() { return value_iterator(head_); }
+    value_iterator values_end() { return value_iterator(nullptr); }
     const_value_iterator values_begin() const { return const_value_iterator(head_); }
     const_value_iterator values_end() const { return const_value_iterator(nullptr); }
 
-    // Tuple-items: iterate as std::tuple<K,V> (for Python-style `for k, v in d.items()`)
+    // Tuple-items: iterate as ref tuples (for Python-style `for k, v in d.items()`)
+    tuple_items_iterator tuple_items_begin() { return tuple_items_iterator(head_); }
+    tuple_items_iterator tuple_items_end() { return tuple_items_iterator(nullptr); }
     const_tuple_items_iterator tuple_items_begin() const { return const_tuple_items_iterator(head_); }
     const_tuple_items_iterator tuple_items_end() const { return const_tuple_items_iterator(nullptr); }
 

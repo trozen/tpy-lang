@@ -64,6 +64,7 @@ from ..type_def_registry import (
 )
 from ..diagnostics import SemanticError
 from .method_expansion import expand_methods_for_record
+from .type_ops import signature_may_return_borrow
 from .macros import run_macro_phase_for_record
 from .operators import DUNDER_CPP_TEMPLATES
 from ..macro_api import expr_to_cpp_default
@@ -1173,9 +1174,14 @@ class TypeRegistrar:
                 and not method.readonly_opt_out
                 and not is_mutable_propagate_clone
             )
-            resolved_readonly = method.is_readonly or method.is_pure or is_implicit_readonly or (
-                record.is_frozen and method.name != "__init__"
-            )
+            # @pure implies readonly, but never for the mutable clone of an
+            # auto_readonly pair -- the clone hands out a mutable borrow, so
+            # its receiver must stay non-const (same reason as the
+            # implicit_readonly exemption).
+            resolved_readonly = (method.is_readonly
+                or (method.is_pure and not is_mutable_propagate_clone)
+                or is_implicit_readonly
+                or (record.is_frozen and method.name != "__init__"))
             method.is_readonly = resolved_readonly
             method_type_param_bounds = self._resolve_type_param_bounds(
                 method.type_param_bounds, method.loc or record.loc,
@@ -1289,6 +1295,7 @@ class TypeRegistrar:
                 native_name=method.native_name,
                 native_function=method.native_function,
                 native_preserves_refs=method.native_preserves_refs,
+                copy_returns_warn=method.copy_returns_warn,
                 native_cpp_return_type=method.native_cpp_return_type,
                 cpp_template=method.cpp_template or (DUNDER_CPP_TEMPLATES.get(method.name)
                              if not method.native_function else None),
@@ -1312,6 +1319,20 @@ class TypeRegistrar:
                 func_info.return_borrows_from = (
                     self.generator_borrow_param_indices(
                         [t for _, t in method_params]))
+            elif ((func_info.native_name is not None
+                       or func_info.is_native
+                       or func_info.cpp_template is not None)
+                    and method.is_stub
+                    and not method.is_consuming
+                    and not method.is_staticmethod
+                    and signature_may_return_borrow(func_info)):
+                # Body-less native methods get no body-derived borrow facts,
+                # so derive the receiver borrow from the signature: a native
+                # accessor returning a non-value, non-Own type hands out a
+                # borrow of (or view into) its receiver (dict views,
+                # __getitem__, get, setdefault). Readonly inference is not
+                # affected -- builtin stubs declare readonly-ness explicitly.
+                func_info.return_borrows_from = frozenset({-1})
             # @inline: store the body expression for call-site inlining.
             # Body must be a single call statement. Cloned and substituted at call sites.
             if method.is_inline and not method.is_stub:

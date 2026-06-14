@@ -11,6 +11,7 @@ from ..parse.nodes import (
 )
 from ..typesys import IntLiteralType, OptionalType, OwnType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_readonly, unwrap_ref_type, yield_uses_borrow_slot
 from tpyc import modules as builtin_modules
+from ..type_def_registry import iter_yields_ref_tuple_proxies
 from .context import INDENT, CodeGenError, escape_cpp_name
 from .resumable_cfg import _stmts_have_any_suspension
 from .protocols import protocol_param_template_name
@@ -38,6 +39,14 @@ class GeneratorForInfo:
     # members are NOT listed (they stay value-copy). Empty for non-unpack
     # loops and all-value tuples.
     pointer_form_unpack_targets: frozenset[str] = frozenset()
+    # Loop variable name when the iterator yields PROXY reference tuples
+    # (dict_items: operator* returns std::tuple<const K&, V&> by value).
+    # The loop element cannot be address-taken (`&(*it)` is ill-formed on
+    # the prvalue proxy), so the loop var's frame slot is the borrow-form
+    # tuple (std::tuple<..., T*>) assigned via tuple_to_pointer; the element
+    # refs point into stable node storage, so aliasing across yield/resume
+    # still holds. None for non-proxy iterators.
+    borrow_tuple_loop_var: str | None = None
 
 
 def _collect_yield_stmts(stmts: list[TpyStmt]) -> list[TpyYield]:
@@ -746,6 +755,10 @@ class GeneratorCodegen:
             # elements fall back to value-storage to avoid a
             # const-correctness violation when taking `&(*iter)`.
             elem_for_form = unwrap_ref_type(native_elem) if native_elem else None
+            # Proxy-ref tuple iterators (dict_items): `&(*it)` is ill-formed
+            # on the prvalue proxy, so the loop element binds as a borrow-form
+            # tuple via tuple_to_pointer instead of a `T*` to the element.
+            yields_proxy = iter_yields_ref_tuple_proxies(iterable_type)
             pointer_form_targets: frozenset[str] = frozenset()
             if (stmt.is_tuple_unpack and isinstance(elem_for_form, TupleType)
                     and stmt.body and isinstance(stmt.body[0], TpyTupleUnpack)):
@@ -769,20 +782,28 @@ class GeneratorCodegen:
                     and not isinstance(
                         unwrap_ref_type(etype), (ReadonlyType, OptionalType))
                 }
-                pointer_form_var = stmt.var if aliased else None
+                pointer_form_var = (stmt.var
+                                    if aliased and not yields_proxy else None)
                 pointer_form_targets = frozenset(aliased)
             else:
                 pointer_form_var = (
                     stmt.var
                     if (elem_for_form is not None
                         and not elem_for_form.is_value_type()
-                        and not isinstance(elem_for_form, ReadonlyType))
+                        and not isinstance(elem_for_form, ReadonlyType)
+                        and not yields_proxy)
                     else None
                 )
+            borrow_tuple_var = (
+                stmt.var
+                if (yields_proxy and isinstance(elem_for_form, TupleType)
+                    and elem_for_form.has_pointer_repr_element())
+                else None)
             return GeneratorForInfo(
                 uid=uid, strategy="begin_end", fields=fields,
                 pointer_form_loop_var=pointer_form_var,
                 pointer_form_unpack_targets=pointer_form_targets,
+                borrow_tuple_loop_var=borrow_tuple_var,
             )
 
         # Universal default: ::tpy::__iter__() + __next__() loop.

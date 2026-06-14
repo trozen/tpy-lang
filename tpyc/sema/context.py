@@ -495,7 +495,7 @@ def record_stmt_borrow_binding(ctx: 'SemanticContext', name: str,
     if not const and isinstance(inner, TpyMethodCall):
         fi = inner.resolved_function_info
         const = bool(fi is not None and fi.is_readonly
-                     and call_returns_cpp_ref(ctx, fi, inner.obj))
+                     and call_returns_cpp_ref(ctx, fi))
     prev = ctx.func.stmt_borrow_decls.get(name, False)
     ctx.func.stmt_borrow_decls[name] = prev or const
 
@@ -602,6 +602,10 @@ class FunctionTrackingState:
     consumed_loop_vars: set[str] = field(default_factory=set)
     deferred_loop_copy_warnings: dict[str, list[int]] = field(default_factory=dict)
     loop_var_iterable: dict[str, str] = field(default_factory=dict)
+    # True while analyzing the argument of an explicit copy(...) call --
+    # copy-divergence warnings (e.g. dict.get(k, default)) are suppressed,
+    # the wrap being the acknowledgment spelling.
+    in_copy_call_arg: bool = False
 
     # --- Scope escape tracking ---
     var_scope_depth: dict[str, int] = field(default_factory=dict)

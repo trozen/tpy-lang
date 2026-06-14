@@ -154,7 +154,11 @@ class MethodAnalyzer:
                 overloads = builtin_record.get_method_overloads(method_name)
                 if not overloads:
                     return False
-                return any(not m.is_readonly and not m.native_preserves_refs for m in overloads)
+                # The mutable clone of an @auto_readonly accessor (values/
+                # items) hands out a borrow but does not mutate the receiver.
+                return any(not m.is_readonly and not m.native_preserves_refs
+                           and not m.is_auto_readonly_mutable_clone
+                           for m in overloads)
         # User-defined types: use inferred direct_self_mutated from Phase 1
         # mutation analysis. More precise than is_readonly -- a method that
         # doesn't mutate self won't invalidate references even without
@@ -1726,12 +1730,37 @@ class MethodAnalyzer:
             if len(overloads) > 1:
                 raise self.ctx.error(
                     f"Overloaded generic methods are not supported for '{expr.method}'", expr)
-            return self._analyze_generic_method_call(
+            result = self._analyze_generic_method_call(
                 expr, method_info, record_info, type_subst)
+            self._warn_copy_returns(expr, result)
+            return result
 
-        return self._resolve_and_check_args(
+        result = self._resolve_and_check_args(
             expr, overloads, type_subst, is_readonly_receiver=is_readonly_receiver,
             is_consuming_receiver=is_consuming_receiver)
+        self._warn_copy_returns(expr, result)
+        return result
+
+    def _warn_copy_returns(self, expr: TpyMethodCall,
+                           result: TpyType) -> None:
+        """Acknowledged CPython divergence for `@copy_returns_warn` accessors
+        (e.g. two-arg `dict.get`): the `Own[V]` result is a copy where the
+        method's CPython namesake aliases, so mutating it is a silent no-op.
+        copy() is the acknowledgment spelling; value-type results are
+        parity-clean (immutable in CPython). The fact is library-declared on
+        the stub, not keyed on any C++ symbol here."""
+        fi = expr.resolved_function_info
+        if (fi is None or not fi.copy_returns_warn
+                or self.ctx.func.in_copy_call_arg):
+            return
+        bare = result.wrapped if isinstance(result, OwnType) else result
+        if unwrap_readonly(bare).is_value_type():
+            return
+        self.ctx.warning(
+            f"'{expr.method}(...)' returns a copy of the stored value; "
+            "mutations through it do not affect the container (CPython "
+            "aliases). Use an aliasing accessor (e.g. subscript), or "
+            "wrap in copy() to make the copy explicit.", expr)
 
     def _inline_method_call(
         self, expr: TpyMethodCall, method_info: FunctionInfo,

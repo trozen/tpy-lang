@@ -119,9 +119,10 @@ void dict_update(ordered_map<K, V>& m, const ordered_map<K, V>& other) {
     }
 }
 
-// d.setdefault(key, default) -> V
+// d.setdefault(key, default) -> V& into the map (CPython returns the stored
+// object; the borrow makes `d.setdefault(k, []).append(x)` reach the dict).
 template<typename K, typename V, typename KeyArg>
-V dict_setdefault(ordered_map<K, V>& m, const KeyArg& key, V def) {
+V& dict_setdefault(ordered_map<K, V>& m, const KeyArg& key, V def) {
     K k(key);
     auto it = m.find(k);
     if (it != m.items_end()) return (*it).second;
@@ -144,8 +145,26 @@ struct dict_keys_view {
     }
 };
 
+// Mutable views alias the map so element mutation reaches the dict
+// (CPython `for v in d.values(): v.append(...)` semantics). The `const V`
+// partial specializations are the readonly-receiver form (TPy renders
+// `dict_values[K, readonly[V]]` as `dict_values_view<K, const V>`).
+
 template<typename K, typename V>
 struct dict_values_view {
+    ordered_map<K, V>* map_;
+    auto begin() const { return map_->values_begin(); }
+    auto end() const { return map_->values_end(); }
+    int32_t size() const { return map_->size(); }
+    bool contains(const V& value) const { return std::find(begin(), end(), value) != end(); }
+
+    auto __iter__() const {
+        return native_iterator<decltype(begin()), V>{begin(), end()};
+    }
+};
+
+template<typename K, typename V>
+struct dict_values_view<K, const V> {
     const ordered_map<K, V>* map_;
     auto begin() const { return map_->values_begin(); }
     auto end() const { return map_->values_end(); }
@@ -159,6 +178,19 @@ struct dict_values_view {
 
 template<typename K, typename V>
 struct dict_items_view {
+    ordered_map<K, V>* map_;
+    auto begin() const { return map_->tuple_items_begin(); }
+    auto end() const { return map_->tuple_items_end(); }
+    int32_t size() const { return map_->size(); }
+    bool contains(const std::tuple<K, V>& item) const { return std::find(begin(), end(), item) != end(); }
+
+    auto __iter__() const {
+        return native_iterator<decltype(begin()), std::tuple<K, V>>{begin(), end()};
+    }
+};
+
+template<typename K, typename V>
+struct dict_items_view<K, const V> {
     const ordered_map<K, V>* map_;
     auto begin() const { return map_->tuple_items_begin(); }
     auto end() const { return map_->tuple_items_end(); }
@@ -173,9 +205,13 @@ struct dict_items_view {
 template<typename K, typename V>
 dict_keys_view<K, V> dict_keys(const ordered_map<K, V>& m) { return {&m}; }
 template<typename K, typename V>
-dict_values_view<K, V> dict_values(const ordered_map<K, V>& m) { return {&m}; }
+dict_values_view<K, V> dict_values(ordered_map<K, V>& m) { return {&m}; }
 template<typename K, typename V>
-dict_items_view<K, V> dict_items(const ordered_map<K, V>& m) { return {&m}; }
+dict_values_view<K, const V> dict_values(const ordered_map<K, V>& m) { return {&m}; }
+template<typename K, typename V>
+dict_items_view<K, V> dict_items(ordered_map<K, V>& m) { return {&m}; }
+template<typename K, typename V>
+dict_items_view<K, const V> dict_items(const ordered_map<K, V>& m) { return {&m}; }
 
 // -- ordered_map::__iter__() definition (deferred -- needs native_iterator) -
 

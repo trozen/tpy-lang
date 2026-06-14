@@ -1,6 +1,7 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
 from .._typing import overload, Literal
+from .._bootstrap._decorators import Own
 from .._bootstrap._extern import native, builtin_type
 from .._core._types import Int32
 
@@ -17,8 +18,10 @@ class TextIO:
     @native("readline")
     def readline(self) -> str: ...
 
+    # Own: the C++ side materializes a fresh vector; the result does not
+    # borrow the file object.
     @native("readlines")
-    def readlines(self) -> list[str]: ...
+    def readlines(self) -> Own[list[str]]: ...
 
     @native("flush")
     def flush(self) -> None: ...
@@ -43,7 +46,7 @@ class BinaryIO:
     def readline(self) -> bytes: ...
 
     @native("readlines")
-    def readlines(self) -> list[bytes]: ...
+    def readlines(self) -> Own[list[bytes]]: ...
 
     @native("write")
     def write(self, data: bytes) -> Int32: ...

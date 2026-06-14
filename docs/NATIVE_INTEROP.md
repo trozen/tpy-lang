@@ -88,7 +88,7 @@ class Vec2:
     def length(self) -> float: ...
     def dot(self, other: Vec2) -> float: ...
     @staticmethod
-    def zero() -> Vec2: ...
+    def zero() -> Own[Vec2]: ...        # factory: returns a fresh value (see below)
     @native("mag")                      # method rename
     def magnitude(self) -> float: ...
 
@@ -106,6 +106,13 @@ class Window: ...
 ```
 
 All methods on a `@native` class must be stubs (`...` body). Non-native methods on a native class are an error.
+
+**Return convention -- `-> V` vs `-> Own[V]` (reference-type returns).** For a reference-type `V` (a class / container), the TPy return annotation declares the C++ return convention, and the compiler trusts it:
+
+- `-> V` means the C++ method returns `V&` (a reference into the receiver or other stable storage). A call result bound to a local *aliases* that storage -- `p = obj.get()` binds `V*`/`V&`, and mutations through `p` reach the original (matching `dict.setdefault`, container `__getitem__`).
+- `-> Own[V]` means the C++ method returns a fresh `V` by value (a factory / a moved-out value). The result is owned; binding it copies/moves, no aliasing.
+
+This is the same contract user-defined methods follow, so there is no native special case. The consequence is a hard requirement on the binding author: a method whose C++ returns by value (e.g. a `static Vec2 zero()` factory) **must** be declared `-> Own[V]`. Declaring it bare `-> V` makes codegen bind a reference to a destroyed temporary -- a dangling pointer (or, for a `@nocopy` `V`, a C++ build error). There is currently no compiler check that a bare `-> V` native method actually returns `V&`; it is the author's contract to honor. (Free `@native` *functions* are presently the exception -- they always take value semantics regardless of the annotation; see BUGS.md.)
 
 **Construction:**
 - C++ classes: constructor call syntax -- `Vec2(1.0, 2.0)` -> `b2::Vec2(1.0, 2.0)`
@@ -486,6 +493,7 @@ These are orthogonal to the import/export system and remain unchanged:
 |-----------|---------|
 | `cpp_template("...")` | Inline C++ template expansion |
 | `native_preserves_refs` | Marks native method as not invalidating iterators |
+| `copy_returns_warn` | Marks an `Own[V]` accessor that copies where its CPython namesake aliases; sema warns at call sites (silence with `copy()`) |
 | `value_ptr_coercion` | Type coercion annotation |
 
 ---

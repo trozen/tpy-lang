@@ -16,7 +16,7 @@ from typing import Any, Protocol
 
 from .typesys import (
     FunctionInfo, TpyType, TypeParamRef, OwnType, OptionalType, UnionType,
-    is_protocol_type, unwrap_readonly, unwrap_ref_type,
+    is_protocol_type, unwrap_ref_type,
 )
 from .parse import (
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBoolLiteral,
@@ -51,29 +51,34 @@ _CONTAINER_LITERAL_NODES: tuple = (
 )
 
 
-def call_returns_cpp_ref(analyzer: ValueCategoryAnalyzer, fi: 'FunctionInfo | None',
-                         obj: 'TpyExpr | None' = None) -> bool:
+def call_returns_cpp_ref(analyzer: ValueCategoryAnalyzer, fi: 'FunctionInfo | None') -> bool:
     """True if this function/method call returns a C++ lvalue reference (T&).
 
-    User-defined functions/methods with non-value, non-generic, non-owning
-    return types emit T& in C++ (via to_cpp_return()). Everything else --
-    native imports, @native record methods, TypeParamRef (val_or_ref_t<T>),
-    Own[T], Optional[T] -- uses value semantics.
+    A function/method returns T& iff its declared return is a concrete
+    (non-generic) reference type that is not owned/nullable: copy is spelled
+    `Own[T]`, nullability `Optional[T]`, an unresolved generic stays
+    `TypeParamRef` (rendered val_or_ref_t<T>), and protocol returns are
+    value-shaped concrete structs -- all of which use value semantics. This
+    holds uniformly for user-defined AND `@native` record methods: a native
+    binding declares its C++ return convention through the same `-> V` vs
+    `-> Own[V]` contract, so no per-native special case is needed.
+
+    Free `@native` functions (`is_native_import`) still take value semantics
+    -- the same `-> V` reference-return asymmetry exists for them but is not
+    yet closed (see BUGS.md).
     """
+    # NOTE: `is_native_import` is currently always False for native record
+    # METHODS (their FunctionInfo carries a parse.nodes FunctionLinkage, which
+    # this typesys-side property's `in (...)` check never matches -- see the
+    # enum-identity BUGS.md entry). That is WHY native `-> V` methods reach the
+    # shape check below and alias. Closing that enum split would flip this True
+    # and force native methods to copy -- which must be paired with honoring
+    # the `-> V` / `Own[V]` contract here, or it silently regresses aliasing.
     if fi is None or fi.is_native_import:
         return False
     # Record constructors return rvalue temporaries, never C++ T&.
     if fi.is_constructor:
         return False
-    if obj is not None:
-        # Methods on @native records have unknown C++ return convention.
-        raw_obj_type = analyzer.get_expr_type(obj)
-        obj_type = unwrap_readonly(raw_obj_type) if raw_obj_type is not None else None
-        rec = analyzer.registry.get_record_for_type(obj_type) if obj_type else None
-        if rec is None and isinstance(obj, TpyName):
-            rec = analyzer.registry.get_record(obj.name)
-        if rec is not None and rec.is_native:
-            return False
     rt = unwrap_ref_type(fi.return_type)
     return (rt is not None
             and not rt.is_value_type()
@@ -125,7 +130,7 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     if isinstance(expr, _CONTAINER_LITERAL_NODES):
         return True
     if isinstance(expr, TpyMethodCall):
-        return not call_returns_cpp_ref(analyzer, expr.resolved_function_info, expr.obj)
+        return not call_returns_cpp_ref(analyzer, expr.resolved_function_info)
     # Coercions: depends on inner expr
     if isinstance(expr, TpyCoerce):
         return is_rvalue_source(analyzer, expr.expr)

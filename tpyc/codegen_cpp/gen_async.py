@@ -1100,10 +1100,13 @@ class AsyncCoroCodegen:
             owning_str = state.with_owning_str_targets
             owning_tuple_locals = self.ctx.owning_generator_tuple_locals(func)
             pointer_form_names: set[str] = set()
+            borrow_tuple_names: set[str] = set()
             for info in state.for_loop_info.values():
                 if info.pointer_form_loop_var is not None:
                     pointer_form_names.add(info.pointer_form_loop_var)
                 pointer_form_names.update(info.pointer_form_unpack_targets)
+                if info.borrow_tuple_loop_var is not None:
+                    borrow_tuple_names.add(info.borrow_tuple_loop_var)
             # Statement-level borrow aliases (single-assign / tuple-unpack)
             # also get a `T*` field rather than an owning frame_slot<T>.
             pointer_form_names.update(self._classify_pointer_alias_locals(func))
@@ -1157,7 +1160,8 @@ class AsyncCoroCodegen:
                     out.write(f"{INDENT}::tpy::frame_slot<{storage_cpp}> {cpp_name};\n")
                 elif (isinstance(ltype_inner, TupleType)
                         and ltype_inner.has_pointer_repr_element()
-                        and not lname.startswith("__for_tup_")):
+                        and (not lname.startswith("__for_tup_")
+                             or lname in borrow_tuple_names)):
                     # Borrow-form tuple local (std::tuple<..., T*>): a value-form
                     # field would copy the element across the suspension (the
                     # silent-copy divergence). Pointers default-construct to
@@ -3653,7 +3657,16 @@ class AsyncCoroCodegen:
             return ("", f"!({cont})", bind_post)
         if strat == "begin_end":
             it, end = f"(*__for_it_{uid})", f"(*__for_end_{uid})"
-            if info.pointer_form_loop_var == stmt.var:
+            if info.borrow_tuple_loop_var == stmt.var:
+                # Proxy-ref tuple element (dict_items): lower the prvalue
+                # proxy to the borrow-form tuple; element refs are stable.
+                elem_bare = unwrap_readonly(unwrap_ref_type(
+                    self.types.resolve_type(stmt.elem_type)))
+                borrow_cpp = self.types.tuple_borrow_cpp(elem_bare)
+                bind_post = [
+                    f"{cpp_var} = ::tpy::tuple_to_pointer"
+                    f"<{borrow_cpp}>(*({it})++);"]
+            elif info.pointer_form_loop_var == stmt.var:
                 bind_post = [f"{cpp_var} = &(*({it})++);"]
             else:
                 bind_post = [f"{cpp_var} = *({it})++;"]

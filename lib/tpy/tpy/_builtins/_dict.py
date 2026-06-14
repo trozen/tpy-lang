@@ -1,9 +1,9 @@
 # tpy: native_module
 # tpy: cpp_namespace("tpystd::builtins")
 from .._typing import overload, Self, Iterator, Iterable
-from .._bootstrap._decorators import readonly, pure, Own
+from .._bootstrap._decorators import readonly, pure, Own, auto_readonly
 from .._core._types import Int32, NativeIterable
-from .._bootstrap._extern import native, cpp_template, native_preserves_refs, builtin_type
+from .._bootstrap._extern import native, cpp_template, native_preserves_refs, builtin_type, copy_returns_warn
 
 
 @builtin_type("builtins.dict_keys")
@@ -109,10 +109,13 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
     @readonly
     def get(self, key: K) -> V | None: ...
 
+    # Copies where CPython aliases, so `d.get(k, []).append(x)` silently
+    # no-ops -- @copy_returns_warn flags the call site.
     @overload
     @native("tpy::dict_get_default", function=True)
     @pure
     @readonly
+    @copy_returns_warn
     def get(self, key: K, default: V) -> Own[V]: ...
 
     @overload
@@ -132,8 +135,11 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
     @native("tpy::dict_update", function=True)
     def __ior__(self, other: dict[K, Own[V]]) -> dict[K, V]: ...
 
+    # Returns a borrow of the stored value (CPython returns the stored
+    # object), so `d.setdefault(k, []).append(x)` mutates the dict. The
+    # bare `-> V` (not `Own[V]`) is what makes the result alias.
     @native("tpy::dict_setdefault", function=True)
-    def setdefault(self, key: K, default: Own[V]) -> Own[V]: ...
+    def setdefault(self, key: K, default: Own[V]) -> V: ...
 
     @native("tpy::dict_keys", function=True)
     @pure
@@ -142,10 +148,10 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
 
     @native("tpy::dict_values", function=True)
     @pure
-    @readonly
-    def values(self) -> dict_values[K, V]: ...
+    @auto_readonly
+    def values(self) -> dict_values[K, auto_readonly[V]]: ...
 
     @native("tpy::dict_items", function=True)
     @pure
-    @readonly
-    def items(self) -> dict_items[K, V]: ...
+    @auto_readonly
+    def items(self) -> dict_items[K, auto_readonly[V]]: ...

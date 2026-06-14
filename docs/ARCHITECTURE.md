@@ -178,9 +178,13 @@ Unit-tested in `tpyc/test_value_form.py`.
 `tpyc/type_def_registry.py` holds a single `TypeDef` per qname with
 all behavior (`cpp_formatter`, `is_send`/`is_sync`, `element_of`,
 `subscript_borrows`, `is_value_type`, `is_indirecting`,
-`needs_explicit_element_target`, `param_kinds`, `type_factory`,
-category payloads `int_traits`, `float_traits`, `enum: EnumInfo`,
-`record: RecordInfo`, `protocol: ProtocolInfo`). The `is_indirecting`
+`is_borrowing_view` (value-type wrapper referencing foreign storage,
+e.g. dict views), `iter_yields_ref_tuple_proxies` (iteration yields
+proxy reference tuples, e.g. dict_items -- drives the resumable-frame
+borrow-tuple loop binding), `needs_explicit_element_target`,
+`param_kinds`, `type_factory`, category payloads `int_traits`,
+`float_traits`, `enum: EnumInfo`, `record: RecordInfo`,
+`protocol: ProtocolInfo`). The `is_indirecting`
 flag is set from `@native(..., indirecting=True)` on the stub class --
 it flows parser -> `TpyRecord` -> `RecordInfo` -> `TypeDef` during
 `attach_dynamic_type_def`. Cycle detection consults it to decide

@@ -42,5 +42,10 @@ pt2: Point = points.load(1)
 print(pt2.x)
 print(pt2.y)
 
+# load() aliases live storage (not a copy): mutating through the bound
+# result is observed on a fresh load of the same slot.
+pt.x = 99
+print(points.load(0).x)
+
 points.drop(0)
 points.drop(1)

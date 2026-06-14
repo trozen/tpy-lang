@@ -1520,7 +1520,12 @@ class CallAnalyzer:
         self._reject_kwargs_for_builtin(expr, "copy")
         if len(expr.args) != 1:
             raise self.ctx.error("copy() takes exactly 1 argument", expr)
-        arg_type = self.expr.analyze_expr(expr.args[0])
+        prev_in_copy = self.ctx.func.in_copy_call_arg
+        self.ctx.func.in_copy_call_arg = True
+        try:
+            arg_type = self.expr.analyze_expr(expr.args[0])
+        finally:
+            self.ctx.func.in_copy_call_arg = prev_in_copy
         # Unwrap OwnType if already wrapped
         if isinstance(arg_type, OwnType):
             arg_type = arg_type.wrapped
@@ -2888,6 +2893,13 @@ class CallAnalyzer:
         """Record parameter flow through calls for Phase 2 mutation propagation."""
         fi = expr.resolved_function_info
         if fi is None or fi.is_readonly or fi.is_pure:
+            return
+        # The mutable clone of an @auto_readonly accessor (dict.values/items,
+        # Box.get) hands out a borrow but does not mutate its receiver; an
+        # edge here would conservatively flip the caller's self_mutated in
+        # Phase 2 (native clones have no analyzed mutation facts). Mutation
+        # THROUGH the borrowed result is rooted at the mutation site instead.
+        if fi.borrows_receiver_via_auto_readonly:
             return
         name_to_idx = self.ctx.func.current_param_name_to_idx
         rebound = self.ctx.func.current_rebound_params

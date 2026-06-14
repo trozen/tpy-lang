@@ -1,5 +1,5 @@
 from tpy.extern import native
-from tpy import Int32, Float, Ptr
+from tpy import Int32, Float, Ptr, Own
 
 # @native class — C++ class import (constructor call syntax)
 @native
@@ -8,8 +8,10 @@ class Vec2:
     y: Int32
     def sum(self) -> Int32: ...
     def dot(self, other: Vec2) -> Int32: ...
+    # C++ `static Vec2 zero()` returns a fresh value -> Own (a bare `-> Vec2`
+    # would mark it a borrow and alias a destroyed temporary).
     @staticmethod
-    def zero() -> Vec2: ...
+    def zero() -> Own[Vec2]: ...
 
 # @native with rename — fully qualified C++ name
 @native("ns::Color")

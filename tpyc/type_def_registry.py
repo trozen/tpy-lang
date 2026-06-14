@@ -153,6 +153,17 @@ class TypeDef:
     category: TypeCategory
     is_value_type: bool = False
     subscript_borrows: bool = False
+    # Value-type wrapper whose instances reference foreign storage (dict
+    # views). Consulted by is_borrowing_view_type alongside the classic
+    # view types (StrView/BytesView/Span/SpanIter) for borrow-fact and
+    # view-lifetime classification.
+    is_borrowing_view: bool = False
+    # Iterating this type yields PROXY reference tuples (operator* returns
+    # std::tuple<const K&, V&> by value, e.g. dict_items): the tuple itself
+    # is a prvalue (cannot be address-taken), but its elements reference
+    # stable storage. Resumable-frame for-loops must bind the loop element
+    # through tuple_to_pointer instead of `&(*it)`.
+    iter_yields_ref_tuple_proxies: bool = False
     is_send: Optional[Union[bool, Callable[[tuple], bool]]] = None
     is_sync: Optional[Union[bool, Callable[[tuple], bool]]] = None
     cpp_formatter: Optional[Callable[[tuple], str]] = None
@@ -529,8 +540,16 @@ def is_spanlike_view(t: "TpyType") -> bool:
 
 
 def is_borrowing_view_type(t: "TpyType") -> bool:
+    td = type_def_of(t)
+    if td is not None and td.is_borrowing_view:
+        return True
     return (is_str_view_type(t) or is_bytes_view_type(t)
             or is_spanlike_view(t) or is_span_iter(t))
+
+
+def iter_yields_ref_tuple_proxies(t: "TpyType") -> bool:
+    td = type_def_of(t)
+    return td is not None and td.iter_yields_ref_tuple_proxies
 
 
 # Trait accessors. Return the dataclass or None if the type isn't in the
@@ -795,13 +814,14 @@ def _populate() -> None:
         return fmt
 
     register(TypeDef("builtins.dict_keys",   TC.DICT_VIEW, is_value_type=True,
-                     is_send=False, is_sync=False,
+                     is_send=False, is_sync=False, is_borrowing_view=True,
                      cpp_formatter=_dict_view_cpp("keys")))
     register(TypeDef("builtins.dict_values", TC.DICT_VIEW, is_value_type=True,
-                     is_send=False, is_sync=False,
+                     is_send=False, is_sync=False, is_borrowing_view=True,
                      cpp_formatter=_dict_view_cpp("values")))
     register(TypeDef("builtins.dict_items",  TC.DICT_VIEW, is_value_type=True,
-                     is_send=False, is_sync=False,
+                     is_send=False, is_sync=False, is_borrowing_view=True,
+                     iter_yields_ref_tuple_proxies=True,
                      cpp_formatter=_dict_view_cpp("items")))
     register(TypeDef(
         "builtins.Range", TC.RANGE, is_value_type=True,
