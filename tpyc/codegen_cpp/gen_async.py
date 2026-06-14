@@ -3561,7 +3561,8 @@ class AsyncCoroCodegen:
           range:     `__for_i`/`__for_stop`[/`__for_step`] counters
           begin_end: `[__for_src.emplace(...);] __for_it.emplace(src.begin()); __for_end.emplace(...end())`
           next:      `[__for_src.emplace(...);]` (the source IS the iterator)
-          iter_next: `__for_itr.emplace(::tpy::__iter__(src))`
+          iter_next: `::tpy::resumable_iter_init(__for_itr, src)` (owns the
+                     derived iterator, or no-ops for a self-iterator source)
         """
         uid = stmt.uid
         if stmt.is_async:
@@ -3585,11 +3586,14 @@ class AsyncCoroCodegen:
             # Source IS the iterator; just stash a temporary if needed.
             self._for_src_access(out, indent, stmt.iterable_expr, uid, info)
         else:  # iter_next (universal)
-            # `tpy::__iter__` borrows its argument; a temporary source is
-            # stashed in `__for_src` first so the iterator doesn't dangle.
+            # A temporary source is stashed in `__for_src` first because
+            # `tpy::__iter__` borrows its argument (it would otherwise dangle).
+            # The init/next go through resumable_iter_* so a self-iterator
+            # source (a move-only generator) is driven in place instead of
+            # copied into the iterator slot -- see generator.hpp.
             src = self._for_src_access(out, indent, stmt.iterable_expr, uid,
                                        info)
-            out.write(f"{indent}__for_itr_{uid}.emplace(::tpy::__iter__({src}));\n")
+            out.write(f"{indent}::tpy::resumable_iter_init(__for_itr_{uid}, {src});\n")
 
     def _emit_for_range_setup(self, out: "TextIO", indent: str,
                               stmt: 'rcfg.AsyncForIterSetup', uid: int) -> None:
@@ -3660,7 +3664,11 @@ class AsyncCoroCodegen:
             src = self._for_src_expr(stmt, uid, info)
             pre = f"__for_r_{uid}.emplace({src}.__next__());"
         else:  # iter_next
-            pre = f"__for_r_{uid}.emplace((*__for_itr_{uid}).__next__());"
+            # resumable_iter_next drives the owned iterator, or the self-iterator
+            # source in place -- both re-read `src` so a frame move never dangles.
+            src = self._for_src_expr(stmt, uid, info)
+            pre = (f"__for_r_{uid}.emplace("
+                   f"::tpy::resumable_iter_next(__for_itr_{uid}, {src}));")
         elem = f"::tpy::unwrap_ref(*{r})"
         # Bind form mirrors the loop var's frame storage shape (D2a):
         # pointer-form `T*` (alias), frame_slot `.emplace`, or value assign.

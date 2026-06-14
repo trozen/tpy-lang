@@ -121,7 +121,7 @@ std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
     case S_INITIAL: {
         // c: Int32 = 0
         c = 0;
-        __for_itr_0.emplace(::tpy::__iter__(it));
+        ::tpy::resumable_iter_init(__for_itr_0, it);
         __state = S_JOIN_0;
         continue;
     }
@@ -132,7 +132,7 @@ std::expected<T, ::tpy::StopIteration> __gen_head<T, T_it>::__next__() {
         continue;
     }
     case S_JOIN_0: {
-        __for_r_0.emplace((*__for_itr_0).__next__());
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, it));
         if (!(*__for_r_0).has_value()) {
             __state = S_JOIN_1;
             continue;

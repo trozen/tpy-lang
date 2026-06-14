@@ -423,7 +423,7 @@ class AsyncForIterSetup:
     """Synthetic leaf stmt at the head of a CFG-decomposed for-loop.
 
     Sync (`is_async=False`, v1.5 M3.1) emits:
-      `__for_itr_<uid> = ::tpy::__iter__(<iterable_expr>);`
+      `::tpy::resumable_iter_init(__for_itr_<uid>, <iterable_expr>);`
     Async (`is_async=True`, v1.5 M6) emits:
       `__for_itr_<uid> = (<iterable_expr>).__aiter__();`
     The frame field name is shared since only one of the two paths is

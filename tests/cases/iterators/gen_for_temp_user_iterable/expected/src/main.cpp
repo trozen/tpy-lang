@@ -20,7 +20,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_resumable::__next__() {
     }
     case S_RESUME_0: {
         __for_src_0.emplace(make());
-        __for_itr_0.emplace(::tpy::__iter__((*__for_src_0)));
+        ::tpy::resumable_iter_init(__for_itr_0, (*__for_src_0));
         __state = S_JOIN_0;
         continue;
     }
@@ -29,7 +29,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_g_resumable::__next__() {
         continue;
     }
     case S_JOIN_0: {
-        __for_r_0.emplace((*__for_itr_0).__next__());
+        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, (*__for_src_0)));
         if (!(*__for_r_0).has_value()) {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});

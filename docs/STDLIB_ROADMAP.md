@@ -638,9 +638,8 @@ predicate functions (`takewhile`/`dropwhile`/`filterfalse`/`starmap`) take
 an `Fn` (callable) param, which also now works in a resumable generator
 (was an internal codegen error); together with the generator-template-leak
 fix, a module of several such generators builds. `chain` over `*iterables`
-is still blocked by the proto-iterable-in-generator limitation (see
-BUGS.md); the variadic-tuple `product`/`permutations`/`combinations` family
-is blocked on variadic tuples.
+is blocked on variadic tuples, as is the variadic-tuple
+`product`/`permutations`/`combinations` family.
 
 | Item | Status | Notes |
 |---|---|---|
