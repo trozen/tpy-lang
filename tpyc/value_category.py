@@ -63,18 +63,20 @@ def call_returns_cpp_ref(analyzer: ValueCategoryAnalyzer, fi: 'FunctionInfo | No
     binding declares its C++ return convention through the same `-> V` vs
     `-> Own[V]` contract, so no per-native special case is needed.
 
-    Free `@native` functions (`is_native_import`) still take value semantics
-    -- the same `-> V` reference-return asymmetry exists for them but is not
-    yet closed (see BUGS.md).
+    Free `@native` functions still take value semantics -- the same `-> V`
+    reference-return asymmetry exists for them but is not yet closed (see
+    BUGS.md). Native record METHODS, by contrast, honor the contract and
+    fall through to the shape check (so dict.setdefault / items aliasing
+    holds).
     """
-    # NOTE: `is_native_import` is currently always False for native record
-    # METHODS (their FunctionInfo carries a parse.nodes FunctionLinkage, which
-    # this typesys-side property's `in (...)` check never matches -- see the
-    # enum-identity BUGS.md entry). That is WHY native `-> V` methods reach the
-    # shape check below and alias. Closing that enum split would flip this True
-    # and force native methods to copy -- which must be paired with honoring
-    # the `-> V` / `Own[V]` contract here, or it silently regresses aliasing.
-    if fi is None or fi.is_native_import:
+    if fi is None:
+        return False
+    # Free native functions default to value semantics (unknown C++ return
+    # convention). Native METHODS are excluded: they honor the `-> V` /
+    # `Own[V]` contract via the shape check below, like user methods -- so the
+    # `not is_method` gate, not `is_native_import` alone, is what keeps
+    # native-method aliasing.
+    if fi.is_native_import and not fi.is_method:
         return False
     # Record constructors return rvalue temporaries, never C++ T&.
     if fi.is_constructor:

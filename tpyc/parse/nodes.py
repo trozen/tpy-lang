@@ -13,7 +13,7 @@ from typing import Any, Callable, Iterator, Literal, Optional, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, FieldInfo, FunctionInfo,
-    MethodSignature, TypeParamKind, LiteralValue,
+    MethodSignature, TypeParamKind, LiteralValue, FunctionLinkage,
 )
 
 
@@ -1236,14 +1236,6 @@ class RecordLinkage(Enum):
     DEFAULT = "default"
     NATIVE = "native"        # C++ class import (fields only)
     NATIVE_C = "native_c"    # C struct import (fields only)
-
-
-class FunctionLinkage(Enum):
-    """Linkage mode for functions."""
-    DEFAULT = "default"
-    NATIVE = "native"        # C++ import (stub, no body)
-    NATIVE_C = "native_c"    # C import (stub, no body)
-    EXPORT_C = "export_c"    # C export (has body)
 
 
 @dataclass
