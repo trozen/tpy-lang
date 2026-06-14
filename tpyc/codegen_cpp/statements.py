@@ -724,13 +724,9 @@ class StatementGenerator:
                         if (is_str_type(ret_type)
                                 and self._is_optional_str_param(ret_value)):
                             ret_expr = f"std::string({ret_expr})"
-                # StrView local returned as str needs explicit conversion.
-                # Also wrap str-typed params, ternary/or of params/views
-                # (all produce string_view in C++ despite being typed as str in sema).
-                elif is_str_type(ret_type):
-                    if (self._is_str_view_source(ret_value)
-                            or self._expr_uses_optional_str_param(ret_value)):
-                        ret_expr = f"std::string({ret_expr})"
+                else:
+                    ret_expr = self._wrap_return_view_to_storage(
+                        ret_value, ret_type, ret_expr)
                 # Borrow-form tuple local returned as a per-element-Own storage
                 # tuple: deref-COPY each pointee into the owned return slot. A
                 # move would be sound only for a dying-local pointee; the
@@ -2612,6 +2608,23 @@ class StatementGenerator:
         return (isinstance(declared, OptionalType)
                 and is_str_type(declared.inner))
 
+    def _wrap_return_view_to_storage(self, ret_value: TpyExpr,
+                                     ret_type: 'TpyType | None',
+                                     ret_expr: str) -> str:
+        """Wrap a borrow-form view return into its owned storage form.
+
+        Shared by sync and async return so the str/bytes return boundary
+        stays one rule (the var-decl and assign paths apply the same copy)."""
+        if is_str_type(ret_type) and (
+                self._is_str_view_source(ret_value)
+                or self._expr_uses_optional_str_param(ret_value)):
+            return f"std::string({ret_expr})"
+        if is_bytes_type(ret_type) and (
+                self._is_bytes_view_source(ret_value)
+                or self._expr_uses_optional_bytes_param(ret_value)):
+            return f"::tpy::bytes_copy({ret_expr})"
+        return ret_expr
+
     def _is_str_view_source(self, expr: TpyExpr) -> bool:
         """Check if expr produces std::string_view at C++ runtime and needs explicit std::string().
 
@@ -2654,6 +2667,23 @@ class StatementGenerator:
         if isinstance(expr, TpyIfExpr):
             return (self._expr_uses_optional_str_param(expr.then_expr)
                     or self._expr_uses_optional_str_param(expr.else_expr))
+        return False
+
+    def _is_optional_bytes_param(self, expr: TpyExpr) -> bool:
+        """Check if expr is an Optional[bytes] function parameter (span in C++)."""
+        if not isinstance(expr, TpyName):
+            return False
+        declared = self.ctx.current_func_params.get(expr.name)
+        return (isinstance(declared, OptionalType)
+                and is_bytes_type(declared.inner))
+
+    def _expr_uses_optional_bytes_param(self, expr: TpyExpr) -> bool:
+        """Check if expr (e.g. ternary) dereferences an Optional[bytes] param."""
+        if self._is_optional_bytes_param(expr):
+            return True
+        if isinstance(expr, TpyIfExpr):
+            return (self._expr_uses_optional_bytes_param(expr.then_expr)
+                    or self._expr_uses_optional_bytes_param(expr.else_expr))
         return False
 
     def _is_value_optional_var(self, name: str) -> bool:
@@ -3623,6 +3653,8 @@ class StatementGenerator:
                         stmt.value, target_type=ret_type)
                 else:
                     expr_cpp = self.expressions.gen_expr_deref(stmt.value)
+                    expr_cpp = self._wrap_return_view_to_storage(
+                        stmt.value, ret_type, expr_cpp)
                 out.write(f"{indent}this->{pending_slot} = {expr_cpp};\n")
             out.write(f"{indent}this->{pending_flag} = true;\n")
             # Walk finally frames pushed by regions INSIDE the CFG-
@@ -3647,6 +3679,8 @@ class StatementGenerator:
                     stmt.value, target_type=ret_type)
             else:
                 expr_cpp = self.expressions.gen_expr_deref(stmt.value)
+                expr_cpp = self._wrap_return_view_to_storage(
+                    stmt.value, ret_type, expr_cpp)
             ret_tmp = f"__tpy_async_ret_{self.ctx.iter_counter}"
             self.ctx.iter_counter += 1
             chain = io.StringIO()
@@ -3677,6 +3711,8 @@ class StatementGenerator:
                             stmt.value, target_type=ret_type)
                     else:
                         expr_cpp = self.expressions.gen_expr_deref(stmt.value)
+                        expr_cpp = self._wrap_return_view_to_storage(
+                            stmt.value, ret_type, expr_cpp)
                     # Bind to a local first so `std::move` has a typed source:
                     # `std::move({1, 2, 3})` (braced initializer) doesn't
                     # compile because the template parameter can't be deduced.
