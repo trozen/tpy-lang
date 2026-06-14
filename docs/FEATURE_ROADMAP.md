@@ -1807,7 +1807,9 @@ IR is plain dataclasses (serializable), versioned via `api_version`, and reuses
 TPy's type system symbolically (`NamedType`, `OptionalType`, `UnionType`, etc.).
 
 **Plugin contract** (v1): `FrontendPlugin.parse(ctx, module_name, file_path) ->
-FrontendOutput`; CLI flags `--dsl-plugin` and `--dsl-opt`; decorator manifest
+FrontendOutput`; optional `module_name()` / `resolve_module()` hooks let a plugin
+own module naming + import resolution (both default to `None`, keeping the
+path-based behaviour); CLI flags `--dsl-plugin` and `--dsl-opt`; decorator manifest
 extends the compiler's decorator registry; diagnostics via `FrontendDiagnostic`.
 Trust boundary: plugins run unrestricted Python (compile-time trusted code).
 

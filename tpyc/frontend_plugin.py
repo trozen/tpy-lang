@@ -98,6 +98,31 @@ class FrontendPlugin(ABC):
         """
         return ()
 
+    # --- optional module naming + resolution -----------------------------
+    # By default the compiler names a module from its path (stem / path
+    # relative to the search dir) and resolves a dotted import by walking
+    # directories (`ModuleResolver`). A plugin that wants names derived from
+    # in-file metadata -- independent of disk layout -- overrides the pair
+    # below; returning None falls back to the compiler's path-based default,
+    # so plugins that don't implement them are unaffected. The two must agree:
+    # `resolve_module(module_name(p)) == p` for every claimed file `p`.
+
+    def module_name(self, search_dirs: tuple[Path, ...],
+                    path: Path) -> str | None:
+        """Canonical (dotted) module name for a source file this plugin
+        claims, or None to use the compiler's path-based name. Lets a plugin
+        name a module from its contents (e.g. an in-file namespace decl)
+        rather than its location. `search_dirs` is the module search path."""
+        return None
+
+    def resolve_module(self, search_dirs: tuple[Path, ...],
+                       dotted_name: str) -> Path | None:
+        """File path for a dotted module name this plugin owns, or None to
+        defer to the compiler's path-based resolver. The plugin maintains the
+        name<->path mapping (typically from a workspace scan). Paired with
+        `module_name`."""
+        return None
+
 
 @dataclass
 class FrontendRegistry:

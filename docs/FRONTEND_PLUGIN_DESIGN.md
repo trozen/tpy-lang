@@ -177,12 +177,47 @@ class FrontendPlugin(ABC):
     def library_paths(self) -> tuple[Path, ...]:
         return ()
 
+    # Optional: own module naming + resolution for claimed files.
+    def module_name(self, search_dirs, path) -> str | None:
+        return None
+    def resolve_module(self, search_dirs, dotted_name) -> Path | None:
+        return None
+
 
 @dataclass
 class FrontendOutput:
     module: FrontendModule
     diagnostics: list[Diagnostic] = field(default_factory=list)
 ```
+
+### Plugin-owned module naming + resolution (optional)
+
+By default the compiler names a module from its file path (stem, or path
+relative to the search dir) and resolves a dotted import by walking
+directories (`ModuleResolver`); a plugin module registers under that
+path-derived name. A plugin whose source files carry their *own* identity --
+e.g. an in-file `namespace` declaration -- and which must not force users to
+mirror that identity in the directory layout, overrides the pair above:
+
+- `module_name(search_dirs, path) -> str | None` -- the canonical (dotted)
+  name for a file the plugin claims, or `None` to use the path-based default.
+  Consulted when naming the **entry** module (imported modules take their name
+  from the import statement).
+- `resolve_module(search_dirs, dotted_name) -> Path | None` -- the file a
+  dotted import name maps to, for names the plugin owns, or `None` to defer to
+  the path-based resolver. The plugin maintains the name<->path map (typically
+  from a workspace scan). A plugin-owned name maps directly to one file -- no
+  Python package structure -- so the compiler skips package-init / submodule
+  discovery for it.
+
+The two must agree: `resolve_module(module_name(p)) == p` for every claimed
+file `p`. Both default to `None`, so plugins that don't implement them (and all
+`.py` modules) keep the path-based behaviour unchanged. The dotted name flows
+through codegen as a nested C++ namespace exactly like a Python package
+(`a.b.c` -> `tpyapp::a::b::c`). This is how a plugin gives its modules
+collision-safe, layout-independent names (e.g. a source file declaring
+`namespace Widgets` -> module `app.Widgets.<file>` regardless of where it
+sits on disk).
 
 Plugins return raw `Diagnostic`s in `FrontendOutput.diagnostics`;
 lowering wraps them in `FrontendDiagnostic` (with category

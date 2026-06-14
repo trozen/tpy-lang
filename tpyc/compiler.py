@@ -1150,6 +1150,37 @@ class Compiler:
             return frozenset()
         return self.frontend_registry.all_extensions()
 
+    def _plugin_search_dirs(self) -> tuple[Path, ...]:
+        if self.resolver is None:
+            return ()
+        return (self.resolver.base_dir, *self.resolver.extra_dirs)
+
+    def _module_name_for(self, path: Path) -> str:
+        """The canonical module name for `path`: a claiming plugin's
+        `module_name` if it provides one, else the path-based default. Used
+        to name the entry point (imported modules take their name from the
+        import statement / resolver)."""
+        if self.frontend_registry is not None:
+            plugin = self.frontend_registry.for_path(path)
+            if plugin is not None:
+                name = plugin.module_name(self._plugin_search_dirs(), path)
+                if name is not None:
+                    return name
+        return ModuleResolver.get_module_name(path, self._plugin_extensions())
+
+    def _resolve_via_plugin(self, dotted_name: str) -> ResolvedModule | None:
+        """Resolve a dotted import name through any plugin that owns it
+        (`resolve_module`), bypassing the path-based resolver. The plugin
+        owns the whole name, so it maps directly to one file."""
+        if self.frontend_registry is None:
+            return None
+        for plugin in self.frontend_registry.plugins:
+            p = plugin.resolve_module(self._plugin_search_dirs(), dotted_name)
+            if p is not None:
+                return ResolvedModule(path=p, canonical_name=dotted_name,
+                                      package_name=None)
+        return None
+
     def compile(self) -> list[CompiledModule]:
         """Compile entry point and all imported modules.
 
@@ -1252,7 +1283,7 @@ class Compiler:
 
         # 1b. Discover all modules (starting from entry point)
         # Entry point uses simple name (not dotted) since it's the root
-        entry_name = ModuleResolver.get_module_name(self.entry_point, self._plugin_extensions())
+        entry_name = self._module_name_for(self.entry_point)
         self._discover_modules(entry_name, self.entry_point, [], is_entry_point=True)
 
         # Rediscover in case user modules added new stdlib deps
@@ -1645,6 +1676,14 @@ class Compiler:
     ) -> None:
         """Resolve a user module import, checking for not-found and builtin shadowing."""
         assert self.resolver is not None
+        # A plugin-owned name (e.g. `pkg.Namespace.shared`) maps directly to
+        # one file via the plugin; it has no Python package structure, so skip
+        # the package-init / submodule-promotion machinery below.
+        plugin_resolved = self._resolve_via_plugin(imported_name)
+        if plugin_resolved is not None:
+            self._discover_modules(plugin_resolved.canonical_name,
+                                   plugin_resolved.path, new_chain, import_lineno)
+            return
         resolved = self.resolver.resolve(imported_name)
         if resolved is None:
             if imported_name in builtin_names:
@@ -2926,7 +2965,7 @@ class Compiler:
             if shadowed_name in self.modules:
                 continue
             for importing_module, lineno in importers:
-                if importing_module == compiled.name or (compiled.is_entry_point and importing_module == ModuleResolver.get_module_name(self.entry_point, self._plugin_extensions())):
+                if importing_module == compiled.name:
                     analyzer.ctx.diagnostics.append(Diagnostic(
                         DiagnosticLevel.WARNING,
                         f"import '{shadowed_name}' shadows builtin module",
