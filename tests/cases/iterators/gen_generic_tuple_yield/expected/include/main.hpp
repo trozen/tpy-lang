@@ -18,7 +18,7 @@ void main();
 
 // Generator: zip_pairs
 template <typename K, typename V>
-struct __gen_zip_pairs {
+struct __gen_zip_pairs : public ::tpy::next_iter_mixin<__gen_zip_pairs<K, V>, std::tuple<::tpy::val_or_ptr_t<K>, ::tpy::val_or_ptr_t<V>>> {
     ::tpy::frame_state __state;
     std::vector<K>& ks;
     std::vector<V>& vs;

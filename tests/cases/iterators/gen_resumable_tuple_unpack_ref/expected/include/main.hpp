@@ -33,7 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
 }
 
 // Generator: process
-struct __gen_process {
+struct __gen_process : public ::tpy::next_iter_mixin<__gen_process, int32_t> {
     int32_t __state;
     std::vector<std::tuple<int32_t, Item>>& rows;
     std::tuple<int32_t, Item>* __for_tup_0 = nullptr;

@@ -15,7 +15,7 @@ __gen_triple triple();
 void main();
 
 // Generator: triple
-struct __gen_triple {
+struct __gen_triple : public ::tpy::next_iter_mixin<__gen_triple, int32_t> {
     int32_t __state;
 
     enum : int32_t {

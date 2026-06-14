@@ -19,7 +19,7 @@ __gen_drain drain(::tpystd::tplib::box::Box<int32_t> b);
 void main();
 
 // Generator: drain
-struct __gen_drain {
+struct __gen_drain : public ::tpy::next_iter_mixin<__gen_drain, int32_t> {
     int32_t __state;
     ::tpystd::tplib::box::Box<int32_t> b;
 

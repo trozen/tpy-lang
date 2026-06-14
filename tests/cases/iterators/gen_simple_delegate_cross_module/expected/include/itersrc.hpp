@@ -14,7 +14,7 @@ struct __gen_walk;
 __gen_walk walk();
 
 // Generator: walk
-struct __gen_walk {
+struct __gen_walk : public ::tpy::next_iter_mixin<__gen_walk, int32_t> {
     int32_t __state;
 
     enum : int32_t {

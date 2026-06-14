@@ -42,7 +42,7 @@ inline std::ostream& operator<<(std::ostream& os, const Range& obj) {
 }
 
 // Generator: Range.__iter__
-struct __gen_Range___iter__ {
+struct __gen_Range___iter__ : public ::tpy::next_iter_mixin<__gen_Range___iter__, int32_t> {
     int32_t __state;
     const Range& __self;
     int32_t i;
@@ -71,7 +71,7 @@ inline __gen_Range___iter__ Range::__iter__() const {
 }
 
 // Generator: Range.pairs
-struct __gen_Range_pairs {
+struct __gen_Range_pairs : public ::tpy::next_iter_mixin<__gen_Range_pairs, int32_t> {
     int32_t __state;
     const Range& __self;
     int32_t i;

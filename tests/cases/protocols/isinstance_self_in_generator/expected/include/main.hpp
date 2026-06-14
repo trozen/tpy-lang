@@ -87,7 +87,7 @@ struct tpy::RefAdapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
 namespace tpyapp::main {
 
 // Generator: Pet.ro_names
-struct __gen_Pet_ro_names {
+struct __gen_Pet_ro_names : public ::tpy::next_iter_mixin<__gen_Pet_ro_names, std::string> {
     int32_t __state;
     const Pet& __self;
 
@@ -115,7 +115,7 @@ inline __gen_Pet_ro_names Pet::ro_names() const {
 }
 
 // Generator: Pet.counts
-struct __gen_Pet_counts {
+struct __gen_Pet_counts : public ::tpy::next_iter_mixin<__gen_Pet_counts, ::tpy::BigInt> {
     int32_t __state;
     Pet& __self;
 

@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 }
 
 // Generator: names
-struct __gen_names {
+struct __gen_names : public ::tpy::next_iter_mixin<__gen_names, std::string> {
     int32_t __state;
     std::variant<const Cat*, const Dog*> a;
 

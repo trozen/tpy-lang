@@ -34,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
 }
 
 // Generator: gen
-struct __gen_gen {
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     ::tpy::frame_slot<CM> cm;
     CM* __with_ctx_0 = nullptr;

@@ -15,7 +15,7 @@ __gen_gen gen();
 void main();
 
 // Generator: gen
-struct __gen_gen {
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     int32_t __state;
     std::exception_ptr __finally_exc_0;
     bool __finally_pending_0 = false;

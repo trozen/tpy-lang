@@ -32,7 +32,7 @@ inline std::ostream& operator<<(std::ostream& os, const Foo& obj) {
 
 // Generator: Foo.items
 template <typename U>
-struct __gen_Foo_items {
+struct __gen_Foo_items : public ::tpy::next_iter_mixin<__gen_Foo_items<U>, U> {
     int32_t __state;
     const Foo& __self;
     ::tpy::val_or_ref_t<U> x;

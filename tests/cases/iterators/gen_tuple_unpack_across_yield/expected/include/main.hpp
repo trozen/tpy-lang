@@ -16,7 +16,7 @@ __gen_g g();
 void main();
 
 // Generator: g
-struct __gen_g {
+struct __gen_g : public ::tpy::next_iter_mixin<__gen_g, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::BigInt a;
     ::tpy::BigInt b;

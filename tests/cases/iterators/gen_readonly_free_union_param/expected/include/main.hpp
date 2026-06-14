@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 }
 
 // Generator: codes
-struct __gen_codes {
+struct __gen_codes : public ::tpy::next_iter_mixin<__gen_codes, ::tpy::BigInt> {
     int32_t __state;
     std::variant<const Cat*, const Dog*> a;
 

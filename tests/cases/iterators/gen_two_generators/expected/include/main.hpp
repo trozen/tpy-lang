@@ -17,7 +17,7 @@ __gen_gen_b gen_b();
 void main();
 
 // Generator: gen_a
-struct __gen_gen_a {
+struct __gen_gen_a : public ::tpy::next_iter_mixin<__gen_gen_a, int32_t> {
     int32_t __state;
 
     enum : int32_t {
@@ -39,7 +39,7 @@ struct __gen_gen_a {
 };
 
 // Generator: gen_b
-struct __gen_gen_b {
+struct __gen_gen_b : public ::tpy::next_iter_mixin<__gen_gen_b, int32_t> {
     int32_t __state;
 
     enum : int32_t {

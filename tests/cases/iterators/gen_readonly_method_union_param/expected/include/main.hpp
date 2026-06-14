@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
 }
 
 // Generator: Zoo.codes
-struct __gen_Zoo_codes {
+struct __gen_Zoo_codes : public ::tpy::next_iter_mixin<__gen_Zoo_codes, ::tpy::BigInt> {
     int32_t __state;
     const Zoo& __self;
     std::variant<const Cat*, const Dog*> a;

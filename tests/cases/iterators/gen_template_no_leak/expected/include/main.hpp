@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Doubler& obj) {
 
 // Generator: skip_first
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
-struct __gen_skip_first {
+struct __gen_skip_first : public ::tpy::next_iter_mixin<__gen_skip_first<T, T_it>, T> {
     int32_t __state;
     T_it it;
     bool started;
@@ -122,7 +122,7 @@ __gen_skip_first<T, T_it> skip_first(T_it&& it) {
 
 // Generator: gtakewhile
 template <typename T, ::tpystd::typing::Iterable<T> T_it, typename F_pred>
-struct __gen_gtakewhile {
+struct __gen_gtakewhile : public ::tpy::next_iter_mixin<__gen_gtakewhile<T, T_it, F_pred>, T> {
     int32_t __state;
     F_pred pred;
     T_it it;
@@ -194,7 +194,7 @@ __gen_gtakewhile<T, T_it, F_pred> gtakewhile(F_pred&& pred, T_it&& it) {
 }
 
 // Generator: tag
-struct __gen_tag {
+struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag, int32_t> {
     int32_t __state;
     std::vector<int32_t>& it;
     int32_t x;
@@ -222,7 +222,7 @@ struct __gen_tag {
 
 // Generator: first_n
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
-struct __gen_first_n {
+struct __gen_first_n : public ::tpy::next_iter_mixin<__gen_first_n<T, T_it>, T> {
     int32_t __state;
     T_it it;
     int32_t n;
@@ -299,7 +299,7 @@ __gen_first_n<T, T_it> first_n(T_it&& it, int32_t n) {
 }
 
 // Generator: Doubler.each_twice
-struct __gen_Doubler_each_twice {
+struct __gen_Doubler_each_twice : public ::tpy::next_iter_mixin<__gen_Doubler_each_twice, int32_t> {
     int32_t __state;
     const Doubler& __self;
     std::vector<int32_t>& it;

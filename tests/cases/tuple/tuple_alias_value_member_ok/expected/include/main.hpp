@@ -15,7 +15,7 @@ __gen_gen gen();
 void main();
 
 // Generator: gen
-struct __gen_gen {
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::tuple<int32_t, int32_t>> {
     int32_t __state;
     std::tuple<int32_t, int32_t> t;
     std::tuple<int32_t, int32_t> u;

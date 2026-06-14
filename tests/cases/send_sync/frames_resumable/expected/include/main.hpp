@@ -216,7 +216,7 @@ struct __coro_tup_val {
 };
 
 // Generator: gen_str
-struct __gen_gen_str {
+struct __gen_gen_str : public ::tpy::next_iter_mixin<__gen_gen_str, int32_t> {
     int32_t __state;
     std::string_view s;
 
@@ -238,7 +238,7 @@ struct __gen_gen_str {
 };
 
 // Generator: gen_own
-struct __gen_gen_own {
+struct __gen_gen_own : public ::tpy::next_iter_mixin<__gen_gen_own, int32_t> {
     int32_t __state;
     std::vector<int32_t> xs;
 

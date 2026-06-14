@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const P& obj) {
 }
 
 // Generator: gen_n_times
-struct __gen_gen_n_times {
+struct __gen_gen_n_times : public ::tpy::next_iter_mixin<__gen_gen_n_times, int32_t> {
     int32_t __state;
     P* p;
     int32_t n;

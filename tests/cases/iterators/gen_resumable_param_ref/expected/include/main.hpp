@@ -15,7 +15,7 @@ __gen_first_two first_two(std::vector<int32_t>& xs);
 void main();
 
 // Generator: first_two
-struct __gen_first_two {
+struct __gen_first_two : public ::tpy::next_iter_mixin<__gen_first_two, int32_t> {
     int32_t __state;
     std::vector<int32_t>& xs;
 

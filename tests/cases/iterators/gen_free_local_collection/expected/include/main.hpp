@@ -15,7 +15,7 @@ __gen_gen gen();
 void main();
 
 // Generator: gen
-struct __gen_gen {
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     ::tpy::frame_slot<std::array<int32_t, 3>> nums;
     ::tpy::frame_slot<::tpy::ordered_map<int32_t, int32_t>> d;

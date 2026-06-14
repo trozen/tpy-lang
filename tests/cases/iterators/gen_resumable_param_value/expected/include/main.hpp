@@ -15,7 +15,7 @@ __gen_scaled scaled(int32_t n);
 void main();
 
 // Generator: scaled
-struct __gen_scaled {
+struct __gen_scaled : public ::tpy::next_iter_mixin<__gen_scaled, int32_t> {
     int32_t __state;
     int32_t n;
 

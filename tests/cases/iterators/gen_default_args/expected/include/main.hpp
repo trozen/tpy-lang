@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 // Generator: bounded
-struct __gen_bounded {
+struct __gen_bounded : public ::tpy::next_iter_mixin<__gen_bounded, int32_t> {
     int32_t __state;
     int32_t limit;
     int32_t i;
@@ -76,7 +76,7 @@ struct __gen_bounded {
 
 // Generator: head
 template <typename T, ::tpystd::typing::Iterable<T> T_it>
-struct __gen_head {
+struct __gen_head : public ::tpy::next_iter_mixin<__gen_head<T, T_it>, T> {
     int32_t __state;
     T_it it;
     int32_t n;

@@ -15,7 +15,7 @@ __gen_countdown countdown(int32_t n);
 void main();
 
 // Generator: countdown
-struct __gen_countdown {
+struct __gen_countdown : public ::tpy::next_iter_mixin<__gen_countdown, int32_t> {
     int32_t __state;
     int32_t n;
     int32_t i;

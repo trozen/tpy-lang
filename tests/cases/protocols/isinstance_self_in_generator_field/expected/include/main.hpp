@@ -84,7 +84,7 @@ struct tpy::RefAdapter<tpyapp::main::Tagged, T> : tpyapp::main::Tagged {
 namespace tpyapp::main {
 
 // Generator: Pet.describe
-struct __gen_Pet_describe {
+struct __gen_Pet_describe : public ::tpy::next_iter_mixin<__gen_Pet_describe, std::string> {
     int32_t __state;
     const Pet& __self;
 

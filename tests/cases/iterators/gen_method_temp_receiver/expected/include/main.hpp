@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 // Generator: Box.vals
-struct __gen_Box_vals {
+struct __gen_Box_vals : public ::tpy::next_iter_mixin<__gen_Box_vals, ::tpy::BigInt> {
     int32_t __state;
     const Box& __self;
 

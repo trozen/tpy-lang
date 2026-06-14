@@ -20,7 +20,7 @@ void main();
 
 // Generator: pair
 template <typename T>
-struct __gen_pair {
+struct __gen_pair : public ::tpy::next_iter_mixin<__gen_pair<T>, T> {
     int32_t __state;
     ::tpy::val_or_ref_t<T> a;
     ::tpy::val_or_ref_t<T> b;
@@ -73,7 +73,7 @@ __gen_pair<T> pair(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> 
 }
 
 // Generator: gen
-struct __gen_gen {
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     int32_t x;
     ::tpy::frame_slot<__gen_pair<int32_t>> __for_src_0;

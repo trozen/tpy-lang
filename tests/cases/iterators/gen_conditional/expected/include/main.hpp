@@ -15,7 +15,7 @@ __gen_evens evens(int32_t n);
 void main();
 
 // Generator: evens
-struct __gen_evens {
+struct __gen_evens : public ::tpy::next_iter_mixin<__gen_evens, int32_t> {
     int32_t __state;
     int32_t n;
     int32_t i;

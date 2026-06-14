@@ -15,7 +15,7 @@ __gen_multi multi(std::vector<int32_t>& items, int32_t n);
 void main();
 
 // Generator: multi
-struct __gen_multi {
+struct __gen_multi : public ::tpy::next_iter_mixin<__gen_multi, int32_t> {
     int32_t __state;
     std::vector<int32_t>& items;
     int32_t n;

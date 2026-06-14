@@ -18,7 +18,7 @@ void main();
 
 // Generator: doubled
 template <typename T>
-struct __gen_doubled {
+struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled<T>, T> {
     int32_t __state;
     std::vector<T>& xs;
     T* x = nullptr;

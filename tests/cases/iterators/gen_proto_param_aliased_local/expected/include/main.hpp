@@ -18,7 +18,7 @@ void main();
 
 // Generator: echo
 template <::tpystd::typing::Iterable<::tpy::BigInt> T_it>
-struct __gen_echo {
+struct __gen_echo : public ::tpy::next_iter_mixin<__gen_echo<T_it>, ::tpy::BigInt> {
     int32_t __state;
     T_it it;
     ::tpy::BigInt x;

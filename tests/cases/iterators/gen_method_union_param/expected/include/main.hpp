@@ -74,7 +74,7 @@ inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
 }
 
 // Generator: Zoo.voices
-struct __gen_Zoo_voices {
+struct __gen_Zoo_voices : public ::tpy::next_iter_mixin<__gen_Zoo_voices, std::string> {
     int32_t __state;
     Zoo& __self;
     std::variant<Cat*, Dog*> a;
@@ -104,7 +104,7 @@ inline __gen_Zoo_voices Zoo::voices(std::variant<Cat*, Dog*> a) {
 }
 
 // Generator: Zoo.names
-struct __gen_Zoo_names {
+struct __gen_Zoo_names : public ::tpy::next_iter_mixin<__gen_Zoo_names, std::string> {
     int32_t __state;
     Zoo& __self;
     std::variant<const Cat*, const Dog*> a;

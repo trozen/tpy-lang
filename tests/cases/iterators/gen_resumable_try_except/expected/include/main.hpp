@@ -15,7 +15,7 @@ __gen_guarded guarded(std::vector<::tpy::BigInt>& xs);
 void main();
 
 // Generator: guarded
-struct __gen_guarded {
+struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, ::tpy::BigInt> {
     int32_t __state;
     std::vector<::tpy::BigInt>& xs;
     ::tpy::BigInt x;

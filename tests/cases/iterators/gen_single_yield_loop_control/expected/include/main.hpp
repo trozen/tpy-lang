@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Limiter& obj) {
 }
 
 // Generator: take
-struct __gen_take {
+struct __gen_take : public ::tpy::next_iter_mixin<__gen_take, int32_t> {
     int32_t __state;
     std::vector<int32_t>& items;
     int32_t n;
@@ -77,7 +77,7 @@ struct __gen_take {
 };
 
 // Generator: evens
-struct __gen_evens {
+struct __gen_evens : public ::tpy::next_iter_mixin<__gen_evens, int32_t> {
     int32_t __state;
     std::vector<int32_t>& items;
     int32_t x;
@@ -103,7 +103,7 @@ struct __gen_evens {
 };
 
 // Generator: stride
-struct __gen_stride {
+struct __gen_stride : public ::tpy::next_iter_mixin<__gen_stride, int32_t> {
     int32_t __state;
     int32_t i;
     ::tpy::frame_slot<int32_t> __for_i_0;
@@ -130,7 +130,7 @@ struct __gen_stride {
 };
 
 // Generator: upto_range
-struct __gen_upto_range {
+struct __gen_upto_range : public ::tpy::next_iter_mixin<__gen_upto_range, int32_t> {
     int32_t __state;
     int32_t n;
     int32_t i;
@@ -157,7 +157,7 @@ struct __gen_upto_range {
 };
 
 // Generator: upto_while
-struct __gen_upto_while {
+struct __gen_upto_while : public ::tpy::next_iter_mixin<__gen_upto_while, int32_t> {
     int32_t __state;
     int32_t n;
 
@@ -181,7 +181,7 @@ struct __gen_upto_while {
 };
 
 // Generator: iter_post_break
-struct __gen_iter_post_break {
+struct __gen_iter_post_break : public ::tpy::next_iter_mixin<__gen_iter_post_break, int32_t> {
     int32_t __state;
     std::vector<int32_t>& items;
     int32_t x;
@@ -208,7 +208,7 @@ struct __gen_iter_post_break {
 };
 
 // Generator: post_continue
-struct __gen_post_continue {
+struct __gen_post_continue : public ::tpy::next_iter_mixin<__gen_post_continue, int32_t> {
     int32_t __state;
     std::vector<int32_t>& items;
     int32_t x;
@@ -234,7 +234,7 @@ struct __gen_post_continue {
 };
 
 // Generator: Limiter.first_positives
-struct __gen_Limiter_first_positives {
+struct __gen_Limiter_first_positives : public ::tpy::next_iter_mixin<__gen_Limiter_first_positives, int32_t> {
     int32_t __state;
     const Limiter& __self;
     std::vector<int32_t>& items;

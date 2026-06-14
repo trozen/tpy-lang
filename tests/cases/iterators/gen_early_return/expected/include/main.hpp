@@ -15,7 +15,7 @@ __gen_maybe_count maybe_count(int32_t n);
 void main();
 
 // Generator: maybe_count
-struct __gen_maybe_count {
+struct __gen_maybe_count : public ::tpy::next_iter_mixin<__gen_maybe_count, int32_t> {
     int32_t __state;
     int32_t n;
     int32_t i;

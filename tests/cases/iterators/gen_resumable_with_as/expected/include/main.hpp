@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
 }
 
 // Generator: gen
-struct __gen_gen {
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     ::tpy::frame_state __state;
     int32_t n;
     int32_t i;

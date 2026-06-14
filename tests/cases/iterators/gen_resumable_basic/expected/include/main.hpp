@@ -15,7 +15,7 @@ __gen_counts counts();
 void main();
 
 // Generator: counts
-struct __gen_counts {
+struct __gen_counts : public ::tpy::next_iter_mixin<__gen_counts, int32_t> {
     int32_t __state;
     int32_t n;
 

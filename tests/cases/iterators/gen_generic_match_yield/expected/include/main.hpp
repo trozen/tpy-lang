@@ -18,7 +18,7 @@ void main();
 
 // Generator: gen
 template <typename T>
-struct __gen_gen {
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen<T>, T> {
     int32_t __state;
     ::tpy::val_or_ref_t<T> a;
     ::tpy::val_or_ref_t<T> b;

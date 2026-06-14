@@ -84,7 +84,7 @@ inline std::ostream& operator<<(std::ostream& os, const Summer<T>& obj) {
 
 // Generator: Summer.each_doubled
 template <::tpystd::typing::Iterable<int32_t> T>
-struct __gen_Summer_each_doubled {
+struct __gen_Summer_each_doubled : public ::tpy::next_iter_mixin<__gen_Summer_each_doubled<T>, int32_t> {
     int32_t __state;
     const Summer<T>& __self;
     int32_t x;

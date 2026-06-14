@@ -33,7 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 }
 
 // Generator: doubled
-struct __gen_doubled {
+struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled, int32_t> {
     int32_t __state;
     std::vector<Node>& items;
     Node* it = nullptr;

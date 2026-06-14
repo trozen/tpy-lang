@@ -17,7 +17,7 @@ __gen_gen_match gen_match(::tpy::BigInt n);
 void main();
 
 // Generator: gen_if
-struct __gen_gen_if {
+struct __gen_gen_if : public ::tpy::next_iter_mixin<__gen_gen_if, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::BigInt n;
     ::tpy::BigInt r;
@@ -41,7 +41,7 @@ struct __gen_gen_if {
 };
 
 // Generator: gen_match
-struct __gen_gen_match {
+struct __gen_gen_match : public ::tpy::next_iter_mixin<__gen_gen_match, ::tpy::BigInt> {
     int32_t __state;
     ::tpy::BigInt n;
     ::tpy::BigInt r;

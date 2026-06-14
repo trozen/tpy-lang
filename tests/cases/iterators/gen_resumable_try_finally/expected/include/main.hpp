@@ -15,7 +15,7 @@ __gen_counted counted(std::vector<::tpy::BigInt>& xs);
 void main();
 
 // Generator: counted
-struct __gen_counted {
+struct __gen_counted : public ::tpy::next_iter_mixin<__gen_counted, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     std::vector<::tpy::BigInt>& xs;
     ::tpy::BigInt x;

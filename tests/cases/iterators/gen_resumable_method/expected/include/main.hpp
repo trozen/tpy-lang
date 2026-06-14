@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
 }
 
 // Generator: Source.windowed
-struct __gen_Source_windowed {
+struct __gen_Source_windowed : public ::tpy::next_iter_mixin<__gen_Source_windowed, int32_t> {
     ::tpy::frame_state __state;
     const Source& __self;
     std::vector<int32_t>& xs;
@@ -85,7 +85,7 @@ inline __gen_Source_windowed Source::windowed(std::vector<int32_t>& xs) const {
 }
 
 // Generator: Source.doubled
-struct __gen_Source_doubled {
+struct __gen_Source_doubled : public ::tpy::next_iter_mixin<__gen_Source_doubled, int32_t> {
     int32_t __state;
     const Source& __self;
 

@@ -15,7 +15,7 @@ __gen_gen_values gen_values();
 void main();
 
 // Generator: gen_values
-struct __gen_gen_values {
+struct __gen_gen_values : public ::tpy::next_iter_mixin<__gen_gen_values, int32_t> {
     int32_t __state;
 
     enum : int32_t {

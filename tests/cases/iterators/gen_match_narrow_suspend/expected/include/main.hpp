@@ -53,7 +53,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 }
 
 // Generator: voices
-struct __gen_voices {
+struct __gen_voices : public ::tpy::next_iter_mixin<__gen_voices, std::string> {
     int32_t __state;
     std::variant<Cat*, Dog*> a;
 
@@ -78,7 +78,7 @@ struct __gen_voices {
 };
 
 // Generator: capture
-struct __gen_capture {
+struct __gen_capture : public ::tpy::next_iter_mixin<__gen_capture, std::string> {
     int32_t __state;
     std::variant<Cat*, Dog*> a;
     ::tpy::frame_slot<Dog> d;
@@ -104,7 +104,7 @@ struct __gen_capture {
 };
 
 // Generator: guarded
-struct __gen_guarded {
+struct __gen_guarded : public ::tpy::next_iter_mixin<__gen_guarded, std::string> {
     int32_t __state;
     std::variant<::tpy::BigInt, std::string> a;
     bool allow;
@@ -130,7 +130,7 @@ struct __gen_guarded {
 };
 
 // Generator: kill
-struct __gen_kill {
+struct __gen_kill : public ::tpy::next_iter_mixin<__gen_kill, std::string> {
     int32_t __state;
     std::variant<::tpy::BigInt, std::string> a;
 

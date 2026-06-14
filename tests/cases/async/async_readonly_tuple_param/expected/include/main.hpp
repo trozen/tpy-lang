@@ -104,7 +104,7 @@ struct __coro_main_coro {
 };
 
 // Generator: gsum
-struct __gen_gsum {
+struct __gen_gsum : public ::tpy::next_iter_mixin<__gen_gsum, int32_t> {
     int32_t __state;
     std::tuple<const Tag*, const Tag*> pair;
 

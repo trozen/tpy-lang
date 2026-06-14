@@ -54,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 // Generator: Holder.nodes_gen
-struct __gen_Holder_nodes_gen {
+struct __gen_Holder_nodes_gen : public ::tpy::next_iter_mixin<__gen_Holder_nodes_gen, ::tpy::val_or_ref<Node>> {
     int32_t __state;
     Holder& __self;
 
@@ -81,7 +81,7 @@ inline __gen_Holder_nodes_gen Holder::nodes_gen() {
 }
 
 // Generator: bump_all
-struct __gen_bump_all {
+struct __gen_bump_all : public ::tpy::next_iter_mixin<__gen_bump_all, int32_t> {
     int32_t __state;
     Holder& h;
     int32_t total;

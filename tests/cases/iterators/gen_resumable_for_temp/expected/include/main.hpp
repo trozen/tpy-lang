@@ -16,7 +16,7 @@ __gen_gen gen();
 void main();
 
 // Generator: gen
-struct __gen_gen {
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     int32_t x;
     ::tpy::frame_slot<std::vector<int32_t>> __for_src_0;

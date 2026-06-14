@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Series& obj) {
 }
 
 // Generator: Series.items
-struct __gen_Series_items {
+struct __gen_Series_items : public ::tpy::next_iter_mixin<__gen_Series_items, int32_t> {
     int32_t __state;
     const Series& __self;
     ::tpy::frame_slot<std::array<int32_t, 3>> tmp;

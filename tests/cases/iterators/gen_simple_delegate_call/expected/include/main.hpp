@@ -15,7 +15,7 @@ __gen_src src();
 void main();
 
 // Generator: src
-struct __gen_src {
+struct __gen_src : public ::tpy::next_iter_mixin<__gen_src, int32_t> {
     int32_t __state;
 
     enum : int32_t {

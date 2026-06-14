@@ -48,7 +48,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 // Generator: g_resumable
-struct __gen_g_resumable {
+struct __gen_g_resumable : public ::tpy::next_iter_mixin<__gen_g_resumable, int32_t> {
     int32_t __state;
     int32_t x;
     ::tpy::frame_slot<Holder> __for_src_0;

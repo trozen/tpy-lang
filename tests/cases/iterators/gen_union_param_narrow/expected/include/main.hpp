@@ -62,7 +62,7 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 }
 
 // Generator: Owner.voices
-struct __gen_Owner_voices {
+struct __gen_Owner_voices : public ::tpy::next_iter_mixin<__gen_Owner_voices, std::string> {
     int32_t __state;
     const Owner& __self;
     std::variant<Cat*, Dog*> a;
@@ -92,7 +92,7 @@ inline __gen_Owner_voices Owner::voices(std::variant<Cat*, Dog*> a) const {
 }
 
 // Generator: Owner.first
-struct __gen_Owner_first {
+struct __gen_Owner_first : public ::tpy::next_iter_mixin<__gen_Owner_first, std::string> {
     int32_t __state;
     const Owner& __self;
     std::variant<Cat*, Dog*> a;

@@ -15,7 +15,7 @@ __gen_doubled doubled(std::vector<int32_t>& items);
 void main();
 
 // Generator: doubled
-struct __gen_doubled {
+struct __gen_doubled : public ::tpy::next_iter_mixin<__gen_doubled, int32_t> {
     int32_t __state;
     std::vector<int32_t>& items;
     int32_t x;

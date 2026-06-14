@@ -15,7 +15,7 @@ __gen_gen gen();
 void main();
 
 // Generator: gen
-struct __gen_gen {
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     ::tpy::frame_state __state;
 
     enum : int32_t {

@@ -51,7 +51,7 @@ inline std::ostream& operator<<(std::ostream& os, const Capped& obj) {
 
 // Generator: filterfalse
 template <typename F_pred>
-struct __gen_filterfalse {
+struct __gen_filterfalse : public ::tpy::next_iter_mixin<__gen_filterfalse<F_pred>, int32_t> {
     int32_t __state;
     F_pred pred;
     std::vector<int32_t>& it;
@@ -80,7 +80,7 @@ struct __gen_filterfalse {
 
 // Generator: takewhile
 template <typename F_pred>
-struct __gen_takewhile {
+struct __gen_takewhile : public ::tpy::next_iter_mixin<__gen_takewhile<F_pred>, int32_t> {
     int32_t __state;
     F_pred pred;
     std::vector<int32_t>& it;
@@ -109,7 +109,7 @@ struct __gen_takewhile {
 
 // Generator: tag
 template <typename F_pred>
-struct __gen_tag {
+struct __gen_tag : public ::tpy::next_iter_mixin<__gen_tag<F_pred>, int32_t> {
     int32_t __state;
     F_pred pred;
     std::vector<int32_t>& it;
@@ -139,7 +139,7 @@ struct __gen_tag {
 
 // Generator: Capped.keep
 template <typename F_pred>
-struct __gen_Capped_keep {
+struct __gen_Capped_keep : public ::tpy::next_iter_mixin<__gen_Capped_keep<F_pred>, int32_t> {
     int32_t __state;
     const Capped& __self;
     F_pred pred;

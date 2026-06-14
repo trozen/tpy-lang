@@ -19,7 +19,7 @@ __gen_multi multi(std::vector<std::tuple<int32_t, int32_t>>& p1, std::vector<std
 void main();
 
 // Generator: sums
-struct __gen_sums {
+struct __gen_sums : public ::tpy::next_iter_mixin<__gen_sums, int32_t> {
     int32_t __state;
     std::vector<std::tuple<int32_t, int32_t>>& pairs;
     std::tuple<int32_t, int32_t> __for_tup_0;
@@ -48,7 +48,7 @@ struct __gen_sums {
 };
 
 // Generator: firsts
-struct __gen_firsts {
+struct __gen_firsts : public ::tpy::next_iter_mixin<__gen_firsts, int32_t> {
     int32_t __state;
     std::vector<std::tuple<int32_t, int32_t>>& pairs;
     std::tuple<int32_t, int32_t> __for_tup_1;
@@ -75,7 +75,7 @@ struct __gen_firsts {
 };
 
 // Generator: multi
-struct __gen_multi {
+struct __gen_multi : public ::tpy::next_iter_mixin<__gen_multi, int32_t> {
     int32_t __state;
     std::vector<std::tuple<int32_t, int32_t>>& p1;
     std::vector<std::tuple<int32_t, int32_t>>& p2;

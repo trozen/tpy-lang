@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Tracer& obj) {
 }
 
 // Generator: gen_with_yield
-struct __gen_gen_with_yield {
+struct __gen_gen_with_yield : public ::tpy::next_iter_mixin<__gen_gen_with_yield, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     std::vector<::tpy::BigInt>& xs;
     ::tpy::BigInt x;

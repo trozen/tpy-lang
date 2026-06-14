@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 }
 
 // Generator: Holder.bump
-struct __gen_Holder_bump {
+struct __gen_Holder_bump : public ::tpy::next_iter_mixin<__gen_Holder_bump, int32_t> {
     int32_t __state;
     Holder& __self;
     Node* n = nullptr;

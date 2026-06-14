@@ -18,7 +18,7 @@ void main();
 
 // Generator: two_yields
 template <typename T>
-struct __gen_two_yields {
+struct __gen_two_yields : public ::tpy::next_iter_mixin<__gen_two_yields<T>, T> {
     int32_t __state;
     ::tpy::val_or_ref_t<T> a;
     ::tpy::val_or_ref_t<T> b;

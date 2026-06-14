@@ -15,7 +15,7 @@ __gen_greetings greetings(std::string_view name);
 void main();
 
 // Generator: greetings
-struct __gen_greetings {
+struct __gen_greetings : public ::tpy::next_iter_mixin<__gen_greetings, std::string> {
     int32_t __state;
     std::string_view name;
 

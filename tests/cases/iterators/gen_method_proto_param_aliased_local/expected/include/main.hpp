@@ -37,7 +37,7 @@ inline std::ostream& operator<<(std::ostream& os, const Repeater& obj) {
 
 // Generator: Repeater.run
 template <::tpystd::typing::Iterable<int32_t> T_it>
-struct __gen_Repeater_run {
+struct __gen_Repeater_run : public ::tpy::next_iter_mixin<__gen_Repeater_run<T_it>, int32_t> {
     int32_t __state;
     const Repeater& __self;
     T_it it;

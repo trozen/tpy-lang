@@ -56,7 +56,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 }
 
 // Generator: describe
-struct __gen_describe {
+struct __gen_describe : public ::tpy::next_iter_mixin<__gen_describe, std::string> {
     int32_t __state;
     std::variant<Cat*, Dog*> a;
 

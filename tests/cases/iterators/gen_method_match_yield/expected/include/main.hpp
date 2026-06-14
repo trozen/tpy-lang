@@ -34,7 +34,7 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
 }
 
 // Generator: Counter.items
-struct __gen_Counter_items {
+struct __gen_Counter_items : public ::tpy::next_iter_mixin<__gen_Counter_items, ::tpy::BigInt> {
     int32_t __state;
     const Counter& __self;
 

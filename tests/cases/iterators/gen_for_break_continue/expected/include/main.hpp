@@ -15,7 +15,7 @@ __gen_filtered filtered(std::vector<int32_t>& items, int32_t limit);
 void main();
 
 // Generator: filtered
-struct __gen_filtered {
+struct __gen_filtered : public ::tpy::next_iter_mixin<__gen_filtered, int32_t> {
     int32_t __state;
     std::vector<int32_t>& items;
     int32_t limit;

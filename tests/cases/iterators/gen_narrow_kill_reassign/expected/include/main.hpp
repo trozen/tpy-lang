@@ -16,7 +16,7 @@ __gen_gen gen(std::variant<::tpy::BigInt, std::string> a);
 void main();
 
 // Generator: gen
-struct __gen_gen {
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     int32_t __state;
     std::variant<::tpy::BigInt, std::string> a;
     ::tpy::BigInt n;

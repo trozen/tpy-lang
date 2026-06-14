@@ -30,7 +30,7 @@ inline std::ostream& operator<<(std::ostream& os, const Source& obj) {
 }
 
 // Generator: Source.values
-struct __gen_Source_values {
+struct __gen_Source_values : public ::tpy::next_iter_mixin<__gen_Source_values, int32_t> {
     int32_t __state;
     const Source& __self;
 

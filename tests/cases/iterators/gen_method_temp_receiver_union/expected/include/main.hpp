@@ -65,7 +65,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 // Generator: Box.describe
-struct __gen_Box_describe {
+struct __gen_Box_describe : public ::tpy::next_iter_mixin<__gen_Box_describe, std::string> {
     int32_t __state;
     const Box& __self;
 

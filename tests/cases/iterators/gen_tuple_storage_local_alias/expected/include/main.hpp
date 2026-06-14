@@ -33,7 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 // Generator: gen
-struct __gen_gen {
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     int32_t __state;
     ::tpy::frame_slot<std::vector<std::tuple<int32_t, Box>>> items;
     std::tuple<int32_t, Box*> t;

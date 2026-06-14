@@ -15,7 +15,7 @@ __gen_gen gen(std::vector<::tpy::BigInt>& items);
 void main();
 
 // Generator: gen
-struct __gen_gen {
+struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     int32_t __state;
     std::vector<::tpy::BigInt>& items;
     ::tpy::BigInt it;

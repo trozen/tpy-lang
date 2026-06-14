@@ -17,7 +17,7 @@ __gen_checked checked(std::variant<::tpy::BigInt, std::string> a);
 void main();
 
 // Generator: loop
-struct __gen_loop {
+struct __gen_loop : public ::tpy::next_iter_mixin<__gen_loop, std::string> {
     int32_t __state;
     std::variant<::tpy::BigInt, std::string> a;
     int32_t count;
@@ -43,7 +43,7 @@ struct __gen_loop {
 };
 
 // Generator: checked
-struct __gen_checked {
+struct __gen_checked : public ::tpy::next_iter_mixin<__gen_checked, std::string> {
     int32_t __state;
     std::variant<::tpy::BigInt, std::string> a;
 

@@ -15,7 +15,7 @@ __gen_squares_plus squares_plus(int32_t n);
 void main();
 
 // Generator: squares_plus
-struct __gen_squares_plus {
+struct __gen_squares_plus : public ::tpy::next_iter_mixin<__gen_squares_plus, int32_t> {
     int32_t __state;
     int32_t n;
     int32_t i;

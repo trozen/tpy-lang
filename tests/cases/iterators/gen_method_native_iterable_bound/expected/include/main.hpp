@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Wrap<T>& obj) {
 
 // Generator: Wrap.summary
 template <::tpy::NativeIterable<int32_t> T>
-struct __gen_Wrap_summary {
+struct __gen_Wrap_summary : public ::tpy::next_iter_mixin<__gen_Wrap_summary<T>, int32_t> {
     int32_t __state;
     const Wrap<T>& __self;
     int32_t total;

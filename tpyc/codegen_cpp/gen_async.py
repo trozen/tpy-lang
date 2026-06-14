@@ -1073,7 +1073,10 @@ class AsyncCoroCodegen:
         kind = "Generator" if self._is_generator_shape() else "Async coroutine"
         out.write(f"// {kind}: {label}\n")
         self._emit_template_header(out, func, record_name=record_name)
-        out.write(f"struct {struct_name} {{\n")
+        # Async coroutines are awaited, not iterated, so this is "" for them;
+        # generator frames gain begin()/end() (see _generator_iter_base).
+        base = self._generator_iter_base(func, record_name)
+        out.write(f"struct {struct_name}{base} {{\n")
 
         # State integer (shared) + per-shape extra state (async adds the
         # cancel flag). Frames with abandonment cleanup (a destructor that
@@ -1479,6 +1482,24 @@ class AsyncCoroCodegen:
     # byte-identical (async never enters the generator branch).
     # =====================================================================
 
+    def _generator_slot_cpp(self, func: TpyFunction) -> str:
+        """The generator's __next__ iterator slot type -- the element type that
+        is BOTH the std::expected payload (`_resumable_ret_type_cpp`) and the
+        next_iter_mixin element arg (`_generator_iter_base`); the two must stay
+        identical, so they share this single source."""
+        yt = func.generator_yield_type
+        return GeneratorCodegen._iter_slot_for_yield(yt, self.types.type_to_cpp(yt))
+
+    def _generator_iter_base(self, func: TpyFunction,
+                             record_name: str | None = None) -> str:
+        # The struct name must be templated here: a base-specifier predates the
+        # injected-class-name, so a generic frame needs its explicit `<...>`.
+        if not self._is_generator_shape():
+            return ""
+        struct_templated = self._struct_name_templated(func, record_name)
+        return (f" : public ::tpy::next_iter_mixin"
+                f"<{struct_templated}, {self._generator_slot_cpp(func)}>")
+
     def _resumable_ret_type_cpp(self, func: TpyFunction) -> str:
         """The frame body method's return type. Async: `Poll<T>`.
         Generator: `std::expected<T_slot, ::tpy::StopIteration>` where
@@ -1490,10 +1511,7 @@ class AsyncCoroCodegen:
         `ctx.current_yield_type` is set (done by
         `_resumable_return_lowering`)."""
         if self._is_generator_shape():
-            yt = func.generator_yield_type
-            elem_cpp = self.types.type_to_cpp(yt)
-            slot_cpp = GeneratorCodegen._iter_slot_for_yield(yt, elem_cpp)
-            return f"std::expected<{slot_cpp}, ::tpy::StopIteration>"
+            return f"std::expected<{self._generator_slot_cpp(func)}, ::tpy::StopIteration>"
         return self._poll_ret_cpp(func)
 
     def _resumable_body_method_decl(self, func: TpyFunction,

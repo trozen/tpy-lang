@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const CM& obj) {
 }
 
 // Generator: gen_with_outer_return_in_finally
-struct __gen_gen_with_outer_return_in_finally {
+struct __gen_gen_with_outer_return_in_finally : public ::tpy::next_iter_mixin<__gen_gen_with_outer_return_in_finally, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     ::tpy::frame_slot<CM> __with_ctx_0;
     bool __finally_stop = false;
@@ -85,7 +85,7 @@ struct __gen_gen_with_outer_return_in_finally {
 };
 
 // Generator: gen_nested_with_return_in_finally
-struct __gen_gen_nested_with_return_in_finally {
+struct __gen_gen_nested_with_return_in_finally : public ::tpy::next_iter_mixin<__gen_gen_nested_with_return_in_finally, ::tpy::BigInt> {
     ::tpy::frame_state __state;
     ::tpy::frame_slot<CM> __with_ctx_0;
     ::tpy::frame_slot<CM> __with_ctx_1;

@@ -15,7 +15,7 @@ __gen_matrix matrix(std::vector<int32_t>& rows, std::vector<int32_t>& cols);
 void main();
 
 // Generator: matrix
-struct __gen_matrix {
+struct __gen_matrix : public ::tpy::next_iter_mixin<__gen_matrix, int32_t> {
     int32_t __state;
     std::vector<int32_t>& rows;
     std::vector<int32_t>& cols;

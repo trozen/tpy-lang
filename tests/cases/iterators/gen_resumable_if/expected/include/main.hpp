@@ -15,7 +15,7 @@ __gen_sign_stream sign_stream(int32_t n);
 void main();
 
 // Generator: sign_stream
-struct __gen_sign_stream {
+struct __gen_sign_stream : public ::tpy::next_iter_mixin<__gen_sign_stream, int32_t> {
     int32_t __state;
     int32_t n;
 

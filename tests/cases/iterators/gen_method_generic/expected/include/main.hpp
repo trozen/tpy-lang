@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 
 // Generator: Box.items
 template <typename T>
-struct __gen_Box_items {
+struct __gen_Box_items : public ::tpy::next_iter_mixin<__gen_Box_items<T>, T> {
     int32_t __state;
     Box<T>& __self;
 

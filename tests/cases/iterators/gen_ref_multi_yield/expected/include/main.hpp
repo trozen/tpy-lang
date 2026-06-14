@@ -33,7 +33,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 }
 
 // Generator: twice
-struct __gen_twice {
+struct __gen_twice : public ::tpy::next_iter_mixin<__gen_twice, ::tpy::val_or_ref<Box>> {
     int32_t __state;
     std::vector<Box>& xs;
     Box* b = nullptr;
