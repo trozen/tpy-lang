@@ -16,7 +16,7 @@ std::string guarded(const Point& p) {
     }
     // case Point(x=x) if x > 0:
     {
-        auto& x = __match_subject_1.x;
+        auto x = __match_subject_1.x;
         if ((x > 0)) {
             // return "positive x"
             return "positive x";

@@ -50,7 +50,7 @@ std::string kind(const V& v) {
     // case bool() as b:
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1.value);
-        auto& b = __case_1;
+        auto b = __case_1;
         // return "bool"
         return "bool";
         break;
@@ -66,7 +66,7 @@ std::string kind(const V& v) {
     // case float() as f:
     case 3: {
         auto& __case_3 = std::get<3>(__match_subject_1.value);
-        auto& f = __case_3;
+        auto f = __case_3;
         // return "float"
         return "float";
         break;

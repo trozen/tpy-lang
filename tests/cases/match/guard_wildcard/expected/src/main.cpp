@@ -36,7 +36,7 @@ std::string describe(int32_t x) {
     switch (__match_subject_1) {
     // case n if n == 0:
     default: {
-        auto& n = __match_subject_1;
+        auto n = __match_subject_1;
         if ((n == 0)) {
             // return "zero"
             return "zero";

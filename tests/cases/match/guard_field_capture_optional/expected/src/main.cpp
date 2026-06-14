@@ -16,7 +16,7 @@ void f(const Point* p) {
     }
     // case Point(x=n) if n > 10:
     if (__match_subject_1 != nullptr) {
-        auto& n = (*__match_subject_1).x;
+        auto n = (*__match_subject_1).x;
         if ((n > 10)) {
             // print("big", n)
             std::cout << "big" << " " << n << "\n";
@@ -25,7 +25,7 @@ void f(const Point* p) {
     }
     // case Point(x=n):
     if (__match_subject_1 != nullptr) {
-        auto& n = (*__match_subject_1).x;
+        auto n = (*__match_subject_1).x;
         // print("small", n)
         std::cout << "small" << " " << n << "\n";
         goto __match_end_2;

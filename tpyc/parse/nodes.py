@@ -9,7 +9,7 @@ from __future__ import annotations
 import ast
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
-from typing import Any, Callable, Literal, Optional, TYPE_CHECKING
+from typing import Any, Callable, Iterator, Literal, Optional, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, FieldInfo, FunctionInfo,
@@ -1062,6 +1062,33 @@ class TpyCapturePattern(TpyPattern):
     # binding carries the full `T | None` subject (no earlier arm covered
     # None); codegen then binds the subject instead of its dereference.
     binds_full_optional: bool = False
+    # Sema-assigned binding form: True iff the captured type is a free-copy
+    # scalar that codegen binds BY VALUE (a durable snapshot that survives
+    # subject mutation). Default False = by-reference borrow, so a capture
+    # sema's annotation pass misses degrades to a warned `auto&`, never a
+    # silent alias. Single source of truth for codegen and the dangle warning.
+    bind_by_value: bool = False
+
+
+def iter_capture_bindings(
+    pattern: "TpyPattern",
+) -> "Iterator[TpyCapturePattern | TpyAsPattern]":
+    """Shared by sema (sets `bind_by_value`, drives the dangle warning) and
+    codegen (builds the per-arm binding-mode map): one traversal means the two
+    see the same capture set and cannot disagree about a binding's form."""
+    if isinstance(pattern, TpyCapturePattern):
+        yield pattern
+    elif isinstance(pattern, TpyAsPattern):
+        yield pattern
+        yield from iter_capture_bindings(pattern.pattern)
+    elif isinstance(pattern, TpyClassPattern):
+        for sub in pattern.positional:
+            yield from iter_capture_bindings(sub)
+        for _, sub in pattern.keywords:
+            yield from iter_capture_bindings(sub)
+    elif isinstance(pattern, TpyOrPattern):
+        for alt in pattern.patterns:
+            yield from iter_capture_bindings(alt)
 
 
 @dataclass
@@ -1103,6 +1130,8 @@ class TpyAsPattern(TpyPattern):
     # See TpyCapturePattern.binds_full_optional (applies when the inner
     # pattern is a wildcard/capture on an Optional subject).
     binds_full_optional: bool = False
+    # See TpyCapturePattern.bind_by_value: the `as` binding's form.
+    bind_by_value: bool = False
 
 
 @dataclass

@@ -21,7 +21,7 @@ std::string nested_param(const std::variant<Box<Box<int32_t>>*, Box<Box<std::str
     // case Box(value=Box(value=Int32() as n)):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
-        auto& n = __case_1.value.value;
+        auto n = __case_1.value.value;
         // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
         break;
@@ -49,7 +49,7 @@ std::string union_subj_union_field(const std::variant<Container*, int32_t*> x) {
         // case Container(value=Int32() as n):
         {
             if (std::holds_alternative<int32_t>(__case_0.value)) {
-                auto& n = std::get<int32_t>(__case_0.value);
+                auto n = std::get<int32_t>(__case_0.value);
                 // return "number: " + str(n)
                 return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
                 goto __match_end_2;
@@ -60,7 +60,7 @@ std::string union_subj_union_field(const std::variant<Container*, int32_t*> x) {
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
         // case Int32() as n:
-        auto& n = __case_1;
+        auto n = __case_1;
         // return "bare: " + str(n)
         return (::tpy::str_concat("bare: ", ::tpy::fixed_to_str<int32_t>(n)));
         goto __match_end_2;
@@ -85,7 +85,7 @@ std::string union_field_param(const Outer& o) {
     // case Outer(item=Box(value=Int32() as n)):
     } else if (std::holds_alternative<Box<int32_t>>(__match_subject_1.item)) {
         auto& __field_match_subject_1_item = std::get<Box<int32_t>>(__match_subject_1.item);
-        auto& n = __field_match_subject_1_item.value;
+        auto n = __field_match_subject_1_item.value;
         // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
     // case _:
@@ -113,7 +113,7 @@ void double_union(const std::vector<Tagged>& items) {
             std::cout << (::tpy::str_concat("string: ", s)) << "\n";
         // case Tagged(label="n", inner=Int32() as n):
         } else if (__match_subject_1.label == "n" && std::holds_alternative<int32_t>(__match_subject_1.inner)) {
-            auto& n = std::get<int32_t>(__match_subject_1.inner);
+            auto n = std::get<int32_t>(__match_subject_1.inner);
             // print("number: " + str(n))
             std::cout << (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n))) << "\n";
         // case _:

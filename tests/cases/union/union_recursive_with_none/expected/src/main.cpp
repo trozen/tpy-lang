@@ -18,7 +18,7 @@ std::string kind(const V& v) {
     // case bool() as b:
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1.value);
-        auto& b = __case_1;
+        auto b = __case_1;
         // return "bool"
         return "bool";
         break;
@@ -94,7 +94,7 @@ std::string kind_after_null_guard(const V& v) {
     // case bool() as b:
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1.value);
-        auto& b = __case_0;
+        auto b = __case_0;
         // return "bool"
         return "bool";
         break;
@@ -184,7 +184,7 @@ std::string kind_guarded(const V& v) {
         auto& __case_1 = std::get<1>(__match_subject_1.value);
         // case bool() as b if b:
         {
-            auto& b = __case_1;
+            auto b = __case_1;
             if (b) {
                 // return "bool-true"
                 return "bool-true";

@@ -107,6 +107,16 @@ in the current model.
   merges borrow states conservatively at join points (union over branches), so a move on
   one path conflicts with a borrow on a mutually-exclusive path -- false positives a
   CFG-based MIR resolves.
+- **Extent-scoped loans for match-arm bindings (BUGS.md [HIGH]).** A non-scalar `match`
+  arm binding is an `auto&` borrow into the subject's storage; mutating the subject root
+  within the arm (a method that reassigns it, or an alias) dangles it -- silent UB,
+  verified. It cannot be fixed soundly today: the whole-function mutation facts the
+  deferred-check resolver reads are extent-blind, so they cannot express "the subject root
+  was mutated *while this arm's binding was live*", and copying the binding is off the
+  table (str/BigInt perf, view dangle, reference-type CPython-aliasing divergence). The
+  scalar half is closed by copying free-copy scalars; the non-scalar half wants a MIR
+  `Place(subject-root)` + `LoanInfo(arm extent)` loan that rejects root mutation while the
+  loan lives -- a concrete motivator for the place/loan model, not just a precision win.
 - **Hand-copied sema/codegen predicate mirrors.** Predicates duplicated across phases and
   kept in lockstep only by discipline: `directly_implements_dynamic` (sema mirror of
   codegen, now 4 call sites -- BUGS.md), the default-ctor predicate and the param-const

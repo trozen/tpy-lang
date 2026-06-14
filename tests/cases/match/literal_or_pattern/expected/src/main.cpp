@@ -69,7 +69,7 @@ std::string classify_as(int32_t x) {
     case 1:
     case 2:
     {
-        auto& n = __match_subject_1;
+        auto n = __match_subject_1;
         // return "small: " + str(n)
         return (::tpy::str_concat("small: ", ::tpy::fixed_to_str<int32_t>(n)));
         break;

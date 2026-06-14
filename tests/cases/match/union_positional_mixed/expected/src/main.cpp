@@ -12,9 +12,9 @@ void describe(const std::variant<Label*, Point*> s) {
     // case Point(px, py, z=pz):
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
-        auto& px = __case_0.x;
-        auto& py = __case_0.y;
-        auto& pz = __case_0.z;
+        auto px = __case_0.x;
+        auto py = __case_0.y;
+        auto pz = __case_0.z;
         // print(px + py + pz)
         std::cout << ::tpy::print_float(((((px) + (py))) + (pz))) << "\n";
         break;

@@ -19,7 +19,7 @@ std::string classify(double x) {
         return "one";
     // case other:
     } else {
-        auto& other = __match_subject_1;
+        auto other = __match_subject_1;
         // return "other"
         return "other";
     }

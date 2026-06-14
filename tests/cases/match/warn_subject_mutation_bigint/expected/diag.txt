@@ -1,0 +1,1 @@
+main.py:31: warning: 'h.item' is mutated in this arm while pattern bindings borrow its storage; the bindings dangle (undefined behavior). Copy the bound values before mutating

@@ -860,6 +860,7 @@ class SemanticAnalyzer:
         (Phase 6 acceptance criterion).
         """
         self.calls.resolve_pending_borrow_checks()
+        self.calls.resolve_pending_match_subject_checks()
 
     def _normalize_function_info_refs(self) -> None:
         """Apply make_ref to all registered FunctionInfo param/return types.

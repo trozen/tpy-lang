@@ -12,9 +12,9 @@ void describe(const std::variant<Child*, Other*> s) {
     // case Child(a, b, c):
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        auto& a = __case_0.x;
-        auto& b = __case_0.y;
-        auto& c = __case_0.z;
+        auto a = __case_0.x;
+        auto b = __case_0.y;
+        auto c = __case_0.z;
         // print(a + b + c)
         std::cout << ::tpy::print_float(((((a) + (b))) + (c))) << "\n";
         break;
@@ -22,7 +22,7 @@ void describe(const std::variant<Child*, Other*> s) {
     // case Other(v):
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        auto& v = __case_1.v;
+        auto v = __case_1.v;
         // print(v)
         std::cout << ::tpy::print_float(v) << "\n";
         break;

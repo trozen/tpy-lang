@@ -23,7 +23,7 @@ from .protocols import dynamic_dispatch_type_conforms
 from ..type_def_registry import (
     is_bool_type, is_fixed_int_type, is_big_int_type,
     is_str_category, is_char_type, is_float_category,
-    is_enum_type, enum_info_of,
+    is_enum_type, enum_info_of, is_free_copy_scalar,
 )
 from ..parse import (
     TpyName, TpyFieldAccess, TpySubscript, TpyMethodCall, TpyIntLiteral,
@@ -31,7 +31,7 @@ from ..parse import (
     TpyMatch, TpyMatchCase, TpyPattern, TpyWildcardPattern, TpyCapturePattern,
     TpyClassPattern, TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
 )
-from ..parse.nodes import stmt_has_any_suspension
+from ..parse.nodes import stmt_has_any_suspension, iter_capture_bindings
 
 if TYPE_CHECKING:
     from ..typesys import RecordInfo
@@ -329,10 +329,15 @@ class MatchAnalyzer:
             for s in case.body:
                 self.stmts.analyze_stmt(s)
 
-            # Arm bindings are auto& borrows into the subject's storage;
-            # the borrow tracker does not yet model them as loans, so warn
-            # on the directly visible storage mutations.
-            if (pattern_bindings
+            # One fact (bind_by_value per capture) drives both codegen's
+            # binding form and the dangle warning below, so the two cannot
+            # disagree (a scalar is never silently aliased). A free-copy scalar
+            # is copied; everything else borrows (copying str/BigInt pessimizes
+            # the common path, a view still dangles, a reference type diverges
+            # from CPython aliasing). Returns whether any binding aliases.
+            aliasing_bindings = self._annotate_capture_bind_modes(
+                case.pattern, pattern_bindings)
+            if (aliasing_bindings
                     and isinstance(stmt.subject, (TpyFieldAccess, TpySubscript))):
                 self._warn_arm_subject_mutation(case, stmt.subject)
 
@@ -482,6 +487,33 @@ class MatchAnalyzer:
                 for name in sorted(predecl)
             }
 
+    @staticmethod
+    def _capture_binds_by_value(ty: TpyType | None) -> bool:
+        """A capture is copied (a durable by-value snapshot) iff its type is a
+        free-copy scalar -- a trivial register move with no heap/ownership/
+        view/aliasing consequence. Everything else borrows by reference."""
+        if ty is None:
+            return False
+        bare = unwrap_readonly(ty)
+        if isinstance(bare, LiteralType):
+            bare = bare.base_type  # a narrowed scalar copies as freely as its base
+        return is_free_copy_scalar(bare)
+
+    def _annotate_capture_bind_modes(
+        self, pattern: TpyPattern, bindings: dict[str, TpyType],
+    ) -> bool:
+        """Set `bind_by_value` on every capture node in `pattern` from its
+        bound type. The flag is the single source of truth read by both codegen
+        (auto vs auto&) and the dangle warning, so they cannot drift. Returns
+        True if any capture binds by reference (the warning's aliasing verdict).
+        """
+        aliases = False
+        for node in iter_capture_bindings(pattern):
+            node.bind_by_value = self._capture_binds_by_value(bindings.get(node.name))
+            if not node.bind_by_value:
+                aliases = True
+        return aliases
+
     def _warn_arm_subject_mutation(
         self, case: TpyMatchCase, subject: TpyExpr,
     ) -> None:
@@ -495,21 +527,38 @@ class MatchAnalyzer:
         subj_parts = _expr_path_parts(subject)
         if subj_parts is None:
             return
-        offender = self._find_subject_mutation(case.body, case.guard, subj_parts)
+        offender, deferred_calls = self._find_subject_mutation(
+            case.body, case.guard, subj_parts)
         if offender is not None:
             self.ctx.warning(
                 f"'{''.join(subj_parts)}' is mutated in this arm while "
                 f"pattern bindings borrow its storage; the bindings dangle "
                 f"(undefined behavior). Copy the bound values before "
                 f"mutating", offender)
+            return
+        # No syntactically-visible mutation, but a non-invalidating method call
+        # on the subject root/prefix may still reassign the subject storage
+        # (e.g. h.swap() doing self.pet = ...). Its readonly verdict only
+        # settles in Phase 2, so defer the check to finalize_borrow_checks.
+        subj_str = ''.join(subj_parts)
+        for mcall in deferred_calls:
+            self.expr.calls.pending_match_subject_checks.append(
+                (mcall, subj_str, id(case)))
 
     def _find_subject_mutation(
         self, body: list[TpyStmt], guard: TpyExpr | None,
         subj_parts: tuple[str, ...],
-    ) -> 'TpyStmt | TpyExpr | None':
-        """First statement/expression in the arm that overwrites the subject
-        path (or a prefix of it -- rebinding an owner destroys the storage)
-        or calls an invalidating method on the subject's base."""
+    ) -> 'tuple[TpyStmt | TpyExpr | None, list[TpyMethodCall]]':
+        """Walk the arm once. Returns (offender, deferred_calls):
+        - offender: the first statement/expression that overwrites the subject
+          path (or an owner prefix) or calls an INVALIDATING method on the
+          subject's base -- a syntactically-decidable dangle, warned now.
+        - deferred_calls: non-invalidating method calls whose receiver
+          prefix-aliases the subject; whether they reassign the subject
+          (non-readonly) settles in Phase 2, so the caller defers them.
+        """
+        offender: 'TpyStmt | TpyExpr | None' = None
+        deferred: list[TpyMethodCall] = []
 
         def prefix_aliases(parts: tuple[str, ...] | None) -> bool:
             if parts is None or len(parts) > len(subj_parts):
@@ -524,7 +573,12 @@ class MatchAnalyzer:
                 return False
             return prefix_aliases(parts)
 
-        def scan_expr(expr: TpyExpr) -> TpyExpr | None:
+        def note_offender(node: 'TpyStmt | TpyExpr') -> None:
+            nonlocal offender
+            if offender is None:
+                offender = node
+
+        def scan_expr(expr: TpyExpr) -> None:
             if isinstance(expr, TpyMethodCall):
                 recv = _expr_path_parts(expr.obj)
                 if recv is not None and prefix_aliases(recv):
@@ -533,35 +587,28 @@ class MatchAnalyzer:
                             and self.expr.methods._is_invalidating_method(
                                 unwrap_readonly(unwrap_ref_type(recv_type)),
                                 expr.method)):
-                        return expr
+                        note_offender(expr)
+                    else:
+                        deferred.append(expr)
             for child in expr.children():
-                hit = scan_expr(child)
-                if hit is not None:
-                    return hit
-            return None
+                scan_expr(child)
 
-        def scan_stmts(stmts: list[TpyStmt]) -> 'TpyStmt | TpyExpr | None':
+        def scan_stmts(stmts: list[TpyStmt]) -> None:
             for s in stmts:
                 if isinstance(s, (TpyAssign, TpyAugAssign)):
                     if assign_clashes(_expr_path_parts(s.target)):
-                        return s
+                        note_offender(s)
                 if isinstance(s, TpyNestedDef):
                     continue  # different frame; deferred execution
                 for e in s.exprs():
-                    hit = scan_expr(e)
-                    if hit is not None:
-                        return hit
+                    scan_expr(e)
                 for sub in s.sub_bodies():
-                    hit = scan_stmts(sub)
-                    if hit is not None:
-                        return hit
-            return None
+                    scan_stmts(sub)
 
+        scan_stmts(body)
         if guard is not None:
-            hit = scan_expr(guard)
-            if hit is not None:
-                return hit
-        return scan_stmts(body)
+            scan_expr(guard)
+        return offender, deferred
 
     def _poly_dispatch_source(
         self, effective_type: TpyType,

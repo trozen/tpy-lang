@@ -4,31 +4,33 @@
 namespace tpyapp::main {
 
 
-// def poke(xs: list[Int32]) -> None:
-void poke(std::vector<int32_t>& xs) {
+// def poke(xs: list[Item]) -> None:
+void poke(std::vector<Item>& xs) {
     // match xs[0]:
     auto& __match_subject_1 = ::tpy::__getitem__(xs, 0);
-    switch (__match_subject_1) {
-    // case x if xs.pop() > 100:  # tpyc: warning(/'xs\[0\]' is mutated in this arm while pattern bindings borrow/)
-    default: {
-        auto& x = __match_subject_1;
-        auto& y = __match_subject_1;
-        if ((::tpy::pop_back(xs) > 100)) {
-            // print("big tail", x)
-            std::cout << "big tail" << " " << x << "\n";
-        } else {
-            // print("small", y)
-            std::cout << "small" << " " << y << "\n";
+    // case Item(tag=t) if xs.pop().v > 100:  # tpyc: warning(/'xs\[0\]' is mutated in this arm while pattern bindings borrow/)
+    {
+        auto& t = __match_subject_1.tag;
+        if ((::tpy::pop_back(xs).v > 100)) {
+            // print("big tail", t.n)
+            std::cout << "big tail" << " " << t.n << "\n";
+            goto __match_end_2;
         }
-        break;
     }
+    // case Item(tag=t2):
+    {
+        auto& t2 = __match_subject_1.tag;
+        // print("small", t2.n)
+        std::cout << "small" << " " << t2.n << "\n";
+        goto __match_end_2;
     }
+    __match_end_2:;
 }
 
 // def main() -> None:
 void main() {
-    // poke([5, 50])
-    std::vector<int32_t> __tmp_1 = {5, 50};
+    // poke([Item(1, 5), Item(2, 50)])
+    std::vector<Item> __tmp_1 = {Item(1, 5), Item(2, 50)};
     poke(__tmp_1);
 }
 

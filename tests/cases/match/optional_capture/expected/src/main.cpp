@@ -17,7 +17,7 @@ std::string classify(std::optional<int32_t> x) {
         switch (__match_inner_1) {
         // case v:
         default: {
-            auto& v = __match_inner_1;
+            auto v = __match_inner_1;
             // return str(v)
             return ::tpy::fixed_to_str<int32_t>(v);
             break;

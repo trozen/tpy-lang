@@ -58,8 +58,8 @@ std::string check_point(const Point* p) {
             return "origin";
         // case Point(x=x, y=y):
         } else {
-            auto& x = __match_inner_1.x;
-            auto& y = __match_inner_1.y;
+            auto x = __match_inner_1.x;
+            auto y = __match_inner_1.y;
             // return str(x) + "," + str(y)
             return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(x), ",")), ::tpy::fixed_to_str<int32_t>(y)));
         }

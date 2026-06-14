@@ -23,7 +23,7 @@ std::string classify(int32_t n) {
     }
     // case x:
     default: {
-        auto& x = __match_subject_1;
+        auto x = __match_subject_1;
         // return "other"
         return "other";
         break;

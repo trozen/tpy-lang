@@ -25,6 +25,7 @@ from .nodes import (
     TpyNestedDef,
     TpyPattern, TpyWildcardPattern, TpyCapturePattern, TpyClassPattern,
     TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
+    iter_capture_bindings,
     TpyMatchCase, TpyMatch,
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyEnum,
     ParseWarning, TpyModule,

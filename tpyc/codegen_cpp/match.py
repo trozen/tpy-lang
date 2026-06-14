@@ -19,6 +19,7 @@ from ..typesys import (
 from .variant_access import VariantAccess
 from ..parse import (
     TpyStmt, TpyExpr, TpyFieldAccess, TpyName, TpyMatch, TpyMatchCase, TpyPattern,
+    iter_capture_bindings,
     TpySubscript, TpyWildcardPattern, TpyCapturePattern, TpyClassPattern,
     TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern, TpyMethodCall,
 )
@@ -112,6 +113,7 @@ class MatchGenerator:
         # gen_match invocation (saved/restored for nested matches).
         self.subject = "__match_subject"
         self.inner_subject = "__match_inner"
+        self._cur_arm_bind: dict[str, bool] = {}
 
     def gen_match(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
         """Generate a match/case statement. Uses switch when possible, if/elif otherwise."""
@@ -443,6 +445,7 @@ class MatchGenerator:
     ) -> None:
         inner = INDENT * (self.ctx.indent_level + 1)
         for i, case in enumerate(stmt.cases):
+            self._set_arm_bind_modes(case)
             self.ctx.emit_source_comment(out, case.loc, indent)
             keyword = "if" if i == 0 else "} else if"
             pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
@@ -500,6 +503,7 @@ class MatchGenerator:
         end_label = f"__match_end_{self.ctx.match_counter}"
 
         for i, case in enumerate(stmt.cases):
+            self._set_arm_bind_modes(case)
             self.ctx.emit_source_comment(out, case.loc, indent)
             pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
             guard = case.guard
@@ -566,6 +570,7 @@ class MatchGenerator:
         """Emit a class-pattern arm body inside its `if (cast)` block, gating
         the `goto end_label` on the field-value conditions and guard (if any).
         A failed condition falls through to the next standalone-if arm."""
+        self._set_arm_bind_modes(case)
         cond_parts = list(field_conds)
         if guard is not None:
             guard_code = self.expressions.gen_expr(guard)
@@ -612,13 +617,14 @@ class MatchGenerator:
             self._gen_match_field_bindings(out, pattern, subject_name, indent)
 
         for case in stmt.cases:
+            self._set_arm_bind_modes(case)
             pattern, as_name, as_raw_name = self._unwrap_as_pattern(case.pattern)
 
             if isinstance(pattern, TpyClassPattern) and pattern.resolved_type is not None:
                 if pattern.resolved_type == concrete_type:
                     emit_field_bindings(pattern)
                     if as_name:
-                        out.write(f"{indent}auto& {escape_cpp_name(as_name)} = {subject_name};\n")
+                        self._emit_binding(out, escape_cpp_name(as_name), as_raw_name, subject_name, indent)
                     for s in case.body:
                         self.stmts.gen_stmt(out, s)
                     return
@@ -628,16 +634,16 @@ class MatchGenerator:
                     if isinstance(alt, TpyClassPattern) and alt.resolved_type == concrete_type:
                         emit_field_bindings(alt)
                         if as_name:
-                            out.write(f"{indent}auto& {escape_cpp_name(as_name)} = {subject_name};\n")
+                            self._emit_binding(out, escape_cpp_name(as_name), as_raw_name, subject_name, indent)
                         for s in case.body:
                             self.stmts.gen_stmt(out, s)
                         return
 
             elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
                 if isinstance(pattern, TpyCapturePattern):
-                    out.write(f"{indent}auto& {escape_cpp_name(pattern.name)} = {subject_name};\n")
+                    self._emit_binding(out, escape_cpp_name(pattern.name), pattern.name, subject_name, indent)
                 if as_name:
-                    out.write(f"{indent}auto& {escape_cpp_name(as_name)} = {subject_name};\n")
+                    self._emit_binding(out, escape_cpp_name(as_name), as_raw_name, subject_name, indent)
                 for s in case.body:
                     self.stmts.gen_stmt(out, s)
                 return
@@ -674,6 +680,7 @@ class MatchGenerator:
         self.ctx.match_switch_depth += 1
 
         for i, case in enumerate(stmt.cases):
+            self._set_arm_bind_modes(case)
             self.ctx.emit_source_comment(out, case.loc, indent)
             pattern, as_name, as_raw_name = self._unwrap_as_pattern(case.pattern)
 
@@ -791,7 +798,7 @@ class MatchGenerator:
     # raw_names: set of raw Python names for declared_vars lookup
     _SwitchEntry = tuple[
         TpyExpr | None, list['TpyStmt'], str | None, str | None, set[str],
-        'SourceLocation | None', dict[str, TpyType],
+        'SourceLocation | None', dict[str, TpyType], dict[str, bool],
     ]
 
     def _group_switch_arms(
@@ -801,7 +808,8 @@ class MatchGenerator:
 
         Returns a list of (labels, entries) where:
         - labels: list of case label strings, or ["default"] for wildcard
-        - entries: list of (guard, body, cap_escaped, as_escaped, raw_names, loc)
+        - entries: list of (guard, body, cap_escaped, as_escaped, raw_names,
+          loc, type_facts, bind_modes) -- see the `_SwitchEntry` alias
         Same-value cases with guards are merged into a single group.
         Entries are ordered guarded-first, unguarded-last (enforced by sema
         duplicate-case check which only allows same-value repeats with guards).
@@ -813,6 +821,7 @@ class MatchGenerator:
         default_entries: list[MatchGenerator._SwitchEntry] = []
 
         for case in cases:
+            self._set_arm_bind_modes(case)
             pattern, as_escaped, as_raw = self._unwrap_as_pattern(case.pattern)
             raw_names: set[str] = set()
             if as_raw is not None:
@@ -826,7 +835,7 @@ class MatchGenerator:
                     assert isinstance(pattern, TpyLiteralPattern)
                     label = self._switch_literal_label(pattern)
                 entry: MatchGenerator._SwitchEntry = (
-                    case.guard, case.body, None, as_escaped, raw_names, case.loc, case.type_facts,
+                    case.guard, case.body, None, as_escaped, raw_names, case.loc, case.type_facts, dict(self._cur_arm_bind),
                 )
                 if label in groups:
                     groups[label][1].append(entry)
@@ -839,7 +848,7 @@ class MatchGenerator:
                     for alt in pattern.patterns
                 )
                 if has_wild:
-                    default_entries.append((case.guard, case.body, None, as_escaped, raw_names, case.loc, case.type_facts))
+                    default_entries.append((case.guard, case.body, None, as_escaped, raw_names, case.loc, case.type_facts, dict(self._cur_arm_bind)))
                 else:
                     labels = []
                     for alt in pattern.patterns:
@@ -850,7 +859,7 @@ class MatchGenerator:
                             assert isinstance(alt, TpyLiteralPattern)
                             labels.append(self._switch_literal_label(alt))
                     key = "|".join(labels)
-                    entry = (case.guard, case.body, None, as_escaped, raw_names, case.loc, case.type_facts)
+                    entry = (case.guard, case.body, None, as_escaped, raw_names, case.loc, case.type_facts, dict(self._cur_arm_bind))
                     if key in groups:
                         groups[key][1].append(entry)
                     else:
@@ -860,7 +869,7 @@ class MatchGenerator:
                 cap_escaped = escape_cpp_name(pattern.name) if isinstance(pattern, TpyCapturePattern) else None
                 if isinstance(pattern, TpyCapturePattern):
                     raw_names.add(pattern.name)
-                default_entries.append((case.guard, case.body, cap_escaped, as_escaped, raw_names, case.loc, case.type_facts))
+                default_entries.append((case.guard, case.body, cap_escaped, as_escaped, raw_names, case.loc, case.type_facts, dict(self._cur_arm_bind)))
 
             else:
                 raise CodeGenError(f"Unsupported pattern in {kind} switch: {type(pattern).__name__}")
@@ -891,7 +900,7 @@ class MatchGenerator:
         has_default = any(labels == ["default"] for labels, _ in groups)
         needs_default_goto = has_default and any(
             labels != ["default"]
-            and all(g is not None for g, _, _, _, _, _, _ in entries)
+            and all(g is not None for g, _, _, _, _, _, _, _ in entries)
             for labels, entries in groups
         )
         default_label: str | None = None
@@ -926,7 +935,8 @@ class MatchGenerator:
 
             # Single entry, no guard -> simple body
             if len(entries) == 1 and entries[0][0] is None:
-                _, body, cap, as_name, raw_names, _loc, _tf = entries[0]
+                _, body, cap, as_name, raw_names, _loc, _tf, _bm = entries[0]
+                self._cur_arm_bind = _bm
                 self._emit_switch_binding(out, cap, as_name, raw_names, inner, subject_expr)
                 self.ctx.indent_level += 1
                 self._emit_case_body(out, body, type_facts_0)
@@ -935,16 +945,17 @@ class MatchGenerator:
                 # Emit capture/as binding before the guard chain so guards
                 # can reference the bound variable
                 bindings_emitted: set[str] = set()
-                for _g, _b, cap, as_name, raw_names, _loc, _tf in entries:
+                for _g, _b, cap, as_name, raw_names, _loc, _tf, _bm in entries:
+                    self._cur_arm_bind = _bm
                     for escaped, raw in self._binding_pairs(cap, as_name, raw_names):
                         if escaped not in bindings_emitted:
                             self._emit_binding(out, escaped, raw, subject_expr, inner)
                             bindings_emitted.add(escaped)
 
                 # Guard chain: if (g1) { body1 } else if (g2) { body2 } else { fallback }
-                has_unguarded = any(g is None for g, _, _, _, _, _, _ in entries)
+                has_unguarded = any(g is None for g, _, _, _, _, _, _, _ in entries)
                 if_opened = False
-                for _j, (guard, body, _cap, _as, _raw, _loc, _tf) in enumerate(entries):
+                for _j, (guard, body, _cap, _as, _raw, _loc, _tf, _bm) in enumerate(entries):
                     if guard is not None:
                         guard_code = self.expressions.gen_expr(guard)
                         self.ctx.temps.flush(out, inner)
@@ -1032,8 +1043,36 @@ class MatchGenerator:
             return
         if raw_name in self.ctx.declared_vars:
             out.write(f"{indent}{escaped} = {subject_expr};\n")
+        elif self._arm_binds_by_value(raw_name):
+            # A free-copy scalar is COPIED into the binding (sema fact) so it
+            # survives subject mutation in the arm body/guard (variant emplace
+            # destroys the subject's storage in place; a container realloc
+            # moves it) -- a by-reference binding would dangle. Matches
+            # CPython's value semantics for the bound immutable, at zero cost.
+            out.write(f"{indent}auto {escaped} = {subject_expr};\n")
         else:
             out.write(f"{indent}auto& {escaped} = {subject_expr};\n")
+
+    def _arm_binds_by_value(self, raw_name: str) -> bool:
+        """Read the current arm's sema-assigned binding form for `raw_name`.
+        The per-arm map is built from the same `iter_capture_bindings` set sema
+        annotated, so codegen's copy decision and sema's warning never disagree.
+        A name missing from the map is a populate-site bug -- assert loudly
+        rather than silently emit the wrong (possibly dangling) form."""
+        assert raw_name in self._cur_arm_bind, (
+            f"match binding '{raw_name}' has no bind-mode: either the emit "
+            f"loop did not call _set_arm_bind_modes(case), or "
+            f"iter_capture_bindings does not traverse this binding's node kind")
+        return self._cur_arm_bind[raw_name]
+
+    def _set_arm_bind_modes(self, case: TpyMatchCase) -> None:
+        """Must run before any binding emit for this arm: _emit_binding reads
+        the resulting map (sema's per-capture bind_by_value) and asserts on a
+        name it lacks."""
+        self._cur_arm_bind = {
+            n.name: n.bind_by_value
+            for n in iter_capture_bindings(case.pattern)
+        }
 
     def _emit_switch_binding(
         self, out: TextIO, cap: str | None, as_name: str | None,
@@ -1113,6 +1152,7 @@ class MatchGenerator:
         }
 
         for case in stmt.cases:
+            self._set_arm_bind_modes(case)
             pattern, as_name, as_raw_name = self._unwrap_as_pattern(case.pattern)
 
             if isinstance(pattern, TpyClassPattern):
@@ -1242,6 +1282,7 @@ class MatchGenerator:
         When needs_scope is True, wraps bindings+body in { } to avoid name
         conflicts with other arms in the same case block.
         """
+        self._set_arm_bind_modes(arm_case)
         bind_indent = inner2 if needs_scope else inner
 
         if needs_scope:
@@ -1427,6 +1468,7 @@ class MatchGenerator:
         inner = INDENT * (self.ctx.indent_level + 1)
 
         for i, case in enumerate(stmt.cases):
+            self._set_arm_bind_modes(case)
             self.ctx.emit_source_comment(out, case.loc, indent)
             pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
             cond = self._gen_match_if_elif_cond(out, pattern, indent)
@@ -1459,6 +1501,7 @@ class MatchGenerator:
         end_label = f"__match_end_{self.ctx.match_counter}"
 
         for case in stmt.cases:
+            self._set_arm_bind_modes(case)
             self.ctx.emit_source_comment(out, case.loc, indent)
             pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
             cond = self._gen_match_if_elif_cond(out, pattern, indent)
@@ -1539,6 +1582,7 @@ class MatchGenerator:
         # order). Bindings precede the guard (it may read the as-name); a
         # failed guard falls out of the block to the next arm.
         for case in guarded:
+            self._set_arm_bind_modes(case)
             self.ctx.emit_source_comment(out, case.loc, indent)
             pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
             if isinstance(pattern, TpyLiteralPattern):
@@ -1570,6 +1614,7 @@ class MatchGenerator:
             entries = bucket_entries[disc_value]
             out.write(f"{sw_indent}case {case_label(disc_value, kind)}: {{\n")
             for case, string_val in entries:
+                self._set_arm_bind_modes(case)
                 self.ctx.emit_source_comment(out, case.loc, sw_inner)
                 pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
                 out.write(f'{sw_inner}if ({self.subject} == {cpp_string_literal_expr(string_val)}) {{\n')
@@ -1592,6 +1637,7 @@ class MatchGenerator:
         # guard cannot fall into the next trailing arm and no goto crosses
         # a declaration.
         for case in trailing:
+            self._set_arm_bind_modes(case)
             self.ctx.emit_source_comment(out, case.loc, indent)
             pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
             if not isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
@@ -1611,6 +1657,7 @@ class MatchGenerator:
         inner = INDENT * (self.ctx.indent_level + 1)
 
         for i, case in enumerate(stmt.cases):
+            self._set_arm_bind_modes(case)
             self.ctx.emit_source_comment(out, case.loc, indent)
             keyword = "if" if i == 0 else "} else if"
             pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
@@ -1678,6 +1725,7 @@ class MatchGenerator:
         end_label = f"__match_end_{self.ctx.match_counter}"
 
         for i, case in enumerate(stmt.cases):
+            self._set_arm_bind_modes(case)
             self.ctx.emit_source_comment(out, case.loc, indent)
             pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
             guard = case.guard
@@ -1938,6 +1986,7 @@ class MatchGenerator:
         subject_expr = self.inner_subject
 
         for i, case in enumerate(cases):
+            self._set_arm_bind_modes(case)
             self.ctx.emit_source_comment(out, case.loc, indent)
             keyword = "if" if i == 0 else "} else if"
             pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
@@ -2021,6 +2070,7 @@ class MatchGenerator:
         deref = self.inner_subject
 
         for i, case in enumerate(cases):
+            self._set_arm_bind_modes(case)
             self.ctx.emit_source_comment(out, case.loc, indent)
             keyword = "if" if i == 0 else "} else if"
             pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
@@ -2177,6 +2227,7 @@ class MatchGenerator:
         whose binding carries the full Optional (sema: binds_full_optional)
         binds the subject itself; otherwise sema proved an earlier None arm
         ran, so the dereference is safe."""
+        self._set_arm_bind_modes(case)
         if isinstance(pattern, TpyClassPattern):
             self._gen_match_field_bindings(out, pattern, deref, indent)
             self._emit_binding(out, as_name, as_raw, deref, indent)
@@ -2220,6 +2271,7 @@ class MatchGenerator:
         deref = f"(*{self.subject})"
 
         for i, case in enumerate(stmt.cases):
+            self._set_arm_bind_modes(case)
             self.ctx.emit_source_comment(out, case.loc, indent)
             pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
             cond = self._gen_match_optional_cond(
@@ -2259,6 +2311,7 @@ class MatchGenerator:
         end_label = f"__match_end_{self.ctx.match_counter}"
 
         for case in stmt.cases:
+            self._set_arm_bind_modes(case)
             self.ctx.emit_source_comment(out, case.loc, indent)
             pattern, as_name, as_raw = self._unwrap_as_pattern(case.pattern)
             cond = self._gen_match_optional_cond(

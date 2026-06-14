@@ -22,7 +22,7 @@ void poke(std::vector<std::variant<Cat, Dog>>& xs) {
     // case Cat(age=a):
     case 0: {
         auto& __case_1 = std::get<0>(__match_subject_1);
-        auto& a = __case_1.age;
+        auto a = __case_1.age;
         // print("cat", a)
         std::cout << "cat" << " " << a << "\n";
         break;

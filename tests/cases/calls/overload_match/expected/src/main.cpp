@@ -10,7 +10,7 @@ namespace tpyapp::main {
 // def area(shape: Circle) -> float: ...
 double area(const Circle& shape) {
     // match shape:
-    auto& r = shape.radius;
+    auto r = shape.radius;
     // return 3.14 * r * r
     return ((((3.14) * (r))) * (r));
 }
@@ -19,7 +19,7 @@ double area(const Circle& shape) {
 // def area(shape: Square) -> float: ...
 double area(const Square& shape) {
     // match shape:
-    auto& s = shape.side;
+    auto s = shape.side;
     // return s * s
     return ((s) * (s));
 }

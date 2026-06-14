@@ -11,7 +11,7 @@ std::string literal_as_guard(int32_t x) {
     switch (__match_subject_1) {
     // case 1 as y if y > 0:
     case 1: {
-        auto& y = __match_subject_1;
+        auto y = __match_subject_1;
         if ((y > 0)) {
             // return "one positive"
             return "one positive";
@@ -40,7 +40,7 @@ std::string wildcard_as_guard(int32_t x) {
     switch (__match_subject_1) {
     // case _ as y if y > 10:
     default: {
-        auto& y = __match_subject_1;
+        auto y = __match_subject_1;
         if ((y > 10)) {
             // return "big"
             return "big";

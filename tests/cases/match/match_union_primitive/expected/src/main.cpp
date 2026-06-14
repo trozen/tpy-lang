@@ -13,7 +13,7 @@ std::string describe(const std::variant<Cat*, Dog*, int32_t*, std::string*> x) {
     // case Int32() as n:
     case 2: {
         auto& __case_0 = *std::get<2>(__match_subject_1);
-        auto& n = __case_0;
+        auto n = __case_0;
         // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
         break;
@@ -94,7 +94,7 @@ std::string unbox(const std::variant<Box<std::string>*, int32_t*> x) {
     // case Int32() as n:
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
-        auto& n = __case_0;
+        auto n = __case_0;
         // return str(n)
         return ::tpy::fixed_to_str<int32_t>(n);
         break;

@@ -95,7 +95,7 @@ std::string deep3(const std::variant<Box<Box<Box<int32_t>>>*, Box<Box<Box<std::s
     // case Box(value=Box(value=Box(value=Int32() as n))):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
-        auto& n = __case_1.value.value.value;
+        auto n = __case_1.value.value.value;
         // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
         break;
@@ -121,7 +121,7 @@ std::string positional_nested(const std::variant<Box<int32_t>*, Box<std::string>
     // case Box(Int32() as n):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
-        auto& n = __case_1.value;
+        auto n = __case_1.value;
         // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
         break;
@@ -201,7 +201,7 @@ std::string check_float(const FloatHolder& h) {
     auto& __match_subject_1 = h;
     // case FloatHolder(value=float() as f):
     if (std::holds_alternative<double>(__match_subject_1.value)) {
-        auto& f = std::get<double>(__match_subject_1.value);
+        auto f = std::get<double>(__match_subject_1.value);
         // return "float: " + str(f)
         return (::tpy::str_concat("float: ", ::tpy::float_to_str(f)));
     // case FloatHolder(value=str() as s):
@@ -223,7 +223,7 @@ std::string check_bool(const BoolHolder& h) {
     auto& __match_subject_1 = h;
     // case BoolHolder(value=bool() as b):
     if (std::holds_alternative<bool>(__match_subject_1.value)) {
-        auto& b = std::get<bool>(__match_subject_1.value);
+        auto b = std::get<bool>(__match_subject_1.value);
         // if b:
         if (b) {
             // return "true"

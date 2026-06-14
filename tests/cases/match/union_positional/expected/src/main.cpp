@@ -12,7 +12,7 @@ void describe(const std::variant<Circle*, Rect*> s) {
     // case Circle(r):
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        auto& r = __case_0.radius;
+        auto r = __case_0.radius;
         // print(r)
         std::cout << ::tpy::print_float(r) << "\n";
         break;
@@ -20,7 +20,7 @@ void describe(const std::variant<Circle*, Rect*> s) {
     // case Rect(_, h):
     case 1: {
         auto& __case_1 = *std::get<1>(__match_subject_1);
-        auto& h = __case_1.height;
+        auto h = __case_1.height;
         // print(h)
         std::cout << ::tpy::print_float(h) << "\n";
         break;

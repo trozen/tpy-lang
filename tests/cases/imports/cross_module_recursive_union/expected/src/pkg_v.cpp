@@ -32,7 +32,7 @@ std::string kind(const V& v) {
     // case bool() as b:
     case 1: {
         auto& __case_1 = std::get<1>(__match_subject_1.value);
-        auto& b = __case_1;
+        auto b = __case_1;
         // return "bool"
         return "bool";
         break;

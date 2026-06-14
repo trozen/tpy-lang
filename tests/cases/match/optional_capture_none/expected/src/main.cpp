@@ -37,7 +37,7 @@ void narrowed(std::optional<int32_t> v) {
         switch (__match_inner_1) {
         // case x:
         default: {
-            auto& x = __match_inner_1;
+            auto x = __match_inner_1;
             // print(x * 2)
             std::cout << (::tpy::mul_check<int32_t>(x, 2)) << "\n";
             break;

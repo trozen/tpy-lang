@@ -7,10 +7,47 @@
 
 namespace tpyapp::main {
 
+struct Tag;
+struct Item;
+
 inline constexpr std::string_view __name__ = "__main__";
 
-void poke(std::vector<int32_t>& xs);
+void poke(std::vector<Item>& xs);
 void main();
+
+// class Tag:
+struct Tag {
+    // n: Int32
+    int32_t n;
+
+    // def __init__(self, n: Int32) -> None:
+    Tag() = default;
+    explicit Tag(int32_t n) : n(n) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
+    ::tpy::print_object_default(os, "Tag", obj);
+    return os;
+}
+
+// class Item:
+struct Item {
+    // tag: Tag
+    Tag tag;
+    // v: Int32
+    int32_t v;
+
+    // def __init__(self, n: Int32, v: Int32) -> None:
+    Item() = default;
+    explicit Item(int32_t n, int32_t v) : tag(Tag(n)), v(v) {}
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Item";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
+    ::tpy::print_object_default(os, "Item", obj);
+    return os;
+}
 
 void __tpy_init();
 } // namespace tpyapp::main

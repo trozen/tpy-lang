@@ -433,6 +433,23 @@ switch (__match_subject.index()) {
 
 Wildcard/capture maps to `default:`. Each case arm gets a `break`.
 
+**Binding storage (scalar copy vs reference).** A pattern binding whose type
+is a free-copy scalar (`Int32`/fixed ints, `bool`, `Char`, float, enum) is
+bound *by value* (`auto n = __dog.legs;`), not `auto&`. The copy is a free
+register move and keeps the binding valid if the arm body mutates the
+subject's storage (a union field reassign destroys the old alternative in
+place; a container realloc moves the element) -- matching CPython, which
+keeps the matched value. Every other binding -- heap-backed value types
+(`str`, `BigInt`), borrowing views (`StrView`/`Span`/`BytesView`), and
+reference types (record/`list`/`dict`/wrapper) -- is bound `auto&` (a
+zero-cost borrow). The copy is restricted to scalars on purpose: copying
+`str`/`BigInt` would pessimize the common path (performance is design
+goal #1) and copying a view or reference type would still dangle / diverge
+from CPython aliasing. Mutating the subject root while a non-scalar binding
+is live dangles it and is warned on the visible shapes; the durable fix is a
+compile-time loan check (never a runtime copy) -- see BUGS.md. The examples
+above predate this split and show `auto&` uniformly for brevity.
+
 A literal field sub-pattern (`case Dog(legs=4):`) is a *conditional* arm: it
 matches only when the variant type *and* the field value match. Such an arm
 routes to the guarded switch path, which emits the field comparison as an
@@ -934,7 +951,7 @@ divergence -- they tighten valid-but-buggy CPython into a compile error.
 | Non-exhaustive union match | `non-exhaustive match on '...'; missing: Bird` |
 | Non-exhaustive enum match | `non-exhaustive match on '...'; missing: Color.BLUE` |
 | Non-exhaustive Optional match | `non-exhaustive match on '...'; missing: None, Point` (each uncovered side reported) |
-| Subject storage mutated under live bindings | `'h.pet' is mutated in this arm while pattern bindings borrow its storage; the bindings dangle (undefined behavior). ...` (field/element subjects; arm body or guard; syntactic -- aliases evade, see BUGS.md) |
+| Subject storage mutated under live bindings | `'h.pet' is mutated in this arm while pattern bindings borrow its storage; the bindings dangle (undefined behavior). ...` (field/element subjects; arm body or guard; covers assignment, invalidating container method, and a non-readonly method call on the subject prefix -- aliases/opaque methods evade, see BUGS.md) |
 | Non-enumerable scalar subject without a catch-all | `non-exhaustive match on '...'; no unconditional catch-all arm` |
 
 ---

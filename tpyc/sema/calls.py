@@ -568,6 +568,11 @@ class CallAnalyzer:
         self.methods: MethodAnalyzer
         # Pending borrow checks deferred until Phase 2 resolves mutated_params
         self.pending_borrow_checks: list[tuple[FunctionInfo, int, str, SourceLocation | None]] = []
+        # Deferred match-arm subject-mutation checks: a method call on the
+        # subject root/prefix whose readonly verdict (and thus whether it may
+        # reassign the borrowed subject storage) only settles in Phase 2.
+        # Entry: (method_call, subject_path_str, arm_id).
+        self.pending_match_subject_checks: list[tuple[TpyMethodCall, str, int]] = []
 
     def _restore_readonly_arg(self, arg: TpyExpr, arg_type: TpyType,
                               target_is_readonly: bool = False) -> TpyType:
@@ -599,6 +604,25 @@ class CallAnalyzer:
                 loc,
             )
         self.pending_borrow_checks.clear()
+
+    def resolve_pending_match_subject_checks(self) -> None:
+        """Emit the deferred match-arm dangle warning for a non-readonly method
+        call on the subject root/prefix (it may reassign the borrowed subject
+        storage). Readonly is now settled; warn once per arm. The sound fix
+        (reject the mutation) waits for the IR loan model -- see BUGS.md."""
+        warned_arms: set[int] = set()
+        for mcall, subj_str, arm_id in self.pending_match_subject_checks:
+            if arm_id in warned_arms:
+                continue
+            fi = mcall.resolved_function_info
+            if fi is not None and fi.is_readonly is False:
+                warned_arms.add(arm_id)
+                self.ctx.warning(
+                    f"'{subj_str}' may be mutated by '{mcall.method}()' in this "
+                    f"arm while pattern bindings borrow its storage; the "
+                    f"bindings dangle (undefined behavior). Copy the bound "
+                    f"values before the call", mcall)
+        self.pending_match_subject_checks.clear()
 
     def _resolve_call_kwargs(self, expr: TpyCall, func: FunctionInfo) -> None:
         """Resolve keyword arguments on a TpyCall into positional form."""

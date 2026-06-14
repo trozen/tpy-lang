@@ -514,6 +514,17 @@ def is_bytes_category(t: "TpyType") -> bool:  return _is_cat(t, TypeCategory.BYT
 def is_slice_category(t: "TpyType") -> bool:  return _is_cat(t, TypeCategory.SLICE)
 
 
+def is_free_copy_scalar(t: "TpyType") -> bool:
+    """A value type whose copy is a trivial register move with no heap
+    allocation: fixed-width ints, bool, Char, float, enums. Excludes BigInt
+    and str (owned but heap-backed) and all views/reference types. Used where
+    a copy is acceptable only if it is free (e.g. binding a match capture by
+    value to avoid a dangling reference must not pessimize the common path).
+    """
+    return (is_fixed_int_type(t) or is_bool_type(t) or is_char_type(t)
+            or is_float_category(t) or is_enum_type(t))
+
+
 # Single-qname primitive predicates.
 def is_str_type(t: "TpyType") -> bool:     return _is_qn(t, "builtins.str")
 def is_string_type(t: "TpyType") -> bool:  return _is_qn(t, "tpy.String")

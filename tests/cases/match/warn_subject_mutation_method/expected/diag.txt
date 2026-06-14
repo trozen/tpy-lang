@@ -1,0 +1,1 @@
+main.py:39: warning: 'h.pet' may be mutated by 'swap()' in this arm while pattern bindings borrow its storage; the bindings dangle (undefined behavior). Copy the bound values before the call

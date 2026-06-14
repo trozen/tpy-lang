@@ -14,18 +14,18 @@ std::string describe(const Point& p) {
         return "origin";
     // case Point(x=x, y=0):
     } else if (__match_subject_1.y == 0) {
-        auto& x = __match_subject_1.x;
+        auto x = __match_subject_1.x;
         // return "x-axis: " + str(x)
         return (::tpy::str_concat("x-axis: ", ::tpy::fixed_to_str<int32_t>(x)));
     // case Point(x=0, y=y):
     } else if (__match_subject_1.x == 0) {
-        auto& y = __match_subject_1.y;
+        auto y = __match_subject_1.y;
         // return "y-axis: " + str(y)
         return (::tpy::str_concat("y-axis: ", ::tpy::fixed_to_str<int32_t>(y)));
     // case Point(x=x, y=y):
     } else {
-        auto& x = __match_subject_1.x;
-        auto& y = __match_subject_1.y;
+        auto x = __match_subject_1.x;
+        auto y = __match_subject_1.y;
         // return "(" + str(x) + ", " + str(y) + ")"
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("(", ::tpy::fixed_to_str<int32_t>(x))), ", ")), ::tpy::fixed_to_str<int32_t>(y))), ")"));
     }

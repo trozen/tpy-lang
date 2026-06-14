@@ -80,7 +80,7 @@ std::string show_tagged(const Tagged& t) {
         return (::tpy::str_concat("string: ", v));
     // case Tagged(tag="n", value=Int32() as n):
     } else if (__match_subject_1.tag == "n" && std::holds_alternative<int32_t>(__match_subject_1.value)) {
-        auto& n = std::get<int32_t>(__match_subject_1.value);
+        auto n = std::get<int32_t>(__match_subject_1.value);
         // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
     // case _:

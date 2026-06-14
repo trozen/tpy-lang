@@ -21,7 +21,7 @@ std::string unwrap(const std::variant<Box<int32_t>*, Box<std::string>*> x) {
     // case Box(value=Int32() as n):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
-        auto& n = __case_1.value;
+        auto n = __case_1.value;
         // return "number: " + str(n)
         return (::tpy::str_concat("number: ", ::tpy::fixed_to_str<int32_t>(n)));
         break;
@@ -71,7 +71,7 @@ std::string mixed(const std::variant<Pair<int32_t>*, Pair<std::string>*> x) {
     // case Pair(first=Int32() as n, second=s):
     case 0: {
         auto& __case_1 = *std::get<0>(__match_subject_1);
-        auto& n = __case_1.first;
+        auto n = __case_1.first;
         auto& s = __case_1.second;
         // return str(n) + " / " + s
         return (::tpy::str_concat((::tpy::str_concat(::tpy::fixed_to_str<int32_t>(n), " / ")), s));

@@ -1,1 +1,1 @@
-small 5
+small 1
