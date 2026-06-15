@@ -191,7 +191,10 @@ at the locking site.
 The lock is one-shot per local. Reassigning from a non-literal source
 drops the seed (existing `record_write` behavior). Module-level globals
 (`literal_default_vars` is per-function) and collection-element literals
-are not covered -- see Phase 2b below.
+are not covered by retro-widening -- see Phase 2b below. (Orthogonal: a
+direct `BigInt` *value* at a list/tuple element is separately coerced to a
+fixed-width target via the runtime-checked `bigint_to_fixed_int` rule, not
+retro-widening.)
 
 ## Phase 2b Proposal: Full Deferred IntLiteralType Resolution
 

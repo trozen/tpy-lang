@@ -158,6 +158,13 @@ class Coercion:
     # Address-taking coercions (`&{expr}`) produce a Ptr that is unconditionally
     # non-null. Consumers can elide the deref null-check, same as for `take_ptr`.
     produces_non_null_ptr: bool = False
+    # Must be emitted as an explicit coercion node at list/tuple literal element
+    # positions: C++ applies no implicit conversion for it and the container /
+    # tuple literal codegen emits each element against the expected C++ type
+    # without applying the coercion, so a dropped one yields ill-formed C++.
+    # Other element coercions are C++-implicit or applied by the element codegen,
+    # so they must NOT be materialized here (it would double-convert).
+    materialize_at_aggregate_element: bool = False
     codegen: Callable[[str, TpyType, TpyType, CoercionContext], str] = lambda expr, _a, _e, _c: expr
 
 
@@ -217,6 +224,7 @@ COERCIONS: list[Coercion] = [
         name="bigint_to_fixed_int",
         from_type=is_big_int_type,
         to_type=is_fixed_int_type,
+        materialize_at_aggregate_element=True,
         codegen=lambda e, _a, b, _c: f"({e}).to_fixed_check<{b.to_cpp()}>()",
     ),
 

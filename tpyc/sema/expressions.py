@@ -56,7 +56,7 @@ from ..type_def_registry import (
 )
 from ..namespace import BindingKind, NameBinding
 from .frame_traits import build_closure_frame
-from ..coercions import CoercionContext
+from ..coercions import CoercionContext, resolve_coercion
 from ..prescan import _expr_to_narrowing_key
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
@@ -2066,6 +2066,27 @@ class ExpressionAnalyzer:
         expr.dyn_getattr_call = getter_call
         return ret_type
 
+    def _materialize_narrowing_element_coercion(
+        self, elem: TpyExpr, actual: TpyType, expected: TpyType,
+        ctx_msg: str, target_is_storage_form: bool,
+    ) -> TpyExpr:
+        """Materialize a `materialize_at_aggregate_element` coercion (today only
+        `BigInt -> fixed-width int`) at an aggregate (list / tuple) literal
+        element, returning the TpyCoerce-wrapped node to store back (or `elem`
+        unchanged when no such coercion applies). See that `Coercion` flag for
+        why those coercions alone need materializing here while every other
+        element coercion must not be (it would double-convert). Caller-side
+        validation (the per-element compatibility check) still rejects
+        genuinely incompatible elements."""
+        coercion = resolve_coercion(
+            unwrap_own(actual), unwrap_own(expected), CoercionContext.INIT)
+        if coercion is not None and coercion.materialize_at_aggregate_element:
+            return self.compat.coerce_expr(
+                elem, actual, expected, ctx_msg,
+                coercion_ctx=CoercionContext.INIT,
+                target_is_storage_form=target_is_storage_form)
+        return elem
+
     def _analyze_array_literal(
         self, expr: TpyArrayLiteral, expected_elem: TpyType | None = None
     ) -> TpyType:
@@ -2144,7 +2165,7 @@ class ExpressionAnalyzer:
                         f"incompatible with annotated element type {expected_elem}", expr
                     )
                 try:
-                    self.compat.check_type_compatible(
+                    coercion = self.compat.check_type_compatible(
                         elem_type, expected_elem,
                         f"array literal element {i}",
                         expr.loc,
@@ -2155,6 +2176,16 @@ class ExpressionAnalyzer:
                         f"List literal element {i} has type {elem_type}, "
                         f"incompatible with annotated element type {expected_elem}", expr
                     )
+                # Materialize an aggregate-element coercion (BigInt->fixed-int)
+                # as a node so codegen emits it; check_type_compatible above
+                # already validated + resolved it, so gate on the flag directly
+                # rather than re-resolving (see _materialize_narrowing_element_coercion).
+                if coercion is not None and coercion.materialize_at_aggregate_element:
+                    expr.elements[i - 1] = self.compat.coerce_expr(
+                        expr.elements[i - 1], elem_type, expected_elem,
+                        f"array literal element {i}",
+                        coercion_ctx=CoercionContext.INIT,
+                        target_is_storage_form=True)
         else:
             # Inferred mode: check all elements against first element's type
             first_type = elem_types[0]
@@ -3332,7 +3363,16 @@ class ExpressionAnalyzer:
                 # Preserve Own[] from hint when the analyzed type matches
                 if isinstance(hint, OwnType) and not isinstance(analyzed, OwnType):
                     analyzed = OwnType(analyzed)
-                elem_types.append(analyzed)
+                # Materialize a BigInt->fixed-int element coercion (only) so it
+                # reaches codegen; other element coercions are handled by the
+                # outer tuple compat + the tuple-literal slot codegen, so this
+                # is a no-op for them (see _materialize_narrowing_element_coercion).
+                new_elem = self._materialize_narrowing_element_coercion(
+                    elem, analyzed, hint, f"tuple element {i + 1}",
+                    target_is_storage_form=False)
+                expr.elements[i] = new_elem
+                # A fired coercion retypes the element to the hint it produced.
+                elem_types.append(hint if new_elem is not elem else analyzed)
             else:
                 self.analyze_expr(elem)
                 # Use get_expr_type to strip expression-level OwnType/Ref:
