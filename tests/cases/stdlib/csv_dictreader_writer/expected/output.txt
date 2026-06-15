@@ -1,0 +1,23 @@
+Alice 30 NYC
+Bob 25 LA
+---
+Alice 30
+Bob 25
+---
+Alice :: says, hi
+Bob :: line
+break
+---
+3 True 1 2
+---
+1 2
+---
+'name,age\r\nAlice,30\r\nBob,25\r\nCy,40\r\n'
+---
+'k,v\r\nx,"has,comma"\r\n'
+---
+'Alice,\r\n'
+---
+got ValueError
+---
+Alice -> says, hi

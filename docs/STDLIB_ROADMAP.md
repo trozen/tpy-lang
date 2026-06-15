@@ -140,7 +140,7 @@ Examples of the policy in action:
 | [`dataclasses`](#dataclasses) | P1 | Partial | ~75% | macro | frozen/order/inheritance/asdict/astuple; missing InitVar, __post_init__, replace(), metadata |
 | [`typing`](#typing) | P1 | Partial | ~60% | native | Protocols/Sized/Iterator/TypedDict/Unpack; missing Generic, TypeVar, ParamSpec, ClassVar |
 | [`datetime`](#datetime) | P1 | Missing | 0% | -- | Class-heavy; needs timedelta arithmetic and timezone handling |
-| [`csv`](#csv) | P1 | Partial | ~50% | pure | `reader` / `writer` (list[str] row surface) over the io `Readable`/`Writable` protocols. Excel default dialect + delimiter/quotechar/doublequote/skipinitialspace/lineterminator kwargs; writer is QUOTE_MINIMAL. CPython byte-compatible. Missing: `DictReader`/`DictWriter` (the dict const-read blocker is fixed; remaining friction has workarounds -- worth re-attempting), escapechar, quoting constants, Dialect objects/register_dialect, Sniffer |
+| [`csv`](#csv) | P1 | Partial | ~70% | pure | `reader` / `writer` (list[str] rows) + `DictReader` / `DictWriter` (dict[str, str] rows) over the io `Readable`/`Writable` protocols. Excel default dialect + delimiter/quotechar/doublequote/skipinitialspace/lineterminator kwargs; writer is QUOTE_MINIMAL. CPython byte-compatible. DictWriter matches CPython's write-side defaults (restval="" for a missing field, ValueError for a key not in fieldnames). Missing: escapechar, quoting constants, Dialect objects/register_dialect, Sniffer, DictReader restval/restkey (short rows pad "", long rows drop extras -- dict[str,str] can't hold None or a list), DictWriter extrasaction='ignore' |
 | [`base64`](#base64) | P1 | Partial | ~95% | pure | Pure-TPy b64/b32/b16 encode+decode + urlsafe/standard variants + altchars=/validate=/casefold=/map01= kwargs + encodebytes/decodebytes. bytes/bytearray/str accepted on decoders (matches CPython). Missing: b85/a85 (rare, separate algorithms); `memoryview` depends on builtin gap |
 | [`hashlib`](#hashlib) | P1 | Partial | ~20% | pure | SHA-256 pure-TPy. MD5/SHA-1/SHA-512 are straight follow-ups (same class pattern, different round functions / endian). BLAKE2/SHA-3 later. Optional OpenSSL backend also later |
 | [`argparse`](#argparse) | P1 | Partial | ~88% | macro | Builder-trace macro (Phase 7); positionals/optional flags, all 7 actions, all 4 nargs, type=int\|float\|str + fixed-width ints + Float32 + custom records via `from_arg` (all 4 nargs + append/extend), choices/required/dest/help/metavar, Optional[T]/Optional[list[T]] for absent flags, list-literal defaults, bare parse_args() reads sys.argv[1:], --help/-h auto-generation, add_help=False opt-out, prog=/usage=/epilog= help customization, subparsers (flat-namespace; per-sub fields land as Optional[T] on the top namespace). Missing: mutually-exclusive groups, argument groups, runtime-derived `prog`, terminal-width help wrap, per-sub `--help` auto-emit, BooleanOptionalAction, parents=, allow_abbrev, fromfile_prefix_chars, custom formatter classes, action=<callable> |
@@ -918,22 +918,28 @@ native conversion helpers. Blocked by nothing architectural; medium effort.
 ### csv
 
 **Partial.** `lib/tpy/csv.py` -- pure TPy over the io `Readable`/`Writable`
-protocols. `reader` is a generator that borrows fp; `writer` is a holder
-(`_Writer[W]`) storing a borrowed `Ptr[W]` (file objects are `@nocopy`, so the
-writer borrows rather than owns -- matching CPython, where the writer doesn't
-own the file). CPython resolves to the real `csv` module under the cpy phase,
-so the surface is byte-compared directly.
+protocols. `reader` is a generator that borrows fp; `writer`, `DictReader`, and
+`DictWriter` are holders storing a borrowed `Ptr` to the concrete file type
+(file objects are `@nocopy`, so they borrow rather than own -- matching CPython,
+where the csv objects don't own the file). CPython resolves to the real `csv`
+module under the cpy phase, so the surface is byte-compared directly. The row
+parser exists twice (`reader` over a `Readable` protocol param for cross-module
+rvalue calls; `_parse_rows` over a `Ptr[R]` for `DictReader`) -- they can't
+share under current constraints (see TODO.md).
 
 | Item | Status | Notes |
 |---|---|---|
 | `reader(fp, *, delimiter, quotechar, doublequote, skipinitialspace)` | Done | Char state machine: quoted fields, embedded delimiters, embedded newlines (continuation lines), doubled-quote unescape, `\r\n`/`\n`. Yields `list[str]` per row. |
 | `writer(fp, *, delimiter, quotechar, doublequote, lineterminator)` | Done | `writerow` / `writerows`. QUOTE_MINIMAL: a field is quoted only if it contains the delimiter, quotechar, CR, or LF. Default lineterminator `\r\n`. |
-| `DictReader`, `DictWriter` | Deferred | The dict const-read subscript blocker is now fixed; the remaining friction (protocol-param-generator nesting, module-qualified generic-class access, for-loop-var Pending) all has workarounds. Designed (generic over the file type, borrowed `Ptr`), reverted from v1 -- worth re-attempting. |
+| `DictReader(fp, fieldnames=None, *, dialect kwargs)` | Done | Yields `dict[str, str]`; the first row supplies `fieldnames` when none given. Import directly (`from csv import DictReader`) -- module-qualified generic-class construction is a compiler gap. Short rows pad missing fields with `""` (CPython `restval=None`); long rows drop trailing extras (CPython collects them under `restkey`) -- both forced by `dict[str, str]` not holding None or a list. |
+| `DictWriter(fp, fieldnames, *, restval="", dialect kwargs)` | Done | `writeheader` / `writerow(dict)` / `writerows`. Matches CPython defaults: a missing field is written as `restval` (default ""); a key not in fieldnames raises `ValueError` (extrasaction='raise'). `extrasaction='ignore'` not yet configurable. |
 | `escapechar`, quoting constants (`QUOTE_ALL`/`QUOTE_NONNUMERIC`/`QUOTE_NONE`) | Missing | v1 is QUOTE_MINIMAL only. |
 | `Dialect` objects, `register_dialect`, `Sniffer` | Missing | -- |
 
 Tests: `cases/stdlib/csv_reader_writer` (reader quoting/edge cases + writer
-QUOTE_MINIMAL + round-trip, cpy parity).
+QUOTE_MINIMAL + round-trip, cpy parity); `cases/stdlib/csv_dictreader_writer`
+(DictReader header-derived + explicit fieldnames, DictWriter, quoted fields,
+short-row padding, round-trip, cpy parity).
 
 ### base64
 
