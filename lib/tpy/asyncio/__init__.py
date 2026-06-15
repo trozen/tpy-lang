@@ -8,7 +8,7 @@
 `_executor.py`. See `docs/ASYNC_DESIGN.md`.
 """
 from typing import Final
-from builtins import BaseException, Exception, TimeoutError
+from builtins import BaseException, Exception, TimeoutError, EOFError
 from tpy import (
     Own, Int32, UInt32, UInt64, Ptr,
     CancelledError, Throwable, nocopy,
@@ -20,8 +20,9 @@ from tpy.coro import (
 from tpy.mem import UninitArrayStorage
 from tpy.unsafe import unsafe_str_from_cstr
 from tplib import Box
+from tplib.rc import Rc
 from time import monotonic
-from socket import socket, SocketError, SOL_SOCKET, SO_ERROR
+from socket import socket, SocketError, SOL_SOCKET, SO_ERROR, AF_INET, SOCK_STREAM
 from _bindings import posix_socket
 from ._executor import (
     Task, AnyTask,
@@ -1264,9 +1265,9 @@ class EventLoop:
     are sync factories returning the socket awaitables above (the
     `gather(...) -> Own[...]` shape); the user awaits the result. Stateless
     -- the reactor is reached via the current-executor global; the handle
-    exists to match CPython's `loop.sock_*` surface. The streams layer
-    (`open_connection` / `start_server`) is a deferred follow-up (see
-    TODO.md).
+    exists to match CPython's `loop.sock_*` surface. The high-level streams
+    layer (`open_connection` -> `StreamReader`/`StreamWriter`) is built on
+    these; `start_server` is a deferred follow-up (see TODO.md).
     """
 
     def __init__(self) -> None:
@@ -1293,3 +1294,157 @@ def get_running_loop() -> Own[EventLoop]:
     if _get_current_executor() is None:
         raise RuntimeError("no running event loop")
     return EventLoop()
+
+
+class IncompleteReadError(EOFError):
+    """Raised by `StreamReader.readexactly` when EOF arrives before the
+    requested number of bytes. Mirrors `asyncio.IncompleteReadError`:
+    `partial` is what was read, `expected` the requested count."""
+
+    partial: bytes
+    expected: Int32
+
+    def __init__(self, partial: bytes, expected: Int32) -> None:
+        super().__init__("incomplete read")
+        self.partial = partial
+        self.expected = expected
+
+
+@nocopy
+class StreamReader:
+    """Buffered read side of a stream, over the reactor's `sock_recv`.
+
+    Holds a shared `Rc[socket]` (the writer holds a clone -- the socket
+    outlives both halves and stays alive across awaits via the Rc, not via
+    `close`) and an owned `bytes` buffer it fills with `await loop.sock_recv`
+    on demand. `read` / `readexactly` / `readline` mirror
+    `asyncio.StreamReader`."""
+
+    _sock: Rc[socket]
+    _buf: bytes
+    _eof: bool
+
+    def __init__(self, sock: Own[Rc[socket]]) -> None:
+        self._sock = sock
+        self._buf = bytes()
+        self._eof = False
+
+    def at_eof(self) -> bool:
+        return self._eof and len(self._buf) == 0
+
+    # Returns the chunk length so callers can distinguish EOF (0) from data.
+    async def _fill(self) -> Int32:
+        loop = get_running_loop()
+        chunk = await loop.sock_recv(self._sock.get(), 65536)
+        if len(chunk) == 0:
+            self._eof = True
+        else:
+            self._buf = self._buf + chunk
+        return len(chunk)
+
+    def _take(self, n: Int32) -> bytes:
+        # Materialize owned head before reassigning `_buf` (a no-step slice
+        # is a borrow into the old buffer).
+        head = bytes(self._buf[:n])
+        self._buf = bytes(self._buf[n:])
+        return head
+
+    async def read(self, n: Int32) -> bytes:
+        """Read up to `n` bytes, returning as soon as any data is buffered
+        (fewer than `n` is normal); empty at EOF. `n < 0` reads until EOF.
+        Returns early like CPython -- does NOT wait for the full `n`."""
+        if n < 0:
+            while not self._eof:
+                await self._fill()
+            return self._take(len(self._buf))
+        if len(self._buf) == 0 and not self._eof:
+            await self._fill()
+        take = n if n < len(self._buf) else len(self._buf)
+        return self._take(take)
+
+    async def readexactly(self, n: Int32) -> bytes:
+        """Read exactly `n` bytes; raise `IncompleteReadError` if EOF comes
+        first (carrying the partial bytes read)."""
+        if n < 0:
+            raise ValueError("readexactly size can not be less than zero")
+        while len(self._buf) < n and not self._eof:
+            await self._fill()
+        if len(self._buf) < n:
+            raise IncompleteReadError(self._take(len(self._buf)), n)
+        return self._take(n)
+
+    async def readline(self) -> bytes:
+        """Read until (and including) the next `\\n`, or until EOF. Returns
+        the partial line at EOF without raising (matches CPython)."""
+        idx = self._buf.find(b"\n")
+        while idx < 0 and not self._eof:
+            await self._fill()
+            idx = self._buf.find(b"\n")
+        if idx < 0:
+            return self._take(len(self._buf))
+        return self._take(idx + 1)
+
+
+@nocopy
+class StreamWriter:
+    """Buffered write side of a stream, over the reactor's `sock_sendall`.
+
+    Holds a clone of the same `Rc[socket]` as its `StreamReader`. `write`
+    only appends to an owned buffer (synchronous, can't send); `drain`
+    actually sends it via `await loop.sock_sendall`. Unlike CPython -- whose
+    `close` flushes the transport buffer asynchronously -- `close` here is
+    synchronous and does NOT flush, so you must `await drain()` before
+    `close()`; closing with unflushed bytes raises rather than dropping
+    them silently."""
+
+    _sock: Rc[socket]
+    _buf: bytes
+    _closed: bool
+
+    def __init__(self, sock: Own[Rc[socket]]) -> None:
+        self._sock = sock
+        self._buf = bytes()
+        self._closed = False
+
+    def write(self, data: bytes) -> None:
+        self._buf = self._buf + data
+
+    async def drain(self) -> None:
+        if len(self._buf) > 0:
+            loop = get_running_loop()
+            await loop.sock_sendall(self._sock.get(), self._buf)
+            self._buf = bytes()
+
+    def close(self) -> None:
+        # Fail loud on unflushed data rather than silently dropping it (close
+        # can't send -- see the class docstring); the caller must drain first.
+        if len(self._buf) > 0:
+            raise RuntimeError(
+                "StreamWriter.close() with unflushed data; await drain() first")
+        if not self._closed:
+            self._closed = True
+            self._sock.get().close()
+
+    def is_closing(self) -> bool:
+        return self._closed
+
+    async def wait_closed(self) -> None:
+        # close() already shut the socket down synchronously; nothing to
+        # await. Present for CPython-shape `close(); await wait_closed()`.
+        pass
+
+
+# Mirrors `asyncio.open_connection` (the host:port client form). The
+# connection's socket is shared by the reader and writer via an `Rc[socket]`
+# cell so either can drive it and it outlives both across awaits.
+async def open_connection(
+        host: str, port: Int32) -> tuple[Own[StreamReader], Own[StreamWriter]]:
+    loop = get_running_loop()
+    sock = socket(AF_INET, SOCK_STREAM)
+    sock.setblocking(False)
+    await loop.sock_connect(sock, (host, port))
+    cell = Rc.new(sock)
+    # Build the tuple from fresh rvalues, not named locals: an async return
+    # of a tuple of named @nocopy locals copies the elements instead of
+    # moving them, which fails to compile.
+    return (StreamReader(cell.clone()), StreamWriter(cell.clone()))

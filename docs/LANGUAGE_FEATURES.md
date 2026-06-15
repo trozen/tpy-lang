@@ -5932,8 +5932,16 @@ Send/Sync rules for built-in types:
   documented interface a backend implements; kqueue / io_uring backends and a
   user swap-in are follow-ups. epoll binds through
   `lib/tpy/_bindings/posix_epoll.py` over flat `tpy_epoll_*` wrappers in
-  `runtime/cpp/src/stdlib/epoll_impl.cpp`. The streams layer
-  (`open_connection` / `start_server`) is the remaining v2 follow-up. See
+  `runtime/cpp/src/stdlib/epoll_impl.cpp`. The high-level **streams** layer
+  is built on this: `asyncio.open_connection(host, port)` returns a
+  `(StreamReader, StreamWriter)` sharing the socket via `Rc[socket]`;
+  `StreamReader` buffers bytes and fills via `sock_recv` (`read` /
+  `readexactly` / `readline` / `at_eof`, `IncompleteReadError` on short
+  reads), `StreamWriter` buffers writes and flushes via `sock_sendall`
+  (`write` / `drain` / `close` / `wait_closed` / `is_closing`; you must
+  `drain()` before `close()` -- closing with unflushed bytes raises).
+  `start_server` and
+  `StreamReader.readuntil(sep)` are deferred follow-ups (TODO.md). See
   `examples/net/async_echo_server.py` + `async_echo_client.py` for a
   concurrent-client TCP echo server.
 - **Working (v1.5 M4)**: async methods on user classes. `async def m(self, ...)`

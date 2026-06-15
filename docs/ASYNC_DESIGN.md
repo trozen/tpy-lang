@@ -113,7 +113,7 @@ Library breadth + first real I/O. Each item is sized to land independently.
 | `Reactor` interface | **SHIPPED (M1)** -- the `Reactor` protocol in `asyncio/_executor.py`, designed against epoll. Concrete-typed on the executor for M1; making it a swap-in (`@dynamic` field + `asyncio.run` factory arg) is a follow-up. |
 | First I/O reactor | **SHIPPED (M1)** -- `EpollReactor` (epoll on Linux) + fd-backed awaitables (`_SockRecv` / `_SockSendAll`) + the low-level loop surface `asyncio.get_running_loop().sock_recv / sock_sendall` on non-blocking sockets (`socket.setblocking`). See "I/O reactor" below. |
 | `sock_accept` / `sock_connect` | **SHIPPED (M2)** -- `_SockAccept` / `_SockConnect` awaitables in the same shape; `loop.sock_accept(sock)` -> `(conn, addr)` (conn non-blocking), `loop.sock_connect(sock, addr)` (non-blocking connect + `SO_ERROR` check). Unblocks real async TCP client/server (`examples/net/async_echo_*`). |
-| asyncio streams | `StreamReader`, `StreamWriter`, `open_connection`, `start_server`. **(Follow-up, builds on the M1/M2 reactor.)** |
+| asyncio streams | **SHIPPED (client side)** -- `open_connection` -> `StreamReader` (`read`/`readexactly`/`readline`/`at_eof`) + `StreamWriter` (`write`/`drain`/`close`/`wait_closed`/`is_closing`) over the reactor, sharing the socket via `Rc[socket]`; `IncompleteReadError`. `start_server` and `StreamReader.readuntil(sep)` deferred (TODO.md: the callback model + the async-def `bytes`-param gap). |
 
 #### I/O reactor (v2 M1, SHIPPED)
 
@@ -158,11 +158,11 @@ All TPy + a thin epoll binding -- no compiler changes.
   `<sys/epoll.h>` lives only there -- the packed `struct epoll_event` and the
   `EPOLL*` macros never enter a TPy-generated TU; mirrors `socket_impl.cpp`).
 
-`sock_accept` / `sock_connect` shipped in M2 (same awaitable shape). Deferred
-(TODO.md): streams (`open_connection` / `start_server` -> `StreamReader` /
-`StreamWriter`); swap-in reactor (`@dynamic`-typed field + `asyncio.run`
-factory arg); independent read+write waiters on one fd; the `runnable_q` /
-per-fd structures' scaling.
+`sock_accept` / `sock_connect` shipped in M2; the client streams layer
+(`open_connection` -> `StreamReader`/`StreamWriter`) shipped on top. Deferred
+(TODO.md): `start_server` + `StreamReader.readuntil(sep)`; swap-in reactor
+(`@dynamic`-typed field + `asyncio.run` factory arg); independent read+write
+waiters on one fd; the `runnable_q` / per-fd structures' scaling.
 
 ### v3+ -- post-v2
 
