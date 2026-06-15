@@ -17,7 +17,8 @@
 # v1 divergences from CPython, all documented:
 #   - seek past end is clamped to total (CPython back-fills with NUL/0).
 #   - newline= / encoding= / errors= kwargs not supported.
-#   - read(size=-1) takes no arg today (returns "all remaining").
+#   - read(size) counts bytes, not codepoints (TPy-wide str-indexing
+#     divergence; matches CPython for ASCII).
 #   - close() drops the buffer; CPython matches.
 #   - getvalue() does not collapse chunks (avoids unsolicited mutation).
 #
@@ -85,13 +86,21 @@ class StringIO(Writable, Readable, Seekable, Closable):
         self._pos = end
         return n
 
-    def read(self) -> str:
+    def read(self, size: Int32 = -1) -> str:
         self._check_open()
-        if self._pos >= self._total:
+        if self._pos >= self._total or size == 0:
             return ""
         self._collapse()
-        out: str = self._chunks[0][self._pos:]
-        self._pos = self._total
+        # Byte-indexed slice (codepoint vs byte divergence for non-ASCII is
+        # TPy-wide str indexing, not specific to read). `_total - _pos` instead
+        # of `_pos + size` avoids Int32 overflow when both are large.
+        if size < 0 or size >= self._total - self._pos:
+            out: str = self._chunks[0][self._pos:]
+            self._pos = self._total
+        else:
+            stop: Int32 = self._pos + size
+            out = self._chunks[0][self._pos:stop]
+            self._pos = stop
         return out
 
     def readline(self) -> str:
@@ -268,13 +277,19 @@ class BytesIO(BinaryWritable, BinaryReadable, Seekable, Closable):
         self._pos = end
         return n
 
-    def read(self) -> bytes:
+    def read(self, size: Int32 = -1) -> bytes:
         self._check_open()
-        if self._pos >= self._total:
+        if self._pos >= self._total or size == 0:
             return b""
         self._collapse()
-        out: bytes = bytes(self._chunks[0][self._pos:])
-        self._pos = self._total
+        # `_total - _pos` instead of `_pos + size` avoids Int32 overflow.
+        if size < 0 or size >= self._total - self._pos:
+            out: bytes = bytes(self._chunks[0][self._pos:])
+            self._pos = self._total
+        else:
+            stop: Int32 = self._pos + size
+            out = bytes(self._chunks[0][self._pos:stop])
+            self._pos = stop
         return out
 
     def readline(self) -> bytes:

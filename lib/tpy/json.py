@@ -37,14 +37,13 @@
 # above is the cleanest.
 #
 # Not yet supported (deferred):
-#   - load(fp) / dump(obj, fp): blocked on `io` module
 #   - JSONEncoder / JSONDecoder classes (extension hooks)
 #   - dumps kwargs: ensure_ascii (always behaves as if False -- non-ASCII
 #     is emitted as raw UTF-8), separators (uses CPython defaults),
 #     allow_nan, default, cls, skipkeys
 #   - loads kwargs: object_hook, object_pairs_hook, parse_float, parse_int,
 #     parse_constant
-from tpy import Int32, Own, error_return
+from tpy import Int32, Own, Readable, Writable, error_return
 from tplib.json import JsonError, JsonReader, JsonToken, JsonWriter
 
 
@@ -210,7 +209,7 @@ def _write_value(v: JsonValue, w: JsonWriter, sort_keys: bool) -> None:
             w.object_end()
 
 
-def dumps(obj: JsonValue, indent: Int32 = 0, sort_keys: bool = False) -> str:
+def dumps(obj: JsonValue, *, indent: Int32 = 0, sort_keys: bool = False) -> str:
     """Serialize a JsonValue to a JSON-formatted str.
 
     indent: non-zero turns on pretty-printing with that many spaces per level.
@@ -219,3 +218,25 @@ def dumps(obj: JsonValue, indent: Int32 = 0, sort_keys: bool = False) -> str:
     w = JsonWriter(indent)
     _write_value(obj, w, sort_keys)
     return w.finish()
+
+
+# ----------------------------------------------------------------------
+# load / dump -- file-object variants over the io Readable/Writable protocols
+# ----------------------------------------------------------------------
+
+def load(fp: Readable) -> Own[JsonValue]:
+    """Deserialize a JSON document from a text file object into a JsonValue.
+
+    `fp` is any object with a `read() -> str` method (e.g. io.StringIO or
+    open()'s TextIO). Equivalent to loads(fp.read()).
+    """
+    return loads(fp.read())
+
+
+def dump(obj: JsonValue, fp: Writable, *, indent: Int32 = 0, sort_keys: bool = False) -> None:
+    """Serialize a JsonValue as JSON to a text file object.
+
+    `fp` is any object with a `write(str) -> Int32` method (e.g. io.StringIO
+    or open()'s TextIO). Equivalent to fp.write(dumps(obj, ...)).
+    """
+    fp.write(dumps(obj, indent=indent, sort_keys=sort_keys))

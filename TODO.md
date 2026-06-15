@@ -480,6 +480,8 @@ Goal: speed up test runs (currently ~3 min parallel, ~6 min single-threaded for 
 
 See `docs/STDLIB_ROADMAP.md` for the per-module tracker (status, priority, items, blockers). Update that doc when adding or changing stdlib coverage.
 
+- **`io.TextIOWrapper`** -- wrap a binary buffer (`BytesIO` / `open(..., "rb")`'s `BinaryIO`) to present decoded text with newline translation. Deferred from the `read(size)` + `json.load/dump` effort because it's *not* a prerequisite for json/csv/configparser (those operate over text file objects, which already satisfy `Readable`/`Writable`). The real design call is how `TextIOWrapper` holds its underlying binary buffer: a generic `TextIOWrapper[B]` owning the buffer via `Own[B]`, a `@dynamic`-protocol field, or a borrowed `Ptr[B]` -- no existing stdlib precedent. Plus an encoding story (TPy `str` is UTF-8 internally, so non-UTF-8 codecs would be a documented divergence) and `newline=` translation. Needs `/tpy-add-feature` (the buffer-ownership model is a genuine design decision).
+
 ## Other
 - Docstrings: silently skipped in codegen (harmless, but no introspection support)
 - make a doc with TPy vs Python differences

@@ -90,11 +90,22 @@ public:
     TextFile(const TextFile&) = delete;
     TextFile& operator=(const TextFile&) = delete;
 
-    std::string read() {
+    std::string read(int32_t size = -1) {
         if (!flags_.readable) raise_os_error("read(): file not opened for reading");
-        std::ostringstream ss;
-        ss << fs_.rdbuf();
-        return ss.str();
+        if (size < 0) {
+            std::ostringstream ss;
+            ss << fs_.rdbuf();
+            return ss.str();
+        }
+        std::string buf(static_cast<size_t>(size), '\0');
+        fs_.read(buf.data(), size);
+        const std::streamsize got = fs_.gcount();
+        buf.resize(static_cast<size_t>(got));
+        // A short read hit EOF and set failbit; clear it so subsequent read()s
+        // return "" (Python read-past-EOF semantics). Preserve badbit so a
+        // genuine device error is not masked as clean EOF.
+        if (got < size && !fs_.bad()) fs_.clear();
+        return buf;
     }
 
     int32_t write(std::string_view text) {
@@ -171,12 +182,22 @@ public:
     BinaryFile(const BinaryFile&) = delete;
     BinaryFile& operator=(const BinaryFile&) = delete;
 
-    std::vector<uint8_t> read() {
+    std::vector<uint8_t> read(int32_t size = -1) {
         if (!flags_.readable) raise_os_error("read(): file not opened for reading");
-        return std::vector<uint8_t>(
-            std::istreambuf_iterator<char>(fs_),
-            std::istreambuf_iterator<char>()
-        );
+        if (size < 0) {
+            return std::vector<uint8_t>(
+                std::istreambuf_iterator<char>(fs_),
+                std::istreambuf_iterator<char>()
+            );
+        }
+        std::vector<uint8_t> buf(static_cast<size_t>(size));
+        fs_.read(reinterpret_cast<char*>(buf.data()), size);
+        const std::streamsize got = fs_.gcount();
+        buf.resize(static_cast<size_t>(got));
+        // Preserve badbit (genuine error) while clearing the EOF/failbit a
+        // short read sets, so subsequent reads return b"" not a spurious error.
+        if (got < size && !fs_.bad()) fs_.clear();
+        return buf;
     }
 
     std::vector<uint8_t> readline() {

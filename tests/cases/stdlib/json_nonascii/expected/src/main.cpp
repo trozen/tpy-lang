@@ -15,7 +15,7 @@ void main() {
             // v = json.loads('"caf\xe9"')
             ::tpystd::json::JsonValue v = ::tpystd::json::loads("\"caf\xc3\xa9\"");
             // print(json.dumps(v))
-            std::cout << ::tpystd::json::dumps(v) << "\n";
+            std::cout << ::tpystd::json::dumps(v, 0, false) << "\n";
         } catch (const ::tpystd::json::JSONDecodeError& e) {
             // print("ERR:", e.msg)
             std::cout << "ERR:" << " " << e.msg << "\n";

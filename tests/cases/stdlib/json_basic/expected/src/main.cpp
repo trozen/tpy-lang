@@ -9,7 +9,7 @@ std::string roundtrip(std::string_view s) {
     // v = json.loads(s)
     ::tpystd::json::JsonValue v = ::tpystd::json::loads(s);
     // return json.dumps(v)
-    return ::tpystd::json::dumps(v);
+    return ::tpystd::json::dumps(v, 0, false);
 }
 
 // def main() -> None:

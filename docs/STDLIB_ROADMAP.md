@@ -127,8 +127,8 @@ Examples of the policy in action:
 | [`os`](#os) | P0 | Missing | 0% | -- | Needs filesystem wrapper + path handling |
 | [`os.path`](#ospath) | P0 | Missing | 0% | -- | Independent of `os`; candidate for pure TPy over C++ `<filesystem>` |
 | [`pathlib`](#pathlib) | P0 | Missing | 0% | -- | Class-heavy; depends on filesystem bindings |
-| [`io`](#io) | P0 | Partial | ~30% | pure | `StringIO` / `BytesIO` (chunked storage, write/read/readline/seek/tell/truncate/iter/context-manager). `Readable` / `Writable` / `BinaryReadable` / `BinaryWritable` protocols on tpy core, re-exported from `io`. Missing: `IOBase` ABC hierarchy (deliberately deferred -- protocols cover the static-dispatch use case), `TextIOWrapper`, `io.SEEK_SET/CUR/END` constants (collide with `<cstdio>` macros), encoding/newline/errors kwargs, `read(size=-1)` arg |
-| [`json`](#json) | P0 | Partial | ~70% | pure | `loads` / `dumps` + `JSONDecodeError` done over a recursive union `JsonValue`. CPython byte-compatible across cpy phase. Missing: `load(fp)` / `dump(obj, fp)` (needs `io`), `JSONEncoder` / `JSONDecoder`, most `dumps`/`loads` kwargs |
+| [`io`](#io) | P0 | Partial | ~35% | pure | `StringIO` / `BytesIO` (chunked storage, write/read/`read(size)`/readline/seek/tell/truncate/iter/context-manager). `Readable` / `Writable` / `BinaryReadable` / `BinaryWritable` protocols on tpy core, re-exported from `io`. Missing: `IOBase` ABC hierarchy (deliberately deferred -- protocols cover the static-dispatch use case), `TextIOWrapper`, `io.SEEK_SET/CUR/END` constants (collide with `<cstdio>` macros), encoding/newline/errors kwargs |
+| [`json`](#json) | P0 | Partial | ~72% | pure | `loads` / `dumps` / `load(fp)` / `dump(obj, fp)` + `JSONDecodeError` done over a recursive union `JsonValue`. CPython byte-compatible across cpy phase. Missing: `JSONEncoder` / `JSONDecoder`, most `dumps`/`loads` kwargs |
 | [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub (with `count`)/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, bytes input, compile cache |
 | [`collections`](#collections) | P0 | Missing | 0% | -- | OrderedDict trivial (have ordered_map); deque needs C++ struct; Counter/defaultdict/namedtuple need macros |
 | [`itertools`](#itertools) | P0 | Partial | ~35% | pure | Done: count, repeat, cycle, islice(it, stop), takewhile, dropwhile, filterfalse. `chain`/`product` family blocked on variadic tuples; `starmap`/`accumulate`/`pairwise`/`compress` on distinct compiler gaps (filed in BUGS.md/TODO.md); `tee`/`groupby`/`batched` on buffering / runtime-sized tuples |
@@ -508,16 +508,18 @@ remains an option without breaking the existing granular surface.
 | `seek(pos, whence=0)` | Partial | `whence=0/1/2` accepted as integer literals. `io.SEEK_SET/CUR/END` constants not yet exposed -- the names collide with `<cstdio>` macros; needs `#undef` shim from codegen or namespacing |
 | `seek` past end | Diverges | v1 clamps to `_total`; CPython back-fills with NUL/0. Revisit with a real consumer |
 | `__iter__` (line-by-line) | Done | Generator method yielding `readline()` results until empty |
-| `read(size=-1)` | Missing | v1 reads all remaining; CPython supports `size` arg |
+| `read(size=-1)` | Done | `size < 0` (default) reads all remaining; `size >= 0` returns at most `size` units and advances accordingly. On `StringIO`/`BytesIO` and the native `TextIO`/`BinaryIO` file objects, plus the `Readable`/`BinaryReadable` protocols. Byte-counted (codepoint vs byte divergence for non-ASCII -- TPy-wide str indexing, not specific to read) |
 | `IOBase` / `RawIOBase` / `BufferedIOBase` / `TextIOBase` | Missing (deferred) | Not planned -- protocols cover the static-dispatch use case |
-| `TextIOWrapper` | Missing | Encoding + newline translation; defer until a consumer demands it |
+| `TextIOWrapper` | Missing | Encoding + newline translation over a binary buffer. Not a prerequisite for json/csv/configparser (those operate over text file objects). Needs a buffer-ownership design call (see TODO.md); defer until a consumer demands it |
 | `encoding=` / `newline=` / `errors=` kwargs | Missing | v1 doesn't translate text |
 | `UnsupportedOperation` | Missing | Defer until a method needs to raise it (e.g. seek on a non-seekable wrapper) |
 | `open()` | Done | In `builtins` (not in `io`); exposes `TextIO`/`BinaryIO` |
 
 Tests: `cases/stdlib/io_stringio_basic`, `cases/stdlib/io_bytesio_basic`,
 `cases/stdlib/io_protocols` (consumer functions parameterized over the four
-protocols, both `StringIO`/`BytesIO` and pass-through wiring).
+protocols, both `StringIO`/`BytesIO` and pass-through wiring),
+`cases/stdlib/io_read_size` (`read(size)` on both buffers, the protocol
+params, and the native file objects).
 
 ### json
 
@@ -535,7 +537,8 @@ all primitive types and nested containers (verified via the cpy phase in
 | `loads(s)` | Done | Returns `Own[JsonValue]`. Raises `JSONDecodeError` on malformed input or trailing data. |
 | `dumps(obj, *, indent, sort_keys)` | Done | `indent` and `sort_keys` kwargs supported. CPython byte-compatible for ASCII. |
 | `JSONDecodeError` | Done | Subclasses `ValueError` (matches CPython). Thrown via normal `try`/`except`. Carries `msg`, `doc`, `pos`, `lineno`, `colno`. |
-| `load(fp)`, `dump(obj, fp)` | Missing | Needs `io` |
+| `load(fp)` | Done | `load(fp: Readable)` == `loads(fp.read())`. Accepts any text file object (`io.StringIO`, `open()`'s `TextIO`). |
+| `dump(obj, fp)` | Done | `dump(obj, fp: Writable, *, indent, sort_keys)` == `fp.write(dumps(obj, ...))`. |
 | `JSONEncoder`, `JSONDecoder` | Missing | Extension hooks; not yet implemented |
 | `dumps` kwargs `ensure_ascii`, `separators`, `allow_nan`, `default`, `cls`, `skipkeys` | Missing | Current behavior is `ensure_ascii=False` (raw UTF-8) with CPython default separators |
 | `loads` kwargs `object_hook`, `object_pairs_hook`, `parse_float`, `parse_int`, `parse_constant` | Missing | -- |

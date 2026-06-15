@@ -1,0 +1,25 @@
+n5: hello
+n3:  wo
+rest: rld
+eof: []
+past-end: hello world
+zero: []
+after-zero: hello world
+---
+n3: b'abc'
+rest: b'def'
+eof: b''
+zero: b''
+neg: b'abcdef'
+---
+proto-text: abcd|efgh
+proto-bytes: b'xy'
+---
+file-zero: []
+file-n4: abcd
+file-eq-remaining: efghij
+file-rest: 
+file-eof: []
+bfile-n4: b'0123'
+bfile-rest: b'456789'
+bfile-eof: b''

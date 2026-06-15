@@ -1,0 +1,16 @@
+roundtrip: {"name": "tpy", "nums": [1, 2, 3], "ok": true}
+---
+dumped: {"a": 1, "b": 2, "c": [3, 4]}
+indented:
+{
+  "a": 1,
+  "b": 2,
+  "c": [
+    3,
+    4
+  ]
+}
+---
+file: {"flag": false, "label": "x", "list": [10, 20]}
+---
+decode error at: 1 2
