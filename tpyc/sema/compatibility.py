@@ -404,20 +404,10 @@ class TypeCompatibility:
         members) to prevent infinite expansion of self-referencing placeholders.
         """
         if isinstance(typ, AliasRef):
-            alias = self.ctx.registry.get_type_alias(typ.name)
-            if (alias is None and typ.module is not None
-                    and typ.module != self.ctx.module_name):
-                # Cross-module recursive alias the caller didn't import: resolve
-                # against its defining module (the AliasRef carries it). Without
-                # this, a container argument never matches the alias's
-                # list[Alias] / dict[_, Alias] members at a call site that did
-                # not import the alias -- e.g. `json.dumps([1, 2, 3])` without
-                # `from json import JsonValue`. Mirrors the module-aware lookup
-                # in analyzer._alias_lookup_for_finalize (generic-alias path).
-                mi = self.ctx.registry.modules.get(typ.module)
-                info = mi.type_aliases.get(typ.name) if mi is not None else None
-                if info is not None:
-                    alias = info.body
+            # Module-aware: resolves a cross-module recursive alias the caller
+            # didn't import (so a container arg matches the alias's
+            # list[Alias] / dict[_, Alias] members). See resolve_alias_ref.
+            alias = self.ctx.registry.resolve_alias_ref(typ)
             if alias is not None:
                 return alias
         # Generic recursive alias instances are opaque, like the non-generic

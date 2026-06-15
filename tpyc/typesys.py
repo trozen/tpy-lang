@@ -2884,11 +2884,12 @@ class AliasRef(TpyType):
     detection a type-level `isinstance` check instead of a
     name-set membership check against `recursive_union_names`.
 
-    Resolution: callers that need the underlying type look it up via
-    `registry.get_type_alias(name)` (current-module aliases) or via
-    the source module's `type_aliases` (cross-module aliases). The
-    C++ rendering is the alias name -- recursive aliases emit a
-    wrapper struct named identically.
+    Resolution: callers that need the underlying type use
+    `registry.resolve_alias_ref(ref)` -- the single module-aware entry
+    point (a bare `get_type_alias(name)` is caller-local and misses a
+    cross-module alias used without importing it). The C++ rendering is
+    the alias name -- recursive aliases emit a wrapper struct named
+    identically.
 
     `args` carries the type arguments of a *generic* recursive alias
     self-reference (`type Tree[T] = T | list[Tree[T]]` -- the inner
@@ -5305,6 +5306,23 @@ class TypeRegistry:
     def get_type_alias_info(self, name: str) -> 'TypeAliasInfo | None':
         """Get the full type alias info by name, or None if not found."""
         return self.type_aliases.get(name)
+
+    def resolve_alias_ref(self, ref: 'AliasRef') -> 'TpyType | None':
+        """Resolve a recursive-union `AliasRef`'s body by its defining module.
+
+        Canonical entry point: every recursive-union `AliasRef` resolution
+        (coercion, codegen elem-target, match dispatch, narrowing) must route
+        here, not a bare caller-local `get_type_alias`, which misses a
+        cross-module alias used without importing it (e.g. `json.dumps([...])`).
+        Defining-module-first (the `AliasRef` carries it) is collision-proof
+        across same-short-named aliases -- matching `_alias_lookup_for_finalize`.
+        Returns the alias body, or None if not a known alias."""
+        if ref.module is not None:
+            mi = self.modules.get(ref.module)
+            info = mi.type_aliases.get(ref.name) if mi is not None else None
+            if info is not None:
+                return info.body
+        return self.get_type_alias(ref.name)
 
     def imported_record_qualification(
         self, name: str, current_module: str

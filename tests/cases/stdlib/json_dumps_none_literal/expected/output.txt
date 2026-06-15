@@ -1,0 +1,4 @@
+[1, null, 3]
+{"a": null, "b": 2}
+{"a": [1, null], "b": null}
+[null, [null, [1, null]]]

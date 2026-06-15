@@ -104,7 +104,7 @@ class MatchAnalyzer:
         # Expand recursive union alias placeholder to its underlying
         # UnionType so match dispatch sees the variant arms.
         if isinstance(effective_type, AliasRef):
-            alias = self.ctx.registry.get_type_alias(effective_type.name)
+            alias = self.ctx.registry.resolve_alias_ref(effective_type)
             if alias is not None:
                 effective_type = alias
         stmt.subject_type = effective_type

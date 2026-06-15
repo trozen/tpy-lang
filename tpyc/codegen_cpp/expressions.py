@@ -1164,6 +1164,17 @@ class ExpressionGenerator:
             # std::monostate is the canonical TPy unit-value lowering.
             if isinstance(unwrapped, NoneType):
                 return "std::monostate{}"
+            # Recursive-union wrapper target (None as a container-literal element
+            # / dict value coerced into JsonValue & co): the wrapper's None
+            # alternative is std::monostate, which its forwarding ctor accepts --
+            # `nullptr` would not. AliasRef is the non-generic placeholder
+            # (module-aware resolve so a cross-module alias used without import
+            # still maps); RecursiveAliasInstanceType is the generic instance.
+            if isinstance(unwrapped, AliasRef):
+                if isinstance(self.ctx.analyzer.registry.resolve_alias_ref(unwrapped), UnionType):
+                    return "std::monostate{}"
+            if isinstance(unwrapped, RecursiveAliasInstanceType):
+                return "std::monostate{}"
             return "nullptr"
 
         elif isinstance(expr, TpyCoerce):
@@ -4242,6 +4253,20 @@ class ExpressionGenerator:
             if len(container_members) == 1:
                 union_prefix = self.types.type_to_cpp(container_members[0])
                 target_type = container_members[0]
+        elif isinstance(target_type, AliasRef):
+            # A nested array literal whose target is the non-generic recursive
+            # alias placeholder (e.g. a `list[JsonValue]` as a dict value, where
+            # the value type-arg is `AliasRef(JsonValue)`): resolve it to the
+            # union (module-aware) and pick the list member, same as the
+            # UnionType / instance branches above. Without this the nested
+            # literal gets no elem_target and a None element renders nullptr.
+            resolved_alias = self.ctx.analyzer.registry.resolve_alias_ref(target_type)
+            if isinstance(resolved_alias, UnionType):
+                container_members = [m for m in resolved_alias.members
+                                     if is_array(m) or is_list(m)]
+                if len(container_members) == 1:
+                    union_prefix = self.types.type_to_cpp(container_members[0])
+                    target_type = container_members[0]
         elif (isinstance(target_type, OptionalType)
               and (is_array(target_type.inner) or is_list(target_type.inner))):
             union_prefix = self.types.type_to_cpp(target_type.inner)
@@ -4263,10 +4288,13 @@ class ExpressionGenerator:
                 if isinstance(et, (OptionalType, UnionType, TupleType, AnyType)) or is_str_type(et):
                     elem_target = et
                 # Recursive union element type: pass it as elem_target so nested
-                # array literals trigger union_prefix. The placeholder is an
-                # AliasRef emitted by the parser; expand it to the union body.
+                # array literals trigger union_prefix AND a None element renders
+                # the wrapper's std::monostate (not nullptr). The placeholder is
+                # an AliasRef from the parser; expand it to the union body --
+                # module-aware so a cross-module alias used without importing it
+                # (e.g. `json.dumps([1, None, 3])`) still resolves.
                 elif isinstance(et, AliasRef):
-                    alias = self.ctx.analyzer.registry.get_type_alias(et.name)
+                    alias = self.ctx.analyzer.registry.resolve_alias_ref(et)
                     if alias is not None:
                         elem_target = alias
                 # Carry the instance element down so a nested array literal
@@ -4384,7 +4412,7 @@ class ExpressionGenerator:
             return any(self._is_cpp_noncopyable(m) for m in typ.members
                        if not isinstance(m, (NoneType, VoidType)))
         if isinstance(typ, AliasRef):
-            alias = self.ctx.analyzer.registry.get_type_alias(typ.name)
+            alias = self.ctx.analyzer.registry.resolve_alias_ref(typ)
             if isinstance(alias, UnionType):
                 return any(self._is_cpp_noncopyable(m) for m in alias.members
                            if not isinstance(m, (NoneType, VoidType)))

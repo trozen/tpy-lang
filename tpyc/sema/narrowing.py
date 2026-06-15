@@ -104,7 +104,7 @@ class NarrowingTracker:
         # `AliasRef` is the parser-emitted self-reference inside a
         # recursive alias body; expand by looking the alias up.
         if isinstance(effective, AliasRef):
-            alias = self.ctx.registry.get_type_alias(effective.name)
+            alias = self.ctx.registry.resolve_alias_ref(effective)
             if alias is not None:
                 return alias
         return effective
