@@ -1,0 +1,1 @@
+main.py:12: error: Type mismatch in assignment: expected Ptr[W], got W

@@ -140,7 +140,7 @@ Examples of the policy in action:
 | [`dataclasses`](#dataclasses) | P1 | Partial | ~75% | macro | frozen/order/inheritance/asdict/astuple; missing InitVar, __post_init__, replace(), metadata |
 | [`typing`](#typing) | P1 | Partial | ~60% | native | Protocols/Sized/Iterator/TypedDict/Unpack; missing Generic, TypeVar, ParamSpec, ClassVar |
 | [`datetime`](#datetime) | P1 | Missing | 0% | -- | Class-heavy; needs timedelta arithmetic and timezone handling |
-| [`csv`](#csv) | P1 | Missing | 0% | -- | Depends on `io` |
+| [`csv`](#csv) | P1 | Partial | ~50% | pure | `reader` / `writer` (list[str] row surface) over the io `Readable`/`Writable` protocols. Excel default dialect + delimiter/quotechar/doublequote/skipinitialspace/lineterminator kwargs; writer is QUOTE_MINIMAL. CPython byte-compatible. Missing: `DictReader`/`DictWriter` (blocked on the dict const-read + protocol-param-generator-nesting compiler bugs in BUGS.md), escapechar, quoting constants, Dialect objects/register_dialect, Sniffer |
 | [`base64`](#base64) | P1 | Partial | ~95% | pure | Pure-TPy b64/b32/b16 encode+decode + urlsafe/standard variants + altchars=/validate=/casefold=/map01= kwargs + encodebytes/decodebytes. bytes/bytearray/str accepted on decoders (matches CPython). Missing: b85/a85 (rare, separate algorithms); `memoryview` depends on builtin gap |
 | [`hashlib`](#hashlib) | P1 | Partial | ~20% | pure | SHA-256 pure-TPy. MD5/SHA-1/SHA-512 are straight follow-ups (same class pattern, different round functions / endian). BLAKE2/SHA-3 later. Optional OpenSSL backend also later |
 | [`argparse`](#argparse) | P1 | Partial | ~88% | macro | Builder-trace macro (Phase 7); positionals/optional flags, all 7 actions, all 4 nargs, type=int\|float\|str + fixed-width ints + Float32 + custom records via `from_arg` (all 4 nargs + append/extend), choices/required/dest/help/metavar, Optional[T]/Optional[list[T]] for absent flags, list-literal defaults, bare parse_args() reads sys.argv[1:], --help/-h auto-generation, add_help=False opt-out, prog=/usage=/epilog= help customization, subparsers (flat-namespace; per-sub fields land as Optional[T] on the top namespace). Missing: mutually-exclusive groups, argument groups, runtime-derived `prog`, terminal-width help wrap, per-sub `--help` auto-emit, BooleanOptionalAction, parents=, allow_abbrev, fromfile_prefix_chars, custom formatter classes, action=<callable> |
@@ -917,7 +917,23 @@ native conversion helpers. Blocked by nothing architectural; medium effort.
 
 ### csv
 
-**Missing.** Depends on `io` for `reader`/`writer` accepting file-like objects.
+**Partial.** `lib/tpy/csv.py` -- pure TPy over the io `Readable`/`Writable`
+protocols. `reader` is a generator that borrows fp; `writer` is a holder
+(`_Writer[W]`) storing a borrowed `Ptr[W]` (file objects are `@nocopy`, so the
+writer borrows rather than owns -- matching CPython, where the writer doesn't
+own the file). CPython resolves to the real `csv` module under the cpy phase,
+so the surface is byte-compared directly.
+
+| Item | Status | Notes |
+|---|---|---|
+| `reader(fp, *, delimiter, quotechar, doublequote, skipinitialspace)` | Done | Char state machine: quoted fields, embedded delimiters, embedded newlines (continuation lines), doubled-quote unescape, `\r\n`/`\n`. Yields `list[str]` per row. |
+| `writer(fp, *, delimiter, quotechar, doublequote, lineterminator)` | Done | `writerow` / `writerows`. QUOTE_MINIMAL: a field is quoted only if it contains the delimiter, quotechar, CR, or LF. Default lineterminator `\r\n`. |
+| `DictReader`, `DictWriter` | Blocked | Need the dict const-read subscript fix and protocol-param-generator-in-resumable-frame fix (both in BUGS.md). Designed (generic over the file type, borrowed `Ptr`), reverted from v1 when the blockers surfaced. |
+| `escapechar`, quoting constants (`QUOTE_ALL`/`QUOTE_NONNUMERIC`/`QUOTE_NONE`) | Missing | v1 is QUOTE_MINIMAL only. |
+| `Dialect` objects, `register_dialect`, `Sniffer` | Missing | -- |
+
+Tests: `cases/stdlib/csv_reader_writer` (reader quoting/edge cases + writer
+QUOTE_MINIMAL + round-trip, cpy parity).
 
 ### base64
 

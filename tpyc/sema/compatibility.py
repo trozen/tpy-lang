@@ -14,7 +14,7 @@ from ..typesys import (
     view_family_for_type,
     LiteralType, LiteralValue, LiteralTag, FLOAT, make_list, make_dict, make_set,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
-    NominalType, AliasRef, RecursiveAliasInstanceType, TypeParamRef, NoneType, AnyType, OptionalType, UnionType,
+    NominalType, AliasRef, RecursiveAliasInstanceType, TypeParamRef, TypeParamKind, NoneType, AnyType, OptionalType, UnionType,
     is_protocol_type, is_dyn_protocol, unwrap_own, strip_own_type_args, unwrap_readonly, unwrap_optional_own,
     contains_type_param,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
@@ -1281,6 +1281,22 @@ class TypeCompatibility:
                     if ((actual_is_dyn and actual == expected.inner_pointee)
                             or self._is_covariant_target(actual, expected.inner_pointee)):
                         coercion = UPCAST_TO_CONST_PTR
+        if coercion is None:
+            # Address-of a reference-bound generic param: `&fp` yields `W*` =
+            # `Ptr[W]`. Identity only (same type param), mirroring the @dynamic
+            # value->Ptr shortcut above. A concrete user-record param already
+            # takes this path via `record_to_ptr`; this extends it to the
+            # abstract `W` so a generic holder can store `Ptr[W]` of its param.
+            # An INT type param is a std::size_t value, not addressable here.
+            # A value-bounded `W` is passed `const W&`, so `&fp` is `const W*`:
+            # only the readonly Ptr is sound; a mutable `Ptr[W]` falls through
+            # to the type-mismatch error rather than emitting `const W* -> W*`.
+            if (isinstance(actual, TypeParamRef) and actual.kind != TypeParamKind.INT
+                    and isinstance(expected, PtrType) and expected.inner_pointee == actual):
+                if expected.is_readonly:
+                    coercion = UPCAST_TO_CONST_PTR
+                elif not actual.is_value_type():
+                    coercion = UPCAST_TO_PTR
         if coercion is None:
             # __span__() method coercion: type with __span__() -> Span[T] coerces to Span/Span[readonly[T]]
             if isinstance(actual, NominalType) and is_span(expected):

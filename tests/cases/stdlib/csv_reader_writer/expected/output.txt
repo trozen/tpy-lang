@@ -1,0 +1,31 @@
+3 a|b|c
+3 1|2|3
+3 x|y|z
+---
+3 1::two, comma::3
+3 q "x"::ln
+brk::z
+---
+a|b|c
+---
+a|b|c
+---
+3 [a||c]
+3 [||]
+---
+1 [a]
+0 []
+1 [b]
+empty-input rows: 0
+---
+['a', 'b', 'EXTRA']
+['c', 'd', 'EXTRA']
+---
+'a,b,c\r\n1,2,3\r\nx,y,z\r\n'
+---
+'plain,"has,comma","has""quote","embed\nnl","embed\rcr"\r\n'
+---
+'a\tb\nc\td\n'
+---
+name|note
+Alice|says, hi
