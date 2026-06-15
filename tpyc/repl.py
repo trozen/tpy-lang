@@ -26,6 +26,7 @@ from .sema import SemanticError, DiagnosticLevel
 from .typesys import VoidType, is_any_str_type
 from .type_def_registry import is_char_type
 from .compiler import Compiler
+from .compilation_context import activate_compiler
 from .codegen_cpp.context import get_include_path
 from .repl_backends import (
     REPLBackend, BackendResult, detect_backend, _fmt_ms,
@@ -435,34 +436,38 @@ class REPLSession:
         all_cpp_paths: list[Path] = []
         all_cpp_code: list[str] = []
         all_hpp_code: list[str] = []
-        for mod in compiled_modules:
-            hpp_code, cpp_code = compiler.generate_code_to_strings(mod)
+        # get_include_path resolves against the active compiler, which codegen
+        # also used to emit each module's #include -- both must read the same
+        # map or the written header lands where the #include can't find it.
+        with activate_compiler(compiler):
+            for mod in compiled_modules:
+                hpp_code, cpp_code = compiler.generate_code_to_strings(mod)
 
-            # Write files matching the include path the codegen emits
-            include_path = get_include_path(mod.name)
-            if include_path is not None:
-                # e.g. "tpystd/tpy.hpp" -> write to {temp}/tpystd/tpy.{hpp,cpp}
-                rel = Path(include_path)
-                hpp_path = self.temp_dir / rel
-                cpp_path = self.temp_dir / rel.with_suffix('.cpp')
-                hpp_path.parent.mkdir(parents=True, exist_ok=True)
-            else:
-                mod_parts = mod.name.split('.')
-                if len(mod_parts) > 1:
-                    hpp_subdir = self.temp_dir / Path(*mod_parts[:-1])
-                    hpp_subdir.mkdir(parents=True, exist_ok=True)
-                    hpp_path = hpp_subdir / f"{mod_parts[-1]}.hpp"
-                    cpp_path = hpp_subdir / f"{mod_parts[-1]}.cpp"
+                # Write files matching the include path the codegen emits
+                include_path = get_include_path(mod.name)
+                if include_path is not None:
+                    # e.g. "tpystd/tpy.hpp" -> write to {temp}/tpystd/tpy.{hpp,cpp}
+                    rel = Path(include_path)
+                    hpp_path = self.temp_dir / rel
+                    cpp_path = self.temp_dir / rel.with_suffix('.cpp')
+                    hpp_path.parent.mkdir(parents=True, exist_ok=True)
                 else:
-                    hpp_path = self.temp_dir / f"{mod.name}.hpp"
-                    cpp_path = self.temp_dir / f"{mod.name}.cpp"
+                    mod_parts = mod.name.split('.')
+                    if len(mod_parts) > 1:
+                        hpp_subdir = self.temp_dir / Path(*mod_parts[:-1])
+                        hpp_subdir.mkdir(parents=True, exist_ok=True)
+                        hpp_path = hpp_subdir / f"{mod_parts[-1]}.hpp"
+                        cpp_path = hpp_subdir / f"{mod_parts[-1]}.cpp"
+                    else:
+                        hpp_path = self.temp_dir / f"{mod.name}.hpp"
+                        cpp_path = self.temp_dir / f"{mod.name}.cpp"
 
-            hpp_path.write_text(hpp_code)
-            cpp_path.write_text(cpp_code)
-            all_hpp_paths.append(hpp_path)
-            all_cpp_paths.append(cpp_path)
-            all_hpp_code.append(hpp_code)
-            all_cpp_code.append(cpp_code)
+                hpp_path.write_text(hpp_code)
+                cpp_path.write_text(cpp_code)
+                all_hpp_paths.append(hpp_path)
+                all_cpp_paths.append(cpp_path)
+                all_hpp_code.append(hpp_code)
+                all_cpp_code.append(cpp_code)
 
         t_codegen = time.monotonic() - t_codegen_start
 
