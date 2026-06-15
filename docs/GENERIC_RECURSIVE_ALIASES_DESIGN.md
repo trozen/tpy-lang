@@ -818,6 +818,15 @@ What shipped vs. the v1 plan, for the next person:
   alternatives are list-shaped, so literal construction / `case list()`
   dispatch is ambiguous. Needs a multi-container-alternative disambiguation
   design (annotate which alternative, or forbid).
+- **Same-module protocol method typed with the alias**: fails the C++ build
+  -- a protocol (structural or `@dynamic`) defined in the *same* module as the
+  alias emits its concept / base / `Adapter`/`RefAdapter` before the wrapper
+  struct, so the method signature references an undeclared `Tree<...>`. Works
+  when the alias is imported (the wrapper arrives complete via the header).
+  Filed in `BUGS.md`; covered cross-module by
+  `tests/cases/protocols/dyn_recursive_alias_method`. Needs the codegen
+  emit-ordering fix (the local wrapper fwd-decl must precede protocol
+  emission, as the imported-header path already guarantees).
 - **Qualified / aliased cross-module use sites** (`m.Tree[int]`,
   `from m import Tree as T2`): **DONE** (branch `generic-alias-xmodule-use`).
   All three import forms resolve; rendering moved from the short-name
