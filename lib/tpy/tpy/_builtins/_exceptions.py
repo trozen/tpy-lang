@@ -63,6 +63,12 @@ class FileNotFoundError(OSError):
 class PermissionError(OSError):
     def __init__(self, message: str = "") -> None: ...
 
+# Raised on EAGAIN/EWOULDBLOCK/EINPROGRESS by non-blocking socket calls;
+# the asyncio reactor catches it to park on fd readiness (CPython parity).
+@native("tpy::BlockingIOError")
+class BlockingIOError(OSError):
+    def __init__(self, message: str = "") -> None: ...
+
 @native("tpy::AttributeError")
 class AttributeError(Exception):
     def __init__(self, message: str = "") -> None: ...

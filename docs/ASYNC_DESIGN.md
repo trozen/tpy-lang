@@ -112,7 +112,8 @@ Library breadth + first real I/O. Each item is sized to land independently.
 | Task introspection | `Task.add_done_callback`, `get_name`, `set_name`, `done`, `result`, `exception`. |
 | `Reactor` interface | **SHIPPED (M1)** -- the `Reactor` protocol in `asyncio/_executor.py`, designed against epoll. Concrete-typed on the executor for M1; making it a swap-in (`@dynamic` field + `asyncio.run` factory arg) is a follow-up. |
 | First I/O reactor | **SHIPPED (M1)** -- `EpollReactor` (epoll on Linux) + fd-backed awaitables (`_SockRecv` / `_SockSendAll`) + the low-level loop surface `asyncio.get_running_loop().sock_recv / sock_sendall` on non-blocking sockets (`socket.setblocking`). See "I/O reactor" below. |
-| asyncio streams | `StreamReader`, `StreamWriter`, `open_connection`, `start_server`. **(M2 follow-up, builds on the M1 reactor.)** |
+| `sock_accept` / `sock_connect` | **SHIPPED (M2)** -- `_SockAccept` / `_SockConnect` awaitables in the same shape; `loop.sock_accept(sock)` -> `(conn, addr)` (conn non-blocking), `loop.sock_connect(sock, addr)` (non-blocking connect + `SO_ERROR` check). Unblocks real async TCP client/server (`examples/net/async_echo_*`). |
+| asyncio streams | `StreamReader`, `StreamWriter`, `open_connection`, `start_server`. **(Follow-up, builds on the M1/M2 reactor.)** |
 
 #### I/O reactor (v2 M1, SHIPPED)
 
@@ -136,11 +137,19 @@ All TPy + a thin epoll binding -- no compiler changes.
   only fds are pending), then fires expired timers; it returns `False` (the
   "no progress possible" condition) only when neither timers nor fds are
   pending. The timer-only fast path keeps using `sleep_until_steady`.
-- **fd awaitables + surface**: `_SockRecv` / `_SockSendAll` are hand-written
-  awaitables (not `async def`s -- the retry loop parks by returning Pending +
-  arming the reactor, and an `async def` taking a `bytes` by-value param hits
-  a coro-frame storage-form gap, see BUGS.md). `EventLoop.sock_recv` /
-  `sock_sendall` are thin sync factories returning them (the
+- **fd awaitables + surface**: `_SockRecv` / `_SockSendAll` / `_SockAccept` /
+  `_SockConnect` are hand-written awaitables (not `async def`s -- the retry
+  loop parks by returning Pending + arming the reactor, and an `async def`
+  taking a `bytes` by-value param hits a coro-frame storage-form gap, see
+  BUGS.md). Each holds a `Ptr[socket]` and drives the `socket` methods
+  (`recv` / `send` / `connect` / `getsockopt_int`, and the private
+  `_accept_nonblocking` = `accept` + setblocking), parking when they raise
+  `BlockingIOError` -- mirroring CPython's
+  `loop.sock_*`, which catch EAGAIN/EINPROGRESS off the same public methods
+  rather than reaching into socket internals. `socket._raise_errno` is the
+  single errno->exception map (BlockingIOError on EAGAIN/EWOULDBLOCK/
+  EINPROGRESS, else SocketError). `EventLoop.sock_recv` / `sock_sendall` /
+  `sock_accept` / `sock_connect` are thin sync factories returning them (the
   `gather(...) -> Own[...]` shape); `asyncio.get_running_loop()` returns the
   `EventLoop`. `socket.socket.setblocking(False)` (an fcntl `O_NONBLOCK`
   helper) is the prerequisite.
@@ -149,9 +158,11 @@ All TPy + a thin epoll binding -- no compiler changes.
   `<sys/epoll.h>` lives only there -- the packed `struct epoll_event` and the
   `EPOLL*` macros never enter a TPy-generated TU; mirrors `socket_impl.cpp`).
 
-Deferred (TODO.md): `sock_accept` / `sock_connect`; streams (M2); swap-in
-reactor (`@dynamic`-typed field + `asyncio.run` factory arg); independent
-read+write waiters on one fd; the `runnable_q` / per-fd structures' scaling.
+`sock_accept` / `sock_connect` shipped in M2 (same awaitable shape). Deferred
+(TODO.md): streams (`open_connection` / `start_server` -> `StreamReader` /
+`StreamWriter`); swap-in reactor (`@dynamic`-typed field + `asyncio.run`
+factory arg); independent read+write waiters on one fd; the `runnable_q` /
+per-fd structures' scaling.
 
 ### v3+ -- post-v2
 

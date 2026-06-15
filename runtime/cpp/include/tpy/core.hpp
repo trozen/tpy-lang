@@ -50,6 +50,7 @@ struct ValueError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUA
 struct OSError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(OSError) };
 struct FileNotFoundError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(FileNotFoundError) };
 struct PermissionError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(PermissionError) };
+struct BlockingIOError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(BlockingIOError) };
 struct AttributeError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(AttributeError) };
 struct AssertionError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(AssertionError) };
 struct LookupError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(LookupError) };

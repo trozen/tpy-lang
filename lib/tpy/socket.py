@@ -69,11 +69,14 @@ TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
 
   * **SocketError vs OSError hierarchy.** SocketError now subclasses
     OSError, so `except OSError` catches socket failures (CPython-faithful).
-    Still missing: the errno-keyed subclasses CPython raises
-    (ConnectionRefusedError, ConnectionResetError, BlockingIOError, gaierror,
-    ...) and a structured `.errno` / `.strerror` attribute (we bake errno +
-    strerror into the message text only). Users can branch on `OSError` /
-    `SocketError` but not yet on a specific errno-keyed subclass.
+    `_raise_errno` raises `BlockingIOError` (also an OSError subclass) on
+    EAGAIN/EWOULDBLOCK/EINPROGRESS, which the asyncio reactor catches to
+    park. Still missing: the other errno-keyed subclasses CPython raises
+    (ConnectionRefusedError, ConnectionResetError, gaierror, ...) and a
+    structured `.errno` / `.strerror` attribute (we bake errno + strerror
+    into the message text only). Users can branch on `OSError` /
+    `SocketError` / `BlockingIOError` but not yet on the connection-class
+    errno subtypes.
 
   * **gethostbyname_ex, gethostbyaddr, getservbyname.** CPython legacy
     DNS APIs; low priority.
@@ -148,9 +151,21 @@ class SocketError(OSError):
         super().__init__(message)
 
 
+# Linux errno values (hardcoded -- the asyncio reactor that consumes the
+# BlockingIOError path is Linux-only). EAGAIN == EWOULDBLOCK on Linux;
+# EINPROGRESS is a non-blocking connect's "in progress" result.
+_EAGAIN: Final[Int32] = 11
+_EINPROGRESS: Final[Int32] = 115
+
+
 def _raise_errno(op: str) -> None:
-    """Raise SocketError("<op>: <strerror(errno)>")."""
-    msg = unsafe_str_from_cstr(posix_socket.strerror(posix_socket.tpy_errno()))
+    """Raise the errno-keyed OSError subclass: BlockingIOError on
+    EAGAIN/EWOULDBLOCK/EINPROGRESS (so the asyncio reactor can park on fd
+    readiness), else SocketError. Both carry "<op>: <strerror(errno)>"."""
+    err = posix_socket.tpy_errno()
+    msg = unsafe_str_from_cstr(posix_socket.strerror(err))
+    if err == _EAGAIN or err == _EINPROGRESS:
+        raise BlockingIOError(op + ": " + msg)
     raise SocketError(op + ": " + msg)
 
 
@@ -288,17 +303,35 @@ class socket:
         if posix_socket.listen(self.fd, backlog) < Int32(0):
             _raise_errno("listen")
 
-    def accept(self) -> tuple[Own[socket], tuple[str, Int32]]:
-        """Block until a client connects, return `(conn, (host, port))`
-        matching CPython's `socket.accept()` shape."""
+    # Returns the raw accepted fd + peer address as value types (no Own
+    # element), so callers can wrap the fd in a fresh-constructor `socket`
+    # local -- the move-analyzer tracks that as owned, whereas unpacking an
+    # `Own[socket]` out of a tuple and repacking hits a move gap (BUGS.md).
+    def _accept_fd(self) -> tuple[Int32, tuple[str, Int32]]:
         addr = SockaddrIn(0, 0, 0)
         addrlen: UInt32 = _SOCKADDR_IN_LEN
         new_fd = posix_socket.accept(self.fd, take_ptr(addr), take_ptr(addrlen))
         if new_fd < Int32(0):
             _raise_errno("accept")
-        conn = socket(Int32(0), Int32(0), Int32(0), fileno=new_fd)
         peer = (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
                 Int32.trunc(posix_socket.ntohs(addr.sin_port)))
+        return (new_fd, peer)
+
+    def accept(self) -> tuple[Own[socket], tuple[str, Int32]]:
+        """Block until a client connects, return `(conn, (host, port))`
+        matching CPython's `socket.accept()` shape."""
+        fd, peer = self._accept_fd()
+        return (socket(Int32(0), Int32(0), Int32(0), fileno=fd), peer)
+
+    def _accept_nonblocking(self) -> tuple[Own[socket], tuple[str, Int32]]:
+        """`accept()` with the returned connection set non-blocking, for the
+        asyncio reactor (accepted sockets do NOT inherit O_NONBLOCK on Linux).
+        Underscore-private: not part of CPython's socket surface (the facade is
+        otherwise CPython-faithful), so the reactor's `_SockAccept` calls it
+        instead of `accept()`."""
+        fd, peer = self._accept_fd()
+        conn = socket(Int32(0), Int32(0), Int32(0), fileno=fd)
+        conn.setblocking(False)
         return (conn, peer)
 
     def send(self, data: bytes) -> Int32:
@@ -327,7 +360,11 @@ class socket:
 
     def recv(self, bufsize: Int32) -> bytes:
         """Receive up to `bufsize` bytes. Empty bytes means peer closed."""
-        if bufsize <= Int32(0):
+        if bufsize < Int32(0):
+            # Matches CPython's sock.recv(n): negative size is an error, not
+            # a zero-length read. The asyncio sock_recv path relies on this.
+            raise ValueError("negative buffersize in recv")
+        if bufsize == Int32(0):
             return bytes()
         buf = UninitHeapStorage[UInt8](UInt32.trunc(bufsize))
         n = posix_socket.recv(self.fd, buf.ptr(), UInt64(bufsize), Int32(0))
@@ -340,6 +377,16 @@ class socket:
         v = value
         if posix_socket.setsockopt(self.fd, level, optname, take_ptr(v), 4) < Int32(0):
             _raise_errno("setsockopt")
+
+    def getsockopt_int(self, level: Int32, optname: Int32) -> Int32:
+        """Read an int-valued socket option (e.g. SO_ERROR after a
+        non-blocking connect). Struct options deferred."""
+        out: Int32 = 0
+        optlen: UInt32 = 4
+        if posix_socket.getsockopt(self.fd, level, optname,
+                                   take_ptr(out), take_ptr(optlen)) < Int32(0):
+            _raise_errno("getsockopt")
+        return out
 
     def getsockname(self) -> tuple[str, Int32]:
         addr = SockaddrIn(0, 0, 0)

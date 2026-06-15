@@ -93,6 +93,8 @@ long recv(int sockfd, void* buf, unsigned long len, int flags);
 
 int setsockopt(int sockfd, int level, int optname,
                const void* optval, unsigned int optlen);
+int getsockopt(int sockfd, int level, int optname,
+               void* optval, unsigned int* optlen);
 int getsockname(int sockfd, void* addr, unsigned int* addrlen);
 int getpeername(int sockfd, void* addr, unsigned int* addrlen);
 int socketpair(int domain, int type, int protocol, int sv[2]);

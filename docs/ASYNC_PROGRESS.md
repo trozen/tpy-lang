@@ -391,8 +391,12 @@ Deferred to v1.x:
 - Warning/reporting when bounded cancellation drain leaves a task
   pending (today the task is silently dropped after the fixed poll
   budget).
-- I/O reactor (epoll) -- SHIPPED v2 M1 (Linux); see `docs/ASYNC_DESIGN.md`
-  "I/O reactor". kqueue / io_uring backends and a user swap-in remain.
+- I/O reactor (epoll) -- SHIPPED v2 M1 (Linux); M2 added
+  `loop.sock_accept` / `loop.sock_connect` (same awaitable shape, driven via
+  the public `socket` methods + `BlockingIOError`); see
+  `docs/ASYNC_DESIGN.md` "I/O reactor" and `examples/net/async_echo_*`.
+  Streams (`open_connection` / `start_server`), kqueue / io_uring backends,
+  and a user swap-in remain.
 
 ## What's deferred from v1 design
 
@@ -414,7 +418,8 @@ Deferred to v1.x:
   v1.5. Currently rejected with a clear "bind the await to a local
   before the control-flow statement" diagnostic, except for the narrow
   try/except shape above.
-- **I/O reactor**: SHIPPED v2 M1 (epoll, Linux).
+- **I/O reactor**: SHIPPED v2 M1 (epoll, Linux) + M2 (`sock_accept` /
+  `sock_connect`).
 
 ## Future v1.x / v2 work
 

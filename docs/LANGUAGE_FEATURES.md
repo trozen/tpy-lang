@@ -5653,7 +5653,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - `@error_return(E)` requires E to be a `ReturnException` type: `class MyError(Exception, ReturnException): pass`
   - `ReturnException` is a marker protocol that splits exception types into return (zero-cost) vs throw (C++ exceptions) categories
   - `StopIteration` is a built-in `ReturnException` type; user-defined types opt in via `ReturnException` marker
-  - `BaseException`/`Exception`/`ValueError`/`OSError`/`FileNotFoundError`/`PermissionError`/`AttributeError`/`AssertionError`/`LookupError`/`IndexError`/`KeyError`/`TypeError`/`NotImplementedError`/`ArithmeticError`/`ZeroDivisionError`/`OverflowError`/`FloatingPointError`/`RuntimeError`/`RecursionError`/`EOFError`/`MemoryError`/`StopAsyncIteration`/`CancelledError`/`GeneratorExit` are throw-tier; `StopIteration` is `ReturnException` (return-tier, used via `std::expected<T, E>`). All defined as `@native` classes in `lib/tpy/_builtins/_exceptions.py`, mapping to `::tpy::` runtime structs (inherit from `std::exception`). The base/subtype edges match CPython's hierarchy: `ArithmeticError` parents `ZeroDivisionError`/`OverflowError`/`FloatingPointError`, `LookupError` parents `IndexError`/`KeyError`, `OSError` parents `FileNotFoundError`/`PermissionError`, `RuntimeError` parents `RecursionError`. `CancelledError` and `GeneratorExit` inherit `BaseException` directly (not `Exception`) so `except Exception` does not silently swallow them; `GeneratorExit` is also constructed by the frame destructor and passed to `with.__exit__` when an abandoned generator/coroutine closes a suspended `with` region. `StopAsyncIteration` is the loop-termination signal for `async for`.
+  - `BaseException`/`Exception`/`ValueError`/`OSError`/`FileNotFoundError`/`PermissionError`/`BlockingIOError`/`AttributeError`/`AssertionError`/`LookupError`/`IndexError`/`KeyError`/`TypeError`/`NotImplementedError`/`ArithmeticError`/`ZeroDivisionError`/`OverflowError`/`FloatingPointError`/`RuntimeError`/`RecursionError`/`EOFError`/`MemoryError`/`StopAsyncIteration`/`CancelledError`/`GeneratorExit` are throw-tier; `StopIteration` is `ReturnException` (return-tier, used via `std::expected<T, E>`). All defined as `@native` classes in `lib/tpy/_builtins/_exceptions.py`, mapping to `::tpy::` runtime structs (inherit from `std::exception`). The base/subtype edges match CPython's hierarchy: `ArithmeticError` parents `ZeroDivisionError`/`OverflowError`/`FloatingPointError`, `LookupError` parents `IndexError`/`KeyError`, `OSError` parents `FileNotFoundError`/`PermissionError`/`BlockingIOError` (the last raised on EAGAIN/EWOULDBLOCK/EINPROGRESS by non-blocking socket calls), `RuntimeError` parents `RecursionError`. `CancelledError` and `GeneratorExit` inherit `BaseException` directly (not `Exception`) so `except Exception` does not silently swallow them; `GeneratorExit` is also constructed by the frame destructor and passed to `with.__exit__` when an abandoned generator/coroutine closes a suspended `with` region. `StopAsyncIteration` is the loop-termination signal for `async for`.
   - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`; `raise E(args)` passes constructor arguments
   - Callers must use `try/except E` or be `@error_return(E)` themselves (auto-propagation)
   - `try/except/else` supported; `except E as e` binds the error value for field access
@@ -5915,19 +5915,27 @@ Send/Sync rules for built-in types:
   nearest timer deadline (forever when only fds are pending), so a coroutine
   can wait on fd readiness without busy-looping. Low-level socket surface:
   `asyncio.get_running_loop()` returns an `EventLoop`; `loop.sock_recv(sock,
-  n)` / `loop.sock_sendall(sock, data)` operate on a non-blocking socket
-  (`socket.socket.setblocking(False)`), trying the syscall and parking on
-  `EPOLLIN` / `EPOLLOUT` via the reactor on `EAGAIN`. Both are sync factories
-  returning hand-written `_SockRecv` / `_SockSendAll` awaitables (the
+  n)` / `loop.sock_sendall(sock, data)` / `loop.sock_accept(sock)` /
+  `loop.sock_connect(sock, addr)` operate on a non-blocking socket
+  (`socket.socket.setblocking(False)`), driving the public `socket` methods
+  and parking on `EPOLLIN` / `EPOLLOUT` via the reactor when they raise
+  `BlockingIOError` (the errno-keyed `OSError` subclass `socket` raises on
+  EAGAIN/EWOULDBLOCK/EINPROGRESS) -- mirroring CPython's `loop.sock_*`, which
+  catch the same exception rather than reaching into socket internals.
+  `sock_accept` returns the CPython-faithful `(conn, (host, port))` (the conn
+  set non-blocking); `sock_connect` checks `SO_ERROR` after the non-blocking
+  connect resolves. All four are sync factories returning hand-written
+  `_SockRecv` / `_SockSendAll` / `_SockAccept` / `_SockConnect` awaitables (the
   `gather(...) -> Own[...]` shape), so they sidestep the async-def
   view-param coro-frame gap (BUGS.md). The `Reactor` protocol
   (`register_fd` / `unregister_fd` / `poll` / `count` / `close`) is the
   documented interface a backend implements; kqueue / io_uring backends and a
   user swap-in are follow-ups. epoll binds through
   `lib/tpy/_bindings/posix_epoll.py` over flat `tpy_epoll_*` wrappers in
-  `runtime/cpp/src/stdlib/epoll_impl.cpp`. `sock_accept` / `sock_connect`
-  and the streams layer (`open_connection` / `start_server`) are the v2 M2
-  follow-up.
+  `runtime/cpp/src/stdlib/epoll_impl.cpp`. The streams layer
+  (`open_connection` / `start_server`) is the remaining v2 follow-up. See
+  `examples/net/async_echo_server.py` + `async_echo_client.py` for a
+  concurrent-client TCP echo server.
 - **Working (v1.5 M4)**: async methods on user classes. `async def m(self, ...)`
   lowers to a per-record coro struct `__coro_<Record>_<method>` with
   `__self: <Record>&` captured as the first ctor arg (parallels

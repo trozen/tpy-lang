@@ -10,20 +10,18 @@
 from typing import Final
 from builtins import BaseException, Exception, TimeoutError
 from tpy import (
-    Own, Int32, Int64, UInt8, UInt32, UInt64, Ptr, readonly,
+    Own, Int32, UInt32, UInt64, Ptr,
     CancelledError, Throwable, nocopy,
 )
 from tpy.coro import (
     Waker, Poll, Cancellable,
     poll_ready, poll_pending, poll_ready_none,
 )
-from tpy.mem import UninitArrayStorage, UninitHeapStorage
-from tpy.unsafe import (
-    unsafe_ptr, unsafe_ptr_add, unsafe_bytes_from_buf, unsafe_str_from_cstr,
-)
+from tpy.mem import UninitArrayStorage
+from tpy.unsafe import unsafe_str_from_cstr
 from tplib import Box
 from time import monotonic
-from socket import socket, SocketError
+from socket import socket, SocketError, SOL_SOCKET, SO_ERROR
 from _bindings import posix_socket
 from ._executor import (
     Task, AnyTask,
@@ -74,10 +72,6 @@ def _register_timer_at(deadline_seconds: float, waker: Waker) -> None:
 EPOLLIN: Final[UInt32] = UInt32(0x001)
 EPOLLOUT: Final[UInt32] = UInt32(0x004)
 
-# EAGAIN == EWOULDBLOCK on Linux: a non-blocking syscall would block, so
-# the awaitable parks on fd readiness instead of treating it as an error.
-_EAGAIN: Final[Int32] = 11
-
 
 # Reactor access mirrors `_register_timer_at`: no-op when no executor is
 # running so a hand-driven awaitable doesn't crash outside `asyncio.run`.
@@ -95,27 +89,34 @@ def _reactor_unregister_fd(fd: Int32) -> None:
     handle.unregister_fd(fd)
 
 
-# The fd-backed socket awaitables are hand-written (like SleepFuture /
-# _QueueWait), NOT `async def`s, for two reasons: the syscall-retry loop
-# parks by returning Pending + arming the reactor (no nested await), and
-# an `async def` taking a reference-type by-value param (`data: bytes`)
-# hits a coro-frame storage-form codegen gap (see BUGS.md). `sock_recv` /
-# `sock_sendall` are thin sync factories returning these awaitables, the
-# same shape as `gather(...) -> Own[_GatherFuture]`.
+# The socket awaitables are hand-written (like SleepFuture / _QueueWait),
+# NOT `async def`s, for two reasons: each parks by returning Pending +
+# arming the reactor (no nested await), and an `async def` taking a
+# reference-type by-value param (`data: bytes`) hits a coro-frame
+# storage-form codegen gap (see BUGS.md). `sock_recv` / `sock_sendall` /
+# `sock_accept` / `sock_connect` are thin sync factories returning these
+# awaitables, the same shape as `gather(...) -> Own[_GatherFuture]`.
+#
+# Each holds a `Ptr[socket]` (the socket outlives the in-flight op, owned
+# by the caller across the await) and drives the public `socket` methods,
+# parking on `BlockingIOError` -- mirroring CPython's `loop.sock_*`, which
+# call the same public methods and catch EAGAIN/EINPROGRESS rather than
+# reaching into socket internals.
 
 
 @nocopy
 class _SockRecv:
-    """Awaitable backing `EventLoop.sock_recv`. Tries a non-blocking recv;
-    on EAGAIN arms the reactor for EPOLLIN and parks, retrying on wake.
-    Yields up to `_n` bytes (empty == peer closed)."""
+    """Awaitable backing `EventLoop.sock_recv`. Calls the public
+    `socket.recv`; on `BlockingIOError` arms the reactor for EPOLLIN and
+    parks, retrying on wake. Yields up to `_n` bytes (empty == peer
+    closed)."""
 
-    _fd: Int32
+    _sock: Ptr[socket]
     _n: Int32
     _cancel_pending: bool
 
-    def __init__(self, fd: Int32, n: Int32) -> None:
-        self._fd = fd
+    def __init__(self, sock: Ptr[socket], n: Int32) -> None:
+        self._sock = sock
         self._n = n
         self._cancel_pending = False
 
@@ -127,39 +128,29 @@ class _SockRecv:
             self._cancel_pending = False
             # Drop the reactor arming if we parked (idempotent if we never
             # registered or the fd already fired) so the entry doesn't leak.
-            _reactor_unregister_fd(self._fd)
+            _reactor_unregister_fd(self._sock.fileno())
             raise CancelledError()
-        if self._n < 0:
-            # Matches CPython's sock.recv(n): negative size is an error,
-            # not a zero-length read.
-            raise ValueError("negative buffersize in recv")
-        if self._n == 0:
-            return poll_ready(bytes())
-        buf = UninitHeapStorage[UInt8](UInt32.trunc(self._n))
-        got = posix_socket.recv(self._fd, buf.ptr(), UInt64(self._n), 0)
-        if got >= 0:
-            return poll_ready(unsafe_bytes_from_buf(buf.ptr(), UInt64(got)))
-        err = posix_socket.tpy_errno()
-        if err == _EAGAIN:
-            _reactor_register_fd(self._fd, EPOLLIN, waker)
+        try:
+            return poll_ready(self._sock.recv(self._n))
+        except BlockingIOError:
+            _reactor_register_fd(self._sock.fileno(), EPOLLIN, waker)
             return poll_pending()
-        raise SocketError("recv: " + unsafe_str_from_cstr(
-            posix_socket.strerror(err)))
 
 
 @nocopy
 class _SockSendAll:
     """Awaitable backing `EventLoop.sock_sendall`. Owns a copy of the data
-    (it must outlive each park), advancing `_sent` across non-blocking
-    sends; on EAGAIN arms the reactor for EPOLLOUT and parks."""
+    (it must outlive each park), advancing `_sent` across the public
+    `socket.send`; on `BlockingIOError` arms the reactor for EPOLLOUT and
+    parks."""
 
-    _fd: Int32
+    _sock: Ptr[socket]
     _data: bytes
     _sent: UInt64
     _cancel_pending: bool
 
-    def __init__(self, fd: Int32, data: bytes) -> None:
-        self._fd = fd
+    def __init__(self, sock: Ptr[socket], data: bytes) -> None:
+        self._sock = sock
         self._data = data
         self._sent = 0
         self._cancel_pending = False
@@ -170,24 +161,96 @@ class _SockSendAll:
     def __poll__(self, waker: Waker) -> Own[Poll[None]]:
         if self._cancel_pending:
             self._cancel_pending = False
-            _reactor_unregister_fd(self._fd)
+            _reactor_unregister_fd(self._sock.fileno())
             raise CancelledError()
         total: UInt64 = UInt64(len(self._data))
-        data_ptr: Ptr[readonly[UInt8]] = unsafe_ptr(self._data)
         while self._sent < total:
-            chunk = posix_socket.send(
-                self._fd, unsafe_ptr_add(data_ptr, Int64.trunc(self._sent)),
-                total - self._sent, 0)
-            if chunk >= 0:
-                self._sent = self._sent + UInt64(chunk)
-                continue
-            err = posix_socket.tpy_errno()
-            if err == _EAGAIN:
-                _reactor_register_fd(self._fd, EPOLLOUT, waker)
+            # Slice off the unsent suffix; `socket.send` writes from the
+            # start of what it's given and returns the byte count.
+            chunk = self._data[Int32.trunc(self._sent):]
+            try:
+                sent = self._sock.send(chunk)
+            except BlockingIOError:
+                _reactor_register_fd(self._sock.fileno(), EPOLLOUT, waker)
                 return poll_pending()
-            raise SocketError("send: " + unsafe_str_from_cstr(
-                posix_socket.strerror(err)))
+            self._sent = self._sent + UInt64(sent)
         return poll_ready_none()
+
+
+@nocopy
+class _SockAccept:
+    """Awaitable backing `EventLoop.sock_accept`. Calls
+    `socket._accept_nonblocking` (accept + set the conn non-blocking, since
+    accepted sockets do NOT inherit O_NONBLOCK on Linux); on
+    `BlockingIOError` arms the reactor for EPOLLIN and parks. Yields
+    `(conn, (host, port))`, matching CPython's `loop.sock_accept`."""
+
+    _sock: Ptr[socket]
+    _cancel_pending: bool
+
+    def __init__(self, sock: Ptr[socket]) -> None:
+        self._sock = sock
+        self._cancel_pending = False
+
+    def cancel(self) -> None:
+        self._cancel_pending = True
+
+    def __poll__(self, waker: Waker
+                 ) -> Own[Poll[tuple[Own[socket], tuple[str, Int32]]]]:
+        if self._cancel_pending:
+            self._cancel_pending = False
+            _reactor_unregister_fd(self._sock.fileno())
+            raise CancelledError()
+        try:
+            return poll_ready(self._sock._accept_nonblocking())
+        except BlockingIOError:
+            _reactor_register_fd(self._sock.fileno(), EPOLLIN, waker)
+            return poll_pending()
+
+
+@nocopy
+class _SockConnect:
+    """Awaitable backing `EventLoop.sock_connect`. First poll calls the
+    public `socket.connect`; a non-blocking connect raises `BlockingIOError`
+    (EINPROGRESS), so we arm the reactor for EPOLLOUT and park. On wake the
+    connect has resolved; SO_ERROR distinguishes success (0) from failure.
+    Mirrors CPython's `loop.sock_connect`."""
+
+    _sock: Ptr[socket]
+    _addr: tuple[str, Int32]
+    _started: bool
+    _cancel_pending: bool
+
+    def __init__(self, sock: Ptr[socket], addr: tuple[str, Int32]) -> None:
+        self._sock = sock
+        self._addr = addr
+        self._started = False
+        self._cancel_pending = False
+
+    def cancel(self) -> None:
+        self._cancel_pending = True
+
+    def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+        if self._cancel_pending:
+            self._cancel_pending = False
+            _reactor_unregister_fd(self._sock.fileno())
+            raise CancelledError()
+        if not self._started:
+            self._started = True
+            try:
+                self._sock.connect(self._addr)
+                # Connected synchronously (can happen on loopback).
+                return poll_ready_none()
+            except BlockingIOError:
+                _reactor_register_fd(self._sock.fileno(), EPOLLOUT, waker)
+                return poll_pending()
+        # Woken on writability: the connect attempt has completed. SO_ERROR
+        # carries 0 on success or the failure errno (e.g. ECONNREFUSED).
+        err = self._sock.getsockopt_int(SOL_SOCKET, SO_ERROR)
+        if err == 0:
+            return poll_ready_none()
+        raise SocketError("connect: " + unsafe_str_from_cstr(
+            posix_socket.strerror(err)))
 
 
 class SleepFuture:
@@ -1197,23 +1260,31 @@ class EventLoop:
     """Handle to the running event loop, returned by `get_running_loop()`.
 
     Exposes CPython's low-level socket coroutine methods on a non-blocking
-    socket. `sock_recv` / `sock_sendall` are sync factories returning the
-    fd awaitables above (the `gather(...) -> Own[...]` shape); the user
-    awaits the result. Stateless -- the reactor is reached via the
-    current-executor global; the handle exists to match CPython's
-    `loop.sock_*` surface. `sock_accept` / `sock_connect` and the streams
-    layer (`open_connection` / `start_server`) are deferred follow-ups
-    (see TODO.md).
+    socket. `sock_recv` / `sock_sendall` / `sock_accept` / `sock_connect`
+    are sync factories returning the socket awaitables above (the
+    `gather(...) -> Own[...]` shape); the user awaits the result. Stateless
+    -- the reactor is reached via the current-executor global; the handle
+    exists to match CPython's `loop.sock_*` surface. The streams layer
+    (`open_connection` / `start_server`) is a deferred follow-up (see
+    TODO.md).
     """
 
     def __init__(self) -> None:
         pass
 
     def sock_recv(self, sock: socket, n: Int32) -> Own[_SockRecv]:
-        return _SockRecv(sock.fileno(), n)
+        return _SockRecv(sock, n)
 
     def sock_sendall(self, sock: socket, data: bytes) -> Own[_SockSendAll]:
-        return _SockSendAll(sock.fileno(), data)
+        return _SockSendAll(sock, data)
+
+    def sock_accept(self, sock: socket
+                    ) -> Own[_SockAccept]:
+        return _SockAccept(sock)
+
+    def sock_connect(self, sock: socket,
+                     address: tuple[str, Int32]) -> Own[_SockConnect]:
+        return _SockConnect(sock, address)
 
 
 # Return a handle to the running event loop. Raises RuntimeError outside
