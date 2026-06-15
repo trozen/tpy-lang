@@ -725,7 +725,7 @@ class StatementGenerator:
                                 and self._is_optional_str_param(ret_value)):
                             ret_expr = f"std::string({ret_expr})"
                 else:
-                    ret_expr = self._wrap_return_view_to_storage(
+                    ret_expr = self._wrap_view_to_storage(
                         ret_value, ret_type, ret_expr)
                 # Borrow-form tuple local returned as a per-element-Own storage
                 # tuple: deref-COPY each pointee into the owned return slot. A
@@ -2160,14 +2160,11 @@ class StatementGenerator:
                     init_expr = f"::tpy::deref_optional_check({init_expr})"
                 else:
                     init_expr = f"(*{init_expr})"
-            # string_view -> string init requires explicit conversion in C++.
-            elif is_str_type(target_type):
-                if self._is_str_view_source(stmt.init):
-                    init_expr = f"std::string({init_expr})"
-            # span -> vector init requires explicit conversion in C++.
-            elif is_bytes_type(target_type):
-                if self._is_bytes_view_source(stmt.init):
-                    init_expr = f"::tpy::bytes_copy({init_expr})"
+            else:
+                # str/bytes view source -> owned storage init (same rule as the
+                # return boundary; also covers Optional-param ternaries).
+                init_expr = self._wrap_view_to_storage(
+                    stmt.init, target_type, init_expr)
             return f"{indent}{cpp_type} {cpp_name} = {init_expr};\n"
         else:
             return f"{indent}{cpp_type} {cpp_name};\n"
@@ -2343,7 +2340,10 @@ class StatementGenerator:
             # bytes field (std::vector<uint8_t>) from bytes-view source
             # (std::span<const uint8_t>): vector has no span-assign overload,
             # so copy via the runtime helper. Mirrors the MIL-path conversion
-            # in records.py::_extract_field_inits.
+            # in records.py::_extract_field_inits. Not yet routed through
+            # _wrap_view_to_storage (this early-return-per-type shape doesn't
+            # thread its result cleanly, and it lacks the str arm / Optional-
+            # param breadth the helper has) -- see TODO.md.
             if is_bytes_type(target_type) and self._is_bytes_view_source(stmt.value):
                 target = self.expressions.gen_expr(stmt.target)
                 value = self.expressions.gen_expr(stmt.value, target_type)
@@ -2608,13 +2608,12 @@ class StatementGenerator:
         return (isinstance(declared, OptionalType)
                 and is_str_type(declared.inner))
 
-    def _wrap_return_view_to_storage(self, ret_value: TpyExpr,
+    def _wrap_view_to_storage(self, ret_value: TpyExpr,
                                      ret_type: 'TpyType | None',
                                      ret_expr: str) -> str:
-        """Wrap a borrow-form view return into its owned storage form.
-
-        Shared by sync and async return so the str/bytes return boundary
-        stays one rule (the var-decl and assign paths apply the same copy)."""
+        """Wrap a borrow-form view (str->string_view, bytes->span) into its
+        owned storage form (std::string / tpy::bytes). One rule shared by the
+        return boundary (sync + async) and the var-decl init path."""
         if is_str_type(ret_type) and (
                 self._is_str_view_source(ret_value)
                 or self._expr_uses_optional_str_param(ret_value)):
@@ -3670,7 +3669,7 @@ class StatementGenerator:
                         stmt.value, target_type=ret_type)
                 else:
                     expr_cpp = self.expressions.gen_expr_deref(stmt.value)
-                    expr_cpp = self._wrap_return_view_to_storage(
+                    expr_cpp = self._wrap_view_to_storage(
                         stmt.value, ret_type, expr_cpp)
                 out.write(f"{indent}this->{pending_slot} = {expr_cpp};\n")
             out.write(f"{indent}this->{pending_flag} = true;\n")
@@ -3696,7 +3695,7 @@ class StatementGenerator:
                     stmt.value, target_type=ret_type)
             else:
                 expr_cpp = self.expressions.gen_expr_deref(stmt.value)
-                expr_cpp = self._wrap_return_view_to_storage(
+                expr_cpp = self._wrap_view_to_storage(
                     stmt.value, ret_type, expr_cpp)
             ret_tmp = f"__tpy_async_ret_{self.ctx.iter_counter}"
             self.ctx.iter_counter += 1
@@ -3728,7 +3727,7 @@ class StatementGenerator:
                             stmt.value, target_type=ret_type)
                     else:
                         expr_cpp = self.expressions.gen_expr_deref(stmt.value)
-                        expr_cpp = self._wrap_return_view_to_storage(
+                        expr_cpp = self._wrap_view_to_storage(
                             stmt.value, ret_type, expr_cpp)
                     # Bind to a local first so `std::move` has a typed source:
                     # `std::move({1, 2, 3})` (braced initializer) doesn't

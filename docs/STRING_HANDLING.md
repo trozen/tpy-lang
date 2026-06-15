@@ -13,8 +13,9 @@
 | `list[str]` generates `std::vector<std::string>` | Done |
 | `Final[str]` generates `constexpr std::string_view` | Done |
 | PendingStrType local inference (view vs owned) | Done |
+| Compound-source view inference (ternary / `and`-`or` / `Optional`-param deref) | Planned (see TODO.md) |
 | Alias source tracking with retroactive promotion | Done |
-| `string_view` -> `string` codegen for return and init | Done |
+| `string_view` -> `string` codegen for return and init (str + bytes) | Done |
 | `str` slicing (`s[1:3]`) | Done |
 | `str` slice step (`s[::2]`) | Done |
 | `__str__` / `__repr__` dispatch via `str(obj)` and `repr(obj)` | Done |
@@ -154,6 +155,8 @@ C++ requires explicit conversion from `string_view` to `string` in two contexts:
 2. **Return**: `return sv;` from a `std::string`-returning function fails; codegen emits `return std::string(sv);`
 
 Assignment (`s = sv;` where `s` is already `std::string`) works implicitly via `operator=`.
+
+`bytes` has the parallel boundary: a `BytesView` (`std::span<const uint8_t>`) returned/init into an owned `bytes` (`std::vector<uint8_t>`) slot is copied via `::tpy::bytes_copy(span)`. Both str and bytes share one codegen helper (`_wrap_view_to_storage` in `statements.py`), so the view->owned-storage rule stays identical across return, var-decl init, and sync/async.
 
 ## Coercions
 
