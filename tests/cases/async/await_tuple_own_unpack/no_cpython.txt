@@ -1,0 +1,4 @@
+Uses hand-written awaitables that expose only TPy's __poll__(waker) ->
+Poll[T] (no __await__), which CPython's asyncio event loop cannot schedule.
+The await_async_tuple_unpack case covers the same move-out path with an
+ordinary `async def`, which IS CPython-parity-tested.

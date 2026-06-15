@@ -688,6 +688,11 @@ class CodeGenContext:
     # Walrus locals holding the owning STORAGE tuple form: their
     # storage_form_tuple_locals membership must survive the same restores.
     walrus_storage_tuple_locals: set[str] = field(default_factory=set)
+    # Resumable-frame `__await_lift_*` temps -- one-shot/movable sources, so a
+    # tuple-unpack reading one binds by rvalue-ref and moves its elements out
+    # rather than copying the whole tuple (assigned fresh per resumable body in
+    # setup_resumable_frame_locals; read only under in_generator_body).
+    one_shot_lift_locals: set[str] = field(default_factory=set)
     # Borrow-only walrus locals bound as T* pointers (decl is function-scope
     # via temps): pointer_locals/declared membership (+ const) must survive
     # the branch-scope restores like the rewrites above.
@@ -2085,21 +2090,47 @@ class CodeGenContext:
         return self.generator_forwarded_locals.get(name, name)
 
     def owning_generator_tuple_locals(self, func: 'TpyFunction') -> set[str]:
-        """Generator/async frame locals that are OWNING pointer-repr tuples
-        (bound from an `Own[tuple[...]]` call, never reassigned).
+        """Generator/async frame locals that are OWNING tuples needing
+        `tpy::frame_slot<std::tuple<...>>` storage rather than a raw field.
+
+        Two sources qualify (both never-reassigned):
+          - bound from an `Own[tuple[...]]` call (owning pointer-repr tuple);
+          - typed as a tuple with an `OWN` element (e.g. an await-result lift
+            temp `tuple[Own[socket], ...]`). `is_value_type()` reports such a
+            tuple True, so without this it would take the raw-field path and
+            make the frame default ctor ill-formed (the owned element by value
+            is not default-constructible).
 
         Such a local owns its element storage, so its frame field must be a
-        `tpy::frame_slot<std::tuple<..., T>>` (storage form) -- a borrow-form
-        `std::tuple<..., T*>` field can't hold the owned elements and the
-        owning rvalue can't be address-taken into it. Aliasing tuple locals
-        (bound from a storage lvalue) stay borrow form. The reassigned mix
-        (owning + alias in a resumable body) is not yet handled here -- it
-        needs both a slot field and a borrow field.
+        `frame_slot<std::tuple<..., T>>` -- a borrow-form `std::tuple<..., T*>`
+        field can't hold the owned elements and the owning rvalue can't be
+        address-taken into it. Aliasing tuple locals (bound from a storage
+        lvalue) stay borrow form.
         """
+        # Local import: top-level would cycle (resumable_cfg -> gen_generators
+        # -> context).
+        from . import resumable_cfg as _rcfg
+        one_shot = _rcfg.resumable_state(func).one_shot_lift_names
         scan = self.analyzer.function_scan_results.get(id(func))
         reassigned = scan.reassigned if scan is not None else set()
         gen_names = {n for n, _ in (func.generator_locals or [])}
         owning: set[str] = set()
+
+        # Type/provenance-driven owning tuple locals:
+        #  - a tuple with an OWN element owns its storage regardless of how it
+        #    is bound;
+        #  - an `__await_lift_*` temp is ALWAYS an owned result, so even a
+        #    reference-element tuple (e.g. `tuple[list[T], int]`) needs owning
+        #    `frame_slot<std::tuple<...>>` rather than the borrow-form
+        #    `std::tuple<T*, ...>` field a non-await borrow tuple would get --
+        #    the owned result can't be assigned into a pointer-element field.
+        for lname, ltype in (func.generator_locals or []):
+            inner = unwrap_ref_type(ltype)
+            if not (isinstance(inner, TupleType) and lname not in reassigned):
+                continue
+            if (inner.has_own_element()
+                    or (lname in one_shot and inner.has_pointer_repr_element())):
+                owning.add(lname)
 
         def visit(stmts: list[TpyStmt]) -> None:
             for stmt in stmts:
@@ -2128,6 +2159,9 @@ class CodeGenContext:
         `generator_frame_slot_locals` for a resumable-frame body
         (generator __next__ or async __poll__).
 
+        Also refreshes `one_shot_lift_locals` (the `__await_lift_*` temps) for
+        this body, so a tuple-unpack reading one can move its elements out.
+
         For each local in `func.generator_locals`:
           - value type: not tracked (frame slot is `T name;`, no peel)
           - pointer-form (pointer-repr Optional[NonValue] OR a for-loop
@@ -2142,6 +2176,12 @@ class CodeGenContext:
         restored on exit (matches the existing `generator_*` save/restore
         dance). `generator_for_loop_info` must already be populated.
         """
+        # Local import: top-level would cycle (resumable_cfg -> gen_generators
+        # -> context).
+        from . import resumable_cfg as _rcfg
+        self.one_shot_lift_locals = set(
+            _rcfg.resumable_state(func).one_shot_lift_names)
+
         # Pointer-form iter vars are seeded up-front so the for-loop
         # emit path doesn't need to mutate `pointer_locals` mid-emission.
         # Both the legacy struct path and the resumable for-loop emit

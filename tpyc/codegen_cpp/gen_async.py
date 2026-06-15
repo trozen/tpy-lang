@@ -855,6 +855,14 @@ class AsyncCoroCodegen:
         for await_node in lifts:
             name = f"__await_lift_{self._next_lift_id(func)}"
             self._bump_lift_id(func)
+            # One-shot by construction: created here, consumed by `stmt` (the
+            # single replacement below). Records it as a movable source so a
+            # tuple-unpack reading it moves elements out instead of copying.
+            # INVARIANT: only OWNED results may be added here -- an await
+            # result is always owned, and `owning_generator_tuple_locals`
+            # relies on that to give a reference-element lift tuple owning
+            # (not borrow) frame storage. Do not add a borrow/aliasing source.
+            rcfg.resumable_state(func).one_shot_lift_names.add(name)
             await_t = self.ctx.get_expr_type(await_node)
             if await_t is None:
                 raise CodeGenError(

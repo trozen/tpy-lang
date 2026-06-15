@@ -2978,10 +2978,27 @@ class StatementGenerator:
         # to T&.  Existing is_const_ref elements are unaffected -- const T&
         # binds fine from a non-const tuple.
         # tuple_to_pointer wrap returns a prvalue: bind by value, not by ref.
+        # `one_shot_lift_locals` is only populated for resumable bodies, so
+        # gate the read on in_generator_body -- a sync body emitted after a
+        # coroutine would otherwise see stale entries (harmless, but the set
+        # is meaningful only in a resumable body).
+        source_is_oneshot = (self.ctx.in_generator_body
+                             and isinstance(stmt.value, TpyName)
+                             and stmt.value.name in self.ctx.one_shot_lift_locals)
         if (not unwrapped_tmp and not wrapped_to_pointer
                 and isinstance(stmt.value, TpyName) and not any(stmt.is_owned)):
             const_kw = "" if any(stmt.is_ref) else "const "
             out.write(f"{indent}{const_kw}auto& {tmp} = {value_expr};\n")
+        elif (not unwrapped_tmp and not wrapped_to_pointer
+                and any(stmt.is_owned) and source_is_oneshot):
+            # Consumable owned-tuple source (a one-shot `__await_lift_*` temp):
+            # bind by rvalue-ref and move the owned elements out of the source,
+            # rather than copy the whole tuple into `auto __tup` -- the copy is
+            # deleted when an element is @nocopy / move-only (e.g. a socket).
+            # A named-local owned-tuple source still copies here: moving it
+            # safely first needs sema to track owned-element tuples as movable
+            # (ever_owned_locals), which it does not yet.
+            out.write(f"{indent}auto&& {tmp} = {value_expr};\n")
         else:
             out.write(f"{indent}auto {tmp} = {value_expr};\n")
 

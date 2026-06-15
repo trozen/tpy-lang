@@ -3297,6 +3297,13 @@ class TupleType(TpyType):
             for e in self.element_types
         )
 
+    def has_own_element(self) -> bool:
+        # An OWN element is stored by value in storage form (e.g. `socket` for
+        # `Own[socket]`), so a frame field of this tuple owns that storage and
+        # may be non-default-constructible -- it needs frame_slot wrapping, not
+        # a raw field, even though `is_value_type()` reports the tuple True.
+        return any(e.value_form() is ValueForm.OWN for e in self.element_types)
+
     def has_pointer_repr_optional_element(self) -> bool:
         """True if any element is a pointer-repr OptionalType.
 

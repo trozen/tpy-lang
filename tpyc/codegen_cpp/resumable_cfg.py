@@ -74,6 +74,11 @@ class ResumableFuncState:
     # await-arg lifting (_effective_body / _lift_nested_awaits)
     lifted_body: 'list[TpyStmt] | None' = None
     next_lift_id: int = 0
+    # Names of `__await_lift_*` temps. Each is created by the lift pass and
+    # consumed by exactly one following statement (a construction invariant),
+    # so it is a one-shot/movable source: a tuple-unpack reading it may bind by
+    # rvalue-ref and move its elements out rather than copy the whole tuple.
+    one_shot_lift_names: 'set[str]' = field(default_factory=set)
     # borrowed-rvalue-arg lifting (_lift_borrowed_rvalue_args): counter for
     # the `__coro_arg_<n>` hoisted locals that back rvalue temps borrowed by
     # an INLINE sub-coro across a suspension.

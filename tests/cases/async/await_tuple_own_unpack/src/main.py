@@ -1,0 +1,92 @@
+# An await-result tuple with a @nocopy/Own (or reference) element is moved out
+# at unpack, not copied -- mutate-after-boundary proves the move (a copy of a
+# @nocopy element would be a compile error).
+import asyncio
+from tpy import Int32, Own, nocopy
+from tpy.coro import Poll, Waker, poll_ready
+
+
+@nocopy
+class Counter:
+    n: Int32
+
+    def __init__(self, n: Int32) -> None:
+        self.n = n
+
+    def bump(self) -> None:
+        self.n += 1
+
+
+@nocopy
+class _OwnPair:
+    _polls: Int32
+
+    def __init__(self) -> None:
+        self._polls = 0
+
+    def cancel(self) -> None:
+        pass
+
+    def __poll__(self, w: Waker) -> Own[Poll[tuple[Own[Counter], Int32]]]:
+        self._polls += 1
+        return poll_ready((Counter(10), self._polls))
+
+
+@nocopy
+class _ValPair:
+    """Inverse: a pure value tuple must keep working (no spurious move)."""
+
+    def cancel(self) -> None:
+        pass
+
+    def __poll__(self, w: Waker) -> Own[Poll[tuple[Int32, Int32]]]:
+        # Explicit Int32: poll_ready[T]'s arg isn't target-typed by the return,
+        # so bare literals stay IntLiteral and mismatch tuple[Int32, Int32].
+        return poll_ready((Int32(1), Int32(2)))
+
+
+@nocopy
+class _RefPair:
+    """Reference-element (non-Own) tuple: the await result owns the list, so
+    it must get owning storage (not a borrow-form `std::tuple<vec*, int>`
+    field) and move the list out -- mutating it after proves it's the moved
+    list, not a copy."""
+
+    def cancel(self) -> None:
+        pass
+
+    def __poll__(self, w: Waker) -> Own[Poll[tuple[list[Int32], Int32]]]:
+        xs: list[Int32] = [10, 20]
+        return poll_ready((xs, Int32(2)))
+
+
+async def main_coro() -> None:
+    # Owned-element unpack: move the @nocopy Counter out, then mutate it.
+    c, tag = await _OwnPair()
+    c.bump()
+    c.bump()
+    print(c.n, tag)
+
+    # Re-await in a loop: the frame_slot must re-emplace each iteration.
+    i: Int32 = 0
+    while i < 3:
+        d, k = await _OwnPair()
+        d.bump()
+        print(d.n, k)
+        i += 1
+
+    # Inverse: value tuple still unpacks.
+    a, b = await _ValPair()
+    print(a, b)
+
+    # Reference-element tuple: the list is moved out, then mutated.
+    lst, m = await _RefPair()
+    lst.append(30)
+    print(len(lst), lst[2], m)
+
+
+def main() -> None:
+    asyncio.run(main_coro())
+
+
+main()
