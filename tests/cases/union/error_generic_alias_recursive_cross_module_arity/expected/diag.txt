@@ -1,0 +1,1 @@
+main.py:9: error: Type alias 'Tree' takes 1 type argument, got 2

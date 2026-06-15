@@ -606,17 +606,33 @@ Importing modules walk the body to substitute type params at use sites
 -- no resolution context needed because the body is already fully
 qualified.
 
-**As-built:** cross-module works through the `from m import Tree` form. The
-finalize pass resolves the imported `alias_info` (and its `treelib.Tree`
-qname) so the importer's use sites finalize correctly, and codegen registers
-the imported wrapper's qualified C++ name (`tpyapp::treelib::Tree`) under the
-local import name in `native_cpp_names` so rendering emits the qualified type.
-**Not yet wired:** the *qualified* use form (`import treelib; x: treelib.Tree[int]`)
-and the *aliased* import form (`from treelib import Tree as T2`) at recursive-
-alias use sites -- both fall back to the "mixed types" / unrecognized-wrapper
-path. (Note: `TypeAliasInfo` did not gain a `defining_module` field as rev-3
-sketched; the qname is derived at finalize from `imported_type_alias_info` /
-the current module name.)
+**As-built:** cross-module works through **all three import forms** --
+`from m import Tree`, aliased `from m import Tree as T2`, and qualified
+`import m; m.Tree[...]`.
+
+- The use-site `AliasRef` carries the *local* short spelling as its render name
+  (so an aliased import resolves under `T2`, the key its render name is
+  registered under) and the *defining* module on `AliasRef.module` for a
+  qualified reference.
+- `_alias_lookup_for_finalize` resolves a qualified reference against the
+  defining module's alias table **first** (by `AliasRef.module`), so a local /
+  imported alias of the same short name never shadows it. Bare references
+  (local, `from`-import, aliased) fall through to the imported-first / local
+  path.
+- The finalize *run-trigger* also fires when an imported user module defines a
+  generic recursive alias (the qualified `import m` form leaves no
+  `imported_type_alias_info` entry, so the old trigger would skip the pass).
+- Rendering is keyed by **canonical qname**, not the short name:
+  `Compiler.recursive_alias_cpp_names` maps `defining_module.original_name` to
+  the qualified C++ wrapper, populated per codegen-module pass for *imported*
+  aliases (from both `imported_type_alias_info` and qualified module imports).
+  `RecursiveAliasInstanceType.to_cpp` looks up by `self.qname`; a same-module
+  alias is absent and renders bare. This is collision-proof: a module with a
+  local `Tree[T]` and a qualified `other.Tree[int]` emits a bare `Tree<...>`
+  and `::tpyapp::other::Tree<...>` respectively (the qualified form is the only
+  one that lets two same-short-named wrappers coexist in one module, which the
+  prior short-name `native_cpp_names` channel could not represent). (Note:
+  `TypeAliasInfo` did not gain a `defining_module` field as rev-3 sketched.)
 
 ### Tests (Phase 2 -- as-built)
 
@@ -660,9 +676,11 @@ Error cases:
 - `generic_recursive_non_eq_t` -- the constrained `operator==` is emitted,
   but a "C++ should fail to compile" assertion doesn't fit the snapshot
   harness (it expects a successful build/run).
-- Codex-suggested `Tree[Tree[int]]`, same-short-name collision, and
-  passing/returning-alternatives / reassignment cases -- the first two hit
-  the dropped/ambiguous and qualified/aliased-use-site gaps above.
+- Codex-suggested `Tree[Tree[int]]` and passing/returning-alternatives /
+  reassignment cases remain unwritten (`Tree[Tree[int]]` hits the
+  dropped/ambiguous nested gap above). The same-short-name collision is now
+  covered (`generic_recursive_alias_name_collision`), landed with the
+  qualified/aliased cross-module use-site work.
 
 All existing non-generic recursive alias tests keep passing unchanged.
 
@@ -801,10 +819,12 @@ What shipped vs. the v1 plan, for the next person:
   dispatch is ambiguous. Needs a multi-container-alternative disambiguation
   design (annotate which alternative, or forbid).
 - **Qualified / aliased cross-module use sites** (`m.Tree[int]`,
-  `from m import Tree as T2`): not wired -- only `from m import Tree`
-  resolves recursive-alias use sites. The qname *identity* is collision-proof
-  regardless, so the same-short-name correctness concern is handled; what's
-  missing is the use-site resolution for these two import forms.
+  `from m import Tree as T2`): **DONE** (branch `generic-alias-xmodule-use`).
+  All three import forms resolve; rendering moved from the short-name
+  `native_cpp_names` channel to a qname-keyed render map so a local and a
+  qualified same-short-named alias stay distinct. See the cross-module section
+  above for the as-built mechanism. Tests: `generic_recursive_cross_module_qualified`,
+  `_aliased`, `generic_recursive_alias_name_collision`.
 - **Alias <-> alias mutual-recursion diagnostic**: rejected via a coarse
   `Unknown generic type` forward-ref error rather than the distinct "mutual
   recursion across generic aliases" message (which the alias <-> record cycle

@@ -636,7 +636,7 @@ class TypeResolver:
         alias_info = self._lookup_generic_alias_info(name, resolved_container, resolved)
         if alias_info is not None and alias_info.type_params:
             return self._resolve_generic_alias_use(
-                ref, resolved_container, alias_info, type_param_scope,
+                ref, name, alias_info, type_param_scope, resolved,
             )
 
         # Unresolved bare (non-dotted) name -- helpful import hint
@@ -708,8 +708,9 @@ class TypeResolver:
         return None
 
     def _resolve_generic_alias_use(
-        self, ref: 'TpyTypeRef', name: str, alias_info: 'TypeAliasInfo',
+        self, ref: 'TpyTypeRef', use_name: str, alias_info: 'TypeAliasInfo',
         type_param_scope: 'dict[str, TypeParamKind] | None',
+        resolved: 'tuple[str, str] | None',
     ) -> TpyType:
         """Expand a use of a generic type alias at the use site.
 
@@ -723,12 +724,20 @@ class TypeResolver:
           `RecursiveAliasInstanceType`). Sema's finalize pass converts it
           using the sema-registry alias_info. See
           docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md.
-        """
+
+        `use_name` is the use-site spelling (`"T2"`, `"Tree"`, or dotted
+        `"treelib.Tree"`); `resolved` is the `(source_module, original_name)`
+        of a cross-module reference (None for a local alias). The emitted
+        `AliasRef` carries the *local* short spelling -- the key that
+        `imported_type_alias_info` / `native_cpp_names` are registered under in
+        sema -- so an aliased import (`from m import Tree as T2`) resolves under
+        `T2`, not the original `Tree`."""
+        local_name = use_name.rsplit(".", 1)[-1] if "." in use_name else use_name
         expected = len(alias_info.type_params)
         actual = len(ref.args)
         if actual != expected:
             raise ResolutionFailure(
-                f"Type alias '{name}' takes {expected} type "
+                f"Type alias '{local_name}' takes {expected} type "
                 f"argument{'s' if expected != 1 else ''}, got {actual}",
                 loc=ref.loc,
             )
@@ -744,8 +753,19 @@ class TypeResolver:
                     self.resolve(arg, type_param_scope, is_type_arg=True)
                 )
         if alias_info.is_recursive:
+            # A qualified reference (`treelib.Tree[int]`) stamps the *defining*
+            # module so sema's finalize resolves it against that module's alias
+            # table directly -- collision-proof when the current module also has
+            # a local/imported alias of the same short name. Bare references
+            # (local, `from m import Tree`, `... as T2`) keep the current module
+            # and resolve through `imported_type_alias_info` / the local
+            # registry, both keyed by `local_name`.
+            defining_module = (
+                resolved[0] if ("." in use_name and resolved is not None)
+                else self._parser._public_module()
+            )
             return AliasRef(
-                name, module=self._parser._public_module(),
+                local_name, module=defining_module,
                 args=tuple(resolved_args),
             )
         subst: dict[str, TpyType] = {}

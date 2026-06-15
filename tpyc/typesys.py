@@ -139,8 +139,9 @@ def error_return_to_cpp(name: str, current_module: str | None,
 
 
 # Per-compilation maps for type-name resolution
-# (`Compiler.native_cpp_names` / `union_alias_names` / `protocol_modules`)
-# live on the active `Compiler` (see `tpyc/compilation_context.py`).
+# (`Compiler.native_cpp_names` / `union_alias_names` / `protocol_modules` /
+# `recursive_alias_cpp_names`) live on the active `Compiler` (see
+# `tpyc/compilation_context.py`).
 # Readers below use `get_current_compiler()` with an empty-default
 # fallback so the type system stays usable from contexts without an
 # active compiler (e.g. REPL display, isolated unit tests).
@@ -179,6 +180,22 @@ def ensure_qualified(name: str) -> str:
 def register_native_cpp_name(py_name: str, cpp_name: str) -> None:
     """Register a mapping from a Python class name to its native C++ name."""
     require_current_compiler().native_cpp_names[py_name] = ensure_qualified(cpp_name)
+
+
+def _recursive_alias_cpp_names_view() -> dict[str, str]:
+    """Read-side accessor for the active compiler's qname-keyed render map for
+    generic recursive alias wrappers (see Compiler.recursive_alias_cpp_names).
+    Empty when no compilation is active."""
+    compiler = get_current_compiler()
+    if compiler is None:
+        return _EMPTY_NATIVE_CPP_NAMES
+    return compiler.recursive_alias_cpp_names
+
+
+def register_recursive_alias_cpp_name(qname: str, cpp_name: str) -> None:
+    """Map a generic recursive alias's canonical qname to its qualified C++
+    wrapper name (collision-proof across same-short-named aliases)."""
+    require_current_compiler().recursive_alias_cpp_names[qname] = ensure_qualified(cpp_name)
 
 
 def register_union_alias(members: tuple['TpyType', ...], alias_name: str) -> None:
@@ -300,6 +317,11 @@ def clear_codegen_state() -> None:
     if compiler is not None:
         compiler.native_cpp_names.clear()
         compiler.union_alias_names.clear()
+        # `recursive_alias_cpp_names` is deliberately NOT cleared here: it is
+        # keyed by canonical qname (not the per-module short name), so its
+        # entries are stable across modules and re-registered idempotently each
+        # pass. Clearing it would be harmless but pointless; adding a clear that
+        # assumed short-name semantics would be the actual bug.
 
 
 def clear_all_compilation_state() -> None:
@@ -2943,10 +2965,13 @@ class RecursiveAliasInstanceType(TpyType):
 
     Identity is `(qname, type_args)`: `qname` is the alias's fully-qualified
     name (defining module + short name), collision-proof across modules that
-    define same-short-named aliases. `name` (short, for C++ rendering via the
-    per-compilation native_cpp_names map) and `alias_info` (the semantic
-    payload -- body + type_params, used to expand alternatives / value-ness)
-    are carried but excluded from eq/hash.
+    define same-short-named aliases. It is also the C++ render key:
+    `to_cpp()` looks `qname` up in the per-compilation
+    `recursive_alias_cpp_names` map (qualified for imported aliases, absent ->
+    bare short for same-module ones). `name` (the local render short, used by
+    `_short()` / `__str__`) and `alias_info` (the semantic payload -- body +
+    type_params, used to expand alternatives / value-ness) are carried but
+    excluded from eq/hash.
 
     Minted only by sema's finalize pass from the parser's `AliasRef`
     placeholders -- parse-resolve runs against a separate registry and lacks
@@ -3007,7 +3032,12 @@ class RecursiveAliasInstanceType(TpyType):
         return True
 
     def to_cpp(self) -> str:
-        base = _native_cpp_names_view().get(self._short(), self._short())
+        # Identity-keyed (qname) lookup is collision-proof: a same-module alias
+        # is absent from the map and renders bare via _short(); an imported one
+        # renders the defining module's qualified wrapper name. Mixing the two
+        # in one module (local `Tree` + imported `other.Tree`) stays correct
+        # because the key is the qname, not the short name.
+        base = _recursive_alias_cpp_names_view().get(self.qname) or self._short()
         if self.type_args:
             rendered = ", ".join(
                 a.to_cpp() if isinstance(a, TpyType) else str(a)

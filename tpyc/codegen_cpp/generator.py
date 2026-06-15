@@ -11,7 +11,7 @@ import heapq
 import io
 import sys as _sys
 
-from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name
+from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name
 from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
@@ -314,15 +314,19 @@ class CodeGenerator:
             alias_info = self.analyzer.registry.get_type_alias_info(local_name)
             if alias_info is not None and alias_info.type_params:
                 # Generic recursive aliases DO have a C++ identity (the wrapper
-                # template). Map the imported short name to the defining
-                # module's qualified name so RecursiveAliasInstanceType.to_cpp()
-                # emits `tpyapp::lib::Tree<...>` rather than a bare, undeclared
-                # `Tree<...>`. Generic non-recursive aliases are expanded at use
-                # sites and have no C++-level identity -- skip them.
+                # template). Map the canonical qname to the defining module's
+                # qualified name so RecursiveAliasInstanceType.to_cpp() emits
+                # `::tpyapp::lib::Tree<...>` -- for both the use-site instance
+                # AND the wrapper body's self-reference, which carries the
+                # *defining* module's short name (`Tree`), not the local import
+                # spelling (`T2`). Keying by qname keeps these consistent and
+                # collision-proof. Generic non-recursive aliases are expanded at
+                # use sites and have no C++-level identity -- skip them.
                 src = self.analyzer.registry.modules.get(source_module)
                 if src is not None and original_name in src.recursive_union_names:
-                    register_native_cpp_name(
-                        local_name, qualified_cpp_name(source_module, original_name))
+                    register_recursive_alias_cpp_name(
+                        f"{source_module}.{original_name}",
+                        qualified_cpp_name(source_module, original_name))
                 continue
             alias_type = alias_info.body if alias_info is not None else None
             if not isinstance(alias_type, UnionType):
@@ -331,6 +335,21 @@ class CodeGenerator:
             if source_info is not None and original_name in source_info.recursive_union_names:
                 continue
             register_union_alias(alias_type.members, local_name)
+        # Qualified `import m; m.Tree[...]` use sites leave no
+        # imported_type_alias_info entry (only the module name is bound), so
+        # register each imported user module's generic recursive aliases by
+        # qname here too -- harmless over-registration (keyed by qname, no
+        # short-name collision) that lets their wrappers render qualified.
+        for imported_module in module.user_module_imports:
+            mi = self.analyzer.registry.modules.get(imported_module)
+            if mi is None:
+                continue
+            for alias_name in mi.recursive_union_names:
+                ainfo = mi.type_aliases.get(alias_name)
+                if ainfo is not None and ainfo.type_params:
+                    register_recursive_alias_cpp_name(
+                        f"{imported_module}.{alias_name}",
+                        qualified_cpp_name(imported_module, alias_name))
         # Filter user_module_imports to only include actual user modules (not builtins without user files)
         if actual_user_modules is not None:
             self.ctx.user_module_imports = {k: v for k, v in module.user_module_imports.items() if k in actual_user_modules}

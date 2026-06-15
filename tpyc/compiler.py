@@ -1114,6 +1114,13 @@ class Compiler:
         self.union_display_names: dict[tuple[TpyType, ...], str] = {}
         self.union_wrapper_index: dict[tuple[TpyType, ...], RecursiveUnionInfo] = {}
         self.native_cpp_names: dict[str, str] = {}
+        # Cross-module render names for generic recursive alias wrappers, keyed
+        # by canonical qname (`defining_module.original_name`) rather than the
+        # short name -- the qualified `import m; m.Tree` form lets two distinct
+        # same-short-named `Tree`s coexist in one module, which a short-name map
+        # cannot represent. Populated per codegen-module pass for *imported*
+        # aliases only; a same-module alias is absent and renders bare.
+        self.recursive_alias_cpp_names: dict[str, str] = {}
         self.dynamic_type_defs: dict[str, _TypeDef] = {}
         self.dynamic_created_qnames: set[str] = set()
 
@@ -1206,6 +1213,7 @@ class Compiler:
         self.namespace_map = {}
         self.include_path_map = {}
         self.native_cpp_names = {}
+        self.recursive_alias_cpp_names = {}
         self.union_alias_names = {}
         self.union_display_names = {}
         self.union_wrapper_index = {}

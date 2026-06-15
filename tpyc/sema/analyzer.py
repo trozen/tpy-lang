@@ -2244,7 +2244,7 @@ class SemanticAnalyzer:
                 func.params[i] = (name, resolved)
 
     def _alias_lookup_for_finalize(
-        self, name: str,
+        self, name: str, defining_module: 'str | None' = None,
     ) -> 'tuple[TypeAliasInfo, str, str] | None':
         """Resolve a referenced alias name to (info, qname, short_name),
         covering both local and imported aliases, or None if not an alias.
@@ -2254,10 +2254,22 @@ class SemanticAnalyzer:
         and consistent whether the alias is referenced from its own module or
         an importer (both resolve to the defining module's name).
 
-        Imported aliases are checked first: `from m import Tree` also registers
+        A qualified reference (`treelib.Tree[int]`) carries the defining module
+        on the AliasRef; that resolves against the defining module's table
+        *first*, so it never mis-resolves to a same-short-named local/imported
+        alias (`import other; other.Tree` while a local `Tree` exists). Bare
+        references pass `defining_module=current`, which falls through to the
+        imported-first / local path below.
+
+        Imported aliases are checked next: `from m import Tree` also registers
         a local entry, so a local-first lookup would mis-stamp the importer's
         module name onto the qname (diverging from the defining module's body,
         which the importer inherits via the shared alias_info)."""
+        if defining_module is not None and defining_module != self.ctx.module_name:
+            mi = self.ctx.registry.modules.get(defining_module)
+            qinfo = mi.type_aliases.get(name) if mi is not None else None
+            if qinfo is not None:
+                return qinfo, f"{defining_module}.{name}", name
         imp = self.ctx.registry.imported_type_alias_info.get(name)
         if imp is not None:
             decl_mod, orig = imp
@@ -2279,7 +2291,7 @@ class SemanticAnalyzer:
         Non-generic recursive aliases keep their bare `AliasRef` self-ref
         (their use sites stay UnionType + union_wrapper_index)."""
         if isinstance(typ, AliasRef):
-            looked = self._alias_lookup_for_finalize(typ.name)
+            looked = self._alias_lookup_for_finalize(typ.name, typ.module)
             if (looked is not None and looked[0].type_params
                     and looked[0].is_recursive):
                 info, qname, _short = looked
@@ -2287,11 +2299,11 @@ class SemanticAnalyzer:
                     self._finalize_alias_refs(a) if isinstance(a, TpyType) else a
                     for a in typ.args
                 )
-                # Render via the *local* reference name (`typ.name`) -- codegen
-                # keys native_cpp_names by the importing name (e.g. `from m
-                # import Tree as MyTree`), exactly as cross-module records do,
-                # so two same-short-named aliases imported into one module do
-                # not collide on rendering. Identity stays the qname.
+                # Identity AND the C++ render key are the qname: codegen keys
+                # `recursive_alias_cpp_names` by qname, so a same-module alias
+                # and an imported same-short-named one never collide on
+                # rendering. `typ.name` is carried only as the local display
+                # short (`_short()` / `__str__` / same-module bare fallback).
                 return RecursiveAliasInstanceType(qname, new_args, typ.name, info)
         return typ.map_inner_types(self._finalize_alias_refs)
 
@@ -2316,7 +2328,17 @@ class SemanticAnalyzer:
             and lk[0].type_params and lk[0].is_recursive
             for n in self.ctx.registry.imported_type_alias_info
         )
-        if not generic_rec and not imports_generic_rec:
+        # The qualified `import m; m.Tree[...]` form binds only the module name,
+        # so it leaves no `imported_type_alias_info` entry -- detect it via the
+        # imported user modules that define a generic recursive alias, else the
+        # pass would skip and the use-site AliasRef would never be finalized.
+        qualified_generic_rec = any(
+            (mi := self.ctx.registry.modules.get(m)) is not None
+            and any((ai := mi.type_aliases.get(n)) is not None and ai.type_params
+                    for n in mi.recursive_union_names)
+            for m in module.user_module_imports
+        )
+        if not generic_rec and not imports_generic_rec and not qualified_generic_rec:
             return
         # Alias bodies: the registered TypeAliasInfo (read by alternatives
         # expansion) and the cross-phase tuple (read by codegen + export).
