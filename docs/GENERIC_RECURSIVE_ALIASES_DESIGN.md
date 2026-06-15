@@ -906,3 +906,9 @@ Captured here so they don't get lost:
   branch + imported-alias qualified-name registration.
 - `tpyc/sema/{compatibility,expressions,type_ops,match}.py`,
   `tpyc/codegen_cpp/{expressions,match}.py` -- consumer routing (commit 10/11).
+- Non-generic sibling (cross-module coercion): `compatibility._resolve_recursive_refs`
+  resolves a non-generic recursive-union `AliasRef` against its defining module
+  when the caller-local lookup misses -- the same module-aware resolution as
+  `_alias_lookup_for_finalize` above, so `json.dumps([1, 2, 3])` works without
+  importing the `JsonValue` alias. Codegen mirrors it in `generator.py`'s
+  imported-recursive-union loop (short-name -> qualified C++ registration).

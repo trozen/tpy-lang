@@ -405,6 +405,19 @@ class TypeCompatibility:
         """
         if isinstance(typ, AliasRef):
             alias = self.ctx.registry.get_type_alias(typ.name)
+            if (alias is None and typ.module is not None
+                    and typ.module != self.ctx.module_name):
+                # Cross-module recursive alias the caller didn't import: resolve
+                # against its defining module (the AliasRef carries it). Without
+                # this, a container argument never matches the alias's
+                # list[Alias] / dict[_, Alias] members at a call site that did
+                # not import the alias -- e.g. `json.dumps([1, 2, 3])` without
+                # `from json import JsonValue`. Mirrors the module-aware lookup
+                # in analyzer._alias_lookup_for_finalize (generic-alias path).
+                mi = self.ctx.registry.modules.get(typ.module)
+                info = mi.type_aliases.get(typ.name) if mi is not None else None
+                if info is not None:
+                    alias = info.body
             if alias is not None:
                 return alias
         # Generic recursive alias instances are opaque, like the non-generic
@@ -918,6 +931,40 @@ class TypeCompatibility:
         # C++ converting move ctor handles the actual conversion.
         if self.is_covariant_generic_upcast(actual, expected):
             return None
+
+        # A concrete std container (list/dict/set) whose element type differs
+        # from a recursive-union-alias element cannot be converted element-wise:
+        # std::vector / tpy::ordered_map have no element-converting constructor
+        # (unlike the single-element Box/Rc wrappers handled above, whose
+        # template ctor does the conversion). Accepting it would emit an
+        # ill-formed deep conversion (`ordered_map<string,int> -> JsonValue`),
+        # so reject with a clean diagnostic. A literal takes the
+        # PendingList/PendingDict branches below (materialized element-wise) and
+        # is unaffected. Proper element-wise container->wrapper conversion is
+        # tracked in BUGS.md.
+        if ((is_list(actual) or is_dict(actual) or is_set(actual))
+                and isinstance(expected, NominalType)
+                and isinstance(actual, NominalType)
+                and actual.name == expected.name
+                and actual.type_args and expected.type_args
+                and actual.type_args != expected.type_args):
+            for a_arg, e_arg in zip(actual.type_args, expected.type_args):
+                if a_arg == e_arg or not isinstance(e_arg, TpyType) or not isinstance(a_arg, TpyType):
+                    continue
+                e_res = (self._resolve_recursive_refs(e_arg)
+                         if isinstance(e_arg, (NominalType, AliasRef)) else e_arg)
+                a_res = (self._resolve_recursive_refs(a_arg)
+                         if isinstance(a_arg, (NominalType, AliasRef)) else a_arg)
+                # Only a *genuine* element difference needs a deep conversion;
+                # an AliasRef-vs-resolved-union representation difference (the
+                # element is already the union) resolves to equal and is fine.
+                if (a_res != e_res and isinstance(e_res, UnionType)
+                        and e_res.needs_wrapper()):
+                    return CompatError(
+                        f"Type mismatch in {context}: cannot convert {actual} "
+                        f"element-wise into the expected recursive-union type. "
+                        f"Annotate the value with the alias type "
+                        f"(e.g. `x: JsonValue = ...`) or pass a literal.", loc)
 
         # Union-member coercion through generic containers:
         # Container[Lit] -> Container[Expr] when Expr is a recursive union alias

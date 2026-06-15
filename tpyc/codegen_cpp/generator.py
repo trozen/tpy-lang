@@ -379,10 +379,19 @@ class CodeGenerator:
                 if isinstance(typ, UnionType):
                     register_union_alias(typ.members, name)
         for info in self.ctx.iter_imported_recursive_unions():
-            register_union_alias(
-                info.full_members,
-                qualified_cpp_name(info.origin, info.name),
-            )
+            qual = qualified_cpp_name(info.origin, info.name)
+            register_union_alias(info.full_members, qual)
+            # Also map the short name so AliasRef.to_cpp() (the self-references
+            # inside the wrapper's list[Alias] / dict[_, Alias] members) renders
+            # the qualified type cross-module -- not just the outer UnionType
+            # wrapper (which resolves via the member-keyed union_alias_names
+            # above). Without this, `json.dumps([1, 2, 3])` in a module that did
+            # not import JsonValue emits a bare, undeclared `std::vector<JsonValue>`.
+            # Skip if the short name is already mapped (a local/earlier-imported
+            # type of the same name) -- first-write-wins, matching the dep-module
+            # record loop above; same-short-name collisions stay a known limit.
+            if info.name not in native_cpp_names:
+                register_native_cpp_name(info.name, qual)
         hpp = io.StringIO()
         cpp = io.StringIO()
 

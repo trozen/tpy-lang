@@ -1,0 +1,1 @@
+main.py:12: error: Type mismatch in argument 'obj': expected JsonValue, got dict[str, Int32]

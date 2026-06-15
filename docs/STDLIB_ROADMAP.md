@@ -535,7 +535,7 @@ all primitive types and nested containers (verified via the cpy phase in
 | Item | Status | Notes |
 |---|---|---|
 | `loads(s)` | Done | Returns `Own[JsonValue]`. Raises `JSONDecodeError` on malformed input or trailing data. |
-| `dumps(obj, *, indent, sort_keys)` | Done | `indent` and `sort_keys` kwargs supported. CPython byte-compatible for ASCII. |
+| `dumps(obj, *, indent, sort_keys)` | Done | `indent` and `sort_keys` kwargs supported. CPython byte-compatible for ASCII. Raw list/dict literals serialize without importing `JsonValue`. Known input gaps (see BUGS.md): a concrete `list`/`dict` *variable* (e.g. `dict[str, Int32]`) needs `: JsonValue` annotation; a `None` element in a container literal (`[1, None, 3]`) and a `tuple`/empty-container arg are rejected. |
 | `JSONDecodeError` | Done | Subclasses `ValueError` (matches CPython). Thrown via normal `try`/`except`. Carries `msg`, `doc`, `pos`, `lineno`, `colno`. |
 | `load(fp)` | Done | `load(fp: Readable)` == `loads(fp.read())`. Accepts any text file object (`io.StringIO`, `open()`'s `TextIO`). |
 | `dump(obj, fp)` | Done | `dump(obj, fp: Writable, *, indent, sort_keys)` == `fp.write(dumps(obj, ...))`. |
