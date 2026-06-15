@@ -464,18 +464,26 @@ class ExpressionAnalyzer:
                 inner_hint = inner_hint.wrapped
             # Check if type_hint matches the constructor's generic type
             hint_matches = False
+            # An empty `[]` can also target a recursive-union hint through its
+            # list member (e.g. JsonValue's list[JsonValue]), not just a direct
+            # list[T] hint.
+            union_list_member = None
             if is_generic_constructor:
                 td = find_factory_by_simple_name(expr.func_name)  # type: ignore
                 hint_matches = (td is not None and
                                 inner_hint.qualified_name() == td.qname)
-            else:
+            elif is_list(inner_hint):
                 # Empty literal [] can match list[T] hint
-                hint_matches = is_list(inner_hint)
+                hint_matches = True
+            elif inner_hint.needs_wrapper():
+                union_list_member = _find_list_member(inner_hint)
+                hint_matches = union_list_member is not None
 
             if hint_matches:
-                if is_list(inner_hint):
+                list_hint = inner_hint if is_list(inner_hint) else union_list_member
+                if list_hint is not None:
                     # list[T]: Use PendingListType for potential Array optimization
-                    elem_type = inner_hint.get_element_type()
+                    elem_type = list_hint.get_element_type()
                     # Set call_type so codegen generates explicit type (e.g., std::vector<int>())
                     if is_generic_constructor:
                         expr.call_type = inner_hint  # type: ignore
@@ -491,7 +499,7 @@ class ExpressionAnalyzer:
                             size=0,
                             is_global=self.ctx.is_top_level,
                             has_explicit_annotation=True,
-                            explicit_type=inner_hint
+                            explicit_type=list_hint,
                         )
                         self.ctx.list_literals[literal_id] = info
                         self.ctx.func.pending_resolutions.append(literal_id)

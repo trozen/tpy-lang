@@ -67,7 +67,7 @@ if TYPE_CHECKING:
 
 from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, register_binding_borrow, ephemeral_borrow_root
 from ..value_category import is_rvalue_source
-from .expressions import _collect_body_name_refs, _collect_body_local_defs
+from .expressions import _collect_body_name_refs, _collect_body_local_defs, _find_list_member
 from .local_deduction import collect_pending_source_types
 from .type_ops import signature_may_return_borrow as _signature_may_return_borrow
 from tpyc import modules as builtin_modules
@@ -3430,18 +3430,25 @@ class StatementAnalyzer:
             if (is_empty_literal or is_generic_constructor) and stmt.type:
                 # Check if annotation matches the constructor's generic type
                 annotation_matches = False
+                # An empty `[]` can also target a recursive-union annotation
+                # through its list member (e.g. `x: JsonValue = []`), not just
+                # a direct list[T] annotation.
+                union_list_member = None
                 if is_generic_constructor:
                     td = find_factory_by_simple_name(stmt.init.func_name)
                     annotation_matches = (td is not None and
                                           stmt.type.qualified_name() == td.qname)
-                else:
-                    # Empty literal [] can match list[T] annotation
-                    annotation_matches = is_list(stmt.type)
+                elif is_list(stmt.type):
+                    annotation_matches = True
+                elif stmt.type.needs_wrapper():
+                    union_list_member = _find_list_member(stmt.type)
+                    annotation_matches = union_list_member is not None
 
                 if annotation_matches:
-                    if is_list(stmt.type):
+                    list_ann = stmt.type if is_list(stmt.type) else union_list_member
+                    if list_ann is not None:
                         # list[T]: Use PendingListType for potential Array optimization
-                        elem_type = stmt.type.type_args[0]
+                        elem_type = list_ann.get_element_type()
                         # Set call_type so codegen generates explicit type (e.g., std::vector<int>())
                         if is_generic_constructor:
                             stmt.init.call_type = stmt.type  # type: ignore
@@ -3459,7 +3466,7 @@ class StatementAnalyzer:
                                 size=0,
                                 is_global=self.ctx.is_top_level,
                                 has_explicit_annotation=True,
-                                explicit_type=stmt.type
+                                explicit_type=list_ann
                             )
                             self.ctx.list_literals[literal_id] = info
                             self.ctx.func.pending_resolutions.append(literal_id)
