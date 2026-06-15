@@ -36,7 +36,7 @@ void process_list(const std::vector<std::variant<int32_t, std::string>>& items) 
 // def consume_dict(d: Own[dict[str, Int32 | str]]) -> None:
 void consume_dict(::tpy::ordered_map<std::string, std::variant<int32_t, std::string>>&& d) {
     // v = d["a"]
-    std::variant<int32_t, std::string> v = d["a"];
+    std::variant<int32_t, std::string> v = ::tpy::__getitem__(d, "a");
     // if isinstance(v, str):
     if (std::holds_alternative<std::string>(v)) {
         auto& __v = std::get<std::string>(v);
@@ -48,7 +48,7 @@ void consume_dict(::tpy::ordered_map<std::string, std::variant<int32_t, std::str
 // def consume_list(items: Own[list[Int32 | str]]) -> None:
 void consume_list(std::vector<std::variant<int32_t, std::string>>&& items) {
     // v = items[0]
-    std::variant<int32_t, std::string> v = items[0];
+    std::variant<int32_t, std::string> v = ::tpy::__getitem__(items, 0);
     // if isinstance(v, str):
     if (std::holds_alternative<std::string>(v)) {
         auto& __v = std::get<std::string>(v);

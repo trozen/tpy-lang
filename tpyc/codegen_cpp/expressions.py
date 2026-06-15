@@ -5725,8 +5725,12 @@ class ExpressionGenerator:
                 return f"{subscript_obj}[{index_expr}]"
             return f"{subscript_obj}[static_cast<std::size_t>({index_expr})]"
 
-        # Use registry lookup for __getitem__
-        fi = self.builtins.get_type_method_fi(obj_type, "__getitem__")
+        # Strip Own/Readonly/Ref/Send-Sync wrappers before the registry lookup:
+        # a generator-yielded `Own[dict]`/`Own[list]` loop var has a qualified
+        # obj_type that get_record_for_type can't see through, which would
+        # silently drop to the raw operator[] fallback below -- losing
+        # const-correctness (dict) and index-normalization (list).
+        fi = self.builtins.get_type_method_fi(unwrap_qualifiers(obj_type), "__getitem__")
         if fi:
             return self.builtins.gen_call_from_fi(fi, subscript_obj, [index_expr])
         # Fallback: operator[] (user records generate const operator[] from __getitem__)

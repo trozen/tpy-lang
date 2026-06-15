@@ -1,0 +1,11 @@
+v1
+v2
+---
+30
+10
+---
+ro
+---
+got IndexError
+---
+got KeyError

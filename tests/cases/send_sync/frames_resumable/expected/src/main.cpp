@@ -140,7 +140,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_own::__next__() {
     case S_RESUME_0: {
         // yield xs[0]
         __state = S_RESUME_1;
-        return xs[0];
+        return ::tpy::__getitem__(xs, 0);
     }
     case S_RESUME_1: {
         __state = S_DONE;

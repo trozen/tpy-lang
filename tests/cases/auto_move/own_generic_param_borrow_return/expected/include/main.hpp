@@ -19,7 +19,7 @@ void main();
 template<typename T>
 ::tpy::val_or_ref_t<T> first_val(std::vector<T>&& items) {
     // return items[0]  # tpyc: ok
-    return items[0];
+    return ::tpy::__getitem__(items, 0);
 }
 // def passthrough[T: ValueType](x: Own[T]) -> T:
 template<::tpy::ValueType T>

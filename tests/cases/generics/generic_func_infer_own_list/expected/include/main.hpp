@@ -38,7 +38,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 template<typename T>
 ::tpy::val_or_ref_t<T> first_val(std::vector<T>&& items) {
     // return items[0]
-    return items[0];
+    return ::tpy::__getitem__(items, 0);
 }
 // def consume_list[T](items: Own[list[T]]) -> None:
 template<typename T>
