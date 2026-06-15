@@ -526,7 +526,23 @@ def peek(data: StrView) -> StrView:    # string_view in, string_view out
 `StrView` is a non-owning view, so the compiler enforces safety restrictions:
 - Cannot be used as a record field (dangling risk -- use `str` or `String`)
 - Cannot use `+=` (would dangle -- use `str` or `String` for mutable strings)
-- Returning a `StrView` referencing a local or temporary is an error
+- Returning a `StrView` referencing a local or temporary is an error. This
+  covers view-returning methods (`return a.strip()`), f-strings (`return
+  f"..."`, `return f"..."[a:b]`), and the owned-`bytes`-as-`BytesView` sibling.
+  A view-returning str/bytes method's result borrows its receiver (the
+  registration heuristic stamps the receiver-borrow for body-less view-returning
+  stubs), so the check sees the receiver lifetime uniformly; an unrecognized
+  view-typed return expression fails closed (treated as dangling).
+- An *explicit* `StrView`/`BytesView` local bound to a temporary is an error
+  (`v: StrView = make()` / `make().strip()`); an *inferred* local from such a
+  temporary instead promotes to an owned copy (`s = make().strip()` becomes an
+  owned `str`, matching CPython), while a view of a parameter/global/stable
+  local stays a zero-copy view.
+- Storing a temporary into a view-typed container element is an error
+  (`xs: list[StrView] = []; xs.append(make())`), since the temporary dies at
+  end-of-statement.
+- Mutating the backing storage of a live view warns (`v = a.strip(); a += ...`),
+  as `+=` reallocates the buffer.
 
 Reassigning an inferred string local to an incompatible type is a sema error
 (`s = "asd"; s = 5`), not a deferred C++ build failure -- consistent with how
@@ -604,7 +620,7 @@ log(f"x={x}")
 - **Working**: Concatenation (`+`), repetition (`*`), equality (`==`)
 - **Working**: `decode()` -> `str`, `hex()` -> `str`
 - **Working**: Search methods: `find`, `rfind`, `count`, `startswith`, `endswith`
-- **Working**: Transform methods: `replace`, `split`, `join`, `strip`/`lstrip`/`rstrip`
+- **Working**: Transform methods: `replace`, `split`, `join`, and `strip`/`lstrip`/`rstrip` (on immutable `bytes`, return a zero-copy `BytesView` of the receiver like `str.strip -> StrView`; annotate the result owned `bytes` to copy. On mutable `bytearray` they return an owned `bytearray` -- a view would alias the mutable buffer, diverging from CPython's independent copy)
 - **Working**: `bytearray` mutation: `append`, `extend`, `pop`, `clear`, `insert`, `remove`, `__setitem__`
 - **Working**: `hash(b)` for `bytes` and `BytesView` -- enables use as dict keys and set elements
 - **Working**: Iteration over bytes (`for b in data`)

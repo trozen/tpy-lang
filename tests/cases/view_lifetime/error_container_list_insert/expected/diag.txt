@@ -1,0 +1,1 @@
+main.py:12: error: Cannot store a temporary in 'insert' on a StrView container; the backing storage is destroyed at end-of-statement -- store an owned str/bytes element

@@ -957,10 +957,13 @@ class LocalTypeDeduction:
                 return True
 
         # Function/method call returning a view type (or a `Literal[str]`,
-        # which is emitted as view storage in return position).
+        # which is emitted as view storage in return position). View-safe only
+        # if the view does not borrow a temporary/unsafe source -- otherwise the
+        # local must own a copy (is_dangling_return roots the provenance through
+        # return_borrows_from, e.g. str.strip borrowing a temporary receiver).
         if isinstance(init_expr, (TpyCall, TpyMethodCall)):
             if is_str_view_type(init_type) or is_bytes_view_type(init_type):
-                return True
+                return not self.compat.is_dangling_return(init_expr)
             if isinstance(init_type, LiteralType) and init_type.is_str_base():
                 return True
 
@@ -1041,7 +1044,13 @@ class LocalTypeDeduction:
             return
         var_id = self.ctx.view_var_map(family).get(var_name)
         if var_id is not None and var_id in self.ctx.view_vars(family):
-            self.ctx.view_vars(family)[var_id].source_var_ids = [source_type.var_id]
+            # Append, don't replace: a view local that aliased one source and is
+            # later rebound to another must keep BOTH -- if either source resolves
+            # to owned (or is mutated), the alias must promote too. Replacing here
+            # would drop the earlier source and leave a dangling view.
+            info = self.ctx.view_vars(family)[var_id]
+            if source_type.var_id not in info.source_var_ids:
+                info.source_var_ids.append(source_type.var_id)
 
     def _resolve_pending_view_types(self, family: ViewTypeFamily) -> None:
         """Resolve all pending view types for the given family.

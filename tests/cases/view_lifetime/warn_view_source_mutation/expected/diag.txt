@@ -1,0 +1,4 @@
+main.py:27: warning: Mutation of 'a' while borrowed ('+=' may invalidate references)
+main.py:34: warning: Mutation of 'a' while borrowed (reassignment invalidates view 'c')
+main.py:41: warning: Mutation of 'a' while borrowed ('+=' may invalidate references)
+main.py:48: warning: Mutation of 'ba' while borrowed ('append' may invalidate references)

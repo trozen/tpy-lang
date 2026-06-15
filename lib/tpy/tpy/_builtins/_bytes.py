@@ -155,26 +155,29 @@ class bytes(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @pure
     def join(self, items: Iterable[bytes]) -> bytes: ...
 
-    @native("tpy::bytes_strip", function=True)
+    # strip/lstrip/rstrip return a VIEW of the receiver (a contiguous sub-range),
+    # matching str.strip -> StrView; zero-copy. Use an owned `bytes` annotation
+    # on the result to keep a copy past the receiver's lifetime.
+    @native("tpy::bytes_strip_view", function=True)
     @readonly
     @pure
-    def strip(self) -> bytes: ...
+    def strip(self) -> BytesView: ...
 
-    @native("tpy::bytes_lstrip", function=True)
+    @native("tpy::bytes_lstrip_view", function=True)
     @readonly
     @pure
-    def lstrip(self) -> bytes: ...
+    def lstrip(self) -> BytesView: ...
 
     @overload
-    @native("tpy::bytes_rstrip", function=True)
+    @native("tpy::bytes_rstrip_view", function=True)
     @readonly
     @pure
-    def rstrip(self) -> bytes: ...
+    def rstrip(self) -> BytesView: ...
     @overload
-    @native("tpy::bytes_rstrip_chars", function=True)
+    @native("tpy::bytes_rstrip_chars_view", function=True)
     @readonly
     @pure
-    def rstrip(self, chars: bytes) -> bytes: ...
+    def rstrip(self, chars: bytes) -> BytesView: ...
 
     @native("tpy::bytes_upper", function=True)
     @readonly
@@ -351,6 +354,10 @@ class bytearray(NativeIterable[UInt8], Iterable[UInt8], Equatable):
     @pure
     def join(self, items: Iterable[bytes]) -> bytes: ...
 
+    # strip/lstrip/rstrip return an OWNED bytearray copy, matching CPython. A
+    # view would alias the mutable buffer (mutations visible through it, unlike
+    # CPython's independent copy); immutable `bytes` returns a view, mutable
+    # `bytearray` copies.
     @native("tpy::bytes_strip", function=True)
     @readonly
     @pure

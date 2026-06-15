@@ -1,0 +1,3 @@
+trimmed
+kept
+abc

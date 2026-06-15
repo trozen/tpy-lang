@@ -10,27 +10,27 @@ void main() {
     // padded = b"  hello  "
     std::span<const uint8_t> padded = ::tpy::bytes_literal("\x20\x20\x68\x65\x6c\x6c\x6f\x20\x20", 9);
     // print(padded.strip())
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip(padded)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(padded)) << "\n";
     // print(padded.lstrip())
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_lstrip(padded)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_lstrip_view(padded)) << "\n";
     // print(padded.rstrip())
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip(padded)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_view(padded)) << "\n";
     // tabs = b"\thello\n"
     std::span<const uint8_t> tabs = ::tpy::bytes_literal("\x09\x68\x65\x6c\x6c\x6f\x0a", 7);
     // print(tabs.strip())
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip(tabs)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(tabs)) << "\n";
     // no_ws = b"hello"
     std::span<const uint8_t> no_ws = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5);
     // print(no_ws.strip())
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip(no_ws)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(no_ws)) << "\n";
     // empty = b""
     std::span<const uint8_t> empty = std::span<const uint8_t>{};
     // print(empty.strip())
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip(empty)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(empty)) << "\n";
     // only_ws = b"   "
     std::span<const uint8_t> only_ws = ::tpy::bytes_literal("\x20\x20\x20", 3);
     // print(only_ws.strip())
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip(only_ws)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_strip_view(only_ws)) << "\n";
     // # BytesView (from slice) -- strip/lstrip/rstrip return views
     // bv_data: bytes = b"  hi  "
     std::span<const uint8_t> bv_data = ::tpy::bytes_literal("\x20\x20\x68\x69\x20\x20", 6);

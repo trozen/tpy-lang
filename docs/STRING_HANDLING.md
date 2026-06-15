@@ -110,15 +110,25 @@ String locals are not immediately assigned a concrete type. Instead, they start 
 - Initialized from a `str` parameter (`s = name`)
 - Initialized from an explicit `StrView` local
 - Initialized from a `Final[str]` global constant
-- Initialized from a function/method returning `StrView`
+- Initialized from a view-returning method/call **whose borrowed source outlives
+  the binding** -- a slice or `.strip()` of a parameter, global, or stable local
 - AND no owned-requiring usage is detected
 
 **Resolves to `str` (`std::string`)** when any of:
 - Initialized from an owned source (`str(42)`, function returning `str`/`String`)
+- Initialized from a view of a TEMPORARY (`make().strip()`, `make()[i:j]`, a
+  slice/strip of an f-string) -- the temporary dies at end-of-statement, so the
+  inferred local promotes to an owned copy (matches CPython value semantics)
 - Used in augmented assignment (`s += "x"`)
 - Passed to a `String` parameter (`const std::string&`)
 - Reassigned from an owned source
 - Source is another PendingStrType local that resolved to `std::string` (retroactive promotion)
+
+An EXPLICIT `StrView`/`BytesView` annotation does not promote: binding it to a
+temporary is rejected (annotate owned `str`/`bytes` to copy). A view-returning
+method's result borrows its receiver (registration stamps the receiver-borrow
+on body-less view-returning stubs), so the dangling check and the borrow tracker
+see the receiver lifetime uniformly.
 
 ### Alias tracking
 

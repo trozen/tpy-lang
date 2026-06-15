@@ -15,7 +15,7 @@ from ..typesys import (
     unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
     collapse_tuple_own_elements, type_contains_own,
     LiteralType,
-    ViewTypeFamily, view_family_for_type,
+    ViewTypeFamily, view_family_for_type, VIEW_TYPE_FAMILIES,
     PendingGenericInstanceType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, BOOL, is_protocol_type, is_protocol_union, final_type_str_to_strview,
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR,
@@ -34,11 +34,11 @@ from ..parse import (
     TpyRaise, TpyExceptHandler, TpyTry, TpyWith,
     TpyGlobal, TpyNonlocal, TpyNestedDef,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyCoerce,
-    TpySubscript, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
+    TpySubscript, TpySlice, TpyStrLiteral, TpyBytesLiteral, TpyName, TpyTupleLiteral,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
     TpyNoneLiteral,
     TpyFieldAccess, TpyFunction, TupleElemCapture,
-    TpyMatch, TpyBinOp, TpyIfExpr, TpyNamedExpr,
+    TpyMatch, TpyBinOp, TpyIfExpr, TpyNamedExpr, TpyFString,
 )
 from ..coercions import CoercionContext
 from ..namespace import BindingKind
@@ -109,12 +109,71 @@ def _is_dangling_temporary_arg(expr: TpyExpr) -> bool:
     """
     if isinstance(expr, TpyCoerce):
         return _is_dangling_temporary_arg(expr.expr)
-    if isinstance(expr, (TpyCall, TpyMethodCall, TpyBinOp)):
+    # A view/pointer constructor borrows from its argument, so its temporariness
+    # follows the arg: StrView("lit") / Ptr(name) wrap stable storage and do not
+    # dangle, while StrView(make()) does. Mirrors is_dangling_return's
+    # view-constructor recursion.
+    if isinstance(expr, TpyCall) and expr.call_type is not None:
+        if is_borrowing_view_type(expr.call_type) or expr.call_type.is_pointer():
+            return bool(expr.args) and _is_dangling_temporary_arg(expr.args[0])
+    if isinstance(expr, (TpyCall, TpyMethodCall, TpyBinOp, TpyFString)):
         return True
     if isinstance(expr, TpyIfExpr):
         return (_is_dangling_temporary_arg(expr.then_expr)
                 or _is_dangling_temporary_arg(expr.else_expr))
     return False
+
+
+def _view_source_is_temporary(expr: TpyExpr) -> bool:
+    """True if a view bound to `expr` would reference end-of-statement temporary
+    storage (no durable lvalue/static root).
+
+    Unlike is_dangling_return, a local name/field is treated as STABLE -- it
+    outlives a same-scope binding -- so only genuine temporaries (fresh calls,
+    f-strings, binops, and views borrowing them) lack durable storage. Used to
+    reject an explicit `StrView`/`BytesView` annotation bound to a temporary,
+    while leaving pinned-view aliases of stable locals/fields valid.
+    """
+    if isinstance(expr, TpyCoerce):
+        return _view_source_is_temporary(expr.expr)
+    # A walrus hands out its wrapped value: provenance follows it.
+    if isinstance(expr, TpyNamedExpr):
+        return _view_source_is_temporary(expr.value)
+    if isinstance(expr, (TpyName, TpyFieldAccess, TpyStrLiteral, TpyBytesLiteral)):
+        return False
+    # A slice borrows its container: temp iff the container is temp.
+    if isinstance(expr, TpySubscript):
+        return _view_source_is_temporary(expr.obj)
+    # A view-returning method borrows its receiver (str.strip etc.); an owned
+    # return is a fresh temporary regardless of receiver.
+    if isinstance(expr, TpyMethodCall):
+        fi = expr.resolved_function_info
+        ret = fi.return_type if fi is not None else None
+        if ret is not None and is_borrowing_view_type(unwrap_readonly(ret)):
+            return _view_source_is_temporary(expr.obj)
+        return True
+    if isinstance(expr, TpyCall):
+        # View/pointer constructor borrows its argument (StrView("lit") is static).
+        if expr.call_type is not None and (
+                is_borrowing_view_type(expr.call_type) or expr.call_type.is_pointer()):
+            return not expr.args or _view_source_is_temporary(expr.args[0])
+        fi = expr.resolved_function_info
+        # A view-returning free function that borrows specific args dangles only
+        # if a borrowed arg is temporary (pick_view(StrView("lit")) is safe).
+        if fi is not None and fi.return_borrows_from:
+            return any(0 <= i < len(expr.args) and _view_source_is_temporary(expr.args[i])
+                       for i in fi.return_borrows_from if i >= 0)
+        # Otherwise: a view return is the callee's responsibility (durable),
+        # an owned return is a fresh temporary that dangles as a view.
+        ret = fi.return_type if fi is not None else None
+        if ret is not None and is_borrowing_view_type(unwrap_readonly(ret)):
+            return False
+        return True
+    if isinstance(expr, TpyIfExpr):
+        return (_view_source_is_temporary(expr.then_expr)
+                or _view_source_is_temporary(expr.else_expr))
+    # f-string / binop / unknown -> temporary (fail closed).
+    return True
 
 
 def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyExpr) -> None:
@@ -2898,7 +2957,7 @@ class StatementAnalyzer:
     def _infer_new_local_type(
         self, name: str, var_type: TpyType,
         init_expr: TpyExpr | None, init_type: TpyType | None,
-        line: int | None,
+        line: int | None, *, annotated: bool = False,
     ) -> TpyType:
         """Apply deferred type inference for a new local variable.
 
@@ -2920,6 +2979,21 @@ class StatementAnalyzer:
         # entry is registered for codegen but `stmt.type` stays LiteralType so
         # OOS rejection / dispatch / narrowing keep seeing the annotation.
         family = view_family_for_type(var_type)
+        # An inferred (un-annotated) local whose type is itself a borrowing view
+        # (e.g. `s = make().strip()`) is not caught by view_family_for_type
+        # (that keys on owned/pending types). Route it through the same machinery
+        # so a view of a temporary/unsafe source promotes to an owned copy
+        # (matches CPython) instead of dangling. An explicit `StrView`/`BytesView`
+        # annotation keeps the user's view contract -- temp sources are rejected
+        # at the decl site, not promoted.
+        if (family is None and not annotated and init_expr is not None
+                and is_borrowing_view_type(var_type)
+                and _view_source_is_temporary(
+                    init_expr.expr if isinstance(init_expr, TpyCoerce) else init_expr)):
+            for fam in VIEW_TYPE_FAMILIES:
+                if fam.is_any_member(var_type):
+                    family = fam
+                    break
         if family is not None:
             pending = self._infer_new_local_view_type(name, var_type, init_expr, init_type, line, family)
             return var_type if isinstance(var_type, LiteralType) else pending
@@ -3577,6 +3651,7 @@ class StatementAnalyzer:
             var_type = self._infer_new_local_type(
                 stmt.name, var_type, stmt.init, init_type,
                 line=(stmt.loc.line if stmt.loc else None),
+                annotated=stmt.type is not None,
             )
             if isinstance(var_type, PendingViewType):
                 stmt.type = var_type
@@ -3665,28 +3740,57 @@ class StatementAnalyzer:
                     if root is not None:
                         bt.add_borrow(root, stmt.name, BorrowKind.PTR)
             elif is_span(var_type):
-                # Span from slicing borrows the source container
-                # (StrView excluded: str is immutable, no mutations to warn about)
+                # Span from slicing borrows the source container.
+                # (StrView/BytesView slices are handled in their own branch below.)
                 init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
                 if isinstance(init_inner, TpySubscript) and isinstance(init_inner.index, TpySlice):
                     root = _borrow_storage_root(init_inner)
                     if root is not None:
                         bt.add_borrow(root, stmt.name, BorrowKind.ELEMENT)
             elif is_str_view_type(var_type) or is_bytes_view_type(var_type):
+                init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
+                # An explicit view annotation bound to a temporary dangles: the
+                # backing storage dies at end-of-statement. Reject (an owned
+                # str/bytes annotation copies; an inferred local would promote).
+                # Locals only: a module global outlives the function, and a
+                # Final[str] constant is constexpr/static view storage.
+                if (not self.ctx.is_top_level and not stmt.is_final
+                        and _view_source_is_temporary(init_inner)):
+                    raise self.ctx.error(
+                        f"Cannot bind {var_type} '{stmt.name}' to a temporary view "
+                        f"source; the backing storage is destroyed at "
+                        f"end-of-statement -- annotate '{stmt.name}' as an owned "
+                        f"str/bytes to keep a copy",
+                        stmt,
+                    )
+                # A view from slicing a stable source borrows it: register the
+                # element borrow so a later in-place mutation of the source
+                # warns -- `s += ...` reallocates str's std::string buffer (and
+                # a bytearray resizes) just like a container, invalidating the
+                # view. Mirrors the Span-slice branch above.
+                if isinstance(init_inner, TpySubscript) and isinstance(init_inner.index, TpySlice):
+                    root = _borrow_storage_root(init_inner)
+                    if root is not None:
+                        bt.add_borrow(root, stmt.name, BorrowKind.ELEMENT)
                 # Pinned view annotation aliasing a name source: register so
                 # source reassignment warns. Pending views handle this via
                 # source_mutated fall-back; the explicit annotation can't
                 # fall back so we warn at the mutation site instead.
-                init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
                 if isinstance(init_inner, TpyName):
                     self.ctx.func.pinned_view_aliases.setdefault(
                         init_inner.name, set()).add(stmt.name)
         # 8b: Register call result borrow for ALL assignments (including reassignments).
         # Unlike general alias tracking, borrow contracts use precise return_borrows_from
         # facts and don't need pointer-alias analysis -- safe to apply to reassigned vars.
+        # Views are value types in C++ but still carry a reference into foreign
+        # storage, so a view local borrows its source exactly like a non-value
+        # local does -- include them so `v = a.strip()` registers the receiver
+        # borrow (drives the temp-receiver warning and the mutate-while-borrowed
+        # check on a later `a += ...`).
         if (stmt.init is not None
                 and var_type is not None
-                and not var_type.is_value_type()):
+                and (not var_type.is_value_type()
+                     or is_borrowing_view_type(unwrap_readonly(var_type)))):
             init_unwrapped = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
             _register_call_result_borrow(self.ctx, stmt.name, init_unwrapped)
             # A non-const local alias of an @auto_readonly accessor result needs a
@@ -4887,6 +4991,9 @@ class StatementAnalyzer:
                         stmt,
                     )
             self.ctx.mark_all_view_borrowers_mutated(storage)
+            # Aug-assign reallocates the buffer just as a rebind does, so it
+            # invalidates pinned views of this name (symmetric with plain assign).
+            _handle_pinned_view_rebind(self.ctx, stmt.target.name, stmt)
         if (
             isinstance(stmt.target, TpyName)
             and is_big_int_type(target_type)

@@ -27,7 +27,8 @@ from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyStrLiteral, TpyBytesLiteral,
-    TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyLambda, TpyNamedExpr, SourceLocation
+    TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyLambda, TpyNamedExpr, TpyFString,
+    SourceLocation
 )
 
 
@@ -53,6 +54,7 @@ from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_varargs, is_span_iter, is_list,
     is_str_view_type, is_bytes_view_type, is_borrowing_view_type, int_traits_of,
     is_big_int_type, is_str_category, is_bytes_category, is_str_type, is_string_type,
+    is_bytes_type, is_bytearray_type,
     protocol_info_of,
 )
 from .overloads import type_matches_numeric
@@ -2215,6 +2217,11 @@ class TypeCompatibility:
         if isinstance(expr, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
             return True
 
+        # f-string always materializes a fresh std::string temporary, so a view
+        # of it (`return f"..."` as StrView, or `f"..."[a:b]`) dangles.
+        if isinstance(expr, TpyFString):
+            return True
+
         # List repeat - creates temporary
         if isinstance(expr, TpyListRepeat):
             return True
@@ -2241,7 +2248,8 @@ class TypeCompatibility:
             if expr.call_type is not None:
                 return True
 
-            # Expression callees return temporaries (not dangling)
+            # Expression callees (e.g. a call through a returned callable) yield a
+            # temporary we cannot prove outlives the return -- treat as dangling.
             if not isinstance(expr.func, TpyName):
                 return True
 
@@ -2267,7 +2275,8 @@ class TypeCompatibility:
 
             # A function returning owned str/String creates a temporary
             # std::string that dangles if returned as StrView.
-            if fi is not None and (is_str_type(fi.return_type) or is_string_type(fi.return_type)):
+            if fi is not None and (is_str_type(fi.return_type) or is_string_type(fi.return_type)
+                                   or is_bytes_type(fi.return_type) or is_bytearray_type(fi.return_type)):
                 return True
 
             # Regular function call - assume it returns something safe
@@ -2294,7 +2303,8 @@ class TypeCompatibility:
         # std::string that dangles if returned as StrView.
         if isinstance(expr, TpyMethodCall):
             fi = expr.resolved_function_info
-            if fi is not None and (is_str_type(fi.return_type) or is_string_type(fi.return_type)):
+            if fi is not None and (is_str_type(fi.return_type) or is_string_type(fi.return_type)
+                                   or is_bytes_type(fi.return_type) or is_bytearray_type(fi.return_type)):
                 return True
             # A user method returning Own[T] creates a by-value temporary;
             # taking its address (the Optional pointer-repr return path) would
@@ -2325,6 +2335,16 @@ class TypeCompatibility:
 
         # Unary/Binary ops - might create temporaries, be conservative
         if isinstance(expr, (TpyUnaryOp, TpyBinOp)):
+            return True
+
+        # Fail closed: an unrecognized expression kind that produces a borrowing
+        # view (str/bytes view, span) is of unknown provenance, so treat it as
+        # dangling rather than silently safe -- otherwise the next new node kind
+        # recreates the view-lifetime hole under fresh syntax. Recognized kinds
+        # with defined provenance (names, calls, methods, subscripts, ...) return
+        # above; only genuinely-unhandled view-typed exprs reach here.
+        expr_type = self.ctx.get_expr_type(expr)
+        if expr_type is not None and is_borrowing_view_type(unwrap_readonly(expr_type)):
             return True
 
         # Default: assume safe

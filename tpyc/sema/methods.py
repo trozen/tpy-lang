@@ -21,7 +21,7 @@ from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyExprStmt, TpyStrLiteral, TpyStmt,
     TpyLambda, TpyStarUnpack,
     is_docstring,
-    TpyFString, TpyExpr,
+    TpyFString, TpyExpr, TpyCoerce,
     is_super_del_call,
 )
 from ..namespace import BindingKind
@@ -29,7 +29,7 @@ from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
 from .narrowing import deref_view_narrowed
 from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
-from ..type_def_registry import is_list, is_fstr_type
+from ..type_def_registry import is_list, is_set, is_fstr_type, is_borrowing_view_type
 from .overloads import resolve_overload, OverloadAmbiguityError
 from .bound_check import raise_if_class_param_bound_violated
 from .calls import (
@@ -39,7 +39,10 @@ from .calls import (
     resolve_inferred_type_arg,
 )
 from .type_ops import seeded_arg_hint
-from .statements import _root_name_of_expr, _is_self_call_deferred, _local_traces_to_self
+from .statements import (
+    _root_name_of_expr, _is_self_call_deferred, _local_traces_to_self,
+    _view_source_is_temporary,
+)
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -52,6 +55,11 @@ if TYPE_CHECKING:
     from ..typesys import PendingGenericInstanceInfo
 
 from .context import _storage_key
+
+
+# Single-element container inserts and the arg index that lands in element
+# storage -- used to reject a temporary rvalue stored into a view-typed element.
+_VIEW_ELEM_INSERTS = {"append": 0, "add": 0, "insert": 1}
 
 
 def _unresolved_params_in_type(typ: TpyType, inferred: dict[str, TpyType], param_names: set[str]) -> list[str]:
@@ -758,6 +766,30 @@ class MethodAnalyzer:
                 lambda elem, lid: PendingSetType(elem, lid),
                 self.ctx.set_literals,
             ) or obj_type
+
+        # Reject storing a temporary rvalue into a view-typed container element
+        # (list[StrView].append(make()), set[BytesView].add(...), list.insert):
+        # the temporary dies at end-of-statement, leaving the container -- which
+        # outlives the statement -- a dangling view. Param passing is safe (the
+        # temp outlives the call); only durable element storage is the hazard.
+        # Narrow to rvalue temporaries: a param/local-derived view stored into an
+        # escaping container is the deeper field-lifetime gap (tracked in BUGS.md).
+        if (expr.method in _VIEW_ELEM_INSERTS
+                and (is_list(obj_type) or is_set(obj_type)
+                     or isinstance(obj_type, (PendingListType, PendingSetType)))):
+            elem_t = obj_type.get_element_type()
+            ai = _VIEW_ELEM_INSERTS[expr.method]
+            if (elem_t is not None and is_borrowing_view_type(unwrap_readonly(elem_t))
+                    and ai < len(expr.args)):
+                arg = expr.args[ai]
+                if _view_source_is_temporary(
+                        arg.expr if isinstance(arg, TpyCoerce) else arg):
+                    raise self.ctx.error(
+                        f"Cannot store a temporary in '{expr.method}' on a "
+                        f"{elem_t} container; the backing storage is destroyed at "
+                        f"end-of-statement -- store an owned str/bytes element",
+                        expr,
+                    )
 
         # Borrow conflict: structural mutation on a container with element-level borrows.
         # Resolves aliases so that alias.append() warns when items has element borrows.

@@ -1,0 +1,1 @@
+main.py:11: error: Cannot bind BytesView 'v' to a temporary view source; the backing storage is destroyed at end-of-statement -- annotate 'v' as an owned str/bytes to keep a copy
