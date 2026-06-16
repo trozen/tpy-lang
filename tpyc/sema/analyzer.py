@@ -92,7 +92,7 @@ from ..parse.resolve_refs import (
 )
 from .macros import _promote_method_signature
 from .builder_trace import BuilderTraceExpander
-from .function_macros import run_function_macros
+from .function_macros import run_function_macros, run_deferred_sema_macros
 from ..symbol_binding import (
     SymbolKind, install_binding, lookup_imported, protocol_kind_for,
     is_macro_kind, is_kind, walk_attribute_chain, resolve_definer,
@@ -788,13 +788,12 @@ class SemanticAnalyzer:
         for func in module.functions:
             if func.is_inline and not func.is_stub:
                 func.skip_codegen = True
-                continue
-            # Bodied @overload stubs (mode b) carry their own body that needs
-            # analysis just like a regular function; bodyless @overload stubs
-            # are handled via their trailing implementation.
-            if func.is_overload_stub and func.is_stub:
+            if self._skip_body_analysis(func):
                 continue
             self._analyze_function(func)
+        # Drain post-sema deferred function macros now, while this module's
+        # expr_types are populated -- they read inferred types Pass 7 just set.
+        self._drain_deferred_sema_macros(module)
         self._advance_phase(
             self._PHASE_REGISTER_SIGNATURES,
             self._PHASE_ANALYZE_BODIES,
@@ -3638,6 +3637,28 @@ class SemanticAnalyzer:
         for func in list(module.functions):
             run_function_macros(func, self.ctx, self.ctx.module_name,
                                 module_data=module.macro_data)
+
+    def _skip_body_analysis(self, func: TpyFunction) -> bool:
+        """Functions Pass 7 does not analyze, so their expr_types stay empty:
+        bodyless @overload stubs (handled via their trailing implementation)
+        and @inline functions (inlined at call sites, not emitted standalone).
+        """
+        return ((func.is_inline and not func.is_stub)
+                or (func.is_overload_stub and func.is_stub))
+
+    def _drain_deferred_sema_macros(self, module: TpyModule) -> None:
+        """Post-pass-7: run callbacks a macro deferred via
+        ctx.defer_until_sema_complete. They run here -- after every body in
+        the module is type-checked -- so they can read inferred expression
+        types (absent at pass 5.5 when the macro itself ran). Skip functions
+        whose body Pass 7 never analyzed, so a callback never reads empty
+        expr_types.
+        """
+        for func in list(module.functions):
+            if self._skip_body_analysis(func):
+                continue
+            run_deferred_sema_macros(func, self.ctx, self.ctx.module_name,
+                                     module_data=module.macro_data)
 
     def _expand_builder_traces(self, module: TpyModule) -> None:
         """Pass 5.5: walk every record-method body and free-function body

@@ -5,20 +5,19 @@ Call kwargs live in a `dict[str, TpyExpr]` field; this verifies the
 replace_expr walker descends into dict-valued fields (regression guard for
 the kwargs-unreachable gap).
 """
-from tpyc.macro_api import function_macro, FunctionMacroContext, ast, StrLiteral
+from tpyc.macro_api import (
+    function_macro, FunctionMacroContext, ast, StrLiteral, VarDecl, TpyCall,
+)
 
 
 @function_macro
 def kwarg_bool(ctx: FunctionMacroContext) -> None:
     # Collect string-literal bool kwargs first, then replace (avoid mutating
-    # a kwargs dict mid-iteration). `init`/`kwargs` reached generically so the
-    # macro needs no call-node alias.
+    # a kwargs dict mid-iteration).
     targets = []
     for stmt in ctx.body:
-        init = getattr(stmt, "init", None)
-        kwargs = getattr(init, "kwargs", None)
-        if isinstance(kwargs, dict):
-            for v in kwargs.values():
+        if isinstance(stmt, VarDecl) and isinstance(stmt.init, TpyCall):
+            for v in stmt.init.kwargs.values():
                 if isinstance(v, StrLiteral) and v.value in ("true", "false"):
                     targets.append(v)
     for v in targets:

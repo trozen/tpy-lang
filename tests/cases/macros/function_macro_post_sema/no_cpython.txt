@@ -1,0 +1,1 @@
+post-sema macro_module: combine() compiles only as compiled TPy

@@ -730,7 +730,7 @@ class FunctionMacroContext(_MacroContextBase):
         t = _resolve_concrete_type_name(name)
         return TypeInfo.from_tpy_type(t) if t is not None else None
 
-    def annotate_local(self, name: str, type_info: TypeInfo) -> None:
+    def annotate_local(self, name: str, type_info: TypeInfo | None) -> None:
         """Give a local a declared type at its introducing statement so sema
         type-checks the body with that type.
 
@@ -771,6 +771,55 @@ class FunctionMacroContext(_MacroContextBase):
         anywhere in the function body. Errors if `old` is not present."""
         if not _replace_in_body(self._func.body or [], old, new):
             self.error("replace_expr: node not found in function body")
+
+    def defer_until_sema_complete(
+        self, callback: Callable[['PostSemaFunctionMacroContext'], None],
+    ) -> None:
+        """Register a callback to run AFTER this function's body is
+        type-checked (post pass 7), not at macro-expansion time (pass 5.5).
+
+        The function-macro analog of ClassInfo.defer_until_macros_complete,
+        but drained a full inference pass later: use it when a macro's
+        decision needs inferred expression types -- which don't exist yet
+        when the macro itself runs. The callback receives a
+        PostSemaFunctionMacroContext bound to the same function, with
+        type_of()/set_expr_type() over the now-populated expr_types.
+        """
+        self._func.pending_deferred_sema_macros.append(callback)
+
+
+class PostSemaFunctionMacroContext(FunctionMacroContext):
+    """Context for a deferred function-macro callback (see
+    FunctionMacroContext.defer_until_sema_complete), running AFTER the
+    function body is type-checked.
+
+    Adds inferred-type access (type_of) and the obligation to type any node
+    it emits (set_expr_type). annotate_local is gone -- inference has already
+    run, so there is nothing left to influence. replace_expr still works, but
+    its contract differs from the pre-inference stage: sema will NOT re-type
+    the replacement, so the caller must set_expr_type every node it emits or
+    codegen (which reads expr_types per node) breaks.
+    """
+
+    def type_of(self, expr: TpyExpr) -> TypeInfo | None:
+        """Inferred type of an already-analyzed body expression, or None if
+        sema never typed it (e.g. a node the macro just created)."""
+        typ = self._ctx.get_expr_type(expr)
+        return TypeInfo.from_tpy_type(typ) if typ is not None else None
+
+    def set_expr_type(self, node: TpyExpr, type_info: TypeInfo | None) -> None:
+        """Record the type of a node this pass emitted. REQUIRED for every
+        emitted node: codegen reads expr_types per node and produces wrong
+        code (or crashes) for an untyped one."""
+        tpy_type = type_info._tpy_type if type_info is not None else None
+        if tpy_type is None:
+            self.error("set_expr_type: type has no underlying type")
+        self._ctx.set_expr_type(node, tpy_type)
+
+    def annotate_local(self, name: str, type_info: TypeInfo) -> None:
+        self.error(
+            "annotate_local is not available post-sema (inference has already "
+            "run); set_expr_type the emitted node instead")
 
 
 # ---------------------------------------------------------------------------

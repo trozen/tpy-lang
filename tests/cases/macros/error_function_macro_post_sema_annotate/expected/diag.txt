@@ -1,0 +1,1 @@
+main.py:8: error: annotate_local is not available post-sema (inference has already run); set_expr_type the emitted node instead

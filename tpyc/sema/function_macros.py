@@ -14,7 +14,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
-from ..macro_api import FunctionMacroContext, MacroError
+from ..macro_api import (
+    FunctionMacroContext, PostSemaFunctionMacroContext, MacroError,
+)
 from ..diagnostics import SemanticError
 
 if TYPE_CHECKING:
@@ -61,3 +63,38 @@ def run_function_macros(
             raise SemanticError(
                 f"{qname}(): function macro raised {type(e).__name__}: {e}",
                 func.loc) from e
+
+
+def run_deferred_sema_macros(
+    func: 'TpyFunction', ctx: 'SemanticContext', module_qname: str,
+    module_data: 'Any' = None,
+) -> None:
+    """Drain callbacks registered via ctx.defer_until_sema_complete on `func`,
+    AFTER its body has been type-checked (post pass 7).
+
+    Each callback gets a PostSemaFunctionMacroContext with inferred-type
+    access. Drains the list before iterating so a callback that re-defers is
+    a hard error (mirrors the class-macro deferred runner) rather than a
+    silent loop. No-op when nothing was deferred.
+    """
+    callbacks = func.pending_deferred_sema_macros
+    if not callbacks:
+        return
+    func.pending_deferred_sema_macros = []
+    for callback in callbacks:
+        pmctx = PostSemaFunctionMacroContext(
+            ctx, func, module_qname, module_data=module_data)
+        try:
+            callback(pmctx)
+        except MacroError as e:
+            raise SemanticError(str(e), e.loc or func.loc) from e
+        except SemanticError:
+            raise
+        except Exception as e:
+            raise SemanticError(
+                f"deferred sema macro raised {type(e).__name__}: {e}",
+                func.loc) from e
+        if func.pending_deferred_sema_macros:
+            raise SemanticError(
+                "deferred sema macro registered another deferred callback "
+                "(not supported)", func.loc)

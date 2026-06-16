@@ -1,0 +1,1 @@
+main.py:8: error: deferred sema macro registered another deferred callback (not supported)

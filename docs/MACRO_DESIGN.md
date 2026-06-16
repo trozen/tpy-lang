@@ -680,6 +680,37 @@ field and method-return introspection on a *resolved* type (param/return). Not
 yet built: `is_subtype_of` and method-body function macros. Motivating use case
 driving the remaining work is local-variable type deduction.
 
+#### Deferred post-sema phase
+
+Pass 5.5 runs *before* the body is type-checked, so `ctx` cannot read inferred
+expression types -- `expr_types` is empty there. A macro whose decision needs
+those types (e.g. dispatch on an argument's inferred type) calls
+`ctx.defer_until_sema_complete(callback)` to schedule a second callback that
+runs *after* pass 7 (every body in the module type-checked). This is the
+function-macro analog of `ClassInfo.defer_until_macros_complete`, drained one
+inference pass later by `SemanticAnalyzer._drain_deferred_sema_macros` via
+`run_deferred_sema_macros`.
+
+The callback receives a `PostSemaFunctionMacroContext` bound to the same
+function:
+
+- `type_of(expr)` -- the inferred `TypeInfo` of an already-analyzed body
+  expression, or `None` if sema never typed it (e.g. a node the callback just
+  created).
+- `set_expr_type(node, type)` -- record the type of a node the callback emits.
+  **Required for every emitted node:** sema will not re-type post-sema
+  insertions, and codegen reads `expr_types` per node, so an untyped node
+  produces wrong code or crashes. A forgotten `set_expr_type` does NOT surface
+  as a macro-site diagnostic -- it fails later in codegen with no pointer back
+  to the callback (unlike a pre-sema macro, whose bad node errors at its own
+  span). Type every node you emit.
+- `replace_expr` carries over from the pre-inference context, but with the
+  added `set_expr_type` obligation (see above). `annotate_local` is disabled --
+  inference has already run, so there is nothing left to influence.
+
+A callback may not itself defer again (the drain runs once); doing so is an
+error.
+
 ## Execution Model
 
 ### Current (compiler in Python)

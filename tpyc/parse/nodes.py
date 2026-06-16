@@ -1363,6 +1363,10 @@ class TpyFunction:
     # Unrecognized decorators on a free function, resolved as @function_macro
     # at sema time (mirrors TpyRecord.pending_macros). (qname, kwargs) pairs.
     pending_macros: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
+    # Closures registered via ctx.defer_until_sema_complete during pass 5.5;
+    # drained after this function's body is type-checked so they can read
+    # inferred expression types (which don't exist yet at macro-expansion time).
+    pending_deferred_sema_macros: list[Any] = field(default_factory=list)
     loc: SourceLocation | None = None
 
     @property
