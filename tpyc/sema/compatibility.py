@@ -672,6 +672,20 @@ class TypeCompatibility:
                 result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
                 if not isinstance(result, CompatError):
                     return result
+            # A concrete container variable whose elements would each fit a union
+            # member is NOT implicitly converted: an element-wise rebuild into the
+            # wrapper representation is a hidden O(n) deep copy, which TPy declines
+            # to insert silently (an aliasing reference type would also diverge
+            # from CPython). Point at the explicit alternatives rather than the
+            # bare type-mismatch. (Container literals are unaffected -- they
+            # materialize into the wrapper directly.)
+            if self.deep_convertible_to_union(actual_unwrapped, expected):
+                return CompatError(
+                    f"Type mismatch in {context}: a concrete container ({actual}) "
+                    f"is not implicitly converted into the recursive-union type "
+                    f"{expected} (it would be a hidden element-wise deep copy). "
+                    f"Build it as the alias directly (`x: {expected} = {{...}}`) or "
+                    f"pass a container literal.", loc)
             return CompatError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
 
         # T -> Optional[T]: implicit wrapping
@@ -1863,6 +1877,61 @@ class TypeCompatibility:
             return False
         bound = self.type_ops.get_type_param_bound(typ.name)
         return bound is not None and isinstance(bound, NominalType) and bound.qualified_name() == "tpy.ValueType"
+
+    def deep_convertible_to_union(self, actual: TpyType, union: TpyType) -> bool:
+        """Whether a concrete list/dict's (possibly nested) leaves would each
+        coerce to a member of the recursive-union wrapper `union` -- i.e. the
+        container could in principle be element-wise rebuilt into it. Pure
+        check, no side effects. Used only to drive a clear rejection diagnostic:
+        TPy does NOT implicitly convert (that would be a hidden O(n) deep copy);
+        the user must build the value as the alias or pass a literal."""
+        members: 'tuple[TpyType, ...] | None' = None
+        if isinstance(union, UnionType):
+            members = union.members
+        elif isinstance(union, RecursiveAliasInstanceType):
+            members = union.alternatives()
+        if members is None:
+            return False
+        # A list literal local is still a PendingListType at call-analysis time
+        # (list-vs-Array is decided at end-of-function); both resolutions rebuild
+        # into the union's list member, so accept either.
+        if is_list(actual) or is_array(actual) or isinstance(actual, PendingListType):
+            if not any(is_list(m) for m in members):
+                return False
+            elem = (actual.element_type if isinstance(actual, PendingListType)
+                    else actual.get_element_type())
+            return self._elem_convertible_to_union(elem, union)
+        if is_dict(actual) or isinstance(actual, PendingDictType):
+            dict_member = next((m for m in members if is_dict(m) and m.type_args), None)
+            if dict_member is None:
+                return False
+            if isinstance(actual, PendingDictType):
+                key_t, val_t = actual.key_type, actual.value_type
+            elif actual.type_args:
+                key_t, val_t = actual.type_args[0], actual.type_args[1]
+            else:
+                return False
+            # The union's dict member fixes the key type (e.g. str); the value
+            # is what gets deep-converted, so only the key must already match.
+            if key_t != dict_member.type_args[0]:
+                return False
+            return self._elem_convertible_to_union(val_t, union)
+        return False
+
+    def _elem_convertible_to_union(self, elem: TpyType, union: TpyType) -> bool:
+        if (is_list(elem) or is_dict(elem) or is_array(elem)
+                or isinstance(elem, (PendingListType, PendingDictType))):
+            return self.deep_convertible_to_union(elem, union)
+        # A rebuild is only NEEDED when the leaf is not already the union: a
+        # literal materialized against the union hint already has union-typed
+        # elements (no conversion, handled by the literal path), whereas a
+        # concrete container variable (e.g. dict[str, Int32]) has a genuinely
+        # different element. The leaf must also coerce to a union member.
+        # `_check_compat` with no source_expr has no side effects.
+        if self._resolve_recursive_refs(elem) == union:
+            return False
+        return not isinstance(
+            self._check_compat(elem, union, "deep-union leaf"), CompatError)
 
     def _check_union_member_type_args(
         self, actual: NominalType, expected: NominalType,

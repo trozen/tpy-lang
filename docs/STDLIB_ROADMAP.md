@@ -535,7 +535,7 @@ all primitive types and nested containers (verified via the cpy phase in
 | Item | Status | Notes |
 |---|---|---|
 | `loads(s)` | Done | Returns `Own[JsonValue]`. Raises `JSONDecodeError` on malformed input or trailing data. |
-| `dumps(obj, *, indent, sort_keys)` | Done | `indent` and `sort_keys` kwargs supported. CPython byte-compatible for ASCII. Raw list/dict literals (incl. empty `[]`/`{}`, `None` elements, and arbitrary nesting) serialize without importing `JsonValue`. Known input gaps (see BUGS.md): a concrete `list`/`dict` *variable* (e.g. `dict[str, Int32]`) needs `: JsonValue` annotation; a `tuple` arg is rejected. |
+| `dumps(obj, *, indent, sort_keys)` | Done | `indent` and `sort_keys` kwargs supported. CPython byte-compatible for ASCII. Raw list/dict literals (incl. empty `[]`/`{}`, `None` elements, and arbitrary nesting) serialize without importing `JsonValue`. A concrete `list`/`dict` *variable* (e.g. `dict[str, Int32]`) is **intentionally not** implicitly converted -- that would be a silent O(n) deep copy into the wrapper representation; the compiler rejects it with a diagnostic (build as `d: JsonValue = {...}` or pass a literal). The zero-copy fix is in-place serialization of typed shapes (planned -- see TODO.md). Known input gap (see BUGS.md): a `tuple` arg is rejected. |
 | `JSONDecodeError` | Done | Subclasses `ValueError` (matches CPython). Thrown via normal `try`/`except`. Carries `msg`, `doc`, `pos`, `lineno`, `colno`. |
 | `load(fp)` | Done | `load(fp: Readable)` == `loads(fp.read())`. Accepts any text file object (`io.StringIO`, `open()`'s `TextIO`). |
 | `dump(obj, fp)` | Done | `dump(obj, fp: Writable, *, indent, sort_keys)` == `fp.write(dumps(obj, ...))`. |
