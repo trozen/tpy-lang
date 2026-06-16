@@ -163,8 +163,7 @@ void test_or_with_literal() {
     // a: Int32 = 0
     int32_t a = 0;
     // x = a or 99  # tpyc: type(Int32)
-    auto&& __tmp_3 = 99;
-    int32_t x = (a ? a : __tmp_3);
+    int32_t x = (a ? a : 99);
     // print(x)
     std::cout << x << "\n";
 }
@@ -281,15 +280,15 @@ void test_record_or_constructor() {
     // zero: Counter = Counter(0)
     Counter zero = Counter(0);
     // x = zero or Counter(5)
-    auto&& __tmp_4 = Counter(5);
-    Counter& x = (::tpy::__bool__(zero) ? zero : __tmp_4);
+    std::optional<Counter> __logical_slot_3;
+    Counter& x = (*(::tpy::__bool__(zero) ? &(zero) : (__logical_slot_3.emplace(Counter(5)), &*__logical_slot_3)));
     // print(x.count)
     std::cout << x.count << "\n";
     // five: Counter = Counter(5)
     Counter five = Counter(5);
     // y = five and Counter(0)
-    auto&& __tmp_5 = Counter(0);
-    Counter& y = (::tpy::__bool__(five) ? __tmp_5 : five);
+    std::optional<Counter> __logical_slot_4;
+    Counter& y = (*(::tpy::__bool__(five) ? (__logical_slot_4.emplace(Counter(0)), &*__logical_slot_4) : &(five)));
     // print(y.count)
     std::cout << y.count << "\n";
 }
@@ -333,28 +332,24 @@ void test_annotated() {
 // def test_literal_or_literal() -> None:
 void test_literal_or_literal() {
     // x = 0 or 1  # tpyc: type(Int32)
-    auto&& __tmp_6 = 0;
-    auto&& __tmp_7 = 1;
-    int32_t x = (__tmp_6 ? __tmp_6 : __tmp_7);
+    auto&& __tmp_5 = 0;
+    int32_t x = (__tmp_5 ? __tmp_5 : 1);
     // print(x)
     std::cout << x << "\n";
     // y = 3 and 0  # tpyc: type(Int32)
-    auto&& __tmp_8 = 3;
-    auto&& __tmp_9 = 0;
-    int32_t y = (__tmp_8 ? __tmp_9 : __tmp_8);
+    auto&& __tmp_6 = 3;
+    int32_t y = (__tmp_6 ? 0 : __tmp_6);
     // print(y)
     std::cout << y << "\n";
     // # Annotated as int (BigInt) -- annotation drives the type
     // xi: int = 0 or 1  # tpyc: type(int)
-    auto&& __tmp_10 = 0;
-    auto&& __tmp_11 = 1;
-    ::tpy::BigInt xi = ::tpy::BigInt((__tmp_10 ? __tmp_10 : __tmp_11));
+    auto&& __tmp_7 = 0;
+    ::tpy::BigInt xi = ::tpy::BigInt((__tmp_7 ? __tmp_7 : 1));
     // print(xi)
     std::cout << xi << "\n";
     // yi: int = 3 and 0  # tpyc: type(int)
-    auto&& __tmp_12 = 3;
-    auto&& __tmp_13 = 0;
-    ::tpy::BigInt yi = ::tpy::BigInt((__tmp_12 ? __tmp_13 : __tmp_12));
+    auto&& __tmp_8 = 3;
+    ::tpy::BigInt yi = ::tpy::BigInt((__tmp_8 ? 0 : __tmp_8));
     // print(yi)
     std::cout << yi << "\n";
 }

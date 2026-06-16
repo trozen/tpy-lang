@@ -20,8 +20,7 @@ std::string ternary(std::vector<std::string>& c, std::vector<std::string>& d, bo
 std::string or_chain(std::vector<std::string>& c, const std::vector<std::string>& d) {
     // x = c[0] or d[0]  # tpyc: type(str)
     auto&& __tmp_1 = ::tpy::__getitem__(c, 0);
-    auto&& __tmp_2 = ::tpy::__getitem__(d, 0);
-    std::string x = ((!__tmp_1.empty()) ? __tmp_1 : __tmp_2);
+    std::string x = ((!__tmp_1.empty()) ? __tmp_1 : ::tpy::__getitem__(d, 0));
     // c.append("padding long enough to force the backing vector to reallocate")
     c.push_back("padding long enough to force the backing vector to reallocate");
     // return x
@@ -31,9 +30,8 @@ std::string or_chain(std::vector<std::string>& c, const std::vector<std::string>
 // def and_chain(c: list[str], d: list[str]) -> str:
 std::string and_chain(std::vector<std::string>& c, std::vector<std::string>& d) {
     // x = c[0] and d[0]  # tpyc: type(str)
-    auto&& __tmp_3 = ::tpy::__getitem__(c, 0);
-    auto&& __tmp_4 = ::tpy::__getitem__(d, 0);
-    std::string x = ((!__tmp_3.empty()) ? __tmp_4 : __tmp_3);
+    auto&& __tmp_2 = ::tpy::__getitem__(c, 0);
+    std::string x = ((!__tmp_2.empty()) ? ::tpy::__getitem__(d, 0) : __tmp_2);
     // c.append("padding long enough to force the backing vector to reallocate")
     c.push_back("padding long enough to force the backing vector to reallocate");
     // d.append("padding long enough to force the backing vector to reallocate")
@@ -45,9 +43,8 @@ std::string and_chain(std::vector<std::string>& c, std::vector<std::string>& d) 
 // def nested(c: list[str], d: list[str], e: list[str], cond: bool) -> str:
 std::string nested(const std::vector<std::string>& c, std::vector<std::string>& d, const std::vector<std::string>& e, bool cond) {
     // x = (c[0] if cond else d[0]) or e[0]  # tpyc: type(str)
-    auto&& __tmp_5 = ((cond) ? (::tpy::__getitem__(c, 0)) : (::tpy::__getitem__(d, 0)));
-    auto&& __tmp_6 = ::tpy::__getitem__(e, 0);
-    std::string x = ((!__tmp_5.empty()) ? __tmp_5 : __tmp_6);
+    auto&& __tmp_3 = ((cond) ? (::tpy::__getitem__(c, 0)) : (::tpy::__getitem__(d, 0)));
+    std::string x = ((!__tmp_3.empty()) ? __tmp_3 : ::tpy::__getitem__(e, 0));
     // d.append("padding long enough to force the backing vector to reallocate")
     d.push_back("padding long enough to force the backing vector to reallocate");
     // return x
@@ -77,30 +74,30 @@ std::string field_arm(Rec& r, const Rec& t, bool cond) {
 // def main() -> None:
 void main() {
     // print(ternary(["alpha"], ["beta"], True))
-    std::vector<std::string> __tmp_7 = {"alpha"};
-    std::vector<std::string> __tmp_8 = {"beta"};
-    std::cout << ternary(__tmp_7, __tmp_8, true) << "\n";
+    std::vector<std::string> __tmp_4 = {"alpha"};
+    std::vector<std::string> __tmp_5 = {"beta"};
+    std::cout << ternary(__tmp_4, __tmp_5, true) << "\n";
     // print(or_chain(["gamma"], ["delta"]))
-    std::vector<std::string> __tmp_9 = {"gamma"};
-    std::vector<std::string> __tmp_10 = {"delta"};
-    std::cout << or_chain(__tmp_9, __tmp_10) << "\n";
+    std::vector<std::string> __tmp_6 = {"gamma"};
+    std::vector<std::string> __tmp_7 = {"delta"};
+    std::cout << or_chain(__tmp_6, __tmp_7) << "\n";
     // print(and_chain(["epsilon"], ["zeta"]))
-    std::vector<std::string> __tmp_11 = {"epsilon"};
-    std::vector<std::string> __tmp_12 = {"zeta"};
-    std::cout << and_chain(__tmp_11, __tmp_12) << "\n";
+    std::vector<std::string> __tmp_8 = {"epsilon"};
+    std::vector<std::string> __tmp_9 = {"zeta"};
+    std::cout << and_chain(__tmp_8, __tmp_9) << "\n";
     // print(nested(["one"], ["two"], ["three"], False))
-    std::vector<std::string> __tmp_13 = {"one"};
-    std::vector<std::string> __tmp_14 = {"two"};
-    std::vector<std::string> __tmp_15 = {"three"};
-    std::cout << nested(__tmp_13, __tmp_14, __tmp_15, false) << "\n";
+    std::vector<std::string> __tmp_10 = {"one"};
+    std::vector<std::string> __tmp_11 = {"two"};
+    std::vector<std::string> __tmp_12 = {"three"};
+    std::cout << nested(__tmp_10, __tmp_11, __tmp_12, false) << "\n";
     // print(field_arm(Rec("eta"), Rec("theta"), True))
-    Rec __tmp_16 = Rec("eta");
-    Rec __tmp_17 = Rec("theta");
-    std::cout << field_arm(__tmp_16, __tmp_17, true) << "\n";
+    Rec __tmp_13 = Rec("eta");
+    Rec __tmp_14 = Rec("theta");
+    std::cout << field_arm(__tmp_13, __tmp_14, true) << "\n";
     // print(bytes_ternary([b"abcd"], [b"ef"], True))
-    std::vector<std::vector<uint8_t>> __tmp_18 = {std::vector<uint8_t>{0x61, 0x62, 0x63, 0x64}};
-    std::vector<std::vector<uint8_t>> __tmp_19 = {std::vector<uint8_t>{0x65, 0x66}};
-    std::cout << bytes_ternary(__tmp_18, __tmp_19, true) << "\n";
+    std::vector<std::vector<uint8_t>> __tmp_15 = {std::vector<uint8_t>{0x61, 0x62, 0x63, 0x64}};
+    std::vector<std::vector<uint8_t>> __tmp_16 = {std::vector<uint8_t>{0x65, 0x66}};
+    std::cout << bytes_ternary(__tmp_15, __tmp_16, true) << "\n";
 }
 
 void __tpy_init() {

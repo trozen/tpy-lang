@@ -33,14 +33,12 @@ void test_or(std::string_view a, std::string_view b) {
     // print(x)
     std::cout << x << "\n";
     // y = a or "default"  # tpyc: type(StrView)
-    std::string_view __tmp_1 = "default";
-    std::string_view y = ((!a.empty()) ? a : __tmp_1);
+    std::string_view y = ((!a.empty()) ? a : std::string_view("default"));
     // print(y)
     std::cout << y << "\n";
     // # One operand owned: falls back to std::string
     // z = a or str(42)  # tpyc: type(str)
-    auto&& __tmp_2 = ::tpy::fixed_to_str<int32_t>(42);
-    std::string z = ((!a.empty()) ? std::string(a) : __tmp_2);
+    std::string z = ((!a.empty()) ? std::string(a) : ::tpy::fixed_to_str<int32_t>(42));
     // print(z)
     std::cout << z << "\n";
 }
@@ -52,8 +50,8 @@ void test_and(std::string_view a, std::string_view b) {
     // print(x)
     std::cout << x << "\n";
     // y = "prefix" and b  # tpyc: type(StrView)
-    std::string_view __tmp_3 = "prefix";
-    std::string_view y = ((!__tmp_3.empty()) ? b : __tmp_3);
+    std::string_view __tmp_1 = "prefix";
+    std::string_view y = ((!__tmp_1.empty()) ? b : __tmp_1);
     // print(y)
     std::cout << y << "\n";
 }

@@ -31,9 +31,9 @@ void test_ternary(std::vector<int32_t>& a, std::vector<int32_t>& b, bool cond) {
 // def test_literal_or() -> None:
 void test_literal_or() {
     // x = [Int32(1), Int32(2)] or [Int32(3), Int32(4)]  # tpyc: type(list[Int32])
+    std::optional<std::vector<int32_t>> __logical_slot_2;
     auto&& __tmp_1 = std::vector<int32_t>{1, 2};
-    auto&& __tmp_2 = std::vector<int32_t>{3, 4};
-    std::vector<int32_t> x = ((::tpy::__len__(__tmp_1) != 0) ? __tmp_1 : __tmp_2);
+    std::vector<int32_t> x = (*((::tpy::__len__(__tmp_1) != 0) ? &(__tmp_1) : (__logical_slot_2.emplace(std::vector<int32_t>{3, 4}), &*__logical_slot_2)));
     // print(x)
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }
@@ -73,9 +73,9 @@ void test_int_literal_elements_or() {
     // # Plain int literals: [1, 2] and [3, 4] have different IntLiteralType elements
     // # but should still yield list[int] (default int type), not bool.
     // x = [1, 2] or [3, 4]  # tpyc: type(list[Int32])
+    std::optional<std::vector<int32_t>> __logical_slot_5;
     auto&& __tmp_4 = std::vector<int32_t>{1, 2};
-    auto&& __tmp_5 = std::vector<int32_t>{3, 4};
-    std::vector<int32_t> x = ((::tpy::__len__(__tmp_4) != 0) ? __tmp_4 : __tmp_5);
+    std::vector<int32_t> x = (*((::tpy::__len__(__tmp_4) != 0) ? &(__tmp_4) : (__logical_slot_5.emplace(std::vector<int32_t>{3, 4}), &*__logical_slot_5)));
     // print(x)
     std::cout << ::tpy::ListPrinter(x) << "\n";
 }

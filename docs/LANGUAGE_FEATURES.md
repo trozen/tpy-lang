@@ -3396,7 +3396,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Logical
 - **Working**: `and`, `or`, `not`
-- **Working**: `and`/`or` return operand value (Python semantics) when both operands have the same type, including `list[T]`, `dict[K,V]`, and `set[T]`. Mixed-type operands return `bool`. In condition context (`if`, `while`), always uses efficient C++ `&&`/`||`.
+- **Working**: `and`/`or` return operand value (Python semantics) when both operands have the same type, including `list[T]`, `dict[K,V]`, and `set[T]`. Mixed-type operands return `bool`. In condition context (`if`, `while`), always uses efficient C++ `&&`/`||`. Both contexts **short-circuit**: the unchosen operand is not evaluated (a fallible or side-effecting right operand runs only when reached), matching CPython.
 
 ### Bitwise
 - **Working**: `&`, `|`, `^`, `~`, `<<`, `>>`

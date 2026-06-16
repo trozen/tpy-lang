@@ -448,6 +448,17 @@ class TempState:
         self._pending.append((temp_name, cpp_type, init_expr, brace_init))
         return temp_name
 
+    def declare_named_auto(self, prefix: str, cpp_type: str, *, init: str | None = None) -> str:
+        """Register a uniquely-named hoisted declaration and return its name.
+
+        For a block-scoped slot that must outlive the expression referencing it
+        (e.g. the optional<T> backing a short-circuit pointer-select), where the
+        caller needs the generated name back rather than supplying it."""
+        self._counter += 1
+        name = f"{prefix}_{self._counter}"
+        self._pending_named.append((name, cpp_type, init, False))
+        return name
+
     def declare_named(self, name: str, cpp_type: str, *,
                       init: str | None = None, brace_init: bool = False) -> None:
         """Register a named pre-declaration (for walrus operator variables)."""

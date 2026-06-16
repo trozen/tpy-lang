@@ -23,8 +23,7 @@ void from_param(std::string_view a) {
 std::string from_param_return(std::string_view a) {
     // # return a or b where both are str params: result is string_view at runtime
     // x = a or "default"  # tpyc: type(str)
-    std::string_view __tmp_1 = "default";
-    std::string x = std::string(((!a.empty()) ? a : __tmp_1));
+    std::string x = std::string(((!a.empty()) ? a : std::string_view("default")));
     // x += "."
     x += ".";
     // return x

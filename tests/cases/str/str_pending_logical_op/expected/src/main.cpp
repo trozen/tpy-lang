@@ -32,8 +32,7 @@ void test_ternary(std::string_view a, std::string_view b, bool cond) {
 void test_literal_or() {
     // x = "hello" or "world"  # tpyc: type(StrView)
     std::string_view __tmp_1 = "hello";
-    std::string_view __tmp_2 = "world";
-    std::string_view x = ((!__tmp_1.empty()) ? __tmp_1 : __tmp_2);
+    std::string_view x = ((!__tmp_1.empty()) ? __tmp_1 : std::string_view("world"));
     // print(x)
     std::cout << x << "\n";
 }
@@ -72,8 +71,8 @@ void test_ternary_right_promotes() {
 void test_or_chain(std::string_view a, std::string_view b, std::string_view c) {
     // # Three-operand chain: (a or b) or c -- parsed left-associatively.
     // x = a or b or c  # tpyc: type(StrView)
-    auto&& __tmp_3 = ((!a.empty()) ? a : b);
-    std::string_view x = ((!__tmp_3.empty()) ? __tmp_3 : c);
+    auto&& __tmp_2 = ((!a.empty()) ? a : b);
+    std::string_view x = ((!__tmp_2.empty()) ? __tmp_2 : c);
     // print(x)
     std::cout << x << "\n";
 }
@@ -81,11 +80,9 @@ void test_or_chain(std::string_view a, std::string_view b, std::string_view c) {
 // def test_literal_or_chain() -> None:
 void test_literal_or_chain() {
     // x = "foo" or "bar" or "baz"  # tpyc: type(StrView)
-    std::string_view __tmp_4 = "foo";
-    std::string_view __tmp_5 = "bar";
-    auto&& __tmp_6 = ((!__tmp_4.empty()) ? __tmp_4 : __tmp_5);
-    std::string_view __tmp_7 = "baz";
-    std::string_view x = ((!__tmp_6.empty()) ? __tmp_6 : __tmp_7);
+    std::string_view __tmp_3 = "foo";
+    auto&& __tmp_4 = ((!__tmp_3.empty()) ? __tmp_3 : std::string_view("bar"));
+    std::string_view x = ((!__tmp_4.empty()) ? __tmp_4 : std::string_view("baz"));
     // print(x)
     std::cout << x << "\n";
 }
@@ -100,8 +97,8 @@ void test_or_chain_third_promotes() {
     // c = "!"
     std::string c = "!";
     // x = a or b or c  # tpyc: type(str)
-    auto&& __tmp_8 = ((!a.empty()) ? a : b);
-    std::string x = std::string(((!__tmp_8.empty()) ? __tmp_8 : std::string_view(c)));
+    auto&& __tmp_5 = ((!a.empty()) ? a : b);
+    std::string x = std::string(((!__tmp_5.empty()) ? __tmp_5 : std::string_view(c)));
     // c += "?"
     c += "?";
     // print(x)

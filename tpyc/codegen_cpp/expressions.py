@@ -1510,13 +1510,13 @@ class ExpressionGenerator:
     def _gen_logical_value(self, expr: TpyBinOp, result_type: TpyType) -> str:
         """Generate and/or with Python operand semantics (returns operand, not bool).
 
-        For variable operands (TpyName), uses the variable directly in both the
-        truthiness test and the ternary branch -- no temp needed.
-
-        For complex expressions (function calls, constructors), materializes
-        into an auto&& temp so both ternary branches are lvalue names. This
-        ensures the ternary is an lvalue and can bind to a reference, matching
-        Python's reference semantics for non-value types.
+        Short-circuits: the unchosen operand is evaluated only when its branch
+        is taken. The LHS is always evaluated (a temp for non-names, reused by
+        the truthiness test). The RHS is inlined into the C++ ?: for value
+        results and lvalue-expression operands; for a non-value result with an
+        rvalue RHS (which must alias the chosen operand but isn't addressable),
+        a pointer-select materializes the rvalue lazily into a hoisted optional
+        slot and yields *ptr -- an lvalue for aliasing, evaluated only if chosen.
         """
         lhs_type = self.types.get_resolved_type(expr.left)
         use_lhs_temp = not isinstance(expr.left, TpyName)
@@ -1552,36 +1552,55 @@ class ExpressionGenerator:
             else:
                 self.ctx.narrowed_vars.pop(var_name, None)
 
-        # Materialize RHS rvalues into temps so both ternary branches are
-        # lvalues, avoiding dangling references for non-value types.
-        use_rhs_temp = not isinstance(expr.right, TpyName)
-        if use_rhs_temp:
-            rhs_type = self.types.get_resolved_type(expr.right)
-            if is_list(rhs_type) and isinstance(expr.right, TpyArrayLiteral):
-                right = f"{self.types.type_to_cpp(rhs_type)}{right}"
-            rhs_cpp = "std::string_view" if (
-                is_any_str_type(rhs_type) and isinstance(expr.right, TpyStrLiteral)
-            ) else "auto&&"
-            rhs_ref = self.ctx.temps.create_typed(rhs_cpp, right)
-        else:
-            rhs_ref = right
+        rhs_type = self.types.get_resolved_type(expr.right)
+        if not isinstance(expr.right, TpyName) and is_list(rhs_type) and isinstance(expr.right, TpyArrayLiteral):
+            right = f"{self.types.type_to_cpp(rhs_type)}{right}"
 
+        # A non-value result is reference-bound (it aliases the chosen operand),
+        # which needs an lvalue. An rvalue RHS (constructor / by-value call) is
+        # not addressable, so lower to a pointer-select: choose &lhs or, lazily
+        # in the not-taken branch, materialize the rvalue into a hoisted
+        # optional<T> slot and point at it -- `*ptr` is an lvalue for aliasing
+        # and the rvalue RHS is constructed ONLY when its branch is chosen
+        # (short-circuit preserved). The slot is hoisted (block scope) so it
+        # outlives the binding, like the auto&& temp it replaces.
+        needs_ptr_select = (
+            not isinstance(expr.right, TpyName)
+            and not result_type.is_value_type()
+            and self.ctx.is_rvalue_source(expr.right)
+        )
+        if needs_ptr_select:
+            slot = self.ctx.temps.declare_named_auto(
+                "__logical_slot", f"std::optional<{self.types.type_to_cpp(result_type)}>")
+            lhs_ptr = f"&({lhs_ref})"
+            rhs_ptr = f"({slot}.emplace({right}), &*{slot})"
+            if expr.op == "||":
+                return f"(*({truthy} ? {lhs_ptr} : {rhs_ptr}))"
+            return f"(*({truthy} ? {rhs_ptr} : {lhs_ptr}))"
+
+        # Otherwise inline the RHS into the ternary branch so and/or
+        # short-circuits: the C++ ?: evaluates only the chosen branch (mirrors
+        # _gen_if_expr). A pre-declared temp would evaluate it eagerly, breaking
+        # Python's short-circuit. Value results copy out; a non-value lvalue RHS
+        # (name / subscript / field) is already an lvalue, so the ternary stays
+        # an lvalue and aliases correctly.
+        if not isinstance(expr.right, TpyName) and (
+                is_any_str_type(rhs_type) and isinstance(expr.right, TpyStrLiteral)):
+            right = f"std::string_view({right})"
         lhs_branch = lhs_ref
-        rhs_branch = rhs_ref
+        rhs_branch = right
         # Only add explicit conversion when the two operands have different
         # C++ types from each other (e.g. one is string_view, other is string).
         # When they match, the ternary naturally produces their type and the
         # normal var decl handles any further conversion.
-        # Determine effective C++ type of each arm for mismatch detection.
         # Str params and str literals both produce string_view in this context
         # (_is_str_view_at_runtime returns True for both).
         lhs_cpp_cmp = ("std::string_view" if is_any_str_type(lhs_type)
                        and self._is_str_view_at_runtime(expr.left)
                        else self.types.type_to_cpp(lhs_type))
-        rhs_type_cmp = self.types.get_resolved_type(expr.right)
-        rhs_cpp_cmp = ("std::string_view" if is_any_str_type(rhs_type_cmp)
+        rhs_cpp_cmp = ("std::string_view" if is_any_str_type(rhs_type)
                        and self._is_str_view_at_runtime(expr.right)
-                       else self.types.type_to_cpp(rhs_type_cmp))
+                       else self.types.type_to_cpp(rhs_type))
         if lhs_cpp_cmp != rhs_cpp_cmp:
             cpp_result = self.types.type_to_cpp(result_type)
             if cpp_result != lhs_cpp_cmp:
