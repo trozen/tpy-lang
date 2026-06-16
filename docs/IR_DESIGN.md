@@ -1542,7 +1542,20 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    forms disagree (BUGS.md nested-tuple entries), rvalue tuple-of-records into
    borrow-form slots (BUGS.md rvalue address-of entry), the rvalue GENERIC
    tuple element gap, and the recursive-union-wrapper durable member (excluded
-   from the `T*` form). Each was/is handled by touching consumer-side dispatch
+   from the `T*` form). A particularly sharp exhibit is the `key=` lambda over
+   a generic-element tuple (`sorted(pairs, key=...)` /
+   `min(a, b, key=...)` where `pairs: list[tuple[T, Int32]]`): the lambda's
+   param form is reconstructed at its DEFINITION site, but the form it actually
+   needs is decided by the CONSUMER -- `builtin_sorted_key` calls `key(items[i])`
+   with a STORAGE-form element, while `min_key`/`max_key` are handed the
+   BORROW-form function args, so one lambda definition cannot satisfy both
+   consumers under the current model. (`min`/`max` additionally need a
+   borrow->storage RETURN conversion on the result.) Value-type keys (str/int)
+   compile because borrow and storage forms coincide; reference-type keys fail
+   the C++ build with no TPy diagnostic. With form as an explicit IR fact the
+   lambda param carries its consumer-dictated form and the conversion is a
+   visible node, not a definition-site guess. (BUGS.md key-lambda generic-element
+   entry.) Each of these was/is handled by touching consumer-side dispatch
    sites; the IR fact replaces all of it with explicit conversion nodes. THIR
    should make form an explicit type fact (either two distinct tuple types, or
    a form tag on one), so conversion sites become visible in the IR rather

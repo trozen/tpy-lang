@@ -1,0 +1,8 @@
+a 3
+c 2
+b 1
+2 a
+3 b
+1 c
+min: b 1
+max: a 3

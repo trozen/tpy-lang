@@ -3334,8 +3334,14 @@ class CallAnalyzer:
                 ptype = unwrap_ref_type(func.params[i].type)
                 concrete_hint = partial_substitute(ptype, partial_inferred)
                 if is_callable_type(concrete_hint):
+                    # Only the callee's OWN un-inferred type params block using
+                    # this hint to type the lambda; an enclosing-scope type
+                    # param (the caller's `T`, e.g. in `list[tuple[T, Int32]]`)
+                    # is a real in-scope type the lambda params can bind to.
+                    callee_unresolved = set(func.type_params) - set(partial_inferred.keys())
                     has_unresolved = any(
-                        contains_type_param(p) for p in concrete_hint.param_types
+                        contains_type_param(p, callee_unresolved)
+                        for p in concrete_hint.param_types
                     )
                     if not has_unresolved:
                         arg_types[i] = self.expr.analyze_expr_with_hint(

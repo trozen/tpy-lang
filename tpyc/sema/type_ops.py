@@ -1622,6 +1622,16 @@ class TypeOperations:
                 bound = func.type_param_bounds.get(tp)
                 if bound is None:
                     continue
+                # A type param that is an Fn-param's return (e.g. K in
+                # `key: Fn[[T], K]`) must stay unseeded so the lambda hint keeps
+                # the TypeParamRef; seeding it to its bound pre-empts body-type
+                # inference.
+                if any(
+                    is_callable_type(unwrap_ref_type(p.type))
+                    and contains_type_param(unwrap_ref_type(p.type).return_type, {tp})
+                    for p in func.params
+                ):
+                    continue
                 substituted = self.substitute_type_params(bound, seed)
                 if not contains_type_param(substituted):
                     seed[tp] = substituted

@@ -4703,6 +4703,8 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: Negative indexing for list, Array, Span: `items[-1]` (last element)
 - **Working**: `hash(x)` → `UInt64` hash value. Works on all `Hashable` types (str, int, fixed ints, float, bool, Char, Enum). Uses `tpy::__hash__()` free function dispatch.
 - **Working**: `abs()`, `min()`, `max()`, `pow()`, `round()`, `divmod()` for numeric types
+- **Working**: `sorted()` / `min()` / `max()` with a `key=` callable, including inside a generic function over a generic-element container (`def ranked[T](pairs: list[tuple[T, Int32]]): return sorted(pairs, key=lambda p: -p[1])`) for **value-type** keys (str/int/...). Sort is stable; `min`/`max` return the first element on a tie (CPython parity).
+  - **Limitation**: a `key=` lambda over a *reference-type* generic element (`T` a class/record) fails the C++ build (borrow-vs-storage tuple-form mismatch); see BUGS.md. Value-type keys are unaffected.
 - **Working**: `ord(c)` accepts `Char` (zero-cost) and `str` (runtime length-1 check; raises `TypeError` -- catchable -- with CPython-aligned `expected a character, but string of length N found`)
   - `round(x)` uses banker's rounding (round half to even, matching Python)
   - `round[T](x)` is generic: return type defaults to `default_int`, can be inferred from context
