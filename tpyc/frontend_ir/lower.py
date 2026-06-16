@@ -975,6 +975,12 @@ def _lower_function(
         native_name=native_name,
         native_function=native_function,
         is_stub=is_stub,
+        # An IR overload member mirrors a source `@overload`: sema groups
+        # same-named `is_overload_stub` functions and resolves by arg type.
+        # A bodied member keeps is_stub=False (the body IS its impl); a
+        # native member already set is_stub above. Both satisfy sema's
+        # has_implementation gate for an impl-less group.
+        is_overload_stub=fn.is_overload,
     )
 
 

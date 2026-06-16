@@ -626,6 +626,7 @@ class Function:
     body: tuple[Stmt, ...]
     decorators: tuple[Decorator, ...]
     is_method: bool = False
+    is_overload: bool = False   # member of a typing.overload group (see below)
 
 @dataclass
 class Field:
@@ -704,6 +705,20 @@ class Decorator:
 Decorators are allowed on `Function`, `Record`, `Enum`, `EnumValue`,
 `Field`, and `Constant`. Lowering decides what each decorator does
 based on the **decorator registry** (next section).
+
+#### Overload groups (`Function.is_overload`)
+
+`typing.overload` is not expressible as an IR decorator (there is no IR
+lowering for it), so a plugin flags overload members directly:
+`Function.is_overload = True`. Emit several **same-named** functions (free
+functions or methods on the same record), each flagged `is_overload` and each
+self-contained (a body, or a `tpy.native` binding), and the compiler treats
+them as one overload group --
+resolving a call by argument type at the call site, exactly like source-level
+`@overload` functions. Constraints mirror source overloads: each member needs
+a distinct parameter-type sequence (same params with a different return type is
+rejected), and there is no separate trailing implementation (each member is its
+own implementation). Distinct return types per member are allowed.
 
 ### Decorator registry and plugin manifest
 

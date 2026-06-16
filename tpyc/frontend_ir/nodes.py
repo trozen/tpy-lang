@@ -663,6 +663,14 @@ class Function:
     these directly onto the resulting `TpyFunction`. `property_name`
     on a setter names the property the setter belongs to (e.g. for
     `@foo.setter`, `property_name == 'foo'`).
+
+    `is_overload` marks the function as a member of a `typing.overload`
+    group without a decorator round-trip (the frontend IR has no IR
+    lowering for the `typing.overload` builtin decorator). Several
+    same-named free functions flagged `is_overload`, each self-contained
+    (a body or `@native`), form an overload set sema resolves by argument
+    type at the call site -- the same path source-level `@overload`
+    functions take.
     """
     kind: str = field(default="Function", init=False)
     name: str = ""
@@ -672,6 +680,7 @@ class Function:
     body: tuple[Stmt, ...] = ()
     decorators: tuple = ()
     is_method: bool = False
+    is_overload: bool = False
     is_property_getter: bool = False
     is_property_setter: bool = False
     property_name: str | None = None
