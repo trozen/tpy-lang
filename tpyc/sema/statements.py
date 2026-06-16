@@ -68,7 +68,7 @@ if TYPE_CHECKING:
 from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, register_binding_borrow, ephemeral_borrow_root
 from ..value_category import is_rvalue_source
 from .expressions import _collect_body_name_refs, _collect_body_local_defs, _find_list_member
-from .local_deduction import collect_pending_source_types
+from .local_deduction import collect_pending_source_types, walk_view_source_leaves
 from .type_ops import signature_may_return_borrow as _signature_may_return_borrow
 from tpyc import modules as builtin_modules
 from tpyc import qnames
@@ -2935,19 +2935,29 @@ class StatementAnalyzer:
             else:
                 is_owned = False
             # Track source storage for subscript/field views so that
-            # mutations on the source fall back to the owned type.
-            source_storage: str | None = None
+            # mutations on a source root fall the view back to the owned type.
+            # A compound source (ternary / and-or) borrows every owned-storage
+            # root reachable through its arms; mutating ANY of them must demote
+            # the view, so collect and register all roots, not just a single
+            # direct subscript/field (else a compound view silently dangles).
+            source_storages: list[str] = []
             if not is_owned and init_expr is not None:
-                unwrapped_init = init_expr.expr if isinstance(init_expr, TpyCoerce) else init_expr
-                if isinstance(unwrapped_init, (TpySubscript, TpyFieldAccess)):
-                    root = _borrow_storage_root(unwrapped_init)
-                    if root is not None:
-                        source_storage = self.ctx.func.borrow_tracker.effective_storage(root)
+                def _leaf_root(leaf: TpyExpr) -> list[str]:
+                    if isinstance(leaf, (TpySubscript, TpyFieldAccess)):
+                        root = _borrow_storage_root(leaf)
+                        if root is not None:
+                            return [self.ctx.func.borrow_tracker.effective_storage(root)]
+                    return []
+                seen: set[str] = set()
+                for storage in walk_view_source_leaves(init_expr, _leaf_root):
+                    if storage not in seen:
+                        seen.add(storage)
+                        source_storages.append(storage)
             info = ViewVarInfo(var_id=var_id, variable_name=name,
                                decl_line=line, initialized_from_owned=is_owned,
-                               source_storage=source_storage)
-            if source_storage is not None:
-                self.ctx.view_source_borrows_map(family).setdefault(source_storage, set()).add(var_id)
+                               source_storages=source_storages)
+            for storage in source_storages:
+                self.ctx.view_source_borrows_map(family).setdefault(storage, set()).add(var_id)
 
         vars_reg[var_id] = info
         var_map[name] = var_id

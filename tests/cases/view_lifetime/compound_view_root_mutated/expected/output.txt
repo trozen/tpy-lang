@@ -1,0 +1,6 @@
+alpha
+gamma
+zeta
+two
+eta
+4

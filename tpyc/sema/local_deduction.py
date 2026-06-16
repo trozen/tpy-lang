@@ -7,7 +7,7 @@ for function-local variables.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from ..coercions import CoercionContext, resolve_coercion
 from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat
@@ -75,6 +75,24 @@ def _contains_literal_type(typ: TpyType) -> bool:
     return False
 
 
+def walk_view_source_leaves(expr: 'TpyExpr', leaf_fn: 'Callable[[TpyExpr], list]') -> 'list':
+    """Apply leaf_fn to every leaf arm a view-deduced local can borrow at runtime.
+
+    One shared recursion over and/or (TpyBinOp &&/||), ternary (TpyIfExpr), and
+    transparent TpyCoerce, so view-source leaf classifiers (pending-source and
+    borrow-root collection) can't drift in which arms they consider.
+    """
+    if isinstance(expr, TpyCoerce):
+        return walk_view_source_leaves(expr.expr, leaf_fn)
+    if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
+        return (walk_view_source_leaves(expr.left, leaf_fn)
+                + walk_view_source_leaves(expr.right, leaf_fn))
+    if isinstance(expr, TpyIfExpr):
+        return (walk_view_source_leaves(expr.then_expr, leaf_fn)
+                + walk_view_source_leaves(expr.else_expr, leaf_fn))
+    return leaf_fn(expr)
+
+
 def collect_pending_source_types(ctx: 'SemanticContext', expr: 'TpyExpr') -> 'list[TpyType]':
     """Collect all leaf pending-type nodes from a logical/ternary expression tree.
 
@@ -87,18 +105,12 @@ def collect_pending_source_types(ctx: 'SemanticContext', expr: 'TpyExpr') -> 'li
     - View tracking (statements.py): filter by family's pending_type_class, read .var_id
     - List type forcing (expressions.py): filter PendingListType, set .needs_list_type
     """
-    if isinstance(expr, TpyCoerce):
-        expr = expr.expr
-    if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
-        return (collect_pending_source_types(ctx, expr.left)
-                + collect_pending_source_types(ctx, expr.right))
-    if isinstance(expr, TpyIfExpr):
-        return (collect_pending_source_types(ctx, expr.then_expr)
-                + collect_pending_source_types(ctx, expr.else_expr))
-    t = ctx.get_expr_type(expr)
-    if isinstance(t, (PendingViewType, PendingListType, PendingDictType, PendingSetType)):
-        return [t]
-    return []
+    def leaf(e: TpyExpr) -> list[TpyType]:
+        t = ctx.get_expr_type(e)
+        if isinstance(t, (PendingViewType, PendingListType, PendingDictType, PendingSetType)):
+            return [t]
+        return []
+    return walk_view_source_leaves(expr, leaf)
 
 
 class LocalTypeDeduction:
@@ -936,8 +948,20 @@ class LocalTypeDeduction:
             if isinstance(func, TpyFunction):
                 for pname, ptype in func.params:
                     if pname == name:
-                        lit_str_param = isinstance(ptype, LiteralType) and ptype.is_str_base()
-                        if is_str and (is_str_type(ptype) or is_str_view_type(ptype) or lit_str_param):
+                        # A narrowed `str | None` param dereferences to the
+                        # contained view: `str | None` lowers to a by-value
+                        # std::optional<std::string_view>, so *a is a string_view
+                        # and a copy into the local is as safe as a plain str
+                        # param. The is_str guard above (on the narrowed
+                        # init_type) only fires at a non-None use site.
+                        # `bytes | None`, by contrast, lowers to
+                        # std::optional<std::vector<uint8_t>> (the param OWNS the
+                        # buffer), so a span into *a would borrow it -- not
+                        # view-safe here; only a plain `bytes` param (std::span)
+                        # qualifies.
+                        str_base = ptype.inner if isinstance(ptype, OptionalType) else ptype
+                        lit_str_param = isinstance(str_base, LiteralType) and str_base.is_str_base()
+                        if is_str and (is_str_type(str_base) or is_str_view_type(str_base) or lit_str_param):
                             return True
                         if is_bytes and (is_bytes_type(ptype) or is_bytes_view_type(ptype)):
                             return True
@@ -987,6 +1011,12 @@ class LocalTypeDeduction:
             if isinstance(init_expr.obj, TpyName):
                 return True
 
+        # INVARIANT: the compound arms this predicate accepts (and/or, ternary
+        # below) must stay the same set `walk_view_source_leaves` recurses into;
+        # a compound deemed view-safe here whose leaves that walk does not reach
+        # registers no borrow root and yields a stale view (UAF). Any new
+        # compound form must be added to both, or to neither.
+        #
         # and/or: view-safe if both operands are view-safe. Pending operands
         # are excluded because they go through the chained-pending branch in
         # _infer_new_local_type and never reach is_view_compatible_source.

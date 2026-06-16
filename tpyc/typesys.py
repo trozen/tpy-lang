@@ -4126,7 +4126,10 @@ class ViewVarInfo:
     passed_to_promote_param: bool = False
     reassigned_from_owned: bool = False
     source_var_ids: list[int] = field(default_factory=list)
-    source_storage: Optional[str] = None
+    # Owned-storage roots this view borrows from (a compound ternary/and-or
+    # source borrows every root reachable through its arms). Mutating any one
+    # demotes the view to owned.
+    source_storages: list[str] = field(default_factory=list)
     source_mutated: bool = False
     resolved_type: Optional[TpyType] = None
 

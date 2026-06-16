@@ -1,26 +1,27 @@
-# A str/bytes local initialized from a borrow-form view expression (incl. an
-# Optional-param ternary) converts to owned storage, same rule as the return
-# boundary -- previously the Optional-param ternary failed the C++ build.
+# A str/bytes local from a borrow-form view expression (incl. an Optional-param
+# ternary) compiles and runs. The families diverge: `str | None` is a view-backed
+# optional<string_view> so the local stays a zero-copy view, while `bytes | None`
+# owns its buffer (optional<vector>) so the local converts to owned storage.
 from typing import Optional
 
 
 def join_or(a: Optional[str], b: str) -> int:
-    x: str = a if a is not None else b
+    x: str = a if a is not None else b  # tpyc: type(StrView)
     return len(x)
 
 
 def bytes_or(a: Optional[bytes], b: bytes) -> int:
-    y: bytes = a if a is not None else b
+    y: bytes = a if a is not None else b  # tpyc: type(bytes)
     return len(y)
 
 
 def passthrough_str(s: str) -> int:
-    local: str = s
+    local: str = s  # tpyc: type(StrView)
     return len(local)
 
 
 def passthrough_bytes(b: bytes) -> int:
-    local: bytes = b
+    local: bytes = b  # tpyc: type(BytesView)
     return len(local)
 
 

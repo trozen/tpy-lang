@@ -6,15 +6,15 @@ namespace tpyapp::main {
 
 // def join_or(a: Optional[str], b: str) -> int:
 ::tpy::BigInt join_or(std::optional<std::string_view> a, std::string_view b) {
-    // x: str = a if a is not None else b
-    std::string x = std::string((((a.has_value())) ? ((*a)) : (std::string(b))));
+    // x: str = a if a is not None else b  # tpyc: type(StrView)
+    std::string_view x = (((a.has_value())) ? ((*a)) : (b));
     // return len(x)
     return ::tpy::BigInt(::tpy::__len__(x));
 }
 
 // def bytes_or(a: Optional[bytes], b: bytes) -> int:
 ::tpy::BigInt bytes_or(std::optional<std::vector<uint8_t>> a, std::span<const uint8_t> b) {
-    // y: bytes = a if a is not None else b
+    // y: bytes = a if a is not None else b  # tpyc: type(bytes)
     std::vector<uint8_t> y = ::tpy::bytes_copy((((a.has_value())) ? ((*a)) : (b)));
     // return len(y)
     return ::tpy::BigInt(::tpy::__len__(y));
@@ -22,7 +22,7 @@ namespace tpyapp::main {
 
 // def passthrough_str(s: str) -> int:
 ::tpy::BigInt passthrough_str(std::string_view s) {
-    // local: str = s
+    // local: str = s  # tpyc: type(StrView)
     std::string_view local = s;
     // return len(local)
     return ::tpy::BigInt(::tpy::__len__(local));
@@ -30,7 +30,7 @@ namespace tpyapp::main {
 
 // def passthrough_bytes(b: bytes) -> int:
 ::tpy::BigInt passthrough_bytes(std::span<const uint8_t> b) {
-    // local: bytes = b
+    // local: bytes = b  # tpyc: type(BytesView)
     std::span<const uint8_t> local = b;
     // return len(local)
     return ::tpy::BigInt(::tpy::__len__(local));

@@ -482,7 +482,7 @@ This means `Float32` arithmetic stays in single precision without requiring expl
 
 #### String Type Semantics (Working)
 
-`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields are owned. Locals are inferred: `std::string_view` when safe (literal, param, Array element, record field, `list[str]` element, or `dict[K, str]` value source), `std::string` when ownership is needed:
+`str` is context-dependent, matching Python's actual semantics where parameters are borrowed and returns/fields are owned. Locals are inferred: `std::string_view` when safe (literal, param, narrowed `str | None` param deref, Array element, record field, `list[str]` element, `dict[K, str]` value source, or a ternary / `and`-`or` compound of any of these), `std::string` when ownership is needed:
 
 ```python
 def greet(name: str) -> str:   # param=string_view, return=std::string
@@ -511,6 +511,17 @@ names.append("carol")          # source mutated -> a falls back to std::string
 d: dict[str, str] = {"key": "val"}
 b = d["key"]                   # local = std::string_view
 d["key"] = "new"               # source mutated -> b falls back to std::string
+
+# Compound sources (ternary / and-or, including nested) follow the same rule,
+# borrowing EVERY arm's storage; mutating any root demotes the local to owned.
+m = names[0] if cond else d["key"]  # std::string_view (borrows names AND d)
+names.append("dave")                # any root mutated -> m falls back to std::string
+
+# A narrowed `str | None` param dereferences to its contained string_view, so
+# a local bound to it (plain or in a compound arm) stays a zero-copy view:
+def pick(opt: str | None, b: str) -> None:
+    if opt is not None:
+        z = opt if len(b) > 0 else b   # std::string_view (no owned copy)
 ```
 
 For explicit control, use `String` or `StrView` from the `tpy` module:
@@ -626,7 +637,7 @@ log(f"x={x}")
 - **Working**: `bytearray` mutation: `append`, `extend`, `pop`, `clear`, `insert`, `remove`, `__setitem__`
 - **Working**: `hash(b)` for `bytes` and `BytesView` -- enables use as dict keys and set elements
 - **Working**: Iteration over bytes (`for b in data`)
-- **Working**: View deduction: bytes literals and `list[bytes]` subscripts infer `BytesView` when safe, fall back to owned `bytes` when mutated
+- **Working**: View deduction: bytes literals and `list[bytes]` subscripts infer `BytesView` when safe, fall back to owned `bytes` when mutated. Unlike `str | None` (which derefs to a `string_view` view), a narrowed `bytes | None` param deref stays owned `bytes`: `bytes | None` lowers to `std::optional<std::vector<uint8_t>>` (owned), and `span -> vector` is not an implicit conversion the way `string_view -> string` is
 
 #### Bytes Type Semantics (Working)
 
