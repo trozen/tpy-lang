@@ -807,7 +807,13 @@ class ExpressionAnalyzer:
         # Caller marks source literals via collect_pending_source_types.
         left = self._normalize_pending_container(left)
         right = self._normalize_pending_container(right)
-        if left == right:
+        # A borrow-form operand (a param is RefType[T]) and a value-form operand
+        # (a constructor / local is plain T) denote the same type; unwrap the
+        # borrow wrapper for the same-type check so `a or Box(5)` resolves to the
+        # record type rather than falling to the mixed-types bool branch. Own is
+        # intentionally NOT unwrapped: equating Own[T] with a borrow T here would
+        # let the borrow arm be value-copied instead of aliased.
+        if unwrap_ref_type(left) == unwrap_ref_type(right):
             return left
         return BOOL
 
