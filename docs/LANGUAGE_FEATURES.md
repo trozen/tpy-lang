@@ -5916,6 +5916,18 @@ Send/Sync rules for built-in types:
   directly. Awaitable-only consumers (`await`, `poll_once`, structural
   `Awaitable[T]`-typed params) still match via Cancellable's `__poll__`
   member; this mirrors how generators surface as `Iterator[T]`.
+  Because `async def f` sema-types as a coroutine factory, a *reference*
+  to `f` (the function as a value, not called) coerces to a
+  `Callable[[...], Own[Cancellable[T]]]` (or `Fn[...]`) -- so an async
+  handler can be passed as an argument, stored in a field, or returned,
+  then called per item and `create_task`'d (the higher-order-async shape
+  `asyncio.start_server` is built on). Codegen synthesizes a wrapper that
+  calls the frame factory and adapts the result into the owning dynamic
+  handle (the same `make_adapter` step the direct `create_task(f(...))`
+  arg coercion emits). Free async defs are covered; a bound async *method*
+  reference (`obj.m`) is the general no-method-value gap, and an `Fn`
+  (template) target plus an intermediate `Own[Cancellable[T]]` local in an
+  async body are blocked on separate coro-frame codegen gaps (see BUGS.md).
   Sema rejects user-defined `__await__` and bare-coroutine drops. See
   `docs/ASYNC_DESIGN.md` and `docs/ASYNC_PROGRESS.md`.
   At `asyncio.run` exit, remaining spawned tasks are cancelled and
@@ -5953,10 +5965,28 @@ Send/Sync rules for built-in types:
   reads), `StreamWriter` buffers writes and flushes via `sock_sendall`
   (`write` / `drain` / `close` / `wait_closed` / `is_closing`; you must
   `drain()` before `close()` -- closing with unflushed bytes raises).
-  `start_server` and
-  `StreamReader.readuntil(sep)` are deferred follow-ups (TODO.md). See
-  `examples/net/async_echo_server.py` + `async_echo_client.py` for a
-  concurrent-client TCP echo server.
+  The server side is `asyncio.start_server(handler, host, port)`: it binds
+  a non-blocking listener, spawns a background accept loop, and returns a
+  `Server`; each accepted connection runs `handler` (an `async def
+  handler(reader, writer)`, passed directly via the async-fn->Callable
+  coercion) as a task with its own `(StreamReader, StreamWriter)` pair.
+  `Server` is already accepting when returned (CPython parity); `close()`
+  stops accepting by cancelling the accept task (in-flight connections keep
+  running), `serve_forever()` blocks until closed, and it is an async
+  context manager. The bound address is read via
+  `server.sockets[0].getsockname()` as in CPython -- `Server.sockets` is a small
+  proxy returning a (readonly) borrow of the listener per index (enough for
+  `getsockname`; mutating socket methods aren't exposed). `serve_forever()`
+  serves until cancelled then re-raises `CancelledError` (a `close()` elsewhere
+  cancels the accept task it awaits), matching CPython -- both lifecycle tests
+  run under real CPython asyncio. Two documented v1 divergences remain (no test
+  exercises them): `wait_closed()` is a no-op (does not await connection drain),
+  and `__aenter__` returns None so `async with server as s` is unsupported (bare
+  `async with server:` only -- blocked on an async-return-of-self codegen gap).
+  `StreamReader.readuntil(sep)` is a deferred follow-up (TODO.md). See
+  `examples/net/stream_server.py` for a `start_server` echo server, and
+  `async_echo_server.py` + `async_echo_client.py` for the low-level
+  (manual accept loop) form.
 - **Working (v1.5 M4)**: async methods on user classes. `async def m(self, ...)`
   lowers to a per-record coro struct `__coro_<Record>_<method>` with
   `__self: <Record>&` captured as the first ctor arg (parallels

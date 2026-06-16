@@ -6380,6 +6380,25 @@ class ExpressionGenerator:
 
     def _gen_function_ref(self, expr: TpyName) -> str:
         """Generate C++ code for a named function used as a value."""
+        factory = self._function_ref_name(expr)
+        # An `async def` referenced as a value is a coroutine FACTORY: calling
+        # `factory(args)` builds a concrete `__coro_<name>` frame, not the
+        # `Own[Cancellable[T]]` the target callable slot expects. When the ref
+        # is coerced to a `Callable`/`Fn` returning `Own[@dynamic]`, synthesize
+        # a wrapper that calls the factory and adapts the frame into the owning
+        # dynamic handle -- the same `make_adapter` step `create_task`'s arg
+        # coercion emits (see `_gen_dynamic_protocol_own_arg`), here lifted to a
+        # function-value position.
+        fi = expr.function_ref_info
+        if fi is not None and fi.is_async:
+            wrapped = self._maybe_wrap_async_coro_factory(expr, factory)
+            if wrapped is not None:
+                return wrapped
+        return factory
+
+    def _function_ref_name(self, expr: TpyName) -> str:
+        """The bare C++ name a function reference lowers to (the callable
+        factory symbol), before any coroutine-factory wrapping."""
         # Nested def: just the local lambda variable name
         if expr.name in self.ctx.nested_def_locals:
             return escape_cpp_name(expr.name)
@@ -6404,3 +6423,32 @@ class ExpressionGenerator:
             return (fi.native_name or fi.name) + targs
         # Same-module function
         return escape_cpp_name(expr.name) + targs
+
+    def _maybe_wrap_async_coro_factory(
+            self, expr: TpyName, factory: str) -> str | None:
+        """Wrap an async-def factory ref into a `std::function`-compatible
+        coroutine factory when the ref is coerced to a callable returning
+        `Own[@dynamic]`. Returns None when the target isn't that shape (so the
+        bare factory name is used -- e.g. a direct `await factory()` position)."""
+        target = self.ctx.get_expr_type(expr)
+        if not isinstance(target, CallableType):
+            return None
+        ret = target.return_type
+        if not (isinstance(ret, OwnType) and is_dyn_protocol(ret.wrapped)):
+            return None
+        base_cpp = self.protocols.get_dynamic_base_name(ret.wrapped)
+        params = []
+        forwards = []
+        for i, ptype in enumerate(target.param_types):
+            pname = f"__a{i}"
+            params.append(CallableType._callable_param_cpp(ptype) + " " + pname)
+            # Own / non-value params arrive as `&&` or `&`; move them into the
+            # by-value frame-factory slot. Value scalars pass through directly.
+            if isinstance(ptype, OwnType) or not ptype.is_value_type():
+                forwards.append(f"std::move({pname})")
+            else:
+                forwards.append(pname)
+        sig = ", ".join(params)
+        args = ", ".join(forwards)
+        return (f"[]({sig}) -> {ret.to_cpp()} {{ "
+                f"return ::tpy::make_adapter<{base_cpp}>({factory}({args})); }}")

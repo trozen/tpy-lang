@@ -393,11 +393,12 @@ Deferred to v1.x:
   budget).
 - I/O reactor (epoll) -- SHIPPED v2 M1 (Linux); M2 added
   `loop.sock_accept` / `loop.sock_connect` (same awaitable shape, driven via
-  the public `socket` methods + `BlockingIOError`); the client streams layer
-  (`open_connection` -> `StreamReader`/`StreamWriter`, socket shared via
-  `Rc[socket]`, `IncompleteReadError`) shipped on top. See
-  `docs/ASYNC_DESIGN.md` "I/O reactor" and `examples/net/async_echo_*`.
-  `start_server` + `StreamReader.readuntil(sep)`, kqueue / io_uring backends,
+  the public `socket` methods + `BlockingIOError`); the streams layer
+  (`open_connection` + `start_server` -> `StreamReader`/`StreamWriter`, socket
+  shared via `Rc[socket]`, `IncompleteReadError`; `start_server` runs the async
+  handler per connection on the async-fn->Callable coercion) shipped on top. See
+  `docs/ASYNC_DESIGN.md` "I/O reactor" and `examples/net/async_echo_*` /
+  `stream_server.py`. `StreamReader.readuntil(sep)`, kqueue / io_uring backends,
   and a user swap-in remain.
 
 ## What's deferred from v1 design

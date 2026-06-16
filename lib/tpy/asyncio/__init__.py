@@ -7,11 +7,11 @@
 `runtime/cpp/include/tpy/async.hpp` and the TPy Executor in
 `_executor.py`. See `docs/ASYNC_DESIGN.md`.
 """
-from typing import Final
+from typing import Final, Callable
 from builtins import BaseException, Exception, TimeoutError, EOFError
 from tpy import (
     Own, Int32, UInt32, UInt64, Ptr,
-    CancelledError, Throwable, nocopy,
+    CancelledError, Throwable, nocopy, auto_readonly,
 )
 from tpy.coro import (
     Waker, Poll, Cancellable,
@@ -22,7 +22,8 @@ from tpy.unsafe import unsafe_str_from_cstr
 from tplib import Box
 from tplib.rc import Rc
 from time import monotonic
-from socket import socket, SocketError, SOL_SOCKET, SO_ERROR, AF_INET, SOCK_STREAM
+from socket import (
+    socket, SocketError, SOL_SOCKET, SO_ERROR, SO_REUSEADDR, AF_INET, SOCK_STREAM)
 from _bindings import posix_socket
 from ._executor import (
     Task, AnyTask,
@@ -1448,3 +1449,115 @@ async def open_connection(
     # of a tuple of named @nocopy locals copies the elements instead of
     # moving them, which fails to compile.
     return (StreamReader(cell.clone()), StreamWriter(cell.clone()))
+
+
+# Background accept loop spawned by `start_server`. Owns its own `Rc[socket]`
+# clone so it outlives the `Server` handle across awaits. The loop is stopped
+# by cancellation (`Server.close` cancels this task) rather than by catching a
+# listener-closed error: a `try`-scoped binding of `conn` is not yet recognized
+# as movable, so the bare `await` keeps `conn`'s last-use move into `Rc.new`.
+async def _accept_loop(
+        listener: Own[Rc[socket]],
+        cb: Callable[[Own[StreamReader], Own[StreamWriter]],
+                     Own[Cancellable[None]]]) -> None:
+    loop = get_running_loop()
+    while True:
+        conn, addr = await loop.sock_accept(listener.get())
+        cell = Rc.new(conn)
+        create_task(cb(StreamReader(cell.clone()), StreamWriter(cell.clone())))
+
+
+@nocopy
+class _ServerSockets:
+    """The object behind `Server.sockets`, mirroring CPython's
+    `server.sockets[0].getsockname()` surface. Holds its own `Rc[socket]` clone
+    and hands out a (readonly) borrow of the listener per index -- enough for
+    the common `getsockname()` read; mutating socket methods are not exposed
+    (the borrow is readonly). The single listener is returned for every index."""
+
+    _sock: Rc[socket]
+
+    def __init__(self, sock: Own[Rc[socket]]) -> None:
+        self._sock = sock
+
+    @auto_readonly
+    def __getitem__(self, i: Int32) -> auto_readonly[socket]:
+        return self._sock.get()
+
+
+@nocopy
+class Server:
+    """Handle returned by `start_server`, sharing the listening socket with the
+    background accept task via `Rc[socket]`. Accepts in the background from
+    creation (CPython parity -- it serves before `serve_forever`). The bound
+    address is read via `server.sockets[0].getsockname()`, as in CPython.
+
+    `close()` stops accepting and leaves in-flight handler tasks running, and
+    `serve_forever()` serves until cancelled then re-raises `CancelledError`
+    (both CPython parity). v1 divergences: `wait_closed()` is a no-op rather than
+    awaiting in-flight connections to drain, and `__aenter__` returns None (not
+    self -- `async with server as s` is unsupported). Usable as `async with
+    server:`."""
+
+    _listener: Rc[socket]
+    _task: Task[None]
+    sockets: _ServerSockets
+
+    def __init__(self, listener: Own[Rc[socket]],
+                 task: Own[Task[None]]) -> None:
+        # Build the sockets view first (cloning the Rc is allowed here, in a
+        # non-const ctor) before moving the listener into the field.
+        self.sockets = _ServerSockets(listener.clone())
+        self._listener = listener
+        self._task = task
+
+    def close(self) -> None:
+        self._listener.get().close()
+        self._task.cancel()
+
+    async def serve_forever(self) -> None:
+        # Serves until cancelled, like CPython: cancelling this coroutine (or a
+        # close() elsewhere, which cancels the accept task we await) surfaces as
+        # CancelledError, which closes the server (idempotent) and re-raises.
+        try:
+            await self._task
+        except CancelledError:
+            self.close()
+            raise
+
+    async def wait_closed(self) -> None:
+        # No-op (v1): returns immediately. Unlike CPython it does NOT wait for
+        # in-flight handler tasks to drain -- the canonical `close(); await
+        # wait_closed()` shutdown returns while connections may still be live.
+        pass
+
+    async def __aenter__(self) -> None:
+        # Returns None, not self: an async __aenter__ returning self copies the
+        # @nocopy Server (async return doesn't borrow self like sync __enter__);
+        # `async with server as s` is unsupported -- use the bare `async with
+        # server:` form (BUGS.md). CPython's __aenter__ returns the server.
+        pass
+
+    async def __aexit__(self, exc_type: None, exc_val: None,
+                        exc_tb: None) -> None:
+        self.close()
+
+
+# Mirrors `asyncio.start_server` (the host:port form). `cb` must be a coroutine
+# factory (an `async def handler(reader, writer)`), wrapped in a task per accept
+# -- mirroring CPython auto-wrapping a coroutine callback. CPython also accepts a
+# plain sync callback returning None; that overload is unbuilt here (a sync cb is
+# statically rejected by the type). The handler must take `Own[...]` (it owns its
+# streams across awaits). IPv4 only (AF_INET).
+async def start_server(
+        cb: Callable[[Own[StreamReader], Own[StreamWriter]],
+                     Own[Cancellable[None]]],
+        host: str, port: Int32) -> Own[Server]:
+    listener = socket(AF_INET, SOCK_STREAM)
+    listener.setsockopt_int(SOL_SOCKET, SO_REUSEADDR, 1)
+    listener.bind((host, port))
+    listener.listen(128)
+    listener.setblocking(False)
+    cell = Rc.new(listener)
+    task = create_task(_accept_loop(cell.clone(), cb))
+    return Server(cell.clone(), task)
