@@ -689,6 +689,8 @@ process(b"hello")      # zero-alloc: static span passed directly
   - Methods: `get(k)`, `get(k, default)`, `pop(k)`, `pop(k, default)`, `clear()`, `update(other)`, `setdefault(k, default)`, `keys()`, `values()`, `items()`; augmented `|=` (merge in-place)
   - Views: `d.keys()`, `d.values()`, `d.items()` return zero-allocation views with `for`-loop, `len()`, `in`
   - **Aliasing (CPython semantics)**: `for k, v in d.items()` and `for v in d.values()` bind `v` as an alias of the stored value -- mutations reach the dict (also inside generators/async, and through the leaked loop var after the loop). `setdefault(k, default)` returns a borrow of the stored value, so `d.setdefault(k, []).append(x)` mutates the dict. On a `readonly[dict]` receiver the views yield readonly elements and mutation is a sema error. Keys bind as const borrows (mutating a key object through iteration is a compile error -- CPython permits it but it corrupts the hash table).
+  - **Readonly reads**: the read surface works on a `readonly[dict]` (including a dict field read inside a `@readonly` / auto-inferred-readonly method, where `self._data` is `readonly[dict[K,V]]`): `d[k]`, `d.get(k)` / `get(k, default)`, `k in d`, and `for k in d`. A read of a reference-type value yields `readonly[V]`. (Known gap: `sorted(d.items(), key=...)` directly on a readonly dict fails because `items()` projects `readonly` onto a value-typed element -- build the pairs list first; see BUGS.md.)
+  - **Readonly keys**: the pure-read key methods (`__getitem__`, `get`, `__contains__`, `__delitem__`, `pop`) accept a `readonly[K]` key -- the key is only hashed/compared. (`__delitem__`/`pop` mutate, so they still require a mutable dict; only their *key argument* may be readonly. `__setitem__`/`setdefault` store the key and keep a mutable `K`.)
   - **Acknowledged divergence**: two-arg `get(k, default)` on reference-type values returns a *copy* of the stored value (CPython returns the stored object); a warning fires at the call site. Alias via `d[k]` / one-arg `get(k)`, or wrap in `copy()` to acknowledge the copy. Value-type results are parity-clean (no warning). The borrow-returning form is tracked in BUGS.md.
   - `Iterable[T]` conformance: `dict[K,V]` and views conform to `Iterable` (`d` is `Iterable[K]`, `d.keys()` is `Iterable[K]`, `d.values()` is `Iterable[V]`, `d.items()` is `Iterable[tuple[K, V]]`) and can be passed to generic functions accepting `Iterable[T]`
   - Keys: `str`, `int`, fixed-width ints, `float`, `bool`, `Char`
@@ -2397,6 +2399,8 @@ def sum_seq(s: Sequence[Int32]) -> Int32:
 wrapper: IntWrapper = IntWrapper(nums)
 sum_seq(wrapper)  # OK - IntWrapper conforms to Sequence[Int32]
 ```
+
+`__getitem__` may take a **non-integer key** (mapping types): `obj[key]` dispatches to a user `__getitem__` whose key param matches the index type (e.g. `def __getitem__(self, key: str) -> Int32`), not only integer-indexed sequences. The index is validated against the key param.
 
 **Mixing protocols**: Generic and non-generic protocols can be used together:
 ```python

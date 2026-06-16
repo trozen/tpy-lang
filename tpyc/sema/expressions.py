@@ -1178,7 +1178,10 @@ class ExpressionAnalyzer:
                                 int_overload = o
                                 break
                     if int_overload is not None or len(subst_overloads) == 1:
-                        param_type = (int_overload or subst_overloads[0]).params[0].type
+                        # __contains__ takes readonly[K] (the key is only looked
+                        # up); membership cares about the bare key type, so unwrap
+                        # for both the check and the diagnostic.
+                        param_type = unwrap_readonly((int_overload or subst_overloads[0]).params[0].type)
                         self.compat.check_type_compatible(
                             left_type, param_type,
                             f"membership test (expected {param_type})",
@@ -3483,25 +3486,37 @@ class ExpressionAnalyzer:
 
         index_type = self.analyze_expr(expr.index)
 
-        # Dict subscript: d[key] -> V (key can be non-integer)
+        # Dict subscript: d[key] -> V (key can be non-integer). The key is only
+        # looked up, so a readonly key (e.g. one bound from iterating a readonly
+        # dict) is accepted -- unwrap it for the key-type compat. A read through
+        # a readonly dict yields a readonly value (a non-value V must not be
+        # mutated through the borrow), mirroring the readonly element reprojection
+        # the int-indexed container path applies below.
+        readonly_dict = isinstance(inner_obj_type, ReadonlyType)
+        lookup_index_type = unwrap_readonly(index_type)
         if isinstance(actual_obj, PendingDictType):
             if not isinstance(actual_obj.key_type, UnknownElementType):
                 self.compat.check_type_compatible(
-                    index_type, actual_obj.key_type,
+                    lookup_index_type, actual_obj.key_type,
                     f"dict key (expected {actual_obj.key_type})",
                     loc=expr.loc,
                     source_expr=expr.index,
                 )
-            return make_ref(actual_obj.value_type)
+            v_type = actual_obj.value_type
+            if readonly_dict and not v_type.is_value_type():
+                v_type = ReadonlyType(unwrap_readonly(v_type))
+            return make_ref(v_type)
         if is_dict(actual_obj):
             k_type = actual_obj.type_args[0]
             v_type = actual_obj.type_args[1]
             self.compat.check_type_compatible(
-                index_type, k_type,
+                lookup_index_type, k_type,
                 f"dict key (expected {k_type})",
                 loc=expr.loc,
                 source_expr=expr.index,
             )
+            if readonly_dict and not v_type.is_value_type():
+                v_type = ReadonlyType(unwrap_readonly(v_type))
             return make_ref(v_type)
 
         # Slice-typed variable as index: route through __getitem__ overload
@@ -3518,6 +3533,23 @@ class ExpressionAnalyzer:
                 expr.slice_function_info = fi
                 return ret
             raise self.ctx.error(f"Slicing is not supported for {inner_obj_type}", expr)
+
+        # User-defined mapping with a NON-integer key (e.g. Counter over
+        # dict[T,int]): dispatch to its single-key __getitem__ before the
+        # sequence integer-index gate, validating the index against the key.
+        # Int indices keep their existing path below (record __getitem__ is
+        # handled there), so only non-int keys are intercepted here.
+        if not is_any_int_type(index_type):
+            ro_obj = isinstance(inner_obj_type, ReadonlyType)
+            bare_obj = unwrap_readonly(inner_obj_type)
+            if isinstance(bare_obj, NominalType) and bare_obj.is_record:
+                kr = self.narrowing._get_record_getitem_key_ret(bare_obj)
+                if kr is not None:
+                    key_t, ret_t = kr
+                    if self.compat.is_type_compatible(unwrap_readonly(index_type), unwrap_readonly(key_t)):
+                        if ro_obj and not ret_t.is_value_type():
+                            ret_t = ReadonlyType(unwrap_readonly(ret_t))
+                        return make_ref(ret_t)
 
         if not is_any_int_type(index_type):
             raise self.ctx.error(f"Subscript index must be an integer type, got {index_type}", expr)

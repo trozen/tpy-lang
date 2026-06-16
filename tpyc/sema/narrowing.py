@@ -200,6 +200,27 @@ class NarrowingTracker:
             return self.type_ops.substitute_type_params(getitem.return_type, type_subst)
         return getitem.return_type
 
+    def _get_record_getitem_key_ret(self, record_type: NominalType) -> tuple[TpyType, TpyType] | None:
+        """(key-param type, return type) of a record's single-arg __getitem__.
+
+        Returns None when there is no single-key __getitem__ (e.g. only a slice
+        overload) -- so a non-single-key subscript stays on its normal path.
+        """
+        record = self.ctx.registry.get_record_for_type(record_type)
+        if record is None:
+            return None
+        getitem = self.protocols.lookup_record_method(record, "__getitem__")
+        # params excludes self; a single-key accessor has exactly one param.
+        if getitem is None or len(getitem.params) != 1:
+            return None
+        key_type = getitem.params[0].type
+        ret_type = getitem.return_type
+        type_subst = self.type_ops.build_type_substitution(record_type)
+        if type_subst:
+            key_type = self.type_ops.substitute_type_params(key_type, type_subst)
+            ret_type = self.type_ops.substitute_type_params(ret_type, type_subst)
+        return key_type, ret_type
+
     # -- Condition fact extraction --------------------------------------
 
     @staticmethod

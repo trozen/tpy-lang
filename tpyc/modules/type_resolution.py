@@ -17,8 +17,8 @@ if TYPE_CHECKING:
 
 from tpyc.typesys import (
     TypeParamRef, NominalType, PtrType, TupleType,
-    TpyType, CHAR, OwnType, GenExprType,
-    is_any_str_type, is_protocol_type, unwrap_ref_type, unwrap_qualifiers,
+    TpyType, CHAR, OwnType, GenExprType, ReadonlyType,
+    is_any_str_type, is_protocol_type, unwrap_ref_type, unwrap_qualifiers, unwrap_readonly,
 )
 from tpyc.type_def_registry import is_span, is_span_iter, is_copy_iter, is_own_iter, is_iterator_adapter, protocol_info_of
 from tpyc.modules.defs import ParamDef, MethodDef
@@ -322,10 +322,15 @@ def _find_error_return_next_element(
 
 
 def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
-    """If type has __iter__() returning a concrete iterator, return element type T."""
+    """If type has __iter__() returning a concrete iterator, return element type T.
+
+    A readonly container is iterable through its inner type; callers that need
+    the element readonly-projected (for-loop, the unified accessor) reproject
+    themselves, so unwrap here and return the bare element.
+    """
     from tpyc.typesys import NominalType, unwrap_ref_type
 
-    tpy_type = unwrap_ref_type(tpy_type)
+    tpy_type = unwrap_readonly(unwrap_ref_type(tpy_type))
     # Try user records (walks parent chain).
     # allow_protocol_return=True: user __iter__ returning Iterator[T] is recognized.
     if isinstance(tpy_type, NominalType) and tpy_type.is_user_record:
@@ -422,7 +427,24 @@ def get_iterable_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> 
     - __iter__() method (built-in containers + user records)
 
     Returns None if the type is not iterable.
+
+    A readonly iterable (readonly[list[T]], readonly[dict[K,V]], ...) is
+    iterable: unwrap to inspect the container, then reproject readonly onto a
+    non-value element (the const protecting the aliased element survives; value
+    elements are copies), so membership / non-loop callers stay readonly-correct.
     """
+    base = unwrap_ref_type(tpy_type)
+    if isinstance(base, OwnType):
+        base = base.wrapped
+    if isinstance(base, ReadonlyType):
+        elem = _iterable_element_type_inner(base.wrapped, registry)
+        if elem is not None and not elem.is_value_type():
+            return ReadonlyType(unwrap_readonly(elem))
+        return elem
+    return _iterable_element_type_inner(base, registry)
+
+
+def _iterable_element_type_inner(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
     tpy_type = unwrap_ref_type(tpy_type)
     if isinstance(tpy_type, OwnType):
         tpy_type = tpy_type.wrapped
