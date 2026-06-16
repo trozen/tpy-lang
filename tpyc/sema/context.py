@@ -853,6 +853,12 @@ class SemanticContext:
     # matches the comparison codegen does against its own `module_name`.
     cpp_module_name: str = "__main__"
     module_cpp_namespace: str | None = None  # from # tpy: cpp_namespace directive
+    # The current module's opaque plugin payload (`FrontendModule.macro_data`,
+    # `TpyModule.macro_data`). Stashed per-module in `bind_imports` so a
+    # `@call_macro` -- which runs during Pass 7 with no module passed to it --
+    # can reach it via `CallMacroContext.module_data`. None for parser-produced
+    # modules. (Function macros instead receive it as an explicit argument.)
+    macro_data: 'Any' = None
     # Reference to the current module's `CompiledModule.exports`. Set by
     # `Compiler._finalize_declarations` so the registration paths can
     # find pre-populated skeleton RecordInfo / FunctionInfo /

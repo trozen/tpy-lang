@@ -507,6 +507,16 @@ class CallMacroContext(_MacroContextBase):
         self._expected_type = expected_type
 
     @property
+    def module_data(self) -> Any:
+        """Opaque module-scoped payload the frontend plugin attached via
+        `FrontendModule.macro_data` (None for parser-produced modules).
+        Lets a macro-hosting plugin hand per-module data (lookup tables,
+        resolver state) to its own `@call_macro` -- e.g. a catalog the macro
+        ranks call candidates against -- without smuggling non-`Expr` objects
+        through the call. Mirrors `FunctionMacroContext.module_data`."""
+        return self._ctx.macro_data
+
+    @property
     def expected_type(self) -> TypeInfo | None:
         """Type of the slot this call is being lowered into, or None.
 

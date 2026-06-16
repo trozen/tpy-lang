@@ -193,6 +193,7 @@ class CallMacroContext:
     self_type: TypeInfo | None                          # current class (methods)
     first_param: tuple[str, TypeInfo] | None            # self for methods, first arg for free functions
     expected_type: TypeInfo | None                      # slot type the call lowers into, or None
+    module_data: Any                                     # plugin's opaque per-module payload (FrontendModule.macro_data), or None
 
     # Type introspection
     def get_field_type(type_info, name) -> TypeInfo | None: ...        # field type (incl. inherited)

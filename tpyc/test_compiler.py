@@ -688,3 +688,42 @@ class TestSkeletonAdoptionAssertion:
             name="Color", type_args=(), _module_qname="m.Color",
         )
         Compiler._verify_skeleton_adoption(compiled)
+
+
+class TestCallMacroModuleData:
+    """A `@call_macro` runs during Pass 7 with no module handed to it, so the
+    plugin's per-module payload must ride on the SemanticContext. Pins that
+    bind_imports stashes `TpyModule.macro_data` onto the ctx and that
+    `CallMacroContext.module_data` surfaces it -- the channel a macro-hosting
+    plugin reads its per-module lookup table through."""
+
+    def _bare_module(self, macro_data):
+        from .parse import TpyModule
+        from .parse.nodes import ModuleDirectives
+        return TpyModule(
+            records=[], functions=[], protocols=[], enums=[],
+            top_level_stmts=[], source_lines=[], imports={},
+            tpy_star_import=False, star_imports=set(), user_module_imports={},
+            module_aliases={}, bare_module_imports=set(), type_aliases={},
+            directives=ModuleDirectives(), macro_data=macro_data,
+        )
+
+    def test_bind_imports_stashes_macro_data_for_call_macro(self):
+        """bind_imports copies the module payload onto ctx, and the call-macro
+        context reads it back -- the end-to-end per-module channel."""
+        from .sema import SemanticAnalyzer
+        from .macro_api import CallMacroContext
+        payload = {"queries": {"doubled$%": [{"mangled_name": "doubled"}]}}
+        analyzer = SemanticAnalyzer()
+        analyzer.bind_imports(self._bare_module(payload), "m")
+        assert analyzer.ctx.macro_data is payload
+        assert CallMacroContext(analyzer.ctx).module_data is payload
+
+    def test_module_data_none_for_payloadless_module(self):
+        """A parser-produced module (no plugin payload) surfaces None, not a
+        crash -- the property must tolerate the common case."""
+        from .sema import SemanticAnalyzer
+        from .macro_api import CallMacroContext
+        analyzer = SemanticAnalyzer()
+        analyzer.bind_imports(self._bare_module(None), "m")
+        assert CallMacroContext(analyzer.ctx).module_data is None

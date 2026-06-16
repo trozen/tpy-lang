@@ -467,6 +467,11 @@ class SemanticAnalyzer:
         self.ctx.module_name = module_name
         self.ctx.cpp_module_name = cpp_module_name or module_name
         self.ctx.module_cpp_namespace = getattr(module.directives, 'cpp_namespace', None) if hasattr(module, 'directives') else None
+        # Stash the module's plugin payload so a @call_macro (which runs during
+        # Pass 7 with no module handed to it) can read it via ctx.module_data.
+        # Set here -- before any body/top-level analysis -- so it is live for
+        # every call-macro expansion in the module.
+        self.ctx.macro_data = module.macro_data
         # Builder-trace expansion (phase 7) needs to splice synthesized
         # records/functions into the module while bodies are being analyzed.
         self._module = module
