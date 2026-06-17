@@ -190,6 +190,13 @@ def _own_frame_type(fi: 'FunctionInfo') -> Optional[FrameType]:
     return fi.frame_type
 
 
+def frame_type_of_function(fi: 'FunctionInfo') -> Optional[FrameType]:
+    """fi's own-slot FrameType (excluding awaited sub-frames), for diagnostics
+    that name the offending captured slot. Sub-frame causes are not reflected
+    here -- frame_traits_of_function is the source of truth for the boolean."""
+    return _own_frame_type(fi)
+
+
 def frame_traits_of_function(
     fi: 'FunctionInfo', _seen: set | None = None,
 ) -> tuple[bool, bool]:

@@ -20,9 +20,9 @@ from ..typesys import (
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     CallableType, is_fn_type, RefType, unwrap_ref_type,
     is_callable_type, is_integer_type, is_any_float_type, is_readonly_span,
-    is_polymorphic_class_type, SendType, SyncType, unwrap_send_sync)
-from .frame_traits import frame_traits_of_function
-from .send_chain import why_not_send, why_not_sync, render_chain
+    is_polymorphic_class_type, SendType, SyncType, unwrap_send_sync, FrameType)
+from .frame_traits import frame_traits_of_function, frame_type_of_function
+from .send_chain import why_not_send, why_not_sync, why_not_frame, render_chain
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
@@ -395,6 +395,20 @@ class TypeCompatibility:
                 return frame_traits_of_function(fi)
         return None
 
+    def _value_frame(self, source_expr: TpyExpr | None) -> FrameType | None:
+        """The concrete FrameType behind a value expression, for diagnostics
+        that name the offending captured slot (vs _value_frame_traits' bool).
+        Own-frame only -- sub-frame causes are absent, so the caller treats a
+        childless chain as 'no per-value detail' and falls back to the static
+        type. None when no frame fact is available."""
+        if isinstance(source_expr, TpyLambda):
+            return source_expr.frame_type
+        if isinstance(source_expr, TpyName):
+            fi = getattr(source_expr, "function_ref_info", None)
+            if fi is not None:
+                return frame_type_of_function(fi)
+        return None
+
     def _resolve_recursive_refs(self, typ: TpyType) -> TpyType:
         """Resolve AliasRef self-references to recursive union aliases.
 
@@ -477,7 +491,17 @@ class TypeCompatibility:
                         else frame_traits[1]
             if not holds:
                 is_send = isinstance(expected, SendType)
-                chain = why_not_send(actual) if is_send else why_not_sync(actual)
+                # Prefer the value's concrete frame chain (names the offending
+                # capture) over the static erased-callable leaf; fall back when
+                # the frame has no own-slot cause to attribute.
+                chain = None
+                frame = self._value_frame(source_expr)
+                if frame is not None:
+                    fc = why_not_frame(frame, str(actual), is_send)
+                    if fc is not None and fc.children:
+                        chain = fc
+                if chain is None:
+                    chain = why_not_send(actual) if is_send else why_not_sync(actual)
                 detail = f"\n{render_chain(chain, is_send)}" if chain is not None else ""
                 return CompatError(
                     f"'{actual}' is not {trait} -- cannot use it where "

@@ -5791,6 +5791,9 @@ The full marker-layer design lives in `docs/SEND_SYNC_DESIGN.md`; Phase 2
   CPython no-ops) that fail the build with a why-not chain when `T` is not
   Send / Sync. The same chain is appended to the Send/Sync enforcement-site
   errors (`Send[T]` conversion, `T: Send` bound, `class Foo(Send)` opt-in).
+  At a `Send[Callable[...]]` conversion the chain names the offending
+  captured slot of the concrete lambda / function-reference value (e.g.
+  `captured 's' is not Send`) rather than the generic erased-callable leaf.
   `tpyc --explain-send TYPE` / `--explain-sync TYPE` prints the structural
   derivation for any named type (e.g. `list[Order]`).
 - **Working (Phase 4)**: first enforcement site -- `Channel[T]`. The

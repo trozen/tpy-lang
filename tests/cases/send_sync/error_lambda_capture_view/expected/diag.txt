@@ -1,2 +1,3 @@
 main.py:11: error: 'Callable[[Int32], None]' is not Send -- cannot use it where 'Send[Callable[[Int32], None]]' is expected in argument 'cb'
-Callable[[Int32], None] is not Send (erased callable may capture non-Send state -- wrap with Send[Callable[...]])
+Callable[[Int32], None] is not Send
++-- captured 's' is not Send (borrow/reference capture aliases originating-thread memory)

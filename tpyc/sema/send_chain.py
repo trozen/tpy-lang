@@ -44,6 +44,17 @@ def why_not_sync(t: TpyType) -> Optional[SendChain]:
     return _why_not(t, send=False, label=str(t), seen=frozenset())
 
 
+def why_not_frame(frame: FrameType, label: str, send: bool) -> Optional[SendChain]:
+    """Derivation tree for a concrete value's captured-state `frame`, rooted
+    at `label` (the value's static type). Used at Send[T] / Sync[T] conversion
+    sites where the static type is an erased callable carrying no slots, but
+    the lambda / function-ref value has a classified FrameType that names the
+    offending capture. Returns None if the frame conforms; a childless chain
+    means the cause is a sub-frame (not an own slot) the caller should ignore
+    in favour of the static-type chain."""
+    return _why_not(frame, send, label, frozenset())
+
+
 def render_chain(chain: SendChain, send: bool) -> str:
     """Render a SendChain as an indented tree.
 
