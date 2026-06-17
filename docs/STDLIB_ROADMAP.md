@@ -130,7 +130,7 @@ Examples of the policy in action:
 | [`io`](#io) | P0 | Partial | ~35% | pure | `StringIO` / `BytesIO` (chunked storage, write/read/`read(size)`/readline/seek/tell/truncate/iter/context-manager). `Readable` / `Writable` / `BinaryReadable` / `BinaryWritable` protocols on tpy core, re-exported from `io`. Missing: `IOBase` ABC hierarchy (deliberately deferred -- protocols cover the static-dispatch use case), `TextIOWrapper`, `io.SEEK_SET/CUR/END` constants (collide with `<cstdio>` macros), encoding/newline/errors kwargs |
 | [`json`](#json) | P0 | Partial | ~72% | pure | `loads` / `dumps` / `load(fp)` / `dump(obj, fp)` + `JSONDecodeError` done over a recursive union `JsonValue`. CPython byte-compatible across cpy phase. Missing: `JSONEncoder` / `JSONDecoder`, most `dumps`/`loads` kwargs |
 | [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub (with `count`)/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, bytes input, compile cache |
-| [`collections`](#collections) | P0 | Missing | 0% | -- | OrderedDict trivial (have ordered_map); deque needs C++ struct; Counter/defaultdict/namedtuple need macros |
+| [`collections`](#collections) | P0 | Partial | ~15% | pure | `Counter` v1 (construct/[]/len/in/total/most_common(n)/update/subtract) done; `elements()` + `+ - & |` deferred on filed compiler blockers. OrderedDict trivial (have ordered_map); deque needs C++ struct; defaultdict/namedtuple need macros |
 | [`itertools`](#itertools) | P0 | Partial | ~35% | pure | Done: count, repeat, cycle, islice(it, stop), takewhile, dropwhile, filterfalse. `chain`/`product` family blocked on variadic tuples; `starmap`/`accumulate`/`pairwise`/`compress` on distinct compiler gaps (filed in BUGS.md/TODO.md); `tee`/`groupby`/`batched` on buffering / runtime-sized tuples |
 | [`functools`](#functools) | P0 | Partial | ~25% | pure | `reduce(func, a, initial)`, `reduce(func, a)`, `total_ordering` done. `cmp_to_key`, `wraps` blocked on specific compiler / macro-infrastructure gaps (see section). partial/lru_cache/singledispatch/cached_property/partialmethod need closures + macros |
 | [`random`](#random) | P1 | Partial | ~90% | pure | Pure-TPy MT19937 + CPython's distribution suite, byte-identical to CPython on the same seed. Done: `Random` class, `random`, `seed(Int32)` (negatives mapped to abs), `seed()` no-arg auto-seed via OS entropy, `getrandbits(k)` for arbitrary k, `randint`, `randrange`, `randbytes`, `choice`, `shuffle`, `uniform`, `triangular`, `gauss`, `normalvariate`, `lognormvariate`, `expovariate`, `paretovariate`, `weibullvariate`, `gammavariate`, `betavariate`, `vonmisesvariate`. Missing: `choices`/`sample`/`SystemRandom`/`binomialvariate`/`getstate` (Tier 3). See module docstring TODOs |
@@ -614,13 +614,13 @@ Tests:
 
 ### collections
 
-**Missing** as a module. Some building blocks already exist.
+**Partial** -- `Counter` v1 shipped (pure TPy over `dict[T, int]`); the rest is unbuilt.
 
 | Item | Status | Notes |
 |---|---|---|
 | `OrderedDict` | Missing | TPy already uses `tpy::ordered_map` for `dict[K,V]`; this would be a thin alias or subclass |
 | `defaultdict` | Missing | Macro-friendly: store factory, synthesize `__getitem__` |
-| `Counter` | Missing | Pure TPy over `dict[T, int]` |
+| `Counter` | Partial | Pure TPy over `dict[T, int]`. v1: construct (empty / from iterable), `c[key]` (missing -> 0), `__setitem__`, `len`, `in`, `total()`, `most_common(n)`, `update`/`subtract`. Deferred (filed compiler blockers, BUGS.md): `elements()` (generator dict-subscript const bug), `+`/`-`/`&`/`|` (field-target subscript-assignment readonly-key bug); also bare `most_common()` and `Counter(mapping/**kwargs)` |
 | `deque` | Missing | Needs C++ backing (std::deque) with Python-like API |
 | `namedtuple` | Missing | Would be a class macro; could desugar to @dataclass(frozen=True) |
 | `ChainMap` | Missing | Pure TPy over list of dicts |
