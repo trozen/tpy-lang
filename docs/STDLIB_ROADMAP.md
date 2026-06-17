@@ -124,8 +124,8 @@ Examples of the policy in action:
 | [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for fsum/sumprod/dist; `prod` has Int32 / int (BigInt) / float overloads). Remaining gap: tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time` all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
 | [`sys`](#sys) | P0 | Stub | ~20% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr`, `exit`, `maxsize` done; needs `stdin`/`path`/`version_info` |
-| [`os`](#os) | P0 | Missing | 0% | -- | Needs filesystem wrapper + path handling |
-| [`os.path`](#ospath) | P0 | Missing | 0% | -- | Independent of `os`; candidate for pure TPy over C++ `<filesystem>` |
+| [`os`](#os) | P0 | Stub | ~2% | -- | Package skeleton exists only to host [`os.path`](#ospath); `getcwd`/`environ`/`listdir`/`stat`/... unbuilt (need filesystem wrapper + path handling) |
+| [`os.path`](#ospath) | P0 | Partial | ~55% | pure | v1 pure-string POSIX surface (`join`/`split`/`splitext`/`basename`/`dirname`/`isabs`/`normpath`/`splitdrive`/`commonprefix` + constants), CPython byte-compatible against `posixpath`. Filesystem predicates (`exists`/`isfile`/`isdir`/...) and cwd/env-dependent funcs (`abspath`/`realpath`/`expanduser`/`relpath`) deferred to the `os` filesystem-bindings effort |
 | [`pathlib`](#pathlib) | P0 | Missing | 0% | -- | Class-heavy; depends on filesystem bindings |
 | [`io`](#io) | P0 | Partial | ~35% | pure | `StringIO` / `BytesIO` (chunked storage, write/read/`read(size)`/readline/seek/tell/truncate/iter/context-manager). `Readable` / `Writable` / `BinaryReadable` / `BinaryWritable` protocols on tpy core, re-exported from `io`. Missing: `IOBase` ABC hierarchy (deliberately deferred -- protocols cover the static-dispatch use case), `TextIOWrapper`, `io.SEEK_SET/CUR/END` constants (collide with `<cstdio>` macros), encoding/newline/errors kwargs |
 | [`json`](#json) | P0 | Partial | ~72% | pure | `loads` / `dumps` / `load(fp)` / `dump(obj, fp)` + `JSONDecodeError` done over a recursive union `JsonValue`. CPython byte-compatible across cpy phase. Missing: `JSONEncoder` / `JSONDecoder`, most `dumps`/`loads` kwargs |
@@ -439,7 +439,10 @@ Tests: `sys_argv`, `sys_maxsize`, `sys_byteorder`, `kwargs_print_file_std`.
 
 ### os
 
-**Missing.** Depends on filesystem + process bindings. When attacking, likely in order:
+**Stub.** Only the package skeleton (`lib/tpy/os/__init__.py`) exists, hosting
+the [`os.path`](#ospath) submodule. The `os` surface itself (cwd, environ,
+filesystem ops, process) depends on filesystem + process bindings. When
+attacking, likely in order:
 
 | Item | Status | Notes |
 |---|---|---|
@@ -449,22 +452,43 @@ Tests: `sys_argv`, `sys_maxsize`, `sys_byteorder`, `kwargs_print_file_std`.
 | `remove`, `rename`, `replace` | Missing | `std::filesystem::remove` / `rename` |
 | `stat`, `lstat` | Missing | Needs `stat_result` struct |
 | `environ`, `getenv`, `putenv` | Missing | `std::getenv` |
-| `path` | Missing | See [os.path](#ospath) |
+| `path` | Partial | The [`os.path`](#ospath) submodule -- pure-string POSIX surface shipped |
 | `walk` | Missing | Pure TPy over `scandir` |
 | `fork`, `exec*`, `spawnv*`, `system` | Blocked | Process spawning |
 
 ### os.path
 
-**Missing.** Independent of `os` -- pure TPy over `std::filesystem::path`
-would cover most of it.
+**Partial.** `lib/tpy/os/path.py` -- pure-TPy POSIX (`posixpath`) string
+surface; no filesystem access. TPy targets little-endian Linux/ARM, so this is
+posix-only (no `ntpath`): `splitdrive` always returns `("", p)`, `sep` is `/`.
+The cpy test phase runs the cases against CPython's real `posixpath`, so the
+shipped functions are byte-parity-verified. The `os` package skeleton
+(`lib/tpy/os/__init__.py`) exists only to host this submodule.
 
-| Item | Status |
-|---|---|
-| `join`, `split`, `splitext`, `basename`, `dirname` | Missing |
-| `exists`, `isfile`, `isdir`, `islink` | Missing |
-| `abspath`, `realpath`, `normpath`, `relpath` | Missing |
-| `expanduser`, `expandvars` | Missing |
-| `getsize`, `getmtime`, `getatime`, `getctime` | Missing |
+Imports: `from os.path import join`, `import os.path`, `import os` (then
+`os.path.join`), and `from os import path` all work.
+
+| Item | Status | Notes |
+|---|---|---|
+| `join` | Done | Variadic `join(path, *paths)`; absolute component resets, trailing-slash handling matches CPython |
+| `split`, `dirname`, `basename` | Done | Trailing-slash / all-slash head rules match `posixpath` |
+| `splitext` | Done | Leading-dot basenames (`.bashrc`) have no extension; splits at last dot |
+| `isabs` | Done | `p.startswith("/")` |
+| `splitdrive` | Done | POSIX: always `("", p)` |
+| `normpath` | Done | Dot/dotdot collapse; two leading slashes preserved, three-plus collapse (POSIX) |
+| `commonprefix` | Done | Character-level (not path-aware) -- matches CPython's documented quirk |
+| `sep`, `extsep`, `pardir`, `curdir`, `pathsep`, `defpath`, `devnull` | Done | Module constants (`altsep` omitted -- `None` on POSIX, no clean str-or-None constant) |
+| `commonpath` | Missing | Path-aware; needs `min`/`max` over `list[list[str]]` (unsupported) |
+| `exists`, `lexists`, `isfile`, `isdir`, `islink`, `ismount` | Missing | Need filesystem-stat bindings (deferred to the `os` fs effort) |
+| `getsize`, `getmtime`, `getatime`, `getctime` | Missing | Need `stat`; timestamps are non-deterministic (invariant-style tests) |
+| `abspath`, `realpath`, `relpath` | Missing | Need `os.getcwd` |
+| `expanduser`, `expandvars` | Missing | Need `os.environ` / `getenv` |
+| `samefile`, `samestat` | Missing | Need `stat` |
+
+Tests: `tests/cases/stdlib/ospath_strings` (join/split/splitext/basename/
+dirname/isabs/splitdrive + constants), `ospath_normpath`,
+`ospath_commonprefix` (also covers the `import os` / `from os import path`
+forms). All cpy-phase byte-compared against `posixpath`.
 
 ### pathlib
 

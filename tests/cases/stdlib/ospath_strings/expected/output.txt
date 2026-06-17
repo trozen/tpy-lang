@@ -1,0 +1,39 @@
+/usr/lib/foo.py
+/etc/x
+a/b
+a/b
+b
+a/
+/single
+/a | b
+/a <> b
+a | b
+a <> b
+ | a
+ <> a
+/ | 
+/ <> 
+// | 
+// <> 
+a | 
+a <> 
+ | 
+ <> 
+/a/b | 
+/a/b <> 
+foo | .txt
+foo.tar | .gz
+.bashrc | 
+/a/.bashrc | 
+foo | 
+a | .
+/a/b | 
+..ext | 
+/d.ir/file | 
+True
+False
+False
+ | /a/b
+/....:
+/bin:/usr/bin
+/dev/null
