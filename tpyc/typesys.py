@@ -1846,7 +1846,7 @@ def _make_marker(inner: 'TpyType', trait: str, *, lenient: bool) -> 'TpyType':
     """
     is_send_marker = trait == "Send"
     if isinstance(inner, OptionalType):
-        return OptionalType(_make_marker(inner.inner, trait, lenient=lenient))
+        return inner.with_inner(_make_marker(inner.inner, trait, lenient=lenient))
     if isinstance(inner, UnionType):
         return make_union(*(
             m if isinstance(m, VoidType) else _make_marker(m, trait, lenient=lenient)
@@ -3475,6 +3475,11 @@ def make_union(*types: TpyType) -> TpyType:
     # Flatten nested unions and optionals
     flat: list[TpyType] = []
     has_none = False
+    # Inners flattened out of a force_pointer_repr Optional: if such an inner
+    # survives as the sole member, the rebuilt Optional must re-commit to T*
+    # repr. Dropping it re-types a T*-ABI generic Optional (or a branch/None
+    # join over one) as std::optional<T> with no bridge -- uncompilable.
+    force_ptr_inners: set[TpyType] = set()
     for t in types:
         if isinstance(t, UnionType):
             for m in t.members:
@@ -3485,6 +3490,8 @@ def make_union(*types: TpyType) -> TpyType:
         elif isinstance(t, OptionalType):
             has_none = True
             flat.append(t.inner)
+            if t.force_pointer_repr:
+                force_ptr_inners.add(t.inner)
         elif is_void_like_type(t):
             has_none = True
         else:
@@ -3510,7 +3517,8 @@ def make_union(*types: TpyType) -> TpyType:
     elif len(deduped) == 1 and not has_none:
         return deduped[0]
     elif len(deduped) == 1 and has_none:
-        return OptionalType(deduped[0])
+        return OptionalType(deduped[0],
+                            force_pointer_repr=deduped[0] in force_ptr_inners)
     else:
         members = ((NoneType(),) if has_none else ()) + tuple(deduped)
         return UnionType(members)

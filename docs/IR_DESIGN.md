@@ -1555,11 +1555,27 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    the C++ build with no TPy diagnostic. With form as an explicit IR fact the
    lambda param carries its consumer-dictated form and the conversion is a
    visible node, not a definition-site guess. (BUGS.md key-lambda generic-element
-   entry.) Each of these was/is handled by touching consumer-side dispatch
-   sites; the IR fact replaces all of it with explicit conversion nodes. THIR
-   should make form an explicit type fact (either two distinct tuple types, or
-   a form tag on one), so conversion sites become visible in the IR rather
-   than reconstructed in codegen.
+   entry.) Another sharp exhibit is the **async/await union return** (B41 Union
+   sibling, BUGS.md): aligning an `async def -> A | B` to the sync borrow
+   convention requires classifying the await-result union frame-local as
+   pointer-variant (`std::variant<A*,B*>`), but that single type-based
+   classification reaches a *different* consumer -- a direct storage binding in
+   the same coro body (`pet = h.pet`, union field -> local) -- whose async
+   binding site emits a plain assignment with no `to_ptr_variant` lift, while
+   the sync var-decl for the identical source emits one. So one form
+   classification cannot satisfy both the await-result consumer (wants borrow)
+   and the direct-binding consumer (whose binding site doesn't convert), and the
+   fix splinters into either per-binding-site lifts or await-target-specific
+   classification. (The scalar pointer-repr Optional case has no such split
+   because its local form is uniformly `T*` -- the value/pointer-variant binding
+   duality is specific to unions.) With form an explicit IR fact, each binding's
+   borrow<->storage conversion is a visible lowering node regardless of whether
+   the source is an await payload or a field read, so the async and sync binding
+   paths converge instead of diverging by consumer site. Each of these was/is
+   handled by touching consumer-side dispatch sites; the IR fact replaces all of
+   it with explicit conversion nodes. THIR should make form an explicit type
+   fact (either two distinct tuple types, or a form tag on one), so conversion
+   sites become visible in the IR rather than reconstructed in codegen.
    Recommendation: form tag on `THIRTupleType` with conversions emitted as explicit
    THIR nodes during lowering -- analogous to how borrows are explicit in MIR.
 

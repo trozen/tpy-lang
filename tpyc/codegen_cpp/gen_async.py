@@ -684,7 +684,22 @@ class AsyncCoroCodegen:
             if p.cpp_name != "__self")
 
     def _ret_cpp(self, func: TpyFunction) -> str:
-        return self.types.type_to_cpp(unwrap_ref_type(func.return_type))
+        rt = unwrap_ref_type(func.return_type)
+        # Pointer-repr Optional / pointer-variant Union returns use borrow form
+        # (T* / variant<A*,B*>), matching the sync `to_cpp_return` convention,
+        # so the await binding aliases the source rather than failing to consume
+        # a storage-form Poll payload. The sync dangling-return check already
+        # gates what may be returned as a borrow, and reference-type params live
+        # in the frame by reference (T&), so the borrow points into durable
+        # caller storage that outlives the suspension. Recursive-union wrappers
+        # keep storage form (their borrow return is `X&`, which cannot live in
+        # Poll<...>); value types are unaffected.
+        if isinstance(rt, OptionalType) and rt.uses_pointer_repr():
+            return rt.to_cpp_return()
+        # Pointer-variant Union returns share the root cause but their await-
+        # result consumer (frame-slot binding + isinstance narrowing) is not yet
+        # borrow-form aware, so they keep storage form for now.
+        return self.types.type_to_cpp(rt)
 
     def _is_void_return(self, func: TpyFunction) -> bool:
         """True iff func's declared return is `None` -- i.e. the top-level

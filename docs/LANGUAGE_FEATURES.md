@@ -240,8 +240,16 @@ silently. This auto-lift runs at any pointer-form consumer site
 field/method access) regardless of source shape -- record field,
 container subscript (`pairs[i]` where `pairs: list[P | None]`),
 for-loop variable iterating a storage container, or comprehension/
-genexpr unpack variable bound from a storage-form tuple slot. It
-matters when:
+genexpr unpack variable bound from a storage-form tuple slot. The lift
+also fires at the second-tier boundaries that were once missed: a walrus
+binding (`if (t := obj.opt) is not None:`), a ternary joining a borrow
+arm and a storage arm (`p if c else obj.opt`, Optional and Union), and a
+container-element store (`xs[i] = p`, `xs.append(p)`). A reference-type
+ternary whose arms differ in aliasing -- one variable arm, one fresh
+value arm (`a if c else [9]`) -- copies the variable arm where CPython
+would alias it; this is warned, and `copy()` acknowledges it.
+
+It matters when:
 - You see a copy warning mentioning "borrowed Optional/Union" -- that
   source is in borrow form and the slot wants storage form.
 - You're writing `@native` interop and need to match the C++ ABI shape
@@ -3416,7 +3424,7 @@ For details, see [docs/NONE_SAFETY.md](NONE_SAFETY.md).
 
 ### Conditionals
 - **Working**: `if`, `elif`, `else`
-- **Working**: Ternary `x if cond else y` -- same-type branches (including `list[T]`, `dict[K,V]`, `set[T]`), numeric widening, `T`+`None` to `Optional[T]`, Optional narrowing (`is not None` / truthy). Note: container branches produce a value copy (not a reference binding like CPython).
+- **Working**: Ternary `x if cond else y` -- same-type branches (including `list[T]`, `dict[K,V]`, `set[T]`), numeric widening, `T`+`None` to `Optional[T]`, Optional narrowing (`is not None` / truthy). Reference-type aliasing follows arm value-category: a **both-lvalue** ternary (`a if c else b`) binds by reference and aliases the chosen arm like CPython; a **mixed** lvalue/rvalue ternary (`a if c else [9]`) renders as a prvalue that copies the lvalue arm where CPython would alias it -- this is **warned** ("ternary copies a reference type where CPython would alias the variable arm"), and `copy()` acknowledges it. A mixed/both-lvalue ternary passed to an `Own[T]` slot copies the chosen arm into owned storage (the standard "copies into owned storage" warning).
 
 ### Loops
 - **Working**: `while`

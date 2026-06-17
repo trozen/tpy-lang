@@ -3187,6 +3187,38 @@ class StatementAnalyzer:
                 self.ctx.mark_param_mutated(root)
                 self.ctx.mark_param_returned(root)
 
+    def _warn_ternary_ref_copy(self, init: TpyExpr, var_type: TpyType,
+                               stmt: TpyStmt) -> None:
+        """A reference-type local bound from a ternary with MIXED arm
+        value categories (one lvalue arm, one rvalue arm) copies the lvalue
+        arm where CPython would alias it. The binding can take only one C++
+        shape and codegen picks the copying prvalue form, so a write through
+        the local is not seen on the variable arm -- a silent divergence.
+        Surface it; `copy()` acknowledges the copy.
+
+        A both-lvalue ternary already aliases (codegen binds a reference), and
+        a both-rvalue ternary shares nothing -- neither diverges, so neither
+        warns.
+        """
+        if stmt.loc is None or self.compat.is_copy_call(init):
+            return
+        val = init
+        while isinstance(val, TpyCoerce):
+            val = val.expr
+        if not isinstance(val, TpyIfExpr):
+            return
+        # An arm aliases (no copy) iff it is NOT an rvalue source. Use the
+        # value-category predicate, not a syntactic lvalue check: a BORROWING
+        # call (returns T&, e.g. a function returning its param) aliases too,
+        # so `seed if c else trusted(seed)` does not copy. Only a genuine
+        # mix -- one aliasing arm, one fresh rvalue arm -- loses aliasing.
+        then_alias = not is_rvalue_source(self.ctx, val.then_expr)
+        else_alias = not is_rvalue_source(self.ctx, val.else_expr)
+        if then_alias != else_alias:
+            self.ctx.warning(
+                "ternary copies a reference type where CPython would alias the "
+                "variable arm; use copy() to acknowledge the copy", stmt)
+
     def _analyze_var_decl(self, stmt: TpyVarDecl) -> None:
         """Analyze a variable declaration."""
         # In nested defs, assigning to an outer variable requires nonlocal
@@ -3904,6 +3936,7 @@ class StatementAnalyzer:
         # Scope escape check for variable declarations (new and reassignment)
         if stmt.init and not var_type.is_value_type():
             self.scopes.check_escape(stmt.name, stmt.init, stmt)
+            self._warn_ternary_ref_copy(stmt.init, var_type, stmt)
         if self.ctx.func.current_ns:
             self.ctx.func.current_ns.bind_variable(stmt.name, var_type)
         # Track top-level declarations with line number for order-aware codegen

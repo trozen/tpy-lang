@@ -591,6 +591,57 @@ class LocalCppForm(Enum):
     VALUE = auto()
 
 
+class CppForm(Enum):
+    """The borrow-vs-storage axis of a non-value type's C++ representation.
+
+    Coarser than `LocalCppForm` (which encodes the specific local shapes
+    codegen tracks): `CppForm` is the *kind* of slot -- does it borrow its
+    data or own it -- which is the only axis `convert()` bridges. The
+    concrete helper is then selected from the value's TPy type kind
+    (Optional -> optional_to_ptr family, Union -> variant family, Tuple ->
+    tuple family, record -> address-of) and the const flag. For value types
+    the two forms coincide (cheaply copyable), so `VALUE` needs no bridge.
+
+      * `BORROW`   -- `T*` / `const T*` / `T&` / `std::variant<A*, B*>` /
+                      `std::tuple<..., T*>`. Indirect into storage elsewhere.
+      * `STORAGE`  -- `T` / `std::optional<T>` / `std::variant<A, B>` /
+                      `std::tuple<..., std::optional<T>>`. Self-contained.
+      * `VALUE`    -- value type; borrow and storage coincide.
+    """
+    BORROW = auto()
+    STORAGE = auto()
+    VALUE = auto()
+
+
+@dataclass
+class FormValue:
+    """A rendered C++ expression plus the facts `convert()` needs to bridge
+    its form to a destination slot.
+
+    The load-bearing rule (see `convert`): `form` is a *derived* fact handed
+    over by the producing emitter, never re-guessed by `convert()` from
+    `code` + `type`. A single TPy type (`Box | None`) can render as either
+    `Box*` (borrow) or `std::optional<Box>` (storage) depending on
+    `force_pointer_repr` / storage-field / local form, so the producer -- the
+    only site that knows which C++ it emitted -- must record it here.
+
+    Fields:
+      * `code`     -- the rendered C++ expression string.
+      * `type`     -- its TPy type (selects the conversion helper family).
+      * `form`     -- BORROW / STORAGE / VALUE, as actually emitted.
+      * `is_const` -- the borrow is const-qualified (`const T*` / `const T&` /
+                      const-ptr-variant); picks the const helper overload.
+      * `move`     -- this is a last-use move into an owned sink (an ownership
+                      decision made by the producer/call site, NOT by
+                      `convert()`); selects the `_move` helper variant.
+    """
+    code: str
+    type: TpyType
+    form: CppForm
+    is_const: bool = False
+    move: bool = False
+
+
 @dataclass
 class LocalScopeSnap:
     """Snapshot of the C++ local-variable declaration state inside a function body.
@@ -1146,6 +1197,12 @@ class CodeGenContext:
             fi = expr.resolved_function_info
             if fi is not None and self.is_ptr_variant_union(fi.return_type):
                 return True
+        # A ptr-variant union ternary: `_gen_if_expr` normalizes each arm to
+        # variant<A*, B*>, so the ternary itself yields the pointer variant and
+        # must not be re-wrapped by the consuming sink.
+        if isinstance(expr, TpyIfExpr):
+            rt = self.get_expr_type(expr)
+            return rt is not None and self.is_ptr_variant_union(unwrap_readonly(rt))
         return False
 
     def reset_scope(self) -> None:
@@ -1805,6 +1862,83 @@ class CodeGenContext:
                     or expr.name in self.const_ref_params
                     or expr.name in self.const_indirect_locals)
         return False
+
+    def source_form(self, expr: TpyExpr) -> CppForm:
+        """Classify the borrow/storage form a leaf expression renders as --
+        the expr-level generalization of `local_cpp_form`, folded together
+        with the expr-shape predicates (field / subscript / storage-Optional).
+
+        Only meaningful for LEAF sources (names, field/subscript reads). Join
+        expressions (ternary / walrus RHS / await result) do not have a single
+        form; their producers normalize each operand and build the `FormValue`
+        directly, so this is not consulted for them.
+
+        Peels `TpyCoerce` up front so every call site classifies the underlying
+        source uniformly -- a coerce-wrapped storage-form Optional/Union arm
+        must not fall through to the conservative BORROW default and skip its
+        lift.
+        """
+        while isinstance(expr, TpyCoerce):
+            expr = expr.expr
+        t = self.get_expr_type(expr)
+        if t is None or t.is_value_type():
+            return CppForm.VALUE
+        # Storage-form Optional lvalue (Optional field, pointer-repr Optional
+        # container element, storage-optional loop/unpack var) -> optional<T>.
+        if self.is_storage_form_optional_source(expr):
+            return CppForm.STORAGE
+        if self.is_ptr_variant_source(expr):
+            return CppForm.BORROW
+        if isinstance(expr, TpyName):
+            form = self.local_cpp_form(expr.name)
+            if form in (LocalCppForm.OPTIONAL_STORAGE, LocalCppForm.STORAGE_OPTIONAL,
+                        LocalCppForm.VALUE_VARIANT, LocalCppForm.STORAGE_TUPLE):
+                return CppForm.STORAGE
+            # POINTER / PTR_VARIANT / BORROW_TUPLE / OPTIONAL_BORROW_TUPLE are
+            # borrow form; LocalCppForm.VALUE on a NON-value type is a
+            # T&-bound borrow (record param / ref-bound local), not storage.
+            return CppForm.BORROW
+        # Field / subscript / non-value global: an lvalue into owned storage.
+        if isinstance(expr, (TpyFieldAccess, TpySubscript)) or self._is_pointer_global(expr):
+            return CppForm.STORAGE
+        # Conservative default: treat unknown non-value sources as borrow form
+        # (the common case for call returns that are not Own-storage). Sites
+        # that know better build the FormValue explicitly.
+        return CppForm.BORROW
+
+    def convert(self, val: 'FormValue', *, dst_type: TpyType, dst_form: CppForm) -> str:
+        """The single door for borrow<->storage form conversion.
+
+        Bridges `val.code` from `val.form` to `dst_form`, selecting the runtime
+        helper from the TPy type kind (+ const, + move). It NEVER re-derives
+        `val.form` from `val.code`/`val.type` -- the producing emitter records
+        the form it actually emitted (see `FormValue`), because one TPy type can
+        render in multiple C++ shapes.
+
+        Optional and Union are handled here; an unhandled kind raises so a caller
+        can never get a silent partial conversion.
+        """
+        if val.form is CppForm.VALUE or dst_form is CppForm.VALUE or val.form is dst_form:
+            return val.code
+        t = unwrap_qualifiers(val.type)
+        if isinstance(t, OptionalType):
+            if dst_form is CppForm.BORROW:
+                # storage optional<T> -> T* (const overload auto-selected by
+                # the optional's own const-ness).
+                return f"::tpy::optional_to_ptr({val.code})"
+            helper = "ptr_to_optional_move" if val.move else "ptr_to_optional"
+            return f"::tpy::{helper}({val.code})"
+        if isinstance(t, UnionType):
+            if dst_form is CppForm.BORROW:
+                # value variant<A, B> -> pointer variant<A*, B*>.
+                helper = "to_const_ptr_variant" if val.is_const else "to_ptr_variant"
+                return f"::tpy::{helper}({val.code})"
+            # pointer variant<A*, B*> -> value variant<A, B> (target spelled;
+            # to_cpp() self-resolves a union alias).
+            return f"::tpy::to_value_variant<{t.to_cpp()}>({val.code})"
+        raise NotImplementedError(
+            f"convert(): {type(t).__name__} bridging not yet routed through the "
+            f"chokepoint (val.form={val.form}, dst_form={dst_form})")
 
     def callee_returns_own_ptr_optional(self, init: 'TpyExpr') -> bool:
         """True when `init` is a function call returning

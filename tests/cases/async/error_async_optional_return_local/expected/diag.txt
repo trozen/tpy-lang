@@ -1,0 +1,1 @@
+main.py:17: error: Cannot return local or temporary as 'Box | None'. The returned pointer would dangle. Return a reference to parameter data, or use Own[Box | None] to return by value.

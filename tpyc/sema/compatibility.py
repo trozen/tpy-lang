@@ -1683,6 +1683,13 @@ class TypeCompatibility:
         # Subscript on an lvalue is also an lvalue (e.g., arr[i])
         if isinstance(expr, TpySubscript):
             return self.is_lvalue(expr.obj)
+        # A ternary of two lvalue arms is itself an lvalue (C++ binds it as a
+        # reference) -- so passing it to an Own[T] slot copies the chosen arm,
+        # which must route through the same "copies into owned storage" warning
+        # a plain lvalue does (a mixed lvalue/rvalue ternary is a prvalue and is
+        # handled by the reference-ternary copy diagnostic instead).
+        if isinstance(expr, TpyIfExpr):
+            return self.is_lvalue(expr.then_expr) and self.is_lvalue(expr.else_expr)
         # Everything else (calls, literals, operators) are rvalues
         return False
 

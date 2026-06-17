@@ -1,0 +1,6 @@
+main.py:24: warning: copies A | None into container; use copy() to make this explicit
+main.py:28: warning: copies A | B into container; use copy() to make this explicit
+main.py:32: warning: copies A | B into owned storage; use copy() to make this explicit
+main.py:36: warning: copies A | None into container; use copy() to make this explicit
+main.py:41: warning: copies A into container; use copy() to make this explicit
+main.py:56: warning: Passing borrowed container 'u' to non-readonly parameter 'xs' (function may invalidate references)

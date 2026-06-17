@@ -78,7 +78,7 @@ from ..prescan import match_is_none, _expr_to_narrowing_key
 from ..namespace import BindingKind
 from ..sema.numeric_lattice import fixed_int_range_contains
 from ..sema.literal_utils import literal_value_from_expr
-from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, enum_cpp_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, view_key_target
+from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, enum_cpp_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, view_key_target, CppForm, FormValue
 from .functions import literal_mangled_name
 from .. import qnames
 
@@ -1083,6 +1083,18 @@ class ExpressionGenerator:
                     helper = ("ptr_to_optional_move"
                               if self._is_last_use_movable(arg) else "ptr_to_optional")
                     return f"::tpy::{helper}({ptr})"
+                # Union element slot (value-variant storage): a ptr-variant
+                # source must lift to the value variant before push_back /
+                # emplace -- the UnionType analog of the Optional lift above. A
+                # value-variant source (constructor, field) passes through.
+                # Recursive-union wrappers (needs_wrapper) are a struct, not a
+                # std::variant, so to_value_variant does not apply.
+                own_union = unwrap_readonly(own.wrapped)
+                if (isinstance(own_union, UnionType) and own_union.uses_pointer_repr()
+                        and not own_union.needs_wrapper()):
+                    lifted = self._to_value_variant_if_needed(arg, gen_arg, own_union)
+                    if lifted != gen_arg:
+                        return lifted
                 moved = self._maybe_move(arg, gen_arg)
                 if moved is gen_arg and _is_simple_lvalue(arg):
                     # cpp_template callees (push_back, insert, etc.) accept
@@ -1112,6 +1124,19 @@ class ExpressionGenerator:
                         else:
                             tmp = self.ctx.temps.create_typed("auto", gen_arg)
                         gen_arg = f"std::move({tmp})"
+                elif (moved is gen_arg and not inline_template
+                      and not own.wrapped.is_value_type()
+                      and not self.ctx.is_rvalue_source(arg)):
+                    # A non-simple lvalue that wasn't moved, feeding a non-value
+                    # Own[T] param (which renders as T&&) -- e.g. a ternary of
+                    # two lvalues (`a if c else b` -> T&). An lvalue cannot bind
+                    # the T&& slot, so copy into a temp and move that. (A
+                    # non-simple RVALUE binds T&& directly; a cpp_template callee
+                    # binds an lvalue natively; and a VALUE-type Own param is
+                    # by-value, so an lvalue copies into it fine -- all three
+                    # stay on the else path below.)
+                    tmp = self.ctx.temps.create_typed("auto", gen_arg)
+                    gen_arg = f"std::move({tmp})"
                 else:
                     gen_arg = moved
         return gen_arg
@@ -6237,6 +6262,14 @@ class ExpressionGenerator:
             return f"({cpp_name} = {rhs}, {cpp_name})"
         if borrow_tuple and storage_rvalue:
             return f"({cpp_name} = {value_code}, *{cpp_name})"
+        if isinstance(value_type, OptionalType) and value_type.uses_pointer_repr():
+            # Bridge a storage-form Optional RHS (field / subscript / storage-
+            # optional local rendering as std::optional<T>) into the T* walrus
+            # target; a borrow-form RHS (pointer-local) passes through.
+            rhs = self.ctx.convert(
+                FormValue(value_code, value_type, self.ctx.source_form(expr.value)),
+                dst_type=value_type, dst_form=CppForm.BORROW)
+            return f"({cpp_name} = {rhs})"
         if not value_type.is_value_type() and not isinstance(value_type, OptionalType):
             return f"({cpp_name} = {value_code}, *{cpp_name})"
         return f"({cpp_name} = {value_code})"
@@ -6328,8 +6361,29 @@ class ExpressionGenerator:
                 cpp_type = self.types.type_to_cpp(result_type)
                 then_code = f"{cpp_type}({then_code})"
                 else_code = f"{cpp_type}({else_code})"
+        elif (isinstance(result_type, UnionType) and result_type.uses_pointer_repr()
+              and not self.ctx.in_container_element):
+            # Pointer-variant union: normalize each arm to variant<A*, B*> so
+            # the C++ ?: operands match. A value-variant arm (field / subscript)
+            # lifts via to_ptr_variant; a ptr-variant arm (param/local) passes
+            # through. The whole ternary is then a ptr-variant source (see
+            # is_ptr_variant_source), so consumers don't re-wrap it.
+            then_code = self._ptr_variant_branch(expr.then_expr, then_code)
+            else_code = self._ptr_variant_branch(expr.else_expr, else_code)
 
         return f"(({cond}) ? ({then_code}) : ({else_code}))"
+
+    def _ptr_variant_branch(self, branch_expr: TpyExpr, code: str) -> str:
+        """Normalize a ternary arm to pointer-variant form for a ptr-variant
+        union result. Only union-typed arms are bridged; a bare-alternative
+        arm (a constructor / narrowed name) is left to its existing handling.
+        """
+        btype = self.ctx.get_expr_type(branch_expr)
+        if not isinstance(unwrap_qualifiers(btype), UnionType):
+            return code
+        return self.ctx.convert(
+            FormValue(code, btype, self.ctx.source_form(branch_expr)),
+            dst_type=btype, dst_form=CppForm.BORROW)
 
     def _ptr_optional_branch(self, branch_expr: TpyExpr, code: str) -> str:
         """Convert a ternary branch to T* for pointer-repr Optional results."""
@@ -6337,7 +6391,14 @@ class ExpressionGenerator:
             return "nullptr"
         branch_type = self.ctx.get_expr_type(branch_expr)
         if isinstance(branch_type, (OptionalType, PtrType)):
-            return code
+            # Per-arm form normalization: a storage-form Optional arm (field /
+            # subscript -> std::optional<T>) lifts via optional_to_ptr; a
+            # borrow-form arm (pointer-local, Ptr) passes through. Without this
+            # a mixed storage/borrow ternary emits ill-formed `?:` operands
+            # (Box* vs std::optional<Box>).
+            return self.ctx.convert(
+                FormValue(code, branch_type, self.ctx.source_form(branch_expr)),
+                dst_type=branch_type, dst_form=CppForm.BORROW)
         return f"&({code})"
 
     def _gen_lambda(self, expr: TpyLambda) -> str:

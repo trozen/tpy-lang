@@ -47,7 +47,7 @@ from .variant_access import VariantAccess
 from ..diagnostics import SemanticError
 from ..liveness import stmts_terminate
 
-from .context import INDENT, CodeGenError, FinallyContext, LocalCppForm, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable, view_key_target
+from .context import INDENT, CodeGenError, FinallyContext, LocalCppForm, CppForm, FormValue, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable, view_key_target
 from ..type_def_registry import (
     is_list,
     is_fixed_int_type, is_big_int_type, is_bytes_type, is_str_type,
@@ -1838,6 +1838,43 @@ class StatementGenerator:
         return (f"::tpy::tuple_to_storage"
                 f"<{self.types.tuple_storage_cpp(unwrapped)}>({expr})")
 
+    def _lift_to_element_storage(self, value_expr: TpyExpr, value_code: str,
+                                 elem_type: TpyType | None) -> str:
+        """Lift a borrow-form value into storage form for a container-element
+        store (`xs[i] = p`): a pointer-repr Optional element wants
+        std::optional<T>, a ptr-variant Union element wants a value variant.
+
+        Copies (no move) -- a container element owns its data inline, and the
+        move-vs-copy decision belongs to the ownership pass, not this form
+        bridge; an unconditional move here would gut a borrowed source
+        (cf. the B30 move-out class). A storage-form source already matches the
+        slot and passes through.
+        """
+        if elem_type is None:
+            return value_code
+        bare = unwrap_readonly(unwrap_ref_type(elem_type))
+        if not (isinstance(bare, (OptionalType, UnionType)) and bare.uses_pointer_repr()):
+            return value_code
+        # A recursive-union wrapper (needs_wrapper) is a struct, not a
+        # std::variant -- the value-variant lift does not apply.
+        if isinstance(bare, UnionType) and bare.needs_wrapper():
+            return value_code
+        src = self.ctx.unwrap_copy(value_expr)
+        if isinstance(src, TpyCoerce):
+            src = src.expr
+        # A narrowed union name is already rendered as the concrete alternative
+        # (`*std::get<A*>(p)`), not a variant, so the value-variant lift would be
+        # ill-formed -- the value-variant element is constructed from it directly.
+        # Mirrors the guard in `_to_value_variant_if_needed`.
+        if isinstance(src, TpyName) and src.name in self.ctx.narrowed_vars:
+            return value_code
+        form = self.ctx.source_form(src)
+        if form is not CppForm.BORROW:
+            return value_code
+        return self.ctx.convert(
+            FormValue(value_code, bare, form, is_const=self.ctx.is_const_storage_source(src)),
+            dst_type=bare, dst_form=CppForm.STORAGE)
+
     def _gen_var_decl_code(self, stmt: TpyVarDecl, indent: str) -> str | None:
         """Generate code for a variable declaration. Returns code to write or None."""
         from ..parse.nodes import VarLinkage
@@ -2200,6 +2237,7 @@ class StatementGenerator:
             value = self.expressions._maybe_move(stmt.value, value)
             value = self._maybe_wrap_tuple_to_storage(
                 value, target_type, self.ctx.unwrap_copy(stmt.value))
+            value = self._lift_to_element_storage(stmt.value, value, target_type)
             obj_type = self.ctx.get_expr_type(stmt.target.obj)
             index_type = self.ctx.analyzer.get_expr_type(stmt.target.index)
             # Dereference globals for subscript access
@@ -3643,6 +3681,26 @@ class StatementGenerator:
             out.write(f"{indent}return {expr};\n")
         return out.getvalue()
 
+    def _async_ret_to_borrow(self, value: TpyExpr, ret_type: TpyType,
+                             expr_cpp: str) -> str:
+        """When the coro return slot is borrow form (pointer-repr Optional --
+        see gen_async `_ret_cpp`), lift a storage-form return source (`return
+        h.opt`) into the borrow form via the chokepoint; a borrow source
+        (pointer-local) passes through. None is handled separately (it renders
+        as nullptr for a pointer-repr target). The pointer-variant Union return
+        is excluded -- its await-result consumer is not yet borrow-form aware.
+        """
+        bare = unwrap_ref_type(ret_type)
+        if not (isinstance(bare, OptionalType) and bare.uses_pointer_repr()):
+            return expr_cpp
+        src = self.ctx.unwrap_copy(value)
+        if isinstance(src, TpyCoerce):
+            src = src.expr
+        return self.ctx.convert(
+            FormValue(expr_cpp, bare, self.ctx.source_form(src),
+                      is_const=self.ctx.is_const_storage_source(src)),
+            dst_type=bare, dst_form=CppForm.BORROW)
+
     def _make_async_return(self, stmt: TpyReturn, indent: str) -> str:
         """Lower `return v` inside an `async def` body. When a CFG-based
         finally is active, ctx state routes the return through the
@@ -3697,6 +3755,8 @@ class StatementGenerator:
                 expr_cpp = self.expressions.gen_expr_deref(stmt.value)
                 expr_cpp = self._wrap_view_to_storage(
                     stmt.value, ret_type, expr_cpp)
+                expr_cpp = self._async_ret_to_borrow(
+                    stmt.value, ret_type, expr_cpp)
             ret_tmp = f"__tpy_async_ret_{self.ctx.iter_counter}"
             self.ctx.iter_counter += 1
             chain = io.StringIO()
@@ -3728,6 +3788,8 @@ class StatementGenerator:
                     else:
                         expr_cpp = self.expressions.gen_expr_deref(stmt.value)
                         expr_cpp = self._wrap_view_to_storage(
+                            stmt.value, ret_type, expr_cpp)
+                        expr_cpp = self._async_ret_to_borrow(
                             stmt.value, ret_type, expr_cpp)
                     # Bind to a local first so `std::move` has a typed source:
                     # `std::move({1, 2, 3})` (braced initializer) doesn't
