@@ -77,7 +77,7 @@ void bytes_sinks(std::span<const uint8_t> b) {
     // app.append(b)
     app.push_back(::tpy::bytes_copy(b));
     // app.append(b[1:3])
-    app.push_back(std::vector<uint8_t>(::tpy::bytes_slice(b, ::tpy::BasicSlice{1, 3}).begin(), ::tpy::bytes_slice(b, ::tpy::BasicSlice{1, 3}).end()));
+    app.push_back(::tpy::bytes_copy(::tpy::bytes_slice(b, ::tpy::BasicSlice{1, 3})));
     // print(len(lit), len(app), len(lit[0]), app[0][0], app[1][0], len(app[1]))
     std::cout << ::tpy::__len__(lit) << " " << ::tpy::__len__(app) << " " << ::tpy::__len__(::tpy::__getitem__(lit, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(app, 0), 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(app, 1), 0)) << " " << ::tpy::__len__(::tpy::__getitem__(app, 1)) << "\n";
 }

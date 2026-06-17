@@ -441,14 +441,14 @@ COERCIONS: list[Coercion] = [
         name="bytesview_to_bytes",
         from_type=is_bytes_view_type,
         to_type=is_bytes_type,
-        codegen=lambda e, _a, _b, _c: f"std::vector<uint8_t>({e}.begin(), {e}.end())",
+        codegen=lambda e, _a, _b, _c: f"::tpy::bytes_copy({e})",
         protocol_safe=True,
     ),
     Coercion(
         name="bytesview_to_bytearray",
         from_type=is_bytes_view_type,
         to_type=is_bytearray_type,
-        codegen=lambda e, _a, _b, _c: f"std::vector<uint8_t>({e}.begin(), {e}.end())",
+        codegen=lambda e, _a, _b, _c: f"::tpy::bytes_copy({e})",
         protocol_safe=True,
     ),
 
@@ -709,10 +709,10 @@ def _any_storage_form(
     if is_str_view_type(actual) or is_str_type(actual) or is_string_type(actual):
         return f"std::string({e})"
     if is_bytes_view_type(actual):
-        return f"std::vector<uint8_t>({e}.begin(), {e}.end())"
+        return f"::tpy::bytes_copy({e})"
     if is_bytes_type(actual) or is_bytearray_type(actual):
         if c == CoercionContext.ARG:
-            return f"std::vector<uint8_t>({e}.begin(), {e}.end())"
+            return f"::tpy::bytes_copy({e})"
         return e
     if is_list(actual) or is_dict(actual) or is_set(actual):
         cpp = actual.to_cpp()

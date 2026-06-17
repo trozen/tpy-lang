@@ -2377,15 +2377,14 @@ class StatementGenerator:
                 return f"{indent}{target} = {value};\n"
             # bytes field (std::vector<uint8_t>) from bytes-view source
             # (std::span<const uint8_t>): vector has no span-assign overload,
-            # so copy via the runtime helper. Mirrors the MIL-path conversion
-            # in records.py::_extract_field_inits. Not yet routed through
-            # _wrap_view_to_storage (this early-return-per-type shape doesn't
-            # thread its result cleanly, and it lacks the str arm / Optional-
-            # param breadth the helper has) -- see TODO.md.
+            # so copy via the shared view->owned chokepoint. Str needs no arm
+            # here: std::string has an operator=(string_view), so a str-view
+            # source lands via plain copy-assign on the default path.
             if is_bytes_type(target_type) and self.expressions._is_bytes_view_source(stmt.value):
                 target = self.expressions.gen_expr(stmt.target)
                 value = self.expressions.gen_expr(stmt.value, target_type)
-                return f"{indent}{target} = ::tpy::bytes_copy({value});\n"
+                value = self._wrap_view_to_storage(stmt.value, target_type, value)
+                return f"{indent}{target} = {value};\n"
             # Ptr[T] field: storage-form Optional source needs optional_to_ptr
             # lift to mirror the storage-form-to-borrow-form bridge already
             # done for OptionalType destinations above.
