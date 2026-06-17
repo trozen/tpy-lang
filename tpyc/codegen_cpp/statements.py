@@ -2034,6 +2034,19 @@ class StatementGenerator:
             return f"{prefix}{indent}{opt_cpp} {cpp_name} = {rhs};\n"
         if (stmt.init is not None
                 and isinstance(target_type, TupleType)
+                and target_type.has_own_element()
+                and not target_type.has_pointer_repr_element()
+                and stmt.name not in self.ctx.reassigned_vars):
+            # An Own-element tuple is by-value storage (`std::tuple<..., T>`)
+            # with no `T*` borrow form, so the local is always storage-form.
+            # Register it so the call-site arg path (which collapses Own[T]->T
+            # to a pointer-repr param) doesn't mistake it for a borrow-form
+            # source and emit a copying tuple_to_storage lift -- deleted when an
+            # element is @nocopy. Tuples that DO have a borrow form go through
+            # the has_pointer_repr_element block below instead.
+            self.ctx.storage_form_tuple_locals.add(stmt.name)
+        if (stmt.init is not None
+                and isinstance(target_type, TupleType)
                 and target_type.has_pointer_repr_element()):
             # A REASSIGNED pointer-repr tuple local has one fixed C++ shape
             # across all its bindings: borrow form (`std::tuple<..., T*>`). An
