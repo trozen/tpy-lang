@@ -2956,10 +2956,16 @@ class StatementGenerator:
             # bind by rvalue-ref and move the owned elements out of the source,
             # rather than copy the whole tuple into `auto __tup` -- the copy is
             # deleted when an element is @nocopy / move-only (e.g. a socket).
-            # A named-local owned-tuple source still copies here: moving it
-            # safely first needs sema to track owned-element tuples as movable
-            # (ever_owned_locals), which it does not yet.
             out.write(f"{indent}auto&& {tmp} = {value_expr};\n")
+        elif (not unwrapped_tmp and not wrapped_to_pointer
+                and any(stmt.is_owned)
+                and isinstance(stmt.value, TpyName)
+                and stmt.value.name in self.ctx.sema_movable_locals
+                and id(stmt.value) in self.ctx.analyzer.ctx.all_last_uses):
+            # The plain `auto __tup = t` copy is deleted when an element is
+            # @nocopy / move-only; sema proved this the last use, so consuming
+            # the source is sound and the owned elements move out below.
+            out.write(f"{indent}auto&& {tmp} = std::move({value_expr});\n")
         else:
             out.write(f"{indent}auto {tmp} = {value_expr};\n")
 
