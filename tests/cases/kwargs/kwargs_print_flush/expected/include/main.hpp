@@ -40,8 +40,7 @@ inline std::ostream& operator<<(std::ostream& os, const CountingSink& obj) {
 // def write(self, text: str) -> Int32:
 inline int32_t CountingSink::write(std::string_view text) {
     // self.parts.append(text)
-    std::string __tmp_1{text};
-    this->parts.push_back(std::move(__tmp_1));
+    this->parts.push_back(std::string(text));
     // return Int32(len(text))
     return ::tpy::__len__(text);
 }

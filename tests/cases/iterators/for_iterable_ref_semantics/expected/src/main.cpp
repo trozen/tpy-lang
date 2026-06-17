@@ -54,8 +54,7 @@ void main() {
     for (; __beg_2 != __end_2; ++__beg_2) {
         std::string_view k = *__beg_2;
         // keys.append(k)
-        std::string __tmp_2{k};
-        keys.push_back(std::move(__tmp_2));
+        keys.push_back(std::string(k));
     }
     // print(keys[0], keys[1])
     std::cout << ::tpy::__getitem__(keys, 0) << " " << ::tpy::__getitem__(keys, 1) << "\n";

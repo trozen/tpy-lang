@@ -8,8 +8,7 @@ namespace tpyapp::main {
 // def double_wrap(inner: str) -> Own[Box[Rc[str]]]:
 ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<std::string>> double_wrap(std::string_view inner) {
     // return Box(Rc.new(inner))
-    std::string __tmp_1{inner};
-    return ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<std::string>>(Rc<std::string>::new_<std::string>(std::move(__tmp_1)));
+    return ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<std::string>>(Rc<std::string>::new_<std::string>(std::string(inner)));
 }
 
 // def main() -> None:

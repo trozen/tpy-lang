@@ -722,7 +722,7 @@ class StatementGenerator:
                         ret_expr = self.expressions._maybe_move(ret_value, ret_expr)
                         # Narrowed Optional[str] param: (*s) yields string_view
                         if (is_str_type(ret_type)
-                                and self._is_optional_str_param(ret_value)):
+                                and self.expressions._is_optional_str_param(ret_value)):
                             ret_expr = f"std::string({ret_expr})"
                 else:
                     ret_expr = self._wrap_view_to_storage(
@@ -2382,7 +2382,7 @@ class StatementGenerator:
             # _wrap_view_to_storage (this early-return-per-type shape doesn't
             # thread its result cleanly, and it lacks the str arm / Optional-
             # param breadth the helper has) -- see TODO.md.
-            if is_bytes_type(target_type) and self._is_bytes_view_source(stmt.value):
+            if is_bytes_type(target_type) and self.expressions._is_bytes_view_source(stmt.value):
                 target = self.expressions.gen_expr(stmt.target)
                 value = self.expressions.gen_expr(stmt.value, target_type)
                 return f"{indent}{target} = ::tpy::bytes_copy({value});\n"
@@ -2638,90 +2638,14 @@ class StatementGenerator:
             return f"{indent}{target_cpp} += {rhs};\n"
         return None
 
-    def _is_optional_str_param(self, expr: TpyExpr) -> bool:
-        """Check if expr is an Optional[str] function parameter (string_view in C++)."""
-        if not isinstance(expr, TpyName):
-            return False
-        declared = self.ctx.current_func_params.get(expr.name)
-        return (isinstance(declared, OptionalType)
-                and is_str_type(declared.inner))
-
     def _wrap_view_to_storage(self, ret_value: TpyExpr,
                                      ret_type: 'TpyType | None',
                                      ret_expr: str) -> str:
         """Wrap a borrow-form view (str->string_view, bytes->span) into its
-        owned storage form (std::string / tpy::bytes). One rule shared by the
-        return boundary (sync + async) and the var-decl init path."""
-        if is_str_type(ret_type) and (
-                self._is_str_view_source(ret_value)
-                or self._expr_uses_optional_str_param(ret_value)):
-            return f"std::string({ret_expr})"
-        if is_bytes_type(ret_type) and (
-                self._is_bytes_view_source(ret_value)
-                or self._expr_uses_optional_bytes_param(ret_value)):
-            return f"::tpy::bytes_copy({ret_expr})"
-        return ret_expr
-
-    def _is_str_view_source(self, expr: TpyExpr) -> bool:
-        """Check if expr produces std::string_view at C++ runtime and needs explicit std::string().
-
-        Bare string literals generate const char* and can implicitly construct std::string,
-        so they don't need an explicit wrapper and return False.
-
-        For all other expressions, two checks are combined:
-        1. If sema/local_deduction annotated the expression as StrView (e.g. an or-chain
-           where a promoted local forced the annotation), trust that annotation.
-        2. Otherwise delegate to expressions._is_str_view_at_runtime, which uses AND
-           semantics and handles str params (typed as str in sema but string_view in C++).
-        """
-        if isinstance(expr, TpyStrLiteral):
-            return False
-        if is_str_view_type(self.types.get_resolved_type(expr)):
-            return True
-        # Note: TpyCoerce is not explicitly handled here. If a coercion wrapping
-        # a string_view source (e.g. narrowed Optional[str] param) ever appears
-        # as a var init with a str target, the coerce target type resolves to
-        # str (not StrView), and _is_str_view_at_runtime returns False,
-        # so no std::string() wrap would be emitted. That path is currently not
-        # reachable in practice (Optional[str] coercions go through the
-        # _is_optional_str_param / _expr_uses_optional_str_param guards instead).
-        return self.expressions._is_str_view_at_runtime(expr)
-
-    def _is_bytes_view_source(self, expr: TpyExpr) -> bool:
-        """Check if expr produces std::span<const uint8_t> at C++ runtime.
-
-        Bytes literals are temporary vectors (not view-safe), so return False.
-        Bytes params are spans, so return True.
-        """
-        if is_bytes_view_type(self.types.get_resolved_type(expr)):
-            return True
-        return self.expressions._is_bytes_view_at_runtime(expr)
-
-    def _expr_uses_optional_str_param(self, expr: TpyExpr) -> bool:
-        """Check if expr (e.g. ternary) dereferences an Optional[str] param."""
-        if self._is_optional_str_param(expr):
-            return True
-        if isinstance(expr, TpyIfExpr):
-            return (self._expr_uses_optional_str_param(expr.then_expr)
-                    or self._expr_uses_optional_str_param(expr.else_expr))
-        return False
-
-    def _is_optional_bytes_param(self, expr: TpyExpr) -> bool:
-        """Check if expr is an Optional[bytes] function parameter (span in C++)."""
-        if not isinstance(expr, TpyName):
-            return False
-        declared = self.ctx.current_func_params.get(expr.name)
-        return (isinstance(declared, OptionalType)
-                and is_bytes_type(declared.inner))
-
-    def _expr_uses_optional_bytes_param(self, expr: TpyExpr) -> bool:
-        """Check if expr (e.g. ternary) dereferences an Optional[bytes] param."""
-        if self._is_optional_bytes_param(expr):
-            return True
-        if isinstance(expr, TpyIfExpr):
-            return (self._expr_uses_optional_bytes_param(expr.then_expr)
-                    or self._expr_uses_optional_bytes_param(expr.else_expr))
-        return False
+        owned storage form (std::string / tpy::bytes). Shared with the
+        container literal/comprehension/insert sinks via the common
+        chokepoint on ExpressionGenerator."""
+        return self.expressions._view_source_to_owned(ret_value, ret_type, ret_expr)
 
     def _is_value_optional_var(self, name: str) -> bool:
         """Check if a variable's C++ declared type is a value-type std::optional<T>."""

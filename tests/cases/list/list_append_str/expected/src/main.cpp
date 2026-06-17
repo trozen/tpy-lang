@@ -12,8 +12,7 @@ void main() {
     // s = "hello"
     std::string_view s = "hello";
     // items.append(s)
-    std::string __tmp_1{s};
-    items.push_back(std::move(__tmp_1));
+    items.push_back(std::string(s));
     // items.append("literal")
     items.push_back("literal");
     // items.append(s + " world")

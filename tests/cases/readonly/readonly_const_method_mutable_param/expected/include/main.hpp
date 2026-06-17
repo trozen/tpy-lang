@@ -60,8 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 // def write(self, s: str) -> None:
 inline void Writer::write(std::string_view s) {
     // self._parts.append(s)
-    std::string __tmp_1{s};
-    this->_parts.push_back(std::move(__tmp_1));
+    this->_parts.push_back(std::string(s));
 }
 
 // def result(self) -> str:

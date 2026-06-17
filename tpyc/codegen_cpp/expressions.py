@@ -1083,6 +1083,15 @@ class ExpressionGenerator:
                     helper = ("ptr_to_optional_move"
                               if self._is_last_use_movable(arg) else "ptr_to_optional")
                     return f"::tpy::{helper}({ptr})"
+                # View-form str/bytes source into an owned str/bytes slot:
+                # construct owned storage via the shared chokepoint. A
+                # std::move of the view form is both spurious and ill-typed
+                # (string_view/span don't convert to string/vector); this also
+                # covers the moved / optional-param-deref source that the
+                # simple-lvalue path below skips.
+                converted = self._view_source_to_owned(arg, own.wrapped, gen_arg)
+                if converted is not gen_arg:
+                    return converted
                 # Union element slot (value-variant storage): a ptr-variant
                 # source must lift to the value variant before push_back /
                 # emplace -- the UnionType analog of the Optional lift above. A
@@ -1530,6 +1539,74 @@ class ExpressionGenerator:
             return (self._is_bytes_view_at_runtime(expr.then_expr)
                     and self._is_bytes_view_at_runtime(expr.else_expr))
         return is_bytes_view_type(self.types.get_resolved_type(expr))
+
+    def _is_str_view_source(self, expr: TpyExpr) -> bool:
+        """True if expr produces std::string_view at runtime and needs an
+        explicit std::string() to land in an owned-str slot. Bare string
+        literals generate const char* (implicitly convertible), so they are
+        excluded."""
+        if isinstance(expr, TpyStrLiteral):
+            return False
+        if is_str_view_type(self.types.get_resolved_type(expr)):
+            return True
+        return self._is_str_view_at_runtime(expr)
+
+    def _is_bytes_view_source(self, expr: TpyExpr) -> bool:
+        """True if expr produces std::span<const uint8_t> at runtime. Bytes
+        literals are temporary vectors (not view-safe), so excluded; bytes
+        params are spans, so included."""
+        if is_bytes_view_type(self.types.get_resolved_type(expr)):
+            return True
+        return self._is_bytes_view_at_runtime(expr)
+
+    def _is_optional_str_param(self, expr: TpyExpr) -> bool:
+        """True if expr is an Optional[str] parameter (string_view in C++)."""
+        if not isinstance(expr, TpyName):
+            return False
+        declared = self.ctx.current_func_params.get(expr.name)
+        return isinstance(declared, OptionalType) and is_str_type(declared.inner)
+
+    def _is_optional_bytes_param(self, expr: TpyExpr) -> bool:
+        """True if expr is an Optional[bytes] parameter (span in C++)."""
+        if not isinstance(expr, TpyName):
+            return False
+        declared = self.ctx.current_func_params.get(expr.name)
+        return isinstance(declared, OptionalType) and is_bytes_type(declared.inner)
+
+    def _expr_uses_optional_str_param(self, expr: TpyExpr) -> bool:
+        """True if expr (possibly a ternary) dereferences an Optional[str] param."""
+        if self._is_optional_str_param(expr):
+            return True
+        if isinstance(expr, TpyIfExpr):
+            return (self._expr_uses_optional_str_param(expr.then_expr)
+                    or self._expr_uses_optional_str_param(expr.else_expr))
+        return False
+
+    def _expr_uses_optional_bytes_param(self, expr: TpyExpr) -> bool:
+        """True if expr (possibly a ternary) dereferences an Optional[bytes] param."""
+        if self._is_optional_bytes_param(expr):
+            return True
+        if isinstance(expr, TpyIfExpr):
+            return (self._expr_uses_optional_bytes_param(expr.then_expr)
+                    or self._expr_uses_optional_bytes_param(expr.else_expr))
+        return False
+
+    def _view_source_to_owned(self, expr: TpyExpr,
+                              slot_type: 'TpyType | None', code: str) -> str:
+        """One chokepoint (return / var-init boundary, container
+        literals/comprehensions, container inserts) for the str/bytes
+        view->owned-storage copy. Keyed on the SOURCE being view-form, not the
+        slot, so an owned rvalue source is left for the caller's move path. The
+        slot must be a BARE str/bytes here: an Optional slot fed a whole-optional
+        source already owns its inner storage, so wrapping it would be ill-typed
+        (the explicit-view-into-Optional case lives in `_wrap_for_owned_slot`)."""
+        if is_str_type(slot_type) and (self._is_str_view_source(expr)
+                                       or self._expr_uses_optional_str_param(expr)):
+            return f"std::string({code})"
+        if is_bytes_type(slot_type) and (self._is_bytes_view_source(expr)
+                                         or self._expr_uses_optional_bytes_param(expr)):
+            return f"::tpy::bytes_copy({code})"
+        return code
 
 
     def _gen_logical_value(self, expr: TpyBinOp, result_type: TpyType) -> str:
@@ -4329,7 +4406,7 @@ class ExpressionGenerator:
                 elem_target = TupleType((target_type.type_args[0], target_type.type_args[1]))
             else:
                 et = target_type.get_element_type()
-                if isinstance(et, (OptionalType, UnionType, TupleType, AnyType)) or is_str_type(et):
+                if isinstance(et, (OptionalType, UnionType, TupleType, AnyType)) or is_str_type(et) or is_bytes_type(et):
                     elem_target = et
                 # Recursive union element type: pass it as elem_target so nested
                 # array literals trigger union_prefix AND a None element renders
@@ -4365,7 +4442,7 @@ class ExpressionGenerator:
                         resolved = IntLiteralType()
                     elif isinstance(e, TpyFloatLiteral):
                         resolved = FloatLiteralType()
-                code = self._wrap_for_owned_slot(code, resolved, elem_target)
+                code = self._wrap_for_owned_slot(e, code, resolved, elem_target)
                 # Pointer-variant locals/calls must be converted to value
                 # variants for container storage.
                 code = self._to_value_variant_if_needed(e, code, elem_target)
@@ -4551,7 +4628,7 @@ class ExpressionGenerator:
                         k_resolved = IntLiteralType()
                     elif isinstance(k, TpyFloatLiteral):
                         k_resolved = FloatLiteralType()
-                k_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(k, k_type), k_resolved, k_type)
+                k_cpp = self._wrap_for_owned_slot(k, self.gen_expr_deref(k, k_type), k_resolved, k_type)
                 k_cpp = self._to_value_variant_if_needed(k, k_cpp, k_type)
                 v_resolved = self.types.get_resolved_type(v, v_type)
                 if isinstance(v_type, AnyType):
@@ -4559,7 +4636,7 @@ class ExpressionGenerator:
                         v_resolved = IntLiteralType()
                     elif isinstance(v, TpyFloatLiteral):
                         v_resolved = FloatLiteralType()
-                v_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(v, v_type), v_resolved, v_type)
+                v_cpp = self._wrap_for_owned_slot(v, self.gen_expr_deref(v, v_type), v_resolved, v_type)
                 v_cpp = self._to_value_variant_if_needed(v, v_cpp, v_type)
                 pairs.append((k_cpp, v_cpp))
         # Non-copyable value: route through make_ordered_map to avoid the
@@ -4594,7 +4671,7 @@ class ExpressionGenerator:
                         e_resolved = IntLiteralType()
                     elif isinstance(e, TpyFloatLiteral):
                         e_resolved = FloatLiteralType()
-                e_cpp = self._wrap_for_owned_slot(self.gen_expr_deref(e, elem_type), e_resolved, elem_type)
+                e_cpp = self._wrap_for_owned_slot(e, self.gen_expr_deref(e, elem_type), e_resolved, elem_type)
                 e_cpp = self._to_value_variant_if_needed(e, e_cpp, elem_type)
                 elems.append(e_cpp)
         # Non-copyable element: route through make_ordered_set to avoid the
@@ -4639,7 +4716,7 @@ class ExpressionGenerator:
                     e_resolved = IntLiteralType()
                 elif isinstance(e, TpyFloatLiteral):
                     e_resolved = FloatLiteralType()
-            repeat_elems.append(self._wrap_for_owned_slot(self.gen_expr_deref(e, elem_type or e_resolved), e_resolved, elem_type))
+            repeat_elems.append(self._wrap_for_owned_slot(e, self.gen_expr_deref(e, elem_type or e_resolved), e_resolved, elem_type))
         elements = ", ".join(repeat_elems)
         cpp_elem_type = elem_type.to_cpp() if elem_type else "auto"
 
@@ -4700,7 +4777,7 @@ class ExpressionGenerator:
         try:
             with self._container_element_context():
                 elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
-                insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
+                insert_code = self._wrap_for_owned_slot(expr.element_expr, self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
             return self._gen_comprehension_iife(
                 expr.generator, f"std::vector<{cpp_elem}>",
                 f"__result.push_back({insert_code})", skip_reserve=False)
@@ -4723,7 +4800,7 @@ class ExpressionGenerator:
         comp_names = self._enter_comp_scope(gen)
         try:
             elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
-            insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
+            insert_code = self._wrap_for_owned_slot(expr.element_expr, self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
 
             stmt_ind = INDENT * self.ctx.indent_level
             ind1 = stmt_ind + INDENT
@@ -4798,9 +4875,9 @@ class ExpressionGenerator:
         try:
             with self._container_element_context():
                 key_resolved = self.types.get_resolved_type(expr.key_expr, key_type)
-                key_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.key_expr, key_type), key_resolved, key_type)
+                key_code = self._wrap_for_owned_slot(expr.key_expr, self.gen_expr_deref(expr.key_expr, key_type), key_resolved, key_type)
                 value_resolved = self.types.get_resolved_type(expr.value_expr, value_type)
-                value_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.value_expr, value_type), value_resolved, value_type)
+                value_code = self._wrap_for_owned_slot(expr.value_expr, self.gen_expr_deref(expr.value_expr, value_type), value_resolved, value_type)
             return self._gen_comprehension_iife(
                 expr.generator, f"::tpy::ordered_map<{cpp_key}, {cpp_val}>",
                 f"__result.insert_or_assign({key_code}, {value_code})", skip_reserve=True)
@@ -4814,7 +4891,7 @@ class ExpressionGenerator:
         try:
             with self._container_element_context():
                 elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
-                insert_code = self._wrap_for_owned_slot(self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
+                insert_code = self._wrap_for_owned_slot(expr.element_expr, self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
             return self._gen_comprehension_iife(
                 expr.generator, f"::tpy::ordered_set<{cpp_elem}>",
                 f"__result.insert({insert_code})", skip_reserve=True)
@@ -5271,15 +5348,16 @@ class ExpressionGenerator:
         return (is_array(typ) or is_list(typ) or is_span(typ) or is_varargs(typ)
                 or is_dict(typ) or is_set(typ) or is_dict_view(typ))
 
-    def _wrap_for_owned_slot(self, code: str, resolved: TpyType, slot_type: TpyType | None) -> str:
+    def _wrap_for_owned_slot(self, expr: TpyExpr, code: str, resolved: TpyType, slot_type: TpyType | None) -> str:
         """Wrap a value expression to fit a container's element slot type.
 
         Three cases handled:
 
-        1. **str slot, view source.** A string_view ending up in an owned-str
-           slot (list[str], dict[K, str], tuple str element) is copied to
-           std::string at the insertion site rather than promoting the source
-           variable's type to std::string for its lifetime.
+        1. **str/bytes slot, view source.** A view (string_view / span) ending
+           up in an owned str/bytes slot (list[str], dict[K, str], tuple str
+           element, ...) is copied to owned storage at the insertion site via
+           the shared `_view_source_to_owned` chokepoint, rather than promoting
+           the source variable's type for its lifetime.
 
         2. **Any slot.** Heterogeneous element coercion into list[Any] /
            dict[K, Any] / set[Any] / tuple[..., Any, ...]: the per-element
@@ -5292,11 +5370,19 @@ class ExpressionGenerator:
            may be in pointer form (T*). Lift via tuple_to_storage so the
            container holds owning optionals.
         """
-        if is_str_view_type(resolved):
-            if is_str_type(slot_type):
+        converted = self._view_source_to_owned(expr, slot_type, code)
+        if converted is not code:
+            return converted
+        # A view-form str/bytes source into an Optional[str/bytes] slot: copy
+        # into owned storage (the bare-slot chokepoint above skips Optional
+        # slots). Keyed on the same source-form predicate, but WITHOUT the
+        # optional-param augmentation -- a whole-optional source already carries
+        # owned storage and must not be double-wrapped (vs an explicit view).
+        if isinstance(slot_type, OptionalType):
+            if is_str_type(slot_type.inner) and self._is_str_view_source(expr):
                 return f"std::string({code})"
-            if isinstance(slot_type, OptionalType) and is_str_type(slot_type.inner):
-                return f"std::string({code})"
+            if is_bytes_type(slot_type.inner) and self._is_bytes_view_source(expr):
+                return f"::tpy::bytes_copy({code})"
         if isinstance(slot_type, AnyType) and not isinstance(resolved, AnyType):
             from ..coercions import wrap_into_any, CoercionContext
             return wrap_into_any(code, resolved, CoercionContext.INIT)
@@ -5427,7 +5513,7 @@ class ExpressionGenerator:
                     elem_str = (f"::tpy::to_val_or_ptr<{slot_info[i][1]}>("
                                 f"{self.gen_expr_deref(elem, elem_target)})")
                 else:
-                    elem_str = self._wrap_for_owned_slot(self.gen_expr_deref(elem, elem_target), resolved, elem_target)
+                    elem_str = self._wrap_for_owned_slot(elem, self.gen_expr_deref(elem, elem_target), resolved, elem_target)
                 # Matches the auto-move sema rule for `return x` of an Own var.
                 # Sema annotates VALUE for any slot that takes the element by
                 # value (Own[T], Own[Tuple], or field-context tuple element);

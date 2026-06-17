@@ -46,7 +46,7 @@ inline std::string Point::__str__() const {
 template<typename T>
 std::tuple<std::string, ::tpy::val_or_ptr_t<T>> label(std::string_view tag, ::tpy::param_val_or_ref_t<T> val) {
     // return (tag, val)
-    return std::tuple<std::string, ::tpy::val_or_ptr_t<T>>{tag, ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(val)};
+    return std::tuple<std::string, ::tpy::val_or_ptr_t<T>>{std::string(tag), ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(val)};
 }
 
 void __tpy_init();

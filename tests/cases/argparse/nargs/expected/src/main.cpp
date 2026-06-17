@@ -72,8 +72,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         std::string_view __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if (true) {
             if ((__tpy_argparse_pi == 0)) {
-                std::string __tmp_5{__tpy_argparse_tok};
-                files.push_back(std::move(__tmp_5));
+                files.push_back(std::string(__tpy_argparse_tok));
                 __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
                 while (((__tpy_argparse_i < ::tpy::__len__(argv)) && (!(::tpy::str_startswith(::tpy::__getitem__(argv, __tpy_argparse_i), "-"))))) {
                     files.push_back(::tpy::__getitem__(argv, __tpy_argparse_i));

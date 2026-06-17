@@ -78,8 +78,7 @@ struct Wrapper {
     // def wrap(self, x: str) -> Own[Rc[Box[str]]]:
     ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<std::string>> wrap(std::string_view x) {
         // return Rc.new(Box(x))
-        std::string __tmp_1{x};
-        return Rc<::tpystd::tplib::box::Box<std::string>>::new_<::tpystd::tplib::box::Box<std::string>>(::tpystd::tplib::box::Box<std::string>(std::move(__tmp_1)));
+        return Rc<::tpystd::tplib::box::Box<std::string>>::new_<::tpystd::tplib::box::Box<std::string>>(::tpystd::tplib::box::Box<std::string>(std::string(x)));
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
