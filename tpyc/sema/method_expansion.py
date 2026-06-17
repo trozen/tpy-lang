@@ -299,6 +299,7 @@ def _clone_auto_readonly(method: TpyFunction) -> list[TpyFunction]:
         auto_readonly=False,
         has_auto_readonly_decorator=False,
         auto_readonly_params_resolved=True,
+        auto_readonly_polarity="strip",
         is_auto_readonly_mutable_clone=True,
         # Clear the derivation source so a second expand pass (per-record
         # run after macros) doesn't re-derive auto_readonly and re-clone.
@@ -313,6 +314,7 @@ def _clone_auto_readonly(method: TpyFunction) -> list[TpyFunction]:
         auto_readonly=False,
         has_auto_readonly_decorator=False,
         auto_readonly_params_resolved=True,
+        auto_readonly_polarity="apply",
         defaults=copy.deepcopy(method.defaults),
         self_annotation=None,
     )

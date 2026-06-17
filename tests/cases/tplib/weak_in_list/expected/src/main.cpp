@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def observed_values(observers: list[Weak[Node]]) -> Own[list[Int32]]:
-std::vector<int32_t> observed_values(std::vector<::tpystd::tplib::rc::Weak<Node>>& observers) {
+std::vector<int32_t> observed_values(const std::vector<::tpystd::tplib::rc::Weak<Node>>& observers) {
     // result: list[Int32] = []
     std::vector<int32_t> result = std::vector<int32_t>{};
     // for w in observers:
@@ -13,7 +13,7 @@ std::vector<int32_t> observed_values(std::vector<::tpystd::tplib::rc::Weak<Node>
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& w = *__beg_0;
+        const auto& w = *__beg_0;
         // upgraded = w.upgrade()
         std::optional<::tpystd::tplib::rc::Rc<Node>> upgraded = w.upgrade();
         // if upgraded is None:

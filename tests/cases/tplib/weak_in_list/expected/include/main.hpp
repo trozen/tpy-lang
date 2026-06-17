@@ -16,7 +16,7 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-std::vector<int32_t> observed_values(std::vector<::tpystd::tplib::rc::Weak<Node>>& observers);
+std::vector<int32_t> observed_values(const std::vector<::tpystd::tplib::rc::Weak<Node>>& observers);
 void main();
 
 // class Node:

@@ -9,6 +9,7 @@ from enum import Enum
 from typing import TYPE_CHECKING
 
 import re
+import dataclasses
 
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
@@ -1019,11 +1020,9 @@ class ProtocolChecker:
                 type_subst = self.get_parent_type_subst(parent_type, parent_info)
                 if type_subst:
                     substituted_type = self.type_ops.substitute_type_params(inherited.type, type_subst)
-                    return FieldInfo(
-                        name=inherited.name,
-                        type=substituted_type,
-                        default_value=inherited.default_value
-                    )
+                    # Preserve every other FieldInfo fact (is_interior_mutable,
+                    # native_name, loc, ...) -- only the type is substituted.
+                    return dataclasses.replace(inherited, type=substituted_type)
                 return inherited
         return None
 

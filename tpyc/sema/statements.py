@@ -803,6 +803,32 @@ class StatementAnalyzer:
                 # the scope binding preserves it, so check there.
                 if isinstance(target.obj, TpyName) and self.ctx.is_readonly_name(target.obj.name):
                     raise self.ctx.error("Cannot mutate readonly reference", target)
+                # A field reached through a user __deref__ writes the deref
+                # TARGET, not the receiver: a mutable handle over a readonly
+                # payload (Rc[readonly[T]] / Box[readonly[T]]) is readonly there
+                # even though the handle type isn't ReadonlyType. The checks
+                # above see only the handle, so peel the deref chain and reject
+                # if the object the field actually lives on is readonly.
+                # Ptr[readonly[T]] is excluded -- it has its own, more specific
+                # "assign through read-only pointer" diagnostic downstream.
+                if (isinstance(target, TpyFieldAccess) and target.deref_depth > 0
+                        and not isinstance(check_type, PtrType)):
+                    # Walk the deref chain like the field-access reader does
+                    # (expressions.py): a readonly hop both makes the target
+                    # readonly AND selects the const __deref__ overload for the
+                    # next hop, so thread the flag rather than rejecting eagerly.
+                    deref_t: TpyType | None = check_type
+                    deref_ro = False
+                    for _ in range(target.deref_depth):
+                        deref_t = self.type_ops.get_deref_target_type(
+                            deref_t, is_readonly=deref_ro)
+                        if deref_t is None:
+                            break
+                        if isinstance(deref_t, ReadonlyType):
+                            deref_ro = True
+                            deref_t = deref_t.wrapped
+                    if deref_ro:
+                        raise self.ctx.error("Cannot mutate readonly reference", target)
                 # Frozen dataclass / readonly field: reject assignment except self.field in __init__
                 if isinstance(target, TpyFieldAccess):
                     actual = unwrap_readonly(check_type)

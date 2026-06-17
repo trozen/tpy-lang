@@ -28,6 +28,7 @@ def _adopt_skeleton(skeleton, full):
 from ..typesys import (
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type, AnyType, PtrType, RefType,
+    ReadonlyType, InteriorMutableType,
     type_contains_own,
     IMPLICIT_READONLY_METHODS, CONST_PARAMS_METHODS, FinalType, make_span, make_varargs,
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR, try_unwrap_class_constant,
@@ -814,6 +815,40 @@ class TypeRegistrar:
             loc,
         )
 
+    def _strip_interior_field_markers(self, record: TpyRecord) -> None:
+        """Lower `interior[Ptr[T]]` field annotations to a FieldInfo flag.
+
+        `interior[...]` is an unsafe escape hatch from the readonly boundary;
+        only `interior[Ptr[T]]` on a field is meaningful (the refcount-cell
+        pattern). Reject the forms that would silently widen the hatch --
+        nested interior, readonly/Own inside, or a non-pointer payload -- so
+        misuse fails at the declaration with a clear message rather than
+        surfacing as wrong const-ness later.
+        """
+        for fld in record.fields:
+            if not isinstance(fld.type, InteriorMutableType):
+                continue
+            inner = fld.type.wrapped
+            if isinstance(inner, InteriorMutableType):
+                raise SemanticError(
+                    f"interior[interior[...]] on field '{fld.name}' is redundant",
+                    loc=fld.loc,
+                )
+            if isinstance(inner, (ReadonlyType, OwnType)):
+                raise SemanticError(
+                    f"interior[...] on field '{fld.name}' cannot wrap "
+                    f"'{inner}'; interior applies to a plain Ptr[T] field",
+                    loc=fld.loc,
+                )
+            if not isinstance(inner, PtrType):
+                raise SemanticError(
+                    f"interior[...] on field '{fld.name}' is only supported on "
+                    f"a Ptr[T] field, not '{inner}'",
+                    loc=fld.loc,
+                )
+            fld.type = inner
+            fld.is_interior_mutable = True
+
     def register_record(self, record: TpyRecord) -> None:
         """Register a record type."""
         is_native = record.linkage != RecordLinkage.DEFAULT
@@ -877,6 +912,8 @@ class TypeRegistrar:
         # register_record only sees instance fields.
         class_constants, class_constants_finality = self._partition_class_constants(record)
         self._check_class_constant_conflicts(record, class_constants, class_constants_finality)
+
+        self._strip_interior_field_markers(record)
 
         # Validate field types
         for fld in record.fields:

@@ -23,11 +23,9 @@
 # Open API gaps (each tracked in BUGS.md):
 # - No `Rc(other)` sharing constructor -- @nocopy + sibling-borrow into
 #   __init__ isn't supported; `clone()` covers the share path internally.
-# - `Rc[readonly[T]]` cannot share -- clone()/downgrade()/upgrade() write
-#   the refcount and can't be @readonly.
 from __future__ import annotations
 from typing import Protocol
-from tpy import Own, Ptr, UInt32, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly
+from tpy import Own, Ptr, UInt32, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly, interior
 from tpy.mem import UninitArrayStorage
 from tpy.unsafe import unsafe_take, unsafe_release
 
@@ -107,7 +105,11 @@ class _RcCell[U](_RcCellBase):
 
 @nocopy
 class Rc[T](Deref[T], Covariant[T]):
-    _cell: Ptr[_RcCellBase]
+    # `_cell` is bookkeeping outside the readonly boundary (the refcount lives
+    # behind it): clone/downgrade bump it through a readonly handle, the
+    # std::shared_ptr const-copy pattern. `_payload` stays inside the boundary
+    # so a readonly handle still yields readonly T.
+    _cell: interior[Ptr[_RcCellBase]]
     _payload: Ptr[T]
 
     # TODO: package-private once TPy gains a private-method mechanism;
@@ -136,13 +138,23 @@ class Rc[T](Deref[T], Covariant[T]):
         cell.storage.init0(value)
         return Rc[T](cell, cell.storage.ptr())
 
-    def clone(self) -> Own[Rc[T]]:
+    # clone/downgrade are auto_readonly: a mutable handle yields a mutable
+    # handle; a readonly handle (`readonly[Rc[T]]`) yields a readonly-payload
+    # handle, so readonly can't be laundered into mutable access. The
+    # `auto_readonly[T]` construction marker resolves per overload -- Rc[T] in
+    # the mutable half, Rc[readonly[T]] in the const half.
+    # TODO: once inference can bind a type param to readonly[T] (BUGS.md), the
+    # explicit `Rc[auto_readonly[T]](...)` here (and in downgrade/upgrade/
+    # Weak.clone) should reduce to plain `Rc(...)` and infer per overload.
+    @auto_readonly
+    def clone(self) -> Own[Rc[auto_readonly[T]]]:
         self._cell.incr_strong()
-        return Rc[T](self._cell, self._payload)
+        return Rc[auto_readonly[T]](self._cell, self._payload)
 
-    def downgrade(self) -> Own[Weak[T]]:
+    @auto_readonly
+    def downgrade(self) -> Own[Weak[auto_readonly[T]]]:
         self._cell.incr_weak()
-        return Weak[T](self._cell, self._payload)
+        return Weak[auto_readonly[T]](self._cell, self._payload)
 
     # Equality and ordering delegate to T (content, matching Rust's
     # `Rc<T>::eq`). Cell-pointer identity is not yet expressible at the
@@ -174,7 +186,7 @@ class Rc[T](Deref[T], Covariant[T]):
 
 @nocopy
 class Weak[T]:
-    _cell: Ptr[_RcCellBase]
+    _cell: interior[Ptr[_RcCellBase]]
     # _payload dangles between strong=0 and weak=0, but is only dereferenced
     # via upgrade() after the strong-count check confirms the payload is live.
     _payload: Ptr[T]
@@ -188,15 +200,17 @@ class Weak[T]:
         if self._cell.release_weak():
             unsafe_release(self._cell)
 
-    def upgrade(self) -> Own[Rc[T]] | None:
+    @auto_readonly
+    def upgrade(self) -> Own[Rc[auto_readonly[T]]] | None:
         # Single vcall instead of get_strong + incr_strong: cell checks
         # strong > 0 and increments atomically (in the local sense; Rc is
         # non-atomic, so "atomically" here just means within one method).
         if not self._cell.try_incr_strong():
             return None
-        return Rc[T](self._cell, self._payload)
+        return Rc[auto_readonly[T]](self._cell, self._payload)
 
-    def clone(self) -> Own[Weak[T]]:
+    @auto_readonly
+    def clone(self) -> Own[Weak[auto_readonly[T]]]:
         self._cell.incr_weak()
-        return Weak[T](self._cell, self._payload)
+        return Weak[auto_readonly[T]](self._cell, self._payload)
 

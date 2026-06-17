@@ -2923,7 +2923,7 @@ class Parser:
             module, original = resolved
             if module == "tpy":
                 if original in ("Ptr", "Own", "readonly", "auto_readonly",
-                                "auto_own", "Send", "Sync"):
+                                "auto_own", "Send", "Sync", "interior"):
                     inner_ref = self._parse_type_ref(node.slice, type_param_scope)
                     return TpyTypeRef(f"tpy:{original}", (inner_ref,), loc)
                 if original == "Fn":

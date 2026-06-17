@@ -1,0 +1,1 @@
+main.py:6: error: interior[...] is only valid on a class field declaration

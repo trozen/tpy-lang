@@ -1,0 +1,1 @@
+main.py:8: error: interior[...] on field 'p' cannot wrap 'readonly[Ptr[Int32]]'; interior applies to a plain Ptr[T] field

@@ -1,0 +1,1 @@
+main.py:7: error: interior[...] on field 'p' cannot wrap 'Own[Ptr[Int32]]'; interior applies to a plain Ptr[T] field

@@ -1627,6 +1627,7 @@ class ExpressionAnalyzer:
             type_subst = self.type_ops.build_type_substitution(typ)
             field_info = self.protocols.lookup_record_field(record, expr.field)
             if field_info:
+                expr.accessed_field_is_interior = field_info.is_interior_mutable
                 field_type = field_info.type
                 if type_subst:
                     field_type = self.type_ops.substitute_type_params(field_type, type_subst)
@@ -2003,7 +2004,12 @@ class ExpressionAnalyzer:
                 # Propagate readonly: accessing a non-value field through a
                 # readonly reference yields a readonly result.
                 # Ptr[T] fields become Ptr[readonly[T]], Span[T] -> Span[readonly[T]].
-                if is_readonly_obj:
+                # An `interior` field is outside the readonly boundary: it keeps
+                # its declared (mutable) shape so refcount-style bookkeeping can
+                # be touched through a readonly receiver (the C++ `mutable`-via-
+                # raw-pointer pattern). Reassigning the slot is still rejected --
+                # that is enforced on the receiver, not here.
+                if is_readonly_obj and not expr.accessed_field_is_interior:
                     if isinstance(result, PtrType) and not result.is_readonly:
                         result = result.as_const()
                     elif is_span(result) and not is_readonly_span(result):

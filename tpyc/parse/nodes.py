@@ -442,6 +442,7 @@ class TpyFieldAccess(TpyExpr):
     unbound_self_parent_type: Optional[TpyType] = None  # Set by sema for BaseN.field access on an ancestor subobject
     class_constant_owner: Optional['RecordInfo'] = None  # Set by sema: RecordInfo for ClassName.X class-constant access; codegen emits <cpp_qname>::<member>
     module_var_access: Optional[tuple[str, str]] = None  # Set by sema for `pkg.sub.X` variable access on a dotted module: (module_qname, var_name)
+    accessed_field_is_interior: bool = False  # Set by sema: matched field is `interior[...]` (outside the readonly boundary)
 
     def children(self) -> list[TpyExpr]:
         return [self.obj]
@@ -1282,6 +1283,12 @@ class TpyFunction:
     # in params. Tells sema/codegen not to blanket-apply readonly to all params
     # (each param already carries ReadonlyType or not from the clone).
     auto_readonly_params_resolved: bool = False
+    # Set on each clone by _clone_auto_readonly: 'strip' (mutable half) or
+    # 'apply' (const half). Lets the body's construction type-args carrying an
+    # `auto_readonly[...]` marker (e.g. `Rc[auto_readonly[T]](...)`) resolve per
+    # overload -- the const half builds Rc[readonly[T]], the mutable Rc[T] --
+    # from a single shared body. None on ordinary methods.
+    auto_readonly_polarity: Literal["strip", "apply"] | None = None
     # Transient input to sema.method_expansion._clone_auto_own: true when
     # `self: auto_own[Self]` is detected. After cloning, both clones have
     # auto_own=False.

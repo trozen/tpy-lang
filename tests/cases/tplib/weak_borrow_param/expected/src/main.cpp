@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def read_via_weak(w: Weak[Cell]) -> Int32:
-int32_t read_via_weak(::tpystd::tplib::rc::Weak<Cell>& w) {
+int32_t read_via_weak(const ::tpystd::tplib::rc::Weak<Cell>& w) {
     // upgraded = w.upgrade()
     std::optional<::tpystd::tplib::rc::Rc<Cell>> upgraded = w.upgrade();
     // if upgraded is None:

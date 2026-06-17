@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (
     TpyType, NominalType, AliasRef, PtrType, OwnType, ReadonlyType, AutoReadonlyType,
-    AutoOwnType, FinalType, ClassVarType, OptionalType, VoidType, UnionType, TupleType,
+    AutoOwnType, InteriorMutableType, FinalType, ClassVarType, OptionalType, VoidType, UnionType, TupleType,
     CallableType, make_union, make_fn_type,
     SendType, SyncType, make_send_marker, make_sync_marker, MarkerAssertionError,
     TypeParamRef, TypeParamKind, LiteralType, LiteralTag,
@@ -354,7 +354,7 @@ class TypeResolver:
         # generic path where the resolver's unresolved-name error fires.
         if ref.args and name in (
             "tpy:Ptr", "tpy:Own", "tpy:readonly", "tpy:auto_readonly",
-            "tpy:auto_own", "tpy:Send", "tpy:Sync",
+            "tpy:auto_own", "tpy:interior", "tpy:Send", "tpy:Sync",
             "typing:Optional", "typing:Final", "typing:ClassVar",
         ):
             inner_arg = ref.args[0]
@@ -367,7 +367,8 @@ class TypeResolver:
             # depth they appear.
             inner_is_type_arg = name in (
                 "tpy:Ptr", "tpy:Own", "tpy:readonly",
-                "tpy:auto_readonly", "tpy:auto_own", "tpy:Send", "tpy:Sync",
+                "tpy:auto_readonly", "tpy:auto_own", "tpy:interior",
+                "tpy:Send", "tpy:Sync",
             ) or is_type_arg
             inner = self.resolve(
                 inner_arg, type_param_scope, is_type_arg=inner_is_type_arg,
@@ -396,6 +397,8 @@ class TypeResolver:
                 return AutoReadonlyType(inner)
             if name == "tpy:auto_own":
                 return AutoOwnType(inner)
+            if name == "tpy:interior":
+                return InteriorMutableType(inner)
             if name == "typing:Optional":
                 if isinstance(inner, AnyType):
                     raise ParseError(

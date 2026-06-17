@@ -19,6 +19,7 @@ from ..typesys import (
     IntLiteralType, resolve_int_literals,
     LiteralType, LiteralValue, LiteralTag, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, is_void_like_type, ParamInfo, ReadonlyType,
+    strip_auto_readonly, apply_auto_readonly,
     UNKNOWN_ELEMENT, UnknownElementType, PendingDictType, DictLiteralInfo, PendingSetType, SetLiteralInfo,
     UnionType, VOID, BIGINT, BOOL, STR, INT32, AnyType, ANY, is_protocol_type, unwrap_readonly, unwrap_own, unwrap_optional_own, make_union, ensure_qualified,
     is_any_str_type, container_to_str_template, error_return_matches,
@@ -5018,6 +5019,30 @@ class CallAnalyzer:
                 expr.call_type.is_protocol, record.qualified_name(),
                 expr.call_type.is_dynamic_protocol,
             )
+        # Inside an @auto_readonly overload, a construction whose explicit type
+        # args carry an `auto_readonly[...]` marker (e.g. `Rc[auto_readonly[T]]
+        # (...)`) resolves that marker per the overload's polarity -- the
+        # mutable half builds `Rc[T]`, the const half `Rc[readonly[T]]` -- so a
+        # single shared body produces the matching handle without relying on
+        # type-param inference binding to a readonly type (see BUGS.md).
+        cur_fn = self.ctx.func.current_function
+        polarity = getattr(cur_fn, "auto_readonly_polarity", None)
+        if (polarity is not None
+                and isinstance(expr.call_type, NominalType)
+                and expr.call_type.type_args):
+            if polarity == "strip":
+                transform = strip_auto_readonly
+            else:
+                assert polarity == "apply", f"unexpected auto_readonly_polarity {polarity!r}"
+                transform = apply_auto_readonly
+            new_args = tuple(transform(a) for a in expr.call_type.type_args)
+            if new_args != expr.call_type.type_args:
+                expr.call_type = NominalType(
+                    expr.call_type.name, new_args,
+                    expr.call_type.is_protocol, expr.call_type._module_qname,
+                    expr.call_type.is_dynamic_protocol,
+                )
+
         # Types with overloaded @cpp_template/@native __init__ (e.g. Int32, str, bool)
         if record.builtin_type_key and not record.type_params:
             init_overloads = record.get_method_overloads("__init__")

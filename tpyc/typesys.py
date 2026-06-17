@@ -2243,6 +2243,41 @@ def has_auto_own(t: 'TpyType') -> bool:
     return any(has_auto_own(i) for i in t.inner_types())
 
 
+@dataclass(frozen=True)
+class InteriorMutableType(TpyType):
+    """Transient field-declaration marker for `interior[T]`.
+
+    Marks a field as outside its owning object's readonly boundary: readonly
+    does not propagate into the field's pointee and mutating *through* the
+    field does not demote the receiver (reassigning the slot still does --
+    that is enforced on the receiver, not the field). The escape hatch for
+    refcount-style hidden bookkeeping (e.g. Rc's `_cell`); the C++ analog is
+    a `mutable` member reached through a raw pointer.
+
+    Like AutoReadonlyType/AutoOwnType this never survives to codegen: field
+    registration strips it into `FieldInfo.is_interior_mutable` and stores
+    the unwrapped type. A surviving node (used outside a field annotation)
+    raises rather than emitting silently wrong C++.
+    """
+    wrapped: TpyType
+
+    def to_cpp(self) -> str:
+        raise RuntimeError(
+            "interior[...] is only valid on a class field declaration"
+        )
+
+    def is_value_type(self) -> bool:
+        return self.wrapped.is_value_type()
+
+    def __str__(self) -> str:
+        return f"interior[{self.wrapped}]"
+
+    def inner_types(self) -> tuple['TpyType', ...]:
+        return (self.wrapped,)
+
+    def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
+        return InteriorMutableType(types[0])
+
 
 @dataclass(frozen=True)
 class _TypeModifierWrapper(TpyType):
@@ -4529,6 +4564,10 @@ class FieldInfo:
     is_factory_default: bool = False  # True for field(default_factory=...)
     loc: Optional[Any] = None  # SourceLocation from parse.py (avoid circular import)
     native_name: Optional[str] = None  # C++ member name override from native_field(...)
+    # `interior[T]` marker, stripped from `type` at registration: mutations
+    # reached *through* this field don't count against the owner's readonly-ness
+    # and readonly does not propagate into the field. See InteriorMutableType.
+    is_interior_mutable: bool = False
 
 
 @dataclass

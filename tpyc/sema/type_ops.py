@@ -9,7 +9,7 @@ from dataclasses import replace as dc_replace
 from typing import Literal, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, TypeParamRef, NominalType, RecursiveAliasInstanceType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType,
+    TpyType, TypeParamRef, NominalType, RecursiveAliasInstanceType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, InteriorMutableType,
     make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType, FinalType, ClassVarType,
     IntLiteralType, FloatLiteralType, TypeParamKind, BIGINT, UnknownElementType,
@@ -309,6 +309,14 @@ class TypeOperations:
                 allow_forward_ref=allow_forward_ref,
                 check_hashable_constraints=check_hashable_constraints,
             )
+
+        # `interior[T]` is a field-only marker; field registration strips it
+        # before this runs, so reaching here means it was written on a param,
+        # return, local, or container -- reject with a clear message instead of
+        # letting the unstripped marker crash codegen.
+        if isinstance(typ, InteriorMutableType):
+            raise SemanticError(
+                "interior[...] is only valid on a class field declaration", loc)
 
         if isinstance(typ, TypeParamRef):
             if not allow_type_param_ref:

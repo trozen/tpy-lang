@@ -347,10 +347,11 @@ Allowed:
 
 ## Phase 3 Implementation: `@auto_readonly`
 
-### Approach: parser-level cloning
+### Approach: method-expansion cloning
 
 `@auto_readonly` is implemented by expanding each decorated method into
-two ordinary methods at parse time (`_clone_auto_readonly` in `parser.py`):
+two ordinary methods during sema method expansion (`_clone_auto_readonly`
+in `tpyc/sema/method_expansion.py`):
 
 - **Mutable clone**: `is_readonly=False`, `is_alt_mutable_clone=True`,
   return type = `strip_alt(original_return_type)`
@@ -464,6 +465,63 @@ never-mutated-local const-binding (see TODO).
 - `@auto_readonly` + `@readonly` on the same method is an error (they
   are different concepts)
 - `@pure` remains separate (single const overload, no propagation)
+
+## Interior mutability: `interior[Ptr[T]]` fields
+
+`interior[Ptr[T]]` is the dual of `readonly[T]`: it marks one field as
+*outside* its owning object's readonly boundary. TPy's readonly is deep --
+it propagates through the reachable object graph, including into `Ptr[T]`
+fields (a readonly borrow yields readonly sub-borrows). That deepness is
+load-bearing (`Rc.get()` returning `self._payload` is only sound because a
+`readonly[Rc]` view makes the payload readonly). But some state is genuine
+*bookkeeping* that is invisible to a readonly observer -- a refcount reached
+through a control-block pointer -- and should be mutable even through a
+readonly handle. In C++ this is automatic: `const` does not cross a raw
+pointer (`_cell` is `T* const`, `*_cell` stays non-const), exactly like
+`std::shared_ptr` being const-copyable. `interior` opts a single field out of
+TPy's stricter propagation to match.
+
+**Semantics.** On a field typed `interior[Ptr[T]]`:
+
+- Accessing it through a `readonly[Self]` receiver does **not** wrap the
+  pointee in `readonly` (the field keeps its declared mutable shape).
+- A non-readonly method call *through* the field (`self._cell.incr()`) does
+  **not** demote the enclosing method, so the method can be `@readonly` /
+  `@auto_readonly`.
+- Reassigning the slot (`self._cell = other`) through a readonly receiver is
+  **still rejected** -- that is enforced on the receiver's readonly-ness, which
+  `interior` never touches. The hatch is for mutation *beyond* the field
+  boundary, not for the field slot itself.
+
+**Soundness contract.** `interior` is an unsafe assertion: the author
+guarantees the field's mutation is unobservable through a readonly read.
+For `Rc`, the refcount feeds no readonly-observable result, and the payload
+(`_payload`) is deliberately *not* interior, so `readonly[Rc[T]].get()` still
+yields readonly `T`. Marking observable state interior would create a hole --
+keep it to bookkeeping reached through a pointer.
+
+**Implementation.** A transient `InteriorMutableType` marker (parser ->
+resolver, mirroring `auto_readonly[...]`) is stripped at field registration
+into `FieldInfo.is_interior_mutable`; the stored field type is the plain
+`Ptr[T]`, so the marker never flows through codegen or type comparisons. The
+flag is read at exactly the readonly-propagation site (`sema/expressions.py`)
+and the mutation-rooting site (`sema/methods.py`) -- both already branch on
+readonly. Validation (field-only, `Ptr[T]`-only, no `readonly`/`Own`/nested
+wrapping) lives in the registration strip pass and `validate_type`.
+
+**Receiver-polarity clone.** `Rc.clone`/`downgrade`/`upgrade` are
+`@auto_readonly`: from a `readonly[Rc[T]]` handle they return a
+readonly-payload handle (`Own[Rc[readonly[T]]]`), so a TPy caller cannot
+launder readonly into mutable `T`. (This is sema-enforced; it is not
+backstopped at the C++ type level -- `readonly` strips in `to_cpp`, so a
+`@native` function handed the C++ `Rc<T>` could still reach mutable access,
+the same as any `readonly`-of-reference. Tracked in `BUGS.md`.) The shared
+body builds the per-overload type via
+an `auto_readonly[...]` marker in the construction (`Rc[auto_readonly[T]](...)`
+-> `Rc[T]` in the mutable half, `Rc[readonly[T]]` in the const half),
+transformed by `_clone_auto_readonly` -- a workaround for an inference gap
+(generic inference cannot bind a type parameter to a `readonly[T]`; tracked in
+`BUGS.md`).
 
 ## Future Roadmap
 

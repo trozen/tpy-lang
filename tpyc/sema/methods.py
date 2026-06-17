@@ -855,9 +855,19 @@ class MethodAnalyzer:
                 # (`return o.b.get().v`) to a mutable receiver. The actual mutation is
                 # rooted back to the receiver at the mutation site, where
                 # _root_name_of_expr is transparent to the accessor call.
+                # A method call through an `interior` field (e.g.
+                # `self._cell.incr_strong()`) mutates bookkeeping the owner
+                # declared outside its readonly boundary -- it must not demote
+                # the enclosing method. Reassigning the slot is a separate path
+                # (assignment enforcement on the receiver) and stays rejected.
+                interior_receiver = (
+                    isinstance(expr.obj, TpyFieldAccess)
+                    and expr.obj.accessed_field_is_interior
+                )
                 if (info is not None and not info.is_readonly
                         and not info.is_auto_readonly_mutable_clone
-                        and not expr.is_callable_field):
+                        and not expr.is_callable_field
+                        and not interior_receiver):
                     obj_root = _root_name_of_expr(expr.obj)
                     if obj_root is not None:
                         self.ctx.mark_loop_var_mutated(obj_root)
