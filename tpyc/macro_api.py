@@ -831,6 +831,42 @@ class PostSemaFunctionMacroContext(FunctionMacroContext):
             "annotate_local is not available post-sema (inference has already "
             "run); set_expr_type the emitted node instead")
 
+    def note_param_mutated(self, param_index: int) -> None:
+        """Record that the host function mutates its parameter `param_index`,
+        for a *mutating* call this pass emitted.
+
+        Pass 7 collects each call's mutation edge during body analysis; a call
+        EMITTED here (post pass 7) was never seen, so its mutation of a host
+        param goes unrecorded -- the param is then inferred non-mutating and
+        emitted `const&`, and the emitted mutating call fails to compile.
+        Unioning the index into the host's direct_mutated_params now -- while
+        Phase 2 mutation propagation is still pending -- makes that pass
+        account for the mutation (it seeds mutated_params from this set).
+
+        Call this only for an emitted call that mutates a *param-rooted*
+        receiver/argument, and only for the host param that the emitted call
+        actually mutates. A call that mutates nothing (pure value-returning)
+        needs no marking; a mutating call on a *local* receiver needs nothing
+        either (locals are already mutable).
+
+        Under-reporting (emitting a mutating param call without marking it) is
+        self-signalling: the param stays `const&` and the emitted call fails to
+        compile. Over-reporting only pessimizes a `const&` to `&`.
+        """
+        n = len(self.params)
+        if not 0 <= param_index < n:
+            self.error(
+                f"note_param_mutated: param index {param_index} out of range "
+                f"(host function {self.function_name!r} has {n} params)")
+        overloads = self._ctx.registry.get_function(self.function_name)
+        if not overloads:
+            self.error(
+                f"note_param_mutated: no FunctionInfo for "
+                f"{self.function_name!r}")
+        fi = overloads[-1]
+        fi.direct_mutated_params = (
+            (fi.direct_mutated_params or frozenset()) | {param_index})
+
 
 # ---------------------------------------------------------------------------
 # MacroArgs -- positional + keyword args delivered to builder handlers

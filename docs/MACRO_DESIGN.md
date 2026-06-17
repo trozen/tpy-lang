@@ -708,6 +708,13 @@ function:
 - `replace_expr` carries over from the pre-inference context, but with the
   added `set_expr_type` obligation (see above). `annotate_local` is disabled --
   inference has already run, so there is nothing left to influence.
+- `note_param_mutated(param_index)` -- record that an emitted *mutating* call
+  mutates the host's param `param_index`. Pass 7 collected mutation edges
+  before this callback ran, so a mutating call emitted here is unseen; without
+  this the param is inferred non-mutating and emitted `const&`, and the emitted
+  call fails to compile. Call it only for a param-rooted mutating receiver/arg;
+  under-reporting self-signals via a C++ compile error, over-reporting only
+  pessimizes `const&` to `&`.
 
 A callback may not itself defer again (the drain runs once); doing so is an
 error.
