@@ -94,9 +94,20 @@ Branch: <1-2 line summary> | <diff --stat one-liner>
 ## File as followup -- <N>
 - <item> -> BUGS.md | TODO.md
 
+## Followup work -- <N>
+- <short point>
+
 ## Retrospective
 - <thing you'd change> -> back out & redo now | followup | accept
 ```
+
+**Followup work** is the forward-looking picture this branch leaves behind, in order of importance (most important first). Short points, one line each. Draw from what you found in steps 2-6 and the branch's intent:
+
+- Gaps in the feature as shipped -- known-incomplete edges, deferred cases, partial coverage.
+- Bugs found that limit the feature -- defects (this branch's or pre-existing) that cap what it can do; these should also be in `BUGS.md`.
+- Things this feature unblocks -- adjacent work that was waiting on it and is now feasible.
+
+Distinct from "File as followup" above (which is the bookkeeping list of items to *write into* `BUGS.md`/`TODO.md`): this section is the prioritized *narrative* of where the work goes next. Omit it only if there genuinely is no followup.
 
 - **READY:** end with "Ready -- run `/prep-merge` when you want to squash." Do NOT auto-run `/prep-merge` -- it's a separate explicit step with its own suspicious-file gate.
 - **NOT READY:** list blockers. Offer to fix the "fix now" ones and file the followups (on approval). Any commits follow the branch-aware policy in CLAUDE.md (auto-commit on a temporary working branch; ask on master/main).
