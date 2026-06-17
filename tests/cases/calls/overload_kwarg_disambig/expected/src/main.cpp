@@ -25,7 +25,7 @@ void main() {
     // # resolve_overload didn't see kwargs -- both calls raised "Ambiguous
     // # overload" since the positional signatures are identical.
     // a: str = pick(Int32(10), tag="label")
-    std::string a = pick(10, "label");
+    std::string a = pick(10, std::string_view("label"));
     // print(a)                                # label:10
     std::cout << a << "\n";
     // b: Int32 = pick(Int32(10), tag=Int32(5))

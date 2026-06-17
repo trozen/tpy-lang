@@ -41,9 +41,9 @@ std::string repeat(std::string_view s, const ::tpy::BigInt& count) {
 // def main() -> None:
 void main() {
     // print(repeat("ab"))
-    std::cout << repeat("ab") << "\n";
+    std::cout << repeat(std::string_view("ab")) << "\n";
     // print(repeat("ab", 3))
-    std::cout << repeat("ab", ::tpy::BigInt(3)) << "\n";
+    std::cout << repeat(std::string_view("ab"), ::tpy::BigInt(3)) << "\n";
 }
 
 void __tpy_init() {

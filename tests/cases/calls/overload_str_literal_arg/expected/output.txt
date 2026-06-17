@@ -1,0 +1,8 @@
+str
+bool
+str
+sv-str
+generic
+hi
+m-str
+m-bool

@@ -9,7 +9,7 @@ void main() {
     // b = Box(Int32(100))
     Box b = Box(100);
     // a: str = b.apply(Int32(5), tag="sum")
-    std::string a = b.apply(5, "sum");
+    std::string a = b.apply(5, std::string_view("sum"));
     // print(a)                                # sum:105
     std::cout << a << "\n";
     // c: Int32 = b.apply(Int32(5), tag=Int32(7))

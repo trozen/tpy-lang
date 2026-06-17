@@ -23,7 +23,7 @@ void main() {
     // print(describe(42))
     std::cout << describe(::tpy::BigInt(42)) << "\n";
     // print(describe("hello"))
-    std::cout << describe("hello") << "\n";
+    std::cout << describe(std::string_view("hello")) << "\n";
 }
 
 void __tpy_init() {

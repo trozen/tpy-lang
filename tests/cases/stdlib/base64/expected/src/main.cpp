@@ -123,19 +123,19 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64encode(::tpy::bytes_copy(::tpy::bytes_literal("\xfb\xff", 2)))) << "\n";
     // # str input on decoders (CPython accepts ASCII str; encoders don't).
     // print(b64decode("TWFu"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode("TWFu")) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(std::string_view("TWFu"))) << "\n";
     // print(standard_b64decode("TWFu"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64decode("TWFu")) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64decode(std::string_view("TWFu"))) << "\n";
     // print(urlsafe_b64decode("-_8="))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64decode("-_8=")) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64decode(std::string_view("-_8="))) << "\n";
     // print(b32decode("MZXW6YTB"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode("MZXW6YTB")) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(std::string_view("MZXW6YTB"))) << "\n";
     // print(b32decode("mzxw6ytb", True))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode("mzxw6ytb", true)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(std::string_view("mzxw6ytb"), true)) << "\n";
     // print(b16decode("486921"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode("486921")) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode(std::string_view("486921"))) << "\n";
     // print(b16decode("48af", True))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode("48af", true)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode(std::string_view("48af"), true)) << "\n";
     // # Error paths -- catchable ValueError, matching CPython's binascii.Error
     // # (which subclasses ValueError). altchars/map01 length validation uses
     // # AssertionError in CPython and ValueError in TPy, so those aren't covered

@@ -11,7 +11,7 @@ void main() {
     // print(a.greet(3))
     std::cout << a.greet(3) << "\n";
     // print(a.greet("hello"))
-    std::cout << a.greet("hello") << "\n";
+    std::cout << a.greet(std::string_view("hello")) << "\n";
 }
 
 void __tpy_init() {

@@ -963,10 +963,21 @@ class ExpressionGenerator:
         arg_expr = self._maybe_move(arg, arg_expr)
         return self.ctx.temps.create_typed(target_cpp, arg_expr)
 
+    def _wants_str_literal_pin(self, resolved_fi, overload_count: int) -> bool:
+        """Whether str-literal args to this call need pinning to their param's
+        view form. True only for a multi-overload, non-generic callee: generic
+        callees emit a template whose params bind by deduction, where the pin
+        would mistype the arg. `resolved_fi` must be the sema-resolved overload
+        (not the first stub), so a mixed generic/concrete set is judged on the
+        actually-selected overload."""
+        return (overload_count > 1 and resolved_fi is not None
+                and not resolved_fi.is_generic())
+
     def gen_call_arg(self, arg: TpyExpr, ptype: TpyType | None,
                      target_type: TpyType | None | _Unset = _UNSET,
                      inline_template: bool = False,
-                     target_const_borrow: bool = False) -> str:
+                     target_const_borrow: bool = False,
+                     overloaded_call: bool = False) -> str:
         """Generate a call argument with auto-move at last use for Own[T] params.
 
         target_type overrides ptype as the hint passed to gen_expr_deref.
@@ -983,7 +994,22 @@ class ExpressionGenerator:
         (its slots/inner pointers are const). Storage->pointer conversion
         helpers must produce const-pointer slots so const-source iteration
         flows match the param's expected shape.
+
+        overloaded_call: a bare string literal is `const char[N]` in C++, whose
+        array-to-pointer/boolean conversions outrank the user-defined
+        `std::string_view` conversion, so an overloaded callee would silently
+        bind a competing (e.g. bool) overload instead of the sema-resolved one.
+        When set, pin the literal to its param's view form (see
+        `_wants_str_literal_pin` for when the caller sets it).
         """
+        if overloaded_call and ptype is not None:
+            lit = arg
+            while isinstance(lit, TpyCoerce):
+                lit = lit.expr
+            pinned = unwrap_readonly(unwrap_ref_type(ptype))
+            if (isinstance(lit, TpyStrLiteral)
+                    and (is_str_type(pinned) or is_str_view_type(pinned))):
+                return f"{pinned.to_cpp_param_type()}({self.gen_expr_deref(arg, ptype)})"
         # Bytes literal targeting a span-storage slot: pin to static storage
         # via bytes_literal() so the stored span doesn't borrow a temporary
         # vector. Own[bytes] is excluded -- its storage IS vector (list.append
@@ -3011,8 +3037,10 @@ class ExpressionGenerator:
                 else:
                     arg_idx = len(gen_args)
                     tcb = dcbp is not None and arg_idx in dcbp
+                    str_pin_ok = self._wants_str_literal_pin(func_info, len(func_infos))
                     gen_args.append(self.gen_call_arg(arg, resolved_ptype,
-                                                      target_const_borrow=tcb))
+                                                      target_const_borrow=tcb,
+                                                      overloaded_call=str_pin_ok))
 
             # Determine function name
             # Literal overload flattening: use mangled name for literal stubs
@@ -3729,6 +3757,9 @@ class ExpressionGenerator:
                         ):
                             type_subst[tp] = ta
                     gen_args = []
+                    str_pin_ok = self._wants_str_literal_pin(
+                        expr.resolved_function_info,
+                        len(record_info.get_method_overloads(expr.method)))
                     method_dcbp = method_info.deep_const_borrow_params
                     resolved_params = expr.resolved_function_info.params if expr.resolved_function_info else []
                     # Prefer method_info.params (which keeps TypeParamRef for
@@ -3796,7 +3827,8 @@ class ExpressionGenerator:
                                 tcb = method_dcbp is not None and i in method_dcbp
                                 gen_args.append(self.gen_call_arg(arg, rptype, target_type=arg_target,
                                                                   inline_template=is_native_stub,
-                                                                  target_const_borrow=tcb))
+                                                                  target_const_borrow=tcb,
+                                                                  overloaded_call=str_pin_ok))
                     args = ", ".join(gen_args)
 
         # Use -> for pointer-locals/globals (T*) and pointer-typed expressions

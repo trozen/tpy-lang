@@ -12,7 +12,7 @@ void main() {
     // print(pick(nums))     # tpyc: ok  -- generic overload
     std::cout << pick<int32_t>(nums) << "\n";
     // print(pick("hello"))  # tpyc: ok  -- non-generic overload
-    std::cout << pick("hello") << "\n";
+    std::cout << pick(std::string_view("hello")) << "\n";
 }
 
 void __tpy_init() {

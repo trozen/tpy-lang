@@ -22,7 +22,7 @@ int32_t report(int32_t a, int32_t b, int32_t count) {
 void main() {
     // # Distinct-kwarg-name dispatch: only one overload accepts each kwarg.
     // s: str = report(Int32(3), mode="tag")              # "tag:3"
-    std::string s = report(3, 0, "tag");
+    std::string s = report(3, 0, std::string_view("tag"));
     // print(s)
     std::cout << s << "\n";
     // n: Int32 = report(Int32(3), count=Int32(4))        # 12
@@ -33,7 +33,7 @@ void main() {
     // # Expansion fills the b slot with the param type so neither overload
     // # gets a scoring edge from the gap.
     // s2: str = report(Int32(2), Int32(5), mode="sum")    # "sum:7"
-    std::string s2 = report(2, 5, "sum");
+    std::string s2 = report(2, 5, std::string_view("sum"));
     // print(s2)
     std::cout << s2 << "\n";
     // n2: Int32 = report(Int32(2), Int32(5), count=Int32(3))  # 21
