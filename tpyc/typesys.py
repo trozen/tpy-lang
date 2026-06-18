@@ -576,13 +576,7 @@ class TpyType:
 
     def is_ref_param(self) -> bool:
         """Return True if this type is passed by mutable reference as a parameter."""
-        if not self.is_value_type():
-            return True
-        # is_value_type=True with a separate mutable param form (e.g. bytearray)
-        # is conceptually a ref-param: the auto-const path needs to fire so
-        # non-mutated params use the const formatter, not the mutable one.
-        td = self._nominal_td()
-        return td is not None and td.param_mut_cpp_formatter is not None
+        return not self.is_value_type()
 
     def param_needs_copy_for_reassign(self) -> bool:
         """Return True if reassigned params need a mutable local copy.
@@ -2110,12 +2104,10 @@ def param_has_mutable_borrow_surface(t: 'TpyType') -> bool:
         return False
     # Top-level TypeParamRef: defer to is_value_type. Unbounded T behaves
     # as a borrow surface (call-edge recording must still happen so
-    # return_borrows_from propagates through generic forwarders).
-    # `is_ref_param` covers types that are technically value types but
-    # are still passed by mutable reference (e.g. bytearray) -- the old
-    # `is_ref_param()` const-inference gate matched these and the helper
-    # has to keep matching them.
-    return not t.is_value_type() or t.is_ref_param()
+    # return_borrows_from propagates through generic forwarders). Every
+    # reference type is a mutable-borrow surface (is_ref_param is now just
+    # `not is_value_type()`).
+    return not t.is_value_type()
 
 
 @dataclass(frozen=True)

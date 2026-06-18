@@ -29,9 +29,9 @@ void show_bytes_param(std::optional<std::vector<uint8_t>> b) {
 }
 
 // def show_bytearray_param(b: bytearray | None) -> None:
-void show_bytearray_param(std::optional<std::vector<uint8_t>> b) {
+void show_bytearray_param(const std::vector<uint8_t>* b) {
     // print(b)
-    std::cout << ::tpy::print_optional_val<::tpy::ByteArrayPrinter, std::vector<uint8_t>>(b) << "\n";
+    std::cout << ::tpy::print_optional<::tpy::ByteArrayPrinter, std::vector<uint8_t>>(b) << "\n";
 }
 
 // def main() -> None:
@@ -48,10 +48,10 @@ void main() {
     // init_buf = bytearray(b"yo")
     std::vector<uint8_t> init_buf = ::tpy::bytes_copy(::tpy::bytes_literal("\x79\x6f", 2));
     // Bag(init_items, init_by_key, init_elems, b"hi", init_buf).show_fields()
-    Bag(&(init_items), &(init_by_key), &(init_elems), std::vector<uint8_t>{0x68, 0x69}, init_buf).show_fields();
+    Bag(&(init_items), &(init_by_key), &(init_elems), std::vector<uint8_t>{0x68, 0x69}, &(init_buf)).show_fields();
     // # None on all five inners
     // Bag(None, None, None, None, None).show_fields()
-    Bag(nullptr, nullptr, nullptr, std::nullopt, std::nullopt).show_fields();
+    Bag(nullptr, nullptr, nullptr, std::nullopt, nullptr).show_fields();
     // # Bind container rvalues to named locals first -- passing the literal
     // # directly as an `Optional[container]` param hits a pre-existing
     // # rvalue-address-of bug in container-literal -> pointer-param coercion.
@@ -80,9 +80,9 @@ void main() {
     // buf = bytearray(b"ok")
     std::vector<uint8_t> buf = ::tpy::bytes_copy(::tpy::bytes_literal("\x6f\x6b", 2));
     // show_bytearray_param(buf)
-    show_bytearray_param(buf);
+    show_bytearray_param(&(buf));
     // show_bytearray_param(None)
-    show_bytearray_param(std::nullopt);
+    show_bytearray_param(nullptr);
 }
 
 void __tpy_init() {

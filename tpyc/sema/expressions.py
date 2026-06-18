@@ -2110,6 +2110,24 @@ class ExpressionAnalyzer:
                 target_is_storage_form=target_is_storage_form)
         return elem
 
+    def _warn_storage_element_copy(self, elem: TpyExpr, elem_type: TpyType) -> None:
+        """A reference-type container-literal element is stored by value (the
+        container owns its elements -- storage form), so an lvalue source is
+        copied, diverging from CPython aliasing. Fire the same diagnostic the
+        `.append`/`.insert` path emits, routed through check_type_compatible's
+        T -> Own[T] branch (which returns no coercion node -- the warning and
+        last-use/copy() suppression are the only effects). A value type,
+        rvalue, copy(), or last-use auto-move does not warn. A generic element
+        (TypeParamRef, after stripping the borrow-form RefType) is skipped
+        outright -- the copy verdict isn't knowable until instantiation, so
+        like `.append` it stays silent."""
+        bare = unwrap_ref_type(unwrap_own(unwrap_readonly(elem_type)))
+        if bare.is_value_type() or isinstance(bare, TypeParamRef):
+            return
+        self.compat.check_type_compatible(
+            bare, OwnType(bare), "container literal element",
+            elem.loc, source_expr=elem)
+
     def _analyze_array_literal(
         self, expr: TpyArrayLiteral, expected_elem: TpyType | None = None
     ) -> TpyType:
@@ -2242,6 +2260,14 @@ class ExpressionAnalyzer:
                         f"but earlier elements are {ft}. "
                         f"Use a type annotation like list[{ft} | {et}]", expr
                     )
+
+        # Only user-written literals warn: a macro/compiler-synthesized literal
+        # (asdict/astuple field copies, etc.) has no source loc and its copies
+        # aren't user-controllable. An `Any` element slot already warns via the
+        # dedicated copies-into-Any path -- don't double-warn.
+        if expr.loc is not None and not isinstance(expected_elem, AnyType):
+            for elem, et in zip(expr.elements, elem_types):
+                self._warn_storage_element_copy(elem, et)
 
         size = len(expr.elements)
 
@@ -2518,6 +2544,15 @@ class ExpressionAnalyzer:
         # keeping owning storage while an access expects pointer-repr.
         if name in self.ctx.func.current_reassigned_vars:
             resolved = collapse_tuple_own_elements(resolved)
+
+        # Mirror the VarDecl inferred-local type: a binding's local type is
+        # Own-stripped (owned-vs-borrow is tracked via owned_locals /
+        # stmt_borrow_decls, not by keeping Own[T] as the type). Without this,
+        # an lvalue source typed Own[T] (e.g. an owned local) makes
+        # unwrap_readonly(resolved).is_value_type() short-circuit the borrow
+        # classification below, so the walrus copies into owned storage instead
+        # of aliasing the source.
+        resolved = unwrap_own(resolved)
 
         # PEP 572: walrus in comprehension leaks to enclosing function scope
         target_scope = self.ctx.func.current_scope
@@ -2909,6 +2944,14 @@ class ExpressionAnalyzer:
                     )
                 value_type = unified
 
+        if expr.loc is not None:
+            if not isinstance(expected_key, AnyType):
+                for k, kt in zip(expr.keys, key_types):
+                    self._warn_storage_element_copy(k, kt)
+            if not isinstance(expected_value, AnyType):
+                for v, vt in zip(expr.values, value_types):
+                    self._warn_storage_element_copy(v, vt)
+
         # Resolve any literal types (bare or nested in tuples) using the
         # annotation as a structural hint.
         key_type = self._resolve_literals_with_hint(key_type, expected_key)
@@ -2972,6 +3015,10 @@ class ExpressionAnalyzer:
                         f"but earlier elements are {self._user_type_name(elem_type)}", expr,
                     )
                 elem_type = unified
+
+        if expr.loc is not None and not isinstance(expected_elem, AnyType):
+            for elem, et in zip(expr.elements, elem_types):
+                self._warn_storage_element_copy(elem, et)
 
         elem_type = self._resolve_literals_with_hint(elem_type, expected_elem)
         # Container elements must be owned -- views can't be stored in a set.

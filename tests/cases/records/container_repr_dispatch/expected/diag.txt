@@ -1,0 +1,3 @@
+main.py:60: warning: copies Both into owned storage; use copy() to make this explicit
+main.py:66: warning: copies ReprOnly into owned storage; use copy() to make this explicit
+main.py:70: warning: copies ReprOnly into owned storage; use copy() to make this explicit

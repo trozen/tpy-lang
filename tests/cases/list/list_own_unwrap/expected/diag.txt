@@ -1,0 +1,2 @@
+main.py:27: warning: copies Cat into owned storage; use copy() to make this explicit
+main.py:27: warning: copies Dog into owned storage; use copy() to make this explicit

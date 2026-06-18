@@ -32,6 +32,8 @@ from ..parse import (
     TpyClassPattern, TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
 )
 from ..parse.nodes import stmt_has_any_suspension, iter_capture_bindings
+from ..value_category import is_rvalue_source
+from .context import record_stmt_borrow_binding
 
 if TYPE_CHECKING:
     from ..typesys import RecordInfo
@@ -337,6 +339,18 @@ class MatchAnalyzer:
             # from CPython aliasing). Returns whether any binding aliases.
             aliasing_bindings = self._annotate_capture_bind_modes(
                 case.pattern, pattern_bindings)
+            # An aliasing capture of an lvalue subject borrows it (pointer form),
+            # exactly like `q = subject` -- record the stmt-borrow fact so the
+            # branch-decl hoist picks the alias (T*) form rather than copying
+            # into owned std::optional storage. An rvalue subject must own: the
+            # temporary dies at the match block, so a leaked alias would dangle.
+            if aliasing_bindings and not is_rvalue_source(self.ctx, stmt.subject):
+                for node in iter_capture_bindings(case.pattern):
+                    if not node.bind_by_value:
+                        record_stmt_borrow_binding(
+                            self.ctx, node.name,
+                            pattern_bindings.get(node.name), stmt.subject)
+                        self.ctx.func.match_borrow_captures.add(node.name)
             if (aliasing_bindings
                     and isinstance(stmt.subject, (TpyFieldAccess, TpySubscript))):
                 self._warn_arm_subject_mutation(case, stmt.subject)

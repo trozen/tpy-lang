@@ -1,0 +1,2 @@
+main.py:23: warning: copies Version into owned storage; use copy() to make this explicit
+main.py:23: warning: copies Version into owned storage; use copy() to make this explicit

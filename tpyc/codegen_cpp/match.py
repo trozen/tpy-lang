@@ -1042,7 +1042,20 @@ class MatchGenerator:
                 out.write(f"{indent}{escaped} = {subject_expr};\n")
             return
         if raw_name in self.ctx.declared_vars:
-            out.write(f"{indent}{escaped} = {subject_expr};\n")
+            # A hoisted borrow pointer-local (sema recorded a stmt-borrow fact
+            # for an aliasing capture of an lvalue subject) aliases via address,
+            # not a copy into owned storage. Owning slots (std::optional) and
+            # value locals keep the plain assignment.
+            if (raw_name in self.ctx.pointer_locals
+                    and raw_name not in self.ctx.optional_locals):
+                out.write(f"{indent}{escaped} = &({subject_expr});\n")
+            elif raw_name in self.ctx.optional_locals:
+                # An owning std::optional capture is only chosen for an rvalue
+                # subject, whose `__match_subject` owns the temporary and is not
+                # read after this binding -- move it in rather than copy.
+                out.write(f"{indent}{escaped} = std::move({subject_expr});\n")
+            else:
+                out.write(f"{indent}{escaped} = {subject_expr};\n")
         elif self._arm_binds_by_value(raw_name):
             # A free-copy scalar is COPIED into the binding (sema fact) so it
             # survives subject mutation in the arm body/guard (variant emplace

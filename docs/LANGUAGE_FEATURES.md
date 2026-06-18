@@ -144,6 +144,7 @@ Larger, mutable, passed by reference to functions but stored inline in fields an
 - Classes/records (by default)
 - `str` (dynamic string)
 - `list`, `dict`, `set`
+- `bytearray` (mutable byte buffer; `bytes` stays value-like since it is immutable)
 
 ### Parameter Passing Convention
 For reference types, `T` in a parameter implicitly means reference:
@@ -248,6 +249,15 @@ container-element store (`xs[i] = p`, `xs.append(p)`). A reference-type
 ternary whose arms differ in aliasing -- one variable arm, one fresh
 value arm (`a if c else [9]`) -- copies the variable arm where CPython
 would alias it; this is warned, and `copy()` acknowledges it.
+
+A reference-type lvalue used as a **container-literal element** -- a
+`list`/`set`/`dict` literal element or key/value (`xs = [p]`,
+`{k: p}`) -- is likewise copied into the container's owned storage where
+CPython would store a reference, so it carries the same `copies T into
+owned storage` warning that `.append`/`.insert` and field assignment
+emit; `copy()` acknowledges it, and a last-use source or a fresh rvalue
+element does not warn. (A generic element type stays silent until
+instantiation, matching `.append`.)
 
 It matters when:
 - You see a copy warning mentioning "borrowed Optional/Union" -- that
@@ -649,7 +659,7 @@ log(f"x={x}")
 
 #### Bytes Type Semantics (Working)
 
-`bytes` and `bytearray` both map to `std::vector<uint8_t>` in C++. The difference is at the type-system level: `bytes` is immutable (no mutation methods), `bytearray` is mutable.
+`bytes` and `bytearray` both map to `std::vector<uint8_t>` in C++. The difference is at the type-system level: `bytes` is immutable (no mutation methods), `bytearray` is mutable. `bytearray` is a **reference type** (like `list`/`dict`/`set`): a local binding or field/return read aliases the buffer rather than deep-copying it, so mutation through the alias is visible, matching CPython; storing one into owned storage (field, container element) copies and warns like any reference type. `bytes` stays value-like -- it is immutable, so the copy is unobservable.
 
 `BytesView` (`std::span<const uint8_t>`) is a non-owning view, analogous to `StrView` for strings. Bytes literals use C++ string literal static storage (via `bytes_literal()`), so `BytesView` references to literals never dangle. Local variables inferred from bytes literals or `list[bytes]` subscripts use `BytesView` when safe, and fall back to owned `bytes` when mutated:
 

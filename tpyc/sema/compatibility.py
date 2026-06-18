@@ -2358,14 +2358,21 @@ class TypeCompatibility:
             return self.is_mutable_lvalue(expr.obj)
         return False
 
-    def is_dangling_return(self, expr: TpyExpr) -> bool:
-        """Check if returning this expression would create a dangling reference."""
+    def is_dangling_return(self, expr: TpyExpr, *, view_source: bool = False) -> bool:
+        """Check if returning this expression would create a dangling reference.
+
+        `view_source`: the expression is the backing storage a returned *view*
+        borrows from (StrView/BytesView/Span/...), not the returned value
+        itself. A local that is `safe_to_return` (movable owned local returned
+        by value) is NOT a safe view source -- the view aliases storage that is
+        moved/destroyed at the return -- so that exemption is skipped.
+        """
         if isinstance(expr, TpyCoerce):
-            return self.is_dangling_return(expr.expr)
+            return self.is_dangling_return(expr.expr, view_source=view_source)
         # A walrus hands out its value: `return (t := items[0])` returns the
         # subscript read, so provenance follows the wrapped expression.
         if isinstance(expr, TpyNamedExpr):
-            return self.is_dangling_return(expr.value)
+            return self.is_dangling_return(expr.value, view_source=view_source)
         # Array/dict literal - creates temporary
         if isinstance(expr, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
             return True
@@ -2426,10 +2433,22 @@ class TypeCompatibility:
                         if self.is_dangling_return(expr.args[idx]):
                             return True
 
-            # A function returning owned str/String creates a temporary
-            # std::string that dangles if returned as StrView.
+            # A function returning owned str/String/bytes creates a temporary
+            # that dangles if returned as a view (StrView/BytesView).
             if fi is not None and (is_str_type(fi.return_type) or is_string_type(fi.return_type)
-                                   or is_bytes_type(fi.return_type) or is_bytearray_type(fi.return_type)):
+                                   or is_bytes_type(fi.return_type)):
+                return True
+
+            # bytearray is the lone builtin REFERENCE type whose constructor is
+            # non-generic, so it misses both the generic-constructor path
+            # (`call_type`, which catches list/dict/set) and the registry path
+            # (user records) -- and its constructor resolves to a void
+            # `__init__`, so the fi.return_type line above can't see it either.
+            # Keyed on the call's result type, this catches both the constructor
+            # and any function/method returning a fresh bytearray: returning that
+            # temporary by bare reference dangles (use Own[bytearray]).
+            if is_bytearray_type(unwrap_own(unwrap_readonly(
+                    self.ctx.get_expr_type(expr)))):
                 return True
 
             # Regular function call - assume it returns something safe
@@ -2440,17 +2459,20 @@ class TypeCompatibility:
         if isinstance(expr, TpyName):
             if self._name_is_param_or_global(expr.name):
                 return False
-            if expr.name in self.ctx.func.safe_to_return_vars:
+            # A movable owned local is safe to return BY VALUE, but a view
+            # borrowing from it still dangles (the storage is moved/destroyed
+            # at the return) -- so don't honor that exemption for a view source.
+            if not view_source and expr.name in self.ctx.func.safe_to_return_vars:
                 return False
             return True
 
         # Field access - safe only if the object itself is safe
         if isinstance(expr, TpyFieldAccess):
-            return self.is_dangling_return(expr.obj)
+            return self.is_dangling_return(expr.obj, view_source=view_source)
 
         # Subscript - safe only if the container itself is safe
         if isinstance(expr, TpySubscript):
-            return self.is_dangling_return(expr.obj)
+            return self.is_dangling_return(expr.obj, view_source=view_source)
 
         # Method call returning owned str/String creates a temporary
         # std::string that dangles if returned as StrView.
@@ -2483,8 +2505,8 @@ class TypeCompatibility:
 
         # Ternary - dangles if either branch dangles
         if isinstance(expr, TpyIfExpr):
-            return (self.is_dangling_return(expr.then_expr)
-                    or self.is_dangling_return(expr.else_expr))
+            return (self.is_dangling_return(expr.then_expr, view_source=view_source)
+                    or self.is_dangling_return(expr.else_expr, view_source=view_source))
 
         # Unary/Binary ops - might create temporaries, be conservative
         if isinstance(expr, (TpyUnaryOp, TpyBinOp)):
@@ -2513,7 +2535,13 @@ class TypeCompatibility:
         view-dangling and pointer-dangling sub-rules apply here.
         """
         if isinstance(return_type, PtrType) or is_borrowing_view_type(return_type):
-            self.check_dangling_reference(expr, return_type, loc)
+            # Pass the source's analyzed type (as the main return path does) so a
+            # view-typed local with validated provenance (a param-/literal-
+            # derived StrView/BytesView) follows that provenance instead of
+            # being rejected as owned storage behind a view.
+            self.check_dangling_reference(
+                expr, return_type, loc,
+                source_type=self.ctx.get_expr_type(expr))
 
     def check_dangling_reference(self, expr: TpyExpr, return_type: TpyType,
                                  loc: SourceLocation | None,
@@ -2558,10 +2586,22 @@ class TypeCompatibility:
             inner = expr.expr if isinstance(expr, TpyCoerce) else expr
             view_arg = self._view_constructor_arg(inner)
             if view_arg is not None:
-                if self.is_dangling_return(view_arg):
+                # A view constructor / slice: its argument is the backing
+                # storage, so a movable owned local there is still a dangling
+                # view source.
+                if self.is_dangling_return(view_arg, view_source=True):
                     raise self.ctx.error(view_msg, inner)
-            elif self.is_dangling_return(expr):
-                raise self.ctx.error(view_msg, expr)
+            else:
+                # Returning a local directly. If the local is ITSELF a view
+                # (its provenance was validated at binding, e.g. a literal- or
+                # param-derived BytesView), follow that provenance. If it is
+                # owned storage coerced into a view (a `bytearray`/`list` local
+                # returned as BytesView/Span), the storage dies at the return,
+                # so use the strict view-source check.
+                src_is_view = (source_type is not None
+                               and _dangling_view_message(source_type) is not None)
+                if self.is_dangling_return(expr, view_source=not src_is_view):
+                    raise self.ctx.error(view_msg, expr)
             return
         # A tuple's borrow form (std::tuple<..., T*, ...>) stores each non-value
         # member by pointer. The check sees through a readonly wrap (the slot is

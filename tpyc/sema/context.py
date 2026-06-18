@@ -626,6 +626,10 @@ class FunctionTrackingState:
     # match capture): their binding machinery owns the storage form, so
     # they are never pointer-form-eligible at branch pre-decls.
     nonstmt_bound_names: set[str] = field(default_factory=set)
+    # Match captures that alias an lvalue subject (recorded as a stmt-borrow):
+    # an explicit exception to nonstmt_bound_names so the borrow snapshot keeps
+    # them pointer-form-eligible regardless of prescan/full-pass ordering.
+    match_borrow_captures: set[str] = field(default_factory=set)
     # Accumulator (survives FlowFacts like ever_owned_locals): locals
     # reassigned from a borrow-producing source, so no longer safely movable
     # even if they were owned earlier. Subtracted from the movable set.

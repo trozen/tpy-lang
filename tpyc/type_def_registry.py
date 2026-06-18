@@ -745,11 +745,14 @@ def _populate() -> None:
         element_of=_u8_elem,
     ))
     register(TypeDef(
-        "builtins.bytearray", TC.BYTES, is_value_type=True,
-        # Mutable buffer: same Sync rule as list[T]. is_value_type only
-        # reflects C++ copy semantics, so the value-type Sync default
-        # (immutability) does not apply.
-        is_sync=False,
+        # A mutable buffer is a reference type (like list/dict/set): locals and
+        # field/return reads alias rather than deep-copy the buffer, matching
+        # CPython. bytes stays value-like (immutable, so a copy is unobservable).
+        "builtins.bytearray", TC.BYTES,
+        # Send (owns a plain u8 buffer, no shared refs) but not Sync (mutable),
+        # same as list[Int32]; the reference-type default is non-Send, so spell
+        # it out.
+        is_send=True, is_sync=False,
         cpp_formatter=lambda args: "std::vector<uint8_t>",
         param_cpp_formatter=lambda args: "const std::vector<uint8_t>&",
         param_mut_cpp_formatter=lambda args: "std::vector<uint8_t>&",
