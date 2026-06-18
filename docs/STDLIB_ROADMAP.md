@@ -449,8 +449,9 @@ single `raise_fs_error` errno table mapping each errno to the OSError subclass
 CPython raises (`ENOENT`->`FileNotFoundError`, `EEXIST`->`FileExistsError`,
 `ENOTDIR`->`NotADirectoryError`, `EISDIR`->`IsADirectoryError`,
 `EACCES`/`EPERM`->`PermissionError`, else `OSError`). `stat`/`lstat` return a
-`stat_result` over the same layer. The `environ` mapping remains M2 (blocked on
-write-subscript dispatch -- see TODO.md). Process spawning stays blocked.
+`stat_result` over the same layer. The `environ` mapping remains M2 -- now
+buildable (its write-subscript dispatch blocker is fixed); it needs the
+snapshot-backed-mapping design (see TODO.md). Process spawning stays blocked.
 
 | Item | Status | Notes |
 |---|---|---|
@@ -465,7 +466,7 @@ write-subscript dispatch -- see TODO.md). Process spawning stays blocked.
 | `readlink` | Done | `::readlink` with a grow-on-truncation buffer |
 | `stat`, `lstat` | Done | `::stat`/`::lstat` -> a pure-TPy `stat_result` (native returns a flat 13-tuple, wrapped TPy-side). Fields: `st_mode`/`st_ino`/`st_dev`/`st_nlink`/`st_uid`/`st_gid`/`st_size` (Int64), `st_atime`/`st_mtime`/`st_ctime` (float), `st_*_ns` (Int64). `st_blksize`/`st_blocks`/`st_rdev` deferred |
 | `scandir`, `fstat` | Missing | `scandir` needs a DirEntry type; `fstat` needs an fd |
-| `environ`, `putenv`, `unsetenv` | Blocked | **Blocked** on write-subscript dispatch (`environ[k] = v` / `del environ[k]` route to the int-index builtin -- see BUGS.md). `environ` must be the snapshot source-of-truth that `getenv`/`expandvars` read; once the dispatch lands, `environ` + `putenv`/`unsetenv` come together (CPython has no `os.setenv`) |
+| `environ`, `putenv`, `unsetenv` | Missing | M2 -- now buildable (the write-subscript dispatch blocker is fixed). `environ` must be the snapshot source-of-truth that `getenv`/`expandvars` read; build it + `putenv`/`unsetenv` together (CPython has no `os.setenv`) |
 | `path` | Partial | The [`os.path`](#ospath) submodule |
 | `walk` | Missing | Pure TPy over `scandir` |
 | `fork`, `exec*`, `spawnv*`, `system` | Blocked | Process spawning |

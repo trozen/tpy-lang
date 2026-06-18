@@ -221,11 +221,14 @@ void __setitem__(ordered_map<K, V>& m, const KeyArg& key, ValArg&& value) {
     m.insert_or_assign(K(key), std::forward<ValArg>(value));
 }
 
-// Default template: user types that define __setitem__() method
-template<typename T, typename V>
-    requires requires(T& t, int32_t i, V&& val) { t.__setitem__(i, std::forward<V>(val)); }
-void __setitem__(T& x, int32_t i, V&& v) {
-    x.__setitem__(i, std::forward<V>(v));
+// Default template: user types that define __setitem__() method. The key is a
+// deduced K (not just int32_t) so a non-int key (e.g. a str-keyed mapping)
+// dispatches to the user method; the `requires` gate keeps non-mapping types
+// out, and the concrete container overloads above stay more-specialized.
+template<typename T, typename K, typename V>
+    requires requires(T& t, K&& k, V&& val) { t.__setitem__(std::forward<K>(k), std::forward<V>(val)); }
+void __setitem__(T& x, K&& k, V&& v) {
+    x.__setitem__(std::forward<K>(k), std::forward<V>(v));
 }
 
 // =============================================
@@ -247,11 +250,12 @@ void __delitem__(ordered_map<K, V>& m, const KeyArg& key) {
     }
 }
 
-// Default template: user types that define __delitem__() method
-template<typename T>
-    requires requires(T& t, int32_t i) { t.__delitem__(i); }
-void __delitem__(T& x, int32_t i) {
-    x.__delitem__(i);
+// Default template: user types that define __delitem__() method. Deduced key K
+// (not just int32_t) so a non-int key dispatches to the user method.
+template<typename T, typename K>
+    requires requires(T& t, K&& k) { t.__delitem__(std::forward<K>(k)); }
+void __delitem__(T& x, K&& k) {
+    x.__delitem__(std::forward<K>(k));
 }
 
 // =============================================
