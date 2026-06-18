@@ -190,6 +190,7 @@ std::string guard_combo(const Wrapper& w) {
     {
         // return "other"
         return "other";
+        goto __match_end_2;
     }
     __match_end_2:;
     ::std::unreachable();

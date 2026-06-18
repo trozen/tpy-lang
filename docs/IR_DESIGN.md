@@ -98,6 +98,8 @@ in the current model.
   - Rvalue tuple-of-records into a ref/pointer-form slot -- **[MED/LOW]** (BUGS.md).
   - Generic `V | None` instantiated with `V = Ptr[T]` (double-pointer) (BUGS.md).
   - Bare-Optional yield missing the storage->pointer bridge (BUGS.md).
+  - Union `match` capture: value-variant storage-form binding vs pointer-variant
+    borrow subject (also an undesigned-aliasing-form design question) (BUGS.md).
   Several smaller cases in this class *were* closed pre-IR by extending consumer-side
   predicates -- but each one touched another dispatch site, which is exactly the cost the
   IR fact removes. The same fact also dissolves the sema `Ref[T]` wrapper, which today
@@ -1568,7 +1570,18 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    fix splinters into either per-binding-site lifts or await-target-specific
    classification. (The scalar pointer-repr Optional case has no such split
    because its local form is uniformly `T*` -- the value/pointer-variant binding
-   duality is specific to unions.) With form an explicit IR fact, each binding's
+   duality is specific to unions.) The same union value/pointer-variant split
+   recurs at a third site, the **`match` capture of a genuine-union subject**
+   (`def m(x: A | B): match x: case q:`): the capture `q` is hoisted in STORAGE
+   form (value-variant `std::variant<A,B>`) while the subject is BORROW form
+   (pointer-variant `std::variant<A*,B*>`), so the bind is a C++ type error with
+   no TPy diagnostic -- and, unlike the await/field case, the *aliasing form a
+   union capture should even take* (pointer-variant alias vs value-variant
+   copy-out vs per-variant narrowing) is undesigned, so this exhibit is also a
+   design question, not only a missing conversion node. (A *narrowed* union
+   subject hits a related but distinct mismatch -- it analyzes as a record match
+   against pointer-variant storage. BUGS.md union-match-capture entry.) With form
+   an explicit IR fact, each binding's
    borrow<->storage conversion is a visible lowering node regardless of whether
    the source is an await payload or a field read, so the async and sync binding
    paths converge instead of diverging by consumer site. Each of these was/is

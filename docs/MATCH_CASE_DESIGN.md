@@ -566,7 +566,11 @@ if (__match_subject.x == 0 && __match_subject.y == 0) {
 
 Class patterns with no literal sub-patterns (all captures/wildcards) are
 always-matching and act as a default arm. With guards, record matches use
-standalone `if` blocks with `goto` (same approach as guarded unions).
+standalone `if` blocks with `goto` (same approach as guarded unions). A
+guarded wildcard/capture arm wraps its capture binding in its own `{ }` block
+(via the shared guarded-arm tail emitter), so the guard's `goto __match_end`
+jumps over a complete block rather than across a later arm's reference-binding
+initialization (which C++ rejects).
 
 ### Optional subjects
 

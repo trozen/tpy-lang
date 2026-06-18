@@ -27,6 +27,7 @@ std::string guarded(const Point& p) {
     {
         // return "other"
         return "other";
+        goto __match_end_2;
     }
     __match_end_2:;
     ::std::unreachable();

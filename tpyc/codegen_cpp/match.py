@@ -114,19 +114,26 @@ class MatchGenerator:
         self.subject = "__match_subject"
         self.inner_subject = "__match_inner"
         self._cur_arm_bind: dict[str, bool] = {}
+        # Whether the current match subject renders as a pointer (pointer-repr
+        # Optional): a capture aliasing it binds the pointer directly rather
+        # than taking its address. Set per match in _gen_match_dispatch.
+        self._subject_is_pointer = False
 
     def gen_match(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
         """Generate a match/case statement. Uses switch when possible, if/elif otherwise."""
         # Number the subject binding (like end labels): two sequential
         # matches in one C++ scope would otherwise redeclare the same name.
-        saved = (self.subject, self.inner_subject)
+        # _subject_is_pointer is per-match and read per-arm at bind time; a
+        # nested match in an arm body resets it, so it must be restored for the
+        # outer match's later arms (unlike the dispatch-local subject_is_narrowed).
+        saved = (self.subject, self.inner_subject, self._subject_is_pointer)
         self.ctx.match_counter += 1
         self.subject = f"__match_subject_{self.ctx.match_counter}"
         self.inner_subject = f"__match_inner_{self.ctx.match_counter}"
         try:
             self._gen_match_dispatch(out, stmt, indent)
         finally:
-            self.subject, self.inner_subject = saved
+            self.subject, self.inner_subject, self._subject_is_pointer = saved
 
     def _gen_match_dispatch(self, out: TextIO, stmt: TpyMatch, indent: str) -> None:
         assert stmt.subject_type is not None
@@ -173,6 +180,18 @@ class MatchGenerator:
         # copied as `auto` to avoid dangling references.
         subject_is_lvalue = _match_subject_is_lvalue(stmt.subject)
         binding = "auto&" if subject_is_lvalue else "auto"
+        # A pointer-repr subject renders __match_subject as a `T*` (a
+        # pointer-repr Optional/Ptr local, or a storage-form Optional source
+        # lifted via optional_to_ptr below), so a capture aliasing the whole
+        # subject assigns the pointer directly -- `&subject` would yield `T**`.
+        # (subject_type is narrowed to the inner value here, so key on the
+        # subject expression's C++ form, not the type.)
+        self._subject_is_pointer = (
+            (isinstance(stmt.subject, TpyName)
+             and self.ctx.is_indirect_name(stmt.subject))
+            or (isinstance(subject_type, OptionalType)
+                and subject_type.uses_pointer_repr()
+                and self.ctx.is_storage_form_optional_source(stmt.subject)))
         # Storage-form source of a pointer-repr Optional (field access,
         # container element, storage-form local): the null tests below are
         # emitted for the pointer form the TYPE promises, so lift the
@@ -1048,7 +1067,13 @@ class MatchGenerator:
             # value locals keep the plain assignment.
             if (raw_name in self.ctx.pointer_locals
                     and raw_name not in self.ctx.optional_locals):
-                out.write(f"{indent}{escaped} = &({subject_expr});\n")
+                # A pointer-repr Optional subject is already a `T*`: alias it
+                # directly. Otherwise the subject is a value lvalue (`T&`) and
+                # the borrow pointer-local takes its address.
+                if self._subject_is_pointer and subject_expr == self.subject:
+                    out.write(f"{indent}{escaped} = {subject_expr};\n")
+                else:
+                    out.write(f"{indent}{escaped} = &({subject_expr});\n")
             elif raw_name in self.ctx.optional_locals:
                 # An owning std::optional capture is only chosen for an rvalue
                 # subject, whose `__match_subject` owns the temporary and is not
@@ -1768,24 +1793,15 @@ class MatchGenerator:
                 out.write(f"{indent}}}\n")
 
             elif isinstance(pattern, (TpyWildcardPattern, TpyCapturePattern)):
+                # Brace-scope the arm so its (possibly reference) capture
+                # bindings live inside the block: a guard's `goto end` then
+                # jumps over a complete block rather than across a later arm's
+                # in-scope binding initialization.
+                out.write(f"{indent}{{\n")
                 if isinstance(pattern, TpyCapturePattern):
-                    self._emit_binding(out, escape_cpp_name(pattern.name), pattern.name, self.subject, indent)
-                self._emit_binding(out, as_name, as_raw, self.subject, indent)
-                if guard is not None:
-                    guard_code = self.expressions.gen_expr(guard)
-                    self.ctx.temps.flush(out, indent)
-                    out.write(f"{indent}if ({guard_code}) {{\n")
-                    self.ctx.indent_level += 1
-                    self._emit_case_body(out, case.body, case.type_facts)
-                    self.ctx.indent_level -= 1
-                    out.write(f"{inner}goto {end_label};\n")
-                    out.write(f"{indent}}}\n")
-                else:
-                    out.write(f"{indent}{{\n")
-                    self.ctx.indent_level += 1
-                    self._emit_case_body(out, case.body, case.type_facts)
-                    self.ctx.indent_level -= 1
-                    out.write(f"{indent}}}\n")
+                    self._emit_binding(out, escape_cpp_name(pattern.name), pattern.name, self.subject, inner)
+                self._emit_binding(out, as_name, as_raw, self.subject, inner)
+                self._emit_guarded_arm_tail(out, case, indent, inner, end_label)
 
             elif isinstance(pattern, TpyOrPattern):
                 or_parts: list[str] = []
