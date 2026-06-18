@@ -1,11 +1,8 @@
 # os.path -- common pathname manipulations (POSIX semantics).
 # tpy: cpp_namespace("tpystd::os::path")
-#
-# v1 is the pure-string surface of CPython's posixpath: no filesystem
-# access, no cwd/environ. The predicate tier (exists/isfile/isdir/...) and
-# the cwd/env-dependent functions (abspath/realpath/expanduser/...) are
-# deferred to the os filesystem-bindings effort -- see TODO.md.
+# tpy: include("<tpy/stdlib/os.hpp>")
 from typing import Final
+from ._native import getcwd, exists, lexists, isfile, isdir, islink, getsize
 
 sep: Final[str] = "/"
 pathsep: Final[str] = ":"
@@ -58,15 +55,18 @@ def splitdrive(p: str) -> tuple[str, str]:
     return ("", p)
 
 
+def _join2(a: str, b: str) -> str:
+    if b.startswith("/"):
+        return b
+    if len(a) == 0 or a.endswith("/"):
+        return a + b
+    return a + "/" + b
+
+
 def join(a: str, *paths: str) -> str:
     path = a
     for b in paths:
-        if b.startswith("/"):
-            path = b
-        elif len(path) == 0 or path.endswith("/"):
-            path = path + b
-        else:
-            path = path + "/" + b
+        path = _join2(path, b)
     return path
 
 
@@ -113,3 +113,9 @@ def commonprefix(m: list[str]) -> str:
                 return first[:i]
         i += 1
     return first[:prefix_len]
+
+
+def abspath(p: str) -> str:
+    if isabs(p):
+        return normpath(p)
+    return normpath(_join2(getcwd(), p))

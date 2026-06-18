@@ -1,0 +1,5 @@
+getsize: FileNotFoundError
+listdir: FileNotFoundError
+chdir: FileNotFoundError
+listdir-on-file: OSError
+getsize: OSError base

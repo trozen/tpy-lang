@@ -1,0 +1,5 @@
+/tmp
+tpy_os_fs_a.txt,tpy_os_fs_b.txt,tpy_os_fs_c.txt
+True
+dflt
+True

@@ -1,6 +1,14 @@
 # os -- miscellaneous operating system interfaces.
 # tpy: cpp_namespace("tpystd::os")
+# tpy: include("<tpy/stdlib/os.hpp>")
 #
-# v1 stands up only the `os.path` submodule (pure-string path manipulation).
-# The filesystem surface (getcwd/environ/stat/listdir/...) is not yet built.
+# Filesystem queries over std::filesystem; the path-string surface lives in
+# the `os.path` submodule. Raw bindings live in `os._native`.
 from . import path
+from ._native import getcwd, chdir, listdir, env_has as _env_has, env_get as _env_get
+
+
+def getenv(key: str, default: str | None = None) -> str | None:
+    if _env_has(key):
+        return _env_get(key)
+    return default
