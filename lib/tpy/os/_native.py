@@ -22,6 +22,65 @@ def chdir(path: str) -> None: ...
 def listdir(path: str) -> Own[list[str]]: ...
 
 
+@native("tpy::stdlib::os::mkdir")
+def mkdir(path: str, mode: Int64) -> None: ...
+
+
+@native("tpy::stdlib::os::rmdir")
+def rmdir(path: str) -> None: ...
+
+
+@native("tpy::stdlib::os::remove")
+def remove(path: str) -> None: ...
+
+
+@native("tpy::stdlib::os::rename")
+def rename(src: str, dst: str) -> None: ...
+
+
+@native("tpy::stdlib::os::symlink")
+def symlink(target: str, linkpath: str) -> None: ...
+
+
+@native("tpy::stdlib::os::readlink")
+def readlink(path: str) -> str: ...
+
+
+# 13-field stat tuple (see os/__init__ stat_result for the field order). The
+# type is spelled inline -- a @native return annotation does not resolve a
+# module-level type alias.
+@native("tpy::stdlib::os::stat_raw")
+def stat_raw(path: str) -> tuple[
+        Int64, Int64, Int64, Int64, Int64, Int64, Int64,
+        float, float, float, Int64, Int64, Int64]: ...
+
+
+@native("tpy::stdlib::os::lstat_raw")
+def lstat_raw(path: str) -> tuple[
+        Int64, Int64, Int64, Int64, Int64, Int64, Int64,
+        float, float, float, Int64, Int64, Int64]: ...
+
+
+@native("tpy::stdlib::os::path_getmtime")
+def path_getmtime(path: str) -> float: ...
+
+
+@native("tpy::stdlib::os::path_getatime")
+def path_getatime(path: str) -> float: ...
+
+
+@native("tpy::stdlib::os::path_getctime")
+def path_getctime(path: str) -> float: ...
+
+
+@native("tpy::stdlib::os::path_samefile")
+def path_samefile(a: str, b: str) -> bool: ...
+
+
+@native("tpy::stdlib::os::path_ismount")
+def path_ismount(path: str) -> bool: ...
+
+
 @native("tpy::stdlib::os::env_has")
 def env_has(key: str) -> bool: ...
 

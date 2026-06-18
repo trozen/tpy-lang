@@ -63,6 +63,18 @@ class FileNotFoundError(OSError):
 class PermissionError(OSError):
     def __init__(self, message: str = "") -> None: ...
 
+@native("tpy::FileExistsError")
+class FileExistsError(OSError):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::NotADirectoryError")
+class NotADirectoryError(OSError):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::IsADirectoryError")
+class IsADirectoryError(OSError):
+    def __init__(self, message: str = "") -> None: ...
+
 # Raised on EAGAIN/EWOULDBLOCK/EINPROGRESS by non-blocking socket calls;
 # the asyncio reactor catches it to park on fd readiness (CPython parity).
 @native("tpy::BlockingIOError")

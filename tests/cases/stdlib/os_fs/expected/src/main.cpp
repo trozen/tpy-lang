@@ -54,7 +54,7 @@ void main() {
     // print(os.getenv("TPY_DEFINITELY_UNSET_VAR") is None)
     std::cout << ::tpy::print_bool((!::tpystd::os::getenv("TPY_DEFINITELY_UNSET_VAR").has_value())) << "\n";
     // print(os.getenv("TPY_DEFINITELY_UNSET_VAR", "dflt"))
-    std::cout << ::tpy::print_optional_val(::tpystd::os::getenv("TPY_DEFINITELY_UNSET_VAR", "dflt")) << "\n";
+    std::cout << ::tpystd::os::getenv("TPY_DEFINITELY_UNSET_VAR", "dflt") << "\n";
     // print(os.getenv("PATH") is not None)
     std::cout << ::tpy::print_bool((::tpystd::os::getenv("PATH").has_value())) << "\n";
 }

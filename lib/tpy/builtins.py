@@ -2,7 +2,8 @@
 # tpy: cpp_namespace("tpystd::builtins")
 from tpy._builtins import (
     BaseException, Exception, ValueError, OSError, FileNotFoundError,
-    PermissionError, BlockingIOError,
+    PermissionError, FileExistsError, NotADirectoryError, IsADirectoryError,
+    BlockingIOError,
     AttributeError, AssertionError, LookupError, IndexError, KeyError,
     ArithmeticError, ZeroDivisionError, OverflowError, FloatingPointError,
     TypeError, NotImplementedError, RuntimeError, RecursionError, EOFError,
@@ -26,7 +27,8 @@ __all__ = [
     "int", "float", "bool", "str", "bytes", "bytearray", "None",
     "tuple", "basic_slice", "slice", "type",
     "Exception", "ValueError", "OSError", "FileNotFoundError", "BaseException",
-    "PermissionError", "BlockingIOError",
+    "PermissionError", "FileExistsError", "NotADirectoryError", "IsADirectoryError",
+    "BlockingIOError",
     "AttributeError", "AssertionError", "LookupError", "IndexError", "KeyError",
     "ArithmeticError", "ZeroDivisionError", "OverflowError", "FloatingPointError",
     "TypeError", "NotImplementedError", "RuntimeError", "RecursionError",

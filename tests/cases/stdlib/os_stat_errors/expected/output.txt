@@ -1,0 +1,5 @@
+stat: FileNotFoundError
+lstat: FileNotFoundError
+getmtime: FileNotFoundError
+samefile: FileNotFoundError
+stat: OSError base

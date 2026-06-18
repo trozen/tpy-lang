@@ -1,0 +1,17 @@
+size: 5
+is-reg: True
+nlink>=1: True
+mtime>0: True True
+getsize: True
+getmtime: True
+getatime: True
+getctime: True
+dir-is-dir: True
+lstat-is-link: True
+stat-follows-link: True
+samefile-self: True
+samefile-via-link: True
+ismount-base: False
+ismount-root: True
+mkdir-mode: True
+clean: False

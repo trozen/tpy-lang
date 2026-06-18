@@ -1,0 +1,12 @@
+True
+dflt
+True
+True
+True
+True
+True
+$TPY_UNSET_VAR/x
+${TPY_UNSET_VAR}
+cost: $ 5
+no vars
+${unclosed

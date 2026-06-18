@@ -1,0 +1,10 @@
+mkdir-existing: FileExistsError
+makedirs-existing: FileExistsError
+rmdir-file: NotADirectoryError
+remove-dir: IsADirectoryError
+rmdir-nonempty: OSError
+rmdir-missing: FileNotFoundError
+rename-missing: FileNotFoundError
+replace-missing: FileNotFoundError
+removedirs-stopped: True
+cleaned: False

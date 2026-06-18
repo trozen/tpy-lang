@@ -124,8 +124,8 @@ Examples of the policy in action:
 | [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for fsum/sumprod/dist; `prod` has Int32 / int (BigInt) / float overloads). Remaining gap: tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time` all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
 | [`sys`](#sys) | P0 | Stub | ~20% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr`, `exit`, `maxsize` done; needs `stdin`/`path`/`version_info` |
-| [`os`](#os) | P0 | Partial | ~15% | mixed | M1 filesystem-query tier over `std::filesystem`: `getcwd`, `chdir`, `listdir`, `getenv`. Mutating ops (`mkdir`/`remove`/`rename`/`symlink`), `stat`/`stat_result`, `environ` mapping + `putenv` deferred to M2 |
-| [`os.path`](#ospath) | P0 | Partial | ~70% | mixed | Pure-string POSIX surface (`join`/`split`/`splitext`/`basename`/`dirname`/`isabs`/`normpath`/`splitdrive`/`commonprefix` + constants) plus the filesystem-query tier (`exists`/`lexists`/`isfile`/`isdir`/`islink`/`getsize`/`abspath`) over `std::filesystem`. CPython byte-compatible against `posixpath`. Deferred: `expanduser`/`expandvars`/`realpath`/`relpath` (need env/cwd/pwd), `getmtime`/`getatime`/`getctime` (need `stat`), `commonpath` |
+| [`os`](#os) | P0 | Partial | ~42% | mixed | Filesystem queries (`getcwd`/`chdir`/`listdir`/`getenv`) + `stat`/`lstat` -> `stat_result` over `std::filesystem`/POSIX; mutating ops (`mkdir`/`makedirs`/`rmdir`/`removedirs`/`remove`/`rename`/`replace`/`symlink`/`readlink`) over raw POSIX syscalls with a full errno->OSError-subclass table. `environ` mapping + `putenv`, `scandir`, process spawning deferred |
+| [`os.path`](#ospath) | P0 | Partial | ~88% | mixed | Pure-string POSIX surface (`join`/`split`/`splitext`/`basename`/`dirname`/`isabs`/`normpath`/`splitdrive`/`commonprefix` + constants) plus filesystem queries (`exists`/`lexists`/`isfile`/`isdir`/`islink`/`getsize`/`abspath`/`getmtime`/`getatime`/`getctime`/`samefile`/`ismount`/`expandvars`). CPython byte-compatible against `posixpath`. Deferred: `expanduser`/`realpath`/`relpath` (need pwd/cwd), `commonpath`, `samestat` |
 | [`pathlib`](#pathlib) | P0 | Missing | 0% | -- | Class-heavy; depends on filesystem bindings |
 | [`io`](#io) | P0 | Partial | ~35% | pure | `StringIO` / `BytesIO` (chunked storage, write/read/`read(size)`/readline/seek/tell/truncate/iter/context-manager). `Readable` / `Writable` / `BinaryReadable` / `BinaryWritable` protocols on tpy core, re-exported from `io`. Missing: `IOBase` ABC hierarchy (deliberately deferred -- protocols cover the static-dispatch use case), `TextIOWrapper`, `io.SEEK_SET/CUR/END` constants (collide with `<cstdio>` macros), encoding/newline/errors kwargs |
 | [`json`](#json) | P0 | Partial | ~72% | pure | `loads` / `dumps` / `load(fp)` / `dump(obj, fp)` + `JSONDecodeError` done over a recursive union `JsonValue`. CPython byte-compatible across cpy phase. Missing: `JSONEncoder` / `JSONDecoder`, most `dumps`/`loads` kwargs |
@@ -331,7 +331,8 @@ helper-API surface.
 | `KeyboardInterrupt` | Done | Inherits `BaseException` directly (CPython hierarchy); raisable/catchable, and raised by `asyncio.run` after a SIGINT-driven graceful shutdown |
 | `SystemExit` | Missing | Control-flow exception; needs runtime support |
 | `SystemError` | Missing | Internal-interpreter notion not directly applicable |
-| `EOFError`, `PermissionError` | Done (class-only) | Classes exposed for user `raise`; no runtime sites raise them yet (`PermissionError` inherits `OSError` per CPython) |
+| `EOFError` | Done (class-only) | Class exposed for user `raise`; no runtime sites raise it yet |
+| `PermissionError`, `FileExistsError`, `NotADirectoryError`, `IsADirectoryError` | Done | `OSError` subclasses (per CPython). Raised by the `os` syscall errno table (EACCES/EPERM, EEXIST, ENOTDIR, EISDIR); also user-raisable |
 | `TimeoutError` | Done | Built-in re-export of `tpy::TimeoutError` (inherits `Exception`); raised by `asyncio.wait_for` |
 
 **Sentinels**
@@ -441,30 +442,30 @@ Tests: `sys_argv`, `sys_maxsize`, `sys_byteorder`, `kwargs_print_file_std`.
 
 ### os
 
-**Partial.** M1 ships the filesystem-query tier over `std::filesystem`
-(helpers in `runtime/cpp/include/tpy/stdlib/os.hpp`, thin `@native` facade in
-`lib/tpy/os/__init__.py`); errors map to `OSError`/`FileNotFoundError` via the
-core raise helpers. Mutating ops, the `stat` tier, and the `environ` mapping
-are M2 (see TODO.md). Process spawning stays blocked.
-
-Known divergence: the errno->exception-subclass mapping is partial. Only
-`ENOENT` maps to its subclass (`FileNotFoundError`); an `ENOTDIR` failure
-(`chdir`/`listdir`/`getsize` through a non-directory) and `EACCES`/`EPERM`
-raise plain `OSError` rather than CPython's `NotADirectoryError` /
-`PermissionError`. `NotADirectoryError` has no TPy class yet, so the whole
-table is completed in one M2 pass rather than mapped asymmetrically. `except
-OSError` catches all of them meanwhile.
+**Partial.** Filesystem queries over `std::filesystem` and mutating ops over
+raw POSIX syscalls (helpers in `runtime/cpp/include/tpy/stdlib/os.hpp`, thin
+`@native` facade in `lib/tpy/os/__init__.py`). Syscall failures route through a
+single `raise_fs_error` errno table mapping each errno to the OSError subclass
+CPython raises (`ENOENT`->`FileNotFoundError`, `EEXIST`->`FileExistsError`,
+`ENOTDIR`->`NotADirectoryError`, `EISDIR`->`IsADirectoryError`,
+`EACCES`/`EPERM`->`PermissionError`, else `OSError`). `stat`/`lstat` return a
+`stat_result` over the same layer. The `environ` mapping remains M2 (blocked on
+write-subscript dispatch -- see TODO.md). Process spawning stays blocked.
 
 | Item | Status | Notes |
 |---|---|---|
-| `getcwd`, `chdir` | Done | `std::filesystem::current_path` get/set; `chdir` on a missing path raises `FileNotFoundError` |
-| `listdir` | Done | `std::filesystem::directory_iterator`; returns basenames (unspecified order, like CPython); missing dir raises `FileNotFoundError` |
-| `getenv` | Done | `getenv(key)` -> `str | None`; `getenv(key, default)` over `std::getenv` |
-| `scandir` | Missing | `std::filesystem::directory_iterator` (richer entry objects) |
-| `mkdir`, `makedirs`, `rmdir`, `removedirs` | Missing | M2 -- `std::filesystem::create_directory` etc. |
-| `remove`, `rename`, `replace`, `symlink` | Missing | M2 -- `std::filesystem::remove` / `rename` / `create_symlink` |
-| `stat`, `lstat` | Missing | M2 -- needs a `stat_result` record |
-| `environ`, `putenv`, `setenv`, `unsetenv` | Missing | M2 -- mutable mapping kept in sync with libc |
+| `getcwd`, `chdir` | Done | `std::filesystem::current_path` get/set |
+| `listdir` | Done | `std::filesystem::directory_iterator`; basenames, unspecified order (like CPython) |
+| `getenv` | Done | Two overloads (typeshed-style): `getenv(key)` -> `str | None`, `getenv(key, default: str)` -> `str` (so `len(os.getenv(k, ""))` type-checks). Reads live libc `getenv` |
+| `mkdir`, `rmdir`, `remove`, `rename`, `symlink` | Done | Raw `::mkdir`/`::rmdir`/`::unlink`/`::rename`/`::symlink`; byte-exact CPython errno parity |
+| `makedirs` | Done | Pure-TPy recursion over `mkdir`; `mode=`/`exist_ok=` supported |
+| `mkdir(mode=)` | Done | `::mkdir(path, mode)`; mode is umask-masked like CPython |
+| `replace` | Done | POSIX `rename(2)` (same as `rename`; the cross-platform-overwrite guarantee is the only difference) |
+| `removedirs` | Done | Pure-TPy prune of empty parents via `dirname` (avoids a `split`-tuple-unpack dangling bug -- see BUGS.md) |
+| `readlink` | Done | `::readlink` with a grow-on-truncation buffer |
+| `stat`, `lstat` | Done | `::stat`/`::lstat` -> a pure-TPy `stat_result` (native returns a flat 13-tuple, wrapped TPy-side). Fields: `st_mode`/`st_ino`/`st_dev`/`st_nlink`/`st_uid`/`st_gid`/`st_size` (Int64), `st_atime`/`st_mtime`/`st_ctime` (float), `st_*_ns` (Int64). `st_blksize`/`st_blocks`/`st_rdev` deferred |
+| `scandir`, `fstat` | Missing | `scandir` needs a DirEntry type; `fstat` needs an fd |
+| `environ`, `putenv`, `unsetenv` | Blocked | **Blocked** on write-subscript dispatch (`environ[k] = v` / `del environ[k]` route to the int-index builtin -- see BUGS.md). `environ` must be the snapshot source-of-truth that `getenv`/`expandvars` read; once the dispatch lands, `environ` + `putenv`/`unsetenv` come together (CPython has no `os.setenv`) |
 | `path` | Partial | The [`os.path`](#ospath) submodule |
 | `walk` | Missing | Pure TPy over `scandir` |
 | `fork`, `exec*`, `spawnv*`, `system` | Blocked | Process spawning |
@@ -494,18 +495,23 @@ Imports: `from os.path import join`, `import os.path`, `import os` (then
 | `exists`, `lexists`, `isfile`, `isdir`, `islink` | Done | `std::filesystem` status queries; swallow OS errors and return False (matches CPython). `islink`/`lexists` symlink-True paths await `os.symlink` (M2) for test coverage |
 | `getsize` | Done | `stat().st_size` (follows symlinks; returns a directory's size like CPython, not just regular files); missing path raises `FileNotFoundError`. Returns `Int64` (CPython `int`) -- same printed value |
 | `abspath` | Done | `os.getcwd`-relative + `normpath`; absolute input is just `normpath` |
+| `getmtime`, `getatime`, `getctime` | Done | Native `stat`-backed float helpers (parallel to `getsize`); tests assert invariants (machine-dependent values) |
+| `samefile` | Done | Native helper comparing `st_ino`/`st_dev` of two paths |
+| `ismount` | Done | Native helper; `st_dev` differs from parent, or parent is self (root) |
 | `commonpath` | Missing | Path-aware; needs `min`/`max` over `list[list[str]]` (unsupported) |
-| `ismount` | Missing | M2 -- needs `stat` (compare st_dev of path and parent) |
-| `getmtime`, `getatime`, `getctime` | Missing | M2 -- need `stat`; timestamps non-deterministic (invariant-style tests) |
+| `expandvars` | Done | Pure-TPy `$name`/`${name}` expansion; unset names / bare `$` / unclosed brace left verbatim. Reads live libc env, whereas CPython reads the `os.environ` snapshot -- equivalent for pre-set vars, but diverges if the process environment is mutated after start (a `@native`/libc `setenv` or, once shipped, `os.putenv`). Resolved when `os.environ` becomes the shared source-of-truth |
 | `realpath`, `relpath` | Missing | M2 -- `realpath` needs `canonical`; `relpath` default `start` needs `os.getcwd` |
-| `expanduser`, `expandvars` | Missing | M2 -- need `os.environ`/`getenv` (and `getpwnam` for `~user`) |
-| `samefile`, `samestat` | Missing | M2 -- need `stat` |
+| `expanduser` | Missing | M2 -- `~`/`~/...` via `getenv("HOME")`; `~user` needs `getpwnam` |
+| `samestat` | Missing | M2 -- takes two `stat_result`, so can't live in `os.path` without re-hitting the os<->os.path cycle; `samefile` covers the common case |
 
 Tests: `tests/cases/stdlib/ospath_strings` (string surface + constants),
 `ospath_normpath`, `ospath_commonprefix` (also covers the `import os` /
 `from os import path` forms), `ospath_fs` (exists/lexists/isfile/isdir/islink/
-getsize/abspath), `ospath_fs_errors` (FileNotFoundError mapping), and
-`os_fs` (getcwd/chdir/listdir/getenv). All cpy-phase byte-compared against
+getsize/abspath), `ospath_fs_errors` (FileNotFoundError mapping),
+`os_fs` (getcwd/chdir/listdir/getenv), `os_mutate`/`os_mutate_errors`
+(mutating ops + errno subclasses), `os_stat`/`os_stat_errors`
+(stat/lstat + stat queries), `os_getenv_expandvars` (getenv overloads +
+expandvars). All cpy-phase byte-compared against
 CPython; filesystem cases `chdir` to a known dir and create fixed `/tmp`
 fixtures for determinism.
 

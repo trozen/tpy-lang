@@ -51,6 +51,9 @@ struct OSError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(
 struct FileNotFoundError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(FileNotFoundError) };
 struct PermissionError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(PermissionError) };
 struct BlockingIOError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(BlockingIOError) };
+struct FileExistsError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(FileExistsError) };
+struct NotADirectoryError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(NotADirectoryError) };
+struct IsADirectoryError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(IsADirectoryError) };
 struct AttributeError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(AttributeError) };
 struct AssertionError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(AssertionError) };
 struct LookupError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(LookupError) };
@@ -160,6 +163,10 @@ TPY_DEFINE_RAISE_HELPER(raise_zero_division_error,   ZeroDivisionError)
 TPY_DEFINE_RAISE_HELPER(raise_overflow_error,        OverflowError)
 TPY_DEFINE_RAISE_HELPER(raise_os_error,              OSError)
 TPY_DEFINE_RAISE_HELPER(raise_file_not_found_error,  FileNotFoundError)
+TPY_DEFINE_RAISE_HELPER(raise_permission_error,      PermissionError)
+TPY_DEFINE_RAISE_HELPER(raise_file_exists_error,     FileExistsError)
+TPY_DEFINE_RAISE_HELPER(raise_not_a_directory_error, NotADirectoryError)
+TPY_DEFINE_RAISE_HELPER(raise_is_a_directory_error,  IsADirectoryError)
 TPY_DEFINE_RAISE_HELPER(raise_runtime_error,         RuntimeError)
 TPY_DEFINE_RAISE_HELPER(raise_not_implemented_error, NotImplementedError)
 TPY_DEFINE_RAISE_HELPER(raise_memory_error,          MemoryError)
