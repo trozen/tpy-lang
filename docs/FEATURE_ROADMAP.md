@@ -144,6 +144,13 @@ Phases are not strictly sequential -- items from different phases can be interle
 based on what's most needed. E1 (Send/Sync markers) is recommended early regardless
 of phase, to avoid costly retrofitting when concurrency arrives.
 
+### Phase H: Interop & Distribution (Future)
+
+| # | Feature | Effort | Status | Section |
+|---|---------|--------|--------|---------|
+| H1 | CPython interop (extension mode + embedding hooks) | XL | 🔬 Research -- design in [`docs/CPYTHON_INTEROP.md`](CPYTHON_INTEROP.md) | [XI](#cpython-interop) |
+| H2 | Project / build / dependency tooling (`tpx` porcelain) | XL | 🔬 Research -- design in [`docs/PROJECT_TOOLING_DESIGN.md`](PROJECT_TOOLING_DESIGN.md) | [XII](#project--build--dependency-tooling) |
+
 ### Future Extensions (not planned near-term)
 
 Extensions to completed features. Not actively planned but tracked here so they
@@ -3411,7 +3418,70 @@ See `SELF_HOSTING.md` for the full gap analysis.
 
 ---
 
-## XI. Tooling & Project Layer
+## XI. Interop & Distribution (Future)
+
+### CPython Interop
+
+Full design in [`docs/CPYTHON_INTEROP.md`](CPYTHON_INTEROP.md). Tooling hooks
+(the `ext` target kind, TPy as a PEP 517 build backend) are reserved in
+[`docs/PROJECT_TOOLING_DESIGN.md`](PROJECT_TOOLING_DESIGN.md); this is the
+interop *semantics*. Distinct from `@native` ([`docs/NATIVE_INTEROP.md`](NATIVE_INTEROP.md)),
+which is the inverse (C++ visible to TPy). Summary:
+
+- **Governing constraint**: the representation gap. TPy is unboxed/
+  monomorphized/homogeneous; CPython is boxed `PyObject*` everywhere. The two
+  cannot share live data, so interop is a *boundary-marshalling* story --
+  cheap where the boundary is thin (primitives, bulk numeric buffers),
+  expensive/fraught where thick (nested containers, live objects, callbacks).
+- **Two directions, extension leads**: extension (CPython imports a TPy-built
+  `.so` -- the Cython/PyO3 flow, the v1 target) and embedding (a TPy binary
+  calls libpython -- reserved hooks only).
+- **v1 goals**: write extensions in TPy; expose free functions, classes +
+  methods, and enums + constants.
+- **Shared marshalling layer** (the keystone): one direction-agnostic
+  `to_py`/`from_py`, serving both directions. `PyObject*` into TPy is an owned
+  `Own[PyRef]`. `str`/`bytes` args are **copy-in in v1** (the zero-copy borrow
+  needs a new foreign-borrow primitive, deferred); numeric `Span[readonly[T]]`
+  input is zero-copy via the buffer protocol (read-only, non-escaping).
+  Containers cross by O(n) *copy* (a
+  declared no-alias divergence); classes get correct reference semantics
+  because the PyObject owns the instance.
+- **abi3 / limited API**: one wheel for all CPython versions, and it keeps
+  `Python.h` macros out of generated TUs (a facade-friendly opaque-`PyObject`
+  surface).
+- **Exception/panic bridge**: `raise` -> `PyErr_*`; a `tpy_panic` at the
+  boundary is *converted to a Python exception*, never an abort of the host.
+- **GIL as an ambient capability**: a flow-fact (`gil_held`, modeled on
+  `flow_facts.py`'s `init_terminated` -- a flow-sensitive fact, *not* the
+  Send/Sync type-trait family) gates Python-touching ops; a future
+  `with nogil:` removes it for its scope (compile error to touch a `PyRef`
+  inside). v1 ships the *demand* (marshalling requires the capability,
+  ambient-always) so `nogil` checking is purely additive later.
+  "Python-touching" is library-declared (`requires_gil`), not hardcoded.
+- **Reserved hooks (not v1, not locked out)**: embedding, callbacks/opaque
+  `PyRef`, and async <-> `asyncio`.
+- **Validated against the codebase**: feasible, mostly on existing machinery.
+  Two genuinely net-new pieces -- a CPython-extension `.so` build-output mode
+  (the `ext` target / PEP 517 backend; overlaps H2) and a foreign-borrow
+  lifetime primitive (only for the zero-copy str/buffer path; a pre-existing
+  escape-analysis gap). v1 is copy-in, so neither blocks phases 1-2. See the
+  "Design validation" section in the design doc.
+
+**Phasing**: marshalling layer + cpython facade -> extension codegen + PEP 517
+backend (free functions) -> buffer protocol -> classes + methods -> enums +
+constants -> containers -> (later) `nogil`/`with gil` -> (later) embedding/
+callbacks/async.
+
+**Dependencies**: `@native` (done), `Span`/buffer protocol incl. raw-pointer
+`Span(ptr,len)` (done), exceptions (done). The GIL `gil_held` flow fact is a
+small extension of `flow_facts.py`; `with nogil:` needs new save/restore
+scaffolding in `_analyze_with`. The zero-copy str/buffer borrow rides on the
+foreign-borrow primitive / Ptr escape analysis (E4, partial) -- v1 sidesteps
+it via copy-in.
+
+---
+
+## XII. Tooling & Project Layer
 
 ### Project / Build / Dependency Tooling
 

@@ -681,8 +681,9 @@ ecosystem:
 
 Implication: do **not** assume the porcelain is the only entry point;
 `uv build` must work for `ext`/`lib` packages. The interop *semantics*
-(signatures exposed to CPython, GIL, refcounting, marshalling) are a
-separate design; this distribution form also means a TPy package may ship a
+(signatures exposed to CPython, GIL, refcounting, marshalling) are designed
+in [`docs/CPYTHON_INTEROP.md`](CPYTHON_INTEROP.md); this distribution form
+also means a TPy package may ship a
 compiled `.so` (consumed by CPython) vs TPy source (compiled from source by
 downstream TPy) -- two valid distribution shapes.
 
@@ -775,8 +776,9 @@ Still open:
 Forward-looking (hooks reserved; own deep designs -- see "Forward-looking"):
 
 9.  CPython interop: `ext` target kind + TPy as a PEP 517 build backend
-    (`uv build` -> wheel with compiled `.so`). Needs a separate interop
-    semantics design.
+    (`uv build` -> wheel with compiled `.so`). Interop semantics designed in
+    [`docs/CPYTHON_INTEROP.md`](CPYTHON_INTEROP.md); the `.so` build-output
+    mode + abi3 wheel is the tooling half this doc owns.
 10. Pluggable codegen backend (`cpp` now, `native` later): keep toolchain
     and build phases backend-neutral; record `backend` in manifest + lock.
 11. Frontend plugins configured in `[tool.tpy.frontend]` (plugin = a
