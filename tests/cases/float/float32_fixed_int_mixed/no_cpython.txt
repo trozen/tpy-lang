@@ -1,0 +1,1 @@
+C++-only single-precision formatting; Float32 aliases double in cpy stubs.

@@ -270,10 +270,14 @@ class OperatorResolver:
         left_arg = unwrap_ref_type(self._resolve_pending_types(left_type))
         right_arg = unwrap_ref_type(self._resolve_pending_types(right_type))
 
+        # Lets builtin dunders take marker-protocol params (e.g. float.__add__
+        # over AnyFixedInt covers every fixed-width int in one overload).
+        pc = self.protocols.type_conforms_to_protocol
+
         # 1. Try direct: left.__add__(right)
         if left_record:
             overloads = left_record.get_method_overloads(method_name)
-            if method := self._find_matching_overload(overloads, right_arg, left_subst):
+            if method := self._find_matching_overload(overloads, right_arg, left_subst, pc):
                 return self._make_resolved(method, left_subst, left_effective, loc_node)
 
         # 2. Try promoting left to right's type via __int__
@@ -285,7 +289,7 @@ class OperatorResolver:
                 # Check if promoted type matches right's type
                 if self.ctx.registry.get_record_for_type(promoted_type) == right_record:
                     right_overloads = right_record.get_method_overloads(method_name)
-                    if method := self._find_matching_overload(right_overloads, right_arg, right_subst):
+                    if method := self._find_matching_overload(right_overloads, right_arg, right_subst, pc):
                         return self._make_resolved(
                             method, right_subst, right_effective, loc_node,
                             left_wrapper=int_method.cpp_template or "{expr}",
@@ -294,7 +298,7 @@ class OperatorResolver:
         # 3. Try reverse: right.__radd__(left)
         if right_record and rmethod_name:
             overloads = right_record.get_method_overloads(rmethod_name)
-            if method := self._find_matching_overload(overloads, left_arg, right_subst):
+            if method := self._find_matching_overload(overloads, left_arg, right_subst, pc):
                 return self._make_resolved(
                     method, right_subst, right_effective, loc_node, is_reverse=True,
                 )
@@ -308,7 +312,7 @@ class OperatorResolver:
                 # Check if promoted type matches left's type
                 if self.ctx.registry.get_record_for_type(promoted_type) == left_record:
                     left_overloads = left_record.get_method_overloads(method_name)
-                    if method := self._find_matching_overload(left_overloads, promoted_type, left_subst):
+                    if method := self._find_matching_overload(left_overloads, promoted_type, left_subst, pc):
                         return self._make_resolved(
                             method, left_subst, left_effective, loc_node,
                             right_wrapper=int_method.cpp_template or "{expr}",
@@ -318,7 +322,6 @@ class OperatorResolver:
 
     def resolve_aug_inplace(
         self, target_type: TpyType, op: str, value_type: TpyType,
-        protocol_checker: ProtocolChecker | None = None,
         loc_node=None,
     ) -> ResolvedBinop | None:
         """Resolve in-place augmented assignment operator (e.g. __iadd__, __ior__).
@@ -338,16 +341,17 @@ class OperatorResolver:
 
         type_subst = self._build_type_subst(target_effective, value_type)
         value_arg = unwrap_ref_type(self._resolve_pending_types(value_type))
+        pc = self.protocols.type_conforms_to_protocol
 
         overloads = record.get_method_overloads(method_name)
         # Try builtin methods with cpp_template first
         builtin_overloads = [m for m in overloads if m.cpp_template]
-        if method := self._find_matching_overload(builtin_overloads, value_arg, type_subst, protocol_checker):
+        if method := self._find_matching_overload(builtin_overloads, value_arg, type_subst, pc):
             return self._make_resolved(method, type_subst, target_effective, loc_node)
 
         # Then try user-defined methods (no cpp_template)
         user_overloads = [m for m in overloads if not m.cpp_template]
-        if method := self._find_matching_overload(user_overloads, value_arg, type_subst, protocol_checker):
+        if method := self._find_matching_overload(user_overloads, value_arg, type_subst, pc):
             return self._make_resolved(method, type_subst, target_effective, loc_node)
 
         return None

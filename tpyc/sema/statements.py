@@ -5133,10 +5133,8 @@ class StatementAnalyzer:
                 )
             # Try in-place method first (e.g. __iadd__, __ior__), then binary operator
             operators = self.expr.operators
-            protocol_checker = self.protocols.type_conforms_to_protocol if self.protocols else None
             if result := operators.resolve_aug_inplace(
-                target_type, stmt.op, value_type,
-                protocol_checker=protocol_checker, loc_node=stmt,
+                target_type, stmt.op, value_type, loc_node=stmt,
             ):
                 stmt.resolved_inplace = result
                 if result.method.params:

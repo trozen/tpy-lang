@@ -433,9 +433,12 @@ print(UInt8.trunc(2**100 + 42))  # 42 (low 8 bits)
 | `float + float` | `float` | Both operands same type |
 | `float + int` | `float` | Float is wider than int |
 | `int + float` | `float` | Float is wider than int |
-| `float + Int32` | `float` | Float is wider than Int32 |
+| `float + IntN` | `float` | Float is wider than any fixed-width int (signed or unsigned) |
+| `Float32 + IntN` | `Float32` | Result keeps `Float32`; mixing with `float` widens to `float` |
 | `int / int` | `float` | True division always returns float (raises `ZeroDivisionError` on zero divisor) |
 | `Int32 / Int32` | `float` | Fixed-width true division: operands cast to double (raises `ZeroDivisionError` on zero divisor) |
+
+`float + bool` (e.g. `3.0 + True`) is currently rejected, unlike CPython where `bool` is an `int` -- `bool` does not extend the `AnyFixedInt` marker the float operators widen over (see BUGS.md).
 
 For augmented assignment (`+=`, `-=`, `*=`, `/=`, etc.), behavior depends on whether the variable has an explicit type annotation:
 

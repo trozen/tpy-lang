@@ -46,6 +46,9 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
         max_val = 2 ** bits - 1
         mod = 2 ** bits
 
+    def _wrap(value):
+        return value if value is NotImplemented else FixedInt(value)
+
     class FixedInt(int):
         MIN = min_val
         MAX = max_val
@@ -61,20 +64,23 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
             return super().__new__(cls, value)
 
         # Use FixedInt (not type(self)) so that subclass arithmetic
-        # (e.g. IntEnum + Int8) returns the base fixed-int type.
-        def __add__(self, other): return FixedInt(int.__add__(self, other))
-        def __radd__(self, other): return FixedInt(int.__radd__(self, other))
-        def __sub__(self, other): return FixedInt(int.__sub__(self, other))
-        def __rsub__(self, other): return FixedInt(int.__rsub__(self, other))
-        def __mul__(self, other): return FixedInt(int.__mul__(self, other))
-        def __rmul__(self, other): return FixedInt(int.__rmul__(self, other))
-        def __floordiv__(self, other): return FixedInt(int.__floordiv__(self, other))
-        def __mod__(self, other): return FixedInt(int.__mod__(self, other))
-        def __and__(self, other): return FixedInt(int.__and__(self, other))
-        def __or__(self, other): return FixedInt(int.__or__(self, other))
-        def __xor__(self, other): return FixedInt(int.__xor__(self, other))
-        def __lshift__(self, other): return FixedInt(int.__lshift__(self, other))
-        def __rshift__(self, other): return FixedInt(int.__rshift__(self, other))
+        # (e.g. IntEnum + Int8) returns the base fixed-int type. _wrap
+        # propagates NotImplemented so mixed-type ops (e.g. Int8 + float)
+        # fall back to the other operand's reflected dunder rather than
+        # crashing on FixedInt(NotImplemented).
+        def __add__(self, other): return _wrap(int.__add__(self, other))
+        def __radd__(self, other): return _wrap(int.__radd__(self, other))
+        def __sub__(self, other): return _wrap(int.__sub__(self, other))
+        def __rsub__(self, other): return _wrap(int.__rsub__(self, other))
+        def __mul__(self, other): return _wrap(int.__mul__(self, other))
+        def __rmul__(self, other): return _wrap(int.__rmul__(self, other))
+        def __floordiv__(self, other): return _wrap(int.__floordiv__(self, other))
+        def __mod__(self, other): return _wrap(int.__mod__(self, other))
+        def __and__(self, other): return _wrap(int.__and__(self, other))
+        def __or__(self, other): return _wrap(int.__or__(self, other))
+        def __xor__(self, other): return _wrap(int.__xor__(self, other))
+        def __lshift__(self, other): return _wrap(int.__lshift__(self, other))
+        def __rshift__(self, other): return _wrap(int.__rshift__(self, other))
         def __invert__(self): return FixedInt(int.__invert__(self))
         def __repr__(self): return str(int(self))
         def __str__(self): return str(int(self))
