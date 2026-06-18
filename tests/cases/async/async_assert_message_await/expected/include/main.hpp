@@ -23,7 +23,7 @@ __coro_main_coro main_coro();
 struct __coro_msg {
     int32_t __state;
     bool __cancel_pending;
-    std::string_view tag;
+    std::string tag;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -31,7 +31,7 @@ struct __coro_msg {
     };
 
     __coro_msg(std::string_view tag_)
-        : __state(S_INITIAL), __cancel_pending(false), tag(std::move(tag_)) {}
+        : __state(S_INITIAL), __cancel_pending(false), tag(std::string(tag_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

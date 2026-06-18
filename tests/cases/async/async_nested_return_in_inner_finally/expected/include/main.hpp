@@ -22,7 +22,7 @@ void main();
 struct __coro_sub {
     int32_t __state;
     bool __cancel_pending;
-    std::string_view label;
+    std::string label;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -30,7 +30,7 @@ struct __coro_sub {
     };
 
     __coro_sub(std::string_view label_)
-        : __state(S_INITIAL), __cancel_pending(false), label(std::move(label_)) {}
+        : __state(S_INITIAL), __cancel_pending(false), label(std::string(label_)) {}
 
     ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

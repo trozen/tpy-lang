@@ -1,8 +1,11 @@
 # FrameType classification for async coroutines and generators, pinned via
 # tpyc: frame_send/frame_sync. Value params/locals give Send frames; borrowed
-# params (list ref, str view) and loop vars (may lower to raw-pointer slots)
-# are conservatively non-Send; await chains AND in the sub-coroutine's frame;
+# params (list ref) and loop vars (may lower to raw-pointer slots) are
+# conservatively non-Send; await chains AND in the sub-coroutine's frame;
 # async methods capture the receiver by reference (never Send).
+# A str/bytes param is stored owned in the frame but frame_traits classifies it
+# by the borrow (StrView) traits -- conservatively non-Send (safe direction);
+# gen_str below is frame_send(no) for that reason.
 import asyncio
 from typing import Iterator
 from tpy import Int32, Own

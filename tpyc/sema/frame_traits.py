@@ -93,6 +93,11 @@ def param_slot(pname: str, ptype: 'TpyType') -> FrameSlot:
     ptype_inner = unwrap_ref_type(ptype)
     actual = unwrap_readonly(ptype_inner)
     if is_str_type(ptype_inner):
+        # Conservative: classify by StrView (non-Send, Sync) even though codegen
+        # now stores a str param OWNED (std::string) in the frame, which is
+        # actually Send. Reporting non-Send is the safe direction (a false
+        # non-Send only under-permits; a false Send would be unsound); tightening
+        # to the owned traits is a deliberate, separate Send/Sync precision step.
         return FrameSlot(pname, STRVIEW.is_send(), STRVIEW.is_sync(), ptype_inner)
     if isinstance(ptype_inner, TypeParamRef):
         return FrameSlot(pname, False, False, ptype_inner)

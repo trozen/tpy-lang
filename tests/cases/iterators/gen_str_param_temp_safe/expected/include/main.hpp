@@ -18,7 +18,7 @@ void main();
 // Generator: greetings
 struct __gen_greetings : public ::tpy::next_iter_mixin<__gen_greetings, std::string> {
     int32_t __state;
-    std::string_view name;
+    std::string name;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -28,7 +28,7 @@ struct __gen_greetings : public ::tpy::next_iter_mixin<__gen_greetings, std::str
     };
 
     __gen_greetings(std::string_view name_)
-        : __state(S_INITIAL), name(std::move(name_)) {}
+        : __state(S_INITIAL), name(std::string(name_)) {}
 
     std::expected<std::string, ::tpy::StopIteration> __next__();
     __gen_greetings& __iter__() { return *this; }

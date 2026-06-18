@@ -398,8 +398,9 @@ Deferred to v1.x:
   shared via `Rc[socket]`, `IncompleteReadError`; `start_server` runs the async
   handler per connection on the async-fn->Callable coercion) shipped on top. See
   `docs/ASYNC_DESIGN.md` "I/O reactor" and `examples/net/async_echo_*` /
-  `stream_server.py`. `StreamReader.readuntil(sep)`, kqueue / io_uring backends,
-  and a user swap-in remain.
+  `stream_server.py`. `StreamReader.readuntil(sep)` shipped (str/bytes coro-param
+  owned-capture fix); its `limit`/`LimitOverrunError`, kqueue / io_uring
+  backends, and a user swap-in remain.
 
 ## What's deferred from v1 design
 

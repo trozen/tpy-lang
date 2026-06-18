@@ -17,7 +17,7 @@ void main();
 // Generator: tails
 struct __gen_tails : public ::tpy::next_iter_mixin<__gen_tails, std::string_view> {
     int32_t __state;
-    std::string_view s;
+    std::string s;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -27,7 +27,7 @@ struct __gen_tails : public ::tpy::next_iter_mixin<__gen_tails, std::string_view
     };
 
     __gen_tails(std::string_view s_)
-        : __state(S_INITIAL), s(std::move(s_)) {}
+        : __state(S_INITIAL), s(std::string(s_)) {}
 
     std::expected<std::string_view, ::tpy::StopIteration> __next__();
     __gen_tails& __iter__() { return *this; }

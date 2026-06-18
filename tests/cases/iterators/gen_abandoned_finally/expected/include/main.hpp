@@ -20,7 +20,7 @@ void main();
 // Generator: gen
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     ::tpy::frame_state __state;
-    std::string_view tag;
+    std::string tag;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -32,7 +32,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
     };
 
     __gen_gen(std::string_view tag_)
-        : __state(S_INITIAL), tag(std::move(tag_)) {}
+        : __state(S_INITIAL), tag(std::string(tag_)) {}
 
     __gen_gen(__gen_gen&&) = default;
     ~__gen_gen() {

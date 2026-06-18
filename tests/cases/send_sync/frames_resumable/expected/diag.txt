@@ -1,1 +1,1 @@
-main.py:46: warning: Own[list[Int32]] param 'xs' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:49: warning: Own[list[Int32]] param 'xs' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

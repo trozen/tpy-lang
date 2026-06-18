@@ -135,7 +135,7 @@ struct __coro_via_ref {
 struct __coro_via_mixed {
     int32_t __state;
     bool __cancel_pending;
-    std::string_view tag;
+    std::string tag;
     std::variant<Cat*, Dog*> a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -146,7 +146,7 @@ struct __coro_via_mixed {
     };
 
     __coro_via_mixed(std::string_view tag_, std::variant<Cat*, Dog*> a_)
-        : __state(S_INITIAL), __cancel_pending(false), tag(std::move(tag_)), a(a_) {}
+        : __state(S_INITIAL), __cancel_pending(false), tag(std::string(tag_)), a(a_) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

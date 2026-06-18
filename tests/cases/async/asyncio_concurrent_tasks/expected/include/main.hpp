@@ -26,7 +26,7 @@ struct __coro_doubler {
     int32_t __state;
     bool __cancel_pending;
     int32_t n;
-    std::string_view label;
+    std::string label;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -36,7 +36,7 @@ struct __coro_doubler {
     };
 
     __coro_doubler(int32_t n_, std::string_view label_)
-        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)), label(std::move(label_)) {}
+        : __state(S_INITIAL), __cancel_pending(false), n(std::move(n_)), label(std::string(label_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

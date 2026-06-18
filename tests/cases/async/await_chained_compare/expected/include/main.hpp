@@ -21,7 +21,7 @@ __coro_main main();
 struct __coro_val {
     int32_t __state;
     bool __cancel_pending;
-    std::string_view tag;
+    std::string tag;
     ::tpy::BigInt n;
 
     enum : int32_t {
@@ -30,7 +30,7 @@ struct __coro_val {
     };
 
     __coro_val(std::string_view tag_, ::tpy::BigInt n_)
-        : __state(S_INITIAL), __cancel_pending(false), tag(std::move(tag_)), n(std::move(n_)) {}
+        : __state(S_INITIAL), __cancel_pending(false), tag(std::string(tag_)), n(std::move(n_)) {}
 
     ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

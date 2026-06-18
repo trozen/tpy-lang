@@ -1,0 +1,4 @@
+empty sep rejected
+first=foo|
+second=bar|
+incomplete partial=baz

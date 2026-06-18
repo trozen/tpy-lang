@@ -113,7 +113,7 @@ Library breadth + first real I/O. Each item is sized to land independently.
 | `Reactor` interface | **SHIPPED (M1)** -- the `Reactor` protocol in `asyncio/_executor.py`, designed against epoll. Concrete-typed on the executor for M1; making it a swap-in (`@dynamic` field + `asyncio.run` factory arg) is a follow-up. |
 | First I/O reactor | **SHIPPED (M1)** -- `EpollReactor` (epoll on Linux) + fd-backed awaitables (`_SockRecv` / `_SockSendAll`) + the low-level loop surface `asyncio.get_running_loop().sock_recv / sock_sendall` on non-blocking sockets (`socket.setblocking`). See "I/O reactor" below. |
 | `sock_accept` / `sock_connect` | **SHIPPED (M2)** -- `_SockAccept` / `_SockConnect` awaitables in the same shape; `loop.sock_accept(sock)` -> `(conn, addr)` (conn non-blocking), `loop.sock_connect(sock, addr)` (non-blocking connect + `SO_ERROR` check). Unblocks real async TCP client/server (`examples/net/async_echo_*`). |
-| asyncio streams | **SHIPPED** -- client: `open_connection` -> `StreamReader` (`read`/`readexactly`/`readline`/`at_eof`) + `StreamWriter` (`write`/`drain`/`close`/`wait_closed`/`is_closing`) over the reactor, sharing the socket via `Rc[socket]`; `IncompleteReadError`. server: `start_server(handler, host, port)` -> `Server` (background accept loop running the async `handler` per connection on the async-fn->Callable coercion; `serve_forever`/`close`/`getsockname`/async-with). `StreamReader.readuntil(sep)` deferred (TODO.md: async-def `bytes`-param gap). |
+| asyncio streams | **SHIPPED** -- client: `open_connection` -> `StreamReader` (`read`/`readexactly`/`readline`/`readuntil`/`at_eof`) + `StreamWriter` (`write`/`drain`/`close`/`wait_closed`/`is_closing`) over the reactor, sharing the socket via `Rc[socket]`; `IncompleteReadError`. server: `start_server(handler, host, port)` -> `Server` (background accept loop running the async `handler` per connection on the async-fn->Callable coercion; `serve_forever`/`close`/`getsockname`/async-with). `StreamReader.readuntil(sep)` SHIPPED (the async-def `bytes`-param coro-frame gap is fixed -- str/bytes params are captured owned); `limit`/`LimitOverrunError` still deferred. |
 
 #### I/O reactor (v2 M1, SHIPPED)
 
@@ -139,9 +139,8 @@ All TPy + a thin epoll binding -- no compiler changes.
   pending. The timer-only fast path keeps using `sleep_until_steady`.
 - **fd awaitables + surface**: `_SockRecv` / `_SockSendAll` / `_SockAccept` /
   `_SockConnect` are hand-written awaitables (not `async def`s -- the retry
-  loop parks by returning Pending + arming the reactor, and an `async def`
-  taking a `bytes` by-value param hits a coro-frame storage-form gap, see
-  BUGS.md). Each holds a `Ptr[socket]` and drives the `socket` methods
+  loop parks by returning Pending + arming the reactor). Each holds a
+  `Ptr[socket]` and drives the `socket` methods
   (`recv` / `send` / `connect` / `getsockopt_int`, and the private
   `_accept_nonblocking` = `accept` + setblocking), parking when they raise
   `BlockingIOError` -- mirroring CPython's
@@ -160,7 +159,8 @@ All TPy + a thin epoll binding -- no compiler changes.
 
 `sock_accept` / `sock_connect` shipped in M2; the streams layer
 (`open_connection` + `start_server` -> `StreamReader`/`StreamWriter`) shipped on
-top. Deferred (TODO.md): `StreamReader.readuntil(sep)`; swap-in reactor
+top. Deferred (TODO.md): `StreamReader.readuntil` `limit`/`LimitOverrunError`
+(the method shipped); swap-in reactor
 (`@dynamic`-typed field + `asyncio.run` factory arg); independent read+write
 waiters on one fd; the `runnable_q` / per-fd structures' scaling.
 

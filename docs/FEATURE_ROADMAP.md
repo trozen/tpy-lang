@@ -3369,7 +3369,7 @@ Full design in [`docs/ASYNC_DESIGN.md`](ASYNC_DESIGN.md). Summary:
   - **v1.5 (shipped, M1-M11)**: `async with`/`async for`/`gather`/`gather_list`/`wait_for`/`Event` + arbitrary `await` placement (if/while/for/with/try/finally via CFG-lite) + async methods on user/generic classes + sync `with` upgrade for 4-arg `__exit__`.
   - **runtime port (shipped)**: the asyncio executor/run-loop/scheduling/type-erasure are now pure TPy on a small `async.hpp` bridge (G1.5).
   - **v2 (shipped, M1/M2)**: sync primitives (`Lock`/`Semaphore`/`BoundedSemaphore`/`Queue`), epoll I/O reactor (`EpollReactor` + `sock_recv`/`sock_sendall`/`sock_accept`/`sock_connect`), and the asyncio streams layer (`open_connection`/`start_server`/`StreamReader`/`StreamWriter`/`Server`); graceful SIGINT shutdown.
-  - **v3+ (future)**: multi-threaded executor + `Send`/`Sync` enforcement at task migration, async generators, `@error_return` async, `__await__` adaptation, `StreamReader.readuntil`.
+  - **v3+ (future)**: multi-threaded executor + `Send`/`Sync` enforcement at task migration, async generators, `@error_return` async, `__await__` adaptation.
 
 ### Channels
 

@@ -23,7 +23,7 @@ void main();
 struct __coro_cleanup_task {
     int32_t __state;
     bool __cancel_pending;
-    std::string_view label;
+    std::string label;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -33,7 +33,7 @@ struct __coro_cleanup_task {
     };
 
     __coro_cleanup_task(std::string_view label_)
-        : __state(S_INITIAL), __cancel_pending(false), label(std::move(label_)) {}
+        : __state(S_INITIAL), __cancel_pending(false), label(std::string(label_)) {}
 
     ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

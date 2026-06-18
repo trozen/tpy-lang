@@ -218,7 +218,7 @@ struct __coro_tup_val {
 // Generator: gen_str
 struct __gen_gen_str : public ::tpy::next_iter_mixin<__gen_gen_str, int32_t> {
     int32_t __state;
-    std::string_view s;
+    std::string s;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -227,7 +227,7 @@ struct __gen_gen_str : public ::tpy::next_iter_mixin<__gen_gen_str, int32_t> {
     };
 
     __gen_gen_str(std::string_view s_)
-        : __state(S_INITIAL), s(std::move(s_)) {}
+        : __state(S_INITIAL), s(std::string(s_)) {}
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
     __gen_gen_str& __iter__() { return *this; }

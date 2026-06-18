@@ -1,2 +1,0 @@
-main.py:12: warning: Result borrows from temporary argument 'name'; the temporary is destroyed at end-of-statement
-main.py:13: warning: Iterator borrows from temporary argument 'name'; the temporary is destroyed before iteration begins

@@ -533,6 +533,31 @@ def is_fstr_type(t: "TpyType") -> bool:    return _is_qn(t, "tpy.FStr")
 def is_float64_type(t: "TpyType") -> bool: return _is_qn(t, "builtins.float")
 def is_float32_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.Float32")
 def is_bytes_type(t: "TpyType") -> bool:   return _is_qn(t, "builtins.bytes")
+
+
+def is_owned_in_coro_frame(t: "TpyType") -> bool:
+    """A `str` / `bytes` param is captured OWNED in a coroutine/generator frame
+    (the view is copied into owned storage -- `std::string` / `tpy::bytes` -- at
+    frame construction), not stored as a borrow that would dangle across a
+    suspension. Single source of truth so the two consumers can't drift: codegen
+    routes these to `_CoroParamKind.OWNED_COPY` (gen_async `_classify_params`),
+    and sema excludes them from a generator's result-borrow set
+    (`generator_borrow_param_indices`). Explicit view types (`StrView`,
+    `BytesView`, `Span[T]`) have no owned counterpart, so they are NOT here --
+    they stay borrowed (the user opted into view semantics)."""
+    return is_str_type(t) or is_bytes_type(t)
+
+
+def view_to_owned_conv(t: "TpyType") -> str:
+    """The C++ callable that copies a view-form `t` into its owned storage form:
+    `std::string` for `str` (from a `std::string_view`), `::tpy::bytes_copy` for
+    `bytes` (from a `BytesView`). Shared by the coro-frame OWNED_COPY ctor-init
+    (gen_async) and the simple-generator owned init-capture (gen_generators) so
+    the spelling lives in one place. Only valid for `is_owned_in_coro_frame`
+    types."""
+    return "std::string" if is_str_type(t) else "::tpy::bytes_copy"
+
+
 def is_bytearray_type(t: "TpyType") -> bool: return _is_qn(t, "builtins.bytearray")
 def is_bytes_view_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.BytesView")
 def is_basic_slice_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.basic_slice")

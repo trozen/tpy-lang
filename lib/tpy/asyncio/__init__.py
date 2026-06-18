@@ -1348,14 +1348,15 @@ def get_running_loop() -> Own[EventLoop]:
 
 
 class IncompleteReadError(EOFError):
-    """Raised by `StreamReader.readexactly` when EOF arrives before the
-    requested number of bytes. Mirrors `asyncio.IncompleteReadError`:
-    `partial` is what was read, `expected` the requested count."""
+    """Raised by `StreamReader.readexactly` / `readuntil` when EOF arrives
+    before the read completes. Mirrors `asyncio.IncompleteReadError`: `partial`
+    is what was read, `expected` the requested count (None for `readuntil`,
+    where the total length is not known up front)."""
 
     partial: bytes
-    expected: Int32
+    expected: Int32 | None
 
-    def __init__(self, partial: bytes, expected: Int32) -> None:
+    def __init__(self, partial: bytes, expected: Int32 | None) -> None:
         super().__init__("incomplete read")
         self.partial = partial
         self.expected = expected
@@ -1434,6 +1435,27 @@ class StreamReader:
         if idx < 0:
             return self._take(len(self._buf))
         return self._take(idx + 1)
+
+    async def readuntil(self, separator: bytes) -> bytes:
+        """Read until (and including) `separator`. Raise `IncompleteReadError`
+        (carrying the partial data) if EOF arrives before the separator is
+        found. No buffer limit -- like `readline` / `read`, this v1 streams
+        layer does not enforce CPython's `limit` / `LimitOverrunError`."""
+        if len(separator) == 0:
+            raise ValueError("Separator should be at least one-byte string")
+        idx = self._buf.find(separator)
+        while idx < 0 and not self._eof:
+            await self._fill()
+            idx = self._buf.find(separator)
+        if idx < 0:
+            # Construct then raise: a `raise IncompleteReadError(..., None)`
+            # lowers the None arg to nullptr, which can't bind the value-
+            # Optional `expected` param; the assignment path coerces None to
+            # std::nullopt correctly (raise-statement ctor-arg coercion gap,
+            # BUGS.md).
+            err = IncompleteReadError(self._take(len(self._buf)), None)
+            raise err
+        return self._take(idx + len(separator))
 
 
 @nocopy

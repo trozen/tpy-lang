@@ -45,7 +45,8 @@ _FRESH_COLLECTION_NODES = (
 )
 from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType, is_fn_type
 from .gen_generators import GeneratorCodegen, GeneratorForInfo
-from ..type_def_registry import is_str_type, is_str_category, is_big_int_type
+from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
+                                  is_owned_in_coro_frame, view_to_owned_conv)
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
 from .protocols import protocol_param_template_name, fn_param_template_name
 from .functions import default_to_cpp
@@ -137,6 +138,18 @@ class _CoroParamKind(IntEnum):
         only the template-header constraint differs (a plain `typename`
         vs a concept) -- mirrors the non-generator Fn handling in
         `functions.py`.
+    OWNED_COPY: a `str` / `bytes` param (is_owned_in_coro_frame). The field is
+        the owned storage type (`std::string` / `tpy::bytes`), but the
+        factory/ctor take the borrow form (`std::string_view` / `BytesView`) --
+        the form the call site passes -- and the init copies it into the owned
+        field at frame construction (`std::string(...)` / `bytes_copy(...)`, the
+        per-type `owned_copy_conv`). This OWNS the value, so it can't dangle
+        across a suspension when the arg is a temporary; the cost is one copy
+        at capture. `_param_borrows` excludes it (no caller storage held), and
+        sema's `generator_borrow_param_indices` excludes the same set so the
+        borrow-vs-own decision stays in one place. Explicit view types
+        (`StrView`, `BytesView`, `Span[T]`) have no owned counterpart and stay
+        borrow-form -- see BUGS.md.
     """
     REF = 0
     VALUE = 1
@@ -145,6 +158,7 @@ class _CoroParamKind(IntEnum):
     STATIC_PROTOCOL = 4
     OWNED_VALUE = 5
     FN = 6
+    OWNED_COPY = 7
 
 
 @dataclass(frozen=True)
@@ -153,6 +167,10 @@ class _CoroParam:
     field_type: str  # type spelling for the frame-field declaration
     ctor_param_type: str  # type spelling for the constructor's parameter
     kind: _CoroParamKind
+    # OWNED_COPY only: the view->owned conversion callable (`std::string` /
+    # `::tpy::bytes_copy`) applied in ctor_init to copy the borrow param into
+    # the owned field.
+    owned_copy_conv: str = ""
 
     def field_decl(self) -> str:
         if self.kind is _CoroParamKind.REF:
@@ -170,6 +188,8 @@ class _CoroParam:
             return f"{self.ctor_param_type}&& {self.cpp_name}"
         if self.kind is _CoroParamKind.OWNED_VALUE:
             return f"{self.ctor_param_type} {self.cpp_name}"
+        # OWNED_COPY: factory takes the borrow form by value (bare name), same
+        # as VALUE; the ctor copies it into the owned field.
         return f"{self.ctor_param_type} {self.cpp_name}"
 
     def ctor_param_decl(self) -> str:
@@ -179,8 +199,8 @@ class _CoroParam:
             return f"{self.ctor_param_type}&& {self.cpp_name}_"
         if self.kind is _CoroParamKind.OWNED_VALUE:
             return f"{self.ctor_param_type}&& {self.cpp_name}_"
-        # VALUE / POINTER / TYPE_PARAM: `_` suffix disambiguates from the
-        # field name in the init list.
+        # VALUE / POINTER / TYPE_PARAM / OWNED_COPY: `_` suffix disambiguates
+        # from the field name in the init list.
         return f"{self.ctor_param_type} {self.cpp_name}_"
 
     def ctor_init(self) -> str:
@@ -199,6 +219,11 @@ class _CoroParam:
             # value and lvalue-ref cases; a bare std::move breaks the latter.
             return (f"{self.cpp_name}("
                     f"std::forward<{self.ctor_param_type}>({self.cpp_name}_))")
+        if self.kind is _CoroParamKind.OWNED_COPY:
+            # Copy the borrow-form param into the owned field at construction,
+            # so the value survives suspensions without aliasing the caller
+            # (std::string(view) for str, ::tpy::bytes_copy(view) for bytes).
+            return f"{self.cpp_name}({self.owned_copy_conv}({self.cpp_name}_))"
         return f"{self.cpp_name}(std::move({self.cpp_name}_))"
 
 
@@ -329,11 +354,11 @@ class AsyncCoroCodegen:
         stores by reference (matching Python semantics and the
         non-template ref path).
 
-        v1 conservative rule for str: passes by string_view (caller's
-        storage, same lifetime model as generators -- coros that
-        escape via Task will need to copy out, but until that lands
-        the borrow holds across await boundaries within a single
-        asyncio.run).
+        str / bytes params are captured OWNED in the frame
+        (_CoroParamKind.OWNED_COPY -- the view is copied into std::string /
+        tpy::bytes at construction) so they survive a suspension even when the
+        arg is a temporary. Explicit view params (StrView/Span) stay borrow
+        form (the caller opted into view semantics).
         """
         out: list[_CoroParam] = []
         # The per-param const verdict (addr-escape / readonly aware) lives on
@@ -369,12 +394,22 @@ class AsyncCoroCodegen:
             ptype_inner = unwrap_ref_type(ptype)
             actual = unwrap_readonly(ptype_inner)
             kind = self._classify_param_kind(ptype)
+            owned_conv = ""
             if kind is _CoroParamKind.VALUE:
-                # str lowers to a string_view view (caller-owned storage);
-                # other value types store their own C++ type by value.
-                cpp_type = ("std::string_view" if is_str_type(ptype_inner)
-                            else self.types.type_to_cpp(ptype_inner))
-                field_type = ctor_type = cpp_type
+                # Value types (incl. explicit views like StrView) store their
+                # own C++ type by value; str/bytes are OWNED_COPY, not here.
+                field_type = ctor_type = self.types.type_to_cpp(ptype_inner)
+            elif kind is _CoroParamKind.OWNED_COPY:
+                # Owned storage field, but the factory/ctor take the borrow form
+                # the call site passes (string_view / BytesView); ctor_init
+                # copies it in via `owned_conv` so it survives suspensions.
+                ctor_type = ptype_inner.to_cpp_param_type()
+                owned_conv = view_to_owned_conv(ptype_inner)
+                # Owned field: str's owned form is std::string (its bare
+                # type_to_cpp is the string_view *view*); bytes's is already
+                # owned (tpy::bytes).
+                field_type = ("std::string" if is_str_type(ptype_inner)
+                              else self.types.type_to_cpp(ptype_inner))
             elif kind is _CoroParamKind.TYPE_PARAM:
                 # to_cpp_return / to_cpp_param_type already encode the
                 # val_or_ref_t<T> / param_val_or_ref_t<T> traits (and
@@ -432,6 +467,7 @@ class AsyncCoroCodegen:
                 field_type=field_type,
                 ctor_param_type=ctor_type,
                 kind=kind,
+                owned_copy_conv=owned_conv,
             ))
         return out
 
@@ -445,8 +481,12 @@ class AsyncCoroCodegen:
         """
         ptype_inner = unwrap_ref_type(ptype)
         actual = unwrap_readonly(ptype_inner)
-        if is_str_type(ptype_inner):
-            return _CoroParamKind.VALUE
+        # str / bytes are captured owned in the frame (copied at construction)
+        # so the view doesn't dangle across a suspension when the arg is a
+        # temporary -- see is_owned_in_coro_frame (the sema borrow set excludes
+        # the same set). Explicit view params (StrView/Span) stay borrow-form.
+        if is_owned_in_coro_frame(ptype_inner):
+            return _CoroParamKind.OWNED_COPY
         if isinstance(ptype_inner, TypeParamRef):
             return _CoroParamKind.TYPE_PARAM
         # Checked before the OptionalType-pointer-repr branch so

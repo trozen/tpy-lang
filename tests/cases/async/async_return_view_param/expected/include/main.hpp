@@ -29,7 +29,7 @@ void main();
 struct __coro_direct {
     int32_t __state;
     bool __cancel_pending;
-    std::string_view tag;
+    std::string tag;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -37,7 +37,7 @@ struct __coro_direct {
     };
 
     __coro_direct(std::string_view tag_)
-        : __state(S_INITIAL), __cancel_pending(false), tag(std::move(tag_)) {}
+        : __state(S_INITIAL), __cancel_pending(false), tag(std::string(tag_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -51,7 +51,7 @@ struct __coro_direct {
 struct __coro_in_finally {
     int32_t __state;
     bool __cancel_pending;
-    std::string_view tag;
+    std::string tag;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -59,7 +59,7 @@ struct __coro_in_finally {
     };
 
     __coro_in_finally(std::string_view tag_)
-        : __state(S_INITIAL), __cancel_pending(false), tag(std::move(tag_)) {}
+        : __state(S_INITIAL), __cancel_pending(false), tag(std::string(tag_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
@@ -73,7 +73,7 @@ struct __coro_in_finally {
 struct __coro_pending_slot {
     int32_t __state;
     bool __cancel_pending;
-    std::string_view tag;
+    std::string tag;
     std::exception_ptr __finally_exc_0;
     bool __finally_pending_0 = false;
     std::string __finally_ret_0;
@@ -89,7 +89,7 @@ struct __coro_pending_slot {
     };
 
     __coro_pending_slot(std::string_view tag_)
-        : __state(S_INITIAL), __cancel_pending(false), tag(std::move(tag_)) {}
+        : __state(S_INITIAL), __cancel_pending(false), tag(std::string(tag_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

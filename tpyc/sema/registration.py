@@ -61,7 +61,7 @@ from ..type_def_registry import (
     is_fixed_int_type, is_fstr_type, int_traits_of,
     attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of,
     factory_qnames_in_module, protocol_info_of,
-    is_str_type, is_borrowing_view_type,
+    is_str_type, is_borrowing_view_type, is_owned_in_coro_frame,
 )
 from ..diagnostics import SemanticError
 from .method_expansion import expand_methods_for_record
@@ -2900,15 +2900,20 @@ class TypeRegistrar:
     def generator_borrow_param_indices(
             param_types: 'list[TpyType]') -> frozenset[int]:
         """Param indices a generator's returned frame borrows: the frame
-        stores non-value params as T& references and str params as
-        string_view, so the generator object borrows those arguments.
-        Signature-derived, so it is exact at registration time -- callers
-        analyzed before the generator's body still see the right facts.
+        stores non-value params as T& references and explicit view params
+        (StrView/Span) as views, so the generator object borrows those
+        arguments. `str` / `bytes` params are NOT borrowed -- they are captured
+        OWNED in the frame (is_owned_in_coro_frame; codegen routes them to
+        _CoroParamKind.OWNED_COPY), so excluding them here keeps this sema fact
+        in step with codegen's frame storage. Signature-derived, so it is exact
+        at registration time -- callers analyzed before the generator's body
+        still see the right facts.
         """
         return frozenset(
             i for i, ptype in enumerate(param_types)
-            if not ptype.is_value_type() or is_str_type(ptype)
-            or is_borrowing_view_type(ptype)
+            if (not ptype.is_value_type() or is_str_type(ptype)
+                or is_borrowing_view_type(ptype))
+            and not is_owned_in_coro_frame(ptype)
         )
 
     def register_function(self, func: TpyFunction) -> None:

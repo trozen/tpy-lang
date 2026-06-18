@@ -1,4 +1,4 @@
-# Test complex generator with str parameter (stored in struct as string_view)
+# A generator with a str parameter (captured owned as std::string in the frame)
 from typing import Iterator
 
 def greetings(name: str) -> Iterator[str]:

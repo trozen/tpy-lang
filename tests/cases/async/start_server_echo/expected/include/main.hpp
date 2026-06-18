@@ -54,7 +54,7 @@ struct __coro_client {
     int32_t __state;
     bool __cancel_pending;
     int32_t port;
-    std::string_view msg;
+    std::string msg;
     ::tpy::frame_slot<::tpystd::asyncio::StreamReader> reader;
     ::tpy::frame_slot<::tpystd::asyncio::StreamWriter> writer;
     std::vector<uint8_t> reply;
@@ -74,7 +74,7 @@ struct __coro_client {
     };
 
     __coro_client(int32_t port_, std::string_view msg_)
-        : __state(S_INITIAL), __cancel_pending(false), port(std::move(port_)), msg(std::move(msg_)) {}
+        : __state(S_INITIAL), __cancel_pending(false), port(std::move(port_)), msg(std::string(msg_)) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
