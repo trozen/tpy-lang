@@ -1029,6 +1029,11 @@ class ExpressionGenerator:
                     return "std::span<const uint8_t>{}"
                 return cpp_bytes_literal_span(bytes_lit_arg.value)
         gen_arg = self.gen_expr_deref(arg, ptype if target_type is _UNSET else target_type)
+        # Set when a borrow/storage-form wrap below turns gen_arg into an rvalue
+        # (optional_to_ptr / tuple_to_pointer / tuple_to_storage). The owned-
+        # tuple `&&`-param path reads it to decide whether a bare lvalue still
+        # needs a decay-copy to bind the param, or is already an rvalue.
+        arg_was_lifted = False
         # Storage-form Optional source -> Ptr[T] param: source is
         # `std::optional<T>` (lvalue field/subscript), slot wants T*. Mirror
         # of the existing storage-form-to-borrow-form lift performed for
@@ -1043,6 +1048,7 @@ class ExpressionGenerator:
                         and arg_type.uses_pointer_repr()
                         and self.ctx.is_storage_form_optional_source(arg)):
                     gen_arg = f"::tpy::optional_to_ptr({gen_arg})"
+                    arg_was_lifted = True
             # Tuple-of-pointer-repr-Optional param: bridge between borrow form
             # (std::tuple<T*, ...>, bare tuple param) and storage form
             # (std::tuple<std::optional<T>, ...>, Own[tuple] param). Source/slot
@@ -1075,6 +1081,7 @@ class ExpressionGenerator:
                     ptype_cpp = (tuple_ptype_inner.to_cpp_return_const() if want_const
                                  else tuple_ptype_inner.to_cpp_return())
                     gen_arg = f"::tpy::tuple_to_pointer<{ptype_cpp}>({gen_arg})"
+                    arg_was_lifted = True
                 elif not arg_is_storage and slot_is_storage:
                     # Tuple literal source: sema's per-element Own check
                     # cleared every element as movable (last-use lvalue,
@@ -1088,12 +1095,16 @@ class ExpressionGenerator:
                               if isinstance(arg, TpyTupleLiteral)
                               else "tuple_to_storage")
                     gen_arg = f"::tpy::{helper}<{tuple_ptype_inner.to_cpp()}>({gen_arg})"
-            # Owned-element tuple param is an rvalue-ref (std::tuple<...>&&): a
-            # last-use movable arg (a named owned-tuple local, or another owned
-            # tuple param) moves in; a fresh literal/call rvalue binds directly.
-            # Mirrors the scalar Own[T] -> T&& move-in below.
+                    arg_was_lifted = True
+            # The std::tuple<...>&& owned-tuple param binds only an rvalue.
             if isinstance(ptype_inner, TupleType) and ptype_inner.is_owned_movable():
-                gen_arg = self._maybe_move(arg, gen_arg)
+                if self._is_last_use_movable(arg):
+                    gen_arg = f"std::move({gen_arg})"
+                elif isinstance(arg, TpyName) and not arg_was_lifted:
+                    # A bare storage lvalue at non-last-use: decay-copy it into a
+                    # prvalue (sema rejected the @nocopy case, warned the
+                    # copyable copy). A lift above already produced an rvalue.
+                    gen_arg = f"auto({gen_arg})"
             # Auto-consuming iteration: Iterable[Own[T]] param with last-use arg
             # that has consuming __iter__. Generate consuming call instead of copy.
             if (is_protocol_type(ptype_inner) and isinstance(ptype_inner, NominalType)

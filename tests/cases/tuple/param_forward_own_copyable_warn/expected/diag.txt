@@ -1,0 +1,4 @@
+main.py:18: warning: owned tuple param 'p' is never consumed (not unpacked, stored, forwarded, or returned)
+main.py:27: warning: copies tuple[Own[A], Own[A]] into owned storage; use copy() to make this explicit
+main.py:26: warning: owned tuple param 'p' is never consumed (not unpacked, stored, forwarded, or returned)
+main.py:33: warning: copies tuple[Own[A], Own[A]] into owned storage; use copy() to make this explicit

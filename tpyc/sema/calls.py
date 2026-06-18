@@ -2543,6 +2543,27 @@ class CallAnalyzer:
                             for et in name_target.element_types)):
                 self.compat.check_name_borrow_into_own(
                     arg.name, name_target, arg, "pass")
+                # The `std::tuple<...>&&` param binds only an rvalue, so a
+                # movable owned-tuple source NOT at its last use can't move in:
+                # a @nocopy tuple is a clean use-after-move error, a copyable one
+                # warns and is auto-copied (mirrors the scalar Own[T] arg). Only
+                # the owned-movable, non-readonly tuple param is rendered `&&`;
+                # a mixed/borrow or readonly param is const& and binds an lvalue.
+                bare = unwrap_readonly(ptype)
+                if (isinstance(bare, TupleType) and bare.is_owned_movable()
+                        and not isinstance(ptype, ReadonlyType)
+                        and self.compat._is_owned_var(arg.name)
+                        and not self.compat.is_auto_move_use(arg)):
+                    if self.ctx.is_type_non_copyable(arg_type):
+                        reason = (self.ctx.nocopy_reason(arg_type)
+                                  or f"owned tuple '{arg.name}'")
+                        raise self.ctx.error(
+                            f"{reason} is used after this point and cannot be "
+                            f"moved into '{pname}'. Remove later uses or use "
+                            f"copy().", arg)
+                    self.ctx.warning(
+                        f"copies {bare} into owned storage; use copy() to make "
+                        f"this explicit", arg)
         own_ptype = unwrap_optional_own(ptype)
         if own_ptype is None:
             return
