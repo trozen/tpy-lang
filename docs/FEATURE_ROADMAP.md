@@ -49,7 +49,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B5 | Per-method type parameter bounds | S-M | Done | [I](#type-parameter-bounds----per-method) |
 | B6 | `# tpy:` directives | S-M | Done | [I](#tpy-directives) |
 | B7 | Float32 type | S | Done | [I](#float32-type) |
-| B8 | Dataclasses | M | Done | [VII](#dataclasses) |
+| B8 | Dataclasses | M | Done (Phase 1; auto `__eq__`/`frozen`/`__hash__` pending) | [VII](#dataclasses) |
 | B9 | List comprehensions | M | Done | [VI](#list-comprehensions) |
 | B10 | `@overload` dispatch flattening | M | Done | [VII](#overload-dispatch-flattening) |
 | B11 | List slicing | M | Done | [VII](#list-slicing) |
@@ -58,6 +58,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B14 | `Optional[StaticProtocol]` codegen | S | Done | [II](#optionalstaticprotocol-codegen) |
 | B15 | `isinstance` on static protocols (`if constexpr` + narrowing) | M | Done | [II](#isinstance-on-static-protocols) |
 | B16 | `for/else`, `while/else` | S | Done | [VI](#forelse--whileelse) |
+| B17 | Built-in / conditional protocol conformance | L | 🔬 Research | [II](#built-in--conditional-protocol-conformance) |
 
 ### Phase C: Error Handling + Effects
 
@@ -93,7 +94,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | D16 | Dynamic attributes (`__getattr__`/`__setattr__`/`__delattr__`) | M-L | Done | [VII](#dynamic-attributes) |
 | D17 | `*args` (variadic positional arguments) | M | Done (homogeneous) | [VI](#args--kwargs) |
 | D18 | `**kwargs` (variadic keyword arguments) | M-L | Done | [VI](#args--kwargs) |
-| D19 | Recursive type aliases | M | Done (non-generic + generic non-recursive); generic recursive in progress | [I](#recursive-type-aliases) |
+| D19 | Recursive type aliases | M | Done (non-generic, generic non-recursive, and generic recursive) | [I](#recursive-type-aliases) |
 | D20 | Mutual recursion (cross-type cycles) | M-L | Done (same-module) | [I](#mutual-recursion) |
 | D21 | TypedDict | M | Done | [VII](#typeddict) |
 | D22 | Multiple inheritance (mixins) | L | Done | [VII](#multiple-inheritance) |
@@ -120,7 +121,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
 | F1 | Compile-time evaluation | XL | 🆕 Not started | [V](#compile-time-evaluation-constexpr--comptime) |
-| F2 | Macro system | XL | 🚧 Phases 1/2/7 done | [V](#macro-system--metaprogramming) |
+| F2 | Macro system | XL | 🚧 Phases 1/2/7 done; function macros + quote templates shipped | [V](#macro-system--metaprogramming) |
 | F3 | Generators / yield | L-XL | Done | [VI](#generators-yield) |
 | F4 | Typestate | XL | 🔬 Research | [VIII](#typestate-object-lifecycle) |
 | F5 | Self-interpret (TPy eval in tpyc) | XL | 🆕 Not started | [V](#self-interpret-tpy-eval-in-tpyc) |
@@ -129,13 +130,14 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | F8 | Compile-time conditional compilation / build profiles | M | 🆕 Not started | [V](#compile-time-conditional-compilation--build-profiles) |
 | F9 | Frontend plugin API (DSL / non-Python source) | XL | ✅ v1 shipped | [V](#frontend-plugin-api) |
 | F10 | IR migration (THIR / MIR) | XL | 🆕 Not started | [V](#ir-migration-thir--mir) |
+| F11 | Compile-time module parameters (`compile_param`/`instantiate`) | L | 🚧 Phase 0 POC (CPython); sema/codegen not started | [V](#compile-time-module-parameters) |
 
 ### Phase G: Concurrency (Future)
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| G1 | async/await + minimal asyncio | XL | 🚧 v1 shipped -- see [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md); design in [`docs/ASYNC_DESIGN.md`](ASYNC_DESIGN.md) | [IX](#asyncawait-or-alternative-model) |
-| G1.5 | asyncio runtime port C++ -> TPy | M | 🚧 Phase 0 done (SleepFuture); Phases 1-4 + blockers tracked in [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md#v1x-milestone-asyncio-runtime-tpy-port-must-precede-v15). **Must precede v1.5 work** so `gather`/`wait_for`/`async with` are written as TPy on a TPy executor. | [IX](#asyncawait-or-alternative-model) |
+| G1 | async/await + minimal asyncio | XL | 🚧 v1 + v1.5 (M1-M11) + v2 M1/M2 shipped (epoll reactor + streams); multi-threaded executor + async generators remain -- see [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md); design in [`docs/ASYNC_DESIGN.md`](ASYNC_DESIGN.md) | [IX](#asyncawait-or-alternative-model) |
+| G1.5 | asyncio runtime port C++ -> TPy | M | Done -- runtime port complete (Phases 0-4 + v1.2 steps 1-7); the executor, run loop, scheduling, sleep, and type-erasure are pure TPy, leaving only a small `async.hpp` (CancelledError + resume-case helper). See [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md#v1x-milestone-asyncio-runtime-tpy-port-must-precede-v15). | [IX](#asyncawait-or-alternative-model) |
 | G2 | Channels | L | 🟡 SPSC done (Send/Sync Phase 4) | [IX](#channels) |
 
 Phases are not strictly sequential -- items from different phases can be interleaved
@@ -704,13 +706,17 @@ via `substitute_type_params_structural`. Generated C++ uses the expanded body
 directly; the alias has no C++-level identity. `isinstance(x, Pair)` rejected
 (no runtime identity). See `docs/GENERIC_RECURSIVE_ALIASES_DESIGN.md`.
 
+**Phase 2 shipped (generic recursive aliases)**: `type Tree[T] = T | list[Tree[T]]`
+compiles and runs end-to-end via a templated wrapper struct. Parse-resolution
+emits an `AliasRef(name, args)` for both in-body self-references and use sites;
+an early-sema pass (`_finalize_generic_recursive_aliases`) converts them to a
+dedicated `RecursiveAliasInstanceType` keyed on `(qname, type_args)`.
+
 **Not yet supported**:
-- Generic *recursive* aliases (`type Tree[T] = T | list[Tree[T]]`) -- Phase 2
-  of the rollout will add the templated wrapper struct. Today rejected at
-  parse time with a clean diagnostic.
 - Bounds on alias type params (`type Tree[T: Hashable] = ...`) -- rejected at
-  parse time.
-- Mutual recursion across generic aliases -- Phase 2 follow-up.
+  parse time (storage shape leaves room; later addition is sema-only).
+- Mutual recursion across generic aliases -- validator detects + diagnoses.
+- `isinstance(x, Tree)` fold-to-True on generic recursive aliases (deferred).
 
 **Dependencies**: Union types (done). Match/case (done for unions).
 
@@ -1115,6 +1121,40 @@ branch are available at the C++ template instantiation level.
 
 ---
 
+### Built-in / Conditional Protocol Conformance
+
+A third conformance axis beyond structural protocols (B4/B15) and `@dynamic`
+runtime polymorphism: letting **built-in** types (`Int32`, `str`, `bool`,
+`float`) and **generic-container** types (`list[T]`, `dict[K, V]`) participate
+in protocol conformance, including **conditional** conformance
+(`list[T]` conforms to `Stringable` iff `T` does).
+
+**Why it matters**: This is the gate for **type-directed code written in pure
+stdlib** -- a serializer / formatter / hasher that recurses over arbitrary
+typed shapes. Two concrete goals depend on it:
+
+- **Zero-copy typed serialization** -- `json.dumps(data)` over
+  `data: dict[str, Int32]` with no `JsonValue` wrapper and no O(n) deep copy.
+- **Moving `print` / `str` out of the compiler** -- they are compiler-blessed
+  today (`gen_print` + C++ `printing.hpp`) only because containers and scalars
+  can't conform to a `Display`-style protocol in stdlib. Fix conformance and
+  `print` becomes ordinary stdlib code.
+
+The core blocker: a built-in does not satisfy a protocol whose required method
+exists only as a C++ intrinsic (e.g. `tpy::__str__(int32_t)`) rather than a
+declared stub method, because structural conformance consults the TPy method
+surface. There is also no mechanism today for conditional conformance.
+
+**Current state**: 🔬 Research. Problem framing + design space captured in
+`docs/PROTOCOL_CONFORMANCE_DESIGN.md` (explicitly exploratory -- syntax and
+several mechanism choices still open). No implementation.
+
+**Dependencies**: Structural protocols (B4/B15, done). Generic containers (done).
+
+**Effort**: L (new conformance machinery spanning sema + the built-in stub surface)
+
+---
+
 ## III. Error Handling
 
 ### Exception Model (try/except/raise)
@@ -1373,13 +1413,15 @@ with `Sendable` -- years of warnings and gradual migration. The compiler already
 `is_value_type`. Extending to `is_sendable` (value types + types with only sendable fields)
 is incremental.
 
-**Current state**: Phases 1-3 done. `is_send` / `is_sync` auto-derivation on all
+**Current state**: Phases 1-4 done. `is_send` / `is_sync` auto-derivation on all
 built-in types (`type_traits.hpp`) and records; `Send[T]` / `Sync[T]` marker
-wrappers, `T: Send` bounds, opt-in/opt-out decorators (Phase 2); and the
+wrappers, `T: Send` bounds, opt-in/opt-out decorators (Phase 2); the
 diagnostic surface -- `assert_send[T]()` / `assert_sync[T]()` compile-time
 assertions, why-not chains at enforcement sites, and `tpyc --explain-send`
-(Phase 3). Enforcement sites (Channel/spawn/Task) arrive with concurrency
-(Phase 4+). See `docs/SEND_SYNC_DESIGN.md`.
+(Phase 3); and the first enforcement site, `Channel[T]` (`T: Send`) on the
+single-threaded executor (Phase 4, SPSC). The multi-threaded executor +
+`spawn`/`Task`-migration enforcement (Phase 5) and `Arc`/`Mutex`/`RwLock`
+(Phase 6) are v3+. See `docs/SEND_SYNC_DESIGN.md`.
 
 **Dependencies**: None -- markers added now, enforce when concurrency arrives.
 
@@ -1573,20 +1615,24 @@ See LANGUAGE_FEATURES.md "Compile-Time Hooks" for detailed design (`@compile_tim
 **Why it matters**: Eliminates boilerplate, enables library-level code generation without
 compiler changes. Similar to Rust proc_macro, Zig comptime, Python metaclasses.
 
-**Current state**: Phases 1, 1c, 2, and 7 done. Three macro kinds shipped:
+**Current state**: Phases 1, 1c, 2, and 7 done. Four macro kinds shipped:
 class macros (Phase 1, `@class_macro`), call-site macros (Phase 2, `@call_macro`),
-and builder-trace macros (Phase 7, `@builder_macro` / `@builder_method` /
-`@builder_returns` / `@builder_terminal`). `@dataclass` reimplemented as a class
-macro with `Field`/`field()` descriptors. `asdict()`/`astuple()` implemented as
-`@call_macro` functions that expand at compile time. `argparse.ArgumentParser`
-implemented as a builder-trace macro (`BuilderContext` walks the builder pattern
-at compile time and synthesizes records + parse functions). Builder-trace
-expansion runs in a dedicated pass 5.5 between class-constants analysis and
-record-method-body analysis, so synthesized methods get full pass-6 sema.
-See `docs/MACRO_DESIGN.md` for the full design.
+builder-trace macros (Phase 7, `@builder_macro` / `@builder_method` /
+`@builder_returns` / `@builder_terminal`), and function macros
+(`@function_macro`, rewriting a whole free-function body via a dedicated
+`sema/function_macros.py` pass 5.5). Quote templates (`quote` / `quote_expr` /
+`quote_fun` in `macro_api.py`) also shipped. `@dataclass` reimplemented as a
+class macro with `Field`/`field()` descriptors. `asdict()`/`astuple()`
+implemented as `@call_macro` functions that expand at compile time.
+`argparse.ArgumentParser` implemented as a builder-trace macro
+(`BuilderContext` walks the builder pattern at compile time and synthesizes
+records + parse functions). Builder-trace expansion runs in a dedicated pass
+5.5 between class-constants analysis and record-method-body analysis, so
+synthesized methods get full pass-6 sema. See `docs/MACRO_DESIGN.md` for the
+full design.
 
-Remaining (Phase 3+): quote templates, string-based method generation,
-hygiene, CPython compatibility, replace codegen special cases
+Remaining (Phase 3+): string-based method generation, hygiene, broader CPython
+compatibility, replacing codegen special cases
 (`__repr__`/`__hash__`/`operator<=>`) with macro-generated AST.
 Companion type creation (`cls.add_companion_type`) for generating helper
 types (e.g. key enums for O(1) JSON field dispatch).
@@ -1684,10 +1730,50 @@ as re`) -- the latter scales poorly across a real project.
 like `profile=noalloc`) but are not evaluated as conditionals.
 
 **Dependencies**: Design coordination with macro system (F2) and profile
-gates. No hard blockers.
+gates. No hard blockers. Distinct from compile-time module parameters (F11):
+this swaps *which implementation* a module imports; F11 monomorphizes *one*
+module body over `constexpr` values.
 
 **Effort**: M (design + parser/sema support for static `if` or directive-based
 blocks; feature-flag resolution pipeline; CLI + project-config surface).
+
+---
+
+### Compile-Time Module Parameters
+
+`compile_param()` declares a module-level constant whose value is supplied at
+instantiation time; a single Python source compiles into multiple C++
+translation units, each with a different `constexpr` value:
+
+```python
+# engine/solver/__init__.py
+from tpy import compile_param
+
+HIGH_PRECISION: bool = compile_param("HIGH_PRECISION")
+```
+
+`instantiate()` then produces a specialized TU per parameter combination, so
+write-once logic gets zero-overhead specialization with no runtime branch on
+the hot path (e.g. high- vs low-precision physics solvers running in the same
+frame).
+
+**Why it matters**: It is the zero-cost answer to "same logic, different
+compile-time constants" -- precision/capacity/mode knobs that today force
+either runtime branches or duplicated source. Distinct from F8 (build profiles
+swap *which module* is imported); this monomorphizes *one* module body over
+`constexpr` values, with guaranteed dead-branch elimination via `if constexpr`.
+
+**Current state**: 🚧 Phase 0 POC done (CPython prototype of `compile_param()`
+/ `instantiate()` + sub-module propagation + factory registry). Phases 1-5
+(sema recognition, `constexpr` codegen, per-combination TU generation,
+dependency-graph duplication, `Int32`/`Int64` params, auto-registration) not
+started. See `docs/COMPILE_PARAM_DESIGN.md`.
+
+**Dependencies**: None hard. Coordinates with F8 (conditional compilation) and
+the project-config surface (which could declare instances without an in-source
+`instantiate()` call).
+
+**Effort**: L (sema + per-TU codegen + dependency-graph duplication)
 
 ---
 
@@ -2008,7 +2094,7 @@ generators (single yield point); struct-based with `__next__()` for multiple yie
 **Current state**: Done. Generator functions with `yield` are fully supported. Codegen
 transforms the function body into a state-machine struct with `__next__()` method.
 Simple generators (single yield in a loop) use an optimized inline path. See
-`codegen_cpp/gen_generators.py`. Known limitation: generic generators with multiple
+`tpyc/codegen_cpp/gen_generators.py`. Known limitation: generic generators with multiple
 yield points are guarded with a sema error (template struct + out-of-line `__next__()`
 linkage issue).
 
@@ -3266,12 +3352,17 @@ aborts the module. Activating multi-error reporting requires converting the bulk
 
 Full design in [`docs/ASYNC_DESIGN.md`](ASYNC_DESIGN.md). Summary:
 
-- **Lowering**: state-machine struct with `poll(waker) -> Poll[T]` (Rust-shaped). New shared "resumable-frame" abstraction in codegen, not C++20 coroutines (preserves a future LLVM backend) and not an extension of generator codegen (separate codegen track; future work migrates generators onto it).
+- **Lowering**: state-machine struct with `poll(waker) -> Poll[T]` (Rust-shaped). Shared "resumable-frame" abstraction in codegen, not C++20 coroutines (preserves a future LLVM backend). The frame is shape-neutral: non-simple generators (`yield`) now share it with `await` (the simple-generator lambda peephole stays separate), so `yield` and `await` lowering are unified.
 - **Awaitable protocol**: structural, like `Iterator[T]` -- type is awaitable iff it has `poll(self, waker: Waker) -> Poll[T]`.
 - **Cancellation**: exception-based via `cancel_pending` flag + `CancelledError` thrown at the next suspension; per-case try/except/finally re-establishment in codegen.
 - **Executor**: single-threaded for v1; multi-threaded executor and `Send`/`Sync` constraints are v3+.
 - **Task[T]**: purpose-built type-erased poll-box (~50 LOC C++ template), independent of `@dynamic` infrastructure.
-- **Milestones**: v1 = `async def`/`await`/`run`/`sleep`/`create_task`/`Task`/`Future`/`cancel`. v1.5 = `async with`/`async for`/`gather`/`wait_for` + sync `with` upgrade for `__exit__` exc args. v2 = sync primitives + first I/O reactor (epoll). v3+ = multi-threaded, async generators, `@error_return` async, `__await__` adaptation, etc.
+- **Milestones (status)** -- track in [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md):
+  - **v1 (shipped)**: `async def`/`await`/`run`/`sleep`/`create_task`/`Task`/`Future`/`cancel`.
+  - **v1.5 (shipped, M1-M11)**: `async with`/`async for`/`gather`/`gather_list`/`wait_for`/`Event` + arbitrary `await` placement (if/while/for/with/try/finally via CFG-lite) + async methods on user/generic classes + sync `with` upgrade for 4-arg `__exit__`.
+  - **runtime port (shipped)**: the asyncio executor/run-loop/scheduling/type-erasure are now pure TPy on a small `async.hpp` bridge (G1.5).
+  - **v2 (shipped, M1/M2)**: sync primitives (`Lock`/`Semaphore`/`BoundedSemaphore`/`Queue`), epoll I/O reactor (`EpollReactor` + `sock_recv`/`sock_sendall`/`sock_accept`/`sock_connect`), and the asyncio streams layer (`open_connection`/`start_server`/`StreamReader`/`StreamWriter`/`Server`); graceful SIGINT shutdown.
+  - **v3+ (future)**: multi-threaded executor + `Send`/`Sync` enforcement at task migration, async generators, `@error_return` async, `__await__` adaptation, `StreamReader.readuntil`.
 
 ### Channels
 
@@ -3288,7 +3379,10 @@ and the Arc-backed cross-thread channel are deferred.
 
 Send/Sync markers (see IV) should be designed before concurrency ships.
 
-**Current state**: Entirely deferred.
+**Current state**: Marker layer done -- Send/Sync Phases 1-4 shipped (auto-derivation,
+`Send[T]`/`Sync[T]` wrappers, diagnostics, and `Channel[T]` enforcement). Only the
+*cross-thread* half remains: the multi-threaded executor (Phase 5) and `Arc`/`Mutex`/`RwLock`
+(Phase 6), both v3+. See section IV and `docs/SEND_SYNC_DESIGN.md`.
 
 ---
 
@@ -3314,4 +3408,42 @@ Features needed for the compiler to compile itself, roughly by priority:
 | own parser | replaces Python `ast` | - |
 
 See `SELF_HOSTING.md` for the full gap analysis.
+
+---
+
+## XI. Tooling & Project Layer
+
+### Project / Build / Dependency Tooling
+
+A user-facing project layer -- how someone builds, tests, and manages
+dependencies for a TurboPython **application or library**. Distinct from
+`BUILD_PIPELINE.md` (the compiler's internal source -> C++ -> binary pipeline),
+which this layer drives.
+
+The shape under discussion is a cargo-like porcelain command, `tpx`
+(`tpx new/init/build/run/test/add/clean`, `tpx build --release`), kept separate
+from the `tpy` runner so `tpy file.py` stays unambiguous (cargo-vs-rustc split).
+It sits on a stable `[tool.tpy]` contract in `pyproject.toml` describing how to
+*compile and link* (not how to resolve Python packages), and reuses the existing
+Python packaging ecosystem (`uv` for resolution/locking/virtualenvs,
+`pylock.toml`, a `tpy-build.lock`) rather than reinventing a resolver.
+
+**Why it matters**: TurboPython is on pypi.org and meant for public use, so a
+single familiar command surface and reproducible builds are part of the
+product, not just internal convenience. This follows the project north star
+(Rust semantics + tooling vocabulary, Python syntax + ergonomics): the language
+is already Rust-shaped (`Own`/borrow/`readonly`/`Box`/`Rc`/`Weak`, two-tier
+errors), and the tooling should feel like cargo/rustup over a Python base.
+
+**Current state**: 🔬 Exploratory. Design discussion (incl. a Codex
+cross-check) captured in `docs/PROJECT_TOOLING_DESIGN.md`; no code yet. Goals,
+non-goals, the `[tool.tpy]` contract sketch, and the `uv` reuse / native
+dependency plane are framed; concrete spec deferred to a `/tpy-add-feature`
+pass.
+
+**Dependencies**: None hard. Coordinates with build profiles (F8) and
+compile-time module parameters (F11) for the build-config surface.
+
+**Effort**: XL (CLI, project model, lockfile/reproducibility story, native
+dependency plane).
 
