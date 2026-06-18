@@ -1692,6 +1692,12 @@ class StatementAnalyzer:
                     stmt.args[i] = self.compat.coerce_expr(
                         arg, arg_type, ptype, f"argument '{pname}'",
                         coercion_ctx=CoercionContext.ARG)
+                # Carry the param types so codegen lowers each arg with the same
+                # per-param hint a normal call uses -- otherwise a target-type-
+                # driven literal (None -> value-Optional) loses its hint and
+                # emits its context-free default.
+                stmt.arg_param_types = [
+                    ptype for _, ptype, _ in record.init_params[:len(stmt.args)]]
             elif record.fields:
                 raise self.ctx.error(
                     f"'{stmt.exception_type}' has data fields but no __init__; "

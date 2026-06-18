@@ -262,12 +262,12 @@ std::expected<::tpy::BigInt, ParseErr> checked_parse(std::string_view s) {
     // if s == "":
     if ((s == "")) {
         // raise ParseErr(1)
-        return ::tpy::make_unexpected(ParseErr(1));
+        return ::tpy::make_unexpected(ParseErr(::tpy::BigInt(1)));
     }
     // if s == "?":
     if ((s == "?")) {
         // raise ParseErr(2)
-        return ::tpy::make_unexpected(ParseErr(2));
+        return ::tpy::make_unexpected(ParseErr(::tpy::BigInt(2)));
     }
     // return int(s)
     return ::tpy::BigInt::from_str(s);

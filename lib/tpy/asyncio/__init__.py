@@ -1448,13 +1448,7 @@ class StreamReader:
             await self._fill()
             idx = self._buf.find(separator)
         if idx < 0:
-            # Construct then raise: a `raise IncompleteReadError(..., None)`
-            # lowers the None arg to nullptr, which can't bind the value-
-            # Optional `expected` param; the assignment path coerces None to
-            # std::nullopt correctly (raise-statement ctor-arg coercion gap,
-            # BUGS.md).
-            err = IncompleteReadError(self._take(len(self._buf)), None)
-            raise err
+            raise IncompleteReadError(self._take(len(self._buf)), None)
         return self._take(idx + len(separator))
 
 

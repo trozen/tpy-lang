@@ -3480,7 +3480,7 @@ class StatementGenerator:
         if is_cf:
             # Return-tier: return std::unexpected (no Throwable interaction).
             if stmt.args:
-                args = ", ".join(self.expressions.gen_expr(a) for a in stmt.args)
+                args = self._gen_raise_ctor_args(stmt)
                 return self._make_return(indent, f"::tpy::make_unexpected({cpp_type}({args}))")
             return self._make_return(indent, f"::tpy::make_unexpected({cpp_type}{{}})")
         else:
@@ -3492,9 +3492,19 @@ class StatementGenerator:
             # -- keeps generated C++ idiomatic and avoids the extra inlined
             # virtual call in stack traces / debug info.
             if stmt.args:
-                args = ", ".join(self.expressions.gen_expr(a) for a in stmt.args)
+                args = self._gen_raise_ctor_args(stmt)
                 return f"{indent}throw {cpp_type}({args});\n"
             return f"{indent}throw {cpp_type}{{}};\n"
+
+    def _gen_raise_ctor_args(self, stmt: TpyRaise) -> str:
+        """Lower a `raise X(args)` ctor's args with the per-param coercion hint
+        so a target-type-driven literal (e.g. None into a value-Optional param)
+        renders as std::nullopt, not its hint-free default (nullptr)."""
+        types = stmt.arg_param_types
+        assert len(types) == len(stmt.args)
+        return ", ".join(
+            self.expressions.gen_call_arg(a, ptype)
+            for a, ptype in zip(stmt.args, types))
 
     def _gen_try(self, out: TextIO, stmt: TpyTry, indent: str) -> None:
         """Generate a try/except/else/finally statement."""
