@@ -208,6 +208,10 @@ class StatementGenerator:
             own_actual = unwrap_optional_own(actual)
             if own_actual is not None and not own_actual.wrapped.is_value_type():
                 self.ctx.movable_locals.add(pname)
+            if (isinstance(actual, TupleType) and actual.is_owned_movable()
+                    and not isinstance(ptype, ReadonlyType)):
+                self.ctx.movable_locals.add(pname)
+                self.ctx.storage_form_tuple_locals.add(pname)
             # Own[tuple[T | None, ...]] params are stored in storage form
             # (std::tuple<std::optional<T>, ...>); same C++ shape as the
             # storage-form locals registered for storage-form tuple iteration.
@@ -2045,6 +2049,8 @@ class StatementGenerator:
             # element is @nocopy. Tuples that DO have a borrow form go through
             # the has_pointer_repr_element block below instead.
             self.ctx.storage_form_tuple_locals.add(stmt.name)
+            if stmt.name in self.ctx.sema_movable_locals:
+                self.ctx.movable_locals.add(stmt.name)
         if (stmt.init is not None
                 and isinstance(target_type, TupleType)
                 and target_type.has_pointer_repr_element()):
@@ -2064,6 +2070,13 @@ class StatementGenerator:
                 return f"{prefix}{indent}{borrow_cpp} {cpp_name} = {rhs};\n"
             if self.ctx.is_storage_form_source(stmt.init):
                 self.ctx.storage_form_tuple_locals.add(stmt.name)
+                # A fresh-owned storage tuple (sema proved it owned, not an
+                # alias) is move-only when it owns a @nocopy element and must
+                # auto-move at its last use -- e.g. into an owned-tuple
+                # `std::tuple<...>&&` param. sema_movable_locals already
+                # excludes lvalue-aliasing sources (field/subscript inits).
+                if stmt.name in self.ctx.sema_movable_locals:
+                    self.ctx.movable_locals.add(stmt.name)
             else:
                 # A literal whose non-value members are VALUE-captured (sema
                 # marks fresh members owned, e.g. `(a.clone(), b.clone())`)
@@ -2079,6 +2092,8 @@ class StatementGenerator:
                                     target_type.element_types[i])
                                 for i, cap in enumerate(init_inner.elem_capture))):
                     self.ctx.storage_form_tuple_locals.add(stmt.name)
+                    if stmt.name in self.ctx.sema_movable_locals:
+                        self.ctx.movable_locals.add(stmt.name)
 
         # A storage-form tuple local bound from an LVALUE storage source
         # aliases the source (CPython shares the elements): bind a reference
@@ -2971,12 +2986,9 @@ class StatementGenerator:
             out.write(f"{indent}auto&& {tmp} = {value_expr};\n")
         elif (not unwrapped_tmp and not wrapped_to_pointer
                 and any(stmt.is_owned)
-                and isinstance(stmt.value, TpyName)
-                and stmt.value.name in self.ctx.sema_movable_locals
-                and id(stmt.value) in self.ctx.analyzer.ctx.all_last_uses):
-            # The plain `auto __tup = t` copy is deleted when an element is
-            # @nocopy / move-only; sema proved this the last use, so consuming
-            # the source is sound and the owned elements move out below.
+                and self.expressions._is_last_use_movable(stmt.value)):
+            # A movable owned-tuple source at its last use -- a named local or
+            # an owned-tuple (`std::tuple<...>&&`) param.
             out.write(f"{indent}auto&& {tmp} = std::move({value_expr});\n")
         else:
             out.write(f"{indent}auto {tmp} = {value_expr};\n")

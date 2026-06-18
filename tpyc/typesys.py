@@ -3362,6 +3362,16 @@ class TupleType(TpyType):
         # a raw field, even though `is_value_type()` reports the tuple True.
         return any(e.value_form() is ValueForm.OWN for e in self.element_types)
 
+    def is_owned_movable(self) -> bool:
+        # A "purely owned" tuple: at least one Own element and NO bare borrow
+        # element (every non-value element is Own). Such a tuple has a single
+        # storage form with no slot aliasing the caller, so it can be owned and
+        # moved as a unit -- the ownership-transfer `std::tuple<...>&&` param
+        # ABI and whole-tuple move-out apply. A mixed owned+borrow tuple
+        # (`tuple[Own[A], A]`) is excluded: its borrow slot aliases the caller,
+        # so the whole-tuple move model does not fit (it stays a const& borrow).
+        return self.has_own_element() and not self.has_ref_elements()
+
     def has_pointer_repr_optional_element(self) -> bool:
         """True if any element is a pointer-repr OptionalType.
 
@@ -3447,10 +3457,18 @@ class TupleType(TpyType):
         return t.to_cpp_return_const() if const else t.to_cpp_return()
 
     def to_cpp_param_type(self) -> str:
+        if self.is_owned_movable():
+            # Purely-owned tuple: ownership-transfer param, rvalue ref so the
+            # callee can move the owned elements out -- mirrors Own[T] -> T&&.
+            args = ", ".join(self._element_to_cpp_param(t, const=False) for t in self.element_types)
+            return f"std::tuple<{args}>&&"
         args = ", ".join(self._element_to_cpp_param(t, const=False) for t in self.element_types)
         return f"const std::tuple<{args}>&"
 
     def to_cpp_param(self, name: str) -> str:
+        if self.is_owned_movable():
+            args = ", ".join(self._element_to_cpp_param(t, const=False) for t in self.element_types)
+            return f"std::tuple<{args}>&& {name}"
         args = ", ".join(self._element_to_cpp_param(t, const=False) for t in self.element_types)
         return f"const std::tuple<{args}>& {name}"
 

@@ -1,5 +1,5 @@
 # A named owned-tuple local passed by value into a tuple[Own[A], Own[A]] param
-# binds directly to the const-ref param; @nocopy makes any copy a build error.
+# moves into the owned (std::tuple<...>&&) param; @nocopy makes a copy an error.
 from tpy import nocopy, Own, Int32
 
 

@@ -4089,9 +4089,7 @@ class StatementAnalyzer:
                 # An Own[T] element is moved out of the source tuple, so the
                 # fresh target is an owned movable local -- same status as a
                 # single-assign owned rvalue (`x = make_one()`), registered the
-                # same way. (Codegen moves the element out for an rvalue source;
-                # a named-source tuple is copied first -- a separate gap, see
-                # BUGS.md.) Narrower than the single-assign path on purpose:
+                # same way. Narrower than the single-assign path on purpose:
                 # gated to non-reassigned targets, since a reassigned target
                 # becomes a T* pointer-local with different movability.
                 if owned and name not in self.ctx.func.current_reassigned_vars:
@@ -4154,6 +4152,25 @@ class StatementAnalyzer:
                 if src_root is None or src_root == name:
                     continue
                 bt.add_borrow(src_root, name, BorrowKind.ELEMENT)
+
+        # Unpacking an owned-element tuple by NAME consumes the whole source:
+        # every owned element moves out. Mirror the scalar Own[T] consume model
+        # -- at the last use mark the source consumed (drives the unconsumed-
+        # param warning); a move-only (nocopy) source used after this point
+        # can't be moved out, so it is the same use-after-move error scalar
+        # Own raises rather than the raw deleted-copy C++ error.
+        if (not self.ctx.is_top_level and any(stmt.is_owned)
+                and isinstance(stmt.value, TpyName)
+                and self.compat._is_owned_var(stmt.value.name)):
+            if self.compat.is_auto_move_use(stmt.value):
+                self.compat.check_own_consumption(stmt.value)
+            elif self.ctx.is_type_non_copyable(rhs_type):
+                reason = (self.ctx.nocopy_reason(rhs_type)
+                          or f"owned tuple '{stmt.value.name}'")
+                raise self.ctx.error(
+                    f"{reason} is used after this point and cannot be unpacked "
+                    f"by move. Remove later uses or restructure the code.",
+                    stmt.value)
 
         # Determine const-ref eligibility per element for expensive value types.
         # Safe because tuples are immutable -- no in-place mutation possible.

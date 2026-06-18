@@ -1267,7 +1267,27 @@ class SemanticAnalyzer:
         if func.is_stub:
             return
         for pname, ptype in func.params:
-            own = unwrap_optional_own(unwrap_readonly(ptype))
+            bare = unwrap_readonly(ptype)
+            # An owned-element tuple param is an ownership-transfer param (the
+            # `std::tuple<...>&&` ABI), so it warns when never consumed just
+            # like a scalar Own[T] -- unless every owned element is @nocopy
+            # (consume-by-drop is legitimate, mirroring the scalar suppression).
+            if (isinstance(bare, TupleType) and bare.is_owned_movable()
+                    and not isinstance(ptype, ReadonlyType)):
+                if pname in self.ctx.func.current_consumed_own_params:
+                    continue
+                owned_inners = [unwrap_readonly(e.wrapped) for e in bare.element_types
+                                if isinstance(unwrap_readonly(e), OwnType)]
+                if any(self.ctx.is_type_nocopy(t) or t.is_value_type()
+                       for t in owned_inners):
+                    continue
+                self.ctx.warning(
+                    f"owned tuple param '{pname}' is never consumed "
+                    f"(not unpacked, stored, forwarded, or returned)",
+                    func,
+                )
+                continue
+            own = unwrap_optional_own(bare)
             if own is None:
                 continue
             if pname in self.ctx.func.current_consumed_own_params:

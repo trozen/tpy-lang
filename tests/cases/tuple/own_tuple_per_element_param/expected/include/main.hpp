@@ -11,7 +11,7 @@ struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t take(const std::tuple<P, P>& t);
+int32_t take(std::tuple<P, P>&& t);
 int32_t take_opt(const std::tuple<std::optional<P>, std::optional<P>>& t);
 void test_record_elements_last_use();
 void test_record_elements_fresh_rvalues();

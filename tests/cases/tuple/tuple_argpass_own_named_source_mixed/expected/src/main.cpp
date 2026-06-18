@@ -11,7 +11,7 @@ std::tuple<A, int32_t> make() {
 }
 
 // def consume(p: tuple[Own[A], Int32]) -> Int32:
-int32_t consume(const std::tuple<A, int32_t>& p) {
+int32_t consume(std::tuple<A, int32_t>&& p) {
     // return p[0].n + p[1]
     return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p)));
 }
@@ -21,7 +21,7 @@ void main() {
     // t = make()
     std::tuple<A, int32_t> t = make();
     // print(consume(t))
-    std::cout << consume(t) << "\n";
+    std::cout << consume(std::move(t)) << "\n";
 }
 
 void __tpy_init() {

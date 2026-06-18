@@ -12,7 +12,7 @@ struct A;
 inline constexpr std::string_view __name__ = "__main__";
 
 std::tuple<A, A> make_pair();
-int32_t consume(const std::tuple<A, A>& p);
+int32_t consume(std::tuple<A, A>&& p);
 void main();
 
 // @nocopy

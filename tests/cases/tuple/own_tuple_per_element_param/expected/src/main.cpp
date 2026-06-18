@@ -5,9 +5,9 @@ namespace tpyapp::main {
 
 
 // def take(t: tuple[Own[P], Own[P]]) -> Int32:
-int32_t take(const std::tuple<P, P>& t) {
+int32_t take(std::tuple<P, P>&& t) {
     // a, b = t
-    auto __tup_1 = t;
+    auto&& __tup_1 = std::move(t);
     P a = std::move(std::get<0>(__tup_1));
     P b = std::move(std::get<1>(__tup_1));
     // return a.x + b.x

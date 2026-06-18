@@ -13,7 +13,7 @@ class Box:
         self.val = v
 
 
-def sink(p: tuple[Own[Box], Int32]) -> Int32:
+def sink(p: tuple[Own[Box], Int32]) -> Int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
     return p[0].val + p[1]
 
 

@@ -1,0 +1,1 @@
+main.py:16: error: non-copyable type 'tuple[Own[A], Own[A]]' is used after this point and cannot be unpacked by move. Remove later uses or restructure the code.

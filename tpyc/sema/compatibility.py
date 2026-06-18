@@ -2148,10 +2148,15 @@ class TypeCompatibility:
         """
         func = self.ctx.func.current_function
         if isinstance(func, TpyFunction):
-            # Own[T] params
+            # Own[T] params, and owned-element tuple params (the ownership-
+            # transfer `std::tuple<...>&&` ABI -- movable like a scalar Own[T]).
             for pname, ptype in func.params:
                 if pname == name:
-                    return unwrap_optional_own(unwrap_readonly(ptype)) is not None
+                    bare = unwrap_readonly(ptype)
+                    if unwrap_optional_own(bare) is not None:
+                        return True
+                    return (isinstance(bare, TupleType) and bare.is_owned_movable()
+                            and not isinstance(ptype, ReadonlyType))
             # Locals: check scope type.
             # Exclude for-loop vars: they get Own[T] from consuming iteration
             # element types but are not "rvalue-initialized" in the same sense
@@ -2981,6 +2986,13 @@ class TypeCompatibility:
                     f"{i}); use copy() to make this explicit",
                     expr,
                 )
+        # A movable owned-tuple source at its last use MOVES into the owned
+        # sink (forward as arg, or return), so it is consumed -- mark it for
+        # the unconsumed-param warning. Borrowed/copied sources took the
+        # raise/warn paths above (is_auto_move_use is False for them), so they
+        # are correctly left unconsumed.
+        if isinstance(expr, TpyName) and self.is_auto_move_use(expr):
+            self.check_own_consumption(expr)
 
     def _derive_tuple_member_hazards(
             self, tt: TupleType, expr: TpyExpr) -> int | None:

@@ -1088,6 +1088,12 @@ class ExpressionGenerator:
                               if isinstance(arg, TpyTupleLiteral)
                               else "tuple_to_storage")
                     gen_arg = f"::tpy::{helper}<{tuple_ptype_inner.to_cpp()}>({gen_arg})"
+            # Owned-element tuple param is an rvalue-ref (std::tuple<...>&&): a
+            # last-use movable arg (a named owned-tuple local, or another owned
+            # tuple param) moves in; a fresh literal/call rvalue binds directly.
+            # Mirrors the scalar Own[T] -> T&& move-in below.
+            if isinstance(ptype_inner, TupleType) and ptype_inner.is_owned_movable():
+                gen_arg = self._maybe_move(arg, gen_arg)
             # Auto-consuming iteration: Iterable[Own[T]] param with last-use arg
             # that has consuming __iter__. Generate consuming call instead of copy.
             if (is_protocol_type(ptype_inner) and isinstance(ptype_inner, NominalType)

@@ -11,7 +11,7 @@ struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-int32_t sink(const std::tuple<Box, int32_t>& p);
+int32_t sink(std::tuple<Box, int32_t>&& p);
 int32_t pass_by_name(Box&& ob);
 std::tuple<Box, int32_t> return_by_name(Box&& ob);
 void main();
