@@ -33,11 +33,11 @@ void main() {
     // print(with_bytes())
     std::cout << with_bytes() << "\n";
     // print(with_bytes(b"abc"))
-    std::cout << with_bytes(::tpy::bytes_literal("\x61\x62\x63", 3)) << "\n";
+    std::cout << with_bytes(::tpy::bytes_literal("abc", 3)) << "\n";
     // print(with_bytes_default())
     std::cout << with_bytes_default() << "\n";
     // print(with_bytes_default(b"abcdef"))
-    std::cout << with_bytes_default(::tpy::bytes_literal("\x61\x62\x63\x64\x65\x66", 6)) << "\n";
+    std::cout << with_bytes_default(::tpy::bytes_literal("abcdef", 6)) << "\n";
     // print(with_view_empty())
     std::cout << with_view_empty() << "\n";
     // print(with_view_default())

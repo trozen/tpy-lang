@@ -30,9 +30,9 @@ void main() {
     // print(s)
     std::cout << s << "\n";
     // b = b"hi"
-    std::vector<uint8_t> b = std::vector<uint8_t>{0x68, 0x69};
+    std::vector<uint8_t> b = ::tpy::bytes_literal_owned("hi", 2);
     // if (b := b + b"!"):  # bytes view, same owned-source promotion as str
-    if ((!(b = (::tpy::bytes_concat(b, std::vector<uint8_t>{0x21}))).empty())) {
+    if ((!(b = (::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("!", 1)))).empty())) {
         // print(len(b))
         std::cout << ::tpy::__len__(b) << "\n";
     }

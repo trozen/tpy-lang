@@ -46,9 +46,9 @@ void main() {
     // init_elems: set[Int32] = {3, 4}
     ::tpy::ordered_set<int32_t> init_elems = ::tpy::ordered_set<int32_t>({3, 4});
     // init_buf = bytearray(b"yo")
-    std::vector<uint8_t> init_buf = ::tpy::bytes_copy(::tpy::bytes_literal("\x79\x6f", 2));
+    std::vector<uint8_t> init_buf = ::tpy::bytes_copy(::tpy::bytes_literal("yo", 2));
     // Bag(init_items, init_by_key, init_elems, b"hi", init_buf).show_fields()
-    Bag(&(init_items), &(init_by_key), &(init_elems), std::vector<uint8_t>{0x68, 0x69}, &(init_buf)).show_fields();
+    Bag(&(init_items), &(init_by_key), &(init_elems), ::tpy::bytes_literal_owned("hi", 2), &(init_buf)).show_fields();
     // # None on all five inners
     // Bag(None, None, None, None, None).show_fields()
     Bag(nullptr, nullptr, nullptr, std::nullopt, nullptr).show_fields();
@@ -74,11 +74,11 @@ void main() {
     // show_set_param(None)
     show_set_param(nullptr);
     // show_bytes_param(b"abc")
-    show_bytes_param(std::vector<uint8_t>{0x61, 0x62, 0x63});
+    show_bytes_param(::tpy::bytes_literal_owned("abc", 3));
     // show_bytes_param(None)
     show_bytes_param(std::nullopt);
     // buf = bytearray(b"ok")
-    std::vector<uint8_t> buf = ::tpy::bytes_copy(::tpy::bytes_literal("\x6f\x6b", 2));
+    std::vector<uint8_t> buf = ::tpy::bytes_copy(::tpy::bytes_literal("ok", 2));
     // show_bytearray_param(buf)
     show_bytearray_param(&(buf));
     // show_bytearray_param(None)

@@ -10,9 +10,9 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 ::tpy::BigInt with_bytes(std::span<const uint8_t> data = {});
-::tpy::BigInt with_bytes_default(std::span<const uint8_t> data = ::tpy::bytes_literal("\x68\x69", 2));
+::tpy::BigInt with_bytes_default(std::span<const uint8_t> data = ::tpy::bytes_literal("hi", 2));
 ::tpy::BigInt with_view_empty(std::span<const uint8_t> data = {});
-::tpy::BigInt with_view_default(std::span<const uint8_t> data = ::tpy::bytes_literal("\x68\x69", 2));
+::tpy::BigInt with_view_default(std::span<const uint8_t> data = ::tpy::bytes_literal("hi", 2));
 void main();
 
 void __tpy_init();

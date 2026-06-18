@@ -9,9 +9,9 @@ void basic_write_read() {
     // b = io.BytesIO()
     ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO();
     // n1 = b.write(b"hello ")
-    int32_t n1 = b.write(::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f\x20", 6));
+    int32_t n1 = b.write(::tpy::bytes_literal("hello ", 6));
     // n2 = b.write(b"world")
-    int32_t n2 = b.write(::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5));
+    int32_t n2 = b.write(::tpy::bytes_literal("world", 5));
     // print("wrote:", n1 + n2)
     std::cout << "wrote:" << " " << (::tpy::add_check<int32_t>(n1, n2)) << "\n";
     // print("getvalue:", b.getvalue())
@@ -23,15 +23,15 @@ void basic_write_read() {
 // def initial_value_and_overwrite() -> None:
 void initial_value_and_overwrite() {
     // b = io.BytesIO(b"hello")
-    ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f});
+    ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("hello", 5));
     // print("initial pos:", b.tell())
     std::cout << "initial pos:" << " " << b.tell() << "\n";
     // b.write(b"HE")
-    b.write(::tpy::bytes_literal("\x48\x45", 2));
+    b.write(::tpy::bytes_literal("HE", 2));
     // print("after-overwrite:", b.getvalue())
     std::cout << "after-overwrite:" << " " << ::tpy::BytesPrinter(b.getvalue()) << "\n";
     // b.write(b"LLO WORLD")
-    b.write(::tpy::bytes_literal("\x4c\x4c\x4f\x20\x57\x4f\x52\x4c\x44", 9));
+    b.write(::tpy::bytes_literal("LLO WORLD", 9));
     // print("after-extend:", b.getvalue())
     std::cout << "after-extend:" << " " << ::tpy::BytesPrinter(b.getvalue()) << "\n";
 }
@@ -39,7 +39,7 @@ void initial_value_and_overwrite() {
 // def seek_then_read() -> None:
 void seek_then_read() {
     // b = io.BytesIO(b"abcdefgh")
-    ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(std::vector<uint8_t>{0x61, 0x62, 0x63, 0x64, 0x65, 0x66, 0x67, 0x68});
+    ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("abcdefgh", 8));
     // b.seek(Int32(3))
     b.seek(3);
     // print("read-from-3:", b.read())
@@ -53,7 +53,7 @@ void seek_then_read() {
 // def readline_iteration() -> None:
 void readline_iteration() {
     // b = io.BytesIO(b"line1\nline2\nline3")
-    ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(std::vector<uint8_t>{0x6c, 0x69, 0x6e, 0x65, 0x31, 0x0a, 0x6c, 0x69, 0x6e, 0x65, 0x32, 0x0a, 0x6c, 0x69, 0x6e, 0x65, 0x33});
+    ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("line1\nline2\nline3", 17));
     // print("readline-1:", b.readline())
     std::cout << "readline-1:" << " " << ::tpy::BytesPrinter(b.readline()) << "\n";
     // print("readline-2:", b.readline())
@@ -67,7 +67,7 @@ void readline_iteration() {
 // def context_manager_and_close() -> None:
 void context_manager_and_close() {
     // with io.BytesIO(b"ctx") as b:
-    auto __ctx_1 = ::tpystd::io::BytesIO(std::vector<uint8_t>{0x63, 0x74, 0x78});
+    auto __ctx_1 = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("ctx", 3));
     auto& b = __ctx_1.__enter__();
     try {
         // print("inside:", b.read())
@@ -81,7 +81,7 @@ void context_manager_and_close() {
         throw;
     }
     // b2 = io.BytesIO(b"x")
-    ::tpystd::io::BytesIO b2 = ::tpystd::io::BytesIO(std::vector<uint8_t>{0x78});
+    ::tpystd::io::BytesIO b2 = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("x", 1));
     // b2.close()
     b2.close();
     // print("closed:", b2.closed)
@@ -90,7 +90,7 @@ void context_manager_and_close() {
     {
         try {
             // b2.write(b"y")
-            b2.write(::tpy::bytes_literal("\x79", 1));
+            b2.write(::tpy::bytes_literal("y", 1));
             // print("FAIL")
             std::cout << "FAIL" << "\n";
         } catch (const ::tpy::ValueError& e) {

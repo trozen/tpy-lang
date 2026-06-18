@@ -13,7 +13,7 @@ void process(std::span<const uint8_t> data) {
     // print(b)
     std::cout << ::tpy::BytesPrinter(b) << "\n";
     // c = data + b"!"  # concat -> owned
-    std::vector<uint8_t> c = (::tpy::bytes_concat(data, std::vector<uint8_t>{0x21}));
+    std::vector<uint8_t> c = (::tpy::bytes_concat(data, ::tpy::bytes_literal_owned("!", 1)));
     // print(c)
     std::cout << ::tpy::BytesPrinter(c) << "\n";
 }
@@ -23,7 +23,7 @@ void augassign(std::span<const uint8_t> data) {
     // b = data         # starts as view
     std::vector<uint8_t> b = ::tpy::bytes_copy(data);
     // b += b"!"        # augassign promotes to owned
-    b = ::tpy::bytes_concat(b, std::vector<uint8_t>{0x21});
+    b = ::tpy::bytes_concat(b, ::tpy::bytes_literal_owned("!", 1));
     // print(b)
     std::cout << ::tpy::BytesPrinter(b) << "\n";
 }
@@ -31,7 +31,7 @@ void augassign(std::span<const uint8_t> data) {
 // def literal_view() -> None:
 void literal_view() {
     // b = b"hello"     # literal -> view (static storage)
-    std::span<const uint8_t> b = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5);
+    std::span<const uint8_t> b = ::tpy::bytes_literal("hello", 5);
     // print(b)
     std::cout << ::tpy::BytesPrinter(b) << "\n";
 }
@@ -39,9 +39,9 @@ void literal_view() {
 // def main() -> None:
 void main() {
     // process(b"hello")
-    process(::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5));
+    process(::tpy::bytes_literal("hello", 5));
     // augassign(b"world")
-    augassign(::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5));
+    augassign(::tpy::bytes_literal("world", 5));
     // literal_view()
     literal_view();
 }

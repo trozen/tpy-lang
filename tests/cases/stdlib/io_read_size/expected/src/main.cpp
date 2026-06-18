@@ -31,7 +31,7 @@ void stringio_read_size() {
 // def bytesio_read_size() -> None:
 void bytesio_read_size() {
     // b = io.BytesIO(b"abcdef")
-    ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(std::vector<uint8_t>{0x61, 0x62, 0x63, 0x64, 0x65, 0x66});
+    ::tpystd::io::BytesIO b = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("abcdef", 6));
     // print("n3:", b.read(3))                  # b'abc'
     std::cout << "n3:" << " " << ::tpy::BytesPrinter(b.read(3)) << "\n";
     // print("rest:", b.read())                 # b'def'
@@ -52,7 +52,7 @@ void protocol_params() {
     auto __tmp_1 = ::tpystd::io::StringIO("abcdefgh");
     std::cout << "proto-text:" << " " << via_protocol(__tmp_1) << "\n";
     // print("proto-bytes:", via_binary_protocol(io.BytesIO(b"xyz")))  # b'xy'
-    auto __tmp_2 = ::tpystd::io::BytesIO(std::vector<uint8_t>{0x78, 0x79, 0x7a});
+    auto __tmp_2 = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("xyz", 3));
     std::cout << "proto-bytes:" << " " << ::tpy::BytesPrinter(via_binary_protocol(__tmp_2)) << "\n";
 }
 
@@ -103,7 +103,7 @@ void file_read_size() {
     auto& bf = __ctx_3.__enter__();
     try {
         // bf.write(b"0123456789")
-        bf.write(::tpy::bytes_literal("\x30\x31\x32\x33\x34\x35\x36\x37\x38\x39", 10));
+        bf.write(::tpy::bytes_literal("0123456789", 10));
         __ctx_3.__exit__({}, nullptr, {});
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});

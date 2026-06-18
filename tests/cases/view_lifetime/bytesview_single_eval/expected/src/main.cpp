@@ -12,7 +12,7 @@ std::vector<uint8_t> make() {
     // calls += 1
     calls = ::tpy::add_check<int32_t>(calls, 1);
     // return b"abcde"
-    return std::vector<uint8_t>{0x61, 0x62, 0x63, 0x64, 0x65};
+    return ::tpy::bytes_literal_owned("abcde", 5);
 }
 
 // def single_eval_into_list() -> None:
@@ -75,7 +75,7 @@ void main() {
     // h = Holder()
     Holder h = Holder();
     // h.set_bytes(b"hello")
-    h.set_bytes(::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5));
+    h.set_bytes(::tpy::bytes_literal("hello", 5));
     // h.set_str("world")
     h.set_str("world");
     // print(len(h.b), h.s)

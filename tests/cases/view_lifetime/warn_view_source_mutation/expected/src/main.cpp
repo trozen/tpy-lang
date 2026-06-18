@@ -49,7 +49,7 @@ void slice_view() {
 // def bytearray_slice_view() -> None:
 void bytearray_slice_view() {
     // ba = bytearray(b"   padded long bytes that dodge the small buffer here   ")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("\x20\x20\x20\x70\x61\x64\x64\x65\x64\x20\x6c\x6f\x6e\x67\x20\x62\x79\x74\x65\x73\x20\x74\x68\x61\x74\x20\x64\x6f\x64\x67\x65\x20\x74\x68\x65\x20\x73\x6d\x61\x6c\x6c\x20\x62\x75\x66\x66\x65\x72\x20\x68\x65\x72\x65\x20\x20\x20", 56));
+    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("   padded long bytes that dodge the small buffer here   ", 56));
     // v = ba[3:9]
     std::span<const uint8_t> v = ::tpy::bytes_slice(ba, ::tpy::BasicSlice{3, 9});
     // print(len(v))

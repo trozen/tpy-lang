@@ -20,12 +20,12 @@ void main() {
     // bsink = io.BytesIO()
     ::tpystd::io::BytesIO bsink = ::tpystd::io::BytesIO();
     // emit_bytes(bsink, [b"abc", b"def"])
-    std::vector<std::vector<uint8_t>> __tmp_2 = {std::vector<uint8_t>{0x61, 0x62, 0x63}, std::vector<uint8_t>{0x64, 0x65, 0x66}};
+    std::vector<std::vector<uint8_t>> __tmp_2 = {::tpy::bytes_literal_owned("abc", 3), ::tpy::bytes_literal_owned("def", 3)};
     emit_bytes(bsink, __tmp_2);
     // print("bsink-bytes:", bsink.getvalue())
     std::cout << "bsink-bytes:" << " " << ::tpy::BytesPrinter(bsink.getvalue()) << "\n";
     // bsrc = io.BytesIO(b"xyz123")
-    ::tpystd::io::BytesIO bsrc = ::tpystd::io::BytesIO(std::vector<uint8_t>{0x78, 0x79, 0x7a, 0x31, 0x32, 0x33});
+    ::tpystd::io::BytesIO bsrc = ::tpystd::io::BytesIO(::tpy::bytes_literal_owned("xyz123", 6));
     // print("bsrc-bytes:", consume_bytes(bsrc))
     std::cout << "bsrc-bytes:" << " " << ::tpy::BytesPrinter(consume_bytes(bsrc)) << "\n";
     // s2 = io.StringIO("seek-test")

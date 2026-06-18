@@ -8,15 +8,15 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // data = b"hello world"
-    std::span<const uint8_t> data = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f\x20\x77\x6f\x72\x6c\x64", 11);
+    std::span<const uint8_t> data = ::tpy::bytes_literal("hello world", 11);
     // print(b"world" in data)   # True
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, std::vector<uint8_t>{0x77, 0x6f, 0x72, 0x6c, 0x64}))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("world", 5)))) << "\n";
     // print(b"xyz" in data)     # False
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, std::vector<uint8_t>{0x78, 0x79, 0x7a}))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("xyz", 3)))) << "\n";
     // print(b"" in data)        # True (empty always matches)
     std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, std::vector<uint8_t>{}))) << "\n";
     // print(b"hello world" in data)  # True (exact match)
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64}))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(data, ::tpy::bytes_literal_owned("hello world", 11)))) << "\n";
     // # Single byte via int still works
     // print(104 in data)  # True ('h' = 104)
     std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 104))) << "\n";

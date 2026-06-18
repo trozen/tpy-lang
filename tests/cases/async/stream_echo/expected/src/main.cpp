@@ -23,9 +23,9 @@ namespace tpyapp::main {
         reader.emplace(std::move(std::get<0>(__tup_1)));
         writer.emplace(std::move(std::get<1>(__tup_1)));
         // writer.write(b"ping\n")
-        (*writer).write(::tpy::bytes_literal("\x70\x69\x6e\x67\x0a", 5));
+        (*writer).write(::tpy::bytes_literal("ping\n", 5));
         // writer.write(b"more")
-        (*writer).write(::tpy::bytes_literal("\x6d\x6f\x72\x65", 4));
+        (*writer).write(::tpy::bytes_literal("more", 4));
         // await writer.drain()
         __sub_1.emplace((*writer));
         __state = S_RESUME_1;

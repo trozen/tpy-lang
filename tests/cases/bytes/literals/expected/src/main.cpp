@@ -10,11 +10,11 @@ void main() {
     // empty = b""
     std::span<const uint8_t> empty = std::span<const uint8_t>{};
     // hello = b"hello"
-    std::span<const uint8_t> hello = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5);
+    std::span<const uint8_t> hello = ::tpy::bytes_literal("hello", 5);
     // binary = b"\x00\x01\xff"
-    std::span<const uint8_t> binary = ::tpy::bytes_literal("\x00\x01\xff", 3);
+    std::span<const uint8_t> binary = ::tpy::bytes_literal("\000\x01\xff", 3);
     // escape = b"\t\n\r\\"
-    std::span<const uint8_t> escape = ::tpy::bytes_literal("\x09\x0a\x0d\x5c", 4);
+    std::span<const uint8_t> escape = ::tpy::bytes_literal("\t\n\r\\", 4);
     // print(empty)
     std::cout << ::tpy::BytesPrinter(empty) << "\n";
     // print(hello)

@@ -21,7 +21,7 @@ namespace tpyapp::main {
         // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
         // await loop.sock_sendall(sock, b"late")
-        __sub_1.emplace(std::move((*loop).sock_sendall(sock, ::tpy::bytes_literal("\x6c\x61\x74\x65", 4))));
+        __sub_1.emplace(std::move((*loop).sock_sendall(sock, ::tpy::bytes_literal("late", 4))));
         __state = S_RESUME_1;
         continue;
     }

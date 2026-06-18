@@ -66,7 +66,7 @@ std::string field_arm(Rec& r, const Rec& t, bool cond) {
     // x = c[0] if cond else d[0]  # tpyc: type(bytes)
     std::vector<uint8_t> x = ((cond) ? (::tpy::__getitem__(c, 0)) : (::tpy::__getitem__(d, 0)));
     // c.append(b"padding long enough to force the backing vector to reallocate")
-    c.push_back(std::vector<uint8_t>{0x70, 0x61, 0x64, 0x64, 0x69, 0x6e, 0x67, 0x20, 0x6c, 0x6f, 0x6e, 0x67, 0x20, 0x65, 0x6e, 0x6f, 0x75, 0x67, 0x68, 0x20, 0x74, 0x6f, 0x20, 0x66, 0x6f, 0x72, 0x63, 0x65, 0x20, 0x74, 0x68, 0x65, 0x20, 0x62, 0x61, 0x63, 0x6b, 0x69, 0x6e, 0x67, 0x20, 0x76, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x20, 0x74, 0x6f, 0x20, 0x72, 0x65, 0x61, 0x6c, 0x6c, 0x6f, 0x63, 0x61, 0x74, 0x65});
+    c.push_back(::tpy::bytes_literal_owned("padding long enough to force the backing vector to reallocate", 61));
     // return len(x)
     return ::tpy::BigInt(::tpy::__len__(x));
 }
@@ -95,8 +95,8 @@ void main() {
     Rec __tmp_14 = Rec("theta");
     std::cout << field_arm(__tmp_13, __tmp_14, true) << "\n";
     // print(bytes_ternary([b"abcd"], [b"ef"], True))
-    std::vector<std::vector<uint8_t>> __tmp_15 = {std::vector<uint8_t>{0x61, 0x62, 0x63, 0x64}};
-    std::vector<std::vector<uint8_t>> __tmp_16 = {std::vector<uint8_t>{0x65, 0x66}};
+    std::vector<std::vector<uint8_t>> __tmp_15 = {::tpy::bytes_literal_owned("abcd", 4)};
+    std::vector<std::vector<uint8_t>> __tmp_16 = {::tpy::bytes_literal_owned("ef", 2)};
     std::cout << bytes_ternary(__tmp_15, __tmp_16, true) << "\n";
 }
 

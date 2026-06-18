@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // p = Packet(b"hello")
-    Packet p = Packet(::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5));
+    Packet p = Packet(::tpy::bytes_literal("hello", 5));
     // print(p.data)
     std::cout << ::tpy::BytesPrinter(p.data) << "\n";
     // m = MultiField("test", b"\x01\x02\x03")

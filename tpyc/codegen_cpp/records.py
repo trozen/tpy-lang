@@ -1243,16 +1243,16 @@ class RecordGenerator:
                            "initializer list (e.g. a varargs call). Refactor "
                            "the RHS so it does not need an intermediate")
                     continue
-                # bytes param (span<const uint8_t>) -> field (vector<uint8_t>):
-                # vector has no span constructor, route through the runtime
-                # helper (parallel to the body-assign path in statements.py).
-                if (is_bytes_type(fld_type)
-                        and isinstance(source_expr, TpyName)
-                        and source_expr.name in param_names):
-                    for pname, ptype in init_method.params:
-                        if pname == source_expr.name and is_bytes_type(ptype):
-                            value = f"::tpy::bytes_copy({value})"
-                            break
+                # A bytes-view source (e.g. a bytes param's span) into an owned
+                # bytes field copies via the shared view->owned chokepoint --
+                # vector has no span constructor. str needs no arm (std::string's
+                # explicit string_view ctor fires in the direct-init member
+                # list). Pass the (coerce-wrapped) stmt.value: a source sema
+                # already coerced to bytes resolves as non-view here, so
+                # gen_expr's own copy is left unchanged, not double-wrapped.
+                if is_bytes_type(fld_type):
+                    value = self.expressions._view_source_to_owned(
+                        stmt.value, fld_type, value)
                 # Auto-move Own[T] (and Own[T] | None, a std::optional<T> by
                 # value) params at last use in the member init list. The source
                 # is gated to a PARAM (the loop below), so last-use is sufficient

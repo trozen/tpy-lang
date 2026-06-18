@@ -115,40 +115,56 @@ def expand_cpp_template(template: str, self_val: str, *args: str,
     return result
 
 
+def _escape_cpp_byte_seq(data: bytes) -> str:
+    """Escape a raw byte sequence into a C++ double-quoted string literal body.
+
+    Printable ASCII stays verbatim; the rest emits as \\xNN (byte-exact under
+    any exec/input charset, since TPy lengths assume raw UTF-8 bytes). C++ hex
+    escapes are maximal-munch, so a printable hex digit right after an escaped
+    byte needs a `" "` break (adjacent literals concatenate).
+    """
+    simple = {0x5C: '\\\\', 0x22: '\\"', 0x0A: '\\n', 0x0D: '\\r',
+              0x09: '\\t', 0x00: '\\000'}
+    out: list[str] = []
+    pending_hex = False
+    for b in data:
+        if b in simple:
+            out.append(simple[b])
+            pending_hex = False
+        elif 0x20 <= b <= 0x7E:
+            if pending_hex and chr(b) in '0123456789abcdefABCDEF':
+                out.append('" "')
+            out.append(chr(b))
+            pending_hex = False
+        else:
+            out.append(f'\\x{b:02x}')
+            pending_hex = True
+    return ''.join(out)
+
+
 def escape_cpp_string(value: str) -> str:
     """Escape a Python string for use in a C++ string literal (double-quoted).
 
-    Non-ASCII characters emit as \\xNN escapes of their UTF-8 bytes so the
-    literal is byte-exact under any -finput-charset/-fexec-charset (TPy's
-    compile-time byte-based dispatch and lengths assume UTF-8). C++ hex
-    escapes are maximal-munch, so a literal hex digit directly after an
-    escaped byte needs a `" "` break (adjacent literals concatenate).
+    UTF-8 encode then escape per-byte (see `_escape_cpp_byte_seq`): the
+    str and bytes literal paths share one escaping scheme.
     """
-    simple = {'\\': '\\\\', '"': '\\"', '\n': '\\n', '\r': '\\r',
-              '\t': '\\t', '\x00': '\\000'}
-    out: list[str] = []
-    pending_hex = False
-    for ch in value:
-        if ch in simple:
-            out.append(simple[ch])
-            pending_hex = False
-        elif ord(ch) >= 0x80:
-            out.append(''.join(f'\\x{b:02x}' for b in ch.encode('utf-8')))
-            pending_hex = True
-        else:
-            if pending_hex and ch in '0123456789abcdefABCDEF':
-                out.append('" "')
-            out.append(ch)
-            pending_hex = False
-    return ''.join(out)
+    return _escape_cpp_byte_seq(value.encode('utf-8'))
 
 
 def cpp_bytes_literal_span(value: bytes) -> str:
     """Render a bytes literal as a `::tpy::bytes_literal(...)` call --
     a `std::span<const uint8_t>` over a C++ string literal (static
     storage), avoiding the heap allocation of a temporary vector."""
-    escaped = "".join(f"\\x{b:02x}" for b in value)
-    return f'::tpy::bytes_literal("{escaped}", {len(value)})'
+    return f'::tpy::bytes_literal("{_escape_cpp_byte_seq(value)}", {len(value)})'
+
+
+def cpp_bytes_literal_owned(value: bytes) -> str:
+    """Render a bytes literal landing in an owned (`std::vector<uint8_t>`)
+    slot: copy the static-storage span into an owning vector via the runtime
+    helper (one byte-copy), keeping the generated source readable."""
+    if not value:
+        return "std::vector<uint8_t>{}"
+    return f'::tpy::bytes_literal_owned("{_escape_cpp_byte_seq(value)}", {len(value)})'
 
 
 def cpp_string_literal_expr(value: str) -> str:

@@ -28,9 +28,9 @@ void main() {
     // t = (1, 2.5)                # tpyc: is_send(yes) is_sync(yes)
     std::tuple<int32_t, double> t = std::tuple<int32_t, double>{1, 2.5};
     // bv = b"abc"                 # tpyc: is_send(no) is_sync(yes)
-    std::span<const uint8_t> bv = ::tpy::bytes_literal("\x61\x62\x63", 3);
+    std::span<const uint8_t> bv = ::tpy::bytes_literal("abc", 3);
     // ba = bytearray(b"abc")      # tpyc: is_send(yes) is_sync(no)
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("\x61\x62\x63", 3));
+    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("abc", 3));
     // rc = Rc.new(7)              # tpyc: is_send(no) is_sync(no)
     ::tpystd::tplib::rc::Rc<int32_t> rc = Rc<int32_t>::new_<int32_t>(7);
     // print(n, f, ok, s)

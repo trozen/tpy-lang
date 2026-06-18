@@ -37,7 +37,7 @@ std::vector<uint8_t> copy_bytes(std::span<const uint8_t> data) {
 // def main() -> None:
 void main() {
     // b = b"hello"
-    std::span<const uint8_t> b = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5);
+    std::span<const uint8_t> b = ::tpy::bytes_literal("hello", 5);
     // print(byte_len(b))
     std::cout << byte_len(b) << "\n";
     // print(first_byte(b))

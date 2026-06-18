@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // data = b"hello world"
-    std::span<const uint8_t> data = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f\x20\x77\x6f\x72\x6c\x64", 11);
+    std::span<const uint8_t> data = ::tpy::bytes_literal("hello world", 11);
     // print(data[0:5])
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 5})) << "\n";
     // print(data[6:11])
@@ -21,7 +21,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(data, ::tpy::BasicSlice{3, 3})) << "\n";
     // # Slice of a literal
     // print(b"abcdef"[1:4])
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(std::vector<uint8_t>{0x61, 0x62, 0x63, 0x64, 0x65, 0x66}, ::tpy::BasicSlice{1, 4})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_slice(::tpy::bytes_literal_owned("abcdef", 6), ::tpy::BasicSlice{1, 4})) << "\n";
     // # Slice passed to function
     // chunk = data[0:5]
     std::span<const uint8_t> chunk = ::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 5});

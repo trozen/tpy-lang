@@ -8,24 +8,24 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // print(b"hello".upper())       # b'HELLO'
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("hello", 5))) << "\n";
     // print(b"Hello World".upper()) # b'HELLO WORLD'
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(std::vector<uint8_t>{0x48, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x57, 0x6f, 0x72, 0x6c, 0x64})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("Hello World", 11))) << "\n";
     // print(b"ALREADY".upper())     # b'ALREADY'
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(std::vector<uint8_t>{0x41, 0x4c, 0x52, 0x45, 0x41, 0x44, 0x59})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("ALREADY", 7))) << "\n";
     // print(b"123abc".upper())      # b'123ABC'
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(std::vector<uint8_t>{0x31, 0x32, 0x33, 0x61, 0x62, 0x63})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_literal_owned("123abc", 6))) << "\n";
     // # bytearray too
     // ba = bytearray(b"mixed Case")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("\x6d\x69\x78\x65\x64\x20\x43\x61\x73\x65", 10));
+    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("mixed Case", 10));
     // print(ba.upper())             # bytearray(b'MIXED CASE')
     std::cout << ::tpy::ByteArrayPrinter(::tpy::bytes_upper(ba)) << "\n";
     // # BytesView (from slice)
     // print(b"hello world"[0:5].upper())   # b'HELLO'
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_slice(std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x20, 0x77, 0x6f, 0x72, 0x6c, 0x64}, ::tpy::BasicSlice{0, 5}))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_slice(::tpy::bytes_literal_owned("hello world", 11), ::tpy::BasicSlice{0, 5}))) << "\n";
     // # chain: slice -> rstrip -> upper
     // print(b"hello\x00\x00"[0:7].rstrip(b"\x00").upper())  # b'HELLO'
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_rstrip_chars_view(::tpy::bytes_slice(std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x00, 0x00}, ::tpy::BasicSlice{0, 7}), ::tpy::bytes_literal("\x00", 1)))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_upper(::tpy::bytes_rstrip_chars_view(::tpy::bytes_slice(::tpy::bytes_literal_owned("hello\000\000", 7), ::tpy::BasicSlice{0, 7}), ::tpy::bytes_literal("\000", 1)))) << "\n";
 }
 
 void __tpy_init() {

@@ -48,7 +48,7 @@ void main() {
     // str_compound("then", "x")
     str_compound("then", "x");
     // bytes_compound(b"abcd", b"ef")
-    bytes_compound(std::vector<uint8_t>{0x61, 0x62, 0x63, 0x64}, ::tpy::bytes_literal("\x65\x66", 2));
+    bytes_compound(::tpy::bytes_literal_owned("abcd", 4), ::tpy::bytes_literal("ef", 2));
 }
 
 void __tpy_init() {

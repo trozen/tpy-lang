@@ -35,7 +35,7 @@ namespace tpyapp::main {
         // print("got: " + data.decode())
         std::cout << (::tpy::str_concat("got: ", ::tpy::bytes_decode(data))) << "\n";
         // writer.write(b"x")                  # signal the server it may close
-        (*writer).write(::tpy::bytes_literal("\x78", 1));
+        (*writer).write(::tpy::bytes_literal("x", 1));
         // await writer.drain()
         __sub_2.emplace((*writer));
         __state = S_RESUME_2;
@@ -105,7 +105,7 @@ __coro_client_role client_role(int32_t port) {
         conn.emplace(std::move(std::get<0>(__tup_1)));
         addr = std::get<1>(__tup_1);
         // await loop.sock_sendall(conn, b"abc")   # send 3, keep open
-        __sub_1.emplace(std::move((*loop).sock_sendall((*conn), ::tpy::bytes_literal("\x61\x62\x63", 3))));
+        __sub_1.emplace(std::move((*loop).sock_sendall((*conn), ::tpy::bytes_literal("abc", 3))));
         __state = S_RESUME_1;
         continue;
     }

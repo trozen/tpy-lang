@@ -67,7 +67,7 @@ __coro_handle handle(::tpystd::asyncio::StreamReader reader, ::tpystd::asyncio::
         reader.emplace(std::move(std::get<0>(__tup_1)));
         writer.emplace(std::move(std::get<1>(__tup_1)));
         // writer.write(msg.encode() + b"\n")
-        (*writer).write((::tpy::bytes_concat(::tpy::bytes_from_str(msg), std::vector<uint8_t>{0x0a})));
+        (*writer).write((::tpy::bytes_concat(::tpy::bytes_from_str(msg), ::tpy::bytes_literal_owned("\n", 1))));
         // await writer.drain()
         __sub_1.emplace((*writer));
         __state = S_RESUME_1;

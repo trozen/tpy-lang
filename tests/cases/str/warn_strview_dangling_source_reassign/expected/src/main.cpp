@@ -23,13 +23,13 @@ void strview_pinned_alias_warns() {
 // def bytesview_pinned_alias_warns() -> None:
 void bytesview_pinned_alias_warns() {
     // b = b"hello" + b"world"
-    std::vector<uint8_t> b = (::tpy::bytes_concat(std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f}, std::vector<uint8_t>{0x77, 0x6f, 0x72, 0x6c, 0x64}));
+    std::vector<uint8_t> b = (::tpy::bytes_concat(::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal_owned("world", 5)));
     // bv: BytesView = b
     std::span<const uint8_t> bv = b;
     // print(len(bv))
     std::cout << ::tpy::__len__(bv) << "\n";
     // b = b"other"  # tpyc: warning(/Mutation of 'b'.*reassignment invalidates view 'bv'/)
-    b = std::vector<uint8_t>{0x6f, 0x74, 0x68, 0x65, 0x72};
+    b = ::tpy::bytes_literal_owned("other", 5);
     // print(len(b))
     std::cout << ::tpy::__len__(b) << "\n";
 }

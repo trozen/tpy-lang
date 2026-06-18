@@ -69,7 +69,7 @@ __coro_server server(::tpystd::socket::socket& sock) {
         // loop = asyncio.get_running_loop()
         loop.emplace(::tpystd::asyncio::get_running_loop());
         // await loop.sock_sendall(sock, b"ping")
-        __sub_0.emplace(std::move((*loop).sock_sendall(sock, ::tpy::bytes_literal("\x70\x69\x6e\x67", 4))));
+        __sub_0.emplace(std::move((*loop).sock_sendall(sock, ::tpy::bytes_literal("ping", 4))));
         __state = S_RESUME_0;
         continue;
     }

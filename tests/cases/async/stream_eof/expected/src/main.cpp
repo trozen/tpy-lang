@@ -23,7 +23,7 @@ namespace tpyapp::main {
         reader.emplace(std::move(std::get<0>(__tup_1)));
         writer.emplace(std::move(std::get<1>(__tup_1)));
         // writer.write(b"abcdef")
-        (*writer).write(::tpy::bytes_literal("\x61\x62\x63\x64\x65\x66", 6));
+        (*writer).write(::tpy::bytes_literal("abcdef", 6));
         // await writer.drain()
         __sub_1.emplace((*writer));
         __state = S_RESUME_1;

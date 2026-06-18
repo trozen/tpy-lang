@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // h = Holder(b"hello", "h")
-    Holder h = Holder(::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5), "h");
+    Holder h = Holder(::tpy::bytes_literal("hello", 5), "h");
     // print(len(h.data), h.tag)
     std::cout << ::tpy::__len__(h.data) << " " << h.tag << "\n";
 }

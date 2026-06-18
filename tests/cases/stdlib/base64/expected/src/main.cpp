@@ -8,30 +8,30 @@ namespace tpyapp::main {
 void main() {
     // # b64: all three padding remainders + roundtrip.
     // print(b64encode(b"Man"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("\x4d\x61\x6e", 3))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("Man", 3))) << "\n";
     // print(b64decode(b"TWFu"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("\x54\x57\x46\x75", 4))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWFu", 4))) << "\n";
     // print(b64encode(b"Ma"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("\x4d\x61", 2))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("Ma", 2))) << "\n";
     // print(b64decode(b"TWE="))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("\x54\x57\x45\x3d", 4))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWE=", 4))) << "\n";
     // print(b64encode(b"M"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("\x4d", 1))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("M", 1))) << "\n";
     // print(b64decode(b"TQ=="))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("\x54\x51\x3d\x3d", 4))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TQ==", 4))) << "\n";
     // print(b64encode(b""))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(std::span<const uint8_t>{})) << "\n";
     // print(b64decode(b""))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(std::span<const uint8_t>{})) << "\n";
     // print(b64encode(b"hello world"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f\x20\x77\x6f\x72\x6c\x64", 11))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(::tpy::bytes_literal("hello world", 11))) << "\n";
     // print(b64decode(b"aGVsbG8gd29ybGQ="))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("\x61\x47\x56\x73\x62\x47\x38\x67\x64\x32\x39\x79\x62\x47\x51\x3d", 16))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("aGVsbG8gd29ybGQ=", 16))) << "\n";
     // # standard_b64* are aliases.
     // print(standard_b64encode(b"Man"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64encode(::tpy::bytes_literal("\x4d\x61\x6e", 3))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64encode(::tpy::bytes_literal("Man", 3))) << "\n";
     // print(standard_b64decode(b"TWFu"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64decode(::tpy::bytes_literal("\x54\x57\x46\x75", 4))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64decode(::tpy::bytes_literal("TWFu", 4))) << "\n";
     // # urlsafe: bytes that trigger + and / in the standard alphabet get -/_.
     // raw: bytes = b"\xfb\xff"
     std::span<const uint8_t> raw = ::tpy::bytes_literal("\xfb\xff", 2);
@@ -40,83 +40,83 @@ void main() {
     // print(urlsafe_b64encode(raw))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64encode(raw)) << "\n";
     // print(urlsafe_b64decode(b"-_8="))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64decode(::tpy::bytes_literal("\x2d\x5f\x38\x3d", 4))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64decode(::tpy::bytes_literal("-_8=", 4))) << "\n";
     // print(b64decode(b"+/8="))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("\x2b\x2f\x38\x3d", 4))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("+/8=", 4))) << "\n";
     // # b16: all-zero, simple, roundtrip.
     // print(b16encode(b""))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(std::span<const uint8_t>{})) << "\n";
     // print(b16encode(b"\x00"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::bytes_literal("\x00", 1))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::bytes_literal("\000", 1))) << "\n";
     // print(b16encode(b"Hi!"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::bytes_literal("\x48\x69\x21", 3))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16encode(::tpy::bytes_literal("Hi!", 3))) << "\n";
     // print(b16decode(b"486921"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode(::tpy::bytes_literal("\x34\x38\x36\x39\x32\x31", 6))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode(::tpy::bytes_literal("486921", 6))) << "\n";
     // # b32: every input-length mod 5 triggers a different pad count.
     // print(b32encode(b""))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(std::span<const uint8_t>{})) << "\n";
     // print(b32encode(b"f"))         # 1 -> 6 pads
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("\x66", 1))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("f", 1))) << "\n";
     // print(b32encode(b"fo"))        # 2 -> 4 pads
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("\x66\x6f", 2))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("fo", 2))) << "\n";
     // print(b32encode(b"foo"))       # 3 -> 3 pads
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("\x66\x6f\x6f", 3))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("foo", 3))) << "\n";
     // print(b32encode(b"foob"))      # 4 -> 1 pad
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("\x66\x6f\x6f\x62", 4))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("foob", 4))) << "\n";
     // print(b32encode(b"fooba"))     # 5 -> 0 pads
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("\x66\x6f\x6f\x62\x61", 5))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("fooba", 5))) << "\n";
     // print(b32encode(b"foobar"))    # 6 -> 6 pads (5+1)
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("\x66\x6f\x6f\x62\x61\x72", 6))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32encode(::tpy::bytes_literal("foobar", 6))) << "\n";
     // print(b32decode(b"MY======"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("\x4d\x59\x3d\x3d\x3d\x3d\x3d\x3d", 8))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MY======", 8))) << "\n";
     // print(b32decode(b"MZXQ===="))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("\x4d\x5a\x58\x51\x3d\x3d\x3d\x3d", 8))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXQ====", 8))) << "\n";
     // print(b32decode(b"MZXW6==="))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("\x4d\x5a\x58\x57\x36\x3d\x3d\x3d", 8))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6===", 8))) << "\n";
     // print(b32decode(b"MZXW6YQ="))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("\x4d\x5a\x58\x57\x36\x59\x51\x3d", 8))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6YQ=", 8))) << "\n";
     // print(b32decode(b"MZXW6YTB"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("\x4d\x5a\x58\x57\x36\x59\x54\x42", 8))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6YTB", 8))) << "\n";
     // print(b32decode(b"MZXW6YTBOI======"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("\x4d\x5a\x58\x57\x36\x59\x54\x42\x4f\x49\x3d\x3d\x3d\x3d\x3d\x3d", 16))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW6YTBOI======", 16))) << "\n";
     // # altchars on b64: same alphabet swap as urlsafe_*, callable form.
     // print(b64encode(raw, b"-_"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(raw, std::vector<uint8_t>{0x2d, 0x5f})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(raw, ::tpy::bytes_literal_owned("-_", 2))) << "\n";
     // print(b64decode(b"-_8=", b"-_"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("\x2d\x5f\x38\x3d", 4), std::vector<uint8_t>{0x2d, 0x5f})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("-_8=", 4), ::tpy::bytes_literal_owned("-_", 2))) << "\n";
     // # validate=False (CPython default) skips non-alphabet chars.
     // print(b64decode(b"TWFu\n"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("\x54\x57\x46\x75\x0a", 5))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWFu\n", 5))) << "\n";
     // print(b64decode(b"T W F u"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("\x54\x20\x57\x20\x46\x20\x75", 7))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("T W F u", 7))) << "\n";
     // # validate=True: strict, must consist entirely of alphabet + padding.
     // print(b64decode(b"TWFu", None, True))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("\x54\x57\x46\x75", 4), std::nullopt, true)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode(::tpy::bytes_literal("TWFu", 4), std::nullopt, true)) << "\n";
     // # b32 casefold + map01.
     // print(b32decode(b"mzxw6ytb", True))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("\x6d\x7a\x78\x77\x36\x79\x74\x62", 8), true)) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("mzxw6ytb", 8), true)) << "\n";
     // print(b32decode(b"MZXW0YTB", False, b"I"))  # '0' -> 'O'
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("\x4d\x5a\x58\x57\x30\x59\x54\x42", 8), false, std::vector<uint8_t>{0x49})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW0YTB", 8), false, ::tpy::bytes_literal_owned("I", 1))) << "\n";
     // print(b32decode(b"MZXW1YTB", False, b"L"))  # '1' -> 'L'
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("\x4d\x5a\x58\x57\x31\x59\x54\x42", 8), false, std::vector<uint8_t>{0x4c})) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode(::tpy::bytes_literal("MZXW1YTB", 8), false, ::tpy::bytes_literal_owned("L", 1))) << "\n";
     // # bytearray input: accepted via span coercion.
     // ba: bytearray = bytearray(b"Man")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("\x4d\x61\x6e", 3));
+    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("Man", 3));
     // print(b64encode(ba))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64encode(ba)) << "\n";
     // # encodebytes: MIME-style 76-char line wrap + trailing newline.
     // print(encodebytes(b""))
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes(std::span<const uint8_t>{})) << "\n";
     // print(encodebytes(b"hello"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes(::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes(::tpy::bytes_literal("hello", 5))) << "\n";
     // print(encodebytes(b"a" * 76))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes((::tpy::bytes_repeat(std::vector<uint8_t>{0x61}, 76)))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes((::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 76)))) << "\n";
     // print(encodebytes(b"a" * 77))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes((::tpy::bytes_repeat(std::vector<uint8_t>{0x61}, 77)))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::encodebytes((::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 77)))) << "\n";
     // print(decodebytes(b"YWFh\n"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::decodebytes(::tpy::bytes_literal("\x59\x57\x46\x68\x0a", 5))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::decodebytes(::tpy::bytes_literal("YWFh\n", 5))) << "\n";
     // print(decodebytes(b"aGVsbG8=\n"))
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::decodebytes(::tpy::bytes_literal("\x61\x47\x56\x73\x62\x47\x38\x3d\x0a", 9))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::decodebytes(::tpy::bytes_literal("aGVsbG8=\n", 9))) << "\n";
     // # bytes/bytearray inputs share the code path; verify with a standard
     // # bytearray through urlsafe too.
     // print(urlsafe_b64encode(bytearray(b"\xfb\xff")))
@@ -144,7 +144,7 @@ void main() {
     {
         try {
             // b64decode(b"????", None, True)  # validate=True + invalid chars
-            ::tpystd::base64::b64decode(::tpy::bytes_literal("\x3f\x3f\x3f\x3f", 4), std::nullopt, true);
+            ::tpystd::base64::b64decode(::tpy::bytes_literal("????", 4), std::nullopt, true);
         } catch (const ::tpy::ValueError&) {
             // print("b64 validate raised")
             std::cout << "b64 validate raised" << "\n";
@@ -154,7 +154,7 @@ void main() {
     {
         try {
             // b32decode(b"MZXQ===")  # 7 chars, not a multiple of 8
-            ::tpystd::base64::b32decode(::tpy::bytes_literal("\x4d\x5a\x58\x51\x3d\x3d\x3d", 7));
+            ::tpystd::base64::b32decode(::tpy::bytes_literal("MZXQ===", 7));
         } catch (const ::tpy::ValueError&) {
             // print("b32 length raised")
             std::cout << "b32 length raised" << "\n";
@@ -164,7 +164,7 @@ void main() {
     {
         try {
             // b16decode(b"4G")  # G not a valid hex char
-            ::tpystd::base64::b16decode(::tpy::bytes_literal("\x34\x47", 2));
+            ::tpystd::base64::b16decode(::tpy::bytes_literal("4G", 2));
         } catch (const ::tpy::ValueError&) {
             // print("b16 char raised")
             std::cout << "b16 char raised" << "\n";

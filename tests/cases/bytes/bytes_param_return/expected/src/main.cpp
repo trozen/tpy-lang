@@ -15,7 +15,7 @@ std::vector<uint8_t> first_or_empty(std::span<const uint8_t> b) {
     // if len(b) == 0:
     if ((::tpy::__len__(b) == 0)) {
         // return b"empty"
-        return std::vector<uint8_t>{0x65, 0x6d, 0x70, 0x74, 0x79};
+        return ::tpy::bytes_literal_owned("empty", 5);
     }
     // return b
     return ::tpy::bytes_copy(b);
@@ -24,19 +24,19 @@ std::vector<uint8_t> first_or_empty(std::span<const uint8_t> b) {
 // def opt_or_default(b: Optional[bytes]) -> bytes:
 std::vector<uint8_t> opt_or_default(std::optional<std::vector<uint8_t>> b) {
     // return b if b is not None else b"none"
-    return ::tpy::bytes_copy((((b.has_value())) ? ((*b)) : (std::vector<uint8_t>{0x6e, 0x6f, 0x6e, 0x65})));
+    return ::tpy::bytes_copy((((b.has_value())) ? ((*b)) : (::tpy::bytes_literal_owned("none", 4))));
 }
 
 // def main() -> None:
 void main() {
     // r = echo(b"hello")
-    std::vector<uint8_t> r = echo(::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5));
+    std::vector<uint8_t> r = echo(::tpy::bytes_literal("hello", 5));
     // print(len(r), r == b"hello")
-    std::cout << ::tpy::__len__(r) << " " << ::tpy::print_bool((::tpy::bytes_eq(r, std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f}))) << "\n";
+    std::cout << ::tpy::__len__(r) << " " << ::tpy::print_bool((::tpy::bytes_eq(r, ::tpy::bytes_literal_owned("hello", 5)))) << "\n";
     // print(len(first_or_empty(b"")))
     std::cout << ::tpy::__len__(first_or_empty(std::span<const uint8_t>{})) << "\n";
     // print(opt_or_default(b"xy") == b"xy", opt_or_default(None) == b"none")
-    std::cout << ::tpy::print_bool((::tpy::bytes_eq(opt_or_default(std::vector<uint8_t>{0x78, 0x79}), std::vector<uint8_t>{0x78, 0x79}))) << " " << ::tpy::print_bool((::tpy::bytes_eq(opt_or_default(std::nullopt), std::vector<uint8_t>{0x6e, 0x6f, 0x6e, 0x65}))) << "\n";
+    std::cout << ::tpy::print_bool((::tpy::bytes_eq(opt_or_default(::tpy::bytes_literal_owned("xy", 2)), ::tpy::bytes_literal_owned("xy", 2)))) << " " << ::tpy::print_bool((::tpy::bytes_eq(opt_or_default(std::nullopt), ::tpy::bytes_literal_owned("none", 4)))) << "\n";
 }
 
 void __tpy_init() {

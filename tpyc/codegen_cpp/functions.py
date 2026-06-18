@@ -39,7 +39,7 @@ from ..parse.nodes import (
     TpyCall, TpyName,
 )
 from ..namespace import Namespace
-from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span
+from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned
 from .param_const import decide_param_const, ParamConstDecision
 from .type_resolution import resolve_stmt_type_cascade
 
@@ -148,8 +148,7 @@ def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
         # the literal to static storage avoids a per-call vector allocation.
         if is_bytes_view_type(ptype) or is_bytes_type(ptype):
             return cpp_bytes_literal_span(expr.value)
-        hex_bytes = ", ".join(f"0x{b:02x}" for b in expr.value)
-        return f"std::vector<uint8_t>{{{hex_bytes}}}"
+        return cpp_bytes_literal_owned(expr.value)
     if isinstance(expr, TpyNoneLiteral):
         # OwnType(OptionalType) -> std::optional<T>&& param, needs std::nullopt.
         # Bare OptionalType with pointer repr -> T* param, needs nullptr.

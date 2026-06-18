@@ -67,7 +67,7 @@ void main() {
         }
     }
     // ba2: bytearray = bytearray(b"abc")
-    std::vector<uint8_t> ba2 = ::tpy::bytes_copy(::tpy::bytes_literal("\x61\x62\x63", 3));
+    std::vector<uint8_t> ba2 = ::tpy::bytes_copy(::tpy::bytes_literal("abc", 3));
     // try:
     {
         try {

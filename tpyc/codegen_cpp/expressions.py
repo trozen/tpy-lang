@@ -78,7 +78,7 @@ from ..prescan import match_is_none, _expr_to_narrowing_key
 from ..namespace import BindingKind
 from ..sema.numeric_lattice import fixed_int_range_contains
 from ..sema.literal_utils import literal_value_from_expr
-from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, enum_cpp_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, view_key_target, CppForm, FormValue
+from .context import INDENT, escape_cpp_string, escape_cpp_char, escape_cpp_name, qualified_cpp_name, qualify_native_name, enum_cpp_name, loop_var_binding, is_lvalue_iterable, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, view_key_target, CppForm, FormValue
 from .functions import literal_mangled_name
 from .. import qnames
 
@@ -1292,8 +1292,7 @@ class ExpressionGenerator:
                 return "std::vector<uint8_t>{}"
             if is_bytes_view_type(target_type):
                 return cpp_bytes_literal_span(expr.value)
-            hex_bytes = ", ".join(f"0x{b:02x}" for b in expr.value)
-            return f"std::vector<uint8_t>{{{hex_bytes}}}"
+            return cpp_bytes_literal_owned(expr.value)
 
         elif isinstance(expr, TpyName):
             # Function reference: generate qualified C++ function name

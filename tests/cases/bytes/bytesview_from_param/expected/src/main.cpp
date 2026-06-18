@@ -19,7 +19,7 @@ std::span<const uint8_t> from_param_sliced(std::span<const uint8_t> b) {
 // def from_literal() -> BytesView:
 std::span<const uint8_t> from_literal() {
     // bv: BytesView = b"hello"
-    std::span<const uint8_t> bv = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5);
+    std::span<const uint8_t> bv = ::tpy::bytes_literal("hello", 5);
     // return bv
     return bv;
 }
@@ -27,7 +27,7 @@ std::span<const uint8_t> from_literal() {
 // def main() -> None:
 void main() {
     // data = b"abcdef"
-    std::span<const uint8_t> data = ::tpy::bytes_literal("\x61\x62\x63\x64\x65\x66", 6);
+    std::span<const uint8_t> data = ::tpy::bytes_literal("abcdef", 6);
     // print(from_param(data).decode())
     std::cout << ::tpy::bytes_decode(from_param(data)) << "\n";
     // print(from_param_sliced(data).decode())

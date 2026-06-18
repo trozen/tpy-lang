@@ -12,62 +12,62 @@ void main() {
     // print(h0.hexdigest())
     std::cout << h0.hexdigest() << "\n";
     // h1 = sha256(b"abc")
-    ::tpystd::hashlib::SHA256 h1 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("\x61\x62\x63", 3));
+    ::tpystd::hashlib::SHA256 h1 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("abc", 3));
     // print(h1.hexdigest())
     std::cout << h1.hexdigest() << "\n";
     // h2 = sha256(b"The quick brown fox jumps over the lazy dog")
-    ::tpystd::hashlib::SHA256 h2 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("\x54\x68\x65\x20\x71\x75\x69\x63\x6b\x20\x62\x72\x6f\x77\x6e\x20\x66\x6f\x78\x20\x6a\x75\x6d\x70\x73\x20\x6f\x76\x65\x72\x20\x74\x68\x65\x20\x6c\x61\x7a\x79\x20\x64\x6f\x67", 43));
+    ::tpystd::hashlib::SHA256 h2 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("The quick brown fox jumps over the lazy dog", 43));
     // print(h2.hexdigest())
     std::cout << h2.hexdigest() << "\n";
     // # 56-byte input: forces the length-field into a second final block.
     // h3 = sha256(b"abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq")
-    ::tpystd::hashlib::SHA256 h3 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("\x61\x62\x63\x64\x62\x63\x64\x65\x63\x64\x65\x66\x64\x65\x66\x67\x65\x66\x67\x68\x66\x67\x68\x69\x67\x68\x69\x6a\x68\x69\x6a\x6b\x69\x6a\x6b\x6c\x6a\x6b\x6c\x6d\x6b\x6c\x6d\x6e\x6c\x6d\x6e\x6f\x6d\x6e\x6f\x70\x6e\x6f\x70\x71", 56));
+    ::tpystd::hashlib::SHA256 h3 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq", 56));
     // print(h3.hexdigest())
     std::cout << h3.hexdigest() << "\n";
     // # Multi-block: 1000 'a' bytes spans 16 blocks.
     // h4 = sha256(b"a" * 1000)
-    ::tpystd::hashlib::SHA256 h4 = ::tpystd::hashlib::sha256((::tpy::bytes_repeat(std::vector<uint8_t>{0x61}, 1000)));
+    ::tpystd::hashlib::SHA256 h4 = ::tpystd::hashlib::sha256((::tpy::bytes_repeat(::tpy::bytes_literal_owned("a", 1), 1000)));
     // print(h4.hexdigest())
     std::cout << h4.hexdigest() << "\n";
     // # Streaming: incremental update must match one-shot.
     // s = sha256()
     ::tpystd::hashlib::SHA256 s = ::tpystd::hashlib::sha256();
     // s.update(b"abc")
-    s.update(::tpy::bytes_literal("\x61\x62\x63", 3));
+    s.update(::tpy::bytes_literal("abc", 3));
     // print(s.hexdigest())
     std::cout << s.hexdigest() << "\n";
     // # Split input across multiple updates.
     // s2 = sha256()
     ::tpystd::hashlib::SHA256 s2 = ::tpystd::hashlib::sha256();
     // s2.update(b"The quick brown fox ")
-    s2.update(::tpy::bytes_literal("\x54\x68\x65\x20\x71\x75\x69\x63\x6b\x20\x62\x72\x6f\x77\x6e\x20\x66\x6f\x78\x20", 20));
+    s2.update(::tpy::bytes_literal("The quick brown fox ", 20));
     // s2.update(b"jumps over the lazy dog")
-    s2.update(::tpy::bytes_literal("\x6a\x75\x6d\x70\x73\x20\x6f\x76\x65\x72\x20\x74\x68\x65\x20\x6c\x61\x7a\x79\x20\x64\x6f\x67", 23));
+    s2.update(::tpy::bytes_literal("jumps over the lazy dog", 23));
     // print(s2.hexdigest())
     std::cout << s2.hexdigest() << "\n";
     // # digest() is idempotent -- second call returns the same bytes.
     // s3 = sha256(b"abc")
-    ::tpystd::hashlib::SHA256 s3 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("\x61\x62\x63", 3));
+    ::tpystd::hashlib::SHA256 s3 = ::tpystd::hashlib::sha256(::tpy::bytes_literal("abc", 3));
     // print(s3.hexdigest())
     std::cout << s3.hexdigest() << "\n";
     // print(s3.hexdigest())
     std::cout << s3.hexdigest() << "\n";
     // # copy() snapshots state: diverging the clone must not affect the original.
     // base = sha256(b"hello")
-    ::tpystd::hashlib::SHA256 base = ::tpystd::hashlib::sha256(::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5));
+    ::tpystd::hashlib::SHA256 base = ::tpystd::hashlib::sha256(::tpy::bytes_literal("hello", 5));
     // branch = base.copy()
     ::tpystd::hashlib::SHA256 branch = base.copy();
     // base.update(b" world")
-    base.update(::tpy::bytes_literal("\x20\x77\x6f\x72\x6c\x64", 6));
+    base.update(::tpy::bytes_literal(" world", 6));
     // branch.update(b" there")
-    branch.update(::tpy::bytes_literal("\x20\x74\x68\x65\x72\x65", 6));
+    branch.update(::tpy::bytes_literal(" there", 6));
     // print(base.hexdigest())
     std::cout << base.hexdigest() << "\n";
     // print(branch.hexdigest())
     std::cout << branch.hexdigest() << "\n";
     // # raw .digest() length.
     // print(len(sha256(b"abc").digest()))
-    std::cout << ::tpy::__len__(::tpystd::hashlib::sha256(::tpy::bytes_literal("\x61\x62\x63", 3)).digest()) << "\n";
+    std::cout << ::tpy::__len__(::tpystd::hashlib::sha256(::tpy::bytes_literal("abc", 3)).digest()) << "\n";
     // # Introspection.
     // print(s3.digest_size)
     std::cout << s3.digest_size << "\n";

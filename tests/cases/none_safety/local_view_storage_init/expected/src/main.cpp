@@ -41,9 +41,9 @@ void main() {
     // print(join_or("hello", "z"), join_or(None, "zz"))
     std::cout << join_or("hello", "z") << " " << join_or(std::nullopt, "zz") << "\n";
     // print(bytes_or(b"abcd", b"z"), bytes_or(None, b"zz"))
-    std::cout << bytes_or(std::vector<uint8_t>{0x61, 0x62, 0x63, 0x64}, ::tpy::bytes_literal("\x7a", 1)) << " " << bytes_or(std::nullopt, ::tpy::bytes_literal("\x7a\x7a", 2)) << "\n";
+    std::cout << bytes_or(::tpy::bytes_literal_owned("abcd", 4), ::tpy::bytes_literal("z", 1)) << " " << bytes_or(std::nullopt, ::tpy::bytes_literal("zz", 2)) << "\n";
     // print(passthrough_str("hi"), passthrough_bytes(b"xyz"))
-    std::cout << passthrough_str("hi") << " " << passthrough_bytes(::tpy::bytes_literal("\x78\x79\x7a", 3)) << "\n";
+    std::cout << passthrough_str("hi") << " " << passthrough_bytes(::tpy::bytes_literal("xyz", 3)) << "\n";
 }
 
 void __tpy_init() {

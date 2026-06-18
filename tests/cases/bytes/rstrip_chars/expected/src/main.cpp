@@ -8,18 +8,18 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // print(b"hello\x00\x00\x00".rstrip(b"\x00"))  # b'hello'
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x00, 0x00, 0x00}, ::tpy::bytes_literal("\x00", 1))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("hello\000\000\000", 8), ::tpy::bytes_literal("\000", 1))) << "\n";
     // print(b"hello...".rstrip(b"."))                # b'hello'
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x2e, 0x2e, 0x2e}, ::tpy::bytes_literal("\x2e", 1))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("hello...", 8), ::tpy::bytes_literal(".", 1))) << "\n";
     // print(b"abcba".rstrip(b"ab"))                  # b'abc' -- strips any 'a' or 'b' from right
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(std::vector<uint8_t>{0x61, 0x62, 0x63, 0x62, 0x61}, ::tpy::bytes_literal("\x61\x62", 2))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("abcba", 5), ::tpy::bytes_literal("ab", 2))) << "\n";
     // print(b"hello".rstrip(b"\x00"))                # b'hello' -- nothing to strip
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(std::vector<uint8_t>{0x68, 0x65, 0x6c, 0x6c, 0x6f}, ::tpy::bytes_literal("\x00", 1))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_rstrip_chars_view(::tpy::bytes_literal_owned("hello", 5), ::tpy::bytes_literal("\000", 1))) << "\n";
     // # BytesView (from slice) -- rstrip returns a view
     // data: bytes = b"hello\x00\x00\x00end"
-    std::span<const uint8_t> data = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f\x00\x00\x00\x65\x6e\x64", 11);
+    std::span<const uint8_t> data = ::tpy::bytes_literal("hello\000\000\000end", 11);
     // print(len(data[0:8].rstrip(b"\x00")))          # 5
-    std::cout << ::tpy::__len__(::tpy::bytes_rstrip_chars_view(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 8}), ::tpy::bytes_literal("\x00", 1))) << "\n";
+    std::cout << ::tpy::__len__(::tpy::bytes_rstrip_chars_view(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 8}), ::tpy::bytes_literal("\000", 1))) << "\n";
 }
 
 void __tpy_init() {

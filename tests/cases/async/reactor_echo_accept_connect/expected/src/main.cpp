@@ -25,7 +25,7 @@ namespace tpyapp::main {
         (void)std::move(__r0).value();
         __sub_0.reset();
         // await loop.sock_sendall(s, b"hello")
-        __sub_1.emplace(std::move((*loop).sock_sendall((*s), ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5))));
+        __sub_1.emplace(std::move((*loop).sock_sendall((*s), ::tpy::bytes_literal("hello", 5))));
         __state = S_RESUME_1;
         continue;
     }

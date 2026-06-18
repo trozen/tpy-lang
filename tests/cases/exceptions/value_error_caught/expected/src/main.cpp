@@ -24,7 +24,7 @@ void main() {
     {
         try {
             // ba: bytearray = bytearray(b"abc")
-            std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("\x61\x62\x63", 3));
+            std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("abc", 3));
             // ba.remove(200)
             ::tpy::bytearray_remove(ba, 200);
         } catch (const ::tpy::ValueError& e) {

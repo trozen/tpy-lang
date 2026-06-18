@@ -118,9 +118,9 @@ void main() {
     // str_slice("abcdef")
     str_slice("abcdef");
     // bytes_sinks(b"hello")
-    bytes_sinks(::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5));
+    bytes_sinks(::tpy::bytes_literal("hello", 5));
     // bytes_optional_deref(b"world")
-    bytes_optional_deref(std::vector<uint8_t>{0x77, 0x6f, 0x72, 0x6c, 0x64});
+    bytes_optional_deref(::tpy::bytes_literal_owned("world", 5));
     // bytes_optional_deref(None)
     bytes_optional_deref(std::nullopt);
     // owned_source_inverse()

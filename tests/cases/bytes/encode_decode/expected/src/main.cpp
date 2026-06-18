@@ -20,7 +20,7 @@ void main() {
     // print(s == decoded)
     std::cout << ::tpy::print_bool((s == decoded)) << "\n";
     // combined = b"prefix:" + s.encode()
-    std::vector<uint8_t> combined = (::tpy::bytes_concat(std::vector<uint8_t>{0x70, 0x72, 0x65, 0x66, 0x69, 0x78, 0x3a}, ::tpy::bytes_from_str(s)));
+    std::vector<uint8_t> combined = (::tpy::bytes_concat(::tpy::bytes_literal_owned("prefix:", 7), ::tpy::bytes_from_str(s)));
     // print(combined)
     std::cout << ::tpy::BytesPrinter(combined) << "\n";
 }

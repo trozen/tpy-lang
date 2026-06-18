@@ -123,6 +123,12 @@ inline Bytes bytes_copy(BytesView src) {
     return Bytes(src.begin(), src.end());
 }
 
+// Owned counterpart of bytes_literal: a bytes literal materialized into an
+// owning vector (for owned slots -- fields, list elements, returns).
+inline Bytes bytes_literal_owned(const char* data, size_t n) {
+    return bytes_copy(bytes_literal(data, n));
+}
+
 // TODO(hot-path): per-element int_to_byte range check; revisit alongside a
 // @not_hot_path / unchecked variant. Prefer the UInt8 overload when possible.
 template<typename Arg>

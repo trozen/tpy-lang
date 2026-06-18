@@ -13,7 +13,7 @@ void main() {
     // w = open(path, "wb")
     ::tpy::BinaryFile w = ::tpy::builtin_open_binary(path, "wb");
     // w.write(b"\x00\x01\x02\x03")
-    w.write(::tpy::bytes_literal("\x00\x01\x02\x03", 4));
+    w.write(::tpy::bytes_literal("\000\x01\x02\x03", 4));
     // w.close()
     w.close();
     // # Read back
@@ -98,7 +98,7 @@ void main() {
     auto& f5 = __ctx_5.__enter__();
     try {
         // f5.write(b"alpha\nbeta\ngamma")
-        f5.write(::tpy::bytes_literal("\x61\x6c\x70\x68\x61\x0a\x62\x65\x74\x61\x0a\x67\x61\x6d\x6d\x61", 16));
+        f5.write(::tpy::bytes_literal("alpha\nbeta\ngamma", 16));
         __ctx_5.__exit__({}, nullptr, {});
     } catch (::tpy::BaseException& __exc_5) {
         __ctx_5.__exit__({}, &__exc_5, {});

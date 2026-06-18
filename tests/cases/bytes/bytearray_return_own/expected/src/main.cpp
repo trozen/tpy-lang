@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make() -> Own[bytearray]:
 std::vector<uint8_t> make() {
     // return bytearray(b"hi")
-    return ::tpy::bytes_copy(::tpy::bytes_literal("\x68\x69", 2));
+    return ::tpy::bytes_copy(::tpy::bytes_literal("hi", 2));
 }
 
 // def first_param(b: bytearray) -> bytearray:
@@ -21,7 +21,7 @@ void main() {
     // print(len(make()))
     std::cout << ::tpy::__len__(make()) << "\n";
     // ba = bytearray(b"abc")
-    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("\x61\x62\x63", 3));
+    std::vector<uint8_t> ba = ::tpy::bytes_copy(::tpy::bytes_literal("abc", 3));
     // print(len(first_param(ba)))
     std::cout << ::tpy::__len__(first_param(ba)) << "\n";
 }

@@ -8,29 +8,29 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // data = b"hello world"
-    std::span<const uint8_t> data = ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f\x20\x77\x6f\x72\x6c\x64", 11);
+    std::span<const uint8_t> data = ::tpy::bytes_literal("hello world", 11);
     // print(data.hex())
     std::cout << ::tpy::bytes_hex(data) << "\n";
     // print(data.find(b"world"))
-    std::cout << ::tpy::bytes_find(data, ::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5)) << "\n";
+    std::cout << ::tpy::bytes_find(data, ::tpy::bytes_literal("world", 5)) << "\n";
     // print(data.find(b"xyz"))
-    std::cout << ::tpy::bytes_find(data, ::tpy::bytes_literal("\x78\x79\x7a", 3)) << "\n";
+    std::cout << ::tpy::bytes_find(data, ::tpy::bytes_literal("xyz", 3)) << "\n";
     // print(data.rfind(b"l"))
-    std::cout << ::tpy::bytes_rfind(data, ::tpy::bytes_literal("\x6c", 1)) << "\n";
+    std::cout << ::tpy::bytes_rfind(data, ::tpy::bytes_literal("l", 1)) << "\n";
     // print(data.count(b"l"))
-    std::cout << ::tpy::bytes_count(data, ::tpy::bytes_literal("\x6c", 1)) << "\n";
+    std::cout << ::tpy::bytes_count(data, ::tpy::bytes_literal("l", 1)) << "\n";
     // print(data.startswith(b"hello"))
-    std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, ::tpy::bytes_literal("\x68\x65\x6c\x6c\x6f", 5))) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, ::tpy::bytes_literal("hello", 5))) << "\n";
     // print(data.endswith(b"world"))
-    std::cout << ::tpy::print_bool(::tpy::bytes_endswith(data, ::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5))) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::bytes_endswith(data, ::tpy::bytes_literal("world", 5))) << "\n";
     // print(data.startswith(b"world"))
-    std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, ::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5))) << "\n";
+    std::cout << ::tpy::print_bool(::tpy::bytes_startswith(data, ::tpy::bytes_literal("world", 5))) << "\n";
     // replaced = data.replace(b"world", b"bytes")
-    std::vector<uint8_t> replaced = ::tpy::bytes_replace(data, ::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5), ::tpy::bytes_literal("\x62\x79\x74\x65\x73", 5));
+    std::vector<uint8_t> replaced = ::tpy::bytes_replace(data, ::tpy::bytes_literal("world", 5), ::tpy::bytes_literal("bytes", 5));
     // print(replaced)
     std::cout << ::tpy::BytesPrinter(replaced) << "\n";
     // parts = b"a,b,c".split(b",")
-    std::vector<std::vector<uint8_t>> parts = ::tpy::bytes_split(std::vector<uint8_t>{0x61, 0x2c, 0x62, 0x2c, 0x63}, ::tpy::bytes_literal("\x2c", 1));
+    std::vector<std::vector<uint8_t>> parts = ::tpy::bytes_split(::tpy::bytes_literal_owned("a,b,c", 5), ::tpy::bytes_literal(",", 1));
     // for p in parts:
     auto& __obj_0 = parts;
     auto __beg_0 = __obj_0.begin();
@@ -41,18 +41,18 @@ void main() {
         std::cout << ::tpy::BytesPrinter(p) << "\n";
     }
     // joined = b", ".join(parts)
-    std::vector<uint8_t> joined = ::tpy::bytes_join(std::vector<uint8_t>{0x2c, 0x20}, parts);
+    std::vector<uint8_t> joined = ::tpy::bytes_join(::tpy::bytes_literal_owned(", ", 2), parts);
     // print(joined)
     std::cout << ::tpy::BytesPrinter(joined) << "\n";
     // # BytesView (from slice) -- methods work on views
     // v = data[0:11]
     std::span<const uint8_t> v = ::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 11});
     // print(v.find(b"world"))
-    std::cout << ::tpy::bytes_find(v, ::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5)) << "\n";
+    std::cout << ::tpy::bytes_find(v, ::tpy::bytes_literal("world", 5)) << "\n";
     // print(v.replace(b"world", b"there"))
-    std::cout << ::tpy::BytesPrinter(::tpy::bytes_replace(v, ::tpy::bytes_literal("\x77\x6f\x72\x6c\x64", 5), ::tpy::bytes_literal("\x74\x68\x65\x72\x65", 5))) << "\n";
+    std::cout << ::tpy::BytesPrinter(::tpy::bytes_replace(v, ::tpy::bytes_literal("world", 5), ::tpy::bytes_literal("there", 5))) << "\n";
     // vparts = data[0:11].split(b" ")
-    std::vector<std::vector<uint8_t>> vparts = ::tpy::bytes_split(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 11}), ::tpy::bytes_literal("\x20", 1));
+    std::vector<std::vector<uint8_t>> vparts = ::tpy::bytes_split(::tpy::bytes_slice(data, ::tpy::BasicSlice{0, 11}), ::tpy::bytes_literal(" ", 1));
     // for vp in vparts:
     auto& __obj_1 = vparts;
     auto __beg_1 = __obj_1.begin();

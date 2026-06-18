@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def test_list_view() -> None:
 void test_list_view() {
     // items: list[bytes] = [b"alice", b"bob"]
-    std::vector<std::vector<uint8_t>> items = {std::vector<uint8_t>{0x61, 0x6c, 0x69, 0x63, 0x65}, std::vector<uint8_t>{0x62, 0x6f, 0x62}};
+    std::vector<std::vector<uint8_t>> items = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
     // x = items[Int32(0)]  # tpyc: type(BytesView)
     std::span<const uint8_t> x = ::tpy::__getitem__(items, 0);
     // print(x)
@@ -17,11 +17,11 @@ void test_list_view() {
 // def test_list_mutation_fallback() -> None:
 void test_list_mutation_fallback() {
     // items: list[bytes] = [b"alice", b"bob"]
-    std::vector<std::vector<uint8_t>> items = {std::vector<uint8_t>{0x61, 0x6c, 0x69, 0x63, 0x65}, std::vector<uint8_t>{0x62, 0x6f, 0x62}};
+    std::vector<std::vector<uint8_t>> items = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
     // x = items[Int32(0)]  # tpyc: type(bytes)
     std::vector<uint8_t> x = ::tpy::__getitem__(items, 0);
     // items.append(b"carol")
-    items.push_back(std::vector<uint8_t>{0x63, 0x61, 0x72, 0x6f, 0x6c});
+    items.push_back(::tpy::bytes_literal_owned("carol", 5));
     // print(x)
     std::cout << ::tpy::BytesPrinter(x) << "\n";
 }
@@ -29,13 +29,13 @@ void test_list_mutation_fallback() {
 // def test_list_reassign_fallback() -> None:
 void test_list_reassign_fallback() {
     // items: list[bytes] = [b"alice", b"bob"]
-    std::vector<std::vector<uint8_t>> __slot_1 = {std::vector<uint8_t>{0x61, 0x6c, 0x69, 0x63, 0x65}, std::vector<uint8_t>{0x62, 0x6f, 0x62}};
+    std::vector<std::vector<uint8_t>> __slot_1 = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
     std::optional<std::vector<std::vector<uint8_t>>> __slot_2;
     std::vector<std::vector<uint8_t>>* items = &__slot_1;
     // x = items[Int32(0)]  # tpyc: type(bytes)
     std::vector<uint8_t> x = ::tpy::__getitem__((*items), 0);
     // items = [b"dave"]
-    items = &*(__slot_2 = {std::vector<uint8_t>{0x64, 0x61, 0x76, 0x65}});
+    items = &*(__slot_2 = {::tpy::bytes_literal_owned("dave", 4)});
     // print(x)
     std::cout << ::tpy::BytesPrinter(x) << "\n";
 }
@@ -43,11 +43,11 @@ void test_list_reassign_fallback() {
 // def test_list_subscript_write_fallback() -> None:
 void test_list_subscript_write_fallback() {
     // items: list[bytes] = [b"alice", b"bob"]
-    std::vector<std::vector<uint8_t>> items = {std::vector<uint8_t>{0x61, 0x6c, 0x69, 0x63, 0x65}, std::vector<uint8_t>{0x62, 0x6f, 0x62}};
+    std::vector<std::vector<uint8_t>> items = {::tpy::bytes_literal_owned("alice", 5), ::tpy::bytes_literal_owned("bob", 3)};
     // x = items[Int32(0)]  # tpyc: type(bytes)
     std::vector<uint8_t> x = ::tpy::__getitem__(items, 0);
     // items[Int32(0)] = b"eve"
-    ::tpy::__setitem__(items, 0, std::vector<uint8_t>{0x65, 0x76, 0x65});
+    ::tpy::__setitem__(items, 0, ::tpy::bytes_literal_owned("eve", 3));
     // print(x)
     std::cout << ::tpy::BytesPrinter(x) << "\n";
 }

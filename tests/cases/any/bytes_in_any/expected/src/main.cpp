@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 void main() {
     // a: Any = b"hi"
-    ::tpy::Any a = ::tpy::make_any(std::vector<uint8_t>{0x68, 0x69});
+    ::tpy::Any a = ::tpy::make_any(::tpy::bytes_literal_owned("hi", 2));
     // print(a)
     std::cout << a << "\n";
 }
