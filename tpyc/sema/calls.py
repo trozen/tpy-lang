@@ -833,6 +833,23 @@ class CallAnalyzer:
             is_constructor=True,
         )
 
+    def _record_for_local_name(self, name: str) -> 'RecordInfo | None':
+        """Resolve a possibly import-aliased local name to its record.
+
+        `get_record(name)` is keyed by short name and collides for two records
+        sharing a short name imported from different modules. Override it only
+        when the import table proves the short-name lookup landed in a *different*
+        module (the genuine collision) -- otherwise the plain lookup is kept, so
+        builtins and ordinary single records resolve exactly as before.
+        """
+        rec = self.ctx.registry.get_record(name)
+        imp = self.ctx.imported_names.get(name)
+        if imp is not None and rec is not None and rec.defining_module != imp[0]:
+            authoritative = self.ctx.registry.find_module_record(*imp)
+            if authoritative is not None:
+                return authoritative
+        return rec
+
     def analyze_call(self, expr: TpyCall) -> TpyType:
         """Analyze a function or constructor call."""
         # Expression callees: callbacks[0](x), get_handler()(x), etc.
@@ -883,7 +900,7 @@ class CallAnalyzer:
                 expr.call_type = None
             if not is_known_function:
                 # Check if it's a user-defined record - use _analyze_record_constructor for bound validation
-                record = self.ctx.registry.get_record(expr.func_name)
+                record = self._record_for_local_name(expr.func_name)
                 if record:
                     return self._analyze_record_constructor(expr, record)
                 # Subscript callee fallback: Handlers[0](args) was parsed as
@@ -1013,8 +1030,10 @@ class CallAnalyzer:
                                 return self._analyze_special_builtin(expr, func_infos)
                             return self._analyze_builtin_function_overloads(expr, func_infos)
                         return self._analyze_user_function_call(expr, func_infos)
-                    # Check for user module record (registered via _register_user_module_import)
-                    if record_info := self.ctx.registry.get_record(expr.func_name):
+                    # Check for user module record (registered via _register_user_module_import).
+                    # Import-aware: get_record by short name collides for same-name
+                    # records from different modules.
+                    if record_info := self._record_for_local_name(expr.func_name):
                         return self._analyze_record_constructor(expr, record_info)
                     # Check for module function (e.g., math.sqrt)
                     if overloads := self._get_module_function_overloads(module_name, func_name):
@@ -1061,12 +1080,12 @@ class CallAnalyzer:
                     )
 
         # Fallback: Check if it's a record constructor
-        record = self.ctx.registry.get_record(expr.func_name)
+        record = self._record_for_local_name(expr.func_name)
         if record:
             # Analyze arguments
             for arg in expr.args:
                 self.expr.analyze_expr(arg)
-            return NominalType(expr.func_name, _module_qname=record.qualified_name())
+            return NominalType(record.name, _module_qname=record.qualified_name())
 
         # Fallback: Check if it's a function call
         func_infos = self.ctx.registry.get_function(expr.func_name)
@@ -1753,7 +1772,16 @@ class CallAnalyzer:
                 "Any is not a runtime class",
                 expr,
             )
-        # User-defined records
+        # User-defined records. Resolve through the import table first: a bare
+        # `get_record(name)` is keyed by short name and collides for same-name
+        # records imported from different modules, so it would test against the
+        # wrong class (and narrow to its qname).
+        imp = self.ctx.imported_names.get(name)
+        if imp is not None:
+            module, original = imp
+            record = self.ctx.registry.find_module_record(module, original)
+            if record:
+                return NominalType(original, _module_qname=record.qualified_name())
         record = self.ctx.registry.get_record(name)
         if record:
             return NominalType(name, _module_qname=record.qualified_name())
@@ -5317,8 +5345,12 @@ class CallAnalyzer:
                 expr)
         elif not record.has_init:
             self._validate_aggregate_zero_arg(record, expr, type_subst=None)
-        # Use expr.func (local name) not record.name (original) for alias support
-        result_type = NominalType(expr.func_name, _module_qname=record.qualified_name())
+        # NominalType.name is the canonical declaration name (qname disambiguates
+        # cross-module same-name records); an import alias here would make the
+        # constructed type's `name` differ from a union member's canonical name
+        # and break `==`-based identity. Codegen qualifies via the qname index,
+        # not this name, so the alias is not needed for C++ rendering.
+        result_type = NominalType(record.name, _module_qname=record.qualified_name())
         self._set_record_constructor_info(expr, record, result_type)
         return result_type
 

@@ -246,8 +246,8 @@ invariants: `PRIMITIVE_SNAPSHOT`, `ENUM_SNAPSHOT`, `FACTORY_SNAPSHOT`,
    insertion-order independent). A helper `same_nominal_symbol_loose`
    in `typesys.py` covers the narrow set of sites that compare
    across the parse/resolve boundary (bare placeholder vs qname-
-   bearing) -- currently only `TypeRegistry.is_subclass_of`'s
-   parent-chain walk.
+   bearing) -- `TypeRegistry.is_subclass_of`'s parent-chain walk
+   and the `record_to_ptr` / `record_to_const_ptr` coercions.
 
 3. **Never use `type(x) == type(y)` for nominal-kind dispatch.** Use
    qname/category predicates or explicit `NominalType.name`

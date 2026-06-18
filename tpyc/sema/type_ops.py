@@ -1235,6 +1235,14 @@ class TypeOperations:
         """Match a generic record NominalType against arg_type (e.g., Box[T])."""
         if not (isinstance(arg_type, NominalType) and arg_type.is_record and arg_type.name == param_type.name):
             return False
+        # Two records sharing a short name across modules must not unify: when
+        # both qnames are known and differ, they are distinct types even though
+        # the short name matches. (Compared here rather than via
+        # same_nominal_symbol_loose, which also checks type_args -- those are
+        # exactly what inference is solving for, e.g. Box[T] vs Box[Int32].)
+        if (arg_type._module_qname is not None and param_type._module_qname is not None
+                and arg_type._module_qname != param_type._module_qname):
+            return False
         if len(param_type.type_args) != len(arg_type.type_args):
             return False
         for pt, at in zip(param_type.type_args, arg_type.type_args):

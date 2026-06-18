@@ -958,9 +958,23 @@ class NominalType(TpyType):
         return NominalType(self.name, self.type_args, is_protocol, self._module_qname,
                          self.is_dynamic_protocol)
 
+    def _cpp_base_name(self) -> str:
+        """C++ base name (no type args), preferring a qname-keyed mapping.
+
+        `native_cpp_names` is also keyed by short name, which collides for
+        two records sharing a short name imported from different modules;
+        the canonical qname disambiguates them (codegen registers both keys).
+        """
+        view = _native_cpp_names_view()
+        if self._module_qname is not None:
+            qualified = view.get(self._module_qname)
+            if qualified is not None:
+                return qualified
+        return view.get(self.name, self.name)
+
     def to_cpp_base_name(self) -> str:
         """Return the C++ name without type arguments."""
-        return _native_cpp_names_view().get(self.name, self.name)
+        return self._cpp_base_name()
 
     def to_cpp(self) -> str:
         if self.is_protocol and not self.is_dynamic_protocol:
@@ -980,7 +994,7 @@ class NominalType(TpyType):
         # imported records, AND @builtin_type-with-body records
         # (registered via the `record_info.builtin_type_key` loop in
         # codegen_cpp/generator.py).
-        cpp_name = _native_cpp_names_view().get(self.name, self.name)
+        cpp_name = self._cpp_base_name()
         if self.type_args:
             args = ", ".join(
                 t.to_cpp() if isinstance(t, TpyType) else str(t)
@@ -1137,10 +1151,13 @@ def same_nominal_symbol_loose(a: 'TpyType', b: 'TpyType') -> bool:
     -- strict `__eq__` remains the correct comparison for resolved
     types in sets/dicts/unions.  This helper exists only for the
     narrow set of sites that compare across the parse/resolve
-    boundary -- currently `TypeRegistry.is_subclass_of`'s parent-
-    chain walk, where a recorded parent reference (minted pre-qname)
-    may need to match a qname-bearing argument.  Keep the call-site
-    list short; each addition should be justified at review time.
+    boundary, where one side may be a placeholder minted pre-qname
+    that must still match a qname-bearing counterpart:
+    `TypeRegistry.is_subclass_of`'s parent-chain walk (a recorded
+    parent reference vs a qname-bearing argument) and the
+    `record_to_ptr` / `record_to_const_ptr` coercions (the `&value`
+    pointee may be a parser placeholder).  Keep the call-site list
+    short; each addition should be justified at review time.
     """
     if not (isinstance(a, NominalType) and isinstance(b, NominalType)):
         return False
@@ -3553,8 +3570,12 @@ def make_union(*types: TpyType) -> TpyType:
             seen.add(t)
             deduped.append(t)
 
-    # Sort by string representation for canonical order
-    deduped.sort(key=lambda t: str(t))
+    # Sort for canonical order. `str(t)` renders a NominalType's short name
+    # only, so two same-short-name records / alias-instances from different
+    # modules would tie and fall back to insertion order -- producing two
+    # unequal, layout-incompatible variants for the same semantic union across
+    # module boundaries. Break ties on the qualified name when available.
+    deduped.sort(key=lambda t: (str(t), t.qualified_name() or ""))
 
     if len(deduped) == 0:
         # Only None members -- caller should handle this

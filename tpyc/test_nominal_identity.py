@@ -81,6 +81,16 @@ class TestNominalEquality:
         assert isinstance(u, UnionType)
         assert len(u.members) == 2
 
+    def test_make_union_order_independent(self) -> None:
+        # The canonical member order must not depend on argument order, so the
+        # same union spelled `A | B` in one module and `B | A` in another is
+        # one layout-compatible type. `str(NominalType)` renders the short
+        # name only, so without the qname tiebreak these two same-short-name
+        # members would tie and keep insertion order (two unequal variants).
+        a = NominalType("Foo", _module_qname="pkg_a.Foo")
+        b = NominalType("Foo", _module_qname="pkg_b.Foo")
+        assert make_union(a, b) == make_union(b, a)
+
     def test_same_qname_equal(self) -> None:
         a = NominalType("Foo", _module_qname="mod.Foo")
         b = NominalType("Foo", _module_qname="mod.Foo")

@@ -203,6 +203,16 @@ class CodeGenerator:
                 local_name, current_module)
             if qual is not None:
                 register_native_cpp_name(local_name, qualified_cpp_name(*qual))
+        # Also key cross-module user records by their canonical qname so
+        # NominalType.to_cpp() (qname-first) disambiguates two records sharing
+        # a short name from different modules -- the short-name `records` dict
+        # holds only one of them, so the loop above can't reach the other.
+        for qname, record_info in self.analyzer.registry._user_qname_index.items():
+            if record_info.is_native:
+                continue  # native records use their globally-unique native_name
+            qual = self.analyzer.registry.record_qualification(record_info, current_module)
+            if qual is not None:
+                register_native_cpp_name(qname, qualified_cpp_name(*qual))
         # Cross-module @dynamic protocols (e.g. `Awaker` imported into
         # `asyncio._executor` from `tpy.coro`) need the same `native_cpp_names`
         # qualification as user records: `NominalType.to_cpp()` consults the

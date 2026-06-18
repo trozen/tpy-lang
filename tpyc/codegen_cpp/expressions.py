@@ -3214,6 +3214,17 @@ class ExpressionGenerator:
             return f"{type_cpp}({args})"
         # Check for user-defined record constructor (e.g., Point(1, 2))
         if record_info := self.ctx.analyzer.registry.get_record(expr.func_name):
+            # get_record is short-name keyed and collides for two user records
+            # sharing a short name across modules. When the sema-assigned result
+            # type resolves (qname-first) to a *different* record, trust it -- it
+            # carries the authoritative module. Builtins / single records are
+            # unaffected (same record back, no override).
+            if record_info.builtin_type_key is None and not record_info.is_native:
+                ctor_result = self.ctx.get_expr_type(expr)
+                if isinstance(ctor_result, NominalType) and ctor_result.is_user_record:
+                    resolved_rec = self.ctx.analyzer.registry.get_record_for_type(ctor_result)
+                    if resolved_rec is not None:
+                        record_info = resolved_rec
             # Bare-name primitive constructors (`Float32(s)`, `Int32(s)`,
             # ...) reach here when sema resolved the matching @cpp_template
             # / @native(function=True) __init__ overload but the parser
@@ -3289,9 +3300,11 @@ class ExpressionGenerator:
                     return f"{cpp_name}{{{args}}}"
                 # @native: constructor call (C++ class)
                 return f"{cpp_name}({args})"
-            # Cross-module constructor: qualify to the declaring module.
-            qual = self.ctx.analyzer.registry.imported_record_qualification(
-                expr.func_name, self.ctx.analyzer.ctx.module_name)
+            # Cross-module constructor: qualify to the declaring module. Resolve
+            # from the (qname-correct) record_info, not the short name -- two
+            # same-name records from different modules would otherwise collide.
+            qual = self.ctx.analyzer.registry.record_qualification(
+                record_info, self.ctx.analyzer.ctx.module_name)
             if qual is not None:
                 source_module, original_name = qual
                 return f"{qualified_cpp_name(source_module, original_name)}({args})"

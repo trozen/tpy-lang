@@ -1712,3 +1712,19 @@ or eliminating the C++ compiler dependency), the MIR is ready.
     tag plus explicit conversion nodes carries everything the wrapper
     encodes, THIR types do not contain `RefType`, and the stripping fabric
     disappears with it.
+
+13. **Cross-module nominal identity as a single carried fact.** Distinct
+    records/exceptions sharing a short name across modules are kept distinct
+    by their module qname, but that invariant is currently enforced at ~5
+    phase-specific sites keyed on the qname rather than from one object every
+    consumer routes through: the resolver mints the qname from the import
+    tuple, sema (`isinstance` / constructor record resolution) and codegen
+    (`get_record_for_type`, `record_qualification`) re-resolve by qname, and
+    `make_union` / `coercions` / `type_ops` compare qnames. No single
+    chokepoint exists pre-IR -- that object *is* THIR. A related seam: the
+    two type-to-C++ paths use different identity rules (`NominalType.to_cpp`
+    keys `native_cpp_names` by short name with a qname fallback, while
+    codegen's `type_to_cpp` is qname-aware) -- a latent re-collision vector
+    (see BUGS.md). THIR should make the qname the single carried identity so
+    these scattered checks and the dual `to_cpp`/`type_to_cpp` rule collapse
+    into one. Surfaced by `fix-cross-module-type-identity` (audit triage #13).

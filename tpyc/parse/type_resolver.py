@@ -445,7 +445,7 @@ class TypeResolver:
                         if primitive is not None:
                             return primitive
                         registered = self._resolve_registered_type(
-                            resolved_q[1], loc=ref.loc, resolved=True)
+                            resolved_q[1], loc=ref.loc, resolved=resolved_q)
                         if registered is not None:
                             return self._upgrade_from_type_def(
                                 registered, resolved_q, loc=ref.loc)
@@ -483,7 +483,7 @@ class TypeResolver:
                     return primitive
             resolved_name = resolved[1] if resolved else name
             registered = self._resolve_registered_type(
-                resolved_name, loc=ref.loc, resolved=bool(resolved))
+                resolved_name, loc=ref.loc, resolved=resolved)
             if registered is not None:
                 # Mint _module_qname for cross-module user refs.  The
                 # builtin path handles type-factory-backed names (list,
@@ -906,7 +906,8 @@ class TypeResolver:
 
     def _resolve_registered_type(
         self, name: str, node: ast.expr | None = None,
-        *, resolved: bool = False, loc: SourceLocation | None = None,
+        *, resolved: tuple[str, str] | None = None,
+        loc: SourceLocation | None = None,
     ) -> TpyType | None:
         """Look up a name in the type registry (protocols, aliases, records).
 
@@ -963,14 +964,18 @@ class TypeResolver:
         if (resolved or parser.registry.is_known_type(name)
                 or name in parser._module_class_names
                 or name in parser._module_type_alias_names):
-            # Mint qname for same-module user records from parser.registry.
-            # Cross-module refs get their qname minted in `_resolve_ref` from
-            # the canonicalized import tuple. Builtin-type stubs carry their
+            # Mint qname for user records. When the name came from a
+            # canonicalized import tuple, that module is authoritative:
+            # `get_record(name)` is keyed by short name, so two records
+            # sharing a short name across modules collide and would mint the
+            # same (wrong) qname for both. Same-module refs (no import tuple)
+            # fall back to `rinfo.module`. Builtin-type stubs carry their
             # qname in `builtin_type_key`; leave them bare so the downstream
             # builtin-path minting (is_builtin gate) stays authoritative.
             rinfo = parser.registry.get_record(name)
             if rinfo is not None and rinfo.module and not rinfo.builtin_type_key:
-                return NominalType(name, _module_qname=f"{rinfo.module}.{name}")
+                module = resolved[0] if resolved is not None else rinfo.module
+                return NominalType(name, _module_qname=f"{module}.{name}")
             return NominalType(name)
         return None
 
