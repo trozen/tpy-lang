@@ -214,6 +214,8 @@ Independent extensions, listed in no particular order. Each is its own design ex
 
 4. **Exception-based cancellation.** `Task.cancel()` injects `CancelledError` at the next suspension point.
 
+   **Graceful shutdown on SIGINT (SHIPPED).** `asyncio.run` installs a SIGINT handler for the duration of the run, matching CPython's asyncio.run: Ctrl-C cancels the root task (so its `finally`/`__aexit__`/`wait_closed` cleanup runs via the normal cancellation path above), then `run` raises `KeyboardInterrupt`. The C signal layer (`runtime/cpp/src/stdlib/signal_impl.cpp`, behind `posix_signal`) uses an async-signal-safe handler that sets a flag and writes a wakeup `eventfd`; the executor's `_SignalScope` registers that eventfd in the epoll set so a signal wakes a blocked `epoll_wait` race-free (the byte is pending even if the signal lands just before the wait; `epoll_wait` retries EINTR internally). `run_until` calls `posix_signal.consume()` after each wait and cancels the root on the first delivered signal. Two deliberate consequences: SIGTERM keeps its default (terminate), matching CPython (graceful SIGTERM is a divergent enhancement, see TODO.md); and because the wakeup eventfd keeps the reactor fd-count >= 1, the "no progress possible" deadlock guard is suppressed during a signal-armed run (also CPython-faithful -- it has no such guard).
+
 5. **Minimal compiler surface, maximal library surface.** Compiler knows about a small set of types in `tpy`; everything user-facing lives in `asyncio` and is replaceable.
 
 6. **CPython source compat within scope.** v1/v1.5 surface runs unchanged in both. We don't promise compat for unsupported `Task`/`Future` methods or for asyncio modules outside the supported set.

@@ -5697,7 +5697,7 @@ Unknown directives produce a warning. Directives after the first line of code pr
   - `@error_return(E)` requires E to be a `ReturnException` type: `class MyError(Exception, ReturnException): pass`
   - `ReturnException` is a marker protocol that splits exception types into return (zero-cost) vs throw (C++ exceptions) categories
   - `StopIteration` is a built-in `ReturnException` type; user-defined types opt in via `ReturnException` marker
-  - `BaseException`/`Exception`/`ValueError`/`OSError`/`FileNotFoundError`/`PermissionError`/`BlockingIOError`/`AttributeError`/`AssertionError`/`LookupError`/`IndexError`/`KeyError`/`TypeError`/`NotImplementedError`/`ArithmeticError`/`ZeroDivisionError`/`OverflowError`/`FloatingPointError`/`RuntimeError`/`RecursionError`/`EOFError`/`MemoryError`/`StopAsyncIteration`/`CancelledError`/`GeneratorExit` are throw-tier; `StopIteration` is `ReturnException` (return-tier, used via `std::expected<T, E>`). All defined as `@native` classes in `lib/tpy/_builtins/_exceptions.py`, mapping to `::tpy::` runtime structs (inherit from `std::exception`). The base/subtype edges match CPython's hierarchy: `ArithmeticError` parents `ZeroDivisionError`/`OverflowError`/`FloatingPointError`, `LookupError` parents `IndexError`/`KeyError`, `OSError` parents `FileNotFoundError`/`PermissionError`/`BlockingIOError` (the last raised on EAGAIN/EWOULDBLOCK/EINPROGRESS by non-blocking socket calls), `RuntimeError` parents `RecursionError`. `CancelledError` and `GeneratorExit` inherit `BaseException` directly (not `Exception`) so `except Exception` does not silently swallow them; `GeneratorExit` is also constructed by the frame destructor and passed to `with.__exit__` when an abandoned generator/coroutine closes a suspended `with` region. `StopAsyncIteration` is the loop-termination signal for `async for`.
+  - `BaseException`/`Exception`/`ValueError`/`OSError`/`FileNotFoundError`/`PermissionError`/`BlockingIOError`/`AttributeError`/`AssertionError`/`LookupError`/`IndexError`/`KeyError`/`TypeError`/`NotImplementedError`/`ArithmeticError`/`ZeroDivisionError`/`OverflowError`/`FloatingPointError`/`RuntimeError`/`RecursionError`/`EOFError`/`MemoryError`/`StopAsyncIteration`/`CancelledError`/`GeneratorExit`/`KeyboardInterrupt` are throw-tier; `StopIteration` is `ReturnException` (return-tier, used via `std::expected<T, E>`). All defined as `@native` classes in `lib/tpy/_builtins/_exceptions.py`, mapping to `::tpy::` runtime structs (inherit from `std::exception`). The base/subtype edges match CPython's hierarchy: `ArithmeticError` parents `ZeroDivisionError`/`OverflowError`/`FloatingPointError`, `LookupError` parents `IndexError`/`KeyError`, `OSError` parents `FileNotFoundError`/`PermissionError`/`BlockingIOError` (the last raised on EAGAIN/EWOULDBLOCK/EINPROGRESS by non-blocking socket calls), `RuntimeError` parents `RecursionError`. `CancelledError`, `GeneratorExit`, and `KeyboardInterrupt` inherit `BaseException` directly (not `Exception`) so `except Exception` does not silently swallow them; `GeneratorExit` is also constructed by the frame destructor and passed to `with.__exit__` when an abandoned generator/coroutine closes a suspended `with` region; `KeyboardInterrupt` is raised by `asyncio.run` on an uncaught SIGINT graceful shutdown. `StopAsyncIteration` is the loop-termination signal for `async for`.
   - Decorator on functions: `raise E` compiles to `return std::unexpected(E{})`; `raise E(args)` passes constructor arguments
   - Callers must use `try/except E` or be `@error_return(E)` themselves (auto-propagation)
   - `try/except/else` supported; `except E as e` binds the error value for field access
@@ -5919,7 +5919,16 @@ Send/Sync rules for built-in types:
   running executor plus slot id/generation, and `Waker.wake()`
   schedules the parked task by id/generation via the protocol vtable.
   `runtime/cpp/include/tpy/async.hpp` is down to ~34 lines containing
-  only `CancelledError`. `asyncio.sleep(s)` is a real
+  only `CancelledError`. `asyncio.run` installs a **SIGINT graceful-shutdown
+  handler** for the duration of the run (matching CPython's asyncio.run):
+  Ctrl-C cancels the root task so its `finally` / `__aexit__` / `wait_closed`
+  cleanup runs, then `asyncio.run` raises `KeyboardInterrupt`. An
+  async-signal-safe handler sets a flag and writes a wakeup `eventfd`
+  registered in the executor's epoll set, so a signal wakes a blocked
+  `epoll_wait` race-free; the prior disposition is restored on exit. SIGTERM
+  is left at its default (terminate), also matching CPython. (`raise_signal` /
+  `SIGINT` / `SIGTERM` are exposed by a minimal `signal` stdlib module.)
+  `asyncio.sleep(s)` is a real
   wall-clock sleep; `asyncio.create_task(coro)` registers the task with
   the executor for concurrent scheduling and returns an `Own[Task[T]]`
   handle (T inferred from the async def's return type) that shares state

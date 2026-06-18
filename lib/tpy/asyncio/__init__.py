@@ -24,7 +24,7 @@ from tplib.rc import Rc
 from time import monotonic
 from socket import (
     socket, SocketError, SOL_SOCKET, SO_ERROR, SO_REUSEADDR, AF_INET, SOCK_STREAM)
-from _bindings import posix_socket
+from _bindings import posix_socket, posix_signal
 from ._executor import (
     Task, AnyTask,
     task_from_coro, make_executor_owned_task, task_to_any_box,
@@ -39,25 +39,40 @@ def run[T](coro: Own[Cancellable[T]]) -> T:
             "asyncio.run() cannot be called from a running event loop")
     task = make_executor_owned_task[T](coro)
     box = task_to_any_box[T](task)
-    _run_drain_main_task(box)
-    return task.__poll__(Waker()).value()
+    interrupted = _run_drain_main_task(box)
+    try:
+        return task.__poll__(Waker()).value()
+    except CancelledError:
+        # CPython parity: a consumed SIGINT surfaces as KeyboardInterrupt only
+        # when the cancellation actually propagated out of the root. A root that
+        # caught the CancelledError (returning a value) or raised a different
+        # exception during cleanup keeps its own outcome via this normal path --
+        # we must not swallow its result or its exception.
+        if interrupted:
+            raise KeyboardInterrupt()
+        raise
 
 
 # Lives here (not _executor.py): C++ function using-decls in
 # asyncio.hpp require the source namespace already opened, which
 # breaks under the parent-package include cycle.
-def _run_drain_main_task(box: Own[Box[AnyTask]]) -> None:
+def _run_drain_main_task(box: Own[Box[AnyTask]]) -> bool:
     executor = Executor()
     scope = _ExecutorScope(executor)
+    # Declared after the executor scope so its __del__ (restore handlers) runs
+    # before the executor/reactor teardown.
+    signals = _SignalScope(executor)
     main_id = executor.spawn(box)
+    interrupted = False
     try:
-        executor.run_until(main_id)
+        interrupted = executor.run_until(main_id)
     finally:
         # Swallow drain-time exceptions; v1 has no place to surface them.
         try:
             executor.drain_spawned_with_cancel(main_id)
         except BaseException:
             pass
+    return interrupted
 
 
 # No-op if no executor is running, so hand-rolled awaitables polled
@@ -73,6 +88,41 @@ def _register_timer_at(deadline_seconds: float, waker: Waker) -> None:
 # awaitables below. The EPOLL_CTL_* ops live in `_executor.py`.
 EPOLLIN: Final[UInt32] = UInt32(0x001)
 EPOLLOUT: Final[UInt32] = UInt32(0x004)
+
+
+@nocopy
+class _SignalScope:
+    """RAII guard arming SIGINT graceful shutdown for the duration of
+    `asyncio.run` (SIGINT only, matching CPython; SIGTERM keeps its default).
+
+    Installs the C signal layer and registers its wakeup eventfd in the
+    executor's epoll set (no-op waker) so a signal wakes a blocked `epoll_wait`;
+    `__del__` unregisters the fd then restores the prior disposition. A failed
+    install leaves the run unarmed. Note: the registered eventfd keeps the
+    reactor fd count >= 1, so the "no progress possible" deadlock guard stays
+    quiet while armed (CPython has no such guard)."""
+
+    _armed: bool
+    _fd: Int32
+
+    def __init__(self, executor: Executor) -> None:
+        self._armed = False
+        self._fd = -1
+        fd = posix_signal.install_shutdown()
+        if fd >= 0:
+            executor.register_fd(fd, EPOLLIN, Waker())
+            executor.shutdown_armed = True
+            self._armed = True
+            self._fd = fd
+
+    def __del__(self) -> None:
+        if self._armed:
+            # Unregister before restore() closes the fd, so the reactor's waiter
+            # table is not left with a stale (closed) entry. The current
+            # executor is still set here (this scope tears down before the
+            # _ExecutorScope that clears it).
+            _reactor_unregister_fd(self._fd)
+            posix_signal.restore()
 
 
 # Reactor access mirrors `_register_timer_at`: no-op when no executor is

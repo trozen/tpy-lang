@@ -51,7 +51,12 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1", help="bind address")
     parser.add_argument("--port", type=int, default=8765, help="bind port")
     args = parser.parse_args()
-    asyncio.run(serve(args.host, args.port))
+    # asyncio.run raises KeyboardInterrupt on Ctrl-C after cancelling the
+    # serve loop and running its cleanup; catch it for a clean exit.
+    try:
+        asyncio.run(serve(args.host, args.port))
+    except KeyboardInterrupt:
+        print("shutting down")
 
 
 main()

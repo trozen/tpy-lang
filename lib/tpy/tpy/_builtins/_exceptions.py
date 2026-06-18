@@ -157,3 +157,10 @@ class CancelledError(BaseException):
 @native("tpy::GeneratorExit")
 class GeneratorExit(BaseException):
     def __init__(self, message: str = "") -> None: ...
+
+# Inherits BaseException directly (not Exception), like CPython, so
+# `except Exception` does not swallow a Ctrl-C. Surfaced on an uncaught SIGINT
+# graceful shutdown (see asyncio.run).
+@native("tpy::KeyboardInterrupt")
+class KeyboardInterrupt(BaseException):
+    def __init__(self, message: str = "") -> None: ...

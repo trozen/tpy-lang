@@ -78,6 +78,14 @@ struct GeneratorExit : BaseException {
     using BaseException::BaseException;
     TPY_THROWABLE_VIRTUALS(GeneratorExit)
 };
+// Inherits BaseException (not Exception) like CPython, so `except Exception:`
+// does not swallow a Ctrl-C. Surfaced on an uncaught SIGINT graceful shutdown
+// (asyncio.run).
+struct KeyboardInterrupt : BaseException {
+    KeyboardInterrupt() : BaseException("KeyboardInterrupt") {}
+    using BaseException::BaseException;
+    TPY_THROWABLE_VIRTUALS(KeyboardInterrupt)
+};
 
 // Forward decl: raise_fixedint_overflow (below) calls tpy_panic, whose
 // definition lives later in this header.

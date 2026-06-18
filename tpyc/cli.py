@@ -37,6 +37,7 @@ from __future__ import annotations
 import argparse
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import os
+import signal
 import subprocess
 import sys
 import tempfile
@@ -781,7 +782,19 @@ def _run_cli(is_runner: bool) -> int:
             if args.exec:
                 progress.separator()
                 t_run_start = time.monotonic()
-                result = subprocess.run([str(binary_path), *args.script_args])
+                # Let the child own SIGINT: Ctrl-C is delivered to the whole
+                # foreground process group, so without this the launcher would
+                # also raise KeyboardInterrupt and dump its own traceback over
+                # the program's output. Ignoring it here (with restore_signals
+                # default, the child resets SIGINT to SIG_DFL before exec, so a
+                # plain program still terminates on Ctrl-C and an asyncio one
+                # installs its own graceful handler) lets us just return the
+                # child's exit code.
+                prev_sigint = signal.signal(signal.SIGINT, signal.SIG_IGN)
+                try:
+                    result = subprocess.run([str(binary_path), *args.script_args])
+                finally:
+                    signal.signal(signal.SIGINT, prev_sigint)
                 t_run = time.monotonic() - t_run_start
 
                 if args.verbose >= 1:

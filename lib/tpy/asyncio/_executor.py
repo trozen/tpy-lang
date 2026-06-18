@@ -24,7 +24,7 @@ from tpy.mem import UninitArrayStorage
 from tpy.unsafe import unsafe_load
 from tplib import Box
 from tplib.rc import Rc
-from _bindings import posix_epoll, posix_socket
+from _bindings import posix_epoll, posix_socket, posix_signal
 
 
 # Type-erased task machinery is co-located with the executor (rather
@@ -440,6 +440,9 @@ class Executor(Awaker):
     # program never opens an epoll fd. The second wake source alongside the
     # timer heap.
     reactor: EpollReactor | None
+    # True while SIGINT graceful-shutdown handling is active; gates the
+    # signal-flag poll in run_until.
+    shutdown_armed: bool
 
     def __init__(self) -> None:
         # Backstop for `asyncio.run`'s nested-loop check: a non-null
@@ -454,6 +457,7 @@ class Executor(Awaker):
         self.runnable_q = []
         self.timer_heap = []
         self.reactor = None
+        self.shutdown_armed = False
 
     def register_timer(self, deadline_seconds: float, waker: Waker) -> None:
         heapq.heappush(self.timer_heap, TimerEntry(deadline_seconds, waker))
@@ -584,19 +588,45 @@ class Executor(Awaker):
             entry.waker.wake()
         return True
 
-    def run_until(self, main_id: Int32) -> None:
+    # Cancel the root task so its CancelledError unwinds normal cleanup
+    # (finally / __aexit__ / wait_closed), then mark it runnable so the next
+    # drain delivers the cancel at its suspension point.
+    def _cancel_root(self, main_id: Int32) -> None:
+        if main_id >= len(self.slots) or self.slots[main_id].is_done():
+            return
+        box = self.slots[main_id].box
+        if box is not None:
+            box.get().cancel_any()
+        self.mark_runnable(main_id, self.slots[main_id].generation)
+
+    # True iff a SIGINT has been delivered since the last check; on the first
+    # such observation cancels the root for graceful shutdown.
+    def _check_shutdown_signal(self, main_id: Int32, already: bool) -> bool:
+        if already or not self.shutdown_armed:
+            return already
+        if posix_signal.consume() == 0:
+            return False
+        self._cancel_root(main_id)
+        return True
+
+    # Returns True if a SIGINT interrupted the run (root cancelled for graceful
+    # shutdown), False on normal completion.
+    def run_until(self, main_id: Int32) -> bool:
+        interrupted = False
         while True:
             if self.slot_done(main_id):
-                return
+                return interrupted
             if self.drain_runnable():
+                interrupted = self._check_shutdown_signal(main_id, interrupted)
                 continue
             if self.slot_done(main_id):
-                return
+                return interrupted
             if not self.wait_for_event():
                 raise RuntimeError(
                     "asyncio.run: no progress possible (a coroutine "
                     "returned Pending with no pending timers and no "
                     "registered I/O)")
+            interrupted = self._check_shutdown_signal(main_id, interrupted)
 
     def drain_spawned_with_cancel(self, skip_id: Int32,
                                   max_polls: Int32 = 8) -> None:

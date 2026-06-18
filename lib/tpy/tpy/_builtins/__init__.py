@@ -1,5 +1,5 @@
 # tpy: native_module
-from ._exceptions import BaseException, Exception, ValueError, OSError, FileNotFoundError, PermissionError, BlockingIOError, AttributeError, AssertionError, LookupError, IndexError, KeyError, ArithmeticError, ZeroDivisionError, OverflowError, FloatingPointError, TypeError, NotImplementedError, RuntimeError, RecursionError, EOFError, MemoryError, StopIteration, StopAsyncIteration, TimeoutError, CancelledError, GeneratorExit
+from ._exceptions import BaseException, Exception, ValueError, OSError, FileNotFoundError, PermissionError, BlockingIOError, AttributeError, AssertionError, LookupError, IndexError, KeyError, ArithmeticError, ZeroDivisionError, OverflowError, FloatingPointError, TypeError, NotImplementedError, RuntimeError, RecursionError, EOFError, MemoryError, StopIteration, StopAsyncIteration, TimeoutError, CancelledError, GeneratorExit, KeyboardInterrupt
 from ._range import Range, range
 from ._funcs import len, repr, hash, chr, ord, abs, min, max, pow, divmod, next, iter, round, print, input, isinstance, all, any, sum, sorted, bin, hex, oct, enumerate, reversed, zip, map, filter, getattr, setattr, delattr, hasattr
 from ._bytes import bytes, bytearray
