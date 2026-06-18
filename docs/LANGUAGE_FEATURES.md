@@ -3277,6 +3277,7 @@ no-op for non-`Any` sources and a checked `any_cast_or_panic` when the source is
   - Field/method/subscript access on unproven optional values emits a warning and inserts a runtime null check
   - Guarded paths (`if x is not None`) and `assert x is not None` narrow `x` to `T`
   - Returning narrowed optional values: `if x is not None: return x` correctly unwraps to `T`
+  - Narrowed optional values flow into write sinks unwrapped to `T`: `list.append(x)` / `set.add(x)` and subscript-assign values (`d[k] = x`, `lst[i] = x`)
   - Field narrowing: `if obj.field is not None:` narrows `obj.field` to `T` in the guarded scope
   - Reads of narrowed value-Optional fields work in all consumer positions: aug-assign (`self.f += 1`), subscript-LHS (`self.f[i] = x`, `self.f[i] += 1` on `list[T] | None`/`dict[K,V] | None`), and ostream-print of `int | None` (BigInt) and other inners. The storage-form `std::optional<T>` is unwrapped at the read site so the consumer sees `T`.
   - Container literals (`[...]`, `{...}`, `{k: v}`) and comprehensions flowing into `Optional[container]` positions: local-init (`lst: list[int] | None = [1, 2, 3]`), call-arg (`f({k: v})` for `f: dict[K, V] | None`), and post-construction field assign (`self.f = [1, 2, 3]` for `f: list[T] | None`). The rvalue container is materialized into a named slot and its address taken; the field assign goes through `std::optional<T>`'s implicit constructor from `T`.

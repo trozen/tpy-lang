@@ -2262,6 +2262,10 @@ class StatementGenerator:
                 stmt.target.obj, obj, is_indirect)
             target_type = self.ctx.get_expr_type(stmt.target)
             value = self.expressions.gen_expr(stmt.value, target_type)
+            # The value slot is the inner type, so a proven-non-None optional
+            # value must deref to (*v) (the receiver is unwrapped likewise above).
+            value = self.expressions._maybe_unwrap_narrowed_optional(
+                stmt.value, value, self.ctx.is_indirect_name(stmt.value))
             value = self.expressions._maybe_move(stmt.value, value)
             value = self._maybe_wrap_tuple_to_storage(
                 value, target_type, self.ctx.unwrap_copy(stmt.value))
