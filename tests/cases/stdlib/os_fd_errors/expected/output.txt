@@ -1,0 +1,5 @@
+open: FileNotFoundError
+read: OSError
+fstat: OSError
+chmod: FileNotFoundError
+utime: FileNotFoundError

@@ -1,0 +1,9 @@
+wrote 11
+head b'hello'
+seek-read b'world'
+end-read b'world'
+cur-read b'world'
+fstat 11
+pipe b'pipe!'
+dup-read b'hello'
+dup2-read b' worl'

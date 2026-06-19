@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <string>
 #include <string_view>
+#include <span>
 #include <tuple>
 #include <vector>
 
@@ -16,6 +17,11 @@ namespace tpy::stdlib::os {
 std::string getcwd();
 void chdir(std::string_view path);
 std::vector<std::string> listdir(std::string_view path);
+
+// os.scandir backing: each entry's name + a normalized kind from the readdir
+// d_type (0 unknown, 1 dir, 2 file, 3 symlink), skipping "." / "..". DirEntry
+// resolves kind 0/3 via stat. `.`/`..` excluded like CPython.
+std::vector<std::tuple<std::string, int64_t>> scandir_raw(std::string_view path);
 
 // Mutating ops (raw POSIX syscalls; errors map to the OSError subclass table).
 void mkdir(std::string_view path, int64_t mode);
@@ -70,5 +76,64 @@ void unsetenv(std::string_view key);
 // that as "leave the ~ verbatim", matching CPython's KeyError handling.
 std::string current_home();
 std::string user_home(std::string_view name);
+
+// Low-level file descriptor I/O (raw POSIX; each raises raise_errno on -1).
+// read returns up to n bytes (short reads possible, like CPython); write
+// returns the count written.
+int64_t open_fd(std::string_view path, int64_t flags, int64_t mode);
+void close_fd(int64_t fd);
+std::vector<uint8_t> read_fd(int64_t fd, int64_t n);
+int64_t write_fd(int64_t fd, std::span<const uint8_t> data);
+int64_t lseek_fd(int64_t fd, int64_t pos, int64_t how);
+std::tuple<int64_t, int64_t> pipe_fd();
+int64_t dup_fd(int64_t fd);
+int64_t dup2_fd(int64_t fd, int64_t fd2);
+std::tuple<int64_t, int64_t, int64_t, int64_t, int64_t, int64_t, int64_t,
+           double, double, double, int64_t, int64_t, int64_t>
+fstat_fd(int64_t fd);
+
+// File metadata mutation + randomness (raw POSIX; raise_errno on failure).
+void chmod_path(std::string_view path, int64_t mode);
+void chown_path(std::string_view path, int64_t uid, int64_t gid);
+void utime_path(std::string_view path, double atime, double mtime);
+bool access_path(std::string_view path, int64_t mode);
+std::vector<uint8_t> urandom(int64_t n);
+
+// open()/lseek()/access() flag, whence, and mode constants, exposed to TPy via
+// native_global. Sourced from the real macros so the platform-varying values
+// (O_CREAT family differs Linux vs macOS) are correct; non-const so the TPy
+// native_global binding's `extern int64_t` matches. The TPy-side names (os.O_*,
+// os.SEEK_*, os.*_OK) would collide with these libc macros if emitted as C++
+// symbols, which is exactly why they bind to these safe-named globals instead.
+extern int64_t kc_o_rdonly;
+extern int64_t kc_o_wronly;
+extern int64_t kc_o_rdwr;
+extern int64_t kc_o_creat;
+extern int64_t kc_o_excl;
+extern int64_t kc_o_trunc;
+extern int64_t kc_o_append;
+extern int64_t kc_seek_set;
+extern int64_t kc_seek_cur;
+extern int64_t kc_seek_end;
+extern int64_t kc_f_ok;
+extern int64_t kc_r_ok;
+extern int64_t kc_w_ok;
+extern int64_t kc_x_ok;
+
+// Process identity + small system queries. getpid/getppid/getuid/... can't fail
+// (POSIX). getlogin raises OSError on failure (no controlling terminal); umask
+// returns the previous mask; cpu_count returns 0 when indeterminate (the TPy
+// facade maps that to None); isatty never raises.
+int64_t getpid();
+int64_t getppid();
+int64_t getuid();
+int64_t geteuid();
+int64_t getgid();
+int64_t getegid();
+std::string getlogin();
+int64_t umask(int64_t mask);
+int64_t cpu_count();
+std::string strerror(int64_t code);
+bool isatty(int64_t fd);
 
 } // namespace tpy::stdlib::os

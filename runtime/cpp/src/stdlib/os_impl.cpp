@@ -4,9 +4,13 @@
 
 #include <tpy/stdlib/os.hpp>
 
+#include <algorithm>
 #include <cerrno>
+#include <cmath>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
+#include <thread>
 #include <filesystem>
 #include <string>
 #include <string_view>
@@ -14,7 +18,10 @@
 #include <tuple>
 #include <vector>
 
+#include <dirent.h>
+#include <fcntl.h>
 #include <pwd.h>
+#include <sys/random.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -85,6 +92,43 @@ std::vector<std::string> listdir(std::string_view path) {
         if (ec) raise_fs_error(ec, "listdir", path);
     }
     return names;
+}
+
+std::vector<std::tuple<std::string, int64_t>> scandir_raw(std::string_view path) {
+    // Raw readdir (not directory_iterator) to surface d_type without a stat.
+    DIR* dir = ::opendir(std::string(path).c_str());
+    if (dir == nullptr) raise_errno("scandir", path);
+    // RAII close so the descriptor is released even if an allocation below
+    // throws (raise_fs_error throws too -- it must run after the close).
+    struct DirGuard {
+        DIR* d;
+        ~DirGuard() { ::closedir(d); }
+    } guard{dir};
+    std::vector<std::tuple<std::string, int64_t>> entries;
+    // readdir returns null at end-of-stream AND on error; errno disambiguates,
+    // so clear it before each call and check after the loop.
+    errno = 0;
+    while (struct ::dirent* ent = ::readdir(dir)) {
+        std::string name(ent->d_name);
+        if (name != "." && name != "..") {
+            int64_t kind = 0;
+            switch (ent->d_type) {
+                case DT_DIR: kind = 1; break;
+                case DT_REG: kind = 2; break;
+                case DT_LNK: kind = 3; break;
+                default:     kind = 0; break;  // DT_UNKNOWN etc. -> DirEntry stats
+            }
+            entries.emplace_back(std::move(name), kind);
+        }
+        errno = 0;
+    }
+    if (errno != 0) {
+        // errno is still the readdir error here -- the guard's closedir runs
+        // only on scope exit, after this throw.
+        raise_fs_error(std::error_code(errno, std::generic_category()),
+                       "scandir", path);
+    }
+    return entries;
 }
 
 bool path_exists(std::string_view path) {
@@ -345,6 +389,167 @@ bool path_ismount(std::string_view path) {
     std::string parent = p + "/..";
     if (::lstat(parent.c_str(), &s2) != 0) return false;
     return s1.st_dev != s2.st_dev || s1.st_ino == s2.st_ino;
+}
+
+
+// --- Low-level file descriptor I/O -----------------------------------------
+
+int64_t open_fd(std::string_view path, int64_t flags, int64_t mode) {
+    std::string p(path);
+    int fd = ::open(p.c_str(), static_cast<int>(flags),
+                    static_cast<::mode_t>(mode));
+    if (fd < 0) raise_errno("open", path);
+    return fd;
+}
+
+void close_fd(int64_t fd) {
+    if (::close(static_cast<int>(fd)) != 0) raise_errno("close", "");
+}
+
+std::vector<uint8_t> read_fd(int64_t fd, int64_t n) {
+    std::vector<uint8_t> buf(n > 0 ? static_cast<size_t>(n) : 0);
+    if (n <= 0) return buf;
+    ssize_t got = ::read(static_cast<int>(fd), buf.data(),
+                         static_cast<size_t>(n));
+    if (got < 0) raise_errno("read", "");
+    buf.resize(static_cast<size_t>(got));  // short read -> shrink to actual
+    return buf;
+}
+
+int64_t write_fd(int64_t fd, std::span<const uint8_t> data) {
+    ssize_t n = ::write(static_cast<int>(fd), data.data(), data.size());
+    if (n < 0) raise_errno("write", "");
+    return n;
+}
+
+int64_t lseek_fd(int64_t fd, int64_t pos, int64_t how) {
+    off_t r = ::lseek(static_cast<int>(fd), static_cast<off_t>(pos),
+                      static_cast<int>(how));
+    if (r < 0) raise_errno("lseek", "");
+    return static_cast<int64_t>(r);
+}
+
+std::tuple<int64_t, int64_t> pipe_fd() {
+    int fds[2];
+    if (::pipe(fds) != 0) raise_errno("pipe", "");
+    return {fds[0], fds[1]};
+}
+
+int64_t dup_fd(int64_t fd) {
+    int r = ::dup(static_cast<int>(fd));
+    if (r < 0) raise_errno("dup", "");
+    return r;
+}
+
+int64_t dup2_fd(int64_t fd, int64_t fd2) {
+    int r = ::dup2(static_cast<int>(fd), static_cast<int>(fd2));
+    if (r < 0) raise_errno("dup2", "");
+    return r;
+}
+
+StatTuple fstat_fd(int64_t fd) {
+    struct ::stat st;
+    if (::fstat(static_cast<int>(fd), &st) != 0) raise_errno("fstat", "");
+    return to_tuple(st);
+}
+
+// Constant values from the real macros (see os.hpp for why TPy binds these via
+// native_global rather than naming the constants directly).
+int64_t kc_o_rdonly = O_RDONLY;
+int64_t kc_o_wronly = O_WRONLY;
+int64_t kc_o_rdwr   = O_RDWR;
+int64_t kc_o_creat  = O_CREAT;
+int64_t kc_o_excl   = O_EXCL;
+int64_t kc_o_trunc  = O_TRUNC;
+int64_t kc_o_append = O_APPEND;
+int64_t kc_seek_set = SEEK_SET;
+int64_t kc_seek_cur = SEEK_CUR;
+int64_t kc_seek_end = SEEK_END;
+int64_t kc_f_ok     = F_OK;
+int64_t kc_r_ok     = R_OK;
+int64_t kc_w_ok     = W_OK;
+int64_t kc_x_ok     = X_OK;
+
+// --- Process identity + small system queries -------------------------------
+
+int64_t getpid()  { return ::getpid(); }
+int64_t getppid() { return ::getppid(); }
+int64_t getuid()  { return ::getuid(); }
+int64_t geteuid() { return ::geteuid(); }
+int64_t getgid()  { return ::getgid(); }
+int64_t getegid() { return ::getegid(); }
+
+std::string getlogin() {
+    const char* name = ::getlogin();
+    if (name == nullptr) raise_errno("getlogin", "");
+    return std::string(name);
+}
+
+int64_t umask(int64_t mask) {
+    return static_cast<int64_t>(::umask(static_cast<::mode_t>(mask)));
+}
+
+int64_t cpu_count() {
+    // 0 when indeterminate; the TPy facade turns that into None (CPython).
+    return static_cast<int64_t>(std::thread::hardware_concurrency());
+}
+
+std::string strerror(int64_t code) {
+    return std::string(std::strerror(static_cast<int>(code)));
+}
+
+bool isatty(int64_t fd) {
+    return ::isatty(static_cast<int>(fd)) != 0;
+}
+
+// --- Metadata + randomness -------------------------------------------------
+
+void chmod_path(std::string_view path, int64_t mode) {
+    std::string p(path);
+    if (::chmod(p.c_str(), static_cast<::mode_t>(mode)) != 0)
+        raise_errno("chmod", path);
+}
+
+void chown_path(std::string_view path, int64_t uid, int64_t gid) {
+    std::string p(path);
+    if (::chown(p.c_str(), static_cast<::uid_t>(uid),
+                static_cast<::gid_t>(gid)) != 0)
+        raise_errno("chown", path);
+}
+
+void utime_path(std::string_view path, double atime, double mtime) {
+    std::string p(path);
+    auto to_ts = [](double t) -> struct timespec {
+        // floor (not truncate-toward-zero) so the fractional part -- and thus
+        // tv_nsec -- is non-negative for negative (pre-1970) timestamps too;
+        // utimensat rejects a negative tv_nsec with EINVAL.
+        double secs_f = std::floor(t);
+        auto secs = static_cast<time_t>(secs_f);
+        long ns = static_cast<long>((t - secs_f) * 1e9);
+        if (ns > 999999999) ns = 999999999;  // guard rounding at the boundary
+        return {secs, ns};
+    };
+    struct timespec times[2] = {to_ts(atime), to_ts(mtime)};
+    if (::utimensat(AT_FDCWD, p.c_str(), times, 0) != 0)
+        raise_errno("utime", path);
+}
+
+bool access_path(std::string_view path, int64_t mode) {
+    // access returns False on any failure (not just EACCES), matching CPython.
+    return ::access(std::string(path).c_str(), static_cast<int>(mode)) == 0;
+}
+
+std::vector<uint8_t> urandom(int64_t n) {
+    std::vector<uint8_t> buf(n > 0 ? static_cast<size_t>(n) : 0);
+    size_t off = 0;
+    while (off < buf.size()) {
+        // getentropy caps at 256 bytes per call on every platform.
+        size_t chunk = std::min<size_t>(256, buf.size() - off);
+        if (::getentropy(buf.data() + off, chunk) != 0)
+            raise_errno("urandom", "");
+        off += chunk;
+    }
+    return buf;
 }
 
 } // namespace tpy::stdlib::os

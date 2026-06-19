@@ -1,0 +1,9 @@
+posix / : '\n'
+. .. . /dev/null
+pid True True
+ids True True True True
+cpu True
+strerror No such file or directory
+isatty False
+umask True True
+unlink True

@@ -77,7 +77,7 @@ void main() {
     }
     // # controlled dir -> the full listing is deterministic ("a" + the two files)
     // print("listdir:", ",".join(sorted(os.listdir(base))))
-    std::cout << "listdir:" << " " << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpy::stdlib::os::listdir(base))) << "\n";
+    std::cout << "listdir:" << " " << ::tpy::str_join(",", ::tpy::builtin_sorted<std::string>(::tpystd::os::listdir(base))) << "\n";
     // os.symlink(base + "/one.txt", base + "/lnk")
     ::tpy::stdlib::os::symlink((::tpy::str_concat(base, "/one.txt")), (::tpy::str_concat(base, "/lnk")));
     // print("symlink:", islink(base + "/lnk"), lexists(base + "/lnk"),

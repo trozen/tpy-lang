@@ -34,7 +34,7 @@ void main() {
     // names = sorted([n for n in os.listdir("/tmp") if n.startswith("tpy_os_fs_")])
     std::vector<std::string> names = ::tpy::builtin_sorted<std::string>(({
         std::vector<std::string> __result;
-        auto __obj_1 = ::tpy::stdlib::os::listdir("/tmp");
+        auto __obj_1 = ::tpystd::os::listdir("/tmp");
         __result.reserve(static_cast<std::size_t>(__obj_1.size()));
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();

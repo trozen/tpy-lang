@@ -1,0 +1,6 @@
+empty:True/False/False
+f.txt:False/True/False
+lnk:False/True/True
+sub:True/False/False
+f.txt size: 2
+empty entries: 0

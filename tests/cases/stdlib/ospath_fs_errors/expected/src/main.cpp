@@ -20,7 +20,7 @@ void main() {
     {
         try {
             // os.listdir("/tmp/tpy_nope_missing_dir_xyz")
-            ::tpy::stdlib::os::listdir("/tmp/tpy_nope_missing_dir_xyz");
+            ::tpystd::os::listdir("/tmp/tpy_nope_missing_dir_xyz");
         } catch (const ::tpy::FileNotFoundError&) {
             // print("listdir: FileNotFoundError")
             std::cout << "listdir: FileNotFoundError" << "\n";
@@ -56,7 +56,7 @@ void main() {
     {
         try {
             // os.listdir("/tmp/tpy_fs_errors_file.txt")
-            ::tpy::stdlib::os::listdir("/tmp/tpy_fs_errors_file.txt");
+            ::tpystd::os::listdir("/tmp/tpy_fs_errors_file.txt");
         } catch (const ::tpy::OSError&) {
             // print("listdir-on-file: OSError")
             std::cout << "listdir-on-file: OSError" << "\n";
