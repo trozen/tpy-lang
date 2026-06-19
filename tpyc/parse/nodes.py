@@ -943,10 +943,12 @@ class TpyRaise(TpyStmt):
     raise_expr: TpyExpr | None = None  # expression form: raise <expr> (throw-tier only)
     is_call_form: bool = False  # raise Name() vs raise Name (set by parser)
     deref_depth: int = 0  # Set by sema: __deref__ steps to peel before calling __raise__ (Phase 20)
-    # The constructor param type per arg in `args`, so codegen lowers each arg
-    # with the same per-param coercion hint a normal call uses (e.g. None ->
-    # std::nullopt for a value-Optional param).
-    arg_param_types: list['TpyType'] = field(default_factory=list)
+    # The exception's __init__, so codegen lowers each ctor arg through the same
+    # shared arg-lowering loop a normal `X(args)` construction uses (protocol /
+    # covariant / optional-ptr / union / mutated-temp dispatch, not just the
+    # plain coercion fallback). mutated_params is read finalized at codegen via
+    # this live reference.
+    resolved_ctor_init: 'FunctionInfo | None' = None
 
     def exprs(self) -> list[TpyExpr]:
         result = list(self.args)

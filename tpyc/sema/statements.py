@@ -1692,12 +1692,12 @@ class StatementAnalyzer:
                     stmt.args[i] = self.compat.coerce_expr(
                         arg, arg_type, ptype, f"argument '{pname}'",
                         coercion_ctx=CoercionContext.ARG)
-                # Carry the param types so codegen lowers each arg with the same
-                # per-param hint a normal call uses -- otherwise a target-type-
-                # driven literal (None -> value-Optional) loses its hint and
-                # emits its context-free default.
-                stmt.arg_param_types = [
-                    ptype for _, ptype, _ in record.init_params[:len(stmt.args)]]
+                # Carry the resolved __init__ so codegen routes the ctor args
+                # through the same shared arg-lowering loop a normal `X(args)`
+                # construction uses -- otherwise a raise site re-derives only
+                # the plain coercion fallback and misses the protocol /
+                # covariant / optional-ptr / union / mutated-temp dispatch.
+                stmt.resolved_ctor_init = record.get_method("__init__")
             elif record.fields:
                 raise self.ctx.error(
                     f"'{stmt.exception_type}' has data fields but no __init__; "

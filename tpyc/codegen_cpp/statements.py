@@ -3497,14 +3497,14 @@ class StatementGenerator:
             return f"{indent}throw {cpp_type}{{}};\n"
 
     def _gen_raise_ctor_args(self, stmt: TpyRaise) -> str:
-        """Lower a `raise X(args)` ctor's args with the per-param coercion hint
-        so a target-type-driven literal (e.g. None into a value-Optional param)
-        renders as std::nullopt, not its hint-free default (nullptr)."""
-        types = stmt.arg_param_types
-        assert len(types) == len(stmt.args)
+        """Lower `raise X(args)` ctor args through the shared ctor loop, so the
+        raise form gets the full per-arg dispatch, not just the fallback."""
+        init = stmt.resolved_ctor_init
+        init_params = init.params if init else []
+        ctor_mutated = (init.mutated_params if init else None) or frozenset()
         return ", ".join(
-            self.expressions.gen_call_arg(a, ptype)
-            for a, ptype in zip(stmt.args, types))
+            self.expressions._gen_record_ctor_args(
+                stmt.args, init_params, ctor_mutated))
 
     def _gen_try(self, out: TextIO, stmt: TpyTry, indent: str) -> None:
         """Generate a try/except/else/finally statement."""
