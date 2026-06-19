@@ -165,6 +165,16 @@ public:
         return table_.find(value) != table_.end();
     }
 
+    // Heterogeneous needle (e.g. a std::string_view against a std::string
+    // set): convert to T. The const T& overload above wins for an exact T, so
+    // this fires only for a convertible other type (string_view -> string is
+    // explicit, so the non-template overload can't take a view needle).
+    template<typename ValArg>
+        requires requires(const ValArg& v) { T(v); }
+    bool contains(const ValArg& value) const {
+        return contains(T(value));
+    }
+
     // -- Iteration (insertion order) -----------------------------------------
 
     iterator begin() { return iterator(head_); }

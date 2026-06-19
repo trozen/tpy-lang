@@ -138,6 +138,12 @@ V dict_pop(ordered_map<K, V>& m, const KeyArg& key) {
 }
 ```
 
+Membership (`k in d`) resolves to `ordered_map::contains` directly (not a
+free-function dunder), so `contains` carries its own heterogeneous-key
+overload alongside the `const K&` one -- the `const K&` overload wins for an
+exact `K`, the template fires for a convertible view key. `ordered_set::contains`
+mirrors this for `k in s`.
+
 ### Equality
 
 Order-independent, matching Python: `{"a": 1, "b": 2} == {"b": 2, "a": 1}` is `True`.

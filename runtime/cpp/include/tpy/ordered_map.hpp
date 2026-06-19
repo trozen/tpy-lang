@@ -281,6 +281,17 @@ public:
         return table_.find(key) != table_.end();
     }
 
+    // Heterogeneous key (e.g. a std::string_view needle for a std::string
+    // key): convert to K, mirroring find() / __getitem__'s K(key). The const
+    // K& overload above wins for an exact K, so this fires only for a
+    // convertible other type (a view key the non-template overload can't take
+    // -- string_view -> string is explicit, so no implicit conversion).
+    template<typename KeyArg>
+        requires requires(const KeyArg& k) { K(k); }
+    bool contains(const KeyArg& key) const {
+        return contains(K(key));
+    }
+
     items_iterator find(const K& key) {
         auto it = table_.find(key);
         if (it == table_.end()) return items_end();
