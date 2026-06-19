@@ -2869,7 +2869,11 @@ class StatementGenerator:
             return saved
         inner_indent = INDENT * (self.ctx.indent_level + indent_extra)
         for var_name, narrowed_type in type_facts.items():
-            if isinstance(narrowed_type, (UnionType, NoneType)):
+            # A union fact has no single alternative to extract; a void-like
+            # fact (NoneType, or the VoidType `make_union` yields when only the
+            # None member remains -- e.g. the else of `isinstance(v, (int, str))`
+            # on `int | str | None`) narrows to None, which has no value to bind.
+            if isinstance(narrowed_type, UnionType) or is_void_like_type(narrowed_type):
                 continue
             # Deref-view facts don't retype the wrapper var -- no extraction
             # local. The narrowed reads route through deref_narrowed_to (and the
@@ -5038,7 +5042,8 @@ class StatementGenerator:
     def _has_concrete_isinstance_facts(self, type_facts: dict[str, TpyType]) -> bool:
         """Check if type_facts contain any concrete types that would emit extractions."""
         return any(
-            not isinstance(ty, (UnionType, NoneType, LiteralType)) and not is_protocol_type(ty)
+            not (isinstance(ty, (UnionType, LiteralType)) or is_void_like_type(ty))
+            and not is_protocol_type(ty)
             for ty in type_facts.values()
         )
 

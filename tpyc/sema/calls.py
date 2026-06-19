@@ -1901,10 +1901,10 @@ class CallAnalyzer:
         types: list[TpyType] = []
         for operand in self._flatten_union_operands(node):
             if isinstance(operand, TpyNoneLiteral):
-                # CPython accepts `A | None` (None -> NoneType), but a NoneType
-                # check member doesn't compose with the union-narrowing codegen
-                # yet (the get<void> miscompile in BUGS.md). Reject cleanly;
-                # `x is None` narrows None separately.
+                # CPython accepts `A | None`, but the matched branch narrows to
+                # an Optional whose `std::get<optional<A>*>` is not a variant
+                # alternative -- the extraction miscompiles (see BUGS.md).
+                # Reject cleanly; `x is None` narrows None separately.
                 raise self.ctx.error(
                     "isinstance() with `None` in an inline union "
                     "(`A | None`) is not supported yet -- narrow None "

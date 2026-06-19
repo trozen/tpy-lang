@@ -17,7 +17,7 @@ from ..typesys import (
     PendingListType, ListRepeatType,
     TypeParamRef, ReadonlyType, unwrap_readonly, unwrap_own, unwrap_qualifiers, unwrap_optional_own, unwrap_send_sync, collapse_tuple_own_elements, UnionType, VoidType, make_union, union_none_narrow,
     TupleType, CallableType, ValueForm,
-    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
+    INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, is_void_like_type, polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
     yield_uses_borrow_slot, view_family_for_type, ViewTypeFamily, STR_FAMILY, BYTES_FAMILY,
     is_float_type, is_readonly_span, is_dyn_protocol, contains_type_param)
@@ -2576,7 +2576,7 @@ class ExpressionGenerator:
         self._extract_isinstance_facts(expr, true_branch, facts)
         result: dict[str, str] = {}
         for var_name, narrowed_type in facts.items():
-            if isinstance(narrowed_type, (UnionType, NoneType)):
+            if isinstance(narrowed_type, UnionType) or is_void_like_type(narrowed_type):
                 continue
             # In @overload context, param is already concrete -- no extraction needed
             if var_name in self.ctx.overload_param_types:
