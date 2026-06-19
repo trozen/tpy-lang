@@ -1,0 +1,1 @@
+main.py:9: error: isinstance() inline-union members must be type names (`A | B`); got a non-type operand.

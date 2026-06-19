@@ -1,1 +1,1 @@
-main.py:23: error: isinstance() second argument must be a type, got 'Shape'
+main.py:23: error: isinstance() does not accept the union alias 'Shape' -- a type-alias name is not a runtime class. Use the inline union `isinstance(x, Circle | Rect)` or a tuple of the concrete members.

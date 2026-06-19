@@ -20,5 +20,5 @@ Shape = Circle | Rect
 
 
 def check(s: Shape) -> None:
-    if isinstance(s, Shape):  # tpyc: error(/isinstance.*second argument must be a type/)
+    if isinstance(s, Shape):  # tpyc: error(/does not accept the union alias 'Shape'/)
         print("yes")

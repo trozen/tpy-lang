@@ -35,7 +35,7 @@ from ..typesys import (
 from ..parse import (
     TpyCall, TpyMethodCall, TpyFieldAccess, TpyStrLiteral, TpyName, TpyFunction, TpyExpr,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyNoneLiteral, TpyUnaryOp,
-    TpyTupleLiteral, TpyTypeParamConstruct, TpyCoerce, TpyLambda,
+    TpyBinOp, TpyTupleLiteral, TpyTypeParamConstruct, TpyCoerce, TpyLambda,
     TpyDictLiteral, TpySetLiteral,
     TpyVarargPack, TpyStarUnpack, TpyFString, TpyFStringValue,
 )
@@ -1833,6 +1833,18 @@ class CallAnalyzer:
                 # resolve to the body so the check tests that type.
                 if not body.is_protocol:
                     return body
+        # A union-alias NAME is not isinstance-able: a `type`-statement alias
+        # lowers to no runtime class (and CPython rejects a TypeAliasType at
+        # runtime too). Point at the inline-union / tuple spellings, which ARE
+        # runtime-valid.
+        if alias_info is not None and isinstance(alias_info.body, UnionType):
+            raise self.ctx.error(
+                f"isinstance() does not accept the union alias '{name}' -- a "
+                f"type-alias name is not a runtime class. Use the inline union "
+                f"`isinstance(x, {alias_info.body.expanded_str()})` or a tuple "
+                f"of the concrete members.",
+                expr,
+            )
         raise self.ctx.error(f"isinstance() second argument must be a type, got '{name}'", expr)
 
     def _resolve_isinstance_check_types(
@@ -1840,9 +1852,10 @@ class CallAnalyzer:
     ) -> list[TpyType]:
         """Resolve the second arg of isinstance() into a list of check types.
 
-        Accepts a single type name or a tuple of type names:
+        Accepts a single type name, a tuple of type names, or an inline union:
             isinstance(x, A)       -> [A]
             isinstance(x, (A, B))  -> [A, B]
+            isinstance(x, A | B)   -> [A, B]
         """
         if isinstance(second_arg, TpyTupleLiteral):
             if not second_arg.elements:
@@ -1858,14 +1871,58 @@ class CallAnalyzer:
                 types.append(self._resolve_isinstance_type(
                     elem.name, expr, allow_bare_generic=True))
             return types
+        if isinstance(second_arg, TpyBinOp) and second_arg.op == "|":
+            return self._resolve_inline_union_check_types(second_arg, expr)
         if isinstance(second_arg, TpyName):
             return [self._resolve_isinstance_type(
                 second_arg.name, expr, allow_bare_generic=True)]
         raise self.ctx.error(
-            "isinstance() second argument must be a type name "
-            "(or tuple of type names)",
+            "isinstance() second argument must be a type name, an inline "
+            "union (`A | B`), or a tuple of type names",
             expr,
         )
+
+    def _flatten_union_operands(self, node: TpyExpr) -> 'list[TpyExpr]':
+        """Flatten an inline `A | B | C` operand tree (left-leaning BinOps)."""
+        if isinstance(node, TpyBinOp) and node.op == "|":
+            return (self._flatten_union_operands(node.left)
+                    + self._flatten_union_operands(node.right))
+        return [node]
+
+    def _resolve_inline_union_check_types(
+        self, node: TpyBinOp, expr: TpyCall,
+    ) -> list[TpyType]:
+        """Resolve an inline-union isinstance second arg (`A | B`) to its
+        member check types -- the runtime-valid analog of the rejected
+        type-alias form. `isinstance(x, A | B)` is a `types.UnionType` at
+        runtime, which CPython accepts (unlike a PEP 695 alias name). A
+        parameterized operand (`A | list[int]`) is rejected at parse time;
+        a `None` operand is rejected here (see below)."""
+        types: list[TpyType] = []
+        for operand in self._flatten_union_operands(node):
+            if isinstance(operand, TpyNoneLiteral):
+                # CPython accepts `A | None` (None -> NoneType), but a NoneType
+                # check member doesn't compose with the union-narrowing codegen
+                # yet (the get<void> miscompile in BUGS.md). Reject cleanly;
+                # `x is None` narrows None separately.
+                raise self.ctx.error(
+                    "isinstance() with `None` in an inline union "
+                    "(`A | None`) is not supported yet -- narrow None "
+                    "separately with `x is None`.",
+                    expr,
+                )
+            elif isinstance(operand, TpyName):
+                types.append(self._resolve_isinstance_type(
+                    operand.name, expr, allow_bare_generic=True))
+            else:
+                # A non-type operand (literal / expression); a parameterized
+                # generic (`A | list[int]`) is already rejected at parse time.
+                raise self.ctx.error(
+                    "isinstance() inline-union members must be type names "
+                    "(`A | B`); got a non-type operand.",
+                    expr,
+                )
+        return types
 
     def _isinstance_unwrap(self, typ: TpyType) -> TpyType:
         """Strip Own/readonly/Ptr layers so isinstance sees the pointee type.
