@@ -1,0 +1,1 @@
+main.py:11: error: call to 'inner' may return 'AppError' which must be handled with try/except

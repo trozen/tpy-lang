@@ -217,15 +217,18 @@ def register_return_exception(name: str) -> None:
 
 
 def error_return_matches(a: str | None, b: str | None) -> bool:
-    """Check if two module-qualified error_return type names refer to the same type.
+    """Check if two error_return type names refer to the same exception type.
 
-    Compares bare names since a type may be qualified via different modules
-    (e.g. 'tplib.json.JsonError' vs 'tplib.json.parser.JsonError' when
-    the package re-exports the type).
+    Both arguments are `qualify_exception_name` outputs, i.e. canonicalized
+    to the *defining*-module qname, so a re-exported type resolves to the same
+    qname through every import path and the full-string compare still matches
+    it. Comparing bare names instead would conflate two genuinely distinct
+    exceptions that share a short name across modules (each module's own
+    `AppError`, `re.error`, ...).
     """
     if a is None or b is None:
         return a is b
-    return bare_name(a) == bare_name(b)
+    return a == b
 
 
 def is_return_exception(name: str) -> bool:
