@@ -4005,6 +4005,17 @@ class StatementAnalyzer:
                 f"Cannot unpack tuple of {n_elems} elements into "
                 f"{n_targets} targets", stmt)
 
+        # Codegen binds the source tuple by-ref (zero-copy, elements alias the
+        # live source) ONLY for a plain stable Name with no owned element -- it
+        # must stay paired with codegen's bind-by-ref test in `_gen_tuple_unpack`
+        # (`isinstance(stmt.value, TpyName) and not any(stmt.is_owned)`). Every
+        # other source materializes an owned `__tup` temporary, whose owned
+        # str/bytes member a VIEW target dangles into once it outlives the temp
+        # (e.g. a loop-reassigned `head, tail = split(head)`) -- flag it owned
+        # below, the chokepoint the scalar `s = owned()` reassign uses.
+        has_owned_elem = any(isinstance(et, OwnType) for et in rhs_type.element_types)
+        source_binds_by_ref = isinstance(stmt.value, TpyName) and not has_owned_elem
+
         # Per-element expressions for narrowing (range facts, etc.)
         has_elem_exprs = isinstance(stmt.value, TpyTupleLiteral)
         for i, name in enumerate(stmt.targets):
@@ -4102,6 +4113,23 @@ class StatementAnalyzer:
                     self.ctx.func.rvalue_vars.add(name)
                     self.ctx.func.owned_locals.add(name)
                     self.ctx.func.ever_owned_locals.add(name)
+            # Promote a str/bytes view target to owned when it binds an owned-temp
+            # tuple member AND is reassigned -- a reassigned target is declared in
+            # a scope broader than the per-statement/loop-body `__tup`, so a view
+            # into it dangles. A fresh same-scope target keeps the view (the named
+            # `__tup` outlives it -- zero-copy, safe). Mirrors the scalar
+            # `s = owned()` reassign chokepoint. The other "outlives __tup" shape
+            # -- a target first-assigned in a branch/loop and used AFTER it -- does
+            # not compile today (the unpack target isn't pre-declared in the outer
+            # scope; see BUGS.md), so it can't dangle yet; when that is fixed the
+            # owned promotion must extend to the hoisted target.
+            if (not source_binds_by_ref
+                    and name in self.ctx.func.current_reassigned_vars):
+                bound = self.ctx.func.current_scope.lookup(name)
+                inner = (unwrap_own(unwrap_ref_type(unwrap_readonly(bound)))
+                         if bound is not None else None)
+                if isinstance(inner, PendingViewType):
+                    self.deduction.mark_view_reassigned_from_owned(name, inner.family)
             if stmt.loc:
                 display_type = unwrap_own(elem_type) if elem_type else elem_type
                 self.ctx.declared_var_types[(stmt.loc.line, name)] = display_type

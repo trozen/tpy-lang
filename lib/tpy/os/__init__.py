@@ -108,9 +108,8 @@ def makedirs(name: str, mode: Int64 = 0o777, exist_ok: bool = False) -> None:
 
 
 # Remove `name`, then rmdir empty parents working upward, stopping at the
-# first non-empty one (CPython removedirs). Walks parents via dirname (a view
-# narrowing into `name`) rather than `split` tuple-unpack, which would dangle:
-# see BUGS.md (tuple[str,str]-return unpacked into view locals).
+# first non-empty one (CPython removedirs). Walks via dirname -- each parent is
+# a view narrowing into the live `head`, so the walk needs no owned copy.
 def removedirs(name: str) -> None:
     rmdir(name)
     head = path.dirname(name)
