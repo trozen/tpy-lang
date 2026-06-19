@@ -6,7 +6,8 @@ Generates C++ code from TurboPython statements.
 
 from __future__ import annotations
 import io
-from typing import Callable, TextIO, TYPE_CHECKING
+from contextlib import contextmanager
+from typing import Callable, Iterator, TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, PtrType,
@@ -69,6 +70,16 @@ if TYPE_CHECKING:
     from .protocols import ProtocolGenerator
 
 
+# The ctx set-fields `StatementGenerator.seed_param_locals` mutates -- the single
+# authoritative list the ctor member-init save/restore (records._extract_field_inits)
+# snapshots. Add here when seed_param_locals starts writing a new set. (var_types,
+# a dict, is snapshotted separately by that caller.)
+PARAM_LOCAL_SET_FIELDS = (
+    "pointer_locals", "const_indirect_locals", "optional_locals",
+    "ptr_variant_locals", "movable_locals", "storage_form_tuple_locals",
+)
+
+
 class StatementGenerator:
     """Generates C++ code from TurboPython statements."""
 
@@ -128,6 +139,95 @@ class StatementGenerator:
             out.write(f"{hoist_indent}{decl}")
         out.write(body_buf.getvalue())
 
+    def seed_param_locals(self, params: list[tuple[str, TpyType]],
+                          local_ns: Namespace,
+                          deep_const_borrow_params: set[str]) -> None:
+        """Classify params into the pointer-form local sets access dispatch reads
+        (`PARAM_LOCAL_SET_FIELDS` + `var_types`) so a pointer-repr param derefs
+        with `->` in a ctor member-init initializer as it does in the body."""
+        # Optional non-value params are T* / const T* in C++ -- need pointer-local treatment (->)
+        for pname, ptype in params:
+            actual = unwrap_readonly(ptype)
+            if self.protocols.is_static_protocol_param(ptype):
+                # Static protocol params: check if nullable (uses pointer repr)
+                infos = self.protocols.get_all_protocol_params([(pname, ptype)])
+                if infos and infos[0].has_none:
+                    self.ctx.pointer_locals.add(pname)
+                    self.ctx.const_indirect_locals.add(pname)
+            elif isinstance(actual, OptionalType) and actual.uses_pointer_repr():
+                self.ctx.pointer_locals.add(pname)
+                if isinstance(ptype, ReadonlyType):
+                    self.ctx.const_indirect_locals.add(pname)
+            # Own[OptionalType[P_ref]]: param renders as `std::optional<P>&&`
+            # (storage form), but body access patterns are the same as a
+            # storage-form Optional local: arrow for member access (uses
+            # optional<P>::operator->), .has_value() for null check, direct
+            # std::move into another storage slot. Register as both
+            # pointer_local (for arrow access) and optional_local (so the
+            # null-check dispatch picks has_value over `!= nullptr`). Rebind
+            # the namespace to the bare Optional so type-aware codegen sites
+            # match the sibling pointer-repr Optional handling. movable_locals
+            # is set below via the generic `unwrap_optional_own + non-value`
+            # pass.
+            elif is_own_pointer_repr_optional(actual):
+                self.ctx.pointer_locals.add(pname)
+                self.ctx.optional_locals.add(pname)
+                self.ctx.var_types[pname] = actual.wrapped
+                local_ns.bind_variable(pname, actual.wrapped)
+            # Non-value union params are pointer variants (variant<T*...>)
+            elif self.ctx.is_ptr_variant_union(actual):
+                self.ctx.ptr_variant_locals.add(pname)
+                # Deep-const members (`const T*`) when the param is `readonly[...]`
+                # OR the const verdict deep-consts it (readonly fn/method whose
+                # param address does not escape). `deep_const_borrow_params` is the
+                # same addr-escape-aware verdict the signature and call site read,
+                # so the body's `std::get<T*>` matches the param decl.
+                if (isinstance(ptype, ReadonlyType)
+                        or pname in deep_const_borrow_params):
+                    self.ctx.const_indirect_locals.add(pname)
+            # Own[T] and Own[T] | None params are movable (caller gave up ownership)
+            own_actual = unwrap_optional_own(actual)
+            if own_actual is not None and not own_actual.wrapped.is_value_type():
+                self.ctx.movable_locals.add(pname)
+            if (isinstance(actual, TupleType) and actual.is_owned_movable()
+                    and not isinstance(ptype, ReadonlyType)):
+                self.ctx.movable_locals.add(pname)
+                self.ctx.storage_form_tuple_locals.add(pname)
+            # Own[tuple[T | None, ...]] params are stored in storage form
+            # (std::tuple<std::optional<T>, ...>); same C++ shape as the
+            # storage-form locals registered for storage-form tuple iteration.
+            if isinstance(actual, OwnType):
+                inner = unwrap_readonly(actual.wrapped)
+                if isinstance(inner, TupleType) and inner.has_pointer_repr_element():
+                    self.ctx.storage_form_tuple_locals.add(pname)
+            # Value-optional params (std::optional<T> by value) are movable when
+            # the inner type has an expensive copy (String, BigInt, etc.).
+            # readonly params are excluded to respect the no-mutation contract.
+            elif (isinstance(actual, OptionalType) and not actual.uses_pointer_repr()
+                    and not isinstance(ptype, ReadonlyType)
+                    and actual.inner.is_expensive_copy()):
+                self.ctx.movable_locals.add(pname)
+
+    @contextmanager
+    def seed_param_locals_scoped(
+            self, params: list[tuple[str, TpyType]], local_ns: Namespace,
+            deep_const_borrow_params: set[str]) -> Iterator[None]:
+        """Seed the param classification (`seed_param_locals`) for the body of
+        the with-block, then restore the exact ctx sets it writes. For callers
+        that run before `setup_body_scope`/`reset_scope` (the ctor member-init
+        extraction) where the full scope snapshot isn't usable yet. Owning the
+        save/restore here keeps it from drifting out of sync with what
+        seed_param_locals mutates."""
+        saved = {f: getattr(self.ctx, f).copy() for f in PARAM_LOCAL_SET_FIELDS}
+        saved_var_types = dict(self.ctx.var_types)
+        try:
+            self.seed_param_locals(params, local_ns, deep_const_borrow_params)
+            yield
+        finally:
+            for f, prev in saved.items():
+                setattr(self.ctx, f, prev)
+            self.ctx.var_types = saved_var_types
+
     def setup_body_scope(self, params: list[tuple[str, TpyType]],
                          return_type: TpyType, func: TpyFunction,
                          local_ns: Namespace, indent_level: int = 1,
@@ -173,68 +273,10 @@ class StatementGenerator:
         self.ctx.sema_movable_locals = self.ctx.analyzer.function_movable_locals.get(id(func), set())
         self.ctx.sema_ever_owned_locals = self.ctx.analyzer.function_ever_owned_locals.get(id(func), set())
         self.ctx.sema_stmt_borrow_decls = self.ctx.analyzer.function_stmt_borrow_decls.get(id(func), {})
-        # Optional non-value params are T* / const T* in C++ -- need pointer-local treatment (->)
-        for pname, ptype in params:
-            actual = unwrap_readonly(ptype)
-            if self.protocols.is_static_protocol_param(ptype):
-                # Static protocol params: check if nullable (uses pointer repr)
-                infos = self.protocols.get_all_protocol_params([(pname, ptype)])
-                if infos and infos[0].has_none:
-                    self.ctx.pointer_locals.add(pname)
-                    self.ctx.const_indirect_locals.add(pname)
-            elif isinstance(actual, OptionalType) and actual.uses_pointer_repr():
-                self.ctx.pointer_locals.add(pname)
-                if isinstance(ptype, ReadonlyType):
-                    self.ctx.const_indirect_locals.add(pname)
-            # Own[OptionalType[P_ref]]: param renders as `std::optional<P>&&`
-            # (storage form), but body access patterns are the same as a
-            # storage-form Optional local: arrow for member access (uses
-            # optional<P>::operator->), .has_value() for null check, direct
-            # std::move into another storage slot. Register as both
-            # pointer_local (for arrow access) and optional_local (so the
-            # null-check dispatch picks has_value over `!= nullptr`). Rebind
-            # the namespace to the bare Optional so type-aware codegen sites
-            # match the sibling pointer-repr Optional handling. movable_locals
-            # is set below via the generic `unwrap_optional_own + non-value`
-            # pass.
-            elif is_own_pointer_repr_optional(actual):
-                self.ctx.pointer_locals.add(pname)
-                self.ctx.optional_locals.add(pname)
-                self.ctx.var_types[pname] = actual.wrapped
-                local_ns.bind_variable(pname, actual.wrapped)
-            # Non-value union params are pointer variants (variant<T*...>)
-            elif self.ctx.is_ptr_variant_union(actual):
-                self.ctx.ptr_variant_locals.add(pname)
-                # Deep-const members (`const T*`) when the param is `readonly[...]`
-                # OR the const verdict deep-consts it (readonly fn/method whose
-                # param address does not escape). `deep_const_borrow_params` is the
-                # same addr-escape-aware verdict the signature and call site read,
-                # so the body's `std::get<T*>` matches the param decl.
-                if (isinstance(ptype, ReadonlyType)
-                        or pname in self.ctx.deep_const_borrow_params):
-                    self.ctx.const_indirect_locals.add(pname)
-            # Own[T] and Own[T] | None params are movable (caller gave up ownership)
-            own_actual = unwrap_optional_own(actual)
-            if own_actual is not None and not own_actual.wrapped.is_value_type():
-                self.ctx.movable_locals.add(pname)
-            if (isinstance(actual, TupleType) and actual.is_owned_movable()
-                    and not isinstance(ptype, ReadonlyType)):
-                self.ctx.movable_locals.add(pname)
-                self.ctx.storage_form_tuple_locals.add(pname)
-            # Own[tuple[T | None, ...]] params are stored in storage form
-            # (std::tuple<std::optional<T>, ...>); same C++ shape as the
-            # storage-form locals registered for storage-form tuple iteration.
-            if isinstance(actual, OwnType):
-                inner = unwrap_readonly(actual.wrapped)
-                if isinstance(inner, TupleType) and inner.has_pointer_repr_element():
-                    self.ctx.storage_form_tuple_locals.add(pname)
-            # Value-optional params (std::optional<T> by value) are movable when
-            # the inner type has an expensive copy (String, BigInt, etc.).
-            # readonly params are excluded to respect the no-mutation contract.
-            elif (isinstance(actual, OptionalType) and not actual.uses_pointer_repr()
-                    and not isinstance(ptype, ReadonlyType)
-                    and actual.inner.is_expensive_copy()):
-                self.ctx.movable_locals.add(pname)
+        # Classify params into the pointer-form local sets (pointer_locals,
+        # ptr_variant_locals, optional_locals, movable_locals, ...) that access
+        # dispatch consults so `->` vs `.` / move / variant-form are correct.
+        self.seed_param_locals(params, local_ns, self.ctx.deep_const_borrow_params)
         # Generator-promoted locals are struct fields; pre-seed var_types
         # so codegen sites that consult it (e.g. address-of for tuple
         # slots) see the original TPy type rather than the synthetic

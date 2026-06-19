@@ -1693,6 +1693,14 @@ class FunctionGenerator:
         """Delegate to StatementGenerator.gen_body()."""
         self.statements.gen_body(*args, **kwargs)
 
+    def seed_param_locals(self, *args, **kwargs) -> None:
+        """Delegate to StatementGenerator.seed_param_locals()."""
+        self.statements.seed_param_locals(*args, **kwargs)
+
+    def seed_param_locals_scoped(self, *args, **kwargs):
+        """Delegate to StatementGenerator.seed_param_locals_scoped()."""
+        return self.statements.seed_param_locals_scoped(*args, **kwargs)
+
     def _resolve_global_type(self, stmt: TpyVarDecl) -> TpyType:
         """Resolve the type of a global variable, unwrapping Own[T]/Optional[T] to T."""
         if stmt.type:

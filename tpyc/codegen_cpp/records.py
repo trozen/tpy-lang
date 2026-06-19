@@ -1129,15 +1129,6 @@ class RecordGenerator:
         field_types = {fld.name: fld.type for fld in record.fields}
         own_field_names = set(field_types.keys())
         param_names = {p[0] for p in init_method.params}
-        # Temporarily populate movable_locals with constructor Own params so that
-        # gen_call_arg/_maybe_move can emit std::move() for last-use args inside
-        # init list expressions (e.g. Box.from_optional(next)).
-        saved_movable = self.ctx.movable_locals.copy()
-        for pname, ptype in init_method.params:
-            actual = unwrap_readonly(ptype)
-            own = unwrap_optional_own(actual)
-            if own is not None and not own.wrapped.is_value_type():
-                self.ctx.movable_locals.add(pname)
         # Collect nested def names -- these are lambdas defined in the body,
         # so field inits referencing them must go in the body, not the init list.
         nested_def_names = {
@@ -1149,7 +1140,16 @@ class RecordGenerator:
         # which would otherwise hoist into `Foo() : _x(OwnedBar(tmp)) { auto
         # tmp = ...; }` and fail C++.
         local_names = collect_top_level_local_names(init_method.body)
-        try:
+        # Seed the param pointer-form classification so a field initializer
+        # reading a pointer-repr param derefs with `->`; the MIL runs before
+        # setup_body_scope, so the scoped helper seeds and restores around it.
+        # deep_const_borrow is empty because __init__ params are shallow-const in
+        # the ctor signature (use_readonly_params=False), so a pointer-variant
+        # param must NOT be deep-const'd here -- it matches the `std::get<T*>`
+        # the signature expects. (Not "ctors are never @readonly": deep-const is
+        # inference-driven, not decorator-driven.)
+        with self.functions.seed_param_locals_scoped(
+                init_method.params, self.ctx.current_ns, set()):
             inits = []
             hoisted_ids: set[int] = set()
             # MIL runs as a block BEFORE the constructor body, so hoisting a
@@ -1309,8 +1309,6 @@ class RecordGenerator:
                 inits.append((field_name, value))
                 hoisted_ids.add(id(stmt))
             return inits, hoisted_ids
-        finally:
-            self.ctx.movable_locals = saved_movable
 
     def _reject_nondef_ctor_field_in_body(
         self, field_name: str, own_field_names: set[str],

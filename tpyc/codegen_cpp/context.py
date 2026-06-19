@@ -1201,10 +1201,9 @@ class CodeGenContext:
         if isinstance(expr, TpyName):
             if expr.name in self.ptr_variant_locals:
                 return True
-            # __init__ codegen sets current_func_params but doesn't populate
-            # ptr_variant_locals (only the regular function-body path does).
-            # Consult the param table directly so ctor-init MIL conversions
-            # match the body-assignment behaviour.
+            # Fallback to the param table for any context that set
+            # current_func_params without populating ptr_variant_locals -- so a
+            # union-param source resolves even outside a seeded scope.
             ptype = self.current_func_params.get(expr.name)
             if ptype is not None and self.is_ptr_variant_union(unwrap_readonly(ptype)):
                 return True
