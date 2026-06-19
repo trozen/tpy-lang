@@ -93,6 +93,7 @@ inline std::string Speaker::voice(std::variant<Cat*, Dog*> a) const {
         // return a.sound()
         return __a.sound();
     }
+    auto& __a = *std::get<Cat*>(a);
     // return "?"
     return "?";
 }

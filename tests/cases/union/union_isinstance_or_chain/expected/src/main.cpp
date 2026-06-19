@@ -11,6 +11,7 @@ std::string two_member(const std::variant<A*, B*> v) {
         // return "hit"
         return "hit";
     }
+    auto& __v = *std::get<A*>(v);
     // return "miss"
     return "miss";
 }

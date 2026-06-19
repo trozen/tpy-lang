@@ -14,6 +14,7 @@ std::string get_pet_name(const Zoo& z) {
         // return p.name
         return __p.name;
     }
+    auto& __p = *std::get<const Cat*>(p);
     // if isinstance(p, Cat):
     if (true) {
         auto& __p = *std::get<const Cat*>(p);
@@ -35,6 +36,7 @@ std::string get_pet_name_ro(const Zoo& z) {
         // return p.name
         return __p.name;
     }
+    auto& __p = *std::get<const Cat*>(p);
     // if isinstance(p, Cat):
     if (true) {
         auto& __p = *std::get<const Cat*>(p);

@@ -34,6 +34,7 @@ namespace tpyapp::main {
         // return v.x
         return __v.x;
     }
+    auto& __v = *std::get<B*>(v);
     // return -2
     return ::tpy::BigInt(-2);
 }

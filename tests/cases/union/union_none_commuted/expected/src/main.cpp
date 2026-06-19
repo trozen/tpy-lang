@@ -17,6 +17,7 @@ std::string check(const std::variant<std::monostate, Cat*, int32_t*> v) {
         // return "int"
         return "int";
     }
+    auto& __v = *std::get<Cat*>(v);
     // return "cat"
     return "cat";
 }
@@ -31,6 +32,7 @@ std::string check_not(const std::variant<std::monostate, Cat*, int32_t*> v) {
             // return "got int"
             return "got int";
         }
+        auto& __v = *std::get<Cat*>(v);
         // return "got cat"
         return "got cat";
     }

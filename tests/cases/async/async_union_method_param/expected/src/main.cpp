@@ -76,6 +76,7 @@ __coro_main main() {
             std::string __tpy_async_ret = "dog";
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
         }
+        auto& __a = *std::get<Cat*>(a);
         // return "cat"
         __state = S_DONE;
         std::string __tpy_async_ret = "cat";

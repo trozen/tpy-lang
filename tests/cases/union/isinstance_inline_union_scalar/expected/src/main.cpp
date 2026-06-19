@@ -13,6 +13,7 @@ std::string kind(const std::variant<double, ::tpy::BigInt, std::string>& v) {
         // return "num"
         return "num";
     }
+    const auto& __v = std::get<std::string>(v);
     // return "str"
     return "str";
 }

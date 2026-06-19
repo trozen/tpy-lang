@@ -13,6 +13,7 @@ bool upcast_in_branch(const std::variant<Cat*, Dog*> x) {
         // return isinstance(x, Animal)
         return true;
     }
+    auto& __x = *std::get<Cat*>(x);
     // return False
     return false;
 }
@@ -26,6 +27,7 @@ bool downcast_in_branch(const std::variant<Cat*, Dog*> x) {
         // return isinstance(x, Puppy)  # tpyc: warning(/descendant type 'Puppy'/)
         return false;
     }
+    auto& __x = *std::get<Cat*>(x);
     // return False
     return false;
 }

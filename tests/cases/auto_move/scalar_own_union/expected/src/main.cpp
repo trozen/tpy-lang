@@ -41,6 +41,7 @@ int32_t borrow_union(const std::variant<A*, B*> u) {
         // return u.x
         return __u.x;
     }
+    auto& __u = *std::get<B*>(u);
     // if isinstance(u, B):
     if (true) {
         auto& __u = *std::get<B*>(u);

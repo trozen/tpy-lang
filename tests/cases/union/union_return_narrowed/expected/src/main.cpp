@@ -12,8 +12,9 @@ std::variant<Cat*, Dog*> ensure_dog(std::variant<Cat*, Dog*> pet) {
         // return pet
         return &(__pet);
     }
+    auto& __pet = *std::get<Cat*>(pet);
     // return pet
-    return pet;
+    return &(__pet);
 }
 
 // def pick_first_dog(a: Dog | Cat, b: Dog | Cat) -> Dog | Cat:
@@ -24,14 +25,16 @@ std::variant<Cat*, Dog*> pick_first_dog(std::variant<Cat*, Dog*> a, std::variant
         // return a
         return &(__a);
     }
+    auto& __a = *std::get<Cat*>(a);
     // if isinstance(b, Dog):
     if (std::holds_alternative<Dog*>(b)) {
         auto& __b = *std::get<Dog*>(b);
         // return b
         return &(__b);
     }
+    auto& __b = *std::get<Cat*>(b);
     // return a
-    return a;
+    return &(__a);
 }
 
 // def main() -> None:

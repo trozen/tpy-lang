@@ -76,6 +76,7 @@ inline ::tpy::BigInt Classifier::which(std::variant<const Cat*, const Dog*> a) c
         // return 1
         return ::tpy::BigInt(1);
     }
+    auto& __a = *std::get<const Cat*>(a);
     // return 2
     return ::tpy::BigInt(2);
 }

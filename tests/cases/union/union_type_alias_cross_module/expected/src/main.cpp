@@ -12,9 +12,10 @@ std::string describe(const std::variant<::tpyapp::shapes::Circle*, ::tpyapp::sha
         // return "circle"
         return "circle";
     }
+    auto& __s = *std::get<::tpyapp::shapes::Rect*>(s);
     // assert isinstance(s, Rect)
     if (!(true)) ::tpy::raise_assertion_error();
-    auto& __s = *std::get<::tpyapp::shapes::Rect*>(s);
+    auto& __s_2 = *std::get<::tpyapp::shapes::Rect*>(s);
     // return "rect"
     return "rect";
 }

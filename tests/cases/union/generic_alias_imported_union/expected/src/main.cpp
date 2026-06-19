@@ -12,6 +12,7 @@ std::string describe(const std::variant<::tpyapp::lib::A*, ::tpyapp::lib::B*> e)
         // return "A"
         return "A";
     }
+    auto& __e = *std::get<::tpyapp::lib::B*>(e);
     // return "B"
     return "B";
 }

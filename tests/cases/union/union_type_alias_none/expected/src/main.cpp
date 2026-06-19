@@ -17,9 +17,10 @@ std::string describe(const std::variant<std::monostate, Circle*, Rect*> s) {
         // return "circle"
         return "circle";
     }
+    auto& __s = *std::get<Rect*>(s);
     // assert isinstance(s, Rect)
     if (!(true)) ::tpy::raise_assertion_error();
-    auto& __s = *std::get<Rect*>(s);
+    auto& __s_2 = *std::get<Rect*>(s);
     // return "rect"
     return "rect";
 }

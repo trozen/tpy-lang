@@ -4579,6 +4579,15 @@ class StatementGenerator:
             out, stmt.then_type_facts, indent_extra=0, persistent=True)
 
 
+    def _condition_static_true(self, condition: TpyExpr) -> bool:
+        """True when sema folded `condition` to a constant `True` (e.g. an
+        isinstance on a variable already narrowed to the checked type). The
+        branch is then unconditionally taken, so its implicit-else fall-through
+        is dead -- post-narrowing there would extract a member the enclosing
+        flow already excluded (wrong type), so it must be skipped."""
+        me = getattr(condition, "macro_expansion", None)
+        return isinstance(me, TpyBoolLiteral) and me.value is True
+
     def _gen_if(self, out: TextIO, stmt: TpyIf, indent: str,
                 emit_post_narrowing: bool = True,
                 _skip_source_comment: bool = False) -> None:
@@ -4769,7 +4778,8 @@ class StatementGenerator:
         if (emit_post_narrowing
                 and not last.else_body and last.else_type_facts
                 and self._has_concrete_isinstance_facts(last.else_type_facts)
-                and not self._is_protocol_isinstance_condition(last.condition)):
+                and not self._is_protocol_isinstance_condition(last.condition)
+                and not self._condition_static_true(last.condition)):
             then_body = last.then_body
             if then_body and isinstance(then_body[-1], (TpyReturn, TpyRaise)):
                 registry = self.ctx.analyzer.registry
@@ -4784,11 +4794,26 @@ class StatementGenerator:
                     if vt.needs_wrapper():
                         return True
                     return isinstance(vt, OptionalType) and isinstance(vt.inner, AliasRef)
+                def _narrows_to_union_member(vt: TpyType | None, narrowed: TpyType) -> bool:
+                    """True when the early-returning branch leaves a plain union
+                    narrowed to a single concrete member. Sequential isinstance on
+                    a single-member narrowing is dead (the alternative is known),
+                    so the post-guard extraction is safe -- unlike the multi-member
+                    remaining case, which stays a union and must keep dispatching."""
+                    base = unwrap_readonly(vt) if vt is not None else None
+                    return (isinstance(base, UnionType)
+                            and not isinstance(narrowed, UnionType)
+                            and any(m == narrowed for m in base.members))
                 post_facts = {
                     k: v for k, v in last.else_type_facts.items()
                     if (_recursive_union_shape(self.ctx.var_types.get(k))
                         or is_polymorphic_subclass_fact(
-                            self.ctx.lookup_var_type(k), v, registry))
+                            self.ctx.lookup_var_type(k), v, registry)
+                        # A union member can't be re-narrowed to a different
+                        # concrete type, so an already-live alias is correct as-is
+                        # -- re-extracting would redeclare it in the same scope.
+                        or (_narrows_to_union_member(self.ctx.lookup_var_type(k), v)
+                            and k not in self.ctx.narrowed_vars))
                 }
                 if post_facts:
                     self._emit_isinstance_extractions(

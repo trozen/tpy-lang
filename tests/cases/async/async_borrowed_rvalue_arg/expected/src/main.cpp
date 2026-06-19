@@ -26,6 +26,7 @@ namespace tpyapp::main {
             std::string __tpy_async_ret = __a.name;
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
         }
+        auto& __a = *std::get<Cat*>(a);
         // return "cat"
         __state = S_DONE;
         std::string __tpy_async_ret = "cat";
@@ -131,6 +132,7 @@ __coro_via_ref via_ref(Dog& a) {
             std::string __tpy_async_ret = (::tpy::str_concat((::tpy::str_concat(tag, ":")), __a.name));
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
         }
+        auto& __a = *std::get<Cat*>(a);
         // return tag + ":cat"
         __state = S_DONE;
         std::string __tpy_async_ret = (::tpy::str_concat(tag, ":cat"));

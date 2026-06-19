@@ -22,6 +22,7 @@ std::string describe(const std::variant<::tpyapp::pkg_b::Bar*, ::tpyapp::pkg_a::
         // return name_a(u)
         return ::tpyapp::pkg_a::name_of(__u);
     }
+    auto& __u = *std::get<::tpyapp::pkg_b::Bar*>(u);
     // return "bar"
     return "bar";
 }

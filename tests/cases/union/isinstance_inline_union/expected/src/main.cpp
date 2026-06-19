@@ -11,6 +11,7 @@ std::string classify(const std::variant<A*, B*, C*> v) {
         // return "ab"
         return "ab";
     }
+    auto& __v = *std::get<C*>(v);
     // return "c"
     return "c";
 }

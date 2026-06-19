@@ -11,6 +11,7 @@ std::string basic(const std::variant<A*, B*, C*> v) {
         // return "ab"
         return "ab";
     }
+    auto& __v = *std::get<C*>(v);
     // return "c"
     return "c";
 }
@@ -45,6 +46,7 @@ std::string or_lhs(const std::variant<A*, B*, C*> v, bool flag) {
         // return "maybe"
         return "maybe";
     }
+    auto& __v = *std::get<C*>(v);
     // return "c-no-flag"
     return "c-no-flag";
 }

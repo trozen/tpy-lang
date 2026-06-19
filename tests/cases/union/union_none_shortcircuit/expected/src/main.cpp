@@ -14,6 +14,7 @@ std::string test_and_flag(const std::variant<std::monostate, Dog*, int32_t*> v, 
             // return "int+flag"
             return "int+flag";
         }
+        auto& __v = *std::get<Dog*>(v);
         // return "dog+flag"
         return "dog+flag";
     }

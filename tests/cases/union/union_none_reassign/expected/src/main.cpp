@@ -39,6 +39,7 @@ std::string test_init_none_then_assign() {
             // return "got int"
             return "got int";
         }
+        auto& __v = *std::get<Dog*>(v);
         // return "got dog"
         return "got dog";
     }
