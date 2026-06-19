@@ -22,7 +22,7 @@ std::vector<uint8_t> first_or_empty(std::span<const uint8_t> b) {
 }
 
 // def opt_or_default(b: Optional[bytes]) -> bytes:
-std::vector<uint8_t> opt_or_default(std::optional<std::vector<uint8_t>> b) {
+std::vector<uint8_t> opt_or_default(std::optional<std::span<const uint8_t>> b) {
     // return b if b is not None else b"none"
     return ::tpy::bytes_copy((((b.has_value())) ? ((*b)) : (::tpy::bytes_literal_owned("none", 4))));
 }

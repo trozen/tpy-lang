@@ -13,7 +13,7 @@ void str_param_sinks(std::string_view s);
 void str_optional_deref(std::optional<std::string_view> a);
 void str_slice(std::string_view s);
 void bytes_sinks(std::span<const uint8_t> b);
-void bytes_optional_deref(std::optional<std::vector<uint8_t>> b);
+void bytes_optional_deref(std::optional<std::span<const uint8_t>> b);
 void owned_source_inverse();
 void main();
 

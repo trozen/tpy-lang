@@ -19,7 +19,7 @@ from ..typesys import (
     TupleType, CallableType, ValueForm,
     INT32, BIGINT, FLOAT, CHAR, VOID, is_protocol_type, polymorphic_source_inner, polymorphic_source_is_pointer, polymorphic_subclass_into_optional, is_any_str_type, is_any_bytes_type, container_to_str_template,
     ResolvedBinop, get_covariant_params, unwrap_ref_type, RefType, ParamInfo,
-    yield_uses_borrow_slot,
+    yield_uses_borrow_slot, view_family_for_type, ViewTypeFamily, STR_FAMILY, BYTES_FAMILY,
     is_float_type, is_readonly_span, is_dyn_protocol, contains_type_param)
 from ..type_def_registry import (
     is_dict_view, is_set, is_dict, is_array, is_span, is_varargs, is_spanlike_view, is_list,
@@ -483,10 +483,11 @@ class ExpressionGenerator:
             result = f"(*{result})"
         return result
 
-    def _maybe_convert_opt_str_param(self, name: str, result: str,
+    def _maybe_convert_opt_view_param(self, name: str, result: str,
                                       target_type: TpyType | None) -> str:
-        """Convert Optional[str] param (optional<string_view>) to optional<string>
-        when needed by the target type.
+        """Convert an Optional[str]/Optional[bytes] param (borrow form
+        optional<string_view> / optional<span>) to its owned-storage optional
+        (optional<string> / optional<vector>) when the target needs it.
 
         Complements the `optional_strview_to_str` coercion: that coercion fires
         when the TPy types differ (Optional[StrView] source, Optional[str]
@@ -496,20 +497,31 @@ class ExpressionGenerator:
         `std::optional<std::string>` elsewhere. The coercion system doesn't
         see the ARG/non-ARG split for same-TPy-type transitions, so a
         dedicated path patches names whose declared param type is an
-        Optional[str]."""
+        Optional view type."""
         if target_type is None:
             return result
         declared = self.ctx.current_func_params.get(name)
-        if not (isinstance(declared, OptionalType)
-                and is_str_type(declared.inner)):
+        if not isinstance(declared, OptionalType):
+            return result
+        fam = view_family_for_type(declared.inner)
+        if fam is None:
             return result
         target = target_type
         if isinstance(target, OwnType):
             target = target.wrapped
-        if isinstance(target, OptionalType) and is_str_type(target.inner):
-            return (f"{result} ? std::make_optional("
-                    f"std::string(*{result})) : std::nullopt")
+        if isinstance(target, OptionalType) and view_family_for_type(target.inner) is fam:
+            owned = self._view_owned_copy_expr(fam, f"*{result}")
+            return f"{result} ? std::make_optional({owned}) : std::nullopt"
         return result
+
+    def _view_owned_copy_expr(self, family: ViewTypeFamily, code: str) -> str:
+        """C++ expression copying a borrow-form view (string_view / span) into
+        its owned storage form (string / vector). Single source of the per-family
+        copy spelling, shared by `_view_source_to_owned` and the optional-param
+        storage conversion."""
+        if is_str_type(family.owned_type):
+            return f"std::string({code})"
+        return f"::tpy::bytes_copy({code})"
 
     def _get_cpp_declared_type(self, expr: TpyExpr) -> TpyType | None:
         """Get the C++ declared type of a variable or field access.
@@ -1432,7 +1444,7 @@ class ExpressionGenerator:
                     and storage_name in self.ctx.generator_optional_fields
                     and storage_name not in self.ctx.frame_field_shadows):
                 result = f"(*{result})"
-            return self._maybe_convert_opt_str_param(storage_name, result, target_type)
+            return self._maybe_convert_opt_view_param(storage_name, result, target_type)
 
         elif isinstance(expr, TpyBinOp):
             return self._gen_binop(expr, target_type)
@@ -1683,6 +1695,22 @@ class ExpressionGenerator:
                     or self._expr_uses_optional_bytes_param(expr.else_expr))
         return False
 
+    def _view_owned_copy_family(self, expr: TpyExpr,
+                                slot_type: 'TpyType | None') -> 'ViewTypeFamily | None':
+        """The view family whose view->owned copy applies at this sink, or None.
+        A bare str/bytes slot fed a view-form source (a str/bytes view source or
+        a narrowed Optional-view param deref) needs the owned copy; anything else
+        is left for the caller's move path. Shared by `_view_source_to_owned` and
+        the move-gating at view sinks (a std::move on a trivially-copyable view is
+        a no-op, so callers skip it when this returns a family)."""
+        if is_str_type(slot_type) and (self._is_str_view_source(expr)
+                                       or self._expr_uses_optional_str_param(expr)):
+            return STR_FAMILY
+        if is_bytes_type(slot_type) and (self._is_bytes_view_source(expr)
+                                         or self._expr_uses_optional_bytes_param(expr)):
+            return BYTES_FAMILY
+        return None
+
     def _view_source_to_owned(self, expr: TpyExpr,
                               slot_type: 'TpyType | None', code: str) -> str:
         """One chokepoint (return / var-init boundary, container
@@ -1692,13 +1720,8 @@ class ExpressionGenerator:
         slot must be a BARE str/bytes here: an Optional slot fed a whole-optional
         source already owns its inner storage, so wrapping it would be ill-typed
         (the explicit-view-into-Optional case lives in `_wrap_for_owned_slot`)."""
-        if is_str_type(slot_type) and (self._is_str_view_source(expr)
-                                       or self._expr_uses_optional_str_param(expr)):
-            return f"std::string({code})"
-        if is_bytes_type(slot_type) and (self._is_bytes_view_source(expr)
-                                         or self._expr_uses_optional_bytes_param(expr)):
-            return f"::tpy::bytes_copy({code})"
-        return code
+        fam = self._view_owned_copy_family(expr, slot_type)
+        return self._view_owned_copy_expr(fam, code) if fam is not None else code
 
 
     def _gen_logical_value(self, expr: TpyBinOp, result_type: TpyType) -> str:

@@ -30,7 +30,7 @@ std::string unwrap(std::optional<std::string_view> s) {
     // if s is not None:
     if ((s.has_value())) {
         // return s
-        return std::string(std::move((*s)));
+        return std::string((*s));
     }
     // return "default"
     return "default";

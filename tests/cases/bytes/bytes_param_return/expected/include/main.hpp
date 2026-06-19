@@ -11,7 +11,7 @@ inline constexpr std::string_view __name__ = "__main__";
 
 std::vector<uint8_t> echo(std::span<const uint8_t> b);
 std::vector<uint8_t> first_or_empty(std::span<const uint8_t> b);
-std::vector<uint8_t> opt_or_default(std::optional<std::vector<uint8_t>> b);
+std::vector<uint8_t> opt_or_default(std::optional<std::span<const uint8_t>> b);
 void main();
 
 void __tpy_init();

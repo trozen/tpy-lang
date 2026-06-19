@@ -14,7 +14,7 @@ void store_str(std::optional<std::string_view> a) {
     // if a is not None:
     if ((a.has_value())) {
         // out["k"] = a
-        ::tpy::__setitem__(out, "k", std::move((*a)));
+        ::tpy::__setitem__(out, "k", std::string((*a)));
         // print(len(out), out["k"])
         std::cout << ::tpy::__len__(out) << " " << ::tpy::__getitem__(out, "k") << "\n";
     // else:
@@ -25,13 +25,13 @@ void store_str(std::optional<std::string_view> a) {
 }
 
 // def store_bytes(a: bytes | None) -> None:
-void store_bytes(std::optional<std::vector<uint8_t>> a) {
+void store_bytes(std::optional<std::span<const uint8_t>> a) {
     // out: dict[str, bytes] = {}
     ::tpy::ordered_map<std::string, std::vector<uint8_t>> out = ::tpy::ordered_map<std::string, std::vector<uint8_t>>();
     // if a is not None:
     if ((a.has_value())) {
         // out["k"] = a
-        ::tpy::__setitem__(out, "k", (*a));
+        ::tpy::__setitem__(out, "k", ::tpy::bytes_copy((*a)));
     }
     // print(len(out), len(out["k"]) if a is not None else 0)
     std::cout << ::tpy::__len__(out) << " " << (((a.has_value())) ? (::tpy::__len__(::tpy::__getitem__(out, "k"))) : (0)) << "\n";
@@ -46,7 +46,7 @@ void store_list(std::optional<std::string_view> a) {
     // if a is not None:
     if ((a.has_value())) {
         // out[0] = a
-        ::tpy::__setitem__(out, 0, std::move((*a)));
+        ::tpy::__setitem__(out, 0, std::string((*a)));
     }
     // print(out[0])
     std::cout << ::tpy::__getitem__(out, 0) << "\n";

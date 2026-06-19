@@ -99,9 +99,18 @@ class StatementGenerator:
                 cpp_name = escape_cpp_name(pname)
                 cpp_type = ptype.to_cpp()
                 param_ref = f"__param_{cpp_name}"
-                if isinstance(ptype, OptionalType) and is_str_type(ptype.inner):
-                    init = (f"{param_ref} ? std::make_optional("
-                            f"std::string(*{param_ref})) : std::nullopt")
+                # A borrow-form view param copied into its owned-storage local
+                # for in-body reassignment needs the explicit view->owned copy:
+                # span->vector is not implicit, and str routes the same way for
+                # parity (string_view->string would assign implicitly, but the
+                # explicit form keeps both families on the one chokepoint helper).
+                opt_inner = ptype.inner if isinstance(ptype, OptionalType) else None
+                fam = view_family_for_type(opt_inner if opt_inner is not None else ptype)
+                if fam is not None and opt_inner is not None:
+                    owned = self.expressions._view_owned_copy_expr(fam, f"*{param_ref}")
+                    init = f"{param_ref} ? std::make_optional({owned}) : std::nullopt"
+                elif fam is not None:
+                    init = self.expressions._view_owned_copy_expr(fam, param_ref)
                 else:
                     init = param_ref
                 body_buf.write(f"{indent}{cpp_type} {cpp_name} = {init};\n")
@@ -723,11 +732,17 @@ class StatementGenerator:
                         ret_expr = self.expressions._maybe_move(ret_value, ret_expr)
                     else:
                         ret_expr = f"(*{ret_expr})"
-                        ret_expr = self.expressions._maybe_move(ret_value, ret_expr)
-                        # Narrowed Optional[str] param: (*s) yields string_view
-                        if (is_str_type(ret_type)
-                                and self.expressions._is_optional_str_param(ret_value)):
-                            ret_expr = f"std::string({ret_expr})"
+                        # Narrowed Optional[str]/Optional[bytes] param: the deref
+                        # yields a borrow view (string_view / span) copied into
+                        # the owned return slot. The copy IS the ownership
+                        # transfer, so skip the last-use move -- std::move on a
+                        # trivially-copyable view is a no-op.
+                        if self.expressions._view_owned_copy_family(
+                                ret_value, ret_type) is not None:
+                            ret_expr = self.expressions._view_source_to_owned(
+                                ret_value, ret_type, ret_expr)
+                        else:
+                            ret_expr = self.expressions._maybe_move(ret_value, ret_expr)
                 else:
                     ret_expr = self._wrap_view_to_storage(
                         ret_value, ret_type, ret_expr)
@@ -2266,10 +2281,18 @@ class StatementGenerator:
             # value must deref to (*v) (the receiver is unwrapped likewise above).
             value = self.expressions._maybe_unwrap_narrowed_optional(
                 stmt.value, value, self.ctx.is_indirect_name(stmt.value))
-            value = self.expressions._maybe_move(stmt.value, value)
+            # Skip the last-use move for a view source headed to the owned-copy
+            # sink below -- std::move on a trivially-copyable view is a no-op.
+            if self.expressions._view_owned_copy_family(stmt.value, target_type) is None:
+                value = self.expressions._maybe_move(stmt.value, value)
             value = self._maybe_wrap_tuple_to_storage(
                 value, target_type, self.ctx.unwrap_copy(stmt.value))
             value = self._lift_to_element_storage(stmt.value, value, target_type)
+            # A narrowed Optional view param deref'd into a str/bytes value slot
+            # needs an owned copy: string_view->string is an implicit assignment
+            # but span->vector is not, so emit it explicitly for both families.
+            value = self.expressions._view_source_to_owned(
+                stmt.value, target_type, value)
             obj_type = self.ctx.get_expr_type(stmt.target.obj)
             index_type = self.ctx.analyzer.get_expr_type(stmt.target.index)
             # Dereference globals for subscript access
@@ -2407,14 +2430,17 @@ class StatementGenerator:
                 else:
                     value = self.expressions._maybe_move(stmt.value, value)
                 return f"{indent}{target} = {value};\n"
-            # bytes field (std::vector<uint8_t>) from bytes-view source
-            # (std::span<const uint8_t>): vector has no span-assign overload,
-            # so copy via the shared view->owned chokepoint. Str needs no arm
-            # here: std::string has an operator=(string_view), so a str-view
-            # source lands via plain copy-assign on the default path.
-            if is_bytes_type(target_type) and self.expressions._is_bytes_view_source(stmt.value):
+            # bytes field (std::vector<uint8_t>) from a bytes-view source
+            # (std::span<const uint8_t>) -- a BytesView source or a narrowed
+            # bytes|None param deref: vector has no span-assign overload, so copy
+            # via the shared view->owned chokepoint. Str needs no arm here:
+            # std::string has an operator=(string_view), so a str-view source
+            # lands via plain copy-assign on the default path.
+            if is_bytes_type(target_type) and (
+                    self.expressions._is_bytes_view_source(stmt.value)
+                    or self.expressions._expr_uses_optional_bytes_param(stmt.value)):
                 target = self.expressions.gen_expr(stmt.target)
-                value = self.expressions.gen_expr(stmt.value, target_type)
+                value = self.expressions.gen_expr_deref(stmt.value, target_type)
                 value = self._wrap_view_to_storage(stmt.value, target_type, value)
                 return f"{indent}{target} = {value};\n"
             # Ptr[T] field: storage-form Optional source needs optional_to_ptr

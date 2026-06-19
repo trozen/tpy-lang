@@ -12,7 +12,7 @@ from ..parse.nodes import (
 from ..typesys import IntLiteralType, OptionalType, OwnType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_readonly, unwrap_ref_type, yield_uses_borrow_slot
 from tpyc import modules as builtin_modules
 from ..type_def_registry import (iter_yields_ref_tuple_proxies,
-                                  is_owned_in_coro_frame, view_to_owned_conv)
+                                  is_owned_in_coro_frame, view_owned_copy_init)
 from .context import INDENT, CodeGenError, escape_cpp_name
 from .resumable_cfg import _stmts_have_any_suspension
 from .protocols import protocol_param_template_name
@@ -1012,14 +1012,15 @@ class GeneratorCodegen:
                 continue
             cpp_name = escape_cpp_name(pname)
             if is_owned_in_coro_frame(ptype):
-                # str/bytes: own a copy via an init-capture so it outlives a
-                # temporary argument across iterations -- a plain by-value
-                # capture would copy only the string_view/BytesView (still a
-                # borrow into the caller's temporary), and a by-ref capture
-                # would dangle on the function-local view param. Parallel to
-                # gen_async's OWNED_COPY; same predicate + conversion.
+                # str/bytes (incl. str|None / bytes|None): own a copy via an
+                # init-capture so it outlives a temporary argument across
+                # iterations -- a plain by-value capture would copy only the
+                # string_view/BytesView (still a borrow into the caller's
+                # temporary), and a by-ref capture would dangle on the
+                # function-local view param. Parallel to gen_async's OWNED_COPY;
+                # same predicate + conversion.
                 captures.append(
-                    f"{cpp_name} = {view_to_owned_conv(ptype)}({cpp_name})")
+                    f"{cpp_name} = {view_owned_copy_init(ptype, cpp_name)}")
             elif not ptype.is_value_type():
                 captures.append(f"&{cpp_name}")
             else:

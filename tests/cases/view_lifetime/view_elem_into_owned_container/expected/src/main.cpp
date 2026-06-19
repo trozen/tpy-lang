@@ -83,7 +83,7 @@ void bytes_sinks(std::span<const uint8_t> b) {
 }
 
 // def bytes_optional_deref(b: bytes | None) -> None:
-void bytes_optional_deref(std::optional<std::vector<uint8_t>> b) {
+void bytes_optional_deref(std::optional<std::span<const uint8_t>> b) {
     // out: list[bytes] = []
     std::vector<std::vector<uint8_t>> out = std::vector<std::vector<uint8_t>>{};
     // if b is not None:

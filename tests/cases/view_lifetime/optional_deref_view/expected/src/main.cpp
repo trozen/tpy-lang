@@ -4,9 +4,10 @@
 namespace tpyapp::main {
 
 
-// # A narrowed `str | None` param (lowered to std::optional<std::string_view>)
-// # dereferences to a view, so a local bound to it stays zero-copy (no double-wrap);
-// # a `bytes | None` param owns its buffer (optional<vector>), so its deref is owned.
+// # A narrowed `str | None` / `bytes | None` param (borrow form
+// # optional<string_view> / optional<span>) dereferences to a view. A str local
+// # bound to it stays a zero-copy view; a bytes local converts the span to owned
+// # bytes (span->vector is not implicit the way string_view->string is).
 // def str_single(a: str | None) -> None:
 void str_single(std::optional<std::string_view> a) {
     // if a is not None:
@@ -30,8 +31,8 @@ void str_compound(std::optional<std::string_view> a, std::string_view b) {
 }
 
 // def bytes_compound(a: bytes | None, b: bytes) -> None:
-void bytes_compound(std::optional<std::vector<uint8_t>> a, std::span<const uint8_t> b) {
-    // # bytes Optional param owns its buffer -> stays owned (no dangling span).
+void bytes_compound(std::optional<std::span<const uint8_t>> a, std::span<const uint8_t> b) {
+    // # bytes Optional param is borrow-form (span); the local converts to owned.
     // if a is not None:
     if ((a.has_value())) {
         // y = a if len(b) > 0 else b  # tpyc: type(bytes)

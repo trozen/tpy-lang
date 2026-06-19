@@ -136,7 +136,7 @@ __coro_pending_slot pending_slot(std::string_view tag) {
 
 
 // async def opt_ternary(tag: Optional[str]) -> str:
-__coro_opt_ternary opt_ternary(std::optional<std::string> tag) {
+__coro_opt_ternary opt_ternary(std::optional<std::string_view> tag) {
     return __coro_opt_ternary(tag);
 }
 

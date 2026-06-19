@@ -21,7 +21,7 @@ struct __coro_main_coro;
 __coro_direct direct(std::string_view tag);
 __coro_in_finally in_finally(std::string_view tag);
 __coro_pending_slot pending_slot(std::string_view tag);
-__coro_opt_ternary opt_ternary(std::optional<std::string> tag);
+__coro_opt_ternary opt_ternary(std::optional<std::string_view> tag);
 __coro_main_coro main_coro();
 void main();
 
@@ -110,8 +110,8 @@ struct __coro_opt_ternary {
         S_DONE = 1,
     };
 
-    __coro_opt_ternary(std::optional<std::string> tag_)
-        : __state(S_INITIAL), __cancel_pending(false), tag(std::move(tag_)) {}
+    __coro_opt_ternary(std::optional<std::string_view> tag_)
+        : __state(S_INITIAL), __cancel_pending(false), tag(tag_ ? std::make_optional(std::string(*tag_)) : std::nullopt) {}
 
     ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }

@@ -1,7 +1,7 @@
 # A str/bytes local from a borrow-form view expression (incl. an Optional-param
-# ternary) compiles and runs. The families diverge: `str | None` is a view-backed
-# optional<string_view> so the local stays a zero-copy view, while `bytes | None`
-# owns its buffer (optional<vector>) so the local converts to owned storage.
+# ternary) compiles and runs. Both `str | None` and `bytes | None` are borrow
+# form (optional<string_view> / optional<span>); a str local stays a zero-copy
+# view, a bytes local converts the span to owned storage (no implicit span->vector).
 from typing import Optional
 
 

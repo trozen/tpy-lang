@@ -12,12 +12,12 @@ from ..typesys import (
     NominalType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
     ListRepeatType,
     TupleType, OwnType, is_protocol_type, unwrap_readonly, is_any_str_type, is_any_bytes_type,
-    make_ref,
+    make_ref, view_family_for_type,
     is_float_type, is_integer_type,
 )
 from ..parse import (
     TpyExpr, TpyCall, TpyStrLiteral, TpyArrayLiteral, TpyNoneLiteral, TpyCoerce,
-    TpyBoolLiteral, TpyFieldAccess,
+    TpyBoolLiteral, TpyFieldAccess, TpyName,
 )
 
 from .context import escape_cpp_string, CodeGenError, expand_cpp_template, qualify_native_name, cpp_string_literal_expr
@@ -384,7 +384,7 @@ class BuiltinGenerator:
                 # into the function.
                 inner = arg_type.inner
                 gen = self._gen_expr(arg)
-                inner_cpp = inner.to_cpp()
+                inner_cpp = self._optional_print_inner_cpp(arg, inner)
                 if is_bool_type(inner):
                     parts.append(f'::tpy::print_optional_val<::tpy::print_bool, {inner_cpp}>({gen})')
                 elif is_float_type(inner):
@@ -449,6 +449,19 @@ class BuiltinGenerator:
             parts.append("std::flush")
 
         return f"{sink} << " + " << ".join(parts)
+
+    def _optional_print_inner_cpp(self, arg: TpyExpr, inner: TpyType) -> str:
+        """C++ inner type for print_optional_val. A borrow-form Optional view
+        param (str|None -> optional<string_view>, bytes|None -> optional<span>)
+        renders as the view storage, not the owned form, so the explicit
+        template arg must match the view rather than inner.to_cpp()."""
+        fam = view_family_for_type(inner)
+        if fam is not None and isinstance(arg, TpyName):
+            declared = self.ctx.current_func_params.get(arg.name)
+            if (isinstance(declared, OptionalType)
+                    and view_family_for_type(declared.inner) is fam):
+                return fam.view_type.to_cpp()
+        return inner.to_cpp()
 
     def _optional_container_formatter(self, inner: TpyType, inner_cpp: str) -> str | None:
         """Pick a Formatter type for print_optional / print_optional_val when

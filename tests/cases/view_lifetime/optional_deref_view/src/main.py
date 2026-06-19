@@ -1,6 +1,7 @@
-# A narrowed `str | None` param (lowered to std::optional<std::string_view>)
-# dereferences to a view, so a local bound to it stays zero-copy (no double-wrap);
-# a `bytes | None` param owns its buffer (optional<vector>), so its deref is owned.
+# A narrowed `str | None` / `bytes | None` param (borrow form
+# optional<string_view> / optional<span>) dereferences to a view. A str local
+# bound to it stays a zero-copy view; a bytes local converts the span to owned
+# bytes (span->vector is not implicit the way string_view->string is).
 
 
 def str_single(a: str | None) -> None:
@@ -16,7 +17,7 @@ def str_compound(a: str | None, b: str) -> None:
 
 
 def bytes_compound(a: bytes | None, b: bytes) -> None:
-    # bytes Optional param owns its buffer -> stays owned (no dangling span).
+    # bytes Optional param is borrow-form (span); the local converts to owned.
     if a is not None:
         y = a if len(b) > 0 else b  # tpyc: type(bytes)
         print(len(y))

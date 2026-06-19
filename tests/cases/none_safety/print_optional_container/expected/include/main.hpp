@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 void show_list_param(const std::vector<::tpy::BigInt>* lst);
 void show_dict_param(const ::tpy::ordered_map<std::string, int32_t>* d);
 void show_set_param(const ::tpy::ordered_set<int32_t>* s);
-void show_bytes_param(std::optional<std::vector<uint8_t>> b);
+void show_bytes_param(std::optional<std::span<const uint8_t>> b);
 void show_bytearray_param(const std::vector<uint8_t>* b);
 void main();
 
@@ -40,7 +40,7 @@ struct Bag {
     // buf: bytearray | None,
     // ) -> None:
     Bag() = default;
-    explicit Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, int32_t>* by_key, const ::tpy::ordered_set<int32_t>* elems, std::optional<std::vector<uint8_t>> data, const std::vector<uint8_t>* buf) : items(::tpy::ptr_to_optional(items)), by_key(::tpy::ptr_to_optional(by_key)), elems(::tpy::ptr_to_optional(elems)), data(data), buf(::tpy::ptr_to_optional(buf)) {}
+    explicit Bag(const std::vector<::tpy::BigInt>* items, const ::tpy::ordered_map<std::string, int32_t>* by_key, const ::tpy::ordered_set<int32_t>* elems, std::optional<std::span<const uint8_t>> data, const std::vector<uint8_t>* buf) : items(::tpy::ptr_to_optional(items)), by_key(::tpy::ptr_to_optional(by_key)), elems(::tpy::ptr_to_optional(elems)), data(data ? std::make_optional(::tpy::bytes_copy(*data)) : std::nullopt), buf(::tpy::ptr_to_optional(buf)) {}
 
     // def show_fields(self) -> None:
     void show_fields() const;

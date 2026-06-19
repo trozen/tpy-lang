@@ -2835,30 +2835,31 @@ class OptionalType(TpyType):
     def to_cpp_param_type(self) -> str:
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}*"
-        from .type_def_registry import is_str_type
-        if is_str_type(self.inner):
-            return "std::optional<std::string_view>"
+        fam = view_family_for_type(self.inner)
+        if fam is not None:
+            return f"std::optional<{fam.view_type.to_cpp()}>"
         return self.to_cpp()
 
     def to_cpp_param(self, name: str) -> str:
-        from .type_def_registry import is_str_type
         if self.uses_pointer_repr():
             return f"{self.inner.to_cpp()}* {name}"
-        if is_str_type(self.inner):
-            return f"std::optional<std::string_view> {name}"
+        fam = view_family_for_type(self.inner)
+        if fam is not None:
+            return f"std::optional<{fam.view_type.to_cpp()}> {name}"
         return f"{self.to_cpp()} {name}"
 
     def to_cpp_const_param(self, name: str) -> str:
-        from .type_def_registry import is_str_type
         if self.uses_pointer_repr():
             return f"const {self.inner.to_cpp()}* {name}"
-        if is_str_type(self.inner):
-            return f"std::optional<std::string_view> {name}"
+        fam = view_family_for_type(self.inner)
+        if fam is not None:
+            return f"std::optional<{fam.view_type.to_cpp()}> {name}"
         return f"{self.to_cpp()} {name}"
 
     def param_needs_copy_for_reassign(self) -> bool:
-        from .type_def_registry import is_str_type
-        return is_str_type(self.inner)
+        # A borrow-form view param (str -> string_view, bytes -> span) aliases
+        # caller storage; reassigning it in the body needs an owned copy.
+        return view_family_for_type(self.inner) is not None
 
     def is_ref_param(self) -> bool:
         # Optional params are T* (pointer), not T& (reference)

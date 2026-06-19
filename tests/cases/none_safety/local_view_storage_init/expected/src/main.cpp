@@ -13,7 +13,7 @@ namespace tpyapp::main {
 }
 
 // def bytes_or(a: Optional[bytes], b: bytes) -> int:
-::tpy::BigInt bytes_or(std::optional<std::vector<uint8_t>> a, std::span<const uint8_t> b) {
+::tpy::BigInt bytes_or(std::optional<std::span<const uint8_t>> a, std::span<const uint8_t> b) {
     // y: bytes = a if a is not None else b  # tpyc: type(bytes)
     std::vector<uint8_t> y = ::tpy::bytes_copy((((a.has_value())) ? ((*a)) : (b)));
     // return len(y)

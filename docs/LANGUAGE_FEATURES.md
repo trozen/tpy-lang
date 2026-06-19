@@ -216,7 +216,7 @@ between the two forms. The common helpers:
 | pointer-variant `A \| B` (non-value) | `std::variant<A, B>` | `std::variant<A*, B*>` | `tpy::to_ptr_variant` / inverse |
 | `tuple` element-wise (`T \| None` slot -> `std::optional<T>`, plain non-value slot -> `T`) | `std::tuple<std::optional<A>, B, ...>` | `std::tuple<A*, B*, ...>` | `tpy::tuple_to_storage[_move]` / `tpy::tuple_to_pointer` (per-element dest-shape dispatch; mixing both slot kinds is fine) |
 | `str` | `std::string` | `std::string_view` | implicit C++ conversion |
-| `bytes` | `std::vector<uint8_t>` | `std::span<const uint8_t>` | implicit C++ conversion |
+| `bytes` | `std::vector<uint8_t>` | `std::span<const uint8_t>` | explicit `::tpy::bytes_copy` (span -> vector is not an implicit conversion) |
 
 `Own[T]` is the explicit user-facing marker that forces *storage form*
 at a parameter or return slot, transferring ownership at the call
@@ -658,7 +658,7 @@ log(f"x={x}")
 - **Working**: `bytearray` mutation: `append`, `extend`, `pop`, `clear`, `insert`, `remove`, `__setitem__`
 - **Working**: `hash(b)` for `bytes` and `BytesView` -- enables use as dict keys and set elements
 - **Working**: Iteration over bytes (`for b in data`)
-- **Working**: View deduction: bytes literals and `list[bytes]` subscripts infer `BytesView` when safe, fall back to owned `bytes` when mutated. Unlike `str | None` (which derefs to a `string_view` view), a narrowed `bytes | None` param deref stays owned `bytes`: `bytes | None` lowers to `std::optional<std::vector<uint8_t>>` (owned), and `span -> vector` is not an implicit conversion the way `string_view -> string` is
+- **Working**: View deduction: bytes literals and `list[bytes]` subscripts infer `BytesView` when safe, fall back to owned `bytes` when mutated. A `bytes | None` parameter lowers to the borrow form `std::optional<std::span<const uint8_t>>`, matching `str | None` (`std::optional<std::string_view>`) -- both are members of one view-type family, so a real `bytes` value can be passed without a copy. When such a borrow flows into an owned sink (return, field/container store, `dict[k] = v` value), an explicit `::tpy::bytes_copy` is emitted (unlike `string_view -> string`, `span -> vector` is not an implicit conversion). In an `async def` / generator, a `bytes | None` / `str | None` param is captured OWNED in the resumable frame (the borrow copied into `std::optional<owned>` at frame construction) so it survives suspension, parallel to bare `str`/`bytes`
 
 #### Bytes Type Semantics (Working)
 

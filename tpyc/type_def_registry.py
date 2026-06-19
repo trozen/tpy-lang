@@ -536,26 +536,43 @@ def is_bytes_type(t: "TpyType") -> bool:   return _is_qn(t, "builtins.bytes")
 
 
 def is_owned_in_coro_frame(t: "TpyType") -> bool:
-    """A `str` / `bytes` param is captured OWNED in a coroutine/generator frame
-    (the view is copied into owned storage -- `std::string` / `tpy::bytes` -- at
-    frame construction), not stored as a borrow that would dangle across a
-    suspension. Single source of truth so the two consumers can't drift: codegen
-    routes these to `_CoroParamKind.OWNED_COPY` (gen_async `_classify_params`),
-    and sema excludes them from a generator's result-borrow set
-    (`generator_borrow_param_indices`). Explicit view types (`StrView`,
-    `BytesView`, `Span[T]`) have no owned counterpart, so they are NOT here --
-    they stay borrowed (the user opted into view semantics)."""
-    return is_str_type(t) or is_bytes_type(t)
+    """A `str` / `bytes` param -- bare or `str | None` / `bytes | None` -- is
+    captured OWNED in a coroutine/generator frame (the view is copied into owned
+    storage -- `std::string` / `tpy::bytes`, wrapped in `std::optional` for the
+    nullable forms -- at frame construction), not stored as a borrow that would
+    dangle across a suspension. Single source of truth so the consumers can't
+    drift: codegen routes these to `_CoroParamKind.OWNED_COPY` (gen_async
+    `_classify_params`) / an owned init-capture (gen_generators), copying in via
+    `view_owned_copy_init`, and sema excludes them from a generator's
+    result-borrow set (`generator_borrow_param_indices`). Explicit view types
+    (`StrView`, `BytesView`, `Span[T]`) have no owned counterpart, so they are
+    NOT here -- they stay borrowed (the user opted into view semantics)."""
+    from tpyc.typesys import OptionalType
+    inner = t.inner if isinstance(t, OptionalType) else t
+    return is_str_type(inner) or is_bytes_type(inner)
 
 
 def view_to_owned_conv(t: "TpyType") -> str:
     """The C++ callable that copies a view-form `t` into its owned storage form:
     `std::string` for `str` (from a `std::string_view`), `::tpy::bytes_copy` for
-    `bytes` (from a `BytesView`). Shared by the coro-frame OWNED_COPY ctor-init
-    (gen_async) and the simple-generator owned init-capture (gen_generators) so
-    the spelling lives in one place. Only valid for `is_owned_in_coro_frame`
-    types."""
+    `bytes` (from a `BytesView`). `t` is the bare view type (Optional callers
+    pass the inner). Only valid for view-family types."""
     return "std::string" if is_str_type(t) else "::tpy::bytes_copy"
+
+
+def view_owned_copy_init(t: "TpyType", arg: str) -> str:
+    """Full C++ expression copying a borrow-form view param `arg` into its owned
+    storage form, for a coro-frame ctor-init / simple-generator init-capture.
+    Optional-aware: `str | None` / `bytes | None` copy the inner only when
+    present (the nullable borrow `optional<view>` -> owned `optional<owned>`),
+    since `span -> vector` / `string_view -> string` is not implicit through
+    `std::optional`. Only valid for `is_owned_in_coro_frame` types. Single source
+    so gen_async and gen_generators share the spelling."""
+    from tpyc.typesys import OptionalType
+    if isinstance(t, OptionalType):
+        conv = view_to_owned_conv(t.inner)
+        return f"{arg} ? std::make_optional({conv}(*{arg})) : std::nullopt"
+    return f"{view_to_owned_conv(t)}({arg})"
 
 
 def is_bytearray_type(t: "TpyType") -> bool: return _is_qn(t, "builtins.bytearray")

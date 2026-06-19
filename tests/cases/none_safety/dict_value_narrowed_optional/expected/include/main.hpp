@@ -10,7 +10,7 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 void store_str(std::optional<std::string_view> a);
-void store_bytes(std::optional<std::vector<uint8_t>> a);
+void store_bytes(std::optional<std::span<const uint8_t>> a);
 void store_list(std::optional<std::string_view> a);
 void store_optional_value(std::optional<std::string_view> a);
 void main();

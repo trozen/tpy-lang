@@ -46,7 +46,7 @@ _FRESH_COLLECTION_NODES = (
 from ..typesys import IntLiteralType, NominalType, OptionalType, OwnType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, VoidType, is_fn_type
 from .gen_generators import GeneratorCodegen, GeneratorForInfo
 from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
-                                  is_owned_in_coro_frame, view_to_owned_conv)
+                                  is_owned_in_coro_frame, view_owned_copy_init)
 from .context import INDENT, escape_cpp_name, CodeGenError, FinallyContext, module_to_cpp_namespace, qualified_cpp_name
 from .protocols import protocol_param_template_name, fn_param_template_name
 from .functions import default_to_cpp
@@ -167,10 +167,10 @@ class _CoroParam:
     field_type: str  # type spelling for the frame-field declaration
     ctor_param_type: str  # type spelling for the constructor's parameter
     kind: _CoroParamKind
-    # OWNED_COPY only: the view->owned conversion callable (`std::string` /
-    # `::tpy::bytes_copy`) applied in ctor_init to copy the borrow param into
-    # the owned field.
-    owned_copy_conv: str = ""
+    # OWNED_COPY only: the ctor-init RHS expression copying the borrow param into
+    # the owned field (`::tpy::bytes_copy(b_)`, or the optional-aware form for
+    # `str|None` / `bytes|None`). Built via view_owned_copy_init.
+    owned_copy_init: str = ""
 
     def field_decl(self) -> str:
         if self.kind is _CoroParamKind.REF:
@@ -222,8 +222,9 @@ class _CoroParam:
         if self.kind is _CoroParamKind.OWNED_COPY:
             # Copy the borrow-form param into the owned field at construction,
             # so the value survives suspensions without aliasing the caller
-            # (std::string(view) for str, ::tpy::bytes_copy(view) for bytes).
-            return f"{self.cpp_name}({self.owned_copy_conv}({self.cpp_name}_))"
+            # (std::string(view) for str, ::tpy::bytes_copy(view) for bytes; the
+            # nullable forms copy the inner only when present).
+            return f"{self.cpp_name}({self.owned_copy_init})"
         return f"{self.cpp_name}(std::move({self.cpp_name}_))"
 
 
@@ -394,20 +395,21 @@ class AsyncCoroCodegen:
             ptype_inner = unwrap_ref_type(ptype)
             actual = unwrap_readonly(ptype_inner)
             kind = self._classify_param_kind(ptype)
-            owned_conv = ""
+            owned_init = ""
             if kind is _CoroParamKind.VALUE:
                 # Value types (incl. explicit views like StrView) store their
                 # own C++ type by value; str/bytes are OWNED_COPY, not here.
                 field_type = ctor_type = self.types.type_to_cpp(ptype_inner)
             elif kind is _CoroParamKind.OWNED_COPY:
                 # Owned storage field, but the factory/ctor take the borrow form
-                # the call site passes (string_view / BytesView); ctor_init
-                # copies it in via `owned_conv` so it survives suspensions.
+                # the call site passes (string_view / BytesView, or their
+                # nullable optional<view>); ctor_init copies it in via
+                # `owned_init` so it survives suspensions.
                 ctor_type = ptype_inner.to_cpp_param_type()
-                owned_conv = view_to_owned_conv(ptype_inner)
+                owned_init = view_owned_copy_init(ptype_inner, f"{cpp_name}_")
                 # Owned field: str's owned form is std::string (its bare
-                # type_to_cpp is the string_view *view*); bytes's is already
-                # owned (tpy::bytes).
+                # type_to_cpp is the string_view *view*); bytes and the nullable
+                # str|None / bytes|None forms are already owned via type_to_cpp.
                 field_type = ("std::string" if is_str_type(ptype_inner)
                               else self.types.type_to_cpp(ptype_inner))
             elif kind is _CoroParamKind.TYPE_PARAM:
@@ -467,7 +469,7 @@ class AsyncCoroCodegen:
                 field_type=field_type,
                 ctor_param_type=ctor_type,
                 kind=kind,
-                owned_copy_conv=owned_conv,
+                owned_copy_init=owned_init,
             ))
         return out
 
