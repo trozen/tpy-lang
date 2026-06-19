@@ -6,8 +6,10 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // f = "/tmp/tpy_ospath_fs.txt"
-    std::string_view f = "/tmp/tpy_ospath_fs.txt";
+    // tmp = os.path.realpath("/tmp")
+    std::string tmp = ::tpy::stdlib::os::path_realpath("/tmp");
+    // f = tmp + "/tpy_ospath_fs.txt"
+    std::string f = (::tpy::str_concat(tmp, "/tpy_ospath_fs.txt"));
     // with open(f, "w") as fh:
     auto __ctx_1 = ::tpy::builtin_open_mode(f, "w");
     auto& fh = __ctx_1.__enter__();
@@ -22,30 +24,30 @@ void main() {
         __ctx_1.__exit__({}, nullptr, {});
         throw;
     }
-    // print(exists(f), exists("/tmp/tpy_ospath_fs_missing"))
-    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_exists(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists("/tmp/tpy_ospath_fs_missing")) << "\n";
-    // print(isfile(f), isfile("/tmp"))
-    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_isfile(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isfile("/tmp")) << "\n";
-    // print(isdir(f), isdir("/tmp"))
-    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_isdir(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isdir("/tmp")) << "\n";
-    // print(islink(f), islink("/tmp"))
-    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_islink(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_islink("/tmp")) << "\n";
-    // print(lexists(f), lexists("/tmp/tpy_ospath_fs_missing"))
-    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_lexists(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_lexists("/tmp/tpy_ospath_fs_missing")) << "\n";
+    // print(exists(f), exists(tmp + "/tpy_ospath_fs_missing"))
+    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_exists(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_exists((::tpy::str_concat(tmp, "/tpy_ospath_fs_missing")))) << "\n";
+    // print(isfile(f), isfile(tmp))
+    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_isfile(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isfile(tmp)) << "\n";
+    // print(isdir(f), isdir(tmp))
+    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_isdir(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_isdir(tmp)) << "\n";
+    // print(islink(f), islink(tmp))
+    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_islink(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_islink(tmp)) << "\n";
+    // print(lexists(f), lexists(tmp + "/tpy_ospath_fs_missing"))
+    std::cout << ::tpy::print_bool(::tpy::stdlib::os::path_lexists(f)) << " " << ::tpy::print_bool(::tpy::stdlib::os::path_lexists((::tpy::str_concat(tmp, "/tpy_ospath_fs_missing")))) << "\n";
     // print(getsize(f))
     std::cout << ::tpy::stdlib::os::path_getsize(f) << "\n";
     // # getsize on a directory returns st_size (does not raise, like CPython);
     // # the value varies by filesystem, so only its non-negativity is checked.
-    // print(getsize("/tmp") >= 0)
-    std::cout << ::tpy::print_bool((::tpy::stdlib::os::path_getsize("/tmp") >= 0)) << "\n";
-    // os.chdir("/tmp")
-    ::tpy::stdlib::os::chdir("/tmp");
-    // print(abspath("sub/x"))
-    std::cout << ::tpystd::os::path::abspath("sub/x") << "\n";
+    // print(getsize(tmp) >= 0)
+    std::cout << ::tpy::print_bool((::tpy::stdlib::os::path_getsize(tmp) >= 0)) << "\n";
+    // os.chdir(tmp)
+    ::tpy::stdlib::os::chdir(tmp);
+    // print(abspath("sub/x") == tmp + "/sub/x")
+    std::cout << ::tpy::print_bool((::tpystd::os::path::abspath("sub/x") == (::tpy::str_concat(tmp, "/sub/x")))) << "\n";
     // print(abspath("/a/b/../c"))
     std::cout << ::tpystd::os::path::abspath("/a/b/../c") << "\n";
-    // print(abspath("."))
-    std::cout << ::tpystd::os::path::abspath(".") << "\n";
+    // print(abspath(".") == tmp)
+    std::cout << ::tpy::print_bool((::tpystd::os::path::abspath(".") == tmp)) << "\n";
 }
 
 void __tpy_init() {
@@ -53,9 +55,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # os.path filesystem predicates + abspath, over fixed /tmp fixtures; chdir
-    // # makes abspath deterministic. Symlink-True paths need os.symlink (not yet),
-    // # so only the non-symlink behavior of islink/lexists is exercised.
+    // # os.path filesystem predicates + abspath, over fixed temp fixtures. All paths
+    // # go through realpath("/tmp") (a real directory on both Linux and macOS, where
+    // # /tmp itself is a symlink to /private/tmp) so the predicates and abspath stay
+    // # host-independent: islink(dir) is False on both, and getcwd-relative abspath is
+    // # compared against the canonical dir rather than printed.
     // import os
     ::tpystd::os::__tpy_init();
     // from os.path import exists, lexists, isfile, isdir, islink, getsize, abspath

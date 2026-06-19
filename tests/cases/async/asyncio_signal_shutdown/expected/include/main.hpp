@@ -13,8 +13,6 @@ namespace tpyapp::main {
 
 using ::tpystd::signal::raise_signal;
 
-inline auto& SIGINT = ::tpystd::signal::SIGINT;
-
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_serve;

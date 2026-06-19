@@ -1,6 +1,6 @@
-# os mutating-op error mapping: each errno maps to its CPython OSError
-# subclass (FileExists/NotADirectory/IsADirectory/FileNotFound/non-empty).
-# Only the exception TYPE is observed; message text differs from CPython.
+# os mutating-op error mapping: each errno maps to its CPython OSError subclass
+# (FileExists/NotADirectory/FileNotFound/non-empty, plus the host-divergent
+# unlink-on-a-dir). Only the exception TYPE is observed; messages differ.
 import os
 from os.path import exists, lexists
 
@@ -35,9 +35,12 @@ def main():
     except NotADirectoryError:
         print("rmdir-file: NotADirectoryError")
     try:
-        os.remove(base + "/sub")       # EISDIR (unlink on a dir)
+        os.remove(base + "/sub")       # unlink on a dir: EISDIR (Linux) / EPERM (macOS)
+    # Per-host errno -> different class; normalize to one token.
     except IsADirectoryError:
-        print("remove-dir: IsADirectoryError")
+        print("remove-dir: rejected")
+    except PermissionError:
+        print("remove-dir: rejected")
     try:
         os.rmdir(base)                 # ENOTEMPTY -> plain OSError (no subclass)
     except OSError:

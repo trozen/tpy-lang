@@ -495,6 +495,8 @@ _CLANG_ONLY_WARN_FLAGS: list[str] = [
     "-Wno-defaulted-function-deleted",
     "-Wno-float-conversion",            # implicit double -> bool in `if x` for float locals
     "-Wno-unused-value",                # `abs(0);` discards a const-attribute return
+    "-Wno-self-assign",                 # `x = x` (legal Python no-op) lowers verbatim
+    "-Wno-self-assign-field",           # `self.x = self.x` field self-assign, ditto
 ]
 
 

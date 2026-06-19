@@ -34,7 +34,7 @@ namespace tpyapp::main {
     case S_JOIN_1: {
         try {
             // raise_signal(SIGINT)
-            ::tpystd::signal::raise_signal(::tpystd::signal::SIGINT);
+            ::tpystd::signal::raise_signal(::tpy_const_sigint);
             // await asyncio.sleep(10.0)
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(10.0)));
             __state = S_RESUME_0;

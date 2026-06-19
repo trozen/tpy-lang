@@ -1,7 +1,7 @@
 mkdir-existing: FileExistsError
 makedirs-existing: FileExistsError
 rmdir-file: NotADirectoryError
-remove-dir: IsADirectoryError
+remove-dir: rejected
 rmdir-nonempty: OSError
 rmdir-missing: FileNotFoundError
 rename-missing: FileNotFoundError

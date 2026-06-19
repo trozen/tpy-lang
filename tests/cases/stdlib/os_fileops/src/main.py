@@ -1,4 +1,4 @@
-# os.link (hardlink), truncate, ftruncate, fsync/fdatasync. Builds + tears down
+# os.link (hardlink), truncate, ftruncate, fsync. Builds + tears down
 # a /tmp file so both phases start clean. Byte-compared against CPython.
 import os
 
@@ -19,7 +19,6 @@ def main():
     fd = os.open(p, os.O_WRONLY)
     os.ftruncate(fd, 2)
     os.fsync(fd)
-    os.fdatasync(fd)
     os.close(fd)
     print("ftruncate", os.stat(p).st_size)           # 2
 

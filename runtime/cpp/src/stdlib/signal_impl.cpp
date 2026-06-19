@@ -115,7 +115,9 @@ int tpy_signal_install_shutdown() {
     g_flag = 0;
     struct sigaction sa{};
     sa.sa_handler = on_shutdown_signal;
-    ::sigemptyset(&sa.sa_mask);
+    // Unqualified: sigemptyset is a function-like macro on macOS/BSD, so `::`
+    // would be a syntax error; plain lookup finds the libc function on Linux.
+    sigemptyset(&sa.sa_mask);
     // No SA_RESTART: a signal should interrupt a blocking syscall. The reactor's
     // epoll_wait / kevent retries EINTR internally and then sees the fd ready.
     sa.sa_flags = 0;
@@ -168,5 +170,13 @@ int tpy_signal_consume() {
 int tpy_signal_raise(int sig) {
     return ::raise(sig);
 }
+
+// Signal numbers read from <signal.h> rather than hardcoded facade-side: the
+// SIGINT/SIGTERM macros are in scope in every TPy-generated TU on macOS, so a
+// plain `int32_t SIGINT` constant there would be mangled by the macro. Exposed
+// as extern globals (read via `native_global`), same as socket_impl's tpy_const_*.
+// Non-const so the type matches the `extern int32_t` decl native_global emits.
+std::int32_t tpy_const_sigint = SIGINT;
+std::int32_t tpy_const_sigterm = SIGTERM;
 
 }  // extern "C"

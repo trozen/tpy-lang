@@ -22,7 +22,7 @@ from ._native import (
     strerror, isatty, cpu_count_raw as _cpu_count_raw,
     link_path as _link_path, truncate_path as _truncate_path,
     ftruncate_fd as _ftruncate_fd, fsync_fd as _fsync_fd,
-    fdatasync_fd as _fdatasync_fd, terminal_size_raw as _terminal_size_raw,
+    terminal_size_raw as _terminal_size_raw,
     chmod_path as _chmod_path, chown_path as _chown_path,
     utime_path as _utime_path, access_path as _access_path,
     urandom as _urandom,
@@ -284,10 +284,6 @@ def ftruncate(fd: Int64, length: Int64) -> None:
 
 def fsync(fd: Int64) -> None:
     _fsync_fd(fd)
-
-
-def fdatasync(fd: Int64) -> None:
-    _fdatasync_fd(fd)
 
 
 # os.get_terminal_size result. Attribute access only (no tuple/sequence

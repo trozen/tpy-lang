@@ -153,6 +153,12 @@ tests/cases/<group>/<case>/
 
 **Reference-type happy tests must force the value-vs-reference distinction.** A *passing* test that moves a reference type (class / `list` / `dict` / `set` / recursive-union wrapper) across a boundary -- `yield`, `return`, local binding (`x = accessor()`), container insert, param passing -- must either **mutate the shared object after the boundary and observe the change**, or use a **`@nocopy` type** (so a silent copy becomes a compile error). Read-only output is *parity-blind*: the cpy phase only byte-compares `output.txt`, so a test that just reads can match CPython exactly while TPy silently *copied* where CPython would *alias* -- the divergence (and any aliasing/UAF bug behind it) stays invisible. If copy semantics are genuinely intended at that boundary, say so in the top-of-file comment so the next reader knows it wasn't an oversight. (This mirrors the cpython-parity reviewer's test-adequacy check -- but the author should not rely on review to catch it.)
 
+**Tests must emit host-independent output.** `output.txt` is committed once and byte-compared on every platform, so a test that prints anything OS- or filesystem-specific passes on the host it was snapshotted on and fails everywhere else (where CPython itself diverges identically -- so it's the snapshot, not a TPy bug). The usual offenders and their fixes:
+- **Absolute temp paths.** `/tmp` is a symlink on macOS (`getcwd`/`realpath`/`abspath` return `/private/tmp`), so never bake an absolute path into `output.txt`. Compute the canonical root at runtime (`tmp = os.path.realpath("/tmp")`), route fixtures and predicates through it, and print *comparisons* (`os.getcwd() == tmp`, `abspath("sub/x") == tmp + "/sub/x"`) or relative names -- not the absolute path. This also fixes `islink`/`lexists` on the temp root (`/tmp` is a symlink on macOS, a real dir on Linux).
+- **OS-divergent errno.** The same operation maps to different errno -> different `OSError` subclass per OS (e.g. `unlink` on a directory is `EISDIR`/`IsADirectoryError` on Linux but `EPERM`/`PermissionError` on macOS). Catch each per-host class in a separate `except` clause (TPy rejects the `except (A, B)` tuple form) and print one stable token; the cpy phase still pins TPy == CPython per host. Note the per-OS classes in a comment.
+
+These divergences are invisible in a normal `uv run pytest` because exec/cpy auto-skip; only `--force-exec` on the target OS surfaces them.
+
 ## Code Style
 
 For `tpyc/` compiler modules:

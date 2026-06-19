@@ -44,8 +44,6 @@ void main() {
     ::tpystd::os::ftruncate(fd, 2);
     // os.fsync(fd)
     ::tpystd::os::fsync(fd);
-    // os.fdatasync(fd)
-    ::tpystd::os::fdatasync(fd);
     // os.close(fd)
     ::tpystd::os::close(fd);
     // print("ftruncate", os.stat(p).st_size)           # 2
@@ -65,7 +63,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # os.link (hardlink), truncate, ftruncate, fsync/fdatasync. Builds + tears down
+    // # os.link (hardlink), truncate, ftruncate, fsync. Builds + tears down
     // # a /tmp file so both phases start clean. Byte-compared against CPython.
     // import os
     ::tpystd::os::__tpy_init();

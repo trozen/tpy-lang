@@ -26,6 +26,12 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+// macOS does not expose `environ` to a shared library / non-main TU; the
+// supported access is `*_NSGetEnviron()`. Linux/BSD declare it in <unistd.h>.
+#if defined(__APPLE__)
+#include <crt_externs.h>
+#endif
+
 #include <tpy/core.hpp>
 
 namespace tpy::stdlib::os {
@@ -201,7 +207,12 @@ std::string path_realpath(std::string_view path) {
 // from env_get per key). An entry without '=' is skipped (malformed).
 std::vector<std::string> environ_keys() {
     std::vector<std::string> keys;
-    for (char** e = ::environ; e && *e; ++e) {
+#if defined(__APPLE__)
+    char** envp = *_NSGetEnviron();
+#else
+    char** envp = ::environ;
+#endif
+    for (char** e = envp; e && *e; ++e) {
         std::string_view entry(*e);
         auto eq = entry.find('=');
         if (eq != std::string_view::npos) {
@@ -323,13 +334,25 @@ int64_t ts_ns(const struct timespec& t) {
            static_cast<int64_t>(t.tv_nsec);
 }
 
+// Apple names the struct stat sub-second members st_{a,m,c}timespec; Linux and
+// POSIX-2008 BSDs use st_{a,m,c}tim. Localize the spelling difference here.
+#if defined(__APPLE__)
+const struct timespec& stat_atime(const struct ::stat& s) { return s.st_atimespec; }
+const struct timespec& stat_mtime(const struct ::stat& s) { return s.st_mtimespec; }
+const struct timespec& stat_ctime(const struct ::stat& s) { return s.st_ctimespec; }
+#else
+const struct timespec& stat_atime(const struct ::stat& s) { return s.st_atim; }
+const struct timespec& stat_mtime(const struct ::stat& s) { return s.st_mtim; }
+const struct timespec& stat_ctime(const struct ::stat& s) { return s.st_ctim; }
+#endif
+
 StatTuple to_tuple(const struct ::stat& st) {
     return {static_cast<int64_t>(st.st_mode), static_cast<int64_t>(st.st_ino),
             static_cast<int64_t>(st.st_dev),  static_cast<int64_t>(st.st_nlink),
             static_cast<int64_t>(st.st_uid),  static_cast<int64_t>(st.st_gid),
             static_cast<int64_t>(st.st_size),
-            ts_secs(st.st_atim), ts_secs(st.st_mtim), ts_secs(st.st_ctim),
-            ts_ns(st.st_atim),   ts_ns(st.st_mtim),   ts_ns(st.st_ctim)};
+            ts_secs(stat_atime(st)), ts_secs(stat_mtime(st)), ts_secs(stat_ctime(st)),
+            ts_ns(stat_atime(st)),   ts_ns(stat_mtime(st)),   ts_ns(stat_ctime(st))};
 }
 
 } // namespace
@@ -355,21 +378,21 @@ double path_getmtime(std::string_view path) {
     std::string p(path);
     struct ::stat st;
     if (::stat(p.c_str(), &st) != 0) raise_errno("getmtime", path);
-    return ts_secs(st.st_mtim);
+    return ts_secs(stat_mtime(st));
 }
 
 double path_getatime(std::string_view path) {
     std::string p(path);
     struct ::stat st;
     if (::stat(p.c_str(), &st) != 0) raise_errno("getatime", path);
-    return ts_secs(st.st_atim);
+    return ts_secs(stat_atime(st));
 }
 
 double path_getctime(std::string_view path) {
     std::string p(path);
     struct ::stat st;
     if (::stat(p.c_str(), &st) != 0) raise_errno("getctime", path);
-    return ts_secs(st.st_ctim);
+    return ts_secs(stat_ctime(st));
 }
 
 bool path_samefile(std::string_view a, std::string_view b) {
@@ -524,10 +547,6 @@ void ftruncate_fd(int64_t fd, int64_t length) {
 
 void fsync_fd(int64_t fd) {
     if (::fsync(static_cast<int>(fd)) != 0) raise_errno("fsync", "");
-}
-
-void fdatasync_fd(int64_t fd) {
-    if (::fdatasync(static_cast<int>(fd)) != 0) raise_errno("fdatasync", "");
 }
 
 std::tuple<int64_t, int64_t> terminal_size_raw(int64_t fd) {

@@ -147,7 +147,6 @@ void link_path(std::string_view src, std::string_view dst);
 void truncate_path(std::string_view path, int64_t length);
 void ftruncate_fd(int64_t fd, int64_t length);
 void fsync_fd(int64_t fd);
-void fdatasync_fd(int64_t fd);
 
 // os.get_terminal_size: (columns, lines) via TIOCGWINSZ; raise_errno if the fd
 // is not a terminal (matching CPython, which raises OSError).

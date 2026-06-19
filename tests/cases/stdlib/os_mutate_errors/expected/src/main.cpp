@@ -80,11 +80,14 @@ void main() {
     // try:
     {
         try {
-            // os.remove(base + "/sub")       # EISDIR (unlink on a dir)
+            // os.remove(base + "/sub")       # unlink on a dir: EISDIR (Linux) / EPERM (macOS)
             ::tpy::stdlib::os::remove((::tpy::str_concat(base, "/sub")));
         } catch (const ::tpy::IsADirectoryError&) {
-            // print("remove-dir: IsADirectoryError")
-            std::cout << "remove-dir: IsADirectoryError" << "\n";
+            // print("remove-dir: rejected")
+            std::cout << "remove-dir: rejected" << "\n";
+        } catch (const ::tpy::PermissionError&) {
+            // print("remove-dir: rejected")
+            std::cout << "remove-dir: rejected" << "\n";
         }
     }
     // try:
@@ -163,9 +166,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # os mutating-op error mapping: each errno maps to its CPython OSError
-    // # subclass (FileExists/NotADirectory/IsADirectory/FileNotFound/non-empty).
-    // # Only the exception TYPE is observed; message text differs from CPython.
+    // # os mutating-op error mapping: each errno maps to its CPython OSError subclass
+    // # (FileExists/NotADirectory/FileNotFound/non-empty, plus the host-divergent
+    // # unlink-on-a-dir). Only the exception TYPE is observed; messages differ.
     // import os
     ::tpystd::os::__tpy_init();
     // from os.path import exists, lexists

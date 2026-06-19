@@ -6,18 +6,20 @@ namespace tpyapp::main {
 
 // def main():
 void main() {
-    // os.chdir("/tmp")
-    ::tpy::stdlib::os::chdir("/tmp");
-    // print(os.getcwd())
-    std::cout << ::tpy::stdlib::os::getcwd() << "\n";
+    // tmp = os.path.realpath("/tmp")
+    std::string tmp = ::tpy::stdlib::os::path_realpath("/tmp");
+    // os.chdir(tmp)
+    ::tpy::stdlib::os::chdir(tmp);
+    // print(os.getcwd() == tmp)
+    std::cout << ::tpy::print_bool((::tpy::stdlib::os::getcwd() == tmp)) << "\n";
     // for i in ["a", "b", "c"]:
     auto __obj_0 = {"a", "b", "c"};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string_view i = *__beg_0;
-        // with open("/tmp/tpy_os_fs_" + i + ".txt", "w") as f:
-        auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat((::tpy::str_concat("/tmp/tpy_os_fs_", i)), ".txt")), "w");
+        // with open(tmp + "/tpy_os_fs_" + i + ".txt", "w") as f:
+        auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(tmp, "/tpy_os_fs_")), i)), ".txt")), "w");
         auto& f = __ctx_1.__enter__();
         try {
             // f.write(i)
@@ -31,10 +33,10 @@ void main() {
             throw;
         }
     }
-    // names = sorted([n for n in os.listdir("/tmp") if n.startswith("tpy_os_fs_")])
+    // names = sorted([n for n in os.listdir(tmp) if n.startswith("tpy_os_fs_")])
     std::vector<std::string> names = ::tpy::builtin_sorted<std::string>(({
         std::vector<std::string> __result;
-        auto __obj_1 = ::tpystd::os::listdir("/tmp");
+        auto __obj_1 = ::tpystd::os::listdir(tmp);
         __result.reserve(static_cast<std::size_t>(__obj_1.size()));
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
@@ -64,8 +66,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # os filesystem layer (getcwd/chdir/listdir/getenv); chdir to /tmp + reducing
-    // # results to machine-independent values keeps it CPython byte-parity-stable.
+    // # os filesystem layer (getcwd/chdir/listdir/getenv). Output is kept
+    // # host-independent: /tmp is a symlink on macOS (-> /private/tmp), so getcwd
+    // # is compared against realpath("/tmp") rather than printed, keeping CPython
+    // # byte-parity on both Linux and macOS.
     // import os
     ::tpystd::os::__tpy_init();
     // main()

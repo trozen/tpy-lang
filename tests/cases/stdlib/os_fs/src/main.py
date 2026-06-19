@@ -1,16 +1,19 @@
-# os filesystem layer (getcwd/chdir/listdir/getenv); chdir to /tmp + reducing
-# results to machine-independent values keeps it CPython byte-parity-stable.
+# os filesystem layer (getcwd/chdir/listdir/getenv). Output is kept
+# host-independent: /tmp is a symlink on macOS (-> /private/tmp), so getcwd
+# is compared against realpath("/tmp") rather than printed, keeping CPython
+# byte-parity on both Linux and macOS.
 import os
 
 
 def main():
-    os.chdir("/tmp")
-    print(os.getcwd())
+    tmp = os.path.realpath("/tmp")
+    os.chdir(tmp)
+    print(os.getcwd() == tmp)
 
     for i in ["a", "b", "c"]:
-        with open("/tmp/tpy_os_fs_" + i + ".txt", "w") as f:
+        with open(tmp + "/tpy_os_fs_" + i + ".txt", "w") as f:
             f.write(i)
-    names = sorted([n for n in os.listdir("/tmp") if n.startswith("tpy_os_fs_")])
+    names = sorted([n for n in os.listdir(tmp) if n.startswith("tpy_os_fs_")])
     print(",".join(names))
 
     # Unset var: None / default. PATH is set in any environment that can run
