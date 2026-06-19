@@ -5927,9 +5927,10 @@ Send/Sync rules for built-in types:
   handler** for the duration of the run (matching CPython's asyncio.run):
   Ctrl-C cancels the root task so its `finally` / `__aexit__` / `wait_closed`
   cleanup runs, then `asyncio.run` raises `KeyboardInterrupt`. An
-  async-signal-safe handler sets a flag and writes a wakeup `eventfd`
-  registered in the executor's epoll set, so a signal wakes a blocked
-  `epoll_wait` race-free; the prior disposition is restored on exit. SIGTERM
+  async-signal-safe handler sets a flag and writes a wakeup fd (an `eventfd`
+  on Linux, a self-pipe on macOS / *BSD) registered in the executor's reactor,
+  so a signal wakes a blocked `epoll_wait` / `kevent` race-free; the prior
+  disposition is restored on exit. SIGTERM
   is left at its default (terminate), also matching CPython. (`raise_signal` /
   `SIGINT` / `SIGTERM` are exposed by a minimal `signal` stdlib module.)
   `asyncio.sleep(s)` is a real
@@ -5980,7 +5981,7 @@ Send/Sync rules for built-in types:
   At `asyncio.run` exit, remaining spawned tasks are cancelled and
   drained so wrapper-try `finally` blocks run for fire-and-forget
   tasks.
-- **Working (v2 I/O reactor M1, Linux)**: the executor gains a second wake
+- **Working (v2 I/O reactor M1)**: the executor gains a second wake
   source -- an epoll `Reactor` -- alongside the timer heap. `EpollReactor`
   owns an epoll fd + a single-waiter `fd -> Waker` registry (one-shot
   arming); `Executor.wait_for_event` blocks in `epoll_wait` bounded by the
@@ -6001,10 +6002,13 @@ Send/Sync rules for built-in types:
   `gather(...) -> Own[...]` shape), so they sidestep the async-def
   view-param coro-frame gap (BUGS.md). The `Reactor` protocol
   (`register_fd` / `unregister_fd` / `poll` / `count` / `close`) is the
-  documented interface a backend implements; kqueue / io_uring backends and a
-  user swap-in are follow-ups. epoll binds through
+  documented interface a backend implements. The reactor binds through
   `lib/tpy/_bindings/posix_epoll.py` over flat `tpy_epoll_*` wrappers in
-  `runtime/cpp/src/stdlib/epoll_impl.cpp`. The high-level **streams** layer
+  `runtime/cpp/src/stdlib/epoll_impl.cpp`, which holds two backends behind that
+  one ABI: epoll on Linux, kqueue on macOS / *BSD (mapping EPOLLIN/EPOLLOUT to
+  EVFILT_READ/WRITE) -- so the same async code runs on both. An io_uring
+  backend and a protocol-level user swap-in are follow-ups. The high-level
+  **streams** layer
   is built on this: `asyncio.open_connection(host, port)` returns a
   `(StreamReader, StreamWriter)` sharing the socket via `Rc[socket]`;
   `StreamReader` buffers bytes and fills via `sock_recv` (`read` /

@@ -114,4 +114,21 @@ int tpy_set_nonblocking(int fd, int nonblocking) {
     return 0;
 }
 
+// Platform-correct socket / errno constant values, sourced from the system
+// headers here so the public `socket` facade need not hardcode Linux values:
+// SOL_SOCKET (1 vs BSD 0xffff), SO_* and AF_INET6, and EAGAIN / EINPROGRESS
+// all differ on macOS/BSD. Exposed as extern globals (read facade-side via
+// `native_global`) for the same reason as the helpers above -- keep
+// <sys/socket.h> / <errno.h> out of every TPy-generated TU. Values that are
+// identical across Linux and macOS/BSD (AF_INET, SOCK_*, IPPROTO_*,
+// TCP_NODELAY, SHUT_*) stay as literals facade-side. Non-const so the type
+// matches the `extern int32_t` the native_global decl emits.
+std::int32_t tpy_const_sol_socket = SOL_SOCKET;
+std::int32_t tpy_const_so_reuseaddr = SO_REUSEADDR;
+std::int32_t tpy_const_so_error = SO_ERROR;
+std::int32_t tpy_const_so_keepalive = SO_KEEPALIVE;
+std::int32_t tpy_const_af_inet6 = AF_INET6;
+std::int32_t tpy_const_eagain = EAGAIN;
+std::int32_t tpy_const_einprogress = EINPROGRESS;
+
 }  // extern "C"

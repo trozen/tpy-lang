@@ -1839,6 +1839,16 @@ class CodeGenerator:
                 src_info = self.analyzer.registry.get_module(source_module)
                 if src_info is not None and src_info.is_native_module:
                     continue
+                # A native_global in a *regular* module has no
+                # `::<module_ns>::<name>` definition (it's substituted inline
+                # at use sites via its native symbol), so a re-export alias to
+                # it would dangle. Use sites resolve it through
+                # ModuleVarInfo.native_cpp_name regardless, same as the
+                # native-module-sourced variables skipped above.
+                if src_info is not None:
+                    src_var = src_info.variables.get(original_name)
+                    if src_var is not None and src_var.native_cpp_name is not None:
+                        continue
                 qualified = qualified_cpp_name(source_module, original_name)
                 hpp.write(f"inline auto& {local_name} = {qualified};\n")
                 any_written = True

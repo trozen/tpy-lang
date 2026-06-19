@@ -30,11 +30,12 @@ TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
     links `-lws2_32`. All goes in socket_impl.cpp behind `#ifdef _WIN32`;
     TPy-side API stays the same. Blocker: no Windows CI yet.
 
-  * **macOS portability.** AF_INET6, SOL_SOCKET, SO_REUSEADDR etc.
-    values differ on macOS/BSD (e.g. SOL_SOCKET is 0xffff on BSD vs 1
-    on Linux). Constants below hardcode Linux values. Fix by routing
-    through `tpy_socket_constants()` helpers in socket_impl.cpp, or via
-    per-platform Final declarations once TPy supports those.
+  * **macOS portability.** The divergent wire constants (SOL_SOCKET,
+    SO_*, AF_INET6) and errno values (EAGAIN, EINPROGRESS) are read from
+    the system headers via `native_global` bindings to the `tpy_const_*`
+    globals in socket_impl.cpp, so they are platform-correct. Remaining
+    macOS gaps are the same feature follow-ups as on Linux (IPv6
+    sockaddr binding, struct-valued setsockopt, etc.), not portability.
 
   * **Non-blocking I/O.** `setblocking(False)` is done (toggles O_NONBLOCK
     via fcntl); the EAGAIN/EWOULDBLOCK + selector handling lives in the
@@ -97,6 +98,7 @@ from tpy import (
     Int32, Int64, UInt8, UInt16, UInt32, UInt64, Ptr, readonly, Own,
     String, take_ptr, nocopy,
 )
+from tpy.extern import native_global
 from tpy.mem import UninitArrayStorage, UninitHeapStorage
 from tpy.unsafe import (
     unsafe_cast, unsafe_ptr, unsafe_ptr_add, unsafe_load,
@@ -108,20 +110,25 @@ from _bindings.posix_socket import SockaddrIn
 
 
 # ---------- Wire constants ----------
-# Linux glibc values (hardcoded -- see module TODO for macOS/BSD story).
-# Sourced from `<sys/socket.h>`, `<netinet/in.h>`, `<netinet/tcp.h>`.
+# Values identical across Linux and macOS/BSD are literals; the ones that
+# diverge (SOL_SOCKET, SO_*, AF_INET6) are sourced from the system headers
+# via posix_socket.tpy_const_* getters so the same source builds correctly on
+# either platform. Sourced from `<sys/socket.h>`, `<netinet/in.h>`,
+# `<netinet/tcp.h>`.
 
 AF_INET:     Final[Int32] = 2
-AF_INET6:    Final[Int32] = 10   # Linux-specific (macOS: 30). Not yet usable.
 AF_UNIX:     Final[Int32] = 1    # Not yet usable (no sockaddr_un binding).
+# Linux 10, macOS/BSD 30. Not yet usable (no sockaddr_in6 binding).
+AF_INET6:    Final[Int32] = native_global("tpy_const_af_inet6", binding="C")
 
 SOCK_STREAM: Final[Int32] = 1
 SOCK_DGRAM:  Final[Int32] = 2
 
-SOL_SOCKET:   Final[Int32] = 1    # Linux. BSD = 0xffff.
-SO_REUSEADDR: Final[Int32] = 2
-SO_KEEPALIVE: Final[Int32] = 9
-SO_ERROR:     Final[Int32] = 4
+# Linux 1, BSD/macOS 0xffff.
+SOL_SOCKET:   Final[Int32] = native_global("tpy_const_sol_socket", binding="C")
+SO_REUSEADDR: Final[Int32] = native_global("tpy_const_so_reuseaddr", binding="C")
+SO_KEEPALIVE: Final[Int32] = native_global("tpy_const_so_keepalive", binding="C")
+SO_ERROR:     Final[Int32] = native_global("tpy_const_so_error", binding="C")
 
 IPPROTO_TCP: Final[Int32] = 6
 IPPROTO_UDP: Final[Int32] = 17
@@ -151,11 +158,12 @@ class SocketError(OSError):
         super().__init__(message)
 
 
-# Linux errno values (hardcoded -- the asyncio reactor that consumes the
-# BlockingIOError path is Linux-only). EAGAIN == EWOULDBLOCK on Linux;
-# EINPROGRESS is a non-blocking connect's "in progress" result.
-_EAGAIN: Final[Int32] = 11
-_EINPROGRESS: Final[Int32] = 115
+# errno values diverge across platforms (Linux EAGAIN 11 / EINPROGRESS 115;
+# macOS 35 / 36), so source them from <errno.h> via native globals. EAGAIN ==
+# EWOULDBLOCK on both Linux and macOS; EINPROGRESS is a non-blocking connect's
+# "in progress" result.
+_EAGAIN: Final[Int32] = native_global("tpy_const_eagain", binding="C")
+_EINPROGRESS: Final[Int32] = native_global("tpy_const_einprogress", binding="C")
 
 
 def _raise_errno(op: str) -> None:

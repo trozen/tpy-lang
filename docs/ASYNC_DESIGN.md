@@ -111,21 +111,21 @@ Library breadth + first real I/O. Each item is sized to land independently.
 | Multi-awaiter `Future[T]` | If single-awaiter v1 turns out to be limiting in practice. |
 | Task introspection | `Task.add_done_callback`, `get_name`, `set_name`, `done`, `result`, `exception`. |
 | `Reactor` interface | **SHIPPED (M1)** -- the `Reactor` protocol in `asyncio/_executor.py`, designed against epoll. Concrete-typed on the executor for M1; making it a swap-in (`@dynamic` field + `asyncio.run` factory arg) is a follow-up. |
-| First I/O reactor | **SHIPPED (M1)** -- `EpollReactor` (epoll on Linux) + fd-backed awaitables (`_SockRecv` / `_SockSendAll`) + the low-level loop surface `asyncio.get_running_loop().sock_recv / sock_sendall` on non-blocking sockets (`socket.setblocking`). See "I/O reactor" below. |
+| First I/O reactor | **SHIPPED (M1)** -- `EpollReactor` (epoll on Linux, kqueue on macOS / *BSD via the shared `tpy_epoll_*` C ABI) + fd-backed awaitables (`_SockRecv` / `_SockSendAll`) + the low-level loop surface `asyncio.get_running_loop().sock_recv / sock_sendall` on non-blocking sockets (`socket.setblocking`). See "I/O reactor" below. |
 | `sock_accept` / `sock_connect` | **SHIPPED (M2)** -- `_SockAccept` / `_SockConnect` awaitables in the same shape; `loop.sock_accept(sock)` -> `(conn, addr)` (conn non-blocking), `loop.sock_connect(sock, addr)` (non-blocking connect + `SO_ERROR` check). Unblocks real async TCP client/server (`examples/net/async_echo_*`). |
 | asyncio streams | **SHIPPED** -- client: `open_connection` -> `StreamReader` (`read`/`readexactly`/`readline`/`readuntil`/`at_eof`) + `StreamWriter` (`write`/`drain`/`close`/`wait_closed`/`is_closing`) over the reactor, sharing the socket via `Rc[socket]`; `IncompleteReadError`. server: `start_server(handler, host, port)` -> `Server` (background accept loop running the async `handler` per connection on the async-fn->Callable coercion; `serve_forever`/`close`/`getsockname`/async-with). `StreamReader.readuntil(sep)` SHIPPED (the async-def `bytes`-param coro-frame gap is fixed -- str/bytes params are captured owned); `limit`/`LimitOverrunError` still deferred. |
 
 #### I/O reactor (v2 M1, SHIPPED)
 
 The reactor is the executor's second wake source alongside the timer heap.
-All TPy + a thin epoll binding -- no compiler changes.
+All TPy + a thin reactor binding (epoll on Linux, kqueue on macOS / *BSD).
 
 - **`Reactor` protocol** (`asyncio/_executor.py`): `register_fd(fd, events,
   waker)` / `unregister_fd(fd)` / `poll(timeout_ms)` / `count()` / `close()`.
   (`register_fd`, not `register` -- `register` is a reserved C++ keyword and
   the structural-conformance concept would emit an unparseable
-  `t.register(...)`.) Designed against epoll; kqueue / io_uring backends
-  would implement the same surface.
+  `t.register(...)`.) Designed against epoll; the kqueue backend implements
+  the same surface at the C-ABI level (an io_uring one could too).
 - **`EpollReactor`**: owns an epoll fd + a single-waiter `fd -> Waker`
   registry. One-shot: a fired fd is `EPOLL_CTL_DEL`'d before its waker is
   woken, so the awaitable re-arms on its next would-block. RAII-closes the
@@ -152,10 +152,15 @@ All TPy + a thin epoll binding -- no compiler changes.
   `gather(...) -> Own[...]` shape); `asyncio.get_running_loop()` returns the
   `EventLoop`. `socket.socket.setblocking(False)` (an fcntl `O_NONBLOCK`
   helper) is the prerequisite.
-- **epoll binding**: `lib/tpy/_bindings/posix_epoll.py` over flat
+- **reactor binding**: `lib/tpy/_bindings/posix_epoll.py` over flat
   `tpy_epoll_*` wrappers in `runtime/cpp/src/stdlib/epoll_impl.cpp` (the real
   `<sys/epoll.h>` lives only there -- the packed `struct epoll_event` and the
   `EPOLL*` macros never enter a TPy-generated TU; mirrors `socket_impl.cpp`).
+  That one file holds two backends behind the same flat ABI: epoll on Linux,
+  kqueue on macOS / *BSD (the kqueue branch maps the EPOLLIN/EPOLLOUT bits onto
+  EVFILT_READ/WRITE and emulates epoll's level-triggered, caller-disarmed
+  semantics), so `EpollReactor` and the rest of `asyncio/` are unchanged across
+  platforms.
 
 `sock_accept` / `sock_connect` shipped in M2; the streams layer
 (`open_connection` + `start_server` -> `StreamReader`/`StreamWriter`) shipped on
@@ -170,7 +175,7 @@ Independent extensions, listed in no particular order. Each is its own design ex
 
 | Item | Why it's later |
 |------|---------------|
-| Additional reactors (kqueue, io_uring, asio, libuv) | One I/O backend in v2 validates the `Reactor` protocol; alternatives can follow. |
+| Additional reactors (io_uring, asio, libuv) | One `Reactor`-protocol backend in v2 validates the interface; alternatives can follow. (kqueue already ships as a C-ABI-level backend in `epoll_impl.cpp` for macOS / *BSD, transparent to the `Reactor` layer -- a *protocol*-level swap-in is the remaining work.) |
 | Multi-threaded executor | Requires E1 (Send/Sync) progress; opt-in, single-threaded path keeps working. |
 | `@error_return` async (`await foo()?`) | Cross-tier composition needs its own design. |
 | Async generators (`async def` + `yield`) | Combines two state machines. |
@@ -214,7 +219,7 @@ Independent extensions, listed in no particular order. Each is its own design ex
 
 4. **Exception-based cancellation.** `Task.cancel()` injects `CancelledError` at the next suspension point.
 
-   **Graceful shutdown on SIGINT (SHIPPED).** `asyncio.run` installs a SIGINT handler for the duration of the run, matching CPython's asyncio.run: Ctrl-C cancels the root task (so its `finally`/`__aexit__`/`wait_closed` cleanup runs via the normal cancellation path above), then `run` raises `KeyboardInterrupt`. The C signal layer (`runtime/cpp/src/stdlib/signal_impl.cpp`, behind `posix_signal`) uses an async-signal-safe handler that sets a flag and writes a wakeup `eventfd`; the executor's `_SignalScope` registers that eventfd in the epoll set so a signal wakes a blocked `epoll_wait` race-free (the byte is pending even if the signal lands just before the wait; `epoll_wait` retries EINTR internally). `run_until` calls `posix_signal.consume()` after each wait and cancels the root on the first delivered signal. Two deliberate consequences: SIGTERM keeps its default (terminate), matching CPython (graceful SIGTERM is a divergent enhancement, see TODO.md); and because the wakeup eventfd keeps the reactor fd-count >= 1, the "no progress possible" deadlock guard is suppressed during a signal-armed run (also CPython-faithful -- it has no such guard).
+   **Graceful shutdown on SIGINT (SHIPPED).** `asyncio.run` installs a SIGINT handler for the duration of the run, matching CPython's asyncio.run: Ctrl-C cancels the root task (so its `finally`/`__aexit__`/`wait_closed` cleanup runs via the normal cancellation path above), then `run` raises `KeyboardInterrupt`. The C signal layer (`runtime/cpp/src/stdlib/signal_impl.cpp`, behind `posix_signal`) uses an async-signal-safe handler that sets a flag and writes a wakeup fd (an `eventfd` on Linux, a self-pipe on macOS / *BSD, which lack `eventfd`); the executor's `_SignalScope` registers that fd in the reactor so a signal wakes a blocked `epoll_wait` / `kevent` race-free (the byte is pending even if the signal lands just before the wait; the wait retries EINTR internally). `run_until` calls `posix_signal.consume()` after each wait and cancels the root on the first delivered signal. Two deliberate consequences: SIGTERM keeps its default (terminate), matching CPython (graceful SIGTERM is a divergent enhancement, see TODO.md); and because the wakeup fd keeps the reactor fd-count >= 1, the "no progress possible" deadlock guard is suppressed during a signal-armed run (also CPython-faithful -- it has no such guard).
 
 5. **Minimal compiler surface, maximal library surface.** Compiler knows about a small set of types in `tpy`; everything user-facing lives in `asyncio` and is replaceable.
 

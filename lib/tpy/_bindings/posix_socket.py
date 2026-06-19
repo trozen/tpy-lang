@@ -162,6 +162,12 @@ def tpy_last_resolve_error() -> Ptr[readonly[UInt8]]: ...
 def tpy_set_nonblocking(fd: Int32, nonblocking: Int32) -> Int32: ...
 
 
+# Platform-correct constant values (SOL_SOCKET / SO_* / AF_INET6 / EAGAIN /
+# EINPROGRESS differ on macOS/BSD) live as `extern int32_t tpy_const_*`
+# globals in socket_impl.cpp; the public `socket` facade reads them directly
+# via `native_global`, so no binding declaration is needed here.
+
+
 # ---------- Raw libc strerror ----------
 # Returns a human-readable description of `errnum`. Null-terminated C
 # string; caller wraps it in a TPy `str` via the usual ptr+length walk.

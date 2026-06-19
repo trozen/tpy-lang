@@ -391,7 +391,8 @@ Deferred to v1.x:
 - Warning/reporting when bounded cancellation drain leaves a task
   pending (today the task is silently dropped after the fixed poll
   budget).
-- I/O reactor (epoll) -- SHIPPED v2 M1 (Linux); M2 added
+- I/O reactor (epoll on Linux, kqueue on macOS / *BSD behind the shared
+  `tpy_epoll_*` C ABI) -- SHIPPED v2 M1; M2 added
   `loop.sock_accept` / `loop.sock_connect` (same awaitable shape, driven via
   the public `socket` methods + `BlockingIOError`); the streams layer
   (`open_connection` + `start_server` -> `StreamReader`/`StreamWriter`, socket
@@ -399,8 +400,8 @@ Deferred to v1.x:
   handler per connection on the async-fn->Callable coercion) shipped on top. See
   `docs/ASYNC_DESIGN.md` "I/O reactor" and `examples/net/async_echo_*` /
   `stream_server.py`. `StreamReader.readuntil(sep)` shipped (str/bytes coro-param
-  owned-capture fix); its `limit`/`LimitOverrunError`, kqueue / io_uring
-  backends, and a user swap-in remain.
+  owned-capture fix); its `limit`/`LimitOverrunError`, an io_uring backend,
+  and a user (protocol-level) swap-in remain.
 
 ## What's deferred from v1 design
 
@@ -422,8 +423,8 @@ Deferred to v1.x:
   v1.5. Currently rejected with a clear "bind the await to a local
   before the control-flow statement" diagnostic, except for the narrow
   try/except shape above.
-- **I/O reactor**: SHIPPED v2 M1 (epoll, Linux) + M2 (`sock_accept` /
-  `sock_connect`).
+- **I/O reactor**: SHIPPED v2 M1 (epoll on Linux, kqueue on macOS / *BSD) + M2
+  (`sock_accept` / `sock_connect`).
 
 ## Future v1.x / v2 work
 

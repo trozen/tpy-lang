@@ -5,13 +5,15 @@
 // `struct epoll_event` (a packed union whose ABI differs by arch) or the
 // `EPOLL*` macros to any TPy-generated translation unit. Instead the three
 // `tpy_epoll_*` helpers below take flat scalar / pointer arguments and the
-// real `<sys/epoll.h>` is included only by epoll_impl.cpp, where the kernel
+// real system header is included only by epoll_impl.cpp, where the kernel
 // ABI is guaranteed correct. The EPOLL* / EPOLL_CTL_* wire values are
-// hardcoded on the TPy side (Linux-stable), the same way socket.py hardcodes
-// AF_INET et al.
+// hardcoded on the TPy side (the small subset the reactor uses is stable
+// across the backends), the same way socket.py hardcodes AF_INET et al.
 //
-// epoll is Linux-only; this facade is the single backend behind asyncio's
-// `Reactor` protocol. kqueue / io_uring backends are separate facades.
+// One flat ABI, two backends inside epoll_impl.cpp: epoll on Linux, kqueue
+// on macOS / *BSD (the kqueue branch maps the EPOLLIN/EPOLLOUT bits onto
+// EVFILT_READ/WRITE and emulates epoll's level-triggered, caller-disarmed
+// semantics). An io_uring backend would slot in the same way.
 
 #include <cstdint>
 
