@@ -21,6 +21,7 @@
 #include <dirent.h>
 #include <fcntl.h>
 #include <pwd.h>
+#include <sys/ioctl.h>
 #include <sys/random.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -469,6 +470,9 @@ int64_t kc_f_ok     = F_OK;
 int64_t kc_r_ok     = R_OK;
 int64_t kc_w_ok     = W_OK;
 int64_t kc_x_ok     = X_OK;
+int32_t kc_seek_set32 = SEEK_SET;
+int32_t kc_seek_cur32 = SEEK_CUR;
+int32_t kc_seek_end32 = SEEK_END;
 
 // --- Process identity + small system queries -------------------------------
 
@@ -500,6 +504,37 @@ std::string strerror(int64_t code) {
 
 bool isatty(int64_t fd) {
     return ::isatty(static_cast<int>(fd)) != 0;
+}
+
+void link_path(std::string_view src, std::string_view dst) {
+    std::string s(src), d(dst);
+    if (::link(s.c_str(), d.c_str()) != 0) raise_errno("link", src);
+}
+
+void truncate_path(std::string_view path, int64_t length) {
+    std::string p(path);
+    if (::truncate(p.c_str(), static_cast<off_t>(length)) != 0)
+        raise_errno("truncate", path);
+}
+
+void ftruncate_fd(int64_t fd, int64_t length) {
+    if (::ftruncate(static_cast<int>(fd), static_cast<off_t>(length)) != 0)
+        raise_errno("ftruncate", "");
+}
+
+void fsync_fd(int64_t fd) {
+    if (::fsync(static_cast<int>(fd)) != 0) raise_errno("fsync", "");
+}
+
+void fdatasync_fd(int64_t fd) {
+    if (::fdatasync(static_cast<int>(fd)) != 0) raise_errno("fdatasync", "");
+}
+
+std::tuple<int64_t, int64_t> terminal_size_raw(int64_t fd) {
+    struct ::winsize ws{};
+    if (::ioctl(static_cast<int>(fd), TIOCGWINSZ, &ws) != 0)
+        raise_errno("get_terminal_size", "");
+    return {ws.ws_col, ws.ws_row};
 }
 
 // --- Metadata + randomness -------------------------------------------------

@@ -3,9 +3,8 @@
 # v1 surface: StringIO, BytesIO, plus the IO protocols from tpy core
 # (Readable / Writable / BinaryReadable / BinaryWritable / Seekable /
 # Closable) which both buffer types explicitly conform to. Users can
-# write `def f(fp: io.Writable): ...` etc. SEEK_SET/CUR/END constants
-# are not exposed yet -- the names collide with <cstdio> macros; pass
-# the integer values 0/1/2 to seek() as a workaround.
+# write `def f(fp: io.Writable): ...` etc. SEEK_SET/CUR/END are exposed
+# (bound to the os runtime's seek-constant globals via native_global).
 #
 # Storage strategies:
 #   - StringIO: list[str] chunks. Fast append-at-end; mid-buffer writes
@@ -23,18 +22,21 @@
 #   - getvalue() does not collapse chunks (avoids unsolicited mutation).
 #
 # tpy: cpp_namespace("tpystd::io")
-from typing import Iterator
+from typing import Final, Iterator
 from tpy import (
     Int32, Own, nocopy,
     Writable, Readable, BinaryWritable, BinaryReadable,
     Seekable, Closable,
 )
+from tpy.extern import native_global
 
 
-# NOTE: io.SEEK_SET / SEEK_CUR / SEEK_END are not exposed yet because the
-# names collide with <cstdio> preprocessor macros. seek(whence=0|1|2) below
-# accepts the integer values directly. The public constants need either a
-# `#undef` shim from codegen or namespacing on the C++ side -- followup.
+# SEEK_SET/CUR/END names are <cstdio> macros, so they can't be emitted as C++
+# symbols; bind via native_global to the os runtime's int32 seek globals (same
+# POSIX 0/1/2, Int32 to match io.seek's whence; always linked).
+SEEK_SET: Final[Int32] = native_global("tpy::stdlib::os::kc_seek_set32")
+SEEK_CUR: Final[Int32] = native_global("tpy::stdlib::os::kc_seek_cur32")
+SEEK_END: Final[Int32] = native_global("tpy::stdlib::os::kc_seek_end32")
 _SEEK_SET: Int32 = 0
 _SEEK_CUR: Int32 = 1
 _SEEK_END: Int32 = 2

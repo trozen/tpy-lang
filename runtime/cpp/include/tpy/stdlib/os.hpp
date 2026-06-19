@@ -120,6 +120,12 @@ extern int64_t kc_r_ok;
 extern int64_t kc_w_ok;
 extern int64_t kc_x_ok;
 
+// int32 SEEK_* for io.seek (its whence is Int32, not the Int64 os.lseek uses);
+// same POSIX values, separate width.
+extern int32_t kc_seek_set32;
+extern int32_t kc_seek_cur32;
+extern int32_t kc_seek_end32;
+
 // Process identity + small system queries. getpid/getppid/getuid/... can't fail
 // (POSIX). getlogin raises OSError on failure (no controlling terminal); umask
 // returns the previous mask; cpu_count returns 0 when indeterminate (the TPy
@@ -135,5 +141,16 @@ int64_t umask(int64_t mask);
 int64_t cpu_count();
 std::string strerror(int64_t code);
 bool isatty(int64_t fd);
+
+// Hardlink, truncation, durability (raw POSIX; raise_errno on -1).
+void link_path(std::string_view src, std::string_view dst);
+void truncate_path(std::string_view path, int64_t length);
+void ftruncate_fd(int64_t fd, int64_t length);
+void fsync_fd(int64_t fd);
+void fdatasync_fd(int64_t fd);
+
+// os.get_terminal_size: (columns, lines) via TIOCGWINSZ; raise_errno if the fd
+// is not a terminal (matching CPython, which raises OSError).
+std::tuple<int64_t, int64_t> terminal_size_raw(int64_t fd);
 
 } // namespace tpy::stdlib::os

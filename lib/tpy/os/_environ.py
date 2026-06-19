@@ -77,5 +77,44 @@ class _Environ:
             return self._data[key]
         return default
 
+    # pop takes a required default (returns it when absent) rather than the
+    # typeshed pop(key)-raises / pop(key, default) pair -- same cross-module
+    # overload limitation as get (BUGS.md); bare pop(key) is deferred.
+    def pop(self, key: str, default: str) -> str:
+        if key in self._data:
+            value = self._data[key]
+            del self._data[key]
+            _unsetenv(key)
+            return value
+        return default
+
+    def setdefault(self, key: str, default: str) -> str:
+        if key in self._data:
+            return self._data[key]
+        self._data[key] = default
+        _setenv(key, default)
+        return default
+
+    def update(self, other: dict[str, str]) -> None:
+        for k in other:
+            value = other[k]
+            self._data[k] = value
+            _setenv(k, value)
+
+    def clear(self) -> None:
+        # Collect first: unsetenv-while-iterating the same dict is unsafe.
+        keys: list[str] = []
+        for k in self._data:
+            keys.append(k)
+        for k in keys:
+            _unsetenv(k)
+        self._data.clear()
+
+    def copy(self) -> Own[dict[str, str]]:
+        out: dict[str, str] = {}
+        for k in self._data:
+            out[k] = self._data[k]
+        return out
+
 
 environ: _Environ = _Environ()

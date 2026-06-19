@@ -20,6 +20,9 @@ from ._native import (
     dup_fd as _dup_fd, dup2_fd as _dup2_fd, fstat_fd as _fstat_fd,
     getpid, getppid, getuid, geteuid, getgid, getegid, getlogin, umask,
     strerror, isatty, cpu_count_raw as _cpu_count_raw,
+    link_path as _link_path, truncate_path as _truncate_path,
+    ftruncate_fd as _ftruncate_fd, fsync_fd as _fsync_fd,
+    fdatasync_fd as _fdatasync_fd, terminal_size_raw as _terminal_size_raw,
     chmod_path as _chmod_path, chown_path as _chown_path,
     utime_path as _utime_path, access_path as _access_path,
     urandom as _urandom,
@@ -265,6 +268,48 @@ def access(path: str, mode: Int64) -> bool:
 
 def urandom(n: Int64) -> Own[bytes]:
     return _urandom(n)
+
+
+def link(src: str, dst: str) -> None:
+    _link_path(src, dst)
+
+
+def truncate(path: str, length: Int64) -> None:
+    _truncate_path(path, length)
+
+
+def ftruncate(fd: Int64, length: Int64) -> None:
+    _ftruncate_fd(fd, length)
+
+
+def fsync(fd: Int64) -> None:
+    _fsync_fd(fd)
+
+
+def fdatasync(fd: Int64) -> None:
+    _fdatasync_fd(fd)
+
+
+# os.get_terminal_size result. Attribute access only (no tuple/sequence
+# protocol, unlike CPython's terminal_size named tuple); st[0]/unpacking is a
+# clean compile error, not a silent divergence.
+class terminal_size:
+    columns: Int64
+    lines: Int64
+
+    def __init__(self, columns: Int64, lines: Int64) -> None:
+        self.columns = columns
+        self.lines = lines
+
+
+def get_terminal_size(fd: Int64 = 1) -> Own[terminal_size]:
+    t = _terminal_size_raw(fd)
+    return terminal_size(t[0], t[1])
+
+
+# os.fspath on str is the identity; the PathLike form arrives with pathlib.
+def fspath(path: str) -> str:
+    return path
 
 
 # CPython os.cpu_count() returns None when the count is indeterminate.

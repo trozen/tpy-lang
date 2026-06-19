@@ -216,6 +216,31 @@ def strerror(code: Int64) -> str: ...
 def isatty(fd: Int64) -> bool: ...
 
 
+# Hardlink / truncation / durability.
+@native("tpy::stdlib::os::link_path")
+def link_path(src: str, dst: str) -> None: ...
+
+
+@native("tpy::stdlib::os::truncate_path")
+def truncate_path(path: str, length: Int64) -> None: ...
+
+
+@native("tpy::stdlib::os::ftruncate_fd")
+def ftruncate_fd(fd: Int64, length: Int64) -> None: ...
+
+
+@native("tpy::stdlib::os::fsync_fd")
+def fsync_fd(fd: Int64) -> None: ...
+
+
+@native("tpy::stdlib::os::fdatasync_fd")
+def fdatasync_fd(fd: Int64) -> None: ...
+
+
+@native("tpy::stdlib::os::terminal_size_raw")
+def terminal_size_raw(fd: Int64) -> tuple[Int64, Int64]: ...
+
+
 # os.path predicates. The C++ helpers carry a `path_` prefix (to namespace
 # them against the os-level calls in tpy::stdlib::os); the @native symbol
 # pins that, so the TPy stubs keep the public os.path names.

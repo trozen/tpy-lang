@@ -1,0 +1,3 @@
+truncate 5
+ftruncate 2
+link True 2

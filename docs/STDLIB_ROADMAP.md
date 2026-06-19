@@ -124,10 +124,10 @@ Examples of the policy in action:
 | [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for fsum/sumprod/dist; `prod` has Int32 / int (BigInt) / float overloads). Remaining gap: tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time` all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
 | [`sys`](#sys) | P0 | Stub | ~20% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr`, `exit`, `maxsize` done; needs `stdin`/`path`/`version_info` |
-| [`os`](#os) | P0 | Partial | ~68% | mixed | Filesystem queries (`getcwd`/`chdir`/`listdir`/`scandir`/`getenv`) + `stat`/`lstat`/`fstat` -> `stat_result`, `scandir` -> `DirEntry`; mutating ops (`mkdir`/`makedirs`/`rmdir`/`removedirs`/`remove`/`unlink`/`rename`/`replace`/`symlink`/`readlink`/`chmod`/`chown`/`utime`) over raw POSIX with a full errno->OSError table; low-level fd I/O (`open`/`close`/`read`/`write`/`lseek`/`pipe`/`dup`/`dup2` + `O_*`/`SEEK_*`); `access`(+`*_OK`); `urandom`; process/system queries (`getpid`/`getppid`/`getuid`/`geteuid`/`getgid`/`getegid`/`getlogin`/`umask`/`cpu_count`/`strerror`/`isatty`); module constants (`name`/`sep`/`extsep`/`pathsep`/`linesep`/`curdir`/`pardir`/`devnull`); `environ` snapshot mapping + `putenv`/`unsetenv`. `walk` (blocked on yield-by-reference), process spawning deferred |
+| [`os`](#os) | P0 | Partial | ~72% | mixed | Filesystem queries (`getcwd`/`chdir`/`listdir`/`scandir`/`getenv`) + `stat`/`lstat`/`fstat` -> `stat_result`, `scandir` -> `DirEntry`; mutating ops (`mkdir`/`makedirs`/`rmdir`/`removedirs`/`remove`/`unlink`/`rename`/`replace`/`symlink`/`readlink`/`link`/`truncate`/`ftruncate`/`chmod`/`chown`/`utime`/`fsync`/`fdatasync`) over raw POSIX with a full errno->OSError table; low-level fd I/O (`open`/`close`/`read`/`write`/`lseek`/`pipe`/`dup`/`dup2` + `O_*`/`SEEK_*`); `access`(+`*_OK`); `urandom`; process/system queries (`getpid`/`getppid`/`getuid` family/`getlogin`/`umask`/`cpu_count`/`strerror`/`isatty`/`get_terminal_size`); `fspath`; module constants (`name`/`sep`/...); `environ` snapshot mapping + `putenv`/`unsetenv` + `pop`/`setdefault`/`update`/`clear`/`copy`. `walk` (blocked on yield-by-reference), process spawning deferred |
 | [`os.path`](#ospath) | P0 | Partial | ~94% | mixed | Pure-string POSIX surface (`join`/`split`/`splitext`/`basename`/`dirname`/`isabs`/`normpath`/`splitdrive`/`commonprefix` + constants) plus filesystem queries (`exists`/`lexists`/`isfile`/`isdir`/`islink`/`getsize`/`abspath`/`realpath`/`relpath`/`getmtime`/`getatime`/`getctime`/`samefile`/`ismount`/`expandvars`/`expanduser`). CPython byte-compatible against `posixpath`. Deferred: `commonpath`, `samestat` |
 | [`pathlib`](#pathlib) | P0 | Missing | 0% | -- | Class-heavy; depends on filesystem bindings |
-| [`io`](#io) | P0 | Partial | ~35% | pure | `StringIO` / `BytesIO` (chunked storage, write/read/`read(size)`/readline/seek/tell/truncate/iter/context-manager). `Readable` / `Writable` / `BinaryReadable` / `BinaryWritable` protocols on tpy core, re-exported from `io`. Missing: `IOBase` ABC hierarchy (deliberately deferred -- protocols cover the static-dispatch use case), `TextIOWrapper`, `io.SEEK_SET/CUR/END` constants (collide with `<cstdio>` macros), encoding/newline/errors kwargs |
+| [`io`](#io) | P0 | Partial | ~35% | pure | `StringIO` / `BytesIO` (chunked storage, write/read/`read(size)`/readline/seek/tell/truncate/iter/context-manager). `Readable` / `Writable` / `BinaryReadable` / `BinaryWritable` protocols on tpy core, re-exported from `io`. `SEEK_SET`/`CUR`/`END` exposed (Int32, via native_global to safe-named C++ globals). Missing: `IOBase` ABC hierarchy (deliberately deferred -- protocols cover the static-dispatch use case), `TextIOWrapper`, encoding/newline/errors kwargs |
 | [`json`](#json) | P0 | Partial | ~72% | pure | `loads` / `dumps` / `load(fp)` / `dump(obj, fp)` + `JSONDecodeError` done over a recursive union `JsonValue`. CPython byte-compatible across cpy phase. Missing: `JSONEncoder` / `JSONDecoder`, most `dumps`/`loads` kwargs |
 | [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub (with `count`)/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, bytes input, compile cache |
 | [`collections`](#collections) | P0 | Partial | ~15% | pure | `Counter` v1 (construct/[]/len/in/total/most_common(n)/update/subtract) done; `elements()` + `+ - & |` deferred on filed compiler blockers. OrderedDict trivial (have ordered_map); deque needs C++ struct; defaultdict/namedtuple need macros |
@@ -473,6 +473,10 @@ spawning stays blocked.
 | `chmod`, `chown`, `utime`, `access` | Done | Raw POSIX (`chmod`/`chown`/`utimensat`/`access`); `access` takes `F_OK`/`R_OK`/`W_OK`/`X_OK` and returns bool. `utime` takes a `(atime, mtime)` tuple; the no-arg (now) and `ns=` forms are deferred. `dir_fd`/`follow_symlinks` deferred |
 | `urandom` | Done | `getentropy` in 256-byte chunks |
 | `getpid`, `getppid`, `getuid`, `geteuid`, `getgid`, `getegid`, `getlogin`, `umask`, `cpu_count`, `strerror`, `isatty`, `unlink` | Done | Thin POSIX binds. `cpu_count` -> `int | None` (None when indeterminate); `getlogin` raises OSError on failure; `unlink` aliases `remove`. `getgroups`/`setuid`/`getpgid`/`nice` and the rest of the credentials/scheduling surface deferred |
+| `link`, `truncate`, `ftruncate`, `fsync`, `fdatasync` | Done | Raw POSIX (`::link`/`::truncate`/`::ftruncate`/`::fsync`/`::fdatasync`); `dir_fd`/`follow_symlinks` on `link` deferred |
+| `get_terminal_size` | Done | `ioctl(TIOCGWINSZ)` -> `terminal_size` (`columns`/`lines`; attribute-only, no tuple unpack -- like `stat_result`); raises OSError on a non-tty fd (matches CPython) |
+| `fspath` | Done | str identity; the PathLike (`__fspath__`) form arrives with `pathlib` |
+| `environ.pop`/`setdefault`/`update`/`clear`/`copy` | Done | `pop`/`setdefault` take a required `default: str` (single signature -- cross-module method overloads don't resolve, see BUGS.md; bare `pop(key)`-raises deferred). `update(dict)`, `clear()`, `copy() -> dict[str,str]` |
 | `name`, `sep`, `extsep`, `pathsep`, `linesep`, `curdir`, `pardir`, `devnull` | Done | Module-level POSIX constants (`name` = `"posix"`). `altsep` omitted (`None` on POSIX) |
 | flag/mode constants (`O_*`, `SEEK_*`, `*_OK`) | Done | Their names are libc macros, so they can't be emitted as C++ symbols; each binds via `native_global` to a safe-named C++ global holding the real macro value -- correct on every platform (the `O_CREAT` family differs Linux/macOS) |
 | `environ`, `putenv`, `unsetenv` | Done | `environ` is a snapshot `_Environ` mapping frozen at program start: `[]` get/set/del, `in`, `.get`, `len`, `for k in environ`, `keys`/`values`/`items`. `getenv`/`expandvars` read it. `putenv`/`unsetenv` are libc-only and do NOT update the snapshot (CPython's footgun). Two intentional narrowings: `.get` is a single `get(key, default=None)` not the typeshed overload pair (cross-module method overloads don't resolve -- see BUGS.md); `keys`/`values`/`items` return owned snapshot `list`s, not CPython's live set-like views (iteration is identical; set ops / live reflection unsupported) |
@@ -521,7 +525,11 @@ getsize/abspath), `ospath_fs_errors` (FileNotFoundError mapping),
 `os_fs` (getcwd/chdir/listdir/getenv), `os_mutate`/`os_mutate_errors`
 (mutating ops + errno subclasses), `os_stat`/`os_stat_errors`
 (stat/lstat + stat queries), `os_getenv_expandvars` (getenv overloads +
-expandvars). All cpy-phase byte-compared against
+expandvars), `os_environ`/`os_environ_iter`/`os_environ_methods`
+(mapping surface), `os_scandir`/`os_listdir_default`, `os_fd_io`/`os_fd_errors`
+(fd I/O + error paths), `os_metadata`/`os_fileops` (chmod/chown/utime/access +
+link/truncate/fsync), `os_urandom`, `os_sysinfo`, `os_get_terminal_size`,
+`ospath_expanduser`/`ospath_realpath_relpath`. All cpy-phase byte-compared against
 CPython; filesystem cases `chdir` to a known dir and create fixed `/tmp`
 fixtures for determinism.
 
@@ -564,7 +572,7 @@ remains an option without breaking the existing granular surface.
 | `BytesIO(initial=None)` | Done | Same surface as `StringIO`, returning `bytes` |
 | `Writable` / `Readable` / `BinaryWritable` / `BinaryReadable` | Done | Protocols on `tpy._core._types`, re-exported from `tpy/__init__.py` and from `io` |
 | `Seekable` / `Closable` | Done | Same; `Seekable` is `seek(pos, whence=0)` + `tell()`; `Closable` is `close()` only (the `closed` property is left out of the protocol but available on the concrete classes) |
-| `seek(pos, whence=0)` | Partial | `whence=0/1/2` accepted as integer literals. `io.SEEK_SET/CUR/END` constants not yet exposed -- the names collide with `<cstdio>` macros; needs `#undef` shim from codegen or namespacing |
+| `seek(pos, whence=0)` | Partial | `whence` is Int32; `io.SEEK_SET/CUR/END` (Int32) now exposed via native_global. `pos`/`tell` are Int32 -- widening to Int64 for >2GB buffer positions is a filed follow-up (see TODO.md) |
 | `seek` past end | Diverges | v1 clamps to `_total`; CPython back-fills with NUL/0. Revisit with a real consumer |
 | `__iter__` (line-by-line) | Done | Generator method yielding `readline()` results until empty |
 | `read(size=-1)` | Done | `size < 0` (default) reads all remaining; `size >= 0` returns at most `size` units and advances accordingly. On `StringIO`/`BytesIO` and the native `TextIO`/`BinaryIO` file objects, plus the `Readable`/`BinaryReadable` protocols. Byte-counted (codepoint vs byte divergence for non-ASCII -- TPy-wide str indexing, not specific to read) |
@@ -578,7 +586,8 @@ Tests: `cases/stdlib/io_stringio_basic`, `cases/stdlib/io_bytesio_basic`,
 `cases/stdlib/io_protocols` (consumer functions parameterized over the four
 protocols, both `StringIO`/`BytesIO` and pass-through wiring),
 `cases/stdlib/io_read_size` (`read(size)` on both buffers, the protocol
-params, and the native file objects).
+params, and the native file objects), `cases/stdlib/io_seek` (SEEK_* constants
++ StringIO.seek).
 
 ### json
 
