@@ -973,6 +973,56 @@ class ExpressionGenerator:
         return (overload_count > 1 and resolved_fi is not None
                 and not resolved_fi.is_generic())
 
+    def _gen_record_ctor_args(self, args: list[TpyExpr],
+                              init_params: list['ParamInfo'],
+                              ctor_mutated: frozenset[int]) -> list[str]:
+        """Lower a user-record ctor's args with the full per-arg dispatch before
+        the coercion fallback; shared by the `X(args)` and `raise X(args)` paths."""
+        gen_args = []
+        for i, a in enumerate(args):
+            ptype = init_params[i].type if i < len(init_params) else None
+            if isinstance(a, TpyTypeParamConstruct) and ptype:
+                gen_args.append(f"{self.types.type_to_cpp(ptype)}{{}}")
+                continue
+            # @dynamic protocol params in constructor
+            if ptype is not None:
+                dynamic_arg = self._gen_dynamic_protocol_arg(a, ptype)
+                if dynamic_arg is not None:
+                    gen_args.append(dynamic_arg)
+                    continue
+                covariant_arg = self._gen_covariant_arg(a, ptype)
+                if covariant_arg is not None:
+                    gen_args.append(covariant_arg)
+                    continue
+            proto_arg = self._gen_protocol_arg(a, ptype)
+            if proto_arg is not None:
+                gen_args.append(proto_arg)
+            elif (opt_arg := self._gen_optional_ptr_arg(a, ptype)) is not None:
+                gen_args.append(opt_arg)
+            elif (union_arg := self._gen_union_arg(a, ptype)) is not None:
+                gen_args.append(union_arg)
+            elif (ptype is not None
+                    and i in ctor_mutated
+                    and ptype.is_ref_param()
+                    and self.ctx.is_temporary_expr(a)):
+                # Rvalue arg to a mutated ctor param (lowers as `T&`)
+                # needs a named temp at the call site -- C++ can't bind
+                # rvalue to non-const lvalue ref. Free-function and
+                # method paths already do this; this is the parallel
+                # case for ctor calls.
+                init_expr = self.gen_expr(a, ptype)
+                temp_type = ptype
+                if isinstance(ptype, NominalType) and ptype.is_user_record:
+                    arg_type = self.ctx.get_expr_type(a)
+                    if (isinstance(arg_type, NominalType) and arg_type.is_user_record
+                            and arg_type != ptype
+                            and self.ctx.analyzer.registry.is_subclass_of(arg_type, ptype)):
+                        temp_type = arg_type
+                gen_args.append(self.ctx.temps.create(temp_type, init_expr))
+            else:
+                gen_args.append(self.gen_call_arg(a, ptype))
+        return gen_args
+
     def gen_call_arg(self, arg: TpyExpr, ptype: TpyType | None,
                      target_type: TpyType | None | _Unset = _UNSET,
                      inline_template: bool = False,
@@ -3246,50 +3296,8 @@ class ExpressionGenerator:
             ctor_mutated: frozenset[int] = frozenset()
             if ctor_fi:
                 ctor_mutated = ctor_fi.mutated_params or frozenset()
-            gen_args = []
-            for i, a in enumerate(expr.args):
-                ptype = init_params[i].type if i < len(init_params) else None
-                if isinstance(a, TpyTypeParamConstruct) and ptype:
-                    gen_args.append(f"{self.types.type_to_cpp(ptype)}{{}}")
-                    continue
-                # @dynamic protocol params in constructor
-                if ptype is not None:
-                    dynamic_arg = self._gen_dynamic_protocol_arg(a, ptype)
-                    if dynamic_arg is not None:
-                        gen_args.append(dynamic_arg)
-                        continue
-                    covariant_arg = self._gen_covariant_arg(a, ptype)
-                    if covariant_arg is not None:
-                        gen_args.append(covariant_arg)
-                        continue
-                proto_arg = self._gen_protocol_arg(a, ptype)
-                if proto_arg is not None:
-                    gen_args.append(proto_arg)
-                elif (opt_arg := self._gen_optional_ptr_arg(a, ptype)) is not None:
-                    gen_args.append(opt_arg)
-                elif (union_arg := self._gen_union_arg(a, ptype)) is not None:
-                    gen_args.append(union_arg)
-                elif (ptype is not None
-                        and i in ctor_mutated
-                        and ptype.is_ref_param()
-                        and self.ctx.is_temporary_expr(a)):
-                    # Rvalue arg to a mutated ctor param (lowers as `T&`)
-                    # needs a named temp at the call site -- C++ can't bind
-                    # rvalue to non-const lvalue ref. Free-function and
-                    # method paths already do this; this is the parallel
-                    # case for ctor calls.
-                    init_expr = self.gen_expr(a, ptype)
-                    temp_type = ptype
-                    if isinstance(ptype, NominalType) and ptype.is_user_record:
-                        arg_type = self.ctx.get_expr_type(a)
-                        if (isinstance(arg_type, NominalType) and arg_type.is_user_record
-                                and arg_type != ptype
-                                and self.ctx.analyzer.registry.is_subclass_of(arg_type, ptype)):
-                            temp_type = arg_type
-                    gen_args.append(self.ctx.temps.create(temp_type, init_expr))
-                else:
-                    gen_args.append(self.gen_call_arg(a, ptype))
-            args = ", ".join(gen_args)
+            args = ", ".join(
+                self._gen_record_ctor_args(expr.args, init_params, ctor_mutated))
             # Native records: use native C++ name (always set on is_native
             # records by registration, defaulting to ::<class_name> when no
             # explicit @native("rename") was given).

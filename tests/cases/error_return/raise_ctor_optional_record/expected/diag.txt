@@ -1,0 +1,1 @@
+main.py:18: warning: copies Node | None into field; use copy() to make this explicit
