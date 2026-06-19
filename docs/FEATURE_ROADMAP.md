@@ -872,7 +872,12 @@ Directives must appear in the file preamble (before any code). Unknown directive
 malformed arguments produce warnings. The parser uses Python's `ast.literal_eval` for
 argument parsing (call-style syntax).
 
-Remaining: `default-int` per-module override, `range-check` toggle.
+Remaining: `default-int` per-module override, `range-check` toggle. These are
+the first members of a broader **compilation-options / semantic-knobs**
+surface (panic abort-vs-throw, `str` 8-bit-vs-utf8, bounds/deref/div-zero/
+overflow checks, `assert` stripping, `@noalloc` enforcement) that wants one
+coherent home rather than ad-hoc flags -- design captured in
+`PROJECT_TOOLING_DESIGN.md` "Compilation options (semantic knobs)".
 
 **Dependencies**: None (pure infrastructure). Enables many other features.
 

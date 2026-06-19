@@ -573,6 +573,77 @@ perf/debug flags only; any safety-check elision is a *separate, loud, named*
 opt-in, never implied by the profile. Silent semantic change is very hard to
 walk back.
 
+## Compilation options (semantic knobs) -- OPEN, near-term
+
+A set of build options change *observable program semantics*, not just
+performance. They need a first-class, explicit home -- the mechanism is **not
+yet decided** (CLI flag / `[tool.tpy]` / per-module `# tpy:` directive /
+per-function decorator, layered). Captured here so it is handled before these
+accrete as ad-hoc one-off flags. Initial set:
+
+| Knob | Choices | Scope |
+|---|---|---|
+| `default-int` | Int32 / Int64 / BigInt | per-module (already in `options.json`); cross-call mixing needs care |
+| `default-float` | Float64 / Float32 | per-module (sibling of `default-int`) |
+| panic mode | abort (`std::exit`) / throw (catchable) | whole-program-ish; `.so` extension builds want throw (see `CPYTHON_INTEROP.md`) |
+| `str` representation | 8-bit / utf-8 | **whole-program-consistent** -- mixing across a call boundary is a UAF/corruption hazard |
+| integer overflow checks | on (panic) / off (wrap) | per-module / per-function |
+| integer `//` / `%` | Python floor (default; parity) / C truncation (perf) | per-module / per-function (no boundary hazard) |
+| bounds checks (indexing) | on / off | per-module / per-function |
+| null/deref checks (`Optional`/`Ptr`) | on / off | per-module / per-function |
+| div-by-zero checks (int) | on / off | per-module / per-function |
+| float div-by-zero / overflow | raise (parity) / IEEE `inf`+`nan` | per-module / per-function |
+| float fast-math | strict IEEE / reassoc + assume no NaN/inf | per-module / per-function -- perf flag that *crosses into* semantics |
+| assertions (`assert`) | active / stripped (`-O`) | per-module / whole-program |
+| `@noalloc` enforcement | off / warn / error | already a decorator; a build-wide mode is possible |
+
+Two categories that must **not** be conflated:
+
+- **Perf/codegen knobs** (opt-level, LTO, inlining, debug info) -- no
+  observable semantic change; safe to bundle into profiles / `--release`.
+- **Semantic knobs** (the table above) -- change what the program *does*.
+  Three rules for these:
+  1. **Explicit and loud** -- never implied by `--release` (perf flags only);
+     any check-elision is a separate named opt-in (extends the "Build
+     profiles" principle above).
+  2. **Declared in `[tool.tpy]`** (pyproject.toml) -- the committed, versioned
+     source of truth for these knobs, reached through the layering below;
+     *not* the lock. `tpy-build.lock` records the *discovered* closure
+     (toolchain identity, native deps) and at most *echoes* a resolved knob
+     value as an audit snapshot when a CLI/directive override makes the
+     effective value differ from `[tool.tpy]` -- it is not where knobs are
+     set. (The existing lock-schema example already echoes `default_int` this
+     way.)
+  3. **Scope decided per knob** -- most are safely per-module/per-function,
+     but `str` representation must be whole-program-consistent (or guarded at
+     module boundaries), and panic mode is whole-program-ish. This per-knob
+     consistency rule is the main design fork.
+
+**Layering:** CLI flag > `[tool.tpy]` > `# tpy:` directive > built-in default
+(the precedence the "Configuration layers" section already defines).
+
+**Overlaps existing work:** the `# tpy: default-int` per-module override and
+the `range-check` toggle are already listed as remaining directive work
+(FEATURE_ROADMAP "# tpy: directives"); this generalizes them into one coherent
+compilation-options surface rather than scattered flags. Distinct from CPython
+interop, which only *needs* the panic=throw knob -- but that knob is the first
+member of this set, which is why it surfaced here.
+
+**Notes for the design pass:**
+
+- **fast-math is the boundary case.** It is nominally a perf flag but changes
+  observable float results, so it must obey the semantic-knob rules above
+  (explicit, never implied by `--release`) -- the canonical reason perf and
+  semantics can't be auto-bundled.
+- **The runtime checks are one family.** Integer overflow, bounds, null/deref,
+  div-by-zero, and the uninitialized-storage invariants are all the same kind
+  of guard -- likely one "safety checks" control with per-check granularity
+  rather than N independent flags.
+- **Lower-priority / deferred:** hash randomization (deterministic by default
+  vs `PYTHONHASHSEED`-style; HFT wants deterministic) and a recursion-depth
+  guard (`RecursionError` vs native stack overflow -- cheap guarding is hard,
+  likely not v1).
+
 ## Test harness (fork #3 -- resolved)
 
 No CPython-parity requirement for user tests, and **no pytest emulation**
