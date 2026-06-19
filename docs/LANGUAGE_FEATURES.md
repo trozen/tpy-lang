@@ -5663,6 +5663,46 @@ Unknown directives produce a warning. Directives after the first line of code pr
 
 ---
 
+### Platform Support (Working pattern; native builds only)
+
+TPy targets Linux and macOS/*BSD today. Platform differences are handled by
+**three** mechanisms, layered by where they resolve. The governing rule:
+**keep stdlib `.py` platform-neutral; push platform specifics down into the
+C++ facade.** A `.py` module should read the same on every platform; the
+divergence lives in hand-written runtime `.cpp` or in per-platform constants.
+
+1. **C++ `#ifdef` in hand-written runtime `.cpp`** (e.g.
+   `runtime/cpp/src/stdlib/epoll_impl.cpp`'s `#if defined(__linux__)` epoll
+   branch vs the `#else` kqueue branch, and `signal_impl.cpp`'s eventfd vs
+   self-pipe). Use this for genuine **API** divergence (epoll/kqueue/IOCP,
+   POSIX sockets vs Winsock). Resolved by the C++ compiler, so it is
+   **target-correct**. The flat C ABI the facade exposes (`tpy_epoll_*`,
+   `tpy_signal_*`) stays identical across platforms, so the consuming `.py`
+   never sees the split.
+2. **`native_global`** for per-platform **constant values** -- the value comes
+   from the target's system header at C++ compile time, so it is also
+   target-correct. Used for the `os` `O_*`/`SEEK_*` flags and the divergent
+   `socket` constants (`SOL_SOCKET`, `SO_*`, `AF_INET6`, `EAGAIN`,
+   `EINPROGRESS`), which are read from `extern "C"` globals in `socket_impl.cpp`
+   rather than hardcoded. See "Module-Level Directives" above for `native_global`.
+3. **`# tpy: include(path, platform=)` / `link(lib, platform=)`** directives --
+   filter an include or linker flag by platform. Unlike the two above, these
+   resolve against the **build host's** `sys.platform` when `tpyc` runs (there
+   is no `--target` flag), so they are correct only for **native builds**
+   (host == target).
+
+**Known gap (cross-compilation / Windows).** Because layer 3 is host-based and
+there is no target-selection facility, cross-compiling (e.g. building a Windows
+binary on Linux) is not supported, and adding a third OS (Windows: Winsock2
+sockets, an IOCP reactor, `WSAStartup`/`WSACleanup` lifecycle, `-lws2_32`) needs
+a proper design for target-aware conditional compilation. There is also no
+TPy-*source*-level platform branch (no compile-time `PLATFORM` constant with
+dead-branch elimination), which would matter only once platform divergence
+appears in *logic* rather than in a constant or a syscall wrapper. Tracked in
+`docs/FEATURE_ROADMAP.md` (Phase H).
+
+---
+
 ## Variables & Scope
 
 - **Working**: Local variables (inferred and annotated)

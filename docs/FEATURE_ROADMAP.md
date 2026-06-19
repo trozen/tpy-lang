@@ -150,6 +150,30 @@ of phase, to avoid costly retrofitting when concurrency arrives.
 |---|---------|--------|--------|---------|
 | H1 | CPython interop (extension mode + embedding hooks) | XL | 🔬 Research -- design in [`docs/CPYTHON_INTEROP.md`](CPYTHON_INTEROP.md) | [XI](#cpython-interop) |
 | H2 | Project / build / dependency tooling (`tpx` porcelain) | XL | 🔬 Research -- design in [`docs/PROJECT_TOOLING_DESIGN.md`](PROJECT_TOOLING_DESIGN.md) | [XII](#project--build--dependency-tooling) |
+| H3 | Windows support + target-aware conditional compilation | XL | 🔬 Research -- needs design (see note below) | -- |
+
+**H3 -- Cross-platform / Windows.** Linux + macOS/*BSD work today via a
+three-layer pattern (C++ `#ifdef` in runtime `.cpp`, `native_global` for
+divergent constants, host-filtered `# tpy: include/link(platform=)`); the
+macOS reactor (kqueue) / signal (self-pipe) backend and the platform-correct
+`socket`/`os` constants are the worked examples. See
+[LANGUAGE_FEATURES.md "Platform Support"](LANGUAGE_FEATURES.md) for the
+pattern and rule (keep stdlib `.py` platform-neutral; push divergence into
+the C++ facade). Two structural gaps must be designed before Windows lands,
+**neither built speculatively**:
+1. **Target-awareness.** `platform=` filtering keys on the build host's
+   `sys.platform`, not a target -- so cross-compilation picks the wrong
+   includes/links. A `--target` notion (and routing `#ifdef`/`native_global`
+   selection through it) is the prerequisite for cross-builds.
+2. **Source-level platform conditional.** No compile-time `PLATFORM` constant
+   with dead-branch elimination, so stdlib `.py` can't branch on platform in
+   *logic* (only constants/syscalls diverge today). Worth adding only when
+   logic genuinely needs to diverge.
+
+The Windows runtime work itself (Winsock2 socket backend, IOCP reactor,
+`WSAStartup`/`WSACleanup` lifecycle, `-lws2_32`) slots into the existing
+`#ifdef _WIN32` pattern -- scoping a real port will surface exactly which of
+the two structural pieces it needs, rather than building them up front.
 
 ### Future Extensions (not planned near-term)
 
