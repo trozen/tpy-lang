@@ -55,6 +55,7 @@ from ..parse import (
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
     TpyNoneLiteral, TpyStrLiteral, collect_name_refs,
 )
+from ..parse.parser import auto_declare_fields_from_init, reorder_fields_by_init
 from ..namespace import NameBinding, BindingKind
 from .send_chain import why_not_send, why_not_sync, render_chain
 from ..type_def_registry import (
@@ -849,6 +850,66 @@ class TypeRegistrar:
             fld.type = inner
             fld.is_interior_mutable = True
 
+    def _validate_instance_field(
+        self, fld: FieldInfo, record: TpyRecord, is_generic: bool,
+    ) -> None:
+        """Validate one instance field's type and persist its resolved form.
+
+        Shared by `register_record` (declared fields) and the subclass
+        `__init__`-field inference in `validate_record_inheritance` (fields
+        added after that pass), so inferred fields get the same INT-type-param
+        / redundant-Own / protocol / Self / Fn rejections and the resolve_type
+        write-back rather than slipping through to ill-formed C++.
+        """
+        # Check INT type params before general validation (to provide field location)
+        if isinstance(fld.type, TypeParamRef) and fld.type.kind == TypeParamKind.INT:
+            raise SemanticError(
+                f"Integer type parameter '{fld.type.name}' cannot be used as a type annotation",
+                loc=fld.loc
+            )
+        # A field owns its value inline regardless, so Own on a field is
+        # redundant -- including `Optional[Own[T]]`, since a field
+        # `Optional[T]` is `std::optional<T>` either way (the borrow default
+        # that makes the exemption load-bearing exists only for locals).
+        if type_contains_own(fld.type, allow_optional_own=False):
+            raise SemanticError(
+                f"Own[T] is redundant in this field type ('{fld.type}'): a "
+                f"field owns its value inline -- remove the Own.",
+                loc=fld.loc
+            )
+        # Hashable-conformance check is deferred to the second-pass
+        # validate_record_field_protocols: records defined later in the
+        # same module aren't fully registered yet (no methods), so a
+        # field `dict[KeyDefinedLater, V]` would false-reject here.
+        self.type_ops.validate_type(
+            fld.type, allow_type_param_ref=is_generic, loc=fld.loc,
+            check_hashable_constraints=False,
+        )
+        # Persist the resolved type back so downstream sema/codegen sees
+        # parser-level NominalType placeholders substituted with registered
+        # enums / protocol-flagged types / resolved aliases.
+        resolved_fld_type = self.type_ops.resolve_type(fld.type)
+        fld.type = resolved_fld_type
+        # Protocol types cannot be used as field types
+        if is_protocol_type(resolved_fld_type):
+            raise SemanticError(
+                f"Protocol type '{fld.type}' cannot be used as a field type in '{record.name}'. "
+                f"Protocols are only valid as function and method parameters",
+                loc=fld.loc
+            )
+        # Self cannot be used as a field type (infinite size or broken codegen)
+        if _contains_self_type(fld.type):
+            raise SemanticError(
+                f"Self cannot be used as a field type in '{record.name}'",
+                loc=fld.loc
+            )
+        if contains_fn_type(fld.type):
+            raise SemanticError(
+                "Fn type is only valid in parameter position. "
+                "Use Callable for fields, returns, and locals",
+                loc=fld.loc
+            )
+
     def register_record(self, record: TpyRecord) -> None:
         """Register a record type."""
         is_native = record.linkage != RecordLinkage.DEFAULT
@@ -917,54 +978,7 @@ class TypeRegistrar:
 
         # Validate field types
         for fld in record.fields:
-            # Check INT type params before general validation (to provide field location)
-            if isinstance(fld.type, TypeParamRef) and fld.type.kind == TypeParamKind.INT:
-                raise SemanticError(
-                    f"Integer type parameter '{fld.type.name}' cannot be used as a type annotation",
-                    loc=fld.loc
-                )
-            # A field owns its value inline regardless, so Own on a field is
-            # redundant -- including `Optional[Own[T]]`, since a field
-            # `Optional[T]` is `std::optional<T>` either way (the borrow default
-            # that makes the exemption load-bearing exists only for locals).
-            if type_contains_own(fld.type, allow_optional_own=False):
-                raise SemanticError(
-                    f"Own[T] is redundant in this field type ('{fld.type}'): a "
-                    f"field owns its value inline -- remove the Own.",
-                    loc=fld.loc
-                )
-            # Hashable-conformance check is deferred to the second-pass
-            # validate_record_field_protocols: records defined later in the
-            # same module aren't fully registered yet (no methods), so a
-            # field `dict[KeyDefinedLater, V]` would false-reject here.
-            self.type_ops.validate_type(
-                fld.type, allow_type_param_ref=is_generic, loc=fld.loc,
-                check_hashable_constraints=False,
-            )
-            # Protocol types cannot be used as field types
-            resolved_fld_type = self.type_ops.resolve_type(fld.type)
-            # Persist the resolved type back so downstream sema/codegen sees
-            # parser-level NominalType placeholders substituted with registered
-            # enums / protocol-flagged types / resolved aliases.
-            fld.type = resolved_fld_type
-            if is_protocol_type(resolved_fld_type):
-                raise SemanticError(
-                    f"Protocol type '{fld.type}' cannot be used as a field type in '{record.name}'. "
-                    f"Protocols are only valid as function and method parameters",
-                    loc=fld.loc
-                )
-            # Self cannot be used as a field type (infinite size or broken codegen)
-            if _contains_self_type(fld.type):
-                raise SemanticError(
-                    f"Self cannot be used as a field type in '{record.name}'",
-                    loc=fld.loc
-                )
-            if contains_fn_type(fld.type):
-                raise SemanticError(
-                    "Fn type is only valid in parameter position. "
-                    "Use Callable for fields, returns, and locals",
-                    loc=fld.loc
-                )
+            self._validate_instance_field(fld, record, is_generic)
 
         # __await__ on user types: rejected as "not yet supported" per
         # docs/ASYNC_DESIGN.md's v1 sema exclusions. v3+ may support
@@ -2044,6 +2058,35 @@ class TypeRegistrar:
             record_info.has_init = True
             record_info.inherits_init_from = init_parent
             record_info.init_params = list(parent_info.init_params)
+
+        # Auto-declare fields from `self.f = param` in this record's OWN
+        # __init__. Base-less classes are handled at parse time; a class WITH
+        # bases must wait until here, where the resolved MRO lets us skip names
+        # already declared by an ancestor -- assigning an inherited name writes
+        # the parent's slot and must NOT be re-declared as a shadow field.
+        # Non-default-linkage (@native) records keep their C++-owned fields.
+        if record.bases and record.linkage == RecordLinkage.DEFAULT:
+            init_method = record.init_method
+            if init_method is not None:
+                visible = self.ctx.registry.get_all_fields(record_info)
+                inferred = auto_declare_fields_from_init(
+                    init_method, visible, set(record_info.properties.keys()))
+                if inferred:
+                    # Inferred fields are added after register_record's field
+                    # validation, so run the same per-field checks here (the
+                    # base-less path validates at registration) -- otherwise a
+                    # protocol/Self/Fn/redundant-Own inferred field slips
+                    # through to ill-formed C++.
+                    is_gen = bool(record.type_params)
+                    for fld in inferred:
+                        self._validate_instance_field(fld, record, is_gen)
+                    # record_info.fields IS record.fields (same list), so mutate
+                    # in place -- both the AST (codegen) and RecordInfo (sema)
+                    # see it. Reorder to __init__ assignment order (matching the
+                    # parser's base-less path) so the C++ struct-member and
+                    # init-list orders agree -- else -Werror=reorder.
+                    record.fields[:] = reorder_fields_by_init(
+                        init_method, record.fields + inferred)
 
         # Needs MRO, so cannot run earlier.
         self._check_field_shadowing(record, record_info)

@@ -16,7 +16,7 @@ from typing import Any, Literal, NoReturn, TYPE_CHECKING
 from ..typesys import (
     FieldInfo, NominalType, OptionalType, RecordInfo, TypeRegistry,
     FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, LiteralValue, LiteralTag,
-    bare_name,
+    bare_name, unwrap_own,
 )
 from ..module_names import public_module_name
 from ..type_def_registry import (
@@ -441,6 +441,94 @@ def _positional_ast_args(node: 'ast.FunctionDef | ast.AsyncFunctionDef') -> 'lis
     them into posonlyargs (before '/') and args; dropping posonlyargs
     silently mis-binds calls, so every signature walk must use this."""
     return list(node.args.posonlyargs) + list(node.args.args)
+
+
+def auto_declare_fields_from_init(
+    init_method: 'TpyFunction',
+    existing_fields: list['FieldInfo'],
+    property_names: set[str] | None = None,
+) -> list['FieldInfo']:
+    """Infer fields from top-level `self.f = param` assignments in __init__.
+
+    For CPython compatibility: fields can be created by assignment in __init__
+    without a class-level annotation. Only the RHS-is-a-parameter case (field
+    type taken from the param) is handled. Names already in `existing_fields`
+    (own or inherited fields) or `property_names` are skipped -- a caller must
+    pass the full set of already-declared/inherited names so an inherited field
+    is reused rather than re-declared as a (mis-typed, two-subobject) shadow.
+    """
+    param_types = {name: typ for name, typ in init_method.params}
+    existing_names = {fld.name for fld in existing_fields}
+
+    new_fields: list['FieldInfo'] = []
+    for stmt in init_method.body:
+        if not isinstance(stmt, TpyAssign):
+            continue
+        target = stmt.target
+        if not isinstance(target, TpyFieldAccess):
+            continue
+        if not isinstance(target.obj, TpyName) or target.obj.name != "self":
+            continue
+        field_name = target.field
+        if field_name in existing_names:
+            continue
+        if property_names and field_name in property_names:
+            continue
+        value = stmt.value
+        if not isinstance(value, TpyName):
+            continue
+        if value.name not in param_types:
+            continue
+        # A field owns its value inline, so an `Own[T]` param becomes a `T`
+        # field (the move happens at the assignment) -- `Own[T]` as a field type
+        # is rejected as redundant. Mirrors the explicit `field: T` annotation.
+        # Handle both the parse-time `tpy:Own` TpyTypeRef (base-less path, types
+        # not yet resolved) and the resolved OwnType (sema/subclass path).
+        ptype = param_types[value.name]
+        if isinstance(ptype, TpyTypeRef) and ptype.name == "tpy:Own" and ptype.args:
+            ptype = ptype.args[0]
+        else:
+            ptype = unwrap_own(ptype)
+        new_fields.append(FieldInfo(field_name, ptype, loc=stmt.loc))
+        existing_names.add(field_name)
+
+    return new_fields
+
+
+def reorder_fields_by_init(
+    init_method: 'TpyFunction',
+    fields: list['FieldInfo'],
+) -> list['FieldInfo']:
+    """Reorder `fields` to match __init__ top-level assignment order.
+
+    C++ initializes members in struct declaration order regardless of init-list
+    order; matching the two avoids -Wreorder. Fields not assigned in __init__
+    keep their relative order, appended after the assigned ones. Names assigned
+    in __init__ that aren't in `fields` (e.g. inherited fields) are ignored.
+    """
+    init_order: list[str] = []
+    for stmt in init_method.body:
+        if not isinstance(stmt, TpyAssign):
+            continue
+        target = stmt.target
+        if not isinstance(target, TpyFieldAccess):
+            continue
+        if not isinstance(target.obj, TpyName) or target.obj.name != "self":
+            continue
+        if target.field not in init_order:
+            init_order.append(target.field)
+
+    field_map = {f.name: f for f in fields}
+    seen: set[str] = set()
+    ordered: list['FieldInfo'] = []
+    for name in init_order:
+        if name in field_map and name not in seen:
+            ordered.append(field_map[name])
+            seen.add(name)
+    for f in fields:
+        if f.name not in seen:
+            ordered.append(f)
+    return ordered
 
 
 class Parser:
@@ -1674,74 +1762,14 @@ class Parser:
         existing_fields: list[FieldInfo],
         property_names: set[str] | None = None,
     ) -> list[FieldInfo]:
-        """Auto-declare fields from top-level `self.f = param` in __init__.
-
-        For CPython compatibility: fields can be created by assignment in
-        __init__ without requiring class-level annotations. Only handles
-        the case where the RHS is a parameter name (type taken from param).
-        """
-        param_types = {name: typ for name, typ in init_method.params}
-        existing_names = {fld.name for fld in existing_fields}
-
-        new_fields: list[FieldInfo] = []
-        for stmt in init_method.body:
-            if not isinstance(stmt, TpyAssign):
-                continue
-            target = stmt.target
-            if not isinstance(target, TpyFieldAccess):
-                continue
-            if not isinstance(target.obj, TpyName) or target.obj.name != "self":
-                continue
-            field_name = target.field
-            if field_name in existing_names:
-                continue
-            if property_names and field_name in property_names:
-                continue
-            value = stmt.value
-            if not isinstance(value, TpyName):
-                continue
-            if value.name not in param_types:
-                continue
-            new_fields.append(FieldInfo(field_name, param_types[value.name], loc=stmt.loc))
-            existing_names.add(field_name)
-
-        return new_fields
+        return auto_declare_fields_from_init(init_method, existing_fields, property_names)
 
     @staticmethod
     def _reorder_fields_by_init(
         init_method: TpyFunction,
         fields: list[FieldInfo],
     ) -> list[FieldInfo]:
-        """Reorder fields to match __init__ body assignment order.
-
-        C++ initializes members in struct declaration order regardless of
-        init-list order. Matching the two avoids -Wreorder-ctor warnings.
-        Fields not assigned in __init__ are appended at the end.
-        """
-        # Collect field assignment order from __init__ top-level statements
-        init_order: list[str] = []
-        for stmt in init_method.body:
-            if not isinstance(stmt, TpyAssign):
-                continue
-            target = stmt.target
-            if not isinstance(target, TpyFieldAccess):
-                continue
-            if not isinstance(target.obj, TpyName) or target.obj.name != "self":
-                continue
-            if target.field not in init_order:
-                init_order.append(target.field)
-
-        field_map = {f.name: f for f in fields}
-        seen: set[str] = set()
-        ordered: list[FieldInfo] = []
-        for name in init_order:
-            if name in field_map and name not in seen:
-                ordered.append(field_map[name])
-                seen.add(name)
-        for f in fields:
-            if f.name not in seen:
-                ordered.append(f)
-        return ordered
+        return reorder_fields_by_init(init_method, fields)
 
     @staticmethod
     def _prefix_nested_names(record: TpyRecord, parent_name: str) -> None:

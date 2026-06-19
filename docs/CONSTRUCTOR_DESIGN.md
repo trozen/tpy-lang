@@ -4,7 +4,7 @@
 
 | Phase | Scope | Status |
 |-------|-------|--------|
-| **Phase 1** | Auto-declare fields from `__init__` (infer type from parameter assignment, top-level only, no inheritance) | Done |
+| **Phase 1** | Auto-declare fields from `__init__` (infer type from parameter assignment, top-level only; subclasses supported at sema time) | Done |
 | **Phase 2** | Warnings and safety: split-point model, uninitialized field detection, branch-assign errors, conditional `= default` | Done |
 | **Phase 3** | `@dataclass` decorator (auto-generate `__init__` from annotations) | Done |
 
@@ -267,9 +267,9 @@ Note: classes with only field annotations and no `__init__` cannot be constructe
 ## Implementation Details
 
 ### Phase 1: Auto-Declare Fields from `__init__` (Done)
-- When `self.field = param` appears at top level in `__init__` and `field` is not declared as a class annotation, auto-declare it using the parameter's type.
+- When `self.field = param` appears at top level in `__init__` and `field` is not declared as a class annotation, auto-declare it using the parameter's type. An `Own[T]` param yields a `T` field (a field owns its value inline; `Own[T]` as a field type is redundant), so the param is moved into the field.
 - When both annotation and `__init__` assignment exist, the annotation type takes precedence (no duplicate).
-- Disabled for classes with bases (inheritance needs parent field info to avoid shadowing).
+- For classes with bases this runs at sema time (after the MRO is resolved), so a `self.f = param` whose name an ancestor already declares reuses the inherited slot (no shadow) and only genuinely new names become own fields. Base-less classes are handled earlier, at parse time.
 - C++ struct field order follows `__init__` assignment order (fields not assigned in `__init__` appended at the end). This matches the init-list order and avoids `-Wreorder` warnings.
 - Future: extend to `self.f = literal` and `self.f = expr` (requires expression type inference at parse/registration time).
 
