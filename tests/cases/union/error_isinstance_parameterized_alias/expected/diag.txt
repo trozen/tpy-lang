@@ -1,0 +1,1 @@
+main.py:9: error: isinstance() does not support the container generic alias 'JObj' ('dict[str, int]'); use the bare 'dict': `isinstance(x, dict)`.

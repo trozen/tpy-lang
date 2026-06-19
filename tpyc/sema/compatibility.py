@@ -683,6 +683,17 @@ class TypeCompatibility:
             union_members = expected.alternatives()
         if union_members is not None:
             actual_unwrapped = unwrap_own(actual)
+            # Own[Union] -> a compatible Union (e.g. `d: JsonValue =
+            # json.loads(s)`): the per-member loop below can't see whole-union
+            # compatibility -- no single member equals the whole union -- so
+            # strip Own and let the Union->Union path match member-wise. The
+            # ownership transfers with the move. Restricted to union sources so
+            # `Own[Dog] -> Dog | Cat` keeps its pointer-variant member coercion.
+            if (isinstance(actual, OwnType)
+                    and isinstance(actual_unwrapped, (UnionType, RecursiveAliasInstanceType))):
+                return self._check_compat(
+                    actual_unwrapped, expected, context, loc, source_expr,
+                    is_return, coercion_ctx, target_is_storage_form)
             a_info = numeric_info(actual_unwrapped)
             for member in union_members:
                 if not _is_natural_union_member(actual_unwrapped, a_info, member):

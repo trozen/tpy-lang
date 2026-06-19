@@ -13,28 +13,21 @@
 #   loads(s) returns `Own[JsonValue]`. JsonValue is a recursive union, so
 #   `d["k"]` at the use site is rejected -- not every member supports str
 #   subscript, and CPython only gets away with it because its `loads`
-#   returns `Any`. Each level of access needs to be narrowed:
+#   returns `Any`. Narrow with a bare-generic isinstance (the CPython
+#   spelling) before subscripting; the value can be consumed inline:
 #
-#       def show(v: JsonValue) -> None:
-#           match v:
-#               case dict() as obj:
-#                   print(obj["users"])
-#               case _:
-#                   print("not a dict")
+#       d = json.loads(s)             # d: JsonValue (owned)
+#       if isinstance(d, dict):       # narrows d to dict[str, JsonValue]
+#           print(d["users"])
 #
-#       d = json.loads(s)   # d: Own[JsonValue]
-#       show(d)             # auto-moves into v: JsonValue
+#   `match d: case dict() as obj: ...` works the same way. For deeply
+#   nested known-shape JSON, prefer `tplib.json` with the `@model`
+#   decorator -- you declare a record class for the shape and parse
+#   directly into it, with no per-level narrowing.
 #
-#   For deeply-nested known-shape JSON, prefer `tplib.json` with the
-#   `@model` decorator -- you declare a record class for the shape and
-#   parse directly into it, with no per-level narrowing.
-#
-# Followup (BUGS.md): once `isinstance` accepts type aliases / generic
-# types, exposing `JsonObject = dict[str, JsonValue]` and `JsonList =
-# list[JsonValue]` here will make the natural pattern --
-# `if isinstance(d, JsonObject): d["k"]` -- work without writing a
-# helper or using `match`. Until then the helper-with-match pattern
-# above is the cleanest.
+#   Note: the parameterized form `isinstance(d, dict[str, JsonValue])`
+#   (and an alias of it) is rejected, matching CPython, which raises
+#   "cannot be a parameterized generic" at runtime -- use the bare `dict`.
 #
 # Not yet supported (deferred):
 #   - JSONEncoder / JSONDecoder classes (extension hooks)

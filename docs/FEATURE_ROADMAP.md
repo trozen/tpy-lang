@@ -209,6 +209,16 @@ Remaining extensions (not blocking "Done" status): equality on unions, `isinstan
 tuple form, common-method dispatch, generic unions, recursive unions. Match/case and
 exhaustiveness checking are tracked separately (B3).
 
+Low-prio extension -- **parameterized-generic isinstance narrowing** (`isinstance(d, dict[str, V])`
+or an alias of it): bare `isinstance(d, dict)` already narrows a union to its single
+dict/list/set member, matching CPython. The parameterized form is currently *rejected* because
+CPython raises "cannot be a parameterized generic" at runtime -- accepting it would be a TPy-only
+divergence. It would only add value for disambiguating two same-kind members
+(`list[int] | list[str]`), which CPython can't do either (type erasure). If pursued, it needs the
+divergence-acknowledgement machinery (diagnostic + explicit opt-in spelling + doc note), so it's a
+`/tpy-add-feature` design pass, not a free win. Technical shape noted in `BUGS.md` (the bare-generic
+isinstance residual entry).
+
 **Dependencies**: Enums (done). Match/case (B3, consumer of unions).
 
 **Effort**: L (done for core; future extensions are incremental)

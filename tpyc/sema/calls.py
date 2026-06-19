@@ -1752,6 +1752,7 @@ class CallAnalyzer:
 
     def _resolve_isinstance_type(
         self, name: str, expr: TpyCall, *, allow_any: bool = False,
+        allow_bare_generic: bool = False,
     ) -> TpyType:
         """Resolve a type name used as the second argument to isinstance()
         (or as the first arg to typing.cast).
@@ -1762,6 +1763,13 @@ class CallAnalyzer:
         otherwise rejects with the isinstance-flavoured "Any is not a
         runtime class" error. typing.cast wants the resolved AnyType so it
         can raise its own cast-flavoured rejection at one site.
+
+        `allow_bare_generic` (isinstance only) resolves a bare container
+        generic -- `dict` / `list` / `set` -- and an alias of one to a
+        bare NominalType, so the union-membership path narrows to the matching
+        member. A *parameterized* generic or its alias (`dict[str, JsonValue]`)
+        is rejected, mirroring CPython (`isinstance(x, dict[str, int])` raises
+        "cannot be a parameterized generic"). Off for typing.cast.
         """
         if (name == "Any"
                 or self.ctx.imported_names.get(name) == ("typing", "Any")):
@@ -1803,6 +1811,28 @@ class CallAnalyzer:
                 f"Test the expanded type's members directly.",
                 expr,
             )
+        if allow_bare_generic:
+            # Bare container generic (`dict`) -- runtime-checkable against the
+            # value's variant alternative, exactly what `case dict():` emits.
+            if name in self._BARE_RUNTIME_GENERICS:
+                return NominalType(name)
+            if alias_info is not None and isinstance(alias_info.body, NominalType):
+                body = alias_info.body
+                # An alias of a container generic, bare or parameterized, has
+                # no runtime identity beyond the bare class: `dict[str, V]`
+                # CPython rejects at runtime, and bare `dict` is not a complete
+                # TPy type. Point at the bare form either way.
+                if body.name in self._BARE_RUNTIME_GENERICS:
+                    raise self.ctx.error(
+                        f"isinstance() does not support the container generic "
+                        f"alias '{name}' ('{body}'); use the bare "
+                        f"'{body.name}': `isinstance(x, {body.name})`.",
+                        expr,
+                    )
+                # Alias of a complete concrete type (`type Foo = MyRecord`):
+                # resolve to the body so the check tests that type.
+                if not body.is_protocol:
+                    return body
         raise self.ctx.error(f"isinstance() second argument must be a type, got '{name}'", expr)
 
     def _resolve_isinstance_check_types(
@@ -1825,10 +1855,12 @@ class CallAnalyzer:
                     raise self.ctx.error(
                         "isinstance() tuple elements must be type names", expr
                     )
-                types.append(self._resolve_isinstance_type(elem.name, expr))
+                types.append(self._resolve_isinstance_type(
+                    elem.name, expr, allow_bare_generic=True))
             return types
         if isinstance(second_arg, TpyName):
-            return [self._resolve_isinstance_type(second_arg.name, expr)]
+            return [self._resolve_isinstance_type(
+                second_arg.name, expr, allow_bare_generic=True)]
         raise self.ctx.error(
             "isinstance() second argument must be a type name "
             "(or tuple of type names)",
@@ -1862,6 +1894,22 @@ class CallAnalyzer:
             return False
         alias = self.ctx.registry.get_type_alias(typ.name)
         return isinstance(alias, (UnionType, OptionalType))
+
+    # Builtin container generics that have a bare runtime identity: a value
+    # either holds a `dict` alternative or it does not. Matches CPython, where
+    # `isinstance(x, dict)` works but `isinstance(x, dict[str, int])` raises.
+    _BARE_RUNTIME_GENERICS = frozenset({"dict", "list", "set"})
+
+    def _isinstance_member_match(self, member: TpyType, check: TpyType) -> bool:
+        """True if union `member` is the alternative a `isinstance(x, check)`
+        selects. Exact structural match, or a bare container generic (`dict`)
+        matching that member's container kind regardless of element types."""
+        if member == check:
+            return True
+        return (isinstance(check, NominalType) and not check.type_args
+                and check.name in self._BARE_RUNTIME_GENERICS
+                and isinstance(member, NominalType)
+                and member.name == check.name)
 
     def _evaluate_static_isinstance(
         self, var_type: TpyType, check_types: list[TpyType], expr: TpyCall,
@@ -2204,9 +2252,29 @@ class CallAnalyzer:
             expr.macro_expansion = TpyBoolLiteral(value=static_fold, loc=expr.loc)
             return BOOL
 
-        # Union case: validate that check types are members of the union.
-        non_members = [t for t in check_types
-                       if not any(m == t for m in effective_type.members)]
+        # Union case: validate that check types select a member. A bare
+        # container generic (`dict`) matches the member of that kind; record
+        # the matched member so narrowing/codegen use the union's own
+        # representation. A bare generic matching two members of the same kind
+        # (`list[int] | list[str]`) is unresolvable -- CPython can't tell them
+        # apart at runtime either (type erasure) -- so reject rather than guess.
+        matched: list[TpyType] = []
+        non_members: list[TpyType] = []
+        for t in check_types:
+            hits = [m for m in effective_type.members
+                    if self._isinstance_member_match(m, t)]
+            if not hits:
+                non_members.append(t)
+            elif len(hits) > 1:
+                names = ", ".join(f"'{h}'" for h in hits)
+                raise self.ctx.error(
+                    f"isinstance() against '{t}' is ambiguous: union "
+                    f"'{effective_type}' has multiple '{t}' members ({names}) "
+                    f"that a bare generic cannot distinguish at runtime.",
+                    expr,
+                )
+            else:
+                matched.append(hits[0])
         if non_members:
             # If the narrowed-path fold already answered via hierarchy walk
             # (e.g. `isinstance(x, Puppy)` inside an `if isinstance(x, Dog):`
@@ -2229,8 +2297,8 @@ class CallAnalyzer:
             )
 
         expr.isinstance_var = first_arg.name
-        expr.isinstance_type = (check_types[0] if len(check_types) == 1
-                                else make_union(*check_types))
+        expr.isinstance_type = (matched[0] if len(matched) == 1
+                                else make_union(*matched))
         if static_fold is not None:
             # Folded at the call site, but keep isinstance_var/isinstance_type
             # so the surrounding if/elif still narrows and codegen emits the

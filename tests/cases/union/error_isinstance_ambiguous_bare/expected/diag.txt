@@ -1,0 +1,1 @@
+main.py:6: error: isinstance() against 'list' is ambiguous: union 'list[int] | list[str]' has multiple 'list' members ('list[int]', 'list[str]') that a bare generic cannot distinguish at runtime.
