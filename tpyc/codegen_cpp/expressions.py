@@ -8,7 +8,7 @@ from __future__ import annotations
 import contextlib
 import io
 from dataclasses import replace as dc_replace
-from typing import Final, TYPE_CHECKING
+from typing import Callable, Final, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType,
@@ -4883,12 +4883,14 @@ class ExpressionGenerator:
 
         comp_names = self._enter_comp_scope(expr.generator)
         try:
-            with self._container_element_context():
-                elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
-                insert_code = self._wrap_for_owned_slot(expr.element_expr, self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
+            def make_insert() -> str:
+                with self._container_element_context():
+                    elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
+                    insert_code = self._wrap_for_owned_slot(expr.element_expr, self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
+                return f"__result.push_back({insert_code})"
             return self._gen_comprehension_iife(
                 expr.generator, f"std::vector<{cpp_elem}>",
-                f"__result.push_back({insert_code})", skip_reserve=False)
+                make_insert, skip_reserve=False)
         finally:
             self._exit_comp_scope(comp_names)
 
@@ -4907,8 +4909,12 @@ class ExpressionGenerator:
         gen = expr.generator
         comp_names = self._enter_comp_scope(gen)
         try:
-            elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
-            insert_code = self._wrap_for_owned_slot(expr.element_expr, self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
+            # Rendered lazily inside the per-index lambda (after the loop var
+            # binding) via _emit_iter_temps, so its per-iteration temps land in
+            # the lambda body, not the enclosing statement scope.
+            def make_insert() -> str:
+                elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
+                return self._wrap_for_owned_slot(expr.element_expr, self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
 
             stmt_ind = INDENT * self.ctx.indent_level
             ind1 = stmt_ind + INDENT
@@ -4947,6 +4953,7 @@ class ExpressionGenerator:
                 buf.write(f"::tpy::array_from_index<{cpp_elem}, {size}>("
                           f"[&](std::size_t __i_{n}) -> {cpp_elem} {{\n")
                 buf.write(f"{ind1}{cpp_iter_type} {cpp_var} = {var_init};\n")
+                insert_code = self._emit_iter_temps(buf, ind1, make_insert)
                 buf.write(f"{ind1}return {insert_code};\n")
                 buf.write(f"{stmt_ind}}})")
                 return buf.getvalue()
@@ -4970,6 +4977,7 @@ class ExpressionGenerator:
                 buf.write(f"{ind2}{sema_elem.to_cpp()} {cpp_var} = {src_elem};\n")
             else:
                 buf.write(f"{ind2}auto&& {cpp_var} = {src_elem};\n")
+            insert_code = self._emit_iter_temps(buf, ind2, make_insert)
             buf.write(f"{ind2}return {insert_code};\n")
             buf.write(f"{ind1}}});\n")
             buf.write(f"{stmt_ind}}})")
@@ -4985,14 +4993,16 @@ class ExpressionGenerator:
         cpp_val = self.types.type_to_cpp(value_type)
         comp_names = self._enter_comp_scope(expr.generator)
         try:
-            with self._container_element_context():
-                key_resolved = self.types.get_resolved_type(expr.key_expr, key_type)
-                key_code = self._wrap_for_owned_slot(expr.key_expr, self.gen_expr_deref(expr.key_expr, key_type), key_resolved, key_type)
-                value_resolved = self.types.get_resolved_type(expr.value_expr, value_type)
-                value_code = self._wrap_for_owned_slot(expr.value_expr, self.gen_expr_deref(expr.value_expr, value_type), value_resolved, value_type)
+            def make_insert() -> str:
+                with self._container_element_context():
+                    key_resolved = self.types.get_resolved_type(expr.key_expr, key_type)
+                    key_code = self._wrap_for_owned_slot(expr.key_expr, self.gen_expr_deref(expr.key_expr, key_type), key_resolved, key_type)
+                    value_resolved = self.types.get_resolved_type(expr.value_expr, value_type)
+                    value_code = self._wrap_for_owned_slot(expr.value_expr, self.gen_expr_deref(expr.value_expr, value_type), value_resolved, value_type)
+                return f"__result.insert_or_assign({key_code}, {value_code})"
             return self._gen_comprehension_iife(
                 expr.generator, f"::tpy::ordered_map<{cpp_key}, {cpp_val}>",
-                f"__result.insert_or_assign({key_code}, {value_code})", skip_reserve=True)
+                make_insert, skip_reserve=True)
         finally:
             self._exit_comp_scope(comp_names)
 
@@ -5001,12 +5011,14 @@ class ExpressionGenerator:
         cpp_elem = self.types.type_to_cpp(elem_type)
         comp_names = self._enter_comp_scope(expr.generator)
         try:
-            with self._container_element_context():
-                elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
-                insert_code = self._wrap_for_owned_slot(expr.element_expr, self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
+            def make_insert() -> str:
+                with self._container_element_context():
+                    elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
+                    insert_code = self._wrap_for_owned_slot(expr.element_expr, self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
+                return f"__result.insert({insert_code})"
             return self._gen_comprehension_iife(
                 expr.generator, f"::tpy::ordered_set<{cpp_elem}>",
-                f"__result.insert({insert_code})", skip_reserve=True)
+                make_insert, skip_reserve=True)
         finally:
             self._exit_comp_scope(comp_names)
 
@@ -5042,7 +5054,10 @@ class ExpressionGenerator:
                 self.ctx.is_indirect_name(gen.iterable))
             iterable_type = self.narrowed_value_optional_iter_type(
                 gen.iterable, self.types.get_resolved_type(gen.iterable))
-            yield_code = self.gen_expr_deref(expr.element_expr, elem_type)
+            # Deferred so the yield's codegen temps land inside the lambda body
+            # (per-iteration) via _emit_iter_temps, not the enclosing statement scope.
+            def gen_yield() -> str:
+                return self.gen_expr_deref(expr.element_expr, elem_type)
 
             sema_elem = builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.analyzer.registry)
             if sema_elem is not None and isinstance(sema_elem, IntLiteralType):
@@ -5057,7 +5072,7 @@ class ExpressionGenerator:
             # Range: counter state fits in lambda init-captures
             if is_range:
                 self._gen_genexpr_counter_lambda(buf, expr, gen, sema_elem, cpp_var, cpp_slot,
-                                                 yield_code, stmt_ind, ind1, ind2, ind3)
+                                                 gen_yield, stmt_ind, ind1, ind2, ind3)
                 return buf.getvalue()
 
             # Container iterables: capture begin/end iterators into the lambda.
@@ -5113,7 +5128,7 @@ class ExpressionGenerator:
                                            gen.const_loop_var)
                 buf.write(f"{ind3i}{binding}\n")
 
-            self._gen_genexpr_yield(buf, gen, yield_code, cpp_slot, ind3i, ind3i + INDENT)
+            self._gen_genexpr_yield(buf, gen, gen_yield, cpp_slot, ind3i, ind3i + INDENT)
             buf.write(f"{ind2i}}}\n")
             buf.write(f"{ind2i}return std::nullopt;\n")
             buf.write(f"{lambda_ind}}}\n")
@@ -5132,7 +5147,7 @@ class ExpressionGenerator:
         self, buf: io.StringIO,
         expr: TpyGeneratorExpression, gen: TpyComprehensionGenerator,
         elem_type: TpyType, cpp_var: str, cpp_elem: str,
-        yield_code: str,
+        gen_yield: Callable[[], str],
         stmt_ind: str, ind1: str, ind2: str, ind3: str,
     ) -> None:
         """Generate make_generator with counter-based lambda for range()."""
@@ -5171,7 +5186,7 @@ class ExpressionGenerator:
             buf.write(f"{ind3}{cpp_iter} {cpp_var} = __i;\n")
             buf.write(f"{ind3}__i += __step;\n")
 
-        self._gen_genexpr_yield(buf, gen, yield_code, cpp_elem, ind3, ind3 + INDENT)
+        self._gen_genexpr_yield(buf, gen, gen_yield, cpp_elem, ind3, ind3 + INDENT)
         buf.write(f"{ind2}}}\n")
         buf.write(f"{ind2}return std::nullopt;\n")
         buf.write(f"{ind1}}}\n")
@@ -5179,17 +5194,24 @@ class ExpressionGenerator:
 
     def _gen_genexpr_yield(
         self, buf: io.StringIO, gen: TpyComprehensionGenerator,
-        yield_code: str, cpp_elem: str,
+        gen_yield: Callable[[], str], cpp_elem: str,
         ind: str, ind_inner: str,
     ) -> None:
-        """Generate the yield statement, optionally wrapped in filter conditions."""
+        """Generate the yield statement, optionally wrapped in filter conditions.
+
+        `gen_yield` renders the yielded element lazily so its (and the filter's)
+        per-iteration temps land in the lambda body (see `_emit_iter_temps`).
+        """
         if gen.conditions:
-            cond_parts = [self.gen_truthy_expr(c) for c in gen.conditions]
-            cond_str = " && ".join(cond_parts)
+            cond_str = self._emit_iter_temps(
+                buf, ind,
+                lambda: " && ".join(self.gen_truthy_expr(c) for c in gen.conditions))
             buf.write(f"{ind}if ({cond_str}) {{\n")
+            yield_code = self._emit_iter_temps(buf, ind_inner, gen_yield)
             buf.write(f"{ind_inner}return std::optional<{cpp_elem}>({yield_code});\n")
             buf.write(f"{ind}}}\n")
         else:
+            yield_code = self._emit_iter_temps(buf, ind, gen_yield)
             buf.write(f"{ind}return std::optional<{cpp_elem}>({yield_code});\n")
 
     def _resolve_int_literal(self, typ: TpyType | None) -> TpyType:
@@ -5198,12 +5220,28 @@ class ExpressionGenerator:
             return self.ctx.analyzer.ctx.default_int_type
         return typ
 
+    def _emit_iter_temps(self, buf: io.StringIO, indent: str,
+                         gen_code: Callable[[], str]) -> str:
+        """Render a comprehension/genexpr per-iteration expression and flush the
+        anonymous temps it registers into `buf` at `indent` -- inside the loop
+        body, where the loop var is in scope and the temp recurs each iteration
+        rather than escaping to the enclosing statement flush."""
+        cp = self.ctx.temps.checkpoint()
+        code = gen_code()
+        self.ctx.temps.flush_since(buf, cp, indent)
+        return code
+
     def _gen_comprehension_iife(
         self, gen: TpyComprehensionGenerator,
-        container_type: str, insert_stmt: str,
+        container_type: str, make_insert: Callable[[], str],
         skip_reserve: bool,
     ) -> str:
-        """Generate comprehension as GCC stmt-expr: ({ container; loop; result; })"""
+        """Generate comprehension as GCC stmt-expr: ({ container; loop; result; })
+
+        `make_insert` renders the element insert statement (e.g.
+        `__result.push_back(...)`) lazily so its (and the filter's)
+        per-iteration temps land in the loop body (see `_emit_iter_temps`).
+        """
         cpp_var = escape_cpp_name(gen.var)
 
         stmt_ind = INDENT * self.ctx.indent_level
@@ -5237,12 +5275,15 @@ class ExpressionGenerator:
                                           iterable_code, skip_reserve=skip_reserve)
 
         if gen.conditions:
-            cond_parts = [self.gen_truthy_expr(c) for c in gen.conditions]
-            cond_str = " && ".join(cond_parts)
+            cond_str = self._emit_iter_temps(
+                buf, ind2,
+                lambda: " && ".join(self.gen_truthy_expr(c) for c in gen.conditions))
             buf.write(f"{ind2}if ({cond_str}) {{\n")
+            insert_stmt = self._emit_iter_temps(buf, ind3, make_insert)
             buf.write(f"{ind3}{insert_stmt};\n")
             buf.write(f"{ind2}}}\n")
         else:
+            insert_stmt = self._emit_iter_temps(buf, ind2, make_insert)
             buf.write(f"{ind2}{insert_stmt};\n")
 
         buf.write(f"{ind1}}}\n")

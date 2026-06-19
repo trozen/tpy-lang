@@ -506,20 +506,39 @@ class TempState:
 
     def flush(self, out: TextIO, indent: str) -> None:
         """Emit any pending temp variable declarations."""
-        for name, cpp_type, init_val, brace_init in self._pending_named:
+        self._render(out, indent, self._pending_named, self._pending)
+        self._pending_named.clear()
+        self._pending.clear()
+
+    def flush_since(self, out: TextIO, checkpoint: tuple[int, int], indent: str) -> None:
+        """Emit (and remove) only the anonymous temps registered after `checkpoint`.
+
+        Relocates per-iteration comprehension/genexpr temps into the nested loop
+        body (where the loop var is in scope and the temp recurs each iteration)
+        instead of the enclosing statement flush. Named pre-declarations stay for
+        the enclosing flush: a comprehension walrus target binds in the
+        containing scope (PEP 572), so it must not move into the loop body.
+        """
+        pending_n, _named_n = checkpoint
+        self._render(out, indent, [], self._pending[pending_n:])
+        del self._pending[pending_n:]
+
+    @staticmethod
+    def _render(out: TextIO, indent: str,
+                named: list[tuple[str, str, str | None, bool]],
+                pending: list[tuple[str, str, str, bool]]) -> None:
+        for name, cpp_type, init_val, brace_init in named:
             if init_val is not None:
                 out.write(f"{indent}{cpp_type} {name} = {init_val};\n")
             elif brace_init:
                 out.write(f"{indent}{cpp_type} {name}{{}};\n")
             else:
                 out.write(f"{indent}{cpp_type} {name};\n")
-        self._pending_named.clear()
-        for temp_name, type_cpp, init_expr, brace_init in self._pending:
+        for temp_name, type_cpp, init_expr, brace_init in pending:
             if brace_init:
                 out.write(f"{indent}{type_cpp} {temp_name}{{{init_expr}}};\n")
             else:
                 out.write(f"{indent}{type_cpp} {temp_name} = {init_expr};\n")
-        self._pending.clear()
 
 
 class CodeGenError(Exception):
