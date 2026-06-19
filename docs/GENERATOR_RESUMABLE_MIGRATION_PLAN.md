@@ -514,7 +514,8 @@ existing `error_*` case to positive.
   binding read in a (separate-state) arm body survives. **Prereq landed
   first:** `_emit_branch_decls` no longer re-declares frame-field names
   as shadowing C++ locals in resumable bodies (a pre-existing if/match
-  miscompile, BUGS.md). The blanket sema reject
+  miscompile; regression-tested by `gen_branch_local_across_yield` and
+  `coro_branch_local_across_await`). The blanket sema reject
   (`_check_resumable_suspension_shape`) is deleted. **Remaining gap:**
   reading an `isinstance`-narrowed binding *across* a suspension is now
   re-established for `if`/`while`/`assert` (H5, see below); the `match`-arm
