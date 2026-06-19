@@ -1,0 +1,16 @@
+alpha
+True
+False
+alpha
+alpha
+None
+d
+alpha/x
+beta
+False
+gone
+False
+True
+True
+getitem KeyError
+delitem KeyError

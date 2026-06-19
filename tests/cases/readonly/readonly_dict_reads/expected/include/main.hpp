@@ -67,7 +67,7 @@ struct Bag {
         return s;
     }
 
-    ::tpy::BigInt operator[](T key) const {
+    ::tpy::BigInt operator[](const T& key) const {
         return __getitem__(key);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";

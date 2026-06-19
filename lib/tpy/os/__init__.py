@@ -11,8 +11,9 @@ from . import path
 from ._native import (
     getcwd, chdir, listdir, rmdir, remove, rename, symlink, readlink,
     mkdir as _mkdir, stat_raw as _stat_raw, lstat_raw as _lstat_raw,
-    env_has as _env_has, env_get as _env_get,
+    setenv as _setenv, unsetenv as _unsetenv,
 )
+from ._environ import environ
 
 
 # os.stat / lstat result. Field names match CPython so user code (and the cpy
@@ -62,20 +63,33 @@ def mkdir(path: str, mode: Int64 = 0o777) -> None:
 
 
 # Two overloads (mirroring typeshed): a non-None default narrows the result to
-# `str`, so `len(os.getenv(k, ""))` type-checks. env_has + env_get is two libc
-# lookups -- a single value-or-null lookup is a deferred cleanup (see TODO.md).
+# `str`, so `len(os.getenv(k, ""))` type-checks. Both read the os.environ
+# snapshot (CPython's getenv is environ.get), not libc -- so a bare os.putenv
+# is not observable here, matching CPython.
 @overload
 def getenv(key: str) -> str | None:
-    if _env_has(key):
-        return _env_get(key)
+    if key in environ:
+        return environ[key]
     return None
 
 
 @overload
 def getenv(key: str, default: str) -> str:
-    if _env_has(key):
-        return _env_get(key)
+    if key in environ:
+        return environ[key]
     return default
+
+
+# Low-level libc wrappers (CPython's os.putenv/os.unsetenv): they mutate the
+# process environment directly and do NOT touch the os.environ snapshot, so a
+# subsequent os.getenv/os.environ lookup will not see the change. Assign through
+# os.environ[key] = value (or `del`) to keep the snapshot in sync.
+def putenv(key: str, value: str) -> None:
+    _setenv(key, value)
+
+
+def unsetenv(key: str) -> None:
+    _unsetenv(key)
 
 
 # On POSIX os.replace is the same atomic rename(2) as os.rename (both overwrite

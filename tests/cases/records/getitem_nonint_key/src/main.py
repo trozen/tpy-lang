@@ -18,9 +18,18 @@ class Scores:
         return self._b
 
 
+# A str *variable* (a view, not a literal) as the index: the synthesized
+# operator[] must take the borrow form (string_view), or a view key won't
+# convert. A string literal converts to either form, so this guards the fix.
+def lookup(s: Scores, key: str) -> Int32:
+    return s[key]
+
+
 def main() -> None:
     s = Scores()
     print(s["a"], s["b"])
+    k = "a"
+    print(lookup(s, k), lookup(s, "b"))
 
 
 main()

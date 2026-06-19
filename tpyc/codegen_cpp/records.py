@@ -1551,9 +1551,11 @@ class RecordGenerator:
         if not method.params:
             return
         index_param_name, index_type = method.params[0]
-        index_cpp = index_type.to_cpp()
+        # Mirror __getitem__'s borrow-form key param (str -> string_view, ref ->
+        # const T&), like the binary/call operators -- not the storage form.
+        index_cpp = index_type.to_cpp_const_param(index_param_name)
         ret_const = method.return_type.to_cpp_return_const()
-        out.write(f"\n{INDENT}{ret_const} operator[]({index_cpp} {index_param_name}) const {{\n")
+        out.write(f"\n{INDENT}{ret_const} operator[]({index_cpp}) const {{\n")
         out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
         out.write(f"{INDENT}}}\n")
 
@@ -1562,9 +1564,9 @@ class RecordGenerator:
         if not method.params:
             return
         index_param_name, index_type = method.params[0]
-        index_cpp = index_type.to_cpp()
+        index_cpp = index_type.to_cpp_const_param(index_param_name)
         ret_mut = method.return_type.to_cpp_return()
-        out.write(f"\n{INDENT}{ret_mut} operator[]({index_cpp} {index_param_name}) {{\n")
+        out.write(f"\n{INDENT}{ret_mut} operator[]({index_cpp}) {{\n")
         out.write(f"{INDENT}{INDENT}return __getitem__({index_param_name});\n")
         out.write(f"{INDENT}}}\n")
 

@@ -14,6 +14,7 @@
 #include <tuple>
 #include <vector>
 
+#include <pwd.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -130,13 +131,86 @@ int64_t path_getsize(std::string_view path) {
     return static_cast<int64_t>(st.st_size);
 }
 
-bool env_has(std::string_view key) {
-    return std::getenv(std::string(key).c_str()) != nullptr;
+std::string path_realpath(std::string_view path) {
+    // Absolutize first: weakly_canonical leaves a fully-non-existent *relative*
+    // path (and "") relative, but CPython realpath always makes it absolute
+    // (relative to cwd). absolute() handles the empty path as cwd.
+    // CPython realpath("") is cwd, same as realpath("."); absolute("") errors.
+    auto input = path.empty() ? std::filesystem::path(".") : to_path(path);
+    std::error_code ec;
+    auto abs = std::filesystem::absolute(input, ec);
+    if (ec) abs = input;
+    ec.clear();
+    auto resolved = std::filesystem::weakly_canonical(abs, ec);
+    if (ec) {
+        // weakly_canonical fails only on a real error (ELOOP, EACCES mid-path),
+        // not a missing path. CPython realpath(strict=False) returns a partial
+        // best-effort there; approximate with the lexical absolute path.
+        resolved = abs.lexically_normal();
+    }
+    return resolved.string();
+}
+
+// The keys of every "KEY=VALUE" entry in the process environment, in libc
+// order. Used once at startup to seed the os.environ snapshot (the values come
+// from env_get per key). An entry without '=' is skipped (malformed).
+std::vector<std::string> environ_keys() {
+    std::vector<std::string> keys;
+    for (char** e = ::environ; e && *e; ++e) {
+        std::string_view entry(*e);
+        auto eq = entry.find('=');
+        if (eq != std::string_view::npos) {
+            keys.emplace_back(entry.substr(0, eq));
+        }
+    }
+    return keys;
 }
 
 std::string env_get(std::string_view key) {
     const char* v = std::getenv(std::string(key).c_str());
     return v ? std::string(v) : std::string();
+}
+
+void setenv(std::string_view key, std::string_view value) {
+    // EINVAL (key contains '=' or is empty) / ENOMEM -> OSError, as CPython
+    // raises for os.putenv / os.environ[k] = v; never silently no-op.
+    if (::setenv(std::string(key).c_str(), std::string(value).c_str(), 1) != 0) {
+        raise_errno("putenv", key);
+    }
+}
+
+void unsetenv(std::string_view key) {
+    if (::unsetenv(std::string(key).c_str()) != 0) raise_errno("unsetenv", key);
+}
+
+// getpwuid_r/getpwnam_r need a caller-provided buffer; _SC_GETPW_R_SIZE_MAX is
+// only a hint (can be -1), so fall back to a generous size.
+static std::string pw_dir_or_empty(const struct ::passwd* result) {
+    if (result == nullptr || result->pw_dir == nullptr) return std::string();
+    return std::string(result->pw_dir);
+}
+
+std::string current_home() {
+    long hint = ::sysconf(_SC_GETPW_R_SIZE_MAX);
+    std::string buf(hint > 0 ? static_cast<size_t>(hint) : 16384, '\0');
+    struct ::passwd pw;
+    struct ::passwd* result = nullptr;
+    if (::getpwuid_r(::getuid(), &pw, buf.data(), buf.size(), &result) != 0) {
+        return std::string();
+    }
+    return pw_dir_or_empty(result);
+}
+
+std::string user_home(std::string_view name) {
+    long hint = ::sysconf(_SC_GETPW_R_SIZE_MAX);
+    std::string buf(hint > 0 ? static_cast<size_t>(hint) : 16384, '\0');
+    struct ::passwd pw;
+    struct ::passwd* result = nullptr;
+    if (::getpwnam_r(std::string(name).c_str(), &pw, buf.data(), buf.size(),
+                     &result) != 0) {
+        return std::string();
+    }
+    return pw_dir_or_empty(result);
 }
 
 // Mutating ops bind the raw POSIX syscalls (mirroring CPython, which wraps the

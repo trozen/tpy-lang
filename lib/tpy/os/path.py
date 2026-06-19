@@ -2,13 +2,15 @@
 # tpy: cpp_namespace("tpystd::os::path")
 # tpy: include("<tpy/stdlib/os.hpp>")
 from typing import Final
-from tpy import Char
+from tpy import Char, Own
 from ._native import (
-    getcwd, exists, lexists, isfile, isdir, islink, getsize,
+    getcwd, exists, lexists, isfile, isdir, islink, getsize, realpath,
     path_getmtime as getmtime, path_getatime as getatime,
     path_getctime as getctime, path_samefile as samefile,
-    path_ismount as ismount, env_has as _env_has, env_get as _env_get,
+    path_ismount as ismount,
+    current_home as _current_home, user_home as _user_home,
 )
+from . import _environ
 
 sep: Final[str] = "/"
 pathsep: Final[str] = ":"
@@ -127,6 +129,36 @@ def abspath(p: str) -> str:
     return normpath(_join2(getcwd(), p))
 
 
+def _split_parts(s: str) -> Own[list[str]]:
+    out: list[str] = []
+    for c in s.split("/"):
+        if len(c) > 0:
+            out.append(c)
+    return out
+
+
+# Relative path from `start` to `path` (posixpath.relpath). Both are made
+# absolute first, so the current directory cancels in the common prefix.
+def relpath(p: str, start: str = ".") -> str:
+    start_parts = _split_parts(abspath(start))
+    path_parts = _split_parts(abspath(p))
+    i = 0
+    common = min(len(start_parts), len(path_parts))
+    while i < common and start_parts[i] == path_parts[i]:
+        i += 1
+    rel: list[str] = []
+    j = i
+    while j < len(start_parts):
+        rel.append("..")
+        j += 1
+    while i < len(path_parts):
+        rel.append(path_parts[i])
+        i += 1
+    if len(rel) == 0:
+        return "."
+    return "/".join(rel)
+
+
 def _is_var_char(c: Char) -> bool:
     return (c >= "a" and c <= "z") or (c >= "A" and c <= "Z") or (
         c >= "0" and c <= "9") or c == "_"
@@ -155,8 +187,8 @@ def expandvars(p: str) -> str:
                 i = n
             else:
                 name = p[i + 2:close]
-                if _env_has(name):
-                    res = res + _env_get(name)
+                if name in _environ.environ:
+                    res = res + _environ.environ[name]
                 else:
                     res = res + p[i:close + 1]   # unset -> leave verbatim
                 i = close + 1
@@ -169,9 +201,43 @@ def expandvars(p: str) -> str:
                 i += 1
             else:
                 name = p[i + 1:end]
-                if _env_has(name):
-                    res = res + _env_get(name)
+                if name in _environ.environ:
+                    res = res + _environ.environ[name]
                 else:
                     res = res + p[i:end]
                 i = end
     return res
+
+
+def _rstrip_slashes(s: str) -> str:
+    j = len(s)
+    while j > 0 and s[j - 1] == "/":
+        j -= 1
+    return s[:j]
+
+
+# Expand a leading ~ / ~user (posixpath.expanduser). ~ uses $HOME (from the
+# os.environ snapshot), falling back to the current user's pwd home; ~user uses
+# pwd. An unresolvable ~ / unknown ~user is left verbatim.
+def expanduser(p: str) -> str:
+    if not p.startswith("~"):
+        return p
+    # First slash at or after index 1 (str.find has no start arg here).
+    rel = p[1:].find("/")
+    i = len(p) if rel < 0 else rel + 1
+    userhome = ""
+    if i == 1:
+        if "HOME" in _environ.environ:
+            userhome = _environ.environ["HOME"]
+        else:
+            userhome = _current_home()
+            if len(userhome) == 0:
+                return p
+    else:
+        userhome = _user_home(p[1:i])
+        if len(userhome) == 0:
+            return p
+    result = _rstrip_slashes(userhome) + p[i:]
+    if len(result) == 0:
+        return "/"
+    return result

@@ -1,0 +1,13 @@
+c
+../../b/c
+.
+b
+x
+b/c/d
+/nope_xyz/b
+/x_zzz/z
+/
+/
+True
+True
+True

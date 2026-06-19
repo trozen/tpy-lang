@@ -1,0 +1,5 @@
+True
+['TPY_ITER_A', 'TPY_ITER_B', 'TPY_ITER_C']
+True
+['TPY_ITER_A=va', 'TPY_ITER_B=vb', 'TPY_ITER_C=vc']
+['va', 'vb', 'vc']

@@ -1,0 +1,9 @@
+/home/tpytest
+/home/tpytest/sub
+/home/tpytest/
+nochange/~
+plain/path
+~nosuchuser_zzz
+~nosuchuser_zzz/x
+True
+True

@@ -52,7 +52,23 @@ bool path_islink(std::string_view path);
 // getsize raises OSError for a missing path (unlike the predicates).
 int64_t path_getsize(std::string_view path);
 
-bool env_has(std::string_view key);
+// os.path.realpath: absolute path with symlinks resolved (weakly_canonical --
+// resolves the existing prefix, lexically normalizes a non-existent tail, never
+// fails on a missing path). Best-effort lexical fallback on a filesystem error.
+std::string path_realpath(std::string_view path);
+
+// env_get reads libc; the os.environ snapshot is built once at startup by
+// pairing environ_keys() with a env_get() per key. setenv/unsetenv mutate the
+// libc environment (os.putenv/unsetenv, and the os.environ write path).
+std::vector<std::string> environ_keys();
 std::string env_get(std::string_view key);
+void setenv(std::string_view key, std::string_view value);
+void unsetenv(std::string_view key);
+
+// Home directory of the running user (getpwuid of getuid) / of a named user
+// (getpwnam). Empty string on not-found or error -- os.path.expanduser treats
+// that as "leave the ~ verbatim", matching CPython's KeyError handling.
+std::string current_home();
+std::string user_home(std::string_view name);
 
 } // namespace tpy::stdlib::os

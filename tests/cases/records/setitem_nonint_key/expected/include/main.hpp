@@ -33,7 +33,7 @@ struct Store {
     // def __delitem__(self, key: str) -> None:
     void __delitem__(std::string_view key);
 
-    int32_t operator[](std::string key) const {
+    int32_t operator[](std::string_view key) const {
         return __getitem__(key);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Store";

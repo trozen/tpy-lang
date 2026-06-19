@@ -11,6 +11,7 @@ struct Scores;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+int32_t lookup(const Scores& s, std::string_view key);
 void main();
 
 // class Scores:
@@ -26,7 +27,7 @@ struct Scores {
     // def __getitem__(self, key: str) -> Int32:
     int32_t __getitem__(std::string_view key) const;
 
-    int32_t operator[](std::string key) const {
+    int32_t operator[](std::string_view key) const {
         return __getitem__(key);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Scores";

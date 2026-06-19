@@ -81,12 +81,29 @@ def path_samefile(a: str, b: str) -> bool: ...
 def path_ismount(path: str) -> bool: ...
 
 
-@native("tpy::stdlib::os::env_has")
-def env_has(key: str) -> bool: ...
+@native("tpy::stdlib::os::environ_keys")
+def environ_keys() -> Own[list[str]]: ...
 
 
 @native("tpy::stdlib::os::env_get")
 def env_get(key: str) -> str: ...
+
+
+@native("tpy::stdlib::os::setenv")
+def setenv(key: str, value: str) -> None: ...
+
+
+@native("tpy::stdlib::os::unsetenv")
+def unsetenv(key: str) -> None: ...
+
+
+# pwd home-dir lookups for os.path.expanduser (empty str if not found).
+@native("tpy::stdlib::os::current_home")
+def current_home() -> str: ...
+
+
+@native("tpy::stdlib::os::user_home")
+def user_home(name: str) -> str: ...
 
 
 # os.path predicates. The C++ helpers carry a `path_` prefix (to namespace
@@ -114,3 +131,7 @@ def islink(path: str) -> bool: ...
 
 @native("tpy::stdlib::os::path_getsize")
 def getsize(path: str) -> Int64: ...
+
+
+@native("tpy::stdlib::os::path_realpath")
+def realpath(path: str) -> str: ...

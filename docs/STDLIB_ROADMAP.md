@@ -124,8 +124,8 @@ Examples of the policy in action:
 | [`math`](#math) | P0 | Done | ~99% | mixed | Thin libc bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for fsum/sumprod/dist; `prod` has Int32 / int (BigInt) / float overloads). Remaining gap: tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time` all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
 | [`sys`](#sys) | P0 | Stub | ~20% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr`, `exit`, `maxsize` done; needs `stdin`/`path`/`version_info` |
-| [`os`](#os) | P0 | Partial | ~42% | mixed | Filesystem queries (`getcwd`/`chdir`/`listdir`/`getenv`) + `stat`/`lstat` -> `stat_result` over `std::filesystem`/POSIX; mutating ops (`mkdir`/`makedirs`/`rmdir`/`removedirs`/`remove`/`rename`/`replace`/`symlink`/`readlink`) over raw POSIX syscalls with a full errno->OSError-subclass table. `environ` mapping + `putenv`, `scandir`, process spawning deferred |
-| [`os.path`](#ospath) | P0 | Partial | ~88% | mixed | Pure-string POSIX surface (`join`/`split`/`splitext`/`basename`/`dirname`/`isabs`/`normpath`/`splitdrive`/`commonprefix` + constants) plus filesystem queries (`exists`/`lexists`/`isfile`/`isdir`/`islink`/`getsize`/`abspath`/`getmtime`/`getatime`/`getctime`/`samefile`/`ismount`/`expandvars`). CPython byte-compatible against `posixpath`. Deferred: `expanduser`/`realpath`/`relpath` (need pwd/cwd), `commonpath`, `samestat` |
+| [`os`](#os) | P0 | Partial | ~48% | mixed | Filesystem queries (`getcwd`/`chdir`/`listdir`/`getenv`) + `stat`/`lstat` -> `stat_result` over `std::filesystem`/POSIX; mutating ops (`mkdir`/`makedirs`/`rmdir`/`removedirs`/`remove`/`rename`/`replace`/`symlink`/`readlink`) over raw POSIX syscalls with a full errno->OSError-subclass table; `environ` snapshot mapping + `putenv`/`unsetenv`. `scandir`, process spawning deferred |
+| [`os.path`](#ospath) | P0 | Partial | ~94% | mixed | Pure-string POSIX surface (`join`/`split`/`splitext`/`basename`/`dirname`/`isabs`/`normpath`/`splitdrive`/`commonprefix` + constants) plus filesystem queries (`exists`/`lexists`/`isfile`/`isdir`/`islink`/`getsize`/`abspath`/`realpath`/`relpath`/`getmtime`/`getatime`/`getctime`/`samefile`/`ismount`/`expandvars`/`expanduser`). CPython byte-compatible against `posixpath`. Deferred: `commonpath`, `samestat` |
 | [`pathlib`](#pathlib) | P0 | Missing | 0% | -- | Class-heavy; depends on filesystem bindings |
 | [`io`](#io) | P0 | Partial | ~35% | pure | `StringIO` / `BytesIO` (chunked storage, write/read/`read(size)`/readline/seek/tell/truncate/iter/context-manager). `Readable` / `Writable` / `BinaryReadable` / `BinaryWritable` protocols on tpy core, re-exported from `io`. Missing: `IOBase` ABC hierarchy (deliberately deferred -- protocols cover the static-dispatch use case), `TextIOWrapper`, `io.SEEK_SET/CUR/END` constants (collide with `<cstdio>` macros), encoding/newline/errors kwargs |
 | [`json`](#json) | P0 | Partial | ~72% | pure | `loads` / `dumps` / `load(fp)` / `dump(obj, fp)` + `JSONDecodeError` done over a recursive union `JsonValue`. CPython byte-compatible across cpy phase. Missing: `JSONEncoder` / `JSONDecoder`, most `dumps`/`loads` kwargs |
@@ -449,15 +449,18 @@ single `raise_fs_error` errno table mapping each errno to the OSError subclass
 CPython raises (`ENOENT`->`FileNotFoundError`, `EEXIST`->`FileExistsError`,
 `ENOTDIR`->`NotADirectoryError`, `EISDIR`->`IsADirectoryError`,
 `EACCES`/`EPERM`->`PermissionError`, else `OSError`). `stat`/`lstat` return a
-`stat_result` over the same layer. The `environ` mapping remains M2 -- now
-buildable (its write-subscript dispatch blocker is fixed); it needs the
-snapshot-backed-mapping design (see TODO.md). Process spawning stays blocked.
+`stat_result` over the same layer. `os.environ` is a snapshot mapping captured
+at program start (a `_Environ` singleton in the leaf `os/_environ.py`); writes
+through it (`environ[k]=v` / `del environ[k]`) sync libc via `setenv`/`unsetenv`,
+while `getenv`/`expandvars` read the snapshot -- matching CPython, where
+`os.putenv`/`os.unsetenv` are libc-only and leave the mapping stale. Process
+spawning stays blocked.
 
 | Item | Status | Notes |
 |---|---|---|
 | `getcwd`, `chdir` | Done | `std::filesystem::current_path` get/set |
 | `listdir` | Done | `std::filesystem::directory_iterator`; basenames, unspecified order (like CPython) |
-| `getenv` | Done | Two overloads (typeshed-style): `getenv(key)` -> `str | None`, `getenv(key, default: str)` -> `str` (so `len(os.getenv(k, ""))` type-checks). Reads live libc `getenv` |
+| `getenv` | Done | Two overloads (typeshed-style): `getenv(key)` -> `str | None`, `getenv(key, default: str)` -> `str` (so `len(os.getenv(k, ""))` type-checks). Reads the `os.environ` snapshot (CPython's `getenv` is `environ.get`), not live libc |
 | `mkdir`, `rmdir`, `remove`, `rename`, `symlink` | Done | Raw `::mkdir`/`::rmdir`/`::unlink`/`::rename`/`::symlink`; byte-exact CPython errno parity |
 | `makedirs` | Done | Pure-TPy recursion over `mkdir`; `mode=`/`exist_ok=` supported |
 | `mkdir(mode=)` | Done | `::mkdir(path, mode)`; mode is umask-masked like CPython |
@@ -466,7 +469,7 @@ snapshot-backed-mapping design (see TODO.md). Process spawning stays blocked.
 | `readlink` | Done | `::readlink` with a grow-on-truncation buffer |
 | `stat`, `lstat` | Done | `::stat`/`::lstat` -> a pure-TPy `stat_result` (native returns a flat 13-tuple, wrapped TPy-side). Fields: `st_mode`/`st_ino`/`st_dev`/`st_nlink`/`st_uid`/`st_gid`/`st_size` (Int64), `st_atime`/`st_mtime`/`st_ctime` (float), `st_*_ns` (Int64). `st_blksize`/`st_blocks`/`st_rdev` deferred |
 | `scandir`, `fstat` | Missing | `scandir` needs a DirEntry type; `fstat` needs an fd |
-| `environ`, `putenv`, `unsetenv` | Missing | M2 -- now buildable (the write-subscript dispatch blocker is fixed). `environ` must be the snapshot source-of-truth that `getenv`/`expandvars` read; build it + `putenv`/`unsetenv` together (CPython has no `os.setenv`) |
+| `environ`, `putenv`, `unsetenv` | Done | `environ` is a snapshot `_Environ` mapping frozen at program start: `[]` get/set/del, `in`, `.get`, `len`, `for k in environ`, `keys`/`values`/`items`. `getenv`/`expandvars` read it. `putenv`/`unsetenv` are libc-only and do NOT update the snapshot (CPython's footgun). Two intentional narrowings: `.get` is a single `get(key, default=None)` not the typeshed overload pair (cross-module method overloads don't resolve -- see BUGS.md); `keys`/`values`/`items` return owned snapshot `list`s, not CPython's live set-like views (iteration is identical; set ops / live reflection unsupported) |
 | `path` | Partial | The [`os.path`](#ospath) submodule |
 | `walk` | Missing | Pure TPy over `scandir` |
 | `fork`, `exec*`, `spawnv*`, `system` | Blocked | Process spawning |
@@ -500,9 +503,9 @@ Imports: `from os.path import join`, `import os.path`, `import os` (then
 | `samefile` | Done | Native helper comparing `st_ino`/`st_dev` of two paths |
 | `ismount` | Done | Native helper; `st_dev` differs from parent, or parent is self (root) |
 | `commonpath` | Missing | Path-aware; needs `min`/`max` over `list[list[str]]` (unsupported) |
-| `expandvars` | Done | Pure-TPy `$name`/`${name}` expansion; unset names / bare `$` / unclosed brace left verbatim. Reads live libc env, whereas CPython reads the `os.environ` snapshot -- equivalent for pre-set vars, but diverges if the process environment is mutated after start (a `@native`/libc `setenv` or, once shipped, `os.putenv`). Resolved when `os.environ` becomes the shared source-of-truth |
-| `realpath`, `relpath` | Missing | M2 -- `realpath` needs `canonical`; `relpath` default `start` needs `os.getcwd` |
-| `expanduser` | Missing | M2 -- `~`/`~/...` via `getenv("HOME")`; `~user` needs `getpwnam` |
+| `expandvars` | Done | Pure-TPy `$name`/`${name}` expansion; unset names / bare `$` / unclosed brace left verbatim. Reads the `os.environ` snapshot (matching CPython); a bare `os.putenv` is not observable through it |
+| `realpath`, `relpath` | Done | `realpath` via `std::filesystem::weakly_canonical` over an absolutized path (resolves symlinks in the existing prefix, lexically normalizes a non-existent tail, never fails on a missing path); a filesystem error (symlink loop / permission) falls back to the lexical absolute path -- a possible byte-divergence from CPython's partial best-effort on a loop (rare; see TODO.md). `strict=` deferred (passing it is a compile error). `relpath(path, start=".")` is pure-TPy over `abspath` + component common-prefix |
+| `expanduser` | Done | `~`/`~/...` from the `os.environ` `HOME` snapshot (falls back to the current user's pwd home when unset); `~user`/`~user/...` via a `getpwnam` pwd binding. Unresolvable `~`/unknown `~user` left verbatim. Full `pwd` module (struct_passwd) still deferred -- expanduser uses an internal home-dir helper |
 | `samestat` | Missing | M2 -- takes two `stat_result`, so can't live in `os.path` without re-hitting the os<->os.path cycle; `samefile` covers the common case |
 
 Tests: `tests/cases/stdlib/ospath_strings` (string surface + constants),
