@@ -3613,7 +3613,12 @@ class AsyncCoroCodegen:
         strategies. When the iterable is a temporary (the pre-scan allocated
         `__for_src_<uid>`), store it once here and return the stored access;
         otherwise return the (re-evaluable) named expression."""
-        src_cpp = self.expressions.gen_expr(iterable_expr)
+        # A narrowed value-Optional iterable (`str|None`/`bytes|None` proven
+        # non-None) is still `std::optional<V>` in the frame -- iterate `(*v)`.
+        # Mirrors the sync for-loop's `_for_iterable_deref`.
+        src_cpp = self.expressions._maybe_unwrap_narrowed_optional(
+            iterable_expr, self.expressions.gen_expr(iterable_expr),
+            self.ctx.is_indirect_name(iterable_expr))
         self.ctx.temps.flush(out, indent)
         if any(fn == f"__for_src_{uid}" for fn, _ in info.fields):
             out.write(f"{indent}__for_src_{uid}.emplace({src_cpp});\n")

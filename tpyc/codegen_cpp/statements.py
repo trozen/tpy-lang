@@ -103,7 +103,13 @@ class StatementGenerator:
                            track_stmt_line: bool = False) -> None:
         """Buffer body statements, prepend hoist declarations, write to output."""
         body_buf = io.StringIO()
-        # Emit mutable local copies for reassigned const-ref params
+        # Emit mutable owned local copies for reassigned params that cannot be
+        # reassigned in place: const-ref / expensive types (BigInt, bytearray),
+        # and by-value view params (str/bytes) -- a borrow kept across a
+        # reassignment from an owned temporary would dangle SILENTLY, since
+        # span/string_view is implicitly constructible from its owned form, so
+        # no build error catches it (which is why this is unconditional, not
+        # flow-sensitive per reassignment source).
         if self._reassigned_param_copies:
             indent = self.ctx.indent()
             for pname, ptype in self._reassigned_param_copies:
@@ -5754,6 +5760,16 @@ class StatementGenerator:
         if break_label:
             out.write(f"{indent}{break_label}:;\n")
 
+    def _for_iterable_deref(self, stmt: TpyForEach) -> str:
+        """Render the for-loop iterable, dereferencing a narrowed value-Optional
+        (a proven-non-None `str | None` / `bytes | None` iterable's C++ var is
+        still `std::optional`; the loop must iterate `(*v)`). No-op for any
+        other iterable -- `_maybe_unwrap_narrowed_optional` self-gates on the
+        declared-Optional + analyzed-non-Optional shape."""
+        code = self.expressions.gen_expr_deref(stmt.iterable)
+        return self.expressions._maybe_unwrap_narrowed_optional(
+            stmt.iterable, code, self.ctx.is_indirect_name(stmt.iterable))
+
     def _gen_for_each_loop(self, out: TextIO, stmt: TpyForEach, indent: str) -> None:
         """Generate the loop part of a for-each (without else handling).
 
@@ -5783,7 +5799,12 @@ class StatementGenerator:
             return
 
         from tpyc.modules import is_native_iterable
-        iterable_type = unwrap_ref_type(self.types.get_resolved_type(stmt.iterable))
+        # A narrowed value-Optional iterable (`str | None` / `bytes | None`
+        # proven non-None) keeps its declared `std::optional<V>` C++ type but
+        # must be iterated as its contained value -- dispatch on the narrowed
+        # inner (native begin/end path); `_for_iterable_deref` renders `(*v)`.
+        iterable_type = self.expressions.narrowed_value_optional_iter_type(
+            stmt.iterable, unwrap_ref_type(self.types.get_resolved_type(stmt.iterable)))
 
         # Resolve sema-stored elem_type (handles PendingViewType -> concrete).
         # Strip Ref -- codegen loop binding handles reference semantics via
@@ -5866,7 +5887,7 @@ class StatementGenerator:
                 and resolved_type.qualified_name() in ("tpy.NativeIterable", "tpy.Spannable"))
         )
         if is_native:
-            iterable = self.expressions.gen_expr_deref(stmt.iterable)
+            iterable = self._for_iterable_deref(stmt)
             if isinstance(stmt.iterable, TpyStrLiteral):
                 # C string literals include the null terminator, so wrap in string_view
                 iterable = f"std::string_view({iterable})"
@@ -5886,7 +5907,7 @@ class StatementGenerator:
         # one for pure iterators). `auto&&` binding in _gen_direct_next_loop_with_iter
         # preserves reference returns so move-only owning iterators work and
         # user iterator consumption semantics are preserved.
-        iterable = self.expressions.gen_expr_deref(stmt.iterable)
+        iterable = self._for_iterable_deref(stmt)
         assert sema_elem is not None, "sema should always resolve for-loop element type"
         elem_type = sema_elem
         if isinstance(elem_type, IntLiteralType):

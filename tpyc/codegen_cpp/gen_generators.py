@@ -685,7 +685,12 @@ class GeneratorCodegen:
                 fields.append((f"__for_step_{uid}", elem_cpp))
             return GeneratorForInfo(uid=uid, strategy="range", fields=fields)
 
-        iterable_type = self.types.get_resolved_type(stmt.iterable)
+        # A narrowed value-Optional iterable (`str|None`/`bytes|None`) is still
+        # `std::optional<V>` in the frame -- dispatch on / build the iterator
+        # field type from the contained `V` (the resumable for-src render derefs
+        # `(*v)` to match). Shared with the sync for-loop's type handling.
+        iterable_type = self.expressions.narrowed_value_optional_iter_type(
+            stmt.iterable, self.types.get_resolved_type(stmt.iterable))
 
         # Iterator[T] protocol -- iterable already has __next__()
         if is_protocol_type(iterable_type) and iterable_type.qualified_name() == "typing.Iterator":

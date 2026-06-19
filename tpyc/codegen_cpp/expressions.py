@@ -27,7 +27,7 @@ from ..type_def_registry import (
     is_str_type, is_string_type, is_str_view_type,
     is_bytes_type, is_bytes_view_type,
     is_float32_type, is_float64_type, is_bytearray_type,
-    int_traits_of,
+    int_traits_of, view_to_owned_conv,
     is_enum_type, is_int_enum_type, enum_info_of,
     protocol_info_of,
 )
@@ -516,12 +516,10 @@ class ExpressionGenerator:
 
     def _view_owned_copy_expr(self, family: ViewTypeFamily, code: str) -> str:
         """C++ expression copying a borrow-form view (string_view / span) into
-        its owned storage form (string / vector). Single source of the per-family
-        copy spelling, shared by `_view_source_to_owned` and the optional-param
-        storage conversion."""
-        if is_str_type(family.owned_type):
-            return f"std::string({code})"
-        return f"::tpy::bytes_copy({code})"
+        its owned storage form (string / vector), at an expression-site sink.
+        The per-family copy callable lives in `view_to_owned_conv` (the single
+        source, also driving the coro/generator-frame `view_owned_copy_init`)."""
+        return f"{view_to_owned_conv(family.owned_type)}({code})"
 
     def _get_cpp_declared_type(self, expr: TpyExpr) -> TpyType | None:
         """Get the C++ declared type of a variable or field access.
@@ -616,6 +614,24 @@ class ExpressionGenerator:
                 and not isinstance(analyzed, OptionalType)):
             return f"(*{obj})"
         return obj
+
+    def narrowed_value_optional_iter_type(self, expr: TpyExpr, declared: TpyType | None) -> TpyType | None:
+        """For a for-loop iterable: if `declared` is a narrowed value-Optional
+        (`str|None`/`bytes|None` proven non-None, value-repr -- still
+        `std::optional<V>` in C++), return its narrowed inner so dispatch and
+        frame-field types use the contained value `V`. Pointer-repr Optionals
+        (e.g. `list|None`) already deref via the pointer-narrowing path, so they
+        pass through unchanged. The matching `(*v)` render is applied separately
+        via `_maybe_unwrap_narrowed_optional`. Shared by the sync for-loop
+        (`_for_iterable_deref` / `_gen_for_each_loop`) and the resumable-frame
+        strategy analysis (`_analyze_for_strategy`)."""
+        analyzed = self.ctx.get_expr_type(expr)
+        if (analyzed is not None
+                and isinstance(declared, OptionalType)
+                and not declared.uses_pointer_repr()
+                and not isinstance(analyzed, OptionalType)):
+            return unwrap_ref_type(analyzed)
+        return declared
 
     def _resolve_field_declared_type(self, expr: TpyFieldAccess) -> TpyType | None:
         """Resolve the declared type of a field on its record/object."""
@@ -4903,7 +4919,9 @@ class ExpressionGenerator:
             cpp_var = escape_cpp_name(gen.var)
 
             sema_elem = builtin_modules.get_iterable_element_type(
-                self.types.get_resolved_type(gen.iterable), registry=self.ctx.analyzer.registry)
+                self.narrowed_value_optional_iter_type(
+                    gen.iterable, self.types.get_resolved_type(gen.iterable)),
+                registry=self.ctx.analyzer.registry)
             if sema_elem is None or isinstance(sema_elem, IntLiteralType):
                 sema_elem = self.ctx.analyzer.ctx.default_int_type
 
@@ -4936,7 +4954,9 @@ class ExpressionGenerator:
             # Array[T, N] source -- random-access indexing. The source is
             # evaluated once in a stmt-expr prelude (outside the lambda) so
             # an lvalue source is borrowed, not copied.
-            iterable_code = self.gen_expr_deref(gen.iterable)
+            iterable_code = self._maybe_unwrap_narrowed_optional(
+                gen.iterable, self.gen_expr_deref(gen.iterable),
+                self.ctx.is_indirect_name(gen.iterable))
             obj_binding = "auto&" if self._comp_is_lvalue(gen.iterable) else "auto"
             src_elem = f"__obj_{n}[__i_{n}]"
 
@@ -5015,8 +5035,13 @@ class ExpressionGenerator:
         ind3 = ind2 + INDENT
 
         try:
-            iterable_code = self.gen_expr_deref(gen.iterable)
-            iterable_type = self.types.get_resolved_type(gen.iterable)
+            # A narrowed value-Optional iterable (`str|None`/`bytes|None`) is
+            # still `std::optional<V>`; iterate `(*v)` and type on the inner.
+            iterable_code = self._maybe_unwrap_narrowed_optional(
+                gen.iterable, self.gen_expr_deref(gen.iterable),
+                self.ctx.is_indirect_name(gen.iterable))
+            iterable_type = self.narrowed_value_optional_iter_type(
+                gen.iterable, self.types.get_resolved_type(gen.iterable))
             yield_code = self.gen_expr_deref(expr.element_expr, elem_type)
 
             sema_elem = builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.analyzer.registry)
@@ -5190,8 +5215,13 @@ class ExpressionGenerator:
         buf.write(f"({{\n")
         buf.write(f"{ind1}{container_type} __result;\n")
 
-        iterable_code = self.gen_expr_deref(gen.iterable)
-        iterable_type = self.types.get_resolved_type(gen.iterable)
+        # A narrowed value-Optional iterable (`str|None`/`bytes|None`) is still
+        # `std::optional<V>`; iterate `(*v)` and type on the inner.
+        iterable_code = self._maybe_unwrap_narrowed_optional(
+            gen.iterable, self.gen_expr_deref(gen.iterable),
+            self.ctx.is_indirect_name(gen.iterable))
+        iterable_type = self.narrowed_value_optional_iter_type(
+            gen.iterable, self.types.get_resolved_type(gen.iterable))
 
         sema_elem = builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.analyzer.registry)
         if sema_elem is not None and isinstance(sema_elem, IntLiteralType):
@@ -5233,7 +5263,8 @@ class ExpressionGenerator:
         is_lvalue = self._comp_is_lvalue(gen.iterable)
         obj_binding = "auto&" if is_lvalue else "auto"
 
-        iterable_type = self.types.get_resolved_type(gen.iterable)
+        iterable_type = self.narrowed_value_optional_iter_type(
+            gen.iterable, self.types.get_resolved_type(gen.iterable))
         buf.write(f"{ind1}{obj_binding} __obj_{n} = {iterable_code};\n")
         if not skip_reserve and self._is_sized_type(iterable_type):
             # TPy view types (dict_keys/values/items, varargs) return int32_t
