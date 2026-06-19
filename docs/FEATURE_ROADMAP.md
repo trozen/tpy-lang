@@ -3445,17 +3445,20 @@ which is the inverse (C++ visible to TPy). Summary:
   methods, and enums + constants.
 - **Shared marshalling layer** (the keystone): one direction-agnostic
   `to_py`/`from_py`, serving both directions. `PyObject*` into TPy is an owned
-  `Own[PyRef]`. `str`/`bytes` args are **copy-in in v1** (the zero-copy borrow
-  needs a new foreign-borrow primitive, deferred); numeric `Span[readonly[T]]`
-  input is zero-copy via the buffer protocol (read-only, non-escaping).
-  Containers cross by O(n) *copy* (a
-  declared no-alias divergence); classes get correct reference semantics
-  because the PyObject owns the instance.
-- **abi3 / limited API**: one wheel for all CPython versions, and it keeps
-  `Python.h` macros out of generated TUs (a facade-friendly opaque-`PyObject`
-  surface).
+  `Own[PyRef]`. **v1.0 is copy-in for all input** -- `str`/`bytes` *and*
+  numeric buffers (numpy/`memoryview` via the buffer protocol): a spike showed
+  zero-copy needs a new foreign-borrow primitive, so zero-copy (str + buffer)
+  is the first post-v1.0 work (phase 3.5, IR-gated). Containers cross by O(n)
+  *copy* (a declared no-alias divergence); classes get correct reference
+  semantics because the PyObject owns the instance.
+- **abi3 / limited API**: committed, **floor 3.12** (spike-validated: a real
+  `Py_LIMITED_API` extension compiled, imported, ran). One wheel for all
+  CPython versions, and it keeps `Python.h` macros out of generated TUs.
+  Glue is **hand-rolled raw C-API** (nanobind weighed and rejected for v1).
 - **Exception/panic bridge**: `raise` -> `PyErr_*`; a `tpy_panic` at the
   boundary is *converted to a Python exception*, never an abort of the host.
+  (Needs a small runtime change -- `tpy_panic` is `std::exit(1)` today; a
+  macro-gated throwing `TpyPanic` for `.so` builds, per spike.)
 - **GIL as an ambient capability**: a flow-fact (`gil_held`, modeled on
   `flow_facts.py`'s `init_terminated` -- a flow-sensitive fact, *not* the
   Send/Sync type-trait family) gates Python-touching ops; a future
@@ -3465,12 +3468,14 @@ which is the inverse (C++ visible to TPy). Summary:
   "Python-touching" is library-declared (`requires_gil`), not hardcoded.
 - **Reserved hooks (not v1, not locked out)**: embedding, callbacks/opaque
   `PyRef`, and async <-> `asyncio`.
-- **Validated against the codebase**: feasible, mostly on existing machinery.
-  Two genuinely net-new pieces -- a CPython-extension `.so` build-output mode
-  (the `ext` target / PEP 517 backend; overlaps H2) and a foreign-borrow
-  lifetime primitive (only for the zero-copy str/buffer path; a pre-existing
-  escape-analysis gap). v1 is copy-in, so neither blocks phases 1-2. See the
-  "Design validation" section in the design doc.
+- **Validated against the codebase + three spikes run**: feasible, mostly on
+  existing machinery. abi3 empirically validated (floor 3.12, hand-rolled);
+  panic needs a small runtime change; zero-copy input is gated on the
+  foreign-borrow primitive (so v1.0 is copy-in). Two genuinely net-new pieces
+  remain: a CPython-extension `.so` build-output mode (the `ext` target / PEP
+  517 backend; overlaps H2) and that foreign-borrow primitive (a pre-existing
+  escape-analysis gap; the first post-v1.0 work). See the "Design validation"
+  and "Alternatives and spike outcomes" sections in the design doc.
 
 **Phasing**: marshalling layer + cpython facade -> extension codegen + PEP 517
 backend (free functions) -> buffer protocol -> classes + methods -> enums +

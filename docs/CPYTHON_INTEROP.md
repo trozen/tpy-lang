@@ -35,7 +35,7 @@ scope for v1** but must not be locked out -- see "Reserved hooks."
 ## v1 plan and status
 
 **v1.0 (first shippable MVP) = phases 1-3** -- write extensions, expose free
-functions, and zero-copy read-only numeric buffer input. **v1.1 = phases
+functions, and numeric buffer input (copy-in; zero-copy deferred to 3.5). **v1.1 = phases
 4-5** -- classes + methods, enums + constants. Staging the release keeps the
 heavier class machinery (`tp_new`/`tp_dealloc`, dunders, aliasing) off the
 first-ship critical path (per the co-validate review); all four original
@@ -51,10 +51,10 @@ progress -> ✅ done.
 | 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🔬 |
 | 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🔬 |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
-| 3 | Buffer protocol -- zero-copy read-only input (ephemeral borrow) | **v1.0** | 🔬 |
+| 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | 🔬 |
 | 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🔬 |
 | 5 | **Enums + constants** | **v1.1** | 🔬 |
-| 3.5 | Full foreign-borrow primitive (promote-on-escape; str/stored buffers) | later -- IR-gated | 🔬 |
+| 3.5 | Foreign-borrow primitive -> zero-copy str + buffer input | post-v1.0 (next) -- IR-gated | 🔬 |
 | 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🔬 |
 | 7 | `nogil` / `with gil` (parallelism + GIL checking) | later | 🔬 |
 | 8 | Embedding, callbacks / opaque `PyRef`, async <-> `asyncio` | later | 🔬 |
@@ -110,7 +110,7 @@ cost embedding nothing later. It is *the* hook to reserve.
 | `int`/BigInt, `float`, `bool` | PyLong / PyFloat / PyBool | O(1) small int | trivial |
 | `str` / StrView | PyUnicode | O(n) out; **copy-in (v1)**, borrow later | see "str/borrow" |
 | `bytes` / BytesView | PyBytes | O(n) out; copy-in (v1), borrow later | see "str/borrow" |
-| `Span[T]` numeric | buffer / `memoryview` / ndarray | **O(1) zero-copy** (read-only, non-escaping) | see "buffer protocol" |
+| `Span[T]` numeric | buffer / `memoryview` / ndarray | O(n) copy-in (v1.0); zero-copy later | see "buffer protocol" |
 | `list`/`dict`/`set`/`tuple` | PyList / PyDict / ... | **O(n)*elem, by-copy** | see "container cliff" |
 | record / class | extension-type wrapper | O(1) pointer | see "classes" |
 | `Optional[T]` / None | None | O(1) | |
@@ -157,11 +157,13 @@ the buffer protocol -- notably numpy arrays and `memoryview`:
   `PyBuffer_Release`. So the borrowed memory stays valid for the whole
   call even if the GIL is released inside it (see "GIL"). This is the same
   assumption Cython/PyO3 rely on.
-- **v1 mechanism (ephemeral borrow):** the input `Span` is *non-escaping* --
-  readable in the function but not storable past the call -- which makes the
-  borrow sound *without* the full foreign-borrow primitive (see Q6). This
-  zero-copy read-only buffer input ships in v1 (phase 3); writable/escaping
-  views wait for phase 3.5.
+- **v1.0 = copy-in (spike outcome).** The intended zero-copy path needed a
+  *non-escaping* foreign `Span` borrow, but the ephemeral-borrow spike showed
+  the escape machinery can't fence a foreign-source param at all sinks (see
+  "Alternatives and spike outcomes" / Q6). So **v1.0 copies the buffer in**;
+  zero-copy read-only input is deferred to phase 3.5 with the foreign-borrow
+  primitive. The `PyObject_GetBuffer` plumbing above still applies -- it just
+  feeds a copy in v1.0.
 - **dtype/format match:** TPy element type <-> buffer format code
   (`float` <-> `'d'`, etc.); mismatch is a marshalling error raised as a
   Python exception.
@@ -185,8 +187,9 @@ fights the unboxing that is the whole point.
 
 ## abi3 / limited API commitment
 
-v1 targets the **limited API / stable ABI**, for two reasons that
-compound:
+v1 targets the **limited API / stable ABI** (floor **3.12**, empirically
+validated -- a real `Py_LIMITED_API` extension compiled, imported, and ran;
+see "Alternatives and spike outcomes"), for two reasons that compound:
 
 1. **One wheel, all CPython versions** (`cp3X-abi3-<plat>` tag) -- a plain
    Python user `pip install`s and `import`s, never touching TPy.
@@ -278,11 +281,11 @@ thread-state error model.
   converted to a Python exception** (`SystemError`, or a dedicated
   `TpyPanic`), not an abort. This bends the "panic = unrecoverable" model,
   but aborting the host is unacceptable. The conversion happens only at the
-  boundary wrapper; intra-TPy panic semantics are unchanged. **Caveat (early
-  spike):** this assumes `tpy_panic` is *interceptable* at the boundary. If it
-  is a hard `abort()`/`terminate` today, conversion needs panic routed through
-  a catchable mechanism at the extension boundary -- a runtime change, not a
-  wrapper detail.
+  boundary wrapper; intra-TPy panic semantics are unchanged. **Spike outcome:**
+  `tpy_panic` is `std::exit(1)` today (uncatchable), so this needs a runtime
+  change -- a macro-gated throwing `TpyPanic` (non-`BaseException`) for `.so`
+  builds, plus a `catch (...)` audit; default builds keep `std::exit(1)`.
+  Effort S. See "Alternatives and spike outcomes".
 
 ## The GIL capability model
 
@@ -400,10 +403,12 @@ def parallel_sum(data: Span[readonly[float]]) -> float:
   Keep the boundary wrappers free of any "synchronous-only" assumption so a
   future awaitable-returning export can slot in. Separate deep design.
 - **Free-threaded CPython (PEP 703, 3.13+).** No-GIL builds change the GIL
-  model (the `gil_held`/`nogil` design) fundamentally and need separate wheels
-  (the stable ABI does not yet cover free-threaded builds). Keep the GIL
-  capability abstract enough that a free-threaded target can map it to
-  per-object locking / "always parallel" rather than a single global lock.
+  model (the `gil_held`/`nogil` design) fundamentally. Confirmed by the abi3
+  spike: **abi3 and free-threading are currently mutually exclusive** -- the
+  stable-ABI flag is ignored on free-threaded builds and `abi3t` is unfinished
+  (PEP 803), so a free-threaded `.so` must be built **per-version (non-abi3)**.
+  Keep the GIL capability abstract enough that a free-threaded target can map
+  it to per-object locking / "always parallel" rather than a single global lock.
   Relevant to the HFT parallelism angle; revisit when `nogil` (phase 7) is
   designed.
 
@@ -491,16 +496,14 @@ each recurred across investigations:
 
 ### Scope refinement this forces
 
-The *full* zero-copy-borrow generality (promote-on-escape; str args and
-*stored* buffers) is gated on the foreign-borrow primitive (ultimately the
-IR/region work). So v1 **copies `str`/`bytes` args on entry** (always sound;
-matches the container-copy story). The one in-scope exception is **read-only
-numeric buffer input** (`Span[readonly[T]]`): it ships zero-copy in v1 via the
-ephemeral (non-escaping) borrow -- but *only contingent on* a proven
-escape-rejection rule covering **return, field/global store, container insert,
-closure/generator/async capture, and calls to unknown functions**. If that
-rule can't be made airtight in phase-3 design, buffer input falls back to
-copy-in as well. Either way, phases 1-2 stay free of the IR dependency.
+Zero-copy borrow (promote-on-escape for str args; a non-escaping foreign
+`Span` for buffer input) is gated on the foreign-borrow primitive (ultimately
+the IR/region work). The ephemeral-borrow spike **confirmed** the cheap
+interim can't make a foreign `Span` param sound -- the escape machinery treats
+params as caller-owned/long-lived, and 0/8 sinks reject a foreign borrow. So
+**v1.0 copies everything in** -- `str`/`bytes` args *and* buffer input (always
+sound; matches the container-copy story). Zero-copy is the first post-v1.0
+work (phase 3.5). All of v1.0 thus stays free of the IR dependency.
 
 ## Code organization, build, and testing
 
@@ -580,40 +583,59 @@ across the boundary). Env: building the `.so` needs `Python.h` (available --
 tests run under CPython) + the toolchain; fingerprint/skip logic extends to the
 ext build.
 
-## Alternatives considered, and spikes to run first
+## Alternatives and spike outcomes
 
-**Alternative: emit nanobind (or pybind11) glue instead of hand-rolling the
-C-API.** nanobind (header-only, modern, lighter than pybind11) already
-provides most of phases 2-7: function/class/enum binding, exception
-translation, the buffer protocol, GIL scope guards, and first-class abi3 +
-free-threading support. Since TPy generates C++ anyway, it could emit nanobind
-calls rather than raw `PyMethodDef`/`PyType_FromSpec`/`PyErr_*`. Trade-off:
-hand-rolled gives full control, minimal/auditable output, and avoids a heavy
-template dependency that adds to C++ compile time (already the
-back-end-dominated cost) -- consistent with the "tiny C++ helpers" aesthetic;
-nanobind would massively cut the glue surface and inherit its abi3/
-free-threading maturity. **Not yet decided -- spike both on the free-function
-slice and compare** (glue size, compile time, control, abi3/free-threading
-coverage) before committing the hand-rolled path.
+All three pre-implementation spikes have been run. Results below; the rest of
+the doc reflects them.
 
-**Spikes to run before locking v1 scope:**
+**Alternative -- nanobind vs hand-rolled glue: RESOLVED (hand-rolled).** A
+spike weighed emitting nanobind (header-only, covers most of phases 2-7)
+against hand-rolling the raw C-API. Decision: **hand-rolled**, on three
+grounds -- (1) TPy is a code *generator*, not a human, so nanobind's
+hand-binding ergonomics buy little while inverting control over a surface TPy
+already knows statically; (2) the project values minimal/auditable C++ and is
+already C++-back-end-bound -- nanobind's template instantiation adds compile
+time + a vendored dep; (3) nanobind has **no abi3 under free-threading** (the
+stable-ABI flag is ignored on free-threaded builds; `abi3t` is unfinished --
+PEP 803), so owning the glue avoids being blocked on upstream given the HFT/
+free-threading interest. Revisit only if v1 grows toward rich automatic
+marshalling. (`PyRef`/`Gil`/marshalling stay internal per Q3, so no public
+abstraction is frozen either way.)
 
-- **Limited-API audit (abi3).** Prove every required API is available under
-  `Py_LIMITED_API`: `PyType_FromSpec` slot coverage, embedding a C++ object
-  after the instance header (opaque-header layout; PEP 697 `PyObject_GetTypeData`
-  is 3.12+), buffer-export slots (`Py_bf_getbuffer`, accepted by
-  `PyType_FromSpec` only in 3.11+), exception-class creation, and module
-  state. **Pick the abi3 floor** (e.g. 3.12 for the cleanest story) -- it
-  gates which mechanisms are available, and may overturn the abi3 commitment
-  vs the nanobind option above.
-- **Panic interceptability.** Confirm whether `tpy_panic` can be caught and
-  converted at the boundary, or whether the panic path needs a runtime change
-  first (see "Exception and panic bridge").
-- **Ephemeral-borrow soundness.** Prove a foreign param `Span` borrow is
-  rejected at *every* escape sink (return, field/global store, container
-  insert, closure/generator/async capture, unknown-fn calls) -- the
-  precondition for zero-copy buffer input shipping in v1.0; otherwise it falls
-  back to copy-in.
+**Spike outcomes:**
+
+- **abi3 limited-API audit -- RESOLVED (viable; floor = 3.12).** A real
+  `Py_LIMITED_API=0x030c0000` extension exercising all four v1 mechanisms
+  (`PyType_FromSpec` + a C struct embedded after `PyObject_HEAD`,
+  `PyErr_NewException`, `PyObject_GetBuffer` consumption, `PyModuleDef`/
+  `PyInit_`) compiled, linked, imported under CPython 3.12.3, and ran -- pure
+  stable-ABI symbols (`nm -D` confirmed). **3.11 is the hard floor** (the
+  `Py_buffer` struct only enters the limited API in 3.11); **3.12 is the
+  committed target**. The **pre-PEP-697 embedded layout works**, so v1 needs
+  no `PyObject_GetTypeData`/3.12-only machinery.
+- **Panic interceptability -- RESOLVED (needs a small runtime change).**
+  `tpy_panic` is `std::exit(1)` (`runtime/cpp/include/tpy/core.hpp`) --
+  uncatchable, so no boundary `try/catch` can convert it as-is. Fix: a
+  macro-gated **throwing `TpyPanic`** (deliberately *not* `BaseException`-
+  derived) compiled only for `.so` builds; default builds keep `std::exit(1)`
+  (test/abort model unchanged). Effort **S**, plus an audit of every
+  `catch (...)` in the runtime/codegen so none absorbs a panic in `.so` mode.
+  (`raise<E>()` already throws a catchable `BaseException` -- the ordinary-
+  exception bridge, separate from the panic path.)
+- **Ephemeral-borrow soundness -- RESOLVED (insufficient; zero-copy
+  deferred).** A foreign-buffer `Span` param **cannot** be soundly fenced in
+  v1 by extending `ephemeral_borrow_vars`. The escape machinery is *built on*
+  the invariant "a parameter names caller-owned storage that outlives the
+  call" (`_name_is_param_or_global`); a foreign buffer dies at *call end*,
+  inverting it -- and **0/8 escape sinks reject a foreign-borrow param today**
+  (return/yield/closure actively classify it *safe*: a silent UAF, not a
+  conservative reject). Sound zero-copy needs the **full foreign-borrow
+  primitive** -- an interprocedural "callee must not stash this borrow"
+  contract (pass-to-unknown-fn sink) + frame-promotion handling (generator/
+  async sink), both IR-gated. **Consequence: v1.0 buffer input is copy-in;
+  zero-copy buffer input is the first post-v1.0 work** (phase 3.5, with the
+  primitive). The field/global/container sinks overlap a pre-existing
+  `BUGS.md` view-lifetime gap and are wanted regardless.
 
 ## Decisions locked
 
@@ -622,13 +644,16 @@ coverage) before committing the hand-rolled path.
   existing `@export` / `tpy.extern.export` linkage, not a new decorator.
 - `PyRef`/`PyCallable` stay **internal-only in v1** (not in user-facing
   signatures); user-facing `PyRef` ships with `nogil` GIL checking, together.
-- Zero-copy buffer input ships v1 via the **ephemeral-borrow interim**
-  (non-escaping `Span`); the full promote-on-escape primitive is deferred/
-  IR-gated. `str`/`bytes` args are copy-in in v1.
+- **v1.0 buffer input is copy-in.** A spike showed the ephemeral-borrow
+  interim is insufficient (a foreign `Span` param can't be fenced at all
+  escape sinks); zero-copy buffer input is the **first post-v1.0 work**, with
+  the foreign-borrow primitive (phase 3.5). `str`/`bytes` args are copy-in too.
+- **Panic -> exception needs a runtime change** (spike): a macro-gated
+  throwing `TpyPanic` for `.so` builds (default builds unchanged) + a
+  `catch (...)` audit. Effort S.
 - GIL capability is **ambient (flow-fact)**, not an explicit token param.
-- abi3 / limited API is the **v1 target, pending a limited-API audit** (a
-  spike must prove every required API is available under `Py_LIMITED_API` --
-  see "Alternatives & spikes"); not yet a hard lock.
+- **abi3 / limited API: committed, floor = 3.12** (spike-validated; 3.11 hard
+  minimum). Glue is **hand-rolled raw C-API**, not nanobind.
 - Async is **out of scope for v1**, hooks reserved.
 
 ## Resolved design questions
@@ -678,11 +703,12 @@ coverage) before committing the hand-rolled path.
   phase: released-here span + offending-op span + `with gil:` help + the
   specific reason (which op / which `PyRef`). Concrete message specs when that
   phase lands; nothing to decide before then.
-- **Q6 full foreign-borrow primitive timing** -- the *promote-on-escape*
-  generality (str args and buffers that may be *stored*) is IR-gated (MIR
-  `Place`/`LoanInfo`; shared with the `@native -> V` borrow-contract gap) and
-  co-designed with that work. v1's zero-copy *read-only* buffer input does
-  **not** wait on it -- it ships via the ephemeral-borrow interim (phase 3).
+- **Q6 foreign-borrow primitive** -- the spike resolved the *mechanism*
+  question: the ephemeral interim is insufficient, and the full primitive is
+  required for *any* zero-copy input (str args **and** buffer input). Still
+  open is only its *timing* -- it is the first post-v1.0 priority (phase 3.5),
+  IR-gated (MIR `Place`/`LoanInfo`; shared with the `@native -> V`
+  borrow-contract gap).
 
 ## Suggested phasing
 
@@ -708,19 +734,17 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    the `turbopython.build` backend so `uv build` / `pip wheel` produce the
    abi3 wheel. Decoupled from phase 2 so packaging complexity does not gate
    interop correctness (per the co-validate review).
-3. **Buffer protocol (`Span`), zero-copy read-only input.** `PyObject_GetBuffer`
-   -> `ptr+len` -> `Span(ptr, len)` (construction already exists/tested), with
-   dtype/format checks + `PyBuffer_Release` discipline. Zero-copy via the
-   **ephemeral-borrow interim**: the `Span` is forbidden from escaping the
-   function (extends `ephemeral_borrow_vars`), so the `Py_buffer` keeping the
-   memory alive for the call is sufficient -- no full foreign-borrow primitive
-   needed. (Validate the ephemeral extension during this phase's design.)
-   `str`/`bytes` args stay **copy-in** until the full primitive (phase 3.5).
-3.5. **(IR-gated, optional) Full foreign-borrow primitive.** Generalizes to
-   *promote-on-escape* over a foreign source -- str args and buffers that may
-   be *stored* past the call. Shared with the `@native -> V` borrow-contract
-   gap; lands against the MIR `Place`/`LoanInfo` model, not the string-key
-   `BorrowTracker`. Optimization, not a blocker.
+3. **Buffer input (`Span`), copy-in.** `PyObject_GetBuffer` -> read the bytes
+   -> copy into an owned TPy `array`/`list` -> `PyBuffer_Release`, with dtype/
+   format checks. Numeric input (numpy/`memoryview`) works but is **copied in**
+   -- the ephemeral-borrow spike showed a zero-copy foreign `Span` cannot be
+   made sound in v1 (see spike outcomes). Zero-copy is phase 3.5.
+3.5. **(IR-gated) Foreign-borrow primitive -- the first post-v1.0 work.**
+   Delivers *all* zero-copy input: non-escaping foreign `Span` buffers **and**
+   promote-on-escape str args. The spike showed this is required even for
+   read-only buffer input (the ephemeral interim can't fence a foreign param).
+   Shared with the `@native -> V` borrow-contract gap; lands against the MIR
+   `Place`/`LoanInfo` model, not the string-key `BorrowTracker`.
 4. **Classes + methods.** `PyType_FromSpec` heap types, `tp_new`/
    `tp_dealloc` over the embedded TPy struct, methods + getset properties.
 5. **Enums + constants.** Module attributes; `IntEnum` for int-backed enums.
