@@ -6320,7 +6320,11 @@ Send/Sync rules for built-in types:
   are moved, remaining non-value locals are copied (with a warning suggesting `copy()` or a
   class). `nonlocal` enables mutable captures (non-escaping only). Restrictions: no decorators,
   no type parameters, no nested-in-nested, no recursive nested defs. Escaping closures that
-  capture `str` parameters are rejected (string_view would dangle).
+  capture `str` parameters are rejected (string_view would dangle). Because an escaping closure
+  freezes its captures by value (CPython late-binds via a cell), the compiler warns when a
+  captured local is reassigned after the closure is created -- the divergent case; bind a fresh
+  `snap = x` (or `copy()`) to acknowledge the snapshot. In-place mutation of a captured object
+  is not yet warned (tracked in `BUGS.md`).
   ```python
   def make_adder(n: Int32) -> Callable[[Int32], Int32]:
       def add(x: Int32) -> Int32:

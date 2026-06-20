@@ -29,11 +29,12 @@ from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarD
 from ..parse.nodes import RecordLinkage
 from .registration import build_record_self_type, _vararg_span_type
 from ..parse.nodes import (
-    TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach, TpyFieldAccess, TpyName, TpyCall,
+    TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach,
+    TpyFieldAccess, TpyName, TpyCall, TpyLambda,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef, TpyCoerce,
     expr_contains_self_method_call,
 )
-from .expressions import _collect_body_name_refs
+from .expressions import _collect_body_name_refs, _walk_body_stmts
 
 # Deferred-resolution placeholder types. After `LocalTypeDeduction.resolve_all()`
 # every resolution sink syncs the final type into the namespace, so a hoisted
@@ -74,7 +75,7 @@ from .calls import CallAnalyzer
 from .methods import MethodAnalyzer
 from .statements import StatementAnalyzer
 
-from ..prescan import ScanResult, scan_reassigned_vars, liveness_alias_sources
+from ..prescan import ScanResult, scan_reassigned_vars, liveness_alias_sources, collect_fact_kills
 from ..liveness import analyze_last_uses
 from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
@@ -127,6 +128,26 @@ def _bare_name_source(expr: TpyExpr) -> 'TpyName | None':
     while isinstance(expr, TpyCoerce):
         expr = expr.expr
     return expr if isinstance(expr, TpyName) else None
+
+
+def _find_value_capture_lambdas(stmt: TpyStmt) -> list[TpyLambda]:
+    """Escaping by-value-capturing lambdas created at this scope in `stmt`.
+
+    Stops at lambda boundaries (a lambda's body is a separate scope), so
+    only closures whose captures snapshot *this* function's locals appear.
+    """
+    found: list[TpyLambda] = []
+
+    def visit(e: TpyExpr) -> None:
+        if isinstance(e, TpyLambda):
+            if e.captures_by_value:
+                found.append(e)
+            return  # separate scope
+        for child in e.children():
+            visit(child)
+
+    _walk_body_stmts([stmt], visit, lambda s: None)
+    return found
 
 
 def _extract_proto_param_forwarding(
@@ -1430,6 +1451,7 @@ class SemanticAnalyzer:
 
         # Finalize nested def escape analysis
         self._finalize_nested_def_escapes()
+        self._warn_stale_value_captures()
 
         # Store Phase 1 local mutation facts (resolved by Phase 2 propagation).
         # Phase 6 (mutual-imports) ownership gate: only mutate body-sema
@@ -1641,6 +1663,65 @@ class SemanticAnalyzer:
             # Nested def not at top level of body -- conservatively assume all used
             return set(nested_node.captured_names or [])
         return _collect_body_name_refs(after_stmts)
+
+    def _warn_stale_value_captures(self) -> None:
+        """Warn on an escaping by-value closure whose captured local is
+        rebound at a later top-level statement.
+
+        An escaping closure owns its captures by value (a by-reference
+        capture would dangle), freezing the value at creation; CPython
+        late-binds via a cell and observes later rebindings, so the
+        divergence is silent until the captured local is rebound after the
+        closure -- warn exactly there. Out of scope: in-place mutation of a
+        captured object (an untracked fact) and loop-var rebinding.
+        """
+        func = self.ctx.func.current_function
+        if func is None:
+            return
+        body = func.body
+        # (stmt index, warn-at node, by-value captured names)
+        closures: list[tuple[int, TpyExpr | TpyNestedDef, list[str]]] = []
+        rebound_per_stmt: list[set[str]] = []
+        # Top-level body index of each nested def, by name. The body's
+        # TpyNestedDef is a stale copy -- escape/capture facts live on the
+        # analyzed node in nested_def_nodes -- so body only supplies position.
+        nd_index: dict[str, int] = {}
+        for idx, stmt in enumerate(body):
+            rebound_per_stmt.append(collect_fact_kills([stmt]).names)
+            if isinstance(stmt, TpyNestedDef):
+                nd_index.setdefault(stmt.func.name, idx)
+                continue  # separate scope; no this-scope lambdas inside
+            for lam in _find_value_capture_lambdas(stmt):
+                if lam.captured_names:
+                    closures.append((idx, lam, list(lam.captured_names)))
+        for name in self.ctx.func.nested_def_escapes:
+            node = self.ctx.func.nested_def_nodes.get(name)
+            idx = nd_index.get(name)
+            if node is None or idx is None:
+                continue  # not a top-level escaping def -- position-conservative
+            by_value = [n for n in node.captured_names
+                        if n not in node.ref_captures
+                        and n not in node.move_captures]
+            if by_value:
+                closures.append((idx, node, by_value))
+        if not closures:
+            return
+        for stmt_idx, node, names in closures:
+            rebound_after: set[str] = set()
+            for j in range(stmt_idx + 1, len(body)):
+                rebound_after |= rebound_per_stmt[j]
+            stale = [n for n in names if n in rebound_after]
+            if not stale:
+                continue
+            first = stale[0]
+            self.ctx.warning(
+                f"Escaping closure captures local '{first}' by value, but"
+                f" '{first}' is reassigned after the closure is created; the"
+                f" closure keeps the value from capture time (CPython would"
+                f" observe the later value). Capture a fresh local that is"
+                f" not reassigned (e.g. `snap = {first}`), or use copy() to"
+                f" make the snapshot explicit.",
+                node)
 
     def _collect_method_overload_groups(self, record: TpyRecord) -> None:
         """Identify and validate @overload groups among a record's methods.
@@ -2600,6 +2681,7 @@ class SemanticAnalyzer:
 
             # Finalize nested def escape analysis (same as _analyze_function)
             self._finalize_nested_def_escapes()
+            self._warn_stale_value_captures()
 
             self.ctx.in_consuming_method = prev_consuming
 

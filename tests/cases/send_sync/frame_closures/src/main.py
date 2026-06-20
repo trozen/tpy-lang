@@ -1,8 +1,10 @@
 # Closure frames behind Send[Callable]: no-capture lambdas, by-value
 # captures of Send types, free-function refs, and nested defs qualify.
 # Note: Callable closures capture by value, so output matches CPython only
-# because nothing mutates a captured var after capture (see BUGS.md: silent
-# capture-by-value divergence). A mutate-after-capture test would diverge.
+# because nothing reassigns or mutates a captured var after capture. A
+# reassign-after-capture now warns (see nested_def/escaping_value_capture_
+# reassigned); the in-place mutate-after-capture case still diverges silently
+# (see BUGS.md).
 from tpy import Int32, Send
 from typing import Callable
 

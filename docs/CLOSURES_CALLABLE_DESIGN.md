@@ -426,6 +426,32 @@ This reuses the existing last-use / auto-move infrastructure in sema. The closur
 creation point is treated as a "use" of each moved-captured variable, and subsequent
 uses are flagged as use-after-move errors.
 
+### Escaping Closure: Stale Value-Capture Warning
+
+An escaping closure must *own* its captures (by value), so it freezes each captured
+local's value at creation. CPython instead late-binds through a cell object and
+observes later changes -- a divergence that only manifests when the captured local
+is reassigned or mutated after the closure is created:
+
+```python
+def hold(f: Callable[[], int]) -> Callable[[], int]: return f
+
+k = 10
+f = hold(lambda: k)   # warning: escaping closure captures 'k' by value, reassigned later
+k = 20
+print(f())            # TPy: 10   CPython: 20
+```
+
+The compiler warns at the closure when a captured local is **reassigned** after the
+capture point (`_warn_stale_value_captures` in `tpyc/sema/analyzer.py`, covering both
+escaping lambdas and escaping nested defs). The acknowledgment is to capture a fresh,
+non-reassigned local (`snap = k`, optionally via `copy()`), which eliminates the
+divergence. Two sibling cases are not yet warned (both tracked in `BUGS.md`): **in-place
+mutation** of a captured container/record (the mutation-after-capture fact is untracked --
+`closure_written_names` sees only `nonlocal`/`global` rebinds), and **loop-variable
+capture** (`for k in ...: append(lambda: k)`), whose rebinding is the loop back-edge rather
+than a later statement.
+
 ### Dangling Reference Prevention
 
 For escaping closures, the compiler must prevent capturing dangling references:
