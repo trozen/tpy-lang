@@ -4,41 +4,24 @@
 namespace tpyapp::main {
 
 
-// def modify(v: Vec2) -> None:
-void modify(Vec2 v) {
-    // v.x = 99
-    v.x = 99;
-}
-
 // def main() -> None:
 void main() {
     // a = Vec2(1, 2)
     Vec2 a = Vec2(1, 2);
-    // # Assignment copies (value type, not reference)
-    // b = a
+    // b = a                      # copy (value type)
     Vec2 b = a;
-    // b.x = 10
-    b.x = 10;
-    // print(a.x)                 # 1
-    std::cout << a.x << "\n";
-    // print(b.x)                 # 10
-    std::cout << b.x << "\n";
-    // # Function parameter is a copy (value type passed by value)
-    // modify(a)
-    modify(a);
-    // print(a.x)                 # 1
-    std::cout << a.x << "\n";
-    // # Nested value types are also copied
+    // print(a.total())           # 3
+    std::cout << a.total() << "\n";
+    // print(b.total())           # 3
+    std::cout << b.total() << "\n";
     // r = Rect(Vec2(0, 0), Vec2(10, 20))
     Rect r = Rect(Vec2(0, 0), Vec2(10, 20));
-    // r2 = r
-    Rect r2 = r;
-    // r2.pos.x = 99
-    r2.pos.x = 99;
     // print(r.pos.x)             # 0
     std::cout << r.pos.x << "\n";
-    // print(r2.pos.x)            # 99
-    std::cout << r2.pos.x << "\n";
+    // print(r.size.total())      # 30
+    std::cout << r.size.total() << "\n";
+    // print(r.origin_sum())      # 0
+    std::cout << r.origin_sum() << "\n";
 }
 
 void __tpy_init() {

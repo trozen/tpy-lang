@@ -1,20 +1,18 @@
-# Test cross-module ValueType: imported record preserves value semantics.
-from tpy import Int32
+# Cross-module ValueType: an imported value-type record constructs and
+# reads correctly across the module boundary.
 from shapes import Vec2
 
 
-def modify(v: Vec2) -> None:
-    v.x = 99
+def length_sq(v: Vec2) -> int:
+    return v.x * v.x + v.y * v.y
 
 
 def main() -> None:
-    a = Vec2(1, 2)
-    b = a
-    b.x = 10
+    a = Vec2(3, 4)
+    b = a                      # copy (value type)
     print(a.x)
-    print(b.x)
+    print(b.y)
+    print(length_sq(a))        # 25
 
-    modify(a)
-    print(a.x)
 
 main()

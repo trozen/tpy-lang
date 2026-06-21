@@ -2618,7 +2618,7 @@ See [docs/DYNAMIC_PROTOCOL_DESIGN.md](DYNAMIC_PROTOCOL_DESIGN.md) for the full d
 
 #### Working: `ValueType` Marker Protocol
 
-The `ValueType` marker protocol declares that a user-defined record has value semantics -- it is small, cheaply copyable, and behaves like a built-in value type (Int32, bool, etc.). Import it from the `tpy` module:
+The `ValueType` marker protocol declares that a user-defined record has value semantics -- it is small, cheaply copyable, and behaves like a built-in value type (Int32, bool, etc.). Value types are **immutable**: like their built-in counterparts (and frozen dataclasses), their fields are set in `__init__` and never reassigned afterward. Immutability is what makes copy-vs-alias unobservable, so value types stay CPython-portable (mutating a copied value would otherwise diverge). Import it from the `tpy` module:
 
 ```python
 from tpy import Int32, ValueType
@@ -2651,6 +2651,8 @@ class Box[T: ValueType]:
 - All fields must themselves be value types (or `ValueType`-bounded type params). Non-value-type fields cause a compile error.
 - `@nocopy` and `ValueType` are mutually exclusive -- a `@nocopy` class cannot be a `ValueType`.
 - A `ValueType` class cannot inherit from a non-`ValueType` parent.
+- Fields are immutable: assigning a field anywhere other than the class's own `__init__` is a compile error (`Cannot assign to field '...' of immutable value type '...'`). This covers plain assignment, augmented assignment, and assignment to `self.<field>` in any non-`__init__` method.
+- An explicit `__init__` is required -- there is no synthesized aggregate constructor, since immutable fields can only be set during construction. (`@native` value types are exempt: they are constructed on the C++ side.)
 
 **Implicit conformance:** Built-in value types (Int32, bool, float, etc.) implicitly conform to `ValueType`, so they can be used as arguments for `T: ValueType` bounded type params without explicit declaration.
 

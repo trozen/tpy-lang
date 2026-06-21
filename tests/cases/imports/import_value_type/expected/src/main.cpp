@@ -4,28 +4,24 @@
 namespace tpyapp::main {
 
 
-// def modify(v: Vec2) -> None:
-void modify(::tpyapp::shapes::Vec2 v) {
-    // v.x = 99
-    v.x = 99;
+// def length_sq(v: Vec2) -> int:
+::tpy::BigInt length_sq(::tpyapp::shapes::Vec2 v) {
+    // return v.x * v.x + v.y * v.y
+    return ::tpy::BigInt((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(v.x, v.x)), (::tpy::mul_check<int32_t>(v.y, v.y)))));
 }
 
 // def main() -> None:
 void main() {
-    // a = Vec2(1, 2)
-    ::tpyapp::shapes::Vec2 a = ::tpyapp::shapes::Vec2(1, 2);
-    // b = a
+    // a = Vec2(3, 4)
+    ::tpyapp::shapes::Vec2 a = ::tpyapp::shapes::Vec2(3, 4);
+    // b = a                      # copy (value type)
     ::tpyapp::shapes::Vec2 b = a;
-    // b.x = 10
-    b.x = 10;
     // print(a.x)
     std::cout << a.x << "\n";
-    // print(b.x)
-    std::cout << b.x << "\n";
-    // modify(a)
-    modify(a);
-    // print(a.x)
-    std::cout << a.x << "\n";
+    // print(b.y)
+    std::cout << b.y << "\n";
+    // print(length_sq(a))        # 25
+    std::cout << length_sq(a) << "\n";
 }
 
 void __tpy_init() {
@@ -33,6 +29,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    // # Cross-module ValueType: an imported value-type record constructs and
+    // # reads correctly across the module boundary.
     // from shapes import Vec2
     ::tpyapp::shapes::__tpy_init();
     // main()

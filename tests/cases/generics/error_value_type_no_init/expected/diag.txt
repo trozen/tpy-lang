@@ -1,0 +1,1 @@
+main.py:6: error: ValueType class 'Vec2' must define an explicit __init__

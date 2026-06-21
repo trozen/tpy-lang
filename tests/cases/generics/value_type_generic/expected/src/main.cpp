@@ -15,10 +15,8 @@ void main() {
     // # Builtin value type as bound
     // p = Pair[Int32](1, 2)
     Pair<int32_t> p = Pair<int32_t>(1, 2);
-    // q = p
+    // q = p                      # copy (value type)
     Pair<int32_t> q = p;
-    // q.first = 10
-    q.first = 10;
     // print(p.first)
     std::cout << p.first << "\n";
     // print(q.first)

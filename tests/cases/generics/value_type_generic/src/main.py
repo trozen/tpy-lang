@@ -27,8 +27,7 @@ def swap(p: Pair[Int32]) -> Pair[Int32]:
 def main() -> None:
     # Builtin value type as bound
     p = Pair[Int32](1, 2)
-    q = p
-    q.first = 10
+    q = p                      # copy (value type)
     print(p.first)
     print(q.first)
 

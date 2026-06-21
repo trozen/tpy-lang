@@ -43,10 +43,11 @@ class Waker(ValueType):
     task_id: Int32
     generation: Int32
 
-    def __init__(self) -> None:
-        self.awaker = None
-        self.task_id = 0
-        self.generation = 0
+    def __init__(self, awaker: Ptr[Awaker] = None, task_id: Int32 = 0,
+                 generation: Int32 = 0) -> None:
+        self.awaker = awaker
+        self.task_id = task_id
+        self.generation = generation
 
     # Not @readonly: wake() doesn't mutate self, but it dispatches into
     # the awaker's `mark_runnable`, which mutates the executor's runnable

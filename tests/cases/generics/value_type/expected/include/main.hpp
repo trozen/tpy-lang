@@ -12,7 +12,6 @@ struct Rect;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-void modify(Vec2 v);
 void main();
 
 // class Vec2(ValueType):
@@ -25,6 +24,9 @@ struct Vec2 {
     // def __init__(self, x: Int32, y: Int32) -> None:
     Vec2() = default;
     explicit Vec2(int32_t x, int32_t y) : x(x), y(y) {}
+
+    // def total(self) -> Int32:
+    int32_t total() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Vec2";
 };
 
@@ -39,7 +41,7 @@ template<> struct tpy::is_value_type<::tpyapp::main::Vec2> : std::true_type {};
 namespace tpyapp::main {
 
 
-// # Rect uses Vec2 -- tests nested value types
+// # Rect uses Vec2 -- nested value types.
 // class Rect(ValueType):
 struct Rect {
     // pos: Vec2
@@ -50,6 +52,9 @@ struct Rect {
     // def __init__(self, pos: Vec2, size: Vec2) -> None:
     Rect() = default;
     explicit Rect(Vec2 pos, Vec2 size) : pos(pos), size(size) {}
+
+    // def origin_sum(self) -> Int32:
+    int32_t origin_sum() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rect";
 };
 
@@ -64,5 +69,17 @@ template<> struct tpy::is_value_type<::tpyapp::main::Rect> : std::true_type {};
 namespace tpyapp::main {
 
 
+
+// def total(self) -> Int32:
+inline int32_t Vec2::total() const {
+    // return self.x + self.y
+    return (::tpy::add_check<int32_t>(this->x, this->y));
+}
+
+// def origin_sum(self) -> Int32:
+inline int32_t Rect::origin_sum() const {
+    // return self.pos.total()
+    return this->pos.total();
+}
 void __tpy_init();
 } // namespace tpyapp::main

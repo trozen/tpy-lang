@@ -2414,6 +2414,17 @@ class TypeRegistrar:
                     f"has non-value type '{fld.type}'",
                     fld.loc
                 )
+        # Value types are immutable, so fields can only be set in __init__;
+        # an explicit one is required (no synthesized aggregate ctor) to keep
+        # construction CPython-portable. @native value types are constructed
+        # on the C++ side and carry no TPy __init__. Checked after the
+        # structural validations so a bad parent/field is reported first.
+        # has_init covers own and inherited __init__.
+        if not (record_info.has_init or record_info.is_native):
+            raise SemanticError(
+                f"ValueType class '{record.name}' must define an explicit __init__",
+                record.loc
+            )
 
     @staticmethod
     def _is_field_value_type(typ: TpyType) -> bool:

@@ -1,0 +1,1 @@
+main.py:15: error: Cannot assign to field 'x' of immutable value type 'Vec2'

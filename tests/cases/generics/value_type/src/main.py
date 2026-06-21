@@ -1,4 +1,4 @@
-# Test ValueType marker protocol: records with value semantics.
+# ValueType records: value (copy) semantics, immutable, nested + with methods.
 from tpy import Int32, ValueType
 
 
@@ -10,8 +10,11 @@ class Vec2(ValueType):
         self.x = x
         self.y = y
 
+    def total(self) -> Int32:
+        return self.x + self.y
 
-# Rect uses Vec2 -- tests nested value types
+
+# Rect uses Vec2 -- nested value types.
 class Rect(ValueType):
     pos: Vec2
     size: Vec2
@@ -20,29 +23,20 @@ class Rect(ValueType):
         self.pos = pos
         self.size = size
 
-
-def modify(v: Vec2) -> None:
-    v.x = 99
+    def origin_sum(self) -> Int32:
+        return self.pos.total()
 
 
 def main() -> None:
     a = Vec2(1, 2)
+    b = a                      # copy (value type)
+    print(a.total())           # 3
+    print(b.total())           # 3
 
-    # Assignment copies (value type, not reference)
-    b = a
-    b.x = 10
-    print(a.x)                 # 1
-    print(b.x)                 # 10
-
-    # Function parameter is a copy (value type passed by value)
-    modify(a)
-    print(a.x)                 # 1
-
-    # Nested value types are also copied
     r = Rect(Vec2(0, 0), Vec2(10, 20))
-    r2 = r
-    r2.pos.x = 99
     print(r.pos.x)             # 0
-    print(r2.pos.x)            # 99
+    print(r.size.total())      # 30
+    print(r.origin_sum())      # 0
+
 
 main()

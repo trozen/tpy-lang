@@ -829,7 +829,8 @@ class StatementAnalyzer:
                             deref_t = deref_t.wrapped
                     if deref_ro:
                         raise self.ctx.error("Cannot mutate readonly reference", target)
-                # Frozen dataclass / readonly field: reject assignment except self.field in __init__
+                # Frozen dataclass / immutable value type / readonly field:
+                # reject assignment except self.field in __init__
                 if isinstance(target, TpyFieldAccess):
                     actual = unwrap_readonly(check_type)
                     if isinstance(actual, NominalType):
@@ -842,9 +843,11 @@ class StatementAnalyzer:
                                 and isinstance(target.obj, TpyName) and target.obj.name == "self"
                                 and rec is not None and rec.name == actual.name
                             )
-                            if info.is_frozen and not in_own_init:
+                            if (info.is_frozen or info.is_value_type) and not in_own_init:
+                                kind = ("frozen dataclass" if info.is_frozen
+                                        else "immutable value type")
                                 raise self.ctx.error(
-                                    f"Cannot assign to field '{target.field}' of frozen dataclass '{actual.name}'",
+                                    f"Cannot assign to field '{target.field}' of {kind} '{actual.name}'",
                                     target,
                                 )
                             # Walk the class hierarchy to find readonly fields

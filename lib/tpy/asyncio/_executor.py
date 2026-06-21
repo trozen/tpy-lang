@@ -260,11 +260,8 @@ def task_to_any_box[T](task: Task[T]) -> Own[Box[AnyTask]]:
 
 def _make_waker(handle: Awaker, task_id: Int32,
                 generation: Int32) -> Waker:
-    w = Waker()
-    w.awaker = handle
-    w.task_id = task_id
-    w.generation = generation
-    return w
+    awaker_ptr: Ptr[Awaker] = handle
+    return Waker(awaker_ptr, task_id, generation)
 
 
 class TimerEntry:
