@@ -4494,42 +4494,15 @@ class StatementAnalyzer:
                 copy_warning_fired = True
             # A tuple is a value type, but storing one whose elements are
             # pointer-repr COPIES each such element into the owned slot
-            # (tuple_to_storage) where CPython aliases -- warn per element,
-            # matching the tuple-literal capture warnings. Literal sources
-            # are warned by _annotate_tuple_elem_capture; Own elements move
-            # and are not pointer-repr, so they are skipped by the filter.
-            tgt_tuple = unwrap_qualifiers(target_type)
-            val_peeled = stmt.value
-            while isinstance(val_peeled, (TpyCoerce, TpyNamedExpr)):
-                val_peeled = (val_peeled.expr
-                              if isinstance(val_peeled, TpyCoerce)
-                              else val_peeled.value)
-            if (isinstance(tgt_tuple, TupleType)
-                    and tgt_tuple.has_pointer_repr_element()
-                    and not isinstance(val_peeled, TpyTupleLiteral)
-                    and stmt.loc is not None
-                    and not target_is_any
-                    and not self.compat.is_copy_call(stmt.value)
-                    # An owning-call rvalue (Own[tuple] / per-element-Own
-                    # return) is a fresh unshared temporary: the elements
-                    # move in, nothing aliases them -- mirrors the scalar
-                    # Own-from-call exemption.
-                    and not self.compat._is_owning_tuple_call(stmt.value)):
+            # (tuple_to_storage) where CPython aliases -- warn per element via
+            # the shared helper (also used by the container-literal / insert
+            # coercion path). The helper carries the literal / copy() / owning-
+            # call exemptions.
+            if stmt.loc is not None and not target_is_any:
+                tgt_tuple = unwrap_qualifiers(target_type)
                 dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
-                for i, et in enumerate(tgt_tuple.element_types):
-                    if not TupleType._element_is_pointer_repr(et):
-                        continue
-                    if self.ctx.is_type_non_copyable(et):
-                        raise self.ctx.error(
-                            f"cannot copy non-copyable type '{et}' into {dest} "
-                            f"(tuple element {i}){NOCOPY_REMEDIATION_HINT}",
-                            stmt
-                        )
-                    self.ctx.warning(
-                        f"copies {et} into {dest} (tuple element {i}); "
-                        f"use copy() to make this explicit",
-                        stmt
-                    )
+                if self.compat.warn_pointer_repr_tuple_copy(
+                        stmt.value, tgt_tuple, dest, stmt):
                     copy_warning_fired = True
             # Own[T] param stored in a field/container — mark as consumed
             if isinstance(stmt.value, TpyName) and stmt.value.name in self.ctx.func.current_param_names:

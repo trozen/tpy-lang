@@ -1058,12 +1058,34 @@ class TypeCompatibility:
             # Mark loop variables as consumed for auto-consuming heuristic
             if isinstance(source_expr, TpyName):
                 self.ctx.mark_loop_var_consumed(source_expr.name)
+            # A value-tuple with pointer-repr (reference) members copies each
+            # such member into owned storage where CPython aliases, even though
+            # the tuple itself is a value type -- so it warns under the same
+            # lvalue/move guard as the scalar case below.
+            ew = expected.wrapped
+            ptr_repr_tuple = isinstance(ew, TupleType) and ew.has_pointer_repr_element()
+            ref_scalar = not ew.is_value_type() and not self._is_value_type_param(ew)
             if (not is_return and source_expr is not None
-                    and not expected.wrapped.is_value_type()
-                    and not self._is_value_type_param(expected.wrapped)
+                    and (ref_scalar or ptr_repr_tuple)
                     and self.is_lvalue(source_expr)
                     and not self.is_copy_call(source_expr)
                     and not is_auto_moved):
+                if ptr_repr_tuple:
+                    before = len(self.ctx.diagnostics)
+                    self.warn_pointer_repr_tuple_copy(
+                        source_expr, ew, "owned storage", source_expr)
+                    # A loop var's consuming decision is post-body; defer the
+                    # per-member warnings so they can be suppressed if consuming
+                    # iteration moves the element (mirrors the scalar case below).
+                    if (isinstance(source_expr, TpyName)
+                            and source_expr.name in self.ctx.func.loop_vars
+                            and id(source_expr) in self.ctx.all_last_uses):
+                        for diag_idx in range(before, len(self.ctx.diagnostics)):
+                            self.ctx.func.deferred_loop_copy_warnings.setdefault(
+                                source_expr.name, []).append(diag_idx)
+                    return self._check_compat(actual, ew, context, loc,
+                                              source_expr, is_return,
+                                              coercion_ctx, target_is_storage_form)
                 value_type = self.ctx.get_expr_type(source_expr)
                 if self.ctx.is_type_non_copyable(expected.wrapped):
                     verb = "may copy" if isinstance(expected.wrapped, TypeParamRef) else "cannot copy"
@@ -2977,6 +2999,45 @@ class TypeCompatibility:
             return isinstance(unwrap_readonly(rt.wrapped), TupleType)
         return (isinstance(rt, TupleType)
                 and any(isinstance(et, OwnType) for et in rt.element_types))
+
+    def warn_pointer_repr_tuple_copy(self, source_expr: TpyExpr | None,
+                                     tuple_type: TpyType, dest: str,
+                                     loc_node) -> bool:
+        """Copy diagnostic for a whole value-tuple lvalue source with pointer-repr
+        (reference) members stored into owned storage: each such member is
+        deep-copied where CPython aliases. Warn per member (error for @nocopy);
+        returns whether anything fired. Shared by the subscript/field assignment
+        path and the `T -> Own[T]` coercion branch (container literals,
+        append/insert/add). Each caller applies its own source gating before
+        calling (the coercion/literal callers gate on is_lvalue and not-moved;
+        the assignment caller warns for any non-literal/non-copy/non-owning-call
+        source); this helper only applies the tuple-specific exemptions -- a
+        fresh tuple LITERAL source (its per-member copy, e.g. `[(1, c)]`, is a
+        separate unrouted gap -- see BUGS.md), an explicit `copy()`, and an
+        owning-tuple-call rvalue. Direct elements only, matching the storage
+        codegen's depth (a nested value-tuple's deeper reference member is not
+        detected -- pre-existing, shared with the assignment path)."""
+        if not (isinstance(tuple_type, TupleType)
+                and tuple_type.has_pointer_repr_element()):
+            return False
+        if source_expr is not None:
+            if isinstance(_peel_value_wrappers(source_expr), TpyTupleLiteral):
+                return False
+            if self.is_copy_call(source_expr) or self._is_owning_tuple_call(source_expr):
+                return False
+        fired = False
+        for i, et in enumerate(tuple_type.element_types):
+            if not TupleType._element_is_pointer_repr(et):
+                continue
+            if self.ctx.is_type_non_copyable(et):
+                raise self.ctx.error(
+                    f"cannot copy non-copyable type '{et}' into {dest} "
+                    f"(tuple element {i}){NOCOPY_REMEDIATION_HINT}", loc_node)
+            self.ctx.warning(
+                f"copies {et} into {dest} (tuple element {i}); "
+                f"use copy() to make this explicit", loc_node)
+            fired = True
+        return fired
 
     def _derive_owning_storage(self, expr: TpyExpr) -> bool:
         """Whether a binding from `expr` makes the local OWN its tuple

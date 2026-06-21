@@ -261,6 +261,14 @@ constructed in place -- neither warns, and a `@nocopy` last-use element
 is accepted rather than failing the C++ build. (A generic element type
 stays silent until instantiation, matching `.append`.)
 
+A **value-tuple with reference (pointer-repr) members** stored from a
+*whole-tuple lvalue source* (`d[k] = items[0]`, `{k: items[0]}`,
+`xs.append(items[0])`, `xs: list[...] = [items[0]]`) warns per such
+member (errors for `@nocopy`), matching the subscript/field-assignment
+path. Two related shapes are NOT yet diagnosed and remain tracked in
+`BUGS.md`: a fresh tuple *literal* with an lvalue member (`[(1, c)]`),
+and comprehension elements (`[t for t in src]`).
+
 It matters when:
 - You see a copy warning mentioning "borrowed Optional/Union" -- that
   source is in borrow form and the slot wants storage form.

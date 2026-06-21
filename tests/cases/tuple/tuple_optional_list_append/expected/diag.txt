@@ -1,0 +1,4 @@
+main.py:36: warning: copies P | None into owned storage (tuple element 0); use copy() to make this explicit
+main.py:36: warning: copies P | None into owned storage (tuple element 1); use copy() to make this explicit
+main.py:37: warning: copies P | None into owned storage (tuple element 0); use copy() to make this explicit
+main.py:37: warning: copies P | None into owned storage (tuple element 1); use copy() to make this explicit

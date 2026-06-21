@@ -2128,6 +2128,17 @@ class ExpressionAnalyzer:
         outright -- the copy verdict isn't knowable until instantiation, so
         like `.append` it stays silent."""
         bare = unwrap_ref_type(unwrap_own(unwrap_readonly(elem_type)))
+        # A value-tuple with pointer-repr members is a value type, but storing a
+        # whole-tuple lvalue element (subscript/field/name) still deep-copies
+        # those members. Warn per member directly (the same lvalue/move gating
+        # the scalar `T -> Own[T]` branch uses). A fresh tuple-literal element
+        # (`[(1, Box(5))]`) is not an lvalue, so its members move in -- and its
+        # lvalue-member copy (`[(1, c)]`) is a separate unrouted gap (BUGS.md).
+        if isinstance(bare, TupleType) and bare.has_pointer_repr_element():
+            if self.compat.is_lvalue(elem) and not self.compat._is_auto_moved(elem):
+                self.compat.warn_pointer_repr_tuple_copy(
+                    elem, bare, "owned storage", elem)
+            return
         if bare.is_value_type() or isinstance(bare, TypeParamRef):
             return
         self.compat.check_type_compatible(
