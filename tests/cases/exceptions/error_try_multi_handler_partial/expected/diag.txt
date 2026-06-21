@@ -1,0 +1,1 @@
+main.py:19: error: variable 'x' may not be assigned at this point

@@ -5773,6 +5773,7 @@ appears in *logic* rather than in a constant or a syscall wrapper. Tracked in
   - `return`/`break`/`continue` inside try-with-finally (goto transformation)
   - `return <expr>` inside try-with-finally (or `with`) evaluates the return expression BEFORE the finally body / `__exit__` runs, into a temp typed with the function's return type -- and still evaluates it (side effects included) when the finally's own return/raise overrides the pending value (CPython evaluation order)
   - Variables first bound inside a `finally` body hoist like try-body bindings: usable across the duplicated finally emissions and visible after the `try` statement (Python function scoping)
+  - A variable assigned on every non-terminating path of a `try`/`except` (the try body and each handler) and read after the block hoists to the outer scope and is visible after, like an `if`/`else` var assigned in all branches; one assigned on only some paths is rejected (`'x' may not be assigned`)
   - Nested `try`/`finally` (pending actions propagate through all levels)
   - `try`/`finally` without `except` (pure cleanup)
   - Re-raise: bare `raise` inside `except` block re-throws (`throw;` in C++)

@@ -2157,26 +2157,31 @@ class StatementAnalyzer:
         # - code continues after try/except and try-body vars are in scope
         #   (all handlers terminate, so post-try code uses try-body vars)
         all_handlers_terminate = all(t for _, _, t in handler_states)
-        needs_hoist = (stmt.finally_body or stmt.else_body
-                       or (all_handlers_terminate and not self.ctx.func.init_terminated))
+        # full hoist needs EVERY try-body var visible (even maybe-assigned),
+        # unlike the definitely-assigned-only da_new below.
+        needs_full_hoist = (stmt.finally_body or stmt.else_body
+                            or (all_handlers_terminate and not self.ctx.func.init_terminated))
         self.ctx.func.current_scope.bindings = dict(try_bindings)
         self.ctx.func.current_scope.bindings.update(finally_new)
-        if needs_hoist:
-            all_bindings = dict(try_bindings)
-            all_bindings.update(finally_new)
-            branch_new = set(all_bindings.keys()) - scope_before
-            for h in stmt.handlers:
-                if h.binding:
-                    branch_new.discard(h.binding)
-            predecl = branch_new - self.ctx.func.global_declarations
-            if predecl:
-                self.ctx.if_branch_decls[id(stmt)] = {
-                    name: all_bindings[name]
-                    for name in sorted(predecl)
-                    if name in all_bindings
-                }
-                self.ctx.func.hoisted_vars |= predecl
-                self.deduction.promote_predecl_view_targets(predecl)
+        all_bindings = dict(try_bindings)
+        all_bindings.update(finally_new)
+        branch_new = set(all_bindings.keys()) - scope_before
+        for h in stmt.handlers:
+            if h.binding:
+                branch_new.discard(h.binding)
+        # Else hoist only the definitely-assigned-on-every-path vars (the
+        # if/else `branch_new & newly_assigned` rule); otherwise they declare
+        # inside the try block and the post-try read won't compile.
+        da_new = branch_new & (self.ctx.func.definitely_assigned - before.definitely_assigned)
+        predecl = (branch_new if needs_full_hoist else da_new) - self.ctx.func.global_declarations
+        if predecl:
+            self.ctx.if_branch_decls[id(stmt)] = {
+                name: all_bindings[name]
+                for name in sorted(predecl)
+                if name in all_bindings
+            }
+            self.ctx.func.hoisted_vars |= predecl
+            self.deduction.promote_predecl_view_targets(predecl)
 
     def _merge_consumed_own(self, then_terminated: bool, else_terminated: bool,
                             consumed_then: set[str], consumed_else: set[str]) -> None:

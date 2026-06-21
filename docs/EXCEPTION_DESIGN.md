@@ -605,7 +605,7 @@ try {
 cleanup();      // finally body (normal fall-through copy)
 ```
 
-The return expression is evaluated into `__tpy_ret_N` (typed with the function's emitted return type) before the finally bodies run -- Python evaluates the return value first, then `finally`. When the finally body itself returns/raises, the pending return expression is still evaluated (side effects happen) and the captured value is discarded (`[[maybe_unused]]`). Finally-body first bindings are hoisted to function scope by sema, so every emitted copy assigns the same slot and the variable stays visible after the `try`, per Python scoping.
+The return expression is evaluated into `__tpy_ret_N` (typed with the function's emitted return type) before the finally bodies run -- Python evaluates the return value first, then `finally`. When the finally body itself returns/raises, the pending return expression is still evaluated (side effects happen) and the captured value is discarded (`[[maybe_unused]]`). Finally-body first bindings are hoisted to function scope by sema, so every emitted copy assigns the same slot and the variable stays visible after the `try`, per Python scoping. The same hoisting applies to a throw-tier try-body variable that is definitely assigned on every non-terminating path (the try body and each handler) and read after the block (`_analyze_try_throw`'s `da_new`, the `if`/`else` `branch_new & newly_assigned` rule); a variable assigned on only some paths is left unhoisted and rejected by definite-assignment.
 
 For throw-tier try/except/finally, an outer try/catch wraps the inner try/catch + handlers to capture exceptions escaping handlers (including re-raises).
 
