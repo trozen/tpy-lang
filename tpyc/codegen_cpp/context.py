@@ -1028,8 +1028,10 @@ class CodeGenContext:
 
     # --- with statement ---
     with_counter: int = 0
-    # Variables pre-declared by _emit_branch_decls for for-loop hoisting
-    loop_hoisted_vars: set[str] = field(default_factory=set)
+    # Variables pre-declared by _emit_branch_decls for hoisting out of a loop
+    # OR an if/try/with/match branch. A same-named tuple-unpack target then
+    # assigns instead of re-declaring (consumed in _gen_tuple_unpack).
+    predecl_hoisted_vars: set[str] = field(default_factory=set)
 
     # --- Match/case label counter (for goto-based guard fallthrough) ---
     match_counter: int = 0
@@ -1312,7 +1314,7 @@ class CodeGenContext:
         self.loop_else_labels = []
         self.loop_break_labels = []
         self.match_switch_depth = 0
-        self.loop_hoisted_vars = set()
+        self.predecl_hoisted_vars = set()
         self.finally_stack = []
 
     def indent(self) -> str:

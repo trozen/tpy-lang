@@ -1181,6 +1181,7 @@ class StatementAnalyzer:
                     name: self.ctx.func.current_scope.lookup(name)
                     for name in sorted(predecl)
                 }
+                self.deduction.promote_predecl_view_targets(predecl)
         elif isinstance(stmt, TpyWhile):
             assigned_before_cond = frozenset(self.ctx.func.definitely_assigned)
             saved_sc_and = self.ctx.sc_and_walrus.copy()
@@ -1921,6 +1922,7 @@ class StatementAnalyzer:
                 if name in all_bindings
             }
             self.ctx.func.hoisted_vars |= predecl
+            self.deduction.promote_predecl_view_targets(predecl)
 
     def _analyze_try_return(self, stmt: TpyTry) -> None:
         """Analyze return-tier try/except (ReturnException, goto-based)."""
@@ -2029,6 +2031,7 @@ class StatementAnalyzer:
                 for name in sorted(predecl)
                 if name in all_bindings
             }
+            self.deduction.promote_predecl_view_targets(predecl)
 
     def _analyze_try_throw(self, stmt: TpyTry) -> None:
         """Analyze throw-tier try/except (C++ try/catch)."""
@@ -2170,6 +2173,7 @@ class StatementAnalyzer:
                     if name in all_bindings
                 }
                 self.ctx.func.hoisted_vars |= predecl
+                self.deduction.promote_predecl_view_targets(predecl)
 
     def _merge_consumed_own(self, then_terminated: bool, else_terminated: bool,
                             consumed_then: set[str], consumed_else: set[str]) -> None:
@@ -2497,6 +2501,7 @@ class StatementAnalyzer:
                 for name in sorted(predecl)
                 if name in self.ctx.func.current_scope.bindings
             }
+            self.deduction.promote_predecl_view_targets(predecl)
 
     # --- Nested def / nonlocal ---
 
@@ -2553,6 +2558,7 @@ class StatementAnalyzer:
         self.ctx.all_last_uses |= analyze_last_uses(
             func.body, liveness_alias_sources(scan))
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
+        self.ctx.func.tuple_unpack_view_targets = set()
         self.ctx.func.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
         self.ctx.func.current_aug_assigned_vars = scan.aug_assigned.copy()
         self.ctx.func.current_alias_sources = dict(scan.alias_sources)
@@ -4077,6 +4083,12 @@ class StatementAnalyzer:
                 self.compat.check_type_compatible(
                     elem_type, existing, "tuple unpacking", source_expr=stmt)
                 self.narrowing.update_after_write(name, existing, elem_type, elem_expr)
+                # Mirror the scalar var-decl, which marks assigned on every
+                # init path (statements.py `if stmt.init: mark_assigned`): a
+                # branch that reassigns a target the sibling branch declared
+                # must re-mark it so merge_branches keeps it definitely
+                # assigned (drives if/else predecl pre-declaration).
+                self.init.mark_assigned(name)
                 stmt.is_new.append(False)
             else:
                 elem_type = self._infer_new_local_type(
@@ -4094,6 +4106,10 @@ class StatementAnalyzer:
                 stmt.target_types[i] = elem_type
                 self.ctx.func.current_scope.define(name, elem_type)
                 self.ctx.func.nonstmt_bound_names.add(name)
+                # Record scope depth so the definite-assignment read-check sees
+                # the target (mirrors the scalar var-decl): a loop-body-only
+                # target used after the loop is rejected, not miscompiled.
+                self.ctx.func.var_scope_depth[name] = self.ctx.func.current_scope.depth
                 # Bind into the codegen namespace too (mirrors _analyze_var_decl
                 # and the top-level unpack branch); the resumable-frame hoist
                 # reads `current_ns.all_bindings()`, so a target left only in
@@ -4101,6 +4117,8 @@ class StatementAnalyzer:
                 if self.ctx.func.current_ns:
                     self.ctx.func.current_ns.bind_variable(name, elem_type)
                 self.init.mark_assigned(name)
+                if self.deduction.tuple_target_view_family(name) is not None:
+                    self.ctx.func.tuple_unpack_view_targets.add(name)
                 self.narrowing.update_after_write(name, elem_type, elem_type, elem_expr)
                 stmt.is_new.append(True)
                 # An Own[T] element is moved out of the source tuple, so the
@@ -4119,17 +4137,15 @@ class StatementAnalyzer:
             # into it dangles. A fresh same-scope target keeps the view (the named
             # `__tup` outlives it -- zero-copy, safe). Mirrors the scalar
             # `s = owned()` reassign chokepoint. The other "outlives __tup" shape
-            # -- a target first-assigned in a branch/loop and used AFTER it -- does
-            # not compile today (the unpack target isn't pre-declared in the outer
-            # scope; see BUGS.md), so it can't dangle yet; when that is fixed the
-            # owned promotion must extend to the hoisted target.
+            # -- a target first-declared in an if/match branch and used AFTER it
+            # -- is owned where it is hoisted to the outer scope, via
+            # deduction.promote_predecl_view_targets. (The loop-body variant is
+            # not yet covered -- see BUGS.md.)
             if (not source_binds_by_ref
                     and name in self.ctx.func.current_reassigned_vars):
-                bound = self.ctx.func.current_scope.lookup(name)
-                inner = (unwrap_own(unwrap_ref_type(unwrap_readonly(bound)))
-                         if bound is not None else None)
-                if isinstance(inner, PendingViewType):
-                    self.deduction.mark_view_reassigned_from_owned(name, inner.family)
+                fam = self.deduction.tuple_target_view_family(name)
+                if fam is not None:
+                    self.deduction.mark_view_reassigned_from_owned(name, fam)
             if stmt.loc:
                 display_type = unwrap_own(elem_type) if elem_type else elem_type
                 self.ctx.declared_var_types[(stmt.loc.line, name)] = display_type

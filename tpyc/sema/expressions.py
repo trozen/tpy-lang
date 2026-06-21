@@ -744,6 +744,12 @@ class ExpressionAnalyzer:
         # Register for codegen pre-declaration
         decls = self.ctx.if_branch_decls.setdefault(id(loop_stmt), {})
         decls[name] = var_type
+        # NB: a str/bytes view target first-declared in a loop BODY from an
+        # owned-temp source, hoisted here and used after the loop, dangles into
+        # the dead per-iteration `__tup` -- but we cannot blanket-own here, as
+        # that would also copy the safe leaked-loop-var case (the iteration var
+        # aliases the live container). Telling them apart needs source-lifetime
+        # analysis; tracked in BUGS.md.
         # Mark the original for-loop's var for hoisted codegen (hidden counter)
         if isinstance(orig_stmt, TpyForEach) and name == orig_stmt.var:
             orig_stmt.hoist_loop_var = True

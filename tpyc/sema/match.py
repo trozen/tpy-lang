@@ -500,6 +500,7 @@ class MatchAnalyzer:
                 name: self.ctx.func.current_scope.lookup(name)
                 for name in sorted(predecl)
             }
+            self.stmts.deduction.promote_predecl_view_targets(predecl)
 
     @staticmethod
     def _capture_binds_by_value(ty: TpyType | None) -> bool:

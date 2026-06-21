@@ -638,6 +638,11 @@ class FunctionTrackingState:
 
     # --- Prescan / last-use ---
     current_reassigned_vars: set[str] = field(default_factory=set)
+    # Fresh str/bytes view tuple-unpack targets, candidates for owned-promotion
+    # if they later get hoisted out of a branch (a view would then outlive its
+    # source __tup temp / branch-local by-ref source). Consumed at the
+    # branch-predecl sites. Per-function; reset with the prescan sets.
+    tuple_unpack_view_targets: set[str] = field(default_factory=set)
     current_lvalue_reassigned: set[str] = field(default_factory=set)
     current_aug_assigned_vars: set[str] = field(default_factory=set)
     # alias -> source for simple name-init locals (prescan alias_sources).

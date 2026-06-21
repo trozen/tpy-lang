@@ -46,6 +46,7 @@ from ..typesys import (
     resolve_int_literals,
     unwrap_own,
     unwrap_qualifiers,
+    unwrap_readonly,
     unwrap_ref_type,
 )
 from .context import PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT
@@ -1067,6 +1068,26 @@ class LocalTypeDeduction:
         var_id = self.ctx.view_var_map(family).get(var_name)
         if var_id is not None and var_id in self.ctx.view_vars(family):
             self.ctx.view_vars(family)[var_id].reassigned_from_owned = True
+
+    def tuple_target_view_family(self, name: str) -> ViewTypeFamily | None:
+        """The pending str/bytes view family of tuple-unpack target `name`, or
+        None if it is not a pending-view local."""
+        bound = self.ctx.func.current_scope.lookup(name)
+        inner = (unwrap_own(unwrap_ref_type(unwrap_readonly(bound)))
+                 if bound is not None else None)
+        return inner.family if isinstance(inner, PendingViewType) else None
+
+    def promote_predecl_view_targets(self, hoisted: set[str]) -> None:
+        """Own any str/bytes tuple-unpack view target that gets hoisted out of
+        a branch or loop body (pre-declared in the outer scope). The hoisted
+        slot outlives the per-branch/iteration `__tup` temp and any branch-local
+        by-ref source, so a view into it would dangle. Conservative: own every
+        hoisted view target; a precise check that keeps the view when the source
+        provably outlives the hoist is future work."""
+        for name in hoisted & self.ctx.func.tuple_unpack_view_targets:
+            fam = self.tuple_target_view_family(name)
+            if fam is not None:
+                self.mark_view_reassigned_from_owned(name, fam)
 
     def track_view_reassign_source(self, var_name: str, source_type: TpyType, family: ViewTypeFamily) -> None:
         """Track source relationship when reassigning from another pending view-type."""

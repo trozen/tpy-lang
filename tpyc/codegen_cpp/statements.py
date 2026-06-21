@@ -3215,11 +3215,12 @@ class StatementGenerator:
                 self.ctx.declared_vars.add(name)
                 self.ctx.local_scope_names.add(name)
                 self.ctx.var_types[name] = target_type
-                if (name in self.ctx.loop_hoisted_vars
+                if (name in self.ctx.predecl_hoisted_vars
                         and name in self.ctx.pointer_locals):
-                    # Post-loop-used target hoisted as a `T*` alias slot:
-                    # ASSIGN it (a fresh `auto&&` would shadow the hoisted
-                    # slot, leaving it disengaged for the post-loop read).
+                    # Target hoisted out of a branch/loop as a `T*` alias slot
+                    # and used after it: ASSIGN it (a fresh `auto&&` would
+                    # shadow the hoisted slot, leaving it disengaged for the
+                    # post-construct read).
                     out.write(f"{indent}{cpp_name} = &(::tpy::unwrap_ref("
                               f"::tpy::tuple_elem_ref({get_expr})));\n")
                     continue
@@ -3263,9 +3264,9 @@ class StatementGenerator:
                 get_expr = f"std::move({get_expr})"
 
             if stmt.is_new[i]:
-                # Variable pre-declared for loop hoisting -- emit assignment,
-                # not re-declaration.
-                already_declared = name in self.ctx.loop_hoisted_vars
+                # Variable pre-declared by branch/loop predecl (_emit_branch_decls)
+                # -- emit assignment, not re-declaration.
+                already_declared = name in self.ctx.predecl_hoisted_vars
                 self.ctx.declared_vars.add(name)
                 self.ctx.local_scope_names.add(name)
                 self.ctx.var_types[name] = target_type
@@ -5127,8 +5128,11 @@ class StatementGenerator:
                     resolve_type = resolve_type.wrapped
                 cpp_type = self.types.type_to_cpp(resolve_type)
                 self.ctx.declared_vars.add(name)
-                if isinstance(stmt, TpyForEach):
-                    self.ctx.loop_hoisted_vars.add(name)
+                # Any predecl-hoisted name (loop OR if/try/with/match branch) is
+                # declared in the outer scope, so a same-named tuple-unpack
+                # target must ASSIGN, not re-declare (the _gen_tuple_unpack
+                # is_new check). A loop-only set would miss the branch hoists.
+                self.ctx.predecl_hoisted_vars.add(name)
                 self.ctx.local_scope_names.add(name)
                 self.ctx.var_types[name] = var_type
                 if self.ctx.current_ns and var_type:
