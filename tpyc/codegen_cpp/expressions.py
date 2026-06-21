@@ -3604,14 +3604,26 @@ class ExpressionGenerator:
             # peers' .hpp may have suppressed the `using` for
             # `expr.user_module_call`, so we cannot rely on it.
             analyzer_ctx = self.ctx.analyzer.ctx
-            qual = lookup_qualified(
-                analyzer_ctx.module_attributes,
-                expr.method, analyzer_ctx.module_name)
+            # A qualified `mod.X(...)` is authoritative for X's module. Resolve
+            # X by its qname under `mod` (records) or its sema-resolved
+            # originating module (functions) BEFORE the current-module bare-name
+            # lookup -- that lookup collides when a same-named symbol is imported
+            # from a different module (`from other import X`), wrongly qualifying
+            # the call to `other`. The bare-name lookup stays a last resort for
+            # re-export chains the qname/fi resolution misses.
+            rec = self.ctx.analyzer.registry.find_record_by_qname(
+                f"{expr.user_module_call}.{expr.method}")
+            rec_qual = (self.ctx.analyzer.registry.record_qualification(
+                rec, analyzer_ctx.module_name) if rec is not None else None)
+            qual = (rec_qual
+                    or ((fi.originating_module, fi.name)
+                        if fi and fi.originating_module else None)
+                    or lookup_qualified(analyzer_ctx.module_attributes,
+                                        expr.method, analyzer_ctx.module_name))
             if qual is not None:
                 qual_module, qual_name = qual
             else:
-                qual_module = (fi.originating_module if fi and fi.originating_module
-                               else expr.user_module_call)
+                qual_module = expr.user_module_call
                 qual_name = fi.name if fi else expr.method
             # Emit explicit template args for generic user-module calls
             if fi and fi.is_generic() and expr.inferred_type_args:
