@@ -19,6 +19,10 @@
 | MIR-backed codegen | Not started |
 | Retirement of old sema/codegen ownership logic | Not started |
 
+A throwaway Phase-1 spike (2026-06) validated the THIR boundary -- byte-identical
+codegen from THIR with no analyzer reference, on an arithmetic slice. Production
+work above remains Not started; see Rollout Plan -> "Phase-1 spike validation".
+
 ---
 
 ## Motivation
@@ -522,6 +526,37 @@ Those should be separated in phases. The key sequencing principle:
 THIR is structurally close to the current codegen input, so it is the right first
 boundary. MIR should first become the analysis source of truth, and only later the
 emission source of truth.
+
+#### Phase-1 spike validation (2026-06)
+
+A throwaway probe lowered one arithmetic function (`def add(a, b): c = a + b + 1;
+return c`) to immutable THIR nodes carrying the sema facts, then emitted C++ from
+THIR with **no `SemanticAnalyzer` reference** -- output byte-identical to the
+current AST-driven codegen. Confirmed empirically:
+
+- **The boundary is real and the leaf emit layer is already analyzer-decoupled.**
+  `result_type` (`get_expr_type`) and `resolved_binop` lower onto nodes with no
+  friction, and the existing C++ leaf helpers (`expand_cpp_template`,
+  `get_dunder_cpp_template`, `TpyType.to_cpp`) produced the binop emission
+  unchanged, just fed from THIR instead of side tables. Most of codegen is
+  already a `fact -> string` function; THIR only changes where the facts come
+  from. The non-form expression/statement coverage is mechanical breadth, not
+  hard depth -- a few focused weeks, low conceptual risk.
+- **Three friction points, all already named above as rollout prerequisites,
+  confirmed real:** (1) implicit coercions are NOT materialized -- a literal `1`
+  kept `result_type = IntLiteral(1)`, so coercions must become explicit
+  `THIRCoerce` nodes at use sites, not just copied types; (2) liveness/movability
+  facts live in per-function context, not a top-level analyzer table, so lowering
+  must run per-function in scope; (3) local declared-types must be captured
+  explicitly onto `THIRVarDecl` (codegen currently re-derives them).
+- **The form facts (Open Questions 9/11) are the genuine long pole.** The slice
+  is all value types, so borrow/storage form never arose -- the spike does NOT
+  de-risk it. Form-as-an-IR-fact should be *designed before* the form-carrying
+  nodes are written, not retrofitted.
+
+Net: the non-form Phase-1 is a reasonable bet once the fact set is frozen (post
+0.4.0); the form decision is the gating design work the THIR node shapes depend
+on.
 
 #### Migration Principles
 
