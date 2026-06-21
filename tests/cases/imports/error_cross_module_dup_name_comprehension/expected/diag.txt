@@ -1,0 +1,1 @@
+main.py:9: error: List comprehension element has type blue.Tag, incompatible with annotated element type red.Tag

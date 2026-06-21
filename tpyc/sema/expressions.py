@@ -11,7 +11,7 @@ from dataclasses import replace as dc_replace
 from typing import Literal, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, IntLiteralType, FloatLiteralType, RecordInfo,
+    TpyType, IntLiteralType, FloatLiteralType, RecordInfo, disambiguated_pair,
     NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, AnyType, OptionalType, UnionType, VoidType,
     ReadonlyType, unwrap_readonly, unwrap_qualifiers, is_any_str_type, PendingStrType, PendingViewType,
@@ -2218,9 +2218,10 @@ class ExpressionAnalyzer:
                 if (isinstance(elem_type, NominalType) and elem_type.is_user_record
                         and isinstance(expected_elem, NominalType) and expected_elem.is_user_record
                         and not self.compat.is_covariant_generic_upcast(elem_type, expected_elem)):
+                    exp_s, act_s = disambiguated_pair(expected_elem, elem_type)
                     raise self.ctx.error(
-                        f"List literal element {i} has type {elem_type}, "
-                        f"incompatible with annotated element type {expected_elem}", expr
+                        f"List literal element {i} has type {act_s}, "
+                        f"incompatible with annotated element type {exp_s}", expr
                     )
                 try:
                     coercion = self.compat.check_type_compatible(
@@ -2230,9 +2231,10 @@ class ExpressionAnalyzer:
                         source_expr=expr.elements[i - 1],
                     )
                 except SemanticError:
+                    exp_s, act_s = disambiguated_pair(expected_elem, elem_type)
                     raise self.ctx.error(
-                        f"List literal element {i} has type {elem_type}, "
-                        f"incompatible with annotated element type {expected_elem}", expr
+                        f"List literal element {i} has type {act_s}, "
+                        f"incompatible with annotated element type {exp_s}", expr
                     )
                 # Materialize an aggregate-element coercion (BigInt->fixed-int)
                 # as a node so codegen emits it; check_type_compatible above
@@ -2909,9 +2911,10 @@ class ExpressionAnalyzer:
                         kt, expected_key, f"dict literal key {i}", expr.loc,
                         source_expr=expr.keys[i - 1])
                 except SemanticError:
+                    exp_s, act_s = disambiguated_pair(expected_key, kt)
                     raise self.ctx.error(
-                        f"Dict literal key {i} has type {kt}, "
-                        f"incompatible with annotated key type {expected_key}", expr)
+                        f"Dict literal key {i} has type {act_s}, "
+                        f"incompatible with annotated key type {exp_s}", expr)
         else:
             key_type = key_types[0]
             for i, kt in enumerate(key_types[1:], 2):
@@ -2947,9 +2950,10 @@ class ExpressionAnalyzer:
                         vt, expected_value, f"dict literal value {i}", expr.loc,
                         source_expr=expr.values[i - 1])
                 except SemanticError:
+                    exp_s, act_s = disambiguated_pair(expected_value, vt)
                     raise self.ctx.error(
-                        f"Dict literal value {i} has type {vt}, "
-                        f"incompatible with annotated value type {expected_value}", expr)
+                        f"Dict literal value {i} has type {act_s}, "
+                        f"incompatible with annotated value type {exp_s}", expr)
         else:
             value_type = value_types[0]
             for i, vt in enumerate(value_types[1:], 2):
@@ -3018,9 +3022,10 @@ class ExpressionAnalyzer:
                         et, expected_elem, f"set literal element {i}", expr.loc,
                         source_expr=expr.elements[i - 1])
                 except SemanticError:
+                    exp_s, act_s = disambiguated_pair(expected_elem, et)
                     raise self.ctx.error(
-                        f"Set literal element {i} has type {et}, "
-                        f"incompatible with annotated element type {expected_elem}", expr,
+                        f"Set literal element {i} has type {act_s}, "
+                        f"incompatible with annotated element type {exp_s}", expr,
                     )
         else:
             elem_type = elem_types[0]
@@ -3075,7 +3080,8 @@ class ExpressionAnalyzer:
                 first_type = elem_type
                 continue
             if first_type != elem_type:
-                raise self.ctx.error(f"List repetition element {i} has type {elem_type}, expected {first_type}", expr)
+                exp_s, act_s = disambiguated_pair(first_type, elem_type)
+                raise self.ctx.error(f"List repetition element {i} has type {act_s}, expected {exp_s}", expr)
 
         # Repetition copies the element into every slot (CPython aliases),
         # so a C++-copy-deleted element (@nocopy or __del__, directly or via
@@ -3199,9 +3205,10 @@ class ExpressionAnalyzer:
             if (isinstance(result_elem_type, NominalType) and result_elem_type.is_user_record
                     and isinstance(expected_elem, NominalType) and expected_elem.is_user_record
                     and not self.compat.is_covariant_generic_upcast(result_elem_type, expected_elem)):
+                exp_s, act_s = disambiguated_pair(expected_elem, result_elem_type)
                 raise self.ctx.error(
-                    f"{kind.capitalize()} comprehension element has type {result_elem_type}, "
-                    f"incompatible with annotated element type {expected_elem}", expr
+                    f"{kind.capitalize()} comprehension element has type {act_s}, "
+                    f"incompatible with annotated element type {exp_s}", expr
                 )
             expr.element_expr = self.compat.coerce_expr(
                 expr.element_expr, result_elem_type, expected_elem,

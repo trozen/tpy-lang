@@ -20,7 +20,8 @@ from ..typesys import (
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     CallableType, is_fn_type, RefType, unwrap_ref_type,
     is_callable_type, is_integer_type, is_any_float_type, is_readonly_span,
-    is_polymorphic_class_type, SendType, SyncType, unwrap_send_sync, FrameType)
+    is_polymorphic_class_type, SendType, SyncType, unwrap_send_sync, FrameType,
+    disambiguated_pair)
 from .frame_traits import frame_traits_of_function, frame_type_of_function
 from .send_chain import why_not_send, why_not_sync, why_not_frame, render_chain
 from ..parse import (
@@ -30,31 +31,6 @@ from ..parse import (
     TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyLambda, TpyNamedExpr, TpyFString,
     SourceLocation
 )
-
-
-def _qualified_nominal_repr(t: TpyType) -> str | None:
-    if isinstance(t, NominalType):
-        qn = t.qualified_name()
-        if qn is None:
-            return None
-        if t.type_args:
-            args = ", ".join(str(a) for a in t.type_args)
-            return f"{qn}[{args}]"
-        return qn
-    return None
-
-
-def _disambiguated_pair(expected: TpyType, actual: TpyType) -> tuple[str, str]:
-    # Two distinct same-short-name cross-module records both render as the bare
-    # `Tag`, so qualify both (`red.Tag` / `blue.Tag`) when the renders collide --
-    # otherwise the (correct) rejection reads as the baffling `expected Tag, got Tag`.
-    e, a = str(expected), str(actual)
-    if e != a:
-        return e, a
-    eq, aq = _qualified_nominal_repr(expected), _qualified_nominal_repr(actual)
-    if eq is not None and aq is not None and eq != aq:
-        return eq, aq
-    return e, a
 
 
 def _peel_value_wrappers(expr: TpyExpr) -> TpyExpr:
@@ -746,7 +722,7 @@ class TypeCompatibility:
                     f"{expected} (it would be a hidden element-wise deep copy). "
                     f"Build it as the alias directly (`x: {expected} = {{...}}`) or "
                     f"pass a container literal.", loc)
-            e, a = _disambiguated_pair(expected, actual)
+            e, a = disambiguated_pair(expected, actual)
             return CompatError(f"Type mismatch in {context}: expected {e}, got {a}", loc)
 
         # T -> Optional[T]: implicit wrapping
@@ -812,7 +788,7 @@ class TypeCompatibility:
             # the diagnostic reads `expected str | None, got StrView | None`
             # rather than the truncated `expected str, got StrView | None`.
             if isinstance(result, CompatError) and isinstance(actual, OptionalType):
-                e, a = _disambiguated_pair(expected, actual)
+                e, a = disambiguated_pair(expected, actual)
                 return CompatError(
                     f"Type mismatch in {context}: expected {e}, got {a}", loc)
             return result
@@ -1219,7 +1195,7 @@ class TypeCompatibility:
                 )
                 if both_records:
                     # Explicit error: avoid leaking PendingList internal repr in the generic message.
-                    e, a = _disambiguated_pair(e_elem, actual_elem)
+                    e, a = disambiguated_pair(e_elem, actual_elem)
                     return CompatError(
                         f"Type mismatch in {context}: expected {e}, got {a}", loc)
                 else:
@@ -1234,7 +1210,7 @@ class TypeCompatibility:
                     if not isinstance(result, CompatError):
                         return None  # element coercion is a probe, not propagated
                     # Definite mismatch: report it cleanly (see both_records above).
-                    e, a = _disambiguated_pair(e_elem, actual_elem)
+                    e, a = disambiguated_pair(e_elem, actual_elem)
                     return CompatError(
                         f"Type mismatch in {context}: expected {e}, got {a}", loc)
             # Compatible with Array[T, N] if element types and sizes match
@@ -1318,10 +1294,10 @@ class TypeCompatibility:
             # Strip Own[V] from the message to avoid leaking implementation details.
             check_val = e_v.wrapped if isinstance(e_v, OwnType) else e_v
             if not key_ok:
-                ek, ak = _disambiguated_pair(e_k, a_k)
+                ek, ak = disambiguated_pair(e_k, a_k)
                 return CompatError(
                     f"Type mismatch in {context}: expected {ek}, got {ak}", loc)
-            ev, av = _disambiguated_pair(check_val, a_v)
+            ev, av = disambiguated_pair(check_val, a_v)
             return CompatError(
                 f"Type mismatch in {context}: expected {ev}, got {av}", loc)
 
@@ -1333,7 +1309,7 @@ class TypeCompatibility:
             if _container_elem_matches(a_elem, e_elem):
                 return None
             check_elem = e_elem.wrapped if isinstance(e_elem, OwnType) else e_elem
-            ce, ae = _disambiguated_pair(check_elem, a_elem)
+            ce, ae = disambiguated_pair(check_elem, a_elem)
             return CompatError(
                 f"Type mismatch in {context}: expected {ce}, got {ae}", loc)
 
@@ -1470,7 +1446,7 @@ class TypeCompatibility:
                 if deref_target is not None and unwrap_readonly(deref_target) == expected:
                     coercion = DEREF_COERCION
         if coercion is None:
-            e, a = _disambiguated_pair(expected, actual)
+            e, a = disambiguated_pair(expected, actual)
             return CompatError(f"Type mismatch in {context}: expected {e}, got {a}", loc)
 
         if isinstance(actual, PendingListType) and is_span(expected):

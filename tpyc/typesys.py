@@ -22,6 +22,39 @@ if TYPE_CHECKING:
     from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral, TypeRefNode
 
 
+# Toggled (default off) only by qualified_type_str, so diagnostics can render
+# module-qualified nominals without changing ordinary str(type).
+_qualify_nominals_in_str = False
+
+
+def qualified_type_str(t: 'TpyType') -> str:
+    """Render `t` like `str(t)` but with cross-module nominal leaves qualified
+    by their defining module (`red.Tag`, `list[red.Tag]`)."""
+    global _qualify_nominals_in_str
+    prev = _qualify_nominals_in_str
+    _qualify_nominals_in_str = True
+    try:
+        return str(t)
+    finally:
+        _qualify_nominals_in_str = prev
+
+
+def disambiguated_pair(expected: 'TpyType', actual: 'TpyType') -> tuple[str, str]:
+    """Render `(expected, actual)` for an `expected X, got Y` diagnostic.
+
+    When the two render to the same string but are distinct cross-module types
+    (`Tag` vs `Tag`, `list[Tag]` vs `list[Tag]`), qualify both so the (correct)
+    rejection is legible (`red.Tag` / `blue.Tag`); otherwise leave them plain.
+    """
+    e, a = str(expected), str(actual)
+    if e != a:
+        return e, a
+    eq, aq = qualified_type_str(expected), qualified_type_str(actual)
+    if eq != aq:
+        return eq, aq
+    return e, a
+
+
 class TypeParamKind(Enum):
     """Kind of type parameter in a generic type."""
     TYPE = "type"  # A type parameter like T
@@ -1007,13 +1040,18 @@ class NominalType(TpyType):
         return cpp_name
 
     def __str__(self) -> str:
+        name = self.name
+        # Builtins (`list`, `dict`, ...) never collide cross-module, so only
+        # qualify user records -- qualifying `list` to `builtins.list` is noise.
+        if _qualify_nominals_in_str and self.is_user_record:
+            name = self.qualified_name() or self.name
         if self.type_args:
             args = ", ".join(
                 str(t) if isinstance(t, TpyType) else str(t)
                 for t in self.type_args
             )
-            return f"{self.name}[{args}]"
-        return self.name
+            return f"{name}[{args}]"
+        return name
 
     def qualified_name(self) -> Optional[str]:
         if self._module_qname:
