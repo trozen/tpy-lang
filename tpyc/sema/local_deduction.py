@@ -616,9 +616,17 @@ class LocalTypeDeduction:
         must stay in sync. Consumers that read the namespace after resolution
         -- notably the resumable-frame local hoist (`generator_locals`) -- would
         otherwise see a stale `Pending*` type and crash in codegen.
+
+        `pending_loop_vars` is a second such table: the generator-local hoist
+        reads loop-var types from it directly, so a resolved view-family loop
+        var (`for d in list[str]` in a generator) must be synced here too, or
+        it reaches the hoist still `Pending*`.
         """
         if self.ctx.func.current_ns is not None:
             self.ctx.func.current_ns.update_variable_type_recursive(name, resolved)
+        entry = self.ctx.func.pending_loop_vars.get(name)
+        if entry is not None:
+            self.ctx.func.pending_loop_vars[name] = (resolved, entry[1], entry[2])
 
     def _apply_container_resolution(
         self,
