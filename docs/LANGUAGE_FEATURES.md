@@ -265,9 +265,8 @@ A **value-tuple with reference (pointer-repr) members** stored from a
 *whole-tuple lvalue source* (`d[k] = items[0]`, `{k: items[0]}`,
 `xs.append(items[0])`, `xs: list[...] = [items[0]]`) warns per such
 member (errors for `@nocopy`), matching the subscript/field-assignment
-path. Two related shapes are NOT yet diagnosed and remain tracked in
-`BUGS.md`: a fresh tuple *literal* with an lvalue member (`[(1, c)]`),
-and comprehension elements (`[t for t in src]`).
+path. One related shape is NOT yet diagnosed and remains tracked in
+`BUGS.md`: a fresh tuple *literal* with an lvalue member (`[(1, c)]`).
 
 It matters when:
 - You see a copy warning mentioning "borrowed Optional/Union" -- that
@@ -1274,7 +1273,16 @@ dst.update(src)           # WARNING: copies Point elements
 dst |= src                # WARNING: copies Point elements
 dst.update(copy(src))     # OK: explicit copy
 dst.update(make_dict())   # OK: rvalue, no existing owner
+comp: list[Point] = [p for p in items]              # WARNING: copies Point into owned storage
+comp = [copy(p) for p in items]                     # OK: explicit copy
+comp = [Point() for _ in range(3)]                  # OK: rvalue element, no existing owner
+dc: dict[str, Point] = {k: v for k, v in src.items()}  # WARNING: copies Point (value) into owned storage
 ```
+
+The same per-element check covers list/set/dict comprehensions: a reference-type
+(or value-tuple-with-reference-member) lvalue element stored into the owned
+result container copies it where CPython would alias, so it warns identically to
+the literal/`append` sinks; a `@nocopy` element is a clean compile error.
 
 The check is recursive -- reference types nested inside tuples or other containers are detected:
 

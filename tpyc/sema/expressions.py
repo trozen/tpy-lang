@@ -3196,6 +3196,13 @@ class ExpressionAnalyzer:
         if isinstance(result_elem_type, FloatLiteralType):
             result_elem_type = expected_elem if is_float_type(expected_elem) else FLOAT
 
+        # Placed after the comp scope exits so the loop var is no longer in
+        # `loop_vars`: the warning fires immediately rather than being deferred
+        # for a consuming-iteration decision -- comprehensions always copy
+        # (never consuming-move), so deferral would never be resolved.
+        if expr.element_expr.loc is not None and not isinstance(expected_elem, AnyType):
+            self._warn_storage_element_copy(expr.element_expr, result_elem_type)
+
         if expected_elem is not None and result_elem_type != expected_elem:
             # Subclass coercion excluded: storing Child in list/set[Base] silently
             # slices objects (same invariance as container literals). Covariant-
@@ -3331,6 +3338,13 @@ class ExpressionAnalyzer:
             key_type = expected_key if is_float_type(expected_key) else FLOAT
         if isinstance(value_type, FloatLiteralType):
             value_type = expected_value if is_float_type(expected_value) else FLOAT
+
+        # See the list/set comprehension path for the loop-var-scope timing
+        # rationale (placed after scope exit so the warning is not deferred).
+        if expr.key_expr.loc is not None and not isinstance(expected_key, AnyType):
+            self._warn_storage_element_copy(expr.key_expr, key_type)
+        if expr.value_expr.loc is not None and not isinstance(expected_value, AnyType):
+            self._warn_storage_element_copy(expr.value_expr, value_type)
 
         if expected_key is not None and key_type != expected_key:
             expr.key_expr = self.compat.coerce_expr(

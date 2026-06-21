@@ -1,0 +1,3 @@
+main.py:17: warning: copies Cell into owned storage; use copy() to make this explicit
+main.py:22: warning: copies Cell into owned storage (tuple element 1); use copy() to make this explicit
+main.py:27: warning: copies Cell into owned storage; use copy() to make this explicit
