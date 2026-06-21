@@ -404,11 +404,11 @@ cosmetic. Left as one cohesive module.
   independent of the implementation path.
 - **Byte-identical generated C++** at any boundary: every case under
   `tests/cases/**/expected/` has pinned `include/*.hpp` and
-  `src/*.cpp`. The fingerprint cache in `test_case` catches drift
-  automatically -- any case whose exec phase doesn't skip during a
-  refactor is worth investigating. `pytest --force-exec` catches
-  cases where generated code changed but fingerprints happened to
-  collide.
+  `src/*.cpp`, compared in the comp phase. The exec phase (build +
+  run) skips via a local content-addressed cache keyed on the actual
+  generated C++ plus toolchain, so changed codegen always re-execs --
+  there is no fingerprint-collision blind spot. `pytest --force-exec`
+  re-runs exec for every case regardless of that cache.
 - **Root `conftest.py` autouse fixture** clears process-global
   compilation state (`_native_cpp_names`, `_union_alias_names`,
   `_protocol_modules`, `_return_exception_names` in `typesys.py`;

@@ -28,6 +28,16 @@ UPDATE_EXPECTED = os.environ.get("UPDATE_EXPECTED", "").lower() in ("1", "true")
 # them is ~2.3MB x ~3000 cases of dead executables per worktree.
 KEEP_TEST_BINARIES = os.environ.get("TPY_KEEP_TEST_BINARIES", "").lower() in ("1", "true")
 
+# Prefix for harness-emitted terminal lines so they stand out from pytest's
+# own output (which owns the unprefixed terminal). Greppable, ASCII.
+_LOG_PREFIX = "tpy|"
+
+
+def _log(msg: str, *, err: bool = False) -> None:
+    """Print a harness status/diagnostic line with the shared prefix."""
+    print(f"{_LOG_PREFIX} {msg}", file=sys.stderr if err else sys.stdout)
+
+
 # Import the compiler
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from tpyc.cli import get_module_name
@@ -37,7 +47,7 @@ from tpyc.parse import Parser, ParseError
 from tpyc.sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
 from tpyc.compiler import (
     Compiler, CompileError, BuildLayout, CppCompilerConfig, strict_warn_flags,
-    get_or_build_pch,
+    get_or_build_pch, list_compilers, CompilerNotFoundError,
 )
 from tpyc.build.third_party import resolve_build_plan
 
@@ -52,6 +62,12 @@ TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True, comment_line_nu
 # _CLANG_ONLY_WARN_FLAGS in tpyc/compiler.py for the per-flag rationale.
 CPP_CONFIG = CppCompilerConfig.from_env()
 CPP_CONFIG.warn_flags = strict_warn_flags(CPP_CONFIG.compiler)
+# xdist workers return early from pytest_configure, so --no-ccache can't be
+# applied there. The controller exports this flag and every conftest import
+# (workers included) honors it -- otherwise workers, which do the per-case
+# compiles, would keep using ccache despite the flag.
+if os.environ.get("TPY_TEST_NO_CCACHE") == "1":
+    CPP_CONFIG.ccache = False
 
 # Paths
 TESTS_DIR = Path(__file__).parent
@@ -223,7 +239,7 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
             # list() forces evaluation and propagates the first exception
             results = list(ex.map(_compile_one, stdlib_cpps))
     except RuntimeError as exc:
-        print(f"WARNING: {exc}", file=sys.stderr)
+        _log(f"WARNING: {exc}", err=True)
         return _StdlibCache(objects=[], cpp_relpaths=set())
 
     relpaths = {rel for rel, _ in results}
@@ -291,7 +307,7 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
             with concurrent.futures.ThreadPoolExecutor(max_workers=rt_max) as ex:
                 rt_objs = list(ex.map(_compile_runtime_one, runtime_cpp_sources))
         except RuntimeError as exc:
-            print(f"WARNING: {exc}", file=sys.stderr)
+            _log(f"WARNING: {exc}", err=True)
             return _StdlibCache(objects=[], cpp_relpaths=set())
         objects.extend(rt_objs)
 
@@ -450,7 +466,7 @@ def _get_or_build_persistent_stdlib_cache(root: Path) -> _StdlibCache | None:
         t0 = time.monotonic()
         cache = _build_persistent_stdlib_cache(cache_dir)
         if cache is not None:
-            print(
+            _log(
                 f"stdlib cache: built {len(cache.objects)} .o "
                 f"({time.monotonic() - t0:.1f}s)"
             )
@@ -543,17 +559,14 @@ def get_pch_header() -> Path | None:
                     CPP_CONFIG, RUNTIME_DIR, opt_flags=[], pch_dir=pch_dir,
                 )
                 if _pch_path is not None:
-                    print(f"PCH: built tpy_pch.hpp.gch ({time.monotonic() - t0:.1f}s)")
+                    _log(f"PCH: built tpy_pch.hpp.gch ({time.monotonic() - t0:.1f}s)")
             if _pch_path is not None:
                 _set_pch_ccache_sloppiness()
     except Exception as exc:
         # Catch broadly (matches get_stdlib_cache): a PCH failure must not
         # abort the worker -- per-case compiles will fall back to parsing
         # the runtime headers from scratch.
-        print(
-            f"WARNING: PCH cache unavailable ({exc}); compiling without PCH",
-            file=sys.stderr,
-        )
+        _log(f"WARNING: PCH cache unavailable ({exc}); compiling without PCH", err=True)
         _pch_path = None
     return _pch_path
 
@@ -579,10 +592,10 @@ def get_stdlib_cache() -> _StdlibCache | None:
         if _stdlib_cache is not None:
             return _stdlib_cache
     except OSError as exc:
-        print(
+        _log(
             f"WARNING: persistent stdlib cache unavailable ({exc}); "
             f"falling back to ephemeral",
-            file=sys.stderr,
+            err=True,
         )
 
     # Fallback: ephemeral per-process build
@@ -591,7 +604,7 @@ def get_stdlib_cache() -> _StdlibCache | None:
     try:
         _stdlib_cache = _setup_stdlib_cache(cache_dir)
     except Exception as exc:
-        print(f"WARNING: stdlib pre-compilation failed: {exc}", file=sys.stderr)
+        _log(f"WARNING: stdlib pre-compilation failed: {exc}", err=True)
         _stdlib_cache = None
     return _stdlib_cache
 
@@ -951,6 +964,16 @@ def pytest_addoption(parser):
         default=False,
         help="Do not invoke ccache for this run. Does not wipe the ccache store.",
     )
+    parser.addoption(
+        "--cxx",
+        default="auto",
+        help=(
+            "C++ toolchain for the exec phase (mirrors `tpyc --cxx`): auto, "
+            "list, gcc, gcc-14, clang, clang-18, zig, ... (default: auto). "
+            "Switching toolchain re-keys the stdlib/PCH/exec caches, so the "
+            "next run re-verifies under the new compiler."
+        ),
+    )
 
 
 def _cgroup_cpu_quota() -> int | None:
@@ -984,16 +1007,58 @@ def pytest_configure(config):
     if not is_master:
         return
 
+    # Resolve the C++ toolchain first: --cxx rebuilds CPP_CONFIG (which the
+    # ccache status, cache keys, and prewarm below all read) and is propagated
+    # to xdist workers via $CXX -- their conftest import re-derives from it.
+    cxx_opt = config.getoption("--cxx")
+    if cxx_opt == "list":
+        list_compilers()
+        pytest.exit("--cxx list", returncode=0)
+    if cxx_opt != "auto":
+        try:
+            chosen = CppCompilerConfig.from_env(cxx=cxx_opt)
+        except CompilerNotFoundError as exc:
+            pytest.exit(str(exc), returncode=1)
+        chosen.warn_flags = strict_warn_flags(chosen.compiler)
+        # Mutate in place so every module-level CPP_CONFIG reference sees it.
+        CPP_CONFIG.compiler = chosen.compiler
+        CPP_CONFIG.std = chosen.std
+        CPP_CONFIG.extra_flags = chosen.extra_flags
+        CPP_CONFIG.ccache = chosen.ccache
+        CPP_CONFIG.warn_flags = chosen.warn_flags
+        os.environ["CXX"] = " ".join(chosen.compiler)
+        # The cache-key memoizers read CPP_CONFIG; drop any value computed
+        # against the pre-mutation toolchain so the new --cxx re-keys cleanly.
+        _stdlib_cache_key.cache_clear()
+        _pch_cache_key.cache_clear()
+
+    # One line per knob: current state first, then the flag that changes it.
+    # Grouped by theme -- toolchain, ccache, and exec/snapshot verification.
+    _log(f"toolchain: {CPP_CONFIG.compiler_name}  "
+         f"(--cxx=<gcc|clang|gcc-14|clang-18|zig|...>; --cxx=list to enumerate)")
+
     if config.getoption("--no-ccache"):
         # Every compile path is gated on CPP_CONFIG.ccache, so flipping it
         # to False is sufficient -- we stop prepending `ccache` entirely
         # rather than spawning it with CCACHE_DISABLE=1 as a pass-through.
         CPP_CONFIG.ccache = False
-        print("C++ compilation: ccache disabled via --no-ccache")
+        os.environ["TPY_TEST_NO_CCACHE"] = "1"  # propagate to xdist workers
+        _log("C++ compilation: ccache disabled via --no-ccache")
     elif CPP_CONFIG.ccache:
-        print("C++ compilation: using ccache")
+        _log("C++ compilation: using ccache  (--no-ccache to disable)")
     else:
-        print("C++ compilation: ccache not found (install for faster re-runs)")
+        _log("C++ compilation: ccache not found (install for faster re-runs)")
+
+    if config.getoption("--update-snapshots"):
+        exec_state = "regenerating snapshots"
+    elif config.getoption("--clean"):
+        exec_state = "caches wiped, re-verifying every case"
+    elif config.getoption("--force-exec"):
+        exec_state = "re-verifying every case (forced)"
+    else:
+        exec_state = "verify-once-then-cache per case"
+    _log(f"exec: {exec_state}  (--force-exec re-run all; "
+         f"--clean wipe caches; --update-snapshots regenerate expected)")
 
     if config.getoption("--update-snapshots"):
         global UPDATE_EXPECTED
@@ -1005,15 +1070,15 @@ def pytest_configure(config):
     if config.getoption("--clean"):
         root = _shared_cache_root()
         wiped = []
-        for sub in ("pch", "stdlib-objs"):
+        for sub in ("pch", "stdlib-objs", "exec-results"):
             target = root / sub
             if target.exists():
                 shutil.rmtree(target, ignore_errors=True)
                 wiped.append(sub)
         if wiped:
-            print(f"--clean: wiped {root}/{{{','.join(wiped)}}}")
+            _log(f"--clean: wiped {root}/{{{','.join(wiped)}}}")
         else:
-            print(f"--clean: no cache dirs to wipe under {root}")
+            _log(f"--clean: no cache dirs to wipe under {root}")
 
     if UPDATE_EXPECTED:
         # Refresh the single source-of-truth session fingerprint file once on
@@ -1021,20 +1086,19 @@ def pytest_configure(config):
         write_session_fingerprints(compute_session_fingerprints())
         return
 
-    # Normal mode: warn when the recorded session fingerprints are stale so
-    # users notice and refresh -- otherwise the affected runtime phases keep
-    # re-running on every invocation. Skipped silently when no session file
-    # exists (first-ever bootstrap).
+    # Normal mode: warn when the recorded cpy-stub fingerprint is stale so the
+    # user refreshes -- the CPython phase is still gated on committed
+    # fingerprints, so a stale stub hash makes it re-run for every applicable
+    # case. The exec phase is gated on the local exec cache now, so runtime /
+    # libtpy drift no longer forces re-runs here. Skipped silently when no
+    # session file exists (first-ever bootstrap).
     recorded = read_session_fingerprints()
-    if recorded:
-        current = compute_session_fingerprints()
-        stale = [k for k in ("runtime", "libtpy", "cpy_stubs") if current[k] != recorded.get(k)]
-        if stale:
-            print(
-                f"WARNING: session fingerprint stale ({', '.join(stale)}); "
-                f"runtime phase{'s' if len(stale) > 1 else ''} will re-run for "
-                f"every applicable case. Refresh via update_snapshots.py."
-            )
+    if recorded and compute_session_fingerprints()["cpy_stubs"] != recorded.get("cpy_stubs"):
+        _log(
+            "WARNING: cpy-stub fingerprint stale; the CPython phase will re-run "
+            "for every applicable case. Refresh via update_snapshots.py.",
+            err=True,
+        )
 
     # Pre-warm persistent caches on master before workers spawn so each
     # worker hits the on-disk fast path immediately rather than serializing
@@ -1059,7 +1123,7 @@ def pytest_xdist_auto_num_workers(config):
         return None
     visible = os.cpu_count() or 1
     if quota_cpus < visible:
-        print(
+        _log(
             f"xdist: capping workers to {quota_cpus} "
             f"(cgroup v2 CPU quota; {visible} cores visible)"
         )
@@ -1247,6 +1311,87 @@ def write_fingerprints(case_dir: Path, fingerprints: dict[str, str]) -> None:
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(fingerprints, indent=2, sort_keys=True) + "\n")
+
+
+# ---------------------------------------------------------------------------
+# Local exec-pass cache (gitignored, content-addressed)
+# ---------------------------------------------------------------------------
+# Exec skip is local, not committed: a committed fingerprint records what
+# produced a snapshot, not whether the C++ build+run passes on THIS toolchain.
+# A marker named by the full input set (toolchain + runtime + stdlib +
+# generated code + companions + link flags + stdin fixture) means "this exact
+# build ran green here". Pure content-addressing makes it safe to share across
+# worktrees -- identical cases dedup, divergent ones can't collide.
+
+def _exec_results_dir() -> Path:
+    return _shared_cache_root() / "exec-results"
+
+
+def compute_exec_fingerprint(
+    case_dir: Path,
+    all_modules: list[tuple[str, Path | None, Path | None, bool]],
+    link_flags: list[str],
+    third_party_link_flags: list[str],
+) -> str:
+    """Hash everything that determines a case's binary and its stdout.
+
+    `_stdlib_cache_key()` already folds in the toolchain (compiler/std/flags),
+    runtime headers, lib/tpy stdlib, and compiler source -- i.e. the shared
+    environment every test binary links against. To that we add the case's own
+    freshly-generated C++ (the actual build inputs), any hand-written C++
+    companions, link flags, and a `src/input.txt` stdin fixture (it feeds the
+    program, so it affects output).
+    """
+    h = hashlib.sha256()
+    h.update(_stdlib_cache_key().encode())
+    h.update(b"\0")
+    gen_files: list[Path] = []
+    for _name, hpp, cpp, is_local in all_modules:
+        if not is_local:
+            continue
+        for p in (hpp, cpp):
+            if p is not None and p.exists():
+                gen_files.append(p)
+    gen_files.sort()
+    h.update(_hash_files(gen_files).encode())
+    h.update(b"\0")
+    h.update((compute_extra_src_fingerprint(case_dir) or "").encode())
+    h.update(b"\0")
+    h.update(repr((list(link_flags), list(third_party_link_flags))).encode())
+    h.update(b"\0")
+    input_txt = case_dir / "src" / "input.txt"
+    if input_txt.exists():
+        h.update(input_txt.read_bytes())
+    return h.hexdigest()
+
+
+def exec_pass_is_cached(fingerprint: str) -> bool:
+    """True when a green-exec marker for this fingerprint exists locally."""
+    try:
+        return (_exec_results_dir() / fingerprint).exists()
+    except OSError:
+        return False
+
+
+def record_exec_pass(fingerprint: str, case_id: str) -> None:
+    """Record that the build+run for this fingerprint passed on this machine.
+
+    Best-effort: a cache that can't be written just means exec re-runs next
+    time, never a failure. The marker stores the case id for debuggability;
+    written via a pid-tagged temp + atomic rename so concurrent xdist workers
+    don't clobber each other.
+    """
+    try:
+        d = _exec_results_dir()
+        d.mkdir(parents=True, exist_ok=True)
+        marker = d / fingerprint
+        if marker.exists():
+            return
+        tmp = d / f"{fingerprint}.{os.getpid()}.tmp"
+        tmp.write_text(case_id + "\n")
+        tmp.replace(marker)
+    except OSError:
+        pass
 
 
 def case_binary_path(build_dir: Path, module_name: str) -> Path:

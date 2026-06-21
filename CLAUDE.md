@@ -62,23 +62,24 @@ uv sync                                 # Install for development
 
 Each folder under `tests/cases/` becomes one parametrized item of `test_case` with three phases: **comp** (compile + diagnostics + snapshot check + annotation validation), **exec** (build + run C++), and **cpy** (run with CPython, compare to `output.txt`).
 
-The exec and cpy phases auto-skip when the compiler produces byte-identical generated code AND the recorded fingerprints match the current sources. Fingerprints split into:
+**Exec skip is local, not committed.** The exec phase (C++ build + run) skips only when *this exact build already ran green on this machine's toolchain*, tracked by a gitignored, content-addressed marker cache under the shared cache root (`~/.cache/tpyc/exec-results/`, next to `stdlib-objs/` and `pch/`). The marker name is a hash of everything that determines the binary and its output: toolchain (compiler/std/flags), runtime headers, `lib/tpy/` stdlib, compiler source, the case's freshly-generated C++, hand-written C++ companions, link flags, and any `src/input.txt` stdin fixture. So a fresh checkout re-verifies the build+run once, then caches -- `--force-exec` is no longer needed to exercise exec. Switching toolchain (`--cxx`) or touching the runtime re-keys the markers, forcing re-verification. The cache is intentionally shared across worktrees: identical cases dedup, divergent ones never collide.
 
-- **Session-level** (`tests/.session_fingerprints.json`, single file) -- any change invalidates per-case skips of the affected phase:
-  - `runtime` -- hash of `runtime/cpp/include/**`, affects every binary.
-  - `libtpy` -- hash of `lib/tpy/**`. The stdlib is compiled into every binary, but the user's `main.cpp` snapshot won't reflect stdlib-only codegen changes, so exec must re-run when it changes.
-  - `cpy_stubs` -- hash of `lib/cpy/tpy/**`, affects every CPython run.
-- **Per-case** (`tests/cases/<case>/expected/.fingerprints`, optional keys): hash of the case's `main.py` (`main`) and hash of any hand-written C++ companion files in `src/` (`extra_src`). Cases with neither companions nor a CPython phase end up with no file.
+The cpy phase (CPython run) still auto-skips via **committed** fingerprints -- CPython output is toolchain-independent, so a committed key is portable:
+
+- **Session-level** (`tests/.session_fingerprints.json`, single file): `cpy_stubs` -- hash of `lib/cpy/tpy/**`, affects every CPython run. (The legacy `runtime` / `libtpy` keys still recorded here no longer gate any phase -- exec uses the local cache now.)
+- **Per-case** (`tests/cases/<case>/expected/.fingerprints`, optional): hash of the case's `main.py` (`main`). Cases without a CPython phase end up with no file.
 
 Parallel execution (`-n auto`) is configured in `pyproject.toml` via `addopts`. Worker count auto-caps to the cgroup v2 CPU quota. The exec phase also reuses a persistent content-addressed cache of compiled stdlib object files (see `tpyc/` code for the cache-key derivation).
 
 ### Test commands
 
 ```bash
-uv run pytest                              # All tests (exec/cpy auto-skip when unchanged)
-uv run pytest --force-exec                 # Force exec + cpy unconditionally
-uv run pytest --clean                      # Wipe shared PCH + stdlib .o caches (implies --force-exec)
+uv run pytest                              # All tests (exec skips per the local cache; cpy skips per committed fps)
+uv run pytest --force-exec                 # Force exec + cpy unconditionally (ignore the local exec cache)
+uv run pytest --clean                      # Wipe shared PCH + stdlib .o + exec-results caches (implies --force-exec)
 uv run pytest --no-ccache                  # Bypass ccache for this run (does not wipe it)
+uv run pytest --cxx clang                  # Build the exec phase with a specific toolchain (mirrors `tpyc --cxx`)
+uv run pytest --cxx list                   # List available C++ toolchains and exit
 uv run pytest --update-snapshots           # Regenerate expected files (implies --force-exec)
 uv run pytest --update-snapshots -k hello  # Regenerate for a specific case
 uv run pytest tpyc/                        # Unit tests only (no C++ toolchain)
@@ -89,15 +90,17 @@ uv run python tests/update_snapshots.py          # Thin wrapper around --update-
 uv run python tests/update_snapshots.py -k hello # Same, for a specific case
 ```
 
-`--update-snapshots` (or the equivalent `UPDATE_EXPECTED=1` env var) implies `--force-exec` so output.txt, panic.txt, generated code, and `.fingerprints` are all regenerated in one pass.
+`--update-snapshots` (or the equivalent `UPDATE_EXPECTED=1` env var) implies `--force-exec` so output.txt, panic.txt, generated code, and `.fingerprints` are all regenerated in one pass (and the local exec cache is repopulated as cases pass).
 
-Linked per-case test binaries are deleted after a passing exec phase (they are never reused -- exec either skips via fingerprints or rebuilds; this keeps `tests/cases/` from accumulating gigabytes of dead executables). A failing exec keeps its binary for debugging; set `TPY_KEEP_TEST_BINARIES=1` to keep all of them.
+Linked per-case test binaries are deleted after a passing exec phase (they are never reused -- exec either skips via the local cache or rebuilds; this keeps `tests/cases/` from accumulating gigabytes of dead executables). A failing exec keeps its binary for debugging; set `TPY_KEEP_TEST_BINARIES=1` to keep all of them.
+
+Harness-emitted status lines (cache builds, toolchain/ccache status, the active-options summary, warnings) are prefixed with `tpy|` so they stand out from pytest's own output.
 
 ### Agent testing workflow
 
 **CPU awareness**: never start a new test run while a previous one is still running. Either wait, or kill it (`pkill -f pytest`). Concurrent test suites saturate all cores and slow everything down for all agents and the user.
 
-**During development**, run targeted subsets with `-k pattern` (the new tests you're adding, or categories likely affected by your changes). **Final verification**: run `uv run pytest` once, after all changes are done, before reporting complete. Use `--force-exec` if you want to re-verify runtime output for every case.
+**During development**, run targeted subsets with `-k pattern` (the new tests you're adding, or categories likely affected by your changes). **Final verification**: run `uv run pytest` once, after all changes are done, before reporting complete. Use `--force-exec` to re-run exec for every case regardless of the local exec cache.
 
 ### Snapshot policy
 
@@ -124,7 +127,7 @@ tests/cases/<group>/<case>/
     ├── include/main.hpp   # Generated header (if compiles)
     ├── src/main.cpp       # Generated source (if compiles)
     ├── output.txt         # Runtime output (or panic.txt)
-    └── .fingerprints      # (optional) per-case input hashes for auto-skip
+    └── .fingerprints      # (optional) per-case `main.py` hash gating the cpy-phase skip
 ```
 
 `options.json` is layered: the conftest walks up from the case directory toward `tests/cases/`, merging every options.json it finds (deeper file overrides; `dsl_opts` merges per-key). One file at the group level (e.g. `tests/cases/pascal/options.json`) covers every case underneath; per-case files only need the keys that differ. Supported keys:
@@ -157,7 +160,7 @@ tests/cases/<group>/<case>/
 - **Absolute temp paths.** `/tmp` is a symlink on macOS (`getcwd`/`realpath`/`abspath` return `/private/tmp`), so never bake an absolute path into `output.txt`. Compute the canonical root at runtime (`tmp = os.path.realpath("/tmp")`), route fixtures and predicates through it, and print *comparisons* (`os.getcwd() == tmp`, `abspath("sub/x") == tmp + "/sub/x"`) or relative names -- not the absolute path. This also fixes `islink`/`lexists` on the temp root (`/tmp` is a symlink on macOS, a real dir on Linux).
 - **OS-divergent errno.** The same operation maps to different errno -> different `OSError` subclass per OS (e.g. `unlink` on a directory is `EISDIR`/`IsADirectoryError` on Linux but `EPERM`/`PermissionError` on macOS). Catch each per-host class in a separate `except` clause (TPy rejects the `except (A, B)` tuple form) and print one stable token; the cpy phase still pins TPy == CPython per host. Note the per-OS classes in a comment.
 
-These divergences are invisible in a normal `uv run pytest` because exec/cpy auto-skip; only `--force-exec` on the target OS surfaces them.
+These divergences stay hidden once the exec/cpy phases have been cached on a host; `--force-exec` on the target OS re-runs them to surface a regression.
 
 ## Code Style
 

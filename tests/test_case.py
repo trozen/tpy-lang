@@ -1,14 +1,21 @@
 """Unified test case runner: compile + optional exec + optional CPython verification.
 
 Each folder under tests/cases/ becomes one test item. The test always runs the
-COMP phase (compile, snapshot check, annotation validation). The EXEC and CPY
-phases auto-skip when generated code matches expected AND the recorded input
-fingerprint is unchanged -- in that state the binary and CPython would
-reproduce the same stdout, so re-running adds no signal.
+COMP phase (compile, snapshot check, annotation validation).
+
+The EXEC phase skips when this exact build already ran green on this machine's
+toolchain, tracked by a local content-addressed cache (see conftest's
+exec-results helpers). This is local, not committed: a fresh checkout
+re-verifies the C++ build+run once, then caches, so `--force-exec` is no longer
+needed to exercise exec. The CPY phase skips via committed fingerprints
+(CPython output is toolchain-independent, so a committed key is portable).
 
 Flags:
+    --cxx VALUE          C++ toolchain for exec (mirrors `tpyc --cxx`; `list`
+                         to enumerate). Re-keys the stdlib/PCH/exec caches.
     --force-exec         Run exec/cpy phases unconditionally (bypass auto-skip).
-    --clean              Wipe shared PCH + stdlib .o caches; implies --force-exec.
+    --clean              Wipe shared PCH + stdlib .o + exec-results caches;
+                         implies --force-exec.
     --update-snapshots   Regenerate expected files + fingerprints; implies
                          --force-exec. Equivalent to UPDATE_EXPECTED=1.
     UPDATE_EXPECTED=1    Env-var form of --update-snapshots (for CI / wrappers).
@@ -50,10 +57,12 @@ from conftest import (
     run_cpython,
     compute_session_fingerprints,
     read_session_fingerprints,
-    compute_extra_src_fingerprint,
     compute_main_fingerprint,
     read_fingerprints,
     write_fingerprints,
+    compute_exec_fingerprint,
+    exec_pass_is_cached,
+    record_exec_pass,
 )
 
 
@@ -221,29 +230,30 @@ def test_case(case_dir, main_src, request):
     if entry_cpp is None:
         return
 
-    session_now = compute_session_fingerprints()
-    session_recorded = read_session_fingerprints()
-    runtime_unchanged = session_now["runtime"] == session_recorded.get("runtime")
-    libtpy_unchanged = session_now["libtpy"] == session_recorded.get("libtpy")
-    cpy_stubs_unchanged = session_now["cpy_stubs"] == session_recorded.get("cpy_stubs")
-
+    # cpy phase still skips via committed fingerprints (CPython output is
+    # toolchain-independent, so a committed key is portable); exec does not.
+    cpy_stubs_unchanged = (
+        compute_session_fingerprints()["cpy_stubs"]
+        == read_session_fingerprints().get("cpy_stubs")
+    )
     case_fps = read_fingerprints(case_dir)
-    current_extra_src_fp = compute_extra_src_fingerprint(case_dir)  # None when no companions
-    extra_src_unchanged = case_fps.get("extra_src") == current_extra_src_fp  # both-None matches
 
     expected_runtime_file = expected_dir / ("panic.txt" if is_panic else "output.txt")
 
+    # Exec is gated on a local, content-addressed pass marker (see conftest):
+    # skip only when this exact build already ran green on this machine's
+    # toolchain -- a committed fingerprint can't attest the build worked here.
+    exec_fp = compute_exec_fingerprint(
+        case_dir, result.all_modules,
+        result.link_flags, result.third_party_link_flags,
+    )
     can_skip_exec = (
         not force_exec
         and expected_runtime_file.exists()
-        and runtime_unchanged
-        and libtpy_unchanged
-        and extra_src_unchanged
+        and exec_pass_is_cached(exec_fp)
     )
 
-    ran_exec = False
     if not can_skip_exec:
-        ran_exec = True
         all_cpp_files = [cpp for _, _, cpp, _ in result.all_modules if cpp is not None]
         extra_src = find_extra_src_files(case_dir)
         extra_includes = find_extra_include_dirs(case_dir)
@@ -292,6 +302,10 @@ def test_case(case_dir, main_src, request):
             # pre-panic output is still caught.
             if run_result.stdout or (expected_dir / "output.txt").exists():
                 check_or_update(run_result.stdout, expected_dir / "output.txt", "Output")
+        # All comparisons above raise on mismatch, so reaching here means the
+        # build+run reproduced the expected output: cache the pass so unchanged
+        # cases skip exec on the next run without --force-exec.
+        record_exec_pass(exec_fp, request.node.name)
     elif not is_warn and not (expected_dir / "output.txt").exists() and not is_panic:
         # Compiled cleanly but no expected output recorded; warn so user can
         # run update_snapshots.py -k <case>
@@ -311,21 +325,6 @@ def test_case(case_dir, main_src, request):
             case_binary_path(build_dir, module_name).unlink(missing_ok=True)
         except OSError:
             pass
-
-    # Warn when exec re-ran due to per-case extra_src fingerprint mismatch
-    # (test passed, but next run will re-execute until fingerprint is refreshed).
-    if (
-        ran_exec
-        and not UPDATE_EXPECTED
-        and not force_exec
-        and not extra_src_unchanged
-    ):
-        warnings.warn(
-            f"Test '{case_dir.name}': extra_src fingerprint stale -- "
-            f"exec re-ran and passed, but next invocation will re-execute. "
-            f"Refresh via update_snapshots.py -k {case_dir.name}",
-            stacklevel=1,
-        )
 
     # ----- CPY PHASE ----------------------------------------------------------
 
@@ -374,15 +373,15 @@ def test_case(case_dir, main_src, request):
                 stacklevel=1,
             )
 
-    # ----- Record per-case fingerprints in update mode -----------------------
-    # Session-level fingerprints (runtime, cpy_stubs) are written once on the
-    # master process by pytest_configure -- nothing to do per case for those.
+    # ----- Record per-case fingerprint in update mode ------------------------
+    # The only committed per-case fingerprint left is `main`, which gates the
+    # (toolchain-independent) cpy phase. Exec inputs are tracked by the local
+    # exec cache instead, so they're no longer recorded here. Session-level
+    # fingerprints are written once on master by pytest_configure.
     if UPDATE_EXPECTED:
         new_fps: dict[str, str] = {}
-        if ran_exec and current_extra_src_fp is not None:
-            new_fps["extra_src"] = current_extra_src_fp
         if ran_cpy and current_main_fp is not None:
             new_fps["main"] = current_main_fp
         # write_fingerprints removes the file when new_fps is empty, so cases
-        # with no per-case state (no extra_src, no cpy) end up with no file
+        # with no cpy phase end up with no per-case fingerprint file.
         write_fingerprints(case_dir, new_fps)
