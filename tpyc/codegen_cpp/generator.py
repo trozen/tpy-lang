@@ -711,7 +711,9 @@ class CodeGenerator:
             if f.is_generator and not f.skip_codegen:
                 gens[(f.name, None)] = f
         # Re-derive from scratch so a re-emit of the same AST (e.g. a future
-        # caching layer) can't inherit stale marks.
+        # caching layer) can't inherit stale marks. Only force_resumable is
+        # codegen-derived (the self-delegation cycle pass below); requires_
+        # resumable_frame is a sema fact and must survive -- do not reset it.
         for f in gens.values():
             f.force_resumable = False
         self.gen_generators.same_module_generators = gens

@@ -172,6 +172,11 @@ class GeneratorCodegen:
         """
         if func.force_resumable:
             return False
+        # A yield handing out a borrow of a frame-resident local needs the local
+        # in a `tpy::frame_slot` (resumable path only); the peephole would keep
+        # it on the lambda stack and dangle (set by sema's yield-root drain).
+        if func.requires_resumable_frame:
+            return False
         yields = _collect_yield_stmts(func.body)
         if len(yields) != 1:
             return False

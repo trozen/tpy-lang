@@ -1378,11 +1378,41 @@ class SemanticAnalyzer:
         that `func.generator_locals` is populated so a yielded frame-resident
         local is recognized as a valid borrow root (see
         `FunctionTrackingState.pending_yield_root_checks`).
+
+        A yield rooted only by the frame-local exemption needs `frame_slot`
+        storage, so it disqualifies the simple-generator lambda peephole (whose
+        body locals would dangle); flag the function for the resumable path.
         """
+        func = self.ctx.func.current_function
+        # The simple-generator peephole captures everything declared BEFORE its
+        # tail loop into the lambda (persistent for the generator's life) and
+        # re-runs the loop body fresh each call. So a borrow yield is unsound on
+        # the peephole only when its root is declared INSIDE the loop body --
+        # that storage dies when the lambda returns. Pre-loop locals (captured)
+        # and the for-over-iterable loop var (a reference into the captured
+        # iterable) are sound and stay peephole-eligible.
+        fresh_roots = self._loop_body_declared_names(func) if isinstance(func, TpyFunction) else set()
         for value, elem_type, loc in self.ctx.func.pending_yield_root_checks:
             self.compat.check_dangling_reference(
                 value, elem_type, loc, for_yield=True)
+            if (isinstance(func, TpyFunction)
+                    and self.compat.yield_rescued_by_frame_local(
+                        value, elem_type, fresh_roots=fresh_roots)):
+                func.requires_resumable_frame = True
         self.ctx.func.pending_yield_root_checks.clear()
+
+    @staticmethod
+    def _loop_body_declared_names(func: TpyFunction) -> set[str]:
+        """Names declared/assigned inside the body of a generator's single tail
+        loop (while / for) -- the locals the peephole materializes fresh each
+        lambda call. Empty when the body is not the simple tail-loop shape (then
+        the generator is not peephole-eligible anyway)."""
+        if not func.body:
+            return set()
+        last = func.body[-1]
+        if isinstance(last, (TpyWhile, TpyForEach)) and not last.orelse:
+            return collect_fact_kills(last.body).names
+        return set()
 
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
