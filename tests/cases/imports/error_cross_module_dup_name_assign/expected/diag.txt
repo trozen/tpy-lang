@@ -1,0 +1,1 @@
+main.py:8: error: Type mismatch in variable 'x': expected red.Tag, got blue.Tag

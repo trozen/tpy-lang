@@ -32,6 +32,31 @@ from ..parse import (
 )
 
 
+def _qualified_nominal_repr(t: TpyType) -> str | None:
+    if isinstance(t, NominalType):
+        qn = t.qualified_name()
+        if qn is None:
+            return None
+        if t.type_args:
+            args = ", ".join(str(a) for a in t.type_args)
+            return f"{qn}[{args}]"
+        return qn
+    return None
+
+
+def _disambiguated_pair(expected: TpyType, actual: TpyType) -> tuple[str, str]:
+    # Two distinct same-short-name cross-module records both render as the bare
+    # `Tag`, so qualify both (`red.Tag` / `blue.Tag`) when the renders collide --
+    # otherwise the (correct) rejection reads as the baffling `expected Tag, got Tag`.
+    e, a = str(expected), str(actual)
+    if e != a:
+        return e, a
+    eq, aq = _qualified_nominal_repr(expected), _qualified_nominal_repr(actual)
+    if eq is not None and aq is not None and eq != aq:
+        return eq, aq
+    return e, a
+
+
 def _peel_value_wrappers(expr: TpyExpr) -> TpyExpr:
     """Unwrap coercions and walrus wrappers to the value expression a
     return/yield actually hands out -- `return (t := items[0])` hands out
@@ -721,7 +746,8 @@ class TypeCompatibility:
                     f"{expected} (it would be a hidden element-wise deep copy). "
                     f"Build it as the alias directly (`x: {expected} = {{...}}`) or "
                     f"pass a container literal.", loc)
-            return CompatError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
+            e, a = _disambiguated_pair(expected, actual)
+            return CompatError(f"Type mismatch in {context}: expected {e}, got {a}", loc)
 
         # T -> Optional[T]: implicit wrapping
         if isinstance(expected, OptionalType):
@@ -786,8 +812,9 @@ class TypeCompatibility:
             # the diagnostic reads `expected str | None, got StrView | None`
             # rather than the truncated `expected str, got StrView | None`.
             if isinstance(result, CompatError) and isinstance(actual, OptionalType):
+                e, a = _disambiguated_pair(expected, actual)
                 return CompatError(
-                    f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
+                    f"Type mismatch in {context}: expected {e}, got {a}", loc)
             return result
 
         # Optional[T] -> Optional[T] already handled by == check above
@@ -1170,8 +1197,9 @@ class TypeCompatibility:
                 )
                 if both_records:
                     # Explicit error: avoid leaking PendingList internal repr in the generic message.
+                    e, a = _disambiguated_pair(e_elem, actual_elem)
                     return CompatError(
-                        f"Type mismatch in {context}: expected {e_elem}, got {actual_elem}", loc)
+                        f"Type mismatch in {context}: expected {e}, got {a}", loc)
                 else:
                     # Element type widening (e.g. Int32 -> Int32|None, Int32 -> Int64).
                     # Container element slot is storage form -- no address-take
@@ -1184,8 +1212,9 @@ class TypeCompatibility:
                     if not isinstance(result, CompatError):
                         return None  # element coercion is a probe, not propagated
                     # Definite mismatch: report it cleanly (see both_records above).
+                    e, a = _disambiguated_pair(e_elem, actual_elem)
                     return CompatError(
-                        f"Type mismatch in {context}: expected {e_elem}, got {actual_elem}", loc)
+                        f"Type mismatch in {context}: expected {e}, got {a}", loc)
             # Compatible with Array[T, N] if element types and sizes match
             if is_array(expected):
                 if self.type_ops and self.type_ops.pending_list_matches_array(actual, expected):
@@ -1267,10 +1296,12 @@ class TypeCompatibility:
             # Strip Own[V] from the message to avoid leaking implementation details.
             check_val = e_v.wrapped if isinstance(e_v, OwnType) else e_v
             if not key_ok:
+                ek, ak = _disambiguated_pair(e_k, a_k)
                 return CompatError(
-                    f"Type mismatch in {context}: expected {e_k}, got {a_k}", loc)
+                    f"Type mismatch in {context}: expected {ek}, got {ak}", loc)
+            ev, av = _disambiguated_pair(check_val, a_v)
             return CompatError(
-                f"Type mismatch in {context}: expected {check_val}, got {a_v}", loc)
+                f"Type mismatch in {context}: expected {ev}, got {av}", loc)
 
         # SetType compatibility: element types must match exactly.
         # Subclass coercion is intentionally excluded: tpy::ordered_set<T> is a
@@ -1280,8 +1311,9 @@ class TypeCompatibility:
             if _container_elem_matches(a_elem, e_elem):
                 return None
             check_elem = e_elem.wrapped if isinstance(e_elem, OwnType) else e_elem
+            ce, ae = _disambiguated_pair(check_elem, a_elem)
             return CompatError(
-                f"Type mismatch in {context}: expected {check_elem}, got {a_elem}", loc)
+                f"Type mismatch in {context}: expected {ce}, got {ae}", loc)
 
         # Allow PendingStrType compatibility during first phase (before resolution)
         if isinstance(actual, PendingStrType):
@@ -1416,7 +1448,8 @@ class TypeCompatibility:
                 if deref_target is not None and unwrap_readonly(deref_target) == expected:
                     coercion = DEREF_COERCION
         if coercion is None:
-            return CompatError(f"Type mismatch in {context}: expected {expected}, got {actual}", loc)
+            e, a = _disambiguated_pair(expected, actual)
+            return CompatError(f"Type mismatch in {context}: expected {e}, got {a}", loc)
 
         if isinstance(actual, PendingListType) and is_span(expected):
             info = self.ctx.list_literals.get(actual.literal_id)

@@ -1,1 +1,1 @@
-main.py:14: error: Type mismatch in argument 't': expected Tag, got Tag
+main.py:14: error: Type mismatch in argument 't': expected red.Tag, got blue.Tag
