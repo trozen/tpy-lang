@@ -255,9 +255,11 @@ A reference-type lvalue used as a **container-literal element** -- a
 `{k: p}`) -- is likewise copied into the container's owned storage where
 CPython would store a reference, so it carries the same `copies T into
 owned storage` warning that `.append`/`.insert` and field assignment
-emit; `copy()` acknowledges it, and a last-use source or a fresh rvalue
-element does not warn. (A generic element type stays silent until
-instantiation, matching `.append`.)
+emit; `copy()` acknowledges it. A **last-use** source instead MOVES into
+the container (matching `.append`/`.insert`), and a fresh rvalue is
+constructed in place -- neither warns, and a `@nocopy` last-use element
+is accepted rather than failing the C++ build. (A generic element type
+stays silent until instantiation, matching `.append`.)
 
 It matters when:
 - You see a copy warning mentioning "borrowed Optional/Union" -- that

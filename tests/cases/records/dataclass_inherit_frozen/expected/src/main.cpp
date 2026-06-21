@@ -21,7 +21,7 @@ void main() {
     std::cout << ::tpy::print_bool(((v) == (Vec3(1, 2, 4)))) << "\n";
     // # Hash works (frozen)
     // d: dict[Vec3, str] = {v: "a"}
-    ::tpy::ordered_map<Vec3, std::string> d = ::tpy::ordered_map<Vec3, std::string>({{v, "a"}});
+    ::tpy::ordered_map<Vec3, std::string> d = ::tpy::make_ordered_map<Vec3, std::string>(std::move(v), "a");
     // print(d[Vec3(1, 2, 3)])
     std::cout << ::tpy::__getitem__(d, Vec3(1, 2, 3)) << "\n";
 }

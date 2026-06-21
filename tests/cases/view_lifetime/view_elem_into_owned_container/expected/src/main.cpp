@@ -48,7 +48,7 @@ void str_optional_deref(std::optional<std::string_view> a) {
         // out.append(a)
         out.push_back(std::string((*a)));
         // out2: list[str] = [a]
-        std::vector<std::string> out2 = {std::string((*a))};
+        std::vector<std::string> out2 = ::tpy::make_vector<std::string>(std::move(std::string((*a))));
         // out.extend(out2)
         ::tpy::list_extend(out, ::tpy::own_iter(std::move(out2)));
     }

@@ -43,7 +43,7 @@ void main() {
     // print([b])
     std::cout << ::tpy::ListPrinter(std::array<Both, 1>{b}) << "\n";
     // bs: list[StrOnly] = [s]
-    std::vector<StrOnly> bs = {s};
+    std::vector<StrOnly> bs = ::tpy::make_vector<StrOnly>(std::move(s));
     // bs_str = str(bs)
     std::string bs_str = ::tpy::list_to_str(bs);
     // print((bs_str.startswith("[<StrOnly object at 0x")

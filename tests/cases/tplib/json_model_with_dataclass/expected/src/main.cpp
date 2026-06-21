@@ -15,7 +15,7 @@ void main() {
     // item = Item.from_json('{"name": "widget", "value": 42}')
     Item item = Item::from_json("{\"name\": \"widget\", \"value\": 42}");
     // c2 = Container("one", [item])
-    Container c2 = Container("one", {item});
+    Container c2 = Container("one", ::tpy::make_vector<Item>(std::move(item)));
     // print(c2.label)
     std::cout << c2.label << "\n";
     // print(len(c2.items))

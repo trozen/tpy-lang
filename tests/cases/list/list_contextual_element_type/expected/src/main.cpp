@@ -64,7 +64,7 @@ void main() {
     // r.h = 20
     r.h = 20;
     // shapes: list[Rect | Circle] = [r, Circle()]
-    std::vector<std::variant<Circle, Rect>> shapes = {r, Circle()};
+    std::vector<std::variant<Circle, Rect>> shapes = ::tpy::make_vector<std::variant<Circle, Rect>>(std::move(r), Circle());
     // print(len(shapes))
     std::cout << ::tpy::__len__(shapes) << "\n";
     // # Union of records: all rvalues

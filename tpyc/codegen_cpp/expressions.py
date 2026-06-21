@@ -4532,6 +4532,7 @@ class ExpressionGenerator:
                 elif isinstance(et, RecursiveAliasInstanceType):
                     elem_target = et
         elements = []
+        any_movable = False
         with self._container_element_context():
             for e in expr.elements:
                 # Use elem_target for generation (preserves old int-literal behavior, and for
@@ -4554,17 +4555,19 @@ class ExpressionGenerator:
                 # Pointer-variant locals/calls must be converted to value
                 # variants for container storage.
                 code = self._to_value_variant_if_needed(e, code, elem_target)
+                any_movable = any_movable or self._is_last_use_movable(e)
+                code = self._maybe_move(e, code)
                 elements.append(code)
-        # Non-copyable element types in list (not Array) targets: use
-        # make_vector instead of brace-init (std::initializer_list copies).
-        # std::array uses aggregate init which handles move-only types fine.
+        # make_vector (not brace-init) for a non-copyable or last-use-movable
+        # element: std::initializer_list elements are const, so a `std::move` in
+        # a brace-init is silently copied. (std::array aggregate-init moves fine.)
         if elements and not is_array(target_type):
             check_type = elem_target or (target_type.get_element_type() if target_type else None)
             if check_type is None:
                 check_type = self.ctx.get_expr_type(expr)
                 if is_list(check_type):
                     check_type = check_type.type_args[0]
-            if self._is_nocopy_container_element(check_type):
+            if any_movable or self._is_nocopy_container_element(check_type):
                 cpp_elem = self.types.type_to_cpp(check_type)
                 return self._gen_nocopy_vector(elements, cpp_elem)
 
@@ -4728,6 +4731,7 @@ class ExpressionGenerator:
             return f"::tpy::ordered_map<{cpp_key}, {cpp_val}>()"
 
         pairs = []
+        any_movable = False
         with self._container_element_context():
             for k, v in zip(expr.keys, expr.values):
                 k_resolved = self.types.get_resolved_type(k, k_type)
@@ -4746,15 +4750,15 @@ class ExpressionGenerator:
                         v_resolved = FloatLiteralType()
                 v_cpp = self._wrap_for_owned_slot(v, self.gen_expr_deref(v, v_type), v_resolved, v_type)
                 v_cpp = self._to_value_variant_if_needed(v, v_cpp, v_type)
+                any_movable = (any_movable or self._is_last_use_movable(k)
+                               or self._is_last_use_movable(v))
+                k_cpp = self._maybe_move(k, k_cpp)
+                v_cpp = self._maybe_move(v, v_cpp)
                 pairs.append((k_cpp, v_cpp))
-        # Non-copyable value: route through make_ordered_map to avoid the
-        # std::initializer_list<std::tuple<K,V>> ctor (whose elements are
-        # const and force a copy of V). Mirrors the list/make_vector path.
-        # Only v_type is checked: @nocopy keys are blocked by sema today
-        # (BUGS.md set/dict[Rc[T]]). When that gate lifts, this check must
-        # also cover k_type -- otherwise nocopy keys silently take the
-        # initializer_list path and fail at C++ compile.
-        if self._is_nocopy_container_element(v_type):
+        # make_ordered_map for a non-copyable or last-use-movable key/value:
+        # the std::initializer_list<tuple<K,V>> ctor's elements are const and
+        # force a copy. Mirrors the list/make_vector path.
+        if any_movable or self._is_nocopy_container_element(v_type):
             flat = ", ".join(f"{k}, {v}" for k, v in pairs)
             return f"::tpy::make_ordered_map<{cpp_key}, {cpp_val}>({flat})"
         braces = ", ".join(f"{{{k}, {v}}}" for k, v in pairs)
@@ -4771,6 +4775,7 @@ class ExpressionGenerator:
 
         elem_type = set_type.type_args[0]
         elems = []
+        any_movable = False
         with self._container_element_context():
             for e in expr.elements:
                 e_resolved = self.types.get_resolved_type(e, elem_type)
@@ -4781,12 +4786,12 @@ class ExpressionGenerator:
                         e_resolved = FloatLiteralType()
                 e_cpp = self._wrap_for_owned_slot(e, self.gen_expr_deref(e, elem_type), e_resolved, elem_type)
                 e_cpp = self._to_value_variant_if_needed(e, e_cpp, elem_type)
+                any_movable = any_movable or self._is_last_use_movable(e)
+                e_cpp = self._maybe_move(e, e_cpp)
                 elems.append(e_cpp)
-        # Non-copyable element: route through make_ordered_set to avoid the
-        # std::initializer_list ctor copy. Parallels the dict / list fix.
-        # Currently sema gates @nocopy set elements (BUGS.md set/dict-key entry);
-        # this path is structural parity, exercised once that gate lifts.
-        if self._is_nocopy_container_element(elem_type):
+        # make_ordered_set for a non-copyable or last-use-movable element: the
+        # std::initializer_list ctor's elements are const. Mirrors list/dict.
+        if any_movable or self._is_nocopy_container_element(elem_type):
             return f"::tpy::make_ordered_set<{cpp_elem}>({', '.join(elems)})"
         return f"::tpy::ordered_set<{cpp_elem}>({{{', '.join(elems)}}})"
 

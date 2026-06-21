@@ -11,7 +11,7 @@ void main() {
     // p2: Point = Point(30, 40)
     Point p2 = Point(30, 40);
     // pts: list[Point] = [p1, p2]
-    std::vector<Point> pts = {p1, p2};
+    std::vector<Point> pts = ::tpy::make_vector<Point>(std::move(p1), std::move(p2));
     // plist: PointList = PointList(pts)
     PointList plist = PointList(pts);
     // # Access via __getitem__ (returns const Point& in C++)

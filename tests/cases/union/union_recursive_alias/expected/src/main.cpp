@@ -45,7 +45,7 @@ void main() {
     // inner: list[Tree] = [3, 4]
     std::vector<Tree> inner = {3, 4};
     // nested: list[Tree] = [1, inner]
-    std::vector<Tree> nested = {1, inner};
+    std::vector<Tree> nested = ::tpy::make_vector<Tree>(1, std::move(inner));
     // print(depth(leaf))
     std::cout << depth(leaf) << "\n";
     // print(depth(branch))

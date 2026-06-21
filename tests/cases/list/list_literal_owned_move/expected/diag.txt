@@ -1,0 +1,1 @@
+main.py:24: warning: copies PendingList[IntLiteral(1), 2]#2 into owned storage; use copy() to make this explicit

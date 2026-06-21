@@ -127,7 +127,7 @@ void main() {
     // print(describe(None))
     std::cout << describe(nullptr) << "\n";
     // items: list[Tree] = [branch, leaf]
-    std::vector<Tree> items = {branch, leaf};
+    std::vector<Tree> items = ::tpy::make_vector<Tree>(std::move(branch), std::move(leaf));
     // r = first_or_none(items)
     Tree* r = first_or_none(items);
     // print(maybe_depth(r))
