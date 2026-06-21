@@ -5217,10 +5217,14 @@ class CallAnalyzer:
                     expr.call_type.is_dynamic_protocol,
                 )
 
-        # Types with overloaded @cpp_template/@native __init__ (e.g. Int32, str, bool)
+        # Only cpp_template / @native ctors need the template path (cast/numeric/
+        # view lowering); a struct-like @builtin_type ctor takes the normal
+        # record path below, which has the full arg-coercion surface.
         if record.builtin_type_key and not record.type_params:
             init_overloads = record.get_method_overloads("__init__")
-            if init_overloads:
+            if init_overloads and any(
+                    o.cpp_template or o.native_function or o.is_native
+                    for o in init_overloads):
                 return self._analyze_template_constructor(expr, record, init_overloads)
 
         # TypedDict: keyword-only construction (matches CPython)
