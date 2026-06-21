@@ -6218,7 +6218,18 @@ class ExpressionGenerator:
                     tmp = self.ctx.temps.create_typed(elem_cpp, gen)
                     sub_args.append(f"&{tmp}")
             else:
-                sub_args.append(gen)
+                # A str arg reaches here as a string_view (strview_to_str is
+                # identity at ARG), so the owned varargs element needs the copy.
+                # A bytes arg is already owned (bytesview_to_bytes copies at ARG),
+                # so wrapping it would double-copy.
+                src = a
+                while isinstance(src, TpyCoerce):
+                    src = src.expr
+                if self._view_owned_copy_family(
+                        src, unwrap_readonly(elem_type)) is STR_FAMILY:
+                    sub_args.append(self._view_owned_copy_expr(STR_FAMILY, gen))
+                else:
+                    sub_args.append(gen)
         n = len(sub_args)
         init = ", ".join(sub_args)
         if is_ref:
