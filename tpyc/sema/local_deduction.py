@@ -49,7 +49,8 @@ from ..typesys import (
     unwrap_readonly,
     unwrap_ref_type,
 )
-from .context import PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT
+from .context import PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT, contains_pending_leaf
+from ..namespace import BindingKind
 from ..diagnostics import SemanticError
 from .numeric_lattice import (
     fixed_int_range_contains, merge_literal_seed_target,
@@ -706,11 +707,11 @@ class LocalTypeDeduction:
                             info.expr,
                         )
 
-            # If element type is a PendingListType, look up its resolved type
-            if isinstance(elem_type, PendingListType):
-                inner_info = self.ctx.list_literals.get(elem_type.literal_id)
-                if inner_info and inner_info.resolved_type:
-                    elem_type = inner_info.resolved_type
+            # A pending element -- bare (a nested list literal) or nested in a
+            # composite (a tuple of list literals) -- resolves to its registry
+            # type so the resolved container is fully concrete (every store
+            # derived from resolved_type is then pending-free).
+            elem_type = self._deep_resolve_pending(elem_type)
 
             # Coerced type from param/return context overrides inferred type
             if info.coerced_element_type is not None and not isinstance(elem_type, UnknownElementType):
@@ -1231,4 +1232,80 @@ class LocalTypeDeduction:
         self._resolve_pending_dict_and_set_types()
         for family in VIEW_TYPE_FAMILIES:
             self._resolve_pending_view_types(family)
+        self._finalize_pending_elem_type_fields()
+        self._finalize_pending_in_bindings()
         self._check_unresolved_pending_generics()
+
+    def _finalize_pending_elem_type_fields(self) -> None:
+        """Refresh comprehension element/key/value-type snapshots post-resolution.
+
+        A snapshot field (result_elem_type etc.) cached before resolution may
+        hold a Pending* container type (bare or nested in a composite) whose
+        resolved type now lives on its registry info; rewrite the field so
+        codegen sees the concrete type."""
+        for node, attr in self.ctx.func.pending_elem_type_fields:
+            current = getattr(node, attr)
+            resolved = self._deep_resolve_pending(current)
+            if resolved is not current:
+                setattr(node, attr, resolved)
+
+    def _finalize_pending_in_bindings(self) -> None:
+        """Resolve Pending* leaves left in codegen-visible bindings in place.
+
+        A Pending* embedded in a composite bound to a name (a non-array comp's
+        `list[Pending]`, a `tuple[Pending,...]`) or bare on a loop var survives
+        the deferred resolver and crashes codegen's `to_cpp()`. Only per-function
+        stores are touched (namespace locals + loop-var snapshots feeding the
+        frame hoist) plus the per-function-recorded composite expr nodes -- never
+        a sweep over the module-wide `expr_types`."""
+        ns = self.ctx.func.current_ns
+        if ns is not None:
+            for binding in ns.all_bindings().values():
+                if binding.kind is BindingKind.VARIABLE and binding.type is not None:
+                    binding.type = self._deep_resolve_pending(binding.type)
+
+        for node in self.ctx.func.pending_composite_exprs:
+            current = self.ctx.expr_types.get(id(node))
+            if current is not None:
+                current = self._deep_resolve_pending(current)
+                self.ctx.expr_types[id(node)] = current
+                # Completeness net for the recorded-composite half of the
+                # set_expr_type chokepoint: an explicit raise (like
+                # _assert_no_pending_locals, so it is not stripped under -O)
+                # turns a missed element resolution into a clear internal error
+                # here rather than the opaque `to_cpp()` crash in codegen.
+                if contains_pending_leaf(current):
+                    raise AssertionError(
+                        f"Internal error: composite expr type {current} still "
+                        f"has a Pending* leaf after finalization; a tracked "
+                        f"literal element was not resolved before resolve_all"
+                    )
+
+        loop_vars = self.ctx.func.pending_loop_vars
+        for name, (vtype, s1, s2) in list(loop_vars.items()):
+            if vtype is not None:
+                resolved = self._deep_resolve_pending(vtype)
+                if resolved is not vtype:
+                    loop_vars[name] = (resolved, s1, s2)
+
+    def _deep_resolve_pending(self, typ: TpyType) -> TpyType:
+        """Replace every Pending* container leaf in a (possibly composite) type
+        with its registry-resolved type, recursing through wrapper/composite
+        types via `map_inner_types`. A genuinely-unresolved Pending (no resolved
+        type yet) is left as-is for the downstream unresolved-type diagnostic."""
+        resolved = self._resolved_container_type(typ)
+        if resolved is not None:
+            return resolved
+        return typ.map_inner_types(self._deep_resolve_pending)
+
+    def _resolved_container_type(self, typ: TpyType) -> TpyType | None:
+        """The registry-resolved type for a Pending* container, else None."""
+        if isinstance(typ, PendingListType):
+            info = self.ctx.list_literals.get(typ.literal_id)
+        elif isinstance(typ, PendingDictType):
+            info = self.ctx.dict_literals.get(typ.literal_id)
+        elif isinstance(typ, PendingSetType):
+            info = self.ctx.set_literals.get(typ.literal_id)
+        else:
+            return None
+        return info.resolved_type if info is not None else None

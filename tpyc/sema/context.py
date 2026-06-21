@@ -43,6 +43,17 @@ from ..value_category import call_returns_cpp_ref
 PENDING_CONTAINER_TYPES = (PendingListType, PendingDictType, PendingSetType)
 
 
+def contains_pending_leaf(typ: 'TpyType') -> bool:
+    """True if typ is, or nests, a Pending* container type.
+
+    A cached type snapshot (comprehension element field, for-loop element type)
+    that holds such a leaf goes stale once the deferred resolver runs; the
+    finalization pass rewrites the ones recorded by this predicate."""
+    if isinstance(typ, PENDING_CONTAINER_TYPES):
+        return True
+    return any(contains_pending_leaf(t) for t in typ.inner_types())
+
+
 def addr_taken_roots(expr: TpyExpr) -> list[str]:
     """Return all variable names whose storage is potentially aliased by expr.
 
@@ -572,6 +583,18 @@ class FunctionTrackingState:
     pending_dict_resolutions: list[int] = field(default_factory=list)
     variable_to_set_literal: dict[str, int] = field(default_factory=dict)
     pending_set_resolutions: list[int] = field(default_factory=list)
+    # Comprehension/genexpr nodes cache their element/key/value type in a
+    # snapshot field (result_elem_type etc.) taken during analysis. When that
+    # snapshot is a Pending* container type (a list-literal element), the
+    # deferred resolver only updates the element node's type, leaving the
+    # snapshot stale -- it must be finalized from the registry after
+    # resolve_all. Recorded as (node, attr_name) pairs.
+    pending_elem_type_fields: list[tuple[object, str]] = field(default_factory=list)
+    # Expression nodes whose cached `expr_types` entry holds a Pending* leaf
+    # nested in a composite (`list[Pending]` from a non-array comprehension,
+    # `tuple[Pending,...]`). Recorded at set_expr_type so the finalization pass
+    # rewrites only these nodes -- never a sweep over the module-wide cache.
+    pending_composite_exprs: list[object] = field(default_factory=list)
 
     # --- Pending generic instance tracking ---
     pending_generic_instances: dict[int, PendingGenericInstanceInfo] = field(default_factory=dict)
@@ -1202,6 +1225,21 @@ class SemanticContext:
     def set_expr_type(self, expr: TpyExpr, typ: TpyType) -> None:
         """Cache the type of an expression."""
         self.expr_types[id(expr)] = typ
+        # A COMPOSITE carrying a Pending* leaf (a non-array comprehension's
+        # `list[Pending]`, a tuple of list literals) is read straight off this
+        # cache by the var-decl codegen fallback; record it so resolve_all can
+        # finalize just this node rather than sweep the module-wide cache.
+        # CROSS-PASS INVARIANT: a BARE Pending* literal is excluded here ONLY
+        # because it is a tracked literal whose own cache entry is rewritten to
+        # the resolved type by _apply_container_resolution (which runs before
+        # _finalize_pending_in_bindings). If a future path ever caches a bare
+        # Pending* for a node that does NOT flow through that resolution, this
+        # exclusion would silently skip it and reintroduce the codegen crash --
+        # the recorded-composite completeness check in
+        # _finalize_pending_in_bindings guards the composite half of that.
+        # contains_pending_leaf fast-returns on leaves.
+        if not isinstance(typ, PENDING_CONTAINER_TYPES) and contains_pending_leaf(typ):
+            self.func.pending_composite_exprs.append(expr)
 
     def default_int_for_literal(
         self,

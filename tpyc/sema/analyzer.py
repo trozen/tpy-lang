@@ -45,6 +45,21 @@ _PENDING_LOCAL_TYPES = (
 )
 
 
+def _find_pending_leaf(typ: 'TpyType') -> 'TpyType | None':
+    """Return the first Pending* leaf in a (possibly composite) type, else None.
+
+    A Pending* nested inside a composite (`list[Pending]`, `tuple[Pending,...]`)
+    is as fatal to codegen as a bare one, so the check recurses through wrapper
+    types via `inner_types()`."""
+    if isinstance(typ, _PENDING_LOCAL_TYPES):
+        return typ
+    for inner in typ.inner_types():
+        found = _find_pending_leaf(inner)
+        if found is not None:
+            return found
+    return None
+
+
 def _assert_no_pending_locals(locals_dict: dict, func_name: str) -> None:
     """Guard the resumable-frame hoist against unresolved Pending* locals.
 
@@ -52,10 +67,11 @@ def _assert_no_pending_locals(locals_dict: dict, func_name: str) -> None:
     as an opaque `PendingListType should be resolved before codegen` crash.
     """
     for name, typ in locals_dict.items():
-        if isinstance(typ, _PENDING_LOCAL_TYPES):
+        leaf = _find_pending_leaf(typ)
+        if leaf is not None:
             raise AssertionError(
                 f"Internal error: resumable-frame local '{name}' in '{func_name}' "
-                f"still has unresolved type {type(typ).__name__} after resolve_all; "
+                f"still has unresolved type {type(leaf).__name__} after resolve_all; "
                 f"a Pending* resolution sink did not sync current_ns"
             )
 

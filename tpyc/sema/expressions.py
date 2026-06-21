@@ -60,7 +60,7 @@ from ..coercions import CoercionContext, resolve_coercion
 from ..prescan import _expr_to_narrowing_key
 from ..diagnostics import SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
-from .context import is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding
+from .context import is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf
 from ..value_category import is_rvalue_source
 from .narrowing import NarrowingTracker, deref_view_narrowed
 from .numeric_lattice import widen_numeric_types
@@ -3148,6 +3148,7 @@ class ExpressionAnalyzer:
             result_elem_type = resolve_int_literals(result_elem_type, self.ctx.default_int_for_literal)
 
         expr.result_elem_type = result_elem_type
+        self._track_pending_elem_field(expr, "result_elem_type", result_elem_type)
         # Genexpr borrow ABI: a bare non-value (non-readonly) element is handed
         # out by reference (val_or_ref slot), zero-copy, like a def-generator's
         # Iterator[T]. readonly / value elements keep the value (copy) slot.
@@ -3177,6 +3178,17 @@ class ExpressionAnalyzer:
             # val_or_ref<T> (T&), not const, and consumer mutation propagates.
             gen.const_loop_var = False
         return GenExprType(result_elem_type)
+
+    def _track_pending_elem_field(self, node: object, attr: str, typ: TpyType) -> None:
+        """Record a comprehension element/key/value-type snapshot for finalization.
+
+        The snapshot is taken before the deferred resolver runs; if it holds a
+        Pending* container type (a list-literal element), the resolver only
+        updates the element node, leaving this cached copy stale and crashing
+        codegen's to_cpp(). resolve_all replays these to read the resolved type.
+        """
+        if contains_pending_leaf(typ):
+            self.ctx.func.pending_elem_type_fields.append((node, attr))
 
     def _analyze_elem_comprehension(
         self, expr: TpyListComprehension | TpySetComprehension,
@@ -3231,6 +3243,7 @@ class ExpressionAnalyzer:
         # render `unique_ptr<P>` here against a bare `P` slot.
         result_elem_type = unwrap_own(result_elem_type)
         expr.result_elem_type = result_elem_type
+        self._track_pending_elem_field(expr, "result_elem_type", result_elem_type)
 
         if kind == "list":
             array_size = self._try_comp_array_size(expr)
@@ -3362,6 +3375,8 @@ class ExpressionAnalyzer:
         self.type_ops.validate_hashable_container_elem(key_type, "dict key", expr.loc)
         expr.result_key_type = key_type
         expr.result_value_type = value_type
+        self._track_pending_elem_field(expr, "result_key_type", key_type)
+        self._track_pending_elem_field(expr, "result_value_type", value_type)
         return make_dict(key_type, value_type)
 
     def _resolve_comp_iterable(

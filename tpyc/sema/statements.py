@@ -65,7 +65,7 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
     from .protocols import ProtocolChecker
 
-from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, register_binding_borrow, ephemeral_borrow_root
+from .context import BorrowKind, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, _borrow_storage_root, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf
 from ..value_category import is_rvalue_source
 from .expressions import _collect_body_name_refs, _collect_body_local_defs, _find_list_member
 from .local_deduction import collect_pending_source_types, walk_view_source_leaves
@@ -1276,6 +1276,8 @@ class StatementAnalyzer:
                     line=(stmt.loc.line if stmt.loc else None),
                 )
                 stmt.elem_type = make_ref(elem_type)
+                if contains_pending_leaf(stmt.elem_type):
+                    self.ctx.func.pending_elem_type_fields.append((stmt, "elem_type"))
 
                 # Auto-consuming decision is deferred until after body analysis
                 # (see below) so we know whether the loop var is mutated.
@@ -2281,6 +2283,8 @@ class StatementAnalyzer:
             line=(stmt.loc.line if stmt.loc else None),
         )
         stmt.elem_type = make_ref(elem_type)
+        if contains_pending_leaf(stmt.elem_type):
+            self.ctx.func.pending_elem_type_fields.append((stmt, "elem_type"))
         self._check_loop_var_rebind(stmt, elem_type)
         self._record_for_loop_var_type(stmt, elem_type)
 
