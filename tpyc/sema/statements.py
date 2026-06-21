@@ -3205,8 +3205,17 @@ class StatementAnalyzer:
         # to_cpp_return), so route them through the full dangling check too -- its
         # per-element tuple branch is what catches the fresh member.
         if yield_uses_borrow_slot(elem_type) or isinstance(unwrap_readonly(elem_type), TupleType):
-            self.compat.check_dangling_reference(
-                stmt.value, elem_type, stmt.loc, for_yield=True)
+            # A borrow-yielded container literal must materialize as a real
+            # list/dict/set (the val_or_ref<T> slot hands out a reference, and
+            # the consumer may resize it), so force it off the Array
+            # optimization -- a new escape route the array builder predates.
+            self._force_yielded_pending_lists(stmt.value, elem_type)
+            # Deferred: a yielded frame-resident local is a valid borrow root,
+            # but func.generator_locals isn't populated until after body
+            # analysis. The ephemeral-escape rejection above stays inline, so an
+            # ephemeral re-yield is still caught before this point.
+            self.ctx.func.pending_yield_root_checks.append(
+                (stmt.value, elem_type, stmt.loc))
         else:
             self.compat.check_view_return_dangle(stmt.value, elem_type, stmt.loc)
         # A mutable borrow yield hands the consumer a writable reference into the
@@ -3224,6 +3233,21 @@ class StatementAnalyzer:
             for root in addr_taken_roots(stmt.value):
                 self.ctx.mark_param_mutated(root)
                 self.ctx.mark_param_returned(root)
+
+    def _force_yielded_pending_lists(self, value: TpyExpr, elem_type: TpyType) -> None:
+        """A borrow-yielded container literal must materialize as a real
+        list/dict/set, not the Array optimization: the val_or_ref<T> slot hands
+        out a reference and the consumer may mutate/resize it. Reuse the return
+        position's container-context hook (it both forces off Array and
+        propagates the element type from the yield's declared type), per element
+        for a tuple yield.
+        """
+        inner = unwrap_readonly(elem_type)
+        if isinstance(value, TpyTupleLiteral) and isinstance(inner, TupleType):
+            for e, et in zip(value.elements, inner.element_types):
+                self.deduction.mark_container_return_context(e, et)
+        else:
+            self.deduction.mark_container_return_context(value, elem_type)
 
     def _warn_ternary_ref_copy(self, init: TpyExpr, var_type: TpyType,
                                stmt: TpyStmt) -> None:

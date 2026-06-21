@@ -711,6 +711,11 @@ class FunctionTrackingState:
     # (return / store / container insert / closure capture / yield onward).
     # Active only during the consuming loop body (added before, discarded after).
     ephemeral_borrow_vars: set[str] = field(default_factory=set)
+    # Borrow-yield rooting checks deferred until `func.generator_locals` is
+    # populated: a yielded frame-resident local is a valid borrow root, but the
+    # check runs during body analysis, before the frame-local set exists.
+    # Entries are (yielded_expr, elem_type, loc).
+    pending_yield_root_checks: list[tuple[TpyExpr, TpyType, 'SourceLocation | None']] = field(default_factory=list)
     non_null_ptr_vars: set[str] = field(default_factory=set)
     # Narrowing accumulated during a single statement's expression analysis;
     # flushed into non_null_ptr_vars at the statement boundary. Deferred so

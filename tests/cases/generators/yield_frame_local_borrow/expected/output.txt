@@ -1,0 +1,3 @@
+resume sees: [1, 2]
+after prune, dirs = ['a', 'b']
+once: [7]

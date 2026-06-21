@@ -2374,7 +2374,28 @@ class TypeCompatibility:
             return self.is_mutable_lvalue(expr.obj)
         return False
 
-    def is_dangling_return(self, expr: TpyExpr, *, view_source: bool = False) -> bool:
+    def _is_frame_resident_local(self, name: str) -> bool:
+        """True if `name` is a generator/coro frame-resident local -- hoisted
+        into `func.generator_locals`, so its storage is a lifetime-stable
+        `tpy::frame_slot<T>`. Only meaningful once generator_locals is populated
+        (post-body); the borrow-yield rooting check is deferred until then.
+        """
+        fn = self.ctx.func.current_function
+        if not isinstance(fn, TpyFunction) or not fn.generator_locals:
+            return False
+        return any(n == name for n, _ in fn.generator_locals)
+
+    def _local_has_borrowable_storage(self, expr: TpyName) -> bool:
+        """True if a frame-resident local's own storage is a reference object
+        that can be handed out by borrow. A value-typed local (array, tuple of
+        values, primitive) has no such storage -- yielding it as a reference
+        type is a representation-changing copy, i.e. a fresh temporary.
+        """
+        t = self.ctx.get_expr_type(expr)
+        return t is not None and not unwrap_readonly(t).is_value_type()
+
+    def is_dangling_return(self, expr: TpyExpr, *, view_source: bool = False,
+                           gen_yield: bool = False) -> bool:
         """Check if returning this expression would create a dangling reference.
 
         `view_source`: the expression is the backing storage a returned *view*
@@ -2382,13 +2403,25 @@ class TypeCompatibility:
         itself. A local that is `safe_to_return` (movable owned local returned
         by value) is NOT a safe view source -- the view aliases storage that is
         moved/destroyed at the return -- so that exemption is skipped.
+
+        `gen_yield`: the expression is the value of a generator/coro `yield`.
+        A frame-resident local (in `func.generator_locals`) is then a valid
+        borrow root -- its `tpy::frame_slot<T>` storage is stable for the
+        generator's lifetime, and the consumer-side ephemeral-borrow rule
+        forbids retaining the yielded borrow past the next resume. The
+        exemption fires only at the genuine root leaf (a frame-local name, or
+        a field/subscript chain bottoming out in one), never via a name inside
+        a call -- calls reach their own provenance branches above, not the
+        TpyName leaf.
         """
         if isinstance(expr, TpyCoerce):
-            return self.is_dangling_return(expr.expr, view_source=view_source)
+            return self.is_dangling_return(expr.expr, view_source=view_source,
+                                           gen_yield=gen_yield)
         # A walrus hands out its value: `return (t := items[0])` returns the
         # subscript read, so provenance follows the wrapped expression.
         if isinstance(expr, TpyNamedExpr):
-            return self.is_dangling_return(expr.value, view_source=view_source)
+            return self.is_dangling_return(expr.value, view_source=view_source,
+                                           gen_yield=gen_yield)
         # Array/dict literal - creates temporary
         if isinstance(expr, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
             return True
@@ -2480,15 +2513,26 @@ class TypeCompatibility:
             # at the return) -- so don't honor that exemption for a view source.
             if not view_source and expr.name in self.ctx.func.safe_to_return_vars:
                 return False
+            # A yielded frame-resident local roots in stable frame-slot storage
+            # that outlives the suspension (see gen_yield in the docstring).
+            # Gated on the local being a non-value type: only a reference-typed
+            # local has borrowable storage. A value-typed local (array, tuple of
+            # values) yielded as a reference is a representation-changing copy --
+            # a fresh temporary -- so it stays dangling.
+            if (gen_yield and self._is_frame_resident_local(expr.name)
+                    and self._local_has_borrowable_storage(expr)):
+                return False
             return True
 
         # Field access - safe only if the object itself is safe
         if isinstance(expr, TpyFieldAccess):
-            return self.is_dangling_return(expr.obj, view_source=view_source)
+            return self.is_dangling_return(expr.obj, view_source=view_source,
+                                           gen_yield=gen_yield)
 
         # Subscript - safe only if the container itself is safe
         if isinstance(expr, TpySubscript):
-            return self.is_dangling_return(expr.obj, view_source=view_source)
+            return self.is_dangling_return(expr.obj, view_source=view_source,
+                                           gen_yield=gen_yield)
 
         # Method call returning owned str/String creates a temporary
         # std::string that dangles if returned as StrView.
@@ -2521,8 +2565,10 @@ class TypeCompatibility:
 
         # Ternary - dangles if either branch dangles
         if isinstance(expr, TpyIfExpr):
-            return (self.is_dangling_return(expr.then_expr, view_source=view_source)
-                    or self.is_dangling_return(expr.else_expr, view_source=view_source))
+            return (self.is_dangling_return(expr.then_expr, view_source=view_source,
+                                            gen_yield=gen_yield)
+                    or self.is_dangling_return(expr.else_expr, view_source=view_source,
+                                               gen_yield=gen_yield))
 
         # Unary/Binary ops - might create temporaries, be conservative
         if isinstance(expr, (TpyUnaryOp, TpyBinOp)):
@@ -2588,7 +2634,7 @@ class TypeCompatibility:
         # OwnType returns by value (ownership transfer), so no dangling risk
         # Pointer types need dangling checks (the pointer value may point to a local)
         if isinstance(return_type, PtrType):
-            if self.is_dangling_return(expr):
+            if self.is_dangling_return(expr, gen_yield=for_yield):
                 raise self.ctx.error(
                     f"Cannot {verb} pointer to local or temporary value; "
                     f"the {verb}ed pointer would dangle",
@@ -2605,7 +2651,8 @@ class TypeCompatibility:
                 # A view constructor / slice: its argument is the backing
                 # storage, so a movable owned local there is still a dangling
                 # view source.
-                if self.is_dangling_return(view_arg, view_source=True):
+                if self.is_dangling_return(view_arg, view_source=True,
+                                           gen_yield=for_yield):
                     raise self.ctx.error(view_msg, inner)
             else:
                 # Returning a local directly. If the local is ITSELF a view
@@ -2616,7 +2663,8 @@ class TypeCompatibility:
                 # so use the strict view-source check.
                 src_is_view = (source_type is not None
                                and _dangling_view_message(source_type) is not None)
-                if self.is_dangling_return(expr, view_source=not src_is_view):
+                if self.is_dangling_return(expr, view_source=not src_is_view,
+                                           gen_yield=for_yield):
                     raise self.ctx.error(view_msg, expr)
             return
         # A tuple's borrow form (std::tuple<..., T*, ...>) stores each non-value
@@ -2637,7 +2685,8 @@ class TypeCompatibility:
                     f"Own[{nested_bad}].",
                     expr
                 )
-            self._check_tuple_elem_dangle(tuple_rt, expr, verb, source_type)
+            self._check_tuple_elem_dangle(tuple_rt, expr, verb, source_type,
+                                          gen_yield=for_yield)
             self._check_tuple_member_local(tuple_rt, expr, verb)
             if not for_yield:
                 self._check_tuple_storage_return_root(tuple_rt, expr)
@@ -2660,7 +2709,8 @@ class TypeCompatibility:
             # pre-coercion source_type is the only reliable signal.
             from_existing_wrapper = (source_type is not None
                 and unwrap_readonly(unwrap_ref_type(source_type)).needs_wrapper())
-            if not from_existing_wrapper or self.is_dangling_return(src):
+            if not from_existing_wrapper or self.is_dangling_return(
+                    src, gen_yield=for_yield):
                 raise self.ctx.error(
                     f"Cannot {verb} local or temporary as reference. "
                     f"Object type '{return_type}' is {verb}ed by reference. "
@@ -2674,7 +2724,7 @@ class TypeCompatibility:
         if isinstance(return_type, OptionalType):
             if isinstance(expr, TpyNoneLiteral):
                 return
-            if self.is_dangling_return(expr):
+            if self.is_dangling_return(expr, gen_yield=for_yield):
                 raise self.ctx.error(
                     f"Cannot {verb} local or temporary as '{return_type}'. "
                     f"The {verb}ed pointer would dangle. "
@@ -2684,7 +2734,7 @@ class TypeCompatibility:
             return
 
         # Check if the expression is safe to return as a reference
-        if self.is_dangling_return(expr):
+        if self.is_dangling_return(expr, gen_yield=for_yield):
             if is_protocol_type(return_type):
                 raise self.ctx.error(
                     f"Cannot {verb} local or temporary as '{return_type}'. "
@@ -2737,7 +2787,8 @@ class TypeCompatibility:
         return not (et.is_value_type() or isinstance(et, (OwnType, TypeParamRef)))
 
     def _check_tuple_elem_dangle(self, tuple_type: TupleType, expr: TpyExpr,
-                                 verb: str, source_type: TpyType | None = None) -> None:
+                                 verb: str, source_type: TpyType | None = None,
+                                 *, gen_yield: bool = False) -> None:
         """Per-element dangling check for a top-level tuple return/yield literal.
 
         Each non-value member is stored by pointer in the tuple's borrow form,
@@ -2753,9 +2804,9 @@ class TypeCompatibility:
         # A ternary returns whichever arm is taken -- check both.
         if isinstance(inner, TpyIfExpr):
             self._check_tuple_elem_dangle(tuple_type, inner.then_expr, verb,
-                                          source_type)
+                                          source_type, gen_yield=gen_yield)
             self._check_tuple_elem_dangle(tuple_type, inner.else_expr, verb,
-                                          source_type)
+                                          source_type, gen_yield=gen_yield)
             return
         if not isinstance(inner, TpyTupleLiteral):
             return
@@ -2768,7 +2819,7 @@ class TypeCompatibility:
                 break
             if et.is_value_type() or isinstance(et, (OwnType, TypeParamRef)):
                 continue
-            bad = self.is_dangling_return(inner.elements[i])
+            bad = self.is_dangling_return(inner.elements[i], gen_yield=gen_yield)
             if not bad and et.needs_wrapper():
                 src_et = src_elems[i] if src_elems is not None else None
                 from_existing_wrapper = (src_et is not None

@@ -1373,6 +1373,17 @@ class SemanticAnalyzer:
             locals_dict, func, self.ctx.func.write_history)
         func.generator_locals = list(locals_dict.items())
 
+    def _drain_pending_yield_root_checks(self) -> None:
+        """Run borrow-yield rooting checks deferred during body analysis, now
+        that `func.generator_locals` is populated so a yielded frame-resident
+        local is recognized as a valid borrow root (see
+        `FunctionTrackingState.pending_yield_root_checks`).
+        """
+        for value, elem_type, loc in self.ctx.func.pending_yield_root_checks:
+            self.compat.check_dangling_reference(
+                value, elem_type, loc, for_yield=True)
+        self.ctx.func.pending_yield_root_checks.clear()
+
     def _analyze_function(self, func: TpyFunction) -> None:
         """Analyze a function body."""
         # Stub functions (extern imports with ... body) have no body to analyze
@@ -1448,6 +1459,7 @@ class SemanticAnalyzer:
         # the return-statement rewrite).
         if func.is_generator or func.is_async:
             self._collect_generator_locals(func, local_ns, exclude_self=False)
+            self._drain_pending_yield_root_checks()
 
         # Finalize nested def escape analysis
         self._finalize_nested_def_escapes()
@@ -2755,6 +2767,7 @@ class SemanticAnalyzer:
 
             if method.is_generator or method.is_async:
                 self._collect_generator_locals(method, local_ns, exclude_self=True)
+                self._drain_pending_yield_root_checks()
 
             # Store Phase 1 local mutation facts on method FunctionInfo.
             # For @overload methods, get_method() returns overloads[0] (the first

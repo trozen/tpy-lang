@@ -1,0 +1,1 @@
+main.py:7: error: Cannot yield local or temporary as reference. Object type 'list[int]' is yielded by reference. Declare the generator 'Iterator[Own[list[int]]]' to yield by value.
