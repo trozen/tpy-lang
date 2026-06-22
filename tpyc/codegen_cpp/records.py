@@ -28,7 +28,9 @@ from ..parse import (
 from ..namespace import Namespace
 
 from .. import qnames
-from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, escape_cpp_name, enum_cpp_name
+from .context import (
+    INDENT, DUNDER_TO_BINARY_OP, DUNDER_TO_REVERSE_BINARY_OP, CodeGenError,
+    escape_cpp_name, enum_cpp_name)
 from .functions import factory_default_to_cpp
 from .resumable_cfg import ResumableShape
 from ..type_def_registry import (
@@ -1600,24 +1602,38 @@ class RecordGenerator:
         (e.g., `t + other`, `t < other`) rather than method calls (e.g., `t.__add__(other)`).
         """
         for method in record.methods:
-            if method.name not in DUNDER_TO_BINARY_OP:
-                continue
             if not method.params:
                 continue  # Binary operators need at least one parameter
 
-            cpp_op = DUNDER_TO_BINARY_OP[method.name]
+            forward_op = DUNDER_TO_BINARY_OP.get(method.name)
+            reverse_op = DUNDER_TO_REVERSE_BINARY_OP.get(method.name)
+            # Skip non-operator methods before rendering the param type: a
+            # non-operator first param may be an Fn/Callable (template) or FStr
+            # type whose to_cpp_const_param would crash.
+            if forward_op is None and reverse_op is None:
+                continue
+
             param_name, param_type = method.params[0]
             param_cpp = param_type.to_cpp_const_param(param_name)
-
             # Return type - use to_cpp() for value/Own types
             ret_cpp = method.return_type.to_cpp()
-
-            # Generate friend operator that delegates to the dunder method
-            # Using friend function allows symmetric operand handling
             rec_short = bare_name(record.name)
-            out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {escape_cpp_name(rec_short)}& lhs, {param_cpp}) {{\n")
-            out.write(f"{INDENT}{INDENT}return lhs.{method.name}({param_name});\n")
-            out.write(f"{INDENT}}}\n")
+            rec_cpp = escape_cpp_name(rec_short)
+
+            # Forward dunder: `record OP other` -> friend with the record on the
+            # left. Using a friend function allows symmetric operand handling.
+            if forward_op is not None:
+                out.write(f"\n{INDENT}friend {ret_cpp} operator{forward_op}(const {rec_cpp}& lhs, {param_cpp}) {{\n")
+                out.write(f"{INDENT}{INDENT}return lhs.{method.name}({param_name});\n")
+                out.write(f"{INDENT}}}\n")
+            # Reflected dunder: `other OP record` -> friend with the record on
+            # the RIGHT, delegating to __rOP__. Matches DUNDER_CPP_TEMPLATES'
+            # reverse entries (`({0}) OP ({self})`), which sema emits when it
+            # resolves a binop to the reverse method.
+            else:
+                out.write(f"\n{INDENT}friend {ret_cpp} operator{reverse_op}({param_cpp}, const {rec_cpp}& rhs) {{\n")
+                out.write(f"{INDENT}{INDENT}return rhs.{method.name}({param_name});\n")
+                out.write(f"{INDENT}}}\n")
 
     def _gen_call_operator(self, out: TextIO, record: TpyRecord) -> None:
         """Generate operator() delegating to __call__ (callable objects).

@@ -4766,6 +4766,7 @@ class Car(Vehicle, Printable, Measurable):
 - **Working**: `__init__`
 - **Working**: `__eq__`, `__ne__`, `__lt__`, `__le__`, `__gt__`, `__ge__` → C++ `friend` comparison operators. Sema errors if comparing user records without the required dunder. `!=` is auto-synthesized from `__eq__` via C++20 rewriting.
 - **Working**: `__add__`, `__sub__`, `__mul__`, `__truediv__`, `__floordiv__`, `__mod__`, `__and__`, `__or__`, `__xor__`, `__lshift__`, `__rshift__` → C++ `friend` binary operators
+- **Working**: reflected operators `__radd__`, `__rsub__`, `__rmul__`, `__rtruediv__`, `__rfloordiv__`, `__rmod__`, `__rand__`, `__ror__`, `__rxor__`, `__rlshift__`, `__rrshift__` → C++ `friend` binary operators with the operand order swapped (the record is the right operand). When `left OP right` has no viable `left.__OP__(right)`, sema dispatches to `right.__rOP__(left)` -- enabling `builtin OP user-type` (e.g. `1.5 * dur` where `Dur.__rmul__(float)` is defined). No reflected comparisons (Python reflects those by swapping `__lt__`/`__gt__`) and no `__rpow__` (pow is `std::pow`, not an operator).
 - **Working**: `__neg__`, `__pos__`, `__invert__` → C++ `friend` unary operators (`-x`, `+x`, `~x`)
 - **Working**: `__iadd__`, `__isub__`, `__imul__`, etc. → in-place mutation (`+=`, `-=`, `*=`, etc.). Must return `self` (like Python). Generates C++ `T&` return with `return *this`. Params are `const` (rvalue-safe).
 - **Working**: `__contains__` → `in` / `not in` operator (user-defined membership test)

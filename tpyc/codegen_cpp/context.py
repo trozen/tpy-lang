@@ -416,6 +416,18 @@ DUNDER_TO_BINARY_OP: dict[str, str] = {
     "__lshift__": "<<", "__rshift__": ">>",
 }
 
+# Reflected (right-hand) dunders -> the same C++ operator, emitted as a friend
+# with the operands swapped (the record is the right operand). Mirrors
+# BINOP_TO_RMETHOD; no comparisons (Python reflects those via __lt__/__gt__) and
+# no __rpow__ (pow is std::pow, not an operator -- like forward __pow__, it is
+# not exposed as a friend operator).
+DUNDER_TO_REVERSE_BINARY_OP: dict[str, str] = {
+    "__radd__": "+", "__rsub__": "-", "__rmul__": "*",
+    "__rtruediv__": "/", "__rfloordiv__": "/", "__rmod__": "%",
+    "__rand__": "&", "__ror__": "|", "__rxor__": "^",
+    "__rlshift__": "<<", "__rrshift__": ">>",
+}
+
 class SlotState:
     """Manages unique slot names for pointer-local backing storage."""
 
