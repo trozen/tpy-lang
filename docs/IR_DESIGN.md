@@ -194,6 +194,20 @@ in the current model.
   that doc defers to "Phase 3+". Natural on MIR's unification-variable model; awkward to
   bolt onto the directional AST matcher. Workaround: annotate the local
   (`heap: list[Entry[T]] = []`). Surfaced reviewing the owned-storage-form inference fix.
+- **Simple-generator peephole eager-body divergence (BUGS.md "runs post-yield code BEFORE
+  delivering" / "runs the body prologue eagerly").** **[MED, silent ordering divergence]**
+  The single-yield lambda peephole runs a prologue at construction and post-yield code one
+  pull early instead of suspending. The fix -- route such generators to the resumable path --
+  is correct but IR-entangled, so it rides the migration: (1) rerouting some shapes hits the
+  resumable path's own IR-gated gaps (the borrow-form `tuple<int,Box*>` vs `tuple<int,Box>`
+  yield, Open-Q item 9; default-args-on-resumable-factory), so a broad reroute regresses
+  previously-building cases; (2) the only pre-IR alternative -- a *syntactic* "observable
+  prologue/post-yield" predicate to reroute selectively -- is a semantic-purity problem that
+  leaks (a denylist keeping local bindings mis-times `x = f()`/`x = xs[i]`/`x = global`; an
+  allowlist of pure-arith counters reroutes `i = Int32(0)` back into the tuple bug). Once MIR
+  makes representation selection late and the resumable path's borrow-form gaps dissolve, the
+  reroute becomes unconditional and complete. (Investigated + abandoned pre-IR 2026-06-22,
+  Codex-validated.)
 
 ---
 
