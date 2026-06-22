@@ -1,0 +1,1 @@
+main.py:5: error: Type mismatch in argument 'value': expected PendingList[IntLiteral(1), 2]#0, got PendingList[str, 2]#3

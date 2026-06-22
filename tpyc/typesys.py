@@ -4112,6 +4112,66 @@ class PendingSetType(TpyType):
         return "builtins.set"
 
 
+def pending_containers_match(
+    a: 'TpyType', b: 'TpyType',
+    elem_compatible: 'Callable[[TpyType, TpyType], bool]',
+) -> bool:
+    """Whether two PENDING containers are the same kind with pairwise-compatible
+    element/key/value types (lists also require equal size), without forcing the
+    deferred Array-vs-list resolution. The element rule is the caller's, so the
+    peer-unify and assignability paths share one container skeleton rather than
+    each rejecting structurally-equal pendings.
+    """
+    if isinstance(a, PendingListType) and isinstance(b, PendingListType):
+        return a.size == b.size and elem_compatible(a.element_type, b.element_type)
+    if isinstance(a, PendingDictType) and isinstance(b, PendingDictType):
+        return (elem_compatible(a.key_type, b.key_type)
+                and elem_compatible(a.value_type, b.value_type))
+    if isinstance(a, PendingSetType) and isinstance(b, PendingSetType):
+        return elem_compatible(a.element_type, b.element_type)
+    return False
+
+
+def unify_literal_types(a: 'TpyType', b: 'TpyType') -> 'TpyType | None':
+    """Unify two literal/pending element types -- the single source of truth for
+    "are these two element types peer-compatible". IntLiteralType / FloatLiteralType
+    count as compatible with each other and with their concrete equivalents;
+    TupleType and pending containers recurse. Returns the unified type or None.
+
+    Used by both the peer-unification path (list/dict/set literal element merge)
+    and the assignability path (`check_type_compatible`'s expected-Pending branch,
+    via `... is not None`), so the two cannot drift in what they accept.
+    """
+    if a == b:
+        return a
+    if isinstance(a, IntLiteralType) and isinstance(b, IntLiteralType):
+        return a
+    if isinstance(a, IntLiteralType) and is_integer_type(b):
+        return b
+    if isinstance(b, IntLiteralType) and is_integer_type(a):
+        return a
+    if isinstance(a, FloatLiteralType) and isinstance(b, FloatLiteralType):
+        return a
+    if isinstance(a, FloatLiteralType) and is_float_type(b):
+        return b
+    if isinstance(b, FloatLiteralType) and is_float_type(a):
+        return a
+    if isinstance(a, TupleType) and isinstance(b, TupleType):
+        if len(a.element_types) != len(b.element_types):
+            return None
+        unified: list[TpyType] = []
+        for ea, eb in zip(a.element_types, b.element_types):
+            u = unify_literal_types(ea, eb)
+            if u is None:
+                return None
+            unified.append(u)
+        return TupleType(tuple(unified))
+    if pending_containers_match(
+            a, b, lambda x, y: unify_literal_types(x, y) is not None):
+        return a
+    return None
+
+
 @dataclass
 class SetLiteralInfo:
     """Tracks usage information for an empty set to determine its resolved type."""

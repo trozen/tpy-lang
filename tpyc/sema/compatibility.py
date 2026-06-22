@@ -20,6 +20,7 @@ from ..typesys import (
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     CallableType, is_fn_type, RefType, unwrap_ref_type,
     is_callable_type, is_integer_type, is_any_float_type, is_readonly_span,
+    unify_literal_types,
     is_polymorphic_class_type, SendType, SyncType, unwrap_send_sync, FrameType,
     disambiguated_pair)
 from .frame_traits import frame_traits_of_function, frame_type_of_function
@@ -1163,6 +1164,16 @@ class TypeCompatibility:
                     return None
                 if isinstance(a_elem, IntLiteralType) and is_integer_type(e_elem):
                     return None
+
+        # Symmetric to the actual-Pending branch below: the EXPECTED type can
+        # itself be a pending container (e.g. appending into a list whose
+        # element type is still a pending list literal). Accept a
+        # structurally-compatible pending peer before the deferred resolver runs
+        # -- via the same `unify_literal_types` the peer-unify path uses, so the
+        # two cannot disagree on what matches.
+        if (isinstance(expected, (PendingListType, PendingDictType, PendingSetType))
+                and unify_literal_types(expected, actual) is not None):
+            return None
 
         # Allow PendingListType compatibility during first phase (before resolution)
         if isinstance(actual, PendingListType):

@@ -12,7 +12,7 @@ from typing import Literal, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, RecordInfo, disambiguated_pair,
-    NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType,
+    NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_const, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType, unify_literal_types,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, AnyType, OptionalType, UnionType, VoidType,
     ReadonlyType, unwrap_readonly, unwrap_qualifiers, is_any_str_type, PendingStrType, PendingViewType,
     ValueForm,
@@ -2265,15 +2265,6 @@ class ExpressionAnalyzer:
                     isinstance(first_type.element_type, IntLiteralType) and
                     isinstance(elem_type.element_type, IntLiteralType)):
                     continue
-                # PendingListTypes with compatible element types are compatible
-                if (isinstance(first_type, PendingListType) and isinstance(elem_type, PendingListType) and
-                    first_type.size == elem_type.size):
-                    # IntLiteralType elements are compatible regardless of value
-                    if (isinstance(first_type.element_type, IntLiteralType) and
-                        isinstance(elem_type.element_type, IntLiteralType)):
-                        continue
-                    if first_type.element_type == elem_type.element_type:
-                        continue
                 if elem_type != first_type:
                     ft = self._user_type_name(first_type)
                     et = self._user_type_name(elem_type)
@@ -2837,36 +2828,11 @@ class ExpressionAnalyzer:
         return t
 
     def _unify_literal_types(self, a: TpyType, b: TpyType) -> TpyType | None:
-        """Unify two dict/set literal element types, treating IntLiteralType /
-        FloatLiteralType as compatible with their concrete equivalents and
-        recursing into TupleType. Returns the unified type or None if they
-        cannot be unified.
-        """
-        if a == b:
-            return a
-        if isinstance(a, IntLiteralType) and isinstance(b, IntLiteralType):
-            return a
-        if isinstance(a, IntLiteralType) and is_integer_type(b):
-            return b
-        if isinstance(b, IntLiteralType) and is_integer_type(a):
-            return a
-        if isinstance(a, FloatLiteralType) and isinstance(b, FloatLiteralType):
-            return a
-        if isinstance(a, FloatLiteralType) and is_float_type(b):
-            return b
-        if isinstance(b, FloatLiteralType) and is_float_type(a):
-            return a
-        if isinstance(a, TupleType) and isinstance(b, TupleType):
-            if len(a.element_types) != len(b.element_types):
-                return None
-            unified: list[TpyType] = []
-            for ea, eb in zip(a.element_types, b.element_types):
-                u = self._unify_literal_types(ea, eb)
-                if u is None:
-                    return None
-                unified.append(u)
-            return TupleType(tuple(unified))
-        return None
+        """Unify two literal/pending element types (int/float literals, tuples,
+        nested pending containers). Thin wrapper over the shared
+        `typesys.unify_literal_types` so the peer-unify and assignability paths
+        share one definition and can't drift."""
+        return unify_literal_types(a, b)
 
     def _analyze_dict_literal(
         self, expr: TpyDictLiteral,
