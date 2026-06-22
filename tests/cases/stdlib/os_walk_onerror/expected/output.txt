@@ -1,0 +1,10 @@
+named: . files=1
+named: /sub files=1
+lambda: . files=1
+lambda: /sub files=1
+onerror fired
+named yields: 0
+lam fired
+lambda yields: 0
+default yields: 0
+aborted by onerror

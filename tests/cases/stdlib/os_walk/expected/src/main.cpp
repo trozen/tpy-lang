@@ -171,7 +171,7 @@ int32_t count_dirs(std::string_view root, bool follow) {
     int32_t n = 0;
     // for dp, dn, fn in os.walk(root, followlinks=follow):
     {
-        auto __src_0 = ::tpystd::os::walk(root, true, follow);
+        auto __src_0 = ::tpystd::os::walk(root, true, std::nullopt, follow);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

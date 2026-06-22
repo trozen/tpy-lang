@@ -5,8 +5,8 @@
 # Filesystem queries over std::filesystem (mutating ops over raw POSIX
 # syscalls); the path-string surface lives in the `os.path` submodule. Raw
 # bindings live in `os._native`.
-from typing import Final, overload, Iterator
-from tpy import Int64, Own
+from typing import Final, overload, Iterator, Callable
+from tpy import Int64, Own, readonly
 from tpy.extern import native_global
 from . import path
 from .path import join as _join
@@ -132,10 +132,15 @@ def listdir(path: str = ".") -> Own[list[str]]:
 # Iterative (explicit-stack) directory tree walk. `yield from`/recursion are
 # unsupported, so the descent is an explicit stack. In topdown mode the yielded
 # `dirnames` aliases the frame, so the caller's in-place edit prunes the descent
-# (the os.walk contract). A directory that can't be scanned is skipped, matching
-# CPython's default `onerror=None`. The `onerror` callback and bottomup
-# (topdown=False) are not yet supported.
+# (the os.walk contract). A directory that can't be scanned is reported to
+# `onerror` (and skipped); with the default `onerror=None` it is silently
+# skipped, matching CPython. The callback param is `readonly[OSError]` only to
+# work around a slicing-guard over-rejection (BUGS.md) -- a plain
+# `Callable[[OSError], None]` would be safe; drop the `readonly` once that is
+# fixed. A lambda works unannotated either way. bottomup (topdown=False) is not
+# yet supported.
 def walk(top: str, topdown: bool = True,
+         onerror: Callable[[readonly[OSError]], None] | None = None,
          followlinks: bool = False) -> Iterator[tuple[str, list[str], list[str]]]:
     if not topdown:
         raise NotImplementedError(
@@ -148,7 +153,9 @@ def walk(top: str, topdown: bool = True,
         filenames: list[str] = []
         try:
             entries = scandir(cur)
-        except OSError:
+        except OSError as err:
+            if onerror is not None:
+                onerror(err)
             continue
         for e in entries:
             # A broken symlink (or otherwise unstattable entry) makes is_dir()
