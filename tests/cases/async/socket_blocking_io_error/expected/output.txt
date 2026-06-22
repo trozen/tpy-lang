@@ -1,0 +1,2 @@
+caught as OSError
+not ValueError; caught as BlockingIOError

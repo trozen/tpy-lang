@@ -141,8 +141,9 @@ All TPy + a thin reactor binding (epoll on Linux, kqueue on macOS / *BSD).
   `_SockConnect` are hand-written awaitables (not `async def`s -- the retry
   loop parks by returning Pending + arming the reactor). Each holds a
   `Ptr[socket]` and drives the `socket` methods
-  (`recv` / `send` / `connect` / `getsockopt_int`, and the private
-  `_accept_nonblocking` = `accept` + setblocking), parking when they raise
+  (`recv` / `connect` / `getsockopt_int`, the private `_send_from` =
+  offset-advancing `send`, and the private `_accept_nonblocking` = `accept`
+  + setblocking), parking when they raise
   `BlockingIOError` -- mirroring CPython's
   `loop.sock_*`, which catch EAGAIN/EINPROGRESS off the same public methods
   rather than reaching into socket internals. `socket._raise_errno` is the

@@ -217,11 +217,8 @@ class _SockSendAll:
             raise CancelledError()
         total: UInt64 = UInt64(len(self._data))
         while self._sent < total:
-            # Slice off the unsent suffix; `socket.send` writes from the
-            # start of what it's given and returns the byte count.
-            chunk = self._data[Int32.trunc(self._sent):]
             try:
-                sent = self._sock.send(chunk)
+                sent = self._sock._send_from(self._data, self._sent)
             except BlockingIOError:
                 _reactor_register_fd(self._sock.fileno(), EPOLLOUT, waker)
                 return poll_pending()

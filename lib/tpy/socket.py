@@ -315,14 +315,21 @@ class socket:
     # element), so callers can wrap the fd in a fresh-constructor `socket`
     # local -- the move-analyzer tracks that as owned, whereas unpacking an
     # `Own[socket]` out of a tuple and repacking hits a move gap (BUGS.md).
+    # Peer resolution (`_ipv4_to_str` -> `inet_ntop`) can raise while `new_fd`
+    # is still naked (not yet owned by a `socket`), so close it on failure to
+    # avoid leaking the accepted descriptor.
     def _accept_fd(self) -> tuple[Int32, tuple[str, Int32]]:
         addr = SockaddrIn(0, 0, 0)
         addrlen: UInt32 = _SOCKADDR_IN_LEN
         new_fd = posix_socket.accept(self.fd, take_ptr(addr), take_ptr(addrlen))
         if new_fd < Int32(0):
             _raise_errno("accept")
-        peer = (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-                Int32.trunc(posix_socket.ntohs(addr.sin_port)))
+        try:
+            peer = (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
+                    Int32.trunc(posix_socket.ntohs(addr.sin_port)))
+        except OSError:
+            posix_socket.close(new_fd)
+            raise
         return (new_fd, peer)
 
     def accept(self) -> tuple[Own[socket], tuple[str, Int32]]:
@@ -346,7 +353,17 @@ class socket:
         """Send (some of) `data`; returns bytes actually sent. Use
         `sendall` for full-buffer delivery. Return truncated to Int32
         from libc's ssize_t -- see module TODO."""
-        n = posix_socket.send(self.fd, unsafe_ptr(data), UInt64(len(data)), Int32(0))
+        return self._send_from(data, 0)
+
+    # Send the suffix `data[offset:]` without materializing it -- the async
+    # `_SockSendAll` advances `offset` across parks, so slicing a fresh
+    # `bytes` per park would be O(n^2) (CPython tracks a memoryview offset).
+    # Underscore-private: not part of CPython's socket surface.
+    def _send_from(self, data: bytes, offset: UInt64) -> Int32:
+        data_ptr: Ptr[readonly[UInt8]] = unsafe_ptr(data)
+        n = posix_socket.send(self.fd,
+                              unsafe_ptr_add(data_ptr, Int64.trunc(offset)),
+                              UInt64(len(data)) - offset, Int32(0))
         if n < Int64(0):
             _raise_errno("send")
         return Int32.trunc(n)

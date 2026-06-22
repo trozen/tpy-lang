@@ -1,0 +1,5 @@
+Exercises the TPy-specific socket.getsockopt_int / setsockopt_int methods,
+which have no CPython counterpart (CPython spells these getsockopt /
+setsockopt with a different signature). The TPy facade names them _int to
+make the int-valued option explicit; this case is a regression guard for
+that TPy method surface, not a CPython-parity test.
