@@ -62,7 +62,7 @@ uv sync                                 # Install for development
 
 Each folder under `tests/cases/` becomes one parametrized item of `test_case` with three phases: **comp** (compile + diagnostics + snapshot check + annotation validation), **exec** (build + run C++), and **cpy** (run with CPython, compare to `output.txt`).
 
-**Exec skip is local, not committed.** The exec phase (C++ build + run) skips only when *this exact build already ran green on this machine's toolchain*, tracked by a gitignored, content-addressed marker cache under the shared cache root (`~/.cache/tpyc/exec-results/`, next to `stdlib-objs/` and `pch/`). The marker name is a hash of everything that determines the binary and its output: toolchain (compiler/std/flags), runtime headers, `lib/tpy/` stdlib, compiler source, the case's freshly-generated C++, hand-written C++ companions, link flags, and any `src/input.txt` stdin fixture. So a fresh checkout re-verifies the build+run once, then caches -- `--force-exec` is no longer needed to exercise exec. Switching toolchain (`--cxx`) or touching the runtime re-keys the markers, forcing re-verification. The cache is intentionally shared across worktrees: identical cases dedup, divergent ones never collide.
+**Exec skip is local, not committed.** The exec phase (C++ build + run) skips only when *this exact build already ran green on this machine's toolchain*, tracked by a gitignored, content-addressed marker cache under the shared cache root (`~/.cache/tpyc/exec-results/`, next to `stdlib-objs/` and `pch/`). The marker name is a hash of everything that determines the binary and its output: toolchain (compiler/std/flags), runtime headers, the generated C++ for every module the case pulls in (local *and* the stdlib modules it imports), the identity of the full precompiled stdlib `.o` set (every case links the whole set with no dead-stripping, so an unimported-but-linked module still affects the binary), hand-written C++ companions, link flags, and any `src/input.txt` stdin fixture. It is keyed on compiler *output*, not compiler *source*: a compiler edit that leaves the emitted C++ byte-identical (a comment, a refactor, or a codegen change to a construct neither this case nor the stdlib uses) reuses the cache; a codegen change that *does* alter the stdlib's emitted C++ re-keys every case (the whole set is linked everywhere), and one that alters only some cases' C++ re-keys just those. So a fresh checkout re-verifies the build+run once, then caches -- `--force-exec` is no longer needed to exercise exec. Switching toolchain (`--cxx`) or touching the runtime re-keys the markers, forcing re-verification. (The shared stdlib `.o` cache is still keyed on compiler source, so a compiler edit triggers a one-time `.o` rebuild regardless.) The cache is intentionally shared across worktrees: identical cases dedup, divergent ones never collide.
 
 The cpy phase (CPython run) still auto-skips via **committed** fingerprints -- CPython output is toolchain-independent, so a committed key is portable:
 
@@ -76,6 +76,7 @@ Parallel execution (`-n auto`) is configured in `pyproject.toml` via `addopts`. 
 ```bash
 uv run pytest                              # All tests (exec skips per the local cache; cpy skips per committed fps)
 uv run pytest --force-exec                 # Force exec + cpy unconditionally (ignore the local exec cache)
+uv run pytest --no-exec                    # Skip the exec phase entirely (comp + cpy only); fast codegen/diagnostics iteration
 uv run pytest --clean                      # Wipe shared PCH + stdlib .o + exec-results caches (implies --force-exec)
 uv run pytest --no-ccache                  # Bypass ccache for this run (does not wipe it)
 uv run pytest --cxx clang                  # Build the exec phase with a specific toolchain (mirrors `tpyc --cxx`)
@@ -94,7 +95,7 @@ uv run python tests/update_snapshots.py -k hello # Same, for a specific case
 
 Linked per-case test binaries are deleted after a passing exec phase (they are never reused -- exec either skips via the local cache or rebuilds; this keeps `tests/cases/` from accumulating gigabytes of dead executables). A failing exec keeps its binary for debugging; set `TPY_KEEP_TEST_BINARIES=1` to keep all of them.
 
-Harness-emitted status lines (cache builds, toolchain/ccache status, the active-options summary, warnings) are prefixed with `tpy|` so they stand out from pytest's own output.
+Harness-emitted status lines (cache builds, toolchain/ccache status, the active-options summary, warnings) are prefixed with `tpy|` so they stand out from pytest's own output. The terminal summary adds a `tpy| exec:` tally of how many cases built+ran vs skipped via the local cache (or that exec was disabled via `--no-exec`). When a shared input (toolchain, runtime headers, or the full stdlib output) changed since this checkout's last run -- invalidating every case's marker -- a `tpy| exec:` line at session start names the cause, so a whole-suite re-verify isn't a surprise.
 
 ### Agent testing workflow
 

@@ -63,6 +63,7 @@ from conftest import (
     compute_exec_fingerprint,
     exec_pass_is_cached,
     record_exec_pass,
+    record_exec_outcome,
 )
 
 
@@ -102,6 +103,7 @@ def test_case(case_dir, main_src, request):
         or request.config.getoption("--clean")
         or UPDATE_EXPECTED
     )
+    no_exec = request.config.getoption("--no-exec")
 
     # In update mode, clear stale artifacts so nothing lingers from a previous run
     if UPDATE_EXPECTED:
@@ -243,9 +245,13 @@ def test_case(case_dir, main_src, request):
     # Exec is gated on a local, content-addressed pass marker (see conftest):
     # skip only when this exact build already ran green on this machine's
     # toolchain -- a committed fingerprint can't attest the build worked here.
+    # get_stdlib_cache() is memoized + prewarmed in pytest_configure, so
+    # fetching it here (rather than only in the build branch below) is cheap.
+    stdlib_cache = get_stdlib_cache()
     exec_fp = compute_exec_fingerprint(
         case_dir, result.all_modules,
         result.link_flags, result.third_party_link_flags,
+        stdlib_output_hash=stdlib_cache.output_hash if stdlib_cache else "",
     )
     can_skip_exec = (
         not force_exec
@@ -253,12 +259,14 @@ def test_case(case_dir, main_src, request):
         and exec_pass_is_cached(exec_fp)
     )
 
-    if not can_skip_exec:
+    if no_exec:
+        record_exec_outcome("disabled")
+    elif not can_skip_exec:
         all_cpp_files = [cpp for _, _, cpp, _ in result.all_modules if cpp is not None]
         extra_src = find_extra_src_files(case_dir)
         extra_includes = find_extra_include_dirs(case_dir)
         force_includes = find_force_includes(case_dir)
-        cache = get_stdlib_cache()
+        cache = stdlib_cache
         # Combine test-supplied include dirs with third-party-resolved ones
         # (e.g. PCRE2 src dir for tests that import the `re` module).
         all_extra_includes = list(extra_includes) + list(result.third_party_include_dirs)
@@ -306,14 +314,17 @@ def test_case(case_dir, main_src, request):
         # build+run reproduced the expected output: cache the pass so unchanged
         # cases skip exec on the next run without --force-exec.
         record_exec_pass(exec_fp, request.node.name)
-    elif not is_warn and not (expected_dir / "output.txt").exists() and not is_panic:
-        # Compiled cleanly but no expected output recorded; warn so user can
-        # run update_snapshots.py -k <case>
-        warnings.warn(
-            f"Test '{case_dir.name}' compiles but has no expected/output.txt "
-            f"(run update_snapshots.py -k {case_dir.name})",
-            stacklevel=1,
-        )
+        record_exec_outcome("ran")
+    else:
+        record_exec_outcome("skipped")
+        if not is_warn and not (expected_dir / "output.txt").exists() and not is_panic:
+            # Compiled cleanly but no expected output recorded; warn so user can
+            # run update_snapshots.py -k <case>
+            warnings.warn(
+                f"Test '{case_dir.name}' compiles but has no expected/output.txt "
+                f"(run update_snapshots.py -k {case_dir.name})",
+                stacklevel=1,
+            )
 
     # Exec checks passed (failures raise above): drop the linked binary
     # unless explicitly kept. Rebuilds don't read it, so retaining it only

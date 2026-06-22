@@ -92,6 +92,12 @@ class _StdlibCache:
     """Pre-compiled stdlib object files shared across all exec-phase runs."""
     objects: list[str]          # absolute paths to .o files
     cpp_relpaths: set[str]      # relative paths (under src/) to exclude from per-test compile
+    # Hash of the generated C++ for the WHOLE stdlib set (every module, not
+    # just the ones a given case imports). Every case binary links this full
+    # `.o` set with no dead-stripping, so an unimported-but-linked module's
+    # codegen still determines the binary -- a case's exec fingerprint must
+    # fold this in or a change there would be a stale-green skip.
+    output_hash: str = ""
 
 
 _stdlib_cache: _StdlibCache | None = None
@@ -171,17 +177,26 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
 
         layout = BuildLayout(build_dir, entry.name, build_variant="debug")
 
-        # Collect non-local (stdlib) .cpp files
+        # Collect non-local (stdlib) generated C++. The .cpp become .o; the
+        # .hpp matter too -- both feed `output_hash`, the identity of the
+        # full stdlib set every case links against.
         stdlib_cpps: list[Path] = []
+        stdlib_gen_files: list[Path] = []
         for mod in compiled_modules:
             if mod.is_entry_point:
                 continue
             cpp = layout.cpp_path(mod.name)
             if cpp.exists():
                 stdlib_cpps.append(cpp)
+                stdlib_gen_files.append(cpp)
+            hpp = layout.hpp_path(mod.name)
+            if hpp.exists():
+                stdlib_gen_files.append(hpp)
 
     if not stdlib_cpps:
         return _StdlibCache(objects=[], cpp_relpaths=set())
+
+    output_hash = _hash_files(sorted(stdlib_gen_files))
 
     # Compile each stdlib .cpp -> .o.
     # Parallelized across CPU cores; uses PCH (when available) so each
@@ -311,7 +326,7 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
             return _StdlibCache(objects=[], cpp_relpaths=set())
         objects.extend(rt_objs)
 
-    return _StdlibCache(objects=objects, cpp_relpaths=relpaths)
+    return _StdlibCache(objects=objects, cpp_relpaths=relpaths, output_hash=output_hash)
 
 
 _SHARED_CACHE_ROOT_ENV = "TPYC_SHARED_CACHE_DIR"
@@ -401,6 +416,10 @@ def _load_persistent_stdlib_cache(cache_dir: Path) -> _StdlibCache | None:
         return _StdlibCache(
             objects=objects,
             cpp_relpaths=set(data["cpp_relpaths"]),
+            # Empty fallback for pre-output_hash metadata is safe: this dir is
+            # content-addressed by _stdlib_cache_key, so legacy .o are reused
+            # only while byte-identical -- any change re-keys and rebuilds.
+            output_hash=data.get("output_hash", ""),
         )
     except (OSError, KeyError, json.JSONDecodeError, TypeError):
         return None
@@ -434,10 +453,12 @@ def _build_persistent_stdlib_cache(cache_dir: Path) -> _StdlibCache | None:
         metadata = {
             "objects": rebased_objects,
             "cpp_relpaths": sorted(cache.cpp_relpaths),
+            "output_hash": cache.output_hash,
         }
         (cache_dir / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
         (cache_dir / ".ready").touch()
-        return _StdlibCache(objects=rebased_objects, cpp_relpaths=cache.cpp_relpaths)
+        return _StdlibCache(objects=rebased_objects, cpp_relpaths=cache.cpp_relpaths,
+                            output_hash=cache.output_hash)
     finally:
         if build_tmp.exists():
             shutil.rmtree(build_tmp, ignore_errors=True)
@@ -941,6 +962,16 @@ def pytest_addoption(parser):
         help="Run exec and cpython phases unconditionally, bypassing fingerprint-based auto-skip.",
     )
     parser.addoption(
+        "--no-exec",
+        action="store_true",
+        default=False,
+        help=(
+            "Skip the exec phase (C++ build + run) entirely; comp and cpy "
+            "phases still run. Fast iteration when only diagnostics/codegen "
+            "matter. Mutually exclusive with --force-exec."
+        ),
+    )
+    parser.addoption(
         "--clean",
         action="store_true",
         default=False,
@@ -1003,9 +1034,22 @@ def _cgroup_cpu_quota() -> int | None:
 
 def pytest_configure(config):
     """Print ccache status; manage session fingerprint file."""
+    global UPDATE_EXPECTED  # assigned below; declared here so the guard can read it
+
     is_master = os.environ.get("PYTEST_XDIST_WORKER") is None
     if not is_master:
         return
+
+    if config.getoption("--no-exec") and (
+        config.getoption("--force-exec")
+        or config.getoption("--clean")
+        or config.getoption("--update-snapshots")
+        or UPDATE_EXPECTED  # the env-var spelling of --update-snapshots
+    ):
+        pytest.exit(
+            "--no-exec conflicts with --force-exec/--clean/--update-snapshots",
+            returncode=1,
+        )
 
     # Resolve the C++ toolchain first: --cxx rebuilds CPP_CONFIG (which the
     # ccache status, cache keys, and prewarm below all read) and is propagated
@@ -1032,36 +1076,14 @@ def pytest_configure(config):
         _stdlib_cache_key.cache_clear()
         _pch_cache_key.cache_clear()
 
-    # One line per knob: current state first, then the flag that changes it.
-    # Grouped by theme -- toolchain, ccache, and exec/snapshot verification.
-    _log(f"toolchain: {CPP_CONFIG.compiler_name}  "
-         f"(--cxx=<gcc|clang|gcc-14|clang-18|zig|...>; --cxx=list to enumerate)")
-
     if config.getoption("--no-ccache"):
         # Every compile path is gated on CPP_CONFIG.ccache, so flipping it
         # to False is sufficient -- we stop prepending `ccache` entirely
         # rather than spawning it with CCACHE_DISABLE=1 as a pass-through.
         CPP_CONFIG.ccache = False
         os.environ["TPY_TEST_NO_CCACHE"] = "1"  # propagate to xdist workers
-        _log("C++ compilation: ccache disabled via --no-ccache")
-    elif CPP_CONFIG.ccache:
-        _log("C++ compilation: using ccache  (--no-ccache to disable)")
-    else:
-        _log("C++ compilation: ccache not found (install for faster re-runs)")
 
     if config.getoption("--update-snapshots"):
-        exec_state = "regenerating snapshots"
-    elif config.getoption("--clean"):
-        exec_state = "caches wiped, re-verifying every case"
-    elif config.getoption("--force-exec"):
-        exec_state = "re-verifying every case (forced)"
-    else:
-        exec_state = "verify-once-then-cache per case"
-    _log(f"exec: {exec_state}  (--force-exec re-run all; "
-         f"--clean wipe caches; --update-snapshots regenerate expected)")
-
-    if config.getoption("--update-snapshots"):
-        global UPDATE_EXPECTED
         UPDATE_EXPECTED = True
         # Propagate to xdist workers (subprocesses inherit os.environ, and
         # their conftest import reads the env var at module load time).
@@ -1107,6 +1129,47 @@ def pytest_configure(config):
     # actual test is quick.
     get_pch_header()
     get_stdlib_cache()
+
+    # Forced modes re-verify every case by flag (the report header says so),
+    # so only announce a shared-input change in normal mode -- but always
+    # refresh the recorded signature so the next run has a baseline.
+    forced = config.getoption("--force-exec") or config.getoption("--clean")
+    report_exec_env_change(announce=not forced)
+
+
+def pytest_report_header(config):
+    """Static toolchain / build-mode summary, under the session-starts bar.
+
+    Runs after pytest_configure (so CPP_CONFIG reflects --cxx / --no-ccache)
+    and once on the xdist controller -- no manual worker guard needed. Live
+    build progress stays in pytest_configure since it must print as it happens.
+    """
+    # Each line: current state first, then the flag that changes it.
+    if config.getoption("--no-ccache"):
+        ccache_state = "ccache disabled via --no-ccache"
+    elif CPP_CONFIG.ccache:
+        ccache_state = "using ccache  (--no-ccache to disable)"
+    else:
+        ccache_state = "ccache not found (install for faster re-runs)"
+
+    if config.getoption("--no-exec"):
+        exec_state = "skipped via --no-exec (comp + cpy only)"
+    elif config.getoption("--update-snapshots"):
+        exec_state = "regenerating snapshots"
+    elif config.getoption("--clean"):
+        exec_state = "caches wiped, re-verifying every case"
+    elif config.getoption("--force-exec"):
+        exec_state = "re-verifying every case (forced)"
+    else:
+        exec_state = "verify-once-then-cache per case"
+
+    return [
+        f"{_LOG_PREFIX} toolchain: {CPP_CONFIG.compiler_name}  "
+        f"(--cxx=<gcc|clang|gcc-14|clang-18|zig|...>; --cxx=list to enumerate)",
+        f"{_LOG_PREFIX} C++ compilation: {ccache_state}",
+        f"{_LOG_PREFIX} exec: {exec_state}  (--force-exec re-run all; "
+        f"--no-exec skip; --clean wipe caches; --update-snapshots regenerate expected)",
+    ]
 
 
 def pytest_xdist_auto_num_workers(config):
@@ -1332,23 +1395,38 @@ def compute_exec_fingerprint(
     all_modules: list[tuple[str, Path | None, Path | None, bool]],
     link_flags: list[str],
     third_party_link_flags: list[str],
+    stdlib_output_hash: str = "",
 ) -> str:
     """Hash everything that determines a case's binary and its stdout.
 
-    `_stdlib_cache_key()` already folds in the toolchain (compiler/std/flags),
-    runtime headers, lib/tpy stdlib, and compiler source -- i.e. the shared
-    environment every test binary links against. To that we add the case's own
-    freshly-generated C++ (the actual build inputs), any hand-written C++
-    companions, link flags, and a `src/input.txt` stdin fixture (it feeds the
-    program, so it affects output).
+    Keyed on compiler *output*, not *source*: the generated C++ for every
+    module the case pulls in, the build environment (runtime headers via
+    `_runtime_hash`, which also covers `third_party/`; and the toolchain),
+    plus per-case companions/link-flags/`src/input.txt`. `_tpyc_hash`/
+    `_libtpy_hash` are deliberately NOT folded in -- compiler/stdlib source
+    reaches the binary only through the generated C++ hashed here, so an edit
+    that leaves the emitted C++ identical reuses the cache.
+
+    `stdlib_output_hash` pins the WHOLE precompiled stdlib set: every binary
+    links that full `.o` set with no dead-stripping, so an unimported module's
+    change still alters the binary -- without this it would be a stale-green
+    skip. Empty when no cache is used (the case then compiles+links only its
+    imports, which `all_modules` already covers).
     """
     h = hashlib.sha256()
-    h.update(_stdlib_cache_key().encode())
+    h.update(_runtime_hash().encode())
+    h.update(b"\0")
+    h.update(stdlib_output_hash.encode())
+    h.update(b"\0")
+    h.update(repr((
+        CPP_CONFIG.compiler,
+        CPP_CONFIG.std,
+        CPP_CONFIG.extra_flags,
+        CPP_CONFIG.warn_flags,
+    )).encode())
     h.update(b"\0")
     gen_files: list[Path] = []
-    for _name, hpp, cpp, is_local in all_modules:
-        if not is_local:
-            continue
+    for _name, hpp, cpp, _is_local in all_modules:
         for p in (hpp, cpp):
             if p is not None and p.exists():
                 gen_files.append(p)
@@ -1392,6 +1470,120 @@ def record_exec_pass(fingerprint: str, case_id: str) -> None:
         tmp.replace(marker)
     except OSError:
         pass
+
+
+# ---------------------------------------------------------------------------
+# Wholesale-reverify cause diagnostic
+# ---------------------------------------------------------------------------
+# Three inputs are shared by EVERY case's exec fingerprint -- toolchain,
+# runtime headers, and the full stdlib output (the whole .o set is linked
+# into every binary). When any changes, all markers re-key and the entire
+# suite rebuilds. We record this signature per-checkout and, at the next
+# normal run, name what changed so a wholesale re-verify isn't a mystery.
+
+_EXEC_ENV_LABELS = {
+    "runtime": "runtime headers",
+    "toolchain": "toolchain",
+    "stdlib_output": "stdlib output",
+}
+
+
+def _exec_shared_env() -> dict[str, str]:
+    cache = get_stdlib_cache()
+    return {
+        "runtime": _runtime_hash(),
+        "toolchain": repr((
+            CPP_CONFIG.compiler, CPP_CONFIG.std,
+            CPP_CONFIG.extra_flags, CPP_CONFIG.warn_flags,
+        )),
+        "stdlib_output": cache.output_hash if cache else "",
+    }
+
+
+def _exec_env_record_path() -> Path:
+    # Per-checkout (not shared across worktrees): "since the last run" should
+    # mean this tree's last run, not a sibling worktree with different output.
+    key = hashlib.sha256(str(PROJECT_ROOT).encode()).hexdigest()[:16]
+    return _shared_cache_root() / f"exec-env-{key}.json"
+
+
+def report_exec_env_change(announce: bool) -> None:
+    """Name a shared-input change that invalidates every exec marker.
+
+    Best-effort: always refreshes the recorded signature (so the next run has
+    a baseline), but only emits the `tpy|` line when *announce* -- forced
+    modes re-verify by flag and the report header already says so.
+    """
+    path = _exec_env_record_path()
+    current = _exec_shared_env()
+    try:
+        prior = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        prior = {}
+    if announce and isinstance(prior, dict) and prior:
+        changed = [_EXEC_ENV_LABELS[k] for k in _EXEC_ENV_LABELS
+                   if prior.get(k) != current[k]]
+        if changed:
+            _log(f"exec: {' + '.join(changed)} changed since last run "
+                 f"-> every case re-verifies (build+run)")
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # temp + rename so a concurrent run in this checkout can't read a torn file
+        tmp = path.with_suffix(f".{os.getpid()}.tmp")
+        tmp.write_text(json.dumps(current, indent=2, sort_keys=True) + "\n")
+        tmp.replace(path)
+    except OSError:
+        pass
+
+
+# ---------------------------------------------------------------------------
+# Exec-phase tally (reported in the terminal summary)
+# ---------------------------------------------------------------------------
+# Each test increments one bucket. Under xdist each worker tallies into its
+# own process-local dict, ships it home via `workeroutput` at session end, and
+# the controller folds the per-worker dicts into `_exec_tally_agg`. The
+# terminal summary (controller-side) sums both: under xdist the controller's
+# own `_exec_tally` stays at zero (it runs no tests), and without xdist the
+# aggregate stays zero -- so the sum is correct either way.
+
+_exec_tally = {"ran": 0, "skipped": 0, "disabled": 0}
+_exec_tally_agg = {"ran": 0, "skipped": 0, "disabled": 0}
+
+
+def record_exec_outcome(outcome: str) -> None:
+    """Tally one case's exec-phase outcome: 'ran', 'skipped', or 'disabled'."""
+    if outcome in _exec_tally:
+        _exec_tally[outcome] += 1
+
+
+def pytest_sessionfinish(session):
+    """xdist worker: ship this process's exec tally back to the controller."""
+    workeroutput = getattr(session.config, "workeroutput", None)
+    if workeroutput is not None:
+        workeroutput["exec_tally"] = dict(_exec_tally)
+
+
+def pytest_testnodedown(node, error):
+    """xdist controller: fold a finished worker's exec tally into the total."""
+    tally = getattr(node, "workeroutput", {}).get("exec_tally")
+    if tally:
+        for k in _exec_tally_agg:
+            _exec_tally_agg[k] += tally.get(k, 0)
+
+
+def pytest_terminal_summary(terminalreporter, exitstatus, config):
+    total = {k: _exec_tally[k] + _exec_tally_agg[k] for k in _exec_tally}
+    considered = total["ran"] + total["skipped"]
+    if total["disabled"]:
+        terminalreporter.write_line(
+            f"{_LOG_PREFIX} exec: disabled via --no-exec "
+            f"({total['disabled']} cases not built/run)"
+        )
+    elif considered:
+        terminalreporter.write_line(
+            f"{_LOG_PREFIX} exec: {total['ran']} built+run, "
+            f"{total['skipped']} skipped via cache ({considered} cases)"
+        )
 
 
 def case_binary_path(build_dir: Path, module_name: str) -> Path:
