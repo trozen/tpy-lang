@@ -1,0 +1,12 @@
+# Dict with deep-nested jagged list values: the value type is taken from the
+# first value, so the same homogeneity bug as nested list literals applies. The
+# jagged innermost level resolves to list[int] and propagates to the equal-size
+# peer value; mutating it through the dict subscript must be observed.
+def main() -> None:
+    d = {1: [[1, 2], [3, 4]], 2: [[5, 6], [7, 8, 9]]}  # tpyc: ok
+    print(d)
+    d[2][1].append(99)  # innermost stored value is a real vector -> change observed
+    d[1][0].append(7)   # the equal-size peer value demoted too, so it grows as well
+    print(d)
+
+main()

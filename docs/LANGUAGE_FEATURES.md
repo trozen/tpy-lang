@@ -769,6 +769,7 @@ Context-dependent inference for Python-first semantics:
 | Function local, passed to `list[T]` param | `list` | `std::vector` | Callee expects mutable list |
 | Function local, passed to `Span[T]` param | `Array` | `std::array` | Span is a view, array stays on stack |
 | Function local, different-size reassignment | `list` | `std::vector` | `x = [1,2,3]; x = [4,5]` -- sizes differ, must be dynamic |
+| Function local, jagged nested literal | inner `list` | `std::vector` | `[[1,2],[3,4,5]]` -- the variable-length level demotes to `list`, uniform levels stay `Array` |
 | Function local, returned as `list[T]` | `list` | `std::vector` | Return type context propagates to local variable |
 | Function local, alias mutated | `list` | `std::vector` | `b = a; b.append(4)` -- both `a` and `b` become list |
 | Explicit annotation `x: Array[T, N]` | `Array` | `std::array` | User opted into fixed size |
@@ -779,6 +780,24 @@ List reassignment is element-type-checked (independent of the size-widening
 above): `x = [1, 2]; x = ["a"]` is a sema error (`expected list[Int32], got
 list[str]`), like the equivalent scalar/str rebind. Numeric element widening
 is still accepted.
+
+Nested list literals apply the rule per level. Sublists of differing length
+(a jagged literal, `[[1, 2], [3, 4, 5]]`) can't share a fixed `Array`, so that
+level resolves to `list[list[T]]`; levels with uniform element counts stay
+`Array`. The demotion propagates across same-size sibling literals so the whole
+container keeps one C++ element type -- e.g. in
+`[[[1, 2], [3, 4]], [[5, 6], [7, 8, 9]]]` the jagged innermost level becomes
+`list[int]` for every sublist, while the uniform outer/middle levels stay
+`Array`.
+
+The demotion reaches a jagged list wherever it sits in a sibling element, not
+just bare: nested in a tuple (`[(1, [2, 3]), (4, [5, 6, 7])]`), in a dict value
+(`{1: [[1, 2]], 2: [[3, 4, 5]]}`), or under a concrete dict
+(`{1: {10: [1, 2]}, 2: {20: [3, 4, 5]}}`). Convergence rides one traversal
+shared with the compatibility check, so the side that decides peers are
+compatible and the side that resolves them can't disagree. (Differing-length
+sublists across the branches of a ternary / `and` / `or` are a separate,
+still-open case -- see BUGS.md.)
 
 This gives the best of both worlds:
 - **Python semantics by default**: Globals behave like Python module variables (mutable, shareable)

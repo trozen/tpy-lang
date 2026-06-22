@@ -2274,7 +2274,9 @@ class ExpressionAnalyzer:
             # Keep IntLiteralType so array can coerce to either Int32 or BigInt based on context
 
             for i, elem_type in enumerate(elem_types[1:], 2):
-                # Literal-aware unification (int/float literals, tuples of literals)
+                # Literal-aware unification (int/float literals, tuples, nested
+                # pending containers); the demotion hook inside converges jagged
+                # pending lists -- bare or wrapped in a tuple -- to one C++ type.
                 unified = self._unify_literal_types(first_type, elem_type)
                 if unified is not None:
                     first_type = unified
@@ -2848,10 +2850,14 @@ class ExpressionAnalyzer:
 
     def _unify_literal_types(self, a: TpyType, b: TpyType) -> TpyType | None:
         """Unify two literal/pending element types (int/float literals, tuples,
-        nested pending containers). Thin wrapper over the shared
-        `typesys.unify_literal_types` so the peer-unify and assignability paths
-        share one definition and can't drift."""
-        return unify_literal_types(a, b)
+        nested pending containers) for a homogeneous-container peer-unify. Thin
+        wrapper over the shared `typesys.unify_literal_types` so the peer-unify
+        and assignability paths share one definition and can't drift.
+
+        Passes the demotion hook so a jagged pending list converges to vector on
+        the same traversal -- wherever it sits: bare, or nested in a tuple / dict
+        value (the sibling literals must share one C++ element type)."""
+        return unify_literal_types(a, b, on_pending_pair=self.compat._demote_pending_pair)
 
     def _analyze_dict_literal(
         self, expr: TpyDictLiteral,
@@ -2945,13 +2951,17 @@ class ExpressionAnalyzer:
         else:
             value_type = value_types[0]
             for i, vt in enumerate(value_types[1:], 2):
+                # Literal-aware unification; the demotion hook converges jagged
+                # pending-list values -- bare or wrapped in a tuple/dict -- to one
+                # C++ type (see the array-literal peer-unify).
                 unified = self._unify_literal_types(value_type, vt)
-                if unified is None:
-                    raise self.ctx.error(
-                        f"Dict has mixed value types: value {i} is {self._user_type_name(vt)}, "
-                        f"but earlier values are {self._user_type_name(value_type)}", expr,
-                    )
-                value_type = unified
+                if unified is not None:
+                    value_type = unified
+                    continue
+                raise self.ctx.error(
+                    f"Dict has mixed value types: value {i} is {self._user_type_name(vt)}, "
+                    f"but earlier values are {self._user_type_name(value_type)}", expr,
+                )
 
         if expr.loc is not None:
             if not isinstance(expected_key, AnyType):

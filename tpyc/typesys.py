@@ -4189,18 +4189,38 @@ class PendingSetType(TpyType):
         return "builtins.set"
 
 
+# Builtin containers whose concrete type can still wrap a pending leaf in a type
+# arg (a non-empty `dict`/`list`/`set` literal is concrete but its element/value
+# may stay pending). `unify_literal_types` recurses these; nothing else.
+_PENDING_WRAPPER_QNAMES = frozenset({"builtins.list", "builtins.dict", "builtins.set"})
+
+
+def contains_pending_leaf(typ: 'TpyType') -> bool:
+    """True if typ is, or nests, a Pending* container type.
+
+    Type-structural, so it lives with the types: the deferred-resolution
+    machinery (cached snapshots, the peer-unify traversal below) uses it to tell
+    a fully-concrete type from one that still has a pending leaf to resolve."""
+    if isinstance(typ, (PendingListType, PendingDictType, PendingSetType)):
+        return True
+    return any(contains_pending_leaf(t) for t in typ.inner_types())
+
+
 def pending_containers_match(
     a: 'TpyType', b: 'TpyType',
     elem_compatible: 'Callable[[TpyType, TpyType], bool]',
 ) -> bool:
-    """Whether two PENDING containers are the same kind with pairwise-compatible
-    element/key/value types (lists also require equal size), without forcing the
-    deferred Array-vs-list resolution. The element rule is the caller's, so the
-    peer-unify and assignability paths share one container skeleton rather than
-    each rejecting structurally-equal pendings.
+    """Whether two PENDING dict/set containers are the same kind with
+    pairwise-compatible key/value/element types, without forcing the deferred
+    resolution. The element rule is the caller's, so the peer-unify and
+    assignability paths share one container skeleton rather than each rejecting
+    structurally-equal pendings.
+
+    Pending LISTS are handled directly in `unify_literal_types` instead: a list
+    pair is size-agnostic (jagged peers share `list[T]`), and the Array-vs-list
+    decision is left to the demotion hook -- a concern this pure predicate has no
+    business encoding.
     """
-    if isinstance(a, PendingListType) and isinstance(b, PendingListType):
-        return a.size == b.size and elem_compatible(a.element_type, b.element_type)
     if isinstance(a, PendingDictType) and isinstance(b, PendingDictType):
         return (elem_compatible(a.key_type, b.key_type)
                 and elem_compatible(a.value_type, b.value_type))
@@ -4209,7 +4229,10 @@ def pending_containers_match(
     return False
 
 
-def unify_literal_types(a: 'TpyType', b: 'TpyType') -> 'TpyType | None':
+def unify_literal_types(
+    a: 'TpyType', b: 'TpyType',
+    on_pending_pair: 'Callable[[TpyType, TpyType], None] | None' = None,
+) -> 'TpyType | None':
     """Unify two literal/pending element types -- the single source of truth for
     "are these two element types peer-compatible". IntLiteralType / FloatLiteralType
     count as compatible with each other and with their concrete equivalents;
@@ -4218,6 +4241,13 @@ def unify_literal_types(a: 'TpyType', b: 'TpyType') -> 'TpyType | None':
     Used by both the peer-unification path (list/dict/set literal element merge)
     and the assignability path (`check_type_compatible`'s expected-Pending branch,
     via `... is not None`), so the two cannot drift in what they accept.
+
+    `on_pending_pair`, when given, fires for every matched pending-container pair
+    on this one traversal (inner pairs before the pair enclosing them), letting a
+    caller apply a side effect -- e.g. demoting a jagged pending list to vector --
+    wherever a pending pair is reachable, including inside tuples and dict values.
+    This keeps the side-effecting and pure paths from drifting on which shapes
+    they reach. The function stays pure when the hook is None (the default).
     """
     if a == b:
         return a
@@ -4238,13 +4268,43 @@ def unify_literal_types(a: 'TpyType', b: 'TpyType') -> 'TpyType | None':
             return None
         unified: list[TpyType] = []
         for ea, eb in zip(a.element_types, b.element_types):
-            u = unify_literal_types(ea, eb)
+            u = unify_literal_types(ea, eb, on_pending_pair)
             if u is None:
                 return None
             unified.append(u)
         return TupleType(tuple(unified))
+    # Pending lists are size-agnostic: element-compatible peers always unify,
+    # since jagged ones share `list[T]`. The hook converges them on this pass
+    # (same size -> link/Array, different size -> demote to vector); size is not
+    # a compatibility gate here.
+    if isinstance(a, PendingListType) and isinstance(b, PendingListType):
+        if unify_literal_types(a.element_type, b.element_type, on_pending_pair) is None:
+            return None
+        if on_pending_pair is not None:
+            on_pending_pair(a, b)
+        return a
     if pending_containers_match(
-            a, b, lambda x, y: unify_literal_types(x, y) is not None):
+            a, b, lambda x, y: unify_literal_types(x, y, on_pending_pair) is not None):
+        if on_pending_pair is not None:
+            on_pending_pair(a, b)
+        return a
+    # A concrete builtin container can still wrap a pending leaf (a non-empty
+    # dict literal `{1: [2, 3]}` is a concrete dict[Int32, PendingList...]).
+    # Recurse its type args so a pending list nested under it is reached and
+    # converged on the same pass. Gated on an actual pending leaf, so fully
+    # concrete generics keep their exact a==b / None behaviour above; and
+    # restricted to builtin containers so a same-named user record/protocol that
+    # somehow carried a pending leaf can't be silently treated as unifiable.
+    if (isinstance(a, NominalType) and isinstance(b, NominalType)
+            and a.qualified_name() in _PENDING_WRAPPER_QNAMES
+            and a.qualified_name() == b.qualified_name()
+            and (contains_pending_leaf(a) or contains_pending_leaf(b))):
+        ia, ib = a.inner_types(), b.inner_types()
+        if len(ia) != len(ib):
+            return None
+        for ea, eb in zip(ia, ib):
+            if unify_literal_types(ea, eb, on_pending_pair) is None:
+                return None
         return a
     return None
 

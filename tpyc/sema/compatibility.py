@@ -1171,10 +1171,12 @@ class TypeCompatibility:
         # element type is still a pending list literal). Accept a
         # structurally-compatible pending peer before the deferred resolver runs
         # -- via the same `unify_literal_types` the peer-unify path uses, so the
-        # two cannot disagree on what matches.
-        if (isinstance(expected, (PendingListType, PendingDictType, PendingSetType))
-                and unify_literal_types(expected, actual) is not None):
-            return None
+        # two cannot disagree on what matches. The demotion hook converges a
+        # jagged peer (different-size nested lists) to vector on the same pass.
+        if isinstance(expected, (PendingListType, PendingDictType, PendingSetType)):
+            if unify_literal_types(
+                    expected, actual, on_pending_pair=self._demote_pending_pair) is not None:
+                return None
 
         # Allow PendingListType compatibility during first phase (before resolution)
         if isinstance(actual, PendingListType):
@@ -1591,12 +1593,7 @@ class TypeCompatibility:
         # so the element check lives here.
         if isinstance(inner_existing, PendingListType):
             if isinstance(inner_value, PendingListType):
-                if inner_existing.size != inner_value.size:
-                    self.deduction.mark_list_different_size(inner_existing.literal_id)
-                    self.deduction.mark_list_different_size(inner_value.literal_id)
-                else:
-                    self.deduction.link_list_literals(
-                        inner_existing.literal_id, inner_value.literal_id)
+                self._demote_or_link_pending_lists(inner_existing, inner_value)
             err = self._reassign_list_element_compat(
                 inner_existing, inner_value, value_expr, ctx)
             if err is not None:
@@ -1704,6 +1701,52 @@ class TypeCompatibility:
             f"{target} range [{tr.min_value}, {tr.max_value}] in {context}",
             expr,
         )
+
+    def _pending_list_is_list(self, p: PendingListType) -> bool:
+        """Whether a pending list is already forced to `list` (e.g. internally
+        jagged): its sibling must then become `list` too, since codegen emits
+        every sibling of a homogeneous container against one C++ element type."""
+        info = self.ctx.list_literals.get(p.literal_id)
+        return info is not None and info.is_mutated
+
+    def _demote_or_link_pending_lists(self, a: PendingListType, b: PendingListType) -> None:
+        """Reconcile two pending lists for the REASSIGNMENT path (`coerce_reassignment`):
+        different sizes (or either side already a `list`) can't share a fixed
+        `Array`, so demote both to `list` (vector); otherwise link so a later
+        demotion of either propagates to the other (one local aliasing two literals).
+
+        The peer-unify path uses `_demote_pending_pair` instead, which deliberately
+        does NOT link: container peers converge via codegen element-targeting, and
+        linking equal-size peers there mis-fired `link_list_literals`' multi-source
+        demotion (the uniform-nesting over-demotion). The link is only sound here
+        because reassignment links a single top-level pair, never recursively."""
+        if (a.size != b.size
+                or self._pending_list_is_list(a) or self._pending_list_is_list(b)):
+            self.deduction.mark_list_different_size(a.literal_id)
+            self.deduction.mark_list_different_size(b.literal_id)
+        else:
+            self.deduction.link_list_literals(a.literal_id, b.literal_id)
+
+    def _demote_pending_pair(self, a: TpyType, b: TpyType) -> None:
+        """`on_pending_pair` hook for `unify_literal_types`: demote a matched
+        sibling pending-LIST pair to `list` (vector) when they can't share a fixed
+        `Array` -- different sizes, or either already forced to `list`.
+
+        `unify_literal_types` fires this at every pending pair it matches on its
+        traversal (inner pairs first), so a jagged level propagates to its
+        equal-size peers wherever a pending list is reachable: bare, or nested in
+        a tuple / dict value / outer list. No alias link here: peers of a
+        homogeneous container converge through the container's element type at
+        codegen, so equal-size unmutated peers need no link -- and linking them
+        would mis-fire `link_list_literals`' multi-source demotion and wrongly
+        demote a uniform nesting (`[[[1, 2], [3, 4]], [[5, 6], [7, 8]]]`). Pending
+        dict/set pairs have no Array-vs-list axis; the recursion in unify is
+        enough."""
+        if (isinstance(a, PendingListType) and isinstance(b, PendingListType)
+                and (a.size != b.size
+                     or self._pending_list_is_list(a) or self._pending_list_is_list(b))):
+            self.deduction.mark_list_different_size(a.literal_id)
+            self.deduction.mark_list_different_size(b.literal_id)
 
     def _resolve_pending_for_any_storage(self, actual: TpyType) -> TpyType:
         """Convert Pending{List,Dict,Set}Type to its concrete container

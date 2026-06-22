@@ -4589,8 +4589,10 @@ class ExpressionGenerator:
                 return self._gen_nocopy_vector(elements, cpp_elem)
 
         literal = f"{{{', '.join(elements)}}}"
-        # std::array of std::array needs an extra brace level
-        if is_array(elem_target):
+        # A std::array of a brace-initialised aggregate element (a nested array,
+        # or a list/vector -- e.g. a jagged `[[1, 2], [3, 4, 5]]`) needs the
+        # extra std::array brace level so each element copy-list-inits cleanly.
+        if is_array(elem_target) or is_list(elem_target):
             return f"{{{literal}}}"
         # Empty list needs explicit type to avoid ambiguity with T* assignment
         if not expr.elements and target_type and target_type.get_element_type() is not None:

@@ -26,7 +26,7 @@ from ..typesys import (
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
     unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
-    is_dyn_protocol,
+    is_dyn_protocol, contains_pending_leaf,
 )
 from ..namespace import Namespace
 from ..type_def_registry import int_traits_of
@@ -41,17 +41,6 @@ from ..value_category import call_returns_cpp_ref
 # Tuple of all pending container types -- use in isinstance checks so adding
 # a new container type requires updating only this one constant.
 PENDING_CONTAINER_TYPES = (PendingListType, PendingDictType, PendingSetType)
-
-
-def contains_pending_leaf(typ: 'TpyType') -> bool:
-    """True if typ is, or nests, a Pending* container type.
-
-    A cached type snapshot (comprehension element field, for-loop element type)
-    that holds such a leaf goes stale once the deferred resolver runs; the
-    finalization pass rewrites the ones recorded by this predicate."""
-    if isinstance(typ, PENDING_CONTAINER_TYPES):
-        return True
-    return any(contains_pending_leaf(t) for t in typ.inner_types())
 
 
 def addr_taken_roots(expr: TpyExpr) -> list[str]:

@@ -33,7 +33,7 @@ void not_last_use() {
     std::vector<int32_t> inner = {1, 2};
     // # inner read after -> copied, not moved (asserts the over-trigger guard)
     // xs = [inner]  # tpyc: warning(/copies .* into owned storage/)
-    std::array<std::vector<int32_t>, 1> xs = {inner};
+    std::array<std::vector<int32_t>, 1> xs = {{inner}};
     // inner.append(3)
     inner.push_back(3);
     // print(len(inner), len(xs))  # 3 1 -- inner intact (would be 0 if wrongly moved)
