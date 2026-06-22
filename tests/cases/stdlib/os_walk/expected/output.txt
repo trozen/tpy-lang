@@ -1,0 +1,10 @@
+. files=dangling,top.txt
+/sub1 files=a.txt
+/sub1/deep files=b.txt
+/sub2 files=
+nofollow dirs: 5
+follow dirs: 7
+missing yields: 0
+prune-all yields: 1
+file-as-top yields: 0
+order ok: True

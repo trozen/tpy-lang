@@ -5,7 +5,7 @@
 # Filesystem queries over std::filesystem (mutating ops over raw POSIX
 # syscalls); the path-string surface lives in the `os.path` submodule. Raw
 # bindings live in `os._native`.
-from typing import Final, overload
+from typing import Final, overload, Iterator
 from tpy import Int64, Own
 from tpy.extern import native_global
 from . import path
@@ -127,6 +127,51 @@ def scandir(path: str = ".") -> Own[list[DirEntry]]:
 
 def listdir(path: str = ".") -> Own[list[str]]:
     return _listdir(path)
+
+
+# Iterative (explicit-stack) directory tree walk. `yield from`/recursion are
+# unsupported, so the descent is an explicit stack. In topdown mode the yielded
+# `dirnames` aliases the frame, so the caller's in-place edit prunes the descent
+# (the os.walk contract). A directory that can't be scanned is skipped, matching
+# CPython's default `onerror=None`. The `onerror` callback and bottomup
+# (topdown=False) are not yet supported.
+def walk(top: str, topdown: bool = True,
+         followlinks: bool = False) -> Iterator[tuple[str, list[str], list[str]]]:
+    if not topdown:
+        raise NotImplementedError(
+            "os.walk(topdown=False) is not yet supported")
+    stack: list[str] = []
+    stack.append(top)
+    while len(stack) > 0:
+        cur = stack.pop()
+        dirnames: list[str] = []
+        filenames: list[str] = []
+        try:
+            entries = scandir(cur)
+        except OSError:
+            continue
+        for e in entries:
+            # A broken symlink (or otherwise unstattable entry) makes is_dir()
+            # raise; CPython treats that as a non-directory, not an error.
+            is_dir = False
+            try:
+                is_dir = e.is_dir()
+            except OSError:
+                is_dir = False
+            if is_dir:
+                dirnames.append(e.name)
+            else:
+                filenames.append(e.name)
+        yield (cur, dirnames, filenames)
+        # The caller may have pruned `dirnames` during the yield. Push the
+        # survivors in reverse so they pop in `dirnames` order (CPython visits
+        # subdirectories pre-order in scandir order).
+        i = len(dirnames) - 1
+        while i >= 0:
+            child = _join(cur, dirnames[i])
+            if followlinks or not path.islink(child):
+                stack.append(child)
+            i -= 1
 
 
 def mkdir(path: str, mode: Int64 = 0o777) -> None:
