@@ -1,7 +1,8 @@
 from math import sqrt, ceil
 import time
+from tpy import Own
 
-def sieveOfAtkin(end):
+def sieveOfAtkin(end: int) -> Own[list[int]]:
     """sieveOfAtkin(end): return a list of all the prime numbers <end
     using the Sieve of Atkin."""
     # Code by Steve Krenzel, <Sgk284@gmail.com>, improved
@@ -11,7 +12,10 @@ def sieveOfAtkin(end):
     lng = ((end // 2) - 1 + end % 2)
     sieve = [False] * (lng + 1)
 
-    x_max, x2, xd = int(sqrt((end-1)/4.0)), 0, 4
+    # TODO: error without wrapping literals with int(0)
+    x_max, x2, xd = int(sqrt((end-1)/4.0)), int(0), int(4)
+    # TODO: error without these
+    y_max, n, end, n_diff, m = int(0), int(0), int(0), int(0), int(0)
     for xd in range(4, 8*x_max + 2, 8):
         x2 += xd
         y_max = int(sqrt(end-x2))
@@ -52,9 +56,10 @@ def sieveOfAtkin(end):
                 sieve[m] = not sieve[m]
             n += d
 
-    primes = [2, 3]
+    primes: list[int] = [2, 3]
     if end <= 3:
-        return primes[:max(0,end-2)]
+        # TODO: list() should not be needed
+        return list(primes[:max(0,end-2)])
 
     for n in range(5 >> 1, (int(sqrt(end))+1) >> 1):
         if sieve[n]:
@@ -73,7 +78,7 @@ def sieveOfAtkin(end):
 
 
 
-def sieveOfEratostenes(n):
+def sieveOfEratostenes(n: int) -> Own[list[int]]:
     """sieveOfEratostenes(n): return the list of the primes < n."""
     # Code from: <dickinsm@gmail.com>, Nov 30 2006
     # http://groups.google.com/group/comp.lang.python/msg/f1f10ced88c68c2d
@@ -100,13 +105,13 @@ def main():
     t0 = time.time()
     r = sieveOfAtkin(n)
     print('nprimes:', len(r))
-    print('time: %.2f' % (time.time()-t0))
+    print(f'time: {(time.time()-t0):.2}')
     #else:
     print("Sieve of Eratostenes")
     t0 = time.time()
     r = sieveOfEratostenes(n)
     print('nprimes:', len(r))
-    print('time: %.2f' % (time.time()-t0))
+    print(f'time: {(time.time()-t0):.2f}')
 
     #if argv[3] == "1":
     #    print r
@@ -117,4 +122,4 @@ if __name__ == "__main__":
         if n == 5:
             t0 = time.time()  # pypy has stabilized
         main()
-    print('TIME %.2f' % (time.time()-t0))
+    print(f'TIME {(time.time()-t0):.2}')

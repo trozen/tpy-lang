@@ -82,8 +82,8 @@ def main() -> None:
     # --- Construct from dict
     d = dict([("one", Int32(1)), ("two", Int32(2)), ("three", Int32(3))])
     from_dict = ArrayList[tuple[str, Int32], 16](d.items())
-    for p in from_dict:
-        print(p)
+    for d_key in from_dict:
+        print(d_key)
     print("from_dict:", from_dict)
 
 
