@@ -11,6 +11,10 @@ struct Emitter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+void run(int32_t n, std::optional<std::function<void(int32_t)>> hook = std::nullopt);
+int32_t apply(int32_t n, std::optional<std::function<int32_t(int32_t)>> f = std::nullopt);
+void report(int32_t code);
+int32_t triple(int32_t x);
 void main();
 
 // class Emitter:
@@ -58,5 +62,27 @@ inline std::string Emitter::__str__() const {
     // return "Emitter(...)"
     return "Emitter(...)";
 }
+inline auto scan(int32_t n, std::optional<std::function<void(int32_t)>> onerror = std::nullopt) {
+    // i = 0
+    int32_t i = 0;
+    return ::tpy::make_generator<int32_t>(
+        [n, onerror, i]() mutable -> std::optional<int32_t> {
+            while ((i < n)) {
+                // if i == 1 and onerror is not None:
+                if (((i == 1) && (onerror.has_value()))) {
+                    // onerror(i)
+                    onerror.value()(i);
+                }
+                auto __val = i;
+                // i += 1
+                i = ::tpy::add_check<int32_t>(i, 1);
+                return std::optional<int32_t>(__val);
+            }
+            return std::nullopt;
+        }
+    );
+}
+
+
 void __tpy_init();
 } // namespace tpyapp::main

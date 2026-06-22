@@ -399,9 +399,17 @@ class ExpressionAnalyzer:
         type_hint = unwrap_ref_type(type_hint)
 
         # Lambda with Fn/Callable type hint: infer param types from the hint.
-        # Send/Sync markers constrain the conversion (checked by
-        # _check_compat), not the callable's shape -- see through them here.
+        # Transparent wrappers don't change the callable's shape, so peel them
+        # before the is_callable_type check: Send/Sync markers (which only
+        # constrain the conversion, checked by _check_compat -- same peel as the
+        # line below), and a single Optional (a `Callable[...] | None` param
+        # exposes its inner callable to a lambda/function-ref arg, which coerces
+        # back into the optional slot afterwards). `Send[Callable] | None` is NOT
+        # handled: its marker sits inside the Optional, and narrowing + the call
+        # path would also need to peel it -- see TODO.
         lambda_hint = unwrap_send_sync(type_hint)
+        if isinstance(lambda_hint, OptionalType):
+            lambda_hint = lambda_hint.inner
         if isinstance(expr, TpyLambda) and is_callable_type(lambda_hint):
             typ = self._analyze_lambda_with_fn_hint(expr, lambda_hint)
             self.ctx.set_expr_type(expr, typ)

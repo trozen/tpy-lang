@@ -1,2 +1,13 @@
 got: hello
 got: world
+lambda: 1
+report: 2
+apply-lambda: 105
+apply-name: 15
+apply-none: 5
+scan: 0
+report: 1
+scan: 1
+scan: 2
+scan-none: 0
+scan-none: 1

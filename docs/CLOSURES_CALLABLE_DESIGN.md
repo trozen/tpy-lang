@@ -241,6 +241,14 @@ Maps to `std::optional<std::function<void(std::string_view)>>`. This always
 uses type erasure (even in param position) since templates can't represent
 "optional callable." The `| None` makes the cost explicit.
 
+A lambda literal, a function by name, or `None` may be passed directly to a
+`Callable[...] | None` *parameter* (`def f(cb: Callable[[Int32], None] | None
+= None)`): the optional wrapper is peeled to recover the callable shape for
+arg inference, then the value coerces back into the optional slot. (A
+`Send[Callable[...]] | None` param does not yet accept a lambda/name -- the
+marker sits inside the Optional and narrowing/the call path would also need
+to peel it; see TODO.)
+
 ### When to Use Which
 
 | Use case | Type | Why |
@@ -312,7 +320,8 @@ or assignments (Python restriction, not TPy-specific).
 ### Type Inference
 
 Lambda parameter types are inferred from context (bidirectional inference).
-Both `Fn` and `Callable` parameter types provide context:
+Both `Fn` and `Callable` parameter types provide context (including a
+`Callable[...] | None` param -- the Optional is peeled to recover the shape):
 
 ```python
 def apply(f: Fn[[Int32], Int32], x: Int32) -> Int32:

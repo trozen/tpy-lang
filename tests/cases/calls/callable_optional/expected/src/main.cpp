@@ -4,6 +4,39 @@
 namespace tpyapp::main {
 
 
+// def run(n: Int32, hook: Callable[[Int32], None] | None = None) -> None:
+void run(int32_t n, std::optional<std::function<void(int32_t)>> hook) {
+    // if hook is not None:
+    if ((hook.has_value())) {
+        // hook(n)
+        hook.value()(n);
+    }
+}
+
+// # Non-void return: the narrowed optional callable's result is used.
+// def apply(n: Int32, f: Callable[[Int32], Int32] | None = None) -> Int32:
+int32_t apply(int32_t n, std::optional<std::function<int32_t(int32_t)>> f) {
+    // if f is not None:
+    if ((f.has_value())) {
+        // return f(n)
+        return f.value()(n);
+    }
+    // return n
+    return n;
+}
+
+// def report(code: Int32) -> None:
+void report(int32_t code) {
+    // print("report:", code)
+    std::cout << "report:" << " " << code << "\n";
+}
+
+// def triple(x: Int32) -> Int32:
+int32_t triple(int32_t x) {
+    // return x * 3
+    return (::tpy::mul_check<int32_t>(x, 3));
+}
+
 // def main() -> None:
 void main() {
     // e = Emitter()
@@ -16,6 +49,42 @@ void main() {
     e.emit("hello");
     // e.emit("world")
     e.emit("world");
+    // run(1, lambda c: print("lambda:", c))   # lambda arg
+    run(1, [](int32_t c) { std::cout << "lambda:" << " " << c << "\n"; });
+    // run(2, report)                          # function-by-name arg
+    run(2, report);
+    // run(3)                                  # None default
+    run(3);
+    // print("apply-lambda:", apply(5, lambda x: x + 100))
+    std::cout << "apply-lambda:" << " " << apply(5, [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 100)); }) << "\n";
+    // print("apply-name:", apply(5, triple))
+    std::cout << "apply-name:" << " " << apply(5, triple) << "\n";
+    // print("apply-none:", apply(5))
+    std::cout << "apply-none:" << " " << apply(5) << "\n";
+    // for v in scan(3, report):
+    {
+        auto __src_0 = scan(3, report);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_1);
+        // print("scan:", v)
+        std::cout << "scan:" << " " << v << "\n";
+        }
+    }
+    // for v in scan(2):
+    {
+        auto __src_2 = scan(2);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_3);
+        // print("scan-none:", v)
+        std::cout << "scan-none:" << " " << v << "\n";
+        }
+    }
 }
 
 void __tpy_init() {
