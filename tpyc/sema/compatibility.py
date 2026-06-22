@@ -2988,9 +2988,10 @@ class TypeCompatibility:
         calling (the coercion/literal callers gate on is_lvalue and not-moved;
         the assignment caller warns for any non-literal/non-copy/non-owning-call
         source); this helper only applies the tuple-specific exemptions -- a
-        fresh tuple LITERAL source (its per-member copy, e.g. `[(1, c)]`, is a
-        separate unrouted gap -- see BUGS.md), an explicit `copy()`, and an
-        owning-tuple-call rvalue. Direct elements only, matching the storage
+        fresh tuple LITERAL source (whose per-member copy is handled by
+        `warn_tuple_literal_member_copy` -- a literal needs per-member-expr
+        gating, not the per-element-type rule here), an explicit `copy()`, and
+        an owning-tuple-call rvalue. Direct elements only, matching the storage
         codegen's depth (a nested value-tuple's deeper reference member is not
         detected -- pre-existing, shared with the assignment path)."""
         if not (isinstance(tuple_type, TupleType)
@@ -3014,6 +3015,58 @@ class TypeCompatibility:
                 f"use copy() to make this explicit", loc_node)
             fired = True
         return fired
+
+    def warn_tuple_literal_member_copy(self, literal: TpyTupleLiteral,
+                                       tuple_type: TpyType, dest: str) -> bool:
+        """Per-member copy diagnostic for a fresh tuple LITERAL element stored
+        into owned storage (`[(1, c)]`). A literal's members are individual
+        expressions, so only an lvalue reference member is copied where CPython
+        aliases; a fresh rvalue member constructs in place. Codegen lifts the
+        member through `tuple_to_storage`, which COPIES even a last-use local
+        (no per-member move for a container-literal tuple element): so a
+        `@nocopy` member is rejected regardless of last use (it would otherwise
+        reach a raw g++ deleted-ctor), while a copyable member at last use is
+        suppressed -- the copy is then unobservable (the source is dead),
+        matching the scalar last-use rule. Members come back Own-wrapped (owned
+        storage form), so unwrap before applying the same pointer-repr
+        predicate the whole-lvalue `warn_pointer_repr_tuple_copy` path uses
+        (direct members only)."""
+        if not isinstance(tuple_type, TupleType):
+            return False
+        fired = False
+        for i, et in enumerate(tuple_type.element_types):
+            member_t = unwrap_own(et)
+            if not TupleType._element_is_pointer_repr(member_t):
+                continue
+            if i >= len(literal.elements):
+                continue
+            m = literal.elements[i]
+            if not self.is_lvalue(m) or self.is_copy_call(m):
+                continue
+            if self.ctx.is_type_non_copyable(member_t):
+                raise self.ctx.error(
+                    f"cannot copy non-copyable type '{member_t}' into {dest} "
+                    f"(tuple element {i}){NOCOPY_REMEDIATION_HINT}", m)
+            if self._is_auto_moved(m):
+                continue
+            self.ctx.warning(
+                f"copies {member_t} into {dest} (tuple element {i}); "
+                f"use copy() to make this explicit", m)
+            fired = True
+        return fired
+
+    def warn_storage_tuple_copy(self, elem: TpyExpr, tuple_type: TpyType,
+                                dest: str) -> bool:
+        """Value-tuple-with-reference-member copy diagnostic for an
+        owned-storage element. A literal and a whole-tuple lvalue need
+        different gating (per-member-expr vs per-element-type), so dispatch on
+        source shape. Returns whether anything fired."""
+        peeled = _peel_value_wrappers(elem)
+        if isinstance(peeled, TpyTupleLiteral):
+            return self.warn_tuple_literal_member_copy(peeled, tuple_type, dest)
+        if self.is_lvalue(elem) and not self._is_auto_moved(elem):
+            return self.warn_pointer_repr_tuple_copy(elem, tuple_type, dest, elem)
+        return False
 
     def _derive_owning_storage(self, expr: TpyExpr) -> bool:
         """Whether a binding from `expr` makes the local OWN its tuple

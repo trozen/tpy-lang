@@ -261,12 +261,17 @@ constructed in place -- neither warns, and a `@nocopy` last-use element
 is accepted rather than failing the C++ build. (A generic element type
 stays silent until instantiation, matching `.append`.)
 
-A **value-tuple with reference (pointer-repr) members** stored from a
-*whole-tuple lvalue source* (`d[k] = items[0]`, `{k: items[0]}`,
-`xs.append(items[0])`, `xs: list[...] = [items[0]]`) warns per such
+A **value-tuple with reference (pointer-repr) members** warns per such
 member (errors for `@nocopy`), matching the subscript/field-assignment
-path. One related shape is NOT yet diagnosed and remains tracked in
-`BUGS.md`: a fresh tuple *literal* with an lvalue member (`[(1, c)]`).
+path, in two shapes: a *whole-tuple lvalue source* (`d[k] = items[0]`,
+`{k: items[0]}`, `xs.append(items[0])`, `xs: list[...] = [items[0]]`)
+copies every reference member, and a *fresh tuple literal* element
+(`xs: list[...] = [(1, c)]`) copies each member whose source is an
+lvalue reference (a fresh rvalue member constructs in place and a
+last-use local moves). Some literal-member shapes still hit pre-existing
+*build* errors rather than the warning -- a `const` member source (param
+/ comprehension loop var) and a dict-literal value -- tracked in
+`BUGS.md`.
 
 It matters when:
 - You see a copy warning mentioning "borrowed Optional/Union" -- that
