@@ -1,4 +1,0 @@
-os.walk(topdown=False) raises NotImplementedError in TPy v1 (bottomup is a
-filed compiler gap: heterogeneous union-stack discrimination is unsupported).
-CPython supports bottomup, so the behavior intentionally diverges and cannot be
-byte-compared.

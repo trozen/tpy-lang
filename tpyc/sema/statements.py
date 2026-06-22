@@ -671,6 +671,29 @@ class StatementAnalyzer:
                     for tup_root in addr_taken_roots(elem):
                         self.ctx.mark_param_mutated(tup_root)
 
+    def _unfold_loop_killed_isinstance(
+            self, condition: TpyExpr, killed: set[str]) -> None:
+        """Drop the static-true/false `isinstance` fold on a loop condition
+        whose subject the loop body reassigns.
+
+        The fold is computed from the subject's loop-entry narrowing; a rebind
+        in the body makes it non-loop-invariant, so the condition must be
+        re-checked each iteration (clearing `macro_expansion` routes codegen to
+        the runtime `holds_alternative`/cast). Walks the boolean structure so
+        `isinstance(t, T) and ...` is covered too -- mirrors the condition
+        traversal in `narrowing._isinstance_facts`.
+        """
+        if isinstance(condition, TpyCall):
+            if (condition.isinstance_var is not None
+                    and condition.isinstance_var in killed
+                    and isinstance(condition.macro_expansion, TpyBoolLiteral)):
+                condition.macro_expansion = None
+        elif isinstance(condition, TpyBinOp) and condition.op in ("&&", "||"):
+            self._unfold_loop_killed_isinstance(condition.left, killed)
+            self._unfold_loop_killed_isinstance(condition.right, killed)
+        elif isinstance(condition, TpyUnaryOp) and condition.op == "!":
+            self._unfold_loop_killed_isinstance(condition.operand, killed)
+
     def _save_ns_var_types(self) -> dict[str, TpyType]:
         """Save namespace variable types for later restoration."""
         result: dict[str, TpyType] = {}
@@ -1206,12 +1229,18 @@ class StatementAnalyzer:
             # Save namespace types -- loop_scope() restores scope bindings
             # automatically, but namespace mutations inside the loop persist.
             ns_types_before_while = self._save_ns_var_types()
+            body_kills = collect_fact_kills(stmt.body,
+                                            extra_exprs=[stmt.condition])
+            # An `isinstance` fold rests on the loop-entry narrowing of its
+            # subject; if the body rebinds that subject the condition is not
+            # loop-invariant, so drop the static fold and re-check each
+            # iteration (else codegen emits an exit-less `while (true)`).
+            self._unfold_loop_killed_isinstance(stmt.condition, body_kills.names)
             with self.scopes.loop_scope():
                 self.init.apply_loop_entry_facts(
                     before,
                     condition_type_facts=then_type_facts,
-                    kills=collect_fact_kills(stmt.body,
-                                             extra_exprs=[stmt.condition]),
+                    kills=body_kills,
                 )
                 # Applied separately from apply_loop_entry_facts because
                 # that method only handles type narrowing, not ptr non-null.

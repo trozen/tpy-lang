@@ -4,35 +4,230 @@
 namespace tpyapp::main {
 
 
-// def main() -> None:
-void main() {
-    // try:
+// def report(e: readonly[OSError]) -> None:
+void report(const ::tpy::OSError& e) {
+    // print("onerror fired")
+    std::cout << "onerror fired" << "\n";
+}
+
+// def walk_rows(root: str) -> Own[list[str]]:
+std::vector<std::string> walk_rows(std::string_view root) {
+    // rows: list[str] = []
+    std::vector<std::string> rows = std::vector<std::string>{};
+    // for dirpath, dirnames, filenames in os.walk(root, topdown=False):
     {
-        try {
-            // for dirpath, dirnames, filenames in os.walk("/tmp", topdown=False):
-            {
-                auto __src_0 = ::tpystd::os::walk("/tmp", false);
-                auto&& __itr_0 = ::tpy::__iter__(__src_0);
-                for (;;) {
-                    auto __r_1 = __itr_0.__next__();
-                    if (!__r_1.has_value()) break;
-                    auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-                // for dirpath, dirnames, filenames in os.walk("/tmp", topdown=False):
-                auto& __tup_1 = __for_tup_0;
-                std::string_view dirpath = std::get<0>(__tup_1);
-                auto&& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-                auto&& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
-                // print(dirpath)
-                std::cout << dirpath << "\n";
-                }
-            }
-            // print("no raise")
-            std::cout << "no raise" << "\n";
-        } catch (const ::tpy::NotImplementedError&) {
-            // print("topdown=False raises NotImplementedError")
-            std::cout << "topdown=False raises NotImplementedError" << "\n";
+        auto __src_0 = ::tpystd::os::walk(root, false);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+        // for dirpath, dirnames, filenames in os.walk(root, topdown=False):
+        auto& __tup_1 = __for_tup_0;
+        std::string_view dirpath = std::get<0>(__tup_1);
+        auto&& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        auto&& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+        // rel = dirpath[len(root):]
+        std::string_view rel = ::tpy::str_slice(dirpath, ::tpy::BasicSlice{::tpy::__len__(root), std::nullopt});
+        // if len(rel) == 0:
+        if ((::tpy::__len__(rel) == 0)) {
+            // rel = "."
+            rel = ".";
+        }
+        // dn = list(dirnames)
+        std::vector<std::string> dn = ::tpy::construct<std::vector<std::string>>(dirnames);
+        // dn.sort()
+        std::stable_sort(dn.begin(), dn.end());
+        // rows.append(rel + " dirs=" + str(dn) + " files=" + str(len(filenames)))
+        rows.push_back((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(rel, " dirs=")), ::tpy::list_to_str(dn))), " files=")), ::tpy::fixed_to_str<int32_t>(::tpy::__len__(filenames)))));
         }
     }
+    // rows.sort()
+    std::stable_sort(rows.begin(), rows.end());
+    // return rows
+    return rows;
+}
+
+// # Bottom-up order holds: every directory is yielded AFTER its parent's other
+// # subtrees but BEFORE the parent itself. Sibling order within a level is
+// # scandir-arbitrary, so assert only the structural invariant: each dir's parent
+// # appears later in the sequence (post-order).
+// def order_ok(root: str) -> bool:
+bool order_ok(std::string_view root) {
+    // seen: list[str] = []
+    std::vector<std::string> seen = std::vector<std::string>{};
+    // for dp, dn, fn in os.walk(root, topdown=False):
+    {
+        auto __src_0 = ::tpystd::os::walk(root, false);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
+        // for dp, dn, fn in os.walk(root, topdown=False):
+        auto& __tup_1 = __for_tup_1;
+        std::string_view dp = std::get<0>(__tup_1);
+        auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+        // seen.append(dp)
+        std::string __tmp_1{dp};
+        seen.push_back(std::move(__tmp_1));
+        }
+    }
+    // i = 0
+    int32_t i = 0;
+    // while i < len(seen):
+    while ((i < ::tpy::__len__(seen))) {
+        // cur = seen[i]
+        std::string_view cur = seen[static_cast<std::size_t>(i)];
+        // if cur != root:
+        if ((cur != root)) {
+            // parent = os.path.dirname(cur)
+            std::string parent = ::tpystd::os::path::dirname(cur);
+            // parent_idx = -1
+            int32_t parent_idx = -1;
+            // j = 0
+            int32_t j = 0;
+            // while j < len(seen):
+            while ((j < ::tpy::__len__(seen))) {
+                // if seen[j] == parent:
+                if ((seen[static_cast<std::size_t>(j)] == parent)) {
+                    // parent_idx = j
+                    parent_idx = j;
+                }
+                // j += 1
+                j = ::tpy::add_check<int32_t>(j, 1);
+            }
+            // if parent_idx <= i:
+            if ((parent_idx <= i)) {
+                // return False
+                return false;
+            }
+        }
+        // i += 1
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    // return True
+    return true;
+}
+
+// def yields(top: str, cb: Callable[[readonly[OSError]], None] | None) -> int:
+::tpy::BigInt yields(std::string_view top, std::optional<std::function<void(const ::tpy::OSError&)>> cb) {
+    // n = 0
+    int32_t n = 0;
+    // for dirpath, dirnames, filenames in os.walk(top, topdown=False, onerror=cb):
+    {
+        auto __src_0 = ::tpystd::os::walk(top, false, cb);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_1);
+        // for dirpath, dirnames, filenames in os.walk(top, topdown=False, onerror=cb):
+        auto& __tup_1 = __for_tup_2;
+        std::string_view dirpath = std::get<0>(__tup_1);
+        auto&& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        auto&& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+        // n += 1
+        n = ::tpy::add_check<int32_t>(n, 1);
+        }
+    }
+    // return n
+    return ::tpy::BigInt(n);
+}
+
+// def build(root: str) -> None:
+void build(std::string_view root) {
+    // os.mkdir(root)
+    ::tpystd::os::mkdir(root);
+    // os.mkdir(root + "/a")
+    ::tpystd::os::mkdir((::tpy::str_concat(root, "/a")));
+    // os.mkdir(root + "/a/a1")
+    ::tpystd::os::mkdir((::tpy::str_concat(root, "/a/a1")));
+    // os.mkdir(root + "/b")
+    ::tpystd::os::mkdir((::tpy::str_concat(root, "/b")));
+    // with open(root + "/top.txt", "w") as f:
+    auto __ctx_1 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/top.txt")), "w");
+    ::tpy::TextFile* f = &(__ctx_1.__enter__());
+    try {
+        // f.write("t")
+        f->write("t");
+        __ctx_1.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
+    } catch (...) {
+        __ctx_1.__exit__({}, nullptr, {});
+        throw;
+    }
+    // with open(root + "/a/x.txt", "w") as f:
+    auto __ctx_2 = ::tpy::builtin_open_mode((::tpy::str_concat(root, "/a/x.txt")), "w");
+    f = &(__ctx_2.__enter__());
+    try {
+        // f.write("x")
+        f->write("x");
+        __ctx_2.__exit__({}, nullptr, {});
+    } catch (::tpy::BaseException& __exc_2) {
+        __ctx_2.__exit__({}, &__exc_2, {});
+        throw;
+    } catch (...) {
+        __ctx_2.__exit__({}, nullptr, {});
+        throw;
+    }
+}
+
+// def teardown(root: str) -> None:
+void teardown(std::string_view root) {
+    // os.remove(root + "/a/x.txt")
+    ::tpy::stdlib::os::remove((::tpy::str_concat(root, "/a/x.txt")));
+    // os.remove(root + "/top.txt")
+    ::tpy::stdlib::os::remove((::tpy::str_concat(root, "/top.txt")));
+    // os.rmdir(root + "/a/a1")
+    ::tpy::stdlib::os::rmdir((::tpy::str_concat(root, "/a/a1")));
+    // os.rmdir(root + "/a")
+    ::tpy::stdlib::os::rmdir((::tpy::str_concat(root, "/a")));
+    // os.rmdir(root + "/b")
+    ::tpy::stdlib::os::rmdir((::tpy::str_concat(root, "/b")));
+    // os.rmdir(root)
+    ::tpy::stdlib::os::rmdir(root);
+}
+
+// def main() -> None:
+void main() {
+    // root = os.path.realpath("/tmp") + "/tpy_oswalk_bu_tree"
+    std::string root = (::tpy::str_concat(::tpy::stdlib::os::path_realpath("/tmp"), "/tpy_oswalk_bu_tree"));
+    // if os.path.exists(root):
+    if (::tpy::stdlib::os::path_exists(root)) {
+        // teardown(root)
+        teardown(root);
+    }
+    // build(root)
+    build(root);
+    // for r in walk_rows(root):
+    auto __obj_0 = walk_rows(root);
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        std::string_view r = *__beg_0;
+        // print(r)
+        std::cout << r << "\n";
+    }
+    // print("post-order ok:", order_ok(root))
+    std::cout << "post-order ok:" << " " << ::tpy::print_bool(order_ok(root)) << "\n";
+    // teardown(root)
+    teardown(root);
+    // missing = "/tmp/tpy_oswalk_bu_missing"
+    std::string_view missing = "/tmp/tpy_oswalk_bu_missing";
+    // # onerror fires once on the unscannable top, then 0 yields.
+    // n1 = yields(missing, report)
+    ::tpy::BigInt n1 = yields(missing, report);
+    // print("named yields:", n1)
+    std::cout << "named yields:" << " " << n1 << "\n";
+    // # default onerror=None: silent skip.
+    // n2 = yields(missing, None)
+    ::tpy::BigInt n2 = yields(missing, std::nullopt);
+    // print("default yields:", n2)
+    std::cout << "default yields:" << " " << n2 << "\n";
 }
 
 void __tpy_init() {
@@ -40,8 +235,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # os.walk(topdown=False) is a v1 gap -- it raises NotImplementedError (TPy-only:
-    // # CPython supports bottomup, so the divergence can't be byte-compared).
+    // # os.walk(topdown=False): bottom-up post-order (each dir after its subdirs).
+    // # Output is host-independent: rows sorted (scandir sibling order is OS-arbitrary)
+    // # and the post-order property asserted structurally via order_ok.
     // import os
     ::tpystd::os::__tpy_init();
     // main()

@@ -10,6 +10,12 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+void report(const ::tpy::OSError& e);
+std::vector<std::string> walk_rows(std::string_view root);
+bool order_ok(std::string_view root);
+::tpy::BigInt yields(std::string_view top, std::optional<std::function<void(const ::tpy::OSError&)>> cb);
+void build(std::string_view root);
+void teardown(std::string_view root);
 void main();
 
 void __tpy_init();

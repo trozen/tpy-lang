@@ -1,1 +1,8 @@
-topdown=False raises NotImplementedError
+. dirs=['a', 'b'] files=1
+/a dirs=['a1'] files=1
+/a/a1 dirs=[] files=0
+/b dirs=[] files=0
+post-order ok: True
+onerror fired
+named yields: 0
+default yields: 0

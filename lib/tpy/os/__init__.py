@@ -129,22 +129,91 @@ def listdir(path: str = ".") -> Own[list[str]]:
     return _listdir(path)
 
 
+# Bottomup post-order stack markers: `yield from`/recursion are unsupported, so
+# the post-order walk uses an explicit stack of two kinds of entry -- a dir to
+# scan (`_WalkExpand`) and a dir whose subtree is already yielded and is now
+# ready to emit (`_WalkEmit`, carrying its scan result). `isinstance` on the
+# popped union discriminates them.
+class _WalkExpand:
+    path: str
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+
+
+class _WalkEmit:
+    path: str
+    dirnames: list[str]
+    filenames: list[str]
+
+    def __init__(self, path: str, dirnames: Own[list[str]],
+                 filenames: Own[list[str]]) -> None:
+        self.path = path
+        self.dirnames = dirnames
+        self.filenames = filenames
+
+
 # Iterative (explicit-stack) directory tree walk. `yield from`/recursion are
 # unsupported, so the descent is an explicit stack. In topdown mode the yielded
 # `dirnames` aliases the frame, so the caller's in-place edit prunes the descent
-# (the os.walk contract). A directory that can't be scanned is reported to
-# `onerror` (and skipped); with the default `onerror=None` it is silently
-# skipped, matching CPython. The callback param is `readonly[OSError]` only to
-# work around a slicing-guard over-rejection (BUGS.md) -- a plain
+# (the os.walk contract); bottomup yields each directory after its subtree. The
+# bottomup yield is a fresh `list(...)` copy of dirnames/filenames -- a copy sema
+# forces (yielding the popped union's list fields by reference is rejected), not
+# an optimization to remove; editing it is traversal-inert (the descent already
+# happened, so CPython ignores such edits too). A directory that can't be scanned
+# is reported to `onerror` (and skipped); with the default `onerror=None` it is
+# silently skipped, matching CPython. The callback param is `readonly[OSError]`
+# only to work around a slicing-guard over-rejection (BUGS.md) -- a plain
 # `Callable[[OSError], None]` would be safe; drop the `readonly` once that is
-# fixed. A lambda works unannotated either way. bottomup (topdown=False) is not
-# yet supported.
+# fixed. A lambda works unannotated either way.
 def walk(top: str, topdown: bool = True,
          onerror: Callable[[readonly[OSError]], None] | None = None,
          followlinks: bool = False) -> Iterator[tuple[str, list[str], list[str]]]:
     if not topdown:
-        raise NotImplementedError(
-            "os.walk(topdown=False) is not yet supported")
+        # Post-order: pop a marker; if it's ready to emit, yield it (its subtree
+        # already came out). Otherwise scan it, push its emit-marker UNDER its
+        # children (so it pops last, after the whole subtree), then push the
+        # children (reversed -> they pop in scandir order).
+        bstack: list[_WalkExpand | _WalkEmit] = []
+        bstack.append(_WalkExpand(top))
+        # `len(bstack) > 0`, not `while bstack:` -- container truthiness of a
+        # frame-resident generator local fails the C++ build (BUGS.md).
+        while len(bstack) > 0:
+            item = bstack.pop()
+            if isinstance(item, _WalkEmit):
+                bdirs = list(item.dirnames)
+                bfiles = list(item.filenames)
+                yield (item.path, bdirs, bfiles)
+                continue
+            bcur = item.path
+            bdirnames: list[str] = []
+            bfilenames: list[str] = []
+            try:
+                bentries = scandir(bcur)
+            except OSError as berr:
+                if onerror is not None:
+                    onerror(berr)
+                continue
+            for be in bentries:
+                bis_dir = False
+                try:
+                    bis_dir = be.is_dir()
+                except OSError:
+                    bis_dir = False
+                if bis_dir:
+                    bdirnames.append(be.name)
+                else:
+                    bfilenames.append(be.name)
+            # `bdirnames` is reused below to push children, so copy it into the
+            # emit-marker; `bfilenames` is last-used here and moves.
+            bstack.append(_WalkEmit(bcur, list(bdirnames), bfilenames))
+            bi = len(bdirnames) - 1
+            while bi >= 0:
+                bchild = _join(bcur, bdirnames[bi])
+                if followlinks or not path.islink(bchild):
+                    bstack.append(_WalkExpand(bchild))
+                bi -= 1
+        return
     stack: list[str] = []
     stack.append(top)
     while len(stack) > 0:
