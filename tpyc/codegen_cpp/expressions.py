@@ -5808,8 +5808,16 @@ class ExpressionGenerator:
                 # in tuple_value_to_borrow.
                 if _is_simple_lvalue(expr.elements[i]):
                     sema_type = self.ctx.analyzer.get_expr_type(expr.elements[i])
+                    # In a storage context the borrow-form tuple is a transient
+                    # fed to tuple_to_storage (read-only -- each element is
+                    # deref-copied out), so a const pointer slot is always
+                    # sound, and it is REQUIRED to bind a const member source:
+                    # a plain reference param is `const T&` in C++ (and a const
+                    # loop var likewise), so `&member` is `const T*` and won't
+                    # bind a non-const `T*` slot. A non-storage borrow context
+                    # may mutate through the slot, so it keeps REF.
                     mode = (TupleElemCapture.CONST_REF
-                            if isinstance(sema_type, ReadonlyType)
+                            if in_storage_context or isinstance(sema_type, ReadonlyType)
                             else TupleElemCapture.REF)
                 elif in_storage_context or not target_provided:
                     mode = TupleElemCapture.VALUE

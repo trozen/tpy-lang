@@ -27,7 +27,7 @@ void main() {
     // print((1, a) >= (1, b))
     std::cout << ::tpy::print_bool((!::tpy::tuple_lt(std::tuple<int32_t, Box*>{1, &(a)}, std::tuple<int32_t, Box*>{1, &(b)}))) << "\n";
     // ts = [(1, a), (2, c)]
-    std::array<std::tuple<int32_t, Box>, 2> ts = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box*>{1, &(a)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box*>{2, &(c)})};
+    std::array<std::tuple<int32_t, Box>, 2> ts = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, const Box*>{1, &(a)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, const Box*>{2, &(c)})};
     // print((1, b) in ts)
     std::cout << ::tpy::print_bool(std::ranges::contains(ts, ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box*>{1, &(b)}))) << "\n";
     // print((2, b) in ts)

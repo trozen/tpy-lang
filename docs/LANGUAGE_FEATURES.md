@@ -268,10 +268,11 @@ path, in two shapes: a *whole-tuple lvalue source* (`d[k] = items[0]`,
 copies every reference member, and a *fresh tuple literal* element
 (`xs: list[...] = [(1, c)]`) copies each member whose source is an
 lvalue reference (a fresh rvalue member constructs in place and a
-last-use local moves). Some literal-member shapes still hit pre-existing
-*build* errors rather than the warning -- a `const` member source (param
-/ comprehension loop var) and a dict-literal value -- tracked in
-`BUGS.md`.
+last-use local moves) -- including a `const` member source (a plain
+reference param, or a comprehension loop var: the transient borrow tuple
+fed to `tuple_to_storage` uses a const pointer slot). A dict-literal
+*value* tuple literal still hits a pre-existing build error rather than
+the warning -- tracked in `BUGS.md`.
 
 It matters when:
 - You see a copy warning mentioning "borrowed Optional/Union" -- that

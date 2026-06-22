@@ -9,7 +9,7 @@ void list_member() {
     // c = P(5)
     P c = P(5);
     // xs: list[tuple[Int32, P]] = [(1, c)]  # tpyc: warning(/copies P into owned storage/)
-    std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P*>{1, &(c)})};
+    std::vector<std::tuple<int32_t, P>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{1, &(c)})};
     // print(c.x, len(xs))
     std::cout << c.x << " " << ::tpy::__len__(xs) << "\n";
 }

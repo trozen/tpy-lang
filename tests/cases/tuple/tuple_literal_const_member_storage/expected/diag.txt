@@ -1,0 +1,2 @@
+main.py:16: warning: copies P into owned storage (tuple element 1); use copy() to make this explicit
+main.py:21: warning: copies P into owned storage (tuple element 1); use copy() to make this explicit
