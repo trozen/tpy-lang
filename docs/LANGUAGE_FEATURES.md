@@ -1824,7 +1824,7 @@ print(storage.load(0))     # access element -> 10
 storage.drop(0)            # destroy element at index 0
 ```
 
-**UninitStorage[T]** -- owning storage for a single optional value, tracking its own liveness in one bit. Unlike `UninitArrayStorage`, it MOVES CORRECTLY element-wise (transferring the live payload and leaving the source empty), so it is safe for a non-trivially-relocatable payload (e.g. an SSO `std::string`). Use it for owners that are a single optional value -- `Poll`, the `Rc` cell payload, the asyncio `Task`/`Future` result slot, a channel send slot -- where its bit IS the owner's liveness (no separate flag). Surface: `construct(value)` (place a payload into an empty slot), `has()`, `get()`, `take()` (move the payload out and empty the slot), `reset()`, `ptr()`.
+**UninitStorage[T]** -- owning storage for a single optional value, tracking its own liveness in one bit. Unlike `UninitArrayStorage`, it MOVES CORRECTLY element-wise (transferring the live payload and leaving the source empty), so it is safe for a non-trivially-relocatable payload (e.g. an SSO `std::string`). Use it for owners that are a single optional value -- `Poll`, the `Rc` cell payload, the asyncio `Task`/`Future` result slot, a channel send slot -- where its bit IS the owner's liveness (no separate flag). Surface: `construct(value)` (place a payload into an empty slot), `has()`, `get()`, `take()` (move the payload out and empty the slot), `reset()`, `ptr()`. `T` must be nothrow-move-constructible (a `static_assert` enforces it): every owner move-constructs the slot under a `noexcept` move ctor, so a throwing `T` move would `std::terminate` at the owner boundary -- a throwing-move `T` is rejected at compile time instead.
 
 ```python
 slot = UninitStorage[Int32]()

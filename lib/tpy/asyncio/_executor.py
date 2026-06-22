@@ -63,7 +63,6 @@ class TaskState[T]:
     exc: Box[Throwable] | None
     awaiter: Waker
     done: bool
-    has_result: bool
     executor_owned: bool
 
     def __init__(self, frame: Own[Box[Cancellable[T]]]) -> None:
@@ -72,13 +71,14 @@ class TaskState[T]:
         self.exc = None
         self.awaiter = Waker()
         self.done = False
-        self.has_result = False
         self.executor_owned = False
 
     def __del__(self) -> None:
-        if self.has_result:
+        # Redundant with the slot's own RAII drop -- left until removing this
+        # __del__ is verified not to change the type's move/value-class codegen
+        # (TODO). A no-op when the result was already consumed.
+        if self.result.has():
             self.result.reset()
-            self.has_result = False
 
     # User-facing poll. Drives the frame for non-executor-owned tasks;
     # for executor-owned tasks, parks (the executor's poll_any drives).
@@ -87,10 +87,9 @@ class TaskState[T]:
             exc = self.exc
             if exc is not None:
                 raise exc
-            if not self.has_result:
+            if not self.result.has():
                 raise RuntimeError(
                     "Task: __poll__ after Ready was already consumed")
-            self.has_result = False
             return poll_ready(self.result.take())
         if self.executor_owned:
             self.awaiter = w
@@ -122,7 +121,6 @@ class TaskState[T]:
             if p.is_ready():
                 self.done = True
                 self.result.construct(p.value())
-                self.has_result = True
                 self.awaiter.wake()
                 return True
             return False

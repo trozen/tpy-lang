@@ -123,17 +123,15 @@ class _Send[T: Send]:
     if the receiver is gone."""
     _state: Rc[_ChanState[T]]
     _value: UninitStorage[T]
-    _has_value: bool
 
     def __init__(self, state: Own[Rc[_ChanState[T]]], value: Own[T]) -> None:
         self._state = state
         self._value = UninitStorage[T]()
         self._value.construct(value)
-        self._has_value = True
 
     def __del__(self) -> None:
         # Drop the value if it was never pushed (closed channel / cancel).
-        if self._has_value:
+        if self._value.has():
             self._value.reset()
 
     def cancel(self) -> None:
@@ -144,7 +142,6 @@ class _Send[T: Send]:
             raise ChannelClosed("send on closed channel")
         if not self._state._is_full():
             self._state._push(self._value.take())
-            self._has_value = False
             return poll_ready_none()
         self._state._send_waker = waker
         self._state._has_send_waiter = True

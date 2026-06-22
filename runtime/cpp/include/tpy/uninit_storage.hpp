@@ -29,6 +29,14 @@ namespace tpy {
 
 template <typename T>
 class UninitStorage {
+    // Every payload stored here is move-constructed by an owner whose own
+    // move ctor is noexcept (Poll / Rc cell / Task / Future / channel send),
+    // so a throwing T move would std::terminate at the owner boundary. Enforce
+    // the assumption the move ops' noexcept-spec leans on, rather than leaving
+    // it to a comment.
+    static_assert(std::is_nothrow_move_constructible_v<T>,
+                  "UninitStorage<T> requires a noexcept-movable T");
+
 public:
     UninitStorage() noexcept = default;
 
@@ -36,8 +44,9 @@ public:
     UninitStorage& operator=(const UninitStorage&) = delete;
 
     // Transfers the live payload element-wise (never a byte copy) and leaves
-    // the source dead -- correct for non-trivially-relocatable T.
-    UninitStorage(UninitStorage&& other) noexcept(std::is_nothrow_move_constructible_v<T>) {
+    // the source dead -- correct for non-trivially-relocatable T. Plain
+    // noexcept: the static_assert above guarantees T is nothrow-movable.
+    UninitStorage(UninitStorage&& other) noexcept {
         if (other.alive_) {
             ::new (static_cast<void*>(&storage_)) T(std::move(*other.ptr()));
             alive_ = true;
@@ -46,10 +55,7 @@ public:
         }
     }
 
-    // Basic guarantee only: if T's move ctor throws, *this is left empty (the
-    // old payload is already reset). Never observed in practice -- every payload
-    // stored here (str, Box, Rc, records) is nothrow-movable.
-    UninitStorage& operator=(UninitStorage&& other) noexcept(std::is_nothrow_move_constructible_v<T>) {
+    UninitStorage& operator=(UninitStorage&& other) noexcept {
         if (this != &other) {
             reset();
             if (other.alive_) {

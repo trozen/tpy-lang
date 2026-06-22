@@ -869,7 +869,6 @@ class Future[T]:
 
     _done: bool
     _has_waiter: bool
-    _has_result: bool
     _exception: Box[Throwable] | None
     _waiter: Waker
     _result: UninitStorage[T]
@@ -877,15 +876,13 @@ class Future[T]:
     def __init__(self) -> None:
         self._done = False
         self._has_waiter = False
-        self._has_result = False
         self._exception = None
         self._waiter = Waker()
         self._result = UninitStorage[T]()
 
     def __del__(self) -> None:
-        if self._has_result:
+        if self._result.has():
             self._result.reset()
-            self._has_result = False
 
     def done(self) -> bool:
         return self._done
@@ -897,7 +894,6 @@ class Future[T]:
         if self._done:
             raise InvalidStateError("Future already done")
         self._result.construct(value)
-        self._has_result = True
         self._done = True
         if self._has_waiter:
             self._waiter.wake()
@@ -925,10 +921,9 @@ class Future[T]:
         if self._done:
             if self._exception is not None:
                 raise self._exception
-            if not self._has_result:
+            if not self._result.has():
                 raise ValueError(
                     "Future done with no result and no exception")
-            self._has_result = False
             # take() returns Own[T] -- pass directly as rvalue so
             # nocopy types (T with __del__ but no __copy__) flow through
             # without requiring a copy ctor.
