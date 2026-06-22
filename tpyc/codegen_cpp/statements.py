@@ -1867,27 +1867,6 @@ class StatementGenerator:
             name, init, inner_tuple, elem_const, indent)
         return prefix, f"{opt_cpp}{{{borrow_rhs}}}"
 
-    def _typed_brace_init(self, init_expr: str,
-                          target_type: TpyType | None) -> str:
-        """Make a brace-init expression self-describing by prefixing its
-        destination C++ type, so it can bind to a template parameter that
-        cannot deduce from a bare brace-init-list.
-
-        Brace-enclosed initializer lists have no deduced type in C++, so
-        they fail template-argument deduction -- `.emplace({1, 2, 3})`
-        against `emplace(Args&&...)`, or `::tpy::__setitem__(c, k, {1, 2,
-        3})` against its forwarding-ref value parameter. Wrapping as
-        `T{...}` gives the list a concrete prvalue type that deduces (and
-        forwards, with mandatory copy elision) into the destination.
-        No-op for expressions that are already self-describing (anything
-        not starting with `{`, e.g. `::tpy::ordered_set<...>(...)`).
-        """
-        if not init_expr.startswith("{") or target_type is None:
-            return init_expr
-        unwrapped = unwrap_readonly(unwrap_ref_type(target_type))
-        cpp_type = self.types.type_to_cpp(unwrapped)
-        return f"{cpp_type}{init_expr}"
-
     def _maybe_wrap_tuple_to_storage(self, expr: str, target_type: TpyType | None,
                                        source: TpyExpr | None = None) -> str:
         """Wrap a pointer-form tuple expression with tuple_to_storage if the
@@ -1994,7 +1973,7 @@ class StatementGenerator:
                     # frame_slot<T> has no operator= for arbitrary T;
                     # writes route through emplace, which also destroys
                     # any prior payload before constructing the new one.
-                    init_expr = self._typed_brace_init(
+                    init_expr = self.types.typed_brace_init(
                         init_expr, self.ctx.var_types.get(stmt.name))
                     return f"{indent}{cpp_name}.emplace({init_expr});\n"
                 if stmt.name in self.ctx.borrow_form_tuple_locals:
@@ -2371,7 +2350,7 @@ class StatementGenerator:
             # A bare collection-literal value can't deduce the forwarding-ref
             # value parameter of the ::tpy::__setitem__ template (the lvalue
             # `x[i] =` path above binds a brace-init fine, so it stays bare).
-            value = self._typed_brace_init(value, target_type)
+            value = self.types.typed_brace_init(value, target_type)
             # Use registry lookup for __setitem__
             fi = self.builtins.get_type_method_fi(obj_type, "__setitem__")
             if fi:
@@ -2395,7 +2374,7 @@ class StatementGenerator:
             target_type = self.ctx.var_types.get(stmt.target.name)
             value = self.expressions.gen_expr_deref(stmt.value, target_type)
             value = self.expressions._maybe_move(stmt.value, value)
-            value = self._typed_brace_init(value, target_type)
+            value = self.types.typed_brace_init(value, target_type)
             return f"{indent}{cpp_name}.emplace({value});\n"
 
         # Property setter: delegate to normal method call codegen
@@ -3180,7 +3159,7 @@ class StatementGenerator:
                     get_expr = f"std::move({get_expr})"
                 if name in self.ctx.generator_frame_slot_locals:
                     # frame_slot<T>: no operator=, writes go through emplace.
-                    get_expr = self._typed_brace_init(
+                    get_expr = self.types.typed_brace_init(
                         get_expr, target_type)
                     out.write(f"{indent}{cpp_name}.emplace({get_expr});\n")
                 else:

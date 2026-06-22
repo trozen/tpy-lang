@@ -11,7 +11,7 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType,
     PendingListType, PendingDictType, PendingSetType, PendingViewType, ViewTypeFamily, make_list, make_dict, make_set, TypeParamRef, NominalType,
     UnionType, NoneType, VoidType, TupleType, ReadonlyType,
-    unwrap_readonly, is_protocol_type, resolve_int_literals,
+    unwrap_readonly, unwrap_ref_type, is_protocol_type, resolve_int_literals,
     is_integer_type, is_float_type, is_void_like_type,
     INT32, BIGINT, FLOAT, FLOAT32, STR, BYTES,
 )
@@ -432,6 +432,17 @@ class TypeResolver:
                 return f"{base}<{args}>"
         # Default: use the type's built-in to_cpp() method
         return typ.to_cpp()
+
+    def typed_brace_init(self, init_expr: str, target_type: TpyType | None) -> str:
+        """Prefix a brace-init with its destination C++ type (`T{...}`) so it
+        can bind to a forwarding-ref / template parameter that cannot deduce a
+        bare brace-init-list (`__setitem__`, `ordered_map::insert_or_assign`).
+        No-op for expressions already self-describing (not starting with `{`).
+        """
+        if not init_expr.startswith("{") or target_type is None:
+            return init_expr
+        unwrapped = unwrap_readonly(unwrap_ref_type(target_type))
+        return f"{self.type_to_cpp(unwrapped)}{init_expr}"
 
     def type_to_cpp_stored(self, typ: TpyType) -> str:
         """Convert a type to its stored C++ representation.

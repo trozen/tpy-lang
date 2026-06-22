@@ -5016,6 +5016,11 @@ class ExpressionGenerator:
                     key_code = self._wrap_for_owned_slot(expr.key_expr, self.gen_expr_deref(expr.key_expr, key_type), key_resolved, key_type)
                     value_resolved = self.types.get_resolved_type(expr.value_expr, value_type)
                     value_code = self._wrap_for_owned_slot(expr.value_expr, self.gen_expr_deref(expr.value_expr, value_type), value_resolved, value_type)
+                # insert_or_assign(KK&&, VV&&) is a template: a bare brace-init
+                # (a collection-literal key/value) can't deduce, so make it
+                # self-describing. No-op for non-brace expressions.
+                key_code = self.types.typed_brace_init(key_code, key_type)
+                value_code = self.types.typed_brace_init(value_code, value_type)
                 return f"__result.insert_or_assign({key_code}, {value_code})"
             return self._gen_comprehension_iife(
                 expr.generator, f"::tpy::ordered_map<{cpp_key}, {cpp_val}>",
