@@ -159,6 +159,26 @@ in the current model.
 - **Generic str/bytes ABI perf split (Open Questions item 8).** **[perf, not
   correctness]** generic-`T`-over-`str` materializes `std::string` at each call site.
   Documented; low priority.
+- **Move/relocation safety of inline storage (MIR move/copy lowering).**
+  `UninitArrayStorage`'s move ctor `memcpy`d its element array unconditionally,
+  silently corrupting a non-trivially-relocatable element: an SSO `std::string`'s
+  data pointer aliases its own inline buffer, so a byte-copy leaves the moved-to
+  string pointing into the moved-from (soon-dead) storage. It surfaced as a
+  `stack-use-after-return` for `async def -> str` (the result flows through a
+  moved `Poll<std::string>`), ASan/hardened-allocator-only and benign on glibc --
+  the worst kind of latent miscompile. The first fix (a per-storage liveness
+  bitset + element-wise move) was rejected: liveness is the OWNER's state (a
+  size, a head/count, a flag), so duplicating it in the storage is redundant and
+  over-general (a ring buffer's liveness is not even a prefix). The shipped
+  design instead keeps the storage dumb -- `memcpy` move for trivially-copyable
+  `T`, the move **deleted** for non-trivial `T` (silent corruption becomes a
+  compile error) -- and introduces `tpy::UninitStorage<T>` for single-optional-value
+  owners (Poll/Rc-payload/channel-send), whose one liveness bit IS the owner's
+  (no duplication). The per-type "trivially relocatable?" decision (here a
+  conservative `is_trivially_copyable` proxy) and the storage-vs-slot choice are
+  exactly what MIR's move/copy lowering should own and verify centrally, rather
+  than each hand-written container re-deriving it and one (the old move ctor)
+  getting it wrong.
 - **Joint generic inference: a pending-typed arg co-resolved by a sibling argument.**
   **[ergonomics, not correctness]** An untyped empty-container local (`heap = []` ->
   `PendingList[???]`) passed to a generic free function alongside an argument that fixes

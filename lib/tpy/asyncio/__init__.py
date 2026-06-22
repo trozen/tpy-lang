@@ -17,7 +17,7 @@ from tpy.coro import (
     Waker, Poll, Cancellable,
     poll_ready, poll_pending, poll_ready_none,
 )
-from tpy.mem import UninitArrayStorage
+from tpy.mem import UninitStorage
 from tpy.unsafe import unsafe_str_from_cstr
 from tplib import Box
 from tplib.rc import Rc
@@ -872,7 +872,7 @@ class Future[T]:
     _has_result: bool
     _exception: Box[Throwable] | None
     _waiter: Waker
-    _result: UninitArrayStorage[T, 1]
+    _result: UninitStorage[T]
 
     def __init__(self) -> None:
         self._done = False
@@ -880,11 +880,11 @@ class Future[T]:
         self._has_result = False
         self._exception = None
         self._waiter = Waker()
-        self._result = UninitArrayStorage[T, 1]()
+        self._result = UninitStorage[T]()
 
     def __del__(self) -> None:
         if self._has_result:
-            self._result.take0()
+            self._result.reset()
             self._has_result = False
 
     def done(self) -> bool:
@@ -896,7 +896,7 @@ class Future[T]:
         # `tpy.copy(x)` explicitly to keep their reference alive.
         if self._done:
             raise InvalidStateError("Future already done")
-        self._result.init0(value)
+        self._result.construct(value)
         self._has_result = True
         self._done = True
         if self._has_waiter:
@@ -929,10 +929,10 @@ class Future[T]:
                 raise ValueError(
                     "Future done with no result and no exception")
             self._has_result = False
-            # take0() returns Own[T] -- pass directly as rvalue so
+            # take() returns Own[T] -- pass directly as rvalue so
             # nocopy types (T with __del__ but no __copy__) flow through
             # without requiring a copy ctor.
-            return poll_ready(self._result.take0())
+            return poll_ready(self._result.take())
         if self._has_waiter:
             raise ValueError(
                 "Future already has a waiter (single-awaiter v1)")

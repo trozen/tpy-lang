@@ -4,11 +4,19 @@
  * Inline uninitialized storage for N elements of type T.
  * Uses a union so elements are not default-constructed.
  * Caller is responsible for managing element lifetimes via
- * construct() / destroy().
+ * construct() / destroy(), and for tracking how many / which slots are live.
  *
- * Copy/move: not explicitly deleted -- C++ union rules apply naturally:
- *   - Trivially copyable T: copy works (bytes are independent)
- *   - Non-trivially-copyable T: C++ implicitly deletes union copy
+ * Move: a memcpy of the raw bytes is only valid for trivially-copyable T.
+ * A non-trivially-relocatable T (notably an SSO std::string, whose data
+ * pointer aliases its own inline buffer) cannot be byte-copied. Since the
+ * storage does NOT track liveness at runtime (the owner does -- a size, a
+ * head/count, a flag), it cannot move element-wise on its own, so the move
+ * is DELETED for non-trivially-copyable T. This turns a would-be silent
+ * SSO-corruption into a compile error. A single-optional-value owner should
+ * use tpy::UninitStorage<T> (which owns one liveness bit and moves correctly); a
+ * multi-slot owner that must be movable with non-trivial elements relocates
+ * its live elements element-wise in its own move, using the count/indices it
+ * already tracks.
  */
 
 #pragma once
@@ -38,15 +46,24 @@ public:
 #endif
     }
 
-    UninitArrayStorage(UninitArrayStorage&& other) noexcept {
+    // Trivially-copyable T relocates by byte copy (independent bytes); a
+    // non-trivially-relocatable T cannot, and the storage has no runtime
+    // liveness to move element-wise, so its move is deleted -- a single-value
+    // owner uses tpy::UninitStorage<T>, a multi-slot owner relocates its live
+    // elements element-wise in its own move.
+    UninitArrayStorage(UninitArrayStorage&& other) noexcept
+        requires std::is_trivially_copyable_v<T> {
         std::memcpy(static_cast<void*>(&elems_[0]), static_cast<const void*>(&other.elems_[0]), sizeof(elems_));
 #ifndef NDEBUG
         alive_ = other.alive_;
         other.alive_.reset();
 #endif
     }
+    UninitArrayStorage(UninitArrayStorage&&)
+        requires (!std::is_trivially_copyable_v<T>) = delete;
 
-    UninitArrayStorage& operator=(UninitArrayStorage&& other) noexcept {
+    UninitArrayStorage& operator=(UninitArrayStorage&& other) noexcept
+        requires std::is_trivially_copyable_v<T> {
         if (this != &other) {
             std::memcpy(static_cast<void*>(&elems_[0]), static_cast<const void*>(&other.elems_[0]), sizeof(elems_));
 #ifndef NDEBUG
@@ -56,6 +73,8 @@ public:
         }
         return *this;
     }
+    UninitArrayStorage& operator=(UninitArrayStorage&&)
+        requires (!std::is_trivially_copyable_v<T>) = delete;
 
     ~UninitArrayStorage() {
 #ifndef NDEBUG

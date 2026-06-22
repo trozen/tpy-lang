@@ -8,7 +8,7 @@ from tpy import (
 )
 from .._bootstrap._decorators import readonly, pure, nocopy, Own, dynamic
 from .._bootstrap._extern import native, cpp_template, builtin_type, value_ptr_coercion
-from ..mem import UninitArrayStorage as _UninitArrayStorage
+from ..mem import UninitStorage as _UninitStorage
 
 
 # --- Dynamic protocols (vtable-based runtime dispatch) ---
@@ -184,17 +184,15 @@ class Poll[T]:
     wrappers in `tpy.coro` (`poll_ready` / `poll_pending` /
     `poll_ready_none`).
     """
-    _slot: _UninitArrayStorage[T, 1]
-    _has: bool
+    # A single owning slot tracks both the payload and its liveness; the
+    # slot's own RAII drop covers cleanup, so Poll needs no __del__ and no
+    # separate `_has` flag (which would duplicate the slot's alive-bit). The
+    # slot moves correctly element-wise, so a Poll carrying an SSO str result
+    # survives being moved up the poll chain.
+    _slot: _UninitStorage[T]
 
     def __init__(self) -> None:
-        self._slot = _UninitArrayStorage[T, 1]()
-        self._has = False
-
-    def __del__(self) -> None:
-        if self._has:
-            self._slot.take0()
-            self._has = False
+        self._slot = _UninitStorage[T]()
 
     @staticmethod
     def pending() -> Own["Poll[T]"]:
@@ -203,23 +201,21 @@ class Poll[T]:
     @staticmethod
     def ready(value: Own[T]) -> Own["Poll[T]"]:
         p = Poll[T]()
-        p._slot.init0(value)
-        p._has = True
+        p._slot.construct(value)
         return p
 
     @readonly
     def is_ready(self) -> bool:
-        return self._has
+        return self._slot.has()
 
     @readonly
     def is_pending(self) -> bool:
-        return not self._has
+        return not self._slot.has()
 
     def value(self: Own[Self]) -> Own[T]:
         # `Own[Self]` makes the borrow checker reject a second call --
-        # the slot's alive-bit is cleared after the first take0().
-        self._has = False
-        return self._slot.take0()
+        # the slot is emptied after the first take().
+        return self._slot.take()
 
 
 # --- Primitive type stubs (methods for builtin types) ---

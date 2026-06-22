@@ -42,6 +42,7 @@
 #include "uninit_array_storage.hpp"
 #include "uninit_heap_storage.hpp"
 #include "frame_slot.hpp"
+#include "uninit_storage.hpp"
 
 // BigInt arbitrary precision (depends on core, fixed_int, type_traits)
 #include "bigint.hpp"

@@ -8,12 +8,11 @@
 # still check `strong > 0` against still-valid memory.
 #
 # Layout: one heap block per Rc.new -- `_RcCell[U]` holds the refcount
-# AND the payload inline (`UninitArrayStorage[U, 1]`). The cell's
-# bookkeeping virtuals (incr/decr/get strong/weak, drop_payload) are
-# dispatched through `_RcCellBase`, a @dynamic protocol -- so the
-# Rc/Weak handles can hold a `Ptr[_RcCellBase]` and stay agnostic to U.
-# The strong-zero path calls `cell.drop_payload()` BEFORE the final
-# weak decrement; UninitArrayStorage's debug dtor asserts alive_==0.
+# AND the payload inline (`UninitStorage[U]`). The cell's bookkeeping virtuals
+# (incr/decr/get strong/weak, drop_payload) are dispatched through
+# `_RcCellBase`, a @dynamic protocol -- so the Rc/Weak handles can hold a
+# `Ptr[_RcCellBase]` and stay agnostic to U. The strong-zero path resets
+# the payload slot BEFORE the final weak decrement.
 #
 # `Weak` is intentionally NOT re-exported from `tplib`: import as
 # `from tplib.rc import Weak`. Reserves the bare name for a future
@@ -26,7 +25,7 @@
 from __future__ import annotations
 from typing import Protocol
 from tpy import Own, Ptr, UInt32, UInt64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly, interior
-from tpy.mem import UninitArrayStorage
+from tpy.mem import UninitStorage
 from tpy.unsafe import unsafe_take, unsafe_release
 
 
@@ -58,7 +57,11 @@ class _RcCellBase(Protocol):
 class _RcCell[U](_RcCellBase):
     strong: UInt32
     weak: UInt32
-    storage: UninitArrayStorage[U, 1]
+    # A single owning slot: tracks its own liveness and moves correctly, so a
+    # cell over a payload with SSO-`str`/non-relocatable fields survives the
+    # one move into heap storage at `new_` (the payload is constructed in
+    # place after that move, while the slot is still empty).
+    storage: UninitStorage[U]
 
     def __init__(self) -> None:
         self.strong = 1
@@ -67,22 +70,22 @@ class _RcCell[U](_RcCellBase):
         # is set before any use. Without it, TPy emits a warning about
         # the unset field (CPython doesn't reach this stub -- it uses
         # lib/cpy/tplib/rc.py which has a different internal model).
-        self.storage = UninitArrayStorage[U, 1]()
+        self.storage = UninitStorage[U]()
 
     def incr_strong(self) -> None:
         self.strong = self.strong + 1
 
     def release_strong(self) -> bool:
         # Decrement strong; if it hit zero, destruct the inline payload
-        # FIRST (UninitArrayStorage's debug dtor asserts alive==0) and
-        # THEN decrement the collective weak. Returns True iff the cell
+        # FIRST (reset the owning slot) and THEN decrement the collective
+        # weak. Returns True iff the cell
         # itself is now unreferenced and needs free. A nested Weak.__del__
         # triggered by the payload destructor (self-Weak inside U) sees
         # weak >= 2 (collective + its own) and can't free us mid-method.
         new_strong = self.strong - 1
         self.strong = new_strong
         if new_strong == 0:
-            self.storage.drop0()
+            self.storage.reset()
             new_weak = self.weak - 1
             self.weak = new_weak
             return new_weak == 0
@@ -135,7 +138,7 @@ class Rc[T](Deref[T], Covariant[T]):
     @staticmethod
     def new[U: T](value: Own[U]) -> Own[Rc[T]]:
         cell = unsafe_take(_RcCell[U]())
-        cell.storage.init0(value)
+        cell.storage.construct(value)
         return Rc[T](cell, cell.storage.ptr())
 
     # clone/downgrade are auto_readonly: a mutable handle yields a mutable

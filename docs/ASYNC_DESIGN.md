@@ -65,7 +65,7 @@ Each item below is blocked on a specific compiler bug or missing feature. Orthog
 | Single-threaded shared-ownership smart pointer `Rc[T]` | **shipped** (`lib/tpy/tplib/rc.py`; construct via `Rc.new(value)`) | `TaskState[T]`, `Task[T]`, `AnyTaskBox`, `AnyTask` → TPy. Biggest remaining shrink: removes the type-erasure stack. Shipped in v1.2 step 4. |
 | Atomic `Arc[T]` + `Weak[T]` | v3+ (multi-threaded executor + multi-awaiter Future) | Cross-thread async surface. Not blocking single-threaded v1.x cleanup. |
 | `thread_local` storage in TPy | not needed for v1 (v1.2 step 6 used a plain global) | TLS revert is gated on multi-threaded async (v3+). v1.2 step 7 then collapsed the `executor_ops` global entirely; the only remaining single-process global is `_current_executor: Ptr[Executor]` in `lib/tpy/asyncio/_executor.py`. |
-| Generic class specializations for void/reference/move-only `T` | **not needed** (v1.2 step 5) | Originally listed as a prerequisite for `Poll[T]` → TPy, but the port shipped without it: `Poll[None]` -> `Poll<std::monostate>` covers the void analog, the reference-T specialization was never instantiated by generated code, and move-only / non-default-constructible T are handled by `UninitArrayStorage`'s placement-new contract. |
+| Generic class specializations for void/reference/move-only `T` | **not needed** (v1.2 step 5) | Originally listed as a prerequisite for `Poll[T]` → TPy, but the port shipped without it: `Poll[None]` -> `Poll<std::monostate>` covers the void analog, the reference-T specialization was never instantiated by generated code, and move-only / non-default-constructible T are handled by the `UninitStorage<T>` payload's placement-new contract. |
 | `@cpp_template` literal-brace escape syntax (`{{` / `}}`) | partial (free functions work via `str.format`; method-template / UX-diagnostic gaps remain -- see TODO.md / BUGS.md) | Used in v1.2 step 6 for `Waker`'s aggregate-init `@overload @cpp_template("::tpy::Waker{{...}}")` constructor. v1.2 step 7 made the aggregate-init constructor moot -- `Waker` is now a pure-TPy `ValueType` with a plain `__init__` -- so the escape-syntax dependency disappeared with it. |
 | TPy method bodies on `@native` classes | not needed for async (v1.2 step 7 superseded it) | Originally proposed to let `Waker.wake()` / `ExecutorHandle.is_null()` move from C++ to TPy. Step 7 made `Waker` non-`@native` and deleted `ExecutorHandle` entirely, so the async-side motivation is gone. Still a real compiler gap for other `@native` types that might want TPy method bodies. |
 
@@ -534,8 +534,8 @@ Special cases:
 
 - **`Poll<void>`** -- just `bool ready_`, `value()` returns void. `Ready` constructor takes no arg. Retained as a runtime specialization for handwritten C++; TPy-side `Poll[None]` now lowers to `Poll<std::monostate>` through the primary template (the unit type carried as a payload, `value()` returns `std::monostate{}`).
 - **Reference T** (`Poll<T&>`) -- payload is `T*` internally; `value()` returns `T&`.
-- **Move-only T** -- payload uses `std::optional<T>` or aligned storage; `value() &&` moves out exactly once.
-- **Non-default-constructible T** -- payload uses `std::optional` or aligned storage so `Poll<T>::pending()` doesn't require constructing a T.
+- **Move-only T** -- payload uses `UninitStorage<T>` (TPy lowering) or aligned storage (handwritten C++ spec); `value() &&` moves out exactly once.
+- **Non-default-constructible T** -- payload uses `UninitStorage<T>` / aligned storage so `Poll<T>::pending()` doesn't require constructing a T.
 
 Implementation is small (~100 LOC of templated runtime) but each case needs to be tested.
 

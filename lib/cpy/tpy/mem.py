@@ -25,6 +25,11 @@ class _StorageMeta(type):
                 _capacity = capacity
 
             return Bound
+        elif cls is UninitStorage:
+            class Bound(UninitStorage):
+                _elem_type = params
+
+            return Bound
         else:
             # UninitHeapStorage[T]
             class Bound(UninitHeapStorage):
@@ -160,6 +165,33 @@ class _SlotPtr:
 
     def __hash__(self):
         return hash(object.__getattribute__(self, '_storage')._slots[0])
+
+
+class UninitStorage(metaclass=_StorageMeta):
+    """Owning storage for a single optional T (tracks its own liveness)."""
+
+    _elem_type = None
+
+    def __init__(self):
+        self._slots: dict[int, object] = {}
+
+    def construct(self, value: object) -> None:
+        self._slots[0] = value
+
+    def has(self) -> bool:
+        return 0 in self._slots
+
+    def get(self) -> object:
+        return self._slots[0]
+
+    def take(self) -> object:
+        return self._slots.pop(0)
+
+    def reset(self) -> None:
+        self._slots.pop(0, None)
+
+    def ptr(self):
+        return _SlotPtr(self)
 
 
 class UninitHeapStorage(metaclass=_StorageMeta):

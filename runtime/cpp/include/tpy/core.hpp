@@ -402,12 +402,17 @@ void destroy_at(T* p) {
  * Heap-allocate a T and move-construct it from `value` (combined alloc+init).
  * The std::unique_ptr<T> overload below covers the abstract-@dynamic case
  * where the caller has already heap-allocated; it just releases the handle.
+ *
+ * Must stay `new T` (not a hand-rolled `::operator new(sizeof, align_val_t)`):
+ * the new-expression picks the aligned operator new iff T is over-aligned, the
+ * SAME rule heap_release's `delete p` and a @dynamic base's virtual deleting
+ * destructor use -- so alloc and free always pair. Forcing aligned-new
+ * unconditionally desynchronized that pair for alignof(T) <= the default new
+ * alignment (aligned new vs plain delete -> new-delete-type-mismatch UB).
  */
 template <typename T>
 T* heap_take(T&& value) {
-    T* p = static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))));
-    ::new(static_cast<void*>(p)) T(std::move(value));
-    return p;
+    return new T(std::move(value));
 }
 
 template <typename T>
@@ -418,24 +423,20 @@ T* heap_take(std::unique_ptr<T> value) {
 /**
  * Destroy and free a heap-allocated T previously produced by heap_take.
  *
- * For polymorphic T (a class with a virtual destructor -- typically the
- * abstract @dynamic protocol base), uses scalar `delete p`. Per [expr.delete],
- * `delete p` with virtual destructor routes through the vtable's *deleting
- * destructor*, which knows the dynamic type and calls the matching operator
- * delete (aligned form if the dynamic type is over-aligned). This is the
- * correct disposal path -- the compiler handles alignment via the vtable.
- *
- * For non-polymorphic T, manually destroys and frees with the same alignment
- * heap_take used. Static and dynamic types coincide, so alignof(T) matches.
+ * Mirror of heap_take's `new T`: scalar `delete p` selects the operator
+ * delete that pairs with the operator new the matching `new`-expression
+ * used (aligned form only when alignof(T) exceeds the default new
+ * alignment). For polymorphic T the virtual deleting destructor routes
+ * the same choice through the vtable for the dynamic type. Hand-rolling
+ * an unconditional aligned `::operator delete` here would mismatch the
+ * non-aligned delete the compiler bakes into a derived type's deleting
+ * destructor (UB; ASan flags new-delete-type-mismatch) -- a `_RcCell`
+ * allocated by heap_take then freed through its @dynamic base hit exactly
+ * that. `delete p` keeps allocation and disposal in lockstep.
  */
 template <typename T>
 void heap_release(T* p) {
-    if constexpr (std::has_virtual_destructor_v<T>) {
-        delete p;  // virtual deleting destructor handles alignment + dynamic size
-    } else {
-        tpy::destroy_at(p);
-        ::operator delete(p, std::align_val_t(alignof(T)));
-    }
+    delete p;
 }
 
 /**
@@ -473,8 +474,7 @@ own_return_t<T> transfer_ownership(T* p) {
         return std::unique_ptr<T>(p);
     } else {
         T val = std::move(*p);
-        tpy::destroy_at(p);
-        ::operator delete(p, std::align_val_t(alignof(T)));
+        delete p;  // pairs with heap_take's `new T` (see heap_release)
         return val;
     }
 }

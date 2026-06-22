@@ -20,7 +20,7 @@ from time import monotonic, sleep_until_steady
 from tpy import Int32, UInt32, Own, Ptr, Throwable, dynamic, nocopy, readonly
 from tpy.extern import builtin_type, cpp_template
 from tpy.coro import Awaker, Cancellable, Poll, Waker, poll_ready, poll_pending
-from tpy.mem import UninitArrayStorage
+from tpy.mem import UninitArrayStorage, UninitStorage
 from tpy.unsafe import unsafe_load
 from tplib import Box
 from tplib.rc import Rc
@@ -56,7 +56,10 @@ class TaskState[T]:
     """
 
     frame: Box[Cancellable[T]] | None
-    result: UninitArrayStorage[T, 1]
+    # Single owning slot for the cached result: moves correctly element-wise
+    # (the TaskState is moved into its Rc cell at creation, while the slot is
+    # still empty -- the result is cached later by poll_any).
+    result: UninitStorage[T]
     exc: Box[Throwable] | None
     awaiter: Waker
     done: bool
@@ -65,7 +68,7 @@ class TaskState[T]:
 
     def __init__(self, frame: Own[Box[Cancellable[T]]]) -> None:
         self.frame = frame
-        self.result = UninitArrayStorage[T, 1]()
+        self.result = UninitStorage[T]()
         self.exc = None
         self.awaiter = Waker()
         self.done = False
@@ -74,7 +77,7 @@ class TaskState[T]:
 
     def __del__(self) -> None:
         if self.has_result:
-            self.result.take0()
+            self.result.reset()
             self.has_result = False
 
     # User-facing poll. Drives the frame for non-executor-owned tasks;
@@ -88,7 +91,7 @@ class TaskState[T]:
                 raise RuntimeError(
                     "Task: __poll__ after Ready was already consumed")
             self.has_result = False
-            return poll_ready(self.result.take0())
+            return poll_ready(self.result.take())
         if self.executor_owned:
             self.awaiter = w
             return poll_pending()
@@ -118,7 +121,7 @@ class TaskState[T]:
             p = frame.get().__poll__(w)
             if p.is_ready():
                 self.done = True
-                self.result.init0(p.value())
+                self.result.construct(p.value())
                 self.has_result = True
                 self.awaiter.wake()
                 return True

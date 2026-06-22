@@ -12,7 +12,7 @@ state is `Rc`-backed (single-threaded; the cross-thread Arc-backed channel
 is Phase 6).
 """
 from tpy import Own, Int32, UInt32, nocopy, Send
-from tpy.mem import UninitArrayStorage, UninitHeapStorage
+from tpy.mem import UninitHeapStorage, UninitStorage
 from tpy.coro import Waker, Poll, poll_ready, poll_pending, poll_ready_none
 from tplib.rc import Rc
 
@@ -122,19 +122,19 @@ class _Send[T: Send]:
     across suspension; pushes it once space frees; raises `ChannelClosed`
     if the receiver is gone."""
     _state: Rc[_ChanState[T]]
-    _value: UninitArrayStorage[T, 1]
+    _value: UninitStorage[T]
     _has_value: bool
 
     def __init__(self, state: Own[Rc[_ChanState[T]]], value: Own[T]) -> None:
         self._state = state
-        self._value = UninitArrayStorage[T, 1]()
-        self._value.init0(value)
+        self._value = UninitStorage[T]()
+        self._value.construct(value)
         self._has_value = True
 
     def __del__(self) -> None:
         # Drop the value if it was never pushed (closed channel / cancel).
         if self._has_value:
-            self._value.take0()
+            self._value.reset()
 
     def cancel(self) -> None:
         pass
@@ -143,7 +143,7 @@ class _Send[T: Send]:
         if self._state._closed:
             raise ChannelClosed("send on closed channel")
         if not self._state._is_full():
-            self._state._push(self._value.take0())
+            self._state._push(self._value.take())
             self._has_value = False
             return poll_ready_none()
         self._state._send_waker = waker
