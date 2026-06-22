@@ -12,10 +12,11 @@ struct Node;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-::tpy::BigInt collect_list_nocopy();
-::tpy::BigInt collect_set();
-::tpy::BigInt borrow_source_copies(const std::vector<Node>& src);
-::tpy::BigInt filtered_moves();
+::tpy::BigInt value_moves_key_field();
+::tpy::BigInt value_only();
+::tpy::BigInt key_does_not_move(const ::tpy::BigInt& src_key);
+::tpy::BigInt filtered_value_moves();
+::tpy::BigInt same_var_key_and_value();
 void main();
 
 // @nocopy
@@ -23,10 +24,12 @@ void main();
 struct Widget {
     // id: int
     ::tpy::BigInt id;
+    // tag: int
+    ::tpy::BigInt tag;
 
     // def __init__(self, i: int) -> None:
     Widget() = default;
-    explicit Widget(const ::tpy::BigInt& i) : id(i) {}
+    explicit Widget(const ::tpy::BigInt& i) : id(i), tag(((i) * (::tpy::BigInt(10)))) {}
     // non-copyable (@nocopy)
     Widget(const Widget&) = delete;
     Widget& operator=(const Widget&) = delete;
@@ -42,12 +45,12 @@ inline std::ostream& operator<<(std::ostream& os, const Widget& obj) {
 
 // class Node:
 struct Node {
-    // v: int
-    ::tpy::BigInt v;
+    // id: int
+    ::tpy::BigInt id;
 
     // def __init__(self, i: int) -> None:
     Node() = default;
-    explicit Node(const ::tpy::BigInt& i) : v(i) {}
+    explicit Node(const ::tpy::BigInt& i) : id(i) {}
 
     // def __hash__(self) -> int:
     ::tpy::BigInt __hash__() const;
@@ -79,14 +82,14 @@ namespace tpyapp::main {
 
 // def __hash__(self) -> int:
 inline ::tpy::BigInt Node::__hash__() const {
-    // return self.v
-    return this->v;
+    // return self.id
+    return this->id;
 }
 
 // def __eq__(self, o: "Node") -> bool:
 inline bool Node::__eq__(const Node& o) const {
-    // return self.v == o.v
-    return (this->v == o.v);
+    // return self.id == o.id
+    return (this->id == o.id);
 }
 inline auto widgets(const ::tpy::BigInt& n) {
     // i = 0

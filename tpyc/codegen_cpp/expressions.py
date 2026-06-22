@@ -8,7 +8,7 @@ from __future__ import annotations
 import contextlib
 import io
 from dataclasses import replace as dc_replace
-from typing import Callable, Final, TYPE_CHECKING
+from typing import Callable, Final, Iterator, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType,
@@ -4889,35 +4889,54 @@ class ExpressionGenerator:
         cpp_type = result_type.to_cpp()
         return f"::tpy::from_range<{cpp_type}>({range_expr})"
 
-    def _gen_comp_owned_elem(self, gen: TpyComprehensionGenerator,
-                             element_expr: TpyExpr, elem_type: TpyType) -> str:
-        """Build a list/set comprehension element-insert expression, moving a
-        last-use owned element into the result (parallel to the consuming
-        for-append) when the source yields Own[T]. Only THIS loop var is movable
-        during element emission: it is rebound fresh each iteration, so moving it
-        is sound, whereas any outer movable (an enclosing comprehension's var, a
-        function local) used here would multi-move -- the element expression
-        repeats, but liveness sees it flat and would mark a single last-use.
-        `_maybe_move` then confirms the per-occurrence last use via
-        `all_last_uses`; a derived sink (`x.field`, `f(x)`) is left to its own
-        context (a borrow stays a borrow, an Own[T] arg still moves)."""
+    @contextlib.contextmanager
+    def _comp_owned_move_scope(self, gen: TpyComprehensionGenerator) -> Iterator[bool]:
+        """Restrict `movable_locals` to THIS comprehension's own loop var while
+        emitting its sink expression(s), when the source yields Own[T]. The loop
+        var is rebound fresh each iteration so moving it is sound; any outer
+        movable (an enclosing comprehension's var, a function local) used in a
+        sink would multi-move -- the sink repeats, but liveness sees it flat and
+        would mark a single last-use. Yields whether the move is active."""
         if not gen.owns_elements:
-            with self._container_element_context():
-                elem_resolved = self.types.get_resolved_type(element_expr, elem_type)
-                return self._wrap_for_owned_slot(
-                    element_expr, self.gen_expr_deref(element_expr, elem_type),
-                    elem_resolved, elem_type)
+            yield False
+            return
         saved = self.ctx.movable_locals
         self.ctx.movable_locals = {gen.var}
         try:
+            yield True
+        finally:
+            self.ctx.movable_locals = saved
+
+    def _move_comp_sink(self, gen: TpyComprehensionGenerator, sink_expr: TpyExpr,
+                        code: str, is_last_sink: bool) -> str:
+        """Apply the owned-element move to a comprehension sink. A bare-loop-var
+        LAST sink (list/set element, dict value) is std::move'd unconditionally:
+        it is structurally the last use (var rebound each iteration; earlier
+        reads sequenced before it), mirroring sema's `_comp_elem_moves`
+        `is_last_sink`. A derived/earlier sink defers to `_maybe_move` (its own
+        Own[T] args still move via `all_last_uses`; a borrow stays a borrow)."""
+        inner = sink_expr
+        while isinstance(inner, TpyCoerce):
+            inner = inner.expr
+        if is_last_sink and isinstance(inner, TpyName) and inner.name == gen.var:
+            return f"std::move({code})"
+        return self._maybe_move(sink_expr, code)
+
+    def _gen_comp_owned_elem(self, gen: TpyComprehensionGenerator,
+                             element_expr: TpyExpr, elem_type: TpyType) -> str:
+        """Build a list/set comprehension element-insert expression, moving the
+        owned element into the result (parallel to the consuming for-append)
+        when the source yields Own[T]. The element is the comprehension's last
+        sink, so a bare loop var moves unconditionally; a derived sink (`x.field`,
+        `f(x)`) is left to its own context (a borrow stays a borrow, an Own[T]
+        arg still moves)."""
+        with self._comp_owned_move_scope(gen) as owned:
             with self._container_element_context():
                 elem_resolved = self.types.get_resolved_type(element_expr, elem_type)
                 insert_code = self._wrap_for_owned_slot(
                     element_expr, self.gen_expr_deref(element_expr, elem_type),
                     elem_resolved, elem_type)
-            return self._maybe_move(element_expr, insert_code)
-        finally:
-            self.ctx.movable_locals = saved
+            return self._move_comp_sink(gen, element_expr, insert_code, is_last_sink=True) if owned else insert_code
 
     def _gen_list_comprehension(self, expr: TpyListComprehension,
                                 target_type: TpyType | None = None) -> str:
@@ -5043,16 +5062,39 @@ class ExpressionGenerator:
         comp_names = self._enter_comp_scope(expr.generator)
         try:
             def make_insert() -> str:
-                with self._container_element_context():
-                    key_resolved = self.types.get_resolved_type(expr.key_expr, key_type)
-                    key_code = self._wrap_for_owned_slot(expr.key_expr, self.gen_expr_deref(expr.key_expr, key_type), key_resolved, key_type)
-                    value_resolved = self.types.get_resolved_type(expr.value_expr, value_type)
-                    value_code = self._wrap_for_owned_slot(expr.value_expr, self.gen_expr_deref(expr.value_expr, value_type), value_resolved, value_type)
+                with self._comp_owned_move_scope(expr.generator) as owned:
+                    with self._container_element_context():
+                        key_resolved = self.types.get_resolved_type(expr.key_expr, key_type)
+                        key_raw = self._wrap_for_owned_slot(expr.key_expr, self.gen_expr_deref(expr.key_expr, key_type), key_resolved, key_type)
+                        value_resolved = self.types.get_resolved_type(expr.value_expr, value_type)
+                        value_raw = self._wrap_for_owned_slot(expr.value_expr, self.gen_expr_deref(expr.value_expr, value_type), value_resolved, value_type)
+                    # The value is the comprehension's last sink (a bare owned
+                    # loop var moves unconditionally); the key is earlier, so it
+                    # moves only when it is itself the last use (`_maybe_move`'s
+                    # all_last_uses gate). Mirrors sema's _comp_elem_moves.
+                    if owned:
+                        key_code = self._move_comp_sink(expr.generator, expr.key_expr, key_raw, is_last_sink=False)
+                        value_code = self._move_comp_sink(expr.generator, expr.value_expr, value_raw, is_last_sink=True)
+                    else:
+                        key_code, value_code = key_raw, value_raw
+                # Capture the value-move decision before typed_brace_init rewrites
+                # the string (a non-moved brace-init value would otherwise read as
+                # moved and force needless key-sequencing).
+                value_moved = value_code is not value_raw
                 # insert_or_assign(KK&&, VV&&) is a template: a bare brace-init
                 # (a collection-literal key/value) can't deduce, so make it
                 # self-describing. No-op for non-brace expressions.
                 key_code = self.types.typed_brace_init(key_code, key_type)
                 value_code = self.types.typed_brace_init(value_code, value_type)
+                # When the value moves, the key is evaluated into a local FIRST:
+                # `insert_or_assign(K, V)` leaves its two args unsequenced, so a
+                # key that reads the moved-from loop var (`{node.id: node}`) would
+                # be a use-after-move if the value move ran first.
+                if value_moved:
+                    self.ctx.unpack_counter += 1
+                    k = f"__dk_{self.ctx.unpack_counter}"
+                    return (f"{{ auto {k} = {key_code}; "
+                            f"__result.insert_or_assign(std::move({k}), {value_code}); }}")
                 return f"__result.insert_or_assign({key_code}, {value_code})"
             return self._gen_comprehension_iife(
                 expr.generator, f"::tpy::ordered_map<{cpp_key}, {cpp_val}>",

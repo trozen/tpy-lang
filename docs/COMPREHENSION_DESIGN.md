@@ -241,13 +241,23 @@ borrowed, so the loop var is a borrow into a live element). This is consistent
 with how a for-loop + `append` would behave -- the result list owns its elements.
 
 When the source instead *yields* `Own[T]` (a generator of owned values, or an
-`Iterable[Own[T]]`), a bare last-use loop-var element is *moved* into the result
-(list/set comprehensions), mirroring the consuming `for`+`append`:
-`[node for node in g()]` over `g() -> Iterator[Own[Node]]` emits
-`push_back(std::move(node))`. So `@nocopy` owned elements collect without a copy
-error, and the storage-copy warning is suppressed for that sink. A derived sink
-(`x.field`, `f(x)`) or a borrowed source still copies. Dict comprehensions do
-not yet move (see BUGS.md -- a key/value evaluation-ordering hazard).
+`Iterable[Own[T]]`), a bare loop-var element is *moved* into the result,
+mirroring the consuming `for`+`append`: `[node for node in g()]` over
+`g() -> Iterator[Own[Node]]` emits `push_back(std::move(node))`. So `@nocopy`
+owned elements collect without a copy error, and the storage-copy warning is
+suppressed. The rule is **the comprehension's last-evaluated sink** is
+structurally the last use (the loop var is rebound each iteration; earlier reads
+are sequenced before it), so it moves a bare owned var unconditionally:
+
+- list/set: the element is the last sink -- moves even after a filter
+  (`[x for x in g() if p(x)]` moves; the filter ran first).
+- dict: the *value* is the last sink and moves; the *key* (evaluated first) is
+  sequenced into a local before the value move so `{node.id: node}` does not read
+  a moved-from element. The key moves only when it is the genuine last use --
+  `{node: node.id}` keeps the key copy (the value reads the element after it).
+
+An earlier or derived sink (`x.field`, `f(x)`, the dict key when a later sink
+reads the var) and a borrowed source still copy.
 
 For `@nocopy` types over a *borrowed* source, the element expression must produce
 an owned value (e.g. `[make_thing(x) for x in inputs]` where `make_thing` returns

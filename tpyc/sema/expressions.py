@@ -2124,21 +2124,24 @@ class ExpressionAnalyzer:
                 target_is_storage_form=target_is_storage_form)
         return elem
 
-    def _comp_elem_moves(self, gen: TpyComprehensionGenerator, elem: TpyExpr) -> bool:
+    def _comp_elem_moves(self, gen: TpyComprehensionGenerator, elem: TpyExpr,
+                         is_last_sink: bool = False) -> bool:
         """Whether a comprehension sink is the consuming MOVE -- an owned-source
-        bare-loop-var element at its last use. The `all_last_uses` membership is
-        load-bearing, not redundant with the shape check: when the loop var also
-        appears in a filter (`[x for x in g() if p(x)]`), liveness marks neither
-        occurrence last-use, and codegen's `_maybe_move` then copies -- so sema
-        must read the SAME fact or it would suppress the warning on a sink that
-        still copies (and regress a @nocopy element to a raw build error)."""
+        bare-loop-var sink. The LAST-evaluated sink (list/set element, dict
+        value) is structurally a last use: the loop var is rebound each
+        iteration and every earlier read (filter, dict key) is sequenced before
+        it, so it moves unconditionally. An EARLIER sink (the dict key) gates on
+        `all_last_uses` -- it may not move if a later sink reads the var
+        (`{node: node.id}` must not move the key). Codegen mirrors this exactly
+        (a bare-var last sink std::move'd directly; earlier/sub-expression sinks
+        via `_maybe_move`), so the suppress/move decisions cannot drift."""
         inner = elem
         while isinstance(inner, TpyCoerce):
             inner = inner.expr
         return (gen.owns_elements
                 and isinstance(inner, TpyName)
                 and inner.name == gen.var
-                and id(inner) in self.ctx.all_last_uses)
+                and (is_last_sink or id(inner) in self.ctx.all_last_uses))
 
     def _warn_storage_element_copy(self, elem: TpyExpr, elem_type: TpyType) -> None:
         """A reference-type container-literal element is stored by value (the
@@ -3204,7 +3207,7 @@ class ExpressionAnalyzer:
         # transfers ownership, so there is no copy to warn about. A derived sink
         # (`x.field`, `f(x)`) is not the move, so it still warns/copies.
         if (expr.element_expr.loc is not None and not isinstance(expected_elem, AnyType)
-                and not self._comp_elem_moves(gen, expr.element_expr)):
+                and not self._comp_elem_moves(gen, expr.element_expr, is_last_sink=True)):
             self._warn_storage_element_copy(expr.element_expr, result_elem_type)
 
         if expected_elem is not None and result_elem_type != expected_elem:
@@ -3329,6 +3332,7 @@ class ExpressionAnalyzer:
         """Analyze a dict comprehension: {key: value for var in iterable if cond}"""
         gen = expr.generator
         elem_type = self._resolve_comp_iterable(gen, expr)
+        gen.owns_elements = isinstance(elem_type, OwnType)
 
         if self.scopes is None:
             raise RuntimeError("dict comprehension requires ScopeTracker")
@@ -3346,9 +3350,14 @@ class ExpressionAnalyzer:
 
         # See the list/set comprehension path for the loop-var-scope timing
         # rationale (placed after scope exit so the warning is not deferred).
-        if expr.key_expr.loc is not None and not isinstance(expected_key, AnyType):
+        # Key and value are suppressed independently for an owned bare-loop-var
+        # sink (the one shape codegen moves) -- `{node.id: node}` moves the value
+        # but still copies/warns the key.
+        if (expr.key_expr.loc is not None and not isinstance(expected_key, AnyType)
+                and not self._comp_elem_moves(gen, expr.key_expr)):
             self._warn_storage_element_copy(expr.key_expr, key_type)
-        if expr.value_expr.loc is not None and not isinstance(expected_value, AnyType):
+        if (expr.value_expr.loc is not None and not isinstance(expected_value, AnyType)
+                and not self._comp_elem_moves(gen, expr.value_expr, is_last_sink=True)):
             self._warn_storage_element_copy(expr.value_expr, value_type)
 
         if expected_key is not None and key_type != expected_key:

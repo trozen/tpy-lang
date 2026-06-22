@@ -63,21 +63,22 @@ namespace tpyapp::main {
     return ::tpy::BigInt(::tpy::__len__(ys));
 }
 
-// def filtered_copies() -> int:
-::tpy::BigInt filtered_copies() {
-    // # When the loop var is also read in the filter, liveness marks no occurrence
-    // # last-use, so the element copies -- and the warning must NOT be suppressed
-    // # (the move-suppression decision reads the same last-use fact as codegen).
-    // ys = [n for n in nodes(4) if n.v > 0]  # tpyc: warning(/copies Node into owned storage/)
-    std::vector<Node> ys = ({
-        std::vector<Node> __result;
-        auto __obj_0 = nodes(::tpy::BigInt(4));
+// def filtered_moves() -> int:
+::tpy::BigInt filtered_moves() {
+    // # The element is the comprehension's last sink: even with the loop var also
+    // # read in the filter, it is structurally the last use (the filter ran
+    // # first), so the element moves. @nocopy makes this self-evidencing -- the
+    // # case only compiles because the filtered element moves (a copy is an error).
+    // ys = [w for w in widgets(3) if w.id > 0]  # tpyc: ok
+    std::vector<Widget> ys = ({
+        std::vector<Widget> __result;
+        auto __obj_0 = widgets(::tpy::BigInt(3));
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& n = *__beg_0;
-            if ((n.v > 0)) {
-                __result.push_back(n);
+            auto&& w = *__beg_0;
+            if ((w.id > 0)) {
+                __result.push_back(std::move(w));
             }
         }
         std::move(__result);
@@ -96,8 +97,8 @@ void main() {
     std::vector<Node> src = {Node(::tpy::BigInt(1)), Node(::tpy::BigInt(2))};
     // print(borrow_source_copies(src), len(src))
     std::cout << borrow_source_copies(src) << " " << ::tpy::__len__(src) << "\n";
-    // print(filtered_copies())
-    std::cout << filtered_copies() << "\n";
+    // print(filtered_moves())
+    std::cout << filtered_moves() << "\n";
 }
 
 void __tpy_init() {

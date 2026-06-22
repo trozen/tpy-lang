@@ -1,2 +1,1 @@
 main.py:58: warning: copies Node into owned storage; use copy() to make this explicit
-main.py:66: warning: copies Node into owned storage; use copy() to make this explicit

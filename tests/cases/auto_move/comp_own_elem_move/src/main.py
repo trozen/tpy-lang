@@ -59,11 +59,12 @@ def borrow_source_copies(src: list[Node]) -> int:
     return len(ys)
 
 
-def filtered_copies() -> int:
-    # When the loop var is also read in the filter, liveness marks no occurrence
-    # last-use, so the element copies -- and the warning must NOT be suppressed
-    # (the move-suppression decision reads the same last-use fact as codegen).
-    ys = [n for n in nodes(4) if n.v > 0]  # tpyc: warning(/copies Node into owned storage/)
+def filtered_moves() -> int:
+    # The element is the comprehension's last sink: even with the loop var also
+    # read in the filter, it is structurally the last use (the filter ran
+    # first), so the element moves. @nocopy makes this self-evidencing -- the
+    # case only compiles because the filtered element moves (a copy is an error).
+    ys = [w for w in widgets(3) if w.id > 0]  # tpyc: ok
     return len(ys)
 
 
@@ -72,7 +73,7 @@ def main() -> None:
     print(collect_set())
     src = [Node(1), Node(2)]
     print(borrow_source_copies(src), len(src))
-    print(filtered_copies())
+    print(filtered_moves())
 
 
 main()
