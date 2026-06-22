@@ -1129,6 +1129,10 @@ class RecordGenerator:
         field_types = {fld.name: fld.type for fld in record.fields}
         own_field_names = set(field_types.keys())
         param_names = {p[0] for p in init_method.params}
+        # Own[T] (and Own[T] | None) params are move-eligible at last use in
+        # the member init list; see the move site below.
+        own_param_names = {pname for pname, ptype in init_method.params
+                           if unwrap_optional_own(unwrap_readonly(ptype)) is not None}
         # Collect nested def names -- these are lambdas defined in the body,
         # so field inits referencing them must go in the body, not the init list.
         nested_def_names = {
@@ -1254,21 +1258,13 @@ class RecordGenerator:
                     value = self.expressions._view_source_to_owned(
                         stmt.value, fld_type, value)
                 # Auto-move Own[T] (and Own[T] | None, a std::optional<T> by
-                # value) params at last use in the member init list. The source
-                # is gated to a PARAM (the loop below), so last-use is sufficient
-                # without the movable_locals / alias-suppression guard that
-                # _is_last_use_movable applies to locals: an Own param is storage
-                # form, so a `q = p` aliasing attempt copies rather than aliasing,
-                # leaving no live borrow that the move could dangle.
-                inner = source
-                while isinstance(inner, TpyCoerce):
-                    inner = inner.expr
-                if (isinstance(inner, TpyName)
-                        and id(inner) in self.ctx.analyzer.ctx.all_last_uses):
-                    for pname, ptype in init_method.params:
-                        if pname == inner.name and unwrap_optional_own(unwrap_readonly(ptype)) is not None:
-                            value = f"std::move({value})"
-                            break
+                # value) params at last use in the member init list. Movability
+                # is the Own-param set rather than `movable_locals` (unpopulated
+                # at MIL time): an Own param is storage form, so a `q = p`
+                # aliasing attempt copies rather than aliasing, leaving no live
+                # borrow that the move could dangle -- last-use alone suffices.
+                if self.expressions._is_last_use_movable(source, own_param_names):
+                    value = f"std::move({value})"
                 # T* sources need conversion to std::optional<T>; field access (std::optional<T>) doesn't.
                 # OwnType(OptionalType) params are std::optional<T>&& -- already optional, no conversion.
                 if isinstance(fld_type, OptionalType) and fld_type.uses_pointer_repr():

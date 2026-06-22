@@ -732,13 +732,19 @@ class ExpressionGenerator:
             return f"::tpy::EnumUtil<{cpp_type}>::try_parse({arg})"
         return None
 
-    def _is_last_use_movable(self, expr: TpyExpr) -> bool:
-        """True if expr is the last use of a movable (owned, non-hoisted) local."""
+    def _is_last_use_movable(self, expr: TpyExpr,
+                             movable_names: set[str] | None = None) -> bool:
+        """True if expr is the last use of a movable name. Movability defaults
+        to membership in `movable_locals` (the body-walk case); the member-init
+        list passes its own param-derived set, since `movable_locals` is not
+        populated when synthesizing a constructor's MIL."""
+        if movable_names is None:
+            movable_names = self.ctx.movable_locals
         inner = expr
         while isinstance(inner, TpyCoerce):
             inner = inner.expr
         return (isinstance(inner, TpyName)
-                and inner.name in self.ctx.movable_locals
+                and inner.name in movable_names
                 and id(inner) in self.ctx.analyzer.ctx.all_last_uses)
 
     def _maybe_move(self, expr: TpyExpr, gen_code: str) -> str:
@@ -753,12 +759,7 @@ class ExpressionGenerator:
 
         Used by both for-loop codegen and call-site arg generation.
         """
-        inner = expr
-        while isinstance(inner, TpyCoerce):
-            inner = inner.expr
-        if not (isinstance(inner, TpyName)
-                and inner.name in self.ctx.movable_locals
-                and id(inner) in self.ctx.analyzer.ctx.all_last_uses):
+        if not self._is_last_use_movable(expr):
             return None
         arg_type = self.ctx.get_expr_type(expr)
         if isinstance(arg_type, OwnType):
