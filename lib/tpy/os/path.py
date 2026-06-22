@@ -11,6 +11,10 @@ from ._native import (
     current_home as _current_home, user_home as _user_home,
 )
 from . import _environ
+# samestat takes stat_result; import it from the type-only `_types` leaf rather
+# than the parent `os` module (importing os here would be an executable-bearing
+# cyclic import, which TPy rejects).
+from ._types import stat_result
 
 sep: Final[str] = "/"
 pathsep: Final[str] = ":"
@@ -121,6 +125,55 @@ def commonprefix(m: list[str]) -> str:
                 return first[:i]
         i += 1
     return first[:prefix_len]
+
+
+# Longest common sub-path of a list of paths, component-wise (unlike the
+# character-level commonprefix). Empty list or a mix of absolute and relative
+# paths raises ValueError, matching CPython.
+def commonpath(paths: list[str]) -> str:
+    if len(paths) == 0:
+        raise ValueError("commonpath() arg is an empty sequence")
+    has_abs = False
+    has_rel = False
+    for p in paths:
+        if p.startswith("/"):
+            has_abs = True
+        else:
+            has_rel = True
+    if has_abs and has_rel:
+        raise ValueError("Can't mix absolute and relative paths")
+    split_paths: list[list[str]] = []
+    for p in paths:
+        comps: list[str] = []
+        for c in p.split("/"):
+            if len(c) > 0 and c != ".":
+                comps.append(c)
+        split_paths.append(comps)
+    common: list[str] = []
+    first = split_paths[0]
+    i = 0
+    while i < len(first):
+        comp = first[i]
+        ok = True
+        for sp in split_paths:
+            if i >= len(sp) or sp[i] != comp:
+                ok = False
+        if not ok:
+            break
+        common.append(comp)
+        i += 1
+    prefix = "/" if has_abs else ""
+    return prefix + "/".join(common)
+
+
+# POSIX: case-preserving filesystem, so normcase is the identity (it only
+# folds case / normalizes separators on Windows).
+def normcase(p: str) -> str:
+    return p
+
+
+def samestat(s1: stat_result, s2: stat_result) -> bool:
+    return s1.st_ino == s2.st_ino and s1.st_dev == s2.st_dev
 
 
 def abspath(p: str) -> str:

@@ -1,0 +1,10 @@
+/a/b
+x/y
+/a
+/usr
+one
+a/b
+[/]
+[]
+empty ValueError
+mixed ValueError

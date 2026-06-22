@@ -58,10 +58,13 @@ bool path_islink(std::string_view path);
 // getsize raises OSError for a missing path (unlike the predicates).
 int64_t path_getsize(std::string_view path);
 
-// os.path.realpath: absolute path with symlinks resolved (weakly_canonical --
-// resolves the existing prefix, lexically normalizes a non-existent tail, never
-// fails on a missing path). Best-effort lexical fallback on a filesystem error.
-std::string path_realpath(std::string_view path);
+// os.path.realpath: absolute path with symlinks resolved. strict=false
+// (weakly_canonical): resolves the existing prefix, lexically normalizes a
+// non-existent tail, never fails on a missing path (best-effort lexical
+// fallback on a filesystem error). strict=true (canonical): the whole path
+// must exist; raises the matching OSError subclass (FileNotFoundError on a
+// missing component) otherwise, like CPython realpath(strict=True).
+std::string path_realpath(std::string_view path, bool strict = false);
 
 // env_get reads libc; the os.environ snapshot is built once at startup by
 // pairing environ_keys() with a env_get() per key. setenv/unsetenv mutate the

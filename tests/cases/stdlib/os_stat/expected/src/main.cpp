@@ -51,7 +51,7 @@ void main() {
         throw;
     }
     // st = os.stat(base + "/f.txt")
-    ::tpystd::os::stat_result st = ::tpystd::os::stat((::tpy::str_concat(base, "/f.txt")));
+    ::tpystd::os::_types::stat_result st = ::tpystd::os::stat((::tpy::str_concat(base, "/f.txt")));
     // print("size:", st.st_size)                                # 5 (deterministic)
     std::cout << "size:" << " " << st.st_size << "\n";
     // print("is-reg:", st.st_mode & 0o170000 == 0o100000)       # S_IFREG

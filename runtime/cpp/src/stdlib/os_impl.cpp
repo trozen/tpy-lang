@@ -182,7 +182,7 @@ int64_t path_getsize(std::string_view path) {
     return static_cast<int64_t>(st.st_size);
 }
 
-std::string path_realpath(std::string_view path) {
+std::string path_realpath(std::string_view path, bool strict) {
     // Absolutize first: weakly_canonical leaves a fully-non-existent *relative*
     // path (and "") relative, but CPython realpath always makes it absolute
     // (relative to cwd). absolute() handles the empty path as cwd.
@@ -192,6 +192,13 @@ std::string path_realpath(std::string_view path) {
     auto abs = std::filesystem::absolute(input, ec);
     if (ec) abs = input;
     ec.clear();
+    if (strict) {
+        // canonical requires the whole path to exist; map its error to the
+        // matching OSError subclass (ENOENT -> FileNotFoundError, etc.).
+        auto resolved = std::filesystem::canonical(abs, ec);
+        if (ec) raise_fs_error(ec, "realpath", path);
+        return resolved.string();
+    }
     auto resolved = std::filesystem::weakly_canonical(abs, ec);
     if (ec) {
         // weakly_canonical fails only on a real error (ELOOP, EACCES mid-path),

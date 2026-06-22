@@ -39,7 +39,7 @@ void main() {
     // os.utime(p, (1000000000.0, 1500000000.0))
     ::tpystd::os::utime(p, std::tuple<double, double>{1000000000.0, 1500000000.0});
     // st = os.stat(p)
-    ::tpystd::os::stat_result st = ::tpystd::os::stat(p);
+    ::tpystd::os::_types::stat_result st = ::tpystd::os::stat(p);
     // print("times", st.st_atime == 1000000000.0, st.st_mtime == 1500000000.0)
     std::cout << "times" << " " << ::tpy::print_bool((st.st_atime == 1000000000.0)) << " " << ::tpy::print_bool((st.st_mtime == 1500000000.0)) << "\n";
     // os.chown(p, st.st_uid, st.st_gid)   # to self -> permitted no-op

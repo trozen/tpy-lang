@@ -1,0 +1,8 @@
+/A/b.TXT
+same: True
+diff: False
+strict-eq: True
+loose-ok: True
+strict FileNotFoundError
+symlink-resolves: True
+dangling FileNotFoundError
