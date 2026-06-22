@@ -1,0 +1,2 @@
+main.py:16: error: cannot move into return type: Pinned is not movable (marked @nomove)
+  Define '__move__' on the type to relocate its contents, or copy() if it is copyable.

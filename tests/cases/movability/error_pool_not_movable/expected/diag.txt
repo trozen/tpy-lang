@@ -1,0 +1,3 @@
+main.py:30: error: cannot move into return type: Pool is not movable
++-- field '_storage: UninitArrayStorage[Item, 8]' is not movable (marked @nomove)
+  Define '__move__' on the type to relocate its contents, or copy() if it is copyable.

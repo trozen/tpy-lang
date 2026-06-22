@@ -1653,17 +1653,19 @@ Rules:
 - Return type must be `Own[ClassName]` (or bare `ClassName`)
 - No parameters besides `self`
 
-**`__move__` escape hatch (Working):** A class that owns a member which cannot
-move itself -- notably `UninitArrayStorage[T, N]` for a non-trivially-relocatable
-element `T`, where the storage has no liveness information to relocate elements
-on its own -- can define `__move__` to supply a relocating move constructor in
-pure TPy. The method takes the move source as an `Own[Self]` parameter and
-returns `None`; codegen value-initializes the destination's members (empty),
-inlines the `__move__` body to relocate the live elements into `self`, then
-marks the source moved-from so its `__del__` is skipped. It is consumed into the
-C++ move constructor (never emitted as a callable method, like `__del__`), so
-moves stay implicit at every use site (`xs = make()`, return-by-value,
-reassignment) -- only the library author writes `__move__`, once.
+**`__move__` escape hatch (Working):** A class that owns a non-movable member --
+notably `UninitArrayStorage[T, N]`, which is `@nomove` (it has no liveness
+information to relocate its elements on its own) -- can define `__move__` to
+supply a relocating move constructor in pure TPy. The method takes the move
+source as an `Own[Self]` parameter and returns `None`; codegen value-initializes
+the destination's members (empty), inlines the `__move__` body to relocate the
+live elements into `self`, then marks the source moved-from so its `__del__` is
+skipped. It is consumed into the C++ move constructor (never emitted as a
+callable method, like `__del__`), so moves stay implicit at every use site
+(`xs = make()`, return-by-value, reassignment) -- only the library author writes
+`__move__`, once. The batch primitive `UninitArrayStorage.relocate_from(other,
+count)` does the relocation in one call (a `memcpy` for a trivially-relocatable
+element, element-wise move otherwise):
 
 ```python
 class Pool[T, N: int]:
@@ -1672,26 +1674,52 @@ class Pool[T, N: int]:
     def __del__(self) -> None:
         self._storage.drop_n(UInt32(0), self._size)
     def __move__(self, other: Own[Pool[T, N]]) -> None:
-        for ui in range(other._size):           # relocate the live prefix
-            self._storage.init(ui, other._storage.take(ui))
+        self._storage.relocate_from(other._storage, other._size)
         self._size = other._size
 ```
 
 Rules / notes:
 - `__move__` takes exactly one `Own[Self]` parameter (the move source) and
-  returns `None`; the source param is consumed element-wise, so `__move__`
-  must leave the source destructible (use `take`, which empties each slot).
-  The debug `alive_` bitset in `UninitArrayStorage` catches a `__move__` that
-  leaves live slots.
+  returns `None`; the source is consumed, so `__move__` must leave it
+  destructible (`relocate_from` / `take` empty the source slots). The debug
+  `alive_` bitset in `UninitArrayStorage` catches a `__move__` that leaves live
+  slots.
 - `__move__` requires the class to also define `__del__` (the relocating move
   pairs with custom destruction, and reuses its moved-from drop flag); it is a
-  compile error otherwise. A class without `__move__` is movable member-wise.
+  compile error otherwise. A class is movable member-wise unless it transitively
+  owns a non-movable member (see the movability trait below); such an owner is
+  non-movable until it defines `__move__`.
+- `__move__` must be nothrow: its body is inlined into a `noexcept` move
+  constructor, so a `raise` that reaches it terminates the program. An
+  un-`try`-guarded `raise` in the body is a compile error. Indirect throws (a
+  callee that raises) are not yet caught -- TPy has no nothrow tracking -- so a
+  throwing call still terminates at runtime.
 - `tplib.ArrayList[T, N]` uses this so it is movable for any element type
   (including a record with a `str` field). The relocation is O(N), inherent to
   inline storage; the heap-backed builtin `list` moves in O(1).
-- A propagated "non-movable poisons the owner unless `__move__` is defined"
-  trait (with a clean diagnostic instead of a raw C++ deleted-move error) is a
-  planned follow-up (see `TODO.md`).
+**Movability trait + `@nomove` (Working):** movability is a propagated trait
+(sibling to Send/Sync): a type is movable unless it transitively owns a
+non-movable member without supplying `__move__`. `@nomove` marks a type
+non-movable regardless of its fields; it is library-declared (the compiler has
+no built-in knowledge of which types are non-movable). The raw inline storage
+`tpy.mem.UninitArrayStorage` is declared `@nomove` in its stub because it tracks
+no liveness and so cannot relocate its elements on its own. Relocating a
+non-movable value (returning a named local by value, etc.) is a **clean
+compile-time error naming the offending field chain** rather than a raw C++
+"use of deleted function" -- e.g. "`Pool` is not movable: field
+`_storage: UninitArrayStorage[Item, 8]` is not movable (marked @nomove)";
+define `__move__` to relocate the live elements, or `copy()` if copyable. An
+owner of `UninitArrayStorage` is therefore non-movable for *any* element
+(including a trivially-copyable one) unless it defines `__move__` -- there is no
+element-conditional free move. Movability is re-evaluated per generic
+instantiation (a wrapper is movable exactly when its substituted members are).
+A *freshly constructed* prvalue return (`return Pool()`) stays legal (no move
+occurs -- guaranteed elision). Currently enforced at by-value returns and
+`Own[T]` argument passing; relocation at last-use rebind, container insert, and
+comprehension elements is not yet checked in sema (it still surfaces as the C++
+deleted-move error) -- see `TODO.md`. (`tplib.ArrayList`/`FixStr` define
+`__move__`; trivial fixed scratch buffers use the movable `Array[T, N]` instead
+of `UninitArrayStorage`.)
 
 #### Unsafe Memory Operations -- `tpy.unsafe` (Working)
 
@@ -1854,7 +1882,7 @@ from tpy import Int32, Ptr
 from tpy.mem import UninitArrayStorage, UninitHeapStorage
 ```
 
-**UninitArrayStorage[T, N]** -- inline (stack) storage for N elements. Uses a C++ union so elements are not default-constructed. The owner tracks which slots are live (a size/count/flag), so the storage carries no runtime liveness and cannot move element-wise on its own: move is a byte copy for trivially-copyable T and **explicitly `=delete`d** for non-trivially-copyable T (memcpy-ing a self-referential payload like an SSO `std::string` would corrupt it). A movable single-value owner should use `UninitStorage[T]` instead; a multi-slot owner relocates its live elements explicitly in its own move.
+**UninitArrayStorage[T, N]** -- inline (stack) storage for N elements. Uses a C++ union so elements are not default-constructed. The owner tracks which slots are live (a size/count/flag), so the storage carries no runtime liveness and cannot relocate its elements on its own -- it is therefore `@nomove` (non-movable for any element type). An owner that needs to be moved defines `__move__` and relocates the live prefix with `relocate_from(other, count)` (a `memcpy` for a trivially-relocatable element, element-wise move + destroy otherwise; the source is left empty). A movable single-value owner uses `UninitStorage[T]` instead; a trivial fixed scratch buffer uses the movable `Array[T, N]`.
 
 ```python
 storage = UninitArrayStorage[Int32, 4]()
@@ -4991,7 +5019,7 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
 - **Working**: Shadowing detection -- local definitions (def, class, assignment) that shadow imported names are detected. Parser-resolved names (type annotations, decorators, base classes like `Enum`/`Protocol`/`TypedDict`, `auto()`) correctly respect shadowing. Warnings are emitted for `typing` and `enum` module names (e.g., `class Sized` after `from typing import Sized`, or `def auto()` after `from enum import auto`)
 - **Working**: Standard library infrastructure (`tplib`, `stdlib`) with `-L` search paths
 - **Working**: `tplib.Box[T]` -- heap-allocated owning container (via `from tplib import Box`)
-- **Working**: `tplib.ArrayList[T, N]` -- fixed-capacity list with ownership-correct element lifecycle (iterable via `for x in list`). Movable for any element type, including non-trivially-relocatable ones (e.g. a record with a `str` field), via a `__move__` relocating-move ctor that moves the live prefix `[0, _size)` element-wise -- an O(N) cost inherent to inline storage (the heap-backed builtin `list` moves in O(1)).
+- **Working**: `tplib.ArrayList[T, N]` -- fixed-capacity list with ownership-correct element lifecycle (iterable via `for x in list`). Movable for any element type, including non-trivially-relocatable ones (e.g. a record with a `str` field), via a `__move__` relocating-move ctor that relocates the live prefix `[0, _size)` through `UninitArrayStorage.relocate_from` (a `memcpy` for a trivially-relocatable element, element-wise move otherwise) -- an O(N) cost inherent to inline storage (the heap-backed builtin `list` moves in O(1)).
 - **Working**: `tplib.FixStr[N]` -- fixed-capacity string with stack-allocated storage (char-level operations, `__str__` for zero-copy printing)
 - **Working**: `tplib.json` -- JSON parsing/serialization library: `JsonReader` (pull parser), `JsonWriter` (serializer), `@model` class macro for pydantic-style typed JSON with `from_json`/`to_json`/`try_from_json`. File I/O via `save_json(path, indent=0)`, `load_json(path)` (panics on error), and `try_load_json(path)` (propagates `JsonError`). Supports `str`, `bool`, `int`/`Int32`/`Int64`/`BigInt`, `float`/`Float32`, enums, `Optional[T]`, `list[T]`, `dict[str, V]`, `tuple[T, ...]`, nested `@model` records, model inheritance (single + multi-level, with defaults and optionals), field renaming via `field(alias="jsonKey")`, and user-defined types implementing `__json_encode__`/`__json_decode__`. Pretty printing via `JsonWriter(indent=2)` or `obj.to_json(indent=2)`. `JsonError` carries `message` and `pos` fields with a `describe(data)` helper for human-readable error context.
 - **Working**: `bisect` module -- array bisection algorithms (via `from bisect import bisect_left`)

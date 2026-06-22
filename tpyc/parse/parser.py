@@ -1524,6 +1524,7 @@ class Parser:
         is_indirecting = False
         send_override: bool | None = None
         sync_override: bool | None = None
+        move_override: bool | None = None
         pending_macros: list[tuple[str, dict[str, Any]]] = []
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"class '{node.name}'")
@@ -1548,6 +1549,9 @@ class Parser:
             elif qname == qnames.NOCOPY:
                 self._validate_decorator_args(qname, arg, dec)
                 is_nocopy = True
+            elif qname == qnames.NOMOVE:
+                self._validate_decorator_args(qname, arg, dec)
+                move_override = False
             elif qname in self._SEND_SYNC_DECORATOR_MAP:
                 self._validate_decorator_args(qname, arg, dec)
                 send_override, sync_override = self._apply_send_sync_override(
@@ -1754,7 +1758,7 @@ class Parser:
         # Restore scopes
         self._type_param_scope = old_scope
         self._nested_type_scope = old_nested_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, is_indirecting=is_indirecting, send_override=send_override, sync_override=sync_override, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, is_indirecting=is_indirecting, send_override=send_override, sync_override=sync_override, move_override=move_override, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,

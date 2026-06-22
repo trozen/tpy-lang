@@ -17,11 +17,11 @@ import heapq
 from typing import Final, Protocol
 from builtins import BaseException
 from time import monotonic, sleep_until_steady
-from tpy import Int32, UInt32, Own, Ptr, Throwable, dynamic, nocopy, readonly
+from tpy import Int32, UInt32, Own, Ptr, Array, Throwable, dynamic, nocopy, readonly
 from tpy.extern import builtin_type, cpp_template
 from tpy.coro import Awaker, Cancellable, Poll, Waker, poll_ready, poll_pending
-from tpy.mem import UninitArrayStorage, UninitStorage
-from tpy.unsafe import unsafe_load
+from tpy.mem import UninitStorage
+from tpy.unsafe import unsafe_load, unsafe_ptr
 from tplib import Box
 from tplib.rc import Rc
 from _bindings import posix_epoll, posix_socket, posix_signal
@@ -358,8 +358,15 @@ class EpollReactor:
 
     _epfd: Int32
     _waiters: dict[Int32, Waker]
-    _out_fds: UninitArrayStorage[Int32, 64]
-    _out_events: UninitArrayStorage[UInt32, 64]
+    # Raw scratch buffers for epoll_wait output (written via unsafe_ptr, read
+    # back by index). Trivial fixed buffers -> Array (memcpy-movable), not the
+    # @nomove UninitArrayStorage, so EpollReactor stays movable member-wise.
+    # TODO: Array value-initializes (zeros) these; for a write-before-read
+    # scratch buffer that's wasted. Switch to an uninitialized-yet-trivially-
+    # movable storage once the TriviallyRelocatable bound lands (see TODO.md).
+    # Negligible today (EpollReactor is constructed lazily, once per run).
+    _out_fds: Array[Int32, 64]
+    _out_events: Array[UInt32, 64]
 
     def __init__(self) -> None:
         epfd = posix_epoll.epoll_create()
@@ -367,8 +374,8 @@ class EpollReactor:
             raise RuntimeError("asyncio reactor: epoll_create failed")
         self._epfd = epfd
         self._waiters = {}
-        self._out_fds = UninitArrayStorage[Int32, 64]()
-        self._out_events = UninitArrayStorage[UInt32, 64]()
+        self._out_fds = Array[Int32, 64]()
+        self._out_events = Array[UInt32, 64]()
 
     def __del__(self) -> None:
         self.close()
@@ -394,12 +401,12 @@ class EpollReactor:
     def poll(self, timeout_ms: Int32) -> None:
         if len(self._waiters) == 0:
             return
-        n = posix_epoll.epoll_wait(self._epfd, self._out_fds.ptr(),
-                                   self._out_events.ptr(),
+        n = posix_epoll.epoll_wait(self._epfd, unsafe_ptr(self._out_fds),
+                                   unsafe_ptr(self._out_events),
                                    _REACTOR_BATCH, timeout_ms)
         i: Int32 = 0
         while i < n:
-            fd = unsafe_load(self._out_fds.ptr(), UInt32(i))
+            fd = unsafe_load(unsafe_ptr(self._out_fds), UInt32(i))
             # Disarm before waking (one-shot): the awaitable re-registers
             # on its next would-block.
             posix_epoll.epoll_ctl(self._epfd, _EPOLL_CTL_DEL, fd, 0)

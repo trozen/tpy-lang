@@ -172,6 +172,51 @@ public:
 
     T take0() { return take(0); }
 
+    // Bulk-relocate the live prefix [0, count) from `other` into this storage's
+    // [0, count) (which must be empty), emptying the source. A single memcpy
+    // for a trivially-copyable element; element-wise move-construct + destroy
+    // otherwise. Lets an owner's __move__ relocate its live elements in one
+    // call instead of an element-wise take/init loop. The storage's own move
+    // stays unavailable (it has no liveness) -- this is the owner-driven path.
+    void relocate_from(UninitArrayStorage& other, uint32_t count) noexcept {
+        // Element moves run inside an owner's noexcept move ctor; a throwing
+        // element move would std::terminate. Enforce the assumption the
+        // noexcept leans on (mirrors tpy::UninitStorage<T>). Asserted here, not
+        // class-level, since UninitArrayStorage is also used for never-relocated
+        // (@nomove) storage that needn't constrain its element.
+        static_assert(std::is_nothrow_move_constructible_v<T>,
+                      "UninitArrayStorage::relocate_from requires a noexcept-movable T");
+#ifndef NDEBUG
+        if (count > N) {
+            tpy_panic("UninitArrayStorage::relocate_from count out of bounds");
+        }
+        for (uint32_t i = 0; i < count; ++i) {
+            if (!other.alive_.test(i)) {
+                tpy_panic("UninitArrayStorage::relocate_from on dead source slot");
+            }
+            if (alive_.test(i)) {
+                tpy_panic("UninitArrayStorage::relocate_from on already-alive dest slot");
+            }
+        }
+#endif
+        if constexpr (std::is_trivially_copyable_v<T>) {
+            std::memcpy(static_cast<void*>(&elems_[0]),
+                        static_cast<const void*>(&other.elems_[0]),
+                        static_cast<std::size_t>(count) * sizeof(T));
+        } else {
+            for (uint32_t i = 0; i < count; ++i) {
+                ::new (static_cast<void*>(&elems_[i])) T(std::move(other.elems_[i]));
+                other.elems_[i].~T();
+            }
+        }
+#ifndef NDEBUG
+        for (uint32_t i = 0; i < count; ++i) {
+            alive_.set(i);
+            other.alive_.reset(i);
+        }
+#endif
+    }
+
     T* ptr() { return elems_; }
     const T* ptr() const { return elems_; }
 

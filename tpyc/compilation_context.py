@@ -6,8 +6,9 @@ reach the active instance via ``get_current_compiler()`` (soft) or
 ``require_current_compiler()`` (strict). See ``docs/IR_DESIGN.md`` and the
 ``Compiler Front-end Performance`` section of ``CLAUDE.md`` for the
 broader migration. Parallel in-process compilation is not yet safe --
-``_dynamic_attached_qnames`` (type_def_registry) and ``_evaluating_send`` /
-``_evaluating_sync`` (typesys) remain module-level.
+``_dynamic_attached_qnames`` (type_def_registry) and the
+``_evaluating_send`` / ``_evaluating_sync`` / ``_evaluating_movable``
+cycle-guard sets (typesys) remain module-level.
 """
 
 from __future__ import annotations

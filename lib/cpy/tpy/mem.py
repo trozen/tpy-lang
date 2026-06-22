@@ -74,6 +74,10 @@ class UninitArrayStorage(metaclass=_StorageMeta):
     def take0(self) -> object:
         return self.take(0)
 
+    def relocate_from(self, other, count: int) -> None:
+        for i in range(count):
+            self._slots[i] = other._slots.pop(i)
+
     def capacity(self) -> int:
         return self._resolved_capacity
 

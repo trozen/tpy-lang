@@ -955,6 +955,8 @@ class RecordGenerator:
 
         # --- Custom move constructor ---
         move_method = record.move_method
+        nonmovable = (record_info is not None and not record.type_params
+                      and not record_info.is_movable)
         if move_method is not None:
             # Owner-declared relocating move: a member-wise move would hit a
             # member whose own move is unavailable (e.g. UninitArrayStorage for
@@ -980,6 +982,15 @@ class RecordGenerator:
                                     owning_record_name=name)
             out.write(f"{INDENT}{INDENT}{cpp_src}.__tpy_owned_ = false;\n")
             out.write(f"{INDENT}}}\n")
+        elif nonmovable:
+            # Non-generic class with a non-movable member and no __move__: a
+            # member-wise move ctor would be ill-formed (it would move the
+            # deleted-move member), and unlike a generic it is instantiated
+            # eagerly, so emit an explicitly deleted move. Sema rejects actual
+            # relocations of this type with a clean diagnostic before codegen;
+            # construct-and-use-in-place and elided prvalue returns still work.
+            out.write(f"{INDENT}{cpp_name}({cpp_name}&&) = delete;\n")
+            out.write(f"{INDENT}{cpp_name}& operator=({cpp_name}&&) = delete;\n")
         else:
             init_parts = []
             if record_info:
@@ -998,13 +1009,15 @@ class RecordGenerator:
             out.write(f"{INDENT}}}\n")
 
         # --- Custom move assignment (destroy-and-reconstruct) ---
-        out.write(f"{INDENT}{cpp_name}& operator=({cpp_name}&& other) noexcept {{\n")
-        out.write(f"{INDENT}{INDENT}if (this != &other) {{\n")
-        out.write(f"{INDENT}{INDENT}{INDENT}this->~{cpp_name}();\n")
-        out.write(f"{INDENT}{INDENT}{INDENT}new (this) {cpp_name}(std::move(other));\n")
-        out.write(f"{INDENT}{INDENT}}}\n")
-        out.write(f"{INDENT}{INDENT}return *this;\n")
-        out.write(f"{INDENT}}}\n")
+        # The nonmovable branch already emitted a deleted move-assign above.
+        if not nonmovable:
+            out.write(f"{INDENT}{cpp_name}& operator=({cpp_name}&& other) noexcept {{\n")
+            out.write(f"{INDENT}{INDENT}if (this != &other) {{\n")
+            out.write(f"{INDENT}{INDENT}{INDENT}this->~{cpp_name}();\n")
+            out.write(f"{INDENT}{INDENT}{INDENT}new (this) {cpp_name}(std::move(other));\n")
+            out.write(f"{INDENT}{INDENT}}}\n")
+            out.write(f"{INDENT}{INDENT}return *this;\n")
+            out.write(f"{INDENT}}}\n")
 
         # --- Destructor with drop-flag guard ---
         self.ctx.emit_preceding_comments(out, del_method.loc, indent=INDENT)

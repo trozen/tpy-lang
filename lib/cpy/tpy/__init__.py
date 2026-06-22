@@ -505,6 +505,11 @@ def nosync(target):
     return target
 
 
+def nomove(target):
+    """No-op in CPython. The compiler marks the type non-movable."""
+    return target
+
+
 def dynamic(cls):
     """Decorator marking a protocol for dynamic dispatch.
 

@@ -365,6 +365,7 @@ def clear_all_compilation_state() -> None:
     from tpyc.type_def_registry import clear_dynamic_type_defs
     _evaluating_send.clear()
     _evaluating_sync.clear()
+    _evaluating_movable.clear()
     _evaluating_alias_value.clear()
     clear_dynamic_type_defs()
 
@@ -533,6 +534,16 @@ class TpyType:
             if resolved is not None:
                 return resolved
         return self.is_value_type()
+
+    def is_movable(self) -> bool:
+        """Return True if this type can be relocated (its C++ move ctor is
+        available). Default True: almost everything moves -- primitives and
+        views by memcpy, containers/Box/Rc by pointer-steal, records member-
+        wise. Non-movable only for owner-managed inline storage of a non-
+        trivially-relocatable element (UninitArrayStorage) and records that
+        transitively own one without __move__ / are @nomove. Composite types
+        (Own/Optional/tuple/union/readonly) override to delegate to members."""
+        return True
 
     def to_cpp_return(self) -> str:
         """Return the C++ representation for function return types.
@@ -1139,6 +1150,34 @@ class NominalType(TpyType):
         finally:
             _evaluating_sync.discard(self)
 
+    def is_movable(self) -> bool:
+        from tpyc.type_def_registry import type_def_of
+        td = type_def_of(self)
+        rec = td.record if td is not None else None
+        if rec is None:
+            return True
+        # @nomove (explicit) wins; __move__ supplies a relocating move so the
+        # owner is movable regardless of its members (mirrors the __copy__
+        # escape from nocopy propagation).
+        if rec.move_override is not None:
+            return rec.move_override
+        if rec.has_move:
+            return True
+        if not rec.type_params:
+            return rec.is_movable
+        # Generic record: re-walk under use-site type_args. Cycle guard
+        # returns True on re-entry (movable unless proven otherwise).
+        if self in _evaluating_movable:
+            return True
+        _evaluating_movable.add(self)
+        try:
+            for sub in _fields_and_parents_under_args(rec, self.type_args):
+                if not (sub.is_movable() or contains_type_kind_param(sub)):
+                    return False
+            return True
+        finally:
+            _evaluating_movable.discard(self)
+
     def get_element_type(self) -> Optional['TpyType']:
         # Per-qname override (e.g. Span/SpanIter reshape a readonly[T] element:
         # strip for a value element, keep for a reference element).
@@ -1271,6 +1310,7 @@ def substitute_type_params_structural(
 # `clear_all_compilation_state`.
 _evaluating_send: set['NominalType'] = set()
 _evaluating_sync: set['NominalType'] = set()
+_evaluating_movable: set['NominalType'] = set()
 
 
 def _fields_and_parents_under_args(
@@ -1525,6 +1565,9 @@ class OwnType(TpyType):
         # slot is a category error regardless of T.
         return False
 
+    def is_movable(self) -> bool:
+        return self.wrapped.is_movable()
+
     def to_cpp_param_type(self) -> str:
         if is_dyn_protocol(self.wrapped):
             return f"std::unique_ptr<{self.wrapped.to_cpp()}>"
@@ -1597,6 +1640,9 @@ class ReadonlyType(TpyType):
         # readonly restricts this handle only -- the object may be mutated
         # through other non-readonly aliases, so no Send->Sync lift.
         return self.wrapped.is_sync()
+
+    def is_movable(self) -> bool:
+        return self.wrapped.is_movable()
 
     def to_cpp_param_type(self) -> str:
         # Readonly params use the const version of the wrapped type
@@ -2046,6 +2092,9 @@ class RefType(TpyType):
     def is_sync(self) -> bool:
         return self.wrapped.is_sync()
 
+    def is_movable(self) -> bool:
+        return self.wrapped.is_movable()
+
     def is_ref_param(self) -> bool:
         return True
 
@@ -2350,6 +2399,9 @@ class _TypeModifierWrapper(TpyType):
 
     def is_sync(self) -> bool:
         return self.wrapped.is_sync()
+
+    def is_movable(self) -> bool:
+        return self.wrapped.is_movable()
 
     def inner_types(self) -> tuple['TpyType', ...]:
         return (self.wrapped,)
@@ -2690,6 +2742,19 @@ class AnyType(TpyType):
         return True
 
 
+def contains_type_kind_param(t: TpyType) -> bool:
+    """Like contains_type_param but counts only TYPE-kind params, not INT
+    (const) params. Movability never depends on a const N -- only on element
+    types -- so a field like `UninitArrayStorage[Item, N]` (element resolved,
+    N still a param) is movability-determinable and must NOT be skipped."""
+    if isinstance(t, TypeParamRef):
+        return t.kind != TypeParamKind.INT
+    if isinstance(t, NominalType) and t.type_args:
+        return any(contains_type_kind_param(a) for a in t.type_args
+                   if isinstance(a, TpyType))
+    return any(contains_type_kind_param(inner) for inner in t.inner_types())
+
+
 def contains_type_param(
     t: TpyType, names: Optional[set[str]] = None,
 ) -> bool:
@@ -2827,6 +2892,10 @@ class OptionalType(TpyType):
 
     def is_sync(self) -> bool:
         return self.inner.is_sync()
+
+    def is_movable(self) -> bool:
+        # T* (pointer repr) always moves; std::optional<T> moves iff T does.
+        return True if self.uses_pointer_repr() else self.inner.is_movable()
 
     def uses_pointer_repr(self) -> bool:
         """Whether this Optional uses T* (pointer) repr instead of std::optional<T>.
@@ -3236,6 +3305,11 @@ class UnionType(TpyType):
     def is_sync(self) -> bool:
         return all(m.is_sync() for m in self.members)
 
+    def is_movable(self) -> bool:
+        # Pointer-variant members are pointers (always movable); a value
+        # variant<...> moves iff every member moves.
+        return True if self.uses_pointer_repr() else all(m.is_movable() for m in self.members)
+
     def uses_pointer_repr(self) -> bool:
         """Whether this union uses pointer-variant repr for params/returns/locals.
 
@@ -3389,6 +3463,9 @@ class TupleType(TpyType):
 
     def is_sync(self) -> bool:
         return all(t.is_sync() for t in self.element_types)
+
+    def is_movable(self) -> bool:
+        return all(t.is_movable() for t in self.element_types)
 
     def is_expensive_copy(self) -> bool:
         return any(t.is_expensive_copy() for t in self.element_types)
@@ -4786,6 +4863,9 @@ class RecordInfo:
     sync_override: bool | None = None
     has_del: bool = False           # True if class declares __del__ (needs drop flag)
     has_copy: bool = False          # True if class defines __copy__ (custom copy semantics)
+    has_move: bool = False          # True if class defines __move__ (custom relocating move)
+    is_movable: bool = True         # False if a field/parent is non-movable and no __move__; derived by sema
+    move_override: bool | None = None  # False from @nomove; None = structural auto-derive
     builtin_type_key: str | None = None  # e.g. "builtins.list" -- links .py class to type_factory
     module: str | None = None  # Public module name (collapses private submodules via public_module_name); used for qualified_name() and codegen C++ namespace
     defining_module: str | None = None  # Raw (uncollapsed) module where the class was declared; used by re-export logic to look up the record through ModuleInfo.records

@@ -49,6 +49,11 @@ class FixStr[N: int]:
             result.append(self._storage.load(UInt32(i)))
         return result
 
+    def __move__(self, other: Own[FixStr[N]]) -> None:
+        # The storage can't move itself (it has no liveness); the owner does.
+        self._storage.relocate_from(other._storage, UInt32.trunc(other._size))
+        self._size = other._size
+
     def append(self, c: Char) -> None:
         self._storage.init(UInt32(self._size), c)
         self._size += 1

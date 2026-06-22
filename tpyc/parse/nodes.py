@@ -1465,6 +1465,7 @@ class TpyRecord:
     # False from @nosend/@nosync, None = structural auto-derive
     send_override: bool | None = None
     sync_override: bool | None = None
+    move_override: bool | None = None   # False from @nomove; None = structural
     pending_macros: list[tuple[str, dict[str, Any]]] = field(default_factory=list)
     # Callbacks registered via `ClassInfo.defer_until_macros_complete()`.
     # Run after the eager macro pass so a macro can inspect the final

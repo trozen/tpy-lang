@@ -25,6 +25,7 @@ from ..typesys import (
     disambiguated_pair)
 from .frame_traits import frame_traits_of_function, frame_type_of_function
 from .send_chain import why_not_send, why_not_sync, why_not_frame, render_chain
+from .move_chain import why_not_movable, render_move_chain
 from ..parse import (
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyMethodCall, TpyUnaryOp,
@@ -1816,6 +1817,25 @@ class TypeCompatibility:
             return False
         return not self.demoted_by_hidden_borrow(expr)
 
+    def require_movable(self, expr: TpyExpr, context: str) -> None:
+        """At a relocation point (the caller has confirmed `expr` auto-moves),
+        reject a non-movable source with a clean field-chain diagnostic instead
+        of leaving it to surface as a raw C++ deleted-move error deep in the
+        generated code. A fresh prvalue never reaches here (it is not a
+        last-use name read), so factory returns of a non-movable type stay
+        legal -- only relocating a named value is rejected."""
+        t = self.ctx.get_expr_type(expr)
+        if t is None or t.is_movable():
+            return
+        chain = why_not_movable(t)
+        detail = render_move_chain(chain) if chain is not None else f"'{t}' is not movable"
+        raise self.ctx.error(
+            f"cannot move into {context}: {detail}\n"
+            f"  Define '__move__' on the type to relocate its contents, "
+            f"or copy() if it is copyable.",
+            expr,
+        )
+
     def demoted_by_hidden_borrow(self, expr: TpyName) -> bool:
         """The borrow-gate primitive: when ``expr``'s storage has a borrower
         the liveness alias maps cannot see, retract the last-use mark (sema
@@ -1924,6 +1944,7 @@ class TypeCompatibility:
                 and isinstance(expr.obj, TpyName) and expr.obj.name == "self"):
             return
         if self.is_auto_move_use(expr):
+            self.require_movable(expr, context)
             self.check_own_consumption(expr)
             return
         expr_type = self.ctx.get_expr_type(expr)

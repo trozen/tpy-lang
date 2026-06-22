@@ -32,11 +32,8 @@ class ArrayList[T, N: int](Spannable[T], MutableSequence[T]):
         return result
 
     def __move__(self, other: Own[ArrayList[T, N]]) -> None:
-        # The storage cannot move itself for a non-trivially-relocatable
-        # element (no liveness), so the owner relocates element-wise using
-        # its size.
-        for ui in range(other._size):
-            self._storage.init(ui, other._storage.take(ui))
+        # The storage can't move itself (it has no liveness); the owner does.
+        self._storage.relocate_from(other._storage, other._size)
         self._size = other._size
 
     def append(self, value: Own[T]) -> None:

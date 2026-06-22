@@ -46,6 +46,7 @@ from ..typesys import (
     same_base_type,
     bare_name,
     contains_type_param,
+    contains_type_kind_param,
     unwrap_readonly,
     unwrap_ref_type,
 )
@@ -53,7 +54,7 @@ from ..module_names import public_module_name
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
-    TpyNoneLiteral, TpyStrLiteral, collect_name_refs,
+    TpyNoneLiteral, TpyStrLiteral, TpyRaise, TpyTry, collect_name_refs,
 )
 from ..parse.parser import auto_declare_fields_from_init, reorder_fields_by_init
 from ..namespace import NameBinding, BindingKind
@@ -123,6 +124,25 @@ def _contains_self_type(typ: TpyType) -> bool:
     if isinstance(typ, SelfType):
         return True
     return any(_contains_self_type(inner) for inner in typ.inner_types())
+
+
+def _first_escaping_raise(stmts: list[TpyStmt]) -> TpyRaise | None:
+    """The first `raise` in `stmts` that is not lexically under a `try`.
+
+    Recurses through compound-statement bodies via `sub_bodies()` but stops
+    at `try` (a raise there may be caught locally) and at nested `def`s
+    (their bodies report empty `sub_bodies`, so they are skipped naturally).
+    """
+    for stmt in stmts:
+        if isinstance(stmt, TpyRaise):
+            return stmt
+        if isinstance(stmt, TpyTry):
+            continue
+        for body in stmt.sub_bodies():
+            found = _first_escaping_raise(body)
+            if found is not None:
+                return found
+    return None
 
 
 def _enum_default_matches_field(field_type: TpyType, member_info: EnumInfo) -> bool:
@@ -1046,6 +1066,19 @@ class TypeRegistrar:
                     f"'__move__' cannot be a static method",
                     move_method.loc or record.loc,
                 )
+            # The body is inlined into a noexcept move ctor, so a raise that
+            # reaches it std::terminates. A raise lexically under a `try` may
+            # be caught locally, so only an un-try-guarded one is rejected;
+            # indirect throws (a callee that raises) need nothrow tracking we
+            # don't have yet.
+            escaping = _first_escaping_raise(move_method.body)
+            if escaping is not None:
+                raise SemanticError(
+                    f"'__move__' must not raise: its body runs inside a "
+                    f"'noexcept' move constructor, so a raise terminates the "
+                    f"program",
+                    escaping.loc or move_method.loc or record.loc,
+                )
 
         # Macro phase: apply class macros (@dataclass, @model, ...)
         # then resolve any TypeRefNodes in macro-added method bodies.
@@ -1794,6 +1827,7 @@ class TypeRegistrar:
             is_nocopy=record.is_nocopy,
             send_override=record.send_override,
             sync_override=record.sync_override,
+            move_override=record.move_override,
             match_args=(
                 record._macro_cls_info.get_match_args()
                 if hasattr(record, '_macro_cls_info') and record._macro_cls_info is not None
@@ -2264,6 +2298,24 @@ class TypeRegistrar:
             is_sync = record_info.sync_override
         record_info.is_send = is_send
         record_info.is_sync = is_sync
+
+        # Movability: a record is movable iff every field and parent is, OR it
+        # supplies a relocating move via __move__ (the escape, mirroring how
+        # __copy__ escapes nocopy). @nomove forces non-movable. Generic records
+        # re-walk per use-site in NominalType.is_movable; here we fold the
+        # non-generic answer (and the override/has_move escapes for both).
+        is_movable = all(
+            f.type.is_movable() or contains_type_kind_param(f.type)
+            for f in record_info.fields
+        )
+        for p in record_info.parents:
+            is_movable = is_movable and (p.is_movable() or contains_type_kind_param(p))
+        record_info.has_move = record.move_method is not None
+        if record_info.has_move:
+            is_movable = True
+        if record_info.move_override is not None:
+            is_movable = record_info.move_override
+        record_info.is_movable = is_movable
 
         # Record-side closure for type_def_registry.is_subtype. Scope is
         # DIRECT implemented protocols + their parent chains; protocols

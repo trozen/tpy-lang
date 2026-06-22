@@ -46,6 +46,11 @@ class PStr[N: int]:
             result.append(self._storage.load(UInt32(i)))
         return result
 
+    def __move__(self, other: Own[PStr[N]]) -> None:
+        # The @nomove storage can't move itself; the owner relocates.
+        self._storage.relocate_from(other._storage, UInt32.trunc(other._size))
+        self._size = other._size
+
     def append(self, c: Char) -> None:
         self._storage.init(UInt32(self._size), c)
         self._size += 1
