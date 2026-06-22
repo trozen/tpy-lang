@@ -31,6 +31,14 @@ class ArrayList[T, N: int](Spannable[T], MutableSequence[T]):
             result.append(copy(self._storage.load(ui)))
         return result
 
+    def __move__(self, other: Own[ArrayList[T, N]]) -> None:
+        # The storage cannot move itself for a non-trivially-relocatable
+        # element (no liveness), so the owner relocates element-wise using
+        # its size.
+        for ui in range(other._size):
+            self._storage.init(ui, other._storage.take(ui))
+        self._size = other._size
+
     def append(self, value: Own[T]) -> None:
         assert self._size < self._storage.capacity()
         self._storage.init(self._size, value)

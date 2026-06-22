@@ -723,14 +723,14 @@ class RecordGenerator:
         in-class decl pass and the out-of-line def pass agree on what is
         a method (drift here would link-error or double-emit).
 
-        - ``__init__`` / ``__del__``: handled by dedicated code paths
-          (constructor + destructor).
+        - ``__init__`` / ``__del__`` / ``__move__``: handled by dedicated code
+          paths (constructor / destructor / move constructor body).
         - Bodyless ``@overload`` stubs: the trailing impl emits all
           overloads. Bodied ``@overload`` stubs (mode b) self-emit and so
           aren't filtered here.
         - ``skip_codegen``: ``@inline`` methods get inlined at call sites.
         """
-        if method.name in ("__init__", "__del__"):
+        if method.name in ("__init__", "__del__", "__move__"):
             return True
         if method.is_overload_stub and method.is_stub:
             return True
@@ -952,21 +952,48 @@ class RecordGenerator:
         body_stmts = [s for s in del_method.body if not is_super_del_call(s)]
 
         # --- Custom move constructor ---
-        init_parts = []
-        if record_info:
-            for p in record_info.parents:
-                init_parts.append(f"{p.to_cpp()}(std::move(other))")
-        for fld in record.fields:
-            cpp_fld = escape_cpp_name(fld.name)
-            init_parts.append(f"{cpp_fld}(std::move(other.{cpp_fld}))")
+        move_method = record.move_method
+        if move_method is not None:
+            # Owner-declared relocating move: a member-wise move would hit a
+            # member whose own move is unavailable (e.g. UninitArrayStorage for
+            # a non-trivially-relocatable element, which can't relocate without
+            # the owner's liveness). The dest's members are value-initialized
+            # (empty) so the __move__ body relocates into a clean slate.
+            src_name = move_method.params[0][0] if move_method.params else "other"
+            cpp_src = escape_cpp_name(src_name)
+            vinit_parts = []
+            if record_info:
+                for p in record_info.parents:
+                    vinit_parts.append(f"{p.to_cpp()}()")
+            for fld in record.fields:
+                vinit_parts.append(f"{escape_cpp_name(fld.name)}()")
+            vinit_list = (" : " + ", ".join(vinit_parts)) if vinit_parts else ""
+            out.write(f"{INDENT}{cpp_name}({cpp_name}&& {cpp_src}) noexcept{vinit_list} {{\n")
+            move_ns = Namespace(parent=self.ctx.analyzer.global_ns)
+            move_ns.bind_variable("self", NominalType(name))
+            self.functions.gen_body(out, move_method.body, move_method.params,
+                                    move_method.return_type, move_method, move_ns,
+                                    indent_level=2, is_method=True,
+                                    record_type_param_bounds=record.type_param_bounds or None,
+                                    owning_record_name=name)
+            out.write(f"{INDENT}{INDENT}{cpp_src}.__tpy_owned_ = false;\n")
+            out.write(f"{INDENT}}}\n")
+        else:
+            init_parts = []
+            if record_info:
+                for p in record_info.parents:
+                    init_parts.append(f"{p.to_cpp()}(std::move(other))")
+            for fld in record.fields:
+                cpp_fld = escape_cpp_name(fld.name)
+                init_parts.append(f"{cpp_fld}(std::move(other.{cpp_fld}))")
 
-        init_list = ""
-        if init_parts:
-            init_list = " : " + ", ".join(init_parts)
+            init_list = ""
+            if init_parts:
+                init_list = " : " + ", ".join(init_parts)
 
-        out.write(f"{INDENT}{cpp_name}({cpp_name}&& other) noexcept{init_list} {{\n")
-        out.write(f"{INDENT}{INDENT}other.__tpy_owned_ = false;\n")
-        out.write(f"{INDENT}}}\n")
+            out.write(f"{INDENT}{cpp_name}({cpp_name}&& other) noexcept{init_list} {{\n")
+            out.write(f"{INDENT}{INDENT}other.__tpy_owned_ = false;\n")
+            out.write(f"{INDENT}}}\n")
 
         # --- Custom move assignment (destroy-and-reconstruct) ---
         out.write(f"{INDENT}{cpp_name}& operator=({cpp_name}&& other) noexcept {{\n")

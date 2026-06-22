@@ -1303,6 +1303,11 @@ class SemanticAnalyzer:
         """Warn when Own[T] params are never consumed (stored, forwarded, or returned)."""
         if func.is_stub:
             return
+        # __move__'s source param is the relocating-move source: it is consumed
+        # element-wise (drained slot by slot, not stored/forwarded/returned
+        # wholesale), so the store/forward/return check would always misfire.
+        if func.name == "__move__":
+            return
         for pname, ptype in func.params:
             bare = unwrap_readonly(ptype)
             # An owned-element tuple param is an ownership-transfer param (the

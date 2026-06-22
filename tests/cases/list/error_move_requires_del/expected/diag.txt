@@ -1,0 +1,1 @@
+main.py:15: error: '__move__' requires the class to define '__del__' (the relocating move pairs with custom destruction)

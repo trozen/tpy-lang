@@ -1016,6 +1016,37 @@ class TypeRegistrar:
                     del_method.loc or record.loc,
                 )
 
+        move_method = record.move_method
+        if move_method:
+            # Codegen inlines __move__ into the move ctor and marks the source
+            # moved-from via the __tpy_owned_ drop flag, which only exists for
+            # classes with __del__; without it the body would be silently
+            # dropped (default member-wise move used instead).
+            if del_method is None:
+                raise SemanticError(
+                    f"'__move__' requires the class to define '__del__' "
+                    f"(the relocating move pairs with custom destruction)",
+                    move_method.loc or record.loc,
+                )
+            if len(move_method.params) != 1 or not isinstance(
+                    move_method.params[0][1], OwnType):
+                raise SemanticError(
+                    f"'__move__' must take exactly one 'Own[Self]' parameter "
+                    f"(the move source)",
+                    move_method.loc or record.loc,
+                )
+            if not isinstance(move_method.return_type, VoidType):
+                raise SemanticError(
+                    f"'__move__' must return None, got "
+                    f"'{move_method.return_type}'",
+                    move_method.loc or record.loc,
+                )
+            if move_method.is_staticmethod:
+                raise SemanticError(
+                    f"'__move__' cannot be a static method",
+                    move_method.loc or record.loc,
+                )
+
         # Macro phase: apply class macros (@dataclass, @model, ...)
         # then resolve any TypeRefNodes in macro-added method bodies.
         # See `sema/macros.py` for why this runs inside sema.

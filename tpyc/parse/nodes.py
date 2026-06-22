@@ -1488,6 +1488,14 @@ class TpyRecord:
                 return m
         return None
 
+    @property
+    def move_method(self) -> Optional[TpyFunction]:
+        """Get __move__ method if present (custom relocating move ctor body)."""
+        for m in self.methods:
+            if m.name == "__move__":
+                return m
+        return None
+
 
 @dataclass
 class TpyProtocol:
