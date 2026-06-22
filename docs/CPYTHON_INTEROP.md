@@ -81,10 +81,10 @@ This single fact frames everything. Interop is cheap exactly where the
 boundary is *thin* (primitives, bulk numeric buffers) and expensive or
 semantically fraught where it is *thick* (nested containers, live mutable
 objects, callbacks). The design leans into the thin cases first -- which
-is also the "make this kernel fast" case that matters for the HFT
-audience.
+is also the "make this kernel fast" case that matters for the
+performance-critical audience.
 
-**Perf note (HFT angle).** The speed win is the buffer/numeric path, not
+**Perf note (performance angle).** The speed win is the buffer/numeric path, not
 arbitrary `int` kernels: TPy `int` is `BigInt` (arbitrary precision), so
 `PyLong <-> BigInt` marshalling and BigInt math are *not* the fast path --
 steer hot kernels to `Int32`/`Int64`/`float`. And v1 kernels run with the GIL
@@ -409,7 +409,7 @@ def parallel_sum(data: Span[readonly[float]]) -> float:
   (PEP 803), so a free-threaded `.so` must be built **per-version (non-abi3)**.
   Keep the GIL capability abstract enough that a free-threaded target can map
   it to per-object locking / "always parallel" rather than a single global lock.
-  Relevant to the HFT parallelism angle; revisit when `nogil` (phase 7) is
+  Relevant to the parallelism angle; revisit when `nogil` (phase 7) is
   designed.
 
 ## Design validation (architecture fit)
@@ -597,7 +597,7 @@ already knows statically; (2) the project values minimal/auditable C++ and is
 already C++-back-end-bound -- nanobind's template instantiation adds compile
 time + a vendored dep; (3) nanobind has **no abi3 under free-threading** (the
 stable-ABI flag is ignored on free-threaded builds; `abi3t` is unfinished --
-PEP 803), so owning the glue avoids being blocked on upstream given the HFT/
+PEP 803), so owning the glue avoids being blocked on upstream given the
 free-threading interest. Revisit only if v1 grows toward rich automatic
 marshalling. (`PyRef`/`Gil`/marshalling stay internal per Q3, so no public
 abstraction is frozen either way.)

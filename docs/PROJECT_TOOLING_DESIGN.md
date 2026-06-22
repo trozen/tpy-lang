@@ -438,7 +438,7 @@ range/min form is the library shape.
 
 **Status: options recorded, decision deferred.** This is further out than
 the MVP; capturing the thinking so the model is ready when it matters
-(notably the HFT repeatable-binary case). We do not ship or `pip install`
+(notably the repeatable-binary release case). We do not ship or `pip install`
 GCC/Clang, so we cannot "pin" it the way we pin `tpyc`. Be precise about
 *what guarantee* applies.
 
@@ -468,16 +468,16 @@ verify = "warn"     # off | warn | strict  -- drift enforcement vs tpy-build.loc
 |---|---|---|---|
 | Local dev | system | warn | -- |
 | Casual reproducibility | system | strict | `verified` |
-| HFT release / CI | hermetic | strict | `hermetic`+`verified` |
+| Reproducible release / CI | hermetic | strict | `hermetic`+`verified` |
 
 **Recommendation (when we get here):** keep dev at `system`+`warn`;
-recommend **`hermetic`+`strict`** for HFT release (provision via **pixi** or
+recommend **`hermetic`+`strict`** for a reproducible release (provision via **pixi** or
 a **digest-pinned container**; Nix only if already in use). Default to
 **behavioral/performance reproducibility** -- bit-identical is a further,
 separate effort (`__DATE__`/`__TIME__`, `-ffile-prefix-map` for build paths,
 LTO non-determinism, build IDs) offered as a best-effort "reproducible-build
-flags" bundle. For HFT, perf+audit repro is usually what matters;
-bit-identical is the regulatory/incident nice-to-have.
+flags" bundle. For most release/audit use, perf+audit repro is usually what
+matters; bit-identical is the regulatory/incident nice-to-have.
 
 `tpy-build.lock` is the **build closure** -- it ties the three contracts
 together and is what `verify` compares against:
@@ -516,7 +516,7 @@ binary_hash = "sha256:..."          # only meaningful under bit-identical flags
 - *Verify granularity:* exact (`18.1.8 != 18.1.9` fails) is brittle (patch
   bumps break every build); recommend recording exact but comparing at
   `kind + major.minor + stdlib-major` by default, with `verify=strict`
-  tightening to exact. HFT audit may want exact-fail regardless.
+  tightening to exact. A strict audit may want exact-fail regardless.
 - *Commit policy:* commit `tpy-build.lock` for **app/binary targets**
   (provenance + drift guard); **not** for pure **libraries** (the consuming
   app pins the toolchain).
@@ -640,7 +640,7 @@ member of this set, which is why it surfaced here.
   of guard -- likely one "safety checks" control with per-check granularity
   rather than N independent flags.
 - **Lower-priority / deferred:** hash randomization (deterministic by default
-  vs `PYTHONHASHSEED`-style; HFT wants deterministic) and a recursion-depth
+  vs `PYTHONHASHSEED`-style; reproducible builds want deterministic) and a recursion-depth
   guard (`RecursionError` vs native stack overflow -- cheap guarding is hard,
   likely not v1).
 
@@ -826,8 +826,8 @@ Still open:
    is collision-free locally). Not locked; verify PyPI/GitHub availability
    before committing.
 2. **DEFERRED (options recorded).** C++ toolchain reproducibility: the
-   2-axis `source` x `verify` model, recommended `hermetic`+`strict` for HFT
-   release, and the `tpy-build.lock` schema are written up under "C++
+   2-axis `source` x `verify` model, recommended `hermetic`+`strict` for a
+   reproducible release, and the `tpy-build.lock` schema are written up under "C++
    toolchain". Sub-decisions (verify granularity, commit policy,
    bit-identical vs behavioral tier) left open until this is on the roadmap.
 4. **DEFERRED (recommended).** Lock-format timing. Recommendation:

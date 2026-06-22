@@ -121,7 +121,7 @@ list[T]     → etl::vector<T, N>
 
 Usage:
 ```bash
-tpy --cxx=trading src/order_handler.py
+tpy --cxx=embedded src/app.py
 ```
 
 This allows the same TurboPython source to target different environments without code changes.

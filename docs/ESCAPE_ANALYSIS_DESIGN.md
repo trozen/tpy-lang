@@ -86,8 +86,8 @@ Integer range tracking (11) can proceed in parallel with borrow checking (6).
 TPy targets a 100k+ LOC multi-threaded latency-sensitive codebase. This sets the bar higher than a
 typical POC:
 
-- **Memory safety is non-negotiable.** A dangling pointer in a trading algorithm is a
-  wrong trade, not a crash report.
+- **Memory safety is non-negotiable.** A dangling pointer in a latency-sensitive
+  service is silent data corruption, not a crash report.
 - **Thread safety is non-negotiable.** Data races in concurrent hot paths are
   catastrophic and nearly impossible to reproduce.
 - **Zero-cost safety.** Runtime checks (`deref_check`, `normalize_index`) add latency.
