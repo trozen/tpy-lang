@@ -2295,7 +2295,7 @@ class TypeCompatibility:
                 if not self._is_local_shadow(expr.name):
                     return True
             # Variables tracked as param-derived
-            if expr.name in self.ctx.func.param_provenance_vars:
+            if self.ctx.func.bp_is_param_derived(expr.name):
                 return True
             return False
         if isinstance(expr, TpyFieldAccess):
@@ -2351,7 +2351,7 @@ class TypeCompatibility:
             return True
         if isinstance(expr, TpyName):
             return (self._name_is_param_or_global(expr.name)
-                    or expr.name in self.ctx.func.safe_to_return_vars)
+                    or self.ctx.func.bp_is_safe_to_return(expr.name))
         if isinstance(expr, TpyFieldAccess):
             return self.is_safe_to_return_expr(expr.obj)
         if isinstance(expr, TpySubscript):
@@ -2576,7 +2576,7 @@ class TypeCompatibility:
             # A movable owned local is safe to return BY VALUE, but a view
             # borrowing from it still dangles (the storage is moved/destroyed
             # at the return) -- so don't honor that exemption for a view source.
-            if not view_source and expr.name in self.ctx.func.safe_to_return_vars:
+            if not view_source and self.ctx.func.bp_is_safe_to_return(expr.name):
                 return False
             # A yielded frame-resident local roots in stable frame-slot storage
             # that outlives the suspension (see gen_yield in the docstring).
@@ -2930,31 +2930,19 @@ class TypeCompatibility:
                     owning = self._derive_owning_storage(init_expr)
                 borrow_into_own = self._derive_borrow_into_own_hazards(init_expr)
                 copies_into_own = self._derive_copies_into_own_hazards(init_expr)
-        self.ctx.func.owns_fresh_tuple_member_vars.pop(name, None)
-        if fresh is not None:
-            self.ctx.func.owns_fresh_tuple_member_vars[name] = fresh
-        # Per-element plain-borrow hazard (rebind clears the name's old pairs
-        # first). Checked at a later NAME return/arg/store into an Own[T] slot.
-        self.ctx.func.borrow_into_own_hazards = {
-            (n, i) for (n, i) in self.ctx.func.borrow_into_own_hazards if n != name
-        }
-        for i in borrow_into_own:
-            self.ctx.func.borrow_into_own_hazards.add((name, i))
-        # Per-element owned-source copy warning (warn analog of the reject).
-        self.ctx.func.copies_into_own_hazards = {
-            (n, i) for (n, i) in self.ctx.func.copies_into_own_hazards if n != name
-        }
-        for i in copies_into_own:
-            self.ctx.func.copies_into_own_hazards.add((name, i))
-        # Flow-sensitive (snapshot + UNION merge): a branch-mixed or rebinding
-        # local is owning on the merge iff any reaching path bound it owning;
-        # the boundary return-root check rejects a bare-name return then. An
-        # owning-call RHS materializes into a function-local storage slot in
-        # codegen, so the local itself stays borrow form across the mix.
-        if owning:
-            self.ctx.func.owning_storage_tuple_vars.add(name)
-        else:
-            self.ctx.func.owning_storage_tuple_vars.discard(name)
+        # All four tuple-member hazard fields are (re)derived together and
+        # replaced atomically; the rebind clears the name's old facts first
+        # (so `t = t` re-installs its own, derived above). owns-fresh maps to
+        # the first dangerous element index; the per-element reject/warn sets
+        # and the owning flag are flow-sensitive (UNION-merged) so a hazard on
+        # any reaching path is caught at the boundary check.
+        self.ctx.func.bp_set_tuple_member(
+            name,
+            owns_fresh_idx=fresh,
+            owning_storage=owning,
+            borrow_into_own_idxs=frozenset(borrow_into_own),
+            copies_into_own_idxs=frozenset(copies_into_own),
+        )
 
     @staticmethod
     def _is_owning_tuple_call(expr: TpyExpr) -> bool:
@@ -3079,7 +3067,7 @@ class TypeCompatibility:
             return (self._derive_owning_storage(inner.then_expr)
                     or self._derive_owning_storage(inner.else_expr))
         if isinstance(inner, TpyName):
-            return inner.name in self.ctx.func.owning_storage_tuple_vars
+            return self.ctx.func.bp_is_owning_storage(inner.name)
         return self._is_owning_tuple_call(inner)
 
     def _derive_borrow_into_own_hazards(self, init_expr: TpyExpr) -> list[int]:
@@ -3100,8 +3088,7 @@ class TypeCompatibility:
                 set(self._derive_borrow_into_own_hazards(inner.then_expr))
                 | set(self._derive_borrow_into_own_hazards(inner.else_expr)))
         if isinstance(inner, TpyName):
-            return sorted(i for (n, i) in self.ctx.func.borrow_into_own_hazards
-                          if n == inner.name)
+            return sorted(self.ctx.func.bp_borrow_into_own_idxs(inner.name))
         if not isinstance(inner, TpyTupleLiteral):
             return []
         return [i for i, elem in enumerate(inner.elements)
@@ -3119,8 +3106,7 @@ class TypeCompatibility:
                 set(self._derive_copies_into_own_hazards(inner.then_expr))
                 | set(self._derive_copies_into_own_hazards(inner.else_expr)))
         if isinstance(inner, TpyName):
-            return sorted(i for (n, i) in self.ctx.func.copies_into_own_hazards
-                          if n == inner.name)
+            return sorted(self.ctx.func.bp_copies_into_own_idxs(inner.name))
         if not isinstance(inner, TpyTupleLiteral):
             return []
         return [i for i, elem in enumerate(inner.elements)
@@ -3180,13 +3166,13 @@ class TypeCompatibility:
         element into an `Own[T]` slot of the contextual `tuple_type` -- the
         implicit copy the scalar `Own[T]` and the literal-tuple forms already
         gate. The literal forms check inline; this covers the deferred NAME
-        path via the construction-time hazard fact (`borrow_into_own_hazards`).
+        path via the construction-time hazard fact (BindingProvenance).
         `action` is "return" or "pass" (verb only); the field-literal warning
         path lives inline in `_annotate_tuple_elem_capture`."""
         for i, et in enumerate(tuple_type.element_types):
             if not isinstance(et, OwnType):
                 continue
-            if (name, i) in self.ctx.func.borrow_into_own_hazards:
+            if i in self.ctx.func.bp_borrow_into_own_idxs(name):
                 verb = "return" if action == "return" else "pass"
                 raise self.ctx.error(
                     f"Cannot {verb} borrowed value as tuple element {i} "
@@ -3199,7 +3185,7 @@ class TypeCompatibility:
             # slot -- the deferred-name analog of the scalar T->Own[T] copy
             # warning. (A moved owned source is storage form and carries no such
             # hazard; a plain borrowed source is the reject case above.)
-            elif (name, i) in self.ctx.func.copies_into_own_hazards:
+            elif i in self.ctx.func.bp_copies_into_own_idxs(name):
                 self.ctx.warning(
                     f"copies {et.wrapped} into owned storage (tuple element "
                     f"{i}); use copy() to make this explicit",
@@ -3235,7 +3221,7 @@ class TypeCompatibility:
             else_f = self._derive_tuple_member_hazards(tt, inner.else_expr)
             return then_f if then_f is not None else else_f
         if isinstance(inner, TpyName):
-            fresh = self.ctx.func.owns_fresh_tuple_member_vars.get(inner.name)
+            fresh = self.ctx.func.bp_owns_fresh_idx(inner.name)
             if fresh is not None and not self._tuple_elem_still_borrow(tt, fresh):
                 fresh = None
             return fresh
@@ -3264,7 +3250,7 @@ class TypeCompatibility:
             return
         if not isinstance(inner, TpyName):
             return
-        fresh = self.ctx.func.owns_fresh_tuple_member_vars.get(inner.name)
+        fresh = self.ctx.func.bp_owns_fresh_idx(inner.name)
         if fresh is not None and self._tuple_elem_still_borrow(tuple_type, fresh):
             et = tuple_type.element_types[fresh]
             raise self.ctx.error(
@@ -3321,14 +3307,14 @@ class TypeCompatibility:
             # element storage (bound from an owning-tuple call), where the
             # lift would point into the dying owner.
             bt = self.ctx.func.borrow_tracker
-            owning = self.ctx.func.owning_storage_tuple_vars
             # Owning takes precedence: a local bound from an owning-tuple call
             # on ANY reaching path (UNION-merged) points into a function-local
             # slot that dies at return -- unsafe even if another path aliases
             # param storage (a branch-mixed local also carries that path's
             # FIELD borrow, which would otherwise mask the owning path here).
-            if (inner.name in owning
-                    or bt.effective_storage(inner.name) in owning):
+            if (self.ctx.func.bp_is_owning_storage(inner.name)
+                    or self.ctx.func.bp_is_owning_storage(
+                        bt.effective_storage(inner.name))):
                 dangles = True
             elif self._borrow_chain_enters_storage(bt, inner.name):
                 src = bt.effective_storage_through_borrows(inner.name)

@@ -1972,6 +1972,17 @@ class CodeGenContext:
             # pointer variant<A*, B*> -> value variant<A, B> (target spelled;
             # to_cpp() self-resolves a union alias).
             return f"::tpy::to_value_variant<{t.to_cpp()}>({val.code})"
+        if isinstance(t, TupleType):
+            # The runtime helper absorbs the per-element pointer/optional/value
+            # mask from the destination tuple type, so the only thing to spell
+            # is that destination. `val.type` must be pending-resolved by the
+            # caller (TypeResolver.resolve_tuple_pending) -- to_cpp*/to_cpp_return
+            # do not resolve, matching tuple_storage_cpp / tuple_borrow_cpp.
+            if dst_form is CppForm.BORROW:
+                borrow_cpp = t.to_cpp_return_const() if val.is_const else t.to_cpp_return()
+                return f"::tpy::tuple_to_pointer<{borrow_cpp}>({val.code})"
+            helper = "tuple_to_storage_move" if val.move else "tuple_to_storage"
+            return f"::tpy::{helper}<{t.to_cpp()}>({val.code})"
         raise NotImplementedError(
             f"convert(): {type(t).__name__} bridging not yet routed through the "
             f"chokepoint (val.form={val.form}, dst_form={dst_form})")

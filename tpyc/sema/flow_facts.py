@@ -13,7 +13,9 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
-from .context import BorrowKind, BORROW_KIND_RANK
+from .context import (
+    BorrowKind, BORROW_KIND_RANK, BindingProvenance, _DEFAULT_PROVENANCE,
+)
 from .value_range import ValueRange
 
 if TYPE_CHECKING:
@@ -136,6 +138,75 @@ def _merge_borrow_triples(
     return frozenset((s, b, k) for (s, b), k in best.items())
 
 
+def _min_idx(x: int | None, y: int | None) -> int | None:
+    if x is None:
+        return y
+    if y is None:
+        return x
+    # Two paths flagging the same local at different fresh-owning indices is
+    # vanishingly rare; keep the earliest for a deterministic diagnostic.
+    return min(x, y)
+
+
+def _combine_bp(
+    a: BindingProvenance, b: BindingProvenance, must_intersect: bool,
+) -> BindingProvenance:
+    """Field-wise combine of two provenance records for one local.
+
+    MUST fields (safe_to_return / param_derived) intersect when both branches
+    are live (``must_intersect``) and union otherwise (matches the set-merge
+    behavior when both branches terminate). HAZARD fields always union. The
+    param_derived => safe_to_return invariant survives because the inputs hold
+    it and AND/OR preserve implication.
+    """
+    if must_intersect:
+        safe = a.safe_to_return and b.safe_to_return
+        param = a.param_derived and b.param_derived
+    else:
+        safe = a.safe_to_return or b.safe_to_return
+        param = a.param_derived or b.param_derived
+    return BindingProvenance(
+        safe_to_return=safe,
+        param_derived=param,
+        owns_fresh_idx=_min_idx(a.owns_fresh_idx, b.owns_fresh_idx),
+        owning_storage=a.owning_storage or b.owning_storage,
+        borrow_into_own_idxs=a.borrow_into_own_idxs | b.borrow_into_own_idxs,
+        copies_into_own_idxs=a.copies_into_own_idxs | b.copies_into_own_idxs,
+    )
+
+
+def merge_binding_provenance(
+    then_bp: frozenset[tuple[str, BindingProvenance]],
+    else_bp: frozenset[tuple[str, BindingProvenance]],
+    then_term: bool,
+    else_term: bool,
+) -> frozenset[tuple[str, BindingProvenance]]:
+    """Merge per-local provenance records across branch endpoints.
+
+    A terminating branch cannot reach the join, so the live branch's records
+    win wholesale; otherwise records combine field-wise (MUST fields intersect,
+    HAZARD fields union), dropping any that collapse to the default so that
+    absent == default holds, as the lattices assume.
+    """
+    if then_term and not else_term:
+        return else_bp
+    if else_term and not then_term:
+        return then_bp
+    must_intersect = not (then_term and else_term)
+    then_d = dict(then_bp)
+    else_d = dict(else_bp)
+    merged: dict[str, BindingProvenance] = {}
+    for name in then_d.keys() | else_d.keys():
+        combined = _combine_bp(
+            then_d.get(name, _DEFAULT_PROVENANCE),
+            else_d.get(name, _DEFAULT_PROVENANCE),
+            must_intersect,
+        )
+        if combined != _DEFAULT_PROVENANCE:
+            merged[name] = combined
+    return frozenset(merged.items())
+
+
 @dataclass(frozen=True, slots=True)
 class FlowFacts:
     """Immutable snapshot of flow-sensitive analysis state."""
@@ -143,27 +214,12 @@ class FlowFacts:
     definitely_assigned: frozenset[str] = frozenset()
     init_terminated: bool = False
     rvalue_vars: frozenset[str] = frozenset()
-    param_provenance_vars: frozenset[str] = frozenset()
-    safe_to_return_vars: frozenset[str] = frozenset()
     non_null_ptr_vars: frozenset[str] = frozenset()
     narrowed_types: frozenset[tuple[str, TpyType]] = frozenset()
     consumed_vars: frozenset[str] = frozenset()
-    # Hazard fact: (local name, dangerous element index) for tuple locals owning
-    # a fresh non-value member (see sema.context).
-    owns_fresh_tuple_member_vars: frozenset[tuple[str, int]] = frozenset()
-    # Hazard fact: tuple locals bound from an owning-tuple call (Own[tuple] /
-    # per-element-Own). Flow-sensitive so a branch-mixed binding (`if c: t =
-    # make_pair() else: t = h.pair`) does not leak the owning kind into the
-    # else-arm; the boundary return check rejects when possibly-owning.
-    owning_storage_tuple_vars: frozenset[str] = frozenset()
-    # Hazard fact: (local name, element index) for tuple locals whose element
-    # is a plain borrowed reference -- rejected/warned if the local is later
-    # returned/passed/stored by NAME into an Own[T] slot (see sema.context).
-    borrow_into_own_hazards: frozenset[tuple[str, int]] = frozenset()
-    # (name, idx) for an owned source bound by reference -- WARNED (copies into
-    # owned storage) if the local is later returned/passed by NAME into an
-    # Own[T] slot. The warn analog of borrow_into_own_hazards.
-    copies_into_own_hazards: frozenset[tuple[str, int]] = frozenset()
+    # Per-local escape/ownership provenance (return-safety + tuple-member
+    # hazards). See BindingProvenance / merge_binding_provenance.
+    binding_provenance: frozenset[tuple[str, BindingProvenance]] = frozenset()
     # Borrow map: (storage_name, borrower_name, BorrowKind) triples.
     # "__for_iter" is used as the borrower for implicit for-loop iterator borrows.
     borrows: frozenset[tuple[str, str, BorrowKind]] = frozenset()
@@ -184,14 +240,6 @@ class FlowFacts:
                 then.rvalue_vars, else_.rvalue_vars,
                 then_term, else_term, _MergePolicy.INTERSECT,
             ),
-            param_provenance_vars=_merge_sets(
-                then.param_provenance_vars, else_.param_provenance_vars,
-                then_term, else_term, _MergePolicy.INTERSECT,
-            ),
-            safe_to_return_vars=_merge_sets(
-                then.safe_to_return_vars, else_.safe_to_return_vars,
-                then_term, else_term, _MergePolicy.INTERSECT,
-            ),
             non_null_ptr_vars=_merge_sets(
                 then.non_null_ptr_vars, else_.non_null_ptr_vars,
                 then_term, else_term, _MergePolicy.INTERSECT,
@@ -204,21 +252,9 @@ class FlowFacts:
                 then.consumed_vars, else_.consumed_vars,
                 then_term, else_term, _MergePolicy.UNION,
             ),
-            owns_fresh_tuple_member_vars=_merge_sets(
-                then.owns_fresh_tuple_member_vars, else_.owns_fresh_tuple_member_vars,
-                then_term, else_term, _MergePolicy.UNION,
-            ),
-            owning_storage_tuple_vars=_merge_sets(
-                then.owning_storage_tuple_vars, else_.owning_storage_tuple_vars,
-                then_term, else_term, _MergePolicy.UNION,
-            ),
-            borrow_into_own_hazards=_merge_sets(
-                then.borrow_into_own_hazards, else_.borrow_into_own_hazards,
-                then_term, else_term, _MergePolicy.UNION,
-            ),
-            copies_into_own_hazards=_merge_sets(
-                then.copies_into_own_hazards, else_.copies_into_own_hazards,
-                then_term, else_term, _MergePolicy.UNION,
+            binding_provenance=merge_binding_provenance(
+                then.binding_provenance, else_.binding_provenance,
+                then_term, else_term,
             ),
             borrows=_merge_borrow_triples(
                 then.borrows, else_.borrows,

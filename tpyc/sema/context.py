@@ -7,7 +7,7 @@ Contains the shared state that is passed to all semantic analysis components.
 from __future__ import annotations
 from contextlib import contextmanager
 from copy import deepcopy
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import Any, Iterator, Literal, TYPE_CHECKING
 
@@ -549,6 +549,44 @@ class RecordContext:
     type_param_bounds: dict[str, TpyType] | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class BindingProvenance:
+    """Per-local escape/ownership provenance: one record per local.
+
+    Two merge lattices apply at flow joins (see
+    flow_facts.merge_binding_provenance):
+
+      * MUST facts (INTERSECT -- survive only if they hold on every path):
+        `safe_to_return` and `param_derived`. Invariant: `param_derived`
+        implies `safe_to_return` (safe is the documented superset, so an
+        intersecting join that reaches via different safe sources keeps the
+        local safe). Consulted by is_dangling_return / is_param_derived_expr.
+
+      * HAZARD facts (UNION -- flagged if they hold on any path), all for
+        tuple-typed locals: `owns_fresh_idx` (index of the first element that
+        owns fresh non-value storage -- borrowing it across a yield/return
+        dangles), `owning_storage` (bound from an owning-tuple call -- a
+        borrow-form return would address into the dying local),
+        `borrow_into_own_idxs` (plain-borrow elements -- REJECTED at a
+        NAME->Own[T] slot) and `copies_into_own_idxs` (owned-by-reference
+        elements -- WARNED, the copy-into-owned analog).
+
+    Absent name == default record by construction: callers prune all-default
+    records, so a name's membership and its facts stay equivalent under both
+    lattices (an absent name contributes the default to every field).
+    """
+
+    safe_to_return: bool = False
+    param_derived: bool = False
+    owns_fresh_idx: int | None = None
+    owning_storage: bool = False
+    borrow_into_own_idxs: frozenset[int] = frozenset()
+    copies_into_own_idxs: frozenset[int] = frozenset()
+
+
+_DEFAULT_PROVENANCE = BindingProvenance()
+
+
 @dataclass
 class FunctionTrackingState:
     """Per-function analysis state.
@@ -715,23 +753,17 @@ class FunctionTrackingState:
     nested_def_escapes: set[str] = field(default_factory=set)
     nested_def_nodes: dict[str, 'TpyNestedDef'] = field(default_factory=dict)
 
-    # --- Pointer provenance tracking ---
-    # Invariant: param_provenance_vars is a subset of safe_to_return_vars.
-    # Both sets merge with INTERSECT at branch/loop joins. The subset
-    # invariant is what lets a local stay safe-to-return when different
-    # branches reach the join via different safe sources (e.g. one branch
-    # param-derived, another a trusted call return) -- the OR-of-sources
-    # is materialized in safe_to_return_vars at write time, so intersection
-    # preserves it even though intersecting param_provenance_vars alone
-    # would lose it.
-    param_provenance_vars: set[str] = field(default_factory=set)
-    safe_to_return_vars: set[str] = field(default_factory=set)
+    # --- Per-local escape/ownership provenance (see BindingProvenance) ---
+    # One record per local; absent name == default. Mutate only via the
+    # bp_* helpers below so all-default records stay pruned (the lattices in
+    # flow_facts rely on absent == default).
+    binding_provenance: dict[str, BindingProvenance] = field(default_factory=dict)
     # Loop vars / next() results bound from a frame-slot-rooted borrow yield
     # (a generator / genexpr / Iterator[T] source, T non-value): the borrow is
     # valid only until the next iteration step (the generator frame slot is
     # overwritten on each __next__()), so retaining it past the step is unsound.
-    # These are kept OUT of safe_to_return_vars and rejected at escape sites
-    # (return / store / container insert / closure capture / yield onward).
+    # These are kept OUT of the safe-to-return provenance and rejected at escape
+    # sites (return / store / container insert / closure capture / yield onward).
     # Active only during the consuming loop body (added before, discarded after).
     ephemeral_borrow_vars: set[str] = field(default_factory=set)
     # Borrow-yield rooting checks deferred until `func.generator_locals` is
@@ -751,45 +783,6 @@ class FunctionTrackingState:
 
     # --- Consumed variable tracking ---
     consumed_vars: set[str] = field(default_factory=set)
-
-    # Tuple-typed locals that OWN a fresh (locally-constructed) non-value
-    # member -- the local is storage form (`std::tuple<int, Box>`) and a pure
-    # read is fine, but borrowing such a member across a yield/return boundary
-    # (`tuple_to_pointer` takes `&t.box` into the dying local) dangles. Recorded
-    # at the tuple-literal assignment when the literal would itself be rejected
-    # at a direct yield/return; the boundary check then rejects a bare-name
-    # yield/return of the local. Loop/param-derived tuple locals are never
-    # recorded, so borrow composition (`for pair in src: yield pair`) is unaffected.
-    # Hazard fact -> merges with UNION at branch/loop joins (flag if any path owns-fresh).
-    # Maps the local name to the first dangerous element index, so the boundary
-    # diagnostic points at the actually-fresh element (not just the first
-    # borrow-form one, which a safe param-rooted element could precede).
-    owns_fresh_tuple_member_vars: dict[str, int] = field(default_factory=dict)
-
-    # Tuple-typed locals bound from a call returning OWNING tuple storage
-    # (Own[tuple[...]] or per-element-Own): the local owns its element
-    # storage, so a borrow-form RETURN lift would take addresses into the
-    # dying local. Set/cleared alongside the owns-fresh fact; aliases are
-    # resolved through the borrow tracker at the boundary check.
-    owning_storage_tuple_vars: set[str] = field(default_factory=set)
-
-    # (name, element-idx) for tuple locals whose element is a plain borrowed
-    # reference (param/attr/non-last-use, not copy(), not an owned last-use
-    # move). A later NAME return/pass into an `Own[T]` slot would deref-COPY
-    # the borrow -- the implicit copy the scalar `Own[T]` return rejects -- so
-    # the boundary checks consult this per Own slot (literal forms check
-    # inline). Flow-sensitive (UNION-merged) so a borrow-into-own on ANY
-    # reaching path is caught.
-    borrow_into_own_hazards: set[tuple[str, int]] = field(default_factory=set)
-
-    # (name, element-idx) for tuple locals whose element is an OWNED source
-    # (Own-typed param/return or an owned local) bound by reference rather than
-    # moved (not at last use, not copy()). A later NAME return/pass into an
-    # `Own[T]` slot deref-COPIES it into owned storage -- the warned analog of
-    # the plain-borrow reject above, mirroring the scalar `T -> Own[T]` copy
-    # warning. Flow-sensitive (UNION-merged) like the reject hazard.
-    copies_into_own_hazards: set[tuple[str, int]] = field(default_factory=set)
-
 
     # --- Variable declaration tracking (per-function) ---
     var_decl_by_name: dict[str, 'TpyVarDecl'] = field(default_factory=dict)
@@ -825,6 +818,85 @@ class FunctionTrackingState:
     # (sema/frame_traits.py). A None entry is an await whose operand frame sema
     # cannot classify (Task / structural awaitable) -- forces non-Send.
     current_awaited_subframes: list = field(default_factory=list)
+
+    # --- BindingProvenance accessors ---
+    # Reads default-fill from an absent name; writes go through _bp_update,
+    # which prunes a record back to absence once every field is default so
+    # "absent == default" holds for the flow-merge lattices.
+
+    def _bp_update(self, name: str, **changes: object) -> None:
+        cur = self.binding_provenance.get(name, _DEFAULT_PROVENANCE)
+        new = replace(cur, **changes)
+        if new == _DEFAULT_PROVENANCE:
+            self.binding_provenance.pop(name, None)
+        else:
+            self.binding_provenance[name] = new
+
+    def bp_is_param_derived(self, name: str) -> bool:
+        bp = self.binding_provenance.get(name)
+        return bp is not None and bp.param_derived
+
+    def bp_is_safe_to_return(self, name: str) -> bool:
+        bp = self.binding_provenance.get(name)
+        return bp is not None and bp.safe_to_return
+
+    def bp_set_param_derived(self, name: str, value: bool) -> None:
+        # param_derived implies safe_to_return (BindingProvenance invariant):
+        # raising param also raises safe so the two can't diverge at a setter.
+        if value:
+            self._bp_update(name, param_derived=True, safe_to_return=True)
+        else:
+            self._bp_update(name, param_derived=False)
+
+    def bp_set_safe_to_return(self, name: str, value: bool) -> None:
+        # Clearing safe must clear param too, or the implication above breaks.
+        if value:
+            self._bp_update(name, safe_to_return=True)
+        else:
+            self._bp_update(name, safe_to_return=False, param_derived=False)
+
+    def bp_add_loop_var_provenance(self, name: str) -> None:
+        self._bp_update(name, param_derived=True, safe_to_return=True)
+
+    def bp_remove_loop_var_provenance(self, name: str) -> None:
+        self._bp_update(name, param_derived=False, safe_to_return=False)
+
+    def bp_owns_fresh_idx(self, name: str) -> int | None:
+        bp = self.binding_provenance.get(name)
+        return bp.owns_fresh_idx if bp is not None else None
+
+    def bp_is_owning_storage(self, name: str) -> bool:
+        bp = self.binding_provenance.get(name)
+        return bp is not None and bp.owning_storage
+
+    def bp_borrow_into_own_idxs(self, name: str) -> frozenset[int]:
+        bp = self.binding_provenance.get(name)
+        return bp.borrow_into_own_idxs if bp is not None else frozenset()
+
+    def bp_copies_into_own_idxs(self, name: str) -> frozenset[int]:
+        bp = self.binding_provenance.get(name)
+        return bp.copies_into_own_idxs if bp is not None else frozenset()
+
+    def bp_set_tuple_member(
+        self,
+        name: str,
+        *,
+        owns_fresh_idx: int | None,
+        owning_storage: bool,
+        borrow_into_own_idxs: frozenset[int],
+        copies_into_own_idxs: frozenset[int],
+    ) -> None:
+        # All four tuple-member hazard fields are (re)derived together per
+        # binding -- replacing them atomically preserves the rebind discipline
+        # (`t = t` re-installs its own facts) while leaving the return-safety
+        # fields, managed separately, untouched.
+        self._bp_update(
+            name,
+            owns_fresh_idx=owns_fresh_idx,
+            owning_storage=owning_storage,
+            borrow_into_own_idxs=borrow_into_own_idxs,
+            copies_into_own_idxs=copies_into_own_idxs,
+        )
 
 
 @dataclass

@@ -1734,8 +1734,10 @@ class StatementGenerator:
             return value_expr
         is_const_source = (isinstance(stmt.value, TpyName)
                            and stmt.value.name in self.ctx.const_storage_form_tuple_locals)
-        cpp = self.types.tuple_borrow_cpp(ptr_form, const=is_const_source)
-        return f"::tpy::tuple_to_pointer<{cpp}>({value_expr})"
+        resolved = self.types.resolve_tuple_pending(ptr_form)
+        return self.ctx.convert(
+            FormValue(value_expr, resolved, CppForm.STORAGE, is_const=is_const_source),
+            dst_type=resolved, dst_form=CppForm.BORROW)
 
     def gen_yield_value(self, yield_stmt: TpyYield) -> str:
         """Emit yield value, bridging storage->pointer when the source is a
@@ -1780,8 +1782,10 @@ class StatementGenerator:
         if source is None or not self.ctx.is_storage_form_source(source):
             return expr
         is_const = const or self.ctx.is_const_storage_source(source)
-        borrow_cpp = self.types.tuple_borrow_cpp(unwrapped, const=is_const)
-        return f"::tpy::tuple_to_pointer<{borrow_cpp}>({expr})"
+        resolved = self.types.resolve_tuple_pending(unwrapped)
+        return self.ctx.convert(
+            FormValue(expr, resolved, CppForm.STORAGE, is_const=is_const),
+            dst_type=resolved, dst_form=CppForm.BORROW)
 
     def _tuple_owning_slot(self, name: str, var_type: TpyType | None,
                            indent: str) -> tuple[str, str]:
@@ -1902,8 +1906,10 @@ class StatementGenerator:
             return expr
         if source is not None and self.ctx.is_storage_form_source(source):
             return expr
-        return (f"::tpy::tuple_to_storage"
-                f"<{self.types.tuple_storage_cpp(unwrapped)}>({expr})")
+        resolved = self.types.resolve_tuple_pending(unwrapped)
+        return self.ctx.convert(
+            FormValue(expr, resolved, CppForm.BORROW),
+            dst_type=resolved, dst_form=CppForm.STORAGE)
 
     def _lift_to_element_storage(self, value_expr: TpyExpr, value_code: str,
                                  elem_type: TpyType | None) -> str:

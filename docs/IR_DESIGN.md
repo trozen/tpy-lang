@@ -1704,7 +1704,16 @@ or eliminating the C++ compiler dependency), the MIR is ready.
     AST would be writing MIR badly, twice. The one piece worth pulling
     forward pre-IR if the migration is not imminent is the sema-side
     provenance consolidation (one BindingProvenance record replacing the
-    four per-name fact sets; TODO.md entry carries the decision rule).
+    per-name fact sets; TODO.md entry carries the decision rule). STATUS:
+    the storage + flow-plumbing half of that consolidation LANDED pre-IR --
+    six name-keyed escape/ownership fact sets are now one `BindingProvenance`
+    record per local (`tpyc/sema/context.py`) merged by one lattice-driven
+    routine (`flow_facts.merge_binding_provenance`). What remains IR-only is
+    the "root place + binding kind + durability" ONE-derivation model: the
+    expression-walking derivers were deliberately left untouched (unifying
+    them is the AST-side place model this item defers), and
+    `ephemeral_borrow_vars` stays separate (loop-region-scoped, no flow
+    merge). `BindingProvenance` is the proto-LoanInfo this item migrates.
 
     Scope extension: str/bytes VIEW locals belong under this umbrella too,
     even though they are value types lowered by a separate mechanism today

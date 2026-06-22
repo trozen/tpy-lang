@@ -221,6 +221,12 @@ class TypeResolver:
         """Resolve a PendingViewType to its concrete type."""
         return self._resolve_view_storage(typ.family, typ.var_id)
 
+    def resolve_tuple_pending(self, tt: TupleType) -> TupleType:
+        """Public entry to pending-element resolution: callers that hand a
+        tuple to `convert()` (which spells via the bare `to_cpp*` methods that
+        do not resolve) must resolve first, exactly as `tuple_*_cpp` do."""
+        return self._resolve_tuple_pending(tt)
+
     def _resolve_tuple_pending(self, tt: TupleType) -> TupleType:
         """Resolve PendingViewType / IntLiteralType tuple elements to their
         concrete types. `to_cpp` / `to_cpp_return` do not resolve pending

@@ -3153,13 +3153,13 @@ class ExpressionAnalyzer:
             # fields); reject fresh constructions and point at the
             # list-comprehension form, which materializes owned storage.
             # (Genexprs have no Own[] surface, so there is no owned opt-in.)
-            saved = gen.var in self.ctx.func.safe_to_return_vars
-            self.ctx.func.safe_to_return_vars.add(gen.var)
+            saved = self.ctx.func.bp_is_safe_to_return(gen.var)
+            self.ctx.func.bp_set_safe_to_return(gen.var, True)
             try:
                 dangles = self.compat.is_dangling_return(expr.element_expr)
             finally:
                 if not saved:
-                    self.ctx.func.safe_to_return_vars.discard(gen.var)
+                    self.ctx.func.bp_set_safe_to_return(gen.var, False)
             if dangles:
                 raise self.ctx.error(
                     f"Cannot yield a freshly-constructed '{result_elem_type}' from a "

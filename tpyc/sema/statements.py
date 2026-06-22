@@ -1414,7 +1414,7 @@ class StatementAnalyzer:
                     # field for locals/temporaries), so any loop var aliases
                     # frame-held storage and outlives suspension -- a durable borrow
                     # source for a yield. Generators cannot `return <value>`, so the
-                    # only consumer of safe_to_return_vars in a generator body is the
+                    # only consumer of the safe-to-return provenance in a generator body is the
                     # borrow-yield rooting check; broadening it here is contained.
                     cur_fn = self.ctx.func.current_function
                     in_generator = isinstance(cur_fn, TpyFunction) and cur_fn.is_generator
