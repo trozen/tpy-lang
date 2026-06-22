@@ -2124,6 +2124,22 @@ class ExpressionAnalyzer:
                 target_is_storage_form=target_is_storage_form)
         return elem
 
+    def _comp_elem_moves(self, gen: TpyComprehensionGenerator, elem: TpyExpr) -> bool:
+        """Whether a comprehension sink is the consuming MOVE -- an owned-source
+        bare-loop-var element at its last use. The `all_last_uses` membership is
+        load-bearing, not redundant with the shape check: when the loop var also
+        appears in a filter (`[x for x in g() if p(x)]`), liveness marks neither
+        occurrence last-use, and codegen's `_maybe_move` then copies -- so sema
+        must read the SAME fact or it would suppress the warning on a sink that
+        still copies (and regress a @nocopy element to a raw build error)."""
+        inner = elem
+        while isinstance(inner, TpyCoerce):
+            inner = inner.expr
+        return (gen.owns_elements
+                and isinstance(inner, TpyName)
+                and inner.name == gen.var
+                and id(inner) in self.ctx.all_last_uses)
+
     def _warn_storage_element_copy(self, elem: TpyExpr, elem_type: TpyType) -> None:
         """A reference-type container-literal element is stored by value (the
         container owns its elements -- storage form), so an lvalue source is
@@ -3167,6 +3183,10 @@ class ExpressionAnalyzer:
         """Shared analysis for list and set comprehensions."""
         gen = expr.generator
         elem_type = self._resolve_comp_iterable(gen, expr)
+        # An Own[T]-yielding source (e.g. a generator) hands ownership to the
+        # comprehension: a last-use bare-loop-var element is MOVED into the
+        # result (codegen mirrors the consuming for-append), not copied.
+        gen.owns_elements = isinstance(elem_type, OwnType)
 
         if self.scopes is None:
             raise RuntimeError(f"{kind} comprehension requires ScopeTracker")
@@ -3179,9 +3199,12 @@ class ExpressionAnalyzer:
 
         # Placed after the comp scope exits so the loop var is no longer in
         # `loop_vars`: the warning fires immediately rather than being deferred
-        # for a consuming-iteration decision -- comprehensions always copy
-        # (never consuming-move), so deferral would never be resolved.
-        if expr.element_expr.loc is not None and not isinstance(expected_elem, AnyType):
+        # for a consuming-iteration decision. Suppressed for an owned-source
+        # bare-loop-var sink (the only shape codegen moves): the element
+        # transfers ownership, so there is no copy to warn about. A derived sink
+        # (`x.field`, `f(x)`) is not the move, so it still warns/copies.
+        if (expr.element_expr.loc is not None and not isinstance(expected_elem, AnyType)
+                and not self._comp_elem_moves(gen, expr.element_expr)):
             self._warn_storage_element_copy(expr.element_expr, result_elem_type)
 
         if expected_elem is not None and result_elem_type != expected_elem:
@@ -3405,8 +3428,11 @@ class ExpressionAnalyzer:
                                           inner_scope.depth, is_foreach=True):
                     result = self._analyze_comp_body(gen, expr, hint)
 
-        if worth_const_ref and not any(n in self.ctx.func.mutated_loop_vars
-                                       for n in names):
+        # An owned-yielding source binds the element non-const (`auto&&`) so a
+        # last-use sink can move it -- mirrors the consuming for-loop, which
+        # excludes consumed vars from the const-ref binding.
+        if (worth_const_ref and not gen.owns_elements
+                and not any(n in self.ctx.func.mutated_loop_vars for n in names)):
             gen.const_loop_var = True
         return result
 

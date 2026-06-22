@@ -493,6 +493,9 @@ class TpyComprehensionGenerator:
     conditions: list[TpyExpr]
     unpack_vars: list[str | None] | None = None  # Phase 3: tuple unpacking
     const_loop_var: bool = False
+    # Set by sema when the iterable yields Own[T]: codegen moves a bare last-use
+    # element into the result instead of copying (the consuming for-append move).
+    owns_elements: bool = False
 
 
 @dataclass

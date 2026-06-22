@@ -4889,6 +4889,36 @@ class ExpressionGenerator:
         cpp_type = result_type.to_cpp()
         return f"::tpy::from_range<{cpp_type}>({range_expr})"
 
+    def _gen_comp_owned_elem(self, gen: TpyComprehensionGenerator,
+                             element_expr: TpyExpr, elem_type: TpyType) -> str:
+        """Build a list/set comprehension element-insert expression, moving a
+        last-use owned element into the result (parallel to the consuming
+        for-append) when the source yields Own[T]. Only THIS loop var is movable
+        during element emission: it is rebound fresh each iteration, so moving it
+        is sound, whereas any outer movable (an enclosing comprehension's var, a
+        function local) used here would multi-move -- the element expression
+        repeats, but liveness sees it flat and would mark a single last-use.
+        `_maybe_move` then confirms the per-occurrence last use via
+        `all_last_uses`; a derived sink (`x.field`, `f(x)`) is left to its own
+        context (a borrow stays a borrow, an Own[T] arg still moves)."""
+        if not gen.owns_elements:
+            with self._container_element_context():
+                elem_resolved = self.types.get_resolved_type(element_expr, elem_type)
+                return self._wrap_for_owned_slot(
+                    element_expr, self.gen_expr_deref(element_expr, elem_type),
+                    elem_resolved, elem_type)
+        saved = self.ctx.movable_locals
+        self.ctx.movable_locals = {gen.var}
+        try:
+            with self._container_element_context():
+                elem_resolved = self.types.get_resolved_type(element_expr, elem_type)
+                insert_code = self._wrap_for_owned_slot(
+                    element_expr, self.gen_expr_deref(element_expr, elem_type),
+                    elem_resolved, elem_type)
+            return self._maybe_move(element_expr, insert_code)
+        finally:
+            self.ctx.movable_locals = saved
+
     def _gen_list_comprehension(self, expr: TpyListComprehension,
                                 target_type: TpyType | None = None) -> str:
         elem_type = self._resolve_int_literal(expr.result_elem_type)
@@ -4906,10 +4936,7 @@ class ExpressionGenerator:
         comp_names = self._enter_comp_scope(expr.generator)
         try:
             def make_insert() -> str:
-                with self._container_element_context():
-                    elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
-                    insert_code = self._wrap_for_owned_slot(expr.element_expr, self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
-                return f"__result.push_back({insert_code})"
+                return f"__result.push_back({self._gen_comp_owned_elem(expr.generator, expr.element_expr, elem_type)})"
             return self._gen_comprehension_iife(
                 expr.generator, f"std::vector<{cpp_elem}>",
                 make_insert, skip_reserve=False)
@@ -5039,10 +5066,7 @@ class ExpressionGenerator:
         comp_names = self._enter_comp_scope(expr.generator)
         try:
             def make_insert() -> str:
-                with self._container_element_context():
-                    elem_resolved = self.types.get_resolved_type(expr.element_expr, elem_type)
-                    insert_code = self._wrap_for_owned_slot(expr.element_expr, self.gen_expr_deref(expr.element_expr, elem_type), elem_resolved, elem_type)
-                return f"__result.insert({insert_code})"
+                return f"__result.insert({self._gen_comp_owned_elem(expr.generator, expr.element_expr, elem_type)})"
             return self._gen_comprehension_iife(
                 expr.generator, f"::tpy::ordered_set<{cpp_elem}>",
                 make_insert, skip_reserve=True)

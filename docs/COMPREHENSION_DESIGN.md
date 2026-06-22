@@ -236,13 +236,23 @@ without break/continue support.
 ### Ownership
 
 `[p for p in people]` where `people: list[Person]` produces a new `list[Person]`
-where each element is copied into the result via `push_back`. This is consistent
+where each element is copied into the result via `push_back` (the source is
+borrowed, so the loop var is a borrow into a live element). This is consistent
 with how a for-loop + `append` would behave -- the result list owns its elements.
 
-For `@nocopy` types, the element expression must produce an owned value (e.g.
-`[make_thing(x) for x in inputs]` where `make_thing` returns `Own[Thing]`).
-Copying a `@nocopy` loop variable into the result is an error, same as
-`items.append(nocopy_ref)` would be.
+When the source instead *yields* `Own[T]` (a generator of owned values, or an
+`Iterable[Own[T]]`), a bare last-use loop-var element is *moved* into the result
+(list/set comprehensions), mirroring the consuming `for`+`append`:
+`[node for node in g()]` over `g() -> Iterator[Own[Node]]` emits
+`push_back(std::move(node))`. So `@nocopy` owned elements collect without a copy
+error, and the storage-copy warning is suppressed for that sink. A derived sink
+(`x.field`, `f(x)`) or a borrowed source still copies. Dict comprehensions do
+not yet move (see BUGS.md -- a key/value evaluation-ordering hazard).
+
+For `@nocopy` types over a *borrowed* source, the element expression must produce
+an owned value (e.g. `[make_thing(x) for x in inputs]` where `make_thing` returns
+`Own[Thing]`). Copying a `@nocopy` loop variable into the result is an error,
+same as `items.append(nocopy_ref)` would be.
 
 ### Edge case: empty iterable
 

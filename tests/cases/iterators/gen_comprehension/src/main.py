@@ -1,8 +1,7 @@
 # A resumable generator (poll-based frame, not the simple-yield peephole) is
 # iterable in list/set/dict comprehensions, not just for-loops.
-# The Own[Node] case collects into list[Node] by copy on purpose: comprehension
-# inserts over owned elements currently copy rather than move (tracked in
-# BUGS.md); it is read-only here, so the copy is harmless.
+# The Own[Node] case collects into list[Node] by moving each owned element
+# (the consuming-for-append move, applied to comprehension element sinks).
 from typing import Iterator, Iterable
 from tpy import Int32, Own
 
