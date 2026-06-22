@@ -104,6 +104,26 @@ in the current model.
   - Bare-Optional yield missing the storage->pointer bridge (BUGS.md).
   - Union `match` capture: value-variant storage-form binding vs pointer-variant
     borrow subject (also an undesigned-aliasing-form design question) (BUGS.md).
+  - View-family `*args` elements (str/bytes) reconstructed per-site as storage form
+    (`varargs<std::string>` / `varargs<std::vector<uint8_t>>`) instead of the borrow
+    form the scalar param already uses (`string_view` / `span<const uint8_t>`), so every
+    individual arg is copied into the owned pack (TODO.md). Intentional + memory-safe
+    today; the zero-copy borrow form is all-paths-or-nothing (one element type, so every
+    consumer must agree) and rides on this item's general element-as-borrow +
+    materialize-at-owned-sink rule rather than being bespoke work. The inventory the MIR
+    rule must cover, from a per-shape probe: (1) pack construction -- individual args
+    zero-copy, `*container` star-unpack needs a `vector<view>` materialization (the list's
+    `std::string`s aren't contiguous views), varargs->varargs forwarding already fine;
+    (2) every owned sink -- return, var-init, container insert, dict key, tuple element,
+    comprehension element, `list(parts)` -- each currently re-decides whether to wrap;
+    (3) the per-site element-type derivations that already *disagree* today (statement-`for`
+    binds `string_view`, comprehension binds `const std::string&`, slice-result local binds
+    `varargs<std::string>`) -- unifying these is the bulk of the consumer-side dispatch;
+    (4) the lifetime half -- generator/coro frame capture must OWN a copy (captured views
+    dangle past the call statement for non-literal args; async `*args` is unsupported today,
+    so only the simple-peephole lambda and resumable-struct frames apply). Read-only uses
+    (len, print, concat, element-into-str-param, statement-`for` iteration) are already
+    correct. Probed + Codex-co-validated all-paths-or-nothing 2026-06.
   Several smaller cases in this class *were* closed pre-IR by extending consumer-side
   predicates -- but each one touched another dispatch site, which is exactly the cost the
   IR fact removes. The same fact also dissolves the sema `Ref[T]` wrapper, which today
