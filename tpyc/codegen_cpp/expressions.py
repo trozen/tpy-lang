@@ -1452,15 +1452,10 @@ class ExpressionGenerator:
             # own; every read resolves to the captured param it aliases.
             storage_name = (self.ctx.generator_storage_name(expr.name)
                             if self.ctx.in_generator_body else expr.name)
-            result = escape_cpp_name(storage_name)
-            # Generator body: optional-wrapped fields need dereference, but
-            # skip if a C++-scoped local in the current scope shadows the
-            # putative frame field (e.g. for-loop iter var on a loop that
-            # doesn't span a suspension -- emitted as `auto&& it = ...`).
-            if (self.ctx.in_generator_body
-                    and storage_name in self.ctx.generator_optional_fields
-                    and storage_name not in self.ctx.frame_field_shadows):
-                result = f"(*{result})"
+            # Generator body: a frame-resident frame_slot<T> field reads via
+            # `(*name)` (the helper skips it when a C++-scoped local shadows the
+            # frame field, e.g. a loop iter var that doesn't span a suspension).
+            result = self.ctx.frame_slot_deref(expr.name) or escape_cpp_name(storage_name)
             return self._maybe_convert_opt_view_param(storage_name, result, target_type)
 
         elif isinstance(expr, TpyBinOp):
@@ -2919,7 +2914,16 @@ class ExpressionGenerator:
             # variants, so we deliberately skip that lookup here.
             orig_var = expr.isinstance_var
             name_node = TpyName(orig_var)
-            var_ref = self.gen_expr_deref(name_node) if self.ctx.is_indirect_name(name_node) else orig_var
+            # A union local hoisted into the resumable frame is a
+            # `frame_slot<variant<...>>`; holds_alternative needs the variant,
+            # not the slot wrapper (the same `(*name)` unwrap as the name read).
+            fs_deref = self.ctx.frame_slot_deref(orig_var)
+            if self.ctx.is_indirect_name(name_node):
+                var_ref = self.gen_expr_deref(name_node)
+            elif fs_deref is not None:
+                var_ref = fs_deref
+            else:
+                var_ref = orig_var
             # Tuple form: isinstance(x, (A, B)) -> union of check types
             if isinstance(expr.isinstance_type, UnionType):
                 check_members = list(expr.isinstance_type.members)

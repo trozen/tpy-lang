@@ -2943,8 +2943,14 @@ class StatementGenerator:
             # aliases in narrowed_vars (from outer if-branch narrowing, match
             # binds, or inline isinstance facts) point at non-variants, so we
             # must target the original variable here.
+            # A union local hoisted into the resumable frame is a
+            # `frame_slot<variant<...>>`; std::get needs the variant, not the
+            # slot wrapper (the same `(*name)` unwrap the name-read path uses).
+            fs_deref = self.ctx.frame_slot_deref(var_name)
             if self.ctx.is_indirect_name(TpyName(var_name)):
                 var_ref = f"(*{var_name})"
+            elif fs_deref is not None:
+                var_ref = fs_deref
             else:
                 var_ref = var_name
             local_name = self._fresh_alias_local(var_name, persistent=persistent)

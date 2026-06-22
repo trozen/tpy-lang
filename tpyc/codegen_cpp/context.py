@@ -2293,6 +2293,23 @@ class CodeGenContext:
         """
         return self.generator_forwarded_locals.get(name, name)
 
+    def frame_slot_deref(self, name: str) -> str | None:
+        """The `(*storage)` read expression for a name backed by a
+        `tpy::frame_slot<T>` field, or None when no such unwrap is needed.
+
+        A non-value, non-pointer-form generator/async frame local lives in a
+        `frame_slot<T>` and is read via `(*name)` (see setup_resumable_frame_locals).
+        Single source of truth for that decision, shared by the name-read path
+        and the isinstance-narrowing get/holds_alternative sites.
+        """
+        if not self.in_generator_body:
+            return None
+        storage = self.generator_storage_name(name)
+        if (storage in self.generator_optional_fields
+                and storage not in self.frame_field_shadows):
+            return f"(*{escape_cpp_name(storage)})"
+        return None
+
     def owning_generator_tuple_locals(self, func: 'TpyFunction') -> set[str]:
         """Generator/async frame locals that are OWNING tuples needing
         `tpy::frame_slot<std::tuple<...>>` storage rather than a raw field.
