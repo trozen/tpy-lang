@@ -3335,9 +3335,16 @@ class CallAnalyzer:
                     )
                     return BOOL
 
-        # str(container) fallback: containers have runtime to_str helpers
+        # str(container) fallback: containers have runtime to_str helpers.
+        # The union arm is gated on every member being renderable -- same
+        # all-members policy as the repr() fallback below -- so a non-renderable
+        # member yields a sema diagnostic rather than a downstream C++ error.
         if record.builtin_type_key == qnames.STR and len(arg_types) == 1:
-            tmpl = container_to_str_template(unwrap_readonly(arg_types[0]))
+            arg0 = unwrap_readonly(arg_types[0])
+            tmpl = container_to_str_template(arg0)
+            if (tmpl is None and isinstance(arg0, UnionType)
+                    and all(_repr_fallback_template(m) is not None for m in arg0.members)):
+                tmpl = "::tpy::__str__({0})"
             if tmpl is not None:
                 expr.resolved_function_info = FunctionInfo(
                     name="str",

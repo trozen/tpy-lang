@@ -12,7 +12,7 @@ void process_dict(const ::tpy::ordered_map<std::string, std::variant<int32_t, st
     if (std::holds_alternative<std::string>(v)) {
         auto& __v = std::get<std::string>(v);
         // print("str:", v)
-        std::cout << "str:" << " " << __v << "\n";
+        std::cout << "str:" << " " << ::tpy::__str__(__v) << "\n";
     }
 }
 
@@ -28,7 +28,7 @@ void process_list(const std::vector<std::variant<int32_t, std::string>>& items) 
         if (std::holds_alternative<std::string>(item)) {
             auto& __item = std::get<std::string>(item);
             // print("str:", item)
-            std::cout << "str:" << " " << __item << "\n";
+            std::cout << "str:" << " " << ::tpy::__str__(__item) << "\n";
         }
     }
 }
@@ -41,7 +41,7 @@ void consume_dict(::tpy::ordered_map<std::string, std::variant<int32_t, std::str
     if (std::holds_alternative<std::string>(v)) {
         auto& __v = std::get<std::string>(v);
         // print("own str:", v)
-        std::cout << "own str:" << " " << __v << "\n";
+        std::cout << "own str:" << " " << ::tpy::__str__(__v) << "\n";
     }
 }
 
@@ -53,7 +53,7 @@ void consume_list(std::vector<std::variant<int32_t, std::string>>&& items) {
     if (std::holds_alternative<std::string>(v)) {
         auto& __v = std::get<std::string>(v);
         // print("own list:", v)
-        std::cout << "own list:" << " " << __v << "\n";
+        std::cout << "own list:" << " " << ::tpy::__str__(__v) << "\n";
     }
 }
 
@@ -155,7 +155,7 @@ void main() {
     if (std::holds_alternative<std::string>(v2)) {
         auto& __v2 = std::get<std::string>(v2);
         // print(v2)
-        std::cout << __v2 << "\n";
+        std::cout << ::tpy::__str__(__v2) << "\n";
     }
     // # Return union list from function
     // items2 = make_list()
@@ -170,7 +170,7 @@ void main() {
         if (std::holds_alternative<std::string>(item)) {
             auto& __item = std::get<std::string>(item);
             // print(item)
-            std::cout << __item << "\n";
+            std::cout << ::tpy::__str__(__item) << "\n";
         }
     }
     // # Container literal inside union value (brace-init needs explicit type)
@@ -182,7 +182,7 @@ void main() {
     if (std::holds_alternative<std::string*>(v3)) {
         auto& __v3 = *std::get<std::string*>(v3);
         // print(v3)
-        std::cout << __v3 << "\n";
+        std::cout << ::tpy::__str__(__v3) << "\n";
     }
     // # List of lists|str
     // mixed: list[list[Int32] | str] = [[10, 20], "hi"]
@@ -193,7 +193,7 @@ void main() {
     if (std::holds_alternative<std::string*>(v4)) {
         auto& __v4 = *std::get<std::string*>(v4);
         // print(v4)
-        std::cout << __v4 << "\n";
+        std::cout << ::tpy::__str__(__v4) << "\n";
     }
     // # Constructor from list of tuples with union values
     // d7 = dict[str, Int32 | str]([("x", "hello"), ("y", 1)])
@@ -204,7 +204,7 @@ void main() {
     if (std::holds_alternative<std::string>(v5)) {
         auto& __v5 = std::get<std::string>(v5);
         // print(v5)
-        std::cout << __v5 << "\n";
+        std::cout << ::tpy::__str__(__v5) << "\n";
     }
     // # Constructor from dict literal with union values
     // d8 = dict[str, Int32 | str]({"p": "hi", "q": 99})
@@ -215,7 +215,7 @@ void main() {
     if (std::holds_alternative<std::string>(v6)) {
         auto& __v6 = std::get<std::string>(v6);
         // print(v6)
-        std::cout << __v6 << "\n";
+        std::cout << ::tpy::__str__(__v6) << "\n";
     }
     // # Constructor from list of tuples with optional values
     // d9 = dict[str, Int32 | None]([("a", 42), ("b", None)])

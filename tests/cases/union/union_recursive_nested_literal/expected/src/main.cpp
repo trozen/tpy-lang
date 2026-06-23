@@ -152,11 +152,11 @@ void main() {
     std::cout << json_keys(__tmp_4) << "\n";
     // # Print recursive unions directly
     // print(x)
-    std::cout << x << "\n";
+    std::cout << ::tpy::__str__(x) << "\n";
     // print(a)
-    std::cout << a << "\n";
+    std::cout << ::tpy::__str__(a) << "\n";
     // print(d)
-    std::cout << d << "\n";
+    std::cout << ::tpy::__str__(d) << "\n";
     // # Global scope
     // print(depth(g))
     std::cout << depth(g) << "\n";

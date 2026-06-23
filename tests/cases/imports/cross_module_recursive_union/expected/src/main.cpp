@@ -31,9 +31,9 @@ void main() {
     // b = pkg_v.make_dict()
     ::tpyapp::pkg_v::V b = ::tpyapp::pkg_v::make_dict();
     // print(a)
-    std::cout << a << "\n";
+    std::cout << ::tpy::__str__(a) << "\n";
     // print(b)
-    std::cout << b << "\n";
+    std::cout << ::tpy::__str__(b) << "\n";
     // print(pkg_v.kind(a))
     std::cout << ::tpyapp::pkg_v::kind(a) << "\n";
     // print(pkg_v.kind(b))

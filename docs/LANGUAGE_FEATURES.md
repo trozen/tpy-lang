@@ -631,7 +631,7 @@ Bool and float use Python-compatible wrappers for default format (no spec):
 - User types with `__str__()`: `f"{obj}"` dispatches to `__str__()`
 - User types with only `__repr__()`: `f"{obj}"`, `str(obj)`, `print(obj)` fall back to `__repr__()` (matches Python)
 - Containers (tuple, list, dict, Array, Span): `f"{container}"`, `f"{container!s}"`, `f"{container!r}"` all stringify using runtime to_str helpers (matches `print()` output)
-- Unions (`A | B`): `repr(u)`, `f"{u}"`, `f"{u!s}"`, `f"{u!r}"` all visit the active variant alternative and dispatch to that member's `__str__` / `__repr__`. Each member must individually be string-renderable.
+- Unions (`A | B`): `print(u)`, `str(u)`, `repr(u)`, `f"{u}"`, `f"{u!s}"`, `f"{u!r}"` all visit the active variant alternative and dispatch to that member's `__str__` / `__repr__`. Each member must individually be string-renderable. (Exception: a recursive-union alias holding a top-level `str` member renders it repr-quoted under `print`/`str` -- see BUGS.md.)
 - `repr(str)` and string elements inside containers (`print([s])`, `print({s})`) emit Python-faithful escape form: outer quotes plus `\\`, `\n`, `\r`, `\t`, the active quote, and `\xNN` for other ASCII control bytes. Quote selection prefers `'`; switches to `"` when the string contains `'` and no `"` (matches CPython).
 - `__str__() -> StrView` is accepted (zero-copy; protocol-safe coercion to `str`)
 

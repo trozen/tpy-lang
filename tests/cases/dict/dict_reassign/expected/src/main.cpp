@@ -29,7 +29,7 @@ void main() {
     if (std::holds_alternative<std::string>(v)) {
         auto& __v = std::get<std::string>(v);
         // print(v)
-        std::cout << __v << "\n";
+        std::cout << ::tpy::__str__(__v) << "\n";
     }
 }
 

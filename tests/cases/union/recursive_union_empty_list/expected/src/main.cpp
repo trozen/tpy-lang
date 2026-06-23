@@ -28,7 +28,7 @@ void main() {
     }
     }
     // print(x)
-    std::cout << x << "\n";
+    std::cout << ::tpy::__str__(x) << "\n";
 }
 
 void __tpy_init() {

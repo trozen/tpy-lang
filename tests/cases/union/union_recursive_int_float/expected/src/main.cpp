@@ -106,9 +106,9 @@ void main() {
     // b = make_float()
     V b = make_float();
     // print(a)
-    std::cout << a << "\n";
+    std::cout << ::tpy::__str__(a) << "\n";
     // print(b)
-    std::cout << b << "\n";
+    std::cout << ::tpy::__str__(b) << "\n";
     // print(kind(a))
     std::cout << kind(a) << "\n";
     // print(kind(b))
@@ -116,19 +116,19 @@ void main() {
     // n = make_null()
     V n = make_null();
     // print(n)
-    std::cout << n << "\n";
+    std::cout << ::tpy::__str__(n) << "\n";
     // print(kind(n))
     std::cout << kind(n) << "\n";
     // xs = make_mixed_list()
     V xs = make_mixed_list();
     // print(xs)
-    std::cout << xs << "\n";
+    std::cout << ::tpy::__str__(xs) << "\n";
     // print(kind(xs))
     std::cout << kind(xs) << "\n";
     // d = make_mixed_dict()
     V d = make_mixed_dict();
     // print(d)
-    std::cout << d << "\n";
+    std::cout << ::tpy::__str__(d) << "\n";
     // print(kind(d))
     std::cout << kind(d) << "\n";
 }

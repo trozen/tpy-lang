@@ -23,12 +23,12 @@ void main() {
     if (std::holds_alternative<int32_t>(r)) {
         auto& __r = std::get<int32_t>(r);
         // print(r)
-        std::cout << __r << "\n";
+        std::cout << ::tpy::__str__(__r) << "\n";
     // else:
     } else {
         auto& __r = std::get<std::string>(r);
         // print(r)
-        std::cout << __r << "\n";
+        std::cout << ::tpy::__str__(__r) << "\n";
     }
     // r2 = parse_int("oops")  # tpyc: type(/Int32 \| str/)
     std::variant<int32_t, std::string> r2 = parse_int("oops");
@@ -36,12 +36,12 @@ void main() {
     if (std::holds_alternative<int32_t>(r2)) {
         auto& __r2 = std::get<int32_t>(r2);
         // print(r2)
-        std::cout << __r2 << "\n";
+        std::cout << ::tpy::__str__(__r2) << "\n";
     // else:
     } else {
         auto& __r2 = std::get<std::string>(r2);
         // print(r2)
-        std::cout << __r2 << "\n";
+        std::cout << ::tpy::__str__(__r2) << "\n";
     }
 }
 

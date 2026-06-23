@@ -8,7 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, IntLiteralType,
+    TpyType, IntLiteralType, UnionType,
     NominalType, OptionalType, NoneType, TypeParamRef, TypeParamKind, FunctionInfo, RecordInfo,
     ListRepeatType,
     TupleType, OwnType, is_protocol_type, unwrap_readonly, is_any_str_type, is_any_bytes_type,
@@ -433,6 +433,11 @@ class BuiltinGenerator:
                 # enums keep the raw-emit path below (their operator<< is
                 # still emitted; preserves existing behavior).
                 parts.append(f'::tpy::__repr__({self._gen_expr_deref(arg)})')
+            elif isinstance(arg_type, UnionType):
+                # std::variant has no operator<<; route through the runtime
+                # visitor that dispatches __str__ per active alternative
+                # (same path the f-string formatter uses).
+                parts.append(f'::tpy::__str__({self._gen_expr_deref(arg)})')
             else:
                 # FixedInt, Char, Bool, literals, etc. - direct output
                 expr_code = self._gen_expr_deref(arg)

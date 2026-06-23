@@ -63,7 +63,7 @@ void main() {
     // t: Tree = [1, [2, 3]]
     Tree t = std::vector<Tree>{1, std::vector<Tree>{2, 3}};
     // print(t)
-    std::cout << t << "\n";
+    std::cout << ::tpy::__str__(t) << "\n";
     // # Second cycle group: construct Neg (implicit __init__)
     // n = Neg(Box(42))
     Neg n = Neg(::tpystd::tplib::box::Box<Value>(42));
