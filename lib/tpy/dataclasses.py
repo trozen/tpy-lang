@@ -64,6 +64,14 @@ def dataclass(cls: ClassInfo, *, frozen: bool = False, order: bool = False) -> N
             )
         _validate_field_order(cls, all_fields)
         init_fn = build_init(cls, parent_fields, cls.fields)
+        # CPython's generated __init__ ends with self.__post_init__().
+        # Own-only check (not inherited): build_init chains super().__init__(),
+        # which already runs an inherited __post_init__ once, so appending here
+        # for an inherited hook would double-call it under TPy's static dispatch.
+        if cls.has_method("__post_init__"):
+            init_fn.body.append(
+                ast.expr_stmt(ast.method_call(ast.name("self"), "__post_init__"))
+            )
         cls.add_method(init_fn)
 
     # Synthesize __eq__ (silently skipped when the user wrote one).

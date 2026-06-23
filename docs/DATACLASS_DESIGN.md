@@ -14,7 +14,7 @@
 | Feature | Notes |
 |---------|-------|
 | `__repr__` auto-generation | Done. Generates `__repr__` returning `TypeName(field=value, ...)` format; `operator<<` delegates to it |
-| `__post_init__` | 1 use in compiler source (`Scope` sets `self.depth` from parent). Low priority |
+| `__post_init__` | Done. Synthesized `__init__` calls `self.__post_init__()` after setting fields. No `InitVar` args yet; a child overriding a parent's hook double-calls (BUGS.md) |
 | `field(default_factory=...)` | Done. `field(default=X)` and `field(default_factory=X)` where X is a Default-constructible type |
 | `field(kw_only=True)` | 2 uses in compiler source. Low priority |
 | `order=True` | Done. `@dataclass(order=True)` generates `operator<=>` via `std::tie` for lexicographic field comparison |

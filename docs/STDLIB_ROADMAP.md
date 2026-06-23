@@ -137,7 +137,7 @@ Examples of the policy in action:
 | [`struct`](#struct) | P1 | Partial | ~60% | macro | unpack/calcsize only; `pack` needs statement-expr or buffer builder |
 | [`bisect`](#bisect) | P1 | Done | 100% | pure | All four functions implemented generically over `Comparable` |
 | [`enum`](#enum) | P1 | Partial | ~50% | macro | Enum/IntEnum/auto; missing functional API, lookup by name/value, iteration |
-| [`dataclasses`](#dataclasses) | P1 | Partial | ~75% | macro | frozen/order/inheritance/asdict/astuple; missing InitVar, __post_init__, replace(), metadata |
+| [`dataclasses`](#dataclasses) | P1 | Partial | ~80% | macro | frozen/order/inheritance/asdict/astuple/__post_init__; missing InitVar, replace(), metadata |
 | [`typing`](#typing) | P1 | Partial | ~60% | native | Protocols/Sized/Iterator/TypedDict/Unpack; missing Generic, TypeVar, ParamSpec, ClassVar |
 | [`datetime`](#datetime) | P1 | Missing | 0% | -- | Class-heavy; needs timedelta arithmetic and timezone handling |
 | [`csv`](#csv) | P1 | Partial | ~70% | pure | `reader` / `writer` (list[str] rows) + `DictReader` / `DictWriter` (dict[str, str] rows) over the io `Readable`/`Writable` protocols. Excel default dialect + delimiter/quotechar/doublequote/skipinitialspace/lineterminator kwargs; writer is QUOTE_MINIMAL. CPython byte-compatible. DictWriter matches CPython's write-side defaults (restval="" for a missing field, ValueError for a key not in fieldnames). Missing: escapechar, quoting constants, Dialect objects/register_dialect, Sniffer, DictReader restval/restkey (short rows pad "", long rows drop extras -- dict[str,str] can't hold None or a list), DictWriter extrasaction='ignore' |
@@ -943,8 +943,8 @@ Current: `lib/tpy/dataclasses.py` -- macro module.
 | `@dataclass(slots)` | N/A | All TPy records use inline storage |
 | `@dataclass(eq=False, repr=False, init=False)` | Missing | Opt-outs |
 | `@dataclass(kw_only)` | Missing | |
-| `__post_init__` | Missing | |
-| `InitVar[T]` | Missing | |
+| `__post_init__` | Done | Called once at end of synthesized `__init__`; no InitVar args yet. Double-call edge when a child overrides a parent hook (BUGS.md) |
+| `InitVar[T]` | Missing | Blocks passing init-only args to `__post_init__` |
 | `replace(obj, **kw)` | Missing | Would be a call macro |
 | `fields(cls)`, `is_dataclass` | Missing | Needs compile-time or runtime reflection |
 | `field(metadata=...)` | Missing | Currently ignored |

@@ -281,7 +281,6 @@ Features needed:
 - Auto-generated `__init__` from field declarations
 - `frozen=True` (immutable instances)
 - `field(default=...)` and `field(default_factory=...)`
-- `__post_init__` (1 use: `Scope` sets `self.depth` from parent)
 - `field(kw_only=True)` (2 uses: `TpyExpr.loc`, `TpyStmt.loc`)
 - `__eq__` and `__hash__` auto-generation (frozen types)
 
