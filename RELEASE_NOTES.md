@@ -1,5 +1,112 @@
 # Release Notes
 
+## 0.4.0 (2026-06-24)
+
+235 commits since 0.3.0.
+
+### Language and compiler
+
+- **Send/Sync marker layer** (concurrency vocabulary): `Send`/`Sync`
+  markers with auto-derivation, marker bounds on type params, a
+  diagnostic surface naming the offending capture in a conversion
+  chain, and the first enforcement site (`Channel[T: Send]`).
+- **`__move__` dunder and movability trait**: a propagated movability
+  trait, the `@nomove` opt-out, `nothrow __move__`, and restored
+  `ArrayList` movability.
+- **Borrow/storage form unification** (audit #9): a single
+  form-conversion chokepoint, non-value tuple elements unified on the
+  `T*` pointer form, owning/alias mixes accepted for reassigned
+  borrow-form locals, and the B41 union-tuple-element conversion --
+  closing a long tail of silent-copy and aliasing bugs at `yield` /
+  `return` / unpack boundaries.
+- **Comprehension ownership**: owned elements now *move* out of
+  list/set/dict and filtered comprehensions instead of copying;
+  per-iteration temps are scoped to the loop body; fixed-size
+  comprehensions build by aggregate construction.
+- **Safety/borrow checker hardening**: closed forward-reference and
+  liveness-invisible holes in the auto-move borrow gate, closed
+  view-lifetime dangling holes (audit #10), missing-return
+  enforcement with implicit `None`, sound flow-fact kills at loops /
+  handlers / `finally` / calls, and warnings for stale value-capture
+  in escaping closures.
+- **Provenance consolidation**: six name-keyed escape/ownership fact
+  sets unified into one `BindingProvenance` record merged by a single
+  lattice-driven routine (the proto-`LoanInfo` for the IR migration).
+- **`match` fixes**: the Optional-match / arm-dispatch lowering
+  cluster, pointer-repr Optional capture with guarded ref arms, and
+  copy-vs-dangle handling of arm bindings.
+- **Reflected operators** (`__radd__` & friends) emitted as friend
+  operators; `@dataclass __post_init__` now called from the
+  synthesized `__init__`; `print`/`str` of a union value routed
+  through the variant `__str__` visitor; user `ValueType` classes
+  made immutable; subclass `__init__` fields auto-declared.
+- **Frontend plugin (DSL) IR maturation**: decorator registry with
+  native lowering and `macro_data`, ternary / `AugAssign` nodes,
+  method-call kwargs threaded through lowering, `Record.base` into
+  `TpyRecord.bases`, overload groups.
+- **Macros**: a deferred post-sema phase for `@function_macro`, plus
+  richer compile-time introspection (`lookup_imported_name`,
+  `enum_members`, `lookup_function_signatures`, shared type
+  introspection) for function macros.
+- **Cross-module identity**: type identity resolved by qname
+  (triage #13); qualified + aliased cross-module generic recursive
+  aliases; container literals coerced into cross-module recursive
+  unions.
+- Fixes: the `@overload`-ed generator compiler crash, `cpp_template`
+  brace-aware expansion with `{{`/`}}` escaping, and a generic-overload
+  link bug.
+
+### Library
+
+- **asyncio v2**: an epoll I/O reactor (Linux) and kqueue + self-pipe
+  backend (macOS) with socket CPython parity, `sock_accept` /
+  `sock_connect`, a client streams layer (`open_connection`,
+  `StreamReader`/`StreamWriter`), `start_server`, graceful SIGINT
+  shutdown, and the sync primitives `Lock`, `Semaphore`,
+  `BoundedSemaphore`, and `Queue[T]`.
+- **`os` / `os.path`**: a substantial new surface -- `scandir`,
+  `walk` (top-down, bottom-up, `onerror`), low-level fd I/O,
+  filesystem mutators, `stat`, `environ`, `urandom`, system info,
+  terminal size, and a pure-TPy POSIX `os.path` (`expanduser`,
+  `realpath`, `relpath`, `commonpath`, `normcase`, ...).
+- **New stdlib modules**: `itertools` v1
+  (count/repeat/cycle/islice/...), `collections.Counter` v1, `csv` v1
+  (reader/writer + `DictReader`/`DictWriter`), and `heapq.merge`.
+- **Additions**: `io.read(size)` and `SEEK_*`, `json` `load(fp)` /
+  `dump(obj, fp)`, `sys.byteorder` / `maxsize` / `maxunicode`,
+  `re.sub` count + a UTF fix and lazy `re.finditer`, and more builtin
+  exception types.
+
+### Tooling and packaging
+
+- **macOS portability**: `signal` / `os` stdlib and the async reactor
+  now compile and run on macOS; the platform-support pattern is
+  documented with Windows (H3) on the roadmap.
+- **Test harness**: a content-addressed local exec-result cache (a
+  fresh checkout self-verifies once then caches; `--force-exec` no
+  longer needed for routine runs), a `--cxx` toolchain switch,
+  `tpy|`-prefixed harness output, and per-case binary cleanup.
+- Runtime: fixed a `UninitArrayStorage` move use-after-free and added
+  a `nothrow`-asserted `UninitStorage` slot.
+
+### Known issues
+
+These are tracked in `BUGS.md`; the borrow/lifetime cluster is the
+primary motivation for the upcoming THIR/MIR migration, which replaces
+the current string-keyed checks with a place/loan model. Highlights a
+user may hit:
+
+- **Operand evaluation order** in a two-operand binary expression is
+  right-to-left, diverging from CPython's left-to-right when both
+  operands have side effects.
+- **Escaping closures** capture loop variables / in-place mutations by
+  value-snapshot rather than aliasing, diverging from CPython.
+- **Enum string surface**: `str(enum)` is rejected and `f"{enum}"`
+  prints the underlying int (a design pass is pending).
+- A few **narrow generator / borrow shapes** can copy-instead-of-
+  reference or dangle; each has a documented workaround in `BUGS.md`
+  and is targeted by the IR migration's region checker.
+
 ## 0.3.0 (2026-06-04)
 
 285 commits since 0.2.0. First stable release published to PyPI as
