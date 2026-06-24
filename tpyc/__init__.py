@@ -33,7 +33,7 @@ def get_docs_dir() -> Path:
 
 # Defined before sub-module imports so that macro_api (imported via sema)
 # can re-export them without hitting a circular-import partial-init state.
-__version__ = "0.4.0"
+__version__ = "0.5.0.dev0"
 
 
 def _parse_version_info(v: str) -> tuple[int, int, int, str, int]:
