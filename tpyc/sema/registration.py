@@ -2144,7 +2144,14 @@ class TypeRegistrar:
             parent_info = self.ctx.registry.get_record_for_type(init_parent)
             record_info.has_init = True
             record_info.inherits_init_from = init_parent
-            record_info.init_params = list(parent_info.init_params)
+            # A generic-base instantiation (`Base[14]`) carries the type args,
+            # so substitute its params into the inherited init params (the
+            # substitution is empty for a non-generic base -- a verbatim copy).
+            subst = self.type_ops.build_type_substitution(init_parent)
+            record_info.init_params = [
+                (name, self.type_ops.substitute_type_params(ptype, subst), default)
+                for (name, ptype, default) in parent_info.init_params
+            ]
 
         # Auto-declare fields from `self.f = param` in this record's OWN
         # __init__. Base-less classes are handled at parse time; a class WITH
@@ -2588,7 +2595,12 @@ class TypeRegistrar:
             parent_info = self.ctx.registry.get_record_for_type(parent)
             if parent_info is None or not parent_info.has_init:
                 continue
-            if parent_info.type_params:
+            # A generic parent is inheritable only as a concrete instantiation
+            # (`class Sub(Base[14])`): the type args then substitute the init
+            # params to concrete types at the copy site. A bare/unbound generic
+            # base would leak unsubstituted params, so it stays excluded.
+            if parent_info.type_params and (
+                    len(parent.type_args) != len(parent_info.type_params)):
                 return None
             if found is not None:
                 return None

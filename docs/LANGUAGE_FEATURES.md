@@ -4228,8 +4228,9 @@ struct Dog : Animal {
   `Base.__init__` as long as `Mixin` contributes no `__init__` of its own
   (CPython's MRO ctor lookup, with sister bases default-constructing). Two or
   more init-bearing parents stay rejected -- define `C.__init__` and invoke
-  each base explicitly. Generic parents are not yet supported -- declare the
-  child's `__init__` explicitly when inheriting from `class A[T]`.
+  each base explicitly. A generic-base instantiation works too: `class Sub(Base[14])`
+  inherits `Base`'s `__init__` with the base's type params substituted from the
+  instantiation. A bare unbound generic base (`class Sub(Base)`) is still rejected.
 - Method override works by simply defining a method with the same name
 - Inherited fields and methods are accessible via `self.field` and `self.method()`
 - Use `@override` (from `typing`) to explicitly annotate overrides -- errors on typos,

@@ -71,6 +71,38 @@ def test_repl_headers_written_where_codegen_includes_them():
     )
 
 
+def test_repl_should_accumulate_skips_bare_expressions():
+    # A bare expression is a query the REPL auto-prints; it binds nothing and
+    # must not be replayed into later compiles. A bare brace-init literal
+    # replayed as a statement (`{1, 2, 3};`) is invalid C++ and used to poison
+    # the whole session (every later input failed to build). Walrus is the
+    # exception -- it binds a name that has to persist.
+    session = REPLSession(lib_dirs=_lib_dirs())
+    # Bare expressions: not accumulated. A call stays excluded even with a
+    # nested walrus -- replaying its side effect is worse than losing the bind.
+    for src in ("[1, 2, 3]", "{1, 2, 3}", "{1: 2}", "42", '"hi"', "x + 1",
+                "print(x)", "xs.append(3)", "f((z := 3))"):
+        assert session._should_accumulate(src) is False, src
+    # Bindings / definitions: accumulated.
+    for src in ("x = 5", "(y := 5)", "import math", "from math import sqrt",
+                "def f(n: int) -> int:\n    return n"):
+        assert session._should_accumulate(src) is True, src
+
+
+def test_repl_bare_expression_does_not_poison_session():
+    # End-to-end at the session level (no C++ build): an auto-printed bare
+    # list literal must leave `accumulated_lines` untouched, while a real
+    # assignment is remembered.
+    session = REPLSession(lib_dirs=_lib_dirs())
+    session._backend = _CapturingBackend()
+    before = list(session.accumulated_lines)
+    session._process_input("[1, 2, 3]")
+    assert session.accumulated_lines == before, (
+        "bare list literal was accumulated and would poison later inputs")
+    session._process_input("z = 7")
+    assert "z = 7" in session.accumulated_lines
+
+
 def test_repl_written_paths_match_include_path_map():
     # Stronger invariant: for every compiled module, the written header path
     # equals module_to_include_path() resolved under the active compiler --

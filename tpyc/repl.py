@@ -309,6 +309,18 @@ class REPLSession:
             if not tree.body:
                 return False
 
+            # A lone expression statement binds nothing and must not be
+            # replayed into later compiles -- a bare brace-init literal
+            # (`{..};`) is invalid C++ as a statement and poisons the session.
+            # A call still must not replay its side effect; otherwise keep it
+            # only when it binds via walrus.
+            if len(tree.body) == 1 and isinstance(tree.body[0], ast.Expr):
+                value = tree.body[0].value
+                if isinstance(value, ast.Call):
+                    return False
+                return any(isinstance(n, ast.NamedExpr)
+                           for n in ast.walk(value))
+
             for stmt in tree.body:
                 if isinstance(stmt, ast.Expr) and isinstance(stmt.value, ast.Call):
                     return False
