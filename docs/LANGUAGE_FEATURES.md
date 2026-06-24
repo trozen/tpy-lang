@@ -5829,6 +5829,41 @@ appears in *logic* rather than in a constant or a syscall wrapper. Tracked in
 
 ---
 
+## CPython Extensions (Partial)
+
+The inverse of native interop: a TPy module compiled to a `.so` that ordinary
+CPython can `import`. Full design in `docs/CPYTHON_INTEROP.md` (abi3 / limited
+API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
+
+- **Working (model)**: a module marked `# tpy: ext_module` exports its
+  `@export`-ed functions to the host interpreter. Inside an `ext_module`,
+  `@export` means "expose to CPython" (it generates a wrapper + `PyMethodDef`
+  entry); the function itself stays an ordinary TPy function. Conflicting
+  forms (`@export(binding="C")`, a positional name) are compile errors.
+  Codegen emits an extension glue TU (`PyMethodDef` / `PyModuleDef` /
+  `PyInit_<module>`) beside the normal module `.cpp`. The boundary uses a
+  hand-mirrored limited-API facade (`tpy/interop/cpython_h.hpp`) so no
+  `Python.h` enters a generated TU; the `.so` links with undefined Python
+  symbols (no libpython) resolved at import.
+- **Working (`Int64` + `int`)**: functions taking and returning `Int64`
+  (rung 1, `METH_VARARGS` + `PyArg_ParseTuple` with `from_py` owning every
+  conversion) and `int`/BigInt (rung 2, a two-tier int64 fast path + hex
+  string round-trip, so values beyond int64 cross losslessly). Args are
+  coerced via `__index__`; marshalling failures raise the right Python
+  exception (`OverflowError` for an out-of-`Int64`-range int, `TypeError` for
+  a non-integer). Verified end to end in `tests/interop/` (ext-exec ==
+  cpy-parity for happy paths; ext-only checks for the bounded-`Int64`
+  divergences).
+- **Planned**: other scalar types (`float`, other fixed-width ints, `bool`,
+  `str`/`bytes`), built-in/user exceptions across the boundary, classes
+  (`PyType_FromSpec`), enums/constants, buffer input, the PEP 517 wheel
+  backend, and the `nogil` GIL capability. See `docs/CPYTHON_INTEROP.md`.
+- **Not yet**: the `.so` build is currently driven by
+  `tests/interop/verify.sh`; a first-class `tpyc` ext build-output mode
+  and the snapshot-harness `ext-exec` variant are the next step.
+
+---
+
 ## Variables & Scope
 
 - **Working**: Local variables (inferred and annotated)

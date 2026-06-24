@@ -1,0 +1,1 @@
+main.py:8: error: inside an `# tpy: ext_module`, @export exposes to CPython; remove binding="C"

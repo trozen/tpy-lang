@@ -208,6 +208,7 @@ _DIRECTIVE_LINE_RE = re.compile(r'^#\s*tpy:\s+(\w.+)$')
 _DIRECTIVE_SPECS: dict[str, tuple[list[type], dict[str, type]]] = {
     "native_module":     ([], {}),
     "macro_module":      ([], {}),
+    "ext_module":        ([], {}),
     "include":           ([str], {"platform": str}),
     # link: raw `-lfoo` by default; `managed=True` routes through the
     # third-party registry (tpyc/build/third_party.py) for bundled/system/
@@ -276,6 +277,7 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
     link_libs: list[tuple[str, str | None]] = []
     third_party_deps: list[tuple[str, str | None]] = []
     native_module = False
+    ext_module = False
     cpp_namespace: str | None = None
     warnings: list[ParseWarning] = []
 
@@ -311,6 +313,8 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
 
         if name == "native_module":
             native_module = True
+        elif name == "ext_module":
+            ext_module = True
         elif name == "include":
             includes.append((args[0], kwargs.get("platform")))
         elif name == "link":
@@ -335,6 +339,7 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
         includes=includes, link_libs=link_libs,
         third_party_deps=third_party_deps,
         native_module=native_module,
+        ext_module=ext_module,
         cpp_namespace=cpp_namespace,
     ), warnings
 
@@ -2501,6 +2506,7 @@ class Parser:
         builtin_function_key: str | None = None
         type_param_defaults: dict[str, str] = {}
         linkage = FunctionLinkage.DEFAULT
+        exposed_to_host = False
         native_name: str | None = None
         cpp_template: str | None = None
         native_cpp_return_type: str | None = None
@@ -2540,6 +2546,26 @@ class Parser:
             elif qname == qnames.BUILTIN_FUNCTION:
                 builtin_function_key = pos
             elif qname in self._FUNCTION_LINKAGE_MAP:
+                # Inside an `# tpy: ext_module`, @export means "expose to the
+                # host CPython module" (a generated wrapper + PyMethodDef
+                # entry), NOT extern "C". The function keeps DEFAULT linkage;
+                # the glue is separate. Conflicting forms are loud errors so
+                # the context-dependent meaning can never silently miscompile.
+                if qname == qnames.EXPORT and self._directives.ext_module:
+                    # binding first so @export(binding="C") gets the tailored
+                    # message when the decorator schema is available; a
+                    # kwargs-marker tuple (schema absent) still rejects below.
+                    if kw.get("binding"):
+                        raise ParseError(
+                            'inside an `# tpy: ext_module`, @export exposes to '
+                            'CPython; remove binding="C"', dec)
+                    if (isinstance(pos, str) and pos) or isinstance(pos, tuple):
+                        raise ParseError(
+                            'inside an `# tpy: ext_module`, @export must be bare '
+                            '(it exposes the function to CPython and takes no '
+                            'arguments)', dec)
+                    exposed_to_host = True
+                    continue
                 new_linkage = self._FUNCTION_LINKAGE_MAP[qname]
                 if linkage != FunctionLinkage.DEFAULT:
                     old_name = self._LINKAGE_DISPLAY_NAMES.get(linkage, linkage.value)
@@ -2770,6 +2796,7 @@ class Parser:
             is_pure=is_pure,
             is_overload_stub=is_overload_stub,
             linkage=linkage,
+            exposed_to_host=exposed_to_host,
             native_name=native_name,
             native_cpp_return_type=native_cpp_return_type,
             cpp_template=cpp_template,

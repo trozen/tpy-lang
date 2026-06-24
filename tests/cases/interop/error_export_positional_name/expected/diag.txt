@@ -1,0 +1,1 @@
+main.py:7: error: inside an `# tpy: ext_module`, @export must be bare (it exposes the function to CPython and takes no arguments)

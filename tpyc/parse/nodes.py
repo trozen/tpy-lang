@@ -1309,6 +1309,10 @@ class TpyFunction:
     native_name: str | None = None
     native_function: bool = False
     native_preserves_refs: bool = False
+    # Set when @export is applied inside an `# tpy: ext_module`: the function
+    # stays DEFAULT linkage (an ordinary TPy function) but the extension glue
+    # generator emits a CPython wrapper + PyMethodDef entry for it.
+    exposed_to_host: bool = False
     # @copy_returns_warn: Own[V] accessor that copies where its CPython
     # namesake aliases, so sema warns at call sites.
     copy_returns_warn: bool = False
@@ -1561,6 +1565,9 @@ class ModuleDirectives:
     # link flags, and CMake snippets based on the user's selected mode.
     third_party_deps: list[tuple[str, str | None]] = field(default_factory=list)
     native_module: bool = False
+    # CPython extension module: @export exposes to the host interpreter and
+    # the build emits a PyInit_-exporting .so instead of an executable.
+    ext_module: bool = False
     # Override C++ namespace (replaces tpyapp::module_name)
     cpp_namespace: str | None = None
 

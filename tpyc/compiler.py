@@ -1069,6 +1069,10 @@ class Compiler:
         # <peer>_fwd.hpp in the header path.
         self._cycle_peers: dict[str, frozenset[str]] = {}
         self.compile_order: list[str] = []
+        # Generated CPython extension glue .cpp paths (one per ext_module),
+        # collected here during codegen for the build driver to add to the
+        # link set after the per-module generation loop.
+        self._ext_glue_cpp_paths: list[Path] = []
         self.shadowed_builtins: dict[str, set[tuple[str, int | None]]] = {}
         self.diagnostics: list[Diagnostic] = []
         self._source_input: tuple[str, str] | None = None
@@ -3752,6 +3756,13 @@ class Compiler:
         cpp_path.parent.mkdir(parents=True, exist_ok=True)
         cpp_path.write_text(cpp_code)
 
+        # The glue TU joins the link set via collect_ext_glue_paths().
+        if compiled.ast.directives.ext_module:
+            glue_code = codegen.generate_extension_glue(compiled.ast, mod_name)
+            glue_path = cpp_path.with_name(f"{cpp_path.stem}_ext.cpp")
+            glue_path.write_text(glue_code)
+            self._ext_glue_cpp_paths.append(glue_path)
+
         return hpp_path, cpp_path
 
     def generate_code_to_strings(self, compiled: CompiledModule,
@@ -3963,6 +3974,16 @@ class Compiler:
                     ip_map[name] = new_path
 
         return ip_map
+
+    def collect_ext_glue_paths(self) -> list[Path]:
+        """Generated CPython extension glue .cpp paths, to add to the link set
+        after the per-module codegen loop (populated in _generate_code_impl)."""
+        return list(self._ext_glue_cpp_paths)
+
+    def is_ext_module_build(self) -> bool:
+        """True if any compiled module is a `# tpy: ext_module` -- the build
+        emits a PyInit_-exporting .so instead of an executable."""
+        return any(c.ast.directives.ext_module for c in self.modules.values())
 
     def collect_link_flags(self) -> list[str]:
         """Collect -l linker flags from all compiled modules' link directives.

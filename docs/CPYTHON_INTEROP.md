@@ -1,11 +1,11 @@
 # CPython Interop -- Design
 
-**Status: exploratory.** Captures a design discussion, not a committed
-spec. No code exists yet. The goal is to agree the shape before any
-`/tpy-add-feature` pass. Companion to `PROJECT_TOOLING_DESIGN.md`, which
-reserves the *tooling* hooks (the `ext` target kind + TPy as a PEP 517
-build backend); this doc is about the *interop semantics* that doc
-deliberately defers.
+**Status: v1.0 in progress.** rungs 0-2 (free functions over `Int64` and
+`int`/BigInt) are implemented -- see "v1.0 resolved design" below and
+`tests/interop/`; the rest of this doc is the agreed design ahead of
+implementation. Companion to `PROJECT_TOOLING_DESIGN.md`, which reserves the
+*tooling* hooks (the `ext` target kind + TPy as a PEP 517 build backend);
+this doc is about the *interop semantics* that doc deliberately defers.
 
 This is distinct from `NATIVE_INTEROP.md` (the `@native` system, which
 declares C++ functions/types visible to TPy). CPython interop is the
@@ -48,8 +48,8 @@ progress -> ✅ done.
 
 | Phase | Deliverable | Scope | Status |
 |---|---|---|---|
-| 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🔬 |
-| 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🔬 |
+| 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🚧 `Int64` + `int`/BigInt marshalling done |
+| 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 rungs 0-2 (Int64/int args + return) done |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | 🔬 |
 | 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🔬 |
@@ -61,6 +61,152 @@ progress -> ✅ done.
 
 The keystone is **phase 1** (marshalling layer + facade); it unlocks
 everything else and is the natural `/tpy-add-feature` entry point.
+
+## v1.0 resolved design (grilling pass, 2026-06-24)
+
+A design-interview pass over phases 1-3 resolved the open shape questions
+and reframed the build as a single **vertical thread** (one function
+imported from CPython, end to end) rather than a marshalling layer built in
+a vacuum. Confirmed against the current `tpyc` sources: the THIR migration
+is **active but isolated** -- it lives on a parallel feature branch
+(`thir-increment-1`, off the 0.4.0 freeze, not on master), is **dual-mode /
+off-by-default / eligibility-gated** (only a narrow value-scalar slice
+routes through THIR; everything else stays on the AST path), and has not
+merged to master. On master, codegen is still AST-driven and every surface
+this work touches -- the `(hpp, cpp)` `generate()` contract +
+`generate_fwd_header` sibling, `all_cpp_paths`, `ModuleDirectives` /
+`_DIRECTIVE_SPECS`, `FunctionLinkage` / `RecordLinkage`, the string-keyed
+`BorrowTracker` -- is stable there. v1.0 stays IR-independent by design
+(copy-in, no foreign-borrow primitive). The interop compiler footprint (a
+sibling `generate_extension_glue()` plus parser hooks) barely overlaps
+THIR's body-lowering seam (an early return in `StatementGenerator.gen_body`
+keyed by `id(func)`), so the real cost of the two parallel branches is
+**branch coordination, not architectural conflict** -- whichever merges to
+master first, the other reconciles mechanically, and interop just becomes
+part of the corpus THIR's byte-identical net must preserve. (Post-v1.0,
+interop's deferred zero-copy foreign-borrow converges with THIR's form
+design -- the same long pole.)
+
+### The slice-1 ladder (build in this order)
+
+- **Rung 0 -- `def answer() -> Int64: return 42`** (`METH_NOARGS`). The
+  thinnest import: exercises `ext_module`, `@export`, the glue TU,
+  `PyMethodDef` / `PyModuleDef` / `PyInit_`, the `.so` build, import, and
+  `to_py(int64) -> PyLong`, with **zero argument marshalling**.
+- **Rung 1 -- `def add(a: Int64, b: Int64) -> Int64`** (`METH_VARARGS`).
+  Adds `from_py<int64>` (`PyLong_AsLongLong` + overflow -> `OverflowError`).
+- **Rung 2 -- `int` / BigInt marshalling**, on its own (see below). TPy
+  `int` is BigInt, whose `PyLong <-> BigInt` path is the *hardest*, not the
+  easiest -- so it is deliberately last, not the lead.
+
+### Locked decisions
+
+- **First milestone is the vertical thread, not the marshalling layer
+  alone** -- a `to_py`/`from_py` layer with no caller cannot be validated;
+  the cheapest way to be wrong about a C-API detail is to not run it.
+- **Packaging (PEP 517 / wheel) is a separate, later milestone** (the
+  existing phase 2.5) -- disjoint failure surface from interop correctness;
+  the test harness builds the `.so` via `tpyc` directly, so the verification
+  path never goes through packaging anyway.
+- **Trigger: the `# tpy: ext_module` directive** (a 3-line `_DIRECTIVE_SPECS`
+  addition), not a CLI flag -- "this module is a CPython extension" is a
+  code-coupled fact. Naming is filename-derived: `foo.py -> PyInit_foo ->
+  foo.so`.
+- **Exposure: bare `@export`, anchored by `ext_module`.** `@export` means
+  "this module's public *foreign* surface"; the module kind picks the ABI
+  (normal -> `extern "C"`; `ext_module` -> generate the Python wrapper).
+  Conflicting forms inside an `ext_module` (e.g. `binding="C"`) are **loud
+  compile errors**, so the reinterpretation can never silently miscompile.
+  Recorded as an `exposed_to_host` marker **on the function AST node**
+  (linkage stays `DEFAULT`; the function is a normal TPy function, the
+  wrapper is separate) -- the IR-aligned placement that lowers to a THIR
+  field. No new `RecordLinkage.EXPORT` until classes (phase 4).
+- **Marshalling is three layers**, not one: (1) the **generated
+  per-function wrapper** (the glue TU); (2) **hand-written C++ template
+  per-type marshallers** `tpy::interop::from_py<T>` / `to_py` in the runtime
+  facade, selected by codegen emitting the C++ type name it already knows
+  (no per-type `if`-chain in codegen); (3) the **`@native`
+  `lib/tpy/_bindings/cpython.py`** raw C-API bindings, reserved for the
+  TPy-written library-type side (`PyRef`/registry/`PyType_FromSpec`), *not*
+  the hot per-arg path.
+- **Error path: NULL/-1 sentinel + a `try/catch` boundary scaffold built in
+  slice 1** even though `answer`/`add` cannot raise (retrofitting the
+  try/catch into every wrapper later is a rewrite). The scaffold also maps
+  **built-in TPy exceptions -> their `PyExc_*` counterparts via a runtime
+  C++ table** (free: `raise<E>()` already throws a catchable `BaseException`,
+  no runtime change). User-defined exception *classes*, `@error_return`
+  Err->raise, and panic->exception are **deferred** (the last needs the
+  macro-gated throwing `TpyPanic` runtime change).
+- **Build mode** reuses the existing compile/link path + `--no-main`; Python
+  include dir via in-process `sysconfig`; `-DPy_LIMITED_API=0x030c0000`
+  **from the first `.so`** (so a non-stable symbol is a compile error, never
+  a retrofit); **Linux-only** for slice 1 (undefined Python symbols resolve
+  at import; macOS `-undefined dynamic_lookup` is a small additive follow via
+  a per-platform link-flag table); bare `<module>.so` (the `.abi3.so` tag is
+  a packaging concern). The glue `.cpp` joins `all_cpp_paths`.
+- **GIL: dropped from slice 1 entirely.** With no `nogil` and no user-facing
+  `PyRef` (Q3), a `gil_held` flow-fact is a tautology that produces zero
+  diagnostics. The only invariant kept: cpython bindings stay
+  **metadata-declarable**, so `requires_gil` slots in when `nogil` is built.
+  That property -- not a no-op check now -- is what keeps `nogil` "purely
+  additive."
+- **Facade: hand-mirrored `tpy/interop/cpython_h.hpp`, no `Python.h` in any
+  real TU.** The marshalling helpers intrinsically mix `tpy` types and
+  `PyObject*`, so the facade buys real macro-collision safety exactly there,
+  not just hygiene. Guard the hand-mirrored struct layouts with a
+  **`static_assert` self-check TU that includes real `Python.h`**, compiled
+  as a build-time test and never linked into the shipped `.so`. Slice-1
+  symbol set is small and all stable-ABI: opaque `PyObject`, `PyMethodDef`,
+  `PyModuleDef`, `PyModule_Create`, `PyArg_ParseTuple`, `PyLong_*`,
+  `PyErr_SetString`, `PyExc_*`. (`Py_buffer` waits for phase 3.)
+- **Verification: two runs, identical driver.** A plain `driver.py`
+  (`import main; print(main.add(2, 3))`) runs unchanged against both the
+  built `.so` (new **ext-exec** variant) and the TPy *source* interpreted by
+  CPython (`# tpy: ext_module` is a comment, `@export` resolves to a
+  `lib/cpy` identity stub) -- giving TPy-vs-CPython parity for free. Build
+  the thread with a **throwaway script first** (de-risk the `.so` build in
+  hours), *then* harnessify. Defer the exec-cache extension; guard CPython
+  >= 3.12. Action item: verify the `lib/cpy` `@export` stub works bare in an
+  ext module.
+- **Glue mechanics:** single-phase init (`PyInit_` returns
+  `PyModule_Create`, calling `__tpy_init` for module globals);
+  `METH_VARARGS` (defer `METH_FASTCALL`); `PyArg_ParseTuple` only splits the
+  tuple into `PyObject*` slots (`"OO..."`), and **`from_py<T>` owns every
+  conversion -- never format codes** (format codes don't generalize to
+  BigInt/records/str and would create a second, competing marshalling path).
+
+### Rung 2 -- BigInt marshalling under the 3.12 limited API
+
+The limited API hides the fast bigint paths (`_PyLong_From/AsByteArray` are
+private; `PyLong_As/FromNativeBytes` are 3.13+, below the floor), so the
+design is **two-tier** both directions:
+
+- **Fast path (the common case):** `PyLong_AsLongLongAndOverflow` /
+  `BigInt::to_i64_checked` -- near-native for values that fit int64.
+- **Slow path (genuine bigints): hex string round-trip, not decimal.**
+  Decimal is poisoned by CPython's `int_max_str_digits` guard (default 4300
+  digits -- `PyObject_Str` on a larger int *raises*, a silent parity cliff);
+  power-of-2 bases are exempt. In: `PyNumber_ToBase(obj, 16)` ->
+  `PyUnicode_AsUTF8AndSize` -> `BigInt::from_hex_str`. Out: `to_hex_string()`
+  (already exists) -> `PyLong_FromString(hx, NULL, 16)`.
+- **Liberal coercion:** `PyNumber_Index` on the way in (accepts
+  `__index__` / numpy scalars; genuine non-integers still -> `TypeError`).
+- **Two small runtime additions**, each mirroring an existing pattern and
+  unit-testable without CPython: `BigInt::from_hex_str(std::string_view)`
+  (parse `[-]0x<hexdigits>`, base 16 -- `from_str` is base-10 only) and
+  `bool BigInt::to_i64_checked(int64_t&) noexcept` (mirrors the existing
+  `to_uint64_checked`, so the `to_py` fast-path test does not throw
+  `FixedIntOverflow` for control flow).
+- Slow-path refcount discipline: copy out of the `PyNumber_ToBase` string's
+  UTF-8 buffer *before* `Py_DECREF`-ing it.
+
+### POC build order (IR exposure -> near zero)
+
+IR-immune parts first (pure win, no migration risk): the facade header + the
+C++ template marshallers + the two `BigInt` runtime additions + the `.so`
+build mode + the `@native` bindings. Thin compiler hooks last, kept minimal
+and fact-on-node: the `ext_module` directive, the `@export` reinterpretation
++ `exposed_to_host` marker, and the sibling `generate_extension_glue()`.
 
 ## The governing constraint: the representation gap
 

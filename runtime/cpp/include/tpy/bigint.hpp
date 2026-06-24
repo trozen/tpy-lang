@@ -374,6 +374,30 @@ public:
                                 tpy::fixed_int_name<T>());
     }
 
+    // Non-throwing "fits in int64?" check + extract. Mirrors the int64 path of
+    // to_fixed_check but returns a bool instead of raising, so the CPython
+    // to_py(BigInt) fast-path test does not throw for control flow.
+    bool to_i64_checked(int64_t& out) const noexcept {
+        if (is_small()) {
+            out = small_value();
+            return true;
+        }
+        const HeapBig* p = heap_ptr();
+        if (p->len > 1) {
+            return false;
+        }
+        uint64_t mag = (p->len == 0) ? 0 : p->limbs[0];
+        __int128 value = (p->sign < 0)
+            ? -static_cast<__int128>(mag)
+            : static_cast<__int128>(mag);
+        if (value >= static_cast<__int128>(std::numeric_limits<int64_t>::min()) &&
+            value <= static_cast<__int128>(std::numeric_limits<int64_t>::max())) {
+            out = static_cast<int64_t>(value);
+            return true;
+        }
+        return false;
+    }
+
     // Truncating conversion to any fixed-width integer type (modular reduction, never panics)
     template<typename T>
     T to_fixed_trunc() const {
@@ -646,6 +670,43 @@ public:
             add_small_inplace(mag, static_cast<uint32_t>(ch - '0'));
         }
 
+        return from_sign_mag(negative ? -1 : 1, std::move(mag));
+    }
+
+    // Parse "[+-]?(0x)?<hexdigits>" -- the CPython BigInt marshaller's slow
+    // path (PyNumber_ToBase(o, 16) output), used because decimal int<->str is
+    // capped by CPython's int_max_str_digits guard while power-of-2 bases are
+    // exempt. Input is well-formed in that path; still validated defensively.
+    static BigInt from_hex_str(std::string_view s) {
+        size_t idx = 0;
+        bool negative = false;
+        if (idx < s.size() && (s[idx] == '-' || s[idx] == '+')) {
+            negative = (s[idx] == '-');
+            ++idx;
+        }
+        if (idx + 1 < s.size() && s[idx] == '0' &&
+            (s[idx + 1] == 'x' || s[idx + 1] == 'X')) {
+            idx += 2;
+        }
+        if (idx >= s.size()) {
+            raise_value_error("invalid hex literal for int(): '{}'", s);
+        }
+        std::vector<uint64_t> mag;
+        for (size_t i = idx; i < s.size(); ++i) {
+            unsigned char ch = static_cast<unsigned char>(s[i]);
+            int d;
+            if (ch >= '0' && ch <= '9') {
+                d = ch - '0';
+            } else if (ch >= 'a' && ch <= 'f') {
+                d = ch - 'a' + 10;
+            } else if (ch >= 'A' && ch <= 'F') {
+                d = ch - 'A' + 10;
+            } else {
+                raise_value_error("invalid hex literal for int(): '{}'", s);
+            }
+            mul_small_inplace(mag, 16);
+            add_small_inplace(mag, static_cast<uint32_t>(d));
+        }
         return from_sign_mag(negative ? -1 : 1, std::move(mag));
     }
 
