@@ -42,6 +42,7 @@ from ..value_category import (
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
+    from ..thir.nodes import THIRFunction
 
 
 INDENT = "    "
@@ -618,6 +619,9 @@ class CodeGenOptions:
     emit_source_comments: bool = False  # Embed Python source as comments in generated C++
     comment_line_numbers: bool = True   # Include .py line numbers in source comments
     no_main: bool = False               # Skip main() generation, emit __tpy_main() only
+    # Route THIR-eligible functions through the THIR codegen backend instead of
+    # the AST path (migration dual-mode; byte-identical for the supported slice).
+    thir_codegen: bool = False
 
 
 class LocalCppForm(Enum):
@@ -817,6 +821,11 @@ class CodeGenContext:
     options: CodeGenOptions
     module_name: str = "generated"
     source_lines: list[str] = field(default_factory=list)
+    # THIR migration dual-mode: when set, functions in `thir_functions`
+    # (keyed by id() of the source TpyFunction) emit their bodies from THIR
+    # instead of the AST path. Populated per-module in CodeGenerator.generate.
+    thir_codegen: bool = False
+    thir_functions: dict[int, "THIRFunction"] = field(default_factory=dict)
     # Peer modules in the same import-graph SCC. When a `<peer>.hpp`
     # would be included from this module's header (vs cpp file), the
     # codegen swaps it for `<peer>_fwd.hpp` to break the cyclic

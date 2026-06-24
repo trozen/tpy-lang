@@ -278,6 +278,11 @@ def _run_cli(is_runner: bool) -> int:
                              "TPY_STDLIB_ROADMAP.md, TPY_API_REFERENCE.md) into DIR and print "
                              "an AGENTS.md snippet to stdout")
     parser.add_argument("--dump-code", action="store_true", help="Print generated C++ to stdout")
+    parser.add_argument("--dump-thir", action="store_true",
+                        help="Print the lowered THIR for eligible functions and exit (debug)")
+    parser.add_argument("--thir-codegen", action="store_true",
+                        help="Route THIR-eligible functions through the THIR codegen backend "
+                             "(migration dual-mode; byte-identical for the supported slice)")
     parser.add_argument("--explain-send", metavar="TYPE",
                         help="Print the Send derivation tree for TYPE (e.g. 'list[Order]') and exit")
     parser.add_argument("--explain-sync", metavar="TYPE",
@@ -355,7 +360,7 @@ def _run_cli(is_runner: bool) -> int:
     if is_runner:
         has_input = bool(args.input or args.cmd) or not sys.stdin.isatty()
         has_action = (
-            args.build or args.exec or args.dump_code or args.repl
+            args.build or args.exec or args.dump_code or args.dump_thir or args.repl
             or args.info or args.print_types
             or args.install_agent_docs is not None
             or args.explain_send is not None or args.explain_sync is not None
@@ -503,18 +508,21 @@ def _run_cli(is_runner: bool) -> int:
 
     if args.dump_code and (args.build or args.exec):
         parser.error("--dump-code cannot be combined with --build or --exec")
+    if args.dump_thir and (args.build or args.exec):
+        parser.error("--dump-thir cannot be combined with --build or --exec")
     if args.jobs is not None and args.jobs < 1:
         parser.error("-j/--jobs must be a positive integer")
     explain_type = args.explain_send or args.explain_sync
     building = args.build or args.exec
-    quiet = args.dump_code or args.quiet or explain_type is not None
+    quiet = args.dump_code or args.dump_thir or args.quiet or explain_type is not None
     explicit_output = bool(args.output)
     n_jobs = args.jobs or os.cpu_count() or 1
     progress = ProgressPrinter(enabled=not quiet)
 
     try:
         options = CodeGenOptions(emit_source_comments=args.emit_source,
-                                 no_main=args.no_main)
+                                 no_main=args.no_main,
+                                 thir_codegen=args.thir_codegen)
         all_cpp_paths = []
 
         cpp_config: CppCompilerConfig | None = None
@@ -590,6 +598,17 @@ def _run_cli(is_runner: bool) -> int:
         for i, compiled in enumerate(compiled_modules, 1):
             source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
 
+            if args.dump_thir:
+                # User modules only -- the implicit stdlib would bury the
+                # user's functions in noise.
+                if not compiler.is_user_module(compiled):
+                    continue
+                from .thir import lower_module as _thir_lower_module, dump_thir
+                assert compiled.analyzer is not None
+                print(f"// === thir/{compiled.name} ===")
+                print(dump_thir(_thir_lower_module(compiled.ast, compiled.analyzer)), end="")
+                continue
+
             if args.dump_code:
                 try:
                     hpp_code, cpp_code = compiler.generate_code_to_strings(compiled, options=options)
@@ -634,7 +653,7 @@ def _run_cli(is_runner: bool) -> int:
 
         t_codegen = time.monotonic() - t_codegen_start
 
-        if args.dump_code:
+        if args.dump_code or args.dump_thir:
             return 0
 
         n_cpp = len(all_cpp_paths)

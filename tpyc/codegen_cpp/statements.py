@@ -451,6 +451,16 @@ class StatementGenerator:
         Handles scope setup, body buffering, hoist-decl prepending, and cleanup.
         Shared by gen_function_def() and _gen_method().
         """
+        # THIR dual-mode: an eligible function emits its body from THIR, with no
+        # analyzer/scope setup. Byte-identical to the AST path for the slice.
+        if self.ctx.thir_codegen:
+            thir_fn = self.ctx.thir_functions.get(id(func))
+            if thir_fn is not None:
+                from ..thir.emit import emit_thir_body, CtxCommentSink
+                emit_thir_body(out, thir_fn, indent_level,
+                               comments=CtxCommentSink(self.ctx))
+                return
+
         scan = self.setup_body_scope(
             params, return_type, func, local_ns,
             indent_level=indent_level, is_method=is_method,

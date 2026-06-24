@@ -17,6 +17,12 @@ analyze bodies     -> per-function/method body sema      [sema/, sub-phases 4-5]
 codegen            -> C++ .hpp / .cpp                    [codegen_cpp/]
 ```
 
+An optional flag-gated path inserts a Typed High-level IR between sema and
+codegen: with `--thir-codegen`, an eligible value-scalar slice of functions
+lowers to immutable THIR (`tpyc/thir/`) and emits from it with no analyzer
+reference, byte-identical to the AST codegen path. Off by default; the first
+step of the THIR/MIR migration (`docs/IR_DESIGN.md`).
+
 The sema half runs as a workspace-wide two-pass loop: every module
 finalizes declarations first, then bodies run as a second sweep.
 Inside each module, sema is factored into five publicly callable

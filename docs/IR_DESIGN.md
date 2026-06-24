@@ -4,11 +4,11 @@
 
 | Feature | Status |
 |---------|--------|
-| THIR node definitions (`tpyc/thir/nodes.py`) | Not started |
-| AST + sema -> THIR lowering (`tpyc/thir/lower.py`) | Not started |
-| `--dump-thir` debug output | Not started |
-| THIR-backed codegen context | Not started |
-| Codegen migration from analyzer/AST to THIR | Not started |
+| THIR node definitions (`tpyc/thir/nodes.py`) | Increment 1 -- value-scalar slice |
+| AST + sema -> THIR lowering (`tpyc/thir/lower.py`) | Increment 1 -- value-scalar slice |
+| `--dump-thir` debug output | Done (increment 1) |
+| THIR-backed codegen context | Increment 1 -- flag-gated (`tpyc/thir/emit.py`) |
+| Codegen migration from analyzer/AST to THIR | Increment 1 -- value-scalar bodies incl. if/elif/else + while |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
 | `--dump-mir` debug output | Not started |
@@ -20,8 +20,31 @@
 | Retirement of old sema/codegen ownership logic | Not started |
 
 A throwaway Phase-1 spike (2026-06) validated the THIR boundary -- byte-identical
-codegen from THIR with no analyzer reference, on an arithmetic slice. Production
-work above remains Not started; see Rollout Plan -> "Phase-1 spike validation".
+codegen from THIR with no analyzer reference, on an arithmetic slice; see Rollout
+Plan -> "Phase-1 spike validation".
+
+**Increment 1 (`tpyc/thir/`) productionizes that spike** for the non-form
+value-scalar slice: a fixed-width-int, non-method, non-generic function whose
+body covers names, literals, same-width integer arithmetic (the
+`c = a + b + 1` spike), same-module free-function calls
+(`helper(a) + helper(a + b)`), the literal-into-typed-slot coercion,
+`if`/`elif`/`else` over comparison conditions, and `while` loops -- lowering to
+immutable THIR and emitting its body from THIR with no analyzer reference,
+byte-identical to the AST path (elif chains flatten to `else if`; source/else/
+trailing comments reproduced). A local's declared type is captured onto
+`THIRVarDecl` via codegen's own `resolve_stmt_binding_type`, so sema's local
+deduction -- e.g. a literal-seeded `offset = 0` that retro-widens to UInt64 from
+later usage -- lowers with the right type rather than the bare IntLiteralType.
+Enabled per-function behind `--thir-codegen` (or `TPY_THIR_CODEGEN=1`); off by
+default, so production output is untouched. The eligibility gate in `lower.py`
+is the safety boundary -- it rejects every construct the emitter cannot yet
+reproduce (globals; imported/cross-module + generic/overloaded-arity calls;
+non-scalar types; widening/other coercions; `for` loops; `while`/`else`;
+`break`/`continue`; branch-local first-declarations; any function whose locals
+hoist out of a branch; narrowing conditions), which stay on the AST path. The
+whole test corpus passes with the flag forced on (zero snapshot diffs). Next
+slices: `for` loops, then more scalar types (bool/float) -- after which the form
+decision (Open Q 9/11/12) gates the form-carrying nodes.
 
 ---
 

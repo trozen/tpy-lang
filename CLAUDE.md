@@ -221,6 +221,7 @@ The compiler lives in `tpyc/`. Modules are grouped by phase -- browse `tpyc/` to
 - `typesys.py`, `type_resolver.py` -- type system and resolver for parser-emitted `TypeRefNode`s
 - `sema/` -- multi-pass semantic analysis (analyzer, statements, expressions, calls, methods, protocols, narrowing, mutation_propagation, value_range, flow_facts, match, ...)
 - `codegen_cpp/` -- C++ code generation (generator, expressions, statements, functions, records, protocols, builtins, types, match, gen_generators, string_dispatch, ...)
+- `thir/` -- Typed High-level IR: a flag-gated (`--thir-codegen`) codegen path lowering an eligible value-scalar slice to immutable IR, byte-identical to the AST path; the first step of the THIR/MIR migration (`docs/IR_DESIGN.md`)
 - `modules/` -- resolution helpers and constant tables. Note: builtin types, functions, and protocols are *defined* in `.py` stubs under `lib/tpy/`, not here. Generic type factories and per-qname behavior live on `tpyc.type_def_registry.TypeDef`; see `docs/ARCHITECTURE.md` for the nominal/structural split.
 - `compiler.py` -- multi-module orchestration
 - `macro_api.py`, `macro_loader.py` -- compile-time macro module support

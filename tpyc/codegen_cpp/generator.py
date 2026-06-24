@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from typing import Callable, TextIO, TYPE_CHECKING
 import heapq
 import io
+import os
 import sys as _sys
 
 from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name
@@ -103,6 +104,10 @@ class CodeGenerator:
             analyzer=analyzer,
             options=self.options,
         )
+        # Env var enables the THIR dual-mode for whole-suite verification runs
+        # without threading a CLI flag through every call site.
+        self.ctx.thir_codegen = self.options.thir_codegen or bool(
+            os.environ.get("TPY_THIR_CODEGEN"))
 
         # Create component generators (ordered by dependencies)
         self.protocols = ProtocolGenerator(self.ctx)
@@ -145,6 +150,12 @@ class CodeGenerator:
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
         self.ctx.cycle_peers = cycle_peers or frozenset()
+        if self.ctx.thir_codegen:
+            from ..thir.lower import lower_function as _thir_lower
+            self.ctx.thir_functions = {
+                id(f): tf for f in module.functions
+                if (tf := _thir_lower(f, self.analyzer)) is not None
+            }
         # Filter out keyword stubs (@builtin_type classes / @builtin_decorator functions
         # that exist only for import resolution -- no C++ code needed).
         module.records = [
