@@ -83,17 +83,30 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
+    // # the `object=` / `times=` keyword surface, matching CPython's param names
+    // print([x for x in itertools.repeat(object=8, times=2)])
+    std::cout << ::tpy::ListPrinter(({
+        std::vector<int32_t> __result;
+        auto __obj_6 = ::tpystd::itertools::repeat<int32_t>(8, 2);
+        auto __beg_6 = __obj_6.begin();
+        auto __end_6 = __obj_6.end();
+        for (; __beg_6 != __end_6; ++__beg_6) {
+            int32_t x = *__beg_6;
+            __result.push_back(x);
+        }
+        std::move(__result);
+    })) << "\n";
     // # cycle: infinite, sliced; and an empty source (yields nothing)
     // print([x for x in itertools.islice(itertools.cycle([1, 2, 3]), 7)])
     auto __tmp_4 = std::array<int32_t, 3>{1, 2, 3};
     auto __tmp_5 = ::tpystd::itertools::cycle<int32_t>(__tmp_4);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_6 = ::tpystd::itertools::islice<int32_t>(__tmp_5, 7);
-        auto __beg_6 = __obj_6.begin();
-        auto __end_6 = __obj_6.end();
-        for (; __beg_6 != __end_6; ++__beg_6) {
-            int32_t x = *__beg_6;
+        auto __obj_7 = ::tpystd::itertools::islice<int32_t>(__tmp_5, 7);
+        auto __beg_7 = __obj_7.begin();
+        auto __end_7 = __obj_7.end();
+        for (; __beg_7 != __end_7; ++__beg_7) {
+            int32_t x = *__beg_7;
             __result.push_back(x);
         }
         std::move(__result);
@@ -104,11 +117,11 @@ void main() {
     auto __tmp_6 = ::tpystd::itertools::cycle<int32_t>(empty);
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_7 = ::tpystd::itertools::islice<int32_t>(__tmp_6, 5);
-        auto __beg_7 = __obj_7.begin();
-        auto __end_7 = __obj_7.end();
-        for (; __beg_7 != __end_7; ++__beg_7) {
-            int32_t x = *__beg_7;
+        auto __obj_8 = ::tpystd::itertools::islice<int32_t>(__tmp_6, 5);
+        auto __beg_8 = __obj_8.begin();
+        auto __end_8 = __obj_8.end();
+        for (; __beg_8 != __end_8; ++__beg_8) {
+            int32_t x = *__beg_8;
             __result.push_back(x);
         }
         std::move(__result);
@@ -118,20 +131,7 @@ void main() {
     auto __tmp_7 = std::array<int32_t, 5>{10, 20, 30, 40, 50};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_8 = ::tpystd::itertools::islice<int32_t>(__tmp_7, 3);
-        auto __beg_8 = __obj_8.begin();
-        auto __end_8 = __obj_8.end();
-        for (; __beg_8 != __end_8; ++__beg_8) {
-            int32_t x = *__beg_8;
-            __result.push_back(x);
-        }
-        std::move(__result);
-    })) << "\n";
-    // print([x for x in itertools.islice([10, 20], 5)])
-    auto __tmp_8 = std::array<int32_t, 2>{10, 20};
-    std::cout << ::tpy::ListPrinter(({
-        std::vector<int32_t> __result;
-        auto __obj_9 = ::tpystd::itertools::islice<int32_t>(__tmp_8, 5);
+        auto __obj_9 = ::tpystd::itertools::islice<int32_t>(__tmp_7, 3);
         auto __beg_9 = __obj_9.begin();
         auto __end_9 = __obj_9.end();
         for (; __beg_9 != __end_9; ++__beg_9) {
@@ -140,15 +140,28 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // print([x for x in itertools.islice([10, 20, 30], 0)])
-    auto __tmp_9 = std::array<int32_t, 3>{10, 20, 30};
+    // print([x for x in itertools.islice([10, 20], 5)])
+    auto __tmp_8 = std::array<int32_t, 2>{10, 20};
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_10 = ::tpystd::itertools::islice<int32_t>(__tmp_9, 0);
+        auto __obj_10 = ::tpystd::itertools::islice<int32_t>(__tmp_8, 5);
         auto __beg_10 = __obj_10.begin();
         auto __end_10 = __obj_10.end();
         for (; __beg_10 != __end_10; ++__beg_10) {
             int32_t x = *__beg_10;
+            __result.push_back(x);
+        }
+        std::move(__result);
+    })) << "\n";
+    // print([x for x in itertools.islice([10, 20, 30], 0)])
+    auto __tmp_9 = std::array<int32_t, 3>{10, 20, 30};
+    std::cout << ::tpy::ListPrinter(({
+        std::vector<int32_t> __result;
+        auto __obj_11 = ::tpystd::itertools::islice<int32_t>(__tmp_9, 0);
+        auto __beg_11 = __obj_11.begin();
+        auto __end_11 = __obj_11.end();
+        for (; __beg_11 != __end_11; ++__beg_11) {
+            int32_t x = *__beg_11;
             __result.push_back(x);
         }
         std::move(__result);
@@ -159,19 +172,7 @@ void main() {
     // print([x for x in itertools.takewhile(lambda n: n < 3, nums)])
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_11 = ::tpystd::itertools::takewhile<int32_t>([](int32_t n) -> bool { return (n < 3); }, nums);
-        auto __beg_11 = __obj_11.begin();
-        auto __end_11 = __obj_11.end();
-        for (; __beg_11 != __end_11; ++__beg_11) {
-            int32_t x = *__beg_11;
-            __result.push_back(x);
-        }
-        std::move(__result);
-    })) << "\n";
-    // print([x for x in itertools.dropwhile(lambda n: n < 3, nums)])
-    std::cout << ::tpy::ListPrinter(({
-        std::vector<int32_t> __result;
-        auto __obj_12 = ::tpystd::itertools::dropwhile<int32_t>([](int32_t n) -> bool { return (n < 3); }, nums);
+        auto __obj_12 = ::tpystd::itertools::takewhile<int32_t>([](int32_t n) -> bool { return (n < 3); }, nums);
         auto __beg_12 = __obj_12.begin();
         auto __end_12 = __obj_12.end();
         for (; __beg_12 != __end_12; ++__beg_12) {
@@ -180,10 +181,10 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // print([x for x in itertools.filterfalse(lambda n: n % 2 == 0, nums)])
+    // print([x for x in itertools.dropwhile(lambda n: n < 3, nums)])
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_13 = ::tpystd::itertools::filterfalse<int32_t>([](int32_t n) -> bool { return ((::tpy::mod_floor<int32_t>(n, 2)) == 0); }, nums);
+        auto __obj_13 = ::tpystd::itertools::dropwhile<int32_t>([](int32_t n) -> bool { return (n < 3); }, nums);
         auto __beg_13 = __obj_13.begin();
         auto __end_13 = __obj_13.end();
         for (; __beg_13 != __end_13; ++__beg_13) {
@@ -192,11 +193,10 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // # takewhile that never stops; dropwhile that drops everything
-    // print([x for x in itertools.takewhile(lambda n: n < 100, nums)])
+    // print([x for x in itertools.filterfalse(lambda n: n % 2 == 0, nums)])
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_14 = ::tpystd::itertools::takewhile<int32_t>([](int32_t n) -> bool { return (n < 100); }, nums);
+        auto __obj_14 = ::tpystd::itertools::filterfalse<int32_t>([](int32_t n) -> bool { return ((::tpy::mod_floor<int32_t>(n, 2)) == 0); }, nums);
         auto __beg_14 = __obj_14.begin();
         auto __end_14 = __obj_14.end();
         for (; __beg_14 != __end_14; ++__beg_14) {
@@ -205,14 +205,27 @@ void main() {
         }
         std::move(__result);
     })) << "\n";
-    // print([x for x in itertools.dropwhile(lambda n: n < 100, nums)])
+    // # takewhile that never stops; dropwhile that drops everything
+    // print([x for x in itertools.takewhile(lambda n: n < 100, nums)])
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
-        auto __obj_15 = ::tpystd::itertools::dropwhile<int32_t>([](int32_t n) -> bool { return (n < 100); }, nums);
+        auto __obj_15 = ::tpystd::itertools::takewhile<int32_t>([](int32_t n) -> bool { return (n < 100); }, nums);
         auto __beg_15 = __obj_15.begin();
         auto __end_15 = __obj_15.end();
         for (; __beg_15 != __end_15; ++__beg_15) {
             int32_t x = *__beg_15;
+            __result.push_back(x);
+        }
+        std::move(__result);
+    })) << "\n";
+    // print([x for x in itertools.dropwhile(lambda n: n < 100, nums)])
+    std::cout << ::tpy::ListPrinter(({
+        std::vector<int32_t> __result;
+        auto __obj_16 = ::tpystd::itertools::dropwhile<int32_t>([](int32_t n) -> bool { return (n < 100); }, nums);
+        auto __beg_16 = __obj_16.begin();
+        auto __end_16 = __obj_16.end();
+        for (; __beg_16 != __end_16; ++__beg_16) {
+            int32_t x = *__beg_16;
             __result.push_back(x);
         }
         std::move(__result);
@@ -222,11 +235,11 @@ void main() {
     auto __tmp_10 = ::tpystd::itertools::count();
     std::cout << ::tpy::ListPrinter(({
         std::vector<::tpy::BigInt> __result;
-        auto __obj_16 = ::tpystd::itertools::takewhile<::tpy::BigInt>([](const ::tpy::BigInt& n) -> bool { return (n < 5); }, __tmp_10);
-        auto __beg_16 = __obj_16.begin();
-        auto __end_16 = __obj_16.end();
-        for (; __beg_16 != __end_16; ++__beg_16) {
-            const ::tpy::BigInt& x = *__beg_16;
+        auto __obj_17 = ::tpystd::itertools::takewhile<::tpy::BigInt>([](const ::tpy::BigInt& n) -> bool { return (n < 5); }, __tmp_10);
+        auto __beg_17 = __obj_17.begin();
+        auto __end_17 = __obj_17.end();
+        for (; __beg_17 != __end_17; ++__beg_17) {
+            const ::tpy::BigInt& x = *__beg_17;
             __result.push_back(x);
         }
         std::move(__result);
@@ -237,11 +250,11 @@ void main() {
     auto __tmp_12 = ::tpystd::itertools::islice<::tpy::BigInt>(__tmp_11, 8);
     std::cout << ::tpy::ListPrinter(({
         std::vector<::tpy::BigInt> __result;
-        auto __obj_17 = ::tpystd::itertools::filterfalse<::tpy::BigInt>([](const ::tpy::BigInt& n) -> bool { return (((n) % (::tpy::BigInt(2))) == 0); }, __tmp_12);
-        auto __beg_17 = __obj_17.begin();
-        auto __end_17 = __obj_17.end();
-        for (; __beg_17 != __end_17; ++__beg_17) {
-            const ::tpy::BigInt& x = *__beg_17;
+        auto __obj_18 = ::tpystd::itertools::filterfalse<::tpy::BigInt>([](const ::tpy::BigInt& n) -> bool { return (((n) % (::tpy::BigInt(2))) == 0); }, __tmp_12);
+        auto __beg_18 = __obj_18.begin();
+        auto __end_18 = __obj_18.end();
+        for (; __beg_18 != __end_18; ++__beg_18) {
+            const ::tpy::BigInt& x = *__beg_18;
             __result.push_back(x);
         }
         std::move(__result);

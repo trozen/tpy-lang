@@ -15,6 +15,8 @@ def main() -> None:
     print([x for x in itertools.repeat(7, 0)])
     print([x for x in itertools.repeat(7, -3)])
     print([x for x in itertools.islice(itertools.repeat(9), 4)])
+    # the `object=` / `times=` keyword surface, matching CPython's param names
+    print([x for x in itertools.repeat(object=8, times=2)])
 
     # cycle: infinite, sliced; and an empty source (yields nothing)
     print([x for x in itertools.islice(itertools.cycle([1, 2, 3]), 7)])

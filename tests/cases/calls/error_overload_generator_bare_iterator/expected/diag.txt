@@ -1,0 +1,1 @@
+main.py:11: error: Generic protocol 'Iterator' requires type arguments: Iterator[T]

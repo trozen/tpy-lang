@@ -1,1 +1,1 @@
-itertools.py:32: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+itertools.py:38: warning: may copy T into owned storage if not a value type; use copy() to make this explicit

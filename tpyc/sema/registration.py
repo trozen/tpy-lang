@@ -808,6 +808,28 @@ class TypeRegistrar:
             record.fields[:] = remaining
         return class_constants, finality
 
+    def _set_generator_yield_type(self, func: TpyFunction) -> None:
+        """Set generator_yield_type for a generator whose signature is not
+        processed by register_function (the @overload impl is not callable, so
+        it never reaches that pass) -- body analysis of its `yield`s asserts the
+        field is present.
+        """
+        resolved_return = self.type_ops.resolve_type(func.return_type)
+        if not (is_protocol_type(resolved_return)
+                and resolved_return.qualified_name() == "typing.Iterator"):
+            raise SemanticError(
+                f"Generator function must have return type 'Iterator[T]', "
+                f"got '{resolved_return}'",
+                func.loc,
+            )
+        if not resolved_return.type_args:
+            raise SemanticError(
+                f"Iterator must have a type argument, e.g. Iterator[Int32]",
+                func.loc,
+            )
+        func.generator_yield_type = resolved_return.type_args[0]
+        self._validate_generator_yield_copyable(func.generator_yield_type, func.loc)
+
     def _validate_generator_yield_copyable(self, yield_type: TpyType, loc) -> None:
         """Reject a generator whose VALUE-slot yield would copy a non-copyable value.
 

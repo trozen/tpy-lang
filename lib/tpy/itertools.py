@@ -3,7 +3,7 @@
 # Coverage and the gaps still blocked on compiler work (and the BUGS.md /
 # TODO.md entries that gate them) are tracked in docs/STDLIB_ROADMAP.md.
 # tpy: cpp_namespace("tpystd::itertools")
-from typing import Iterator, Iterable, Optional
+from typing import Iterator, Iterable, Optional, overload
 from tpy import Fn, Int32
 
 
@@ -14,16 +14,22 @@ def count(start: int = 0, step: int = 1) -> Iterator[int]:
         n = n + step
 
 
-# `times=None` is the unbounded form (CPython's `repeat(obj)`); a count of 0 or
-# negative yields nothing, matching CPython (`range` of a non-positive count is
-# empty).
-def repeat[T](obj: T, times: Optional[Int32] = None) -> Iterator[T]:
+# Two public arms (CPython's `repeat(object)` / `repeat(object, times)`); the
+# impl's `Optional` sentinel stays private behind the overloads, so
+# `repeat(object, None)` is rejected the way CPython rejects a non-int `times`.
+# The param is named `object` (shadowing the builtin) to match CPython's keyword
+# surface (`repeat(object=...)`). A count of 0 or negative yields nothing.
+@overload
+def repeat[T](object: T) -> Iterator[T]: ...
+@overload
+def repeat[T](object: T, times: Int32) -> Iterator[T]: ...
+def repeat[T](object: T, times: Optional[Int32] = None) -> Iterator[T]:
     if times is None:
         while True:
-            yield obj
+            yield object
     else:
         for _ in range(times):
-            yield obj
+            yield object
 
 
 def cycle[T](it: Iterable[T]) -> Iterator[T]:

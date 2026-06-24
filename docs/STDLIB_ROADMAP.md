@@ -710,16 +710,21 @@ functions take an `Fn` (callable) param, and `islice`/`takewhile` *consume*
 another generator (`islice(repeat(...))`, `takewhile(pred, count())`) -- all
 of which now work after the generator-loop break/continue, Fn-param,
 template-leak, comprehension-iteration, and self-iterator-copy fixes.
-`repeat` takes `times: Optional[Int32] = None` (None = the unbounded form;
-a count of 0 or negative yields nothing, matching CPython). Deferred, each on
-a distinct compiler gap: `chain` / `product` / `permutations` / `combinations`
-(variadic tuples), `compress` (zip / cross-module-iterator-in-generator),
-`accumulate` (generic accumulator across the resumable frame),
-`pairwise` (`Optional[T]`-across-yield tuple miscompile),
+`repeat` exposes CPython's two arms via `@overload` -- `repeat(object)`
+(unbounded) and `repeat(object, times)` (a count of 0 or negative yields
+nothing, matching CPython); the param is named `object` to match CPython's
+keyword surface (`repeat(object=...)`), and the impl's `Optional` sentinel stays
+private behind the stubs, so `repeat(object, None)` is rejected as CPython
+rejects a non-int `times`. Deferred,
+each on a distinct compiler gap: `chain` / `product` / `permutations` /
+`combinations` (variadic tuples), `compress` (zip /
+cross-module-iterator-in-generator), `accumulate` (generic accumulator across
+the resumable frame), `pairwise` (`Optional[T]`-across-yield tuple miscompile),
 `starmap` (simple-peephole `Iterable`-param dangling capture for the 2-arg
-form; variadic form also needs variadic tuples), the `islice(start, stop[,
-step])` form (overloaded generators crash sema), `tee` / `groupby`
-(buffering). Each deferred gap is filed in BUGS.md / TODO.md.
+form; variadic form also needs variadic tuples), `tee` / `groupby`
+(buffering). Each deferred gap is filed in BUGS.md / TODO.md. The
+`islice(start, stop[, step])` form -- now unblocked by the overloaded-generator
+fix -- is a future addition (new functionality, via `/tpy-add-feature`).
 
 **Acknowledged divergences from CPython's C `itertools`** (inherent to pure-TPy
 generators, which can't alias elements across a `yield` the way the C module
@@ -732,9 +737,9 @@ case, are unaffected). `islice(it, negative)` yields `[]` rather than raising
 
 | Item | Status | Notes |
 |---|---|---|
-| `count`, `cycle`, `repeat` | Done | Pure TPy; `repeat` is `repeat(obj, times: Optional[Int32]=None)` -- None is the unbounded form |
+| `count`, `cycle`, `repeat` | Done | Pure TPy; `repeat` exposes CPython's `repeat(object)` / `repeat(object, times)` via `@overload` (private `Optional` sentinel impl; `repeat(object, None)` rejected) |
 | `takewhile`, `dropwhile`, `filterfalse` | Done | Pure TPy; `Fn` predicate param |
-| `islice` | Partial | `islice(it, stop)` only; the `(start, stop[, step])` form needs an overload (overloaded generators crash sema) |
+| `islice` | Partial | `islice(it, stop)` only; the `(start, stop[, step])` form is future work (overloaded generators now unblocked; needs `/tpy-add-feature`) |
 | `starmap` | Missing | 2-arg form blocked on the simple-peephole `Iterable`-param dangling-capture bug (BUGS.md); variadic form also needs variadic tuples |
 | `chain`, `chain.from_iterable` | Missing | Blocked on variadic tuples |
 | `compress` | Missing | Blocked on zip / cross-module-iterator-in-generator |

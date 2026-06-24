@@ -2070,6 +2070,12 @@ class SemanticAnalyzer:
         # Register each stub as a callable overload via a single binding
         self.registrar.register_overload_group(stubs)
 
+        # The impl skips register_function (it is not callable), so its
+        # signature-derived generator yield type is never set there. Body
+        # analysis of its `yield`s reads func.generator_yield_type; set it here.
+        if impl.is_generator and impl.generator_yield_type is None:
+            self.registrar._set_generator_yield_type(impl)
+
         # The implementation is NOT registered in the namespace/registry --
         # callers resolve against stubs only. The body is still analyzed
         # via _analyze_function (which works on the TpyFunction directly).
