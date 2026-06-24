@@ -5,7 +5,6 @@ Shared state and utilities for C++ code generation.
 """
 
 from __future__ import annotations
-import re
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -86,33 +85,76 @@ def escape_cpp_name(name: str) -> str:
     return name
 
 
-_TEMPLATE_PLACEHOLDER = re.compile(r"\{(self|cpp|\d+)\}")
-
-
-def expand_cpp_template(template: str, self_val: str, *args: str,
+def expand_cpp_template(template: str, self_val: 'str | None' = None, *args: str,
                         self_type: 'TpyType | None' = None) -> str:
-    """Expand a C++ template, substituting {self}, {cpp}, and positional {0}, {1}, etc.
+    """Substitute {self}, {cpp}, and positional {0}, {1}, ... into a
+    @cpp_template body.
 
-    {cpp} is replaced with self_type.to_cpp() when available -- used for
-    @builtin_type methods that reference their own C++ type name.
+    Brace grammar follows Python str.format: `{{`/`}}` emit a literal
+    `{`/`}` (so a template can spell C++ brace-init / lambda / scope
+    braces), and a lone unescaped brace / unknown field / out-of-range
+    index raises CodeGenError. Substituted values are inserted verbatim
+    and never re-scanned, so C++ braces inside an argument (e.g.
+    `std::vector<int>{30}`) can't be mistaken for placeholders. self_val
+    is None for free functions (no receiver); a {self} is then an error.
     """
-    # Validate before substitution: check that all placeholder indices are in range.
-    # Post-substitution scanning would false-positive on C++ braces in values
-    # (e.g. std::vector<int>{30} looks like {30} placeholder).
-    for m in _TEMPLATE_PLACEHOLDER.finditer(template):
-        token = m.group(1)
-        if token in ("self", "cpp"):
-            continue
-        if int(token) >= len(args):
-            raise CodeGenError(
-                f"Unreplaced placeholder {m.group()} in C++ template: {template}"
-            )
-    if self_type and "{cpp}" in template:
+    if self_type is not None and "{cpp}" in template:
         template = template.replace("{cpp}", self_type.to_cpp())
-    result = template.replace("{self}", self_val)
-    for i, arg in enumerate(args):
-        result = result.replace(f"{{{i}}}", arg)
-    return result
+    out: list[str] = []
+    i = 0
+    n = len(template)
+    while i < n:
+        c = template[i]
+        if c == '{':
+            if i + 1 < n and template[i + 1] == '{':
+                out.append('{')
+                i += 2
+                continue
+            close = template.find('}', i + 1)
+            if close == -1:
+                raise CodeGenError(
+                    f"Unmatched '{{' in C++ template (use '{{{{' for a literal "
+                    f"brace): {template}"
+                )
+            field = template[i + 1:close]
+            if field == 'self':
+                if self_val is None:
+                    raise CodeGenError(
+                        f"'{{self}}' placeholder is only valid in method templates: "
+                        f"{template}"
+                    )
+                out.append(self_val)
+            elif field == 'cpp':
+                # Resolved up front from self_type; if it survives to here the
+                # caller had no type context -- preserve it literally rather
+                # than erroring, leaving the malformed C++ for the C++ compiler.
+                out.append('{cpp}')
+            elif field.isdigit():
+                idx = int(field)
+                if idx >= len(args):
+                    raise CodeGenError(
+                        f"Unreplaced placeholder {{{field}}} in C++ template: {template}"
+                    )
+                out.append(args[idx])
+            else:
+                raise CodeGenError(
+                    f"Invalid placeholder '{{{field}}}' in C++ template (use "
+                    f"'{{{{' and '}}}}' for literal braces): {template}"
+                )
+            i = close + 1
+        elif c == '}':
+            if i + 1 < n and template[i + 1] == '}':
+                out.append('}')
+                i += 2
+                continue
+            raise CodeGenError(
+                f"Unmatched '}}' in C++ template (use '}}}}' for a literal "
+                f"brace): {template}"
+            )
+        else:
+            out.append(c)
+            i += 1
+    return ''.join(out)
 
 
 def _escape_cpp_byte_seq(data: bytes) -> str:

@@ -102,10 +102,8 @@ class BuiltinGenerator:
                 if effective_subst:
                     ret_type = self.types.substitute_type_params(ret_type, effective_subst)
                 template = template.replace("{cpp}", ret_type.to_cpp())
-            if receiver is not None:
-                return expand_cpp_template(template, receiver, *gen_args,
-                                           self_type=self_type)
-            return template.format(*gen_args)
+            return expand_cpp_template(template, receiver, *gen_args,
+                                       self_type=self_type)
         if fi.native_function and fi.native_name:
             all_args = [receiver] + gen_args if receiver is not None else gen_args
             return f"{qualify_native_name(fi.native_name)}({', '.join(all_args)})"

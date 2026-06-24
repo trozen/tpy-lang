@@ -275,6 +275,30 @@ Without `cpp_return_type`, the implicit narrowing would trip `-Wconversion` / `-
 
 For more involved transformations (computed expressions, multi-step conversions), use `@cpp_template` instead -- it gives full control over the emitted call expression.
 
+### Inline C++ templates: `@cpp_template`
+
+`@cpp_template("...")` (from `tpy.extern`) replaces a call with an inline C++ expression. The template body substitutes placeholders:
+
+- `{self}` -- the receiver (methods only; an error in a free function)
+- `{0}`, `{1}`, ... -- positional arguments
+- `{cpp}` -- the C++ spelling of the (substituted) return type
+- `{T}` / type-param names -- substituted with the inferred type argument
+
+```python
+@cpp_template("std::rotl<uint32_t>({0}, {1})")
+def rotl32(x: UInt32, n: Int32) -> UInt32: ...
+```
+
+To emit a **literal** C++ brace (aggregate-init, a lambda body, a scope, a GCC statement-expression), double it -- `{{` -> `{` and `}}` -> `}`, matching Python's `str.format` convention:
+
+```python
+# Emits: []() { return a + b; }()
+@cpp_template("[]() {{ return {0} + {1}; }}()")
+def lambda_sum(a: Int32, b: Int32) -> Int32: ...
+```
+
+A lone unescaped brace (or an out-of-range `{N}`) is a compile-time diagnostic, not an internal error.
+
 ---
 
 ## Exporting: `@export`

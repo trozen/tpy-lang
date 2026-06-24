@@ -39,7 +39,7 @@ from ..parse.nodes import (
     TpyCall, TpyName,
 )
 from ..namespace import Namespace
-from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned
+from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, CodeGenError
 from .param_const import decide_param_const, ParamConstDecision
 from .type_resolution import resolve_stmt_type_cascade
 
@@ -1735,7 +1735,6 @@ class FunctionGenerator:
                 dt = self._build_decltype_expr(stmt.init)
                 if dt is not None:
                     return f"decltype({dt})"
-            from .context import CodeGenError
             raise CodeGenError(
                 f"Cannot determine C++ type for global '{stmt.name if stmt else '?'}' "
                 f"with structural protocol type '{var_type}'",
@@ -1769,8 +1768,8 @@ class FunctionGenerator:
             else:
                 return None
         try:
-            return template.format(*arg_strs)
-        except (IndexError, KeyError):
+            return expand_cpp_template(template, None, *arg_strs)
+        except CodeGenError:
             return None
 
     def gen_global_decl(self, out: TextIO, stmt: TpyVarDecl) -> None:

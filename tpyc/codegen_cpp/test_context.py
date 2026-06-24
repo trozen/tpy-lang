@@ -44,3 +44,34 @@ class TestExpandCppTemplate:
             "std::vector<int>{30}",
         )
         assert result == "::tpy::list_concat(v, std::vector<int>{30})"
+
+    def test_escaped_braces_in_template(self):
+        """`{{`/`}}` collapse to literal braces, so a template can spell C++
+        aggregate-init / lambda / scope braces."""
+        result = expand_cpp_template("MyType{{}}", None)
+        assert result == "MyType{}"
+        result = expand_cpp_template("::tpy::BasicSlice{{{0}, {1}}}", None, "a", "b")
+        assert result == "::tpy::BasicSlice{a, b}"
+        result = expand_cpp_template("[]() {{ return {0}; }}()", None, "x")
+        assert result == "[]() { return x; }()"
+
+    def test_free_function_no_receiver(self):
+        """A free-function template (self_val=None) substitutes positionals."""
+        assert expand_cpp_template("std::max<int>({0}, {1})", None, "a", "b") \
+            == "std::max<int>(a, b)"
+
+    def test_self_in_free_function_raises(self):
+        with pytest.raises(CodeGenError, match=r"\{self\}"):
+            expand_cpp_template("{self}.size()", None)
+
+    def test_lone_open_brace_raises(self):
+        with pytest.raises(CodeGenError, match=r"Invalid placeholder"):
+            expand_cpp_template("::Foo{static_cast<int>({0})}", None, "x")
+
+    def test_unmatched_open_brace_raises(self):
+        with pytest.raises(CodeGenError, match=r"Unmatched '\{'"):
+            expand_cpp_template("::Foo{ no close", None, "x")
+
+    def test_unmatched_close_brace_raises(self):
+        with pytest.raises(CodeGenError, match=r"Unmatched '\}'"):
+            expand_cpp_template("foo({0}) }", None, "x")

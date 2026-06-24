@@ -16,7 +16,7 @@ from ..typesys import (
 )
 from ..parse import TpyProtocol, TpyRecord
 from .. import qnames
-from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, qualified_cpp_name
+from .context import INDENT, DUNDER_TO_BINARY_OP, CodeGenError, qualified_cpp_name, expand_cpp_template
 from ..type_def_registry import is_str_type, protocol_info_of, is_subtype
 from ..symbol_binding import lookup_imported, SymbolKind
 
@@ -601,10 +601,11 @@ class ProtocolGenerator:
             from ..modules import get_dunder_cpp_template
             cpp_tmpl = get_dunder_cpp_template(method_sig.name)
             if cpp_tmpl is not None:
-                # Expand template: {self} -> t, {0}/{1}/... -> std::declval<ParamCpp>()
-                call_expr = cpp_tmpl.replace("{self}", "t")
-                for i, (_, ptype) in enumerate(method_sig.params):
-                    call_expr = call_expr.replace(f"{{{i}}}", f"std::declval<{subst_to_cpp(ptype)}>()")
+                # {self} -> t, {0}/{1}/... -> std::declval<ParamCpp>()
+                call_expr = expand_cpp_template(
+                    cpp_tmpl, "t",
+                    *(f"std::declval<{subst_to_cpp(ptype)}>()"
+                      for _, ptype in method_sig.params))
             elif method_sig.name in DUNDER_TO_BINARY_OP and len(method_sig.params) == 1:
                 cpp_op = DUNDER_TO_BINARY_OP[method_sig.name]
                 _, ptype = method_sig.params[0]
