@@ -1,0 +1,21 @@
+http | 10.72.70.1:8002 | /das/tables | fmt=json | sec
+https | user:pw@example.com | /a/b |  | 
+ |  | /relative/only | x=1 | 
+ | netloc-only | /p |  | 
+https | CAPS.Example.COM | /Path |  | 
+ |  |  |  | 
+hostname=host.example
+port= 8002
+user=user
+pass=secret
+geturl=http://user:secret@Host.Example:8002/p?q=1#f
+bare-port-none= True
+bare-user-none= True
+params=type=d path=/a/b
+rebuilt=http://h/a/b;type=d?q=1#f
+http://h:9/p?a=b#frag
+http://h/p;k=v?q=1#f
+v6=::1
+ipv6-ValueError
+port-ValueError
+[/ab/p  ]

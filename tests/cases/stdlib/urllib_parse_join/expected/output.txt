@@ -1,0 +1,17 @@
+http://h/a/b/d
+http://h/a/b/d
+http://h/a/d
+http://h/d
+http://h/d
+http://h/a/b/
+http://h/a/b/d
+http://h/abs/path
+http://h/a/b/c?just=query
+http://h/a/b/c#frag
+http://h/a/b/c
+http://other/x
+https://full/url
+rel
+http://base/x
+http://h/a/b/g
+file:///etc/hosts

@@ -1,0 +1,18 @@
+AZaz09-._~
+/a%20b/c%3Fx%3D1
+%2Fa%20b
+%C3%A9%E4%B8%AD
+a+b%2Bc%2Fd
+/a bé
+a b+c
+100%
+%zz
+limit=10&name=a+b&path=x%2Fy
+
+a=1
+b=hello world
+d=z/w
+--keep-blank--
+[a]=[1]
+[b]=[]
+[c]=[]

@@ -146,7 +146,7 @@ Examples of the policy in action:
 | [`argparse`](#argparse) | P1 | Partial | ~88% | macro | Builder-trace macro (Phase 7); positionals/optional flags, all 7 actions, all 4 nargs, type=int\|float\|str + fixed-width ints + Float32 + custom records via `from_arg` (all 4 nargs + append/extend), choices/required/dest/help/metavar, Optional[T]/Optional[list[T]] for absent flags, list-literal defaults, bare parse_args() reads sys.argv[1:], --help/-h auto-generation, add_help=False opt-out, prog=/usage=/epilog= help customization, subparsers (flat-namespace; per-sub fields land as Optional[T] on the top namespace). Missing: mutually-exclusive groups, argument groups, runtime-derived `prog`, terminal-width help wrap, per-sub `--help` auto-emit, BooleanOptionalAction, parents=, allow_abbrev, fromfile_prefix_chars, custom formatter classes, action=<callable> |
 | [`logging`](#logging) | P2 | Missing | 0% | -- | Module-level state + handler architecture |
 | [`configparser`](#configparser) | P2 | Missing | 0% | -- | Depends on `io` |
-| [`urllib.parse`](#urllibparse) | P2 | Missing | 0% | -- | Pure-TPy candidate; no network dependency |
+| [`urllib.parse`](#urllibparse) | P2 | Partial | ~75% | pure | Pure TPy; CPython byte-parity. urlsplit/urlparse/urlunsplit/urlunparse/urljoin, quote family, urlencode, parse_qsl. Results are records not namedtuples (no indexing/unpack). parse_qs, bytes variants, urldefrag deferred |
 | [`heapq`](#heapq) | P2 | Partial | ~92% | pure | Pure TPy over `list[T: Comparable]`. All non-variadic ops + `merge(*iterables: list[T])` (lazy, stable n-way merge). `merge` gaps vs CPython: inputs must be `list[T]` not arbitrary iterables (needs dynamic-iterator erasure + protocol varargs), and `key=`/`reverse=` absent (`key=` blocked on the readonly-through-generic-T callable gap in BUGS.md; `reverse=` a cheap follow-up) |
 | [`copy`](#copy) | P2 | Missing | 0% | -- | `copy()` deep semantics need intrinsic support |
 | [`textwrap`](#textwrap) | P2 | Missing | 0% | -- | Pure TPy candidate |
@@ -1129,7 +1129,36 @@ Tests: `cases/argparse/{basic,optional_flags,value_free_actions,list_and_const_a
 
 ### urllib.parse
 
-**Missing.** Pure-TPy candidate (no network dependency).
+Current: `lib/tpy/urllib/parse.py` -- pure TPy (no network dependency).
+CPython-faithful algorithms with one deliberate API-shape divergence:
+`urlsplit`/`urlparse` return a **record** (`SplitResult` / `ParseResult`) with
+named attributes + `.geturl()`/`.hostname`/`.port`/`.username`/`.password`, not
+a `namedtuple` -- so integer indexing (`r[0]`) and unpacking (`a, b, ... =
+urlsplit(u)`) are unavailable (both are compile errors, never silent). The
+netloc accessors raise `ValueError` on a bad port (non-ASCII-digit) and
+`urlsplit` raises on an unbalanced IPv6 `[...]`, matching CPython; the
+`uses_relative`/`uses_netloc`/`uses_params` scheme tables are CPython's full
+lists. One known divergence: `unquote` of an invalid UTF-8 percent-sequence
+returns the raw bytes where CPython substitutes U+FFFD (needs a lossy UTF-8
+decode the runtime lacks).
+
+| Item | Status | Notes |
+|---|---|---|
+| `urlsplit` / `urlunsplit` | Done | `urlunsplit` takes a 5-tuple (CPython shape) |
+| `urlparse` / `urlunparse` | Done | splits the legacy `;params` segment for params-using schemes |
+| `urljoin` | Done | RFC 3986 relative resolution (`.`/`..`, abs/scheme-relative, query/fragment-only) |
+| `quote` / `quote_plus` | Done | unreserved set + `safe=`; UTF-8 multibyte -> `%XX` per byte |
+| `unquote` / `unquote_plus` | Done | degenerate escapes (`100%`, `%zz`) left literal, per CPython |
+| `urlencode(dict[str, str])` | Done | insertion order (TPy dicts are ordered); `quote_plus`-encoded |
+| `parse_qsl` | Done | `keep_blank_values` supported |
+| `.hostname`/`.port`/`.username`/`.password` | Done | netloc decomposition incl. `[ipv6]` brackets |
+| `parse_qs` (dict-of-lists) | Missing | needs `dict[str, list[str]]` build |
+| bytes variants (`quote_from_bytes`, `unquote_to_bytes`, `SplitResultBytes`) | Missing | |
+| `urldefrag`; `urlencode(doseq=)`; `quote(encoding=)` | Missing | extra params/forms |
+| tuple indexing / unpacking of results | Missing | record, not namedtuple (see above) |
+
+Tests: `cases/stdlib/urllib_parse`, `cases/stdlib/urllib_parse_quote`,
+`cases/stdlib/urllib_parse_join`, `cases/stdlib/error_urllib_parse_index`.
 
 ### heapq
 

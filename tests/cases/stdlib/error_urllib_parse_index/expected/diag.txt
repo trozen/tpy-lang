@@ -1,0 +1,1 @@
+main.py:8: error: Cannot index type SplitResult: no __getitem__ method
