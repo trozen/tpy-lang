@@ -127,7 +127,7 @@ Examples of the policy in action:
 | [`os`](#os) | P0 | Partial | ~72% | mixed | Filesystem queries (`getcwd`/`chdir`/`listdir`/`scandir`/`getenv`) + `stat`/`lstat`/`fstat` -> `stat_result`, `scandir` -> `DirEntry`; mutating ops (`mkdir`/`makedirs`/`rmdir`/`removedirs`/`remove`/`unlink`/`rename`/`replace`/`symlink`/`readlink`/`link`/`truncate`/`ftruncate`/`chmod`/`chown`/`utime`/`fsync`) over raw POSIX with a full errno->OSError table; low-level fd I/O (`open`/`close`/`read`/`write`/`lseek`/`pipe`/`dup`/`dup2` + `O_*`/`SEEK_*`); `access`(+`*_OK`); `urandom`; process/system queries (`getpid`/`getppid`/`getuid` family/`getlogin`/`umask`/`cpu_count`/`strerror`/`isatty`/`get_terminal_size`); `fspath`; module constants (`name`/`sep`/...); `environ` snapshot mapping + `putenv`/`unsetenv` + `pop`/`setdefault`/`update`/`clear`/`copy`; `walk` (topdown + bottomup, `followlinks`, `onerror`-callback + default error-skip). Process spawning deferred |
 | [`os.path`](#ospath) | P0 | Partial | ~96% | mixed | Pure-string POSIX surface (`join`/`split`/`splitext`/`basename`/`dirname`/`isabs`/`normpath`/`splitdrive`/`commonprefix`/`commonpath`/`normcase` + constants) plus filesystem queries (`exists`/`lexists`/`isfile`/`isdir`/`islink`/`getsize`/`abspath`/`realpath`(+`strict=`)/`relpath`/`getmtime`/`getatime`/`getctime`/`samefile`/`samestat`/`ismount`/`expandvars`/`expanduser`). CPython byte-compatible against `posixpath` |
 | [`pathlib`](#pathlib) | P0 | Missing | 0% | -- | Class-heavy; depends on filesystem bindings |
-| [`io`](#io) | P0 | Partial | ~35% | pure | `StringIO` / `BytesIO` (chunked storage, write/read/`read(size)`/readline/seek/tell/truncate/iter/context-manager). `Readable` / `Writable` / `BinaryReadable` / `BinaryWritable` protocols on tpy core, re-exported from `io`. `SEEK_SET`/`CUR`/`END` exposed (Int32, via native_global to safe-named C++ globals). Missing: `IOBase` ABC hierarchy (deliberately deferred -- protocols cover the static-dispatch use case), `TextIOWrapper`, encoding/newline/errors kwargs |
+| [`io`](#io) | P0 | Partial | ~40% | pure | `StringIO` / `BytesIO` (chunked storage, write/read/`read(size)`/readline/seek/tell/truncate/iter/context-manager). `FileIO` (raw fd adopt) + `BufferedReader` (buffered binary read over a `FileIO`; the layer `socket.makefile()`/`http.client` read through). `Readable` / `Writable` / `BinaryReadable` / `BinaryWritable` protocols on tpy core, re-exported from `io`. `SEEK_SET`/`CUR`/`END` + `DEFAULT_BUFFER_SIZE` exposed. Missing: `IOBase` ABC hierarchy (deliberately deferred -- protocols cover the static-dispatch use case), `TextIOWrapper`, `BufferedReader.peek`/`readinto`, encoding/newline/errors kwargs |
 | [`json`](#json) | P0 | Partial | ~72% | pure | `loads` / `dumps` / `load(fp)` / `dump(obj, fp)` + `JSONDecodeError` done over a recursive union `JsonValue`. CPython byte-compatible across cpy phase. Missing: `JSONEncoder` / `JSONDecoder`, most `dumps`/`loads` kwargs |
 | [`re`](#re) | P0 | Partial | ~50% | pure | Pure-TPy facade over `_bindings.pcre2` raw bindings. PCRE2 vendored under `runtime/cpp/third_party/pcre2/` (5MB) and built bundled by default; `--pcre2={bundled,system,auto}` selects backend. compile/search/match/fullmatch/findall/sub (with `count`)/split + Pattern/Match classes + IGNORECASE/MULTILINE/DOTALL/VERBOSE/ASCII flags + `re.error`. Missing: named-group accessors, bytes input, compile cache |
 | [`collections`](#collections) | P0 | Partial | ~15% | pure | `Counter` v1 (construct/[]/len/in/total/most_common(n)/update/subtract) done; `elements()` + `+ - & |` deferred on filed compiler blockers. OrderedDict trivial (have ordered_map); deque needs C++ struct; defaultdict/namedtuple need macros |
@@ -161,7 +161,7 @@ Examples of the policy in action:
 | [`threading`](#threading) | P1 | Blocked | 0% | -- | Needs threading primitives |
 | [`multiprocessing`](#multiprocessing) | P2 | Blocked | 0% | -- | Needs process spawning + IPC |
 | [`subprocess`](#subprocess) | P1 | Blocked | 0% | -- | Needs process spawning |
-| [`socket`](#socket) | P1 | Blocked | 0% | -- | Needs network primitives |
+| [`socket`](#socket) | P1 | Partial | ~70% | pure + C | IPv4 TCP client/server (blocking + non-blocking via `setblocking`), `socketpair`, `create_connection`/`create_server`, `send`/`recv`/`sendall`/`shutdown`/`setsockopt_int`/`getsockopt_int`/`getsockname`/`getpeername`, `gethostbyname`, context-manager, `SocketError`/`BlockingIOError` (subclass `OSError`). `makefile("rb")` -> `io.BufferedReader`. Backed by `_bindings.posix_socket` + `socket_impl.cpp`. Missing: IPv6/`AF_INET6`, `AF_UNIX`, `sendto`/`recvfrom`/`recv_into`, `settimeout`, full `getaddrinfo`, `makefile` text/write modes, TLS/`ssl`, Windows |
 | [`http.client`](#httpclient) | P2 | Blocked | 0% | -- | Needs socket + regex |
 | [`urllib.request`](#urllibrequest) | P2 | Blocked | 0% | -- | Needs http |
 
@@ -550,7 +550,9 @@ fixtures for determinism.
 
 ### io
 
-**Partial.** v1 ships `io.StringIO` + `io.BytesIO` plus six IO protocols
+**Partial.** v1 ships `io.StringIO` + `io.BytesIO`, the raw `io.FileIO` (fd
+adopt) + `io.BufferedReader` binary-read layer (the buffered reader
+`socket.makefile()` and `http.client` build on), plus six IO protocols
 (`Readable`/`Writable`/`BinaryReadable`/`BinaryWritable`/`Seekable`/`Closable`)
 that consumer code parameterizes over (`def f(fp: Writable)`). Both buffer
 types explicitly inherit the relevant protocols (`StringIO(Writable, Readable,
@@ -573,6 +575,9 @@ remains an option without breaking the existing granular surface.
 |---|---|---|
 | `StringIO(initial="")` | Done | Chunked write/read; `read`/`readline`/`readlines`/`seek`/`tell`/`truncate`/`getvalue`/`flush`/`close`/`__iter__`/`__enter__`/`__exit__` |
 | `BytesIO(initial=None)` | Done | Same surface as `StringIO`, returning `bytes` |
+| `FileIO(fd, closefd=True)` | Done | Raw unbuffered binary layer over an OS fd (pure TPy over `os.read`/`os.close`). `read(size)` = one `os.read`; `read(-1)` drains to EOF; `readable`/`fileno`/`close`/`closed`/`__enter__`/`__exit__`. `@nocopy`; `closefd=False` reads an fd owned elsewhere. Adopt-fd only (no path constructor); `readinto`/`write` deferred |
+| `BufferedReader(raw, buffer_size=...)` | Done | Buffered binary reader over a `FileIO` (concrete, not generic -- avoids a viral type param up the http stack). `read(size=-1)` blocks until `size` or EOF; `readline(size=-1)`, `readlines`, `__iter__`, `close`/`closed`/`readable`/`__enter__`/`__exit__`. Conforms to `BinaryReadable`/`Closable`. Buffer logic mirrors `asyncio.StreamReader`. `peek`/`readinto`, text mode, and wrapping arbitrary raw objects deferred (see TODO.md) |
+| `DEFAULT_BUFFER_SIZE` | Done | `8192`, matching CPython |
 | `Writable` / `Readable` / `BinaryWritable` / `BinaryReadable` | Done | Protocols on `tpy._core._types`, re-exported from `tpy/__init__.py` and from `io` |
 | `Seekable` / `Closable` | Done | Same; `Seekable` is `seek(pos, whence=0)` + `tell()`; `Closable` is `close()` only (the `closed` property is left out of the protocol but available on the concrete classes) |
 | `seek(pos, whence=0)` | Partial | `whence` is Int32; `io.SEEK_SET/CUR/END` (Int32) now exposed via native_global. `pos`/`tell` are Int32 -- widening to Int64 for >2GB buffer positions is a filed follow-up (see TODO.md) |
@@ -590,7 +595,9 @@ Tests: `cases/stdlib/io_stringio_basic`, `cases/stdlib/io_bytesio_basic`,
 protocols, both `StringIO`/`BytesIO` and pass-through wiring),
 `cases/stdlib/io_read_size` (`read(size)` on both buffers, the protocol
 params, and the native file objects), `cases/stdlib/io_seek` (SEEK_* constants
-+ StringIO.seek).
++ StringIO.seek), `cases/stdlib/io_fileio` (raw fd read/closefd over a pipe),
+`cases/stdlib/io_bufferedreader` (readline/read/multi-fill/readline-cap/iter
+over a pipe-backed FileIO).
 
 ### json
 
@@ -1330,7 +1337,7 @@ Architecture (mirrors the re / PCRE2 split):
 | `sendto`, `recvfrom`, `recv_into` | Missing | UDP out-addr + recv-into-caller-buffer variants |
 | `settimeout` | Missing | Timeout-based blocking I/O (struct-valued `SO_RCVTIMEO`) |
 | `getaddrinfo` (full API) | Missing | Flat `tpy_resolve_ipv4` only today; multi-result walk needs typed records |
-| `makefile()` | Missing | Needs io module to grow "adopt this fd" |
+| `makefile(mode="r", buffering=-1)` | Partial | Signature mirrors CPython (default `mode="r"`); v1 implements binary-read modes (`"rb"`/`"br"`/`"b"`) only -> `io.BufferedReader` over a **dup** of the socket fd (reader and socket close independently -- differs from CPython's shared-fd refcount, observably equivalent for request/response reads). Text modes (incl. the bare-`makefile()` default), write modes, and `buffering=0` (unbuffered) raise `ValueError` -- loud, not a silent binary-for-text substitution; they need io's TextIOWrapper/BufferedWriter/raw-SocketIO layers (not built). `cases/stdlib/socket_makefile`, `socket_makefile_unsupported` |
 | Windows (Winsock2) | Missing | `SOCKET` unsigned, `WSAStartup`, `closesocket`, `WSAGetLastError` -- all in `#ifdef _WIN32` block inside socket_impl.cpp once we have Windows CI |
 | TLS (`ssl` module) | Missing | Phase 3; needs mbedTLS vendored |
 

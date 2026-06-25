@@ -1,0 +1,13 @@
+True
+b'hello'
+b''
+b' world'
+b''
+True
+False
+True
+b'ctx'
+True
+negfd-ValueError
+b'abc'
+closefd-ok

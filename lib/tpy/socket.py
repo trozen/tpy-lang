@@ -64,10 +64,6 @@ TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
   * **TLS / ssl module.** Phase 3 work, needs a TLS library (mbedTLS
     vendored is the current lean -- see the project roadmap).
 
-  * **makefile().** CPython exposes a BufferedReader/Writer over a
-    socket, integrating with the io module. Needs our io module to
-    grow a "adopt this fd" constructor.
-
   * **SocketError vs OSError hierarchy.** SocketError now subclasses
     OSError, so `except OSError` catches socket failures (CPython-faithful).
     `_raise_errno` raises `BlockingIOError` (also an OSError subclass) on
@@ -107,6 +103,9 @@ from tpy.unsafe import (
 
 from _bindings import posix_socket
 from _bindings.posix_socket import SockaddrIn
+
+import os
+from io import FileIO, BufferedReader, DEFAULT_BUFFER_SIZE
 
 
 # ---------- Wire constants ----------
@@ -428,6 +427,28 @@ class socket:
             _raise_errno("getpeername")
         return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
                 Int32.trunc(posix_socket.ntohs(addr.sin_port)))
+
+    def makefile(self, mode: str = "r",
+                 buffering: Int32 = -1) -> Own[BufferedReader]:
+        """Return a buffered binary reader over a *dup* of this socket's fd.
+
+        Signature mirrors CPython (default mode "r"), but v1 implements only
+        the binary-read modes ("rb"/"br"/"b") -> io.BufferedReader. Text modes
+        (including the bare-makefile() default), write modes, and the
+        unbuffered buffering=0 form need io's TextIOWrapper / BufferedWriter /
+        raw-SocketIO layers (not built) and raise ValueError -- loud, not a
+        silent binary-for-text substitution. The reader owns its own dup of
+        the fd, so it and the socket close independently (differs from
+        CPython's shared-fd refcount). The dup shares the same kernel
+        byte-stream, so do not interleave reads on the socket and the reader
+        -- each steals bytes from the other; read via one only."""
+        if mode != "rb" and mode != "br" and mode != "b":
+            raise ValueError("makefile: only binary read mode ('rb'/'br'/'b')"
+                             " supported in v1; got '" + mode + "'")
+        if buffering == 0:
+            raise ValueError("makefile: unbuffered (buffering=0) not supported")
+        size = DEFAULT_BUFFER_SIZE if buffering < 0 else buffering
+        return BufferedReader(FileIO(os.dup(Int64(self.fd))), size)
 
     def __enter__(self) -> socket:
         return self

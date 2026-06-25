@@ -1,0 +1,4 @@
+bare ValueError
+text ValueError
+write ValueError
+unbuffered ValueError

@@ -1,0 +1,1 @@
+CPython returns TextIOWrapper/BufferedWriter/raw SocketIO for these modes rather than raising; this case asserts the TPy v1 binary-read-only limitation.

@@ -1,0 +1,5 @@
+b'HTTP/1.1 200 OK\r\n'
+b'Content-Length: 5\r\n'
+b'\r\n'
+b'hello'
+b'ping\n'

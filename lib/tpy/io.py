@@ -24,11 +24,17 @@
 # tpy: cpp_namespace("tpystd::io")
 from typing import Final, Iterator
 from tpy import (
-    Int32, Own, nocopy,
+    Int32, Int64, Own, nocopy,
     Writable, Readable, BinaryWritable, BinaryReadable,
     Seekable, Closable,
 )
 from tpy.extern import native_global
+import os
+
+
+# CPython's io.DEFAULT_BUFFER_SIZE: chunk size for raw reads / the default
+# BufferedReader buffer.
+DEFAULT_BUFFER_SIZE: Final[Int32] = 8192
 
 
 # SEEK_SET/CUR/END names are <cstdio> macros, so they can't be emitted as C++
@@ -406,6 +412,192 @@ class BytesIO(BinaryWritable, BinaryReadable, Seekable, Closable):
             self._chunks = [b"".join(self._chunks)]
         elif len(self._chunks) == 0 and self._total > 0:
             self._chunks = [b""]
+
+    def _check_open(self) -> None:
+        if self._closed:
+            raise ValueError("I/O operation on closed file.")
+
+
+@nocopy
+class FileIO:
+    """Raw unbuffered binary I/O over an OS file descriptor.
+
+    Adopts an existing fd (from os.pipe / os.dup / socket.fileno) -- the
+    raw layer under BufferedReader, mirroring CPython's io.FileIO. read(size)
+    issues a single os.read (may return fewer than size bytes, like read(2));
+    read(-1) drains to EOF. With closefd=True (default) close()/__del__ close
+    the fd; pass closefd=False to read from an fd owned elsewhere.
+
+    Not declared BinaryReadable: it has read()/close() but no readline (the
+    raw layer never line-splits -- BufferedReader does), and BufferedReader
+    holds it as a concrete field, so no protocol erasure is needed.
+    """
+
+    # -1 sentinel marks closed/moved-from so __del__ won't double-close.
+    _fd: Int64 = -1
+    _closefd: bool
+    _closed: bool
+
+    def __init__(self, fd: Int64, closefd: bool = True) -> None:
+        if fd < 0:
+            raise ValueError("negative file descriptor")
+        self._fd = fd
+        self._closefd = closefd
+        self._closed = False
+
+    def __del__(self) -> None:
+        if self._closefd and self._fd >= 0:
+            os.close(self._fd)
+            self._fd = -1
+        # Keep _closed and the fd sentinel in agreement after teardown.
+        self._closed = True
+
+    def read(self, size: Int32 = -1) -> bytes:
+        self._check_open()
+        if size < 0:
+            return self._readall()
+        if size == 0:
+            return b""
+        return os.read(self._fd, Int64(size))
+
+    def _readall(self) -> bytes:
+        out: bytes = b""
+        while True:
+            chunk: bytes = os.read(self._fd, Int64(DEFAULT_BUFFER_SIZE))
+            if len(chunk) == 0:
+                break
+            out = out + chunk
+        return out
+
+    def readable(self) -> bool:
+        return not self._closed
+
+    def fileno(self) -> Int64:
+        self._check_open()
+        return self._fd
+
+    def close(self) -> None:
+        if not self._closed:
+            self._closed = True
+            if self._closefd and self._fd >= 0:
+                os.close(self._fd)
+            self._fd = -1
+
+    @property
+    def closed(self) -> bool:
+        return self._closed
+
+    def __enter__(self) -> "FileIO":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
+
+    def _check_open(self) -> None:
+        if self._closed:
+            raise ValueError("I/O operation on closed file")
+
+
+@nocopy
+class BufferedReader(BinaryReadable, Closable):
+    """Buffered binary reader over a raw FileIO (CPython io.BufferedReader).
+
+    Fills an owned bytes buffer from the raw source in `buffer_size` chunks;
+    read()/readline() serve from it, refilling on demand. The buffer logic
+    mirrors asyncio.StreamReader (minus await): read(size>=0) blocks until
+    `size` bytes are buffered or EOF; read(-1) drains to EOF.
+    """
+
+    _raw: FileIO
+    _buf: bytes
+    _eof: bool
+    _buffer_size: Int32
+    _closed: bool
+
+    def __init__(self, raw: Own[FileIO],
+                 buffer_size: Int32 = DEFAULT_BUFFER_SIZE) -> None:
+        # `_raw` is non-default-constructible, so it must be assigned before
+        # any other statement (the buffer_size guard) runs.
+        self._raw = raw
+        self._buf = b""
+        self._eof = False
+        self._buffer_size = buffer_size
+        self._closed = False
+        if buffer_size <= 0:
+            raise ValueError("buffer size must be strictly positive")
+
+    def _fill(self) -> None:
+        chunk = self._raw.read(self._buffer_size)
+        if len(chunk) == 0:
+            self._eof = True
+        else:
+            self._buf = self._buf + chunk
+
+    def _take(self, n: Int32) -> bytes:
+        # Materialize the owned head before reassigning `_buf` (a slice is a
+        # borrow into the old buffer).
+        head = bytes(self._buf[:n])
+        self._buf = bytes(self._buf[n:])
+        return head
+
+    def read(self, size: Int32 = -1) -> bytes:
+        self._check_open()
+        if size < 0:
+            while not self._eof:
+                self._fill()
+            return self._take(len(self._buf))
+        while len(self._buf) < size and not self._eof:
+            self._fill()
+        take = size if size < len(self._buf) else len(self._buf)
+        return self._take(take)
+
+    def readline(self, size: Int32 = -1) -> bytes:
+        """Read through the next `\\n` (included) or EOF; at most `size`
+        bytes when `size >= 0`. Matches CPython's BufferedReader.readline."""
+        self._check_open()
+        idx = self._buf.find(b"\n")
+        while idx < 0 and not self._eof and (size < 0 or len(self._buf) < size):
+            self._fill()
+            idx = self._buf.find(b"\n")
+        stop = idx + 1 if idx >= 0 else len(self._buf)
+        if size >= 0 and size < stop:
+            stop = size
+        return self._take(stop)
+
+    def readlines(self) -> Own[list[bytes]]:
+        out: list[bytes] = []
+        while True:
+            line = self.readline()
+            if len(line) == 0:
+                break
+            out.append(line)
+        return out
+
+    def __iter__(self) -> Iterator[bytes]:
+        while True:
+            line = self.readline()
+            if len(line) == 0:
+                return
+            yield line
+
+    def readable(self) -> bool:
+        return not self._closed
+
+    def close(self) -> None:
+        if not self._closed:
+            self._closed = True
+            self._raw.close()
+            self._buf = b""
+
+    @property
+    def closed(self) -> bool:
+        return self._closed
+
+    def __enter__(self) -> "BufferedReader":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        self.close()
 
     def _check_open(self) -> None:
         if self._closed:

@@ -1,0 +1,30 @@
+b'HTTP/1.1 200 OK\r\n'
+b'Content-Length: 5\r\n'
+b'\r\n'
+b'hello'
+b''
+False
+True
+b'abc'
+b''
+b'defgh'
+b'one\n'
+b'two'
+b''
+b'abcdefghij\n'
+b'abc'
+b'def\n'
+b'x\n'
+b'y\n'
+b'z\n'
+2
+b'p\n'
+b'q\n'
+b'abcdefg'
+b'hij'
+b''
+b''
+b'z\n'
+True
+bufsize-ValueError
+closed-ValueError
