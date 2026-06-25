@@ -1,0 +1,10 @@
+200
+404
+OK
+500
+NOT_FOUND
+NO_CONTENT
+ok
+missing
+other
+True

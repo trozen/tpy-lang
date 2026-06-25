@@ -1,0 +1,33 @@
+200 OK 11
+b'hello, world'
+b''
+404 Not Found 11
+b'nope'
+b''
+200 OK 11
+b''
+b''
+204 No Content 11
+b''
+b''
+304 Not Modified 11
+b''
+b''
+200 OK 10
+b'hi'
+b''
+200 OK 11
+b'hi'
+b''
+200 OK 11
+b'hi'
+b''
+101 Switching Protocols 11
+b''
+b''
+103 Early Hints 11
+b''
+b''
+b'hel'
+b'lowo'
+b'rld'

@@ -1,0 +1,20 @@
+200 OK 11
+application/json
+a, b
+DEF
+None
+b'abc'
+b''
+b'defghij'
+b''
+Content-Type = application/json
+X-Multi = a
+Content-Length = 10
+X-Multi = b
+b'POST /v1 HTTP/1.1\r\nHost: api.test:8002\r\nAccept-Encoding: identity\r\nContent-Length: 7\r\nContent-Type: application/json\r\n\r\n{"x":1}'
+b'POST /x HTTP/1.1\r\nHost: api.test:8002\r\nAccept-Encoding: identity\r\nContent-Length: 0\r\n\r\n'
+b'PUT /x HTTP/1.1\r\nHost: api.test:8002\r\nAccept-Encoding: identity\r\nContent-Length: 0\r\n\r\n'
+b'PATCH /x HTTP/1.1\r\nHost: api.test:8002\r\nAccept-Encoding: identity\r\nContent-Length: 0\r\n\r\n'
+b'GET /x HTTP/1.1\r\nHost: api.test:8002\r\nAccept-Encoding: identity\r\n\r\n'
+b'GET /x HTTP/1.1\r\nAccept-Encoding: identity\r\nHost: override:9000\r\n\r\n'
+b'POST /x HTTP/1.1\r\nHost: api.test:8002\r\nAccept-Encoding: identity\r\nTransfer-Encoding: chunked\r\n\r\ndata'

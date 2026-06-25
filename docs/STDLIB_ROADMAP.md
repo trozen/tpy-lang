@@ -162,8 +162,9 @@ Examples of the policy in action:
 | [`multiprocessing`](#multiprocessing) | P2 | Blocked | 0% | -- | Needs process spawning + IPC |
 | [`subprocess`](#subprocess) | P1 | Blocked | 0% | -- | Needs process spawning |
 | [`socket`](#socket) | P1 | Partial | ~70% | pure + C | IPv4 TCP client/server (blocking + non-blocking via `setblocking`), `socketpair`, `create_connection`/`create_server`, `send`/`recv`/`sendall`/`shutdown`/`setsockopt_int`/`getsockopt_int`/`getsockname`/`getpeername`, `gethostbyname`, context-manager, `SocketError`/`BlockingIOError` (subclass `OSError`). `makefile("rb")` -> `io.BufferedReader`. Backed by `_bindings.posix_socket` + `socket_impl.cpp`. Missing: IPv6/`AF_INET6`, `AF_UNIX`, `sendto`/`recvfrom`/`recv_into`, `settimeout`, full `getaddrinfo`, `makefile` text/write modes, TLS/`ssl`, Windows |
-| [`http.client`](#httpclient) | P2 | Blocked | 0% | -- | Needs socket + regex |
-| [`urllib.request`](#urllibrequest) | P2 | Blocked | 0% | -- | Needs http |
+| [`http`](#httpclient) | P2 | Partial | ~60% | pure | `HTTPStatus` (full IntEnum code set; `.value`/`.name`/value-lookup/int-compare; no `.phrase`/`.description`/`.is_*` -- enum can't carry per-member data). Missing: `HTTPMethod` enum |
+| [`http.client`](#httpclient) | P2 | Partial | ~55% | pure | Plaintext HTTP/1.1: `HTTPConnection.request`/`getresponse`/`connect`/`close`, `HTTPResponse` (`status`/`reason`/`version`/`read`/`getheader`/`getheaders`), `HTTPException`/`BadStatusLine`/`UnknownProtocol`. Auto Host/Accept-Encoding/Content-Length (CPython byte-order); body framing via Content-Length, chunked, and connection-close. Reads through `socket.makefile` -> `io.BufferedReader`. Missing: HTTPS/`ssl`, low-level putrequest/putheader, str/file/iterable bodies, `email.message`-style `.headers`, redirects/proxy/timeout/connection-reuse (see TODO.md) |
+| [`urllib.request`](#urllibrequest) | P2 | Blocked | 0% | -- | Next: `urlopen` shim + `tplib.requests` on `http.client` |
 
 ---
 
@@ -1349,15 +1350,41 @@ Tests:
     serve as manual smoke tests: run the server in one terminal, the
     client in another, verify the echo round-trip.
 
-### http.client
+### http / http.client
 
-**Blocked** on TLS (phase 3) for HTTPS; HTTP-over-socket would build on
-Phase 1's `socket` today but makes limited sense without TLS. Slated
-for Phase 4 per the network roadmap discussion.
+**Partial (v1).** Pure-TPy plaintext HTTP/1.1, built on `socket` +
+`io.BufferedReader`. `http.HTTPStatus` is a plain `IntEnum` over CPython's
+full status-code set (`.value`/`.name`/value-lookup/int-compare; no
+`.phrase`/`.description`/`.is_*` -- TPy enums can't carry per-member data, so
+those attributes are a compile error, not a silent wrong value).
+
+`http.client.HTTPConnection(host, port=80)` exposes `connect()`,
+`request(method, url, body=None, headers=None)`, `getresponse()`, `close()`,
+and an assignable `sock` (used for testing). `request()` auto-adds `Host`,
+`Accept-Encoding: identity`, and `Content-Length` (incl. `0` for bodyless
+POST/PUT/PATCH) in CPython's exact header order. `HTTPResponse` exposes
+`status`/`reason`/`version`, `read(amt=-1)`, `getheader(name, default=None)`
+(case-insensitive; duplicate values joined with `", "`), and `getheaders()`;
+body framing handles Content-Length, chunked transfer-encoding (extensions +
+trailers), and connection-close. Reads go through `socket.makefile("rb")` ->
+`io.BufferedReader` (the request is written via the socket, the response read
+via a dup of the fd). `HTTPException`/`BadStatusLine`/`UnknownProtocol` for
+malformed status lines and non-HTTP/1.x versions. Verified byte-parity with
+CPython's stdlib `http.client` via socketpair + `conn.sock` injection
+(`tests/cases/stdlib/http_status`, `http_client`, `http_client_framing`,
+`http_client_bad_status`).
+
+**Deferred** (see TODO.md): the `http.HTTPMethod` enum, HTTPS/`HTTPSConnection`
+(needs `ssl`, phase 3), low-level putrequest/putheader/endheaders, str/file/
+iterable request bodies, `email.message`-style `.headers`,
+`HTTPStatus.phrase`/`.is_*`, header folding, single-space-vs-whitespace
+status-line split, redirects/proxy/`timeout=`/connection-reuse.
 
 ### urllib.request
 
-**Blocked** on http.
+**Blocked** on a `requests`-style layer. Next REST-track step:
+`urllib.request.urlopen` (shim) + a `tplib.requests` client on top of
+`http.client`.
 
 ---
 

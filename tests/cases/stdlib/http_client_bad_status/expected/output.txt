@@ -1,0 +1,4 @@
+BadStatusLine
+BadStatusLine
+BadStatusLine
+UnknownProtocol
