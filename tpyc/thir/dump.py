@@ -13,6 +13,7 @@ from .nodes import (
     THIRCall,
     THIRCoerce,
     THIRExpr,
+    THIRForRange,
     THIRIf,
     THIRLiteral,
     THIRModule,
@@ -63,6 +64,12 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return lines
     if isinstance(stmt, THIRWhile):
         lines = [f"{pad}while {_expr(stmt.condition)}:"]
+        for s in stmt.body:
+            lines.extend(_stmt_lines(s, depth + 1))
+        return lines
+    if isinstance(stmt, THIRForRange):
+        start = "0" if stmt.start is None else _expr(stmt.start)
+        lines = [f"{pad}for %{stmt.var} in range({start}, {_expr(stmt.stop)}):"]
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
         return lines

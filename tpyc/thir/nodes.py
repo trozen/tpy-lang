@@ -82,9 +82,9 @@ class THIRCall(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRCoerce(THIRExpr):
-    """A sema-inserted coercion made explicit on the IR. The slice carries
-    only `int_literal_to_fixed_int` (a literal landing in a typed slot), which
-    is a passthrough -- the inner literal renders in the target type."""
+    """A sema-inserted coercion made explicit on the IR. The slice carries the
+    literal-into-typed-slot passthroughs (`int_literal_to_fixed_int`,
+    `float_literal_to_float`) -- the inner literal renders in the target type."""
     expr: THIRExpr
     coercion_name: str
 
@@ -130,6 +130,26 @@ class THIRWhile(THIRStmt):
     reassign-only body -- a plain C++ `while (cond) { ... }`."""
     condition: THIRExpr
     body: tuple[THIRStmt, ...]
+
+
+@dataclass(frozen=True)
+class THIRForRange(THIRStmt):
+    """`for <var> in range(...)` lowered to a C-style counter loop, step 1.
+
+    Mirrors the AST path's `_gen_range_counter_loop` plus_one / non-hoisted
+    branch. `start` is None for `range(stop)` (implicit 0). A non-literal bound
+    is hoisted by the emitter into a `__start_N`/`__stop_N` temp, where N is the
+    per-function loop index reproducing `ctx.iter_counter`; `*_is_literal`
+    mirrors `_is_literal_range_arg`'s inline-vs-hoist decision (`start_is_literal`
+    is unused when `start` is None). Slice: fixed-int counter, loop var not used
+    after the loop, no for/else, bounds restricted to bare literal or name."""
+    var: str
+    elem_type: TpyType
+    stop: THIRExpr
+    start: THIRExpr | None = None
+    start_is_literal: bool = True
+    stop_is_literal: bool = True
+    body: tuple[THIRStmt, ...] = ()
 
 
 # --- Function / module ---

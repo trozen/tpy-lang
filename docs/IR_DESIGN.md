@@ -4,11 +4,11 @@
 
 | Feature | Status |
 |---------|--------|
-| THIR node definitions (`tpyc/thir/nodes.py`) | Increment 1 -- value-scalar slice |
-| AST + sema -> THIR lowering (`tpyc/thir/lower.py`) | Increment 1 -- value-scalar slice |
+| THIR node definitions (`tpyc/thir/nodes.py`) | Increments 1-5 -- value-scalar slice (+ range-for, double float, bool, comparison-as-value) |
+| AST + sema -> THIR lowering (`tpyc/thir/lower.py`) | Increments 1-5 -- value-scalar slice (+ range-for, double float, bool, comparison-as-value w/ resolved-local-type tracking) |
 | `--dump-thir` debug output | Done (increment 1) |
 | THIR-backed codegen context | Increment 1 -- flag-gated (`tpyc/thir/emit.py`) |
-| Codegen migration from analyzer/AST to THIR | Increment 1 -- value-scalar bodies incl. if/elif/else + while |
+| Codegen migration from analyzer/AST to THIR | Increments 1-5 -- value-scalar bodies incl. if/elif/else, while, range-for, double float, bool, comparison-as-value |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
 | `--dump-mir` debug output | Not started |
@@ -42,9 +42,52 @@ reproduce (globals; imported/cross-module + generic/overloaded-arity calls;
 non-scalar types; widening/other coercions; `for` loops; `while`/`else`;
 `break`/`continue`; branch-local first-declarations; any function whose locals
 hoist out of a branch; narrowing conditions), which stay on the AST path. The
-whole test corpus passes with the flag forced on (zero snapshot diffs). Next
-slices: `for` loops, then more scalar types (bool/float) -- after which the form
-decision (Open Q 9/11/12) gates the form-carrying nodes.
+whole test corpus passes with the flag forced on (zero snapshot diffs).
+
+**Increment 2 adds range-`for`**: a `for v in range(stop)` / `range(start, stop)`
+counter loop with step 1, over a fixed-int loop var that is not used after the
+loop (no `for/else`, no `break`/`continue`), bounds restricted to a bare int
+literal (inlined) or a bare name (hoisted into a `__start_N`/`__stop_N` temp).
+It reproduces `_gen_range_counter_loop`'s plus_one / non-hoisted branch
+byte-for-byte. This required the emitter's first piece of per-function state: an
+`iter_counter` reproducing `ctx.iter_counter`, sound because (verified across
+codegen) only range-`for` bumps that counter within the eligible slice and it
+resets per function. Deferred to the AST path (filed in TODO.md): 3-arg/stepped
+ranges, hoisted loop vars, `for/else`, non-range iteration, bounds that are
+binops/calls/`Int32(k)`/negated literals, loop vars shadowing an outer local,
+and non-fixed-int element types.
+
+**Increment 3 adds double `float`** as a scalar type alongside fixed-ints:
+params/returns/locals, names, finite float literals (rendered `repr(value)`,
+byte-identical to `_gen_float_literal_value`'s double branch), and float
+arithmetic/comparisons. Float arithmetic (`+ - * //`) and comparisons need no
+new emit code -- they already flow through the same templated binop path as int
+(the dunder's `cpp_template` + operand wrappers differ, but the emitter reads
+them generically). Float `/` (true division -> `tpy::truediv`) is auto-excluded:
+it lacks a `resolved_binop` `cpp_template`, so the existing `_binop_eligible`
+gate rejects it (this also keeps int `/` out, same reason). `Float32` is excluded
+-- its literals need a `f` suffix the slice does not emit.
+
+**Increment 4 adds first-class `bool`** (the safe subset): bool
+params/returns/locals, `True`/`False` literals, and **bare-bool conditions**
+(`if flag:` -- previously a condition had to be a comparison). Deferred to the
+AST path (filed in TODO.md): `and`/`or` (the `&&`/`||` narrowing +
+short-circuit-slot emit path in `_gen_logical_value`) and `not` (the
+`resolved_unaryop` emit path).
+
+**Increment 5 adds comparison-as-value** (`x = a < b`, `return a == b`): a
+comparison is now admitted in any value position, not just an `if`/`while`
+condition. This required **resolved-local-type tracking** in lowering -- the
+eligibility/lowering walk now threads a `name -> resolved type` map (was a bare
+declared-name set), because mixed-sign fixed-int comparisons emit `std::cmp_*`
+(not a bare operator) and must be excluded, but the mixed-sign decision needs
+codegen's resolved operand types: a retro-widened literal-seeded local
+(`offset = 0` later used as `UInt64`) is `Int32` under `analyzer.get_expr_type`
+but `UInt64` under codegen's `get_resolved_type`, so a naive analyzer-type check
+over-excludes it. The map carries the var-decl's resolved (retro-widened) type,
+matching codegen, so same-sign comparisons route and only true mixed-sign ones
+are excluded. Next slices: `and`/`or`/`not`, then the form decision (Open Q
+9/11/12) gates the form-carrying nodes (tuples/unions/non-value locals).
 
 ---
 

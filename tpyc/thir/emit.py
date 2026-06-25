@@ -13,6 +13,7 @@ default so emission stays decoupled from the analyzer.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TextIO
 
 from ..codegen_cpp.context import INDENT, escape_cpp_name, expand_cpp_template
@@ -22,6 +23,7 @@ from .nodes import (
     THIRCall,
     THIRCoerce,
     THIRExpr,
+    THIRForRange,
     THIRFunction,
     THIRIf,
     THIRLiteral,
@@ -64,6 +66,21 @@ class CommentSink:
 _NO_COMMENTS = CommentSink()
 
 
+@dataclass
+class _EmitState:
+    """Per-function emit state. `iter_counter` reproduces `ctx.iter_counter`:
+    in the eligible slice only range-`for` loops bump it, and it resets per
+    function, so a counter seeded at 0 here and bumped once per loop (pre-order)
+    matches the AST path's `__start_N`/`__stop_N` numbering exactly."""
+    comments: CommentSink
+    iter_counter: int = 0
+
+    def next_loop_index(self) -> int:
+        n = self.iter_counter
+        self.iter_counter += 1
+        return n
+
+
 class CtxCommentSink(CommentSink):
     """CommentSink backed by a CodeGenContext's stateless comment helpers.
 
@@ -98,6 +115,11 @@ def _emit_literal(lit: THIRLiteral) -> str:
         return "true" if v else "false"
     if v is None:
         return "nullptr"
+    if isinstance(v, float):
+        # Matches _gen_float_literal_value's double branch: repr() is the
+        # shortest round-tripping form and a valid C++ double literal. Float32
+        # (the `f`-suffixed branch) is excluded by the eligibility gate.
+        return repr(v)
     return str(v)
 
 
@@ -157,7 +179,7 @@ def _is_elif(outer: THIRIf, inner: THIRIf) -> bool:
     return inner.loc.column == outer.loc.column
 
 
-def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, comments: CommentSink) -> None:
+def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) -> None:
     # The outer `// if ...:` comment is emitted by the caller (_emit_stmts).
     # Flatten the elif chain into `} else if (...)`, matching the AST path.
     indent = INDENT * indent_level
@@ -171,29 +193,55 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, comments: CommentSink
         if i == 0:
             out.write(f"{indent}if ({_emit_expr(node.condition)}) {{\n")
         else:
-            comments.elif_(out, node.loc, indent)
+            state.comments.elif_(out, node.loc, indent)
             out.write(f"{indent}}} else if ({_emit_expr(node.condition)}) {{\n")
-        _emit_stmts(out, node.then_body, indent_level + 1, comments)
-        comments.trailing(out, node.then_body, body_indent)
+        _emit_stmts(out, node.then_body, indent_level + 1, state)
+        state.comments.trailing(out, node.then_body, body_indent)
     last = chain[-1]
     if last.else_body:
-        comments.else_(out, last.else_body, indent)
+        state.comments.else_(out, last.else_body, indent)
         out.write(f"{indent}}} else {{\n")
-        _emit_stmts(out, last.else_body, indent_level + 1, comments)
-        comments.trailing(out, last.else_body, body_indent)
+        _emit_stmts(out, last.else_body, indent_level + 1, state)
+        state.comments.trailing(out, last.else_body, body_indent)
     out.write(f"{indent}}}\n")
 
 
-def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, comments: CommentSink) -> None:
+def _emit_while(out: TextIO, stmt: THIRWhile, indent_level: int, state: _EmitState) -> None:
     # The `// while ...:` comment is emitted by the caller (_emit_stmts).
     indent = INDENT * indent_level
     out.write(f"{indent}while ({_emit_expr(stmt.condition)}) {{\n")
-    _emit_stmts(out, stmt.body, indent_level + 1, comments)
-    comments.trailing(out, stmt.body, INDENT * (indent_level + 1))
+    _emit_stmts(out, stmt.body, indent_level + 1, state)
+    state.comments.trailing(out, stmt.body, INDENT * (indent_level + 1))
     out.write(f"{indent}}}\n")
 
 
-def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, comments: CommentSink) -> None:
+def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
+                    state: _EmitState) -> None:
+    # Mirrors _gen_range_counter_loop (plus_one / non-hoisted branch): grab the
+    # loop index BEFORE the body so nested loops number after this one (the AST
+    # grabs `n` at the top of _gen_range_counter_loop). Non-literal bounds are
+    # captured once into `__start_N`/`__stop_N` temps -- Python's range() reads
+    # its args at call time, but the C++ condition re-reads each iteration.
+    indent = INDENT * indent_level
+    n = state.next_loop_index()
+    cpp_elem = stmt.elem_type.to_cpp()
+    var = escape_cpp_name(stmt.var)
+    start_cpp = "0" if stmt.start is None else _emit_expr(stmt.start)
+    stop_cpp = _emit_expr(stmt.stop)
+    if stmt.start is not None and not stmt.start_is_literal:
+        out.write(f"{indent}{cpp_elem} __start_{n} = {start_cpp};\n")
+        start_cpp = f"__start_{n}"
+    if not stmt.stop_is_literal:
+        out.write(f"{indent}{cpp_elem} __stop_{n} = {stop_cpp};\n")
+        stop_cpp = f"__stop_{n}"
+    out.write(f"{indent}for ({cpp_elem} {var} = {start_cpp}; "
+              f"{var} < {stop_cpp}; ++{var}) {{\n")
+    _emit_stmts(out, stmt.body, indent_level + 1, state)
+    state.comments.trailing(out, stmt.body, INDENT * (indent_level + 1))
+    out.write(f"{indent}}}\n")
+
+
+def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState) -> None:
     indent = INDENT * indent_level
     if isinstance(stmt, THIRVarDecl):
         cpp_type = stmt.resolved_type.to_cpp()
@@ -210,21 +258,23 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, comments: Comment
         else:
             out.write(f"{indent}return {_emit_expr(stmt.value)};\n")
     elif isinstance(stmt, THIRIf):
-        _emit_if(out, stmt, indent_level, comments)
+        _emit_if(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRWhile):
-        _emit_while(out, stmt, indent_level, comments)
+        _emit_while(out, stmt, indent_level, state)
+    elif isinstance(stmt, THIRForRange):
+        _emit_for_range(out, stmt, indent_level, state)
     else:
         raise THIRCodeGenError(f"unhandled THIR stmt: {type(stmt).__name__}")
 
 
-def _emit_stmts(out: TextIO, stmts, indent_level: int, comments: CommentSink) -> None:
+def _emit_stmts(out: TextIO, stmts, indent_level: int, state: _EmitState) -> None:
     indent = INDENT * indent_level
     for stmt in stmts:
-        comments.stmt(out, stmt.loc, indent)
-        _emit_stmt(out, stmt, indent_level, comments)
+        state.comments.stmt(out, stmt.loc, indent)
+        _emit_stmt(out, stmt, indent_level, state)
 
 
 def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
                    *, comments: CommentSink | None = None) -> None:
     """Emit `fn`'s body statements (no signature, no braces) at `indent_level`."""
-    _emit_stmts(out, fn.body, indent_level, comments or _NO_COMMENTS)
+    _emit_stmts(out, fn.body, indent_level, _EmitState(comments or _NO_COMMENTS))
