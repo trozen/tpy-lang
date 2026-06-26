@@ -712,9 +712,13 @@ class FunctionGenerator:
     def _get_method_genuine_mutated_params(self, method: TpyFunction, record_name: str) -> frozenset[int] | None:
         """Return genuinely mutated params for const method codegen.
 
-        Uses direct_mutated_params (Phase 1 only, no transitive propagation)
-        minus return_borrows_from (params only marked mutated because they're
-        returned by reference, not because they're actually modified).
+        Uses the finalized Phase-2 `mutated_params` (direct + transitive
+        call-edge mutations) minus `return_borrows_from` -- the params marked
+        mutated only because they're returned by reference, not actually
+        modified. The full set (rather than direct-only) is needed so a param
+        mutated transitively, by being passed to a mutating callee, stays
+        non-const. Over-keeping a param as non-const is safe (a const method
+        may still take a mutable-ref param).
         """
         if method.is_stub or method.is_overload_stub:
             return None
@@ -723,13 +727,13 @@ class FunctionGenerator:
             overloads = record_info.get_method_overloads(method.name)
             if overloads:
                 fi = overloads[-1]
-                dmp = fi.direct_mutated_params
-                if dmp is None:
+                mp = fi.mutated_params
+                if mp is None:
                     return None
                 rb = fi.return_borrows_from
                 if rb:
-                    return dmp - rb
-                return dmp
+                    return mp - rb
+                return mp
         return None
 
     def _has_dynamic_protocol_params(self, params: list[tuple[str, TpyType]]) -> bool:
@@ -1549,9 +1553,8 @@ class FunctionGenerator:
         rp = self._get_reassigned_params(method)
         mp = self._get_method_mutated_params(method, record_name)
         ae = self._get_method_addr_escapes(method, record_name)
-        # For const methods, use genuine mutations only (direct Phase 1 minus
-        # return-borrow) to avoid false positives from transitive propagation
-        # or return-borrow marking.
+        # For const methods, drop the params marked mutated only because they're
+        # returned by reference (return-borrow), keeping genuinely mutated ones.
         gmp = self._get_method_genuine_mutated_params(method, record_name) if use_const_params else None
         # C++ rejects default arguments repeated on both the in-class declaration
         # and the out-of-line definition. Emit defaults only on the decl side.
