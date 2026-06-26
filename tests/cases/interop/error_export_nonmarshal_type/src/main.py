@@ -1,5 +1,5 @@
-# A param/return type without a CPython boundary marshaller is rejected when
-# the extension glue is generated (only Int64 and int are supported so far).
+# A param/return type without a CPython boundary marshaller (str here) is
+# rejected before codegen, not during glue generation.
 # tpy: ext_module
 from tpy.extern import export
 

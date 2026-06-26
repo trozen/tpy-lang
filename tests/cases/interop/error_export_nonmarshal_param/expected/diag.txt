@@ -1,0 +1,1 @@
+main.py:8: error: @export function 'f': parameter 'x' type 'std::string' is not yet marshallable across the CPython boundary (supported: Int64, int, float)

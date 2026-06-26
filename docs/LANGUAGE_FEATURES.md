@@ -5840,21 +5840,34 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   `@export`-ed functions to the host interpreter. Inside an `ext_module`,
   `@export` means "expose to CPython" (it generates a wrapper + `PyMethodDef`
   entry); the function itself stays an ordinary TPy function. Conflicting
-  forms (`@export(binding="C")`, a positional name) are compile errors.
+  forms (`@export(binding="C")`, a positional name) are compile errors, as is
+  combining `ext_module` with `native_module` (declaration-only -- no module
+  to export). `@export` signature constraints (param/return marshallability)
+  are validated before codegen, so the glue emitter assumes valid input.
   Codegen emits an extension glue TU (`PyMethodDef` / `PyModuleDef` /
   `PyInit_<module>`) beside the normal module `.cpp`. The boundary uses a
   hand-mirrored limited-API facade (`tpy/interop/cpython_h.hpp`) so no
   `Python.h` enters a generated TU; the `.so` links with undefined Python
   symbols (no libpython) resolved at import.
-- **Working (`Int64` + `int`)**: functions taking and returning `Int64`
-  (rung 1, `METH_VARARGS` + `PyArg_ParseTuple` with `from_py` owning every
-  conversion) and `int`/BigInt (rung 2, a two-tier int64 fast path + hex
-  string round-trip, so values beyond int64 cross losslessly). Args are
-  coerced via `__index__`; marshalling failures raise the right Python
-  exception (`OverflowError` for an out-of-`Int64`-range int, `TypeError` for
-  a non-integer). Verified end to end in `tests/interop/` (ext-exec ==
-  cpy-parity for happy paths; ext-only checks for the bounded-`Int64`
-  divergences).
+- **Working (`Int64` + `int` + `float`)**: functions taking and returning
+  `Int64` (rung 1, `METH_VARARGS` + `PyArg_ParseTuple` with `from_py` owning
+  every conversion), `int`/BigInt (rung 2, a two-tier int64 fast path + hex
+  string round-trip, so values beyond int64 cross losslessly), and `float`
+  (rung 3, C++ `double` via `PyFloat_AsDouble`/`FromDouble`; `int`/`bool` args
+  coerce through `__float__`). Args are coerced via `__index__` (`__float__`
+  for `float`); marshalling failures raise the right Python exception
+  (`OverflowError` for an out-of-`Int64`-range int or an int too large for a
+  double, `TypeError` for a non-number). Verified end to end in
+  `tests/interop/` (ext-exec == cpy-parity for the tested values).
+  **Coercion model:** the numeric boundary marshals via Python's protocols
+  (`__index__` for ints, `__float__` for floats), so the compiled extension
+  enforces the declared parameter type while the untyped TPy source (run under
+  CPython for the parity check) does not. For ordinary numbers they agree; for
+  non-conforming exotic args (a `complex`, or a bare `__float__`/`__index__`
+  object passed where the source would do arithmetic) the compiled extension is
+  wider/stricter than the source. This is inherent to "`@export` marshals an
+  untyped CPython arg into a typed TPy value" and applies to every numeric
+  marshaller; such args are deliberately kept out of the parity drivers.
 - **Working (`.so` build mode)**: `tpyc -b` on an `# tpy: ext_module` builds an
   importable `<mod>.so` directly -- every TU `-fPIC`, linked `-shared`, no
   `main()`, glue TU in the link set. `--exec` on an ext_module is a clean error

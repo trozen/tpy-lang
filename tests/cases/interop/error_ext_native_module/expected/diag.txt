@@ -1,0 +1,1 @@
+main.py:5: error: a module cannot be both `# tpy: ext_module` and `# tpy: native_module` (native is declaration-only and emits no CPython module to export)

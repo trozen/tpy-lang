@@ -278,6 +278,7 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
     third_party_deps: list[tuple[str, str | None]] = []
     native_module = False
     ext_module = False
+    ext_module_loc: SourceLocation | None = None
     cpp_namespace: str | None = None
     warnings: list[ParseWarning] = []
 
@@ -315,6 +316,7 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
             native_module = True
         elif name == "ext_module":
             ext_module = True
+            ext_module_loc = loc
         elif name == "include":
             includes.append((args[0], kwargs.get("platform")))
         elif name == "link":
@@ -340,6 +342,7 @@ def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[Pa
         third_party_deps=third_party_deps,
         native_module=native_module,
         ext_module=ext_module,
+        ext_module_loc=ext_module_loc,
         cpp_namespace=cpp_namespace,
     ), warnings
 

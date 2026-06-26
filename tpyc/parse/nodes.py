@@ -1568,6 +1568,9 @@ class ModuleDirectives:
     # CPython extension module: @export exposes to the host interpreter and
     # the build emits a PyInit_-exporting .so instead of an executable.
     ext_module: bool = False
+    # Location of the `ext_module` directive, for diagnostics that point at it
+    # (e.g. the ext_module/native_module conflict).
+    ext_module_loc: 'SourceLocation | None' = None
     # Override C++ namespace (replaces tpyapp::module_name)
     cpp_namespace: str | None = None
 

@@ -55,9 +55,25 @@ def _emits_own_cpp(typ: NominalType) -> bool:
 # Maps user-facing platform names to sys.platform prefixes (also in compiler.py)
 _PLATFORM_MAP = {"windows": "win32", "linux": "linux", "macos": "darwin"}
 
-# C++ types with a tpy::interop::from_py<T> / to_py marshaller, so codegen can
-# pass them across the CPython extension boundary. Anything else is rejected.
-_BOUNDARY_CPP_TYPES = {"int64_t", "::tpy::BigInt"}
+# C++ types with a tpy::interop::from_py<T> / to_py marshaller, so an @export
+# function can pass them across the CPython extension boundary. Anything else is
+# rejected -- by sema (the located diagnostic), with codegen asserting as a
+# drift guard. Shared so both sides agree on one source of truth.
+BOUNDARY_CPP_TYPES = {"int64_t", "::tpy::BigInt", "double"}
+
+
+def boundary_cpp_type(t: TpyType | None) -> str:
+    # Shared so the sema validator and codegen derive the boundary cpp type
+    # identically (a missing return type is 'void', absent from the set).
+    return t.to_cpp() if t is not None else "void"
+
+
+def boundary_unmarshallable_msg(fn_name: str, what: str, cpp: str) -> str:
+    # `what` is "return" or "parameter '<name>'". Shared so the sema diagnostic
+    # and codegen's drift assert read identically.
+    return (f"@export function '{fn_name}': {what} type '{cpp}' is not yet "
+            f"marshallable across the CPython boundary "
+            f"(supported: Int64, int, float)")
 
 
 def _platform_matches(platform_filter: str | None) -> bool:
@@ -2498,8 +2514,9 @@ class CodeGenerator:
     def generate_extension_glue(self, module: TpyModule, module_name: str) -> str:
         """Emit the CPython extension glue TU for an `# tpy: ext_module`:
         PyMethodDef/PyModuleDef/PyInit_ plus one wrapper per @export-ed
-        function. Param/return types must be in _BOUNDARY_CPP_TYPES; the
-        wrapper marshals via tpy::interop and the TU never includes Python.h
+        function. Param/return types must be in BOUNDARY_CPP_TYPES (sema
+        already enforced this); the wrapper marshals via tpy::interop and the
+        TU never includes Python.h
         (the facade keeps its macros out of TPy-generated code).
         """
         exposed = [f for f in module.functions if f.exposed_to_host]
@@ -2521,12 +2538,12 @@ class CodeGenerator:
         out.write("using namespace ::tpy::cpy;\n\n")
 
         def boundary_cpp(t, what: str, fn) -> str:
-            cpp = t.to_cpp() if t is not None else "void"
-            if cpp not in _BOUNDARY_CPP_TYPES:
-                raise CodeGenError(
-                    f"@export function '{fn.name}': {what} type '{cpp}' is not "
-                    f"yet marshallable across the CPython boundary "
-                    f"(supported: Int64, int)", loc=fn.loc)
+            cpp = boundary_cpp_type(t)
+            # Sema (_validate_ext_module_exports) already rejected unmarshallable
+            # boundary types; this asserts the contract to catch sema/codegen
+            # drift loudly rather than emit a TU that won't compile.
+            assert cpp in BOUNDARY_CPP_TYPES, boundary_unmarshallable_msg(
+                fn.name, what, cpp)
             return cpp
 
         wrappers: list[tuple[str, str, str]] = []  # (pyname, wrapper, meth_flag)

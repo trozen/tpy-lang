@@ -15,7 +15,10 @@
 //
 // abi3 floor: Python 3.12 (Py_LIMITED_API=0x030c0000). Layout correctness is
 // guarded by the cpython_abi.hpp self-check; the constant values below are
-// asserted against Python.h's macros there too.
+// asserted against Python.h's macros there too. The self-check does NOT yet
+// validate these function signatures (TODO) -- a wrong parameter or return
+// type here is silent until link/ABI corruption, so mirror each decl against
+// the real limited-API prototype by hand.
 
 #include "tpy/interop/cpython_abi.hpp"
 
@@ -41,6 +44,12 @@ PyObject *PyNumber_Index(PyObject *o);          // __index__ coercion
 PyObject *PyNumber_ToBase(PyObject *o, int base);  // BigInt slow path (hex)
 PyObject *PyLong_FromString(const char *str, char **pend, int base);
 const char *PyUnicode_AsUTF8AndSize(PyObject *unicode, Py_ssize_t *size);
+
+// float marshalling (double). PyFloat_AsDouble coerces via __float__, so int /
+// bool arguments cross like CPython; it returns -1.0 + sets an exception on
+// failure.
+PyObject *PyFloat_FromDouble(double v);
+double PyFloat_AsDouble(PyObject *o);
 
 // Stable-ABI exception singletons (provided by the host interpreter).
 extern PyObject *PyExc_RuntimeError;

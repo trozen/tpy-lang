@@ -58,3 +58,8 @@ self-check additionally requires `Python.h`.
   out-of-`Int64` int, `TypeError` on a non-integer) -- which deliberately
   diverge from the source, where `Int64` is just an annotation and `int` is
   unbounded, so they are checked only against the `.so`.
+- **`floats/`** (`floats.py`) -- the `float` boundary (rung 3): `scale(x: float)`
+  and `addf(a, b: float)` marshal as C++ `double` (`int`/`bool` args coerce via
+  `__float__`). Its boundary errors (non-number, int-too-large-for-double) match
+  CPython for the values driven, so they are parity-checked in `driver.py`
+  rather than an ext-only file.

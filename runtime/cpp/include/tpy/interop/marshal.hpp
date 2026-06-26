@@ -85,9 +85,22 @@ inline tpy::BigInt from_py<tpy::BigInt>(cpy::PyObject *o) {
     return tpy::BigInt::from_hex_str(digits);
 }
 
+template <>
+inline double from_py<double>(cpy::PyObject *o) {
+    double v = cpy::PyFloat_AsDouble(o);  // coerces via __float__ (int/bool too)
+    if (v == -1.0 && cpy::PyErr_Occurred() != nullptr) {
+        throw MarshalError{};
+    }
+    return v;
+}
+
 // to_py: a TPy value -> a new owned PyObject reference.
 inline cpy::PyObject *to_py(std::int64_t v) {
     return cpy::PyLong_FromLongLong(static_cast<long long>(v));
+}
+
+inline cpy::PyObject *to_py(double v) {
+    return cpy::PyFloat_FromDouble(v);
 }
 
 inline cpy::PyObject *to_py(const tpy::BigInt &b) {

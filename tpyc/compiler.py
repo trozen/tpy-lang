@@ -1304,6 +1304,7 @@ class Compiler:
                 analyzer = self.modules[name].analyzer
                 if analyzer is not None:
                     analyzer.finalize_borrow_checks()
+            self._validate_ext_module_exports()
             return [self.modules[name] for name in self.compile_order]
 
         # 1. Discover implicit stdlib first so @builtin_decorator schemas
@@ -1376,6 +1377,8 @@ class Compiler:
             analyzer = self.modules[module_name].analyzer
             if analyzer is not None:
                 analyzer.finalize_borrow_checks()
+
+        self._validate_ext_module_exports()
 
         # Return in dependency order
         return [self.modules[name] for name in self.compile_order]
@@ -3869,6 +3872,45 @@ class Compiler:
                         and record.builtin_type_key is None
                         and _needs_prefix(record.native_name)):
                     record.native_name = f"{ns}::{record.native_name or record.name}"
+
+    def _validate_ext_module_exports(self) -> None:
+        """Validate `# tpy: ext_module` preconditions before codegen, so the
+        glue emitter can assume valid input:
+
+          - ext_module + native_module is contradictory: native is
+            declaration-only (no generated code, hence no module body to attach
+            PyInit_ to), so the combination would emit a PyInit_-less .so. The
+            empty-hpp early-return in _generate_code_impl is reachable only via
+            this combo, so rejecting it here removes the silent drop.
+          - Every @export-ed function's param/return types must have a CPython
+            boundary marshaller. Runs post-sema so the types are resolved.
+        """
+        from .codegen_cpp.generator import (
+            BOUNDARY_CPP_TYPES, boundary_cpp_type, boundary_unmarshallable_msg)
+        for compiled in self.modules.values():
+            if not compiled.ast.directives.ext_module:
+                continue
+            if compiled.ast.directives.native_module:
+                loc = compiled.ast.directives.ext_module_loc
+                raise CompileError(
+                    "a module cannot be both `# tpy: ext_module` and "
+                    "`# tpy: native_module` (native is declaration-only and "
+                    "emits no CPython module to export)",
+                    compiled.name, compiled.path,
+                    lineno=loc.line if loc else None)
+            for func in compiled.ast.functions:
+                if not func.exposed_to_host:
+                    continue
+                checks = [(func.return_type, "return")]
+                checks += [(ptype, f"parameter '{pname}'")
+                           for pname, ptype in func.params]
+                for typ, what in checks:
+                    cpp = boundary_cpp_type(typ)
+                    if cpp not in BOUNDARY_CPP_TYPES:
+                        raise CompileError(
+                            boundary_unmarshallable_msg(func.name, what, cpp),
+                            compiled.name, compiled.path,
+                            lineno=func.loc.line if func.loc else None)
 
     def _build_namespace_map(self) -> dict[str, str]:
         """Build module_name -> C++ namespace mapping from # tpy: namespace directives.
