@@ -72,6 +72,7 @@ if os.environ.get("TPY_TEST_NO_CCACHE") == "1":
 # Paths
 TESTS_DIR = Path(__file__).parent
 CASES_DIR = TESTS_DIR / "cases"    # All tests (grouped by feature)
+INTEROP_DIR = TESTS_DIR / "interop"  # CPython extension ext-exec cases
 PROJECT_ROOT = TESTS_DIR.parent
 LIB_DIR = PROJECT_ROOT / "lib"
 CPY_LIB_DIR = LIB_DIR / "cpy"
@@ -1470,6 +1471,63 @@ def record_exec_pass(fingerprint: str, case_id: str) -> None:
         tmp.replace(marker)
     except OSError:
         pass
+
+
+# ---------------------------------------------------------------------------
+# CPython interop (ext-exec) cases
+# ---------------------------------------------------------------------------
+# Cases under tests/interop/<case>/: an `# tpy: ext_module` source plus a
+# driver.py (and optional ext_checks.py). The ext-exec harness builds the
+# source into an importable .so, runs driver.py under CPython against it, and
+# asserts the SAME driver over the TPy source (lib/cpy stubs) matches.
+
+def discover_interop_cases() -> list[tuple[str, Path, Path]]:
+    """Discover (name, case_dir, module_py) for every ext-exec interop case.
+
+    A case is any tests/interop/<case>/ directory holding a driver.py; the
+    module source is the lone `# tpy: ext_module` .py beside it (driver.py and
+    ext_checks.py are excluded).
+    """
+    cases: list[tuple[str, Path, Path]] = []
+    if not INTEROP_DIR.is_dir():
+        return cases
+    for case_dir in sorted(p for p in INTEROP_DIR.iterdir() if p.is_dir()):
+        if not (case_dir / "driver.py").exists():
+            continue
+        mod_py: Path | None = None
+        for py in sorted(case_dir.glob("*.py")):
+            if py.name in ("driver.py", "ext_checks.py"):
+                continue
+            if "# tpy: ext_module" in py.read_text():
+                mod_py = py
+                break
+        if mod_py is not None:
+            cases.append((case_dir.name, case_dir, mod_py))
+    return cases
+
+
+def compute_ext_exec_fingerprint(
+    gen_cpp_files: list[Path], companion_files: list[Path]
+) -> str:
+    """Hash everything that determines an ext-exec case's .so and its driver
+    output: the generated module + glue C++, the runtime (which includes the
+    `tpy/interop/` facade + marshallers via `_runtime_hash`), the toolchain,
+    and the driver.py / ext_checks.py companions. Compiler/stdlib source reach
+    the .so only through the generated C++ hashed here, so an edit that leaves
+    the emission identical reuses the marker -- same contract as
+    `compute_exec_fingerprint`."""
+    h = hashlib.sha256()
+    h.update(_runtime_hash().encode())
+    h.update(b"\0")
+    h.update(repr((
+        CPP_CONFIG.compiler, CPP_CONFIG.std,
+        CPP_CONFIG.extra_flags, CPP_CONFIG.warn_flags,
+    )).encode())
+    h.update(b"\0")
+    h.update(_hash_files(sorted(p for p in gen_cpp_files if p.exists())).encode())
+    h.update(b"\0")
+    h.update(_hash_files(sorted(p for p in companion_files if p.exists())).encode())
+    return h.hexdigest()
 
 
 # ---------------------------------------------------------------------------

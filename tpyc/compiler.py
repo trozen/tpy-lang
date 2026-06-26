@@ -652,6 +652,12 @@ class BuildLayout:
         """Path to the output binary."""
         return self.build_dir / self.entry_module_name
 
+    def so_path(self) -> Path:
+        """Path to the output CPython extension shared object
+        (`# tpy: ext_module` builds). A bare `<mod>.so` -- CPython accepts
+        that on sys.path without the platform EXT_SUFFIX."""
+        return self.build_dir / f"{self.entry_module_name}.so"
+
     def build_cpp_commands(
         self,
         runtime_include_dir: Path,
@@ -665,6 +671,7 @@ class BuildLayout:
         extra_link_flags: list[str] | None = None,
         c_sources: list[tuple[Path, list[str]]] | None = None,
         runtime_cpp_sources: list[Path] | None = None,
+        shared: bool = False,
     ) -> list[list[str]]:
         """Build C++ compilation commands: per-file compile steps + a link step.
 
@@ -694,6 +701,9 @@ class BuildLayout:
                        code; .o files go into a `runtime/` subdir of the
                        build dir (prefix avoids stem collisions with user
                        modules of the same name).
+            shared: Emit a shared object (`# tpy: ext_module` builds): every
+                       TU is compiled `-fPIC` and the final step links
+                       `-shared` into a `.so` instead of an executable.
         """
         if config is None:
             config = CppCompilerConfig()
@@ -709,6 +719,7 @@ class BuildLayout:
         common = [
             *config.compiler, f"-std={config.std}",
             *(opt_flags or []),
+            *(["-fPIC"] if shared else []),
             *config.extra_flags,
             *config.warn_flags,
             "-I", str(runtime_include_dir),
@@ -751,6 +762,9 @@ class BuildLayout:
                 cmds.append([
                     *prefix, *c_compiler,
                     *(opt_flags or []),
+                    # C objects link into the .so too, so they need -fPIC like
+                    # the C++ TUs (common carries it; the C path doesn't use it).
+                    *(["-fPIC"] if shared else []),
                     *c_extra_flags,
                     "-c", "-o", str(obj), str(c_file),
                 ])
@@ -779,6 +793,7 @@ class BuildLayout:
 
         cmds.append([
             *config.compiler,
+            *(["-shared"] if shared else []),
             "-o", str(output),
             *obj_files,
             *(extra_objects or []),

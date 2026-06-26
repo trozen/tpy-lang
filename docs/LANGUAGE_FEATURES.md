@@ -5855,13 +5855,18 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   a non-integer). Verified end to end in `tests/interop/` (ext-exec ==
   cpy-parity for happy paths; ext-only checks for the bounded-`Int64`
   divergences).
+- **Working (`.so` build mode)**: `tpyc -b` on an `# tpy: ext_module` builds an
+  importable `<mod>.so` directly -- every TU `-fPIC`, linked `-shared`, no
+  `main()`, glue TU in the link set. `--exec` on an ext_module is a clean error
+  (a `.so` is not runnable). The ext-exec snapshot harness
+  (`tests/test_interop_exec.py`) snapshots the glue + module C++, builds the
+  `.so`, imports it under CPython against `driver.py`, and asserts parity with
+  the same driver over the TPy source; a facade self-check guards the ABI
+  mirror.
 - **Planned**: other scalar types (`float`, other fixed-width ints, `bool`,
   `str`/`bytes`), built-in/user exceptions across the boundary, classes
   (`PyType_FromSpec`), enums/constants, buffer input, the PEP 517 wheel
   backend, and the `nogil` GIL capability. See `docs/CPYTHON_INTEROP.md`.
-- **Not yet**: the `.so` build is currently driven by
-  `tests/interop/verify.sh`; a first-class `tpyc` ext build-output mode
-  and the snapshot-harness `ext-exec` variant are the next step.
 
 ---
 

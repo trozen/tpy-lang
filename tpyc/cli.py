@@ -584,6 +584,16 @@ def _run_cli(is_runner: bool) -> int:
         if has_errors:
             return 1
 
+        # A `# tpy: ext_module` builds a CPython extension `.so`, not an
+        # executable: there is no main() to emit or run.
+        ext_module_build = compiler.is_ext_module_build()
+        if ext_module_build:
+            if args.exec:
+                print("error: cannot --exec a `# tpy: ext_module` -- it builds "
+                      "an importable .so, not a runnable program", file=sys.stderr)
+                return 1
+            options.no_main = True
+
         if explain_type is not None:
             return explain_send_sync(
                 compiled_modules, compiler, explain_type,
@@ -656,6 +666,12 @@ def _run_cli(is_runner: bool) -> int:
         if args.dump_code or args.dump_thir:
             return 0
 
+        # The CPython extension glue TUs (one per ext_module) are emitted
+        # alongside their module .cpp during generate_code but tracked
+        # separately; fold them into the link set now.
+        if ext_module_build:
+            all_cpp_paths.extend(compiler.collect_ext_glue_paths())
+
         n_cpp = len(all_cpp_paths)
 
         # Generate sources.cmake for CMake integration
@@ -698,14 +714,17 @@ def _run_cli(is_runner: bool) -> int:
             build_variant = "release" if args.release else "debug"
             layout = BuildLayout(output_dir, module_name, build_variant=build_variant,
                                    flat=explicit_output)
-            binary_path = layout.binary_path()
+            binary_path = layout.so_path() if ext_module_build else layout.binary_path()
 
             opt_flags = ["-O3", "-DNDEBUG"] if args.release else ["-g", "-O0"]
             cpp_config.link_flags = link_flags
 
-            # Build or reuse precompiled header
+            # Build or reuse precompiled header. Skipped for ext_module
+            # builds: the shared PCH is compiled without -fPIC, and
+            # force-including it into the -fPIC extension TUs is a GCC
+            # "PCH compiled with different -fPIC" mismatch.
             pch_includes: list[Path] = []
-            if args.pch:
+            if args.pch and not ext_module_build:
                 t_pch_start = time.monotonic()
                 pch_path = get_or_build_pch(
                     cpp_config, runtime_dir / "cpp" / "include", opt_flags,
@@ -725,6 +744,7 @@ def _run_cli(is_runner: bool) -> int:
             compile_cmds = layout.build_cpp_commands(
                 runtime_include_dir=runtime_dir / "cpp" / "include",
                 cpp_files=all_cpp_paths,
+                output=binary_path,
                 opt_flags=opt_flags,
                 config=cpp_config,
                 force_includes=pch_includes or None,
@@ -732,6 +752,7 @@ def _run_cli(is_runner: bool) -> int:
                 extra_link_flags=third_party_plan.extra_link_flags or None,
                 c_sources=third_party_plan.c_sources or None,
                 runtime_cpp_sources=runtime_cpp_sources or None,
+                shared=ext_module_build,
             )
 
             compile_steps = compile_cmds[:-1]
@@ -795,7 +816,8 @@ def _run_cli(is_runner: bool) -> int:
                 print(msg, file=sys.stderr)
 
             if not args.exec:
-                print(f"Built: {binary_path}")
+                label = "Built extension" if ext_module_build else "Built"
+                print(f"{label}: {binary_path}")
 
             # Run if requested
             if args.exec:

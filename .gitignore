@@ -5,8 +5,6 @@ tpyc/_buildinfo.py
 # TurboPython build output
 __tpyc__/
 *.py[oc]
-# Inspectable interop verify.sh artifacts (generated C++ + built .so).
-tests/interop/build/
 # Anchored: these are repo-root packaging outputs (setuptools/hatchling).
 # Without the leading slash, `build/` would match `tpyc/build/` (the
 # third-party-lib registry package) and silently drop it from commits;

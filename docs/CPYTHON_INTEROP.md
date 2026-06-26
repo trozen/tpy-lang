@@ -701,33 +701,39 @@ Build needs the C++ toolchain + Python dev headers (`sysconfig` include path) +
 the `.so` link mode (phase 2). Binary-wheel distribution (manylinux, etc.) is
 standard Python packaging, unchanged by TPy.
 
-### Testing (normal `tests/cases/` harness, new case kind)
+### Testing (ext-exec snapshot harness -- IMPLEMENTED)
 
-Interop tests ride the existing snapshot harness with one exec variant, and
-keep the **same TPy-vs-CPython parity check** the `cpy` phase already gives --
-the right safety net for interop:
+Interop tests ride a snapshot harness modeled on the main one, with the
+**same TPy-vs-CPython parity check** the `cpy` phase gives -- the right safety
+net for interop. Shipped as a dedicated `tests/test_interop_exec.py` over
+`tests/interop/<case>/` (the ext-exec cases have a different shape -- a bare
+`<mod>.py` + `driver.py`, no `src/main.py` -- so they get their own module
+rather than folding into `tests/cases/`); the comp-phase rejection cases stay
+under `tests/cases/interop/`. See `tests/interop/README.md`.
 
-- **Layout.** An `ext_module` `src/main.py` (compiled) + a plain Python
+- **Layout.** An `ext_module` `<mod>.py` (compiled) + a plain Python
   **`driver.py`** that imports and exercises it
-  (`assert main.dot(a, b) == ...; print(...)`). The driver is *identical*
-  across both runs below; only what `main` resolves to changes.
-- **comp** (unchanged shape): snapshot the generated `.hpp`/`.cpp` **and the
-  glue TU**; validate diagnostics via `# tpyc:` annotations.
-- **ext-exec** (new variant): build the `.so` (the new build-output mode), run
-  the driver under CPython with the built module importable, compare stdout to
-  `output.txt`.
-- **cpy parity**: run the *same* driver with `PYTHONPATH=lib/cpy:src_dir` so
-  `import main` loads the TPy **source** interpreted by CPython; compare the
-  same `output.txt`. The compiled extension must behave like its
-  source-as-Python. Requires a `lib/cpy/tpy/interop.py` stub (`@export` =
-  identity, `ext_module` ignored; buffer-protocol `Span` -> numpy/`memoryview`,
-  which already work under CPython).
+  (`assert mod.add(a, b) == ...; print(...)`), plus an optional `ext_checks.py`
+  for ext-only marshalling-error cases. The driver is *identical* across both
+  runs below; only what `import <mod>` resolves to changes.
+- **comp/snapshot** (always): snapshot the generated `.hpp`/`.cpp` **and the
+  glue TU** (`<mod>_ext.cpp`) into `expected/`.
+- **ext-exec** (cached, like the exec phase): build the `.so` via the
+  first-class `.so` build mode (`tpyc -b` on an `# tpy: ext_module`), run the
+  driver under CPython importing it, compare stdout to `output.txt`. Gated by
+  a content-addressed marker in the shared `exec-results/` cache.
+- **cpy parity** (always): run the *same* driver with
+  `PYTHONPATH=lib/cpy:<case>` so `import <mod>` loads the TPy **source**
+  interpreted by CPython; compare the same `output.txt`. The compiled
+  extension must behave like its source-as-Python. The `lib/cpy/tpy/extern.py`
+  stub already makes `@export` an identity and `ext_module` a no-op.
+- **facade self-check** (`test_facade_selfcheck`): compile the hand-mirrored
+  facade against the real Python ABI once; skipped when `Python.h` is absent.
 
 This driver-based parity is also the reference-vs-extension shape that
 satisfies the project's reference-type test-adequacy rule (mutate-and-observe
-across the boundary). Env: building the `.so` needs `Python.h` (available --
-tests run under CPython) + the toolchain; fingerprint/skip logic extends to the
-ext build.
+across the boundary). Building the `.so` needs only the toolchain (facade
+only -- no `Python.h`); the self-check additionally needs `Python.h`.
 
 ## Alternatives and spike outcomes
 

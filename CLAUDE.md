@@ -71,6 +71,8 @@ The cpy phase (CPython run) still auto-skips via **committed** fingerprints -- C
 
 Parallel execution (`-n auto`) is configured in `pyproject.toml` via `addopts`. Worker count auto-caps to the cgroup v2 CPU quota. The exec phase also reuses a persistent content-addressed cache of compiled stdlib object files (see `tpyc/` code for the cache-key derivation).
 
+**CPython interop ext-exec harness.** A second test module, `tests/test_interop_exec.py`, covers the runtime half of CPython extension authoring (`docs/CPYTHON_INTEROP.md`). Cases live under `tests/interop/<case>/` (a bare `# tpy: ext_module` source + `driver.py`, *not* the `src/main.py` shape) and run under plain `uv run pytest`. Per case: snapshot the module + glue C++ into `expected/` (always); build the `.so` via `tpyc -b` and import it under CPython against `driver.py`, gated by the same shared `exec-results/` marker cache as exec; assert cpy-parity (the same driver over the TPy source via `lib/cpy` stubs); run `ext_checks.py` if present. `test_facade_selfcheck` compiles the ABI mirror against real `Python.h` once (skipped when absent). `update_snapshots.py` regenerates these `expected/` files too. See `tests/interop/README.md`.
+
 ### Test commands
 
 ```bash
