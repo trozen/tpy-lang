@@ -5,8 +5,10 @@
 # static compiler. This is a deliberately simplified, signature-compatible
 # urlopen that calls http.client directly. Divergences (declarable):
 #   - No opener/handler machinery, no install_opener/build_opener.
-#   - No redirect following, no proxies, no auth handlers, no timeout (blocked
-#     on socket.settimeout), no HTTPS/TLS.
+#   - No redirect following, no proxies, no auth handlers, no HTTPS/TLS.
+#   - `timeout` (seconds) is honored for connect/recv/send (None = blocking);
+#     CPython's `_GLOBAL_DEFAULT_TIMEOUT` sentinel / setdefaulttimeout() is not
+#     reproduced (default is plain blocking).
 #   - Returns an http.client.HTTPResponse; .geturl()/.info()/.getcode() are not
 #     provided (use .status / .reason / .read() / .getheader()).
 # For a higher-level API see tplib.requests.
@@ -28,6 +30,7 @@ class URLError(Exception):
 
 
 def urlopen(url: str, data: bytes | None = None,
+            timeout: float | None = None,
             _sock: Own[socket] | None = None) -> Own[HTTPResponse]:
     # `_sock` is a test seam: an injected socket bound to the built connection
     # (skipping the real TCP connect). The connection is still built from the
@@ -58,7 +61,7 @@ def urlopen(url: str, data: bytes | None = None,
     if pnum is not None:
         port = Int32(pnum)
 
-    conn = HTTPConnection(host, port)
+    conn = HTTPConnection(host, port, timeout)
     if _sock is not None:
         conn.sock = _sock
     conn.request(method, target, data)

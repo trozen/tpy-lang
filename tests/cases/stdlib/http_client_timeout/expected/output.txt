@@ -1,0 +1,3 @@
+timeout threaded: True
+blocking in timeout mode: True
+default timeout None: True

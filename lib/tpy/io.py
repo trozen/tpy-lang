@@ -437,13 +437,19 @@ class FileIO:
     _fd: Int64 = -1
     _closefd: bool
     _closed: bool
+    # When the fd is a socket in timeout mode, a recv-timeout surfaces as an
+    # EAGAIN/BlockingIOError from os.read; map it to TimeoutError so the
+    # makefile/BufferedReader read path matches CPython's socket.timeout.
+    _timeout_mode: bool
 
-    def __init__(self, fd: Int64, closefd: bool = True) -> None:
+    def __init__(self, fd: Int64, closefd: bool = True,
+                 timeout_mode: bool = False) -> None:
         if fd < 0:
             raise ValueError("negative file descriptor")
         self._fd = fd
         self._closefd = closefd
         self._closed = False
+        self._timeout_mode = timeout_mode
 
     def __del__(self) -> None:
         if self._closefd and self._fd >= 0:
@@ -458,16 +464,26 @@ class FileIO:
             return self._readall()
         if size == 0:
             return b""
-        return os.read(self._fd, Int64(size))
+        return self._os_read(Int64(size))
 
     def _readall(self) -> bytes:
         out: bytes = b""
         while True:
-            chunk: bytes = os.read(self._fd, Int64(DEFAULT_BUFFER_SIZE))
+            chunk: bytes = self._os_read(Int64(DEFAULT_BUFFER_SIZE))
             if len(chunk) == 0:
                 break
             out = out + chunk
         return out
+
+    def _os_read(self, n: Int64) -> bytes:
+        if not self._timeout_mode:
+            return os.read(self._fd, n)
+        try:
+            return os.read(self._fd, n)
+        except BlockingIOError:
+            # SO_RCVTIMEO elapsed on a blocking socket fd -> CPython's
+            # socket.timeout, i.e. TimeoutError("timed out").
+            raise TimeoutError("timed out")
 
     def readable(self) -> bool:
         return not self._closed

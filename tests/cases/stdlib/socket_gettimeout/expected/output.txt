@@ -1,0 +1,9 @@
+default: True True
+zero: True False
+pos: True True
+none: True True
+nb: True False
+blk: True True
+neg: Timeout value out of range
+nan: Invalid value NaN (not a number)
+inf: timestamp out of range for platform time_t

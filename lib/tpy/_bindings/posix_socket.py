@@ -162,6 +162,19 @@ def tpy_last_resolve_error() -> Ptr[readonly[UInt8]]: ...
 def tpy_set_nonblocking(fd: Int32, nonblocking: Int32) -> Int32: ...
 
 
+# Set SO_RCVTIMEO + SO_SNDTIMEO from `seconds` (<= 0 disables). Backs
+# socket.socket.settimeout for recv/send. Returns 0 on success, -1 on error.
+@native("::tpy_set_timeout")
+def tpy_set_timeout(fd: Int32, seconds: float) -> Int32: ...
+
+
+# connect() with a wall-clock timeout (SO_*TIMEO does not cover connect).
+# Returns 0 on success, -2 on timeout, -1 on any other error (read tpy_errno).
+@native("::tpy_connect_timeout")
+def tpy_connect_timeout(fd: Int32, addr: Ptr[SockaddrIn], addrlen: UInt32,
+                        seconds: float) -> Int32: ...
+
+
 # Platform-correct constant values (SOL_SOCKET / SO_* / AF_INET6 / EAGAIN /
 # EINPROGRESS differ on macOS/BSD) live as `extern int32_t tpy_const_*`
 # globals in socket_impl.cpp; the public `socket` facade reads them directly

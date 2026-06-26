@@ -11,7 +11,7 @@ from urllib.request import urlopen, URLError
 def main() -> None:
     a, b = socket.socketpair()
     b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello")
-    resp = urlopen("http://api.test:8002/health", None, a)
+    resp = urlopen("http://api.test:8002/health", None, _sock=a)
     print(resp.status, resp.reason)
     print(resp.read())
     print(b.recv(65536))
@@ -19,7 +19,7 @@ def main() -> None:
 
     c, d = socket.socketpair()
     d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
-    resp2 = urlopen("http://api.test/v1", b'{"x":1}', c)
+    resp2 = urlopen("http://api.test/v1", b'{"x":1}', _sock=c)
     print(resp2.status)
     print(d.recv(65536))
     d.close()

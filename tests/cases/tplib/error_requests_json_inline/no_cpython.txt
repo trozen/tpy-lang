@@ -1,0 +1,4 @@
+Deliberate-compile-error case (a TPy-specific rejection): CPython requests
+would accept the inline dict json= body, so there is no error to match.
+tplib.requests also has no CPython counterpart on the cpy-phase import path
+(no lib/cpy/tplib stub), so the program cannot run under CPython regardless.

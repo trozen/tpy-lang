@@ -40,13 +40,18 @@ TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
   * **Non-blocking I/O.** `setblocking(False)` is done (toggles O_NONBLOCK
     via fcntl); the EAGAIN/EWOULDBLOCK + selector handling lives in the
     asyncio epoll reactor (`get_running_loop().sock_recv`/`sock_sendall`).
-    `settimeout(sec)` (timeout-based blocking I/O via SO_RCVTIMEO) is still
-    missing.
+    `settimeout(sec)` is also done: recv/send use SO_RCVTIMEO/SO_SNDTIMEO
+    (the timeval is built in tpy_set_timeout, not a @native struct), and
+    connect() uses a poll-based wait (tpy_connect_timeout). A timed-out op
+    raises TimeoutError ("timed out"), matching CPython's socket.timeout.
+    Not reproduced: the process-wide `setdefaulttimeout()` /
+    `_GLOBAL_DEFAULT_TIMEOUT` sentinel (default is plain blocking), and
+    accept() under a timeout (server-side, not needed for the client).
 
-  * **setsockopt with struct values.** SO_RCVTIMEO / SO_SNDTIMEO take
-    struct timeval; SO_LINGER takes struct linger. Only int-valued opts
-    supported today (via setsockopt_int). Add one @native(binding="C")
-    struct + another setsockopt overload per shape.
+  * **setsockopt with struct values.** SO_RCVTIMEO / SO_SNDTIMEO are handled
+    via the dedicated tpy_set_timeout helper (timeval built C-side). SO_LINGER
+    (struct linger) is still int-only -- add an @native(binding="C") struct +
+    another setsockopt overload when needed.
 
   * **sendto / recvfrom / recv_into.** Phase 1 supports `send` / `recv`
     on an already-connected socket only. Datagram-style sendto/recvfrom
@@ -254,6 +259,12 @@ class socket:
     # warning (the if/else below sets fd on every path, sema can't prove it).
     fd: Int32 = Int32(-1)
 
+    # Socket mode, mirroring CPython's three states: -1.0 = blocking (None
+    # timeout), 0.0 = non-blocking, > 0 = timeout mode. recv/send read this to
+    # decide whether an EAGAIN is a timeout (TimeoutError) or a non-blocking
+    # "would block" (BlockingIOError, which the asyncio reactor parks on).
+    _timeout: float = -1.0
+
     def __init__(self, family: Int32, type_: Int32, proto: Int32 = Int32(0),
                  fileno: Int32 = Int32(-1)) -> None:
         """`fileno >= 0` wraps an existing fd (from accept); family/type/
@@ -285,13 +296,80 @@ class socket:
         if posix_socket.shutdown(self.fd, how) < Int32(0):
             _raise_errno("shutdown")
 
+    def _raise_io(self, op: str) -> None:
+        """Like the module-level `_raise_errno`, but timeout-aware: in timeout
+        mode an EAGAIN/EWOULDBLOCK means the SO_*TIMEO window elapsed, so raise
+        TimeoutError("timed out") to match CPython's socket.timeout. In
+        non-blocking mode the same errno is a genuine would-block ->
+        BlockingIOError (the asyncio reactor parks on it). Other errno ->
+        SocketError."""
+        err = posix_socket.tpy_errno()
+        msg = unsafe_str_from_cstr(posix_socket.strerror(err))
+        if err == _EAGAIN or err == _EINPROGRESS:
+            if self._timeout > 0.0:
+                raise TimeoutError("timed out")
+            raise BlockingIOError(op + ": " + msg)
+        raise SocketError(op + ": " + msg)
+
     def setblocking(self, flag: bool) -> None:
         """Set blocking (True) or non-blocking (False) mode, like CPython.
+        Equivalent to settimeout(None) / settimeout(0.0) respectively.
         Non-blocking is the prerequisite for using a socket with the
         asyncio reactor (asyncio.get_running_loop().sock_recv/sendall)."""
-        nb = Int32(0) if flag else Int32(1)
-        if posix_socket.tpy_set_nonblocking(self.fd, nb) < Int32(0):
-            _raise_errno("setblocking")
+        if flag:
+            self.settimeout(None)
+        else:
+            self.settimeout(0.0)
+
+    def getblocking(self) -> bool:
+        """True in blocking or timeout mode, False only in non-blocking mode
+        -- matching CPython (a positive timeout still reports blocking=True)."""
+        return self._timeout != 0.0
+
+    def settimeout(self, value: float | None) -> None:
+        """Set the socket's timeout mode (CPython parity):
+          * None  -> blocking forever (clears any timeout).
+          * 0.0   -> non-blocking (same as setblocking(False)).
+          * > 0   -> recv/send/connect raise TimeoutError after `value` secs.
+        recv/send use SO_RCVTIMEO/SO_SNDTIMEO; connect uses a poll-based wait
+        (see connect()). A negative value is a ValueError."""
+        if value is None:
+            self._timeout = -1.0
+            if posix_socket.tpy_set_nonblocking(self.fd, Int32(0)) < Int32(0):
+                _raise_errno("settimeout")
+            if posix_socket.tpy_set_timeout(self.fd, 0.0) < Int32(0):
+                _raise_errno("settimeout")
+            return
+        # Reject non-finite before the C helper casts to time_t / int (a NaN
+        # or inf cast is undefined behavior). CPython raises these exact types.
+        # NaN must be tested before the inf test (NaN also fails value-value).
+        if value != value:
+            raise ValueError("Invalid value NaN (not a number)")
+        if value - value != 0.0:
+            raise OverflowError("timestamp out of range for platform time_t")
+        if value < 0.0:
+            raise ValueError("Timeout value out of range")
+        if value == 0.0:
+            self._timeout = 0.0
+            if posix_socket.tpy_set_nonblocking(self.fd, Int32(1)) < Int32(0):
+                _raise_errno("settimeout")
+            if posix_socket.tpy_set_timeout(self.fd, 0.0) < Int32(0):
+                _raise_errno("settimeout")
+            return
+        self._timeout = value
+        # Timeout mode stays blocking at the OS level (SO_*TIMEO enforce the
+        # window); getblocking() therefore reports True, as in CPython.
+        if posix_socket.tpy_set_nonblocking(self.fd, Int32(0)) < Int32(0):
+            _raise_errno("settimeout")
+        if posix_socket.tpy_set_timeout(self.fd, value) < Int32(0):
+            _raise_errno("settimeout")
+
+    def gettimeout(self) -> float | None:
+        """The current timeout in seconds, or None if blocking (CPython
+        returns 0.0 for non-blocking, a positive float for timeout mode)."""
+        if self._timeout < 0.0:
+            return None
+        return self._timeout
 
     def bind(self, address: tuple[str, Int32]) -> None:
         host, port = address
@@ -302,8 +380,18 @@ class socket:
     def connect(self, address: tuple[str, Int32]) -> None:
         host, port = address
         addr = _build_sockaddr_in(host, port)
-        if posix_socket.connect(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < Int32(0):
-            _raise_errno("connect")
+        # SO_*TIMEO does not cover connect(), so timeout mode routes through the
+        # poll-based helper (non-blocking connect + poll + SO_ERROR); -2 means
+        # the wait elapsed. Blocking / non-blocking modes use the plain connect.
+        if self._timeout > 0.0:
+            rc = posix_socket.tpy_connect_timeout(self.fd, take_ptr(addr),
+                                                  _SOCKADDR_IN_LEN, self._timeout)
+            if rc == Int32(-2):
+                raise TimeoutError("timed out")
+            if rc != Int32(0):
+                self._raise_io("connect")
+        elif posix_socket.connect(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < Int32(0):
+            self._raise_io("connect")
 
     # Literal 128 = SOMAXCONN; named-Final-as-default rejected by sema.
     def listen(self, backlog: Int32 = Int32(128)) -> None:
@@ -364,7 +452,7 @@ class socket:
                               unsafe_ptr_add(data_ptr, Int64.trunc(offset)),
                               UInt64(len(data)) - offset, Int32(0))
         if n < Int64(0):
-            _raise_errno("send")
+            self._raise_io("send")
         return Int32.trunc(n)
 
     def sendall(self, data: bytes) -> None:
@@ -377,7 +465,7 @@ class socket:
                               unsafe_ptr_add(data_ptr, Int64.trunc(sent)),
                               total - sent, Int32(0))
             if chunk < Int64(0):
-                _raise_errno("send")
+                self._raise_io("send")
             if chunk == Int64(0):
                 raise SocketError("send: peer closed early")
             sent = sent + UInt64(chunk)
@@ -393,7 +481,7 @@ class socket:
         buf = UninitHeapStorage[UInt8](UInt32.trunc(bufsize))
         n = posix_socket.recv(self.fd, buf.ptr(), UInt64(bufsize), Int32(0))
         if n < Int64(0):
-            _raise_errno("recv")
+            self._raise_io("recv")
         return unsafe_bytes_from_buf(buf.ptr(), UInt64(n))
 
     def setsockopt_int(self, level: Int32, optname: Int32, value: Int32) -> None:
@@ -448,7 +536,10 @@ class socket:
         if buffering == 0:
             raise ValueError("makefile: unbuffered (buffering=0) not supported")
         size = DEFAULT_BUFFER_SIZE if buffering < 0 else buffering
-        return BufferedReader(FileIO(os.dup(Int64(self.fd))), size)
+        # Propagate timeout mode so a recv-timeout on the dup'd fd (SO_RCVTIMEO
+        # is shared across the dup) surfaces as TimeoutError, not a raw EAGAIN.
+        return BufferedReader(FileIO(os.dup(Int64(self.fd)),
+                                     timeout_mode=self._timeout > 0.0), size)
 
     def __enter__(self) -> socket:
         return self
@@ -474,9 +565,14 @@ def socketpair(family: Int32 = AF_UNIX, type_: Int32 = SOCK_STREAM,
     return (a, b)
 
 
-def create_connection(address: tuple[str, Int32]) -> Own[socket]:
-    """TCP client convenience: socket + connect."""
+def create_connection(address: tuple[str, Int32],
+                      timeout: float | None = None) -> Own[socket]:
+    """TCP client convenience: socket + connect. A `timeout` (seconds) is
+    applied before connect so connect/recv/send all honor it (CPython parity);
+    None leaves the socket blocking."""
     s = socket(AF_INET, SOCK_STREAM, Int32(0))
+    if timeout is not None:
+        s.settimeout(timeout)
     s.connect(address)
     return s
 

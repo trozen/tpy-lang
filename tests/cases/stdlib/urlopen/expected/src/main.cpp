@@ -12,8 +12,8 @@ void main() {
     ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
     // b.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello")
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello", 43));
-    // resp = urlopen("http://api.test:8002/health", None, a)
-    ::tpystd::http::client::HTTPResponse resp = ::tpystd::urllib::request::urlopen("http://api.test:8002/health", std::nullopt, std::move(a));
+    // resp = urlopen("http://api.test:8002/health", None, _sock=a)
+    ::tpystd::http::client::HTTPResponse resp = ::tpystd::urllib::request::urlopen("http://api.test:8002/health", std::nullopt, std::nullopt, std::move(a));
     // print(resp.status, resp.reason)
     std::cout << resp.status << " " << resp.reason << "\n";
     // print(resp.read())
@@ -28,8 +28,8 @@ void main() {
     ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
     // d.sendall(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
     d.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
-    // resp2 = urlopen("http://api.test/v1", b'{"x":1}', c)
-    ::tpystd::http::client::HTTPResponse resp2 = ::tpystd::urllib::request::urlopen("http://api.test/v1", ::tpy::bytes_literal_owned("{\"x\":1}", 7), std::move(c));
+    // resp2 = urlopen("http://api.test/v1", b'{"x":1}', _sock=c)
+    ::tpystd::http::client::HTTPResponse resp2 = ::tpystd::urllib::request::urlopen("http://api.test/v1", ::tpy::bytes_literal_owned("{\"x\":1}", 7), std::nullopt, std::move(c));
     // print(resp2.status)
     std::cout << resp2.status << "\n";
     // print(d.recv(65536))

@@ -282,18 +282,22 @@ class HTTPConnection:
 
     host: str
     port: Int32
+    timeout: float | None
     sock: socket.socket | None
     _method: str
 
-    def __init__(self, host: str, port: Int32 = HTTP_PORT) -> None:
+    def __init__(self, host: str, port: Int32 = HTTP_PORT,
+                 timeout: float | None = None) -> None:
         self.host = host
         self.port = port
+        self.timeout = timeout
         self.sock = None
         self._method = ""
 
     def connect(self) -> None:
         if self.sock is None:
-            self.sock = socket.create_connection((self.host, self.port))
+            self.sock = socket.create_connection((self.host, self.port),
+                                                 self.timeout)
 
     def request(self, method: str, url: str, body: bytes | None = None,
                 headers: dict[str, str] | None = None) -> None:

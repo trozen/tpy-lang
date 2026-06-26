@@ -151,4 +151,19 @@ const char* tpy_last_resolve_error();
 // prerequisite for using a socket with the asyncio reactor.
 int tpy_set_nonblocking(int fd, int nonblocking);
 
+// Set SO_RCVTIMEO + SO_SNDTIMEO on a blocking socket from `seconds`
+// (<= 0 disables). Hidden behind a helper because struct timeval's member
+// types are not portable enough to mirror as a TPy @native struct and
+// <sys/time.h> would drag macros into TPy TUs. Backs socket.socket.settimeout
+// for recv/send; a timed-out op returns EAGAIN, mapped to TimeoutError facade
+// side. Returns 0 on success, -1 on error (caller reads tpy_errno()).
+int tpy_set_timeout(int fd, double seconds);
+
+// connect() with a wall-clock timeout (SO_*TIMEO does not cover connect):
+// non-blocking connect + poll(POLLOUT, seconds) + SO_ERROR, restoring the
+// fd's prior O_NONBLOCK state before returning. Returns 0 on success, -2 on
+// timeout, -1 on any other error (errno set; caller reads tpy_errno()).
+int tpy_connect_timeout(int fd, const void* addr, unsigned int addrlen,
+                        double seconds);
+
 }  // extern "C"

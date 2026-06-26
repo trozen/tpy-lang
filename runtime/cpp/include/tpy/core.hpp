@@ -71,7 +71,7 @@ struct EOFError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS
 struct MemoryError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(MemoryError) };
 struct StopIteration : Exception { TPY_THROWABLE_VIRTUALS(StopIteration) };
 struct StopAsyncIteration : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(StopAsyncIteration) };
-struct TimeoutError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(TimeoutError) };
+struct TimeoutError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(TimeoutError) };
 // Inherits BaseException (not Exception) like CPython, so `except
 // Exception:` does not swallow a generator close. Constructed by the
 // abandonment-cleanup destructor of resumable frames and passed to
@@ -167,6 +167,7 @@ TPY_DEFINE_RAISE_HELPER(raise_permission_error,      PermissionError)
 TPY_DEFINE_RAISE_HELPER(raise_file_exists_error,     FileExistsError)
 TPY_DEFINE_RAISE_HELPER(raise_not_a_directory_error, NotADirectoryError)
 TPY_DEFINE_RAISE_HELPER(raise_is_a_directory_error,  IsADirectoryError)
+TPY_DEFINE_RAISE_HELPER(raise_blocking_io_error,     BlockingIOError)
 TPY_DEFINE_RAISE_HELPER(raise_runtime_error,         RuntimeError)
 TPY_DEFINE_RAISE_HELPER(raise_not_implemented_error, NotImplementedError)
 TPY_DEFINE_RAISE_HELPER(raise_memory_error,          MemoryError)

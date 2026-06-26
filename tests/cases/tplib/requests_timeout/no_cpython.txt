@@ -1,0 +1,6 @@
+tplib.requests is a TPy-native module with no CPython counterpart on the
+cpy-phase import path (PYTHONPATH=lib/cpy/:src_dir, no lib/cpy/tplib stub),
+so `import tplib.requests` cannot run under CPython. The underlying wire
+behavior is parity-checked by the http.client / socket_timeout cases (real
+CPython stdlib); this case only adds the TPy-only TimeoutError -> requests.
+Timeout wrapping, which has no CPython equivalent to compare against.

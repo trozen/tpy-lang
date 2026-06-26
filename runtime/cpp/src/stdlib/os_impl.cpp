@@ -59,6 +59,13 @@ std::filesystem::path to_path(std::string_view p) {
     if (ec == std::errc::permission_denied ||
         ec == std::errc::operation_not_permitted)
         ::tpy::raise_permission_error("{}: '{}': {}", op, path, m);
+    // EAGAIN/EWOULDBLOCK -> BlockingIOError, matching CPython's os.read on a
+    // non-blocking fd. A recv-timeout on a socket fd also surfaces here as
+    // EAGAIN; the distinct subclass lets a reader tell it apart from a hard
+    // error and remap it to TimeoutError.
+    if (ec == std::errc::resource_unavailable_try_again ||
+        ec == std::errc::operation_would_block)
+        ::tpy::raise_blocking_io_error("{}: '{}': {}", op, path, m);
     ::tpy::raise_os_error("{}: '{}': {}", op, path, m);
 }
 

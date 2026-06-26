@@ -1,23 +1,25 @@
 """A small curl-like HTTP client built on tplib.requests.
 
 Fetches a URL and prints the response. Supports a request method, a request
-body, repeatable custom headers, basic auth, response-header inclusion, and
-writing the body to a file -- a focused subset of curl's surface.
+body, repeatable custom headers, basic auth, a request timeout, response-header
+inclusion, and writing the body to a file -- a focused subset of curl's surface.
 
 Usage:
     uv run tpyc -x examples/net/curl.py -- http://example.com/
     uv run tpyc -x examples/net/curl.py -- -X POST -d '{"k":1}' \
         -H "Content-Type: application/json" http://api.test/items
     uv run tpyc -x examples/net/curl.py -- -i -u user:pass http://api.test/
+    uv run tpyc -x examples/net/curl.py -- -m 5 http://api.test/slow
     uv run tpyc -x examples/net/curl.py -- -o out.bin http://api.test/blob
 
 Plaintext HTTP only (tplib.requests has no TLS yet). This sandbox has no
 outbound network -- run it on a host that can reach the target.
 """
+import sys
 from argparse import ArgumentParser
 from tpy import Int32
 import tplib.requests as requests
-from tplib.requests import RequestException
+from tplib.requests import RequestException, Timeout
 
 
 def _split_header(raw: str) -> tuple[str, str]:
@@ -48,6 +50,8 @@ def main() -> Int32:
                         help="write the body to a file instead of stdout")
     parser.add_argument("-i", "--include", action="store_true",
                         help="print the response headers before the body")
+    parser.add_argument("-m", "--max-time", type=float, default=0.0,
+                        help="abort the request after this many seconds (0 = no limit)")
     args = parser.parse_args()
 
     headers: dict[str, str] = {}
@@ -69,8 +73,18 @@ def main() -> Int32:
     if method == "":
         method = "POST" if body is not None else "GET"
 
+    # 0 (the default) means no limit; anything positive becomes the socket
+    # timeout, so a stalled connect/read aborts instead of hanging forever.
+    timeout: float | None = None
+    if args.max_time > 0.0:
+        timeout = args.max_time
+
     try:
-        r = requests.request(method, args.url, None, body, None, headers, auth)
+        r = requests.request(method, args.url, None, body, None, headers, auth,
+                             timeout)
+    except Timeout:
+        print(f"request timed out after {args.max_time}s")
+        return 28          # curl's exit code for a timeout
     except RequestException:
         print("request failed")
         return 1
@@ -91,4 +105,6 @@ def main() -> Int32:
     return 0
 
 
-main()
+# sys.exit(main()) rather than a bare main() so the returned status (0 ok,
+# 1 request failed, 28 timeout -- curl's codes) becomes the process exit code.
+sys.exit(main())

@@ -148,8 +148,11 @@ class StopIteration(Exception, ReturnException): ...
 class StopAsyncIteration(Exception):
     def __init__(self, message: str = "") -> None: ...
 
+# Subclasses OSError (not plain Exception) to match CPython, where
+# `socket.timeout is TimeoutError` and `TimeoutError` is an OSError: code
+# written `except OSError` catches socket/connection timeouts unchanged.
 @native("tpy::TimeoutError")
-class TimeoutError(Exception):
+class TimeoutError(OSError):
     def __init__(self, message: str = "") -> None: ...
 
 # CancelledError inherits BaseException directly (not Exception) so

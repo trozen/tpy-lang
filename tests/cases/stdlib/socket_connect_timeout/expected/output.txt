@@ -1,0 +1,2 @@
+connected: True
+server got: b'ping'

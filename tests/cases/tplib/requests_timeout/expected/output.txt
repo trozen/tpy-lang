@@ -1,0 +1,2 @@
+timeout msg ok: True
+caught as base: True

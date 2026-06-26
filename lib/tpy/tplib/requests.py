@@ -23,7 +23,10 @@
 #     rejected -- it connects via the parsed host, where CPython requests
 #     raises MissingSchema. A scheme-less host-only string ("host/path")
 #     resolves no host and raises ConnectionError.
-# Not supported (yet): timeout=, redirect following, cookies, multipart files,
+#   - timeout= is a single float (seconds) applied to connect/recv/send, or
+#     None for no timeout; the requests (connect, read) tuple form is not
+#     supported, and a timeout raises requests.Timeout (not a bare OSError).
+# Not supported (yet): redirect following, cookies, multipart files,
 # streaming (stream=/iter_content), proxies, TLS/HTTPS, auth schemes beyond
 # Basic.
 # tpy: cpp_namespace("tpystd::tplib::requests")
@@ -50,6 +53,13 @@ class HTTPError(RequestException):
 
 
 class ConnectionError(RequestException):
+    def __init__(self, message: String = "") -> None:
+        super().__init__(message)
+
+
+class Timeout(RequestException):
+    """Raised when a request times out (the socket-level TimeoutError is
+    re-raised as this, matching the `requests` exception surface)."""
     def __init__(self, message: String = "") -> None:
         super().__init__(message)
 
@@ -142,9 +152,16 @@ def _request_on(conn: HTTPConnection, method: str, url: str,
         has_json = True
     hdrs = _prepare_headers(headers, auth, has_json)
 
-    conn.request(method, target, body, hdrs)
-    resp = conn.getresponse()
-    content = resp.read()
+    # A socket-level timeout surfaces as TimeoutError; re-raise it as the
+    # requests-style Timeout so callers can catch `requests.Timeout` (or its
+    # base RequestException) instead of an OSError leaking through.
+    try:
+        conn.request(method, target, body, hdrs)
+        resp = conn.getresponse()
+        content = resp.read()
+    except TimeoutError:
+        conn.close()
+        raise Timeout("request timed out: " + url)
     status = resp.status
     reason = resp.reason
     out_headers: dict[str, str] = {}
@@ -154,7 +171,7 @@ def _request_on(conn: HTTPConnection, method: str, url: str,
     return Response(status, reason, url, out_headers, content)
 
 
-def _connect(url: str) -> Own[HTTPConnection]:
+def _connect(url: str, timeout: float | None = None) -> Own[HTTPConnection]:
     parts = urlsplit(url)
     host = parts.hostname
     if host is None:
@@ -163,54 +180,61 @@ def _connect(url: str) -> Own[HTTPConnection]:
     pnum = parts.port
     if pnum is not None:
         port = Int32(pnum)
-    return HTTPConnection(host, port)
+    return HTTPConnection(host, port, timeout)
 
 
 def request(method: str, url: str, params: dict[str, str] | None = None,
             data: bytes | None = None, json: JsonValue | None = None,
             headers: dict[str, str] | None = None,
-            auth: tuple[str, str] | None = None) -> Own[Response]:
-    conn = _connect(url)
+            auth: tuple[str, str] | None = None,
+            timeout: float | None = None) -> Own[Response]:
+    conn = _connect(url, timeout)
     return _request_on(conn, method, url, params, data, json, headers, auth)
 
 
 def get(url: str, params: dict[str, str] | None = None,
         headers: dict[str, str] | None = None,
-        auth: tuple[str, str] | None = None) -> Own[Response]:
-    return request("GET", url, params, None, None, headers, auth)
+        auth: tuple[str, str] | None = None,
+        timeout: float | None = None) -> Own[Response]:
+    return request("GET", url, params, None, None, headers, auth, timeout)
 
 
 def head(url: str, params: dict[str, str] | None = None,
          headers: dict[str, str] | None = None,
-         auth: tuple[str, str] | None = None) -> Own[Response]:
-    return request("HEAD", url, params, None, None, headers, auth)
+         auth: tuple[str, str] | None = None,
+         timeout: float | None = None) -> Own[Response]:
+    return request("HEAD", url, params, None, None, headers, auth, timeout)
 
 
 def post(url: str, data: bytes | None = None, json: JsonValue | None = None,
          params: dict[str, str] | None = None,
          headers: dict[str, str] | None = None,
-         auth: tuple[str, str] | None = None) -> Own[Response]:
-    return request("POST", url, params, data, json, headers, auth)
+         auth: tuple[str, str] | None = None,
+         timeout: float | None = None) -> Own[Response]:
+    return request("POST", url, params, data, json, headers, auth, timeout)
 
 
 def put(url: str, data: bytes | None = None, json: JsonValue | None = None,
         params: dict[str, str] | None = None,
         headers: dict[str, str] | None = None,
-        auth: tuple[str, str] | None = None) -> Own[Response]:
-    return request("PUT", url, params, data, json, headers, auth)
+        auth: tuple[str, str] | None = None,
+        timeout: float | None = None) -> Own[Response]:
+    return request("PUT", url, params, data, json, headers, auth, timeout)
 
 
 def patch(url: str, data: bytes | None = None, json: JsonValue | None = None,
           params: dict[str, str] | None = None,
           headers: dict[str, str] | None = None,
-          auth: tuple[str, str] | None = None) -> Own[Response]:
-    return request("PATCH", url, params, data, json, headers, auth)
+          auth: tuple[str, str] | None = None,
+          timeout: float | None = None) -> Own[Response]:
+    return request("PATCH", url, params, data, json, headers, auth, timeout)
 
 
 def delete(url: str, params: dict[str, str] | None = None,
            headers: dict[str, str] | None = None,
-           auth: tuple[str, str] | None = None) -> Own[Response]:
-    return request("DELETE", url, params, None, None, headers, auth)
+           auth: tuple[str, str] | None = None,
+           timeout: float | None = None) -> Own[Response]:
+    return request("DELETE", url, params, None, None, headers, auth, timeout)
 
 
 class Session:
@@ -255,7 +279,8 @@ class Session:
                 params: dict[str, str] | None = None,
                 data: bytes | None = None, json: JsonValue | None = None,
                 headers: dict[str, str] | None = None,
-                auth: tuple[str, str] | None = None) -> Own[Response]:
+                auth: tuple[str, str] | None = None,
+                timeout: float | None = None) -> Own[Response]:
         merged_headers = self._merge_headers(headers)
         merged_params = self._merge_params(params)
         use_auth = auth
@@ -269,19 +294,23 @@ class Session:
                                    data, json, merged_headers, use_auth)
             finally:
                 self.connection = None
-        conn = _connect(url)
+        conn = _connect(url, timeout)
         return _request_on(conn, method, url, merged_params, data, json,
                            merged_headers, use_auth)
 
     def get(self, url: str, params: dict[str, str] | None = None,
-            headers: dict[str, str] | None = None) -> Own[Response]:
-        return self.request("GET", url, params, None, None, headers, None)
+            headers: dict[str, str] | None = None,
+            timeout: float | None = None) -> Own[Response]:
+        return self.request("GET", url, params, None, None, headers, None,
+                            timeout)
 
     def post(self, url: str, data: bytes | None = None,
              json: JsonValue | None = None,
              params: dict[str, str] | None = None,
-             headers: dict[str, str] | None = None) -> Own[Response]:
-        return self.request("POST", url, params, data, json, headers, None)
+             headers: dict[str, str] | None = None,
+             timeout: float | None = None) -> Own[Response]:
+        return self.request("POST", url, params, data, json, headers, None,
+                            timeout)
 
     def __enter__(self) -> "Session":
         return self
