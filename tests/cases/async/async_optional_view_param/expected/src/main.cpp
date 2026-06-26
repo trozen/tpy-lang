@@ -166,6 +166,6 @@ int __tpy_main(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-    std::set_terminate(&::tpy::tpy_terminate_handler);
+    ::tpy::process_startup();
     return __tpy_main(argc, argv);
 }

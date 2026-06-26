@@ -1917,7 +1917,7 @@ class FunctionGenerator:
         out.write("}\n")
         if not no_main:
             out.write("\nint main(int argc, char* argv[]) {\n")
-            out.write(f"{INDENT}std::set_terminate(&::tpy::tpy_terminate_handler);\n")
+            out.write(f"{INDENT}::tpy::process_startup();\n")
             out.write(f"{INDENT}return __tpy_main(argc, argv);\n")
             out.write("}\n")
 

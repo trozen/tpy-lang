@@ -8,6 +8,7 @@
 
 #include <cmath>
 #include <concepts>
+#include <csignal>
 #include <cstdio>
 #include <cstdlib>
 #include <cxxabi.h>
@@ -298,6 +299,18 @@ inline std::string demangle_type_name(const char* mangled) {
     std::fputc('\n', stderr);
 
     std::_Exit(1);
+}
+
+// Process-global dispositions a standalone TPy program installs when it owns
+// the OS process; grouped here so future once-per-process setup lands in the
+// runtime, not in generated main(). Not emitted for --no-main / ext_module
+// builds, where the CPython host owns signal/terminate disposition.
+inline void process_startup() {
+    std::set_terminate(&tpy_terminate_handler);
+    // Match CPython, which ignores SIGPIPE at interpreter init: a write to a
+    // hung-up peer then returns EPIPE (a catchable OSError) instead of the
+    // kernel's default SIGPIPE termination.
+    std::signal(SIGPIPE, SIG_IGN);
 }
 
 /**

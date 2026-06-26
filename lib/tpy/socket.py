@@ -74,11 +74,17 @@ TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
     `_raise_errno` raises `BlockingIOError` (also an OSError subclass) on
     EAGAIN/EWOULDBLOCK/EINPROGRESS, which the asyncio reactor catches to
     park. Still missing: the other errno-keyed subclasses CPython raises
-    (ConnectionRefusedError, ConnectionResetError, gaierror, ...) and a
-    structured `.errno` / `.strerror` attribute (we bake errno + strerror
-    into the message text only). Users can branch on `OSError` /
-    `SocketError` / `BlockingIOError` but not yet on the connection-class
-    errno subtypes.
+    (BrokenPipeError, ConnectionRefusedError, ConnectionResetError,
+    gaierror, ...) and a structured `.errno` / `.strerror` attribute (we
+    bake errno + strerror into the message text only). Users can branch on
+    `OSError` / `SocketError` / `BlockingIOError` but not yet on the
+    connection-class errno subtypes -- e.g. a write to a hung-up peer is a
+    catchable `OSError`/`SocketError` (EPIPE is catchable rather than
+    process-fatal because the runtime ignores SIGPIPE at startup), but not yet
+    `BrokenPipeError` specifically, and `except BrokenPipeError` does not
+    compile (no such type yet). The taxonomy is a coherent feature better designed with the
+    requests->ConnectionError wrap (BUGS.md); both want the ConnectionError
+    family.
 
   * **gethostbyname_ex, gethostbyaddr, getservbyname.** CPython legacy
     DNS APIs; low priority.
