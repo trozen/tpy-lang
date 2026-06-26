@@ -59,7 +59,11 @@ _PLATFORM_MAP = {"windows": "win32", "linux": "linux", "macos": "darwin"}
 # function can pass them across the CPython extension boundary. Anything else is
 # rejected -- by sema (the located diagnostic), with codegen asserting as a
 # drift guard. Shared so both sides agree on one source of truth.
-BOUNDARY_CPP_TYPES = {"int64_t", "::tpy::BigInt", "double"}
+BOUNDARY_CPP_TYPES = {
+    "int8_t", "uint8_t", "int16_t", "uint16_t",
+    "int32_t", "uint32_t", "int64_t", "uint64_t",
+    "::tpy::BigInt", "double", "bool",
+}
 
 
 def boundary_cpp_type(t: TpyType | None) -> str:
@@ -68,12 +72,19 @@ def boundary_cpp_type(t: TpyType | None) -> str:
     return t.to_cpp() if t is not None else "void"
 
 
+def boundary_type_ok(cpp: str, allow_void: bool = False) -> bool:
+    # Single admission rule shared by the sema validator and the glue emitter's
+    # drift assert. `void` (no annotation / `-> None`) is a legal return -- the
+    # wrapper hands back None -- but never a valid parameter type.
+    return cpp in BOUNDARY_CPP_TYPES or (allow_void and cpp == "void")
+
+
 def boundary_unmarshallable_msg(fn_name: str, what: str, cpp: str) -> str:
     # `what` is "return" or "parameter '<name>'". Shared so the sema diagnostic
     # and codegen's drift assert read identically.
     return (f"@export function '{fn_name}': {what} type '{cpp}' is not yet "
             f"marshallable across the CPython boundary "
-            f"(supported: Int64, int, float)")
+            f"(supported: the fixed-width int types, int, float, bool)")
 
 
 def _platform_matches(platform_filter: str | None) -> bool:
@@ -2544,18 +2555,18 @@ class CodeGenerator:
         out.write("namespace {\n")
         out.write("using namespace ::tpy::cpy;\n\n")
 
-        def boundary_cpp(t, what: str, fn) -> str:
+        def boundary_cpp(t, what: str, fn, allow_void: bool = False) -> str:
             cpp = boundary_cpp_type(t)
             # Sema (_validate_ext_module_exports) already rejected unmarshallable
             # boundary types; this asserts the contract to catch sema/codegen
             # drift loudly rather than emit a TU that won't compile.
-            assert cpp in BOUNDARY_CPP_TYPES, boundary_unmarshallable_msg(
-                fn.name, what, cpp)
+            assert boundary_type_ok(cpp, allow_void), \
+                boundary_unmarshallable_msg(fn.name, what, cpp)
             return cpp
 
         wrappers: list[tuple[str, str, str]] = []  # (pyname, wrapper, meth_flag)
         for fn in exposed:
-            ret_cpp = boundary_cpp(fn.return_type, "return", fn)
+            ret_cpp = boundary_cpp(fn.return_type, "return", fn, allow_void=True)
             param_cpps = [boundary_cpp(ptype, f"parameter '{pname}'", fn)
                           for pname, ptype in fn.params]
             n = len(param_cpps)
@@ -2578,7 +2589,12 @@ class CodeGenerator:
                 out.write(f"        {pcpp} __p{i} = "
                           f"::tpy::interop::from_py<{pcpp}>(a{i});\n")
             call_args = ", ".join(f"__p{i}" for i in range(n))
-            out.write(f"        return ::tpy::interop::to_py({call}({call_args}));\n")
+            if ret_cpp == "void":
+                out.write(f"        {call}({call_args});\n")
+                out.write("        return ::tpy::interop::none_to_py();\n")
+            else:
+                out.write(f"        return ::tpy::interop::to_py("
+                          f"{call}({call_args}));\n")
             out.write("    } catch (...) {\n")
             # Preserve a specific exception set by from_py; otherwise generic.
             out.write("        if (!PyErr_Occurred())\n")

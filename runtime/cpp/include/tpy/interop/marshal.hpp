@@ -12,8 +12,10 @@
 // the NULL sentinel, preserving the already-set exception.
 
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <string_view>
+#include <type_traits>
 
 #include "tpy/bigint.hpp"
 #include "tpy/interop/cpython_h.hpp"
@@ -94,13 +96,120 @@ inline double from_py<double>(cpy::PyObject *o) {
     return v;
 }
 
+// Shared narrow-int path: read a long long (an out-of-long-long value trips the
+// overflow flag), then range-check against T's [min, max] -- covers every
+// signed width and the unsigned widths <= 32 bits, all of which fit a signed
+// long long. UInt64 is the exception (its top half overflows long long) and has
+// its own specialization below.
+template <class T>
+inline T from_py_bounded(cpy::PyObject *o) {
+    cpy::PyObject *idx = cpy::PyNumber_Index(o);  // accepts int + __index__
+    if (idx == nullptr) {
+        throw MarshalError{};
+    }
+    int overflow = 0;
+    long long v = cpy::PyLong_AsLongLongAndOverflow(idx, &overflow);
+    cpy::Py_DecRef(idx);
+    // A non-overflow internal error returns -1 with a Python exception already
+    // set; preserve it rather than reporting the value as in-range (mirrors the
+    // from_py<int64_t> guard). Checked before the range test so the pending
+    // exception is not masked by a spurious OverflowError for signed widths
+    // where -1 is in range.
+    if (overflow == 0 && v == -1 && cpy::PyErr_Occurred() != nullptr) {
+        throw MarshalError{};
+    }
+    if (overflow != 0 ||
+        v < static_cast<long long>(std::numeric_limits<T>::min()) ||
+        v > static_cast<long long>(std::numeric_limits<T>::max())) {
+        cpy::PyErr_SetString(cpy::PyExc_OverflowError,
+                             "Python int out of range for the target int type");
+        throw MarshalError{};
+    }
+    return static_cast<T>(v);
+}
+
+template <>
+inline std::int8_t from_py<std::int8_t>(cpy::PyObject *o) {
+    return from_py_bounded<std::int8_t>(o);
+}
+template <>
+inline std::uint8_t from_py<std::uint8_t>(cpy::PyObject *o) {
+    return from_py_bounded<std::uint8_t>(o);
+}
+template <>
+inline std::int16_t from_py<std::int16_t>(cpy::PyObject *o) {
+    return from_py_bounded<std::int16_t>(o);
+}
+template <>
+inline std::uint16_t from_py<std::uint16_t>(cpy::PyObject *o) {
+    return from_py_bounded<std::uint16_t>(o);
+}
+template <>
+inline std::int32_t from_py<std::int32_t>(cpy::PyObject *o) {
+    return from_py_bounded<std::int32_t>(o);
+}
+template <>
+inline std::uint32_t from_py<std::uint32_t>(cpy::PyObject *o) {
+    return from_py_bounded<std::uint32_t>(o);
+}
+
+template <>
+inline std::uint64_t from_py<std::uint64_t>(cpy::PyObject *o) {
+    cpy::PyObject *idx = cpy::PyNumber_Index(o);
+    if (idx == nullptr) {
+        throw MarshalError{};
+    }
+    unsigned long long v = cpy::PyLong_AsUnsignedLongLong(idx);
+    cpy::Py_DecRef(idx);
+    // CPython sets OverflowError for a negative or > UINT64_MAX value, returning
+    // (unsigned long long)-1 as the sentinel.
+    if (v == static_cast<unsigned long long>(-1) &&
+        cpy::PyErr_Occurred() != nullptr) {
+        throw MarshalError{};
+    }
+    return static_cast<std::uint64_t>(v);
+}
+
+template <>
+inline bool from_py<bool>(cpy::PyObject *o) {
+    int r = cpy::PyObject_IsTrue(o);  // truthiness coercion; -1 on __bool__ error
+    if (r < 0) {
+        throw MarshalError{};
+    }
+    return r != 0;
+}
+
 // to_py: a TPy value -> a new owned PyObject reference.
 inline cpy::PyObject *to_py(std::int64_t v) {
     return cpy::PyLong_FromLongLong(static_cast<long long>(v));
 }
 
+// The remaining fixed-width ints: signed and <= 32-bit-unsigned widen into the
+// signed long long accessor; UInt64 needs the unsigned one. Constrained so it
+// never competes with the int64_t / double overloads (an exact-match non-
+// template wins) and never swallows bool.
+template <class T>
+    requires (std::is_integral_v<T> && !std::is_same_v<T, bool>)
+inline cpy::PyObject *to_py(T v) {
+    if constexpr (std::is_unsigned_v<T> && sizeof(T) == 8) {
+        return cpy::PyLong_FromUnsignedLongLong(static_cast<unsigned long long>(v));
+    } else {
+        return cpy::PyLong_FromLongLong(static_cast<long long>(v));
+    }
+}
+
 inline cpy::PyObject *to_py(double v) {
     return cpy::PyFloat_FromDouble(v);
+}
+
+inline cpy::PyObject *to_py(bool v) {
+    return cpy::PyBool_FromLong(v ? 1 : 0);
+}
+
+// A void @export returns None: a fresh ref to the None singleton (Py_RETURN_NONE).
+inline cpy::PyObject *none_to_py() {
+    cpy::Py_IncRef(&cpy::_Py_NoneStruct);
+    return &cpy::_Py_NoneStruct;
 }
 
 inline cpy::PyObject *to_py(const tpy::BigInt &b) {

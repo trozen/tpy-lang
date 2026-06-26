@@ -5849,25 +5849,36 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   hand-mirrored limited-API facade (`tpy/interop/cpython_h.hpp`) so no
   `Python.h` enters a generated TU; the `.so` links with undefined Python
   symbols (no libpython) resolved at import.
-- **Working (`Int64` + `int` + `float`)**: functions taking and returning
-  `Int64` (rung 1, `METH_VARARGS` + `PyArg_ParseTuple` with `from_py` owning
-  every conversion), `int`/BigInt (rung 2, a two-tier int64 fast path + hex
-  string round-trip, so values beyond int64 cross losslessly), and `float`
-  (rung 3, C++ `double` via `PyFloat_AsDouble`/`FromDouble`; `int`/`bool` args
-  coerce through `__float__`). Args are coerced via `__index__` (`__float__`
-  for `float`); marshalling failures raise the right Python exception
-  (`OverflowError` for an out-of-`Int64`-range int or an int too large for a
-  double, `TypeError` for a non-number). Verified end to end in
+- **Working (the fixed-width int types + `int` + `float` + `bool`)**: functions
+  taking and returning any fixed-width int (`Int8`..`Int64` / `UInt8`..`UInt64`;
+  rung 1 `METH_VARARGS` + `PyArg_ParseTuple` with `from_py` owning every
+  conversion -- signed and <= 32-bit-unsigned widths read a `long long` and
+  range-check against the target, `UInt64` uses the unsigned accessors),
+  `int`/BigInt (rung 2, a two-tier int64 fast path + hex string round-trip, so
+  values beyond int64 cross losslessly), `float` (rung 3, C++ `double` via
+  `PyFloat_AsDouble`/`FromDouble`; `int`/`bool` args coerce through `__float__`),
+  and `bool` (C++ `bool` via `PyObject_IsTrue` / `PyBool_FromLong`; any argument
+  coerces by truthiness, matching CPython's `bool()`). Args are coerced via
+  `__index__` (`__float__` for `float`, truthiness for `bool`); marshalling
+  failures raise the right Python exception (`OverflowError` for an int outside
+  the target width's range or too large for a double, `TypeError` for a
+  non-number, or whatever a custom `__bool__` raises). Verified end to end in
   `tests/interop/` (ext-exec == cpy-parity for the tested values).
-  **Coercion model:** the numeric boundary marshals via Python's protocols
-  (`__index__` for ints, `__float__` for floats), so the compiled extension
-  enforces the declared parameter type while the untyped TPy source (run under
-  CPython for the parity check) does not. For ordinary numbers they agree; for
-  non-conforming exotic args (a `complex`, or a bare `__float__`/`__index__`
-  object passed where the source would do arithmetic) the compiled extension is
-  wider/stricter than the source. This is inherent to "`@export` marshals an
-  untyped CPython arg into a typed TPy value" and applies to every numeric
-  marshaller; such args are deliberately kept out of the parity drivers.
+  **Coercion model:** the scalar boundary marshals via Python's protocols
+  (`__index__` for ints, `__float__` for floats, truthiness for `bool`) and
+  enforces the declared type/width, so the compiled extension is bounded/typed
+  while the untyped TPy source (run under CPython for the parity check) is not.
+  For in-range ordinary values they agree; an out-of-range int (a `2**40` passed
+  to an `Int32`), or a non-conforming exotic arg (a `complex`, a bare
+  `__float__`/`__index__` object, or a non-bool passed where the source would
+  return it unchanged), makes the compiled extension wider/stricter than the
+  source. This is inherent to "`@export` marshals an untyped CPython arg into a
+  typed TPy value" and applies to every scalar marshaller; such args are
+  deliberately kept out of the parity drivers.
+- **Working (void return)**: an `@export` with no return annotation or
+  `-> None` returns `Py_None` to the host (`call(); Py_RETURN_NONE`). `void` is
+  valid only in return position; a `None`-typed parameter has no host value to
+  unmarshal and stays rejected.
 - **Working (`.so` build mode)**: `tpyc -b` on an `# tpy: ext_module` builds an
   importable `<mod>.so` directly -- every TU `-fPIC`, linked `-shared`, no
   `main()`, glue TU in the link set. `--exec` on an ext_module is a clean error
@@ -5876,8 +5887,8 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   `.so`, imports it under CPython against `driver.py`, and asserts parity with
   the same driver over the TPy source; a facade self-check guards the ABI
   mirror.
-- **Planned**: other scalar types (`float`, other fixed-width ints, `bool`,
-  `str`/`bytes`), built-in/user exceptions across the boundary, classes
+- **Planned**: other scalar types (`str`/`bytes`), built-in/user
+  exceptions across the boundary, classes
   (`PyType_FromSpec`), enums/constants, buffer input, the PEP 517 wheel
   backend, and the `nogil` GIL capability. See `docs/CPYTHON_INTEROP.md`.
 

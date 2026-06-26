@@ -1,9 +1,10 @@
 # CPython Interop -- Design
 
-**Status: v1.0 in progress.** rungs 0-3 (free functions over `Int64`,
-`int`/BigInt, and `float`) are implemented -- see "v1.0 resolved design" below
-and `tests/interop/`; the rest of this doc is the agreed design ahead of
-implementation. Companion to `PROJECT_TOOLING_DESIGN.md`, which reserves the
+**Status: v1.0 in progress.** Free functions marshalling every scalar
+(`int`/BigInt, `float`, `bool`, all fixed-width int types `Int8`..`Int64` /
+`UInt8`..`UInt64`) plus void return (`-> None`) are implemented -- see "v1.0
+resolved design" below and `tests/interop/`; the rest of this doc is the agreed
+design ahead of implementation. Companion to `PROJECT_TOOLING_DESIGN.md`, which reserves the
 *tooling* hooks (the `ext` target kind + TPy as a PEP 517 build backend);
 this doc is about the *interop semantics* that doc deliberately defers.
 
@@ -48,8 +49,8 @@ progress -> ✅ done.
 
 | Phase | Deliverable | Scope | Status |
 |---|---|---|---|
-| 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🚧 `Int64` + `int`/BigInt + `float` marshalling done |
-| 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 rungs 0-3 (Int64/int/float args + return) done |
+| 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🚧 all scalars (int/BigInt, float, bool, fixed-width ints) + void return done; str/bytes next |
+| 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return done; str/bytes next |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | 🔬 |
 | 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🔬 |

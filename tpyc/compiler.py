@@ -3886,7 +3886,7 @@ class Compiler:
             boundary marshaller. Runs post-sema so the types are resolved.
         """
         from .codegen_cpp.generator import (
-            BOUNDARY_CPP_TYPES, boundary_cpp_type, boundary_unmarshallable_msg)
+            boundary_cpp_type, boundary_type_ok, boundary_unmarshallable_msg)
         for compiled in self.modules.values():
             if not compiled.ast.directives.ext_module:
                 continue
@@ -3901,16 +3901,19 @@ class Compiler:
             for func in compiled.ast.functions:
                 if not func.exposed_to_host:
                     continue
-                checks = [(func.return_type, "return")]
-                checks += [(ptype, f"parameter '{pname}'")
+                # `void` (no annotation or `-> None`) is a legal return -- the
+                # wrapper hands back None -- but never a valid parameter type.
+                checks = [(func.return_type, "return", True)]
+                checks += [(ptype, f"parameter '{pname}'", False)
                            for pname, ptype in func.params]
-                for typ, what in checks:
+                for typ, what, allow_void in checks:
                     cpp = boundary_cpp_type(typ)
-                    if cpp not in BOUNDARY_CPP_TYPES:
-                        raise CompileError(
-                            boundary_unmarshallable_msg(func.name, what, cpp),
-                            compiled.name, compiled.path,
-                            lineno=func.loc.line if func.loc else None)
+                    if boundary_type_ok(cpp, allow_void):
+                        continue
+                    raise CompileError(
+                        boundary_unmarshallable_msg(func.name, what, cpp),
+                        compiled.name, compiled.path,
+                        lineno=func.loc.line if func.loc else None)
 
     def _build_namespace_map(self) -> dict[str, str]:
         """Build module_name -> C++ namespace mapping from # tpy: namespace directives.

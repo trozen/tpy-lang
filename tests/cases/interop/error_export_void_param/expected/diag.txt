@@ -1,0 +1,1 @@
+main.py:8: error: @export function 'f': parameter 'x' type 'std::monostate' is not yet marshallable across the CPython boundary (supported: the fixed-width int types, int, float, bool)

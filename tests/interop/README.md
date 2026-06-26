@@ -63,3 +63,17 @@ self-check additionally requires `Python.h`.
   `__float__`). Its boundary errors (non-number, int-too-large-for-double) match
   CPython for the values driven, so they are parity-checked in `driver.py`
   rather than an ext-only file.
+- **`int_widths/`** (`int_widths.py`) -- every fixed-width int boundary
+  (`Int8`..`Int64` / `UInt8`..`UInt64`): each `iN`/`uN` round-trips its width
+  through the matching C++ type with a per-width range check. `driver.py`
+  exercises the min/max of each width (in-range, so source-parity holds);
+  `ext_checks.py` covers the ext-only divergences -- out-of-range and
+  negative-into-unsigned raise `OverflowError`, a non-integer `TypeError`,
+  while the unbounded source accepts them.
+- **`bools/`** (`bools.py`) -- the `bool` boundary plus a void-return `@export`:
+  `flip`/`both`/`identity` marshal as C++ `bool` (any arg coerces by truthiness,
+  via `PyObject_IsTrue` / `PyBool_FromLong`), and `tally(b) -> None` returns
+  `Py_None` (its effect read back through an `Int64` getter, since the
+  extension must not print). `ext_checks.py` covers the truthiness coercions
+  observable only through `identity` (which the source returns unchanged) and a
+  `__bool__`-raising argument -- both ext-only divergences from the source.
