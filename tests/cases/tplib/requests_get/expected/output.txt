@@ -1,0 +1,5 @@
+200 True OK
+{"name": "t", "rows": 3}
+application/json
+rows = 3
+b'GET /v1/tables?db=das HTTP/1.1\r\nHost: api.test:8002\r\nAccept-Encoding: identity\r\n\r\n'

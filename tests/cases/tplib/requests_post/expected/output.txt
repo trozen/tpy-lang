@@ -1,0 +1,6 @@
+201 True
+b'POST /v1/items HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 25\r\nContent-Type: application/json\r\n\r\n{"name": "x", "count": 5}'
+201 True
+b'PUT /v1/items/1 HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 9\r\n\r\nraw-bytes'
+201 True
+b'POST /secure HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 0\r\nAuthorization: Basic dXNlcjpwdw==\r\n\r\n'

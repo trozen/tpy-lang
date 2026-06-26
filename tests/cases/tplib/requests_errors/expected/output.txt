@@ -1,0 +1,3 @@
+404 False no!
+HTTPError
+ConnectionError

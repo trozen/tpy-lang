@@ -1,0 +1,7 @@
+200 OK
+b'hello'
+b'GET /health HTTP/1.1\r\nHost: api.test:8002\r\nAccept-Encoding: identity\r\n\r\n'
+200
+b'POST /v1 HTTP/1.1\r\nHost: api.test\r\nAccept-Encoding: identity\r\nContent-Length: 7\r\n\r\n{"x":1}'
+scheme URLError
+no-host URLError

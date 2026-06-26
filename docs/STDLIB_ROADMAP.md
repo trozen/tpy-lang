@@ -164,7 +164,8 @@ Examples of the policy in action:
 | [`socket`](#socket) | P1 | Partial | ~70% | pure + C | IPv4 TCP client/server (blocking + non-blocking via `setblocking`), `socketpair`, `create_connection`/`create_server`, `send`/`recv`/`sendall`/`shutdown`/`setsockopt_int`/`getsockopt_int`/`getsockname`/`getpeername`, `gethostbyname`, context-manager, `SocketError`/`BlockingIOError` (subclass `OSError`). `makefile("rb")` -> `io.BufferedReader`. Backed by `_bindings.posix_socket` + `socket_impl.cpp`. Missing: IPv6/`AF_INET6`, `AF_UNIX`, `sendto`/`recvfrom`/`recv_into`, `settimeout`, full `getaddrinfo`, `makefile` text/write modes, TLS/`ssl`, Windows |
 | [`http`](#httpclient) | P2 | Partial | ~60% | pure | `HTTPStatus` (full IntEnum code set; `.value`/`.name`/value-lookup/int-compare; no `.phrase`/`.description`/`.is_*` -- enum can't carry per-member data). Missing: `HTTPMethod` enum |
 | [`http.client`](#httpclient) | P2 | Partial | ~55% | pure | Plaintext HTTP/1.1: `HTTPConnection.request`/`getresponse`/`connect`/`close`, `HTTPResponse` (`status`/`reason`/`version`/`read`/`getheader`/`getheaders`), `HTTPException`/`BadStatusLine`/`UnknownProtocol`. Auto Host/Accept-Encoding/Content-Length (CPython byte-order); body framing via Content-Length, chunked, and connection-close. Reads through `socket.makefile` -> `io.BufferedReader`. Missing: HTTPS/`ssl`, low-level putrequest/putheader, str/file/iterable bodies, `email.message`-style `.headers`, redirects/proxy/timeout/connection-reuse (see TODO.md) |
-| [`urllib.request`](#urllibrequest) | P2 | Blocked | 0% | -- | Next: `urlopen` shim + `tplib.requests` on `http.client` |
+| [`urllib.request`](#urllibrequest) | P2 | Partial | ~20% | pure | Simplified `urlopen(url, data=None)` over `http.client` (GET/POST), returns `HTTPResponse`; non-http scheme -> `URLError`. No opener/handler stack, redirects, proxies, auth handlers, `timeout=`, HTTPS (see TODO.md) |
+| [`tplib.requests`](#tplibrequests) | P2 | Partial | ~45% | pure | `requests`-style client on `http.client`. `get`/`post`/`put`/`patch`/`delete`/`head`/`request` with `params`/`headers`/`data`/`json`/`auth`; `Response` (`.status_code`/`.ok`/`.text`/`.content`/`.json()`/`.headers`/`.raise_for_status()`); `Session` (default headers/params, Basic `auth`); `RequestException`->`HTTPError`/`ConnectionError`. Divergences: typed kwargs, untyped `.json()`, no pooling/timeout/redirects/cookies/TLS (see TODO.md) |
 
 ---
 
@@ -182,7 +183,7 @@ unblock.
 | async/await + event loop | asyncio (v1 shipped), aiohttp, async generators | XL (v1 done) |
 | Threading primitives (Thread, Lock, Event, Queue) | threading, multiprocessing.dummy, concurrent.futures | XL |
 | Process spawning (fork/exec or std::process) | subprocess, multiprocessing | M-L |
-| Socket primitives | socket, http.client, smtplib, ftplib, urllib.request | L |
+| Socket primitives | socket, http.client (done), urllib.request (done), smtplib, ftplib | L |
 | Runtime type info / reflection for `get_type_hints`, `type(x)`, `isinstance` on concrete | typing runtime, inspect, pickle | L |
 | Closure capture for `partial`/`lru_cache` | functools | S-M (may already work via Callable) |
 
@@ -1382,9 +1383,36 @@ status-line split, redirects/proxy/`timeout=`/connection-reuse.
 
 ### urllib.request
 
-**Blocked** on a `requests`-style layer. Next REST-track step:
-`urllib.request.urlopen` (shim) + a `tplib.requests` client on top of
-`http.client`.
+Current: `lib/tpy/urllib/request.py` -- a simplified, signature-compatible
+`urlopen(url, data=None)` over `http.client` (GET, or POST when `data` is
+given). Returns an `http.client.HTTPResponse` (read via `.status`/`.reason`/
+`.read()`/`.getheader()`). A non-`http` scheme raises `URLError`. No
+opener/handler stack, no redirects/proxies/auth-handlers/`timeout=`/HTTPS
+(see TODO.md). A private `_sock` param injects a socket for offline tests
+(the connection is still built from the URL and dropped on return, so the
+response's dup-fd reader is exercised as in normal use). Test:
+`cases/stdlib/urlopen`.
+
+### tplib.requests
+
+Current: `lib/tpy/tplib/requests.py` -- a `requests`-style client (pure TPy)
+over `http.client`. Module fns `get`/`post`/`put`/`patch`/`delete`/`head` +
+`request(method, url, ...)` with `params`/`headers`/`data`/`json`/`auth`
+kwargs. `Response` exposes `.status_code`/`.reason`/`.url`/`.ok`/`.text`
+(UTF-8)/`.content`/`.headers` (plain dict)/`.json()` (untyped `JsonValue`)/
+`.raise_for_status()`. `Session` merges default headers/params and applies a
+default auth (assignable `connection` field = the offline test seam). `auth=
+(user, pass)` -> Basic via `base64`. Exception tree `RequestException` ->
+`HTTPError`/`ConnectionError`. **Declarable divergences** (all compile-visible,
+none silent): kwargs are a fixed typed set (no `**kwargs`); `params`/`headers`
+are `dict[str, str]`; `data` is `bytes`; `json=` takes a `JsonValue` and an
+inline dict literal must be bound to a `JsonValue` local first; `.json()` is
+untyped (typed path `Model.from_json(r.text)`); `.text` is UTF-8 only;
+`.headers` is not case-insensitive; no true connection pooling (`Connection:
+close`). **Deferred** (see TODO.md): `timeout=`, redirects, cookies, multipart
+files, streaming, proxies, TLS, `CaseInsensitiveDict`, form-dict `data=`.
+Tests: `cases/tplib/requests_get`, `requests_post`, `requests_session`,
+`requests_errors`, `error_requests_json_inline`.
 
 ---
 
