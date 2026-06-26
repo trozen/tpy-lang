@@ -49,6 +49,7 @@ from ..diagnostics import SemanticError
 from ..liveness import stmts_terminate
 
 from .context import INDENT, CodeGenError, FinallyContext, LocalCppForm, CppForm, FormValue, escape_cpp_name, qualified_cpp_name, loop_var_binding, is_lvalue_iterable, view_key_target
+from .forms import classify_local_binding, LocalBinding
 from ..type_def_registry import (
     is_list,
     is_fixed_int_type, is_big_int_type, is_bytes_type, is_str_type,
@@ -2223,7 +2224,17 @@ class StatementGenerator:
             if is_const:
                 self.ctx.const_indirect_locals.add(stmt.name)
             const_pfx = "const " if is_const else ""
-            if is_optional or stmt.name in self.ctx.reassigned_vars or stmt.name in self.ctx.hoisted_vars:
+            # The T*-vs-T& choice is the shared binding classifier (also read by
+            # THIR lowering so the two paths cannot drift): REF_ALIAS is exactly
+            # the T& case -- a single-assignment, lvalue-sourced, non-optional
+            # plain non-value local; optional / reassigned / hoisted take the
+            # pointer-local path.
+            binding = classify_local_binding(
+                target_type, stmt.init, self.ctx.analyzer, name=stmt.name,
+                reassigned=self.ctx.reassigned_vars,
+                hoisted=self.ctx.hoisted_vars,
+                move_through=self.ctx.move_through_vars)
+            if binding is not LocalBinding.REF_ALIAS:
                 # T* pointer-local -- needs rebinding support (or hoisted storage)
                 self.ctx.pointer_locals.add(stmt.name)
                 if stmt.name in self.ctx.sema_movable_locals:

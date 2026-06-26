@@ -39,6 +39,11 @@ from ..value_category import (
     call_returns_cpp_ref as _call_returns_cpp_ref_shared,
     _CONTAINER_LITERAL_NODES,
 )
+from .forms import (
+    is_plain_nonvalue as _forms_is_plain_nonvalue,
+    is_ptr_variant_union as _forms_is_ptr_variant_union,
+    reads_storage_form_optional as _forms_reads_storage_form_optional,
+)
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
@@ -1248,14 +1253,7 @@ class CodeGenContext:
         pointer-repr Optional and ptr-variant Union, which have their own
         codegen paths. Shared by the branch pre-decl form choice and the
         walrus borrow arm so their eligibility guards cannot drift."""
-        check = t.wrapped if isinstance(t, OwnType) else t
-        if check.is_value_type():
-            return False
-        if isinstance(check, OptionalType) and check.uses_pointer_repr():
-            return False
-        if self.is_ptr_variant_union(check):
-            return False
-        return True
+        return _forms_is_plain_nonvalue(t)
 
     def is_ptr_variant_union(self, typ: 'TpyType') -> bool:
         """Check if a union type uses pointer-variant representation.
@@ -1264,10 +1262,7 @@ class CodeGenContext:
         that are NOT recursive union aliases. Recursive unions use wrapper
         structs which are value types, so they skip pointer-variant form.
         """
-        from ..typesys import UnionType
-        return (isinstance(typ, UnionType)
-                and typ.uses_pointer_repr()
-                and not typ.needs_wrapper())
+        return _forms_is_ptr_variant_union(typ)
 
     def is_ptr_variant_source(self, expr: TpyExpr) -> bool:
         """Check if an expression produces a pointer variant (vs value variant).
@@ -1874,23 +1869,9 @@ class CodeGenContext:
         pointer-form, pointer-local rebind) check `optional_locals`
         directly.
         """
-        if isinstance(expr, TpyFieldAccess):
-            val_type = self.get_expr_type(expr)
-            return (isinstance(val_type, OptionalType)
-                    and val_type.uses_pointer_repr())
-        if isinstance(expr, TpySubscript):
-            val_type = self.get_expr_type(expr)
-            if not (isinstance(val_type, OptionalType)
-                    and val_type.uses_pointer_repr()):
-                return False
-            # Tuple-subscript codegen pre-lifts via `optional_to_ptr` (see
-            # `_gen_subscript` tuple branch) when the object is a storage-form
-            # tuple source. The rendered expression is already `T*`, so
-            # consumers must NOT lift again.
-            obj_type = self.get_expr_type(expr.obj)
-            if obj_type is not None and isinstance(unwrap_qualifiers(obj_type), TupleType):
-                return False
-            return True
+        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
+            # Analyzer-pure field/subscript core, shared with THIR lowering.
+            return _forms_reads_storage_form_optional(self.analyzer, expr)
         if isinstance(expr, TpyName):
             if self.local_cpp_form(expr.name) is LocalCppForm.STORAGE_OPTIONAL:
                 return True

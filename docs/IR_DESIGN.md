@@ -9,6 +9,7 @@
 | `--dump-thir` debug output | Done (increment 1) |
 | THIR-backed codegen context | Increment 1 -- flag-gated (`tpyc/thir/emit.py`) |
 | Codegen migration from analyzer/AST to THIR | Increments 1-5 -- value-scalar bodies incl. if/elif/else, while, range-for, double float, bool, comparison-as-value |
+| THIR form fact (Open Q 9/11/12) | **Rung F1 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`); single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads, byte-identical with `--thir-codegen` forced over the full corpus. Rungs F2-F-final not started |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
 | `--dump-mir` debug output | Not started |
@@ -88,6 +89,30 @@ over-excludes it. The map carries the var-decl's resolved (retro-widened) type,
 matching codegen, so same-sign comparisons route and only true mixed-sign ones
 are excluded. Next slices: `and`/`or`/`not`, then the form decision (Open Q
 9/11/12) gates the form-carrying nodes (tuples/unions/non-value locals).
+
+**Increment 6 lands form rung F1** -- the first form-carrying slice. It admits
+single-assignment non-value **record** locals bound from a field read (the two
+binding shapes `T&` alias and `T*`-via-`optional_to_ptr`), **scalar field reads**
+off F1-record receivers (params or `T&`-alias locals), and F1-record reference
+params (same-module, non-native, non-generic; readonly free functions excluded).
+The form facts are carried on the IR: `Form` (BORROW/STORAGE/VALUE, default
+VALUE) on every `THIRExpr`, a `THIRFormConvert` node for the explicit
+storage->borrow lift (no `kind` field -- the helper is a pure function of the
+type family + direction + const + move), and `THIRFieldAccess`. The
+binding-shape decision is the shared `forms.classify_local_binding` that the
+legacy AST path now also calls (the T*-vs-T& choice in `_gen_var_decl_code`),
+so lowering and codegen cannot drift. `is_const` for the optional read is a pure
+sema read (`FunctionInfo.const_borrow_params` + `ReadonlyType`), confirming the
+F1 gate's pure-classifier criterion. An F1 borrow local's decl type renders
+through codegen's `type_to_cpp` (threaded into lowering, run after the
+module's `native_cpp_names` are registered) -- `TpyType.to_cpp()` would
+mis-qualify cross-module/live-module records. Deferred to the AST path (filed in
+TODO.md): reassigned/rebound non-value locals (F2), container/tuple/union locals
+(F3/F4), cross-module / native / generic records, subscript and name-alias
+sources, `->` pointer-local receivers, and any call passing a non-value
+(record / `Own[record]`) argument (the auto-move `f(std::move(p))` the bare-name
+THIRCall emit does not reproduce). Byte-identical across the whole corpus with
+`--thir-codegen` forced.
 
 ---
 
@@ -628,6 +653,220 @@ fn main() -> Void:
 
 This makes the resolved types, overloads, and optimization facts visible at a glance.
 
+### Form as a First-Class THIR Fact (resolved 2026-06)
+
+Resolves Open Questions 9 (tuple/form fact), 11 (uniform local model -- the THIR
+half), and 12 (RefType fate). The ground-truth surface this must subsume is
+`docs/THIR_FORM_INVENTORY.md`; that document is the binding checklist (completion
+= every item closed + the AST form-codegen retired). A spike validated the node
+mechanism against the live `convert()` chokepoint (24/24 across optional/union/
+tuple x both directions x const x move) and reproduced the minimal field-read
+slice (`const Inner* x = ::tpy::optional_to_ptr(b.inner)`) byte-for-byte.
+
+#### Framing constraint: byte-identical, for validatability (not churn)
+
+The form slice must emit C++ byte-identical to the AST path (verified by forcing
+`--thir-codegen` on and diffing -- zero snapshot diffs, the same gate increments
+1-5 pass). The reason is not snapshot-churn cost; it is that a zero-diff is the
+*only* way a human can confirm thousands of cases still compile correctly. If a
+form change rewrote thousands of snapshots, no reviewer could validate them. So
+byte-identity is the migration's correctness proof during AST/THIR coexistence.
+Representation *normalization* (collapsing the `LocalCppForm` zoo) is real and
+desirable, but it belongs to MIR's late-representation fold (Open Q 11's MIR
+half), where it is the explicit goal -- not smuggled into THIR where it would
+forfeit the zero-diff net.
+
+#### Two facts, not one: value-form vs local-representation
+
+A var-decl like `x = b.field` braids two orthogonal facts that the design keeps
+separate:
+
+1. **Value form** (Open Q 9) -- the borrow-vs-storage axis of a *value*:
+   `BORROW` (`T*`, `T&`, `variant<A*,B*>`, `tuple<...,T*>`, `optional<T>` read as
+   `T*`) vs `STORAGE` (`T`, `optional<T>`, `variant<A,B>`, `tuple<...,optional<T>>`)
+   vs `VALUE` (value types -- the two forms coincide). This is the `CppForm` enum
+   lifted from a codegen-local notion to a carried IR fact. It is SEMANTIC: it
+   survives into MIR (it is about ownership/aliasing).
+
+2. **Local representation** (Open Q 11) -- the C++ *slot shape within a form*:
+   `T&` alias vs `T*`+rebind-slot vs `optional<T>` deferred-init vs `frame_slot<T>`
+   vs pointer-element tuple. This is the existing `LocalCppForm` (9 variants) +
+   the 22 side-sets. It is COMPATIBILITY metadata -- carried only to reproduce
+   today's eager C++ byte-identically; MIR's fold subsumes ONLY this level.
+
+These co-arrive (the first conversion-bearing slice needs both), so THIR carries
+both from increment 1. Only the MIR fold defers.
+
+#### The form tag lives on the expression, not the type
+
+The same `TpyType` (`Inner | None`) renders as `Inner*` (borrow) or
+`std::optional<Inner>` (storage) depending purely on POSITION -- so form is a
+positional fact, not intrinsic to the type. Putting a form tag on the type would
+force two non-canonical type instances per tuple/optional; putting it on the expr
+keeps types canonical and matches today's `FormValue.form` (the producing emitter
+records the form it actually emitted). So:
+
+```
+THIRExpr (base)
+  result_type: TpyType
+  form: Form               # NEW: BORROW | STORAGE | VALUE  (default VALUE)
+  loc: SourceLocation | None
+```
+
+`Form.VALUE` default leaves the existing value-scalar slice untouched (every
+current node is VALUE). `result_type` still selects the conversion FAMILY; `form`
+says which side of the axis. Form is SET by lowering through a single classifier
+(one writer -> no divergence); the coerce boundary ASSERTS rather than silently
+passing a value-form expr through, so a `VALUE` tag can never mask a *missed*
+conversion. This positional placement is also what resolves the consumer-dictated
+exhibits (Open Q 9's `key=` lambda, async/await union, match capture): the
+conversion is inserted at each CONSUMER site, so one definition with one param
+form is bridged independently by each consumer -- no definition-site guess.
+
+`THIRVarDecl` additionally carries the local-representation fact:
+
+```
+THIRVarDecl
+  ...
+  form: Form                       # coarse, SEMANTIC -- drives the insertion rule
+                                   #   (a local is NOT uniformly BORROW: storage-
+                                   #   optional / storage-tuple loop/unpack vars
+                                   #   are STORAGE form)
+  cpp_local_representation: ...    # the LocalCppForm analog, carried VERBATIM.
+                                   #   COMPATIBILITY metadata: explicitly
+                                   #   non-semantic, FORBIDDEN for any other THIR
+                                   #   node to depend on; MIR's fold subsumes only
+                                   #   this. Do not redesign it here (that is
+                                   #   divergence risk + MIR's job).
+```
+
+#### THIRFormConvert -- the explicit conversion node
+
+```
+THIRFormConvert(THIRExpr)
+  value: THIRExpr          # inner; value.form is the source form
+  # result_type + form (inherited) = destination type + destination form
+  is_const: bool           # const-qualified borrow -> const helper overload
+  move: bool               # last-use into owned sink -> _move helper variant
+```
+
+Invariant: `THIRFormConvert` preserves `result_type` and changes only `form` --
+this is what distinguishes it from `THIRCoerce` (which changes the TYPE). No
+`kind` field: the spike proved the runtime helper is a pure function of
+(family(result_type), value.form -> form, is_const, move) -- Optional ->
+`optional_to_ptr` / `ptr_to_optional[_move]`; Union -> `to_[const_]ptr_variant` /
+`to_value_variant<...>`; Tuple -> `tuple_to_pointer<...>` / `tuple_to_storage[_move]
+<...>`. (Open caveat below: whether those four inputs suffice for ALL ~150 direct
+sites is what the F1 spike must confirm; if a site needs more, it goes on the node
+then, not pre-emptively.)
+
+#### How lowering obtains the form -- pure classifier + emit counter
+
+The form/representation decisions are made today DURING the codegen walk (the
+binding-site writers in `_gen_var_decl_code` et al.), but they split cleanly:
+
+- **Form classification is pure-derivable.** Codegen already re-runs the same
+  `scan_reassigned_vars` prescan sema runs, so the walk-order input (reassigned /
+  rvalue-reassigned / alias) is available BEFORE the emit walk. The pointer-vs-
+  optional-vs-tuple-vs-alias choice is a pure function of (resolved type +
+  prescan). It is extracted into a shared classifier helper that BOTH the legacy
+  codegen path and THIR lowering call -- identical by construction, the same trick
+  `resolve_stmt_binding_type` already uses. No new mutable pass; the "pre-pass" is
+  the prescan that already exists + pure helpers. (Per-type spellings live on
+  `TypeDef`; binding-level classification in a shared `forms` helper, per CLAUDE.md.)
+- **Only slot numbering is genuine walk-order state** (`rebind_slots`, `__slot_N`)
+  -- reproduced by a per-function emit counter, the established `iter_counter`
+  pattern from increment 2.
+
+So the legacy path is touched only by a verified extract-method refactor (the
+decision logic is unchanged -> zero diff), and lowering and codegen cannot diverge
+because they call one classifier.
+
+#### Insertion rule (dissolves the ~150 direct sites)
+
+Every slot has a form (field / container / `Own` -> STORAGE; param / return /
+yield / borrow-local -> BORROW; value type -> VALUE; storage-form locals ->
+STORAGE). Callers do not pass raw `dst_form` / `is_const` / `move`; a boundary
+API carries the decision:
+
+```python
+def required_form(slot) -> Form | None:        # None == no form axis (value type)
+    ...
+def coerce_form(expr, slot):                    # the single insertion door
+    f = required_form(slot)
+    if f is None or expr.form == f:
+        return expr                             # asserts no axis applies for value
+    return THIRFormConvert(value=expr, result_type=expr.result_type,
+                           form=f, is_const=slot.is_const, move=slot.move)
+```
+
+Today's ~12 predicates + 22 side-sets + per-site re-derivations collapse into two
+carried facts read here: the source's `form` and the slot's form. This is the bulk
+of the win and the bulk of the risk -- the side-sets encode subtle const / rebind /
+suspension / null-state facts the tags must preserve to stay byte-identical.
+
+#### RefType (Open Q 12) -- narrowed dissolution
+
+A borrow-form non-value value is exactly what `Ref[T]` marks today; with `form` on
+the expr it is redundant (`to_cpp_stored() -> val_or_ref<T>` is the generic-slot
+storage form, `is_ref_param()` rvalue-temp binding is a BORROW param slot, lambda
+`-> T&` is a BORROW return). Scope of THIS resolution: THIR introduces NO new
+`RefType` use, and `RefType` stays frozen. FULL removal of `RefType` from the type
+system is a LATER gate (rung F5/F-final), after the generic-slot (`val_or_ref_t`)
+and lambda-return cases are proven -- not blessed up front.
+
+### Form rollout ladder (F1 -> F-final)
+
+The form work is a sub-stream of the THIR migration, sequenced one family/
+representation-subset at a time, each rung gated by zero snapshot diffs, each
+closing named `THIR_FORM_INVENTORY.md` items. The eligibility gate keeps every
+intermediate state correct (anything unsupported stays on the proven AST path,
+flag off by default), so "partially migrated" is never "broken." Completion is the
+defined end state: the gate excludes nothing form-related and the AST form-codegen
+is deleted (F-final). Buggy exhibits (BUGS.md union match-capture, `key=` lambda,
+async/await union) are migrated FAITHFULLY (byte-identical, bug preserved -- THIR
+makes the conversion visible); fixing them is a separate churn-accepting follow-on
+that the migration enables. Migration-complete != bugs-fixed.
+
+| Rung | Scope | Closes (inventory) |
+|------|-------|--------------------|
+| **F1** *(landed 2026-06)* | single-assignment non-value **record** locals + Optional[record] storage->borrow read (`T&` alias, lvalue `optional_to_ptr`, is_const propagation, record borrow params) + scalar field reads; excludes reassigned/rebound/rvalue-slot, container/cross-module/native records, and calls passing a non-value arg (auto-move). Container locals fold in with F3 | most of section 1 non-value-local + section 4 read |
+| **F2** | reassigned/rebound locals + Optional borrow->storage write/return (`T*` + `rebind_slots`, `__slot_N`, `ptr_to_optional[_move]`) | section 3b slot machinery + section 4 write |
+| **F3** | Tuple form (per-element pointer/optional mask, BORROW_TUPLE / STORAGE_TUPLE) | section 1 tuple, section 4 tuple sites |
+| **F4** | Union form (`to_ptr_variant` / `to_value_variant`, value/ptr-variant split, the 3 consumer-dictated exhibits) | section 1 union |
+| **F5** | Generic-slot form (`val_or_ref_t` / `val_or_ptr_t` over TypeParamRef) | section 1 generic, section 3c RefType (begin) |
+| **F6** | str/bytes view split (Open Q 11 scope extension) | section 3d |
+| **F-final** | `RefType` removal + AST form-codegen retirement | section 3c, end state |
+
+**F1 is the pre-commit gate** (Codex review condition + the spike's real test): an
+end-to-end byte-identical lowering of one real non-value function through THIR-
+with-form, proving the form facts are DECIDED correctly at lowering across every
+optional case in the corpus -- not a hardcoded node. **Explicit success criterion:
+if `is_const`/`move` turn out to need walk-state the prescan does not carry, the
+"pure classifier" assumption does not fully hold and the node shapes are revisited
+BEFORE committing F1.** That is the one risk that could push back up the design.
+
+*Gate MET (2026-06, in-tree implementation): F1 lowers real non-value functions
+through THIR-with-form, byte-identical to the AST path across the full corpus with
+`--thir-codegen` forced. The criterion held -- `is_const` is a pure sema read
+(`FunctionInfo.const_borrow_params` for the param receiver + `ReadonlyType`), never
+walk-accumulated `const_indirect_locals` (an F1 receiver is a param, and the const
+F1-local case is tracked in a per-function `const_locals` set seeded in source
+order); `move` does not enter the read slice. No node-shape revisit was needed.*
+
+*Gate run 2026-06 (throwaway spike, PASSED): over 162 compiled sources,
+`_is_const_union_source` (the optional-read const decision) returned True only via
+`const_ref_params` (a sema/Phase-2 fact) -- never via the walk-accumulated
+`const_indirect_locals`. So `is_const` for the read slice is a pure sema read; the
+form classification (`OptionalType` + `uses_pointer_repr()` +
+`is_storage_form_optional_source`, i.e. `isinstance(.., TpyFieldAccess)`) is a pure
+function of type + expr shape; and `move` does not enter the storage->borrow read
+slice (it is an F2 borrow->storage concern, and is seeded from sema's
+`function_movable_locals` regardless). The transitive `local->local` const path was
+not exercised and, if it arises, is forward-source-order reproducible
+(decl-before-use). The pure-classifier assumption holds -- F1 is cleared to
+implement.*
+
 ## Rollout Plan
 
 ### Migration Strategy
@@ -672,7 +911,10 @@ current AST-driven codegen. Confirmed empirically:
 - **The form facts (Open Questions 9/11) are the genuine long pole.** The slice
   is all value types, so borrow/storage form never arose -- the spike does NOT
   de-risk it. Form-as-an-IR-fact should be *designed before* the form-carrying
-  nodes are written, not retrofitted.
+  nodes are written, not retrofitted. *(Done 2026-06: the form design is now
+  resolved -- see "Form as a First-Class THIR Fact" + the F1-F-final ladder. A
+  second spike validated the `THIRFormConvert` node against the live `convert()`
+  chokepoint; F1 remains the pre-commit gate for the lowering-side detection.)*
 
 Net: the non-form Phase-1 is a reasonable bet once the fact set is frozen (post
 0.4.0); the form decision is the gating design work the THIR node shapes depend
@@ -1661,7 +1903,16 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    does *not* require THIR/MIR to land first but probably benefits from being
    done concurrently with the THIR codegen migration to avoid double-churn.
 
-9. **Tuple form as a first-class type fact.** Today `TupleType` is a single sema type
+9. **Tuple form as a first-class type fact.** RESOLVED 2026-06 -- see "Form as a
+   First-Class THIR Fact" (THIR Design). The exhibit inventory below stands as the
+   ground-truth surface the design must subsume; the resolution is: a `form` tag on
+   the THIR EXPRESSION (not the type) + an explicit `THIRFormConvert` node, with
+   the recommendation in this item's last line adopted (form tag + explicit
+   conversion nodes) but PLACED ON THE EXPR for the positional reasons given there.
+   (A full ground-truth map of the
+   form-dispatch surface this item -- plus items 11/12 -- must subsume is in
+   `docs/THIR_FORM_INVENTORY.md`, the bootstrap artifact for the form design.)
+   Today `TupleType` is a single sema type
    whose C++ representation depends on context -- borrow form (`tuple<T*,...>`,
    one pointer-element shape for every non-value element since the tuple
    borrow-pointer unification; generic elements via `val_or_ptr_t<T>`) at
@@ -1777,7 +2028,15 @@ or eliminating the C++ compiler dependency), the MIR is ready.
     sema/codegen feature.
 
 11. **Uniform local model: every non-value local as slot + alias, with late
-    representation folding.** Today the C++ shape of a non-value (or
+    representation folding.** THIR HALF RESOLVED 2026-06 -- see "Form as a
+    First-Class THIR Fact". The THIR-era decision: carry the local representation
+    VERBATIM (`cpp_local_representation`, the `LocalCppForm` analog) as non-semantic
+    compatibility metadata, byte-identical to today's eager choice. The
+    late-representation SELECTION + mem2reg FOLD described below stays MIR-era (it
+    is the explicit normalization goal there); THIR does not attempt it. The
+    remainder of this item is the MIR design (preserved below).
+
+    Today the C++ shape of a non-value (or
     pointer-repr-tuple) local is decided EAGERLY at the binding site, by a
     zoo of per-shape mechanisms: `T&` ref binds and `auto&&` tuple aliases
     (single-assignment borrows), `T*` pointer-locals + hoisted
@@ -1852,7 +2111,14 @@ or eliminating the C++ compiler dependency), the MIR is ready.
     current binary mechanism is sound (extra copy in mixed cases, never a
     dangle), so this is a quality/uniformity gain, not a correctness fix.
 
-12. **Fate of the sema `Ref[T]` wrapper.** `RefType` is the sema-level
+12. **Fate of the sema `Ref[T]` wrapper.** RESOLVED 2026-06 (narrowed) -- see
+    "Form as a First-Class THIR Fact". `Ref[T]` dissolves into the borrow-form tag;
+    at THIR a borrow-form expr IS what `Ref[T]` marked. Scope of the resolution:
+    THIR introduces NO new `RefType` use and it stays frozen NOW; FULL removal from
+    the type system is a later gate (rung F5/F-final), after the generic-slot
+    (`val_or_ref_t`) and lambda-return cases are proven. Detail below.
+
+    `RefType` is the sema-level
     "borrowed, not owned" marker: auto-inserted by `make_ref` on
     function/method params and returns, field/subscript access results, and
     iterator elements; never user-written. Production is centralized and

@@ -15,9 +15,33 @@ the form-carrying nodes slot in without reshaping the hierarchy.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import Enum, auto
+from typing import TYPE_CHECKING
 
 from ..parse import SourceLocation
 from ..typesys import ResolvedBinop, TpyType
+
+if TYPE_CHECKING:
+    # Compatibility metadata only (cpp_local_representation); imported under
+    # TYPE_CHECKING so THIR carries no runtime dependency on codegen.
+    from ..codegen_cpp.forms import LocalBinding
+
+
+class Form(Enum):
+    """The borrow-vs-storage axis of a value's C++ representation, lifted from
+    codegen's `CppForm` to a carried THIR fact (IR_DESIGN "Form as a First-Class
+    THIR Fact"). Positional: the same `TpyType` renders as one form or the other
+    depending on slot, so `form` lives on the expression, not the type.
+
+      * `VALUE`   -- value type; borrow and storage coincide (no bridge).
+      * `BORROW`  -- `T*` / `const T*` / `T&` / `variant<A*, B*>` / `tuple<..,T*>`.
+      * `STORAGE` -- `T` / `optional<T>` / `variant<A, B>` / `tuple<.., optional<T>>`.
+
+    Default `VALUE` leaves the existing value-scalar slice untouched.
+    """
+    VALUE = auto()
+    BORROW = auto()
+    STORAGE = auto()
 
 
 @dataclass(frozen=True)
@@ -30,8 +54,14 @@ class THIRNode:
 @dataclass(frozen=True)
 class THIRExpr(THIRNode):
     """Base expression. `result_type` is always the fully-resolved type --
-    no side-table lookup, no Own/Ref wrapper (those are stripped at lowering)."""
+    no side-table lookup, no Own/Ref wrapper (those are stripped at lowering).
+
+    `form` is the borrow/storage form the expression renders as -- set by
+    lowering through the single binding classifier so the coerce boundary reads
+    one fact instead of re-deriving it. kw_only with a `VALUE` default so the
+    value-scalar slice (every current node) is untouched."""
     result_type: TpyType
+    form: Form = field(default=Form.VALUE, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -89,15 +119,58 @@ class THIRCoerce(THIRExpr):
     coercion_name: str
 
 
+@dataclass(frozen=True)
+class THIRFieldAccess(THIRExpr):
+    """Field read `receiver.field` / `receiver->field`.
+
+    `field_cpp` is the rendered C++ member name (escape + any native rename
+    resolved at lowering); `is_arrow` selects `->` over `.` for a pointer/global
+    receiver. `form` is the field's value form -- `STORAGE` for a storage-form
+    `Optional[ref]` field read (the F1 source lifted to a borrow via
+    `THIRFormConvert`). The F1 slice admits only a non-value record reference
+    receiver (`.` access), so `is_arrow` is False there."""
+    receiver: THIRExpr
+    field_cpp: str
+    is_arrow: bool = False
+
+
+@dataclass(frozen=True)
+class THIRFormConvert(THIRExpr):
+    """An explicit borrow<->storage form conversion (IR_DESIGN "THIRFormConvert").
+
+    Preserves `result_type` and changes only `form` (this is what distinguishes
+    it from `THIRCoerce`, which changes the type). There is no `kind` field: the
+    runtime helper is a pure function of (family(result_type), value.form ->
+    form, is_const, move). F1 covers the Optional storage->borrow read
+    (`::tpy::optional_to_ptr`)."""
+    value: THIRExpr
+    is_const: bool = False
+    move: bool = False
+
+
 # --- Statements ---
 
 
 @dataclass(frozen=True)
 class THIRVarDecl(THIRStmt):
-    """Local declaration with initializer (`name: T = init`)."""
+    """Local declaration with initializer (`name: T = init`).
+
+    `cpp_type` is the rendered C++ declaration type for non-value locals (where
+    `resolved_type.to_cpp()` is insufficient -- e.g. the inner type of a
+    pointer-local Optional); None for the value-scalar slice (emit falls back to
+    `resolved_type.to_cpp()`). `form` is the coarse semantic form of the local --
+    `BORROW` for the F1 `T&` alias / `T*` optional-read locals -- and drives the
+    insertion rule. `cpp_local_representation` is the `LocalCppForm` analog
+    carried verbatim: non-semantic COMPATIBILITY metadata that selects the exact
+    C++ slot shape (REF_ALIAS `T&` vs OPTIONAL_TO_PTR `T*`) so emit reproduces
+    today's eager codegen byte-for-byte; no other node may depend on it."""
     name: str
     resolved_type: TpyType
     init: THIRExpr | None = None
+    cpp_type: str | None = None
+    form: Form = Form.VALUE
+    is_const: bool = False
+    cpp_local_representation: 'LocalBinding | None' = None
 
 
 @dataclass(frozen=True)

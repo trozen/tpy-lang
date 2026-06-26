@@ -170,12 +170,6 @@ class CodeGenerator:
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
         self.ctx.cycle_peers = cycle_peers or frozenset()
-        if self.ctx.thir_codegen:
-            from ..thir.lower import lower_function as _thir_lower
-            self.ctx.thir_functions = {
-                id(f): tf for f in module.functions
-                if (tf := _thir_lower(f, self.analyzer)) is not None
-            }
         # Filter out keyword stubs (@builtin_type classes / @builtin_decorator functions
         # that exist only for import resolution -- no C++ code needed).
         module.records = [
@@ -433,6 +427,19 @@ class CodeGenerator:
             # record loop above; same-short-name collisions stay a known limit.
             if info.name not in native_cpp_names:
                 register_native_cpp_name(info.name, qual)
+
+        # Lower THIR-eligible functions AFTER the native_cpp_names registration
+        # above: an F1 borrow local's decl type renders through codegen's
+        # `type_to_cpp`, which consults that map (cross-module qualification,
+        # the live module). Running it earlier would mis-qualify those types.
+        if self.ctx.thir_codegen:
+            from ..thir.lower import lower_function as _thir_lower
+            self.ctx.thir_functions = {
+                id(f): tf for f in module.functions
+                if (tf := _thir_lower(f, self.analyzer,
+                                      self.types.type_to_cpp)) is not None
+            }
+
         hpp = io.StringIO()
         cpp = io.StringIO()
 

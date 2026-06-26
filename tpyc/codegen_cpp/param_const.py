@@ -31,10 +31,11 @@ from dataclasses import dataclass
 
 from ..typesys import (
     TpyType, ReadonlyType, OwnType, OptionalType, TupleType, TypeParamRef,
-    UnionType, FunctionInfo,
+    FunctionInfo,
     unwrap_readonly, unwrap_ref_type,
     param_has_mutable_borrow_surface,
 )
+from .forms import is_ptr_variant_union as _forms_is_ptr_variant_union
 
 
 @dataclass(frozen=True)
@@ -48,14 +49,11 @@ _NOT_CONST = ParamConstDecision(signature_const=False, deep_borrow_const=False)
 
 
 def _is_ptr_variant_union(ptype: TpyType) -> bool:
-    """Type-intrinsic mirror of `CodeGenContext.is_ptr_variant_union` -- a
-    non-value union that lowers to `std::variant<A*, B*>`. Pure type query
-    (no Compiler ctx), so the FunctionInfo verdict can be materialized at
-    Phase-2 time, before any codegen context exists."""
-    inner = unwrap_readonly(unwrap_ref_type(ptype))
-    return (isinstance(inner, UnionType)
-            and inner.uses_pointer_repr()
-            and not inner.needs_wrapper())
+    """Whether `ptype` (after stripping Ref/Readonly) is a non-value union that
+    lowers to `std::variant<A*, B*>`. The unwrapping entry point onto the
+    canonical `forms.is_ptr_variant_union` (a pure type query, no Compiler ctx),
+    so the FunctionInfo verdict can be materialized at Phase-2 time."""
+    return _forms_is_ptr_variant_union(unwrap_readonly(unwrap_ref_type(ptype)))
 
 
 def decide_param_const(

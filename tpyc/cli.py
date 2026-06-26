@@ -614,9 +614,16 @@ def _run_cli(is_runner: bool) -> int:
                 if not compiler.is_user_module(compiled):
                     continue
                 from .thir import lower_module as _thir_lower_module, dump_thir
+                from .compilation_context import activate_compiler
                 assert compiled.analyzer is not None
                 print(f"// === thir/{compiled.name} ===")
-                print(dump_thir(_thir_lower_module(compiled.ast, compiled.analyzer)), end="")
+                # Lower inside the compiler context so record types resolve
+                # (NominalType.is_user_record / .to_cpp() read the active
+                # Compiler) -- otherwise non-value (F1) functions are silently
+                # under-reported vs the real --thir-codegen routing.
+                with activate_compiler(compiler):
+                    thir_mod = _thir_lower_module(compiled.ast, compiled.analyzer)
+                print(dump_thir(thir_mod), end="")
                 continue
 
             if args.dump_code:

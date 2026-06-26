@@ -17,13 +17,18 @@ from dataclasses import dataclass
 from typing import TextIO
 
 from ..codegen_cpp.context import INDENT, escape_cpp_name, expand_cpp_template
+from ..codegen_cpp.forms import LocalBinding
+from ..typesys import OptionalType, unwrap_qualifiers
 from .nodes import (
+    Form,
     THIRAssign,
     THIRBinOp,
     THIRCall,
     THIRCoerce,
     THIRExpr,
+    THIRFieldAccess,
     THIRForRange,
+    THIRFormConvert,
     THIRFunction,
     THIRIf,
     THIRLiteral,
@@ -150,11 +155,32 @@ def _emit_call(e: THIRCall) -> str:
     return f"{escape_cpp_name(e.callee)}({args})"
 
 
+def _emit_field_access(e: THIRFieldAccess) -> str:
+    return f"{_emit_expr(e.receiver)}{'->' if e.is_arrow else '.'}{e.field_cpp}"
+
+
+def _emit_form_convert(e: THIRFormConvert) -> str:
+    # F1: the Optional storage->borrow read. optional_to_ptr's const overload is
+    # auto-selected by the optional's own const-ness, so is_const here is carried
+    # for MIR / other families, not the rendered helper. Other families (union /
+    # tuple) and the borrow->storage direction arrive in later rungs.
+    inner = _emit_expr(e.value)
+    t = unwrap_qualifiers(e.result_type)
+    if isinstance(t, OptionalType) and e.form is Form.BORROW:
+        return f"::tpy::optional_to_ptr({inner})"
+    raise THIRCodeGenError(
+        f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
+
+
 def _emit_expr(e: THIRExpr) -> str:
     if isinstance(e, THIRName):
         return escape_cpp_name(e.name)
     if isinstance(e, THIRLiteral):
         return _emit_literal(e)
+    if isinstance(e, THIRFieldAccess):
+        return _emit_field_access(e)
+    if isinstance(e, THIRFormConvert):
+        return _emit_form_convert(e)
     if isinstance(e, THIRBinOp):
         return _emit_binop(e)
     if isinstance(e, THIRCall):
@@ -244,11 +270,20 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
 def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState) -> None:
     indent = INDENT * indent_level
     if isinstance(stmt, THIRVarDecl):
-        cpp_type = stmt.resolved_type.to_cpp()
         name = escape_cpp_name(stmt.name)
-        if stmt.init is None:
-            out.write(f"{indent}{cpp_type} {name};\n")
+        if stmt.cpp_local_representation is not None:
+            # Non-value borrow local. cpp_type is already the pointee record (the
+            # optional's inner for OPTIONAL_TO_PTR, not the optional itself), so
+            # the sigil alone distinguishes the `T&` alias from the `T*`.
+            const_pfx = "const " if stmt.is_const else ""
+            sigil = ("&" if stmt.cpp_local_representation is LocalBinding.REF_ALIAS
+                     else "*")
+            out.write(f"{indent}{const_pfx}{stmt.cpp_type}{sigil} {name} = "
+                      f"{_emit_expr(stmt.init)};\n")
+        elif stmt.init is None:
+            out.write(f"{indent}{stmt.resolved_type.to_cpp()} {name};\n")
         else:
+            cpp_type = stmt.resolved_type.to_cpp()
             out.write(f"{indent}{cpp_type} {name} = {_emit_expr(stmt.init)};\n")
     elif isinstance(stmt, THIRAssign):
         out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = {_emit_expr(stmt.value)};\n")

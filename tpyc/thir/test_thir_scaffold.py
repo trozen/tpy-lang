@@ -11,9 +11,11 @@ from ..compiler import Compiler
 from .dump import dump_thir
 from .emit import emit_thir_body
 from .lower import lower_module
+from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
-    THIRAssign, THIRBinOp, THIRCall, THIRForRange, THIRIf, THIRLiteral, THIRName,
-    THIRReturn, THIRVarDecl, THIRWhile,
+    Form, THIRAssign, THIRBinOp, THIRCall, THIRFieldAccess, THIRForRange,
+    THIRFormConvert, THIRIf, THIRLiteral, THIRName, THIRReturn, THIRVarDecl,
+    THIRWhile,
 )
 
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
@@ -32,6 +34,18 @@ def _lower(source: str):
     compiler, modules = _compile(source)
     entry = _entry(modules)
     return lower_module(entry.ast, entry.analyzer)
+
+
+def _lower_ctx(source: str):
+    """Lower inside the compiler context -- required once non-value records are
+    involved: `NominalType.is_user_record` / `.to_cpp()` resolve through the
+    active Compiler (the registry / native-name maps), unlike the value-scalar
+    types `_lower` covers."""
+    from ..compilation_context import activate_compiler
+    compiler, modules = _compile(source)
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        return lower_module(entry.ast, entry.analyzer)
 
 
 def _fn(thir, name):
@@ -718,3 +732,184 @@ class TestByteIdentical:
         thir = compiler.generate_code_to_strings(
             entry, options=CodeGenOptions(emit_source_comments=True, thir_codegen=True))
         assert thir == ast
+
+
+# --- F1 form rung: single-assignment non-value record locals + field reads ---
+
+_F1_RECORDS = (
+    "from tpy import Int32, Own, readonly\n"
+    "class Leaf:\n"
+    "    n: Int32\n"
+    "    def __init__(self, n: Int32):\n        self.n = n\n"
+    "class Inner:\n"
+    "    value: Int32\n"
+    "    opt: Leaf | None\n"
+    "    def __init__(self, value: Int32):\n        self.value = value\n        self.opt = None\n"
+    "class Box:\n"
+    "    inner: Inner\n"
+    "    opt: Inner | None\n"
+    "    n: Int32\n"
+    "    def __init__(self, inner: Own[Inner]):\n"
+    "        self.inner = inner\n        self.opt = None\n        self.n = 0\n"
+)
+
+
+class TestF1Eligibility:
+    def test_ref_alias_local_eligible(self):
+        # x = b.inner -- a plain record field read binds a single-assignment T&
+        # alias (REF_ALIAS); x.value is a scalar field read off it.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box) -> Int32:\n    x = b.inner\n    return x.value\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.REF_ALIAS
+        assert decl.form is Form.BORROW
+        assert decl.cpp_type == "Inner"
+        assert isinstance(decl.init, THIRFieldAccess)
+        assert decl.init.field_cpp == "inner" and not decl.init.is_arrow
+        assert decl.init.form is Form.STORAGE
+        # the scalar field read off the REF_ALIAS local
+        read = fn.body[1].value
+        assert isinstance(read, THIRFieldAccess) and read.field_cpp == "value"
+        assert read.form is Form.VALUE
+
+    def test_optional_to_ptr_local_eligible(self):
+        # p = b.opt -- a storage-form Optional[record] field read lifts to a
+        # borrow T* via optional_to_ptr (OPTIONAL_TO_PTR); const because b is a
+        # const-ref param.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box) -> Int32:\n    p = b.opt\n    return 0\n")
+        decl = _fn(thir, "f").body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.OPTIONAL_TO_PTR
+        assert decl.form is Form.BORROW and decl.is_const
+        assert decl.cpp_type == "Inner"
+        assert isinstance(decl.init, THIRFormConvert)
+        assert decl.init.form is Form.BORROW
+        assert isinstance(decl.init.value, THIRFieldAccess)
+        assert decl.init.value.form is Form.STORAGE
+
+    def test_scalar_field_read_off_param_eligible(self):
+        # The working, common F1 pattern: scalar field reads off a record param
+        # (value form, no borrow local). `return p.x + p.y` and `a = p.x`.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box) -> Int32:\n    a = b.n\n    return a\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        # a scalar local; the field read is a plain value-form field access
+        assert decl.cpp_local_representation is None
+        assert isinstance(decl.init, THIRFieldAccess)
+        assert decl.init.form is Form.VALUE and decl.init.field_cpp == "n"
+
+    def test_method_is_ineligible(self):
+        # F1 is free functions only.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "class Wrap:\n    b: Box\n"
+            + "    def __init__(self, b: Own[Box]):\n        self.b = b\n"
+            + "    def get(self) -> Int32:\n        x = self.b\n        return x.n\n")
+        assert _fn(thir, "get") is None
+
+    def test_reassigned_nonvalue_local_is_ineligible(self):
+        # A reassigned non-value local needs the pointer-local rebind machinery
+        # (F2), so it stays on the AST path.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box, c: Box) -> Int32:\n"
+            + "    x = b.inner\n    x = c.inner\n    return x.value\n")
+        assert _fn(thir, "f") is None
+
+    def test_call_passing_record_arg_is_ineligible(self):
+        # Passing an Own[record] / record param positionally crosses an ownership
+        # boundary (an Own param auto-moves at last use: `consume(std::move(p))`),
+        # which the bare-name THIRCall emit does not reproduce -- so the caller
+        # stays on the AST path even though the callee is a plain free function.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def consume(p: Own[Inner]) -> Int32:\n        return p.value\n"
+            + "def forward(b: Box) -> Int32:\n        return consume(b.inner)\n")
+        # consume itself (Own[record] param + scalar field read) is eligible;
+        # forward (passes a record arg) is not.
+        assert _fn(thir, "consume") is not None
+        assert _fn(thir, "forward") is None
+
+    def test_method_call_on_record_is_ineligible(self):
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box) -> Int32:\n    x = b.inner\n    return x.value + b.n\n")
+        # b.n is a scalar field read (fine); but a method call would not be. Use
+        # one with a method call to confirm rejection.
+        thir2 = _lower_ctx(
+            _F1_RECORDS
+            + "class Counter:\n    k: Int32\n"
+            + "    def __init__(self):\n        self.k = 0\n"
+            + "    def bump(self) -> Int32:\n        self.k = self.k + 1\n        return self.k\n"
+            + "def g(c: Counter) -> Int32:\n    return c.bump()\n")
+        assert _fn(thir2, "g") is None
+        # The pure field-read function is eligible.
+        assert _fn(thir, "f") is not None
+
+
+class TestF1Emit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _F1_RECORDS
+        + "def read_ref(b: Box) -> Int32:\n    x = b.inner\n    return x.value\n"
+        + "def read_opt(b: Box) -> Int32:\n    p = b.opt\n    return 0\n"
+        + "def scalar(b: Box) -> Int32:\n    a = b.n\n    return a + b.n\n"
+        + "def chain(b: Box) -> Int32:\n    x = b.inner\n    y = x.value\n    return y\n"
+        # const path: a readonly receiver makes the REF_ALIAS a `const Inner&`,
+        # and the chained Optional read off that const local a `const Inner*`
+        # (exercises both _f1_is_const branches: the ReadonlyType read and the
+        # const-propagation through a const F1 local).
+        + "def ro_chain(b: readonly[Box]) -> Int32:\n"
+        + "    x = b.inner\n    p = x.opt\n    return x.value\n"
+        + "def main():\n"
+        + "    box = Box(Inner(3))\n"
+        + "    print(read_ref(box) + read_opt(box) + scalar(box) + chain(box) + ro_chain(box))\n"
+        + "main()\n"
+    )
+
+    def test_f1_byte_identical(self):
+        # The load-bearing F1 contract: every routed form (REF_ALIAS,
+        # OPTIONAL_TO_PTR, scalar field reads) emits identically to the AST path.
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_ref_alias_emits_reference(self):
+        # T& alias of the field storage (non-const here: the field is a plain
+        # record off the param -- sema does not mark the read readonly).
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "Inner& x = b.inner;" in cpp
+        assert "return x.value;" in cpp
+
+    def test_optional_to_ptr_emits_lift(self):
+        # const because the receiver param is const (an F1 body cannot mutate it).
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "const Inner* p = ::tpy::optional_to_ptr(b.opt);" in cpp
+
+    def test_scalar_field_read_emits(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "int32_t a = b.n;" in cpp        # scalar field read into a local
+        assert cpp.count("b.n") >= 2            # the read + the return operand
+
+    def test_const_borrow_local_forms(self):
+        # A readonly receiver yields a `const Inner&` REF_ALIAS, and the chained
+        # Optional read off that const local a `const Inner*` -- guards the two
+        # _f1_is_const const paths (the byte-identical assertion above already
+        # pins them to the AST path; these check the const spelling explicitly).
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "const Inner& x = b.inner;" in cpp
+        assert "const Leaf* p = ::tpy::optional_to_ptr(x.opt);" in cpp

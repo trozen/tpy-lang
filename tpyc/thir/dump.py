@@ -8,12 +8,15 @@ from __future__ import annotations
 
 from ..typesys import TpyType
 from .nodes import (
+    Form,
     THIRAssign,
     THIRBinOp,
     THIRCall,
     THIRCoerce,
     THIRExpr,
+    THIRFieldAccess,
     THIRForRange,
+    THIRFormConvert,
     THIRIf,
     THIRLiteral,
     THIRModule,
@@ -40,6 +43,13 @@ def _expr(e: THIRExpr) -> str:
         return f"call({e.callee}, [{', '.join(_expr(a) for a in e.args)}])"
     if isinstance(e, THIRCoerce):
         return f"coerce({_expr(e.expr)} -> {_ty(e.result_type)})"
+    if isinstance(e, THIRFieldAccess):
+        op = "->" if e.is_arrow else "."
+        tag = "" if e.form is Form.VALUE else f" [{e.form.name.lower()}]"
+        return f"{_expr(e.receiver)}{op}{e.field_cpp}{tag}"
+    if isinstance(e, THIRFormConvert):
+        cst = "const " if e.is_const else ""
+        return f"form_convert[{cst}{e.form.name.lower()}]({_expr(e.value)})"
     return f"<{type(e).__name__}>"
 
 
