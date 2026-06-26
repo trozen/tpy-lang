@@ -79,6 +79,7 @@ Parallel execution (`-n auto`) is configured in `pyproject.toml` via `addopts`. 
 uv run pytest                              # All tests (exec skips per the local cache; cpy skips per committed fps)
 uv run pytest --force-exec                 # Force exec + cpy unconditionally (ignore the local exec cache)
 uv run pytest --no-exec                    # Skip the exec phase entirely (comp + cpy only); fast codegen/diagnostics iteration
+uv run pytest --thir-codegen --no-exec     # Force the THIR codegen path; comp-phase snapshot compare becomes a whole-corpus THIR-vs-AST byte-diff (the THIR pre-merge gate; conflicts with --update-snapshots)
 uv run pytest --clean                      # Wipe shared PCH + stdlib .o + exec-results caches (implies --force-exec)
 uv run pytest --no-ccache                  # Bypass ccache for this run (does not wipe it)
 uv run pytest --cxx clang                  # Build the exec phase with a specific toolchain (mirrors `tpyc --cxx`)

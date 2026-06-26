@@ -1006,6 +1006,18 @@ def pytest_addoption(parser):
             "next run re-verifies under the new compiler."
         ),
     )
+    parser.addoption(
+        "--thir-codegen",
+        action="store_true",
+        default=False,
+        help=(
+            "Force the THIR codegen path (mirrors `tpyc --thir-codegen`) for "
+            "every case, turning the per-module snapshot compare into a "
+            "whole-corpus byte-identity check of THIR vs the AST-generated "
+            "snapshots. The pre-merge gate for THIR work; pair with --no-exec "
+            "for a fast comp-only diff. Conflicts with --update-snapshots."
+        ),
+    )
 
 
 def _cgroup_cpu_quota() -> int | None:
@@ -1036,6 +1048,15 @@ def _cgroup_cpu_quota() -> int | None:
 def pytest_configure(config):
     """Print ccache status; manage session fingerprint file."""
     global UPDATE_EXPECTED  # assigned below; declared here so the guard can read it
+    global TEST_CODEGEN_OPTIONS
+
+    # --thir-codegen routes every case through THIR lowering so the existing
+    # per-local-module snapshot compare doubles as a whole-corpus byte-identity
+    # check (snapshots are AST-generated, so any diff is a THIR divergence).
+    # Flip before the worker guard below: xdist workers do the compiling.
+    if config.getoption("--thir-codegen"):
+        TEST_CODEGEN_OPTIONS = dataclasses.replace(
+            TEST_CODEGEN_OPTIONS, thir_codegen=True)
 
     is_master = os.environ.get("PYTEST_XDIST_WORKER") is None
     if not is_master:
@@ -1049,6 +1070,16 @@ def pytest_configure(config):
     ):
         pytest.exit(
             "--no-exec conflicts with --force-exec/--clean/--update-snapshots",
+            returncode=1,
+        )
+
+    if config.getoption("--thir-codegen") and (
+        config.getoption("--update-snapshots") or UPDATE_EXPECTED
+    ):
+        pytest.exit(
+            "--thir-codegen conflicts with --update-snapshots: snapshots must "
+            "capture the default (AST) codegen path, never THIR -- the byte "
+            "diff is the gate, not the baseline",
             returncode=1,
         )
 
@@ -1164,12 +1195,19 @@ def pytest_report_header(config):
     else:
         exec_state = "verify-once-then-cache per case"
 
+    if config.getoption("--thir-codegen"):
+        thir_state = "FORCED -- every case lowered via THIR"
+    else:
+        thir_state = "off (default AST codegen path)"
+
     return [
         f"{_LOG_PREFIX} toolchain: {CPP_CONFIG.compiler_name}  "
         f"(--cxx=<gcc|clang|gcc-14|clang-18|zig|...>; --cxx=list to enumerate)",
         f"{_LOG_PREFIX} C++ compilation: {ccache_state}",
         f"{_LOG_PREFIX} exec: {exec_state}  (--force-exec re-run all; "
         f"--no-exec skip; --clean wipe caches; --update-snapshots regenerate expected)",
+        f"{_LOG_PREFIX} thir: {thir_state}  (--thir-codegen forces THIR so the "
+        f"comp-phase snapshot compare becomes a whole-corpus THIR-vs-AST byte-diff)",
     ]
 
 

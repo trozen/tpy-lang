@@ -44,6 +44,14 @@ non-scalar types; widening/other coercions; `for` loops; `while`/`else`;
 `break`/`continue`; branch-local first-declarations; any function whose locals
 hoist out of a branch; narrowing conditions), which stay on the AST path. The
 whole test corpus passes with the flag forced on (zero snapshot diffs).
+`uv run pytest --thir-codegen --no-exec` is the first-class harness gate that
+runs this byte-diff over the whole corpus; it refuses `--update-snapshots` (and
+the `UPDATE_EXPECTED=1` env spelling), so THIR output can never silently become
+the AST baseline it is checked against. The per-case byte-diff covers a case's
+local modules only (where the eligible shapes live); stdlib bodies route through
+THIR too but their generated C++ is not snapshotted per case, so the byte-diff
+does not cover them -- `--thir-codegen --force-exec` builds and runs the
+THIR-rendered stdlib, catching behavioral (not byte) divergence there.
 
 **Increment 2 adds range-`for`**: a `for v in range(stop)` / `range(start, stop)`
 counter loop with step 1, over a fixed-int loop var that is not used after the
