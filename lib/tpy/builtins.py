@@ -3,6 +3,8 @@
 from tpy._builtins import (
     BaseException, Exception, ValueError, OSError, FileNotFoundError,
     PermissionError, FileExistsError, NotADirectoryError, IsADirectoryError,
+    ConnectionError, BrokenPipeError, ConnectionResetError,
+    ConnectionRefusedError, ConnectionAbortedError,
     BlockingIOError,
     AttributeError, AssertionError, LookupError, IndexError, KeyError,
     ArithmeticError, ZeroDivisionError, OverflowError, FloatingPointError,
@@ -28,6 +30,8 @@ __all__ = [
     "tuple", "basic_slice", "slice", "type",
     "Exception", "ValueError", "OSError", "FileNotFoundError", "BaseException",
     "PermissionError", "FileExistsError", "NotADirectoryError", "IsADirectoryError",
+    "ConnectionError", "BrokenPipeError", "ConnectionResetError",
+    "ConnectionRefusedError", "ConnectionAbortedError",
     "BlockingIOError",
     "AttributeError", "AssertionError", "LookupError", "IndexError", "KeyError",
     "ArithmeticError", "ZeroDivisionError", "OverflowError", "FloatingPointError",

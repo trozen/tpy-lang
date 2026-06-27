@@ -55,6 +55,11 @@ struct BlockingIOError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUAL
 struct FileExistsError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(FileExistsError) };
 struct NotADirectoryError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(NotADirectoryError) };
 struct IsADirectoryError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(IsADirectoryError) };
+struct ConnectionError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(ConnectionError) };
+struct BrokenPipeError : ConnectionError { using ConnectionError::ConnectionError; TPY_THROWABLE_VIRTUALS(BrokenPipeError) };
+struct ConnectionResetError : ConnectionError { using ConnectionError::ConnectionError; TPY_THROWABLE_VIRTUALS(ConnectionResetError) };
+struct ConnectionRefusedError : ConnectionError { using ConnectionError::ConnectionError; TPY_THROWABLE_VIRTUALS(ConnectionRefusedError) };
+struct ConnectionAbortedError : ConnectionError { using ConnectionError::ConnectionError; TPY_THROWABLE_VIRTUALS(ConnectionAbortedError) };
 struct AttributeError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(AttributeError) };
 struct AssertionError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(AssertionError) };
 struct LookupError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(LookupError) };

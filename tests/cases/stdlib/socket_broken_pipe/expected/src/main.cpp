@@ -6,8 +6,8 @@ namespace tpyapp::main {
 
 // def main() -> None:
 void main() {
-    // # Inverse guard: a write to a live peer still succeeds -- ignoring SIGPIPE
-    // # must not perturb a normal send.
+    // # Inverse guard: a write to a live peer still succeeds -- the errno->subclass
+    // # mapping must not perturb a normal send.
     // a, b = socket.socketpair()
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
@@ -20,7 +20,7 @@ void main() {
     a.close();
     // b.close()
     b.close();
-    // # The peer hangs up; the next write must raise rather than kill the process.
+    // # The peer hangs up; the next write must raise BrokenPipeError specifically.
     // c, d = socket.socketpair()
     auto __tup_2 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
@@ -34,9 +34,12 @@ void main() {
             c.sendall(::tpy::bytes_literal("x", 1));
             // print("NO ERROR")
             std::cout << "NO ERROR" << "\n";
+        } catch (const ::tpy::BrokenPipeError&) {
+            // print("caught BrokenPipeError")
+            std::cout << "caught BrokenPipeError" << "\n";
         } catch (const ::tpy::OSError&) {
-            // print("caught OSError")
-            std::cout << "caught OSError" << "\n";
+            // print("caught generic OSError")
+            std::cout << "caught generic OSError" << "\n";
         }
     }
     // print("survived")
@@ -50,9 +53,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    // # A write to a hung-up peer is a catchable OSError, not a process-killing SIGPIPE.
-    // # Subclass and message differ across runtimes (CPython BrokenPipeError vs TPy
-    // # SocketError), so we print a stable token, not str(e), for a portable snapshot.
+    // # A write to a hung-up peer raises BrokenPipeError (an OSError/ConnectionError
+    // # subclass, PEP 3151), not a process-killing SIGPIPE. The except-clause order
+    // # proves the concrete subclass is raised, not the generic SocketError/OSError.
     // import socket
     ::tpystd::socket::__tpy_init();
     // main()

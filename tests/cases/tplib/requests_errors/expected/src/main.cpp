@@ -50,6 +50,35 @@ void main() {
             std::cout << "ConnectionError" << "\n";
         }
     }
+    // # A hung-up peer mid-request: the socket BrokenPipeError is re-wrapped as
+    // # requests.ConnectionError. Catch the specific subclass to pin the wrap
+    // # target, not just the RequestException base.
+    // p, q = socket.socketpair()
+    auto __tup_2 = ::tpystd::socket::socketpair();
+    ::tpystd::socket::socket p = std::move(std::get<0>(__tup_2));
+    ::tpystd::socket::socket q = std::move(std::get<1>(__tup_2));
+    // q.close()
+    q.close();
+    // conn2 = HTTPConnection("api.test", 80)
+    ::tpystd::http::client::HTTPConnection conn2 = ::tpystd::http::client::HTTPConnection("api.test", 80);
+    // conn2.sock = p
+    conn2.sock = std::move(p);
+    // s2 = requests.Session()
+    ::tpystd::tplib::requests::Session s2 = ::tpystd::tplib::requests::Session();
+    // s2.connection = conn2
+    s2.connection = std::move(conn2);
+    // try:
+    {
+        try {
+            // s2.get("http://api.test/x")
+            s2.get("http://api.test/x");
+            // print("no-raise")
+            std::cout << "no-raise" << "\n";
+        } catch (const ::tpystd::tplib::requests::ConnectionError&) {
+            // print("ConnectionError")
+            std::cout << "ConnectionError" << "\n";
+        }
+    }
 }
 
 void __tpy_init() {
@@ -59,7 +88,9 @@ void __tpy_init() {
 
     // # tplib.requests error surface: a 4xx makes .ok False and .raise_for_status()
     // # raise HTTPError; a URL with no host raises ConnectionError before any socket
-    // # work. Both are caught by the documented exception tree.
+    // # work; a socket-level failure mid-request (here, a hung-up peer) is re-wrapped
+    // # from the OSError family into requests.ConnectionError. All are caught by the
+    // # documented exception tree (the RequestException base).
     // import socket
     ::tpystd::socket::__tpy_init();
     // from http.client import HTTPConnection

@@ -222,8 +222,10 @@ int tpy_connect_timeout(int fd, const void* addr, unsigned int addrlen,
 
 // Platform-correct socket / errno constant values, sourced from the system
 // headers here so the public `socket` facade need not hardcode Linux values:
-// SOL_SOCKET (1 vs BSD 0xffff), SO_* and AF_INET6, and EAGAIN / EINPROGRESS
-// all differ on macOS/BSD. Exposed as extern globals (read facade-side via
+// SOL_SOCKET (1 vs BSD 0xffff), SO_* and AF_INET6, and the errno values
+// (EAGAIN / EINPROGRESS / EPIPE / ECONN*) all differ on macOS/BSD. The errno
+// constants key the facade's errno -> OSError-subclass mapping (BrokenPipeError
+// on EPIPE, etc.). Exposed as extern globals (read facade-side via
 // `native_global`) for the same reason as the helpers above -- keep
 // <sys/socket.h> / <errno.h> out of every TPy-generated TU. Values that are
 // identical across Linux and macOS/BSD (AF_INET, SOCK_*, IPPROTO_*,
@@ -236,5 +238,9 @@ std::int32_t tpy_const_so_keepalive = SO_KEEPALIVE;
 std::int32_t tpy_const_af_inet6 = AF_INET6;
 std::int32_t tpy_const_eagain = EAGAIN;
 std::int32_t tpy_const_einprogress = EINPROGRESS;
+std::int32_t tpy_const_epipe = EPIPE;
+std::int32_t tpy_const_econnreset = ECONNRESET;
+std::int32_t tpy_const_econnrefused = ECONNREFUSED;
+std::int32_t tpy_const_econnaborted = ECONNABORTED;
 
 }  // extern "C"

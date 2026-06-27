@@ -26,6 +26,10 @@
 #   - timeout= is a single float (seconds) applied to connect/recv/send, or
 #     None for no timeout; the requests (connect, read) tuple form is not
 #     supported, and a timeout raises requests.Timeout (not a bare OSError).
+#   - the exception tree (RequestException -> HTTPError/ConnectionError/
+#     Timeout) subclasses Exception only, NOT OSError; CPython requests roots
+#     it at IOError/OSError, so `except OSError` catches a requests error there
+#     but not here -- catch RequestException (or a subclass) instead.
 # Not supported (yet): redirect following, cookies, multipart files,
 # streaming (stream=/iter_content), proxies, TLS/HTTPS, auth schemes beyond
 # Basic.
@@ -152,9 +156,10 @@ def _request_on(conn: HTTPConnection, method: str, url: str,
         has_json = True
     hdrs = _prepare_headers(headers, auth, has_json)
 
-    # A socket-level timeout surfaces as TimeoutError; re-raise it as the
-    # requests-style Timeout so callers can catch `requests.Timeout` (or its
-    # base RequestException) instead of an OSError leaking through.
+    # Re-wrap socket-level OSerrors into the requests exception surface. The
+    # TimeoutError arm must precede the OSError arm: TimeoutError is itself an
+    # OSError and the first matching handler wins (CPython's Timeout-vs-
+    # ConnectionError split).
     try:
         conn.request(method, target, body, hdrs)
         resp = conn.getresponse()
@@ -162,6 +167,9 @@ def _request_on(conn: HTTPConnection, method: str, url: str,
     except TimeoutError:
         conn.close()
         raise Timeout("request timed out: " + url)
+    except OSError:
+        conn.close()
+        raise ConnectionError("connection failed: " + url)
     status = resp.status
     reason = resp.reason
     out_headers: dict[str, str] = {}

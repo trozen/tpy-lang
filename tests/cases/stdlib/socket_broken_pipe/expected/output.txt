@@ -1,3 +1,3 @@
 live send: b'hi'
-caught OSError
+caught BrokenPipeError
 survived

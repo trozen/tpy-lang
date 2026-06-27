@@ -75,6 +75,27 @@ class NotADirectoryError(OSError):
 class IsADirectoryError(OSError):
     def __init__(self, message: str = "") -> None: ...
 
+# Connection-related OSError subclasses (PEP 3151).
+@native("tpy::ConnectionError")
+class ConnectionError(OSError):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::BrokenPipeError")
+class BrokenPipeError(ConnectionError):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::ConnectionResetError")
+class ConnectionResetError(ConnectionError):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::ConnectionRefusedError")
+class ConnectionRefusedError(ConnectionError):
+    def __init__(self, message: str = "") -> None: ...
+
+@native("tpy::ConnectionAbortedError")
+class ConnectionAbortedError(ConnectionError):
+    def __init__(self, message: str = "") -> None: ...
+
 # Raised on EAGAIN/EWOULDBLOCK/EINPROGRESS by non-blocking socket calls;
 # the asyncio reactor catches it to park on fd readiness (CPython parity).
 @native("tpy::BlockingIOError")

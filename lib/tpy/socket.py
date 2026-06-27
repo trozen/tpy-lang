@@ -69,22 +69,17 @@ TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
   * **TLS / ssl module.** Phase 3 work, needs a TLS library (mbedTLS
     vendored is the current lean -- see the project roadmap).
 
-  * **SocketError vs OSError hierarchy.** SocketError now subclasses
-    OSError, so `except OSError` catches socket failures (CPython-faithful).
-    `_raise_errno` raises `BlockingIOError` (also an OSError subclass) on
-    EAGAIN/EWOULDBLOCK/EINPROGRESS, which the asyncio reactor catches to
-    park. Still missing: the other errno-keyed subclasses CPython raises
-    (BrokenPipeError, ConnectionRefusedError, ConnectionResetError,
-    gaierror, ...) and a structured `.errno` / `.strerror` attribute (we
-    bake errno + strerror into the message text only). Users can branch on
-    `OSError` / `SocketError` / `BlockingIOError` but not yet on the
-    connection-class errno subtypes -- e.g. a write to a hung-up peer is a
-    catchable `OSError`/`SocketError` (EPIPE is catchable rather than
-    process-fatal because the runtime ignores SIGPIPE at startup), but not yet
-    `BrokenPipeError` specifically, and `except BrokenPipeError` does not
-    compile (no such type yet). The taxonomy is a coherent feature better designed with the
-    requests->ConnectionError wrap (BUGS.md); both want the ConnectionError
-    family.
+  * **SocketError vs OSError hierarchy.** SocketError subclasses OSError,
+    so `except OSError` catches socket failures (CPython-faithful).
+    `_raise_errno`/`_raise_io` raise `BlockingIOError` on
+    EAGAIN/EWOULDBLOCK/EINPROGRESS (the asyncio reactor parks on it) and the
+    PEP 3151 `ConnectionError` subclasses on the connection errno
+    (EPIPE -> BrokenPipeError, ECONNRESET -> ConnectionResetError,
+    ECONNREFUSED -> ConnectionRefusedError, ECONNABORTED ->
+    ConnectionAbortedError); every other errno falls through to SocketError.
+    Still missing: a structured `.errno` / `.strerror` attribute (errno +
+    strerror are baked into the message text only) and a distinct `gaierror`
+    for name-resolution failures (resolve errors raise plain SocketError).
 
   * **gethostbyname_ex, gethostbyaddr, getservbyname.** CPython legacy
     DNS APIs; low priority.
@@ -174,16 +169,38 @@ class SocketError(OSError):
 # "in progress" result.
 _EAGAIN: Final[Int32] = native_global("tpy_const_eagain", binding="C")
 _EINPROGRESS: Final[Int32] = native_global("tpy_const_einprogress", binding="C")
+# Connection-error errno values, also platform-divergent (see socket_impl.cpp).
+_EPIPE: Final[Int32] = native_global("tpy_const_epipe", binding="C")
+_ECONNRESET: Final[Int32] = native_global("tpy_const_econnreset", binding="C")
+_ECONNREFUSED: Final[Int32] = native_global("tpy_const_econnrefused", binding="C")
+_ECONNABORTED: Final[Int32] = native_global("tpy_const_econnaborted", binding="C")
+
+
+def _maybe_raise_connection_error(err: Int32, text: str) -> None:
+    """Raise the PEP 3151 ConnectionError subclass for a connection-related
+    errno; return if `err` is none of them, so the caller falls back to the
+    generic SocketError. Mirrors CPython, which raises these subclasses (all
+    OSError) for the same errno on socket I/O."""
+    if err == _EPIPE:
+        raise BrokenPipeError(text)
+    if err == _ECONNRESET:
+        raise ConnectionResetError(text)
+    if err == _ECONNREFUSED:
+        raise ConnectionRefusedError(text)
+    if err == _ECONNABORTED:
+        raise ConnectionAbortedError(text)
 
 
 def _raise_errno(op: str) -> None:
     """Raise the errno-keyed OSError subclass: BlockingIOError on
     EAGAIN/EWOULDBLOCK/EINPROGRESS (so the asyncio reactor can park on fd
-    readiness), else SocketError. Both carry "<op>: <strerror(errno)>"."""
+    readiness), a ConnectionError subclass on a connection errno, else
+    SocketError. All carry "<op>: <strerror(errno)>"."""
     err = posix_socket.tpy_errno()
     msg = unsafe_str_from_cstr(posix_socket.strerror(err))
     if err == _EAGAIN or err == _EINPROGRESS:
         raise BlockingIOError(op + ": " + msg)
+    _maybe_raise_connection_error(err, op + ": " + msg)
     raise SocketError(op + ": " + msg)
 
 
@@ -315,6 +332,7 @@ class socket:
             if self._timeout > 0.0:
                 raise TimeoutError("timed out")
             raise BlockingIOError(op + ": " + msg)
+        _maybe_raise_connection_error(err, op + ": " + msg)
         raise SocketError(op + ": " + msg)
 
     def setblocking(self, flag: bool) -> None:
