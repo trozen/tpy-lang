@@ -883,6 +883,8 @@ def compile_with_diagnostics(src_file: Path, output_dir: Path, default_int: str 
             # cpp_path is None for native_module (binding-only) modules
             all_modules.append((mod.name, hpp_path, cpp_path, is_local))
 
+        # Feed the --thir-codegen non-vacuity gate: 0 when the flag is off.
+        record_thir_routed(compiler._thir_routed_bodies)
 
         # Return paths for the entry point module
         layout = BuildLayout(output_dir, entry_module.name)
@@ -1652,19 +1654,64 @@ def record_exec_outcome(outcome: str) -> None:
         _exec_tally[outcome] += 1
 
 
+# THIR routed-body tally -- the non-vacuity guard for the --thir-codegen gate.
+# Mirrors the exec tally's per-worker -> controller aggregation. Under forced
+# THIR a full run that routes zero bodies means the flag stopped reaching
+# codegen (a wiring regression), so the byte-diff gate would pass vacuously --
+# fail loudly. A filtered run (-k or an explicit path) may legitimately select
+# only ineligible cases, so there we warn instead of failing.
+_thir_tally = {"bodies": 0, "cases": 0}
+_thir_tally_agg = {"bodies": 0, "cases": 0}
+
+
+def record_thir_routed(bodies: int) -> None:
+    """Tally one case's count of function bodies lowered through THIR."""
+    _thir_tally["bodies"] += bodies
+    if bodies:
+        _thir_tally["cases"] += 1
+
+
+def _thir_gate_verdict(config) -> str:
+    """Verdict for the --thir-codegen non-vacuity gate: 'off' (flag unset),
+    'ok' (routed > 0), 'warn' (routed 0 on a filtered run), or 'fail' (routed 0
+    over a full run -- a regression made the byte-diff gate vacuous)."""
+    if not config.getoption("--thir-codegen"):
+        return "off"
+    if _thir_tally["bodies"] + _thir_tally_agg["bodies"] > 0:
+        return "ok"
+    # file_or_dir holds positional path/nodeid args, keyword holds -k; either
+    # means a deliberate subset, where selecting zero eligible cases is fine.
+    # Coarse: explicit paths that still cover the full corpus (`pytest tests
+    # tpyc`) read as filtered, and `--collect-only` reads as full -- both
+    # mis-verdict non-canonical runs. The canonical gate is path-less; see TODO.
+    filtered = bool(getattr(config.option, "keyword", "")) or \
+        bool(getattr(config.option, "file_or_dir", []))
+    return "warn" if filtered else "fail"
+
+
 def pytest_sessionfinish(session):
-    """xdist worker: ship this process's exec tally back to the controller."""
+    """xdist worker: ship this process's tallies to the controller. Controller
+    (or non-xdist): fail the session if the --thir-codegen gate was vacuous."""
     workeroutput = getattr(session.config, "workeroutput", None)
     if workeroutput is not None:
         workeroutput["exec_tally"] = dict(_exec_tally)
+        workeroutput["thir_tally"] = dict(_thir_tally)
+        return
+    if _thir_gate_verdict(session.config) == "fail":
+        session.exitstatus = pytest.ExitCode.TESTS_FAILED
 
 
 def pytest_testnodedown(node, error):
-    """xdist controller: fold a finished worker's exec tally into the total."""
-    tally = getattr(node, "workeroutput", {}).get("exec_tally")
+    """xdist controller: fold a finished worker's tallies into the totals."""
+    wo = getattr(node, "workeroutput", {})
+    tally = wo.get("exec_tally")
     if tally:
         for k in _exec_tally_agg:
             _exec_tally_agg[k] += tally.get(k, 0)
+    thir = wo.get("thir_tally")
+    if thir:
+        for k in _thir_tally_agg:
+            _thir_tally_agg[k] += thir.get(k, 0)
 
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
@@ -1680,6 +1727,27 @@ def pytest_terminal_summary(terminalreporter, exitstatus, config):
             f"{_LOG_PREFIX} exec: {total['ran']} built+run, "
             f"{total['skipped']} skipped via cache ({considered} cases)"
         )
+
+    verdict = _thir_gate_verdict(config)
+    if verdict != "off":
+        bodies = _thir_tally["bodies"] + _thir_tally_agg["bodies"]
+        cases = _thir_tally["cases"] + _thir_tally_agg["cases"]
+        if verdict == "ok":
+            terminalreporter.write_line(
+                f"{_LOG_PREFIX} thir: {bodies} bodies routed via THIR "
+                f"across {cases} cases"
+            )
+        elif verdict == "warn":
+            terminalreporter.write_line(
+                f"{_LOG_PREFIX} thir: WARNING -- forced THIR routed 0 bodies "
+                f"(filtered run; the subset may hold no eligible case)"
+            )
+        else:
+            terminalreporter.write_line(
+                f"{_LOG_PREFIX} thir: ERROR -- forced THIR routed 0 bodies over "
+                f"the full corpus; the byte-diff gate is vacuous (wiring "
+                f"regression?). Session failed."
+            )
 
 
 def case_binary_path(build_dir: Path, module_name: str) -> Path:

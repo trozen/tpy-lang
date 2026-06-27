@@ -51,7 +51,11 @@ the AST baseline it is checked against. The per-case byte-diff covers a case's
 local modules only (where the eligible shapes live); stdlib bodies route through
 THIR too but their generated C++ is not snapshotted per case, so the byte-diff
 does not cover them -- `--thir-codegen --force-exec` builds and runs the
-THIR-rendered stdlib, catching behavioral (not byte) divergence there.
+THIR-rendered stdlib, catching behavioral (not byte) divergence there. The gate
+self-checks against vacuity: it tallies the bodies actually lowered through THIR
+and a full forced run that routes zero -- the flag silently stopped reaching
+codegen -- fails loudly (`tpy| thir: N bodies routed ...` otherwise). A filtered
+run (`-k` / explicit path) only warns, since a subset may hold no eligible case.
 
 **Increment 2 adds range-`for`**: a `for v in range(stop)` / `range(start, stop)`
 counter loop with step 1, over a fixed-int loop var that is not used after the

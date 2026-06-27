@@ -1088,6 +1088,8 @@ class Compiler:
         # collected here during codegen for the build driver to add to the
         # link set after the per-module generation loop.
         self._ext_glue_cpp_paths: list[Path] = []
+        # Routed-body count for the THIR byte-diff gate's non-vacuity check.
+        self._thir_routed_bodies = 0
         self.shadowed_builtins: dict[str, set[tuple[str, int | None]]] = {}
         self.diagnostics: list[Diagnostic] = []
         self._source_input: tuple[str, str] | None = None
@@ -3759,6 +3761,9 @@ class Compiler:
             implicit_stdlib_modules=implicit_stdlib,
             cycle_peers=cycle_peers,
         )
+        # ctx.thir_functions holds the bodies lowered through THIR -- empty
+        # (not absent) when --thir-codegen is off, so this is 0 by default.
+        self._thir_routed_bodies += len(codegen.ctx.thir_functions)
 
         if not hpp_code:
             return None, None
