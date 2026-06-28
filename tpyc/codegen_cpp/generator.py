@@ -63,6 +63,7 @@ BOUNDARY_CPP_TYPES = {
     "int8_t", "uint8_t", "int16_t", "uint16_t",
     "int32_t", "uint32_t", "int64_t", "uint64_t",
     "::tpy::BigInt", "double", "bool",
+    "std::string", "std::vector<uint8_t>",
 }
 
 
@@ -72,11 +73,27 @@ def boundary_cpp_type(t: TpyType | None) -> str:
     return t.to_cpp() if t is not None else "void"
 
 
-def boundary_type_ok(cpp: str, allow_void: bool = False) -> bool:
+def boundary_type_ok(t: TpyType | None, allow_void: bool = False) -> bool:
     # Single admission rule shared by the sema validator and the glue emitter's
-    # drift assert. `void` (no annotation / `-> None`) is a legal return -- the
-    # wrapper hands back None -- but never a valid parameter type.
-    return cpp in BOUNDARY_CPP_TYPES or (allow_void and cpp == "void")
+    # drift assert. A missing return type (no annotation / `-> None`) is a legal
+    # return -- the wrapper hands back None -- but never a valid parameter type.
+    #
+    # Judge the value-type fact on the Own-unwrapped inner: Own[T] only transfers
+    # ownership of T, so the marshalled Python value is T's. OwnType.is_value_type
+    # is unconditionally True, which would otherwise mask a non-value inner -- the
+    # is_value_type test disambiguates types sharing a C++ representation (bytes
+    # and bytearray both stringify to std::vector<uint8_t>, but only the immutable
+    # value type `bytes` marshals by copy; bytearray is a mutable reference type
+    # whose aliasing a PyBytes copy would silently drop, and Own[bytearray] must
+    # not slip through on the wrapper's value-type claim).
+    if t is None:
+        return allow_void  # no return annotation -> the wrapper hands back None
+    if allow_void and t.to_cpp() == "void":
+        return True  # `-> None` resolves to VoidType (to_cpp "void"), not None
+    inner = t
+    while isinstance(inner, OwnType):
+        inner = inner.wrapped
+    return inner.to_cpp() in BOUNDARY_CPP_TYPES and inner.is_value_type()
 
 
 def boundary_unmarshallable_msg(fn_name: str, what: str, cpp: str) -> str:
@@ -84,7 +101,8 @@ def boundary_unmarshallable_msg(fn_name: str, what: str, cpp: str) -> str:
     # and codegen's drift assert read identically.
     return (f"@export function '{fn_name}': {what} type '{cpp}' is not yet "
             f"marshallable across the CPython boundary "
-            f"(supported: the fixed-width int types, int, float, bool)")
+            f"(supported: the fixed-width int types, int, float, bool, str, "
+            f"bytes)")
 
 
 def _platform_matches(platform_filter: str | None) -> bool:
@@ -2560,7 +2578,7 @@ class CodeGenerator:
             # Sema (_validate_ext_module_exports) already rejected unmarshallable
             # boundary types; this asserts the contract to catch sema/codegen
             # drift loudly rather than emit a TU that won't compile.
-            assert boundary_type_ok(cpp, allow_void), \
+            assert boundary_type_ok(t, allow_void), \
                 boundary_unmarshallable_msg(fn.name, what, cpp)
             return cpp
 

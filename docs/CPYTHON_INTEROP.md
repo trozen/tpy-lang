@@ -2,9 +2,10 @@
 
 **Status: v1.0 in progress.** Free functions marshalling every scalar
 (`int`/BigInt, `float`, `bool`, all fixed-width int types `Int8`..`Int64` /
-`UInt8`..`UInt64`) plus void return (`-> None`) are implemented -- see "v1.0
-resolved design" below and `tests/interop/`; the rest of this doc is the agreed
-design ahead of implementation. Companion to `PROJECT_TOOLING_DESIGN.md`, which reserves the
+`UInt8`..`UInt64`) plus void return (`-> None`) and `str`/`bytes` (copy-in;
+owned-form marshalling, the borrow-form param converted at the call) are
+implemented -- see "v1.0 resolved design" below and `tests/interop/`; the rest
+of this doc is the agreed design ahead of implementation. Companion to `PROJECT_TOOLING_DESIGN.md`, which reserves the
 *tooling* hooks (the `ext` target kind + TPy as a PEP 517 build backend);
 this doc is about the *interop semantics* that doc deliberately defers.
 
@@ -49,8 +50,8 @@ progress -> ✅ done.
 
 | Phase | Deliverable | Scope | Status |
 |---|---|---|---|
-| 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🚧 all scalars (int/BigInt, float, bool, fixed-width ints) + void return done; str/bytes next |
-| 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return done; str/bytes next |
+| 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🚧 all scalars (int/BigInt, float, bool, fixed-width ints) + void return + str/bytes (copy-in) done; containers next |
+| 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes done; containers next |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | 🔬 |
 | 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🔬 |
@@ -255,8 +256,8 @@ cost embedding nothing later. It is *the* hook to reserve.
 | TPy | Python | Cost | Note |
 |---|---|---|---|
 | `int`/BigInt, `float`, `bool` | PyLong / PyFloat / PyBool | O(1) small int | trivial |
-| `str` / StrView | PyUnicode | O(n) out; **copy-in (v1)**, borrow later | see "str/borrow" |
-| `bytes` / BytesView | PyBytes | O(n) out; copy-in (v1), borrow later | see "str/borrow" |
+| `str` / StrView | PyUnicode | O(n) out; **copy-in (done)**, borrow later | see "str/borrow"; `str` done, `StrView` -> 3.5 |
+| `bytes` / BytesView | PyBytes | O(n) out; copy-in (done), borrow later | see "str/borrow"; `bytes` done, `BytesView` -> 3.5 |
 | `Span[T]` numeric | buffer / `memoryview` / ndarray | O(n) copy-in (v1.0); zero-copy later | see "buffer protocol" |
 | `list`/`dict`/`set`/`tuple` | PyList / PyDict / ... | **O(n)*elem, by-copy** | see "container cliff" |
 | record / class | extension-type wrapper | O(1) pointer | see "classes" |
@@ -285,10 +286,16 @@ built for *TPy-owned* sources, so a borrow whose backing is *foreign* memory
 reuse (see "Design validation"). The buffer protocol (next) is the same idea
 for numeric data and shares that gap.
 
-**v1 default: copy-in.** For `str`/`bytes` args, v1 *copies on entry* (always
-sound); the zero-copy borrow is the deferred optimization that lands with the
-foreign-borrow primitive (phase 3.5). This section describes the end state,
-not the v1 behavior.
+**v1 default: copy-in (implemented).** For `str`/`bytes` args, v1 *copies on
+entry* (always sound): the marshaller produces the owned form (`std::string` /
+`std::vector<uint8_t>`) and the generated wrapper passes it to the function's
+borrow-form param (`std::string_view` / `std::span<const uint8_t>`) by implicit
+conversion, the owned local outliving the call -- so the boundary marshals a
+type's *owned* form (`to_cpp()`) with no special-casing in the glue emitter.
+The borrow forms `StrView`/`BytesView` are rejected for now (they need the
+foreign-borrow primitive); the zero-copy borrow is the deferred optimization
+that lands with it (phase 3.5). The rest of this section describes that end
+state, not the v1 behavior.
 
 ### The buffer protocol -- the high-value zero-copy path
 

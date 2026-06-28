@@ -77,3 +77,16 @@ self-check additionally requires `Python.h`.
   extension must not print). `ext_checks.py` covers the truthiness coercions
   observable only through `identity` (which the source returns unchanged) and a
   `__bool__`-raising argument -- both ext-only divergences from the source.
+- **`strings/`** (`strings.py`) -- the `str` boundary (copy-in): `echo`,
+  `shout` (`.upper()`), and `greet` (concat) marshal PyUnicode <-> `std::string`
+  (the wrapper marshals the owned form, the function takes the `std::string_view`
+  borrow by implicit conversion). `driver.py` round-trips empty / multibyte
+  UTF-8 / transformed values (all source-parity); `ext_checks.py` covers the
+  ext-only divergences -- a non-`str` arg raises `TypeError`, a lone-surrogate
+  `str` raises `UnicodeEncodeError`, while the unbounded source accepts them.
+- **`bytes_vals/`** (`bytes_vals.py`) -- the `bytes` boundary (copy-in): `echo`,
+  `cat` (concat), `shout` (`.upper()`) marshal PyBytes <-> `std::vector<uint8_t>`
+  (owned form in the wrapper, `std::span<const uint8_t>` borrow in the function).
+  `driver.py` round-trips empty / raw-with-NUL-and-high-byte / concatenated
+  values; `ext_checks.py` covers the ext-only `TypeError`s -- a `str`, a
+  `bytearray` (mutable buffer, rejected by value), and a non-bytes arg.

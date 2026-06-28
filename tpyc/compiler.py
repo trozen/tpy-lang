@@ -3912,9 +3912,9 @@ class Compiler:
                 checks += [(ptype, f"parameter '{pname}'", False)
                            for pname, ptype in func.params]
                 for typ, what, allow_void in checks:
-                    cpp = boundary_cpp_type(typ)
-                    if boundary_type_ok(cpp, allow_void):
+                    if boundary_type_ok(typ, allow_void):
                         continue
+                    cpp = boundary_cpp_type(typ)
                     raise CompileError(
                         boundary_unmarshallable_msg(func.name, what, cpp),
                         compiled.name, compiled.path,

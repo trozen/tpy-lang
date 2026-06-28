@@ -5879,6 +5879,27 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   `-> None` returns `Py_None` to the host (`call(); Py_RETURN_NONE`). `void` is
   valid only in return position; a `None`-typed parameter has no host value to
   unmarshal and stays rejected.
+- **Working (`str` + `bytes`)**: functions taking and returning `str`
+  (PyUnicode <-> `std::string` via `PyUnicode_AsUTF8AndSize` /
+  `PyUnicode_FromStringAndSize`) and `bytes` (PyBytes <-> `std::vector<uint8_t>`
+  via `PyBytes_AsStringAndSize` / `PyBytes_FromStringAndSize`). Both cross **by
+  copy** (v1 copy-in; the zero-copy view borrow is the deferred phase-3.5
+  foreign-borrow primitive). The marshaller produces the *owned* form
+  (`std::string` / `std::vector<uint8_t>`); the generated wrapper passes it to
+  the function's *borrow*-form parameter (`std::string_view` /
+  `std::span<const uint8_t>`) by implicit conversion, the owned local outliving
+  the call -- so the borrow/storage-form duality is absorbed with no change to
+  the glue emitter. `str` and `bytes` are **immutable**, so the boundary copy is
+  unobservable (no aliasing divergence -- the reason they copy soundly where
+  `list`/`dict` cannot). **Coercion model** (same as the scalars): the boundary
+  enforces the declared type -- a non-`str`/`bytes` argument is a `TypeError`,
+  and a lone-surrogate `str` (no strict-UTF-8 encoding) is a
+  `UnicodeEncodeError`; the untyped TPy source leaves the annotation unchecked,
+  so those cases are kept out of the parity drivers. The borrow forms `StrView`
+  / `BytesView` and the mutable `bytearray` are **not** marshallable across the
+  boundary (a view needs the deferred foreign-borrow primitive; `bytearray`'s
+  aliasing a by-copy `PyBytes` would silently drop) and stay rejected; use
+  `str` / `bytes`.
 - **Working (`.so` build mode)**: `tpyc -b` on an `# tpy: ext_module` builds an
   importable `<mod>.so` directly -- every TU `-fPIC`, linked `-shared`, no
   `main()`, glue TU in the link set. `--exec` on an ext_module is a clean error
@@ -5887,10 +5908,11 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   `.so`, imports it under CPython against `driver.py`, and asserts parity with
   the same driver over the TPy source; a facade self-check guards the ABI
   mirror.
-- **Planned**: other scalar types (`str`/`bytes`), built-in/user
-  exceptions across the boundary, classes
-  (`PyType_FromSpec`), enums/constants, buffer input, the PEP 517 wheel
-  backend, and the `nogil` GIL capability. See `docs/CPYTHON_INTEROP.md`.
+- **Planned**: zero-copy `str`/`bytes` view input (`StrView`/`BytesView` via
+  the phase-3.5 foreign-borrow primitive), built-in/user exceptions across the
+  boundary, classes (`PyType_FromSpec`), enums/constants, container and buffer
+  input, the PEP 517 wheel backend, and the `nogil` GIL capability. See
+  `docs/CPYTHON_INTEROP.md`.
 
 ---
 

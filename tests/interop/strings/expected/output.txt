@@ -1,0 +1,8 @@
+'hello'
+''
+'a\x00b'
+'café 中'
+'HELLO'
+''
+'hello, world'
+'hello, '

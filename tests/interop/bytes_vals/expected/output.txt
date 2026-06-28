@@ -1,0 +1,7 @@
+b'hello'
+b''
+b'\x00\x01\xff'
+b'abcd'
+b'xy'
+b'HELLO'
+b'owned'

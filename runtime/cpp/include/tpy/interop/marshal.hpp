@@ -16,6 +16,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <vector>
 
 #include "tpy/bigint.hpp"
 #include "tpy/interop/cpython_h.hpp"
@@ -179,6 +180,33 @@ inline bool from_py<bool>(cpy::PyObject *o) {
     return r != 0;
 }
 
+// Unlike the numeric marshallers, str/bytes do NOT coerce: a non-str / non-bytes
+// argument is a TypeError, matching a C function that declared the exact type.
+// The owned result (std::string / std::vector) backs the borrow-form param
+// (string_view / span) the generated wrapper passes by implicit conversion, so
+// the owned local must outlive the call (it does -- it lives in the wrapper).
+template <>
+inline std::string from_py<std::string>(cpy::PyObject *o) {
+    cpy::Py_ssize_t n = 0;
+    const char *s = cpy::PyUnicode_AsUTF8AndSize(o, &n);  // TypeError if not str
+    if (s == nullptr) {
+        throw MarshalError{};
+    }
+    return std::string(s, static_cast<std::size_t>(n));
+}
+
+template <>
+inline std::vector<std::uint8_t> from_py<std::vector<std::uint8_t>>(
+    cpy::PyObject *o) {
+    char *buf = nullptr;
+    cpy::Py_ssize_t n = 0;
+    if (cpy::PyBytes_AsStringAndSize(o, &buf, &n) < 0) {  // TypeError if not bytes
+        throw MarshalError{};
+    }
+    const auto *p = reinterpret_cast<const std::uint8_t *>(buf);
+    return std::vector<std::uint8_t>(p, p + n);
+}
+
 // to_py: a TPy value -> a new owned PyObject reference.
 inline cpy::PyObject *to_py(std::int64_t v) {
     return cpy::PyLong_FromLongLong(static_cast<long long>(v));
@@ -204,6 +232,19 @@ inline cpy::PyObject *to_py(double v) {
 
 inline cpy::PyObject *to_py(bool v) {
     return cpy::PyBool_FromLong(v ? 1 : 0);
+}
+
+inline cpy::PyObject *to_py(const std::string &s) {
+    return cpy::PyUnicode_FromStringAndSize(  // UnicodeDecodeError on bad UTF-8
+        s.data(), static_cast<cpy::Py_ssize_t>(s.size()));
+}
+
+inline cpy::PyObject *to_py(const std::vector<std::uint8_t> &b) {
+    // b.data() may be null for an empty vector; PyBytes_FromStringAndSize(nullptr,
+    // 0) takes CPython's uninitialized-buffer path rather than a 0-length copy.
+    return cpy::PyBytes_FromStringAndSize(
+        b.empty() ? "" : reinterpret_cast<const char *>(b.data()),
+        static_cast<cpy::Py_ssize_t>(b.size()));
 }
 
 // A void @export returns None: a fresh ref to the None singleton (Py_RETURN_NONE).

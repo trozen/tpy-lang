@@ -51,6 +51,18 @@ PyObject *PyNumber_ToBase(PyObject *o, int base);  // BigInt slow path (hex)
 PyObject *PyLong_FromString(const char *str, char **pend, int base);
 const char *PyUnicode_AsUTF8AndSize(PyObject *unicode, Py_ssize_t *size);
 
+// str marshalling. AsUTF8AndSize (above, shared with the BigInt hex path) reads
+// a str's UTF-8 bytes -- it rejects non-str with TypeError and a surrogate-
+// bearing str with UnicodeEncodeError (strict UTF-8). FromStringAndSize decodes
+// a UTF-8 buffer back into a new str (UnicodeDecodeError on invalid UTF-8).
+PyObject *PyUnicode_FromStringAndSize(const char *u, Py_ssize_t size);
+
+// bytes marshalling. AsStringAndSize borrows a bytes object's buffer (TypeError
+// for a non-bytes arg, including bytearray); FromStringAndSize copies a buffer
+// into a new bytes object.
+int PyBytes_AsStringAndSize(PyObject *obj, char **buffer, Py_ssize_t *length);
+PyObject *PyBytes_FromStringAndSize(const char *v, Py_ssize_t len);
+
 // float marshalling (double). PyFloat_AsDouble coerces via __float__, so int /
 // bool arguments cross like CPython; it returns -1.0 + sets an exception on
 // failure.

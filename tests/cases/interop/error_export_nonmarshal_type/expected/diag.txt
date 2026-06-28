@@ -1,1 +1,1 @@
-main.py:8: error: @export function 'bad': return type 'std::string' is not yet marshallable across the CPython boundary (supported: the fixed-width int types, int, float, bool)
+main.py:10: error: @export function 'bad': return type 'std::string_view' is not yet marshallable across the CPython boundary (supported: the fixed-width int types, int, float, bool, str, bytes)

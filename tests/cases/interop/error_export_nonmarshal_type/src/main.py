@@ -1,9 +1,11 @@
-# A param/return type without a CPython boundary marshaller (str here) is
-# rejected before codegen, not during glue generation.
+# A param/return type without a CPython boundary marshaller (StrView here -- a
+# borrow form, not marshallable across the boundary) is rejected before codegen,
+# not during glue generation.
 # tpy: ext_module
+from tpy import StrView
 from tpy.extern import export
 
 
 @export
-def bad() -> str:  # tpyc: error(/not yet marshallable across the CPython boundary/)
+def bad() -> StrView:  # tpyc: error(/not yet marshallable across the CPython boundary/)
     return "x"
