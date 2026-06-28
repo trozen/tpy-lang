@@ -418,6 +418,27 @@ scope dials above are how size is controlled.
 TPy has two runtime failure channels; both must bridge to CPython's
 thread-state error model.
 
+**Status:** the built-in-exception half is **implemented**. A built-in TPy
+exception escaping an `@export` body (or `PyInit_`) crosses as the matching
+`PyExc_*` type with `e.what()` as the message: the glue catches
+`const tpy::BaseException&` and routes it through the runtime cascade in
+`runtime/cpp/include/tpy/interop/exc_bridge.hpp` (`set_py_err_from` ->
+`py_exc_for`), which maps the dynamic type most-derived-first and degrades an
+unlisted subclass to its nearest listed base. `PyErr_SetString` (not the
+`PyErr_SetObject`/registry mechanism sketched below) is sufficient while only
+built-in types cross. Still **planned** from the list below: user exception
+classes (generated Python type + registry), `@error_return` Err -> raise, and
+panic -> exception.
+
+Until user exception classes are bridged, a *user-defined* exception subclass
+raised in an `@export` body degrades to its nearest built-in ancestor with **no
+compile-time diagnostic** -- e.g. a user `class MyError(ValueError)` surfaces to
+the CPython caller as `ValueError`, where the same code run as a plain CPython
+module would raise `MyError`. Diagnosing this at compile time needs raise-set
+analysis across the call graph (it must not flag the now-supported built-in
+raises), so it is folded into the user-exception-class rung rather than added as
+a standalone warning.
+
 - **Exceptions (`raise` / `except`).** A TPy `raise` that reaches the
   boundary becomes `PyErr_SetObject` and the wrapper returns the C-API
   error sentinel (`NULL` / `-1`). Built-in TPy exception types map directly

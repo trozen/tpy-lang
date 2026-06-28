@@ -1,0 +1,8 @@
+ValueError | must be non-negative
+ok 5
+KeyError | 'no such key'
+ok 100
+FileNotFoundError | missing file
+Exception | generic failure
+ok 3
+ZeroDivisionError | integer division or modulo by zero

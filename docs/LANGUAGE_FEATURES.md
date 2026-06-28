@@ -5909,10 +5909,30 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   `.so`, imports it under CPython against `driver.py`, and asserts parity with
   the same driver over the TPy source; a facade self-check guards the ABI
   mirror.
+- **Working (built-in exceptions across the boundary)**: a built-in TPy
+  exception raised in an `@export` body (or in module-level code run at
+  `PyInit_`) crosses to the host as the matching CPython exception type with
+  its message preserved -- `raise ValueError("bad")` reaches the caller as a
+  catchable `ValueError("bad")`, not the old generic `RuntimeError`. The glue
+  catches `const tpy::BaseException&` and routes it through a runtime cascade
+  (`tpy/interop/exc_bridge.hpp`) that maps the dynamic type to its `PyExc_*`
+  counterpart (most-derived first; an unlisted subclass degrades to its nearest
+  listed base, e.g. an unmapped `OSError` subclass surfaces as `PyExc_OSError`)
+  and sets `e.what()` as the message. A non-`BaseException` C++ exception still
+  flows through the generic `catch(...)` -- which also preserves a Python error
+  the marshaller already set (`TypeError`/`OverflowError`/`UnicodeEncodeError`
+  from `from_py`/`to_py`) via the `PyErr_Occurred()` guard. Runtime-raised
+  exceptions (e.g. `ZeroDivisionError` from `//`) cross by type too; only their
+  message text differs from CPython's wording. **Not yet bridged**: user-defined
+  exception *classes* (no generated Python type yet -- a user exception subclass
+  raised in an `@export` body currently degrades to its nearest built-in
+  ancestor, e.g. a `ValueError` subclass surfaces as `ValueError`, with no
+  compile-time diagnostic), `@error_return` `Err` -> raise, exception chaining
+  (`__cause__`/`__context__`), and panic -> exception.
 - **Planned**: zero-copy `str`/`bytes` view input (`StrView`/`BytesView` via
-  the phase-3.5 foreign-borrow primitive), built-in/user exceptions across the
-  boundary, classes (`PyType_FromSpec`), enums/constants, container and buffer
-  input, the PEP 517 wheel backend, and the `nogil` GIL capability. See
+  the phase-3.5 foreign-borrow primitive), user-defined exception classes across
+  the boundary, classes (`PyType_FromSpec`), enums/constants, container and
+  buffer input, the PEP 517 wheel backend, and the `nogil` GIL capability. See
   `docs/CPYTHON_INTEROP.md`.
 
 ---

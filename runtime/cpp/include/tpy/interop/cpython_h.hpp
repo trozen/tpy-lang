@@ -75,10 +75,44 @@ double PyFloat_AsDouble(PyObject *o);
 int PyObject_IsTrue(PyObject *o);
 PyObject *PyBool_FromLong(long v);
 
-// Stable-ABI exception singletons (provided by the host interpreter).
-extern PyObject *PyExc_RuntimeError;
-extern PyObject *PyExc_TypeError;
+// Stable-ABI exception singletons (provided by the host interpreter). The
+// exc_bridge cascade maps each tpy::BaseException subclass to its counterpart
+// here, so the set mirrors the core.hpp taxonomy.
+extern PyObject *PyExc_BaseException;
+extern PyObject *PyExc_Exception;
+extern PyObject *PyExc_ValueError;
+extern PyObject *PyExc_OSError;
+extern PyObject *PyExc_FileNotFoundError;
+extern PyObject *PyExc_PermissionError;
+extern PyObject *PyExc_BlockingIOError;
+extern PyObject *PyExc_FileExistsError;
+extern PyObject *PyExc_NotADirectoryError;
+extern PyObject *PyExc_IsADirectoryError;
+extern PyObject *PyExc_ConnectionError;
+extern PyObject *PyExc_BrokenPipeError;
+extern PyObject *PyExc_ConnectionResetError;
+extern PyObject *PyExc_ConnectionRefusedError;
+extern PyObject *PyExc_ConnectionAbortedError;
+extern PyObject *PyExc_AttributeError;
+extern PyObject *PyExc_AssertionError;
+extern PyObject *PyExc_LookupError;
+extern PyObject *PyExc_IndexError;
+extern PyObject *PyExc_KeyError;
+extern PyObject *PyExc_ArithmeticError;
+extern PyObject *PyExc_ZeroDivisionError;
 extern PyObject *PyExc_OverflowError;
+extern PyObject *PyExc_FloatingPointError;
+extern PyObject *PyExc_TypeError;
+extern PyObject *PyExc_NotImplementedError;
+extern PyObject *PyExc_RuntimeError;
+extern PyObject *PyExc_RecursionError;
+extern PyObject *PyExc_EOFError;
+extern PyObject *PyExc_MemoryError;
+extern PyObject *PyExc_StopIteration;
+extern PyObject *PyExc_StopAsyncIteration;
+extern PyObject *PyExc_TimeoutError;
+extern PyObject *PyExc_GeneratorExit;
+extern PyObject *PyExc_KeyboardInterrupt;
 
 // The None singleton. Py_None is the macro `&_Py_NoneStruct`; we mirror the
 // underlying data symbol so void-return wrappers can hand back a fresh ref.
