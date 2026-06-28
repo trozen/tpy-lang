@@ -28,10 +28,10 @@ std::tuple<std::vector<uint8_t>, bool, bool> run_redirect(std::span<const uint8_
     h1.sock = std::move(c);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.connection = h0
-    s.connection = std::move(h0);
-    // s.redirect_connections = [h1]
-    s.redirect_connections = ::tpy::make_vector<::tpystd::http::client::HTTPConnection>(std::move(h1));
+    // s._connection = h0
+    s._connection = std::move(h0);
+    // s._redirect_connections = [h1]
+    s._redirect_connections = ::tpy::make_vector<::tpystd::http::client::HTTPConnection>(std::move(h1));
     // r = s.post("http://api.test/submit", b'{"x":1}', None, None,
     // {"Content-Type": "text/plain"})
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"Content-Type", "text/plain"}});

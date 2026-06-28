@@ -18,8 +18,8 @@ void _hang_request() {
     conn.sock = std::move(a);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.connection = conn
-    s.connection = std::move(conn);
+    // s._connection = conn
+    s._connection = std::move(conn);
     // s.get("http://api.test:8002/hang")
     s.get("http://api.test:8002/hang");
     // b.close()

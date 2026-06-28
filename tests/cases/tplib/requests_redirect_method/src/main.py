@@ -18,8 +18,8 @@ def run_redirect(status_line: bytes) -> tuple[bytes, bool, bool]:
     h1 = HTTPConnection("api.test", 80)
     h1.sock = c
     s = requests.Session()
-    s.connection = h0
-    s.redirect_connections = [h1]
+    s._connection = h0
+    s._redirect_connections = [h1]
     r = s.post("http://api.test/submit", b'{"x":1}', None, None,
                {"Content-Type": "text/plain"})
     print(r.status_code, r.url)

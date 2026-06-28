@@ -19,7 +19,7 @@ def main() -> None:
     conn = HTTPConnection("api.test", 8002)
     conn.sock = a
     s = requests.Session()
-    s.connection = conn
+    s._connection = conn
     r = s.get("http://api.test:8002/v1/tables", {"db": "das"})
     print(r.status_code, r.ok, r.reason)
     print(r.text)

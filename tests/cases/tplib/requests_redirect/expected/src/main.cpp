@@ -30,10 +30,10 @@ void main() {
     h1.sock = std::move(c);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.connection = h0
-    s.connection = std::move(h0);
-    // s.redirect_connections = [h1]
-    s.redirect_connections = ::tpy::make_vector<::tpystd::http::client::HTTPConnection>(std::move(h1));
+    // s._connection = h0
+    s._connection = std::move(h0);
+    // s._redirect_connections = [h1]
+    s._redirect_connections = ::tpy::make_vector<::tpystd::http::client::HTTPConnection>(std::move(h1));
     // r = s.get("http://api.test/v1/tables")
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/v1/tables");
     // print(r.status_code, r.ok, r.text)
@@ -61,8 +61,8 @@ void __tpy_init() {
 
     // # tplib.requests follows a 302 to its Location: the final Response carries the
     // # 200 (status/url/text) while .history holds the intermediate 302. Two
-    // # socketpairs feed the two hops (Session.connection for hop 0, the
-    // # redirect_connections queue for hop 1 -- the offline test seam); peers stay
+    // # socketpairs feed the two hops (Session._connection for hop 0, the
+    // # _redirect_connections queue for hop 1 -- the offline test seam); peers stay
     // # open while the client writes so the request sends don't hit a closed peer.
     // import socket
     ::tpystd::socket::__tpy_init();

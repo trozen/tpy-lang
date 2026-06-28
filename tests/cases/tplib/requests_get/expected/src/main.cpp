@@ -20,8 +20,8 @@ void main() {
     conn.sock = std::move(a);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.connection = conn
-    s.connection = std::move(conn);
+    // s._connection = conn
+    s._connection = std::move(conn);
     // r = s.get("http://api.test:8002/v1/tables", {"db": "das"})
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"db", "das"}});
     ::tpystd::tplib::requests::Response r = s.get("http://api.test:8002/v1/tables", &(__tmp_1));

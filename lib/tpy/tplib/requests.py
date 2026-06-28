@@ -334,27 +334,27 @@ class Session:
     """Default headers/params reused across requests.
 
     `headers` and `params` are merged into every request (per-call values win).
-    `connection`, when set, is used for the next request instead of opening one
-    from the URL (then cleared) -- the seam tests use to inject a socket. Real
-    connection pooling is not provided (http.client is Connection: close).
+    Real connection pooling is not provided (http.client is Connection: close).
     """
 
     headers: dict[str, str]
     params: dict[str, str]
     auth: tuple[str, str] | None
-    connection: HTTPConnection | None
-    # Connections for redirect hops 1..N (hop 0 uses `connection`): the offline
-    # test seam, since each hop needs a fresh connection and there is no real
-    # pool. Empty in normal use -- a hop with no queued connection opens one.
-    redirect_connections: list[HTTPConnection]
+    # Offline test seam: the tests can't run a threaded loopback server, so they
+    # inject a pre-bound connection here instead of letting hop 0 do a real TCP
+    # connect. Cleared after use, since the connection is single-use.
+    _connection: HTTPConnection | None
+    # Offline test seam for redirect hops 1..N (hop 0 uses `_connection`): each
+    # hop needs its own connection because there is no pool (Connection: close).
+    _redirect_connections: list[HTTPConnection]
     max_redirects: Int32
 
     def __init__(self) -> None:
         self.headers = {}
         self.params = {}
         self.auth = None
-        self.connection = None
-        self.redirect_connections = []
+        self._connection = None
+        self._redirect_connections = []
         self.max_redirects = 30
 
     def _merge_headers(self, headers: dict[str, str] | None) -> Own[dict[str, str]]:
@@ -382,16 +382,16 @@ class Session:
                       timeout: float | None, hop: Int32) -> Own[Response]:
         # Each connection is single-use (Connection: close) and is closed inside
         # _request_on, so every hop needs its own.
-        if hop == 0 and self.connection is not None:
+        if hop == 0 and self._connection is not None:
             # Clear even if the request raises -- the connection is single-use
             # and must not be reused after a failure.
             try:
-                return _request_on(self.connection, method, url, params, data,
+                return _request_on(self._connection, method, url, params, data,
                                    json, headers, auth)
             finally:
-                self.connection = None
-        if len(self.redirect_connections) > 0:
-            conn = self.redirect_connections.pop(0)
+                self._connection = None
+        if len(self._redirect_connections) > 0:
+            conn = self._redirect_connections.pop(0)
             return _request_on(conn, method, url, params, data, json, headers,
                                auth)
         fresh = _connect(url, timeout)
@@ -480,8 +480,8 @@ class Session:
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        if self.connection is not None:
-            self.connection.close()
-            self.connection = None
-        for conn in self.redirect_connections:
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None
+        for conn in self._redirect_connections:
             conn.close()

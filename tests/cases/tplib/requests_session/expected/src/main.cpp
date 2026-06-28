@@ -24,8 +24,8 @@ void merge_and_clear() {
     s.params = ::tpy::ordered_map<std::string, std::string>({{"db", "das"}});
     // s.auth = ("user", "pw")
     s.auth = std::tuple<std::string, std::string>{"user", "pw"};
-    // s.connection = conn
-    s.connection = std::move(conn);
+    // s._connection = conn
+    s._connection = std::move(conn);
     // r = s.get("http://api.test/v1/tables", {"limit": "10"}, {"X-App": "override"})
     ::tpy::ordered_map<std::string, std::string> __tmp_1 = ::tpy::ordered_map<std::string, std::string>({{"limit", "10"}});
     ::tpy::ordered_map<std::string, std::string> __tmp_2 = ::tpy::ordered_map<std::string, std::string>({{"X-App", "override"}});
@@ -34,8 +34,8 @@ void merge_and_clear() {
     std::cout << r.status_code << "\n";
     // print(b.recv(65536))
     std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n";
-    // if s.connection is None:
-    if ((!s.connection.has_value())) {
+    // if s._connection is None:
+    if ((!s._connection.has_value())) {
         // print("connection cleared")
         std::cout << "connection cleared" << "\n";
     }
@@ -57,8 +57,8 @@ void session_post() {
     conn.sock = std::move(a);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.connection = conn
-    s.connection = std::move(conn);
+    // s._connection = conn
+    s._connection = std::move(conn);
     // r = s.post("http://api.test/v1/items", b"payload")
     ::tpystd::tplib::requests::Response r = s.post("http://api.test/v1/items", ::tpy::bytes_literal_owned("payload", 7));
     // print(r.status_code)
@@ -83,8 +83,8 @@ void context_manager_closes() {
     auto __ctx_1 = ::tpystd::tplib::requests::Session();
     auto& s = __ctx_1.__enter__();
     try {
-        // s.connection = conn
-        s.connection = std::move(conn);
+        // s._connection = conn
+        s._connection = std::move(conn);
         __ctx_1.__exit__({}, nullptr, {});
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});

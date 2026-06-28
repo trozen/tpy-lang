@@ -15,7 +15,7 @@ def main() -> None:
     conn = HTTPConnection("api.test", 80)
     conn.sock = a
     s = requests.Session()
-    s.connection = conn
+    s._connection = conn
     r = s.get("http://api.test/missing")
     print(r.status_code, r.ok, r.text)
     try:
@@ -39,7 +39,7 @@ def main() -> None:
     conn2 = HTTPConnection("api.test", 80)
     conn2.sock = p
     s2 = requests.Session()
-    s2.connection = conn2
+    s2._connection = conn2
     try:
         s2.get("http://api.test/x")
         print("no-raise")

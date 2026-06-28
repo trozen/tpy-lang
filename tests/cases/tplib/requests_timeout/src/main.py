@@ -16,7 +16,7 @@ def _hang_request() -> None:
     conn = HTTPConnection("api.test", 8002)
     conn.sock = a
     s = requests.Session()
-    s.connection = conn
+    s._connection = conn
     s.get("http://api.test:8002/hang")
     b.close()
 

@@ -17,7 +17,7 @@ def send(method: str, url: str, data: bytes | None, body_json: JsonValue | None,
     conn = HTTPConnection("api.test", 80)
     conn.sock = a
     s = requests.Session()
-    s.connection = conn
+    s._connection = conn
     r = s.request(method, url, None, data, body_json, None, auth)
     print(r.status_code, r.ok)
     print(b.recv(65536))

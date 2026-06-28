@@ -18,8 +18,8 @@ void main() {
     conn.sock = std::move(a);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.connection = conn
-    s.connection = std::move(conn);
+    // s._connection = conn
+    s._connection = std::move(conn);
     // r = s.get("http://api.test/missing")
     ::tpystd::tplib::requests::Response r = s.get("http://api.test/missing");
     // print(r.status_code, r.ok, r.text)
@@ -65,8 +65,8 @@ void main() {
     conn2.sock = std::move(p);
     // s2 = requests.Session()
     ::tpystd::tplib::requests::Session s2 = ::tpystd::tplib::requests::Session();
-    // s2.connection = conn2
-    s2.connection = std::move(conn2);
+    // s2._connection = conn2
+    s2._connection = std::move(conn2);
     // try:
     {
         try {

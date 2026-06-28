@@ -19,8 +19,8 @@ void send(std::string_view method, std::string_view url, std::optional<std::span
     conn.sock = std::move(a);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.connection = conn
-    s.connection = std::move(conn);
+    // s._connection = conn
+    s._connection = std::move(conn);
     // r = s.request(method, url, None, data, body_json, None, auth)
     ::tpystd::tplib::requests::Response r = s.request(method, url, nullptr, data, body_json, nullptr, auth);
     // print(r.status_code, r.ok)

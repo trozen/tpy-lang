@@ -1,7 +1,7 @@
 # tplib.requests follows a 302 to its Location: the final Response carries the
 # 200 (status/url/text) while .history holds the intermediate 302. Two
-# socketpairs feed the two hops (Session.connection for hop 0, the
-# redirect_connections queue for hop 1 -- the offline test seam); peers stay
+# socketpairs feed the two hops (Session._connection for hop 0, the
+# _redirect_connections queue for hop 1 -- the offline test seam); peers stay
 # open while the client writes so the request sends don't hit a closed peer.
 import socket
 from http.client import HTTPConnection
@@ -20,8 +20,8 @@ def main() -> None:
     h1 = HTTPConnection("api.test", 80)
     h1.sock = c
     s = requests.Session()
-    s.connection = h0
-    s.redirect_connections = [h1]
+    s._connection = h0
+    s._redirect_connections = [h1]
     r = s.get("http://api.test/v1/tables")
     print(r.status_code, r.ok, r.text)
     print(r.url)

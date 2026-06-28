@@ -20,8 +20,8 @@ void main() {
     h0.sock = std::move(a);
     // s = requests.Session()
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
-    // s.connection = h0
-    s.connection = std::move(h0);
+    // s._connection = h0
+    s._connection = std::move(h0);
     // try:
     {
         try {

@@ -13,7 +13,7 @@ def main() -> None:
     h0 = HTTPConnection("api.test", 80)
     h0.sock = a
     s = requests.Session()
-    s.connection = h0
+    s._connection = h0
     r = s.get("http://api.test/start", None, None, None, False)
     print(r.status_code, r.ok)
     print(r.url)
