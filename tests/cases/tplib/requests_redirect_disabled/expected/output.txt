@@ -1,0 +1,4 @@
+302 True
+http://api.test/start
+0
+/elsewhere

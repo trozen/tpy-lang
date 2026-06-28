@@ -11,6 +11,7 @@ Usage:
     uv run tpyc -x examples/net/curl.py -- -i -u user:pass http://api.test/
     uv run tpyc -x examples/net/curl.py -- -m 5 http://api.test/slow
     uv run tpyc -x examples/net/curl.py -- -o out.bin http://api.test/blob
+    uv run tpyc -x examples/net/curl.py -- -L http://api.test/redirects-here
 
 Plaintext HTTP only (tplib.requests has no TLS yet). This sandbox has no
 outbound network -- run it on a host that can reach the target.
@@ -50,6 +51,8 @@ def main() -> Int32:
                         help="write the body to a file instead of stdout")
     parser.add_argument("-i", "--include", action="store_true",
                         help="print the response headers before the body")
+    parser.add_argument("-L", "--location", action="store_true",
+                        help="follow HTTP redirects (off by default, like curl)")
     parser.add_argument("-m", "--max-time", type=float, default=0.0,
                         help="abort the request after this many seconds (0 = no limit)")
     args = parser.parse_args()
@@ -81,7 +84,7 @@ def main() -> Int32:
 
     try:
         r = requests.request(method, args.url, None, body, None, headers, auth,
-                             timeout)
+                             timeout, args.location)
     except Timeout:
         print(f"request timed out after {args.max_time}s")
         return 28          # curl's exit code for a timeout

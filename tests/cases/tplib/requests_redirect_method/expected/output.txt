@@ -1,0 +1,8 @@
+200 http://api.test/next
+b'GET /next HTTP/1.1' False False
+200 http://api.test/next
+b'GET /next HTTP/1.1' False False
+200 http://api.test/next
+b'POST /next HTTP/1.1' True True
+200 http://api.test/next
+b'POST /next HTTP/1.1' True True

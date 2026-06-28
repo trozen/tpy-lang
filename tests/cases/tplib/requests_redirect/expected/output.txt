@@ -1,0 +1,5 @@
+200 True hello
+http://api.test/v2/tables
+1 302 http://api.test/v1/tables
+b'GET /v1/tables HTTP/1.1'
+b'GET /v2/tables HTTP/1.1'

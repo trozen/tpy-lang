@@ -27,18 +27,28 @@
 #     None for no timeout; the requests (connect, read) tuple form is not
 #     supported, and a timeout raises requests.Timeout (not a bare OSError).
 #   - the exception tree (RequestException -> HTTPError/ConnectionError/
-#     Timeout) subclasses Exception only, NOT OSError; CPython requests roots
-#     it at IOError/OSError, so `except OSError` catches a requests error there
-#     but not here -- catch RequestException (or a subclass) instead.
-# Not supported (yet): redirect following, cookies, multipart files,
-# streaming (stream=/iter_content), proxies, TLS/HTTPS, auth schemes beyond
-# Basic.
+#     Timeout/TooManyRedirects) subclasses Exception only, NOT OSError; CPython
+#     requests roots it at IOError/OSError, so `except OSError` catches a
+#     requests error there but not here -- catch RequestException (or a
+#     subclass) instead.
+#   - redirects: allow_redirects= (default True; head() defaults False) follows
+#     301/302/303/307/308 via the Location header, resolved against the current
+#     URL with urljoin. Response.history holds the intermediate responses and
+#     Response.url is the final URL. As in requests, 301/302/303 rewrite the
+#     method to GET (POST->GET; 303 always except HEAD) and drop the body;
+#     307/308 keep method and body; a cross-host redirect drops Authorization.
+#     Exceeding Session.max_redirects (default 30) raises TooManyRedirects. The
+#     one divergence from requests: this client is HTTP-only, so a redirect to a
+#     non-http scheme (e.g. https) raises ConnectionError rather than being
+#     silently followed.
+# Not supported (yet): cookies, multipart files, streaming
+# (stream=/iter_content), proxies, TLS/HTTPS, auth schemes beyond Basic.
 # tpy: cpp_namespace("tpystd::tplib::requests")
 from __future__ import annotations
 from typing import Final
 from tpy import Int32, Own, String
 from http.client import HTTPConnection
-from urllib.parse import urlsplit, urlencode
+from urllib.parse import urlsplit, urlencode, urljoin
 from json import loads, dumps, JsonValue
 import base64
 
@@ -68,6 +78,12 @@ class Timeout(RequestException):
         super().__init__(message)
 
 
+class TooManyRedirects(RequestException):
+    """Raised when a request exceeds Session.max_redirects redirect hops."""
+    def __init__(self, message: String = "") -> None:
+        super().__init__(message)
+
+
 class Response:
     """The result of an HTTP request -- the body is fully read into `content`."""
 
@@ -76,6 +92,10 @@ class Response:
     url: str
     headers: dict[str, str]
     content: bytes
+    # The chain of responses that led here (oldest first); empty when the
+    # request was not redirected. The final response carries the whole chain,
+    # mirroring requests.Response.history. Recursive (list of Self).
+    history: list[Response]
 
     def __init__(self, status_code: Int32, reason: str, url: str,
                  headers: Own[dict[str, str]], content: bytes) -> None:
@@ -84,6 +104,7 @@ class Response:
         self.url = url
         self.headers = headers
         self.content = content
+        self.history = []
 
     @property
     def ok(self) -> bool:
@@ -138,6 +159,53 @@ def _prepare_headers(headers: dict[str, str] | None,
     if has_json_body and "Content-Type" not in out:
         out["Content-Type"] = "application/json"
     return out
+
+
+def _is_redirect(status: Int32) -> bool:
+    return (status == 301 or status == 302 or status == 303
+            or status == 307 or status == 308)
+
+
+def _header_ci(headers: dict[str, str], lower_name: str) -> str | None:
+    # Response.headers is a plain (case-preserving) dict, but HTTP header names
+    # are case-insensitive -- a server may send "location". Match lowercased.
+    for kv in headers.items():
+        if kv[0].lower() == lower_name:
+            return kv[1]
+    return None
+
+
+def _host_of(url: str) -> str:
+    h = urlsplit(url).hostname
+    if h is None:
+        return ""
+    return h
+
+
+def _drop_body_headers(headers: dict[str, str]) -> None:
+    # When a redirect coerces the method to GET the body is dropped, so its
+    # content headers must go too (requests purges Content-Type/Length/Transfer-
+    # Encoding/Content-Encoding). Case-insensitive: the caller may use any case.
+    to_drop: list[str] = []
+    for kv in headers.items():
+        low = kv[0].lower()
+        if (low == "content-type" or low == "content-length"
+                or low == "transfer-encoding" or low == "content-encoding"):
+            to_drop.append(kv[0])
+    for k in to_drop:
+        del headers[k]
+
+
+def _rebuild_method(method: str, status: Int32) -> str:
+    # Mirrors requests.Session.rebuild_method: 303 and 302 coerce any non-HEAD
+    # method to GET; 301 coerces only POST. 307/308 preserve the method.
+    if status == 303 and method != "HEAD":
+        return "GET"
+    if status == 302 and method != "HEAD":
+        return "GET"
+    if status == 301 and method == "POST":
+        return "GET"
+    return method
 
 
 def _request_on(conn: HTTPConnection, method: str, url: str,
@@ -195,54 +263,71 @@ def request(method: str, url: str, params: dict[str, str] | None = None,
             data: bytes | None = None, json: JsonValue | None = None,
             headers: dict[str, str] | None = None,
             auth: tuple[str, str] | None = None,
-            timeout: float | None = None) -> Own[Response]:
-    conn = _connect(url, timeout)
-    return _request_on(conn, method, url, params, data, json, headers, auth)
+            timeout: float | None = None,
+            allow_redirects: bool = True) -> Own[Response]:
+    # A fresh Session per call (http.client is Connection: close, so there is
+    # no pool to lose); routing through it keeps the redirect engine in one
+    # place. The empty-default header/param merge is an identity here.
+    s = Session()
+    return s.request(method, url, params, data, json, headers, auth, timeout,
+                     allow_redirects)
 
 
 def get(url: str, params: dict[str, str] | None = None,
         headers: dict[str, str] | None = None,
         auth: tuple[str, str] | None = None,
-        timeout: float | None = None) -> Own[Response]:
-    return request("GET", url, params, None, None, headers, auth, timeout)
+        timeout: float | None = None,
+        allow_redirects: bool = True) -> Own[Response]:
+    return request("GET", url, params, None, None, headers, auth, timeout,
+                   allow_redirects)
 
 
 def head(url: str, params: dict[str, str] | None = None,
          headers: dict[str, str] | None = None,
          auth: tuple[str, str] | None = None,
-         timeout: float | None = None) -> Own[Response]:
-    return request("HEAD", url, params, None, None, headers, auth, timeout)
+         timeout: float | None = None,
+         allow_redirects: bool = False) -> Own[Response]:
+    return request("HEAD", url, params, None, None, headers, auth, timeout,
+                   allow_redirects)
 
 
 def post(url: str, data: bytes | None = None, json: JsonValue | None = None,
          params: dict[str, str] | None = None,
          headers: dict[str, str] | None = None,
          auth: tuple[str, str] | None = None,
-         timeout: float | None = None) -> Own[Response]:
-    return request("POST", url, params, data, json, headers, auth, timeout)
+         timeout: float | None = None,
+         allow_redirects: bool = True) -> Own[Response]:
+    return request("POST", url, params, data, json, headers, auth, timeout,
+                   allow_redirects)
 
 
 def put(url: str, data: bytes | None = None, json: JsonValue | None = None,
         params: dict[str, str] | None = None,
         headers: dict[str, str] | None = None,
         auth: tuple[str, str] | None = None,
-        timeout: float | None = None) -> Own[Response]:
-    return request("PUT", url, params, data, json, headers, auth, timeout)
+        timeout: float | None = None,
+        allow_redirects: bool = True) -> Own[Response]:
+    return request("PUT", url, params, data, json, headers, auth, timeout,
+                   allow_redirects)
 
 
 def patch(url: str, data: bytes | None = None, json: JsonValue | None = None,
           params: dict[str, str] | None = None,
           headers: dict[str, str] | None = None,
           auth: tuple[str, str] | None = None,
-          timeout: float | None = None) -> Own[Response]:
-    return request("PATCH", url, params, data, json, headers, auth, timeout)
+          timeout: float | None = None,
+          allow_redirects: bool = True) -> Own[Response]:
+    return request("PATCH", url, params, data, json, headers, auth, timeout,
+                   allow_redirects)
 
 
 def delete(url: str, params: dict[str, str] | None = None,
            headers: dict[str, str] | None = None,
            auth: tuple[str, str] | None = None,
-           timeout: float | None = None) -> Own[Response]:
-    return request("DELETE", url, params, None, None, headers, auth, timeout)
+           timeout: float | None = None,
+           allow_redirects: bool = True) -> Own[Response]:
+    return request("DELETE", url, params, None, None, headers, auth, timeout,
+                   allow_redirects)
 
 
 class Session:
@@ -258,12 +343,19 @@ class Session:
     params: dict[str, str]
     auth: tuple[str, str] | None
     connection: HTTPConnection | None
+    # Connections for redirect hops 1..N (hop 0 uses `connection`): the offline
+    # test seam, since each hop needs a fresh connection and there is no real
+    # pool. Empty in normal use -- a hop with no queued connection opens one.
+    redirect_connections: list[HTTPConnection]
+    max_redirects: Int32
 
     def __init__(self) -> None:
         self.headers = {}
         self.params = {}
         self.auth = None
         self.connection = None
+        self.redirect_connections = []
+        self.max_redirects = 30
 
     def _merge_headers(self, headers: dict[str, str] | None) -> Own[dict[str, str]]:
         out: dict[str, str] = {}
@@ -283,42 +375,106 @@ class Session:
                 out[kv[0]] = kv[1]
         return out
 
+    def _send_for_hop(self, method: str, url: str,
+                      params: dict[str, str] | None, data: bytes | None,
+                      json: JsonValue | None, headers: dict[str, str],
+                      auth: tuple[str, str] | None,
+                      timeout: float | None, hop: Int32) -> Own[Response]:
+        # Each connection is single-use (Connection: close) and is closed inside
+        # _request_on, so every hop needs its own.
+        if hop == 0 and self.connection is not None:
+            # Clear even if the request raises -- the connection is single-use
+            # and must not be reused after a failure.
+            try:
+                return _request_on(self.connection, method, url, params, data,
+                                   json, headers, auth)
+            finally:
+                self.connection = None
+        if len(self.redirect_connections) > 0:
+            conn = self.redirect_connections.pop(0)
+            return _request_on(conn, method, url, params, data, json, headers,
+                               auth)
+        fresh = _connect(url, timeout)
+        return _request_on(fresh, method, url, params, data, json, headers,
+                           auth)
+
+    def _hop(self, method: str, url: str, params: dict[str, str] | None,
+             data: bytes | None, json: JsonValue | None,
+             headers: dict[str, str], auth: tuple[str, str] | None,
+             timeout: float | None, history: Own[list[Response]],
+             hop: Int32, follow: bool) -> Own[Response]:
+        # One request, then (when following) recurse on a 3xx Location. Recursion
+        # rather than a loop so each `return resp` is a straight-line last use --
+        # a loop-carried Own local trips the borrow checker's return guard.
+        resp = self._send_for_hop(method, url, params, data, json, headers, auth,
+                                  timeout, hop)
+        if not follow or not _is_redirect(resp.status_code):
+            resp.history = history
+            return resp
+        location = _header_ci(resp.headers, "location")
+        if location is None:
+            resp.history = history
+            return resp
+        if len(history) >= self.max_redirects:
+            raise TooManyRedirects("Exceeded " + str(self.max_redirects)
+                                   + " redirects for url: " + url)
+        next_url = urljoin(url, location)
+        next_scheme = urlsplit(next_url).scheme
+        if next_scheme != "" and next_scheme != "http":
+            raise ConnectionError("redirect to unsupported scheme '"
+                                  + next_scheme + "': " + next_url)
+        # Read everything needed off `resp` before appending it -- the append is
+        # resp's last use so it moves into history (no copy).
+        new_method = _rebuild_method(method, resp.status_code)
+        next_auth = auth
+        if _host_of(next_url) != _host_of(url):
+            # Don't leak credentials to a different host (requests.rebuild_auth).
+            if "Authorization" in headers:
+                del headers["Authorization"]
+            next_auth = None
+        history.append(resp)
+        # Redirect targets carry their own query in the Location, so the
+        # caller's params apply only to the first hop. The data/json body is
+        # forwarded directly (not via a reassignable local) so the recursive-
+        # union `json` param stays read-only (const) up the call chain.
+        if new_method != method:
+            _drop_body_headers(headers)
+            return self._hop(new_method, next_url, None, None, None, headers,
+                             next_auth, timeout, history, hop + 1, True)
+        return self._hop(new_method, next_url, None, data, json, headers,
+                         next_auth, timeout, history, hop + 1, True)
+
     def request(self, method: str, url: str,
                 params: dict[str, str] | None = None,
                 data: bytes | None = None, json: JsonValue | None = None,
                 headers: dict[str, str] | None = None,
                 auth: tuple[str, str] | None = None,
-                timeout: float | None = None) -> Own[Response]:
+                timeout: float | None = None,
+                allow_redirects: bool = True) -> Own[Response]:
         merged_headers = self._merge_headers(headers)
         merged_params = self._merge_params(params)
         use_auth = auth
         if use_auth is None:
             use_auth = self.auth
-        if self.connection is not None:
-            # Clear even if the request raises: the connection is single-use
-            # (Connection: close) and must not be reused after a failure.
-            try:
-                return _request_on(self.connection, method, url, merged_params,
-                                   data, json, merged_headers, use_auth)
-            finally:
-                self.connection = None
-        conn = _connect(url, timeout)
-        return _request_on(conn, method, url, merged_params, data, json,
-                           merged_headers, use_auth)
+        history: list[Response] = []
+        return self._hop(method, url, merged_params, data, json, merged_headers,
+                         use_auth, timeout, history, 0, allow_redirects)
 
     def get(self, url: str, params: dict[str, str] | None = None,
             headers: dict[str, str] | None = None,
-            timeout: float | None = None) -> Own[Response]:
+            timeout: float | None = None,
+            allow_redirects: bool = True) -> Own[Response]:
         return self.request("GET", url, params, None, None, headers, None,
-                            timeout)
+                            timeout, allow_redirects)
 
     def post(self, url: str, data: bytes | None = None,
              json: JsonValue | None = None,
              params: dict[str, str] | None = None,
              headers: dict[str, str] | None = None,
-             timeout: float | None = None) -> Own[Response]:
+             timeout: float | None = None,
+             allow_redirects: bool = True) -> Own[Response]:
         return self.request("POST", url, params, data, json, headers, None,
-                            timeout)
+                            timeout, allow_redirects)
 
     def __enter__(self) -> "Session":
         return self
@@ -327,3 +483,5 @@ class Session:
         if self.connection is not None:
             self.connection.close()
             self.connection = None
+        for conn in self.redirect_connections:
+            conn.close()
