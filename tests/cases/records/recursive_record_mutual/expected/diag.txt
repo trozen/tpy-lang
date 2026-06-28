@@ -1,0 +1,2 @@
+main.py:28: warning: copies B into owned storage; use copy() to make this explicit
+main.py:32: warning: copies A into owned storage; use copy() to make this explicit

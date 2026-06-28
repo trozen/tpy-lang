@@ -1027,6 +1027,11 @@ class SemanticContext:
     # recurse into Tree[T] forever. Conservative False at the recursion point
     # mirrors `RecursiveAliasInstanceType.is_value_type`'s guard in typesys.
     _evaluating_alias_nocopy: set = field(default_factory=set)
+    # Re-entry guard for `is_type_non_copyable`'s record-field walk: a
+    # self-/mutually-referential record (`children: list[Node]`) would recurse
+    # forever. Conservative False at the recursion point, mirroring the alias
+    # guard above. is_type_nocopy needs no such set -- it walks type args only.
+    _evaluating_record_noncopyable: set = field(default_factory=set)
 
     # --- Last-use tracking (shared with codegen, persists across functions) ---
     all_last_uses: set[int] = field(default_factory=set)
@@ -1241,22 +1246,35 @@ class SemanticContext:
             return False
         if record.is_nocopy or record.has_del:
             return True
-        # Inheritance: recurse into each direct parent so each parent's own logic
-        # (including its has_copy barrier up its chain) applies independently.
-        # For multi-base, any direct parent being non-copyable makes the child
-        # non-copyable; for single-parent, parent.has_copy correctly short-circuits
-        # the parent's recursion, matching the old `break`-on-has_copy behavior.
-        for p in record.parents:
-            if self.is_type_non_copyable(p):
-                return True
-        if isinstance(typ, NominalType) and typ.type_args:
-            for arg in typ.type_args:
-                if isinstance(arg, TpyType) and self.is_type_non_copyable(arg):
+        # Re-entry guard for self-/mutually-referential records: a field or type
+        # arg whose type cycles back here (e.g. a tree node `children: list[Node]`)
+        # would otherwise recurse forever through the walks below. Conservative
+        # False at the recursion point matches the recursive-alias guard above and
+        # is_value_type's -- a cycle alone never deletes copy; the answer is
+        # decided by the non-cyclic fields/parents the first entry still walks.
+        if typ in self._evaluating_record_noncopyable:
+            return False
+        self._evaluating_record_noncopyable.add(typ)
+        try:
+            # Inheritance: recurse into each direct parent so each parent's own
+            # logic (including its has_copy barrier up its chain) applies
+            # independently. For multi-base, any direct parent being non-copyable
+            # makes the child non-copyable; for single-parent, parent.has_copy
+            # correctly short-circuits the parent's recursion, matching the old
+            # `break`-on-has_copy behavior.
+            for p in record.parents:
+                if self.is_type_non_copyable(p):
                     return True
-        for f in record.fields:
-            if self.is_type_non_copyable(f.type):
-                return True
-        return False
+            if isinstance(typ, NominalType) and typ.type_args:
+                for arg in typ.type_args:
+                    if isinstance(arg, TpyType) and self.is_type_non_copyable(arg):
+                        return True
+            for f in record.fields:
+                if self.is_type_non_copyable(f.type):
+                    return True
+            return False
+        finally:
+            self._evaluating_record_noncopyable.discard(typ)
 
     def get_expr_type(self, expr: TpyExpr) -> TpyType | None:
         """Get the cached type of an expression, stripping Ref and Own.
