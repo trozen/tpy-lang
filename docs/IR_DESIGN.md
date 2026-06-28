@@ -9,7 +9,7 @@
 | `--dump-thir` debug output | Done (increment 1) |
 | THIR-backed codegen context | Increment 1 -- flag-gated (`tpyc/thir/emit.py`) |
 | Codegen migration from analyzer/AST to THIR | Increments 1-5 -- value-scalar bodies incl. if/elif/else, while, range-for, double float, bool, comparison-as-value |
-| THIR form fact (Open Q 9/11/12) | **Rung F1 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`); single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads, byte-identical with `--thir-codegen` forced over the full corpus. Rungs F2-F-final not started |
+| THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`). F1: single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads. F2: reseatable `T*` pointer-locals (lvalue reseat, `&(...)`, `->` reads) + the Optional borrow->storage write (`ptr_to_optional`). Byte-identical with `--thir-codegen` forced over the full corpus. Deferred within F2 (AST path): rvalue rebind-slot (`__slot_N`) machinery, `_move`/owned sources, return-into-storage-optional, ctor-MIL, call-arg. F3-F-final not started |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
 | `--dump-mir` debug output | Not started |
@@ -125,6 +125,25 @@ sources, `->` pointer-local receivers, and any call passing a non-value
 (record / `Own[record]`) argument (the auto-move `f(std::move(p))` the bare-name
 THIRCall emit does not reproduce). Byte-identical across the whole corpus with
 `--thir-codegen` forced.
+
+**Increment 7 lands the F2 core** -- the reassigned/rebound and write halves of
+the form rung, both restricted to their byte-reproducible, gate-clear subset.
+*F2a:* a reassigned plain-record local lowers to a reseatable `T*` pointer-local
+(`POINTER`, the reassigned counterpart of F1's REF_ALIAS) when every assignment is
+an lvalue field source -- init/reseat as `&(...)` (a STORAGE->BORROW
+`THIRFormConvert`, the same node F1 uses for the read), reads as `recv->field`. The
+shared `forms.classify_local_binding` gains `POINTER`; the AST path branches only
+on `is not REF_ALIAS`, so the split is transparent to it. *F2b:* a borrow `T*`
+(POINTER or `optional_to_ptr` local) stored into a storage `Optional[record]` field
+lowers to `recv.field = ::tpy::ptr_to_optional(p)` -- the first **mutating**
+statement in the slice, so the written receiver becomes a non-const param (a pure
+`const_borrow_params` read, the same fact F1 uses). A pre-commit gate confirmed the
+copy-vs-move choice is a pure sema read (`function_movable_locals` + last-use) and,
+for a borrow source, `_move` never fires -- so F2b emits the copy helper
+unconditionally. Deferred to the AST path (filed in TODO.md): the rvalue
+rebind-slot (`__slot_N`) machinery, `_move`/owned sources, `copy()`-acknowledged +
+call/None/name-alias write sources, return-into-storage-optional, ctor-MIL, and
+call-arg. Byte-identical across the whole corpus with `--thir-codegen` forced.
 
 ---
 
@@ -843,7 +862,7 @@ that the migration enables. Migration-complete != bugs-fixed.
 | Rung | Scope | Closes (inventory) |
 |------|-------|--------------------|
 | **F1** *(landed 2026-06)* | single-assignment non-value **record** locals + Optional[record] storage->borrow read (`T&` alias, lvalue `optional_to_ptr`, is_const propagation, record borrow params) + scalar field reads; excludes reassigned/rebound/rvalue-slot, container/cross-module/native records, and calls passing a non-value arg (auto-move). Container locals fold in with F3 | most of section 1 non-value-local + section 4 read |
-| **F2** | reassigned/rebound locals + Optional borrow->storage write/return (`T*` + `rebind_slots`, `__slot_N`, `ptr_to_optional[_move]`) | section 3b slot machinery + section 4 write |
+| **F2** *(core landed 2026-06)* | reassigned/rebound locals + Optional borrow->storage write/return. **Landed:** reseatable `T*` pointer-locals with **lvalue** reseat (`&(...)`, no slot) + `->` reads, and the optional-field **write** from a borrow source (`ptr_to_optional`, copy). **Deferred (AST path):** the `rebind_slots`/`__slot_N` rvalue machinery, `_move`/owned sources, `copy()`-acknowledged + call/None/name-alias sources, return-into-storage-optional, ctor-MIL, call-arg | section 3b slot machinery (partial) + section 4 write (partial) |
 | **F3** | Tuple form (per-element pointer/optional mask, BORROW_TUPLE / STORAGE_TUPLE) | section 1 tuple, section 4 tuple sites |
 | **F4** | Union form (`to_ptr_variant` / `to_value_variant`, value/ptr-variant split, the 3 consumer-dictated exhibits) | section 1 union |
 | **F5** | Generic-slot form (`val_or_ref_t` / `val_or_ptr_t` over TypeParamRef) | section 1 generic, section 3c RefType (begin) |

@@ -59,7 +59,8 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
         init = _expr(stmt.init) if stmt.init is not None else "<uninit>"
         return [f"{pad}%{stmt.name}: {_ty(stmt.resolved_type)} = {init}"]
     if isinstance(stmt, THIRAssign):
-        return [f"{pad}%{stmt.target.name} = {_expr(stmt.value)}"]
+        # target is a THIRName (`%x`) or, for F2b, a THIRFieldAccess (`recv.field`).
+        return [f"{pad}{_expr(stmt.target)} = {_expr(stmt.value)}"]
     if isinstance(stmt, THIRReturn):
         return [f"{pad}return {_expr(stmt.value)}" if stmt.value is not None
                 else f"{pad}return"]

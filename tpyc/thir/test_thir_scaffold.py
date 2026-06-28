@@ -817,14 +817,23 @@ class TestF1Eligibility:
             + "    def get(self) -> Int32:\n        x = self.b\n        return x.n\n")
         assert _fn(thir, "get") is None
 
-    def test_reassigned_nonvalue_local_is_ineligible(self):
-        # A reassigned non-value local needs the pointer-local rebind machinery
-        # (F2), so it stays on the AST path.
+    def test_reassigned_nonvalue_local_routes_as_pointer(self):
+        # F2: a reassigned plain-record local with lvalue field sources is a
+        # reseatable `T*` pointer-local (POINTER), no longer AST-only.
         thir = _lower_ctx(
             _F1_RECORDS
             + "def f(b: Box, c: Box) -> Int32:\n"
             + "    x = b.inner\n    x = c.inner\n    return x.value\n")
-        assert _fn(thir, "f") is None
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.POINTER
+        assert decl.form is Form.BORROW and decl.cpp_type == "Inner"
+        assert isinstance(decl.init, THIRFormConvert)  # &(b.inner)
+        assert decl.init.form is Form.BORROW
+        assert isinstance(decl.init.value, THIRFieldAccess)
+        assert decl.init.value.form is Form.STORAGE
 
     def test_call_passing_record_arg_is_ineligible(self):
         # Passing an Own[record] / record param positionally crosses an ownership
@@ -913,3 +922,214 @@ class TestF1Emit:
         cpp = self._cpp(self.SRC, thir=True)
         assert "const Inner& x = b.inner;" in cpp
         assert "const Leaf* p = ::tpy::optional_to_ptr(x.opt);" in cpp
+
+
+# --- F2 form rung: reassigned/rebound pointer-locals (lvalue reseat) ---
+
+
+class TestF2PointerLocal:
+    def test_rvalue_reseat_is_ineligible(self):
+        # Reseating from an rvalue (a constructor) needs the `__slot_N` rebind
+        # machinery -- deferred past F2's lvalue-reseat slice -> AST path.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box, which: Int32) -> Int32:\n"
+            + "    x = b.inner\n    if which < 0:\n        x = Inner(9)\n    return x.value\n")
+        assert _fn(thir, "f") is None
+
+    def test_name_alias_reseat_is_ineligible(self):
+        # Reseating from a name (not a field source) is the deferred name-alias
+        # case -> AST path.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box, c: Box, which: Int32) -> Int32:\n"
+            + "    x = b.inner\n    y = c.inner\n"
+            + "    if which < 0:\n        x = y\n    return x.value\n")
+        assert _fn(thir, "f") is None
+
+    def test_reseat_lowers_to_assign_with_convert(self):
+        # The reseat is a THIRAssign whose value is the `&(...)` storage->borrow
+        # convert; the read off the pointer-local is an arrow field access.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box, c: Box, which: Int32) -> Int32:\n"
+            + "    x = b.inner\n    if which < 0:\n        x = c.inner\n    return x.value\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        reseat = fn.body[1].then_body[0]
+        assert isinstance(reseat, THIRAssign) and reseat.target.name == "x"
+        assert isinstance(reseat.value, THIRFormConvert)
+        assert reseat.value.form is Form.BORROW
+        assert isinstance(reseat.value.value, THIRFieldAccess)  # c.inner
+        ret = fn.body[2]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRFieldAccess) and ret.value.is_arrow
+
+
+class TestF2Emit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _F1_RECORDS
+        + "def reseat(b: Box, c: Box, which: Int32) -> Int32:\n"
+        + "    x = b.inner\n    if which < 0:\n        x = c.inner\n    return x.value\n"
+        + "def main():\n"
+        + "    box = Box(Inner(3))\n    print(reseat(box, box, -1))\n"
+        + "main()\n"
+    )
+
+    def test_f2_byte_identical(self):
+        # The load-bearing F2a contract: the pointer-local init / reseat / arrow
+        # read emit identically to the AST path.
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_pointer_local_init_and_reseat(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "Inner* x = &(b.inner);" in cpp
+        assert "x = &(c.inner);" in cpp
+
+    def test_arrow_read_off_pointer_local(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "return x->value;" in cpp
+
+    def test_const_pointer_local(self):
+        # A readonly receiver makes the reseatable pointer-local a `const Inner*`
+        # (exercises _f1_is_const for POINTER), reseated and read identically.
+        src = (
+            _F1_RECORDS
+            + "def f(b: readonly[Box], c: readonly[Box], which: Int32) -> Int32:\n"
+            + "    x = b.inner\n    if which < 0:\n        x = c.inner\n    return x.value\n"
+            + "def main():\n    box = Box(Inner(1))\n    print(f(box, box, -1))\nmain()\n")
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        cpp = self._cpp(src, thir=True)
+        assert "const Inner* x = &(b.inner);" in cpp
+        assert "return x->value;" in cpp
+
+
+# --- F2b form rung: Optional borrow->storage write (ptr_to_optional) ---
+
+
+class TestF2bWrite:
+    def test_optional_field_write_routes(self):
+        # p = src.opt (OPTIONAL_TO_PTR borrow) ; dst.opt = p lowers to a field-target
+        # THIRAssign whose value is the borrow->storage convert (ptr_to_optional).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def move_opt(src: Box, dst: Box):\n    p = src.opt\n    dst.opt = p\n")
+        fn = _fn(thir, "move_opt")
+        assert fn is not None
+        write = fn.body[1]
+        assert isinstance(write, THIRAssign)
+        assert isinstance(write.target, THIRFieldAccess) and write.target.field_cpp == "opt"
+        assert isinstance(write.value, THIRFormConvert) and write.value.form is Form.STORAGE
+        assert write.value.value.form is Form.BORROW  # the `p` borrow being lifted
+
+    def test_copy_acknowledged_value_is_ineligible(self):
+        # `copy(p)` (the explicit acknowledgment) is a call -- deferred to the AST path.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "from tpy import copy\n"
+            + "def move_opt(src: Box, dst: Box):\n    p = src.opt\n    dst.opt = copy(p)\n")
+        assert _fn(thir, "move_opt") is None
+
+    def test_scalar_field_write_is_ineligible(self):
+        # A non-optional (scalar) field write is not the F2b shape -> AST path.
+        thir = _lower_ctx(
+            _F1_RECORDS + "def setn(dst: Box):\n    dst.n = 5\n")
+        assert _fn(thir, "setn") is None
+
+    def test_ref_alias_value_is_ineligible(self):
+        # A `T&` REF_ALIAS value is not a `T*` pointer source (the AST path emits it
+        # differently), so an optional-field write from it stays on the AST path.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(src: Box, dst: Box):\n    x = src.inner\n    dst.opt = x\n")
+        assert _fn(thir, "f") is None
+
+
+class TestF2bEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _F1_RECORDS
+        + "def move_opt(src: Box, dst: Box):\n    p = src.opt\n    dst.opt = p\n"
+        + "def main():\n    a = Box(Inner(1))\n    b = Box(Inner(2))\n    move_opt(a, b)\nmain()\n"
+    )
+
+    def test_f2b_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_ptr_to_optional(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "dst.opt = ::tpy::ptr_to_optional(p);" in cpp
+
+    def test_written_receiver_is_non_const(self):
+        # Mutation enters the slice: the written receiver is a non-const `Box&`,
+        # the read-only one a `const Box&` (pure const_borrow_params sema read).
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "void move_opt(const Box& src, Box& dst)" in cpp
+
+
+class TestF2PointerReceiver:
+    """F2 paths where a POINTER local is itself the field-access receiver, so the
+    field renders `x->field`: an Optional READ source (`optional_to_ptr(x->opt)`)
+    and an Optional WRITE target (`x->opt = ptr_to_optional(leaf)`). Both are
+    admitted by the F2a/F2b gates (a POINTER local is an F1-record receiver) and
+    must stay byte-identical to the AST path; neither the scaffold nor the two
+    corpus cases exercised them before."""
+
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _F1_RECORDS
+        + "def read_opt(b: Box, c: Box, which: Int32) -> Int32:\n"
+        + "    x = b.inner\n    if which < 0:\n        x = c.inner\n    q = x.opt\n    return 0\n"
+        + "def write_opt(b: Box, c: Box, src: Inner, which: Int32):\n"
+        + "    x = b.inner\n    if which < 0:\n        x = c.inner\n    leaf = src.opt\n    x.opt = leaf\n"
+        + "def main():\n"
+        + "    bx = Box(Inner(1))\n    cx = Box(Inner(2))\n    s = Inner(3)\n"
+        + "    print(read_opt(bx, cx, -1))\n    write_opt(bx, cx, s, 1)\nmain()\n"
+    )
+
+    def test_both_route(self):
+        thir = _lower_ctx(self.SRC)
+        assert _fn(thir, "read_opt") is not None
+        assert _fn(thir, "write_opt") is not None
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_optional_source_off_pointer_local(self):
+        # `q = x.opt` off a POINTER local -> the storage read uses `x->opt`.
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "::tpy::optional_to_ptr(x->opt)" in cpp
+
+    def test_optional_write_off_pointer_local(self):
+        # `x.opt = leaf` off a POINTER local -> the write target uses `x->opt`.
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "x->opt = ::tpy::ptr_to_optional(leaf);" in cpp
+
+    def test_reassigned_optional_local_is_ineligible(self):
+        # A reassigned OPTIONAL_TO_PTR (optional pointer-local) needs the rebind-
+        # slot machinery, so it stays on the AST path (the optional branch of
+        # classify_local_binding returns OTHER for a reassigned name).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box, c: Box, which: Int32) -> Int32:\n"
+            + "    p = b.opt\n    if which < 0:\n        p = c.opt\n    return 0\n")
+        assert _fn(thir, "f") is None

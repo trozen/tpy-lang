@@ -8,9 +8,11 @@ today inside `_gen_var_decl_code`'s indirection cascade; this module lifts that
 decision into one helper so the legacy AST codegen path and THIR lowering reach
 it identically (the same shared-helper pattern as `resolve_stmt_binding_type`).
 
-Only the single-assignment slice is modeled here (THIR form rung F1); every
-other binding shape -- reassigned/rebound pointer-locals, tuples, unions,
-generic slots -- returns `OTHER` and stays on the caller's existing path.
+The single-assignment slice (`T&` / `optional_to_ptr` `T*`) is rung F1; a
+reassigned-but-lvalue-sourced plain non-value local is rung F2's reseatable
+`T*` pointer-local (`POINTER`). Every other binding shape -- rvalue/rebind-slot
+locals, tuples, unions, generic slots -- returns `OTHER` and stays on the
+caller's existing path.
 """
 
 from __future__ import annotations
@@ -40,12 +42,17 @@ class LocalBinding(Enum):
       * `REF_ALIAS`       -- `T&` / `const T&` aliasing an lvalue storage source.
       * `OPTIONAL_TO_PTR` -- `T*` / `const T*` lifted from a storage-form
                              `Optional[ref]` lvalue via `::tpy::optional_to_ptr`.
+      * `POINTER`         -- `T*` / `const T*` pointer-local of a plain non-value
+                             lvalue source (`&(...)`), reseatable across
+                             reassignments. The reassigned counterpart of
+                             REF_ALIAS; only the lvalue-reseat (slot-free) subset.
       * `OTHER`           -- any other binding; the caller's existing path owns it
-                             (reassigned/rebound locals, rvalue slots, tuples,
-                             unions, generic slots, value types).
+                             (rvalue/rebind-slot locals, tuples, unions, generic
+                             slots, value types).
     """
     REF_ALIAS = auto()
     OPTIONAL_TO_PTR = auto()
+    POINTER = auto()
     OTHER = auto()
 
 
@@ -109,24 +116,35 @@ def classify_local_binding(
     """Classify a first-declaration non-value local's C++ binding shape.
 
     Pure: a function of the resolved type, the init expression, and the
-    per-function prescan facts. Returns `OTHER` for anything outside the
-    single-assignment slice (reassigned / hoisted / move-through locals, rvalue
-    sources, tuples / unions / protocols / generic slots, value types).
+    per-function prescan facts. Returns `OTHER` for anything outside the modeled
+    slice (hoisted / move-through / rvalue-sourced locals, tuples / unions /
+    protocols / generic slots, value types).
 
     Callers consult this only *after* their own guards -- the legacy path inside
     `_gen_var_decl_code`'s indirection cascade (the tuple / protocol / generic
     branches have already not fired), THIR lowering after its eligibility gate --
     so the guard-chain shapes need not be re-derived here.
+
+    The AST path treats every non-`REF_ALIAS` result as a pointer-local, so
+    splitting `POINTER` out of the old `OTHER` is transparent to it.
     """
     if init is None or target_type is None:
         return LocalBinding.OTHER
-    if name in reassigned or name in hoisted or name in move_through:
+    if name in hoisted or name in move_through:
         return LocalBinding.OTHER
+    is_reassigned = name in reassigned
     if isinstance(target_type, OptionalType) and target_type.uses_pointer_repr():
+        # A reassigned optional pointer-local needs the rebind-slot (`__slot_N`)
+        # machinery -- deferred past F2's lvalue-reseat slice.
+        if is_reassigned:
+            return LocalBinding.OTHER
         if (reads_storage_form_optional(analyzer, init)
                 and not is_rvalue_source(analyzer, init)):
             return LocalBinding.OPTIONAL_TO_PTR
         return LocalBinding.OTHER
     if is_plain_nonvalue(target_type) and not is_rvalue_source(analyzer, init):
-        return LocalBinding.REF_ALIAS
+        # Single-assignment binds a `T&` alias; a reassigned local is a
+        # reseatable `T*` pointer-local. Both lift the same lvalue storage source
+        # to a borrow at the binding site (the reseat to later lvalues is F2).
+        return LocalBinding.POINTER if is_reassigned else LocalBinding.REF_ALIAS
     return LocalBinding.OTHER

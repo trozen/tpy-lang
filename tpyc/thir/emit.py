@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from typing import TextIO
 
 from ..codegen_cpp.context import INDENT, escape_cpp_name, expand_cpp_template
-from ..codegen_cpp.forms import LocalBinding
+from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
 from ..typesys import OptionalType, unwrap_qualifiers
 from .nodes import (
     Form,
@@ -160,14 +160,25 @@ def _emit_field_access(e: THIRFieldAccess) -> str:
 
 
 def _emit_form_convert(e: THIRFormConvert) -> str:
-    # F1: the Optional storage->borrow read. optional_to_ptr's const overload is
-    # auto-selected by the optional's own const-ness, so is_const here is carried
-    # for MIR / other families, not the rendered helper. Other families (union /
-    # tuple) and the borrow->storage direction arrive in later rungs.
+    # storage->borrow lifts. optional_to_ptr's const overload is auto-selected by
+    # the optional's own const-ness, so is_const here is carried for MIR / other
+    # families, not the rendered helper. The borrow->storage direction (F2b) and
+    # the union / tuple families arrive in later rungs.
     inner = _emit_expr(e.value)
     t = unwrap_qualifiers(e.result_type)
-    if isinstance(t, OptionalType) and e.form is Form.BORROW:
-        return f"::tpy::optional_to_ptr({inner})"
+    if e.form is Form.BORROW:
+        # F1 Optional[ref] read: `std::optional<T>` lvalue -> `T*`.
+        if isinstance(t, OptionalType):
+            return f"::tpy::optional_to_ptr({inner})"
+        # F2a plain non-value lvalue -> reseatable `T*` pointer-local: address-of.
+        if is_plain_nonvalue(t):
+            return f"&({inner})"
+    elif e.form is Form.STORAGE:
+        # F2b borrow `T*` -> storage `std::optional<T>` (write/return direction).
+        # `_move` never fires for a borrow source (gate-confirmed), so always the
+        # copying helper; the owned-source `_move` variant arrives with a later rung.
+        if isinstance(t, OptionalType):
+            return f"::tpy::ptr_to_optional({inner})"
     raise THIRCodeGenError(
         f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
 
@@ -286,7 +297,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             cpp_type = stmt.resolved_type.to_cpp()
             out.write(f"{indent}{cpp_type} {name} = {_emit_expr(stmt.init)};\n")
     elif isinstance(stmt, THIRAssign):
-        out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = {_emit_expr(stmt.value)};\n")
+        # target is a THIRName (`x = ...`) or, for F2b, a THIRFieldAccess
+        # (`recv.field = ...` / `recv->field = ...`); _emit_expr renders both.
+        out.write(f"{indent}{_emit_expr(stmt.target)} = {_emit_expr(stmt.value)};\n")
     elif isinstance(stmt, THIRReturn):
         if stmt.value is None:
             out.write(f"{indent}return;\n")

@@ -175,8 +175,11 @@ class THIRVarDecl(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRAssign(THIRStmt):
-    """Assignment to an already-declared local (`name = value`)."""
-    target: THIRName
+    """Assignment to an already-declared local (`name = value`) or, for the F2b
+    borrow->storage write, to a record field (`recv.field = value`). `target` is
+    a THIRName for the former and a THIRFieldAccess for the latter; emission
+    renders the target expression directly, so both shapes share one node."""
+    target: THIRExpr
     value: THIRExpr
 
 
