@@ -30,7 +30,7 @@ void main() {
     // print(r.text)
     std::cout << r.text() << "\n";
     // print(r.headers["Content-Type"])
-    std::cout << ::tpy::__getitem__(r.headers, "Content-Type") << "\n";
+    std::cout << r.headers["Content-Type"] << "\n";
     // r.raise_for_status()            # 200 -> no raise
     r.raise_for_status();
     // d = r.json()

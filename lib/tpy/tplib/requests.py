@@ -13,8 +13,10 @@
 #     for a known shape use the typed path `Model.from_json(r.text)`
 #     (tplib.json @model).
 #   - Response.text decodes as UTF-8 (no charset sniffing; .encoding is fixed).
-#   - Response.headers is a plain dict[str, str] (last value wins), not a
-#     case-insensitive multi-dict.
+#   - Response.headers is a CaseInsensitiveDict (case-insensitive lookup,
+#     original casing preserved for items/keys). Duplicate header names are
+#     last-value-wins, not joined with ", " (CPython requests joins via
+#     urllib3). `for k in headers` is not supported yet -- use headers.keys().
 #   - Session keeps default headers/params but cannot truly pool connections:
 #     http.client sends `Connection: close`, so each request uses a fresh
 #     connection. The assignable `connection` field overrides that for one
@@ -84,13 +86,80 @@ class TooManyRedirects(RequestException):
         super().__init__(message)
 
 
+class CaseInsensitiveDict:
+    """Case-insensitive str->str mapping for HTTP headers, mirroring
+    requests.structures.CaseInsensitiveDict. Header names are case-insensitive
+    per RFC 7230, so `h["Content-Type"]` and `h["content-type"]` are the same
+    entry; the original casing is preserved for items()/keys() (last-set wins).
+    `for k in h` is not supported yet -- iterate h.keys()."""
+
+    # lowercased name -> (original-cased name, value): the lowercased key drives
+    # case-insensitive lookup while the tuple keeps the caller's casing.
+    _store: dict[str, tuple[str, str]]
+
+    def __init__(self) -> None:
+        self._store = {}
+
+    def __setitem__(self, key: str, value: str) -> None:
+        self._store[key.lower()] = (key, value)
+
+    def __getitem__(self, key: str) -> str:
+        return self._store[key.lower()][1]
+
+    def __delitem__(self, key: str) -> None:
+        del self._store[key.lower()]
+
+    def __contains__(self, key: str) -> bool:
+        return key.lower() in self._store
+
+    def __len__(self) -> Int32:
+        return len(self._store)
+
+    def get(self, key: str, default: str | None = None) -> str | None:
+        lk = key.lower()
+        if lk in self._store:
+            return self._store[lk][1]
+        return default
+
+    def keys(self) -> Own[list[str]]:
+        out: list[str] = []
+        for lk in self._store:
+            out.append(self._store[lk][0])
+        return out
+
+    def values(self) -> Own[list[str]]:
+        out: list[str] = []
+        for lk in self._store:
+            out.append(self._store[lk][1])
+        return out
+
+    def items(self) -> Own[list[tuple[str, str]]]:
+        out: list[tuple[str, str]] = []
+        for lk in self._store:
+            pair = self._store[lk]
+            out.append((pair[0], pair[1]))
+        return out
+
+    def __eq__(self, other: CaseInsensitiveDict) -> bool:
+        # Compare by lowercased key, ignoring original casing (matches
+        # requests' CaseInsensitiveDict).
+        if len(self._store) != len(other._store):
+            return False
+        for lk in self._store:
+            if lk not in other._store:
+                return False
+            if self._store[lk][1] != other._store[lk][1]:
+                return False
+        return True
+
+
 class Response:
     """The result of an HTTP request -- the body is fully read into `content`."""
 
     status_code: Int32
     reason: str
     url: str
-    headers: dict[str, str]
+    headers: CaseInsensitiveDict
     content: bytes
     # The chain of responses that led here (oldest first); empty when the
     # request was not redirected. The final response carries the whole chain,
@@ -98,7 +167,7 @@ class Response:
     history: list[Response]
 
     def __init__(self, status_code: Int32, reason: str, url: str,
-                 headers: Own[dict[str, str]], content: bytes) -> None:
+                 headers: Own[CaseInsensitiveDict], content: bytes) -> None:
         self.status_code = status_code
         self.reason = reason
         self.url = url
@@ -166,15 +235,6 @@ def _is_redirect(status: Int32) -> bool:
             or status == 307 or status == 308)
 
 
-def _header_ci(headers: dict[str, str], lower_name: str) -> str | None:
-    # Response.headers is a plain (case-preserving) dict, but HTTP header names
-    # are case-insensitive -- a server may send "location". Match lowercased.
-    for kv in headers.items():
-        if kv[0].lower() == lower_name:
-            return kv[1]
-    return None
-
-
 def _host_of(url: str) -> str:
     h = urlsplit(url).hostname
     if h is None:
@@ -240,7 +300,7 @@ def _request_on(conn: HTTPConnection, method: str, url: str,
         raise ConnectionError("connection failed: " + url)
     status = resp.status
     reason = resp.reason
-    out_headers: dict[str, str] = {}
+    out_headers = CaseInsensitiveDict()
     for kv in resp.getheaders():
         out_headers[kv[0]] = kv[1]
     conn.close()
@@ -411,7 +471,7 @@ class Session:
         if not follow or not _is_redirect(resp.status_code):
             resp.history = history
             return resp
-        location = _header_ci(resp.headers, "location")
+        location = resp.headers.get("location")
         if location is None:
             resp.history = history
             return resp

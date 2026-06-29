@@ -30,7 +30,7 @@ void main() {
     // print(len(r.history))
     std::cout << ::tpy::__len__(r.history) << "\n";
     // print(r.headers["Location"])
-    std::cout << ::tpy::__getitem__(r.headers, "Location") << "\n";
+    std::cout << r.headers["Location"] << "\n";
     // b.close()
     b.close();
 }

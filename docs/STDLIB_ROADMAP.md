@@ -165,7 +165,7 @@ Examples of the policy in action:
 | [`http`](#httpclient) | P2 | Partial | ~60% | pure | `HTTPStatus` (full IntEnum code set; `.value`/`.name`/value-lookup/int-compare; no `.phrase`/`.description`/`.is_*` -- enum can't carry per-member data). Missing: `HTTPMethod` enum |
 | [`http.client`](#httpclient) | P2 | Partial | ~55% | pure | Plaintext HTTP/1.1: `HTTPConnection.request`/`getresponse`/`connect`/`close`, `HTTPResponse` (`status`/`reason`/`version`/`read`/`getheader`/`getheaders`), `HTTPException`/`BadStatusLine`/`UnknownProtocol`. Auto Host/Accept-Encoding/Content-Length (CPython byte-order); body framing via Content-Length, chunked, and connection-close. Reads through `socket.makefile` -> `io.BufferedReader`. `HTTPConnection(host, port, timeout=)` threads a socket timeout through `create_connection`. Missing: HTTPS/`ssl`, low-level putrequest/putheader, str/file/iterable bodies, `email.message`-style `.headers`, redirects/proxy/connection-reuse (see TODO.md) |
 | [`urllib.request`](#urllibrequest) | P2 | Partial | ~20% | pure | Simplified `urlopen(url, data=None, timeout=None)` over `http.client` (GET/POST), returns `HTTPResponse`; non-http scheme -> `URLError`. `timeout` (seconds) honored for connect/recv/send. No opener/handler stack, redirects, proxies, auth handlers, `_GLOBAL_DEFAULT_TIMEOUT` sentinel, HTTPS (see TODO.md) |
-| [`tplib.requests`](#tplibrequests) | P2 | Partial | ~50% | pure | `requests`-style client on `http.client`. `get`/`post`/`put`/`patch`/`delete`/`head`/`request` with `params`/`headers`/`data`/`json`/`auth`/`timeout`/`allow_redirects`; `Response` (`.status_code`/`.ok`/`.text`/`.content`/`.json()`/`.headers`/`.url`/`.history`/`.raise_for_status()`); `Session` (default headers/params, Basic `auth`, `max_redirects`); `RequestException`->`HTTPError`/`ConnectionError`/`Timeout`/`TooManyRedirects` (`timeout` float raises `Timeout` on a slow connect/read; a socket-level connection failure -- refused/reset/broken-pipe/no-host -- is re-wrapped as `ConnectionError`). `allow_redirects=` follows 301/302/303/307/308 via `Location` (method/body rewrite + cross-host auth strip per requests). Divergences: typed kwargs, untyped `.json()`, no `(connect, read)` timeout tuple, https redirect raises (HTTP-only), no pooling/cookies/TLS (see TODO.md) |
+| [`tplib.requests`](#tplibrequests) | P2 | Partial | ~50% | pure | `requests`-style client on `http.client`. `get`/`post`/`put`/`patch`/`delete`/`head`/`request` with `params`/`headers`/`data`/`json`/`auth`/`timeout`/`allow_redirects`; `Response` (`.status_code`/`.ok`/`.text`/`.content`/`.json()`/`.headers` (`CaseInsensitiveDict`)/`.url`/`.history`/`.raise_for_status()`); `Session` (default headers/params, Basic `auth`, `max_redirects`); `RequestException`->`HTTPError`/`ConnectionError`/`Timeout`/`TooManyRedirects` (`timeout` float raises `Timeout` on a slow connect/read; a socket-level connection failure -- refused/reset/broken-pipe/no-host -- is re-wrapped as `ConnectionError`). `allow_redirects=` follows 301/302/303/307/308 via `Location` (method/body rewrite + cross-host auth strip per requests). Divergences: typed kwargs, untyped `.json()`, no `(connect, read)` timeout tuple, https redirect raises (HTTP-only), no pooling/cookies/TLS (see TODO.md) |
 
 ---
 
@@ -1399,9 +1399,10 @@ Current: `lib/tpy/tplib/requests.py` -- a `requests`-style client (pure TPy)
 over `http.client`. Module fns `get`/`post`/`put`/`patch`/`delete`/`head` +
 `request(method, url, ...)` with `params`/`headers`/`data`/`json`/`auth`
 kwargs. `Response` exposes `.status_code`/`.reason`/`.url`/`.ok`/`.text`
-(UTF-8)/`.content`/`.headers` (plain dict)/`.json()` (untyped `JsonValue`)/
-`.raise_for_status()`. `Session` merges default headers/params and applies a
-default auth (assignable `connection` field = the offline test seam). `auth=
+(UTF-8)/`.content`/`.headers` (`CaseInsensitiveDict`)/`.json()` (untyped
+`JsonValue`)/`.raise_for_status()`. `Session` merges default headers/params and
+applies a default auth (internal `_connection` field = the offline test seam).
+`auth=
 (user, pass)` -> Basic via `base64`. Exception tree `RequestException` ->
 `HTTPError`/`ConnectionError`/`Timeout`/`TooManyRedirects`; a socket-level
 connection failure (refused/reset/broken-pipe/no-host) is re-wrapped into
@@ -1417,16 +1418,19 @@ divergences** (all compile-visible, none silent): kwargs are a fixed typed set
 (no `**kwargs`); `params`/`headers` are `dict[str, str]`; `data` is `bytes`;
 `json=` takes a `JsonValue` and an inline dict literal must be bound to a
 `JsonValue` local first; `.json()` is untyped (typed path
-`Model.from_json(r.text)`); `.text` is UTF-8 only; `.headers` is not
-case-insensitive; no true connection pooling (`Connection: close`); a redirect
-to a non-http scheme (e.g. https) raises `ConnectionError` (HTTP-only client)
-rather than being followed. **Deferred** (see TODO.md): cookies, multipart
-files, streaming, proxies, TLS, `CaseInsensitiveDict`, form-dict `data=`.
+`Model.from_json(r.text)`); `.text` is UTF-8 only; `.headers` is a
+`CaseInsensitiveDict` (case-insensitive lookup, original casing kept for
+items/keys) but duplicate header names are last-wins, not joined with `", "`,
+and `for k in headers` is unsupported (use `headers.keys()`); no true
+connection pooling (`Connection: close`); a redirect to a non-http scheme (e.g.
+https) raises `ConnectionError` (HTTP-only client) rather than being followed.
+**Deferred** (see TODO.md): cookies, multipart files, streaming, proxies, TLS,
+duplicate-header join, form-dict `data=`.
 Tests: `cases/tplib/requests_get`, `requests_post`, `requests_session`,
 `requests_errors`, `requests_timeout`, `requests_redirect`,
 `requests_redirect_disabled`, `requests_redirect_method`,
 `requests_redirect_too_many`, `requests_redirect_cross_host`,
-`requests_redirect_https`, `error_requests_json_inline`.
+`requests_redirect_https`, `requests_headers_ci`, `error_requests_json_inline`.
 
 ---
 
