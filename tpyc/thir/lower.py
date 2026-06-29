@@ -22,6 +22,7 @@ import math
 from ..parse.nodes import (
     FunctionLinkage,
     TpyAssign,
+    TpyAugAssign,
     TpyBinOp,
     TpyBoolLiteral,
     TpyCall,
@@ -48,7 +49,8 @@ from ..typesys import (
     unwrap_ref_type, unwrap_send_sync,
 )
 from ..type_def_registry import (
-    int_traits_of, is_bool_type, is_fixed_int_type, is_float32_type,
+    int_traits_of, is_big_int_type, is_bool_type, is_fixed_int_type,
+    is_float32_type,
 )
 from ..codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ..codegen_cpp.forms import (
@@ -300,6 +302,50 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     if not _field_receiver_ok(target, declared, analyzer):
         return False
     if not _eligible_scalar(analyzer.get_expr_type(target)):
+        return False
+    return _expr_eligible(stmt.value, declared, analyzer)
+
+
+def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
+                          analyzer) -> bool:
+    """A scalar augmented assignment `x += y` / `recv.field += y` that is
+    byte-identical to `target = (target OP value)` -- the plain
+    `_gen_binop_from_result` branch of `_gen_aug_assign_code`, with every
+    preprocessing branch of the AST path gated out:
+
+      - an in-place dunder (`resolved_inplace`) mutates the target via a method
+        call, not the binop substitution;
+      - a missing/non-template `resolved_binop` emits a bare C++ `op=` fallback;
+      - `str +=` takes the in-place-append optimization (excluded for free: a
+        str target is not an eligible scalar);
+      - `FixedInt += BigInt` wraps the value in `.to_fixed_check<T>()` the
+        synthetic binop cannot reproduce;
+      - a subscript / class-constant / narrowed-optional target is not a plain
+        name-or-field eligible-scalar lvalue.
+
+    The target is a declared scalar local or an F1-record scalar field; the value
+    is an eligible scalar expression. Lowering synthesizes the binop with
+    `divisor_non_zero=False` -- the AST aug-assign path never swaps
+    `div_check`->`div_floor` (no `TpyBinOp` node carries the flag)."""
+    if stmt.resolved_inplace is not None:
+        return False
+    rb = stmt.resolved_binop
+    if rb is None or not getattr(rb.method, "cpp_template", None):
+        return False
+    target = stmt.target
+    if isinstance(target, TpyName):
+        if target.name not in declared:
+            return False
+    elif not _field_receiver_ok(target, declared, analyzer):
+        return False
+    # A narrowed-Optional or non-scalar target is rejected here (the AST unwraps
+    # the former and never reaches the binop branch for the latter).
+    target_type = analyzer.get_expr_type(target)
+    if not _eligible_scalar(target_type):
+        return False
+    # FixedInt += BigInt: the AST converts the value via `.to_fixed_check<T>()`
+    # before the binop -- the synthetic THIRBinOp would emit a bare `t + b`.
+    if is_fixed_int_type(target_type) and is_big_int_type(analyzer.get_expr_type(stmt.value)):
         return False
     return _expr_eligible(stmt.value, declared, analyzer)
 
@@ -721,6 +767,8 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
         return _body_eligible(stmt.body, analyzer, declared, prescan,
                               in_branch=True, pointers=pointers,
                               rebind_slots=rebind_slots)
+    if isinstance(stmt, TpyAugAssign):
+        return _scalar_aug_assign_ok(stmt, declared, analyzer)
     if isinstance(stmt, TpyForEach):
         return _for_range_eligible(stmt, analyzer, declared, prescan, pointers,
                                    rebind_slots)
@@ -1008,6 +1056,24 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType]) -> T
             value=_lower_expr(stmt.value, lc),
             loc=loc,
         )
+    if isinstance(stmt, TpyAugAssign):
+        # `target OP= value` lowers to `target = (target OP value)`, matching the
+        # AST's `_gen_aug_assign_code` scalar branch. The target expr is lowered
+        # twice (once as the assign lvalue, once as the binop's left operand) --
+        # the AST likewise substitutes the same target string into both slots.
+        # `divisor_non_zero=False`: the AST aug-assign path never swaps the
+        # checked div/mod helper (no source `TpyBinOp` node carries the flag).
+        target = _lower_expr(stmt.target, lc)
+        binop = THIRBinOp(
+            result_type=analyzer.get_expr_type(stmt.target),
+            left=_lower_expr(stmt.target, lc),
+            op=stmt.op,
+            right=_lower_expr(stmt.value, lc),
+            resolved=stmt.resolved_binop,
+            paren_wrap=False,
+            loc=loc,
+        )
+        return THIRAssign(target=target, value=binop, loc=loc)
     if isinstance(stmt, TpyReturn):
         ret_opt = lc.prescan.ret_storage_opt
         if stmt.value is not None and ret_opt is not None:

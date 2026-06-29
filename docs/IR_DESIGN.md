@@ -9,7 +9,7 @@
 | `--dump-thir` debug output | Done (increment 1) |
 | THIR-backed codegen context | Increment 1 -- flag-gated (`tpyc/thir/emit.py`) |
 | Codegen migration from analyzer/AST to THIR | Increments 1-5 -- value-scalar bodies incl. if/elif/else, while, range-for, double float, bool, comparison-as-value |
-| THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`). F1: single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads. F2: reseatable `T*` pointer-locals (lvalue reseat + the rvalue `__slot_N` rebind machinery, `->` reads) and the Optional borrow<->storage write/return (`ptr_to_optional` copy / `ptr_to_optional_move` move) + `None` (`std::nullopt`). Byte-identical with `--thir-codegen` forced over the full corpus. **Method frontier M1 landed (2026-06)** -- a callable-kind axis orthogonal to the form ladder: plain instance methods route (`self` -> `this` via `THIRSelf`, readonly/const self, scalar params), so F1/F2 finally route real corpus code. **Scalar field writes landed (increment 10)** -- `recv.field = <scalar>` off any F1-record receiver (plain `THIRAssign`, no form lift), more than doubling corpus routing. Deferred (AST path): M2 record-param methods + const-self model; M3 constructors / member-init-list; augmented assignment (`+=`, `TpyAugAssign`); call-arg / call+`copy()`-write sources (non-value call args + auto-move). F3-F-final not started |
+| THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`). F1: single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads. F2: reseatable `T*` pointer-locals (lvalue reseat + the rvalue `__slot_N` rebind machinery, `->` reads) and the Optional borrow<->storage write/return (`ptr_to_optional` copy / `ptr_to_optional_move` move) + `None` (`std::nullopt`). Byte-identical with `--thir-codegen` forced over the full corpus. **Method frontier M1 landed (2026-06)** -- a callable-kind axis orthogonal to the form ladder: plain instance methods route (`self` -> `this` via `THIRSelf`, readonly/const self, scalar params), so F1/F2 finally route real corpus code. **Scalar field writes landed (increment 10)** -- `recv.field = <scalar>` off any F1-record receiver (plain `THIRAssign`, no form lift), more than doubling corpus routing. **Scalar augmented assignment landed (increment 11)** -- `x += y` / `recv.field += y` lowers to `target = (target OP value)` via `THIRBinOp` (+ a `paren_wrap` flag for the AST aug-assign's no-paren RHS). Deferred (AST path): M2 record-param methods + const-self model; M3 constructors / member-init-list; call-arg / call+`copy()`-write sources (non-value call args + auto-move). F3-F-final not started |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
 | `--dump-mir` debug output | Not started |
@@ -202,9 +202,23 @@ plain `THIRAssign` (no borrow<->storage `THIRFormConvert`) and emits the AST's
 default field-assign (`recv.field = <value>;`); the receiver renders `.`/`->`
 exactly as a field read does. Eligibility reuses `_field_receiver_ok` plus an
 exclusion of the write-side property-setter / `__setattr__` markers it does not
-cover. Augmented assignment (`recv.field += x` / `x += y`) stays on the AST path:
-`TpyAugAssign` is a distinct node, still ineligible for locals too -- a separate
-cell that would close both at once.
+cover.
+
+**Increment 11 adds scalar augmented assignment** -- `x += y` / `recv.field += y`
+on a scalar local or F1-record scalar field. Lowers to `target = (target OP value)`,
+reusing `THIRBinOp` (its emit already mirrors `_gen_binop_from_result`) wrapped in
+a `THIRAssign`; the target expr is lowered twice (assign lvalue + binop left
+operand), matching the AST substituting the same target string into both slots.
+A new `THIRBinOp.paren_wrap` flag (False here) reproduces the AST aug-assign path's
+omission of the precedence parens an expression-position binop adds (`x = a + b;`
+vs `x = (a + b)`). The synthetic binop carries `divisor_non_zero=False` -- the AST
+aug-assign path never swaps `div_check`->`div_floor` (no source `TpyBinOp` node
+carries the flag). Eligibility (`_scalar_aug_assign_ok`) gates out every AST
+preprocessing branch the substitution can't reproduce: in-place dunders
+(`resolved_inplace`), a missing/non-template `resolved_binop`, `str +=` (excluded
+for free -- a str target is not an eligible scalar), `FixedInt += BigInt` (the AST
+inserts `.to_fixed_check<T>()`), and subscript / class-constant / narrowed-optional
+targets.
 
 ---
 

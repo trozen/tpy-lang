@@ -116,10 +116,10 @@ class TestEligibility:
         thir = _lower(_PRELUDE + "def f(a: Int32) -> Int32:\n    return abs(a)\n")
         assert _fn(thir, "f") is None
 
-    def test_aug_assign_is_ineligible(self):
-        # `a += 1` (TpyAugAssign) is not in the supported statement set.
+    def test_scalar_aug_assign_routes(self):
+        # TpyAugAssign on a scalar local -- formerly ineligible, now admitted.
         thir = _lower(_PRELUDE + "def f(a: Int32) -> Int32:\n    a += 1\n    return a\n")
-        assert _fn(thir, "f") is None
+        assert _fn(thir, "f") is not None
 
     def test_wide_literal_is_ineligible(self):
         # A literal outside [-2**31, 2**31-1] needs a suffix/cast the emitter
@@ -1744,4 +1744,118 @@ class TestScalarFieldWriteEmit:
             + "def main():\n    b = Box(Inner(1))\n    via_ptr(b, b)\n    print(b.inner.value)\n"
             + "main()\n")
         assert "x->value = 5;" in self._emit(src, thir=True)
+        assert self._emit(src, thir=True) == self._emit(src, thir=False)
+
+
+# --- Augmented assignment: `x += y` / `recv.field += y` (scalar) ---
+
+_AUG = (
+    "from tpy import Int32\n"
+    "class Counter:\n    count: Int32\n"
+    "    def __init__(self, count: Int32):\n        self.count = count\n"
+    "    def tick(self, n: Int32):\n        self.count += n\n"
+    # local aug-assign + a field aug-assign off a record param (non-self)
+    "def bump(c: Counter, n: Int32) -> Int32:\n"
+    "    n += 1\n    c.count += n\n    return n\n"
+)
+
+
+class TestScalarAugAssign:
+    def test_local_aug_assign_routes_as_binop(self):
+        st = _fn(_lower_ctx(_AUG), "bump").body[0]
+        assert isinstance(st, THIRAssign) and isinstance(st.target, THIRName)
+        assert isinstance(st.value, THIRBinOp) and st.value.op == "+"
+        # the binop's left operand re-reads the target (the AST likewise
+        # substitutes the target string into both the lvalue and the binop).
+        assert isinstance(st.value.left, THIRName) and st.value.left.name == "n"
+
+    def test_field_aug_assign_off_param(self):
+        st = _fn(_lower_ctx(_AUG), "bump").body[1]
+        assert isinstance(st, THIRAssign) and isinstance(st.target, THIRFieldAccess)
+        assert isinstance(st.value, THIRBinOp)
+        assert isinstance(st.value.left, THIRFieldAccess)
+
+    def test_field_aug_assign_off_self(self):
+        st = _fn(_lower_ctx(_AUG), "tick").body[0]
+        assert isinstance(st, THIRAssign) and isinstance(st.target, THIRFieldAccess)
+        assert st.target.is_arrow
+        assert isinstance(st.value, THIRBinOp)
+
+    def test_inplace_dunder_excluded(self):
+        # `xs += [v]` resolves to list_extend (__iadd__) -- mutates in place via a
+        # method call, not the binop substitution -> AST path.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def grow(v: Int32):\n    xs = [1]\n    xs += [v]\n")
+        assert _fn(thir, "grow") is None
+
+    def test_str_aug_assign_excluded(self):
+        # `s += t` on a str takes the in-place-append optimization; a str target is
+        # not an eligible scalar, so the body stays on the AST path.
+        thir = _lower_ctx(
+            "def cat(t: str):\n    s = 'a'\n    s += t\n")
+        assert _fn(thir, "cat") is None
+
+    def test_subscript_aug_assign_excluded(self):
+        # A subscript target takes the set_value/get_value path -> AST.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "def at(xs: list[Int32], i: Int32):\n    xs[i] += 1\n")
+        assert _fn(thir, "at") is None
+
+    def test_float_local_aug_assign_routes(self):
+        # A double `float` is an eligible scalar -- the value-scalar slice is not
+        # int-only.
+        st = _fn(_lower(
+            "def f(a: float) -> float:\n    a += 1.0\n    return a\n"), "f").body[0]
+        assert isinstance(st, THIRAssign) and isinstance(st.value, THIRBinOp)
+
+
+class TestScalarAugAssignEmit:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _AUG
+        + "def main():\n    c = Counter(3)\n    c.tick(2)\n    print(bump(c, 4))\n"
+        + "    print(c.count)\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_self_field_aug_emits_arrow(self):
+        # No outer parens (the aug-assign RHS is a full statement RHS).
+        assert ("this->count = ::tpy::add_check<int32_t>(this->count, n);"
+                in self._emit(self.SRC, thir=True))
+
+    def test_floordiv_aug_not_swapped(self):
+        # `q //= d` with a non-proven-zero divisor must emit the checked helper,
+        # not div_floor -- the AST aug-assign path never swaps it.
+        src = (
+            "from tpy import Int32\n"
+            "def f(q: Int32, d: Int32) -> Int32:\n    q //= d\n    return q\n"
+            "def main():\n    print(f(10, 3))\nmain()\n")
+        out = self._emit(src, thir=True)
+        assert "div_floor" not in out
+        assert out == self._emit(src, thir=False)
+
+    def test_other_ops_byte_identical(self):
+        # -= *= %= alongside the += / //= already covered.
+        src = (
+            "from tpy import Int32\n"
+            "def f(a: Int32, b: Int32) -> Int32:\n"
+            "    a -= b\n    a *= b\n    a %= b\n    return a\n"
+            "def main():\n    print(f(20, 3))\nmain()\n")
+        assert self._emit(src, thir=True) == self._emit(src, thir=False)
+
+    def test_float_aug_byte_identical(self):
+        src = (
+            "def g(a: float, b: float) -> float:\n    a += b\n    a *= b\n    return a\n"
+            "def main():\n    print(g(1.5, 2.0))\nmain()\n")
         assert self._emit(src, thir=True) == self._emit(src, thir=False)

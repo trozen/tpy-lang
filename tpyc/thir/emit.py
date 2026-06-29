@@ -156,7 +156,7 @@ def _emit_binop(e: THIRBinOp) -> str:
     rb = e.resolved
     if rb is None:
         # Derived comparison (`<= > >= !=`): bare C++ operator, no template.
-        return f"({left} {e.op} {right})"
+        return f"({left} {e.op} {right})" if e.paren_wrap else f"{left} {e.op} {right}"
     wl = rb.left_wrapper.replace("{self}", left).replace("{expr}", left)
     wr = rb.right_wrapper.replace("{self}", right).replace("{expr}", right)
     if rb.is_reverse:
@@ -165,7 +165,7 @@ def _emit_binop(e: THIRBinOp) -> str:
         result = expand_cpp_template(rb.method.cpp_template, wl, wr)
     if e.divisor_non_zero:
         result = result.replace("div_check", "div_floor").replace("mod_check", "mod_floor")
-    return f"({result})"
+    return f"({result})" if e.paren_wrap else result
 
 
 def _emit_call(e: THIRCall) -> str:

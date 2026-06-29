@@ -109,6 +109,10 @@ class THIRBinOp(THIRExpr):
     right: THIRExpr
     resolved: ResolvedBinop | None
     divisor_non_zero: bool = False
+    # An expression-position binop paren-wraps its result for precedence safety
+    # (`x = (a + b)`); an augmented-assignment RHS is a full statement RHS where
+    # the AST omits that wrap (`x = a + b;`). False reproduces the latter.
+    paren_wrap: bool = True
 
 
 @dataclass(frozen=True)
