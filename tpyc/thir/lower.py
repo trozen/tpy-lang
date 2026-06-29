@@ -173,16 +173,19 @@ def _storage_optional_return_type(t: TpyType | None, analyzer) -> 'OptionalType 
 
 
 def _field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
-    """`e` is a field read `recv.field` off an F1-record receiver (a record param,
-    REF_ALIAS local, or F2 plain `T*` pointer-local in `declared`) with no
-    special-emit marker. The receiver's pointer-vs-reference shape (`->` vs `.`)
-    is decided at lowering from the pointer-local set; eligibility only needs the
-    receiver to be an F1-record. Pointer-local Optional reads would need narrowing
-    (the marker guards below reject those), so only plain non-null receivers pass."""
+    """`e` is a plain field access `recv.field` off an F1-record receiver (a record
+    param, REF_ALIAS local, or F2 plain `T*` pointer-local in `declared`) with no
+    special-emit marker -- read or write position. The receiver's pointer-vs-
+    reference shape (`->` vs `.`) is decided at lowering from the pointer-local set;
+    eligibility only needs the receiver to be an F1-record. Pointer-local Optional
+    reads would need narrowing (the marker guards below reject those), so only plain
+    non-null receivers pass. The property-setter / `__setattr__` markers guard the
+    write position (a property/setattr field assign takes a method-call emit path)."""
     if not isinstance(e, TpyFieldAccess):
         return False
     if (e.module_var_access is not None or e.class_constant_owner is not None
             or e.property_getter_call is not None or e.dyn_getattr_call is not None
+            or e.property_setter_call is not None or e.dyn_setattr_call is not None
             or e.unbound_self_parent_type is not None or e.deref_depth
             or e.deref_narrowed_to is not None or e.needs_optional_runtime_check):
         return False
@@ -284,6 +287,21 @@ def _f2b_optional_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
         return False
     return (isinstance(stmt.value, TpyNoneLiteral)
             or _is_borrow_ptr_local(stmt.value, declared, pointers))
+
+
+def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
+                           analyzer) -> bool:
+    """A scalar-field write `recv.field = <scalar>`: a value-scalar field off an
+    F1-record receiver (`_field_receiver_ok` also rejects the property-setter /
+    __setattr__ write target), written with an eligible scalar expression. The
+    scalar sibling of `_f2b_optional_field_write_ok` -- it emits as the AST's
+    default field-assign path (`recv.field = <value>;`, no borrow<->storage lift)."""
+    target = stmt.target
+    if not _field_receiver_ok(target, declared, analyzer):
+        return False
+    if not _eligible_scalar(analyzer.get_expr_type(target)):
+        return False
+    return _expr_eligible(stmt.value, declared, analyzer)
 
 
 def _param_is_const(name: str, func: TpyFunction, analyzer) -> bool:
@@ -669,8 +687,10 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
         if isinstance(stmt.target, TpyName):
             return (stmt.target.name in declared
                     and _expr_eligible(stmt.value, declared, analyzer))
-        # F2b/F2c/F2e: an optional-field write `recv.field = <borrow>` / `= None`.
-        return _f2b_optional_field_write_ok(stmt, declared, pointers, analyzer)
+        # F2b/F2c/F2e: an optional-field write `recv.field = <borrow>` / `= None`;
+        # or a plain scalar-field write `recv.field = <scalar>`.
+        return (_f2b_optional_field_write_ok(stmt, declared, pointers, analyzer)
+                or _scalar_field_write_ok(stmt, declared, analyzer))
     if isinstance(stmt, TpyReturn):
         if stmt.value is None:
             return True
@@ -970,6 +990,10 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType]) -> T
             # `None` literal stores as a STORAGE-form None (`std::nullopt`, F2c).
             # The target field-access renders `recv.field` / `recv->field`.
             ftype = analyzer.get_expr_type(stmt.target)
+            # A scalar field is a plain value assign -- no borrow<->storage lift.
+            if _eligible_scalar(ftype):
+                return THIRAssign(target=_lower_expr(stmt.target, lc),
+                                  value=_lower_expr(stmt.value, lc), loc=loc)
             if isinstance(stmt.value, TpyNoneLiteral):
                 fvalue: THIRExpr = THIRLiteral(result_type=ftype, value=None,
                                                form=Form.STORAGE, loc=loc)

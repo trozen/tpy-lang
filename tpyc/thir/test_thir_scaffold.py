@@ -1057,11 +1057,14 @@ class TestF2bWrite:
             + "def move_opt(src: Box, dst: Box):\n    p = src.opt\n    dst.opt = copy(p)\n")
         assert _fn(thir, "move_opt") is None
 
-    def test_scalar_field_write_is_ineligible(self):
-        # A non-optional (scalar) field write is not the F2b shape -> AST path.
+    def test_scalar_field_write_routes_as_plain_assign(self):
+        # A scalar (non-optional) field write is not the F2b borrow->storage shape;
+        # it routes via the scalar-field-write cell as a plain value assign.
         thir = _lower_ctx(
             _F1_RECORDS + "def setn(dst: Box):\n    dst.n = 5\n")
-        assert _fn(thir, "setn") is None
+        st = _fn(thir, "setn").body[0]
+        assert isinstance(st, THIRAssign) and isinstance(st.target, THIRFieldAccess)
+        assert not isinstance(st.value, THIRFormConvert)
 
     def test_ref_alias_value_is_ineligible(self):
         # A `T&` REF_ALIAS value is not a `T*` pointer source (the AST path emits it
@@ -1641,3 +1644,104 @@ class TestMethodFrontierEmit:
 
     def test_nonreadonly_self_none_write(self):
         assert "this->opt = std::nullopt;" in self._emit(self.SRC, thir=True)
+
+
+# --- Scalar field writes: `recv.field = <scalar>` off an F1-record receiver ---
+
+_SCALAR_WRITE = (
+    "from tpy import Int32\n"
+    "class Counter:\n    count: Int32\n    other: Int32\n"
+    "    def __init__(self, count: Int32):\n        self.count = count\n        self.other = 0\n"
+    "    def reset(self):\n        self.count = 0\n"
+    "    def copy_field(self):\n        self.count = self.other\n"
+    # off a record param in a free function (non-self receiver)
+    "def bump(c: Counter, n: Int32):\n    c.count = n\n    c.other = c.count + 1\n"
+)
+
+
+class TestScalarFieldWrite:
+    def test_write_off_self_routes_as_plain_assign(self):
+        # `self.count = 0` lowers to a plain THIRAssign (value form), NOT the F2b
+        # borrow->storage path -- the field is a scalar, so no THIRFormConvert.
+        fn = _fn(_lower_ctx(_SCALAR_WRITE), "reset")
+        assert fn is not None
+        st = fn.body[0]
+        assert isinstance(st, THIRAssign)
+        assert isinstance(st.target, THIRFieldAccess) and st.target.is_arrow
+        assert not isinstance(st.value, THIRFormConvert)
+        assert st.value.form is Form.VALUE
+
+    def test_field_to_field_scalar_copy(self):
+        st = _fn(_lower_ctx(_SCALAR_WRITE), "copy_field").body[0]
+        assert isinstance(st, THIRAssign)
+        assert isinstance(st.value, THIRFieldAccess) and st.value.form is Form.VALUE
+
+    def test_write_off_record_param_routes(self):
+        # A scalar field write off a record param in a free function (non-self).
+        assert _fn(_lower_ctx(_SCALAR_WRITE), "bump") is not None
+
+    def test_property_setter_target_excluded(self):
+        # A field write that is really a @property setter takes a method-call
+        # emit path, not a plain field assign -> stays on the AST path.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "class C:\n    _n: Int32\n"
+            "    def __init__(self):\n        self._n = 0\n"
+            "    @property\n    def n(self) -> Int32:\n        return self._n\n"
+            "    @n.setter\n    def n(self, v: Int32):\n        self._n = v\n"
+            "    def use(self):\n        self.n = 5\n")
+        assert _fn(thir, "use") is None
+
+    def test_write_off_pointer_local_routes_with_arrow(self):
+        # Receiver is an F2 reseatable `T*` pointer-local -- the third
+        # `_field_receiver_ok` receiver kind, rendering `->` (distinct from self's
+        # `this->` and a record param's `.`).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def via_ptr(b: Box, c: Box):\n    x = b.inner\n    x = c.inner\n    x.value = 5\n")
+        fn = _fn(thir, "via_ptr")
+        assert fn is not None
+        st = fn.body[-1]
+        assert isinstance(st, THIRAssign)
+        assert isinstance(st.target, THIRFieldAccess) and st.target.is_arrow
+
+    def test_mixed_scalar_and_optional_write_body(self):
+        # Both write forms in one body exercise the `or`-dispatch in
+        # `_stmt_eligible` -- neither blocks the other's eligibility.
+        thir = _lower_ctx(
+            _F1_RECORDS + "def mixed(b: Box):\n    b.n = 7\n    b.opt = None\n")
+        assert _fn(thir, "mixed") is not None
+
+
+class TestScalarFieldWriteEmit:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _SCALAR_WRITE
+        + "def main():\n    c = Counter(3)\n    c.reset()\n    c.copy_field()\n    bump(c, 7)\n"
+        + "    print(c.count + c.other)\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_self_scalar_write_emits_arrow_assign(self):
+        assert "this->count = 0;" in self._emit(self.SRC, thir=True)
+
+    def test_param_scalar_write_emits_dot_assign(self):
+        assert "c.count = n;" in self._emit(self.SRC, thir=True)
+
+    def test_pointer_local_scalar_write_emits_arrow(self):
+        src = (
+            _F1_RECORDS
+            + "def via_ptr(b: Box, c: Box):\n    x = b.inner\n    x = c.inner\n    x.value = 5\n"
+            + "def main():\n    b = Box(Inner(1))\n    via_ptr(b, b)\n    print(b.inner.value)\n"
+            + "main()\n")
+        assert "x->value = 5;" in self._emit(src, thir=True)
+        assert self._emit(src, thir=True) == self._emit(src, thir=False)
