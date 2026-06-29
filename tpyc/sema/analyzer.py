@@ -21,6 +21,7 @@ from ..typesys import (
     contains_type_param,
     del_suppresses_default_ctor,
     PendingListType, PendingDictType, PendingSetType, PendingViewType,
+    bare_name,
 )
 from ..type_def_registry import is_span, is_varargs, is_spanlike_view
 from ..compilation_context import get_current_compiler
@@ -482,6 +483,37 @@ class SemanticAnalyzer:
         self.register_signatures(module)
         self.analyze_bodies(module)
         self.run_phase2_fixpoint(module)
+
+    def _warn_export_user_exc_data(self, module: TpyModule) -> None:
+        """In an ext_module, warn at a direct `raise UserExc(...)` inside an
+        @export body when UserExc carries instance fields: only its type and
+        message cross the CPython boundary, not the fields. Catches direct
+        raises only -- a transitive raise through a callee needs call-graph
+        analysis (deferred).
+        """
+        if not module.directives.ext_module:
+            return
+        for func in module.functions:
+            if not func.exposed_to_host:
+                continue
+            raises: list[TpyRaise] = []
+            _walk_body_stmts(
+                func.body,
+                lambda _e: None,
+                lambda s: raises.append(s) if isinstance(s, TpyRaise) else None)
+            for stmt in raises:
+                if not stmt.exception_type:
+                    continue
+                info = self.ctx.registry.find_record(bare_name(stmt.exception_type))
+                if info is None or info.is_native or not info.fields:
+                    continue
+                if not (info.implements_throwable and info.inherits_base_exception):
+                    continue
+                fields = ", ".join(f.name for f in info.fields)
+                self._warning(
+                    f"@export function '{func.name}': raising '{info.name}' "
+                    f"across the CPython boundary carries only its type and "
+                    f"message; its data field(s) ({fields}) do not cross", stmt)
 
     def bind_imports(self, module: TpyModule, module_name: str = "__main__",
                      cpp_module_name: str | None = None) -> None:

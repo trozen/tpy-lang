@@ -424,29 +424,36 @@ exception escaping an `@export` body (or `PyInit_`) crosses as the matching
 `const tpy::BaseException&` and routes it through the runtime cascade in
 `runtime/cpp/include/tpy/interop/exc_bridge.hpp` (`set_py_err_from` ->
 `py_exc_for`), which maps the dynamic type most-derived-first and degrades an
-unlisted subclass to its nearest listed base. `PyErr_SetString` (not the
-`PyErr_SetObject`/registry mechanism sketched below) is sufficient while only
-built-in types cross. Still **planned** from the list below: user exception
-classes (generated Python type + registry), `@error_return` Err -> raise, and
-panic -> exception.
+unlisted subclass to its nearest listed base. Still **planned** from the list
+below: `@error_return` Err -> raise and panic -> exception.
 
-Until user exception classes are bridged, a *user-defined* exception subclass
-raised in an `@export` body degrades to its nearest built-in ancestor with **no
-compile-time diagnostic** -- e.g. a user `class MyError(ValueError)` surfaces to
-the CPython caller as `ValueError`, where the same code run as a plain CPython
-module would raise `MyError`. Diagnosing this at compile time needs raise-set
-analysis across the call graph (it must not flag the now-supported built-in
-raises), so it is folded into the user-exception-class rung rather than added as
-a standalone warning.
+**User exception classes are also implemented** (for the type, not yet the
+instance data). Each user exception class defined in an ext_module gets its own
+Python type at `PyInit_` via `PyErr_NewException` (inheriting its built-in
+base's `PyExc_*`, or an already-created user base, topo-ordered), added to the
+module (`PyModule_AddObjectRef`) so it imports as `mymod.MyError`, and recorded
+in an `ExcRegistry` (`typeid -> PyObject*`) the glue passes to `set_py_err_from`;
+the registry is consulted by exact dynamic type before the built-in cascade, so
+a user `class MyError(ValueError)` surfaces as `MyError` (catchable as
+`ValueError` too) instead of degrading. `PyErr_SetString(type, e.what())` still
+carries only the message field, so a **data-carrying** user exception (instance
+fields beyond the message) crosses by type + message field only -- its fields,
+and the full `args`/`str()` for a multi-arg constructor, do not cross. A direct
+`raise DataExc(...)` in an `@export` body warns. Faithful per-field crossing
+(the `PyErr_SetObject` + per-field marshalling path) is the deferred next rung;
+so are transitive-raise detection and cross-module user exceptions.
 
 - **Exceptions (`raise` / `except`).** A TPy `raise` that reaches the
-  boundary becomes `PyErr_SetObject` and the wrapper returns the C-API
-  error sentinel (`NULL` / `-1`). Built-in TPy exception types map directly
-  to their Python counterparts (`IndexError`, `ValueError`, ...). User
-  exception types get a generated Python class per type at `PyInit`
-  (`PyErr_NewException`), preserving the inheritance chain and mapping data
-  fields to instance attributes; a runtime registry (TPy exc type ->
-  `PyObject*` class) drives `PyErr_SetObject` from the boundary `catch`. See
+  boundary sets a Python error and the wrapper returns the C-API error
+  sentinel (`NULL` / `-1`). Built-in TPy exception types map directly to their
+  Python counterparts (`IndexError`, `ValueError`, ...). User exception types
+  get a generated Python class per type at `PyInit` (`PyErr_NewException`),
+  preserving the inheritance chain; a runtime registry (TPy exc type ->
+  `PyObject*` class) drives the boundary `catch`. **As implemented today this
+  uses `PyErr_SetString(type, e.what())`, so only the type and message field
+  cross.** The full-fidelity form -- `PyErr_SetObject` over a constructed
+  instance with data fields marshalled to instance attributes -- is the
+  deferred next rung (see the status note above and `TODO.md` 1a). See
   "Resolved design questions" Q1 for the full mechanism.
 - **`@error_return`** functions exposed across the boundary: the `Err`
   branch surfaces as a *raised* Python exception (the natural Python idiom),

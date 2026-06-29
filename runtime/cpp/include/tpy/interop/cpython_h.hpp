@@ -28,6 +28,12 @@ extern "C" {
 
 PyObject *PyModule_Create2(PyModuleDef *def, int module_api_version);
 
+// Module-init: create a Python exception type (`base` may be NULL -> Exception)
+// and add an object to the module (AddObjectRef does not steal `value`, unlike
+// the legacy AddObject; returns 0 on success).
+PyObject *PyErr_NewException(const char *name, PyObject *base, PyObject *dict);
+int PyModule_AddObjectRef(PyObject *module, const char *name, PyObject *value);
+
 // Refcount + error state.
 void Py_DecRef(PyObject *o);
 void Py_IncRef(PyObject *o);

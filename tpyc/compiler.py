@@ -2988,6 +2988,7 @@ class Compiler:
         try:
             analyzer.analyze_bodies(compiled.ast)
             analyzer.run_phase2_fixpoint(compiled.ast)
+            analyzer._warn_export_user_exc_data(compiled.ast)
         except SemanticError as e:
             if e.filename is None and not compiled.is_entry_point:
                 e.filename = os.path.relpath(compiled.path)

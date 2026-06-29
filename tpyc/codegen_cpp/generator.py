@@ -2516,6 +2516,56 @@ class CodeGenerator:
         out_buf.write(f"\n}} // namespace {ns}\n")
         return out_buf.getvalue()
 
+    def _user_exc_base_name(self, info, sibling_names: set) -> str | None:
+        """Simple name of this exception's immediate base if that base is another user exception class in this module; else None (built-in base)."""
+        if not info.parents:
+            return None
+        base_info = self.ctx.analyzer.registry.get_record_for_type(info.parents[0])
+        if base_info is None or base_info.is_native:
+            return None
+        return base_info.name if base_info.name in sibling_names else None
+
+    def _ordered_user_exc_classes(self, module: TpyModule, module_name: str,
+                                  call_ns: str) -> list[dict]:
+        """User exception classes DEFINED in this module, ordered base-before-
+        derived (a user base's Python type must exist before PyErr_NewException
+        references it). Each entry drives one type created + registered at
+        PyInit_. base_expr is the NewException base: a sibling user exc's var,
+        or py_exc_by_name("<builtin>") for a built-in base.
+        """
+        reg = self.ctx.analyzer.registry
+        exc_records = [
+            r for r in module.records
+            if (info := reg.get_record(r.name)) is not None and not info.is_native
+            and info.implements_throwable and info.inherits_base_exception
+        ]
+        if not exc_records:
+            return []
+        # Parent-before-child via the shared records-emit topo sort (a user exc
+        # only inherits other exc classes, so every user parent is in this set).
+        ordered = self.records.sort_records_by_inheritance(exc_records)
+        sibling_names = {r.name for r in exc_records}
+        sym = escape_cpp_name(module_name)
+        var_for = lambda nm: f"{sym}__exc_{escape_cpp_name(nm.replace('.', '_'))}"
+
+        result = []
+        for record in ordered:
+            info = reg.get_record(record.name)
+            base_user = self._user_exc_base_name(info, sibling_names)
+            if base_user is not None:
+                base_expr = var_for(base_user)
+            else:
+                base_simple = (info.parents[0].qualified_name().split(".")[-1]
+                               if info.parents else "Exception")
+                base_expr = f'::tpy::interop::py_exc_by_name("{base_simple}")'
+            result.append({
+                "var": var_for(record.name),
+                "cpp_type": qualified_cpp_name(call_ns, record.name),
+                "py_name": f"{module_name}.{record.name}",
+                "base_expr": base_expr,
+            })
+        return result
+
     def generate_extension_glue(self, module: TpyModule, module_name: str) -> str:
         """Emit the CPython extension glue TU for an `# tpy: ext_module`:
         PyMethodDef/PyModuleDef/PyInit_ plus one wrapper per @export-ed
@@ -2542,6 +2592,16 @@ class CodeGenerator:
         out.write('#include "tpy/interop/exc_bridge.hpp"\n\n')
         out.write("namespace {\n")
         out.write("using namespace ::tpy::cpy;\n\n")
+
+        # User exception classes defined here each get their own Python type at
+        # PyInit_; the registry lets set_py_err_from map a raised one to its
+        # type instead of degrading to the built-in base. Omitted entirely when
+        # the module defines none (keeps the common glue unchanged).
+        user_excs = self._ordered_user_exc_classes(module, module_name, call_ns)
+        registry = f"{sym}__exc_registry" if user_excs else None
+        if registry:
+            out.write(f"::tpy::interop::ExcRegistry {registry};\n\n")
+        reg_arg = f", {registry}" if registry else ""
 
         def boundary_cpp(t, what: str, fn, allow_void: bool = False) -> str:
             cpp = boundary_cpp_type(t)
@@ -2587,7 +2647,7 @@ class CodeGenerator:
             # everything else (incl. the marshaller's PyErr-presetting
             # MarshalError) flows through the generic catch.
             out.write("    } catch (const ::tpy::BaseException &__e) {\n")
-            out.write("        ::tpy::interop::set_py_err_from(__e);\n")
+            out.write(f"        ::tpy::interop::set_py_err_from(__e{reg_arg});\n")
             out.write("        return nullptr;\n")
             out.write("    } catch (...) {\n")
             # Preserve a specific exception set by from_py; otherwise generic.
@@ -2620,11 +2680,37 @@ class CodeGenerator:
         # A C++ exception escaping extern "C" is UB: convert init failures to
         # the NULL sentinel with a Python exception set.
         out.write("    try {\n")
-        out.write(f"        {qualified_cpp_name(call_ns, '__tpy_init')}();\n")
-        out.write(f"        return ::tpy::cpy::PyModule_Create2(&{sym}__moduledef, "
-                  f"::tpy::cpy::PYTHON_API_VERSION);\n")
+        if user_excs:
+            # Module created before __tpy_init so the exception types exist (and
+            # are registered) even for a raise during module-init top-level code.
+            # The registry deliberately retains PyErr_NewException's ref (never
+            # released): it keeps each type alive for the .so's lifetime -- like
+            # the interpreter's own exception singletons -- so a registry lookup
+            # stays valid even if the module object is later dropped and GC'd.
+            out.write(f"        PyObject *__m = ::tpy::cpy::PyModule_Create2("
+                      f"&{sym}__moduledef, ::tpy::cpy::PYTHON_API_VERSION);\n")
+            out.write("        if (!__m) return nullptr;\n")
+            for e in user_excs:
+                out.write(f'        PyObject *{e["var"]} = ::tpy::cpy::'
+                          f'PyErr_NewException("{e["py_name"]}", {e["base_expr"]}, '
+                          f"nullptr);\n")
+                out.write(f'        if (!{e["var"]}) {{ ::tpy::cpy::Py_DecRef(__m); '
+                          f"return nullptr; }}\n")
+                # A failed AddObjectRef would leave the type unimportable by name
+                # while still registered -- bail rather than ship that mismatch.
+                out.write(f'        if (::tpy::cpy::PyModule_AddObjectRef(__m, '
+                          f'"{e["py_name"].split(".")[-1]}", {e["var"]}) < 0) '
+                          f"{{ ::tpy::cpy::Py_DecRef(__m); return nullptr; }}\n")
+                out.write(f"        {registry}.push_back("
+                          f'{{std::type_index(typeid({e["cpp_type"]})), {e["var"]}}});\n')
+            out.write(f"        {qualified_cpp_name(call_ns, '__tpy_init')}();\n")
+            out.write("        return __m;\n")
+        else:
+            out.write(f"        {qualified_cpp_name(call_ns, '__tpy_init')}();\n")
+            out.write(f"        return ::tpy::cpy::PyModule_Create2(&{sym}__moduledef, "
+                      f"::tpy::cpy::PYTHON_API_VERSION);\n")
         out.write("    } catch (const ::tpy::BaseException &__e) {\n")
-        out.write("        ::tpy::interop::set_py_err_from(__e);\n")
+        out.write(f"        ::tpy::interop::set_py_err_from(__e{reg_arg});\n")
         out.write("        return nullptr;\n")
         out.write("    } catch (...) {\n")
         out.write("        if (!::tpy::cpy::PyErr_Occurred())\n")

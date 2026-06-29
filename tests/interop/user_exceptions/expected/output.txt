@@ -1,0 +1,10 @@
+NotFound | 'no such key'
+ok 100
+ConfigError | bad config
+ok 1
+AppError | app failure
+ValueError | must be even
+ok 4
+caught NotFound as KeyError
+caught ConfigError as AppError
+caught FatalError as BaseException, not Exception

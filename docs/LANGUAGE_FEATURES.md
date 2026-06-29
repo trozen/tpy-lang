@@ -5926,17 +5926,34 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   the marshaller already set (`TypeError`/`OverflowError`/`UnicodeEncodeError`
   from `from_py`/`to_py`) via the `PyErr_Occurred()` guard. Runtime-raised
   exceptions (e.g. `ZeroDivisionError` from `//`) cross by type too; only their
-  message text differs from CPython's wording. **Not yet bridged**: user-defined
-  exception *classes* (no generated Python type yet -- a user exception subclass
-  raised in an `@export` body currently degrades to its nearest built-in
-  ancestor, e.g. a `ValueError` subclass surfaces as `ValueError`, with no
-  compile-time diagnostic), `@error_return` `Err` -> raise, exception chaining
-  (`__cause__`/`__context__`), and panic -> exception.
+  message text differs from CPython's wording. `@error_return` `Err` -> raise,
+  exception chaining (`__cause__`/`__context__`), and panic -> exception are
+  **not yet bridged**.
+- **Working (user-defined exception classes)**: a user exception class defined
+  in an ext_module gets its own Python type, created at `PyInit_`
+  (`PyErr_NewException`, inheriting its built-in base's `PyExc_*` or an already-
+  created user base), added to the module (importable as `mymod.MyError`) and
+  registered `typeid -> PyObject*`; `set_py_err_from` consults that registry by
+  exact dynamic type before the built-in cascade. So `raise NotFound("k")`
+  (where `class NotFound(KeyError)`) reaches the caller as `mymod.NotFound`,
+  catchable as `NotFound` **and** as `KeyError` -- no longer degrading to
+  `KeyError`. **Message-only** exception classes (the message is the only state)
+  cross faithfully. A **data-carrying** exception class (instance fields beyond
+  the message) crosses by *type and message field* only -- its data fields do
+  not cross, and because the boundary reconstructs the instance from the message
+  alone, `str(e)` for a multi-arg constructor also differs from CPython (which
+  keeps the full `args` tuple). A direct `raise DataExc(...)` in an `@export`
+  body **warns** at compile time. Full per-field crossing is a deferred rung.
+  Excluded from v1 (deferred, tracked in `TODO.md`): faithful data-field
+  crossing; transitive raises (the warning catches only direct raises in
+  `@export` bodies); user exceptions defined in *another* module and raised at
+  the boundary (only ext_module-defined classes get a type -- imported ones
+  still degrade); a spelling to silence the data-carrying warning.
 - **Planned**: zero-copy `str`/`bytes` view input (`StrView`/`BytesView` via
-  the phase-3.5 foreign-borrow primitive), user-defined exception classes across
-  the boundary, classes (`PyType_FromSpec`), enums/constants, container and
-  buffer input, the PEP 517 wheel backend, and the `nogil` GIL capability. See
-  `docs/CPYTHON_INTEROP.md`.
+  the phase-3.5 foreign-borrow primitive), faithful data-field crossing for
+  user exception classes, classes (`PyType_FromSpec`), enums/constants,
+  container and buffer input, the PEP 517 wheel backend, and the `nogil` GIL
+  capability. See `docs/CPYTHON_INTEROP.md`.
 
 ---
 
