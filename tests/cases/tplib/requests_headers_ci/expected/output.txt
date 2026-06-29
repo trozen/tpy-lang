@@ -2,12 +2,21 @@ application/json application/json application/json
 True True False
 len: 2
 dflt
-3
-['Content-Length', 'Content-Type', 'X-Custom-Header']
-['Content-Length', 'Content-Type', 'X-Custom-Header']
-['2', 'Yes', 'application/json']
+a, b
+4
+['Content-Length', 'Content-Type', 'X-Custom-Header', 'X-Multi']
+['Content-Length', 'Content-Type', 'X-Custom-Header', 'X-Multi']
+['2', 'Yes', 'a, b', 'application/json']
 True
 False
-False 2
+False 3
 1 application/json ['ACCEPT']
 False
+text/html False
+fallback
+1 new
+2 3
+['X-M', 'X-N', 'X-O']
+True 2
+0
+KeyError

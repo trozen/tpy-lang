@@ -13,8 +13,10 @@ void main() {
     // b.sendall(b"HTTP/1.1 200 OK\r\n"
     // b"Content-Type: application/json\r\n"
     // b"X-Custom-Header: Yes\r\n"
+    // b"X-Multi: a\r\n"
+    // b"X-Multi: b\r\n"
     // b"Content-Length: 2\r\n\r\nok")
-    b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nX-Custom-Header: Yes\r\nContent-Length: 2\r\n\r\nok", 94));
+    b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nX-Custom-Header: Yes\r\nX-Multi: a\r\nX-Multi: b\r\nContent-Length: 2\r\n\r\nok", 118));
     // conn = HTTPConnection("api.test", 80)
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     // conn.sock = a
@@ -44,18 +46,21 @@ void main() {
     }
     // print(r.headers.get("nope", "dflt"))
     std::cout << ::tpy::print_optional_val(r.headers.get("nope", "dflt")) << "\n";
+    // print(r.headers["x-multi"])              # repeated headers joined with ", "
+    std::cout << r.headers["x-multi"] << "\n";
     // print(len(r.headers))
     std::cout << ::tpy::__len__(r.headers) << "\n";
     // names: list[str] = []
     std::vector<std::string> names = std::vector<std::string>{};
-    // for kv in r.headers.items():
-    auto __obj_0 = r.headers.items();
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        const auto& kv = *__beg_0;
-        // names.append(kv[0])
-        names.push_back(std::get<0>(kv));
+    // for k in r.headers:                      # __iter__ yields original-case keys
+    auto& __src_0 = r.headers;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        std::string_view k = ::tpy::unwrap_ref(*__r_1);
+        // names.append(k)
+        names.push_back(std::string(k));
     }
     // print(sorted(names))
     std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(names)) << "\n";
@@ -69,6 +74,8 @@ void main() {
     ::tpy::__setitem__(other, "CONTENT-TYPE", "application/json");
     // other["x-custom-header"] = "Yes"
     ::tpy::__setitem__(other, "x-custom-header", "Yes");
+    // other["X-Multi"] = "a, b"
+    ::tpy::__setitem__(other, "X-Multi", "a, b");
     // other["Content-Length"] = "2"
     ::tpy::__setitem__(other, "Content-Length", "2");
     // print(r.headers == other)               # equal despite key casing
@@ -102,6 +109,49 @@ void main() {
     ::tpy::__setitem__(rhs, "B", "1");
     // print(lhs == rhs)
     std::cout << ::tpy::print_bool(((lhs) == (rhs))) << "\n";
+    // # mutable-mapping surface: pop / setdefault / popitem / clear / copy / update
+    // m = CaseInsensitiveDict()
+    ::tpystd::tplib::requests::CaseInsensitiveDict m = ::tpystd::tplib::requests::CaseInsensitiveDict();
+    // m["Accept"] = "text/html"
+    ::tpy::__setitem__(m, "Accept", "text/html");
+    // m["X-N"] = "1"
+    ::tpy::__setitem__(m, "X-N", "1");
+    // print(m.pop("accept"), "accept" in m)            # case-insensitive pop
+    std::cout << ::tpy::print_optional_val(m.pop("accept")) << " " << ::tpy::print_bool((m.__contains__("accept"))) << "\n";
+    // print(m.pop("gone", "fallback"))                 # absent -> default
+    std::cout << ::tpy::print_optional_val(m.pop("gone", "fallback")) << "\n";
+    // print(m.setdefault("X-N", "z"), m.setdefault("X-M", "new"))
+    std::cout << m.setdefault("X-N", "z") << " " << m.setdefault("X-M", "new") << "\n";
+    // dup = m.copy()
+    ::tpystd::tplib::requests::CaseInsensitiveDict dup = m.copy();
+    // dup["X-O"] = "9"
+    ::tpy::__setitem__(dup, "X-O", "9");
+    // print(len(m), len(dup))                          # copy independent
+    std::cout << ::tpy::__len__(m) << " " << ::tpy::__len__(dup) << "\n";
+    // m.update(dup)                                    # merge dup back in
+    m.update(dup);
+    // print(sorted(m.keys()))
+    std::cout << ::tpy::ListPrinter(::tpy::builtin_sorted<std::string>(m.keys())) << "\n";
+    // kv = m.popitem()
+    std::tuple<std::string, std::string> kv = m.popitem();
+    // print(kv[0] != "", len(m))                       # popitem removed one
+    std::cout << ::tpy::print_bool((std::get<0>(kv) != "")) << " " << ::tpy::__len__(m) << "\n";
+    // m.clear()
+    m.clear();
+    // print(len(m))
+    std::cout << ::tpy::__len__(m) << "\n";
+    // try:
+    {
+        try {
+            // m.popitem()                                  # popitem on empty -> KeyError
+            m.popitem();
+            // print("no raise")
+            std::cout << "no raise" << "\n";
+        } catch (const ::tpy::KeyError&) {
+            // print("KeyError")
+            std::cout << "KeyError" << "\n";
+        }
+    }
 }
 
 void __tpy_init() {
@@ -110,8 +160,9 @@ void __tpy_init() {
     initialized = true;
 
     // # tplib.requests Response.headers is a CaseInsensitiveDict: lookups ignore case
-    // # while items()/keys() keep the server's casing. no_cpython (requests has no
-    // # CPython module; the socket-injection seam is not real-requests API).
+    // # while items()/keys() keep the server's casing, repeated headers join with ", ",
+    // # and the full mutable-mapping surface works. no_cpython (requests has no CPython
+    // # module; the socket-injection seam is not real-requests API).
     // import socket
     ::tpystd::socket::__tpy_init();
     // from http.client import HTTPConnection

@@ -14,9 +14,14 @@
 #     (tplib.json @model).
 #   - Response.text decodes as UTF-8 (no charset sniffing; .encoding is fixed).
 #   - Response.headers is a CaseInsensitiveDict (case-insensitive lookup,
-#     original casing preserved for items/keys). Duplicate header names are
-#     last-value-wins, not joined with ", " (CPython requests joins via
-#     urllib3). `for k in headers` is not supported yet -- use headers.keys().
+#     original casing preserved for items/keys, repeated headers joined with
+#     ", " like CPython requests, and the full mutable-mapping surface incl.
+#     `for k in headers` iteration). Narrowings vs CPython's CID, all
+#     unavoidable under static typing: == only compares against another CID
+#     (a plain-dict compare is a compile error, not False); pop() of an absent
+#     key returns the default (None) instead of raising KeyError (no sentinel
+#     to mark "no default given"); update()/setdefault() take a CID / a
+#     required default only (a non-CID arg / omitted default is a compile error).
 #   - Session keeps default headers/params but cannot truly pool connections:
 #     http.client sends `Connection: close`, so each request uses a fresh
 #     connection. The assignable `connection` field overrides that for one
@@ -47,7 +52,7 @@
 # (stream=/iter_content), proxies, TLS/HTTPS, auth schemes beyond Basic.
 # tpy: cpp_namespace("tpystd::tplib::requests")
 from __future__ import annotations
-from typing import Final
+from typing import Final, Iterator
 from tpy import Int32, Own, String
 from http.client import HTTPConnection
 from urllib.parse import urlsplit, urlencode, urljoin
@@ -90,8 +95,9 @@ class CaseInsensitiveDict:
     """Case-insensitive str->str mapping for HTTP headers, mirroring
     requests.structures.CaseInsensitiveDict. Header names are case-insensitive
     per RFC 7230, so `h["Content-Type"]` and `h["content-type"]` are the same
-    entry; the original casing is preserved for items()/keys() (last-set wins).
-    `for k in h` is not supported yet -- iterate h.keys()."""
+    entry; the original casing is preserved for items()/keys()/iteration
+    (last-set wins). pop() of an absent key returns the default (None) rather
+    than raising KeyError -- TPy has no sentinel to distinguish "no default"."""
 
     # lowercased name -> (original-cased name, value): the lowercased key drives
     # case-insensitive lookup while the tuple keeps the caller's casing.
@@ -139,6 +145,60 @@ class CaseInsensitiveDict:
             pair = self._store[lk]
             out.append((pair[0], pair[1]))
         return out
+
+    def __iter__(self) -> Iterator[str]:
+        # Yields the original-cased header names (last-set casing wins). A
+        # generator method, so `for k in headers` needs no separate iterator.
+        for lk in self._store:
+            yield self._store[lk][0]
+
+    def update(self, other: CaseInsensitiveDict) -> None:
+        for lk in other._store:
+            pair = other._store[lk]
+            self[pair[0]] = pair[1]
+
+    def copy(self) -> Own[CaseInsensitiveDict]:
+        out = CaseInsensitiveDict()
+        for lk in self._store:
+            pair = self._store[lk]
+            out[pair[0]] = pair[1]
+        return out
+
+    def pop(self, key: str, default: str | None = None) -> str | None:
+        lk = key.lower()
+        if lk in self._store:
+            # Own the value before deleting -- a view into _store would dangle
+            # once the entry is removed.
+            v = String(self._store[lk][1])
+            del self._store[lk]
+            return v
+        return default
+
+    def setdefault(self, key: str, default: str) -> str:
+        lk = key.lower()
+        if lk in self._store:
+            return self._store[lk][1]
+        self._store[lk] = (key, default)
+        return default
+
+    def popitem(self) -> Own[tuple[str, str]]:
+        # Pops the first key (CPython MutableMapping.popitem order). Capture the
+        # key under a read-only scan, then delete outside the loop -- deleting
+        # mid-iteration would invalidate the iterator.
+        lk = ""
+        found = False
+        for k in self._store:
+            lk = k
+            found = True
+            break
+        if not found:
+            raise KeyError("popitem(): CaseInsensitiveDict is empty")
+        pair = (String(self._store[lk][0]), String(self._store[lk][1]))
+        del self._store[lk]
+        return pair
+
+    def clear(self) -> None:
+        self._store.clear()
 
     def __eq__(self, other: CaseInsensitiveDict) -> bool:
         # Compare by lowercased key, ignoring original casing (matches
@@ -302,7 +362,13 @@ def _request_on(conn: HTTPConnection, method: str, url: str,
     reason = resp.reason
     out_headers = CaseInsensitiveDict()
     for kv in resp.getheaders():
-        out_headers[kv[0]] = kv[1]
+        # Join repeated header names with ", " rather than last-wins, matching
+        # CPython requests (urllib3's HTTPHeaderDict).
+        existing = out_headers.get(kv[0])
+        if existing is not None:
+            out_headers[kv[0]] = existing + ", " + kv[1]
+        else:
+            out_headers[kv[0]] = kv[1]
     conn.close()
     return Response(status, reason, url, out_headers, content)
 

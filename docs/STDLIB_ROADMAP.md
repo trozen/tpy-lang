@@ -1420,12 +1420,12 @@ divergences** (all compile-visible, none silent): kwargs are a fixed typed set
 `JsonValue` local first; `.json()` is untyped (typed path
 `Model.from_json(r.text)`); `.text` is UTF-8 only; `.headers` is a
 `CaseInsensitiveDict` (case-insensitive lookup, original casing kept for
-items/keys) but duplicate header names are last-wins, not joined with `", "`,
-and `for k in headers` is unsupported (use `headers.keys()`); no true
-connection pooling (`Connection: close`); a redirect to a non-http scheme (e.g.
-https) raises `ConnectionError` (HTTP-only client) rather than being followed.
+items/keys, repeated headers joined with `", "`, full mutable-mapping surface
+incl. `for k in headers` iteration); no true connection pooling
+(`Connection: close`); a redirect to a non-http scheme (e.g. https) raises
+`ConnectionError` (HTTP-only client) rather than being followed.
 **Deferred** (see TODO.md): cookies, multipart files, streaming, proxies, TLS,
-duplicate-header join, form-dict `data=`.
+form-dict `data=`.
 Tests: `cases/tplib/requests_get`, `requests_post`, `requests_session`,
 `requests_errors`, `requests_timeout`, `requests_redirect`,
 `requests_redirect_disabled`, `requests_redirect_method`,

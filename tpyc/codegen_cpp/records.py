@@ -1727,9 +1727,20 @@ class RecordGenerator:
         ret_cpp = len_method.return_type.to_cpp()
         ret_type = len_method.return_type
         ret_int_tr = int_traits_of(ret_type)
-        is_signed = is_big_int_type(ret_type) or (ret_int_tr is not None and ret_int_tr.signed)
+        # BigInt is handled by its own branch below; here is_signed covers only
+        # signed fixed-width ints (which static_cast<size_t> handles directly).
+        is_signed = ret_int_tr is not None and ret_int_tr.signed
         if ret_cpp == "size_t":
             out.write(f"\n{INDENT}size_t size() const {{ return __len__(); }}\n")
+        elif is_big_int_type(ret_type):
+            # BigInt has no size_t cast operator (only checked extractors), so
+            # a plain static_cast<size_t> would fail to compile; to_size_checked
+            # also rejects a negative / out-of-size_t result.
+            out.write(f"\n{INDENT}size_t size() const {{\n")
+            out.write(f"{INDENT}{INDENT}size_t __sz;\n")
+            out.write(f"{INDENT}{INDENT}if (!__len__().to_size_checked(__sz)) ::tpy::raise<::tpy::ValueError>(\"__len__() should return >= 0\");\n")
+            out.write(f"{INDENT}{INDENT}return __sz;\n")
+            out.write(f"{INDENT}}}\n")
         elif is_signed:
             out.write(f"\n{INDENT}size_t size() const {{\n")
             out.write(f"{INDENT}{INDENT}auto len = __len__();\n")
