@@ -34,6 +34,7 @@ from .nodes import (
     THIRLiteral,
     THIRName,
     THIRReturn,
+    THIRSelf,
     THIRStmt,
     THIRVarDecl,
     THIRWhile,
@@ -205,6 +206,8 @@ def _emit_form_convert(e: THIRFormConvert) -> str:
 def _emit_expr(e: THIRExpr) -> str:
     if isinstance(e, THIRName):
         return escape_cpp_name(e.name)
+    if isinstance(e, THIRSelf):
+        return "this"
     if isinstance(e, THIRLiteral):
         return _emit_literal(e)
     if isinstance(e, THIRFieldAccess):

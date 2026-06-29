@@ -14,8 +14,8 @@ from .lower import lower_module
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
     Form, THIRAssign, THIRBinOp, THIRCall, THIRFieldAccess, THIRForRange,
-    THIRFormConvert, THIRIf, THIRLiteral, THIRName, THIRReturn, THIRVarDecl,
-    THIRWhile,
+    THIRFormConvert, THIRIf, THIRLiteral, THIRName, THIRReturn, THIRSelf,
+    THIRVarDecl, THIRWhile,
 )
 
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
@@ -201,9 +201,12 @@ class TestEligibility:
         thir = _lower("def f(a: int) -> int:\n    b = a\n    return b\n")
         assert _fn(thir, "f") is None
 
-    def test_method_is_ineligible(self):
-        thir = _lower(_PRELUDE
-                      + "class C:\n    def m(self, a: Int32) -> Int32:\n        b = a\n        return b\n")
+    def test_staticmethod_is_ineligible(self):
+        # The method frontier (M1) admits instance methods only; a staticmethod
+        # has no `self` receiver and takes a different emit path.
+        thir = _lower_ctx(
+            _PRELUDE
+            + "class C:\n    @staticmethod\n    def m(a: Int32) -> Int32:\n        b = a\n        return b\n")
         assert _fn(thir, "m") is None
 
     def test_generic_is_ineligible(self):
@@ -816,14 +819,23 @@ class TestF1Eligibility:
         assert isinstance(decl.init, THIRFieldAccess)
         assert decl.init.form is Form.VALUE and decl.init.field_cpp == "n"
 
-    def test_method_is_ineligible(self):
-        # F1 is free functions only.
+    def test_method_routes_via_self_receiver(self):
+        # The method frontier (M1): a method's `self.field` reads route the same
+        # as a record param's. `x = self.b` binds a REF_ALIAS off the `this`
+        # receiver; `x.n` is a scalar read off it.
         thir = _lower_ctx(
             _F1_RECORDS
             + "class Wrap:\n    b: Box\n"
             + "    def __init__(self, b: Own[Box]):\n        self.b = b\n"
             + "    def get(self) -> Int32:\n        x = self.b\n        return x.n\n")
-        assert _fn(thir, "get") is None
+        fn = _fn(thir, "get")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.REF_ALIAS
+        # the field source reads `self->b` (the `this` pointer renders `->`)
+        assert isinstance(decl.init, THIRFieldAccess)
+        assert isinstance(decl.init.receiver, THIRSelf) and decl.init.is_arrow
 
     def test_reassigned_nonvalue_local_routes_as_pointer(self):
         # F2: a reassigned plain-record local with lvalue field sources is a
@@ -1505,3 +1517,127 @@ class TestF2eEmit:
 
     def test_return_move_emits_move_helper(self):
         assert "return ::tpy::ptr_to_optional_move(p);" in self._cpp(self.SRC, thir=True)
+
+
+# --- M1 method frontier: instance methods with a `self` (`this`) receiver ---
+
+# Methods over the F1 records. `get_n` is a scalar field read (auto-readonly,
+# const self); `head` a REF_ALIAS off self; `peek` an OPTIONAL_TO_PTR off a
+# readonly self (-> `const Inner*`); `reset` a non-readonly method writing
+# `self.opt = None` (mutates self -> non-const `this`).
+_M1_METHODS = (
+    _F1_RECORDS
+    + "    def get_n(self) -> Int32:\n        return self.n\n"
+    + "    def head(self) -> Int32:\n        x = self.inner\n        return x.value\n"
+    + "    def peek(self) -> Int32:\n        p = self.opt\n        return 0\n"
+    + "    def reset(self):\n        self.opt = None\n"
+)
+
+
+class TestMethodFrontier:
+    def test_scalar_field_read_off_self(self):
+        thir = _lower_ctx(_M1_METHODS)
+        fn = _fn(thir, "get_n")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRFieldAccess)
+        assert isinstance(ret.value.receiver, THIRSelf)
+        assert ret.value.is_arrow and ret.value.form is Form.VALUE
+
+    def test_ref_alias_off_self(self):
+        decl = _fn(_lower_ctx(_M1_METHODS), "head").body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.REF_ALIAS
+        assert isinstance(decl.init.receiver, THIRSelf) and decl.init.is_arrow
+
+    def test_optional_to_ptr_off_readonly_self_is_const(self):
+        # A readonly method's `self` is const, so the borrow lifts to `const T*`.
+        decl = _fn(_lower_ctx(_M1_METHODS), "peek").body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.OPTIONAL_TO_PTR
+        assert decl.form is Form.BORROW and decl.is_const
+
+    def test_nonreadonly_method_routes(self):
+        # `reset` writes `self.opt = None` -> self is non-readonly (non-const
+        # `this`); routes via the F2c storage-form None write.
+        assert _fn(_lower_ctx(_M1_METHODS), "reset") is not None
+
+    def test_staticmethod_excluded(self):
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "    @staticmethod\n    def smethod(a: Int32) -> Int32:\n        return a\n")
+        assert _fn(thir, "smethod") is None
+
+    def test_record_param_method_excluded(self):
+        # A record param on a method is the M2 part of the frontier; M1 restricts
+        # method params to value scalars.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "    def with_box(self, other: Box) -> Int32:\n        return other.n\n")
+        assert _fn(thir, "with_box") is None
+
+    def test_generic_record_method_excluded(self):
+        # A generic record's `self` is templated -> outside the F1-record slice.
+        thir = _lower_ctx(
+            "from tpy import Int32\n"
+            "class Wrap[T]:\n    n: Int32\n"
+            "    def __init__(self, n: Int32):\n        self.n = n\n"
+            "    def get(self) -> Int32:\n        return self.n\n")
+        assert _fn(thir, "get") is None
+
+    def test_constructor_excluded(self):
+        # The ctor body is emitted via the member-init-list driver, not gen_body;
+        # iter_module_callables skips record.init_method (the M3 ctor frontier).
+        thir = _lower_ctx(_M1_METHODS)
+        assert _fn(thir, "__init__") is None
+
+    def test_property_getter_excluded(self):
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "    @property\n    def doubled(self) -> Int32:\n        return self.n\n")
+        assert _fn(thir, "doubled") is None
+
+    def test_optional_to_ptr_off_mutable_self_is_nonconst(self):
+        # A non-readonly method (writes self.opt) reads self.opt off a non-const
+        # `this`, so the borrow lifts to a mutable `Inner*`, not `const Inner*`.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "    def churn(self):\n        p = self.opt\n        self.opt = None\n")
+        decl = _fn(thir, "churn").body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.OPTIONAL_TO_PTR
+        assert decl.form is Form.BORROW and not decl.is_const
+
+
+class TestMethodFrontierEmit:
+    def _emit(self, src: str, thir: bool):
+        # Instance methods emit inline in the struct (the .hpp), so the contract
+        # is checked over header + source, not just the .cpp.
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _M1_METHODS
+        + "def main():\n    b = Box(Inner(0))\n    print(b.get_n() + b.head())\n"
+        + "    print(b.peek())\n    b.reset()\n"
+        + "main()\n"
+    )
+
+    def test_methods_byte_identical(self):
+        # The load-bearing contract for the frontier: method bodies emit
+        # identically from THIR and the AST path.
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_self_renders_as_this_arrow(self):
+        # The `self` receiver renders as the C++ `this` pointer with `->`.
+        assert "return this->n;" in self._emit(self.SRC, thir=True)
+
+    def test_readonly_self_optional_read_is_const(self):
+        assert "const Inner* p = ::tpy::optional_to_ptr(this->opt);" in self._emit(self.SRC, thir=True)
+
+    def test_nonreadonly_self_none_write(self):
+        assert "this->opt = std::nullopt;" in self._emit(self.SRC, thir=True)

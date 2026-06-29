@@ -22,6 +22,7 @@ from .nodes import (
     THIRModule,
     THIRName,
     THIRReturn,
+    THIRSelf,
     THIRStmt,
     THIRVarDecl,
     THIRWhile,
@@ -35,6 +36,8 @@ def _ty(t: TpyType) -> str:
 def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRName):
         return f"%{e.name}"
+    if isinstance(e, THIRSelf):
+        return "%self"
     if isinstance(e, THIRLiteral):
         # The form is load-bearing for a None literal (STORAGE -> std::nullopt
         # vs VALUE/BORROW -> nullptr), so surface it like the other form tags.

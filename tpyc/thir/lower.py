@@ -5,8 +5,10 @@ returning None when the function falls outside the supported slice (the
 eligibility gate). Lowering reads the analyzer here so codegen never has to;
 every fact codegen consumes is materialized onto the returned THIR nodes.
 
-Eligible slice: non-method, non-generic, non-generator/async, plain-linkage
-free functions whose params/locals/return are fixed-width-int scalars, with
+Eligible slice: non-generic, non-generator/async, plain-linkage free functions
+-- and plain instance methods of same-module non-generic records (`self` as an
+F1-record `this` receiver) -- whose params/locals/return are fixed-width-int
+scalars (plus the F1/F2 non-value record forms for locals/returns), with
 straight-line bodies (var-decl / assign / return) over names and literals.
 Anything else -> None (stays on the AST codegen path). The gate is the safety
 boundary: it must reject every construct the emitter cannot reproduce byte-
@@ -72,6 +74,7 @@ from .nodes import (
     THIRName,
     THIRParam,
     THIRReturn,
+    THIRSelf,
     THIRStmt,
     THIRVarDecl,
     THIRWhile,
@@ -470,8 +473,26 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     return _eligible_scalar(ptype) or _f1_record(ptype, analyzer)
 
 
-def _function_eligible(func: TpyFunction, analyzer) -> bool:
-    if func.is_method or func.is_staticmethod:
+def _function_eligible(func: TpyFunction, analyzer,
+                       self_type: 'TpyType | None' = None) -> bool:
+    # M1 method frontier: a plain instance method is admitted when its receiver
+    # is an F1-record (`self_type` passed by the caller from the owning record).
+    # Static/property methods take other emit paths; `@readonly` (const `self`)
+    # and record params are deferred to M2, so a method's params are restricted
+    # to value scalars here -- this also sidesteps `_param_is_const`, which reads
+    # the free-function registry and cannot resolve a method's const params.
+    is_instance_method = (func.is_method and not func.is_staticmethod
+                          and not func.is_property_getter
+                          and not func.is_property_setter)
+    if func.is_method and not is_instance_method:
+        return False
+    # Defensive: the parser sets is_method=True on staticmethods too, so the
+    # check above already excludes them -- this guards against a free function
+    # ever carrying is_staticmethod without is_method.
+    if func.is_staticmethod:
+        return False
+    if is_instance_method and (self_type is None
+                               or not _f1_record(self_type, analyzer)):
         return False
     if func.is_property_getter or func.is_property_setter:
         return False
@@ -485,13 +506,19 @@ def _function_eligible(func: TpyFunction, analyzer) -> bool:
         return False
     if func.linkage != FunctionLinkage.DEFAULT:
         return False
-    # Readonly free functions force const params (const_params=True) whose verdict
-    # FunctionInfo.const_borrow_params does not record, so the const read F1 uses
-    # would diverge -- keep them on the AST path.
-    if func.is_readonly:
+    # A readonly free function forces const params whose verdict
+    # FunctionInfo.const_borrow_params does not record -> divergent const reads,
+    # so it stays on the AST path. A readonly *method* is admitted: its only const
+    # receiver is `self` (seeded into const_locals at lowering), and its params are
+    # restricted to value scalars (never const-ref), so no param-const verdict is
+    # consulted. Without this, M1 would route almost nothing -- a non-mutating
+    # getter is auto-readonly (const `self`).
+    if func.is_readonly and not is_instance_method:
         return False
     for _name, ptype in func.params:
-        if not _f1_param_eligible(ptype if isinstance(ptype, TpyType) else None, analyzer):
+        pt = ptype if isinstance(ptype, TpyType) else None
+        ok = _eligible_scalar(pt) if is_instance_method else _f1_param_eligible(pt, analyzer)
+        if not ok:
             return False
     rt = func.return_type if isinstance(func.return_type, TpyType) else None
     return _eligible_return(rt, analyzer) if func.return_type is not None else True
@@ -704,10 +731,12 @@ def _body_eligible(body, analyzer, declared: dict[str, TpyType],
 
 
 def _field_is_arrow(e: TpyFieldAccess, lc: '_LowerCtx') -> bool:
-    """`recv->field` vs `recv.field`: a plain `T*` pointer-local (F2) receiver
-    renders `->`; a record param / `T&` alias receiver renders `.`. Decided from
-    the pointer-local set lowering tracks (the same names eligibility recorded)."""
-    return isinstance(e.obj, TpyName) and e.obj.name in lc.pointers
+    """`recv->field` vs `recv.field`: a plain `T*` pointer-local (F2) or the `self`
+    receiver (a `this` pointer) renders `->`; a record param / `T&` alias receiver
+    renders `.`. Decided from the pointer-local set lowering tracks (the same names
+    eligibility recorded) plus the method receiver."""
+    return (isinstance(e.obj, TpyName)
+            and (e.obj.name in lc.pointers or e.obj.name == lc.self_receiver))
 
 
 def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
@@ -715,6 +744,11 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
     rtype = analyzer.get_expr_type(e)
     loc = getattr(e, "loc", None)
     if isinstance(e, TpyName):
+        if e.name == lc.self_receiver:
+            # The method receiver -> `this`. A borrow (pointer) receiver; only
+            # ever reached as a field-access receiver (other `self` positions are
+            # gated out), so its form tag is informational.
+            return THIRSelf(result_type=rtype, form=Form.BORROW, loc=loc)
         # A non-value name (a record param / REF_ALIAS / POINTER local used as a
         # field receiver) is a borrow; scalars are value form. The receiver's form
         # is not consumed by the field-access emit, but the tag is kept honest.
@@ -788,13 +822,20 @@ class _LowerCtx:
     (`to_cpp`) is for analyzer-only callers (dump / standalone lowering) that
     never hit a non-value local."""
     __slots__ = ("analyzer", "func", "prescan", "render_type", "const_locals",
-                 "pointers", "rebind_slot_locals", "movable_locals")
+                 "pointers", "rebind_slot_locals", "movable_locals",
+                 "self_receiver")
 
-    def __init__(self, func: TpyFunction, analyzer, render_type) -> None:
+    def __init__(self, func: TpyFunction, analyzer, render_type,
+                 self_receiver: str | None = None) -> None:
         self.analyzer = analyzer
         self.func = func
         self.prescan = _Prescan(func, analyzer)
         self.render_type = render_type or (lambda t: t.to_cpp())
+        # The receiver name (`self`) when `func` is an instance method, else
+        # None: it lowers to a THIRSelf (`this`) and renders `->` field reads
+        # like a pointer-local, but unlike `pointers` it is not a liftable
+        # borrow source (`_is_borrow_ptr_local` must never treat it as one).
+        self.self_receiver = self_receiver
         self.const_locals: set[str] = set()
         # F2 pointer-local names (reseatable `T*`), recorded at first decl so a
         # later reseat and any `->` read off them lower correctly.
@@ -1010,26 +1051,38 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType]) -> T
     raise AssertionError(f"ineligible stmt reached lowering: {type(stmt).__name__}")
 
 
-def lower_function(func: TpyFunction, analyzer, render_type=None) -> THIRFunction | None:
+def lower_function(func: TpyFunction, analyzer, render_type=None,
+                   self_type: 'TpyType | None' = None) -> THIRFunction | None:
     """Lower one function to THIR, or None if it falls outside the slice.
 
     `render_type` (codegen's `TypeResolver.type_to_cpp`) renders F1 borrow-local
     decl types byte-identically; omit it only when no non-value local can arise
-    (dump / value-scalar standalone lowering)."""
-    if not _function_eligible(func, analyzer):
+    (dump / value-scalar standalone lowering). `self_type` is the owning record's
+    type when `func` is an instance method (M1): `self` is seeded as an F1-record
+    receiver (a `this` pointer) so its field reads route the same as a param's."""
+    if not _function_eligible(func, analyzer, self_type):
         return None
     # Branch-local hoisting is not reproduced -- a function that hoists any
     # local out of a branch stays on the AST path.
     if analyzer.function_hoisted_vars.get(id(func)):
         return None
-    lc = _LowerCtx(func, analyzer, render_type)
+    is_method = self_type is not None and func.is_method
+    self_receiver = "self" if is_method else None
+    lc = _LowerCtx(func, analyzer, render_type, self_receiver=self_receiver)
     params_set: dict[str, TpyType] = {n: t for n, t in func.params}
+    if is_method:
+        params_set["self"] = self_type  # the record receiver, a field source
+        if func.is_readonly:
+            # A readonly method's `this` is const, so a borrow local off `self.opt`
+            # lifts to `const T*` (the OPTIONAL_TO_PTR const bump keys on the
+            # receiver being in const_locals -- see _f1_is_const).
+            lc.const_locals.add("self")
     if not _body_eligible(func.body, analyzer, params_set, lc.prescan,
                           in_branch=False, pointers=set(), rebind_slots=set()):
         return None
     params = tuple(THIRParam(name=n, type=t) for n, t in func.params)
     rt = func.return_type if isinstance(func.return_type, TpyType) else VoidType()
-    # Seeded with params: a write to a param name is a reassignment, not a decl.
+    # Seeded with params (and `self`): a write to such a name is a reassignment.
     declared: dict[str, TpyType] = dict(params_set)
     body = tuple(_lower_stmt(s, lc, declared) for s in func.body)
     return THIRFunction(
@@ -1041,11 +1094,46 @@ def lower_function(func: TpyFunction, analyzer, render_type=None) -> THIRFunctio
     )
 
 
-def lower_module(module: TpyModule, analyzer, render_type=None) -> THIRModule:
-    """Lower every eligible function in `module`; skip the rest."""
-    out = THIRModule(module_name=getattr(analyzer.ctx, "module_name", "generated"))
+def _method_self_type(record, analyzer) -> 'TpyType | None':
+    """The `self` receiver type for an M1 method feed: the record's canonical
+    qualified `NominalType` for a non-generic record, else None (a generic
+    record's `self` is templated, outside the F1-record slice). The qname is
+    load-bearing -- a bare `NominalType(name)` has no registry entry, so
+    `is_user_record` (hence `_f1_record`) is False. `_f1_record` applies the
+    remaining native / cross-module gates at lowering."""
+    if record.type_params:
+        return None
+    ri = analyzer.registry.get_record(record.name)
+    if ri is None:
+        return None
+    return NominalType(record.name, _module_qname=ri.qualified_name())
+
+
+def iter_module_callables(module: TpyModule, analyzer):
+    """Yield `(callable, self_type)` for every function / instance method the slice
+    may admit -- the single feed list shared by `lower_module` and codegen so the
+    two never drift. The eligibility gate still has the final say; this only
+    enumerates candidates. Free functions yield `self_type=None`; instance methods
+    yield the owning record's type (None-skipped for generic records). The
+    constructor is excluded -- its body is emitted via the member-init-list driver
+    (the M3 ctor frontier), not gen_method_def."""
     for func in module.functions:
-        thir_fn = lower_function(func, analyzer, render_type)
+        yield func, None
+    for record in module.records:
+        self_type = _method_self_type(record, analyzer)
+        if self_type is None:
+            continue
+        init = record.init_method
+        for method in record.methods:
+            if method is not init:
+                yield method, self_type
+
+
+def lower_module(module: TpyModule, analyzer, render_type=None) -> THIRModule:
+    """Lower every eligible function and instance method in `module`; skip the rest."""
+    out = THIRModule(module_name=getattr(analyzer.ctx, "module_name", "generated"))
+    for func, self_type in iter_module_callables(module, analyzer):
+        thir_fn = lower_function(func, analyzer, render_type, self_type=self_type)
         if thir_fn is not None:
             out.functions.append(thir_fn)
     return out

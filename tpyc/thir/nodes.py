@@ -87,6 +87,17 @@ class THIRName(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRSelf(THIRExpr):
+    """The instance-method receiver `self`, rendered as the C++ `this` pointer.
+
+    A distinct node rather than a `THIRName("self")` because `this` is a C++
+    keyword `escape_cpp_name` would mangle to `this_`, and because `self` is a
+    pointer receiver: field reads off it render with `->`. Only arises in an
+    instance method admitted to the slice (the free-function slice never sees
+    it)."""
+
+
+@dataclass(frozen=True)
 class THIRBinOp(THIRExpr):
     """Binary operation. `resolved` carries the operator's C++ template and
     operand wrappers (from sema); `divisor_non_zero` swaps the checked div/mod

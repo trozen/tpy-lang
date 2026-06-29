@@ -428,11 +428,14 @@ class CodeGenerator:
         # `type_to_cpp`, which consults that map (cross-module qualification,
         # the live module). Running it earlier would mis-qualify those types.
         if self.ctx.thir_codegen:
-            from ..thir.lower import lower_function as _thir_lower
+            from ..thir.lower import (
+                iter_module_callables as _thir_callables,
+                lower_function as _thir_lower,
+            )
             self.ctx.thir_functions = {
-                id(f): tf for f in module.functions
-                if (tf := _thir_lower(f, self.analyzer,
-                                      self.types.type_to_cpp)) is not None
+                id(f): tf for f, self_type in _thir_callables(module, self.analyzer)
+                if (tf := _thir_lower(f, self.analyzer, self.types.type_to_cpp,
+                                      self_type=self_type)) is not None
             }
 
         hpp = io.StringIO()

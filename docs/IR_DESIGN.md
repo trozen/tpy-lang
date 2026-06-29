@@ -9,7 +9,7 @@
 | `--dump-thir` debug output | Done (increment 1) |
 | THIR-backed codegen context | Increment 1 -- flag-gated (`tpyc/thir/emit.py`) |
 | Codegen migration from analyzer/AST to THIR | Increments 1-5 -- value-scalar bodies incl. if/elif/else, while, range-for, double float, bool, comparison-as-value |
-| THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`). F1: single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads. F2: reseatable `T*` pointer-locals (lvalue reseat + the rvalue `__slot_N` rebind machinery, `->` reads) and the Optional borrow<->storage write/return (`ptr_to_optional` copy / `ptr_to_optional_move` move) + `None` (`std::nullopt`). Byte-identical with `--thir-codegen` forced over the full corpus. Deferred within F2 (AST path) -- not form cells but separate frontiers: ctor member-init-list (needs the constructor/method frontier) and call-arg / call+`copy()`-write sources (need non-value call args + auto-move). F3-F-final not started |
+| THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`). F1: single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads. F2: reseatable `T*` pointer-locals (lvalue reseat + the rvalue `__slot_N` rebind machinery, `->` reads) and the Optional borrow<->storage write/return (`ptr_to_optional` copy / `ptr_to_optional_move` move) + `None` (`std::nullopt`). Byte-identical with `--thir-codegen` forced over the full corpus. **Method frontier M1 landed (2026-06)** -- a callable-kind axis orthogonal to the form ladder: plain instance methods route (`self` -> `this` via `THIRSelf`, readonly/const self, scalar params), so F1/F2 finally route real corpus code. Deferred (AST path): M2 record-param methods + const-self model; M3 constructors / member-init-list; call-arg / call+`copy()`-write sources (non-value call args + auto-move). F3-F-final not started |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
 | `--dump-mir` debug output | Not started |
@@ -160,16 +160,40 @@ branch) drives it; the `__slot_N` numbering is a per-function `_EmitState` count
 consumer is gated out). *F2e:* the move half -- an owned (REBIND_SLOT) source at
 last use lifts via `ptr_to_optional_move`, decided at lowering from the same
 `function_movable_locals` + `all_last_uses` facts the AST reads (`THIRFormConvert.
-move`). All three route zero corpus cases (these shapes live in methods / cross
-call boundaries in the corpus), so the `tpyc/thir/test_thir_scaffold.py` unit
-tests are the per-rung net (routing + byte-identity); byte-identical across the
-whole corpus with `--thir-codegen` forced. Still deferred -- **not form cells but
-separate frontiers**: ctor member-init-list (the MIL is emitted by the record
-driver outside `gen_body`, and only for constructors -- it needs the
-constructor/method frontier, a THIR `self` model, and a MIL node) and the call-arg
-/ call+`copy()`-write `ptr_to_optional` sites (admitting a non-value call arg
-forces the whole arg-coercion cascade incl. auto-move `f(std::move(p))`, so they
-must land together, not as an isolated form cell).
+move`). At F2's landing all three routed zero corpus cases (these shapes live in
+methods / cross call boundaries in the corpus), so the
+`tpyc/thir/test_thir_scaffold.py` unit tests were the per-rung net (routing +
+byte-identity); increment 9's method frontier (below) since routes them under the
+whole-corpus net. Byte-identical across the whole corpus with `--thir-codegen`
+forced. Still deferred -- **not form cells but separate frontiers**: ctor
+member-init-list (the MIL is emitted by the record driver outside `gen_body`, and
+only for constructors -- the method frontier and a THIR `self` model landed in
+increment 9, so this now needs only the ctor-specific MIL node + the ~190-line
+field-init hoist) and the call-arg / call+`copy()`-write `ptr_to_optional` sites
+(admitting a non-value call arg forces the whole arg-coercion cascade incl.
+auto-move `f(std::move(p))`, so they must land together, not as an isolated form
+cell).
+
+**Increment 9 opens the method frontier (M1)** -- a callable-kind axis orthogonal
+to the form ladder. The slice was free-functions-only, so every F1/F2 rung routed
+**zero corpus cases** (records/optionals live in *methods*); admitting instance
+methods puts F1/F2 under the whole-corpus byte-diff gate over real code. An
+instance method's receiver is modeled as an F1-record **pointer-local** (`self` ->
+the C++ `this`, arrow field access) via a dedicated `THIRSelf` node (`this` is a
+keyword `escape_cpp_name` would mangle); the body reuses the F1/F2 lowering+emit
+unchanged, and only the body -- not the AST-emitted signature -- routes. A readonly
+method's `self` is const (seeded into `const_locals`, so an `optional_to_ptr` off
+`self.opt` lifts to `const T*`); admitting readonly methods is load-bearing, since
+a non-mutating getter is auto-readonly. Scope: a same-module non-generic record's
+plain instance methods with **value-scalar params** (record params -- M2 -- need a
+method-level const-param verdict the free-function registry can't supply). The
+feed list (`iter_module_callables`) is shared by `lower_module` and codegen so the
+two never drift; the constructor is excluded (its body is emitted via the
+member-init-list driver, not `gen_body` -- the M3 ctor-MIL frontier). Deferred
+(AST path, filed in TODO): M2 record params + the const-self-receiver model for
+them; M3 constructors / member-init-list; scalar-`self`-field writes
+(`self.count = 0`); static/property/dunder-operator methods; generic-record
+methods; nested-record methods.
 
 ---
 
@@ -888,12 +912,25 @@ that the migration enables. Migration-complete != bugs-fixed.
 | Rung | Scope | Closes (inventory) |
 |------|-------|--------------------|
 | **F1** *(landed 2026-06)* | single-assignment non-value **record** locals + Optional[record] storage->borrow read (`T&` alias, lvalue `optional_to_ptr`, is_const propagation, record borrow params) + scalar field reads; excludes reassigned/rebound/rvalue-slot, container/cross-module/native records, and calls passing a non-value arg (auto-move). Container locals fold in with F3 | most of section 1 non-value-local + section 4 read |
-| **F2** *(landed 2026-06)* | reassigned/rebound locals + Optional borrow<->storage write/return. **Landed:** reseatable `T*` pointer-locals -- **lvalue** reseat (`&(...)`, no slot, F2a) and the **rvalue** `__slot_N` rebind machinery (F2d) -- `->` reads; the optional-field/return **write** from a borrow source, copy (`ptr_to_optional`, F2b) and **move** (`ptr_to_optional_move`, F2e); the storage-Optional **return** + **`None`** write/return (`std::nullopt`, F2c). **Deferred -- separate frontiers, not form cells (AST path):** ctor-MIL (constructor/method frontier) and the call-arg / call+`copy()`-write sources (non-value call args + auto-move). | section 3b slot machinery + section 4 write/lift (the local + free-function sites) |
+| **F2** *(landed 2026-06)* | reassigned/rebound locals + Optional borrow<->storage write/return. **Landed:** reseatable `T*` pointer-locals -- **lvalue** reseat (`&(...)`, no slot, F2a) and the **rvalue** `__slot_N` rebind machinery (F2d) -- `->` reads; the optional-field/return **write** from a borrow source, copy (`ptr_to_optional`, F2b) and **move** (`ptr_to_optional_move`, F2e); the storage-Optional **return** + **`None`** write/return (`std::nullopt`, F2c). **Deferred -- separate frontiers, not form cells (AST path):** ctor-MIL (M3 constructor frontier; the method frontier M1 landed 2026-06, so F2 now routes corpus method bodies) and the call-arg / call+`copy()`-write sources (non-value call args + auto-move). | section 3b slot machinery + section 4 write/lift (the local + free-function sites) |
 | **F3** | Tuple form (per-element pointer/optional mask, BORROW_TUPLE / STORAGE_TUPLE) | section 1 tuple, section 4 tuple sites |
 | **F4** | Union form (`to_ptr_variant` / `to_value_variant`, value/ptr-variant split, the 3 consumer-dictated exhibits) | section 1 union |
 | **F5** | Generic-slot form (`val_or_ref_t` / `val_or_ptr_t` over TypeParamRef) | section 1 generic, section 3c RefType (begin) |
 | **F6** | str/bytes view split (Open Q 11 scope extension) | section 3d |
 | **F-final** | `RefType` removal + AST form-codegen retirement | section 3c, end state |
+
+**Callable-kind axis (M1-M3), orthogonal to the form ladder.** The form rungs run
+over a callable slice that was free-functions-only; the method/constructor frontier
+widens *which callables* route, independent of *which type families* do. **M1
+(landed 2026-06): plain instance methods** -- `self` modeled as an F1-record
+pointer-receiver (`THIRSelf` -> `this`, arrow reads), readonly methods admitted
+with a const `self`, value-scalar params only. This is what first put F1/F2 under
+the whole-corpus byte-diff over *real* corpus code (every prior form rung routed
+zero cases -- their shapes live in methods). **M2:** record params + the
+const-self-receiver model they need (a method-level const-param verdict). **M3:**
+constructors / member-init-list (a whole-ctor THIR node + a MIL emitter, the
+~190-line field-init hoist), which also unblocks the deferred ctor-`ptr_to_optional`
+form cell.
 
 **F1 is the pre-commit gate** (Codex review condition + the spike's real test): an
 end-to-end byte-identical lowering of one real non-value function through THIR-
