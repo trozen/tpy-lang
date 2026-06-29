@@ -537,16 +537,40 @@ def is_boundary_marshallable(t: "TpyType | None", allow_void: bool = False) -> b
     return -- the wrapper hands back None -- but never a valid parameter type.
     Own[T] only transfers ownership of T, so it marshals iff T does.
     """
-    from tpyc.typesys import OwnType, VoidType
+    from tpyc.typesys import VoidType
     if t is None:
         return allow_void  # no return annotation -> the wrapper hands back None
     if allow_void and isinstance(t, VoidType):
         return True  # `-> None` resolves to VoidType, not None
-    inner = t
-    while isinstance(inner, OwnType):
-        inner = inner.wrapped
+    inner = _boundary_inner(t)
     td = type_def_of(inner)
+    # An @export class is admitted through the same per-type fact the scalars
+    # use: sema sets boundary_marshal on its (dynamic) TypeDef.
     return td is not None and td.boundary_marshal
+
+
+def _boundary_inner(t: "TpyType") -> "TpyType":
+    """Strip the Own (ownership transfer) and Ref (auto-inserted borrow form at
+    param/return boundaries) wrappers so the boundary predicates see the bare
+    marshalled type. A class param arrives as Ref[Counter], an owning return as
+    Own[Counter]; both marshal iff the inner type does."""
+    from tpyc.typesys import OwnType, RefType
+    inner = t
+    while isinstance(inner, (OwnType, RefType)):
+        inner = inner.wrapped
+    return inner
+
+
+def is_exposed_class(t: "TpyType | None") -> "bool":
+    """True if `t` resolves to a user record exposed as a CPython type (`@export`
+    in an ext_module). Distinguishes a class boundary (PyType_FromSpec, marshalled
+    via class_bridge) from a scalar/str/bytes boundary at the glue emit site.
+    Strips Own/Ref wrappers. Returns False when no compiler context is set.
+    """
+    if t is None:
+        return False
+    td = type_def_of(_boundary_inner(t))
+    return td is not None and td.record is not None and td.record.exposed_to_host
 
 
 # Single-qname primitive predicates.

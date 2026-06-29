@@ -1,0 +1,1 @@
+main.py:15: error: @export class 'Outer': field 'inner' of exposed-class type 'Inner' cannot be exposed as a getset yet (a nested class field needs per-instance marshalling)

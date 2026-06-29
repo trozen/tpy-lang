@@ -1,1 +1,1 @@
-main.py:9: error: @export function 'f': parameter 'x' type 'std::vector<uint8_t>&' is not yet marshallable across the CPython boundary (supported: the fixed-width int types, int, float, bool, str, bytes)
+main.py:9: error: @export function 'f': parameter 'x' type 'std::vector<uint8_t>&' is not yet marshallable across the CPython boundary (supported: the fixed-width int types, int, float, bool, str, bytes, and @export classes defined in this module)

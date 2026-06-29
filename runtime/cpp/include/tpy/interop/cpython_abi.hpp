@@ -85,4 +85,55 @@ inline constexpr int METH_NOARGS = 0x0004;
 // PyModule_Create is a macro for PyModule_Create2(def, PYTHON_API_VERSION).
 inline constexpr int PYTHON_API_VERSION = 1013;
 
+// --- Heap-type creation (PyType_FromSpec), for exposed classes. ---
+
+// Slot function-pointer types (limited-API, abi3-stable signatures).
+using getter = PyObject *(*)(PyObject *, void *);
+using setter = int (*)(PyObject *, PyObject *, void *);
+
+// One (slot-id, function-pointer) pair; a PyType_Spec.slots array is terminated
+// by a {0, nullptr} entry.
+struct PyType_Slot {
+    int slot;
+    void *pfunc;
+};
+
+struct PyType_Spec {
+    const char *name;
+    int basicsize;
+    int itemsize;
+    unsigned int flags;
+    PyType_Slot *slots;
+};
+
+// A read/write descriptor (exposed field). get/set are typed function pointers;
+// closure is unused (nullptr).
+struct PyGetSetDef {
+    const char *name;
+    getter get;
+    setter set;
+    const char *doc;
+    void *closure;
+};
+
+// Type-slot ids the class glue populates (values from CPython's typeslots.h,
+// stable across versions). Checked against Python.h in the facade self-check.
+inline constexpr int Py_tp_dealloc = 52;
+inline constexpr int Py_tp_init = 60;
+inline constexpr int Py_tp_methods = 64;
+inline constexpr int Py_tp_new = 65;
+inline constexpr int Py_tp_getset = 73;
+inline constexpr int Py_tp_free = 74;
+
+// Exposed classes are final (not subclassable from Python): partial
+// subclassability would silently diverge in method dispatch (the C++ payload
+// method is called directly, bypassing a Python override). Under the limited
+// API Py_TPFLAGS_DEFAULT is 0; spelling it documents the choice and matches
+// CPython's macro (asserted in the self-check).
+inline constexpr unsigned int Py_TPFLAGS_DEFAULT = 0;
+
+// Py_TYPE: the limited API hides the macro, but ob_type is a stable PyObject
+// field, so read it directly.
+inline PyTypeObject *Py_TYPE(PyObject *o) { return o->ob_type; }
+
 }  // namespace tpy::cpy

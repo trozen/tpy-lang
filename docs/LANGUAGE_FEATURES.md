@@ -5852,7 +5852,13 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   `PyInit_<module>`) beside the normal module `.cpp`. The boundary uses a
   hand-mirrored limited-API facade (`tpy/interop/cpython_h.hpp`) so no
   `Python.h` enters a generated TU; the `.so` links with undefined Python
-  symbols (no libpython) resolved at import.
+  symbols (no libpython) resolved at import. **The boundary is positional-only**
+  (`METH_VARARGS` + `PyArg_ParseTuple`, no `METH_KEYWORDS`): a host caller must
+  pass arguments positionally to an `@export` function, method, or constructor.
+  Calling with keyword arguments (`f(x=1)`, `Counter(value=10)`) raises
+  `TypeError` from the compiled extension, where the untyped TPy source run under
+  CPython would accept them -- a declared divergence (keyword marshalling is a
+  deferred enhancement, tracked in `TODO.md`).
 - **Working (the fixed-width int types + `int` + `float` + `bool`)**: functions
   taking and returning any fixed-width int (`Int8`..`Int64` / `UInt8`..`UInt64`;
   rung 1 `METH_VARARGS` + `PyArg_ParseTuple` with `from_py` owning every
@@ -5949,11 +5955,49 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   `@export` bodies); user exceptions defined in *another* module and raised at
   the boundary (only ext_module-defined classes get a type -- imported ones
   still degrade); a spelling to silence the data-carrying warning.
+- **Working (exposed classes)**: a class marked `@export` in an ext_module is
+  exposed as a real CPython type built at `PyInit_` via `PyType_FromSpec`
+  (importable as `mymod.Counter`). The instance embeds the TPy C++ payload
+  after the `PyObject` header (`tpy::interop::Instance<T>`): `tp_init` runs the
+  TPy `__init__` (placement-new from marshalled args), `tp_dealloc` runs the
+  C++ destructor (so `Own`/`Box`/`Rc`/container fields release). Baseline
+  surface: construct from Python, plain instance methods (each a bound wrapper),
+  and every annotated field as a read/write getset descriptor. Because the
+  PyObject *owns* the instance, a class crosses **IN as a borrow of the live
+  embedded payload** -- a method call or a free function taking the instance
+  (`def bump(c: Counter, ...)`) mutates through it and the change is visible on
+  the same object (correct Python reference semantics, unlike the by-copy
+  container boundary). It crosses **OUT by copy/move into a fresh instance**
+  (`instance_to_py`), so identity is not preserved across a return: returning a
+  fresh/`copy()`'d `Own[Counter]` is the normal form, while returning a borrow
+  (`-> Counter`, i.e. `return self`/`return <param>`) copies a caller-visible
+  object and **warns** (return `Own[...]` to make the copy explicit). The
+  exposed type is **final** (no `Py_TPFLAGS_BASETYPE`): not subclassable from
+  Python (an honest `TypeError` rather than partial subclassing that would
+  silently diverge in method dispatch), and it has **no instance `__dict__`**
+  (fixed layout -- ad-hoc attribute assignment raises `AttributeError`); a
+  wrong-typed field set or `__init__` arg raises `TypeError`. These last three
+  diverge from the plain Python source class (subclassable, `__dict__`, untyped)
+  -- declared divergences kept out of the parity driver and exercised in
+  `ext_checks.py`. The ext-module validator rejects, with a located error, an
+  exposed class the glue can't yet emit: a field/method type that doesn't
+  marshal, a class-typed field, an `Own[Cls]` param (the host keeps its
+  reference, so ownership can't transfer -- use the borrow form), a `@nocopy`
+  class returned by reference (the boundary can't copy it out -- return
+  `Own[Cls]`), `@property`, static/async/generic/overloaded methods,
+  inheritance, generics, or `@export` on an exception class (those cross via the
+  separate `PyErr_NewException` path). The exposed type is not subclassable from
+  Python (no `Py_TPFLAGS_BASETYPE`) and carries no GC traversal (its fields are
+  scalar/str/bytes; `tp_traverse` becomes necessary only when class-typed fields
+  land). A dunder other than `__init__` (`__repr__`,
+  `__eq__`, ...) is **warned** -- it is not wired into the host type in this
+  rung, so it would be silently absent otherwise.
 - **Planned**: zero-copy `str`/`bytes` view input (`StrView`/`BytesView` via
   the phase-3.5 foreign-borrow primitive), faithful data-field crossing for
-  user exception classes, classes (`PyType_FromSpec`), enums/constants,
-  container and buffer input, the PEP 517 wheel backend, and the `nogil` GIL
-  capability. See `docs/CPYTHON_INTEROP.md`.
+  user exception classes (the same per-instance field marshalling), class-typed
+  fields / `@property` / dunders / inheritance for exposed classes,
+  enums/constants, container and buffer input, the PEP 517 wheel backend, and
+  the `nogil` GIL capability. See `docs/CPYTHON_INTEROP.md`.
 
 ---
 

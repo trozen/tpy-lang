@@ -2989,6 +2989,8 @@ class Compiler:
             analyzer.analyze_bodies(compiled.ast)
             analyzer.run_phase2_fixpoint(compiled.ast)
             analyzer._warn_export_user_exc_data(compiled.ast)
+            analyzer._warn_export_class_return_alias(compiled.ast)
+            analyzer._warn_export_class_unexposed_dunders(compiled.ast)
         except SemanticError as e:
             if e.filename is None and not compiled.is_entry_point:
                 e.filename = os.path.relpath(compiled.path)
@@ -3910,17 +3912,135 @@ class Compiler:
                     continue
                 # `void` (no annotation or `-> None`) is a legal return -- the
                 # wrapper hands back None -- but never a valid parameter type.
-                checks = [(func.return_type, "return", True)]
-                checks += [(ptype, f"parameter '{pname}'", False)
+                checks = [(func.return_type, "return", "return")]
+                checks += [(ptype, f"parameter '{pname}'", "param")
                            for pname, ptype in func.params]
-                for typ, what, allow_void in checks:
-                    if is_boundary_marshallable(typ, allow_void):
+                fline = func.loc.line if func.loc else None
+                for typ, what, role in checks:
+                    form_err = self._exposed_class_form_error(
+                        typ, role, compiled.analyzer.registry)
+                    if form_err is not None:
+                        raise CompileError(
+                            f"@export function '{func.name}': {what} {form_err}",
+                            compiled.name, compiled.path, lineno=fline)
+                    if is_boundary_marshallable(typ, role == "return"):
                         continue
                     cpp = boundary_cpp_type(typ)
                     raise CompileError(
                         boundary_unmarshallable_msg(func.name, what, cpp),
-                        compiled.name, compiled.path,
-                        lineno=func.loc.line if func.loc else None)
+                        compiled.name, compiled.path, lineno=fline)
+            for record in compiled.ast.records:
+                if not record.exposed_to_host:
+                    continue
+                self._validate_exposed_class(compiled, record)
+
+    def _validate_exposed_class(self, compiled: 'CompiledModule',
+                                record: 'TpyRecord') -> None:
+        """An `@export` class is exposed as a flat PyType_FromSpec type with
+        __init__ + plain methods + annotated fields as getset. Reject the
+        constructs the glue does not yet emit (rather than silently dropping
+        them), and require every crossing field/param/return to marshal.
+        """
+        from .codegen_cpp.generator import (
+            boundary_cpp_type, boundary_unmarshallable_msg)
+        from .type_def_registry import is_boundary_marshallable
+        info = compiled.analyzer.registry.get_record(record.name)
+        line = record.loc.line if record.loc else None
+
+        def reject(msg: str) -> None:
+            raise CompileError(f"@export class '{record.name}': {msg}",
+                               compiled.name, compiled.path, lineno=line)
+
+        # Exception classes already cross via the PyErr_NewException path
+        # (auto-exposed, no @export needed); the two type-creation paths are
+        # disjoint, so @export on a throwable would double-create.
+        if info.inherits_base_exception or info.implements_throwable:
+            reject("exception classes are exposed automatically -- remove @export")
+        if info.type_params:
+            reject("generic classes cannot be exposed yet (the class must be "
+                   "non-generic)")
+        if info.parents:
+            reject("inheritance of exposed classes is not supported yet (the "
+                   "class must be flat)")
+        if info.properties:
+            reject("@property on an exposed class is not supported yet (use a "
+                   "plain annotated field or a method)")
+
+        reg = compiled.analyzer.registry
+
+        def check(typ, what: str, role: str) -> None:
+            form_err = self._exposed_class_form_error(typ, role, reg)
+            if form_err is not None:
+                reject(f"{what} {form_err}")
+            if is_boundary_marshallable(typ, role == "return"):
+                return
+            cpp = boundary_cpp_type(typ)
+            raise CompileError(
+                boundary_unmarshallable_msg(record.name, what, cpp, kind="class"),
+                compiled.name, compiled.path, lineno=line)
+
+        for fld in info.fields:
+            check(fld.type, f"field '{fld.name}'", "field")
+
+        for mname, overloads in info.methods.items():
+            if mname.startswith("__") and mname.endswith("__") \
+                    and mname != "__init__":
+                continue  # only __init__ is exposed; other dunders aren't yet
+            # The glue emits one positional wrapper per method; an @overload
+            # group would silently expose only the first signature's arity.
+            if len(overloads) > 1:
+                reject(f"overloaded '{mname}' cannot be exposed yet (only a "
+                       f"single signature crosses to CPython)")
+            for m in overloads:
+                if m.is_staticmethod:
+                    reject(f"static method '{mname}' cannot be exposed yet")
+                if m.is_async or m.is_generator:
+                    reject(f"async/generator method '{mname}' cannot be exposed")
+                if m.type_params:
+                    reject(f"generic method '{mname}' cannot be exposed yet")
+                # __init__'s "return" is the constructed instance (no value
+                # marshalled out); a plain method marshals its return, with
+                # `-> None` handed back as None.
+                if mname != "__init__":
+                    check(m.return_type, f"method '{mname}' return", "return")
+                for p in m.params:
+                    if p.name == "self":
+                        continue
+                    check(p.type, f"method '{mname}' parameter '{p.name}'",
+                          "param")
+
+    def _exposed_class_form_error(self, typ, role: str, registry) -> 'str | None':
+        """Diagnose an exposed-class boundary type the glue cannot emit, so a
+        located error replaces an opaque C++ failure. role in {field,param,
+        return}. Returns the message tail or None.
+
+          - a getset *field* of exposed-class type: the getter would need
+            per-instance marshalling of a nested class (deferred);
+          - an `Own[Cls]` *param*: the host keeps its reference, so ownership
+            can't transfer -- the Own ABI (`Cls&&`) can't bind the borrowed
+            payload;
+          - a `@nocopy` class *returned by reference* (`-> Cls`): the boundary
+            copies the value out, but the copy ctor is deleted.
+        """
+        from .typesys import OwnType, RefType
+        from .type_def_registry import is_exposed_class, _boundary_inner
+        if not is_exposed_class(typ):
+            return None
+        info = registry.get_record_for_type(_boundary_inner(typ))
+        cls = info.name if info is not None else "the class"
+        if role == "field":
+            return (f"of exposed-class type '{cls}' cannot be exposed as a getset "
+                    f"yet (a nested class field needs per-instance marshalling)")
+        if role == "param" and isinstance(typ, OwnType):
+            return (f"is Own[{cls}], which is not a valid boundary type: the host "
+                    f"keeps its reference, so ownership cannot transfer -- use "
+                    f"the borrow form '{cls}'")
+        if role == "return" and isinstance(typ, RefType) \
+                and info is not None and info.is_nocopy:
+            return (f"is a @nocopy class '{cls}' returned by reference, which the "
+                    f"boundary cannot copy out (its copy is deleted) -- return "
+                    f"Own[{cls}] to move it out")
+        return None
 
     def _build_namespace_map(self) -> dict[str, str]:
         """Build module_name -> C++ namespace mapping from # tpy: namespace directives.

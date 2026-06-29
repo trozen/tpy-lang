@@ -33,7 +33,7 @@ from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach,
     TpyFieldAccess, TpyName, TpyCall, TpyLambda,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef, TpyCoerce,
-    expr_contains_self_method_call,
+    TpyReturn, expr_contains_self_method_call,
 )
 from .expressions import _collect_body_name_refs, _walk_body_stmts
 
@@ -101,9 +101,9 @@ from ..parse import SourceLocation, is_parser_keyword
 from ..type_def_registry import (
     is_str_type, is_str_view_type, enum_info_of,
     is_array, is_enum_type, is_list, is_dict, is_set, is_span,
-    protocol_info_of,
+    protocol_info_of, is_exposed_class, _boundary_inner,
 )
-from ..typesys import unwrap_own, is_protocol_type, is_protocol_union
+from ..typesys import unwrap_own, is_protocol_type, is_protocol_union, RefType
 from ..parse.resolve_refs import (
     _walk_body, _merged_method_scope, _record_scope,
     promote_bare_nominals,
@@ -514,6 +514,81 @@ class SemanticAnalyzer:
                     f"@export function '{func.name}': raising '{info.name}' "
                     f"across the CPython boundary carries only its type and "
                     f"message; its data field(s) ({fields}) do not cross", stmt)
+
+    def _warn_export_class_return_alias(self, module: TpyModule) -> None:
+        """In an ext_module, warn when an @export function or an exposed class's
+        method returns an exposed class *by borrow* -- declared `-> Cls` (sema
+        lowers this to RefType[Cls]), not `-> Own[Cls]`. The only thing
+        returnable by reference is an existing instance (a fresh local can't be
+        returned by reference, and a borrowed source can't be returned as Own
+        without copy()), so the boundary necessarily copies a caller-visible
+        object into a fresh PyObject: identity (`is`) and write-through aliasing
+        are not preserved. Returning `Own[Cls]` -- a freshly constructed or
+        copy()'d owned value -- is a distinct object on both sides and is the
+        acknowledged form (so it is not flagged).
+        """
+        if not module.directives.ext_module:
+            return
+
+        def first_return(body) -> 'TpyReturn | None':
+            found: list[TpyReturn] = []
+            _walk_body_stmts(
+                body, lambda _e: None,
+                lambda s: found.append(s)
+                if isinstance(s, TpyReturn) and s.value is not None
+                and not found else None)
+            return found[0] if found else None
+
+        def warn_if_borrow_return(fn, label: str) -> None:
+            if not (isinstance(fn.return_type, RefType)
+                    and is_exposed_class(fn.return_type)):
+                return
+            info = self.ctx.registry.get_record_for_type(
+                _boundary_inner(fn.return_type))
+            # A @nocopy class returned by reference is a hard error (the copy is
+            # deleted), reported by the validator -- don't also warn.
+            if info is not None and info.is_nocopy:
+                return
+            self._warning(
+                f"{label}: returns exposed class "
+                f"'{getattr(fn.return_type.wrapped, 'name', '?')}' by reference, "
+                f"so the instance is copied across the CPython boundary -- the "
+                f"result is a new object (identity and write-through aliasing "
+                f"are not preserved); return Own[...] to make the copy explicit",
+                first_return(fn.body))
+
+        for func in module.functions:
+            if func.exposed_to_host:
+                warn_if_borrow_return(func, f"@export function '{func.name}'")
+        for record in module.records:
+            if not record.exposed_to_host:
+                continue
+            for m in record.methods:
+                if m.name == "__init__" or (m.name.startswith("__")
+                                            and m.name.endswith("__")):
+                    continue  # only __init__ is exposed; other dunders aren't
+                warn_if_borrow_return(
+                    m, f"exposed class '{record.name}' method '{m.name}'")
+
+    def _warn_export_class_unexposed_dunders(self, module: TpyModule) -> None:
+        """In an ext_module, warn when an exposed class defines a dunder other
+        than __init__. Only __init__ and plain methods are wired into the
+        CPython type in this rung; a __repr__/__eq__/... is silently absent from
+        the host type rather than rejected, so surface it -- otherwise the gap
+        reads as "works" until someone calls it from Python.
+        """
+        if not module.directives.ext_module:
+            return
+        for record in module.records:
+            if not record.exposed_to_host:
+                continue
+            for m in record.methods:
+                if m.name != "__init__" and m.name.startswith("__") \
+                        and m.name.endswith("__"):
+                    self._warning(
+                        f"exposed class '{record.name}': '{m.name}' is not "
+                        f"exposed to CPython (only __init__ and plain methods "
+                        f"cross); the host type will not have it", record)
 
     def bind_imports(self, module: TpyModule, module_name: str = "__main__",
                      cpp_module_name: str | None = None) -> None:

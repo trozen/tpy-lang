@@ -24,10 +24,24 @@ namespace real_abi {
 constexpr int meth_varargs = METH_VARARGS;
 constexpr int meth_noargs = METH_NOARGS;
 constexpr int python_api_version = PYTHON_API_VERSION;
+constexpr int tp_dealloc = Py_tp_dealloc;
+constexpr int tp_init = Py_tp_init;
+constexpr int tp_methods = Py_tp_methods;
+constexpr int tp_new = Py_tp_new;
+constexpr int tp_getset = Py_tp_getset;
+constexpr int tp_free = Py_tp_free;
+constexpr unsigned long tpflags_default = Py_TPFLAGS_DEFAULT;
 }  // namespace real_abi
 #undef METH_VARARGS
 #undef METH_NOARGS
 #undef PYTHON_API_VERSION
+#undef Py_tp_dealloc
+#undef Py_tp_init
+#undef Py_tp_methods
+#undef Py_tp_new
+#undef Py_tp_getset
+#undef Py_tp_free
+#undef Py_TPFLAGS_DEFAULT
 
 #include "tpy/interop/cpython_abi.hpp"
 
@@ -59,6 +73,34 @@ static_assert(offsetof(tpy::cpy::PyModuleDef, m_size) ==
                   offsetof(::PyModuleDef, m_size),
               "PyModuleDef.m_size offset mismatch");
 
+// Heap-type creation structs (exposed classes).
+static_assert(sizeof(tpy::cpy::PyType_Slot) == sizeof(::PyType_Slot),
+              "PyType_Slot size mismatch");
+static_assert(offsetof(tpy::cpy::PyType_Slot, pfunc) ==
+                  offsetof(::PyType_Slot, pfunc),
+              "PyType_Slot.pfunc offset mismatch");
+
+static_assert(sizeof(tpy::cpy::PyType_Spec) == sizeof(::PyType_Spec),
+              "PyType_Spec size mismatch");
+static_assert(offsetof(tpy::cpy::PyType_Spec, basicsize) ==
+                  offsetof(::PyType_Spec, basicsize),
+              "PyType_Spec.basicsize offset mismatch");
+static_assert(offsetof(tpy::cpy::PyType_Spec, flags) ==
+                  offsetof(::PyType_Spec, flags),
+              "PyType_Spec.flags offset mismatch");
+static_assert(offsetof(tpy::cpy::PyType_Spec, slots) ==
+                  offsetof(::PyType_Spec, slots),
+              "PyType_Spec.slots offset mismatch");
+
+static_assert(sizeof(tpy::cpy::PyGetSetDef) == sizeof(::PyGetSetDef),
+              "PyGetSetDef size mismatch");
+static_assert(offsetof(tpy::cpy::PyGetSetDef, set) ==
+                  offsetof(::PyGetSetDef, set),
+              "PyGetSetDef.set offset mismatch");
+static_assert(offsetof(tpy::cpy::PyGetSetDef, closure) ==
+                  offsetof(::PyGetSetDef, closure),
+              "PyGetSetDef.closure offset mismatch");
+
 // Facade constants vs the real ABI values.
 static_assert(tpy::cpy::METH_VARARGS == real_abi::meth_varargs,
               "METH_VARARGS value mismatch");
@@ -66,5 +108,19 @@ static_assert(tpy::cpy::METH_NOARGS == real_abi::meth_noargs,
               "METH_NOARGS value mismatch");
 static_assert(tpy::cpy::PYTHON_API_VERSION == real_abi::python_api_version,
               "PYTHON_API_VERSION value mismatch");
+static_assert(tpy::cpy::Py_tp_dealloc == real_abi::tp_dealloc,
+              "Py_tp_dealloc value mismatch");
+static_assert(tpy::cpy::Py_tp_init == real_abi::tp_init,
+              "Py_tp_init value mismatch");
+static_assert(tpy::cpy::Py_tp_methods == real_abi::tp_methods,
+              "Py_tp_methods value mismatch");
+static_assert(tpy::cpy::Py_tp_new == real_abi::tp_new,
+              "Py_tp_new value mismatch");
+static_assert(tpy::cpy::Py_tp_getset == real_abi::tp_getset,
+              "Py_tp_getset value mismatch");
+static_assert(tpy::cpy::Py_tp_free == real_abi::tp_free,
+              "Py_tp_free value mismatch");
+static_assert(tpy::cpy::Py_TPFLAGS_DEFAULT == real_abi::tpflags_default,
+              "Py_TPFLAGS_DEFAULT value mismatch");
 
 int main() { return 0; }

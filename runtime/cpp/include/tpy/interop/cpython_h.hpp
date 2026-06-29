@@ -34,6 +34,16 @@ PyObject *PyModule_Create2(PyModuleDef *def, int module_api_version);
 PyObject *PyErr_NewException(const char *name, PyObject *base, PyObject *dict);
 int PyModule_AddObjectRef(PyObject *module, const char *name, PyObject *value);
 
+// Heap-type creation for exposed classes. PyType_FromSpec builds the type from
+// the slot table; the resulting type's tp_alloc is PyType_GenericAlloc (used by
+// instance_to_py to mint a fresh instance). PyType_GetSlot fetches tp_free in
+// the generic deallocator; PyType_IsSubtype backs the instance type-check.
+PyObject *PyType_FromSpec(PyType_Spec *spec);
+PyObject *PyType_GenericNew(PyTypeObject *type, PyObject *args, PyObject *kwds);
+PyObject *PyType_GenericAlloc(PyTypeObject *type, Py_ssize_t nitems);
+void *PyType_GetSlot(PyTypeObject *type, int slot);
+int PyType_IsSubtype(PyTypeObject *a, PyTypeObject *b);
+
 // Refcount + error state.
 void Py_DecRef(PyObject *o);
 void Py_IncRef(PyObject *o);

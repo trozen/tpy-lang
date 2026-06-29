@@ -1,0 +1,1 @@
+main.py:9: warning: exposed class 'C': '__repr__' is not exposed to CPython (only __init__ and plain methods cross); the host type will not have it

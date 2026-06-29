@@ -1864,6 +1864,7 @@ class TypeRegistrar:
             builtin_type_key=record.builtin_type_key,
             module=public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace) or None,
             defining_module=self.ctx.module_name,
+            exposed_to_host=record.exposed_to_host,
         )
         # Adopt the pre-populated skeleton when available so peer
         # registries that captured a reference during bind_imports
@@ -1904,11 +1905,16 @@ class TypeRegistrar:
                 record=info,
             )
         else:
-            attach_dynamic_type_def(
+            record_td = attach_dynamic_type_def(
                 info.qualified_name(),
                 TypeCategory.RECORD,
                 record=info,
             )
+            # An @export class crosses the CPython boundary as its own
+            # PyType_FromSpec type; mark its TypeDef so is_boundary_marshallable
+            # admits it through the same per-type fact the scalars use.
+            if info.exposed_to_host:
+                record_td.boundary_marshal = True
         # Local class definition shadows any `from X import name` import:
         # if registry.functions still holds an entry under this name
         # (left over from an earlier function-import), clear it so the

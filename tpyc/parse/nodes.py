@@ -1478,6 +1478,11 @@ class TpyRecord:
     pending_deferred_macros: list[Any] = field(default_factory=list)
     nested_records: list[TpyRecord] = field(default_factory=list)
     nested_enums: list[TpyEnum] = field(default_factory=list)
+    # Bare `@export` inside an `# tpy: ext_module`: expose this class to the
+    # host CPython module as a real Python type (PyType_FromSpec). Mirrors
+    # TpyFunction.exposed_to_host; the record keeps DEFAULT linkage (the glue
+    # is separate). Set only by the parser inside an ext_module.
+    exposed_to_host: bool = False
     loc: SourceLocation | None = None
 
     @property

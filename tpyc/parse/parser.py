@@ -1533,10 +1533,28 @@ class Parser:
         send_override: bool | None = None
         sync_override: bool | None = None
         move_override: bool | None = None
+        exposed_to_host = False
         pending_macros: list[tuple[str, dict[str, Any]]] = []
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"class '{node.name}'")
-            if qname in self._RECORD_LINKAGE_MAP:
+            if qname == qnames.EXPORT:
+                # @export on a class is only meaningful in an ext_module, where
+                # it exposes the class as a CPython type. Unlike functions there
+                # is no extern-"C" form for a class, so @export outside an
+                # ext_module is an error rather than a linkage.
+                if not self._directives.ext_module:
+                    raise ParseError(
+                        f"class '{node.name}': @export is only valid inside an "
+                        "`# tpy: ext_module` (it exposes the class to CPython)",
+                        dec)
+                pos, kw = self._validate_decorator_args(qname, arg, dec)
+                if kw or (isinstance(pos, str) and pos) or isinstance(pos, tuple):
+                    raise ParseError(
+                        f"class '{node.name}': inside an `# tpy: ext_module`, "
+                        "@export must be bare (it exposes the class to CPython "
+                        "and takes no arguments)", dec)
+                exposed_to_host = True
+            elif qname in self._RECORD_LINKAGE_MAP:
                 pos, kw = self._validate_decorator_args(qname, arg, dec)
                 new_linkage = self._RECORD_LINKAGE_MAP[qname]
                 # binding="C" overrides linkage to C variant
@@ -1766,7 +1784,7 @@ class Parser:
         # Restore scopes
         self._type_param_scope = old_scope
         self._nested_type_scope = old_nested_scope
-        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, is_indirecting=is_indirecting, send_override=send_override, sync_override=sync_override, move_override=move_override, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, loc=self._loc(node))
+        return TpyRecord(name=node.name, fields=fields, methods=methods, type_params=type_params, type_param_kinds=type_param_kinds, type_param_bounds=type_param_bounds, bases=bases, linkage=linkage, native_name=native_name, is_nocopy=is_nocopy, builtin_type_key=builtin_type_key, is_indirecting=is_indirecting, send_override=send_override, sync_override=sync_override, move_override=move_override, pending_macros=pending_macros, nested_records=nested_records, nested_enums=nested_enums, is_typed_dict=is_typed_dict, is_total_false=is_total_false, exposed_to_host=exposed_to_host, loc=self._loc(node))
 
     def _auto_declare_fields_from_init(
         self,

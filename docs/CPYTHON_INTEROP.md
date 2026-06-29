@@ -54,7 +54,7 @@ progress -> ✅ done.
 | 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes done; containers next |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | 🔬 |
-| 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🔬 |
+| 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset, instances as free-fn/method params (borrow) + returns (copy); dunders/inheritance/@property/class-typed fields deferred |
 | 5 | **Enums + constants** | **v1.1** | 🔬 |
 | 3.5 | Foreign-borrow primitive -> zero-copy str + buffer input | post-v1.0 (next) -- IR-gated | 🔬 |
 | 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🔬 |
@@ -390,8 +390,10 @@ marshalling layer exists. The exception bridge is needed even here.
 **2. Classes + methods** -- the meat, but mechanical. Each exposed record
 becomes a CPython heap type (`PyType_FromSpec`, abi3-friendly). The TPy
 struct lives *inside* the instance memory after the PyObject header;
-`tp_new` runs the TPy constructor, `tp_dealloc` runs the C++ destructor (so
-`Own`/`Box`/`Rc`/container fields clean up correctly). Payoff: because the
+`tp_init` runs the TPy constructor (placement-new over the GenericAlloc'd
+storage; a re-`__init__` destroys the prior payload first), `tp_dealloc` runs
+the C++ destructor (so `Own`/`Box`/`Rc`/container fields clean up correctly).
+Payoff: because the
 PyObject **owns** the instance, multiple Python references alias and see
 mutations -- exposed classes get *correct Python reference semantics*,
 unlike containers. A method call unwraps `self` to a borrow valid for the
@@ -933,8 +935,19 @@ Detail for the tracker table in "v1 plan and status" (top). **v1.0 = phases
    read-only buffer input (the ephemeral interim can't fence a foreign param).
    Shared with the `@native -> V` borrow-contract gap; lands against the MIR
    `Place`/`LoanInfo` model, not the string-key `BorrowTracker`.
-4. **Classes + methods.** `PyType_FromSpec` heap types, `tp_new`/
+4. **Classes + methods.** `PyType_FromSpec` heap types, `tp_init`/
    `tp_dealloc` over the embedded TPy struct, methods + getset properties.
+   **Baseline implemented**: `@export class` -> a CPython type whose instance
+   embeds the TPy payload after the `PyObject` header (`Instance<T>`); `tp_init`
+   runs `__init__`, `tp_dealloc` runs the C++ destructor; plain instance methods
+   + annotated fields as read/write getset; instances cross as free-fn/method
+   params (a borrow of the live payload -- mutation writes through) and returns
+   (copy/move into a fresh instance via `instance_to_py`, so a borrow-form
+   `-> Cls` return warns; `Own[Cls]` is the acknowledged form). The type is
+   final (no `BASETYPE`) with no instance `__dict__`. Deferred: dunders (Q4),
+   inheritance of exposed hierarchies, `@property`, class-typed fields,
+   static/classmethods. Folds in faithful exception data-field crossing
+   (exc TODO 1a -- same per-instance field marshalling).
 5. **Enums + constants.** Module attributes; `IntEnum` for int-backed enums.
 6. **Containers (by-copy, declared divergence).** `list`/`dict`/`set`/
    `tuple` <-> PyList/PyDict/... with the no-alias divergence documented.
