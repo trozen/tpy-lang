@@ -1341,7 +1341,7 @@ Architecture (mirrors the re / PCRE2 split):
 | `getaddrinfo` (full API) | Missing | Flat `tpy_resolve_ipv4` only today; multi-result walk needs typed records |
 | `makefile(mode="r", buffering=-1)` | Partial | Signature mirrors CPython (default `mode="r"`); v1 implements binary-read modes (`"rb"`/`"br"`/`"b"`) only -> `io.BufferedReader` over a **dup** of the socket fd (reader and socket close independently -- differs from CPython's shared-fd refcount, observably equivalent for request/response reads). Text modes (incl. the bare-`makefile()` default), write modes, and `buffering=0` (unbuffered) raise `ValueError` -- loud, not a silent binary-for-text substitution; they need io's TextIOWrapper/BufferedWriter/raw-SocketIO layers (not built). `cases/stdlib/socket_makefile`, `socket_makefile_unsupported` |
 | Windows (Winsock2) | Missing | `SOCKET` unsigned, `WSAStartup`, `closesocket`, `WSAGetLastError` -- all in `#ifdef _WIN32` block inside socket_impl.cpp once we have Windows CI |
-| TLS (`ssl` module) | Missing | Phase 3; needs mbedTLS vendored |
+| TLS (`ssl` module) | In progress | mbedTLS 3.6.6 vendored + wired into the build (`--mbedtls`, `_bindings.mbedtls`); the `ssl` module (SSLContext/wrap_socket/SSLSocket + HTTPSConnection) is the next increment. See `docs/SSL_DESIGN.md` |
 
 Tests:
   * No integration test cases under `tests/cases/` -- running real client/

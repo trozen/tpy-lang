@@ -43,6 +43,7 @@ on an already-vendored tree is a no-op.
 | Directory | Sidecar | Lib | Used by | Vendor script |
 |---|---|---|---|---|
 | `pcre2/` | `pcre2.vendor.json` | PCRE2 10.44 | `re` (via `_bindings.pcre2`) | `scripts/vendor_pcre2.py` |
+| `mbedtls/` | `mbedtls.vendor.json` | mbedTLS 3.6.6 | `ssl` (via `_bindings.mbedtls`) | `scripts/vendor_mbedtls.py` |
 
 ## Why committed instead of fetched
 

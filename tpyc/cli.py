@@ -324,6 +324,14 @@ def _run_cli(is_runner: bool) -> int:
              "to strip out regex)",
     )
     parser.add_argument(
+        "--mbedtls", choices=["bundled", "system", "auto", "none"], default="bundled",
+        help="mbedTLS source for the `ssl` module (HTTPS): bundled (vendored, "
+             "default), system (find_package / -lmbedtls -lmbedx509 "
+             "-lmbedcrypto), auto (system, fall back to bundled), or none "
+             "(disabled -- any module that imports `ssl` becomes a compile "
+             "error, useful for targets that want to strip out TLS)",
+    )
+    parser.add_argument(
         "--dsl-plugin", action="append", default=None, metavar="SPEC",
         help="Load a frontend plugin (path to .py file or importable module). "
              "Can be repeated.",
@@ -691,7 +699,7 @@ def _run_cli(is_runner: bool) -> int:
         # a module in the compile graph needs that lib -- surface it as a
         # clean compile error.
         from .build.third_party import resolve_build_plan, DisabledLibError
-        third_party_modes = {"pcre2": args.pcre2}
+        third_party_modes = {"pcre2": args.pcre2, "mbedtls": args.mbedtls}
         try:
             third_party_plan = resolve_build_plan(
                 dep_names=compiler.collect_third_party_deps(),

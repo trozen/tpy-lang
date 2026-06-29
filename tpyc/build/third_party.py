@@ -135,7 +135,8 @@ def _factories() -> dict[str, Callable[[Path], ThirdPartyLib]]:
     global _FACTORIES
     if _FACTORIES is None:
         from . import pcre2 as _pcre2
-        _FACTORIES = {"pcre2": _pcre2.factory}
+        from . import mbedtls as _mbedtls
+        _FACTORIES = {"pcre2": _pcre2.factory, "mbedtls": _mbedtls.factory}
     return _FACTORIES
 
 
@@ -255,8 +256,8 @@ def bundle_source_tree(lib: ThirdPartyLib, output_root: Path) -> Path | None:
     if not lib.bundled_source_dir.exists():
         raise FileNotFoundError(
             f"vendored source for {lib.name!r} not found at "
-            f"{lib.bundled_source_dir}. Run the PCRE2 vendoring step or pass "
-            f"--{lib.name}=system to use the system library."
+            f"{lib.bundled_source_dir}. Run scripts/vendor_{lib.name}.py or "
+            f"pass {lib.cli_flag}=system to use the system library."
         )
     dst = output_root / "third_party" / lib.name
     if dst.exists():

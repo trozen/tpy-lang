@@ -1,0 +1,317 @@
+# SSL / HTTPS-client design
+
+Status: **design approved, implementation not started.** This document is
+the contract for adding HTTPS client support to TurboPython via a new
+`ssl` module backed by a vendored TLS library. It is a multi-increment
+track on branch `feat-ssl-https`.
+
+## Goal
+
+Make this work, against real HTTPS servers (e.g. Atlas DAS), with
+certificate verification on by default:
+
+```python
+import requests
+r = requests.get("https://example.com/api")   # real TLS handshake, cert verified
+print(r.status_code, r.json())
+```
+
+and the layers it rests on:
+
+```python
+import ssl, socket
+ctx = ssl.create_default_context()             # CERT_REQUIRED + hostname check
+s = ctx.wrap_socket(socket.create_connection(("example.com", 443)),
+                    server_hostname="example.com")   # SNI + CN/SAN match
+s.sendall(b"GET / HTTP/1.1\r\n...")
+plaintext = s.recv(4096)                        # decrypted in userspace
+```
+
+`http.client.HTTPSConnection` sits between them; `requests` / `urlopen`
+route `https://` to it on port 443.
+
+**v1 is HTTPS client only.** No public server-side TLS, no async-reactor
+TLS, no broad `ssl` surface. (A minimal server path exists internally for
+the test harness only.)
+
+`tpyc/` is **not** touched -- this is pure runtime + native-binding +
+stdlib work, which keeps it clear of the THIR/MIR migration moratorium.
+The one shared-code change is `io.BufferedReader`'s raw-source field
+(see "Read path").
+
+## Backend: vendored mbedTLS
+
+Vendor **mbedTLS** under `runtime/cpp/third_party/mbedtls/`, following the
+PCRE2 template exactly: a `scripts/vendor_mbedtls.py` reproducer, a
+`mbedtls.vendor.json` + `mbedtls.sources.txt` sidecar pair, a hand-written
+facade header `runtime/cpp/include/tpy/stdlib/mbedtls_h.hpp` that mirrors
+only the symbols/types we use and does **not** include the upstream C
+header (macro isolation), a `tpyc/build/mbedtls.py` factory registered in
+`tpyc/build/third_party.py`'s `_FACTORIES`, a `# tpy: link("mbedtls",
+managed=True)` directive in the bindings module, and a
+`--mbedtls=bundled|system|auto|none` CLI flag (default bundled). The
+stdlib `.o` cache and exec-results markers invalidate automatically when
+the vendored tree changes, because `_runtime_hash()` already covers
+`third_party/`.
+
+Why mbedTLS over OpenSSL/BoringSSL/wolfSSL: it is Apache-2.0 (clean,
+permissive), ships versioned releases, is designed to embed, and has
+opaque structs that suit the facade. The faster libraries each lose on a
+constraint that matters more here than the throughput we will not use
+(our workload is handshake-bound on small JSON requests, not bulk
+throughput): OpenSSL/LibreSSL impose a system dependency or a macro-heavy
+header surface; BoringSSL has no stable API/versioning and needs Go+CMake
+to build; wolfSSL is GPL/commercial.
+
+### Backend-swap seam (forward constraint)
+
+mbedTLS-specific code stays **physically confined** to the lower layer so
+a future second backend (e.g. OpenSSL) is a contained swap, not a
+rewrite:
+
+- `lib/tpy/_bindings/mbedtls.py` -- raw 1:1 `@native` FFI; the only place
+  `mbedtls_*` symbols appear.
+- `lib/tpy/ssl.py` -- the public, CPython-shaped, backend-agnostic
+  surface. Its classes hold opaque handles and orchestrate, but every FFI
+  call is confined below.
+
+Explicitly **not** built (would be overengineering for one backend): no
+runtime-pluggable backend `@dynamic` protocol, no stubbed second backend,
+no abstract `SSLBackend` interface. The separation is physical (which file
+the calls live in) plus a CPython-shaped public surface. The `--mbedtls`
+flag generalizes to `--ssl-backend` if a second backend ever lands; not
+pre-built.
+
+## CA trust
+
+Vendor a Mozilla CA bundle (the `cacert.pem` set, as `certifi` /
+`webpki-roots` do) as the default trust store; mbedTLS ships none and does
+not read the system store. Support `SSLContext.load_verify_locations(
+cafile=...)` for custom CAs (e.g. an Atlas corporate root). System
+trust-store integration is deferred -- vendoring keeps the build hermetic
+and cross-platform-identical (consistent with the test-cache assumptions)
+and dodges the macOS keychain problem.
+
+## I/O model: fd-direct BIO
+
+mbedTLS does its wire I/O **directly on the socket fd** (`::send`/`::recv`
+via its built-in net shim), not through TPy-level `socket.recv`/`send`.
+
+- The callback alternative (custom BIO routing into our socket layer) is
+  blocked twice over: TPy cannot yet pass a TPy function as a C callback
+  pointer (`docs/NATIVE_INTEROP.md` lists it as Open), and even if it
+  could, a TPy/C++ exception cannot safely unwind through mbedTLS's C
+  frames -- a BIO callback must return integer codes, not raise, so it
+  could not reuse socket.py's raise-based error taxonomy anyway.
+- **Timeouts ride the existing model for free**: `socket.settimeout`
+  already sets `SO_RCVTIMEO`/`SO_SNDTIMEO` on the fd, so a blocking
+  `mbedtls_ssl_read` hits the kernel timeout and we map the result to
+  `TimeoutError`, mirroring the plaintext `os.read`->EAGAIN path. No new
+  timeout plumbing.
+- fd-direct with `WANT_READ`/`WANT_WRITE` is also the standard
+  non-blocking-TLS shape, so it is the more async-reactor-friendly choice
+  if TLS ever integrates with the epoll reactor.
+
+The one cost: socket.py's errno->exception mapping is bypassed, so `ssl.py`
+carries **one TLS-aware error-mapping function** (mbedTLS code -> exception).
+That is partly unavoidable regardless of I/O model, because mbedTLS
+surfaces TLS-specific failures (cert verify, handshake alert,
+`close_notify`) that have no socket-errno equivalent.
+
+## Read path: `@dynamic RawBinaryIO` under `BufferedReader`
+
+The wall: `socket.makefile()` dups the fd and `FileIO` reads it with
+`os.read` -- that is **ciphertext** for a TLS socket. TLS decrypts in
+userspace via `mbedtls_ssl_read`, so the raw source under `BufferedReader`
+must be able to be "an mbedTLS read" instead of "an os.read." But
+`HTTPResponse` holds a concrete `BufferedReader` and `BufferedReader` held
+a concrete `FileIO`, so a substitute reader would slice (subclass into a
+value field) or force a viral static type param up through `HTTPResponse`
+-> `requests`.
+
+Solution: make `BufferedReader`'s raw layer a small **`@dynamic`
+protocol**:
+
+```python
+@dynamic
+class RawBinaryIO(Protocol):       # the entire raw seam: 2 methods
+    def read(self, size: Int32 = -1) -> bytes: ...
+    def close(self) -> None: ...
+
+class BufferedReader(...):
+    _raw: Box[RawBinaryIO]                       # was: _raw: FileIO
+    def __init__(self, raw: Own[RawBinaryIO], ...):
+        self._raw = Box(raw)
+    def _fill(self): chunk = self._raw.read(self._buffer_size)
+```
+
+- `FileIO` conforms unchanged (it already has `read`/`close`); `ssl` adds
+  `SSLRawIO` conforming (`read` -> `mbedtls_ssl_read`, `close` ->
+  `close_notify` + free).
+- `HTTPResponse` and `requests` are **untouched** -- the polymorphism is
+  confined to this one field.
+- The owning form is `Box[RawBinaryIO]` (the `Box<dyn Trait>` shape): a
+  bare owning protocol field is rejected ("protocols are only valid as
+  function and method parameters"), but `Box[P]` compiles, builds, and
+  dispatches owned (proven by probe; see below).
+
+Why `@dynamic`: it gives polymorphism **without a viral type param** (the
+concern that drove "keep `_raw` concrete") and **without slicing**. It is
+also CPython's own shape -- `BufferedReader` over a `RawIOBase` -- and
+keeps `io` decoupled from `ssl` (no `mbedtls` import in `io.py`, so
+`--mbedtls=none` and non-TLS programs do not link mbedTLS).
+
+Costs: one heap alloc per `BufferedReader` + a vcall per **8 KB fill**
+(negligible); and snapshot churn on the cases that snapshot
+`BufferedReader`/`FileIO`/http/requests (quantified + flagged before
+regenerating, per snapshot policy).
+
+## Ownership: `Rc[SslSession]`
+
+The one stateful TLS session is needed by both the write side
+(`SSLSocket.sendall` -> `mbedtls_ssl_write`) and the read side
+(`makefile()`'s `SSLRawIO` -> `mbedtls_ssl_read`, living in a
+`BufferedReader` that outlives `getresponse()`). Model it as
+`Rc[SslSession]`: `SSLSocket` holds one handle, `makefile()` hands
+`SSLRawIO` an `Rc.clone()`. One underlying context (correct -- TLS is one
+session), shared by both sides, freed in `SslSession.__del__`
+(`close_notify` + free config/context/CA-chain/RNG + close fd) when the
+last handle drops.
+
+The move model (move session out of `SSLSocket` at `makefile()`) is
+blocked by TPy's poor support for moving a `@nocopy` `Own` field out and
+returning it. The borrow model (raw pointer from `SSLRawIO` to the
+session) is an unsound stored-borrow lifetime. `Rc` is the sound model and
+dodges both footguns; non-atomic `Rc` is fine (single-threaded; mbedTLS
+contexts are not thread-safe anyway).
+
+Note: plaintext `socket.makefile()` keeps its existing dup-the-fd
+strategy -- TLS does not indict it (the TLS problem is "the readable thing
+is not an fd at all," orthogonal to fd sharing), and the meaningful
+unification is the `RawBinaryIO` seam, not the fd layer. A future
+`Rc`-shared session for plaintext is filed as a deferred cleanup, worth
+doing only if TLS keep-alive (interleaved socket+reader) lands.
+
+## Security defaults (secure by default)
+
+Match CPython's `create_default_context()` + `requests` `verify=True`:
+
+- `CERT_REQUIRED` + `check_hostname=True`, min **TLS 1.2** (TLS 1.3 if the
+  mbedTLS build enables it), mbedTLS default ciphers, trust = vendored CA
+  bundle.
+- Hostname verification rides SNI: `mbedtls_ssl_set_hostname` sets the SNI
+  name and drives the CN/SAN match (mismatch -> `BADCERT_CN_MISMATCH`).
+- Escape hatch: `requests.get(..., verify=False)` and
+  `SSLContext.verify_mode = CERT_NONE` (also disables hostname check);
+  `verify="<path>"` -> `load_verify_locations`.
+- v1 `SSLContext` surface: `load_verify_locations(cafile)`,
+  `check_hostname`, `verify_mode`. Deferred: `set_ciphers`, client certs /
+  mTLS (`load_cert_chain`), CRL/OCSP, ALPN, fine-grained `minimum_version`.
+
+## Exceptions
+
+- `ssl.SSLError(OSError)` -- base for TLS failures (subclassing `OSError`
+  matches CPython and composes with the existing socket family).
+- `ssl.SSLCertVerificationError(SSLError)` -- cert verification failure
+  (the one specific subclass worth having in v1). Structured
+  `verify_code`/`verify_message` attrs deferred (the general
+  exception-carries-only-a-message gap).
+- Deferred subclasses (map to `SSLError` in v1):
+  `SSLZeroReturnError`, `SSLWantRead/WriteError`, `SSLSyscallError`,
+  `SSLEOFError`.
+- The TLS error-mapping function routes mbedTLS codes: verify failure ->
+  `SSLCertVerificationError`; other TLS/handshake -> `SSLError`;
+  transport read/write error/timeout -> the **existing** socket
+  `ConnectionError`/`TimeoutError` family (reused, not duplicated).
+- `requests`: add `requests.SSLError(ConnectionError)` and wrap
+  `ssl.SSLError` in `_request_on`, mirroring the `Timeout`/`ConnectionError`
+  wraps already there.
+
+## http.client / requests / urlopen integration
+
+- `http.client`: add `HTTPS_PORT = 443` and
+  `HTTPSConnection(HTTPConnection)` whose **only override is `connect()`**
+  (`super().connect()` then `self.sock = context.wrap_socket(self.sock,
+  server_hostname=self.host)`), with a `context: SSLContext | None = None`
+  param defaulting to `create_default_context()`. `request()` /
+  `getresponse()` are reused unchanged -- the response parser is
+  transport-agnostic thanks to the `RawBinaryIO` read path.
+- `requests._connect`: branch `parts.scheme == "https"` ->
+  `HTTPSConnection`, default port 443; thread `verify` into the context.
+  The redirect-hop scheme check and `urlopen` widen from `"http"`-only to
+  `"http"`/`"https"`.
+- The existing `tests/cases/tplib/requests_redirect_https` case (currently
+  asserts an https redirect *raises* `ConnectionError`) is **rewritten** --
+  the redirect is now followed.
+
+## Testing: step-wise handshake over `socketpair`
+
+The exec phase runs the compiled binary, so both sides of the handshake
+must exist in TPy/C++. Use a **single-threaded, step-wise real-mbedTLS
+handshake over `socket.socketpair()`**:
+
+- `a, b = socket.socketpair()`; both non-blocking. Client mbedTLS context
+  on `a`, server context on `b`, each via mbedTLS's built-in fd BIO (no
+  callbacks -- sidesteps the FFI gap).
+- Alternate `client_handshake_step()` / `server_handshake_step()` (TLS is
+  a deterministic ping-pong; each returns `WANT_READ`/`WANT_WRITE` to
+  yield) until both complete, then exchange app data the same way.
+
+Requirements / costs:
+- A **server-side mbedTLS path for the test peer** (the raw bindings are
+  symmetric -- `config_defaults` takes a SERVER/CLIENT flag), kept behind
+  an internal/underscore helper, not the public surface.
+- A committed **self-signed test cert + key** fixture (long-dated to avoid
+  expiry flakiness) in a shared fixture dir. The client trusts it via
+  `load_verify_locations` and sets a matching `server_hostname`, so the
+  **full verification + hostname-match** path is exercised -- plus a
+  **negative** case (wrong hostname / untrusted cert -> the verify error).
+- `no_cpython` (consistent with the already-`no_cpython` requests stack);
+  output is decrypted app data (host-independent), so the snapshot is
+  stable. The real validation is exec-phase real crypto.
+
+Rejected alternatives: a passthrough mock SSLSocket tests nothing; byte
+replay cannot reproduce a live handshake's fresh randomness; memory-BIO
+loopback needs custom BIO callbacks (the FFI gap); a forked server child
+needs `os.fork` (absent).
+
+Higher layers test by injecting an already-handshaken `SSLSocket` through
+the existing `_connection` seam, so handshake mechanics are not re-tested
+at every layer.
+
+## Build order
+
+0. **Probes** (retire the Medium-confidence assumptions before building):
+   (a) `@dynamic RawBinaryIO` owning field via `Box[P]` -- **DONE, PASS**
+   (compiles, builds, dispatches; bare protocol field rejected, `Box[P]`
+   works). (b) one C++ step-wise mbedTLS handshake round-trip over a
+   non-blocking socketpair -- pending (needs mbedTLS, first task of step 1).
+1. Vendoring backbone + handshake proof: vendor mbedTLS + facade + build
+   wiring + `--mbedtls` flag + RNG/entropy seeding + raw bindings +
+   vendored CA bundle + self-signed test cert + a bare end-to-end
+   handshake test.
+2. The `ssl` module: `SSLContext`/`create_default_context`/`wrap_socket`/
+   `SSLSocket` (handshake/recv/send + `makefile`->`SSLRawIO`/`Rc` session)
+   + verification + hostname + SNI + the error-mapping fn + the exception
+   tree. Tests: handshake happy + negative cert-verify.
+3. `BufferedReader` `RawBinaryIO` refactor (`_raw` -> `Box[RawBinaryIO]`);
+   regenerate affected snapshots (list flagged first).
+4. `HTTPSConnection` in `http.client`.
+5. `requests`/`urlopen` https routing + `verify=`; rewrite
+   `requests_redirect_https`.
+6. Docs (`LANGUAGE_FEATURES.md`, `STDLIB_ROADMAP.md`, this doc) + file all
+   deferrals.
+
+Each step is a checkpoint commit on `feat-ssl-https`; squash-merged at the
+end after `/tpy-review` + `/tpy-ready`.
+
+## Deferred (file as TODO when the relevant step lands)
+
+- Advanced `SSLContext` knobs: `set_ciphers`, client certs / mTLS, CRL /
+  OCSP, ALPN, fine-grained `minimum_version`.
+- Structured exception attributes (`verify_code`/`verify_message`, and the
+  broader exception-carries-only-a-message gap).
+- System trust-store integration.
+- `Rc`-unify plaintext `makefile` (only if TLS keep-alive lands).
+- TLS keep-alive / connection reuse.
+- Server-side TLS as a public API; async-reactor TLS integration.
