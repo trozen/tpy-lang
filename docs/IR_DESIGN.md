@@ -9,7 +9,7 @@
 | `--dump-thir` debug output | Done (increment 1) |
 | THIR-backed codegen context | Increment 1 -- flag-gated (`tpyc/thir/emit.py`) |
 | Codegen migration from analyzer/AST to THIR | Increments 1-5 -- value-scalar bodies incl. if/elif/else, while, range-for, double float, bool, comparison-as-value |
-| THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`). F1: single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads. F2: reseatable `T*` pointer-locals (lvalue reseat + the rvalue `__slot_N` rebind machinery, `->` reads) and the Optional borrow<->storage write/return (`ptr_to_optional` copy / `ptr_to_optional_move` move) + `None` (`std::nullopt`). Byte-identical with `--thir-codegen` forced over the full corpus. **Method frontier M1 landed (2026-06)** -- a callable-kind axis orthogonal to the form ladder: plain instance methods route (`self` -> `this` via `THIRSelf`, readonly/const self, scalar params), so F1/F2 finally route real corpus code. **Scalar field writes landed (increment 10)** -- `recv.field = <scalar>` off any F1-record receiver (plain `THIRAssign`, no form lift), more than doubling corpus routing. **Scalar augmented assignment landed (increment 11)** -- `x += y` / `recv.field += y` lowers to `target = (target OP value)` via `THIRBinOp` (+ a `paren_wrap` flag for the AST aug-assign's no-paren RHS). Deferred (AST path): M2 record-param methods + const-self model; M3 constructors / member-init-list; call-arg / call+`copy()`-write sources (non-value call args + auto-move). F3-F-final not started |
+| THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`). F1: single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads. F2: reseatable `T*` pointer-locals (lvalue reseat + the rvalue `__slot_N` rebind machinery, `->` reads) and the Optional borrow<->storage write/return (`ptr_to_optional` copy / `ptr_to_optional_move` move) + `None` (`std::nullopt`). Byte-identical with `--thir-codegen` forced over the full corpus. **Method frontier M1 landed (2026-06)** -- a callable-kind axis orthogonal to the form ladder: plain instance methods route (`self` -> `this` via `THIRSelf`, readonly/const self, scalar params), so F1/F2 finally route real corpus code. **Scalar field writes landed (increment 10)** -- `recv.field = <scalar>` off any F1-record receiver (plain `THIRAssign`, no form lift), more than doubling corpus routing. **Scalar augmented assignment landed (increment 11)** -- `x += y` / `recv.field += y` lowers to `target = (target OP value)` via `THIRBinOp` (+ a `paren_wrap` flag for the AST aug-assign's no-paren RHS). **Method frontier M2 landed (increment 12)** -- F1-record params on instance methods (const verdict via the method's own `const_borrow_params` on the owning record; no readonly carve-out -- forced-const and inferred-const coincide for plain ref params), routing 2835 -> 3163 bodies / 534 -> 576 cases. Deferred (AST path): M3 constructors / member-init-list; readonly free functions; call-arg / call+`copy()`-write sources (non-value call args + auto-move). F3-F-final not started |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
 | `--dump-mir` debug output | Not started |
@@ -219,6 +219,23 @@ preprocessing branch the substitution can't reproduce: in-place dunders
 for free -- a str target is not an eligible scalar), `FixedInt += BigInt` (the AST
 inserts `.to_fixed_check<T>()`), and subscript / class-constant / narrowed-optional
 targets.
+
+**Increment 12 adds record params on instance methods (method frontier M2)** --
+M1 admitted methods with value-scalar params only; M2 admits F1-record (`T&` /
+`const T&`) params, like a free function. The param's const-ness is read from the
+method's own `FunctionInfo.const_borrow_params`, looked up on the owning record
+(`get_record(name).get_method_overloads(...)`) -- the method-side analogue of the
+free-function registry lookup, mirroring codegen's `_get_method_mutated_params`.
+The body consumes it for the OPTIONAL_TO_PTR const bump (`_f1_is_const`), so a
+record param threads through `_LowerCtx.record_name`. No readonly carve-out: for a
+plain F1-record (ref) param the readonly forced-const verdict and the inferred
+`const_borrow_params` verdict coincide (`decide_param_const` returns const iff the
+param is not directly mutated / address-escaped in both modes), so the inferred set
+is exact for readonly methods too -- a carve-out would only re-exclude the common
+auto-readonly getter the rung exists for. Routing 2835 -> 3163 bodies across 534 ->
+576 cases. Deferred: readonly *free functions* stay AST-side (M1's exclusion, by the
+same analysis possibly admissible -- a separate follow-up); generic-record / static
+/ property / nested-record methods; `deep_const_borrow_params`.
 
 ---
 

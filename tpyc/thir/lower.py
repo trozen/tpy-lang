@@ -350,13 +350,23 @@ def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
     return _expr_eligible(stmt.value, declared, analyzer)
 
 
-def _param_is_const(name: str, func: TpyFunction, analyzer) -> bool:
+def _param_is_const(name: str, func: TpyFunction, analyzer,
+                    record_name: str | None = None) -> bool:
     """Whether param `name` is emitted `const` -- read from the sema fact
     `FunctionInfo.const_borrow_params` (param indices), which equals codegen's
-    `const_ref_params` for a non-readonly free function's record params (F1
-    excludes readonly functions). None (Phase-2 not run) -> not const, matching
-    codegen's empty const set when mutation facts are absent."""
-    overloads = analyzer.registry.get_function(func.name)
+    `const_ref_params` for a function's plain F1-record (ref) params. This holds
+    for readonly methods too: for such a param the readonly forced-const verdict
+    and the inferred const_borrow_params verdict coincide (see decide_param_const),
+    so the inferred set is exact. None (Phase-2 not run) -> not const, matching
+    codegen's empty const set when mutation facts are absent. A method's
+    FunctionInfo lives on the owning record (`record_name`), not the free-function
+    registry -- the same lookup codegen's `_get_method_mutated_params` uses; a free
+    function (record_name None) reads the function registry."""
+    if record_name is not None:
+        ri = analyzer.registry.get_record(record_name)
+        overloads = ri.get_method_overloads(func.name) if ri is not None else None
+    else:
+        overloads = analyzer.registry.get_function(func.name)
     fi = overloads[-1] if overloads else None
     cbp = fi.const_borrow_params if fi is not None else None
     if not cbp:
@@ -367,7 +377,7 @@ def _param_is_const(name: str, func: TpyFunction, analyzer) -> bool:
 
 def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
                  stmt: TpyVarDecl, func: TpyFunction, analyzer,
-                 const_locals: set[str]) -> bool:
+                 const_locals: set[str], record_name: str | None = None) -> bool:
     """The const-ness of an F1 borrow local's decl (`const T&` / `const T*`).
 
     Mirrors `_is_const_indirect` for the field source (ReadonlyType reads on the
@@ -385,7 +395,8 @@ def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
         return True
     if binding is LocalBinding.OPTIONAL_TO_PTR:
         recv = stmt.init.obj  # TpyName (validated by _field_receiver_ok)
-        if recv.name in const_locals or _param_is_const(recv.name, func, analyzer):
+        if (recv.name in const_locals
+                or _param_is_const(recv.name, func, analyzer, record_name)):
             return True
     return False
 
@@ -539,12 +550,12 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
 
 def _function_eligible(func: TpyFunction, analyzer,
                        self_type: 'TpyType | None' = None) -> bool:
-    # M1 method frontier: a plain instance method is admitted when its receiver
-    # is an F1-record (`self_type` passed by the caller from the owning record).
-    # Static/property methods take other emit paths; `@readonly` (const `self`)
-    # and record params are deferred to M2, so a method's params are restricted
-    # to value scalars here -- this also sidesteps `_param_is_const`, which reads
-    # the free-function registry and cannot resolve a method's const params.
+    # A plain instance method is admitted when its receiver is an F1-record
+    # (`self_type` passed by the caller from the owning record). Static/property
+    # methods take other emit paths. An instance method takes value-scalar and
+    # F1-record params; a record param's const verdict comes from the method's own
+    # const_borrow_params, resolved at lowering -- see the param loop below and
+    # `_param_is_const`.
     is_instance_method = (func.is_method and not func.is_staticmethod
                           and not func.is_property_getter
                           and not func.is_property_setter)
@@ -570,19 +581,26 @@ def _function_eligible(func: TpyFunction, analyzer,
         return False
     if func.linkage != FunctionLinkage.DEFAULT:
         return False
-    # A readonly free function forces const params whose verdict
-    # FunctionInfo.const_borrow_params does not record -> divergent const reads,
-    # so it stays on the AST path. A readonly *method* is admitted: its only const
-    # receiver is `self` (seeded into const_locals at lowering), and its params are
-    # restricted to value scalars (never const-ref), so no param-const verdict is
-    # consulted. Without this, M1 would route almost nothing -- a non-mutating
-    # getter is auto-readonly (const `self`).
+    # A readonly free function forces const params (codegen's `use_const_params`)
+    # whose verdict the inferred FunctionInfo.const_borrow_params does not record,
+    # so it stays on the AST path. A readonly *method* is admitted: its const `self`
+    # is seeded into const_locals at lowering, and its F1-record params take the
+    # inferred const_borrow_params verdict -- which for a plain ref param coincides
+    # with the forced-const one (see the param loop below). Excluding readonly
+    # methods would route almost nothing -- a non-mutating getter is auto-readonly.
     if func.is_readonly and not is_instance_method:
         return False
     for _name, ptype in func.params:
         pt = ptype if isinstance(ptype, TpyType) else None
-        ok = _eligible_scalar(pt) if is_instance_method else _f1_param_eligible(pt, analyzer)
-        if not ok:
+        # An instance method takes F1-record params like a free function; the const
+        # verdict comes from the method's own const_borrow_params (read via the
+        # record at lowering). This holds for readonly methods too: for a plain
+        # F1-record (ref) param the readonly forced-const verdict and the inferred
+        # const_borrow_params verdict coincide (both const iff the param is not
+        # directly mutated / address-escaped -- see decide_param_const), so no
+        # readonly carve-out is needed -- and one would re-exclude the common
+        # non-mutating getter, which is auto-readonly.
+        if not _f1_param_eligible(pt, analyzer):
             return False
     rt = func.return_type if isinstance(func.return_type, TpyType) else None
     return _eligible_return(rt, analyzer) if func.return_type is not None else True
@@ -891,10 +909,11 @@ class _LowerCtx:
     never hit a non-value local."""
     __slots__ = ("analyzer", "func", "prescan", "render_type", "const_locals",
                  "pointers", "rebind_slot_locals", "movable_locals",
-                 "self_receiver")
+                 "self_receiver", "record_name")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
-                 self_receiver: str | None = None) -> None:
+                 self_receiver: str | None = None,
+                 record_name: str | None = None) -> None:
         self.analyzer = analyzer
         self.func = func
         self.prescan = _Prescan(func, analyzer)
@@ -904,6 +923,10 @@ class _LowerCtx:
         # like a pointer-local, but unlike `pointers` it is not a liftable
         # borrow source (`_is_borrow_ptr_local` must never treat it as one).
         self.self_receiver = self_receiver
+        # The owning record's name when `func` is a method: `_param_is_const`
+        # resolves a record param's const verdict from the method's FunctionInfo
+        # on this record, not the free-function registry.
+        self.record_name = record_name
         self.const_locals: set[str] = set()
         # F2 pointer-local names (reseatable `T*`), recorded at first decl so a
         # later reseat and any `->` read off them lower correctly.
@@ -988,7 +1011,7 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType]) -> T
                     declared[stmt.name] = vtype
                     return _lower_borrow_local(stmt, vtype, binding, False, lc, loc)
                 is_const = _f1_is_const(binding, vtype, stmt, lc.func, analyzer,
-                                        lc.const_locals)
+                                        lc.const_locals, lc.record_name)
                 if is_const:
                     lc.const_locals.add(stmt.name)
                 if binding is LocalBinding.POINTER:
@@ -1158,7 +1181,9 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         return None
     is_method = self_type is not None and func.is_method
     self_receiver = "self" if is_method else None
-    lc = _LowerCtx(func, analyzer, render_type, self_receiver=self_receiver)
+    record_name = self_type.name if is_method and isinstance(self_type, NominalType) else None
+    lc = _LowerCtx(func, analyzer, render_type, self_receiver=self_receiver,
+                   record_name=record_name)
     params_set: dict[str, TpyType] = {n: t for n, t in func.params}
     if is_method:
         params_set["self"] = self_type  # the record receiver, a field source

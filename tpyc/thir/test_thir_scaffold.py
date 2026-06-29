@@ -1572,13 +1572,13 @@ class TestMethodFrontier:
             + "    @staticmethod\n    def smethod(a: Int32) -> Int32:\n        return a\n")
         assert _fn(thir, "smethod") is None
 
-    def test_record_param_method_excluded(self):
-        # A record param on a method is the M2 part of the frontier; M1 restricts
-        # method params to value scalars.
+    def test_record_param_method_routes(self):
+        # M2: a non-readonly method takes an F1-record param like a free function;
+        # `other.n` is a scalar field read off the record param.
         thir = _lower_ctx(
             _F1_RECORDS
             + "    def with_box(self, other: Box) -> Int32:\n        return other.n\n")
-        assert _fn(thir, "with_box") is None
+        assert _fn(thir, "with_box") is not None
 
     def test_generic_record_method_excluded(self):
         # A generic record's `self` is templated -> outside the F1-record slice.
@@ -1644,6 +1644,107 @@ class TestMethodFrontierEmit:
 
     def test_nonreadonly_self_none_write(self):
         assert "this->opt = std::nullopt;" in self._emit(self.SRC, thir=True)
+
+
+# --- M2: record params on instance methods (readonly or not) ---
+
+_M2_METHODS = (
+    _F1_RECORDS
+    # reads a scalar field off the record param -> param is const-ref (not mutated)
+    + "    def sum_with(self, other: Box) -> Int32:\n        return self.n + other.n\n"
+    # reads other.opt -> a borrow local off a const record param (const Inner*)
+    + "    def peek_other(self, other: Box) -> Int32:\n        p = other.opt\n        return 0\n"
+    # writes other.opt -> the param is mutated, so it is a mutable ref (Inner*)
+    + "    def clear_other(self, other: Box):\n        p = other.opt\n        other.opt = None\n"
+    # mutates b but only reads a.opt: the const verdict must key on a's param index
+    + "    def mix(self, a: Box, b: Box) -> Int32:\n        b.n = 1\n        p = a.opt\n        return 0\n"
+)
+
+
+class TestMethodFrontierM2:
+    def test_const_record_param_scalar_read_routes(self):
+        assert _fn(_lower_ctx(_M2_METHODS), "sum_with") is not None
+
+    def test_optional_to_ptr_off_const_record_param_is_const(self):
+        # `other` is not mutated -> const-ref param -> the borrow off other.opt
+        # lifts to `const Inner*` (the const verdict comes from the method's own
+        # const_borrow_params, looked up on the owning record).
+        decl = _fn(_lower_ctx(_M2_METHODS), "peek_other").body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.OPTIONAL_TO_PTR
+        assert decl.form is Form.BORROW and decl.is_const
+
+    def test_optional_to_ptr_off_mutated_record_param_is_nonconst(self):
+        # `clear_other` writes other.opt -> `other` is a mutable ref, so the
+        # borrow off it is `Inner*`, not `const Inner*`.
+        decl = _fn(_lower_ctx(_M2_METHODS), "clear_other").body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.OPTIONAL_TO_PTR
+        assert decl.form is Form.BORROW and not decl.is_const
+
+    def test_readonly_method_with_record_param_routes(self):
+        # An explicit @readonly method with a record param routes: for a plain
+        # F1-record (ref) param the forced-const and inferred-const verdicts
+        # coincide, so const_borrow_params is exact (no carve-out needed).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "    @readonly\n    def ro_with(self, other: Box) -> Int32:\n"
+            + "        return other.n\n")
+        assert _fn(thir, "ro_with") is not None
+
+    def test_auto_readonly_method_with_record_param_routes(self):
+        # A non-mutating method that reads a record param is auto-readonly; it
+        # must still route (this is the common case the rung exists for).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "    def auto_ro(self, other: Box) -> Int32:\n        return other.n\n")
+        assert _fn(thir, "auto_ro") is not None
+
+    def test_optional_to_ptr_off_explicit_readonly_record_param_is_const(self):
+        # An explicit @readonly method that lifts a borrow off a record param:
+        # the param is not mutated, so the forced-const verdict and the inferred
+        # const_borrow_params verdict coincide -> `const Inner*` (pins the claim
+        # the eligibility comment rests on, for the explicit-readonly path).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "    @readonly\n    def ro_peek(self, other: Box) -> Int32:\n"
+            + "        p = other.opt\n        return 0\n")
+        decl = _fn(thir, "ro_peek").body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.OPTIONAL_TO_PTR
+        assert decl.form is Form.BORROW and decl.is_const
+
+    def test_mixed_mutation_const_verdict_keys_on_param_index(self):
+        # `mix` mutates b but only reads a.opt; the const verdict must key on a's
+        # param index (0), not b's (1) -- exercises the index-based
+        # const_borrow_params lookup that a single-param method never does.
+        decl = next(s for s in _fn(_lower_ctx(_M2_METHODS), "mix").body
+                    if isinstance(s, THIRVarDecl)
+                    and s.cpp_local_representation is LocalBinding.OPTIONAL_TO_PTR)
+        assert decl.form is Form.BORROW and decl.is_const
+
+
+class TestMethodFrontierM2Emit:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _M2_METHODS
+        + "def main():\n    a = Box(Inner(1))\n    b = Box(Inner(2))\n"
+        + "    print(a.sum_with(b))\n    print(a.peek_other(b))\n    a.clear_other(b)\n"
+        + "main()\n"
+    )
+
+    def test_m2_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_const_record_param_borrow_emits_const(self):
+        assert ("const Inner* p = ::tpy::optional_to_ptr(other.opt);"
+                in self._emit(self.SRC, thir=True))
 
 
 # --- Scalar field writes: `recv.field = <scalar>` off an F1-record receiver ---
