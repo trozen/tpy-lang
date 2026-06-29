@@ -804,6 +804,19 @@ class TestF1Eligibility:
         assert isinstance(decl.init.value, THIRFieldAccess)
         assert decl.init.value.form is Form.STORAGE
 
+    def test_mixed_mutation_free_function_keys_on_param_index(self):
+        # A free function mutates b but only reads a.opt; the const verdict must
+        # key on a's param index (0), not b's (1) -- exercises the index-based
+        # _param_is_const(record_name=None) lookup that a single-param fn never does.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def mix(a: Box, b: Box) -> Int32:\n"
+            + "    b.n = 1\n    p = a.opt\n    return 0\n")
+        decl = next(s for s in _fn(thir, "mix").body
+                    if isinstance(s, THIRVarDecl)
+                    and s.cpp_local_representation is LocalBinding.OPTIONAL_TO_PTR)
+        assert decl.form is Form.BORROW and decl.is_const
+
     def test_scalar_field_read_off_param_eligible(self):
         # The working, common F1 pattern: scalar field reads off a record param
         # (value form, no borrow local). `return p.x + p.y` and `a = p.x`.
@@ -1744,6 +1757,52 @@ class TestMethodFrontierM2Emit:
 
     def test_const_record_param_borrow_emits_const(self):
         assert ("const Inner* p = ::tpy::optional_to_ptr(other.opt);"
+                in self._emit(self.SRC, thir=True))
+
+
+# --- Readonly free functions: a `@readonly` free function is admitted (its
+# record params are forced const, which coincides with the inferred verdict) ---
+
+_RO_FREE = (
+    _F1_RECORDS
+    + "@readonly\ndef width(b: Box) -> Int32:\n    return b.n\n"
+    + "@readonly\ndef peek_free(b: Box) -> Int32:\n    p = b.opt\n    return 0\n"
+)
+
+
+class TestReadonlyFreeFunction:
+    def test_readonly_free_function_routes(self):
+        assert _fn(_lower_ctx(_RO_FREE), "width") is not None
+
+    def test_optional_to_ptr_off_readonly_free_param_is_const(self):
+        # A readonly free function forces its record param const; that coincides
+        # with the inferred const_borrow_params verdict (param not mutated), so the
+        # borrow off b.opt lifts to `const Inner*`.
+        decl = _fn(_lower_ctx(_RO_FREE), "peek_free").body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.OPTIONAL_TO_PTR
+        assert decl.form is Form.BORROW and decl.is_const
+
+
+class TestReadonlyFreeFunctionEmit:
+    def _emit(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp + cpp
+
+    SRC = (
+        _RO_FREE
+        + "def main():\n    b = Box(Inner(5))\n    print(width(b))\n    print(peek_free(b))\n"
+        + "main()\n"
+    )
+
+    def test_readonly_free_byte_identical(self):
+        assert self._emit(self.SRC, thir=True) == self._emit(self.SRC, thir=False)
+
+    def test_readonly_free_param_borrow_emits_const(self):
+        assert ("const Inner* p = ::tpy::optional_to_ptr(b.opt);"
                 in self._emit(self.SRC, thir=True))
 
 

@@ -9,7 +9,7 @@
 | `--dump-thir` debug output | Done (increment 1) |
 | THIR-backed codegen context | Increment 1 -- flag-gated (`tpyc/thir/emit.py`) |
 | Codegen migration from analyzer/AST to THIR | Increments 1-5 -- value-scalar bodies incl. if/elif/else, while, range-for, double float, bool, comparison-as-value |
-| THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`). F1: single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads. F2: reseatable `T*` pointer-locals (lvalue reseat + the rvalue `__slot_N` rebind machinery, `->` reads) and the Optional borrow<->storage write/return (`ptr_to_optional` copy / `ptr_to_optional_move` move) + `None` (`std::nullopt`). Byte-identical with `--thir-codegen` forced over the full corpus. **Method frontier M1 landed (2026-06)** -- a callable-kind axis orthogonal to the form ladder: plain instance methods route (`self` -> `this` via `THIRSelf`, readonly/const self, scalar params), so F1/F2 finally route real corpus code. **Scalar field writes landed (increment 10)** -- `recv.field = <scalar>` off any F1-record receiver (plain `THIRAssign`, no form lift), more than doubling corpus routing. **Scalar augmented assignment landed (increment 11)** -- `x += y` / `recv.field += y` lowers to `target = (target OP value)` via `THIRBinOp` (+ a `paren_wrap` flag for the AST aug-assign's no-paren RHS). **Method frontier M2 landed (increment 12)** -- F1-record params on instance methods (const verdict via the method's own `const_borrow_params` on the owning record; no readonly carve-out -- forced-const and inferred-const coincide for plain ref params), routing 2835 -> 3163 bodies / 534 -> 576 cases. Deferred (AST path): M3 constructors / member-init-list; readonly free functions; call-arg / call+`copy()`-write sources (non-value call args + auto-move). F3-F-final not started |
+| THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`). F1: single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads. F2: reseatable `T*` pointer-locals (lvalue reseat + the rvalue `__slot_N` rebind machinery, `->` reads) and the Optional borrow<->storage write/return (`ptr_to_optional` copy / `ptr_to_optional_move` move) + `None` (`std::nullopt`). Byte-identical with `--thir-codegen` forced over the full corpus. **Method frontier M1 landed (2026-06)** -- a callable-kind axis orthogonal to the form ladder: plain instance methods route (`self` -> `this` via `THIRSelf`, readonly/const self, scalar params), so F1/F2 finally route real corpus code. **Scalar field writes landed (increment 10)** -- `recv.field = <scalar>` off any F1-record receiver (plain `THIRAssign`, no form lift), more than doubling corpus routing. **Scalar augmented assignment landed (increment 11)** -- `x += y` / `recv.field += y` lowers to `target = (target OP value)` via `THIRBinOp` (+ a `paren_wrap` flag for the AST aug-assign's no-paren RHS). **Method frontier M2 landed (increment 12)** -- F1-record params on instance methods (const verdict via the method's own `const_borrow_params` on the owning record; no readonly carve-out -- forced-const and inferred-const coincide for plain ref params), routing 2835 -> 3163 bodies / 534 -> 576 cases. **Readonly free functions landed (increment 13)** -- removed the `is_readonly and not is_instance_method` exclusion (forced/inferred const coincide for free functions too), 3163 -> 3165 bodies / 576 -> 577 cases. Deferred (AST path): M3 constructors / member-init-list; call-arg / call+`copy()`-write sources (non-value call args + auto-move). F3-F-final not started |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
 | `--dump-mir` debug output | Not started |
@@ -233,9 +233,19 @@ plain F1-record (ref) param the readonly forced-const verdict and the inferred
 param is not directly mutated / address-escaped in both modes), so the inferred set
 is exact for readonly methods too -- a carve-out would only re-exclude the common
 auto-readonly getter the rung exists for. Routing 2835 -> 3163 bodies across 534 ->
-576 cases. Deferred: readonly *free functions* stay AST-side (M1's exclusion, by the
-same analysis possibly admissible -- a separate follow-up); generic-record / static
-/ property / nested-record methods; `deep_const_borrow_params`.
+576 cases. Deferred: generic-record / static / property / nested-record methods;
+`deep_const_borrow_params`.
+
+**Increment 13 admits readonly free functions** -- M1 excluded any
+`func.is_readonly and not is_instance_method` (a `@readonly` free function) on the
+same worry the M2 carve-out turned out not to need. The exclusion is removed: a
+readonly free function's F1-record params are read via the (free-function)
+`const_borrow_params` like any other, and the forced/inferred verdicts coincide
+exactly as for readonly methods (a readonly callable cannot mutate a param, so its
+record params are uniformly const). Byte-identical; small corpus gain (3163 ->
+3165 bodies / 576 -> 577 cases -- most readonly free functions stay AST-side for
+other reasons: native, generic, non-F1 params, or calls in the body), but it
+removes the last readonly asymmetry in the eligibility gate.
 
 ---
 

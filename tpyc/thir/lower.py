@@ -355,13 +355,16 @@ def _param_is_const(name: str, func: TpyFunction, analyzer,
     """Whether param `name` is emitted `const` -- read from the sema fact
     `FunctionInfo.const_borrow_params` (param indices), which equals codegen's
     `const_ref_params` for a function's plain F1-record (ref) params. This holds
-    for readonly methods too: for such a param the readonly forced-const verdict
-    and the inferred const_borrow_params verdict coincide (see decide_param_const),
-    so the inferred set is exact. None (Phase-2 not run) -> not const, matching
-    codegen's empty const set when mutation facts are absent. A method's
-    FunctionInfo lives on the owning record (`record_name`), not the free-function
-    registry -- the same lookup codegen's `_get_method_mutated_params` uses; a free
-    function (record_name None) reads the function registry."""
+    for a readonly callable (method or free function) too: a `@readonly` callable's
+    non-value param is stored as `Ref(ReadonlyType(T))`, so `decide_param_const`
+    takes the `ReadonlyType` early-exit -- the forced-const (codegen body) and
+    inferred (`const_borrow_params`) verdicts traverse the same branch, making the
+    inferred set exact. `cbp` is None when Phase-2 has not run -- unreachable for an
+    admitted function (Phase-1 always sets `mutated_params`), so the resulting
+    not-const is a safe default, not a divergence. A method's FunctionInfo lives on
+    the owning record (`record_name`) -- the same lookup codegen's
+    `_get_method_mutated_params` uses; a free function (record_name None) reads the
+    function registry."""
     if record_name is not None:
         ri = analyzer.registry.get_record(record_name)
         overloads = ri.get_method_overloads(func.name) if ri is not None else None
@@ -581,25 +584,16 @@ def _function_eligible(func: TpyFunction, analyzer,
         return False
     if func.linkage != FunctionLinkage.DEFAULT:
         return False
-    # A readonly free function forces const params (codegen's `use_const_params`)
-    # whose verdict the inferred FunctionInfo.const_borrow_params does not record,
-    # so it stays on the AST path. A readonly *method* is admitted: its const `self`
-    # is seeded into const_locals at lowering, and its F1-record params take the
-    # inferred const_borrow_params verdict -- which for a plain ref param coincides
-    # with the forced-const one (see the param loop below). Excluding readonly
-    # methods would route almost nothing -- a non-mutating getter is auto-readonly.
-    if func.is_readonly and not is_instance_method:
-        return False
     for _name, ptype in func.params:
         pt = ptype if isinstance(ptype, TpyType) else None
-        # An instance method takes F1-record params like a free function; the const
-        # verdict comes from the method's own const_borrow_params (read via the
-        # record at lowering). This holds for readonly methods too: for a plain
-        # F1-record (ref) param the readonly forced-const verdict and the inferred
-        # const_borrow_params verdict coincide (both const iff the param is not
-        # directly mutated / address-escaped -- see decide_param_const), so no
-        # readonly carve-out is needed -- and one would re-exclude the common
-        # non-mutating getter, which is auto-readonly.
+        # Free functions and instance methods both take F1-record params; the const
+        # verdict comes from the function's own const_borrow_params (a method's read
+        # via the owning record at lowering). This holds for readonly callables too:
+        # for a plain F1-record (ref) param the readonly forced-const verdict and the
+        # inferred const_borrow_params verdict coincide (both const iff the param is
+        # not directly mutated / address-escaped -- see decide_param_const), so no
+        # readonly carve-out is needed (and a readonly callable cannot mutate a param
+        # anyway, so its record params are uniformly const).
         if not _f1_param_eligible(pt, analyzer):
             return False
     rt = func.return_type if isinstance(func.return_type, TpyType) else None
