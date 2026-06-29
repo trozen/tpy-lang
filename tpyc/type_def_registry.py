@@ -152,6 +152,11 @@ class TypeDef:
     qname: str
     category: TypeCategory
     is_value_type: bool = False
+    # Marshals across the CPython @export boundary (copy-in). Declared here so
+    # admission is one per-type fact rather than re-derived from C++ type
+    # strings -- which can't tell `bytes` from `bytearray` (both stringify to
+    # std::vector<uint8_t>, but only the immutable value type marshals).
+    boundary_marshal: bool = False
     subscript_borrows: bool = False
     # Value-type wrapper whose instances reference foreign storage (dict
     # views). Consulted by is_borrowing_view_type alongside the classic
@@ -525,6 +530,25 @@ def is_free_copy_scalar(t: "TpyType") -> bool:
             or is_float_category(t) or is_enum_type(t))
 
 
+def is_boundary_marshallable(t: "TpyType | None", allow_void: bool = False) -> bool:
+    """Whether `t` crosses the CPython @export boundary (copy-in). Single
+    admission rule shared by the sema validator and the glue emitter's drift
+    assert. A missing return type (no annotation / `-> None`) is a legal
+    return -- the wrapper hands back None -- but never a valid parameter type.
+    Own[T] only transfers ownership of T, so it marshals iff T does.
+    """
+    from tpyc.typesys import OwnType, VoidType
+    if t is None:
+        return allow_void  # no return annotation -> the wrapper hands back None
+    if allow_void and isinstance(t, VoidType):
+        return True  # `-> None` resolves to VoidType, not None
+    inner = t
+    while isinstance(inner, OwnType):
+        inner = inner.wrapped
+    td = type_def_of(inner)
+    return td is not None and td.boundary_marshal
+
+
 # Single-qname primitive predicates.
 def is_str_type(t: "TpyType") -> bool:     return _is_qn(t, "builtins.str")
 def is_string_type(t: "TpyType") -> bool:  return _is_qn(t, "tpy.String")
@@ -695,7 +719,7 @@ def _populate() -> None:
             prefix = "Int" if signed else "UInt"
             qn = f"tpy.{prefix}{bits}"
             register(TypeDef(
-                qn, TC.FIXED_INT, is_value_type=True,
+                qn, TC.FIXED_INT, is_value_type=True, boundary_marshal=True,
                 cpp_formatter=_int_cpp(bits, signed),
                 param_cpp_formatter=_int_cpp(bits, signed),
                 int_traits=IntTraits(bits=bits, signed=signed),
@@ -703,7 +727,7 @@ def _populate() -> None:
 
     # BigInt: heap-backed, expensive to copy, passed by const reference.
     register(TypeDef(
-        "builtins.int", TC.BIG_INT, is_value_type=True,
+        "builtins.int", TC.BIG_INT, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "::tpy::BigInt",
         param_cpp_formatter=lambda args: "const ::tpy::BigInt&",
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
@@ -711,7 +735,7 @@ def _populate() -> None:
 
     # Floats.
     register(TypeDef(
-        "builtins.float", TC.FLOAT, is_value_type=True,
+        "builtins.float", TC.FLOAT, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "double",
         param_cpp_formatter=lambda args: "double",
         float_traits=FloatTraits(bits=64),
@@ -725,7 +749,7 @@ def _populate() -> None:
 
     # Bool and Char.
     register(TypeDef(
-        "builtins.bool", TC.BOOL, is_value_type=True,
+        "builtins.bool", TC.BOOL, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "bool",
         param_cpp_formatter=lambda args: "bool",
     ))
@@ -745,7 +769,7 @@ def _populate() -> None:
         return CHAR
 
     register(TypeDef(
-        "builtins.str", TC.STR, is_value_type=True,
+        "builtins.str", TC.STR, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "std::string",
         param_cpp_formatter=lambda args: "std::string_view",
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
@@ -780,7 +804,7 @@ def _populate() -> None:
         return UINT8
 
     register(TypeDef(
-        "builtins.bytes", TC.BYTES, is_value_type=True,
+        "builtins.bytes", TC.BYTES, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "std::vector<uint8_t>",
         param_cpp_formatter=lambda args: "std::span<const uint8_t>",
         is_expensive_copy=True, param_needs_copy_for_reassign=True,

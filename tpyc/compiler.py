@@ -3891,7 +3891,8 @@ class Compiler:
             boundary marshaller. Runs post-sema so the types are resolved.
         """
         from .codegen_cpp.generator import (
-            boundary_cpp_type, boundary_type_ok, boundary_unmarshallable_msg)
+            boundary_cpp_type, boundary_unmarshallable_msg)
+        from .type_def_registry import is_boundary_marshallable
         for compiled in self.modules.values():
             if not compiled.ast.directives.ext_module:
                 continue
@@ -3912,7 +3913,7 @@ class Compiler:
                 checks += [(ptype, f"parameter '{pname}'", False)
                            for pname, ptype in func.params]
                 for typ, what, allow_void in checks:
-                    if boundary_type_ok(typ, allow_void):
+                    if is_boundary_marshallable(typ, allow_void):
                         continue
                     cpp = boundary_cpp_type(typ)
                     raise CompileError(

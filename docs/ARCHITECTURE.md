@@ -185,6 +185,9 @@ Unit-tested in `tpyc/test_value_form.py`.
 `tpyc/type_def_registry.py` holds a single `TypeDef` per qname with
 all behavior (`cpp_formatter`, `is_send`/`is_sync`, `element_of`,
 `subscript_borrows`, `is_value_type`, `is_indirecting`,
+`boundary_marshal` (crosses the CPython `@export` boundary by copy --
+queried by `is_boundary_marshallable`, replacing a C++-type-string set
+that could not tell `bytes` from `bytearray`),
 `is_borrowing_view` (value-type wrapper referencing foreign storage,
 e.g. dict views), `iter_yields_ref_tuple_proxies` (iteration yields
 proxy reference tuples, e.g. dict_items -- drives the resumable-frame

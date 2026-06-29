@@ -5844,7 +5844,10 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   forms (`@export(binding="C")`, a positional name) are compile errors, as is
   combining `ext_module` with `native_module` (declaration-only -- no module
   to export). `@export` signature constraints (param/return marshallability)
-  are validated before codegen, so the glue emitter assumes valid input.
+  are validated before codegen, so the glue emitter assumes valid input;
+  marshallability is a per-type `TypeDef.boundary_marshal` fact (so the
+  Python-facing `str`/`bytes` marshal but the tpy-native `String` and the
+  mutable `bytearray`, which share their C++ representation, do not).
   Codegen emits an extension glue TU (`PyMethodDef` / `PyModuleDef` /
   `PyInit_<module>`) beside the normal module `.cpp`. The boundary uses a
   hand-mirrored limited-API facade (`tpy/interop/cpython_h.hpp`) so no

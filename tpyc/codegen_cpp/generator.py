@@ -14,7 +14,7 @@ import sys as _sys
 
 from ..typesys import TpyType, NominalType, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name
 from ..compilation_context import require_current_compiler
-from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
+from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of, is_boundary_marshallable
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith, TpyAwait
 from .resumable_cfg import (
@@ -55,45 +55,11 @@ def _emits_own_cpp(typ: NominalType) -> bool:
 # Maps user-facing platform names to sys.platform prefixes (also in compiler.py)
 _PLATFORM_MAP = {"windows": "win32", "linux": "linux", "macos": "darwin"}
 
-# C++ types with a tpy::interop::from_py<T> / to_py marshaller, so an @export
-# function can pass them across the CPython extension boundary. Anything else is
-# rejected -- by sema (the located diagnostic), with codegen asserting as a
-# drift guard. Shared so both sides agree on one source of truth.
-BOUNDARY_CPP_TYPES = {
-    "int8_t", "uint8_t", "int16_t", "uint16_t",
-    "int32_t", "uint32_t", "int64_t", "uint64_t",
-    "::tpy::BigInt", "double", "bool",
-    "std::string", "std::vector<uint8_t>",
-}
-
-
 def boundary_cpp_type(t: TpyType | None) -> str:
     # Shared so the sema validator and codegen derive the boundary cpp type
-    # identically (a missing return type is 'void', absent from the set).
+    # identically (a missing return type is 'void'). Used only to render the
+    # diagnostic; admission is is_boundary_marshallable (a TypeDef fact).
     return t.to_cpp() if t is not None else "void"
-
-
-def boundary_type_ok(t: TpyType | None, allow_void: bool = False) -> bool:
-    # Single admission rule shared by the sema validator and the glue emitter's
-    # drift assert. A missing return type (no annotation / `-> None`) is a legal
-    # return -- the wrapper hands back None -- but never a valid parameter type.
-    #
-    # Judge the value-type fact on the Own-unwrapped inner: Own[T] only transfers
-    # ownership of T, so the marshalled Python value is T's. OwnType.is_value_type
-    # is unconditionally True, which would otherwise mask a non-value inner -- the
-    # is_value_type test disambiguates types sharing a C++ representation (bytes
-    # and bytearray both stringify to std::vector<uint8_t>, but only the immutable
-    # value type `bytes` marshals by copy; bytearray is a mutable reference type
-    # whose aliasing a PyBytes copy would silently drop, and Own[bytearray] must
-    # not slip through on the wrapper's value-type claim).
-    if t is None:
-        return allow_void  # no return annotation -> the wrapper hands back None
-    if allow_void and t.to_cpp() == "void":
-        return True  # `-> None` resolves to VoidType (to_cpp "void"), not None
-    inner = t
-    while isinstance(inner, OwnType):
-        inner = inner.wrapped
-    return inner.to_cpp() in BOUNDARY_CPP_TYPES and inner.is_value_type()
 
 
 def boundary_unmarshallable_msg(fn_name: str, what: str, cpp: str) -> str:
@@ -2550,7 +2516,7 @@ class CodeGenerator:
     def generate_extension_glue(self, module: TpyModule, module_name: str) -> str:
         """Emit the CPython extension glue TU for an `# tpy: ext_module`:
         PyMethodDef/PyModuleDef/PyInit_ plus one wrapper per @export-ed
-        function. Param/return types must be in BOUNDARY_CPP_TYPES (sema
+        function. Param/return types must be boundary-marshallable (sema
         already enforced this); the wrapper marshals via tpy::interop and the
         TU never includes Python.h
         (the facade keeps its macros out of TPy-generated code).
@@ -2579,7 +2545,7 @@ class CodeGenerator:
             # Sema (_validate_ext_module_exports) already rejected unmarshallable
             # boundary types; this asserts the contract to catch sema/codegen
             # drift loudly rather than emit a TU that won't compile.
-            assert boundary_type_ok(t, allow_void), \
+            assert is_boundary_marshallable(t, allow_void), \
                 boundary_unmarshallable_msg(fn.name, what, cpp)
             return cpp
 
