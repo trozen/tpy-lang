@@ -46,13 +46,19 @@ class LocalBinding(Enum):
                              lvalue source (`&(...)`), reseatable across
                              reassignments. The reassigned counterpart of
                              REF_ALIAS; only the lvalue-reseat (slot-free) subset.
+      * `REBIND_SLOT`     -- `T*` pointer-local of a plain non-value *rvalue*
+                             source (a ctor / by-value call), reseatable via the
+                             two-slot `__slot_N` machinery (a direct init slot +
+                             an `std::optional<T>` rebind slot). The rvalue
+                             counterpart of POINTER.
       * `OTHER`           -- any other binding; the caller's existing path owns it
-                             (rvalue/rebind-slot locals, tuples, unions, generic
-                             slots, value types).
+                             (single-assignment rvalue value-locals, tuples,
+                             unions, generic slots, value types).
     """
     REF_ALIAS = auto()
     OPTIONAL_TO_PTR = auto()
     POINTER = auto()
+    REBIND_SLOT = auto()
     OTHER = auto()
 
 
@@ -110,6 +116,7 @@ def classify_local_binding(
     *,
     name: str,
     reassigned: set[str],
+    rvalue_reassigned: set[str],
     hoisted: set[str],
     move_through: set[str],
 ) -> LocalBinding:
@@ -142,9 +149,16 @@ def classify_local_binding(
                 and not is_rvalue_source(analyzer, init)):
             return LocalBinding.OPTIONAL_TO_PTR
         return LocalBinding.OTHER
-    if is_plain_nonvalue(target_type) and not is_rvalue_source(analyzer, init):
-        # Single-assignment binds a `T&` alias; a reassigned local is a
-        # reseatable `T*` pointer-local. Both lift the same lvalue storage source
-        # to a borrow at the binding site (the reseat to later lvalues is F2).
+    if is_plain_nonvalue(target_type):
+        if is_rvalue_source(analyzer, init):
+            # An rvalue source (a ctor / by-value call). A name reassigned with an
+            # rvalue is a rebind-slot pointer-local (the two-slot `__slot_N`
+            # machinery); a single-assignment rvalue local needs no indirection
+            # (a plain value local) and is left to the caller's path.
+            return (LocalBinding.REBIND_SLOT if name in rvalue_reassigned
+                    else LocalBinding.OTHER)
+        # An lvalue source binds a `T&` alias (single-assignment) or a reseatable
+        # `T*` pointer-local (reassigned); both lift the lvalue storage to a borrow
+        # at the binding site (the reseat to later lvalues is F2a).
         return LocalBinding.POINTER if is_reassigned else LocalBinding.REF_ALIAS
     return LocalBinding.OTHER

@@ -9,7 +9,7 @@
 | `--dump-thir` debug output | Done (increment 1) |
 | THIR-backed codegen context | Increment 1 -- flag-gated (`tpyc/thir/emit.py`) |
 | Codegen migration from analyzer/AST to THIR | Increments 1-5 -- value-scalar bodies incl. if/elif/else, while, range-for, double float, bool, comparison-as-value |
-| THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`). F1: single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads. F2: reseatable `T*` pointer-locals (lvalue reseat, `&(...)`, `->` reads) + the Optional borrow->storage write (`ptr_to_optional`). Byte-identical with `--thir-codegen` forced over the full corpus. Deferred within F2 (AST path): rvalue rebind-slot (`__slot_N`) machinery, `_move`/owned sources, return-into-storage-optional, ctor-MIL, call-arg. F3-F-final not started |
+| THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`). F1: single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads. F2: reseatable `T*` pointer-locals (lvalue reseat + the rvalue `__slot_N` rebind machinery, `->` reads) and the Optional borrow<->storage write/return (`ptr_to_optional` copy / `ptr_to_optional_move` move) + `None` (`std::nullopt`). Byte-identical with `--thir-codegen` forced over the full corpus. Deferred within F2 (AST path) -- not form cells but separate frontiers: ctor member-init-list (needs the constructor/method frontier) and call-arg / call+`copy()`-write sources (need non-value call args + auto-move). F3-F-final not started |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
 | `--dump-mir` debug output | Not started |
@@ -144,6 +144,32 @@ unconditionally. Deferred to the AST path (filed in TODO.md): the rvalue
 rebind-slot (`__slot_N`) machinery, `_move`/owned sources, `copy()`-acknowledged +
 call/None/name-alias write sources, return-into-storage-optional, ctor-MIL, and
 call-arg. Byte-identical across the whole corpus with `--thir-codegen` forced.
+
+**Increment 8 finishes the F2 remainder** -- the buildable form cells deferred by
+increment 7, in three gated sub-rungs. *F2c:* the storage-form `Optional[record]`
+return (`Own[T] | None`) -- `return <borrow T*>` lifts via `ptr_to_optional`
+(copy), `return None` and `recv.field = None` lower to a STORAGE-form `None`
+literal (`std::nullopt`, the literal's `form` selecting nullopt vs nullptr at
+emit). *F2d:* the rvalue rebind-slot machinery -- a reassigned plain-record local
+whose source is an rvalue (a ctor / by-value call) lowers to the two-slot
+`__slot_N` form (`T __slot_n = init; std::optional<T> __slot_{n+1}; T* p =
+&__slot_n;`, reseat `p = &*(__slot_{n+1} = rvalue)`). A new
+`forms.LocalBinding.REBIND_SLOT` (transparent to the AST's `is not REF_ALIAS`
+branch) drives it; the `__slot_N` numbering is a per-function `_EmitState` counter
+(only a REBIND_SLOT decl bumps it within the slice -- every other `__slot_N`
+consumer is gated out). *F2e:* the move half -- an owned (REBIND_SLOT) source at
+last use lifts via `ptr_to_optional_move`, decided at lowering from the same
+`function_movable_locals` + `all_last_uses` facts the AST reads (`THIRFormConvert.
+move`). All three route zero corpus cases (these shapes live in methods / cross
+call boundaries in the corpus), so the `tpyc/thir/test_thir_scaffold.py` unit
+tests are the per-rung net (routing + byte-identity); byte-identical across the
+whole corpus with `--thir-codegen` forced. Still deferred -- **not form cells but
+separate frontiers**: ctor member-init-list (the MIL is emitted by the record
+driver outside `gen_body`, and only for constructors -- it needs the
+constructor/method frontier, a THIR `self` model, and a MIL node) and the call-arg
+/ call+`copy()`-write `ptr_to_optional` sites (admitting a non-value call arg
+forces the whole arg-coercion cascade incl. auto-move `f(std::move(p))`, so they
+must land together, not as an isolated form cell).
 
 ---
 
@@ -862,7 +888,7 @@ that the migration enables. Migration-complete != bugs-fixed.
 | Rung | Scope | Closes (inventory) |
 |------|-------|--------------------|
 | **F1** *(landed 2026-06)* | single-assignment non-value **record** locals + Optional[record] storage->borrow read (`T&` alias, lvalue `optional_to_ptr`, is_const propagation, record borrow params) + scalar field reads; excludes reassigned/rebound/rvalue-slot, container/cross-module/native records, and calls passing a non-value arg (auto-move). Container locals fold in with F3 | most of section 1 non-value-local + section 4 read |
-| **F2** *(core landed 2026-06)* | reassigned/rebound locals + Optional borrow->storage write/return. **Landed:** reseatable `T*` pointer-locals with **lvalue** reseat (`&(...)`, no slot) + `->` reads, and the optional-field **write** from a borrow source (`ptr_to_optional`, copy). **Deferred (AST path):** the `rebind_slots`/`__slot_N` rvalue machinery, `_move`/owned sources, `copy()`-acknowledged + call/None/name-alias sources, return-into-storage-optional, ctor-MIL, call-arg | section 3b slot machinery (partial) + section 4 write (partial) |
+| **F2** *(landed 2026-06)* | reassigned/rebound locals + Optional borrow<->storage write/return. **Landed:** reseatable `T*` pointer-locals -- **lvalue** reseat (`&(...)`, no slot, F2a) and the **rvalue** `__slot_N` rebind machinery (F2d) -- `->` reads; the optional-field/return **write** from a borrow source, copy (`ptr_to_optional`, F2b) and **move** (`ptr_to_optional_move`, F2e); the storage-Optional **return** + **`None`** write/return (`std::nullopt`, F2c). **Deferred -- separate frontiers, not form cells (AST path):** ctor-MIL (constructor/method frontier) and the call-arg / call+`copy()`-write sources (non-value call args + auto-move). | section 3b slot machinery + section 4 write/lift (the local + free-function sites) |
 | **F3** | Tuple form (per-element pointer/optional mask, BORROW_TUPLE / STORAGE_TUPLE) | section 1 tuple, section 4 tuple sites |
 | **F4** | Union form (`to_ptr_variant` / `to_value_variant`, value/ptr-variant split, the 3 consumer-dictated exhibits) | section 1 union |
 | **F5** | Generic-slot form (`val_or_ref_t` / `val_or_ptr_t` over TypeParamRef) | section 1 generic, section 3c RefType (begin) |

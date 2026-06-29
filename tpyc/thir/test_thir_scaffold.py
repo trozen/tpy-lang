@@ -486,6 +486,14 @@ class TestDump:
             "  return %total\n"
         )
 
+    def test_dump_storage_none(self):
+        # An F2c None return surfaces the STORAGE form tag on the None literal
+        # (the tag selects std::nullopt vs nullptr at emit).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def nothing() -> Own[Inner] | None:\n    return None\n")
+        assert "return lit(None) [storage]" in dump_thir(thir)
+
 
 class TestEmit:
     def test_emit_body_no_comments(self):
@@ -1133,3 +1141,367 @@ class TestF2PointerReceiver:
             + "def f(b: Box, c: Box, which: Int32) -> Int32:\n"
             + "    p = b.opt\n    if which < 0:\n        p = c.opt\n    return 0\n")
         assert _fn(thir, "f") is None
+
+
+# --- F2c form rung: storage-form Optional[record] return + None write ---
+
+
+class TestF2cReturn:
+    def test_borrow_return_routes(self):
+        # A storage-form `Own[Inner] | None` return lifts a borrow `T*` via
+        # ptr_to_optional (copy): the return value is a borrow->storage convert.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def find(b: Box) -> Own[Inner] | None:\n    p = b.opt\n    return p\n")
+        fn = _fn(thir, "find")
+        assert fn is not None
+        ret = fn.body[1]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRFormConvert) and ret.value.form is Form.STORAGE
+        assert ret.value.value.form is Form.BORROW  # the `p` borrow being lifted
+
+    def test_none_return_routes(self):
+        # `return None` into a storage-form Optional lowers to a STORAGE-form None
+        # literal (-> std::nullopt), not a borrow convert.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def nothing(b: Box) -> Own[Inner] | None:\n    return None\n")
+        fn = _fn(thir, "nothing")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRLiteral) and ret.value.value is None
+        assert ret.value.form is Form.STORAGE
+
+    def test_pointer_repr_return_is_ineligible(self):
+        # `Inner | None` is pointer-repr (the function returns a borrow `Inner*`),
+        # a different direction than the storage `Own[Inner] | None` slot -> AST path.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box) -> Inner | None:\n    p = b.opt\n    return p\n")
+        assert _fn(thir, "f") is None
+
+    def test_rvalue_return_is_ineligible(self):
+        # A non-borrow, non-None source (here an rvalue ctor) into the storage
+        # return slot is the direct-construction branch -- deferred to the AST path.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box) -> Own[Inner] | None:\n    return Inner(5)\n")
+        assert _fn(thir, "f") is None
+
+    def test_pointer_local_borrow_return_routes(self):
+        # The borrow-return source via the POINTER (not OPTIONAL_TO_PTR) branch of
+        # `_is_borrow_ptr_local`: a reseatable `T*` returned into Own[Inner]|None
+        # copies (a POINTER is a non-owning borrow -> move=False).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box, c: Box, which: Int32) -> Own[Inner] | None:\n"
+            + "    x = b.inner\n    if which < 0:\n        x = c.inner\n    return x\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        ret = fn.body[2]
+        assert isinstance(ret, THIRReturn) and isinstance(ret.value, THIRFormConvert)
+        assert ret.value.form is Form.STORAGE and ret.value.move is False
+
+
+class TestF2cNoneWrite:
+    def test_none_field_write_routes(self):
+        # `b.opt = None` lowers to a field-target THIRAssign whose value is a
+        # STORAGE-form None literal (-> std::nullopt), no form convert.
+        thir = _lower_ctx(
+            _F1_RECORDS + "def clear(b: Box):\n    b.opt = None\n")
+        fn = _fn(thir, "clear")
+        assert fn is not None
+        write = fn.body[0]
+        assert isinstance(write, THIRAssign)
+        assert isinstance(write.target, THIRFieldAccess) and write.target.field_cpp == "opt"
+        assert isinstance(write.value, THIRLiteral) and write.value.value is None
+        assert write.value.form is Form.STORAGE
+
+
+class TestF2cEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _F1_RECORDS
+        + "def find(b: Box) -> Own[Inner] | None:\n    p = b.opt\n    return p\n"
+        + "def nothing(b: Box) -> Own[Inner] | None:\n    return None\n"
+        + "def clear(b: Box):\n    b.opt = None\n"
+        + "def main():\n"
+        + "    bx = Box(Inner(3))\n    clear(bx)\n    a = find(bx)\n    c = nothing(bx)\n    print(0)\n"
+        + "main()\n"
+    )
+
+    def test_f2c_byte_identical(self):
+        # The load-bearing F2c contract: the borrow-return lift, the None return,
+        # and the None field write all emit identically to the AST path.
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_borrow_return_emits_ptr_to_optional(self):
+        assert "return ::tpy::ptr_to_optional(p);" in self._cpp(self.SRC, thir=True)
+
+    def test_none_return_emits_nullopt(self):
+        assert "return std::nullopt;" in self._cpp(self.SRC, thir=True)
+
+    def test_none_write_emits_nullopt(self):
+        assert "b.opt = std::nullopt;" in self._cpp(self.SRC, thir=True)
+
+    def test_none_write_via_pointer_receiver(self):
+        # `x.opt = None` off a POINTER local receiver -> `x->opt = std::nullopt;`
+        # (the None write through the arrow-receiver path), byte-identical.
+        src = (
+            _F1_RECORDS
+            + "def clearp(b: Box, c: Box, which: Int32):\n"
+            + "    x = b.inner\n    if which < 0:\n        x = c.inner\n    x.opt = None\n"
+            + "def main():\n    bx = Box(Inner(1))\n    clearp(bx, bx, 1)\nmain()\n"
+        )
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        assert "x->opt = std::nullopt;" in self._cpp(src, thir=True)
+
+
+# --- F2d form rung: rvalue rebind-slot pointer-locals (the __slot_N machinery) ---
+
+
+class TestF2dRebindSlot:
+    def test_rvalue_reassigned_routes(self):
+        # An rvalue-reassigned plain-record local is a rebind-slot pointer-local:
+        # the decl is a REBIND_SLOT whose init is the rvalue ctor (no convert),
+        # the reseat a plain THIRAssign of the ctor, and reads are arrow accesses.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def reb() -> Int32:\n"
+            + "    p = Inner(1)\n    a = p.value\n    p = Inner(2)\n    return p.value + a\n")
+        fn = _fn(thir, "reb")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.REBIND_SLOT
+        assert decl.form is Form.BORROW and decl.cpp_type == "Inner"
+        assert isinstance(decl.init, THIRCall) and decl.init.callee == "Inner"
+        read = fn.body[1].init  # a = p.value -> arrow read off the pointer-local
+        assert isinstance(read, THIRFieldAccess) and read.is_arrow
+        reseat = fn.body[2]
+        assert isinstance(reseat, THIRAssign) and reseat.target.name == "p"
+        assert isinstance(reseat.value, THIRCall) and reseat.value.callee == "Inner"
+
+    def test_single_assignment_rvalue_is_ineligible(self):
+        # No reassignment -> a plain value local (`Inner p = Inner(1);`), not a
+        # rebind-slot pointer-local -> stays on the AST path.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f() -> Int32:\n    p = Inner(1)\n    return p.value\n")
+        assert _fn(thir, "f") is None
+
+    def test_kwarg_ctor_normalizes_and_routes(self):
+        # sema rewrites a single-param ctor kwarg to a positional arg before
+        # lowering (`Inner(value=1)` -> `Inner(1)`), so it still routes as a
+        # rebind-slot rvalue source. (The `init.kwargs` guard only fires for a
+        # ctor sema leaves un-normalized.)
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f() -> Int32:\n"
+            + "    p = Inner(value=1)\n    a = p.value\n    p = Inner(value=2)\n    return a + p.value\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert decl.cpp_local_representation is LocalBinding.REBIND_SLOT
+        assert isinstance(decl.init, THIRCall) and len(decl.init.args) == 1
+
+    def test_record_arg_ctor_source_is_ineligible(self):
+        # A rebind-slot ctor whose arg is a non-scalar (a record value-local) needs
+        # the AST's arg deref / auto-move, which the bare THIRCall arg emit does not
+        # reproduce -- so the arg gate (mirroring _call_eligible) rejects it -> AST
+        # path. (Box's ctor takes Own[Inner]; `a` is a record value-local.)
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f() -> Int32:\n"
+            + "    a = Inner(0)\n    p = Box(a)\n    p = Box(a)\n    return p.n\n")
+        assert _fn(thir, "f") is None
+
+    def test_function_call_rebind_source_routes(self):
+        # A by-value record-returning FREE FUNCTION (not a ctor) is also a valid
+        # rebind-slot rvalue source; it emits as the bare `make_inner()`.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def make_inner() -> Own[Inner]:\n    return Inner(9)\n"
+            + "def f() -> Int32:\n"
+            + "    p = make_inner()\n    p = make_inner()\n    return p.value\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        decl = fn.body[0]
+        assert decl.cpp_local_representation is LocalBinding.REBIND_SLOT
+        assert isinstance(decl.init, THIRCall) and decl.init.callee == "make_inner"
+
+    def test_conditional_reseat_routes(self):
+        # A REBIND_SLOT reseat inside an `if`-body (the in-branch reseat path).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(x: Int32) -> Int32:\n"
+            + "    p = Inner(1)\n    if x < 0:\n        p = Inner(2)\n    return p.value\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert fn.body[0].cpp_local_representation is LocalBinding.REBIND_SLOT
+        reseat = fn.body[1].then_body[0]  # the in-branch reseat
+        assert isinstance(reseat, THIRAssign) and isinstance(reseat.value, THIRCall)
+
+    def test_lvalue_reseat_of_rebind_slot_is_ineligible(self):
+        # A REBIND_SLOT local (rvalue first decl) reseated with an lvalue field
+        # source is the deferred mixed case -- `_is_record_rvalue_source` needs a
+        # ctor/call, so it stays on the AST path (mirror of the POINTER+rvalue case).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(b: Box, x: Int32) -> Int32:\n"
+            + "    p = Inner(1)\n    if x < 0:\n        p = b.inner\n    return p.value\n")
+        assert _fn(thir, "f") is None
+
+
+class TestF2dEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _F1_RECORDS
+        + "def reb() -> Int32:\n"
+        + "    p = Inner(1)\n    a = p.value\n    p = Inner(2)\n    return p.value + a\n"
+        # two rebind-slot locals -> __slot_1.._slot_4, exercising slot numbering.
+        + "def two() -> Int32:\n"
+        + "    p = Inner(1)\n    q = Inner(2)\n    p = Inner(3)\n    q = Inner(4)\n"
+        + "    return p.value + q.value\n"
+        + "def main():\n    print(reb() + two())\nmain()\n"
+    )
+
+    def test_f2d_byte_identical(self):
+        # The load-bearing F2d contract: the two-slot init, the optional rebind
+        # slot, the pointer reseat, and the arrow reads emit identically to the
+        # AST path -- including slot numbering across two rebind-slot locals.
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_two_slot_init_and_reseat(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "Inner __slot_1 = Inner(1);" in cpp
+        assert "std::optional<Inner> __slot_2;" in cpp
+        assert "Inner* p = &__slot_1;" in cpp
+        assert "p = &*(__slot_2 = Inner(2));" in cpp
+
+    def test_arrow_reads_off_rebind_local(self):
+        assert "int32_t a = p->value;" in self._cpp(self.SRC, thir=True)
+
+    def test_slot_numbering_across_two_locals(self):
+        # The second rebind-slot local numbers after the first (init then rebind):
+        # p -> __slot_1/__slot_2, q -> __slot_3/__slot_4.
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "Inner __slot_3 = Inner(2);" in cpp
+        assert "std::optional<Inner> __slot_4;" in cpp
+        assert "Inner* q = &__slot_3;" in cpp
+        assert "q = &*(__slot_4 = Inner(4));" in cpp
+
+    def test_function_call_source_byte_identical(self):
+        # A by-value record-returning function as the rvalue source emits the bare
+        # call into the two-slot form, byte-identical to the AST path.
+        src = (
+            _F1_RECORDS
+            + "def make_inner() -> Own[Inner]:\n    return Inner(9)\n"
+            + "def f() -> Int32:\n"
+            + "    p = make_inner()\n    a = p.value\n    p = make_inner()\n    return p.value + a\n"
+            + "def main():\n    print(f())\nmain()\n"
+        )
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        assert "Inner __slot_1 = make_inner();" in self._cpp(src, thir=True)
+
+    def test_conditional_reseat_byte_identical(self):
+        # A rebind-slot reseat inside an `if`-body emits identically to the AST path
+        # (the slot is allocated at the top-level decl, reused in the branch).
+        src = (
+            _F1_RECORDS
+            + "def f(x: Int32) -> Int32:\n"
+            + "    p = Inner(1)\n    if x < 0:\n        p = Inner(2)\n    return p.value\n"
+            + "def main():\n    print(f(-1))\nmain()\n"
+        )
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+# --- F2e form rung: the _move write + return variants (owned source) ---
+
+
+class TestF2eMove:
+    def test_write_move_routes(self):
+        # An owned rebind-slot local written into an optional field at last use
+        # lifts borrow->storage with move=True (-> ptr_to_optional_move).
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def store(dst: Box):\n    p = Inner(1)\n    p = Inner(2)\n    dst.opt = p\n")
+        fn = _fn(thir, "store")
+        assert fn is not None
+        write = fn.body[2]
+        assert isinstance(write, THIRAssign) and isinstance(write.value, THIRFormConvert)
+        assert write.value.form is Form.STORAGE and write.value.move is True
+
+    def test_write_copy_when_not_last_use(self):
+        # The same rebind-slot read again after the write is not a last use -> copy.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def keep(dst: Box) -> Int32:\n    p = Inner(1)\n    p = Inner(2)\n"
+            + "    dst.opt = p\n    return p.value\n")
+        write = _fn(thir, "keep").body[2]
+        assert isinstance(write.value, THIRFormConvert) and write.value.move is False
+
+    def test_return_move_routes(self):
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def make(flag: Int32) -> Own[Inner] | None:\n"
+            + "    p = Inner(1)\n    p = Inner(2)\n    return p\n")
+        ret = _fn(thir, "make").body[2]
+        assert isinstance(ret, THIRReturn) and isinstance(ret.value, THIRFormConvert)
+        assert ret.value.form is Form.STORAGE and ret.value.move is True
+
+    def test_nonowning_borrow_write_stays_copy(self):
+        # Regression: an OPTIONAL_TO_PTR (non-owning) source is never movable, so
+        # the optional-field write stays a copy (move=False) -- F2b unchanged.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def move_opt(src: Box, dst: Box):\n    p = src.opt\n    dst.opt = p\n")
+        write = _fn(thir, "move_opt").body[1]
+        assert isinstance(write.value, THIRFormConvert) and write.value.move is False
+
+
+class TestF2eEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _F1_RECORDS
+        + "def store(dst: Box):\n    p = Inner(1)\n    p = Inner(2)\n    dst.opt = p\n"
+        + "def keep(dst: Box) -> Int32:\n"
+        + "    p = Inner(1)\n    p = Inner(2)\n    dst.opt = p\n    return p.value\n"
+        + "def make(flag: Int32) -> Own[Inner] | None:\n"
+        + "    p = Inner(1)\n    p = Inner(2)\n    return p\n"
+        + "def main():\n    d = Box(Inner(0))\n    store(d)\n    print(keep(d))\n    r = make(0)\n"
+        + "main()\n"
+    )
+
+    def test_f2e_byte_identical(self):
+        # The load-bearing F2e contract: the move write, the copy write (not last
+        # use), and the move return all emit identically to the AST path.
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_write_move_emits_move_helper(self):
+        assert "dst.opt = ::tpy::ptr_to_optional_move(p);" in self._cpp(self.SRC, thir=True)
+
+    def test_write_copy_emits_copy_helper(self):
+        assert "dst.opt = ::tpy::ptr_to_optional(p);" in self._cpp(self.SRC, thir=True)
+
+    def test_return_move_emits_move_helper(self):
+        assert "return ::tpy::ptr_to_optional_move(p);" in self._cpp(self.SRC, thir=True)

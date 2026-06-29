@@ -2232,6 +2232,7 @@ class StatementGenerator:
             binding = classify_local_binding(
                 target_type, stmt.init, self.ctx.analyzer, name=stmt.name,
                 reassigned=self.ctx.reassigned_vars,
+                rvalue_reassigned=self.ctx.rvalue_reassigned_vars,
                 hoisted=self.ctx.hoisted_vars,
                 move_through=self.ctx.move_through_vars)
             if binding is not LocalBinding.REF_ALIAS:

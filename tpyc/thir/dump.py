@@ -36,7 +36,10 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRName):
         return f"%{e.name}"
     if isinstance(e, THIRLiteral):
-        return f"lit({e.value!r})"
+        # The form is load-bearing for a None literal (STORAGE -> std::nullopt
+        # vs VALUE/BORROW -> nullptr), so surface it like the other form tags.
+        tag = "" if e.form is Form.VALUE else f" [{e.form.name.lower()}]"
+        return f"lit({e.value!r}){tag}"
     if isinstance(e, THIRBinOp):
         return f"binop({_expr(e.left)}, {e.op}, {_expr(e.right)})"
     if isinstance(e, THIRCall):

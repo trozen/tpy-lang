@@ -33,6 +33,7 @@ from ..parse.nodes import (
     TpyIntLiteral,
     TpyModule,
     TpyName,
+    TpyNoneLiteral,
     TpyReturn,
     TpyStmt,
     TpyVarDecl,
@@ -51,6 +52,7 @@ from ..codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ..codegen_cpp.forms import (
     LocalBinding, classify_local_binding, reads_storage_form_optional,
 )
+from ..value_category import is_rvalue_source
 from ..codegen_cpp.context import escape_cpp_name
 from .nodes import (
     Form,
@@ -102,8 +104,9 @@ def _eligible_scalar(t: TpyType | None) -> bool:
                               or (is_float_type(t) and not is_float32_type(t)))
 
 
-def _eligible_return(t: TpyType | None) -> bool:
-    return t is None or isinstance(t, VoidType) or _eligible_scalar(t)
+def _eligible_return(t: TpyType | None, analyzer) -> bool:
+    return (t is None or isinstance(t, VoidType) or _eligible_scalar(t)
+            or _storage_optional_return_type(t, analyzer) is not None)
 
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
@@ -112,14 +115,25 @@ class _Prescan:
     """Per-function prescan facts the binding classifier reads -- the same sets
     codegen seeds into ctx (see setup_body_scope), recomputed here from the
     analyzer so lowering classifies identically without a CodeGenContext."""
-    __slots__ = ("reassigned", "hoisted", "move_through")
+    __slots__ = ("reassigned", "rvalue_reassigned", "hoisted", "move_through",
+                 "ret_storage_opt")
 
     def __init__(self, func: TpyFunction, analyzer) -> None:
         scan = analyzer.function_scan_results.get(id(func))
         global_decls = analyzer.function_global_decls.get(id(func), set())
         self.reassigned = (scan.reassigned - global_decls) if scan else set()
+        # F2d: the subset reassigned with an rvalue source (the rebind-slot
+        # trigger -- mirrors codegen's `ctx.rvalue_reassigned_vars` seeding).
+        self.rvalue_reassigned = (
+            (scan.rvalue_reassigned - global_decls) if scan else set())
         self.hoisted = analyzer.function_hoisted_vars.get(id(func), set())
         self.move_through = analyzer.function_move_through_vars.get(id(func), set())
+        # F2c: the function's storage-form Optional[F1-record] return slot, if any
+        # (`Own[T] | None` -> `std::optional<T>`), so a `return None` /
+        # `return <borrow T*>` lowers to `std::nullopt` / `ptr_to_optional`. None
+        # for every other return type (the value-scalar/pointer-repr paths).
+        rt = func.return_type if isinstance(func.return_type, TpyType) else None
+        self.ret_storage_opt = _storage_optional_return_type(rt, analyzer)
 
 
 def _f1_record(t: TpyType | None, analyzer) -> bool:
@@ -141,6 +155,18 @@ def _f1_record(t: TpyType | None, analyzer) -> bool:
         return False
     return analyzer.registry.imported_record_qualification_for_type(
         t, analyzer.ctx.module_name) is None
+
+
+def _storage_optional_return_type(t: TpyType | None, analyzer) -> 'OptionalType | None':
+    """The storage-form `Optional[F1-record]` return slot (F2c): `Own[T] | None`,
+    which lowers to a `std::optional<T>` returned by value. `Inner | None` is
+    pointer-repr (the function returns a borrow `Inner*`, a different direction)
+    and is excluded -- it stays on the AST path. The caller passes None for a
+    non-`TpyType` (unresolved) return annotation."""
+    if not isinstance(t, OptionalType) or t.uses_pointer_repr():
+        return None
+    inner = t.inner.wrapped if isinstance(t.inner, OwnType) else t.inner
+    return t if _f1_record(inner, analyzer) else None
 
 
 def _field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
@@ -174,10 +200,15 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
     gated separately in `_stmt_eligible`."""
     binding = classify_local_binding(
         target_type, stmt.init, analyzer, name=stmt.name,
-        reassigned=prescan.reassigned, hoisted=prescan.hoisted,
-        move_through=prescan.move_through)
+        reassigned=prescan.reassigned, rvalue_reassigned=prescan.rvalue_reassigned,
+        hoisted=prescan.hoisted, move_through=prescan.move_through)
     if binding is LocalBinding.OTHER:
         return None
+    if binding is LocalBinding.REBIND_SLOT:
+        # F2d: the source is an rvalue F1-record ctor / by-value call (not a field
+        # read), so it bypasses the field-receiver check the lvalue bindings need.
+        return binding if (_f1_record(target_type, analyzer)
+                           and _is_record_rvalue_source(stmt.init, declared, analyzer)) else None
     if not _field_receiver_ok(stmt.init, declared, analyzer):
         return None
     if binding is LocalBinding.REF_ALIAS or binding is LocalBinding.POINTER:
@@ -185,6 +216,26 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
     # OPTIONAL_TO_PTR: the borrow `T*` points at the optional's inner record.
     inner = target_type.inner if isinstance(target_type, OptionalType) else None
     return binding if _f1_record(inner, analyzer) else None
+
+
+def _is_record_rvalue_source(init: TpyExpr, declared: dict[str, TpyType],
+                             analyzer) -> bool:
+    """An F2d rebind-slot source: an rvalue call producing an F1-record (a ctor
+    `Inner(...)` or a by-value record-returning call) with eligible scalar args.
+    It emits as the bare `Name(args)` the two-slot init / reseat wraps. kwargs /
+    star-unpack args take other emit paths and stay on the AST path."""
+    if not isinstance(init, TpyCall):
+        return False
+    if init.kwargs or init.double_star_unpack is not None:
+        return False
+    if not (_f1_record(analyzer.get_expr_type(init), analyzer)
+            and is_rvalue_source(analyzer, init)):
+        return False
+    # Args must be eligible SCALARS (mirror _call_eligible): a non-scalar arg
+    # (a record pointer-local / Own[T]) needs the AST's `(*q)` deref or auto-move
+    # `std::move(q)`, neither of which the bare THIRCall arg emit reproduces.
+    return all(_eligible_scalar(analyzer.get_expr_type(a))
+               and _expr_eligible(a, declared, analyzer) for a in init.args)
 
 
 def _f2_reseat_ok(init: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
@@ -198,11 +249,13 @@ def _f2_reseat_ok(init: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool
 
 def _is_borrow_ptr_local(e: TpyExpr, declared: dict[str, TpyType],
                          pointers: set[str]) -> bool:
-    """`e` is a bare borrow `T*` local -- an F2a POINTER (plain-record, in
-    `pointers`) or an F1 OPTIONAL_TO_PTR (a pointer-repr `Optional` local, known by
-    its declared type). Both render `T*` and are the F2b sources that lift to a
-    storage `optional<T>` via `ptr_to_optional`. A `T&` REF_ALIAS is excluded (it
-    is not a pointer, so the AST path emits it differently)."""
+    """`e` is a bare borrow `T*` local that lifts to a storage `optional<T>` at a
+    write/return: an F2a POINTER / F2d REBIND_SLOT (plain-record, in `pointers`) or
+    an F1 OPTIONAL_TO_PTR (a pointer-repr `Optional` local, known by its declared
+    type). All render `T*`; the copy-vs-move choice (`ptr_to_optional` vs
+    `ptr_to_optional_move`) is decided at lowering from movability + last-use, not
+    here (a non-owning borrow is never movable, so it always copies). A `T&`
+    REF_ALIAS is excluded -- not a pointer, so the AST path emits it differently."""
     if not isinstance(e, TpyName):
         return False
     if e.name in pointers:
@@ -213,12 +266,11 @@ def _is_borrow_ptr_local(e: TpyExpr, declared: dict[str, TpyType],
 
 def _f2b_optional_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
                                  pointers: set[str], analyzer) -> bool:
-    """An F2b optional-field write `recv.field = <borrow T*>`: the target is a
-    pointer-repr `Optional[record]` field off an F1-record receiver and the value
-    is a bare borrow `T*` local, emitting `recv.field = ::tpy::ptr_to_optional(p)`
-    (the copy helper; the owned-source `_move` variant, `copy()`-acknowledged and
-    call/None/rvalue value sources, and the other optional-field-write branches
-    stay on the AST path)."""
+    """An optional-field write `recv.field = <value>`: the target is a pointer-repr
+    `Optional[record]` field off an F1-record receiver and the value is either a
+    bare borrow `T*` local (`recv.field = ::tpy::ptr_to_optional[_move](p)`, copy
+    or move per last-use) or a `None` literal (`recv.field = std::nullopt`). The
+    `copy()`-acknowledged and call/rvalue value sources stay on the AST path."""
     target = stmt.target
     if not _field_receiver_ok(target, declared, analyzer):
         return False
@@ -227,7 +279,8 @@ def _f2b_optional_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
         return False
     if not _f1_record(ftype.inner, analyzer):
         return False
-    return _is_borrow_ptr_local(stmt.value, declared, pointers)
+    return (isinstance(stmt.value, TpyNoneLiteral)
+            or _is_borrow_ptr_local(stmt.value, declared, pointers))
 
 
 def _param_is_const(name: str, func: TpyFunction, analyzer) -> bool:
@@ -441,7 +494,7 @@ def _function_eligible(func: TpyFunction, analyzer) -> bool:
         if not _f1_param_eligible(ptype if isinstance(ptype, TpyType) else None, analyzer):
             return False
     rt = func.return_type if isinstance(func.return_type, TpyType) else None
-    return _eligible_return(rt) if func.return_type is not None else True
+    return _eligible_return(rt, analyzer) if func.return_type is not None else True
 
 
 def _var_decl_type(stmt: TpyVarDecl, analyzer) -> TpyType | None:
@@ -501,7 +554,8 @@ def _range_bound_eligible(arg: TpyExpr, declared: dict[str, TpyType]) -> bool:
 
 
 def _for_range_eligible(stmt: TpyForEach, analyzer, declared: dict[str, TpyType],
-                        prescan: _Prescan, pointers: set[str]) -> bool:
+                        prescan: _Prescan, pointers: set[str],
+                        rebind_slots: set[str]) -> bool:
     # Only a plain `for v in range(stop | start, stop)` with step 1 over a
     # fixed-int counter, loop var not used after the loop. Every richer for-shape
     # (async, tuple-unpack, enum/container iteration, consuming, for/else,
@@ -538,12 +592,13 @@ def _for_range_eligible(stmt: TpyForEach, analyzer, declared: dict[str, TpyType]
     body_declared = dict(declared)
     body_declared[stmt.var] = et  # loop var's resolved (fixed-int) type
     return _body_eligible(stmt.body, analyzer, body_declared, prescan,
-                          in_branch=True, pointers=pointers)
+                          in_branch=True, pointers=pointers,
+                          rebind_slots=rebind_slots)
 
 
 def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
                    prescan: _Prescan, *, in_branch: bool,
-                   pointers: set[str]) -> bool:
+                   pointers: set[str], rebind_slots: set[str]) -> bool:
     if isinstance(stmt, TpyVarDecl):
         if stmt.linkage != VarLinkage.DEFAULT or stmt.init is None:
             return False
@@ -564,9 +619,17 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
             if binding is not None:
                 if binding is LocalBinding.POINTER:
                     pointers.add(stmt.name)
+                elif binding is LocalBinding.REBIND_SLOT:
+                    # An F2d rebind-slot local: in `pointers` for its `->` reads,
+                    # in `rebind_slots` so its reseats lower as rvalue rebinds.
+                    pointers.add(stmt.name)
+                    rebind_slots.add(stmt.name)
                 return True
+        elif stmt.name in rebind_slots:
+            # F2d rebind-slot reseat: an rvalue F1-record ctor / by-value source.
+            return _is_record_rvalue_source(stmt.init, declared, analyzer)
         elif stmt.name in pointers:
-            # F2 pointer-local reseat: an lvalue F1-record field source only.
+            # F2a pointer-local reseat: an lvalue F1-record field source only.
             return _f2_reseat_ok(stmt.init, declared, analyzer)
         if not _expr_eligible(stmt.init, declared, analyzer):
             return False
@@ -579,44 +642,60 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
         if isinstance(stmt.target, TpyName):
             return (stmt.target.name in declared
                     and _expr_eligible(stmt.value, declared, analyzer))
-        # F2b: an optional-field write `recv.field = <borrow>` (-> ptr_to_optional).
+        # F2b/F2c/F2e: an optional-field write `recv.field = <borrow>` / `= None`.
         return _f2b_optional_field_write_ok(stmt, declared, pointers, analyzer)
     if isinstance(stmt, TpyReturn):
-        return stmt.value is None or _expr_eligible(stmt.value, declared, analyzer)
+        if stmt.value is None:
+            return True
+        if prescan.ret_storage_opt is not None:
+            # A storage-form Optional[F1-record] return admits `None`
+            # (-> std::nullopt, F2c) or a borrow `T*` lift (-> ptr_to_optional[_move],
+            # copy or move per last-use; F2c copy / F2e move). Storage-field / call
+            # sources stay on the AST path.
+            return (isinstance(stmt.value, TpyNoneLiteral)
+                    or _is_borrow_ptr_local(stmt.value, declared, pointers))
+        return _expr_eligible(stmt.value, declared, analyzer)
     if isinstance(stmt, TpyIf):
         if not _condition_eligible(stmt.condition, declared, analyzer):
             return False
         # Branches do not extend the outer scope (no new-name decls allowed in
         # them), so each is checked against the same declared-so-far set.
         return (_body_eligible(stmt.then_body, analyzer, declared, prescan,
-                               in_branch=True, pointers=pointers)
+                               in_branch=True, pointers=pointers,
+                               rebind_slots=rebind_slots)
                 and _body_eligible(stmt.else_body, analyzer, declared, prescan,
-                                   in_branch=True, pointers=pointers))
+                                   in_branch=True, pointers=pointers,
+                                   rebind_slots=rebind_slots))
     if isinstance(stmt, TpyWhile):
         # No while/else, and a comparison condition. break/continue are not in
         # the stmt set, so a body containing them is rejected by _body_eligible.
         if stmt.orelse or not _condition_eligible(stmt.condition, declared, analyzer):
             return False
         return _body_eligible(stmt.body, analyzer, declared, prescan,
-                              in_branch=True, pointers=pointers)
+                              in_branch=True, pointers=pointers,
+                              rebind_slots=rebind_slots)
     if isinstance(stmt, TpyForEach):
-        return _for_range_eligible(stmt, analyzer, declared, prescan, pointers)
+        return _for_range_eligible(stmt, analyzer, declared, prescan, pointers,
+                                   rebind_slots)
     return False
 
 
 def _body_eligible(body, analyzer, declared: dict[str, TpyType],
                    prescan: _Prescan, *, in_branch: bool,
-                   pointers: set[str]) -> bool:
+                   pointers: set[str], rebind_slots: set[str]) -> bool:
     """Walk a statement list in source order, mirroring lowering's declared-scope
     growth: a top-level new-name var-decl extends scope; branch bodies don't. The
     map carries each name's resolved type (for the mixed-sign comparison gate and
     F1 field-receiver lookup); `pointers` carries the F2 pointer-local names a
-    reseat reads. Both are copied so sibling branches don't see each other."""
+    reseat reads, `rebind_slots` the F2d rebind-slot subset whose reseats are
+    rvalue rebinds. All copied so sibling branches don't see each other."""
     declared = dict(declared)  # local copy -- sibling branches must not see each other
     pointers = set(pointers)
+    rebind_slots = set(rebind_slots)
     for stmt in body:
         if not _stmt_eligible(stmt, analyzer, declared, prescan,
-                              in_branch=in_branch, pointers=pointers):
+                              in_branch=in_branch, pointers=pointers,
+                              rebind_slots=rebind_slots):
             return False
         if (not in_branch and isinstance(stmt, TpyVarDecl)
                 and stmt.name not in declared):  # first decl -- keep retro-widened type
@@ -709,7 +788,7 @@ class _LowerCtx:
     (`to_cpp`) is for analyzer-only callers (dump / standalone lowering) that
     never hit a non-value local."""
     __slots__ = ("analyzer", "func", "prescan", "render_type", "const_locals",
-                 "pointers")
+                 "pointers", "rebind_slot_locals", "movable_locals")
 
     def __init__(self, func: TpyFunction, analyzer, render_type) -> None:
         self.analyzer = analyzer
@@ -720,6 +799,29 @@ class _LowerCtx:
         # F2 pointer-local names (reseatable `T*`), recorded at first decl so a
         # later reseat and any `->` read off them lower correctly.
         self.pointers: set[str] = set()
+        # F2d rebind-slot subset of `pointers`: their reseats lower as rvalue
+        # rebinds (`p = &*(__slot_N = ...)`), not lvalue `&(...)` reseats.
+        self.rebind_slot_locals: set[str] = set()
+        # F2e: sema's movable (owned) locals -- a borrow write/return source that
+        # is one of these at last use moves (`ptr_to_optional_move`). The set only
+        # grows during the body walk, so the final sema set matches the working
+        # set at any post-decl write/return (see _is_move_source).
+        self.movable_locals: set[str] = analyzer.function_movable_locals.get(
+            id(func), set())
+
+
+def _is_move_source(value: TpyExpr, lc: _LowerCtx) -> bool:
+    """Whether a borrow `T*` write/return source moves rather than copies: the last
+    use of a movable (owned) local. Mirrors the AST's `_is_last_use_movable`
+    (peel `TpyCoerce`; a `TpyName` in `movable_locals` whose node is a last use).
+    Only an F2d REBIND_SLOT local is owned in the slice; non-owning borrows
+    (POINTER / OPTIONAL_TO_PTR) are never movable, so they always copy."""
+    inner = value
+    while isinstance(inner, TpyCoerce):
+        inner = inner.expr
+    return (isinstance(inner, TpyName)
+            and inner.name in lc.movable_locals
+            and id(inner) in lc.analyzer.ctx.all_last_uses)
 
 
 def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding',
@@ -728,7 +830,15 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
     alias of the field's storage directly (no conversion node). POINTER lifts a
     plain-record lvalue to a reseatable `T*` via THIRFormConvert (`&(...)`).
     OPTIONAL_TO_PTR lifts the storage `optional<Inner>` to a borrow `Inner*` via
-    THIRFormConvert (`::tpy::optional_to_ptr`), so its decl type is the inner."""
+    THIRFormConvert (`::tpy::optional_to_ptr`), so its decl type is the inner.
+    REBIND_SLOT (F2d) binds a plain-record rvalue (a ctor / by-value call) and
+    the emitter materializes the two-slot `__slot_N` machinery; the init lowers
+    as a plain value-form call (no conversion node)."""
+    if binding is LocalBinding.REBIND_SLOT:
+        return THIRVarDecl(
+            name=stmt.name, resolved_type=vtype, init=_lower_expr(stmt.init, lc),
+            cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
+            cpp_local_representation=binding, loc=loc)
     field = _lower_field_source(stmt.init, lc)
     if binding is LocalBinding.REF_ALIAS:
         return THIRVarDecl(
@@ -761,6 +871,13 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType]) -> T
         if stmt.name not in declared:
             binding = _borrow_local_binding(stmt, vtype, declared, lc.prescan, analyzer)
             if binding is not None:
+                if binding is LocalBinding.REBIND_SLOT:
+                    # rvalue ctor source: an owned, mutable pointer-local (never
+                    # const). Recorded in both sets, as eligibility did.
+                    lc.pointers.add(stmt.name)
+                    lc.rebind_slot_locals.add(stmt.name)
+                    declared[stmt.name] = vtype
+                    return _lower_borrow_local(stmt, vtype, binding, False, lc, loc)
                 is_const = _f1_is_const(binding, vtype, stmt, lc.func, analyzer,
                                         lc.const_locals)
                 if is_const:
@@ -769,7 +886,15 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType]) -> T
                     lc.pointers.add(stmt.name)  # later assignments reseat this `T*`
                 declared[stmt.name] = vtype
                 return _lower_borrow_local(stmt, vtype, binding, is_const, lc, loc)
-        # F2 pointer-local reseat: lift the new lvalue field source to `T*` via
+        # F2d rebind-slot reseat: an rvalue ctor / by-value source. It lowers as a
+        # plain value-form call; emit wraps it as `p = &*(__slot_N = <value>)`
+        # using the rebind slot allocated at the decl. Checked before the lvalue
+        # POINTER reseat -- a rebind-slot local is in both `pointers` sets.
+        if stmt.name in lc.rebind_slot_locals:
+            return THIRAssign(
+                target=THIRName(result_type=vtype, name=stmt.name, loc=loc),
+                value=_lower_expr(stmt.init, lc), loc=loc)
+        # F2a pointer-local reseat: lift the new lvalue field source to `T*` via
         # `&(...)` (the same storage->borrow convert as the first decl). Eligibility
         # admitted only an F1-record field source here. result_type is the stripped
         # `vtype` (the pointee), matching the first-decl path -- `get_expr_type`
@@ -799,19 +924,42 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType]) -> T
         return THIRVarDecl(name=stmt.name, resolved_type=vtype, init=init, loc=loc)
     if isinstance(stmt, TpyAssign):
         if isinstance(stmt.target, TpyFieldAccess):
-            # F2b: a borrow `T*` stored into a storage `optional<T>` field. The
-            # value lifts borrow->storage via THIRFormConvert (`ptr_to_optional`);
-            # the target field-access renders `recv.field` / `recv->field`.
+            # A borrow `T*` stored into a storage `optional<T>` field lifts
+            # borrow->storage via THIRFormConvert (`ptr_to_optional`, F2b); a
+            # `None` literal stores as a STORAGE-form None (`std::nullopt`, F2c).
+            # The target field-access renders `recv.field` / `recv->field`.
             ftype = analyzer.get_expr_type(stmt.target)
-            value = THIRFormConvert(result_type=ftype, value=_lower_expr(stmt.value, lc),
-                                    form=Form.STORAGE, loc=loc)
-            return THIRAssign(target=_lower_expr(stmt.target, lc), value=value, loc=loc)
+            if isinstance(stmt.value, TpyNoneLiteral):
+                fvalue: THIRExpr = THIRLiteral(result_type=ftype, value=None,
+                                               form=Form.STORAGE, loc=loc)
+            else:
+                fvalue = THIRFormConvert(result_type=ftype,
+                                         value=_lower_expr(stmt.value, lc),
+                                         form=Form.STORAGE,
+                                         move=_is_move_source(stmt.value, lc), loc=loc)
+            return THIRAssign(target=_lower_expr(stmt.target, lc), value=fvalue, loc=loc)
         return THIRAssign(
             target=_lower_expr(stmt.target, lc),
             value=_lower_expr(stmt.value, lc),
             loc=loc,
         )
     if isinstance(stmt, TpyReturn):
+        ret_opt = lc.prescan.ret_storage_opt
+        if stmt.value is not None and ret_opt is not None:
+            # Lift into a storage-form Optional[record] return slot. `None` lowers
+            # to a STORAGE-form None literal (`std::nullopt`, F2c); a borrow `T*`
+            # to the borrow->storage THIRFormConvert the F2b write uses --
+            # `ptr_to_optional` (copy, F2c) or `ptr_to_optional_move` when the
+            # source is an owned local at last use (move, F2e, via _is_move_source).
+            if isinstance(stmt.value, TpyNoneLiteral):
+                value: THIRExpr = THIRLiteral(result_type=ret_opt, value=None,
+                                              form=Form.STORAGE, loc=loc)
+            else:
+                value = THIRFormConvert(result_type=ret_opt,
+                                        value=_lower_expr(stmt.value, lc),
+                                        form=Form.STORAGE,
+                                        move=_is_move_source(stmt.value, lc), loc=loc)
+            return THIRReturn(value=value, loc=loc)
         return THIRReturn(
             value=_lower_expr(stmt.value, lc) if stmt.value else None,
             loc=loc,
@@ -877,7 +1025,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None) -> THIRFunctio
     lc = _LowerCtx(func, analyzer, render_type)
     params_set: dict[str, TpyType] = {n: t for n, t in func.params}
     if not _body_eligible(func.body, analyzer, params_set, lc.prescan,
-                          in_branch=False, pointers=set()):
+                          in_branch=False, pointers=set(), rebind_slots=set()):
         return None
     params = tuple(THIRParam(name=n, type=t) for n, t in func.params)
     rt = func.return_type if isinstance(func.return_type, TpyType) else VoidType()

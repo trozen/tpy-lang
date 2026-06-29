@@ -13,7 +13,7 @@ default so emission stays decoupled from the analyzer.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import TextIO
 
 from ..codegen_cpp.context import INDENT, escape_cpp_name, expand_cpp_template
@@ -76,14 +76,28 @@ class _EmitState:
     """Per-function emit state. `iter_counter` reproduces `ctx.iter_counter`:
     in the eligible slice only range-`for` loops bump it, and it resets per
     function, so a counter seeded at 0 here and bumped once per loop (pre-order)
-    matches the AST path's `__start_N`/`__stop_N` numbering exactly."""
+    matches the AST path's `__start_N`/`__stop_N` numbering exactly.
+
+    `slot_counter` reproduces `ctx.slots` for F2d rebind-slot pointer-locals:
+    within the eligible slice only a REBIND_SLOT decl bumps it (every other
+    `__slot_N` consumer -- unions, tuples, @dynamic, walrus -- is gated out), and
+    it pre-increments per allocation just like `SlotState.next_slot`, so the
+    `__slot_N` numbering matches the AST path. `rebind_slots` maps a rebind-slot
+    local's name to its optional rebind slot N (allocated at the decl, read at
+    each reseat) -- the analog of `ctx.rebind_slots`."""
     comments: CommentSink
     iter_counter: int = 0
+    slot_counter: int = 0
+    rebind_slots: dict[str, int] = field(default_factory=dict)
 
     def next_loop_index(self) -> int:
         n = self.iter_counter
         self.iter_counter += 1
         return n
+
+    def next_slot(self) -> int:
+        self.slot_counter += 1  # pre-increment: first slot is __slot_1
+        return self.slot_counter
 
 
 class CtxCommentSink(CommentSink):
@@ -119,7 +133,10 @@ def _emit_literal(lit: THIRLiteral) -> str:
     if isinstance(v, bool):
         return "true" if v else "false"
     if v is None:
-        return "nullptr"
+        # Positional: a None into a storage-form Optional slot (field write /
+        # storage-Optional return) is `std::nullopt`; a borrow/value-form None
+        # (pointer-repr slot) is `nullptr`. The form is set by lowering.
+        return "std::nullopt" if lit.form is Form.STORAGE else "nullptr"
     if isinstance(v, float):
         # Matches _gen_float_literal_value's double branch: repr() is the
         # shortest round-tripping form and a valid C++ double literal. Float32
@@ -174,11 +191,13 @@ def _emit_form_convert(e: THIRFormConvert) -> str:
         if is_plain_nonvalue(t):
             return f"&({inner})"
     elif e.form is Form.STORAGE:
-        # F2b borrow `T*` -> storage `std::optional<T>` (write/return direction).
-        # `_move` never fires for a borrow source (gate-confirmed), so always the
-        # copying helper; the owned-source `_move` variant arrives with a later rung.
+        # borrow `T*` -> storage `std::optional<T>` (write/return direction). An
+        # owned source at last use moves (`ptr_to_optional_move`, F2e); a
+        # non-owning borrow copies (`ptr_to_optional`, F2b/F2c). `move` is set by
+        # lowering from the same `movable_locals` + last-use facts the AST reads.
         if isinstance(t, OptionalType):
-            return f"::tpy::ptr_to_optional({inner})"
+            helper = "ptr_to_optional_move" if e.move else "ptr_to_optional"
+            return f"::tpy::{helper}({inner})"
     raise THIRCodeGenError(
         f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
 
@@ -282,7 +301,21 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
     indent = INDENT * indent_level
     if isinstance(stmt, THIRVarDecl):
         name = escape_cpp_name(stmt.name)
-        if stmt.cpp_local_representation is not None:
+        if stmt.cpp_local_representation is LocalBinding.REBIND_SLOT:
+            # F2d two-slot rvalue pointer-local: a direct init slot holding the
+            # value (so an alias taken before a reseat survives) + an empty
+            # `std::optional<T>` rebind slot reused on each reseat. Mirrors
+            # _gen_pointer_local_init's rvalue branch: the init slot is allocated
+            # before the rebind slot.
+            init_slot = state.next_slot()
+            rebind_slot = state.next_slot()
+            state.rebind_slots[stmt.name] = rebind_slot
+            cpp = stmt.cpp_type
+            const_pfx = "const " if stmt.is_const else ""
+            out.write(f"{indent}{cpp} __slot_{init_slot} = {_emit_expr(stmt.init)};\n")
+            out.write(f"{indent}std::optional<{cpp}> __slot_{rebind_slot};\n")
+            out.write(f"{indent}{const_pfx}{cpp}* {name} = &__slot_{init_slot};\n")
+        elif stmt.cpp_local_representation is not None:
             # Non-value borrow local. cpp_type is already the pointee record (the
             # optional's inner for OPTIONAL_TO_PTR, not the optional itself), so
             # the sigil alone distinguishes the `T&` alias from the `T*`.
@@ -298,8 +331,15 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{cpp_type} {name} = {_emit_expr(stmt.init)};\n")
     elif isinstance(stmt, THIRAssign):
         # target is a THIRName (`x = ...`) or, for F2b, a THIRFieldAccess
-        # (`recv.field = ...` / `recv->field = ...`); _emit_expr renders both.
-        out.write(f"{indent}{_emit_expr(stmt.target)} = {_emit_expr(stmt.value)};\n")
+        # (`recv.field = ...` / `recv->field = ...`); _emit_expr renders both. An
+        # F2d rebind-slot pointer-local reseat reuses its optional slot:
+        # `p = &*(__slot_N = <rvalue>);`.
+        if isinstance(stmt.target, THIRName) and stmt.target.name in state.rebind_slots:
+            slot = state.rebind_slots[stmt.target.name]
+            out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = "
+                      f"&*(__slot_{slot} = {_emit_expr(stmt.value)});\n")
+        else:
+            out.write(f"{indent}{_emit_expr(stmt.target)} = {_emit_expr(stmt.value)};\n")
     elif isinstance(stmt, THIRReturn):
         if stmt.value is None:
             out.write(f"{indent}return;\n")
