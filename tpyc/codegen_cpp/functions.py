@@ -1559,8 +1559,19 @@ class FunctionGenerator:
         # C++ rejects default arguments repeated on both the in-class declaration
         # and the out-of-line definition. Emit defaults only on the decl side.
         emit_defaults = not is_def_mode
+        # A @dynamic-virtual override must match the base's param TYPES (C++
+        # matches overrides by type, const included). The base renders params
+        # at their declared const-ness (no body => no const-inference), so the
+        # override suppresses inference too (mutated_params=None => const only
+        # for an explicit ReadonlyType) or it emits `const T*` against the base
+        # `T*` and the class stays abstract. The body const-sets and
+        # FunctionInfo.const_borrow_params deliberately keep the real mutated
+        # facts -- stricter than this signature, which is safe (a const local
+        # binds from a non-const param) and unreachable for the verdict until
+        # @dynamic overrides become THIR-eligible.
+        declared_const_only = override
         if use_protocol_params:
-            if use_const_params:
+            if use_const_params and not declared_const_only:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
                                                         const_params=True,
                                                         mutated_params=gmp,
@@ -1568,11 +1579,11 @@ class FunctionGenerator:
                                                         defaults=dfl, emit_defaults=emit_defaults)
             else:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
-                                                        mutated_params=mp,
+                                                        mutated_params=None if declared_const_only else mp,
                                                         defaults=dfl, emit_defaults=emit_defaults)
         else:
             ctp = class_type_params or None
-            if use_const_params:
+            if use_const_params and not declared_const_only:
                 params = self.gen_params(method.params, method.type_params, const_params=True,
                                          mutated_params=gmp,
                                          addr_escapes_params=ae,
@@ -1580,9 +1591,10 @@ class FunctionGenerator:
                                          defaults=dfl, emit_defaults=emit_defaults,
                                          class_type_params=ctp, func=method)
             else:
-                use_ro = const and not method.auto_readonly_params_resolved
+                use_ro = const and not method.auto_readonly_params_resolved and not declared_const_only
                 params = self.gen_params(method.params, method.type_params,
-                                         reassigned_params=rp, mutated_params=mp,
+                                         reassigned_params=rp,
+                                         mutated_params=None if declared_const_only else mp,
                                          addr_escapes_params=ae,
                                          use_readonly_params=use_ro,
                                          defaults=dfl, emit_defaults=emit_defaults,

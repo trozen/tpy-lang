@@ -10,7 +10,7 @@ Extracted from `PROTOCOL_DESIGN.md` section 12.
 | 2 | Abstract base + adapter codegen (base class + `tpy::Adapter`, `tpy::RefAdapter`) | Done |
 | 3 | Protocol-typed locals (stack slot + pointer-local) | Done |
 | 4 | Protocol-typed function params (`Base&`, call-site dispatch) | Done |
-| 5 | Direct C++ inheritance (`class Dog(Pet)` -> `struct Dog : Pet`) | Done |
+| 5 | Direct C++ inheritance (`class Dog(Pet)` -> `struct Dog : Pet`) | Done. An override's params are emitted at the base pure-virtual's **declared** const-ness (`protocols._dynamic_param_list`), not the override's own const-inference: a method overriding a `@dynamic` virtual passes `mutated_params=None` to the param emitter (`_gen_method_overload`, gated on the existing `override` flag) so an unmutated reference-type param (`dict`/`list`/class) renders non-const to match the base -- otherwise const-inference would emit `const T*` against the base's `T*` and the override would not bind the virtual slot, leaving the class abstract. Test: `dyn_inherit_ref_param`. |
 | 5a | Conditional/loop reassignment (hoisted `std::optional` slots) | Done |
 | 6 | Return types (provably long-lived values only) | Done |
 | 7 | `@dynamic` protocol params in record methods/constructors | Done |
