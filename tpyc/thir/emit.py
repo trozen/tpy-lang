@@ -381,7 +381,10 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
     tail. M3a is pure-MIL, so `body` is empty and this emits ` {}` (or
     ` : inits {}`)."""
     inits = list(ctor.base_inits)
-    inits.extend(f"{mi.field_cpp}({_emit_expr(mi.value)})" for mi in ctor.mil_inits)
+    inits.extend(
+        f"{mi.field_cpp}(std::move({_emit_expr(mi.value)}))" if mi.move
+        else f"{mi.field_cpp}({_emit_expr(mi.value)})"
+        for mi in ctor.mil_inits)
     if inits:
         out.write(" : ")
         out.write(", ".join(inits))

@@ -45,8 +45,8 @@ from ..parse.nodes import (
 )
 from ..typesys import (
     LiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TpyType,
-    VoidType, is_float_type, resolve_int_literals, unwrap_readonly,
-    unwrap_ref_type, unwrap_send_sync,
+    VoidType, is_float_type, resolve_int_literals, unwrap_optional_own,
+    unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from ..type_def_registry import (
     int_traits_of, is_big_int_type, is_bool_type, is_fixed_int_type,
@@ -938,17 +938,21 @@ class _LowerCtx:
             id(func), set())
 
 
-def _is_move_source(value: TpyExpr, lc: _LowerCtx) -> bool:
-    """Whether a borrow `T*` write/return source moves rather than copies: the last
-    use of a movable (owned) local. Mirrors the AST's `_is_last_use_movable`
-    (peel `TpyCoerce`; a `TpyName` in `movable_locals` whose node is a last use).
-    Only an F2d REBIND_SLOT local is owned in the slice; non-owning borrows
-    (POINTER / OPTIONAL_TO_PTR) are never movable, so they always copy."""
+def _is_move_source(value: TpyExpr, lc: _LowerCtx,
+                    movable_names: 'set[str] | None' = None) -> bool:
+    """Whether a write / return / MIL source moves rather than copies: the last use
+    of a movable (owned) name. Mirrors the AST's `_is_last_use_movable(expr,
+    movable_names)` (peel `TpyCoerce`; a `TpyName` in the movable set whose node is a
+    last use). `movable_names` defaults to the function's `movable_locals` (the
+    F2b/F2e write/return case -- only an F2d REBIND_SLOT local is owned there); the
+    ctor MIL passes `own_param_names` instead (M3b-move), since `movable_locals` is
+    empty for a ctor and the MIL's movable sources are its Own params."""
+    names = lc.movable_locals if movable_names is None else movable_names
     inner = value
     while isinstance(inner, TpyCoerce):
         inner = inner.expr
     return (isinstance(inner, TpyName)
-            and inner.name in lc.movable_locals
+            and inner.name in names
             and id(inner) in lc.analyzer.ctx.all_last_uses)
 
 
@@ -1205,27 +1209,88 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     )
 
 
-def _ctor_scalar_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
-                               declared: dict[str, TpyType], analyzer) -> bool:
-    """A hoistable own-scalar field initializer `self.<field> = <eligible scalar>`
-    -- the only statement the M3a pure-MIL slice admits.
+def _unwrap_copy(expr: TpyExpr, analyzer) -> TpyExpr:
+    """Mirror of `CodeGenContext.unwrap_copy`: peel a `tpy.copy(x)` (the explicit
+    field-copy acknowledgment) to `x`, so a `self.f = copy(p)` initializer lowers
+    to the same `f(p)` direct-init the bare `self.f = p` does (the MIL copies
+    implicitly). Analyzer-pure (reads `imported_names`), so lowering classifies
+    without a CodeGenContext."""
+    if isinstance(expr, TpyCoerce):
+        inner = _unwrap_copy(expr.expr, analyzer)
+        return inner if inner is not expr.expr else expr
+    if (isinstance(expr, TpyCall) and len(expr.args) == 1
+            and isinstance(expr.func, TpyName)
+            and expr.func_name in analyzer.imported_names):
+        mod, fn = analyzer.imported_names[expr.func_name]
+        if mod == "tpy" and fn == "copy":
+            return expr.args[0]
+    return expr
 
-    Layers the ctor-specific guards (a `self`-targeted own-field assign) over
-    `_scalar_field_write_ok`, reusing its field-receiver / eligible-scalar-field /
-    eligible-value triple (the same one the body-position scalar field write uses).
+
+def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
+                        own_param_names: set[str], declared: dict[str, TpyType],
+                        lc: _LowerCtx) -> bool:
+    """A hoistable own-field initializer the ctor MIL slice admits -- a
+    `self`-targeted own-field assign whose (field type, source) pair the tail
+    emitter reproduces byte-for-byte.
+
     The `obj.name == "self"` guard is load-bearing -- `_field_receiver_ok` alone
     would also admit `other_record.field = ...`, which is not a member init. The
-    own-field test matches `_extract_field_inits` (a flat record has no inherited
-    fields, but keep the test exact). Any other statement -- a non-init body
-    statement, an inherited-field assign, a non-scalar field -- leaves the ctor on
-    the AST path (the M3b / M3c rungs)."""
+    own-field test matches `_extract_field_inits`. Routed shapes:
+
+      * **scalar** (M3a): an eligible-scalar value (`f(value)`).
+      * **own-param move** (M3b-move): an `Own[...]` source consumed at its last use
+        moves into a record / Optional[record] field (`f(std::move(p))`); checked
+        before the copy arms because the cascade applies the move first and never
+        also lifts via `ptr_to_optional`.
+      * **pointer-repr `Optional[F1-record]`** copy (M3b-copy): a `None`
+        (`f(std::nullopt)`) or a non-own borrow source (`f(::tpy::ptr_to_optional(p))`)
+        -- reuses the F2b optional-write helper.
+      * **plain F1-record** copy (M3b-copy): a non-own record param, `copy()`-unwrapped
+        (`f(p)`, an implicit MIL copy).
+
+    Ctor-call / field-read sources (M3b-rvalue / a later rung) and every other field
+    type (bytes / tuple / union / str / list -> F3+; cross-module / native / generic
+    records) leave the ctor on the AST path."""
+    analyzer = lc.analyzer
     if not (isinstance(stmt, TpyAssign)
             and isinstance(stmt.target, TpyFieldAccess)
             and isinstance(stmt.target.obj, TpyName)
             and stmt.target.obj.name == "self"
-            and stmt.target.field in own_field_names):
+            and stmt.target.field in own_field_names
+            and _field_receiver_ok(stmt.target, declared, analyzer)):
         return False
-    return _scalar_field_write_ok(stmt, declared, analyzer)
+    ftype = analyzer.get_expr_type(stmt.target)
+    if _eligible_scalar(ftype):
+        return _expr_eligible(stmt.value, declared, analyzer)
+    is_opt = (isinstance(ftype, OptionalType) and ftype.uses_pointer_repr()
+              and _f1_record(ftype.inner, analyzer))
+    if not (is_opt or _f1_record(ftype, analyzer)):
+        return False
+    source = _unwrap_copy(stmt.value, analyzer)
+    # M3b-move: an own-param at its last use moves into the field.
+    if _is_move_source(source, lc, own_param_names):
+        return True
+    if is_opt:
+        # pointers empty: a ctor MIL has no locals, so the only borrow source the
+        # helper admits is a pointer-repr Optional[record] param (or None).
+        return _f2b_optional_field_write_ok(stmt, declared, set(), analyzer)
+    # Plain record field <- non-own record param (implicit copy).
+    return (isinstance(source, TpyName) and source.name not in own_param_names
+            and _f1_record(declared.get(source.name), analyzer))
+
+
+def _ctor_param_eligible(ptype: TpyType | None, analyzer) -> bool:
+    """A ctor param the MIL slice can reference: the method-param set (value scalar /
+    F1-record, incl. `Own`) plus a pointer-repr `Optional[F1-record]` -- the borrow
+    source for an `Optional[record]` field's `ptr_to_optional` (the M3b cell). The
+    raw `OptionalType` shape matches what `declared` holds and `_is_borrow_ptr_local`
+    tests. The field-init gate decides per-field whether the param is used in an
+    admitted way; an unhandled use rejects the whole ctor (-> AST path)."""
+    if _f1_param_eligible(ptype, analyzer):
+        return True
+    return (isinstance(ptype, OptionalType) and ptype.uses_pointer_repr()
+            and _f1_record(ptype.inner, analyzer))
 
 
 def lower_constructor(record, init_method: TpyFunction, analyzer,
@@ -1252,36 +1317,73 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             or init_method.is_async or init_method.is_generator
             or init_method.type_params):
         return None
-    # Params must be value scalars or F1-records (the method param gate). This keeps
-    # the AST-emitted signature a plain ctor (no protocol/dynamic template) so it
-    # pairs with the THIR tail; the MIL references params, so a param outside the
-    # eligible-expr set would fail `_expr_eligible` anyway.
+    # Params must be value scalars, F1-records, or pointer-repr Optional[F1-record]
+    # (see `_ctor_param_eligible`). This keeps the AST-emitted signature a plain ctor
+    # (no protocol/dynamic template) so it pairs with the THIR tail; a param used in
+    # an unhandled way is caught by the per-field init gate below.
     for _name, ptype in init_method.params:
         pt = ptype if isinstance(ptype, TpyType) else None
-        if not _f1_param_eligible(pt, analyzer):
+        if not _ctor_param_eligible(pt, analyzer):
             return None
+    # Own[T] / Own[T]|None params: their MIL sources move (M3b-move), so M3b-copy
+    # rejects them as record-field sources (mirror `_extract_field_inits`'s set).
+    own_param_names = {pname for pname, ptype in init_method.params
+                       if isinstance(ptype, TpyType)
+                       and unwrap_optional_own(unwrap_readonly(ptype)) is not None}
     declared: dict[str, TpyType] = {n: t for n, t in init_method.params}
     declared["self"] = self_type
     own_field_names = {f.name for f in record.fields}
-    field_inits: list[TpyAssign] = []
-    for stmt in init_method.body:
-        # A docstring or `pass` lands in the AST's non_init_stmts -- a codeless but
-        # non-empty body (`{\n        // pass\n    }` / `{\n    }`), not `{}` -- so
-        # M3a's empty-body invariant breaks. Reject (it belongs to the M3c body
-        # rung) rather than skip, keeping the emitted body byte-identical.
-        if not _ctor_scalar_field_init_ok(stmt, own_field_names, declared, analyzer):
-            return None
-        field_inits.append(stmt)
+    # lc is built before the gate loop: the move check (`_is_move_source`) reads
+    # `analyzer.ctx.all_last_uses` through it.
     lc = _LowerCtx(init_method, analyzer, render_type, self_receiver="self",
                    record_name=record.name)
+    field_inits: list[TpyAssign] = []
+    for stmt in init_method.body:
+        # Every statement must be a hoistable own-field init. A docstring or `pass`
+        # (or any non-init statement) lands in the AST's non_init_stmts -- a codeless
+        # but non-empty body, not `{}` -- breaking the empty-body invariant, so it is
+        # rejected (the M3c body rung), keeping the emitted body byte-identical.
+        if not _ctor_field_init_ok(stmt, own_field_names, own_param_names,
+                                   declared, lc):
+            return None
+        field_inits.append(stmt)
     return THIRConstructor(
         record_name=record.name,
         params=tuple(THIRParam(name=n, type=t) for n, t in init_method.params),
-        mil_inits=tuple(
-            THIRMilInit(field_cpp=escape_cpp_name(s.target.field),
-                        value=_lower_expr(s.value, lc))
-            for s in field_inits),
+        mil_inits=tuple(_lower_ctor_mil_init(s, own_param_names, lc)
+                        for s in field_inits),
     )
+
+
+def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
+                         lc: _LowerCtx) -> THIRMilInit:
+    """Build one member-init-list entry from a hoisted field initializer (the gate
+    already admitted it). Mirrors the record/Optional arms of `_extract_field_inits`:
+
+      * an **own-param at last use** moves (`move=True`, plain source -- never
+        `ptr_to_optional`, per the cascade) [M3b-move];
+      * a **scalar** -> the lowered value [M3a];
+      * a pointer-repr **Optional[F1-record]** -> a STORAGE `None` literal
+        (`std::nullopt`) or the borrow->storage `ptr_to_optional` convert (copy) [M3b-copy];
+      * a plain **F1-record** -> the `copy()`-unwrapped source (implicit copy) [M3b-copy]."""
+    analyzer = lc.analyzer
+    ftype = analyzer.get_expr_type(stmt.target)
+    loc = getattr(stmt, "loc", None)
+    field_cpp = escape_cpp_name(stmt.target.field)
+    source = _unwrap_copy(stmt.value, analyzer)
+    if _is_move_source(source, lc, own_param_names):
+        return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc), move=True)
+    if _eligible_scalar(ftype):
+        return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(stmt.value, lc))
+    if isinstance(ftype, OptionalType):
+        if isinstance(stmt.value, TpyNoneLiteral):
+            v: THIRExpr = THIRLiteral(result_type=ftype, value=None,
+                                      form=Form.STORAGE, loc=loc)
+        else:
+            v = THIRFormConvert(result_type=ftype, value=_lower_expr(stmt.value, lc),
+                                form=Form.STORAGE, move=False, loc=loc)
+        return THIRMilInit(field_cpp=field_cpp, value=v)
+    return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc))
 
 
 def _method_self_type(record, analyzer) -> 'TpyType | None':

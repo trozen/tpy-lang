@@ -2160,21 +2160,6 @@ class TestConstructor:
             "C")
         assert ctor is None
 
-    def test_record_field_with_eligible_param_is_ineligible(self):
-        # An eligible (Own F1-record) param assigned to a record-typed FIELD passes
-        # the param gate and exercises the field-type gate in
-        # _ctor_scalar_field_init_ok (a non-scalar field -> M3b). The scalar-field
-        # base record still routes, confirming the gate rejects on the field, not
-        # the param.
-        src = (
-            "from tpy import Int32, Own\n"
-            + "class Inner:\n    v: Int32\n"
-            + "    def __init__(self, v: Int32):\n        self.v = v\n"
-            + "class C:\n    inner: Inner\n"
-            + "    def __init__(self, inner: Own[Inner]):\n        self.inner = inner\n")
-        assert _lower_ctor(src, "C") is None
-        assert _lower_ctor(src, "Inner") is not None
-
     def _hpp(self, src: str, thir: bool):
         compiler, modules = _compile(src)
         entry = _entry(modules)
@@ -2193,3 +2178,141 @@ class TestConstructor:
             + "        self.x = x\n        self.y = y\n"
             + "def main():\n    p = Point(1, 2)\n    print(p.x + p.y)\nmain()\n")
         assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
+
+    # --- M3b: record / Optional[record] member-init-list fields ---
+
+    _INNER = (
+        "from tpy import Int32\n"
+        "class Inner:\n    v: Int32\n"
+        "    def __init__(self, v: Int32):\n        self.v = v\n")
+
+    def test_optional_field_from_optional_param_routes(self):
+        # The M3 cell: an Optional[record] field <- Optional[record] borrow param
+        # lifts via ptr_to_optional (the F2b conversion, now in MIL position).
+        ctor = _lower_ctor(
+            self._INNER
+            + "class H:\n    opt: Inner | None\n"
+            + "    def __init__(self, m: Inner | None):\n        self.opt = m\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : opt(::tpy::ptr_to_optional(m)) {}\n"
+
+    def test_optional_field_none_routes(self):
+        ctor = _lower_ctor(
+            self._INNER
+            + "class H:\n    opt: Inner | None\n"
+            + "    def __init__(self):\n        self.opt = None\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : opt(std::nullopt) {}\n"
+
+    def test_record_field_copy_routes(self):
+        # A plain record field <- non-own record param: an implicit MIL copy.
+        ctor = _lower_ctor(
+            self._INNER
+            + "class H:\n    rec: Inner\n"
+            + "    def __init__(self, p: Inner):\n        self.rec = p\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : rec(p) {}\n"
+
+    def test_record_field_explicit_copy_unwraps(self):
+        # `copy(p)` is the explicit field-copy acknowledgment; it unwraps to the same
+        # `rec(p)` direct-init as the bare `self.rec = p` (the MIL copies implicitly).
+        ctor = _lower_ctor(
+            "from tpy import Int32, copy\n"
+            + "class Inner:\n    v: Int32\n"
+            + "    def __init__(self, v: Int32):\n        self.v = v\n"
+            + "class H:\n    rec: Inner\n"
+            + "    def __init__(self, p: Inner):\n        self.rec = copy(p)\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : rec(p) {}\n"
+
+    _OWN_INNER = (
+        "from tpy import Int32, Own\n"
+        "class Inner:\n    v: Int32\n"
+        "    def __init__(self, v: Int32):\n        self.v = v\n")
+
+    def test_own_record_param_record_field_moves(self):
+        # M3b-move: an Own[record] param at last use moves into a record field
+        # (the common ownership-taking ctor) -- `rec(std::move(p))`.
+        ctor = _lower_ctor(
+            self._OWN_INNER
+            + "class H:\n    rec: Inner\n"
+            + "    def __init__(self, p: Own[Inner]):\n        self.rec = p\n",
+            "H")
+        assert ctor is not None
+        assert ctor.mil_inits[0].move
+        assert _ctor_tail(ctor) == " : rec(std::move(p)) {}\n"
+
+    def test_own_record_param_optional_field_moves(self):
+        # M3b-move: an Own[record] param moves into an Optional[record] field --
+        # `opt(std::move(p))`, NOT ptr_to_optional (an own source skips that arm).
+        ctor = _lower_ctor(
+            self._OWN_INNER
+            + "class H:\n    opt: Inner | None\n"
+            + "    def __init__(self, p: Own[Inner]):\n        self.opt = p\n",
+            "H")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : opt(std::move(p)) {}\n"
+
+    def test_own_optional_param_is_ineligible(self):
+        # Own-optional params (`Own[Inner | None]`) are deferred past M3b-move (they
+        # need a ctor-param-gate extension for the own-optional type shapes); the
+        # whole ctor stays on the AST path until then.
+        ctor = _lower_ctor(
+            self._OWN_INNER
+            + "class H:\n    opt: Inner | None\n"
+            + "    def __init__(self, m: Own[Inner | None]):\n        self.opt = m\n",
+            "H")
+        assert ctor is None
+
+    def test_ctor_call_record_source_is_ineligible(self):
+        # An rvalue ctor-call source (`self.rec = Inner(v)`) is the M3b-rvalue rung.
+        ctor = _lower_ctor(
+            self._INNER
+            + "class H:\n    rec: Inner\n"
+            + "    def __init__(self, v: Int32):\n        self.rec = Inner(v)\n",
+            "H")
+        assert ctor is None
+
+    def test_optional_field_byte_identical(self):
+        # End-to-end byte-identity for the ptr_to_optional + None MIL cases, mixed
+        # with a scalar field, through the THIR seam vs the AST path.
+        src = (
+            self._INNER
+            + "class H:\n    n: Int32\n    opt: Inner | None\n"
+            + "    def __init__(self, n: Int32, m: Inner | None):\n"
+            + "        self.n = n\n        self.opt = m\n"
+            + "def main():\n    h = H(5, None)\n    print(h.n)\nmain()\n")
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
+
+    def test_own_param_move_byte_identical(self):
+        # The move arm's load-bearing contract: the own-param std::move MIL (into
+        # both a record field and an Optional field) emits identically through THIR
+        # and the AST path.
+        src = (
+            "from tpy import Int32, Own\n"
+            + "class Inner:\n    v: Int32\n"
+            + "    def __init__(self, v: Int32):\n        self.v = v\n"
+            + "class H:\n    inner: Inner\n    opt: Inner | None\n"
+            + "    def __init__(self, a: Own[Inner], b: Own[Inner]):\n"
+            + "        self.inner = a\n        self.opt = b\n"
+            + "def main():\n    h = H(Inner(1), Inner(2))\n    print(h.inner.v)\nmain()\n")
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)
+
+    def test_optional_copy_source_is_ineligible(self):
+        # The Optional arm runs the F2b helper on the un-unwrapped value, so a
+        # copy()-wrapped Optional source is rejected -- unlike a record field, which
+        # unwraps copy() (`test_record_field_explicit_copy_unwraps`). Byte-safe (the
+        # ctor falls to the AST path, which unwraps it); pins that asymmetry boundary,
+        # which no corpus ctor exercises.
+        ctor = _lower_ctor(
+            "from tpy import Int32, copy\n"
+            + "class Inner:\n    v: Int32\n"
+            + "    def __init__(self, v: Int32):\n        self.v = v\n"
+            + "class H:\n    opt: Inner | None\n"
+            + "    def __init__(self, m: Inner | None):\n        self.opt = copy(m)\n",
+            "H")
+        assert ctor is None

@@ -275,14 +275,19 @@ class THIRFunction:
 
 @dataclass(frozen=True)
 class THIRMilInit:
-    """One member-initializer-list entry, rendered `field_cpp(value)`.
+    """One member-initializer-list entry, rendered `field_cpp(value)` (or
+    `field_cpp(std::move(value))` when `move`).
 
     `field_cpp` is the C++ member name (escape resolved at lowering, like
-    `THIRFieldAccess.field_cpp`); `value` is the field's initializer expression.
-    The M3a slice carries only value-form scalar values; later ctor rungs put the
-    borrow/storage form transforms (`ptr_to_optional`, ...) on `value` itself."""
+    `THIRFieldAccess.field_cpp`); `value` is the field's initializer expression
+    (a borrow/storage form convert -- `ptr_to_optional` -- arrives as a
+    `THIRFormConvert` on `value`). `move` wraps the value in `std::move` -- an
+    own-param source consumed at its last use (M3b-move); it is MIL-local (the
+    general auto-move stays deferred) and never co-occurs with a `ptr_to_optional`
+    convert (an own source skips that arm)."""
     field_cpp: str
     value: THIRExpr
+    move: bool = False
 
 
 @dataclass(frozen=True)
