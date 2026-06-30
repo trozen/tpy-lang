@@ -705,12 +705,15 @@ on AST nodes, don't sprawl interop logic across phases):
 - **Runtime facade.** `runtime/cpp/include/tpy/interop/cpython_h.hpp` -- the
   hand-written limited-API facade (opaque `PyObject`, function decls, no
   `Python.h`).
-- **Codegen (isolated).** A dedicated `tpyc/codegen_cpp/extension.py` (or a
-  small `codegen_cpp/cpython/` package) owns glue-TU emission: per-function
+- **Codegen (isolated).** `tpyc/codegen_cpp/extension.py` (`ExtensionGenerator`,
+  wired as `CodeGenerator.extension`) owns glue-TU emission: per-function
   `from_py`/`to_py` wrappers, `PyMethodDef`/`PyModuleDef`/`PyInit_`,
-  `PyType_FromSpec` for classes, exception-registry init. Invoked as a sibling
-  `generate_extension_glue()` (the `generate_fwd_header` pattern), so the
-  load-bearing `(hpp, cpp)` codegen contract is untouched.
+  `PyType_FromSpec` for classes, exception-registry init. Invoked via the thin
+  `CodeGenerator.generate_extension_glue()` delegator, so the load-bearing
+  `(hpp, cpp)` codegen contract is untouched. The shared boundary helpers
+  (`boundary_cpp_type` / `boundary_unmarshallable_msg`, beside
+  `is_boundary_marshallable`) live in `type_def_registry.py` so the sema
+  validator and the glue import them from one neutral home.
 - **Thin compiler hooks.** Parser: the `ext_module` directive + the `@export`
   linkage extension (small touches to `_DIRECTIVE_SPECS` / the linkage map).
   `cli.py` / `BuildLayout`: the `.so` build-output mode. Everything reads facts

@@ -573,6 +573,25 @@ def is_exposed_class(t: "TpyType | None") -> "bool":
     return td is not None and td.record is not None and td.record.exposed_to_host
 
 
+def boundary_cpp_type(t: "TpyType | None") -> str:
+    # The boundary cpp type used only to render the unmarshallable diagnostic (a
+    # missing return type is 'void'); admission is is_boundary_marshallable.
+    # Shared so the sema validator and the glue emitter derive it identically.
+    return t.to_cpp() if t is not None else "void"
+
+
+def boundary_unmarshallable_msg(name: str, what: str, cpp: str,
+                                kind: str = "function") -> str:
+    # `what` is "return" / "parameter '<name>'" (function) or "field '<name>'" /
+    # "method '<name>' return" (class). Shared so the sema diagnostic and
+    # codegen's drift assert read identically. An exposed class itself is a
+    # valid boundary type, so it never appears as the offending `cpp`.
+    return (f"@export {kind} '{name}': {what} type '{cpp}' is not yet "
+            f"marshallable across the CPython boundary "
+            f"(supported: the fixed-width int types, int, float, bool, str, "
+            f"bytes, and @export classes defined in this module)")
+
+
 # Single-qname primitive predicates.
 def is_str_type(t: "TpyType") -> bool:     return _is_qn(t, "builtins.str")
 def is_string_type(t: "TpyType") -> bool:  return _is_qn(t, "tpy.String")

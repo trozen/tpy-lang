@@ -3893,9 +3893,9 @@ class Compiler:
           - Every @export-ed function's param/return types must have a CPython
             boundary marshaller. Runs post-sema so the types are resolved.
         """
-        from .codegen_cpp.generator import (
-            boundary_cpp_type, boundary_unmarshallable_msg)
-        from .type_def_registry import is_boundary_marshallable
+        from .type_def_registry import (
+            is_boundary_marshallable, boundary_cpp_type,
+            boundary_unmarshallable_msg)
         for compiled in self.modules.values():
             if not compiled.ast.directives.ext_module:
                 continue
@@ -3941,9 +3941,9 @@ class Compiler:
         constructs the glue does not yet emit (rather than silently dropping
         them), and require every crossing field/param/return to marshal.
         """
-        from .codegen_cpp.generator import (
-            boundary_cpp_type, boundary_unmarshallable_msg)
-        from .type_def_registry import is_boundary_marshallable
+        from .type_def_registry import (
+            is_boundary_marshallable, boundary_cpp_type,
+            boundary_unmarshallable_msg)
         info = compiled.analyzer.registry.get_record(record.name)
         line = record.loc.line if record.loc else None
 
