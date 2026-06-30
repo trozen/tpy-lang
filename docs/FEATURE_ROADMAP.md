@@ -148,7 +148,7 @@ of phase, to avoid costly retrofitting when concurrency arrives.
 
 | # | Feature | Effort | Status | Section |
 |---|---------|--------|--------|---------|
-| H1 | CPython interop (extension mode + embedding hooks) | XL | 🚧 v1.0 in progress (free funcs: all scalars + void return + str/bytes copy-in; built-in + user exception classes (type crossing); local `.so` build) -- design in [`docs/CPYTHON_INTEROP.md`](CPYTHON_INTEROP.md) | [XI](#cpython-interop) |
+| H1 | CPython interop (extension mode + embedding hooks) | XL | 🚧 v1.0 in progress (free funcs: all scalars + void return + str/bytes copy-in + positional/keyword args; built-in + user exception classes (type crossing); exposed classes via `PyType_FromSpec`; enums + `Final` constants; local `.so` build) -- design in [`docs/CPYTHON_INTEROP.md`](CPYTHON_INTEROP.md) | [XI](#cpython-interop) |
 | H2 | Project / build / dependency tooling (`tpx` porcelain) | XL | 🔬 Research -- design in [`docs/PROJECT_TOOLING_DESIGN.md`](PROJECT_TOOLING_DESIGN.md) | [XII](#project--build--dependency-tooling) |
 | H3 | Windows support + target-aware conditional compilation | XL | 🔬 Research -- needs design (see note below) | -- |
 

@@ -1,0 +1,5 @@
+100 -7 123456789012345678901234567890
+1.5
+True False
+'hello' ''
+int float bool str

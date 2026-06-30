@@ -34,6 +34,19 @@ PyObject *PyModule_Create2(PyModuleDef *def, int module_api_version);
 PyObject *PyErr_NewException(const char *name, PyObject *base, PyObject *dict);
 int PyModule_AddObjectRef(PyObject *module, const char *name, PyObject *value);
 
+// Enum construction (exposed @export enums). The enum_bridge recreates a TPy
+// enum as a CPython IntEnum/Enum via the stdlib `enum` module's functional API:
+// import `enum`, fetch the base, then call it with a {name: value} dict and a
+// `module=` kwarg. PyDict_SetItemString does not steal `item`; Py_BuildValue's
+// "O" code adds its own reference; PyObject_Call invokes with an args tuple and
+// a kwargs dict.
+PyObject *PyImport_ImportModule(const char *name);
+PyObject *PyObject_GetAttrString(PyObject *o, const char *attr);
+PyObject *PyObject_Call(PyObject *callable, PyObject *args, PyObject *kwargs);
+PyObject *Py_BuildValue(const char *format, ...);
+PyObject *PyDict_New(void);
+int PyDict_SetItemString(PyObject *dp, const char *key, PyObject *item);
+
 // Heap-type creation for exposed classes. PyType_FromSpec builds the type from
 // the slot table; the resulting type's tp_alloc is PyType_GenericAlloc (used by
 // instance_to_py to mint a fresh instance). PyType_GetSlot fetches tp_free in

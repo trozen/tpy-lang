@@ -15,26 +15,30 @@ from __future__ import annotations
 import io
 from typing import TYPE_CHECKING, TextIO
 
-from ..parse import TpyModule
-from ..typesys import TpyType, is_void_like_type
+from ..parse import TpyModule, TpyVarDecl
+from ..typesys import TpyType, is_void_like_type, FinalType
 from ..type_def_registry import (
-    is_boundary_marshallable, is_exposed_class, _boundary_inner,
-    boundary_cpp_type, boundary_unmarshallable_msg,
+    is_boundary_marshallable, is_exposed_class, _boundary_inner, enum_info_of,
+    is_str_view_type, boundary_cpp_type, boundary_unmarshallable_msg,
 )
 from .context import (
     qualified_cpp_name, escape_cpp_name, module_to_include_path, CodeGenError)
+from .type_resolution import resolve_stmt_type_cascade
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
     from .records import RecordGenerator
+    from .types import TypeResolver
 
 
 class ExtensionGenerator:
     """Emits the CPython extension glue TU for an `# tpy: ext_module`."""
 
-    def __init__(self, ctx: CodeGenContext, records: RecordGenerator):
+    def __init__(self, ctx: CodeGenContext, records: RecordGenerator,
+                 types: TypeResolver):
         self.ctx = ctx
         self.records = records  # shares the inheritance topo sort for exc ordering
+        self.types = types  # resolves exposed-constant (Final global) types
 
     def _user_exc_base_name(self, info, sibling_names: set) -> str | None:
         """Simple name of this exception's immediate base if that base is another user exception class in this module; else None (built-in base)."""
@@ -105,6 +109,59 @@ class ExtensionGenerator:
                 "cpp_type": qualified_cpp_name(call_ns, r.name),
                 "py_name": f"{module_name}.{r.name}",
                 "simple": r.name,
+            })
+        return result
+
+    def _exposed_enums(self, module: TpyModule, module_name: str) -> list[dict]:
+        """`@export` enums DEFINED at module top level. Each is recreated as a
+        CPython IntEnum/Enum at PyInit_ from its (name, value) member table.
+        (The sema validator rejected @export on @native and nested enums.)"""
+        reg = self.ctx.analyzer.registry
+        sym = escape_cpp_name(module_name)
+        result = []
+        for e in module.enums:
+            if not e.exposed_to_host:
+                continue
+            underlying = enum_info_of(reg.get_enum(e.name)).underlying_type.to_cpp()
+            result.append({
+                "simple": e.name,
+                "py_name": f"{module_name}.{e.name}",
+                "var": f"{sym}__enum_{escape_cpp_name(e.name)}",
+                "is_int_enum": e.is_int_enum,
+                "underlying": underlying,
+                "members": [(name, value) for name, value, _loc in e.members],
+            })
+        return result
+
+    def _constant_exposable(self, inner: TpyType) -> bool:
+        # StrView is admitted (a Final[str] resolves to it) because the constant
+        # is output-only -- to_py copies the static-literal view at init, so the
+        # borrow-lifetime reason StrView is rejected as a *param* does not apply.
+        return is_boundary_marshallable(inner, False) or is_str_view_type(inner)
+
+    def _exposed_constants(self, module: TpyModule, call_ns: str) -> list[dict]:
+        """Module-level `Final` constants of an exposable type, surfaced as
+        init-time module-attribute snapshots (Final => immutable, so the snapshot
+        can't go stale). Dunder bindings (the auto-injected `__name__` etc.) are
+        module internals, not user constants, so they are skipped."""
+        result = []
+        seen: set[str] = set()
+        for stmt in module.top_level_stmts:
+            if not isinstance(stmt, TpyVarDecl) or not stmt.is_final:
+                continue
+            if stmt.name in seen or (stmt.name.startswith("__")
+                                     and stmt.name.endswith("__")):
+                continue
+            var_type = resolve_stmt_type_cascade(stmt, self.ctx.analyzer, self.types)
+            if var_type is None:
+                continue
+            inner = var_type.wrapped if isinstance(var_type, FinalType) else var_type
+            if not self._constant_exposable(inner):
+                continue
+            seen.add(stmt.name)
+            result.append({
+                "py_name": stmt.name,
+                "cpp_ref": qualified_cpp_name(call_ns, stmt.name),
             })
         return result
 
@@ -327,6 +384,48 @@ class ExtensionGenerator:
                   f"(int)sizeof(::tpy::interop::Instance<{cpp}>), 0,\n")
         out.write(f"    Py_TPFLAGS_DEFAULT, {base}__slots,\n}};\n\n")
 
+    def _emit_enum_create(self, out: TextIO, e: dict, module_name: str) -> None:
+        """Emit the PyInit_ block that builds one @export enum's value dict and
+        recreates it as a CPython IntEnum/Enum (make_enum), then adds it to the
+        module. Runs with `__m` live (and inside the PyInit_ try block)."""
+        und = e["underlying"]
+        adds = " ||\n            ".join(
+            f'::tpy::interop::enum_dict_add(__d, "{name}", '
+            f"::tpy::interop::to_py(static_cast<{und}>({value}))) < 0"
+            for name, value in e["members"])
+        out.write("        {\n")
+        out.write("            PyObject *__d = ::tpy::cpy::PyDict_New();\n")
+        out.write("            if (!__d) { ::tpy::cpy::Py_DecRef(__m); "
+                  "return nullptr; }\n")
+        out.write(f"            if ({adds}) {{\n")
+        out.write("                ::tpy::cpy::Py_DecRef(__d); "
+                  "::tpy::cpy::Py_DecRef(__m); return nullptr;\n            }\n")
+        out.write(f'            PyObject *{e["var"]} = ::tpy::interop::make_enum('
+                  f'"{e["simple"]}", "{module_name}", '
+                  f'{"true" if e["is_int_enum"] else "false"}, __d);\n')
+        out.write(f"            ::tpy::cpy::Py_DecRef(__d);\n")
+        out.write(f'            if (!{e["var"]}) {{ ::tpy::cpy::Py_DecRef(__m); '
+                  f"return nullptr; }}\n")
+        out.write(f'            if (::tpy::cpy::PyModule_AddObjectRef(__m, '
+                  f'"{e["simple"]}", {e["var"]}) < 0) {{ '
+                  f'::tpy::cpy::Py_DecRef({e["var"]}); '
+                  f"::tpy::cpy::Py_DecRef(__m); return nullptr; }}\n")
+        out.write(f'            ::tpy::cpy::Py_DecRef({e["var"]});\n')
+        out.write("        }\n")
+
+    def _emit_constant_add(self, out: TextIO, c: dict) -> None:
+        """Emit the PyInit_ block that marshals one Final constant's value (read
+        AFTER __tpy_init) and adds it to the module dict. Runs with `__m` live."""
+        out.write("        {\n")
+        out.write(f'            PyObject *__c = ::tpy::interop::to_py({c["cpp_ref"]});\n')
+        out.write("            if (!__c) { ::tpy::cpy::Py_DecRef(__m); "
+                  "return nullptr; }\n")
+        out.write(f'            if (::tpy::cpy::PyModule_AddObjectRef(__m, '
+                  f'"{c["py_name"]}", __c) < 0) {{ ::tpy::cpy::Py_DecRef(__c); '
+                  f"::tpy::cpy::Py_DecRef(__m); return nullptr; }}\n")
+        out.write("            ::tpy::cpy::Py_DecRef(__c);\n")
+        out.write("        }\n")
+
     def generate_extension_glue(self, module: TpyModule, module_name: str) -> str:
         """Emit the CPython extension glue TU for an `# tpy: ext_module`:
         PyMethodDef/PyModuleDef/PyInit_ plus one wrapper per @export-ed
@@ -346,6 +445,8 @@ class ExtensionGenerator:
                 f"module identifier (needed for PyInit_)")
         sym = escape_cpp_name(module_name)
         exposed_classes = self._exposed_classes(module, module_name, call_ns)
+        exposed_enums = self._exposed_enums(module, module_name)
+        exposed_constants = self._exposed_constants(module, call_ns)
 
         out = io.StringIO()
         out.write("// Generated by TurboPython Compiler -- CPython extension glue\n")
@@ -354,6 +455,8 @@ class ExtensionGenerator:
         out.write('#include "tpy/interop/exc_bridge.hpp"\n')
         if exposed_classes:
             out.write('#include "tpy/interop/class_bridge.hpp"\n')
+        if exposed_enums:
+            out.write('#include "tpy/interop/enum_bridge.hpp"\n')
         out.write("\n")
         out.write("namespace {\n")
         out.write("using namespace ::tpy::cpy;\n\n")
@@ -439,12 +542,15 @@ class ExtensionGenerator:
         # A C++ exception escaping extern "C" is UB: convert init failures to
         # the NULL sentinel with a Python exception set.
         out.write("    try {\n")
-        if user_excs or exposed_classes:
-            # Module created before __tpy_init so the exception/class types exist
-            # (and are registered) even for a raise during module-init top-level
-            # code. Each created type's ref is retained for the .so's lifetime
-            # (the registry / the module dict keep it alive) -- like the
-            # interpreter's own exception singletons.
+        if user_excs or exposed_classes or exposed_enums or exposed_constants:
+            # Module created before __tpy_init so the exception/class/enum types
+            # exist (and are registered) even for a raise during module-init
+            # top-level code. Each created type's ref is retained for the .so's
+            # lifetime (the registry / the module dict keep it alive) -- like the
+            # interpreter's own exception singletons. Constants are read AFTER
+            # __tpy_init: the current Final kinds are static-init (constexpr /
+            # static BigInt), so the order is not load-bearing today, but a
+            # future runtime-initialized constant kind would need the init first.
             out.write(f"        PyObject *__m = ::tpy::cpy::PyModule_Create2("
                       f"&{sym}__moduledef, ::tpy::cpy::PYTHON_API_VERSION);\n")
             out.write("        if (!__m) return nullptr;\n")
@@ -470,7 +576,11 @@ class ExtensionGenerator:
                 out.write(f'        if (::tpy::cpy::PyModule_AddObjectRef(__m, '
                           f'"{c["simple"]}", {c["var"]}) < 0) '
                           f"{{ ::tpy::cpy::Py_DecRef(__m); return nullptr; }}\n")
+            for e in exposed_enums:
+                self._emit_enum_create(out, e, module_name)
             out.write(f"        {qualified_cpp_name(call_ns, '__tpy_init')}();\n")
+            for c in exposed_constants:
+                self._emit_constant_add(out, c)
             out.write("        return __m;\n")
         else:
             out.write(f"        {qualified_cpp_name(call_ns, '__tpy_init')}();\n")

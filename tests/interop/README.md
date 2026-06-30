@@ -97,3 +97,16 @@ self-check additionally requires `Python.h`.
   call mutates through and is observed on the same object -- the reference-
   semantics proof, here driven by keyword args. All forms are source-parity, so
   the whole driver is checked against both the `.so` and the Python source.
+- **`enums/`** (`enums.py`) -- `@export` enums recreated as real CPython enum
+  types at `PyInit_` (the `enum` functional API via `enum_bridge.hpp`): an
+  `IntEnum` (`Color`) and a plain `Enum` (`Direction`) covering members,
+  `.name`/`.value`, member identity, iteration, value/name lookup,
+  `__name__`/`__qualname__`/`__module__`, and the IntEnum-vs-Enum `== int` /
+  `isinstance(_, int)` distinction. All source-parity (a class-statement enum is
+  observably identical), so the whole driver runs against both the `.so` and the
+  source -- no `ext_checks.py` needed.
+- **`constants/`** (`constants.py`) -- module-level `Final` constants exposed as
+  init-time module-attribute snapshots: `int` (incl. a value beyond int64 via
+  the BigInt hex round-trip), `float`, `bool`, `str`. `ext_checks.py` asserts a
+  `Final[Char]` (a non-boundary type) is *not* exposed -- it exists on the
+  source but not the `.so`, so that check is ext-only.

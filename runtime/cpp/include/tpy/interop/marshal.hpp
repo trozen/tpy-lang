@@ -234,9 +234,20 @@ inline cpy::PyObject *to_py(bool v) {
     return cpy::PyBool_FromLong(v ? 1 : 0);
 }
 
-inline cpy::PyObject *to_py(const std::string &s) {
+inline cpy::PyObject *to_py(std::string_view s) {
     return cpy::PyUnicode_FromStringAndSize(  // UnicodeDecodeError on bad UTF-8
         s.data(), static_cast<cpy::Py_ssize_t>(s.size()));
+}
+
+inline cpy::PyObject *to_py(const std::string &s) {
+    return to_py(std::string_view(s));
+}
+
+// Disambiguates a string-literal / `const char*` arg: without it both the
+// string_view and const std::string& overloads are viable via a user-defined
+// conversion, making the call ambiguous.
+inline cpy::PyObject *to_py(const char *s) {
+    return to_py(std::string_view(s));
 }
 
 inline cpy::PyObject *to_py(const std::vector<std::uint8_t> &b) {

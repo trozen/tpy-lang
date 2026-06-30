@@ -3941,6 +3941,34 @@ class Compiler:
                 if not record.exposed_to_host:
                     continue
                 self._validate_exposed_class(compiled, record)
+            self._validate_exposed_enums(compiled)
+
+    def _validate_exposed_enums(self, compiled: 'CompiledModule') -> None:
+        """An `@export` enum is recreated as a CPython IntEnum/Enum at PyInit_.
+        Reject the forms the glue does not rebuild: a `@native` enum (its
+        members/values come from the C++ side, not a TPy-declared value table)
+        and a nested enum (only top-level module enums are exposed this rung) --
+        rather than silently dropping them.
+        """
+        for enum in compiled.ast.enums:
+            if not enum.exposed_to_host:
+                continue
+            if enum.is_native:
+                loc = enum.loc.line if enum.loc else None
+                raise CompileError(
+                    f"@export enum '{enum.name}': a @native enum cannot be "
+                    "exposed to CPython (its values come from C++, not a "
+                    "TPy-declared member table)",
+                    compiled.name, compiled.path, lineno=loc)
+        for record in compiled.ast.records:
+            for enum in record.nested_enums:
+                if enum.exposed_to_host:
+                    loc = enum.loc.line if enum.loc else None
+                    raise CompileError(
+                        f"@export enum '{enum.name}': a nested enum cannot be "
+                        "exposed to CPython yet (only top-level module enums "
+                        "are exposed)",
+                        compiled.name, compiled.path, lineno=loc)
 
     def _validate_exposed_class(self, compiled: 'CompiledModule',
                                 record: 'TpyRecord') -> None:

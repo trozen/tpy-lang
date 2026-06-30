@@ -5996,11 +5996,28 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   land). A dunder other than `__init__` (`__repr__`,
   `__eq__`, ...) is **warned** -- it is not wired into the host type in this
   rung, so it would be silently absent otherwise.
+- **Working (enums + constants)**: an enum marked `@export` in an ext_module is
+  recreated at `PyInit_` as a **real CPython enum type** -- `enum.IntEnum` for an
+  `IntEnum`, `enum.Enum` for a plain `Enum` -- via the stdlib `enum` functional
+  API with `module=` set, so `mymod.Color.RED` is observably identical to a
+  source-level `class Color(IntEnum)`: members, `.name`/`.value`, member
+  identity/singletons, iteration, value/name lookup, `__name__`/`__qualname__`/
+  `__module__`, and the IntEnum-vs-Enum `== int` / `isinstance(_, int)`
+  distinction all match (CPython-parity-verified). Module-level `Final` constants
+  of a boundary type (`int`/`IntN`/`bool`/`float`/`str`) are surfaced as
+  module-attribute **snapshots** taken after module init (`Final` => immutable, so
+  the snapshot can't go stale). The validator rejects `@export` on a `@native`
+  enum (its values come from C++) or a nested enum (only top-level module enums
+  are exposed). A `Final` constant of a non-boundary type (`Char`, `tuple`, ...)
+  is simply not part of the exposed surface -- like a non-`@export` function, it
+  isn't on the `.so`. Deferred (tracked in `TODO.md`): enum *values* as
+  function param/return types, nested/cross-module enums, `bytes`/`BytesView`
+  constants.
 - **Planned**: zero-copy `str`/`bytes` view input (`StrView`/`BytesView` via
   the phase-3.5 foreign-borrow primitive), faithful data-field crossing for
   user exception classes (the same per-instance field marshalling), class-typed
   fields / `@property` / dunders / inheritance for exposed classes,
-  enums/constants, container and buffer input, the PEP 517 wheel backend, and
+  container and buffer input, the PEP 517 wheel backend, and
   the `nogil` GIL capability. See `docs/CPYTHON_INTEROP.md`.
 
 ---

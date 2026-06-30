@@ -1,0 +1,14 @@
+<Color.RED: 1> 1 RED
+True True
+-1 True
+True
+['INVALID', 'RED', 'GREEN', 'BLUE']
+[-1, 1, 2, 4]
+BLUE 2
+INVALID True
+Color enums Color
+<Direction.NORTH: 0> 0 WEST
+False False
+['NORTH', 'EAST', 'SOUTH', 'WEST']
+SOUTH 3
+Direction enums

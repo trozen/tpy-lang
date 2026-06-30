@@ -1,0 +1,1 @@
+main.py:8: error: enum 'Color': @export is only valid inside an `# tpy: ext_module` (it exposes the enum to CPython)

@@ -1548,6 +1548,9 @@ class TpyEnum:
     # compile time. False when all members used auto() / native_member()
     # (the user opted out of declaring values; C++ is the truth).
     has_explicit_values: bool = False
+    # True for a bare `@export` enum in an ext_module: recreated as a CPython
+    # IntEnum/Enum at PyInit_. Mirrors TpyFunction/TpyRecord.exposed_to_host.
+    exposed_to_host: bool = False
     loc: SourceLocation | None = None
 
 

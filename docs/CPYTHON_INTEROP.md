@@ -55,7 +55,7 @@ progress -> ✅ done.
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | 🔬 |
 | 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset, instances as free-fn/method params (borrow) + returns (copy); dunders/inheritance/@property/class-typed fields deferred |
-| 5 | **Enums + constants** | **v1.1** | 🔬 |
+| 5 | **Enums + constants** | **v1.1** | 🚧 `@export` enums recreated as real CPython IntEnum/Enum (functional API, module= set); `Final` scalar/str constants as init-time module-attribute snapshots; enum-value param/return + nested/cross-module enums deferred |
 | 3.5 | Foreign-borrow primitive -> zero-copy str + buffer input | post-v1.0 (next) -- IR-gated | 🔬 |
 | 6 | Containers (`list`/`dict`/`set`/`tuple`, by-copy) | v1-adjacent | 🔬 |
 | 7 | `nogil` / `with gil` (parallelism + GIL checking) | later | 🔬 |
@@ -417,11 +417,23 @@ getset properties; then all four dunder groups (`__repr__`/`__str__`,
 see Q4), landed roughly in that order. **Defer** inheritance of exposed
 class *hierarchies* (each exposed class is flat in v1).
 
-**3 + 4. Enums + constants** -- mostly bookkeeping at `PyInit`. Constants
-become module attributes. *Scope dial on enums:* int-backed enums expose as
-`IntEnum` or plain module constants (easy). Data-carrying (algebraic) enum
-variants, if present, need a wrapper class per variant and are **deferred**;
-v1 ships simple/int enums.
+**3 + 4. Enums + constants** -- mostly bookkeeping at `PyInit`. **Implemented**
+(this rung): an `@export` enum is rebuilt at `PyInit_` as a **real** CPython enum
+via the stdlib `enum` functional API -- `enum.IntEnum(name, {member: value}, module=...)`
+for an `IntEnum`, `enum.Enum(...)` for a plain `Enum` (the `runtime/cpp/include/
+tpy/interop/enum_bridge.hpp` `make_enum` helper hides the import + call). Passing
+`module=` pins `__module__`/`__qualname__` so the constructed type is observably
+identical to a source-level `class Color(IntEnum)` (CPython-parity-verified: members,
+`.name`/`.value`, singleton identity, iteration, value/name lookup, and the
+IntEnum-vs-Enum `== int` distinction all match). Module-level `Final` constants of
+a boundary scalar (`int`/`IntN`/`bool`/`float`/`str`) become module attributes --
+a one-time snapshot read after `__tpy_init` (Final => immutable, so the snapshot
+can't go stale). `@native` enums (values come from C++) and nested enums are
+rejected with a located error; non-boundary `Final` types (`Char`, `tuple`) are
+simply not exposed (like a non-`@export` function). **Deferred:** enum values as
+function param/return types, nested/cross-module enums, `bytes`/`BytesView`
+constants. Data-carrying (algebraic) enum variants do not exist in TPy (members
+are always int-valued), so there is nothing to wrapper-per-variant.
 
 **Feasibility verdict:** all four are feasible. The dominant cost is the
 shared marshalling layer and the extension-type generator; the four kinds

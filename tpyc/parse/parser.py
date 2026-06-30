@@ -1980,8 +1980,25 @@ class Parser:
         """Parse an enum class definition."""
         is_native = False
         native_name: str | None = None
+        exposed_to_host = False
         for dec in node.decorator_list:
             qname, arg = self._require_decorator(dec, f"enum '{node.name}'")
+            if qname == qnames.EXPORT:
+                # Like @export on a class, only meaningful in an ext_module,
+                # where it recreates the enum as a CPython IntEnum/Enum.
+                if not self._directives.ext_module:
+                    raise ParseError(
+                        f"enum '{node.name}': @export is only valid inside an "
+                        "`# tpy: ext_module` (it exposes the enum to CPython)",
+                        dec)
+                pos, kw = self._validate_decorator_args(qname, arg, dec)
+                if kw or (isinstance(pos, str) and pos) or isinstance(pos, tuple):
+                    raise ParseError(
+                        f"enum '{node.name}': inside an `# tpy: ext_module`, "
+                        "@export must be bare (it exposes the enum to CPython "
+                        "and takes no arguments)", dec)
+                exposed_to_host = True
+                continue
             if qname != qnames.NATIVE:
                 raise ParseError(
                     f"Decorators are not supported on enum '{node.name}' "
@@ -2110,6 +2127,7 @@ class Parser:
             is_native=is_native, native_name=native_name,
             cpp_member_names=cpp_member_names,
             has_explicit_values=has_explicit,
+            exposed_to_host=exposed_to_host,
             loc=self._loc(node),
         )
 

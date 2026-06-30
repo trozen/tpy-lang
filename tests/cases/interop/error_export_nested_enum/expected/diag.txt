@@ -1,0 +1,1 @@
+main.py:11: error: @export enum 'Outer.Inner': a nested enum cannot be exposed to CPython yet (only top-level module enums are exposed)

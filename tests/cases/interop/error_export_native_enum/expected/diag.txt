@@ -1,0 +1,1 @@
+main.py:13: error: @export enum 'Color': a @native enum cannot be exposed to CPython (its values come from C++, not a TPy-declared member table)
