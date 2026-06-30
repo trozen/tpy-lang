@@ -34,6 +34,7 @@ from .nodes import (
     THIRIf,
     THIRLiteral,
     THIRName,
+    THIRNoOpStmt,
     THIRReturn,
     THIRSelf,
     THIRStmt,
@@ -355,6 +356,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         _emit_while(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRForRange):
         _emit_for_range(out, stmt, indent_level, state)
+    elif isinstance(stmt, THIRNoOpStmt):
+        # No code -- the `// pass` source comment (if any) is emitted by the
+        # caller (_emit_stmts) from the node's loc.
+        pass
     else:
         raise THIRCodeGenError(f"unhandled THIR stmt: {type(stmt).__name__}")
 
@@ -380,7 +385,8 @@ def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
     precedent -- signatures stay on the AST path). Byte-identical to that path's
     tail. M3a is pure-MIL, so `body` is empty and this emits ` {}` (or
     ` : inits {}`)."""
-    inits = list(ctor.base_inits)
+    inits = [f"{bi.base_cpp}({', '.join(_emit_expr(a) for a in bi.args)})"
+             for bi in ctor.base_inits]
     inits.extend(
         f"{mi.field_cpp}(std::move({_emit_expr(mi.value)}))" if mi.move
         else f"{mi.field_cpp}({_emit_expr(mi.value)})"

@@ -75,7 +75,7 @@ deletion is the concrete milestone that forces its tail closed.
 
 | AST component to delete | Deletion gate (cells that must route) | Status |
 |---|---|---|
-| **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call sources (M3b-rvalue), own-optional params, non-init body + demotion (M3c), base inits (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- scalar + record/Optional copy & move land; rest deferred |
+| **Ctor MIL emit** -- `records.py` `_extract_field_inits` / `_extract_base_inits` / `_get_non_init_stmts` + the inline ` : f(v)... {}` write | every ctor MIL field cell + body: scalar (M3a), record/Optional copy+move (M3b), ctor-call / param-field-read sources + own-optional params (M3b-rvalue), docstring/`pass` trivia body (M3c-trivia), non-init body + demotion (M3c-demotion), inheritance -- single + multi base + inherited-field writes (M3d), and str/list/dict/tuple/union/bytes fields (F3+) + cross-module/native/generic records | **PARTIAL** -- the whole scalar/record/Optional + body + inheritance surface lands (ctor self-contained tail complete); deferred cells are cross-axis-blocked -- non-record demoted-field-writes + non-record fields (F3+) + native/generic records |
 | **Body statement + expression emit** -- `statements.py` `gen_body` per-statement path + `expressions.py` `gen_expr`, for routed callables | every statement shape + expression form across every callable kind | **PARTIAL** -- straight-line shapes over the F1/F2 + scalar/bool/double-float slice |
 | **Form / conversion machinery** -- `context.py` `convert` + `CppForm`/`FormValue`, the ~12 detection predicates + ~22 local side-sets + the `RefType` wrapper (see `THIR_FORM_INVENTORY.md`) | **F-final**: the `Form` tag + `THIRFormConvert` subsume all form dispatch | **PARTIAL** -- F1/F2 forms carried; F3-F6 + RefType removal pending |
 
@@ -92,9 +92,21 @@ deferred (self-contained) / blocked-on-`<rung>`.
 ### Callable-kind axis (M) -- `TODO.md` "method frontier" + "form rung F1/F2" cells
 - Free functions: **DONE** (incl. readonly). Instance methods: **DONE** (M1/M2).
 - Constructors: M3a scalar **DONE**; M3b record/Optional copy **DONE** + move
-  **DONE**; **deferred (self-contained):** M3b-rvalue (ctor-call sources),
-  own-optional params, M3c (non-init body + the ~190-line demotion mirror), M3d
-  (base inits / inheritance).
+  **DONE** + rvalue (ctor-call / param field-read sources + own-optional params +
+  the `copy()`-on-Optional source) **DONE**; M3c-trivia (docstring / `pass` non-init
+  bodies) **DONE**; M3c-demotion (hoist/demotion split + non-trivia body lowered via
+  the shared `_body_eligible`/`_lower_stmt` machinery -- only the `chain_broken`
+  cascade needed explicit reproduction; the other demote triggers were subsumed by
+  the existing eligibility gate) **DONE**; M3d inheritance (single + multi same-module
+  F1 base: `super().__init__` / `BaseN.__init__` -> parent-order-sorted `THIRBaseInit`s;
+  direct inherited-field writes -> body via the chain-stays-alive +
+  `body_written_self_fields` + `expr_reads_self_field` mirror) **DONE**. **The ctor
+  self-contained tail is COMPLETE.** Remaining ctor cells are cross-axis-blocked, not
+  self-contained: demoted **record**-field writes (need the record body-write rung),
+  `self.<record field>` read sources (MIL-ordering-sensitive), non-trivia body
+  statements outside the statement-shape slice (match / with / try / for-container /
+  builtin calls / ...), and `str`/`list`/`dict`/`tuple`/`union` MIL fields (F3+) +
+  cross-module / native / generic records (their frontiers).
 - Static / property / dunder-operator methods: **deferred (self-contained)** --
   separate emit paths.
 - Generic-record methods (templated `self`): **blocked-on-F5** (generic-slot form).
@@ -116,6 +128,8 @@ deferred (self-contained) / blocked-on-`<rung>`.
 
 ### Statement / expression shapes -- **NOT YET SYSTEMATICALLY ENUMERATED**
 The form ladder and callable axis are tracked; the statement-shape axis is not.
+Routed so far: var-decl / assign / return / if-elif-else / while / range-for /
+aug-assign, plus the no-op trivia `pass` / docstring (M3c-trivia, `THIRNoOpStmt`).
 Uncovered shapes include: `match`, `with`, `try`/`except`/`finally`,
 `for`-over-container, `async`/`await`, `yield` / generators, comprehensions,
 `break`/`continue`, `del`/`global`/`nonlocal`/`raise`/`assert`, chained
@@ -142,4 +156,4 @@ ledger surfaced that they are an untracked gap.
 - **Planned:** extend the `--thir-codegen` non-vacuity tally to report per-component
   AST-fallback coverage (how much of each component still falls back to AST), so the
   gap to each deletion is *measured*, not estimated. Today the tally reports only
-  total routed bodies/cases (4703 bodies / 1172 cases as of increment 16).
+  total routed bodies/cases (5071 bodies / 1216 cases as of increment 21).

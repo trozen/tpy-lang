@@ -204,6 +204,18 @@ class THIRReturn(THIRStmt):
 
 
 @dataclass(frozen=True)
+class THIRNoOpStmt(THIRStmt):
+    """A statement that emits no C++ code -- a `pass` or a docstring in a
+    constructor body (M3c-trivia). It carries no payload; its only effect is to
+    make `THIRConstructor.body` non-empty so the emitter writes ` {\n    }`
+    instead of ` {}`, matching the AST. The inherited `loc` drives the source
+    comment exactly as the AST does: a `pass` keeps its `loc` (so `_emit_stmts`
+    emits its `// pass` source line), while a docstring lowers with `loc=None`
+    -- the AST emits neither comment nor code for a docstring (`gen_body`'s
+    simple-stmt code is None, which suppresses the comment)."""
+
+
+@dataclass(frozen=True)
 class THIRIf(THIRStmt):
     """if / elif / else. An elif chain is an else_body of a single THIRIf.
 
@@ -291,20 +303,34 @@ class THIRMilInit:
 
 
 @dataclass(frozen=True)
+class THIRBaseInit:
+    """A base-class initializer in a derived constructor's member-init-list:
+    `Base(args)`, emitted before the field inits (M3d). `base_cpp` is the base's
+    rendered C++ name (`super_parent_type.to_cpp()`, byte-identical to the AST's
+    `_extract_base_inits`); `args` are the lowered `super().__init__(...)` argument
+    expressions, rendered at emit (M3d-1 admits eligible-scalar args only)."""
+    base_cpp: str
+    args: tuple[THIRExpr, ...]
+
+
+@dataclass(frozen=True)
 class THIRConstructor:
     """A lowered constructor: only the member-init-list + body tail that
     `gen_record_decl` emits, NOT the signature (which stays on the AST path, the
     M1 method precedent -- only the body/tail routes through THIR).
 
     `mil_inits` are the hoisted field initializers in source order; `base_inits`
-    are pre-rendered base-initializer C++ strings (empty until the M3d inheritance
-    rung); `body` is the non-init constructor body (empty until the M3c
-    demotion/body rung). The M3a slice is pure-MIL -- every field init hoists, so
-    `body` is empty and the emitted C++ body is `{}`."""
+    are the base-class initializers (M3d; empty for a flat record); `body` is the
+    non-init constructor body (M3c). The M3a slice is pure-MIL -- every field init
+    hoists, so `body` is empty and the emitted C++ body is `{}`.
+
+    `record_name` and `params` model the constructor faithfully but are not read by
+    the tail-only emitter (the signature stays on the AST path); they are the inputs a
+    future signature-emit increment would consume."""
     record_name: str
     params: tuple[THIRParam, ...]
     mil_inits: tuple[THIRMilInit, ...]
-    base_inits: tuple[str, ...] = ()
+    base_inits: tuple[THIRBaseInit, ...] = ()
     body: tuple[THIRStmt, ...] = ()
 
 

@@ -34,14 +34,19 @@ from ..parse.nodes import (
     TpyFunction,
     TpyIf,
     TpyIntLiteral,
+    TpyMethodCall,
     TpyModule,
     TpyName,
     TpyNoneLiteral,
+    TpyPassStmt,
     TpyReturn,
     TpyStmt,
     TpyVarDecl,
     TpyWhile,
     VarLinkage,
+    expr_reads_self_field,
+    is_base_init_call,
+    is_docstring,
 )
 from ..typesys import (
     LiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TpyType,
@@ -61,6 +66,7 @@ from ..codegen_cpp.context import escape_cpp_name
 from .nodes import (
     Form,
     THIRAssign,
+    THIRBaseInit,
     THIRBinOp,
     THIRCall,
     THIRCoerce,
@@ -76,6 +82,7 @@ from .nodes import (
     THIRMilInit,
     THIRModule,
     THIRName,
+    THIRNoOpStmt,
     THIRParam,
     THIRReturn,
     THIRSelf,
@@ -945,8 +952,8 @@ def _is_move_source(value: TpyExpr, lc: _LowerCtx,
     movable_names)` (peel `TpyCoerce`; a `TpyName` in the movable set whose node is a
     last use). `movable_names` defaults to the function's `movable_locals` (the
     F2b/F2e write/return case -- only an F2d REBIND_SLOT local is owned there); the
-    ctor MIL passes `own_param_names` instead (M3b-move), since `movable_locals` is
-    empty for a ctor and the MIL's movable sources are its Own params."""
+    ctor MIL passes `own_param_names` instead (M3b-move), since no locals exist yet at
+    MIL time (the MIL runs before the body) and its movable sources are the Own params."""
     names = lc.movable_locals if movable_names is None else movable_names
     inner = value
     while isinstance(inner, TpyCoerce):
@@ -1227,6 +1234,33 @@ def _unwrap_copy(expr: TpyExpr, analyzer) -> TpyExpr:
     return expr
 
 
+def _is_record_value_source(source: TpyExpr, declared: dict[str, TpyType],
+                            own_param_names: set[str], lc: _LowerCtx) -> bool:
+    """A record-producing source that constructs an F1-record field (or its
+    pointer-repr `Optional`) *directly* via an implicit copy/construct -- as opposed
+    to a borrow `T*` that must lift through `ptr_to_optional`. Three shapes:
+
+      * a non-own **F1-record param name** (`other`) -- an implicit MIL copy;
+      * an **F1-record ctor-call rvalue** (`Inner(scalars)`) -- the F2d
+        `_is_record_rvalue_source` shape, emitted as the bare `Name(args)` prvalue;
+      * an **F1-record field-read off a param** receiver (`other.g`) -- a field copy.
+
+    Own params (which move) and `self.<field>` reads (their pointee may be
+    uninitialized at MIL time -- ordering-sensitive, deferred) are excluded."""
+    analyzer = lc.analyzer
+    if isinstance(source, TpyName):
+        return (source.name not in own_param_names
+                and _f1_record(declared.get(source.name), analyzer))
+    if isinstance(source, TpyCall):
+        return _is_record_rvalue_source(source, declared, analyzer)
+    if isinstance(source, TpyFieldAccess):
+        return (isinstance(source.obj, TpyName)
+                and source.obj.name != lc.self_receiver
+                and _field_receiver_ok(source, declared, analyzer)
+                and _f1_record(analyzer.get_expr_type(source), analyzer))
+    return False
+
+
 def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
                         own_param_names: set[str], declared: dict[str, TpyType],
                         lc: _LowerCtx) -> bool:
@@ -1243,14 +1277,16 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
         moves into a record / Optional[record] field (`f(std::move(p))`); checked
         before the copy arms because the cascade applies the move first and never
         also lifts via `ptr_to_optional`.
-      * **pointer-repr `Optional[F1-record]`** copy (M3b-copy): a `None`
-        (`f(std::nullopt)`) or a non-own borrow source (`f(::tpy::ptr_to_optional(p))`)
-        -- reuses the F2b optional-write helper.
-      * **plain F1-record** copy (M3b-copy): a non-own record param, `copy()`-unwrapped
-        (`f(p)`, an implicit MIL copy).
+      * **pointer-repr `Optional[F1-record]`** (M3b-copy / -rvalue): a `None`
+        (`f(std::nullopt)`), a non-own borrow source (`f(::tpy::ptr_to_optional(p))`),
+        or a record-value source that constructs the optional directly (`f(Inner(v))`
+        / `f(other.g)` / `f(other)`).
+      * **plain F1-record** (M3b-copy / -rvalue): a record-value source --
+        `copy()`-unwrapped param copy, ctor-call rvalue, or param field-read.
 
-    Ctor-call / field-read sources (M3b-rvalue / a later rung) and every other field
-    type (bytes / tuple / union / str / list -> F3+; cross-module / native / generic
+    `copy()` is unwrapped before the Optional check too (so `self.opt = copy(m)`
+    routes like the record arm). Field types beyond scalar / record / Optional[record]
+    (bytes / tuple / union / str / list -> F3+; cross-module / native / generic
     records) leave the ctor on the AST path."""
     analyzer = lc.analyzer
     if not (isinstance(stmt, TpyAssign)
@@ -1272,25 +1308,37 @@ def _ctor_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
     if _is_move_source(source, lc, own_param_names):
         return True
     if is_opt:
-        # pointers empty: a ctor MIL has no locals, so the only borrow source the
-        # helper admits is a pointer-repr Optional[record] param (or None).
-        return _f2b_optional_field_write_ok(stmt, declared, set(), analyzer)
-    # Plain record field <- non-own record param (implicit copy).
-    return (isinstance(source, TpyName) and source.name not in own_param_names
-            and _f1_record(declared.get(source.name), analyzer))
+        # None / a non-own borrow `T*` (pointer-repr Optional param, lifts via
+        # ptr_to_optional) / a record-value source (constructs the optional directly).
+        # pointers empty: a ctor MIL has no locals.
+        return (isinstance(source, TpyNoneLiteral)
+                or _is_borrow_ptr_local(source, declared, set())
+                or _is_record_value_source(source, declared, own_param_names, lc))
+    return _is_record_value_source(source, declared, own_param_names, lc)
 
 
 def _ctor_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     """A ctor param the MIL slice can reference: the method-param set (value scalar /
-    F1-record, incl. `Own`) plus a pointer-repr `Optional[F1-record]` -- the borrow
-    source for an `Optional[record]` field's `ptr_to_optional` (the M3b cell). The
-    raw `OptionalType` shape matches what `declared` holds and `_is_borrow_ptr_local`
-    tests. The field-init gate decides per-field whether the param is used in an
-    admitted way; an unhandled use rejects the whole ctor (-> AST path)."""
+    F1-record, incl. plain `Own`) plus two Optional shapes whose record is F1 -- a
+    pointer-repr `Optional[F1-record]` (the borrow source for `ptr_to_optional`) and
+    an **own-optional** (`Own[Inner | None]` / `Optional[Own[Inner]]`, which moves
+    into an `Optional[F1-record]` field via the move arm). The raw types match what
+    `declared` holds and `_is_borrow_ptr_local` tests. The field-init gate decides
+    per-field whether the param is used in an admitted way; an unhandled use rejects
+    the whole ctor (-> AST path)."""
     if _f1_param_eligible(ptype, analyzer):
         return True
-    return (isinstance(ptype, OptionalType) and ptype.uses_pointer_repr()
-            and _f1_record(ptype.inner, analyzer))
+    if (isinstance(ptype, OptionalType) and ptype.uses_pointer_repr()
+            and _f1_record(ptype.inner, analyzer)):
+        return True
+    # Own-optional: peel Own (and the inner/outer Optional) to the underlying record.
+    own = unwrap_optional_own(unwrap_readonly(ptype)) if isinstance(ptype, TpyType) else None
+    if own is not None:
+        inner = own.wrapped
+        if isinstance(inner, OptionalType):
+            inner = inner.inner
+        return _f1_record(inner, analyzer)
+    return False
 
 
 def lower_constructor(record, init_method: TpyFunction, analyzer,
@@ -1298,20 +1346,29 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                       self_type: 'TpyType | None' = None) -> THIRConstructor | None:
     """Lower a constructor to a THIRConstructor, or None if outside the slice.
 
-    M3a slice (pure-MIL scalar, flat record): a same-module non-generic record with
-    no base class whose `__init__` body is entirely hoistable own-scalar field
-    initializers (`self.<scalar field> = <eligible scalar>`); a docstring or `pass`
-    makes it ineligible (those land in the AST's non-init body, which M3a does not
-    emit). Every initializer hoists to the member-init-list (no demotion arises), so
-    the emitted C++ ctor body is empty. The signature stays on the AST path (the M1
-    method precedent); only the MIL + body tail routes here."""
+    Same-module non-generic record, flat or with same-module F1 base(s) (M3d: each
+    `super().__init__` / `BaseN.__init__` call lowers to a base initializer, sorted by
+    parent declaration order; a direct inherited-field write goes to the body). The
+    leading run of hoistable own-field
+    initializers (the M3a/M3b field-source slice) goes to the member-init-list; the rest
+    of the body -- docstring / `pass` trivia (M3c-trivia), non-init statements, and field
+    inits that cannot hoist or follow a chain break (M3c-demotion) -- lowers through the
+    shared statement machinery (`_body_eligible` / `_lower_stmt`), the same path method
+    bodies use. The ctor routes only when every non-trivia body statement is in the slice;
+    otherwise it stays on the AST path, byte-identical. The signature stays on the AST path
+    (the M1 method precedent); only the MIL + body tail routes here."""
     if self_type is None or not _f1_record(self_type, analyzer):
         return None
-    # Flat records only: a base class needs the base-init list + inherited-field
-    # demotion (the M3d rung). Reject overloaded / native / generator / generic
-    # __init__ -- those take emit paths the tail emitter does not reproduce.
+    # M3d: same-module F1 base(s) route -- each `super().__init__` / `BaseN.__init__`
+    # call lowers to a base initializer (sorted by parent declaration order), and a
+    # direct inherited-field write goes to the body. A non-F1 base (cross-module /
+    # generic / native -- its `to_cpp()` would not match) keeps the ctor on the AST
+    # path. Reject overloaded / native / generator / generic __init__ -- those take
+    # emit paths the tail emitter does not reproduce.
     ri = analyzer.registry.get_record(record.name)
-    if ri is None or ri.parents:
+    if ri is None:
+        return None
+    if any(not _f1_record(p, analyzer) for p in ri.parents):
         return None
     if (init_method.is_overload_stub or init_method.native_function
             or init_method.is_async or init_method.is_generator
@@ -1337,26 +1394,154 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     # `analyzer.ctx.all_last_uses` through it.
     lc = _LowerCtx(init_method, analyzer, render_type, self_receiver="self",
                    record_name=record.name)
+    # Base initializers (`super().__init__` / `BaseN.__init__`), sorted by parent
+    # declaration order (M3d); None if any is outside the slice -> AST path.
+    base_inits = _lower_base_inits(init_method, ri, declared, lc)
+    if base_inits is None:
+        return None
     field_inits: list[TpyAssign] = []
+    body_stmts: list[TpyStmt] = []  # demoted inits + non-init stmts + trivia, source order
+    body_written_self_fields: set[str] = set()
+    chain_broken = False
     for stmt in init_method.body:
-        # Every statement must be a hoistable own-field init. A docstring or `pass`
-        # (or any non-init statement) lands in the AST's non_init_stmts -- a codeless
-        # but non-empty body, not `{}` -- breaking the empty-body invariant, so it is
-        # rejected (the M3c body rung), keeping the emitted body byte-identical.
-        if not _ctor_field_init_ok(stmt, own_field_names, own_param_names,
-                                   declared, lc):
-            return None
-        field_inits.append(stmt)
+        if is_base_init_call(stmt):  # handled above; breaks no chain
+            continue
+        # Docstring / `pass` (M3c-trivia): emit no code and break no hoist chain,
+        # but stay in the body so its braces are non-empty (` {\n    }`, not ` {}`).
+        if is_docstring(stmt) or isinstance(stmt, TpyPassStmt):
+            body_stmts.append(stmt)
+            continue
+        # An inherited-field write (`self.<base field> = expr`, M3d) goes to the body --
+        # the base ctor owns the MIL slot -- WITHOUT breaking the hoist chain. It is
+        # tracked so a later own-field hoist that reads it demotes (below). A property
+        # setter (also a non-own self field) lands here too and rejects via body
+        # ineligibility (`_field_receiver_ok`). NB the AST checks this only on a live
+        # chain (after `chain_broken` it demotes instead, skipping the tracking set); the
+        # divergence is inert -- once the chain is broken every later own-field init
+        # demotes regardless, so the set is never consulted.
+        if _is_self_nonown_field_assign(stmt, own_field_names):
+            body_written_self_fields.add(stmt.target.field)
+            body_stmts.append(stmt)
+            continue
+        # A leading own-field init whose (field, source) the MIL reproduces hoists.
+        # `_ctor_field_init_ok` already returns False for a non-init statement / a field
+        # init with a non-hoistable source (body-local / bare-name RHS / ineligible
+        # value), so the gate distinguishes hoist from demote. An init reading an
+        # inherited field written earlier in the body must demote (the MIL runs first,
+        # before that write) -- the `expr_reads_self_field` trigger (no-op until an
+        # inherited-field write populates the set).
+        if (not chain_broken
+                and _ctor_field_init_ok(stmt, own_field_names, own_param_names,
+                                        declared, lc)
+                and not expr_reads_self_field(stmt.value, body_written_self_fields)):
+            field_inits.append(stmt)
+            continue
+        # Demote to the body. Demoting breaks the chain (mirrors `_extract_field_inits`'s
+        # `demote()`): the MIL runs before the body, so a later otherwise-hoistable init
+        # must also demote to preserve source evaluation order.
+        chain_broken = True
+        body_stmts.append(stmt)
+    # The demoted inits + non-init statements lower through THIR's statement machinery
+    # (the trivia are admitted directly); a body statement outside the slice keeps the
+    # whole ctor on the AST path. The trivia carry no `declared`-scope growth, so the
+    # gate runs over the non-trivia subset.
+    body_non_trivia = [s for s in body_stmts
+                       if not (is_docstring(s) or isinstance(s, TpyPassStmt))]
+    if not _body_eligible(body_non_trivia, analyzer, declared, lc.prescan,
+                          in_branch=False, pointers=set(), rebind_slots=set()):
+        return None
+    body_declared = dict(declared)
     return THIRConstructor(
         record_name=record.name,
         params=tuple(THIRParam(name=n, type=t) for n, t in init_method.params),
-        mil_inits=tuple(_lower_ctor_mil_init(s, own_param_names, lc)
+        mil_inits=tuple(_lower_ctor_mil_init(s, own_param_names, declared, lc)
                         for s in field_inits),
+        base_inits=tuple(base_inits),
+        body=tuple(_lower_ctor_body_stmt(s, lc, body_declared) for s in body_stmts),
     )
 
 
+def _is_self_nonown_field_assign(stmt: TpyStmt, own_field_names: set[str]) -> bool:
+    """A `self.<field> = expr` whose field is not an own field -- an inherited-field
+    write or a property setter (M3d). The base ctor owns its slot, so the write goes
+    to the body (not the MIL), tracked so a later own-field hoist that reads it demotes."""
+    return (isinstance(stmt, TpyAssign)
+            and isinstance(stmt.target, TpyFieldAccess)
+            and isinstance(stmt.target.obj, TpyName)
+            and stmt.target.obj.name == "self"
+            and stmt.target.field not in own_field_names)
+
+
+def _lower_base_inits(init_method: TpyFunction, ri, declared: dict[str, TpyType],
+                      lc: _LowerCtx) -> 'list[THIRBaseInit] | None':
+    """Mirror `_extract_base_inits`: lower every `super().__init__` / `BaseN.__init__`
+    call to a THIRBaseInit, sorted by parent declaration order (so a multi-base list
+    emits in the order C++ runs the base ctors, avoiding -Wreorder). None if any base
+    init is outside the slice -- the whole ctor then stays on the AST path."""
+    analyzer = lc.analyzer
+    parent_order: dict[int, int] = {}
+    for idx, parent in enumerate(ri.parents):
+        p_info = analyzer.registry.get_record_for_type(parent)
+        if p_info is not None:
+            parent_order[id(p_info)] = idx
+    entries: list[tuple[int, THIRBaseInit]] = []
+    for src_idx, stmt in enumerate(init_method.body):
+        if not is_base_init_call(stmt):
+            continue
+        lowered = _lower_base_init(stmt, declared, lc)
+        if lowered is None:
+            return None
+        bi, parent_type = lowered
+        p_info = analyzer.registry.get_record_for_type(parent_type)
+        rank = (parent_order.get(id(p_info), len(parent_order) + src_idx)
+                if p_info is not None else len(parent_order) + src_idx)
+        entries.append((rank, bi))
+    entries.sort(key=lambda e: e[0])
+    return [bi for _, bi in entries]
+
+
+def _lower_base_init(stmt: TpyStmt, declared: dict[str, TpyType],
+                     lc: _LowerCtx) -> 'tuple[THIRBaseInit, TpyType] | None':
+    """Lower one base-init call to `(THIRBaseInit, parent_type)`, or None outside the
+    slice (the caller reuses `parent_type` for the parent-order rank). Mirrors
+    `_extract_base_inits`'s `{parent_type.to_cpp()}({args})` render for both the
+    `super().__init__(args)` and the explicit `BaseN.__init__(self, args)` forms (sema
+    strips `self` from the latter's args). The base must be F1 (so `to_cpp()` is
+    byte-identical) and the args eligible scalars; kwargs / star args are out."""
+    analyzer = lc.analyzer
+    expr = stmt.expr
+    # The only narrowing of `stmt.expr` to a TpyMethodCall (is_base_init_call holds at
+    # the call site, but the type system doesn't carry that) -- guards `.super_parent_type`.
+    if not isinstance(expr, TpyMethodCall):
+        return None
+    parent_type = expr.super_parent_type or expr.unbound_self_parent_type
+    if parent_type is None or not _f1_record(parent_type, analyzer):
+        return None
+    if expr.kwargs or expr.double_star_unpack is not None:
+        return None
+    if not all(_eligible_scalar(analyzer.get_expr_type(a))
+               and _expr_eligible(a, declared, analyzer) for a in expr.args):
+        return None
+    return (THIRBaseInit(base_cpp=parent_type.to_cpp(),
+                         args=tuple(_lower_expr(a, lc) for a in expr.args)),
+            parent_type)
+
+
+def _lower_ctor_body_stmt(stmt: TpyStmt, lc: _LowerCtx,
+                          declared: dict[str, TpyType]) -> THIRStmt:
+    """Lower one ctor-body statement: a docstring / `pass` to a no-op (its `loc`
+    drives the source comment as in M3c-trivia -- `pass` keeps it, a docstring
+    drops it); everything else (a demoted field init or a non-init statement)
+    through the shared `_lower_stmt`, the same machinery method bodies use."""
+    if is_docstring(stmt):
+        return THIRNoOpStmt()
+    if isinstance(stmt, TpyPassStmt):
+        return THIRNoOpStmt(loc=getattr(stmt, "loc", None))
+    return _lower_stmt(stmt, lc, declared)
+
+
 def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
-                         lc: _LowerCtx) -> THIRMilInit:
+                         declared: dict[str, TpyType], lc: _LowerCtx) -> THIRMilInit:
     """Build one member-init-list entry from a hoisted field initializer (the gate
     already admitted it). Mirrors the record/Optional arms of `_extract_field_inits`:
 
@@ -1364,8 +1549,10 @@ def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
         `ptr_to_optional`, per the cascade) [M3b-move];
       * a **scalar** -> the lowered value [M3a];
       * a pointer-repr **Optional[F1-record]** -> a STORAGE `None` literal
-        (`std::nullopt`) or the borrow->storage `ptr_to_optional` convert (copy) [M3b-copy];
-      * a plain **F1-record** -> the `copy()`-unwrapped source (implicit copy) [M3b-copy]."""
+        (`std::nullopt`), a non-own borrow `T*` lifted via `ptr_to_optional` [M3b-copy],
+        or a record-value source (ctor-call / field-read / param copy) that constructs
+        the optional directly [M3b-rvalue];
+      * a plain **F1-record** -> the `copy()`-unwrapped record-value source [M3b-copy/-rvalue]."""
     analyzer = lc.analyzer
     ftype = analyzer.get_expr_type(stmt.target)
     loc = getattr(stmt, "loc", None)
@@ -1376,12 +1563,16 @@ def _lower_ctor_mil_init(stmt: TpyAssign, own_param_names: set[str],
     if _eligible_scalar(ftype):
         return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(stmt.value, lc))
     if isinstance(ftype, OptionalType):
-        if isinstance(stmt.value, TpyNoneLiteral):
+        if isinstance(source, TpyNoneLiteral):
             v: THIRExpr = THIRLiteral(result_type=ftype, value=None,
                                       form=Form.STORAGE, loc=loc)
-        else:
-            v = THIRFormConvert(result_type=ftype, value=_lower_expr(stmt.value, lc),
+        elif _is_borrow_ptr_local(source, declared, set()):
+            v = THIRFormConvert(result_type=ftype, value=_lower_expr(source, lc),
                                 form=Form.STORAGE, move=False, loc=loc)
+        else:
+            # A record-value source constructs the optional directly -- no
+            # ptr_to_optional (that lifts a borrow `T*`, not a record prvalue/copy).
+            v = _lower_expr(source, lc)
         return THIRMilInit(field_cpp=field_cpp, value=v)
     return THIRMilInit(field_cpp=field_cpp, value=_lower_expr(source, lc))
 
