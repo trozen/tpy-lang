@@ -46,6 +46,9 @@ PyObject *PyObject_Call(PyObject *callable, PyObject *args, PyObject *kwargs);
 PyObject *Py_BuildValue(const char *format, ...);
 PyObject *PyDict_New(void);
 int PyDict_SetItemString(PyObject *dp, const char *key, PyObject *item);
+// Enum value marshalling: an @export enum param checks the arg is an instance
+// of the module's enum type (1 / 0 / -1-on-error) before reading its `.value`.
+int PyObject_IsInstance(PyObject *inst, PyObject *cls);
 
 // Heap-type creation for exposed classes. PyType_FromSpec builds the type from
 // the slot table; the resulting type's tp_alloc is PyType_GenericAlloc (used by

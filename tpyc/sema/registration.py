@@ -475,7 +475,7 @@ class TypeRegistrar:
         cpp_member_names = tuple(
             (k, v) for k, v in enum.cpp_member_names.items()
         )
-        attach_dynamic_type_def(
+        enum_td = attach_dynamic_type_def(
             qname,
             TypeCategory.ENUM,
             enum=EnumInfo(
@@ -491,6 +491,12 @@ class TypeRegistrar:
             ),
             is_value_type=True,
         )
+        # An `@export` enum crosses the CPython boundary as a value (its member's
+        # int round-trips through the module's enum type); mark its TypeDef so
+        # is_boundary_marshallable admits it as an @export param/return, the same
+        # per-type fact exposed classes and scalars use.
+        if enum.exposed_to_host:
+            enum_td.boundary_marshal = True
 
     _INT_ENUM_UNDERLYING_MAP: dict[str, TpyType] = {
         "int": INT32,

@@ -18,8 +18,8 @@ from typing import TYPE_CHECKING, TextIO
 from ..parse import TpyModule, TpyVarDecl
 from ..typesys import TpyType, is_void_like_type, FinalType
 from ..type_def_registry import (
-    is_boundary_marshallable, is_exposed_class, _boundary_inner, enum_info_of,
-    is_str_view_type, boundary_cpp_type, boundary_unmarshallable_msg,
+    is_boundary_marshallable, is_exposed_class, is_exposed_enum, _boundary_inner,
+    enum_info_of, is_str_view_type, boundary_cpp_type, boundary_unmarshallable_msg,
 )
 from .context import (
     qualified_cpp_name, escape_cpp_name, module_to_include_path, CodeGenError)
@@ -175,6 +175,15 @@ class ExtensionGenerator:
         cpp = qualified_cpp_name(self.ctx.module_name, info.name)
         return cpp, f"{sym}__type_{escape_cpp_name(info.name)}"
 
+    def _enum_cpp_var(self, typ: TpyType, sym: str) -> tuple[str, str]:
+        """For an exposed-enum param/return type, the qualified C++ `enum class`
+        name and the module-static PyObject* holding its CPython enum type. The
+        enum is defined in this module (cross-module is rejected by the
+        validator), so the cpp name and handle match the type-creation site."""
+        name = _boundary_inner(typ).name
+        cpp = qualified_cpp_name(self.ctx.module_name, name)
+        return cpp, f"{sym}__enum_{escape_cpp_name(name)}"
+
     def _emit_arg_unpack(self, out: TextIO, param_names: list[str],
                          fail_ret: str, fn_label: str) -> None:
         """Emit the keyword-aware unpack prologue for a wrapper with >=1 param:
@@ -211,6 +220,10 @@ class ExtensionGenerator:
             out.write(f"        {cpp} &__p{idx} = "
                       f"*::tpy::interop::instance_payload<{cpp}>("
                       f"a{idx}, (::tpy::cpy::PyTypeObject *){tv});\n")
+        elif is_exposed_enum(typ):
+            cpp, ev = self._enum_cpp_var(typ, sym)
+            out.write(f"        {cpp} __p{idx} = "
+                      f"::tpy::interop::enum_from_py<{cpp}>(a{idx}, {ev});\n")
         else:
             cpp = boundary_cpp_type(_boundary_inner(typ))
             out.write(f"        {cpp} __p{idx} = "
@@ -229,6 +242,14 @@ class ExtensionGenerator:
             _cpp, tv = self._class_cpp_var(ret_typ, sym)
             out.write(f"        return ::tpy::interop::instance_to_py("
                       f"(::tpy::cpy::PyTypeObject *){tv}, {call_expr});\n")
+        elif is_exposed_enum(ret_typ):
+            _cpp, ev = self._enum_cpp_var(ret_typ, sym)
+            # Cast to the enum's underlying int (not long long) so enum_to_py
+            # picks the signed/unsigned Py_BuildValue format -- a UInt64 member
+            # above INT64_MAX must cross unsigned, not wrap to a negative.
+            und = enum_info_of(_boundary_inner(ret_typ)).underlying_type.to_cpp()
+            out.write(f"        return ::tpy::interop::enum_to_py({ev}, "
+                      f"static_cast<{und}>({call_expr}));\n")
         else:
             out.write(f"        return ::tpy::interop::to_py({call_expr});\n")
 
@@ -387,7 +408,8 @@ class ExtensionGenerator:
     def _emit_enum_create(self, out: TextIO, e: dict, module_name: str) -> None:
         """Emit the PyInit_ block that builds one @export enum's value dict and
         recreates it as a CPython IntEnum/Enum (make_enum), then adds it to the
-        module. Runs with `__m` live (and inside the PyInit_ try block)."""
+        module and retains the module-static handle for the .so's lifetime (the
+        value marshallers reference it). Runs with `__m` live (inside the try)."""
         und = e["underlying"]
         adds = " ||\n            ".join(
             f'::tpy::interop::enum_dict_add(__d, "{name}", '
@@ -400,17 +422,20 @@ class ExtensionGenerator:
         out.write(f"            if ({adds}) {{\n")
         out.write("                ::tpy::cpy::Py_DecRef(__d); "
                   "::tpy::cpy::Py_DecRef(__m); return nullptr;\n            }\n")
-        out.write(f'            PyObject *{e["var"]} = ::tpy::interop::make_enum('
+        out.write(f'            {e["var"]} = ::tpy::interop::make_enum('
                   f'"{e["simple"]}", "{module_name}", '
                   f'{"true" if e["is_int_enum"] else "false"}, __d);\n')
         out.write(f"            ::tpy::cpy::Py_DecRef(__d);\n")
         out.write(f'            if (!{e["var"]}) {{ ::tpy::cpy::Py_DecRef(__m); '
                   f"return nullptr; }}\n")
+        # On success the module-static handle keeps its make_enum reference alive
+        # (like the exposed-class type handles) and AddObjectRef adds the module
+        # dict's own; on failure AddObjectRef took no ref, so release the handle's
+        # before bailing (else a repeated failed init strands it).
         out.write(f'            if (::tpy::cpy::PyModule_AddObjectRef(__m, '
                   f'"{e["simple"]}", {e["var"]}) < 0) {{ '
                   f'::tpy::cpy::Py_DecRef({e["var"]}); '
                   f"::tpy::cpy::Py_DecRef(__m); return nullptr; }}\n")
-        out.write(f'            ::tpy::cpy::Py_DecRef({e["var"]});\n')
         out.write("        }\n")
 
     def _emit_constant_add(self, out: TextIO, c: dict) -> None:
@@ -471,13 +496,15 @@ class ExtensionGenerator:
             out.write(f"::tpy::interop::ExcRegistry {registry};\n\n")
         reg_arg = f", {registry}" if registry else ""
 
-        # Module-static handle to each exposed class's CPython type, assigned at
-        # PyInit_ (PyType_FromSpec). Declared up front so the function/method
-        # wrappers can reference a class-typed param/return's type before its
-        # PyType_FromSpec call appears.
+        # Module-static handle to each exposed class's / enum's CPython type,
+        # assigned at PyInit_. Declared up front so a wrapper can reference a
+        # class- or enum-typed param/return's type (instance_payload / enum value
+        # marshalling) before the type-creation call appears below.
         for cls in exposed_classes:
             out.write(f"PyObject *{cls['var']} = nullptr;\n")
-        if exposed_classes:
+        for e in exposed_enums:
+            out.write(f"PyObject *{e['var']} = nullptr;\n")
+        if exposed_classes or exposed_enums:
             out.write("\n")
 
         def assert_marshal(t, what: str, fn) -> None:

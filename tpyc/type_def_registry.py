@@ -573,6 +573,18 @@ def is_exposed_class(t: "TpyType | None") -> "bool":
     return td is not None and td.record is not None and td.record.exposed_to_host
 
 
+def is_exposed_enum(t: "TpyType | None") -> "bool":
+    """True if `t` resolves to an `@export` enum (exposed in an ext_module as a
+    CPython enum type). Distinguishes an enum-value boundary (marshalled member
+    <-> C++ enum via enum_bridge) from the scalar boundary at the glue emit site.
+    `boundary_marshal` is set on the enum's TypeDef only when it is exposed, so
+    a non-exposed enum (no CPython type to round-trip through) is not admitted."""
+    if t is None:
+        return False
+    td = type_def_of(_boundary_inner(t))
+    return td is not None and td.enum is not None and td.boundary_marshal
+
+
 def boundary_cpp_type(t: "TpyType | None") -> str:
     # The boundary cpp type used only to render the unmarshallable diagnostic (a
     # missing return type is 'void'); admission is is_boundary_marshallable.
@@ -589,7 +601,7 @@ def boundary_unmarshallable_msg(name: str, what: str, cpp: str,
     return (f"@export {kind} '{name}': {what} type '{cpp}' is not yet "
             f"marshallable across the CPython boundary "
             f"(supported: the fixed-width int types, int, float, bool, str, "
-            f"bytes, and @export classes defined in this module)")
+            f"bytes, and @export classes/enums defined in this module)")
 
 
 # Single-qname primitive predicates.

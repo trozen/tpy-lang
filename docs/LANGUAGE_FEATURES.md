@@ -6010,9 +6010,18 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   enum (its values come from C++) or a nested enum (only top-level module enums
   are exposed). A `Final` constant of a non-boundary type (`Char`, `tuple`, ...)
   is simply not part of the exposed surface -- like a non-`@export` function, it
-  isn't on the `.so`. Deferred (tracked in `TODO.md`): enum *values* as
-  function param/return types, nested/cross-module enums, `bytes`/`BytesView`
-  constants.
+  isn't on the `.so`. An exposed enum is also a valid `@export` **function
+  param/return type**: the value crosses as its CPython member (`def f(c: Color)
+  -> Color` receives/returns a `mymod.Color` member). IN marshalling is strict
+  by type -- the arg must be an instance of the enum (`enum_from_py` reads its
+  `.value`), so a bare int is rejected with `TypeError` even when its value
+  matches a member; this differs from a lenient `int` param (which accepts an
+  `IntEnum` member via `__index__`) and from the untyped Python source (where the
+  annotation is a hint and `f(1)` runs). OUT marshalling reconstructs the member
+  via `Color(value)`, preserving singleton identity. Deferred (tracked in
+  `TODO.md`): nested/cross-module enums (a cross-module enum param is a located
+  error), `bytes`/`BytesView` constants, and `int(enum)` conversion inside a
+  body (orthogonal to the boundary).
 - **Planned**: zero-copy `str`/`bytes` view input (`StrView`/`BytesView` via
   the phase-3.5 foreign-borrow primitive), faithful data-field crossing for
   user exception classes (the same per-instance field marshalling), class-typed

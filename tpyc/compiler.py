@@ -3925,8 +3925,8 @@ class Compiler:
                 checks += [(ptype, f"parameter '{pname}'", "param")
                            for pname, ptype in func.params]
                 for typ, what, role in checks:
-                    form_err = self._exposed_class_form_error(
-                        typ, role, compiled.analyzer.registry)
+                    form_err = self._exposed_form_error(
+                        typ, role, compiled.analyzer.registry, compiled)
                     if form_err is not None:
                         raise CompileError(
                             f"@export function '{func.name}': {what} {form_err}",
@@ -4005,7 +4005,7 @@ class Compiler:
         reg = compiled.analyzer.registry
 
         def check(typ, what: str, role: str) -> None:
-            form_err = self._exposed_class_form_error(typ, role, reg)
+            form_err = self._exposed_form_error(typ, role, reg, compiled)
             if form_err is not None:
                 reject(f"{what} {form_err}")
             if is_boundary_marshallable(typ, role == "return"):
@@ -4082,10 +4082,11 @@ class Compiler:
                     "CPython boundary yet")
         return None
 
-    def _exposed_class_form_error(self, typ, role: str, registry) -> 'str | None':
-        """Diagnose an exposed-class boundary type the glue cannot emit, so a
-        located error replaces an opaque C++ failure. role in {field,param,
-        return}. Returns the message tail or None.
+    def _exposed_form_error(self, typ, role: str, registry,
+                            compiled: 'CompiledModule') -> 'str | None':
+        """Diagnose an exposed-class or exposed-enum boundary type the glue
+        cannot emit, so a located error replaces an opaque C++ failure. role in
+        {field,param,return}. Returns the message tail or None.
 
           - a getset *field* of exposed-class type: the getter would need
             per-instance marshalling of a nested class (deferred);
@@ -4094,9 +4095,30 @@ class Compiler:
             payload;
           - a `@nocopy` class *returned by reference* (`-> Cls`): the boundary
             copies the value out, but the copy ctor is deleted.
+          - an exposed enum defined in *another* module: its CPython type handle
+            lives in that module's glue, not this one, so the value marshallers
+            here have nothing to reference (cross-module exposed types deferred).
+          - an exposed enum as a getset *field*: the getset path marshals scalars
+            via to_py/from_py, which have no enum overload (enums cross only as
+            function params/returns, via enum_to_py/enum_from_py).
         """
         from .typesys import OwnType, RefType
-        from .type_def_registry import is_exposed_class, _boundary_inner
+        from .type_def_registry import (
+            is_exposed_class, is_exposed_enum, _boundary_inner)
+        if is_exposed_enum(typ):
+            # Only enums DEFINED + @export-ed in this module get a handle in this
+            # glue TU; an imported exposed enum is admitted by the shared
+            # boundary_marshal fact but would reference an undeclared handle.
+            local = {e.name for e in compiled.ast.enums if e.exposed_to_host}
+            if _boundary_inner(typ).name not in local:
+                return ("is an exposed enum from another module, which cannot "
+                        "cross the boundary yet (cross-module exposed types are "
+                        "deferred -- define and @export the enum in this module)")
+            if role == "field":
+                return ("is an exposed-enum getset field, which is not supported "
+                        "yet (an enum crosses only as a function param/return, "
+                        "not as a class field)")
+            return None
         if not is_exposed_class(typ):
             return None
         info = registry.get_record_for_type(_boundary_inner(typ))

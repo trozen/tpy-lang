@@ -14,7 +14,10 @@
 // `enum`, picks IntEnum vs Enum, and calls it. Every path leaves the Python
 // error state set on failure and never leaks a reference.
 
+#include <type_traits>
+
 #include "tpy/interop/cpython_h.hpp"
+#include "tpy/interop/marshal.hpp"  // from_py / to_py + MarshalError (value crossing)
 
 namespace tpy::interop {
 
@@ -51,6 +54,50 @@ inline cpy::PyObject *make_enum(const char *name, const char *module,
     if (kwargs) cpy::Py_DecRef(kwargs);
     cpy::Py_DecRef(base);
     return cls;
+}
+
+// Marshal a CPython enum member into the C++ `enum class E` (an @export param).
+// The arg must be an instance of `enum_type` (the module's CPython enum) -- a
+// bare int with the right value is rejected (TypeError), unlike a lenient `int`
+// param: TPy must convert to a concrete enumerator, so the boundary is by-type.
+// Reads `.value` (uniform for IntEnum and plain Enum, whose member is not itself
+// an int) and casts the underlying integer.
+template <class E>
+inline E enum_from_py(cpy::PyObject *o, cpy::PyObject *enum_type) {
+    if (cpy::PyObject_IsInstance(o, enum_type) != 1) {
+        if (!cpy::PyErr_Occurred())
+            cpy::PyErr_SetString(cpy::PyExc_TypeError,
+                                 "expected an enum member of this type");
+        throw MarshalError{};
+    }
+    cpy::PyObject *v = cpy::PyObject_GetAttrString(o, "value");
+    if (!v) throw MarshalError{};
+    // A member's `.value` is always an in-range int for a closed TPy enum, so
+    // from_py cannot throw here -- hence no try/decref guard around it.
+    auto raw = from_py<std::underlying_type_t<E>>(v);
+    cpy::Py_DecRef(v);
+    return static_cast<E>(raw);
+}
+
+// Marshal a C++ `enum class` value out as the corresponding CPython member:
+// `EnumType(value)`. TPy enums are closed (no aliases, every value declared), so
+// the lookup always resolves to a member -- never None/ValueError. Returns a new
+// reference (or null with the error set if construction somehow fails). Templated
+// on the enum's underlying integer type so a UInt64 enum value above INT64_MAX
+// crosses unsigned ("(K)") instead of wrapping to a negative `long long` ("(L)")
+// -- which would build a value the closed enum has no member for.
+template <class U>
+inline cpy::PyObject *enum_to_py(cpy::PyObject *enum_type, U value) {
+    cpy::PyObject *args;
+    if constexpr (std::is_unsigned_v<U> && sizeof(U) == 8) {
+        args = cpy::Py_BuildValue("(K)", static_cast<unsigned long long>(value));
+    } else {
+        args = cpy::Py_BuildValue("(L)", static_cast<long long>(value));
+    }
+    if (!args) return nullptr;
+    cpy::PyObject *member = cpy::PyObject_Call(enum_type, args, nullptr);
+    cpy::Py_DecRef(args);
+    return member;
 }
 
 }  // namespace tpy::interop

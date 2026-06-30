@@ -1,0 +1,1 @@
+main.py:16: error: @export class 'Holder': field 'c' is an exposed-enum getset field, which is not supported yet (an enum crosses only as a function param/return, not as a class field)

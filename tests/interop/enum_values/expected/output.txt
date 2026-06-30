@@ -1,0 +1,15 @@
+<Color.GREEN: 2>
+True
+<Color.RED: 1>
+<Color.INVALID: -1>
+RED 1 True
+<Shape.SQUARE: 2>
+True
+<Shape.CIRCLE: 1>
+9223372036854775808
+True
+True
+<Color.GREEN: 2>
+True
+True False
+True

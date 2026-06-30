@@ -7,6 +7,9 @@
 namespace {
 using namespace ::tpy::cpy;
 
+PyObject *enums__enum_Color = nullptr;
+PyObject *enums__enum_Direction = nullptr;
+
 PyMethodDef enums__methods[] = {
     {nullptr, nullptr, 0, nullptr},
 };
@@ -34,11 +37,10 @@ extern "C" PyObject *PyInit_enums(void) {
             ::tpy::interop::enum_dict_add(__d, "BLUE", ::tpy::interop::to_py(static_cast<int32_t>(4))) < 0) {
                 ::tpy::cpy::Py_DecRef(__d); ::tpy::cpy::Py_DecRef(__m); return nullptr;
             }
-            PyObject *enums__enum_Color = ::tpy::interop::make_enum("Color", "enums", true, __d);
+            enums__enum_Color = ::tpy::interop::make_enum("Color", "enums", true, __d);
             ::tpy::cpy::Py_DecRef(__d);
             if (!enums__enum_Color) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
             if (::tpy::cpy::PyModule_AddObjectRef(__m, "Color", enums__enum_Color) < 0) { ::tpy::cpy::Py_DecRef(enums__enum_Color); ::tpy::cpy::Py_DecRef(__m); return nullptr; }
-            ::tpy::cpy::Py_DecRef(enums__enum_Color);
         }
         {
             PyObject *__d = ::tpy::cpy::PyDict_New();
@@ -49,11 +51,10 @@ extern "C" PyObject *PyInit_enums(void) {
             ::tpy::interop::enum_dict_add(__d, "WEST", ::tpy::interop::to_py(static_cast<int32_t>(3))) < 0) {
                 ::tpy::cpy::Py_DecRef(__d); ::tpy::cpy::Py_DecRef(__m); return nullptr;
             }
-            PyObject *enums__enum_Direction = ::tpy::interop::make_enum("Direction", "enums", false, __d);
+            enums__enum_Direction = ::tpy::interop::make_enum("Direction", "enums", false, __d);
             ::tpy::cpy::Py_DecRef(__d);
             if (!enums__enum_Direction) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
             if (::tpy::cpy::PyModule_AddObjectRef(__m, "Direction", enums__enum_Direction) < 0) { ::tpy::cpy::Py_DecRef(enums__enum_Direction); ::tpy::cpy::Py_DecRef(__m); return nullptr; }
-            ::tpy::cpy::Py_DecRef(enums__enum_Direction);
         }
         ::tpyapp::enums::__tpy_init();
         return __m;
