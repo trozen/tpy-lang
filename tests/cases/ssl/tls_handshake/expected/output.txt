@@ -1,0 +1,7 @@
+handshake: TLSv1.3
+server got: hello tls
+sent: 2
+server got2: AB
+server eof: True
+verify rejected mismatched hostname
+no-verify handshake: TLSv1.3

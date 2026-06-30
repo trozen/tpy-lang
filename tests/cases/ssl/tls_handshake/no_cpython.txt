@@ -1,0 +1,4 @@
+Drives a real mbedTLS handshake over socketpair with an internal server peer
+(ssl._wrap_server) -- no CPython equivalent (CPython's ssl needs a real
+server / threads to handshake here, which the suite avoids). TLS correctness
+is validated by the exec phase (real crypto), not cpy parity.

@@ -54,6 +54,15 @@ def _source_files(lib: ThirdPartyLib) -> list[Path]:
                 f"(listed in {manifest})"
             )
         paths.append(p)
+    # TPy-owned C glue (the ssl module's FFI surface). Compiled here, with the
+    # vendored mbedTLS sources, so it links only when mbedTLS is active and gets
+    # the same include flags -- not via discover_runtime_cpp_sources (which is
+    # always-on and globs .cpp, so this .c is skipped there).
+    runtime_cpp = lib.bundled_source_dir.parent.parent
+    shim = runtime_cpp / "src" / "stdlib" / "mbedtls_shim.c"
+    if not shim.is_file():
+        raise FileNotFoundError(f"{lib.name}: shim not found at {shim}")
+    paths.append(shim)
     return paths
 
 

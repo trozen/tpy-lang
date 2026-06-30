@@ -1,9 +1,11 @@
 # SSL / HTTPS-client design
 
-Status: **design approved, implementation not started.** This document is
-the contract for adding HTTPS client support to TurboPython via a new
-`ssl` module backed by a vendored TLS library. It is a multi-increment
-track on branch `feat-ssl-https`.
+Status: **in progress.** Increments 0-1 (probes, mbedTLS vendoring + build
+wiring) merged to master; Increment 2 (the `ssl` module core: SSLContext /
+SSLSocket / verifying client + handshake test) is built. Remaining:
+`makefile()` + the BufferedReader `Box[RawBinaryIO]` refactor + `Rc`-session
+(step 3), `HTTPSConnection` (step 4), requests/urlopen https + a bundled CA
+store (step 5). This document is the contract for the whole track.
 
 ## Goal
 
