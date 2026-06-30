@@ -1,22 +1,32 @@
 # http.client -- a minimal HTTP/1.1 client (pure TPy).
 #
-# Scope (v1): plaintext HTTP only (no TLS/HTTPSConnection -- needs `ssl`),
-# the high-level request()/getresponse() flow (no incremental
-# putrequest/putheader/endheaders), bytes request bodies (no str/file/iterable),
-# and response bodies framed by Content-Length, chunked transfer-encoding, or
-# connection-close. Reads go through io.BufferedReader over a dup of the socket
-# fd (socket.makefile): the request is written via the socket, the response
-# read via the reader. `getheader`/`getheaders` replace CPython's
+# Scope (v1): HTTP/1.1 over plaintext (HTTPConnection) and TLS
+# (HTTPSConnection, via `ssl`); the high-level request()/getresponse() flow
+# (no incremental putrequest/putheader/endheaders), bytes request bodies (no
+# str/file/iterable), and response bodies framed by Content-Length, chunked
+# transfer-encoding, or connection-close. Reads go through io.BufferedReader
+# over the connection's makefile(): the request is written via the socket,
+# the response read via the reader. `getheader`/`getheaders` replace CPython's
 # email.message-backed `.headers` object (which is not reproduced here).
+#
+# Both connection classes satisfy the @dynamic `_Connection` protocol so a
+# caller (requests/urllib) can hold either behind one `Box[_Connection]` and
+# dispatch request/getresponse/close virtually -- TPy method overrides are
+# static, so a plain subclass would not dispatch through a base reference.
+# HTTPSConnection imports `ssl`, so any program importing http.client links
+# the TLS backend (mbedTLS) -- discovery + managed-linking are import-driven
+# at module granularity, with no per-symbol use-driven scoping.
 # tpy: cpp_namespace("tpystd::http::client")
 from __future__ import annotations
-from typing import Final
-from tpy import Int32, Own, String
+from typing import Final, Protocol
+from tpy import Int32, Own, String, dynamic, copy
 import socket
+import ssl
 from io import BufferedReader
 
 
 HTTP_PORT: Final[Int32] = 80
+HTTPS_PORT: Final[Int32] = 443
 
 
 class HTTPException(Exception):
@@ -277,6 +287,78 @@ class HTTPResponse:
         self.close()
 
 
+def _content_length(method: str, body: bytes | None) -> int:
+    if body is not None:
+        return len(body)
+    m = method.upper()
+    if m == "POST" or m == "PUT" or m == "PATCH":
+        return 0
+    return -1
+
+
+def _build_request(method: str, url: str, body: bytes | None,
+                   headers: dict[str, str] | None,
+                   host: str, port: Int32, default_port: Int32) -> bytes:
+    """Serialize a request line + headers + body. Shared by HTTPConnection
+    and HTTPSConnection (which don't share an inheritance chain -- see the
+    _Connection protocol note); `default_port` is the scheme's default (80 /
+    443), omitted from the Host header like CPython."""
+    lines: list[str] = []
+    lines.append(method + " " + url + " HTTP/1.1")
+    has_host = False
+    has_ae = False
+    has_cl = False
+    has_te = False
+    if headers is not None:
+        # .items() not bare `for k in headers`: key-iteration over a
+        # narrowed Optional dict miscompiles to an empty loop (BUGS.md).
+        for k, v in headers.items():
+            kl = k.lower()
+            if kl == "host":
+                has_host = True
+            elif kl == "accept-encoding":
+                has_ae = True
+            elif kl == "content-length":
+                has_cl = True
+            elif kl == "transfer-encoding":
+                has_te = True
+    if not has_host:
+        if port == default_port:
+            lines.append("Host: " + host)
+        else:
+            lines.append("Host: " + host + ":" + str(port))
+    if not has_ae:
+        lines.append("Accept-Encoding: identity")
+    if not has_cl and not has_te:
+        cl = _content_length(method, body)
+        if cl >= 0:
+            lines.append("Content-Length: " + str(cl))
+    if headers is not None:
+        for k, v in headers.items():
+            lines.append(k + ": " + v)
+    data = b""
+    for ln in lines:
+        data = data + ln.encode() + b"\r\n"
+    data = data + b"\r\n"
+    if body is not None:
+        data = data + body
+    return data
+
+
+@dynamic
+class _Connection(Protocol):
+    """The connection surface a caller (requests/urllib) drives. Both
+    HTTPConnection and HTTPSConnection satisfy it, so a caller can hold either
+    behind one `Box[_Connection]` and dispatch virtually -- the workaround for
+    TPy's static method dispatch (a base-typed reference to a subclass would
+    call the base method)."""
+    def connect(self) -> None: ...
+    def request(self, method: str, url: str, body: bytes | None = None,
+                headers: dict[str, str] | None = None) -> None: ...
+    def getresponse(self) -> Own[HTTPResponse]: ...
+    def close(self) -> None: ...
+
+
 class HTTPConnection:
     """A single plaintext HTTP/1.1 connection to (host, port)."""
 
@@ -303,61 +385,11 @@ class HTTPConnection:
                 headers: dict[str, str] | None = None) -> None:
         self.connect()
         self._method = method
-        data = self._build_request(method, url, body, headers)
+        data = _build_request(method, url, body, headers, self.host,
+                              self.port, HTTP_PORT)
         if self.sock is None:
             raise HTTPException("Connection not established")
         self.sock.sendall(data)
-
-    def _content_length(self, method: str, body: bytes | None) -> int:
-        if body is not None:
-            return len(body)
-        m = method.upper()
-        if m == "POST" or m == "PUT" or m == "PATCH":
-            return 0
-        return -1
-
-    def _build_request(self, method: str, url: str, body: bytes | None,
-                       headers: dict[str, str] | None) -> bytes:
-        lines: list[str] = []
-        lines.append(method + " " + url + " HTTP/1.1")
-        has_host = False
-        has_ae = False
-        has_cl = False
-        has_te = False
-        if headers is not None:
-            # .items() not bare `for k in headers`: key-iteration over a
-            # narrowed Optional dict miscompiles to an empty loop (BUGS.md).
-            for k, v in headers.items():
-                kl = k.lower()
-                if kl == "host":
-                    has_host = True
-                elif kl == "accept-encoding":
-                    has_ae = True
-                elif kl == "content-length":
-                    has_cl = True
-                elif kl == "transfer-encoding":
-                    has_te = True
-        if not has_host:
-            if self.port == HTTP_PORT:
-                lines.append("Host: " + self.host)
-            else:
-                lines.append("Host: " + self.host + ":" + str(self.port))
-        if not has_ae:
-            lines.append("Accept-Encoding: identity")
-        if not has_cl and not has_te:
-            cl = self._content_length(method, body)
-            if cl >= 0:
-                lines.append("Content-Length: " + str(cl))
-        if headers is not None:
-            for k, v in headers.items():
-                lines.append(k + ": " + v)
-        data = b""
-        for ln in lines:
-            data = data + ln.encode() + b"\r\n"
-        data = data + b"\r\n"
-        if body is not None:
-            data = data + body
-        return data
 
     def getresponse(self) -> Own[HTTPResponse]:
         if self.sock is None:
@@ -370,3 +402,64 @@ class HTTPConnection:
         if self.sock is not None:
             self.sock.close()
             self.sock = None
+
+
+class HTTPSConnection:
+    """A single HTTP/1.1 connection over TLS -- HTTPConnection's flow run
+    through an `ssl.SSLSocket` instead of a bare socket.
+
+    Secure by default: with no `context`, an `ssl.create_default_context()`
+    verifies the chain and checks the hostname (so it needs a trust store --
+    `ssl` has no bundled CA bundle yet, so a real server requires a context
+    with `load_verify_locations`). A sibling of HTTPConnection, not a subclass
+    (TPy's static dispatch would not route a base reference here); both satisfy
+    `_Connection` for virtual dispatch through a `Box[_Connection]`.
+    """
+    host: str
+    port: Int32
+    timeout: float | None
+    _context: ssl.SSLContext
+    _tls: ssl.SSLSocket | None
+    _method: str
+
+    def __init__(self, host: str, port: Int32 = HTTPS_PORT,
+                 timeout: float | None = None,
+                 context: ssl.SSLContext | None = None) -> None:
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+        # A caller-supplied context is captured by value (copied) -- it is a
+        # small config record (verify mode + hostname flag + CA path), so the
+        # connection snapshots its settings rather than aliasing the caller's.
+        self._context = (copy(context) if context is not None
+                         else ssl.create_default_context())
+        self._tls = None
+        self._method = ""
+
+    def connect(self) -> None:
+        if self._tls is None:
+            sock = socket.create_connection((self.host, self.port),
+                                            self.timeout)
+            self._tls = self._context.wrap_socket(sock, self.host)
+
+    def request(self, method: str, url: str, body: bytes | None = None,
+                headers: dict[str, str] | None = None) -> None:
+        self.connect()
+        self._method = method
+        data = _build_request(method, url, body, headers, self.host,
+                              self.port, HTTPS_PORT)
+        if self._tls is None:
+            raise HTTPException("Connection not established")
+        self._tls.sendall(data)
+
+    def getresponse(self) -> Own[HTTPResponse]:
+        if self._tls is None:
+            raise HTTPException("Connection not established")
+        resp = HTTPResponse(self._tls.makefile(), self._method)
+        resp.begin()
+        return resp
+
+    def close(self) -> None:
+        if self._tls is not None:
+            self._tls.close()
+            self._tls = None

@@ -163,7 +163,7 @@ Examples of the policy in action:
 | [`subprocess`](#subprocess) | P1 | Blocked | 0% | -- | Needs process spawning |
 | [`socket`](#socket) | P1 | Partial | ~75% | pure + C | IPv4 TCP client/server (blocking + non-blocking via `setblocking`), `socketpair`, `create_connection`/`create_server`, `send`/`recv`/`sendall`/`shutdown`/`setsockopt_int`/`getsockopt_int`/`getsockname`/`getpeername`, `gethostbyname`, context-manager, `SocketError`/`BlockingIOError` (subclass `OSError`); errno maps to the PEP 3151 `ConnectionError` subclasses (`BrokenPipeError` on EPIPE -- a write to a hung-up peer raises this rather than killing the process, the runtime ignores `SIGPIPE` at startup; `ConnectionResetError`/`ConnectionRefusedError`/`ConnectionAbortedError` on ECONNRESET/ECONNREFUSED/ECONNABORTED), matching CPython. `settimeout`/`gettimeout`/`getblocking` timeout mode (recv/send via SO_RCVTIMEO/SO_SNDTIMEO, connect via a poll wait; timeout -> `TimeoutError`, now an `OSError` subclass). `makefile("rb")` -> `io.BufferedReader` (timeout-aware). `create_connection(addr, timeout=)`. Backed by `_bindings.posix_socket` + `socket_impl.cpp`. Missing: IPv6/`AF_INET6`, `AF_UNIX`, `sendto`/`recvfrom`/`recv_into`, full `getaddrinfo`, `makefile` text/write modes, `setdefaulttimeout`, accept-under-timeout, TLS/`ssl`, Windows |
 | [`http`](#httpclient) | P2 | Partial | ~60% | pure | `HTTPStatus` (full IntEnum code set; `.value`/`.name`/value-lookup/int-compare; no `.phrase`/`.description`/`.is_*` -- enum can't carry per-member data). Missing: `HTTPMethod` enum |
-| [`http.client`](#httpclient) | P2 | Partial | ~55% | pure | Plaintext HTTP/1.1: `HTTPConnection.request`/`getresponse`/`connect`/`close`, `HTTPResponse` (`status`/`reason`/`version`/`read`/`getheader`/`getheaders`), `HTTPException`/`BadStatusLine`/`UnknownProtocol`. Auto Host/Accept-Encoding/Content-Length (CPython byte-order); body framing via Content-Length, chunked, and connection-close. Reads through `socket.makefile` -> `io.BufferedReader`. `HTTPConnection(host, port, timeout=)` threads a socket timeout through `create_connection`. Missing: HTTPS/`ssl`, low-level putrequest/putheader, str/file/iterable bodies, `email.message`-style `.headers`, redirects/proxy/connection-reuse (see TODO.md) |
+| [`http.client`](#httpclient) | P2 | Partial | ~60% | pure | HTTP/1.1 over plaintext (`HTTPConnection`) and TLS (`HTTPSConnection`, via `ssl` -- secure-default context, `context=` override, default port 443): `request`/`getresponse`/`connect`/`close`, `HTTPResponse` (`status`/`reason`/`version`/`read`/`getheader`/`getheaders`), `HTTPException`/`BadStatusLine`/`UnknownProtocol`. Both connection classes satisfy a `@dynamic _Connection` protocol so a caller can hold either behind one `Box[_Connection]` (TPy method dispatch is static, so they're siblings, not a subclass). Auto Host/Accept-Encoding/Content-Length (CPython byte-order); body framing via Content-Length, chunked, and connection-close. Reads through `makefile()` -> `io.BufferedReader`. `HTTPConnection(host, port, timeout=)` threads a socket timeout through `create_connection`. Missing: low-level putrequest/putheader, str/file/iterable bodies, `email.message`-style `.headers`, redirects/proxy/connection-reuse (see TODO.md). Note: importing `http.client` now links the TLS backend (mbedTLS) for all users -- TODO.md tracks the use-driven-linking follow-up to scope that to HTTPSConnection users |
 | [`urllib.request`](#urllibrequest) | P2 | Partial | ~20% | pure | Simplified `urlopen(url, data=None, timeout=None)` over `http.client` (GET/POST), returns `HTTPResponse`; non-http scheme -> `URLError`. `timeout` (seconds) honored for connect/recv/send. No opener/handler stack, redirects, proxies, auth handlers, `_GLOBAL_DEFAULT_TIMEOUT` sentinel, HTTPS (see TODO.md) |
 | [`tplib.requests`](#tplibrequests) | P2 | Partial | ~50% | pure | `requests`-style client on `http.client`. `get`/`post`/`put`/`patch`/`delete`/`head`/`request` with `params`/`headers`/`data`/`json`/`auth`/`timeout`/`allow_redirects`; `Response` (`.status_code`/`.ok`/`.text`/`.content`/`.json()`/`.headers` (`CaseInsensitiveDict`)/`.url`/`.history`/`.raise_for_status()`); `Session` (default headers/params, Basic `auth`, `max_redirects`); `RequestException`->`HTTPError`/`ConnectionError`/`Timeout`/`TooManyRedirects` (`timeout` float raises `Timeout` on a slow connect/read; a socket-level connection failure -- refused/reset/broken-pipe/no-host -- is re-wrapped as `ConnectionError`). `allow_redirects=` follows 301/302/303/307/308 via `Location` (method/body rewrite + cross-host auth strip per requests). Divergences: typed kwargs, untyped `.json()`, no `(connect, read)` timeout tuple, https redirect raises (HTTP-only), no pooling/cookies/TLS (see TODO.md) |
 
@@ -1341,7 +1341,7 @@ Architecture (mirrors the re / PCRE2 split):
 | `getaddrinfo` (full API) | Missing | Flat `tpy_resolve_ipv4` only today; multi-result walk needs typed records |
 | `makefile(mode="r", buffering=-1)` | Partial | Signature mirrors CPython (default `mode="r"`); v1 implements binary-read modes (`"rb"`/`"br"`/`"b"`) only -> `io.BufferedReader` over a **dup** of the socket fd (reader and socket close independently -- differs from CPython's shared-fd refcount, observably equivalent for request/response reads). Text modes (incl. the bare-`makefile()` default), write modes, and `buffering=0` (unbuffered) raise `ValueError` -- loud, not a silent binary-for-text substitution; they need io's TextIOWrapper/BufferedWriter/raw-SocketIO layers (not built). `cases/stdlib/socket_makefile`, `socket_makefile_unsupported` |
 | Windows (Winsock2) | Missing | `SOCKET` unsigned, `WSAStartup`, `closesocket`, `WSAGetLastError` -- all in `#ifdef _WIN32` block inside socket_impl.cpp once we have Windows CI |
-| TLS (`ssl` module) | Partial | mbedTLS 3.6.6 vendored (`--mbedtls`). The `ssl` module ships an HTTPS-client core: `create_default_context()`/`SSLContext` (secure-default verify + hostname, `load_verify_locations(cafile)`), `wrap_socket` -> `SSLSocket` (handshake/recv/send/sendall/version/close/`makefile`), `SSLError`/`SSLCertVerificationError`, `CERT_NONE`/`CERT_REQUIRED`. Real TLS 1.3 handshake + cert/hostname verification (socketpair test). `makefile()` returns an `io.BufferedReader` over an `SSLRawIO` (`@dynamic RawBinaryIO`) sharing an `Rc[_SslSession]` (session handle + socket) -- the fd outlives the `SSLSocket` for a live reader, mirroring CPython's refcounted `socket.makefile`. REMAINING: bundled CA store (verify needs explicit `load_verify_locations` until then), `HTTPSConnection`, requests/urlopen https routing, the `SSLWant*`/`SSLZeroReturn` subclasses, server-side TLS. See `docs/SSL_DESIGN.md` |
+| TLS (`ssl` module) | Partial | mbedTLS 3.6.6 vendored (`--mbedtls`). The `ssl` module ships an HTTPS-client core: `create_default_context()`/`SSLContext` (secure-default verify + hostname, `load_verify_locations(cafile)`), `wrap_socket` -> `SSLSocket` (handshake/recv/send/sendall/version/close/`makefile`), `SSLError`/`SSLCertVerificationError`, `CERT_NONE`/`CERT_REQUIRED`. Real TLS 1.3 handshake + cert/hostname verification (socketpair test). `makefile()` returns an `io.BufferedReader` over an `SSLRawIO` (`@dynamic RawBinaryIO`) sharing an `Rc[_SslSession]` (session handle + socket) -- the fd outlives the `SSLSocket` for a live reader, mirroring CPython's refcounted `socket.makefile`. `http.client.HTTPSConnection` runs the HTTP/1.1 flow over an `SSLSocket`. REMAINING: bundled CA store (verify needs explicit `load_verify_locations` until then), requests/urlopen https routing, the `SSLWant*`/`SSLZeroReturn` subclasses, server-side TLS. See `docs/SSL_DESIGN.md` |
 
 Tests:
   * No integration test cases under `tests/cases/` -- running real client/
@@ -1375,11 +1375,26 @@ CPython's stdlib `http.client` via socketpair + `conn.sock` injection
 (`tests/cases/stdlib/http_status`, `http_client`, `http_client_framing`,
 `http_client_bad_status`).
 
-**Deferred** (see TODO.md): the `http.HTTPMethod` enum, HTTPS/`HTTPSConnection`
-(needs `ssl`, phase 3), low-level putrequest/putheader/endheaders, str/file/
-iterable request bodies, `email.message`-style `.headers`,
-`HTTPStatus.phrase`/`.is_*`, header folding, single-space-vs-whitespace
-status-line split, redirects/proxy/`timeout=`/connection-reuse.
+`http.client.HTTPSConnection(host, port=443, timeout=None, context=None)`
+runs the same flow over TLS through an `ssl.SSLSocket`. With no `context` it
+builds a secure-default `ssl.create_default_context()` (chain + hostname
+verification -- so a real server needs a trust store, and `ssl` has no bundled
+CA bundle yet); a caller-supplied `context` is captured by value. It is a
+*sibling* of `HTTPConnection`, not a subclass: TPy method dispatch is static,
+so both instead satisfy a `@dynamic _Connection` protocol
+(`connect`/`request`/`getresponse`/`close`), letting a caller hold either
+behind one `Box[_Connection]` and dispatch virtually. The request-building
+logic is shared via module free functions (`_build_request`). Verified over a
+real mbedTLS handshake via the `_tls` injection seam against `ssl._wrap_server`
+(`tests/cases/stdlib/https_client`, `no_cpython`). Because `http.client` now
+imports `ssl`, every program importing it links the TLS backend (mbedTLS);
+TODO.md tracks the use-driven-linking follow-up to scope that to programs that
+actually reference `HTTPSConnection`.
+
+**Deferred** (see TODO.md): the `http.HTTPMethod` enum, low-level
+putrequest/putheader/endheaders, str/file/iterable request bodies,
+`email.message`-style `.headers`, `HTTPStatus.phrase`/`.is_*`, header folding,
+single-space-vs-whitespace status-line split, redirects/proxy/connection-reuse.
 
 ### urllib.request
 

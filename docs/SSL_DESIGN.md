@@ -5,9 +5,12 @@ wiring) and Increment 2 (the `ssl` module core: SSLContext / SSLSocket /
 verifying client + handshake test) merged to master. Increment 3a is built:
 `SSLSocket.makefile()` over the BufferedReader `Box[RawBinaryIO]` refactor +
 an `Rc[_SslSession]` (session handle + socket folded together) shared with
-an `SSLRawIO` reader (test `ssl/tls_makefile`). Remaining: `HTTPSConnection`
-(step 4), requests/urlopen https + a bundled CA store (step 5). This
-document is the contract for the whole track.
+an `SSLRawIO` reader (test `ssl/tls_makefile`). Increment 4 is built:
+`http.client.HTTPSConnection` (sibling of `HTTPConnection` via a `@dynamic
+_Connection` protocol, since TPy method dispatch is static) runs the HTTP/1.1
+flow over an `SSLSocket` (test `stdlib/https_client`). Remaining:
+requests/urlopen https routing + a bundled CA store (step 5). This document
+is the contract for the whole track.
 
 ## Goal
 
@@ -233,17 +236,27 @@ Match CPython's `create_default_context()` + `requests` `verify=True`:
 
 ## http.client / requests / urlopen integration
 
-- `http.client`: add `HTTPS_PORT = 443` and
-  `HTTPSConnection(HTTPConnection)` whose **only override is `connect()`**
-  (`super().connect()` then `self.sock = context.wrap_socket(self.sock,
-  server_hostname=self.host)`), with a `context: SSLContext | None = None`
-  param defaulting to `create_default_context()`. `request()` /
-  `getresponse()` are reused unchanged -- the response parser is
-  transport-agnostic thanks to the `RawBinaryIO` read path.
+- `http.client` (DONE, Increment 4): added `HTTPS_PORT = 443` and
+  `HTTPSConnection`, a **sibling** of `HTTPConnection` -- NOT a subclass.
+  TPy method dispatch is static, so a base-typed reference to a subclass
+  would call the base method (silent breakage when a caller holds a
+  connection polymorphically); instead both classes satisfy a `@dynamic
+  _Connection` protocol (`connect`/`request`/`getresponse`/`close`), so a
+  caller can hold either behind one `Box[_Connection]` and dispatch
+  virtually. The request-building logic (`_build_request`/`_content_length`)
+  is extracted to module free functions shared by both. `HTTPSConnection`
+  runs `connect()` (`socket.create_connection` then `context.wrap_socket`)
+  and reads the response via `SSLSocket.makefile()`; `context: SSLContext |
+  None = None` defaults to `create_default_context()` (a caller context is
+  captured by value). KNOWN: constructing `Box[_Connection]` over
+  `HTTPSConnection` cross-module hits an incomplete-`Adapter` codegen bug
+  (BUGS.md) -- so the requests/urlopen integration below must obtain the
+  `Box[_Connection]` from an http.client factory (Adapter instantiated in
+  http.client's own module), not construct it directly.
 - `requests._connect`: branch `parts.scheme == "https"` ->
-  `HTTPSConnection`, default port 443; thread `verify` into the context.
-  The redirect-hop scheme check and `urlopen` widen from `"http"`-only to
-  `"http"`/`"https"`.
+  `HTTPSConnection` (via the http.client factory above), default port 443;
+  thread `verify` into the context. The redirect-hop scheme check and
+  `urlopen` widen from `"http"`-only to `"http"`/`"https"`.
 - The existing `tests/cases/tplib/requests_redirect_https` case (currently
   asserts an https redirect *raises* `ConnectionError`) is **rewritten** --
   the redirect is now followed.
