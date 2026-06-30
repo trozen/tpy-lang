@@ -102,6 +102,8 @@ Harness-emitted status lines (cache builds, toolchain/ccache status, the active-
 
 ### Agent testing workflow
 
+**Running tests**: prefer `rpytest <args>` over `uv run pytest <args>` (same flags) -- it offloads the build+run to a remote host to free this machine's CPU. It *always* offloads: if the build host is unreachable it hard-errors (never silently runs locally), so for a deliberate local run use `uv run pytest` directly. If `rpytest` isn't on `PATH` at all, use `uv run pytest`. Substitute `rpytest` for the `uv run pytest` calls elsewhere in this doc.
+
 **CPU awareness**: never start a new test run while a previous one is still running. Either wait, or kill it (`pkill -f pytest`). Concurrent test suites saturate all cores and slow everything down for all agents and the user.
 
 **During development**, run targeted subsets with `-k pattern` (the new tests you're adding, or categories likely affected by your changes). **Final verification**: run `uv run pytest` once, after all changes are done, before reporting complete. Use `--force-exec` to re-run exec for every case regardless of the local exec cache.
