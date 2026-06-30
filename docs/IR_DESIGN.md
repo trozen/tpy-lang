@@ -9,7 +9,7 @@
 | `--dump-thir` debug output | Done (increment 1) |
 | THIR-backed codegen context | Increment 1 -- flag-gated (`tpyc/thir/emit.py`) |
 | Codegen migration from analyzer/AST to THIR | Increments 1-5 -- value-scalar bodies incl. if/elif/else, while, range-for, double float, bool, comparison-as-value |
-| THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`). F1: single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads. F2: reseatable `T*` pointer-locals (lvalue reseat + the rvalue `__slot_N` rebind machinery, `->` reads) and the Optional borrow<->storage write/return (`ptr_to_optional` copy / `ptr_to_optional_move` move) + `None` (`std::nullopt`). Byte-identical with `--thir-codegen` forced over the full corpus. **Method frontier M1 landed (2026-06)** -- a callable-kind axis orthogonal to the form ladder: plain instance methods route (`self` -> `this` via `THIRSelf`, readonly/const self, scalar params), so F1/F2 finally route real corpus code. **Scalar field writes landed (increment 10)** -- `recv.field = <scalar>` off any F1-record receiver (plain `THIRAssign`, no form lift), more than doubling corpus routing. **Scalar augmented assignment landed (increment 11)** -- `x += y` / `recv.field += y` lowers to `target = (target OP value)` via `THIRBinOp` (+ a `paren_wrap` flag for the AST aug-assign's no-paren RHS). **Method frontier M2 landed (increment 12)** -- F1-record params on instance methods (const verdict via the method's own `const_borrow_params` on the owning record; no readonly carve-out -- forced-const and inferred-const coincide for plain ref params), routing 2835 -> 3163 bodies / 534 -> 576 cases. **Readonly free functions landed (increment 13)** -- removed the `is_readonly and not is_instance_method` exclusion (forced/inferred const coincide for free functions too), 3163 -> 3165 bodies / 576 -> 577 cases. Deferred (AST path): M3 constructors / member-init-list; call-arg / call+`copy()`-write sources (non-value call args + auto-move). F3-F-final not started |
+| THIR form fact (Open Q 9/11/12) | **Rungs F1-F2 landed (2026-06)** -- form facts on the IR (`Form` tag, `THIRFormConvert`, `THIRFieldAccess`). F1: single-assignment non-value record locals (`T&` alias / `optional_to_ptr`) + scalar field reads. F2: reseatable `T*` pointer-locals (lvalue reseat + the rvalue `__slot_N` rebind machinery, `->` reads) and the Optional borrow<->storage write/return (`ptr_to_optional` copy / `ptr_to_optional_move` move) + `None` (`std::nullopt`). Byte-identical with `--thir-codegen` forced over the full corpus. **Method frontier M1 landed (2026-06)** -- a callable-kind axis orthogonal to the form ladder: plain instance methods route (`self` -> `this` via `THIRSelf`, readonly/const self, scalar params), so F1/F2 finally route real corpus code. **Scalar field writes landed (increment 10)** -- `recv.field = <scalar>` off any F1-record receiver (plain `THIRAssign`, no form lift), more than doubling corpus routing. **Scalar augmented assignment landed (increment 11)** -- `x += y` / `recv.field += y` lowers to `target = (target OP value)` via `THIRBinOp` (+ a `paren_wrap` flag for the AST aug-assign's no-paren RHS). **Method frontier M2 landed (increment 12)** -- F1-record params on instance methods (const verdict via the method's own `const_borrow_params` on the owning record; no readonly carve-out -- forced-const and inferred-const coincide for plain ref params), routing 2835 -> 3163 bodies / 534 -> 576 cases. **Readonly free functions landed (increment 13)** -- removed the `is_readonly and not is_instance_method` exclusion (forced/inferred const coincide for free functions too), 3163 -> 3165 bodies / 576 -> 577 cases. **Ctor frontier M3a landed (increment 14)** -- pure-MIL scalar constructors of flat records: a whole-ctor `THIRConstructor` (member-init-list split from body) + a dedicated MIL-tail emitter, the signature staying on the AST path; 3165 -> 4652 bodies / 577 -> 1160 cases (+1487 ctors). Deferred (AST path): M3b record/`Optional` MIL fields + own-param move; M3c non-init ctor body + hoist/demotion mirror; M3d base inits; call-arg / call+`copy()`-write sources (non-value call args + auto-move). F3-F-final not started |
 | MIR node definitions (`tpyc/mir/nodes.py`) | Not started |
 | THIR -> MIR lowering (`tpyc/mir/lower.py`) | Not started |
 | `--dump-mir` debug output | Not started |
@@ -246,6 +246,32 @@ record params are uniformly const). Byte-identical; small corpus gain (3163 ->
 3165 bodies / 576 -> 577 cases -- most readonly free functions stay AST-side for
 other reasons: native, generic, non-F1 params, or calls in the body), but it
 removes the last readonly asymmetry in the eligibility gate.
+
+**Increment 14 opens the ctor frontier (M3a)** -- a constructor's member-init
+list is emitted by the record driver (`gen_record_decl`) *outside* `gen_body`, so
+unlike a method (M1) it cannot reuse the `gen_body` THIR hook. M3a adds a
+whole-ctor `THIRConstructor` node (member-init-list split from body), a dedicated
+MIL-tail emitter (`emit_thir_constructor_tail`), and a separate ctor feed
+(`iter_module_constructors` -> `lower_constructor` -> `ctx.thir_constructors`);
+the signature stays on the AST path (the M1 precedent -- only the ` : f(v)... {}`
+tail routes). The slice is **pure-MIL scalar, flat record**: a same-module
+non-generic record with no base class whose `__init__` is entirely hoistable
+own-scalar field inits (`self.<scalar field> = <eligible scalar>`), so every init
+hoists to the MIL and the emitted body is `{}`. No demotion mirror is needed -- a
+corpus survey found a non-init ctor body in <1% of constructors (the M3c rung), so
+M3a needs only the hoist half plus a reject gate. A docstring or `pass` lands in
+the AST's non_init_stmts (a codeless but non-empty `{\n ... }` body, not `{}`), so
+it is rejected too (M3c). Routing 3165 -> 4652 bodies / 577 -> 1160 cases (+1487
+constructors; the non-vacuity tally now counts ctors). All remaining ctor work is
+on the path to deleting `_extract_field_inits` / `_extract_base_inits` /
+`_get_non_init_stmts` + the inline MIL emit -- that deletion (corpus still
+byte-identical) is the **ctor-frontier completeness gate**: **M3b** record /
+`Optional[record]` MIL fields (the `ptr_to_optional` cell) + the MIL-specific
+own-param move; **M3c** the non-init body + the full hoist/demotion mirror (with
+hand-written cases per demotion branch -- the corpus exercises it in <1% of ctors,
+so routing volume does not validate it); **M3d** base inits (inheritance);
+`str` / `list` / `dict` / `tuple` / `union` fields ride the form ladder (F3+);
+generic / native records ride their own frontiers.
 
 ---
 
@@ -964,7 +990,7 @@ that the migration enables. Migration-complete != bugs-fixed.
 | Rung | Scope | Closes (inventory) |
 |------|-------|--------------------|
 | **F1** *(landed 2026-06)* | single-assignment non-value **record** locals + Optional[record] storage->borrow read (`T&` alias, lvalue `optional_to_ptr`, is_const propagation, record borrow params) + scalar field reads; excludes reassigned/rebound/rvalue-slot, container/cross-module/native records, and calls passing a non-value arg (auto-move). Container locals fold in with F3 | most of section 1 non-value-local + section 4 read |
-| **F2** *(landed 2026-06)* | reassigned/rebound locals + Optional borrow<->storage write/return. **Landed:** reseatable `T*` pointer-locals -- **lvalue** reseat (`&(...)`, no slot, F2a) and the **rvalue** `__slot_N` rebind machinery (F2d) -- `->` reads; the optional-field/return **write** from a borrow source, copy (`ptr_to_optional`, F2b) and **move** (`ptr_to_optional_move`, F2e); the storage-Optional **return** + **`None`** write/return (`std::nullopt`, F2c). **Deferred -- separate frontiers, not form cells (AST path):** ctor-MIL (M3 constructor frontier; the method frontier M1 landed 2026-06, so F2 now routes corpus method bodies) and the call-arg / call+`copy()`-write sources (non-value call args + auto-move). | section 3b slot machinery + section 4 write/lift (the local + free-function sites) |
+| **F2** *(landed 2026-06)* | reassigned/rebound locals + Optional borrow<->storage write/return. **Landed:** reseatable `T*` pointer-locals -- **lvalue** reseat (`&(...)`, no slot, F2a) and the **rvalue** `__slot_N` rebind machinery (F2d) -- `->` reads; the optional-field/return **write** from a borrow source, copy (`ptr_to_optional`, F2b) and **move** (`ptr_to_optional_move`, F2e); the storage-Optional **return** + **`None`** write/return (`std::nullopt`, F2c). **Deferred -- separate frontiers, not form cells (AST path):** ctor-MIL (M3 constructor frontier; M1 landed 2026-06 so F2 routes corpus method bodies, and M3a landed 2026-06 for pure-MIL scalar inits -- the `ptr_to_optional` MIL cell is M3b) and the call-arg / call+`copy()`-write sources (non-value call args + auto-move). | section 3b slot machinery + section 4 write/lift (the local + free-function sites) |
 | **F3** | Tuple form (per-element pointer/optional mask, BORROW_TUPLE / STORAGE_TUPLE) | section 1 tuple, section 4 tuple sites |
 | **F4** | Union form (`to_ptr_variant` / `to_value_variant`, value/ptr-variant split, the 3 consumer-dictated exhibits) | section 1 union |
 | **F5** | Generic-slot form (`val_or_ref_t` / `val_or_ptr_t` over TypeParamRef) | section 1 generic, section 3c RefType (begin) |
@@ -978,11 +1004,15 @@ widens *which callables* route, independent of *which type families* do. **M1
 pointer-receiver (`THIRSelf` -> `this`, arrow reads), readonly methods admitted
 with a const `self`, value-scalar params only. This is what first put F1/F2 under
 the whole-corpus byte-diff over *real* corpus code (every prior form rung routed
-zero cases -- their shapes live in methods). **M2:** record params + the
-const-self-receiver model they need (a method-level const-param verdict). **M3:**
-constructors / member-init-list (a whole-ctor THIR node + a MIL emitter, the
-~190-line field-init hoist), which also unblocks the deferred ctor-`ptr_to_optional`
-form cell.
+zero cases -- their shapes live in methods). **M2 (landed, increment 12): record
+params on methods** -- a method-level const-param verdict read from the owning
+record's `const_borrow_params`. **M3 constructors / member-init-list: M3a (landed,
+increment 14)** -- the whole-ctor `THIRConstructor` node (MIL split from body) + a
+MIL-tail emitter, for the pure-MIL scalar slice (flat record, every init hoists,
+empty body). Remaining: **M3b** record / `Optional[record]` MIL fields (unblocks
+the deferred ctor-`ptr_to_optional` form cell) + the own-param move; **M3c** the
+non-init body + the ~190-line `_extract_field_inits` hoist/demotion mirror; **M3d**
+base inits (inheritance).
 
 **F1 is the pre-commit gate** (Codex review condition + the spike's real test): an
 end-to-end byte-identical lowering of one real non-value function through THIR-

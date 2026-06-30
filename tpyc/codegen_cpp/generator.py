@@ -418,12 +418,21 @@ class CodeGenerator:
         if self.ctx.thir_codegen:
             from ..thir.lower import (
                 iter_module_callables as _thir_callables,
+                iter_module_constructors as _thir_ctors,
+                lower_constructor as _thir_lower_ctor,
                 lower_function as _thir_lower,
             )
             self.ctx.thir_functions = {
                 id(f): tf for f, self_type in _thir_callables(module, self.analyzer)
                 if (tf := _thir_lower(f, self.analyzer, self.types.type_to_cpp,
                                       self_type=self_type)) is not None
+            }
+            self.ctx.thir_constructors = {
+                id(init): tc
+                for rec, init, self_type in _thir_ctors(module, self.analyzer)
+                if (tc := _thir_lower_ctor(rec, init, self.analyzer,
+                                           self.types.type_to_cpp,
+                                           self_type=self_type)) is not None
             }
 
         hpp = io.StringIO()

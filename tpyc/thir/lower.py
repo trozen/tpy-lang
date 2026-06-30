@@ -64,6 +64,7 @@ from .nodes import (
     THIRBinOp,
     THIRCall,
     THIRCoerce,
+    THIRConstructor,
     THIRExpr,
     THIRFieldAccess,
     THIRForRange,
@@ -72,6 +73,7 @@ from .nodes import (
     THIRFunctionLayout,
     THIRIf,
     THIRLiteral,
+    THIRMilInit,
     THIRModule,
     THIRName,
     THIRParam,
@@ -1203,6 +1205,85 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     )
 
 
+def _ctor_scalar_field_init_ok(stmt: TpyStmt, own_field_names: set[str],
+                               declared: dict[str, TpyType], analyzer) -> bool:
+    """A hoistable own-scalar field initializer `self.<field> = <eligible scalar>`
+    -- the only statement the M3a pure-MIL slice admits.
+
+    Layers the ctor-specific guards (a `self`-targeted own-field assign) over
+    `_scalar_field_write_ok`, reusing its field-receiver / eligible-scalar-field /
+    eligible-value triple (the same one the body-position scalar field write uses).
+    The `obj.name == "self"` guard is load-bearing -- `_field_receiver_ok` alone
+    would also admit `other_record.field = ...`, which is not a member init. The
+    own-field test matches `_extract_field_inits` (a flat record has no inherited
+    fields, but keep the test exact). Any other statement -- a non-init body
+    statement, an inherited-field assign, a non-scalar field -- leaves the ctor on
+    the AST path (the M3b / M3c rungs)."""
+    if not (isinstance(stmt, TpyAssign)
+            and isinstance(stmt.target, TpyFieldAccess)
+            and isinstance(stmt.target.obj, TpyName)
+            and stmt.target.obj.name == "self"
+            and stmt.target.field in own_field_names):
+        return False
+    return _scalar_field_write_ok(stmt, declared, analyzer)
+
+
+def lower_constructor(record, init_method: TpyFunction, analyzer,
+                      render_type=None,
+                      self_type: 'TpyType | None' = None) -> THIRConstructor | None:
+    """Lower a constructor to a THIRConstructor, or None if outside the slice.
+
+    M3a slice (pure-MIL scalar, flat record): a same-module non-generic record with
+    no base class whose `__init__` body is entirely hoistable own-scalar field
+    initializers (`self.<scalar field> = <eligible scalar>`); a docstring or `pass`
+    makes it ineligible (those land in the AST's non-init body, which M3a does not
+    emit). Every initializer hoists to the member-init-list (no demotion arises), so
+    the emitted C++ ctor body is empty. The signature stays on the AST path (the M1
+    method precedent); only the MIL + body tail routes here."""
+    if self_type is None or not _f1_record(self_type, analyzer):
+        return None
+    # Flat records only: a base class needs the base-init list + inherited-field
+    # demotion (the M3d rung). Reject overloaded / native / generator / generic
+    # __init__ -- those take emit paths the tail emitter does not reproduce.
+    ri = analyzer.registry.get_record(record.name)
+    if ri is None or ri.parents:
+        return None
+    if (init_method.is_overload_stub or init_method.native_function
+            or init_method.is_async or init_method.is_generator
+            or init_method.type_params):
+        return None
+    # Params must be value scalars or F1-records (the method param gate). This keeps
+    # the AST-emitted signature a plain ctor (no protocol/dynamic template) so it
+    # pairs with the THIR tail; the MIL references params, so a param outside the
+    # eligible-expr set would fail `_expr_eligible` anyway.
+    for _name, ptype in init_method.params:
+        pt = ptype if isinstance(ptype, TpyType) else None
+        if not _f1_param_eligible(pt, analyzer):
+            return None
+    declared: dict[str, TpyType] = {n: t for n, t in init_method.params}
+    declared["self"] = self_type
+    own_field_names = {f.name for f in record.fields}
+    field_inits: list[TpyAssign] = []
+    for stmt in init_method.body:
+        # A docstring or `pass` lands in the AST's non_init_stmts -- a codeless but
+        # non-empty body (`{\n        // pass\n    }` / `{\n    }`), not `{}` -- so
+        # M3a's empty-body invariant breaks. Reject (it belongs to the M3c body
+        # rung) rather than skip, keeping the emitted body byte-identical.
+        if not _ctor_scalar_field_init_ok(stmt, own_field_names, declared, analyzer):
+            return None
+        field_inits.append(stmt)
+    lc = _LowerCtx(init_method, analyzer, render_type, self_receiver="self",
+                   record_name=record.name)
+    return THIRConstructor(
+        record_name=record.name,
+        params=tuple(THIRParam(name=n, type=t) for n, t in init_method.params),
+        mil_inits=tuple(
+            THIRMilInit(field_cpp=escape_cpp_name(s.target.field),
+                        value=_lower_expr(s.value, lc))
+            for s in field_inits),
+    )
+
+
 def _method_self_type(record, analyzer) -> 'TpyType | None':
     """The `self` receiver type for an M1 method feed: the record's canonical
     qualified `NominalType` for a non-generic record, else None (a generic
@@ -1236,6 +1317,24 @@ def iter_module_callables(module: TpyModule, analyzer):
         for method in record.methods:
             if method is not init:
                 yield method, self_type
+
+
+def iter_module_constructors(module: TpyModule, analyzer):
+    """Yield `(record, init_method, self_type)` for every record that defines an
+    `__init__` -- the ctor feed for the M3 frontier, the sibling of
+    `iter_module_callables` (which excludes the ctor because its body is emitted by
+    the member-init-list driver, not `gen_body`). `self_type` is the owning
+    record's F1-record receiver (None-skipped for generic records, which
+    `lower_constructor` also rejects). The eligibility gate in `lower_constructor`
+    has the final say; this only enumerates candidates."""
+    for record in module.records:
+        init = record.init_method
+        if init is None:
+            continue
+        self_type = _method_self_type(record, analyzer)
+        if self_type is None:
+            continue
+        yield record, init, self_type
 
 
 def lower_module(module: TpyModule, analyzer, render_type=None) -> THIRModule:

@@ -25,6 +25,7 @@ from .nodes import (
     THIRBinOp,
     THIRCall,
     THIRCoerce,
+    THIRConstructor,
     THIRExpr,
     THIRFieldAccess,
     THIRForRange,
@@ -369,3 +370,24 @@ def emit_thir_body(out: TextIO, fn: THIRFunction, indent_level: int = 1,
                    *, comments: CommentSink | None = None) -> None:
     """Emit `fn`'s body statements (no signature, no braces) at `indent_level`."""
     _emit_stmts(out, fn.body, indent_level, _EmitState(comments or _NO_COMMENTS))
+
+
+def emit_thir_constructor_tail(out: TextIO, ctor: THIRConstructor,
+                               *, comments: CommentSink | None = None) -> None:
+    """Emit a constructor's member-init-list + body tail (the ` : f(v)... {}` that
+    follows the signature). The THIR counterpart of gen_record_decl's AST MIL+body
+    emit: the signature is written by the AST path before this is called (the M1
+    precedent -- signatures stay on the AST path). Byte-identical to that path's
+    tail. M3a is pure-MIL, so `body` is empty and this emits ` {}` (or
+    ` : inits {}`)."""
+    inits = list(ctor.base_inits)
+    inits.extend(f"{mi.field_cpp}({_emit_expr(mi.value)})" for mi in ctor.mil_inits)
+    if inits:
+        out.write(" : ")
+        out.write(", ".join(inits))
+    if ctor.body:
+        out.write(" {\n")
+        _emit_stmts(out, ctor.body, 2, _EmitState(comments or _NO_COMMENTS))
+        out.write(f"{INDENT}}}\n")
+    else:
+        out.write(" {}\n")

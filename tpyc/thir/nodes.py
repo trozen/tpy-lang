@@ -273,6 +273,36 @@ class THIRFunction:
     layout: THIRFunctionLayout
 
 
+@dataclass(frozen=True)
+class THIRMilInit:
+    """One member-initializer-list entry, rendered `field_cpp(value)`.
+
+    `field_cpp` is the C++ member name (escape resolved at lowering, like
+    `THIRFieldAccess.field_cpp`); `value` is the field's initializer expression.
+    The M3a slice carries only value-form scalar values; later ctor rungs put the
+    borrow/storage form transforms (`ptr_to_optional`, ...) on `value` itself."""
+    field_cpp: str
+    value: THIRExpr
+
+
+@dataclass(frozen=True)
+class THIRConstructor:
+    """A lowered constructor: only the member-init-list + body tail that
+    `gen_record_decl` emits, NOT the signature (which stays on the AST path, the
+    M1 method precedent -- only the body/tail routes through THIR).
+
+    `mil_inits` are the hoisted field initializers in source order; `base_inits`
+    are pre-rendered base-initializer C++ strings (empty until the M3d inheritance
+    rung); `body` is the non-init constructor body (empty until the M3c
+    demotion/body rung). The M3a slice is pure-MIL -- every field init hoists, so
+    `body` is empty and the emitted C++ body is `{}`."""
+    record_name: str
+    params: tuple[THIRParam, ...]
+    mil_inits: tuple[THIRMilInit, ...]
+    base_inits: tuple[str, ...] = ()
+    body: tuple[THIRStmt, ...] = ()
+
+
 @dataclass
 class THIRModule:
     """Container for a module's lowered functions.

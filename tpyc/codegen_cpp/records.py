@@ -360,23 +360,30 @@ class RecordGenerator:
         # Determine constructor generation strategy
         if record.init_method:
             has_params = bool(record.init_method.params)
-            saved_func_params = self.ctx.current_func_params
-            saved_in_method = self.ctx.in_method
-            saved_ns = self.ctx.current_ns
-            self.ctx.current_func_params = {
-                pname: ptype for pname, ptype in record.init_method.params}
-            self.ctx.in_method = True
-            # Field-init RHS expressions live lexically in the constructor
-            # body, so binding-based dispatch in expression codegen needs the
-            # constructor's namespace. The non-init body gets the same
-            # namespace handed to gen_body further down.
-            self.ctx.current_ns = self._build_init_local_ns(record)
-            base_inits = self._extract_base_inits(record.init_method, record)
-            inits, hoisted_ids = self._extract_field_inits(record.init_method, record)
-            self.ctx.current_func_params = saved_func_params
-            self.ctx.in_method = saved_in_method
-            self.ctx.current_ns = saved_ns
-            non_init_stmts = self._get_non_init_stmts(record.init_method, record, hoisted_ids)
+            # THIR ctor frontier (M3): an eligible ctor's member-init-list + body
+            # tail emits from its THIRConstructor; the signature below stays on the
+            # AST path (the M1 precedent). The AST MIL extraction is skipped when a
+            # THIRConstructor is present -- it already carries the hoisted inits.
+            thir_ctor = (self.ctx.thir_constructors.get(id(record.init_method))
+                         if self.ctx.thir_codegen else None)
+            if thir_ctor is None:
+                saved_func_params = self.ctx.current_func_params
+                saved_in_method = self.ctx.in_method
+                saved_ns = self.ctx.current_ns
+                self.ctx.current_func_params = {
+                    pname: ptype for pname, ptype in record.init_method.params}
+                self.ctx.in_method = True
+                # Field-init RHS expressions live lexically in the constructor
+                # body, so binding-based dispatch in expression codegen needs the
+                # constructor's namespace. The non-init body gets the same
+                # namespace handed to gen_body further down.
+                self.ctx.current_ns = self._build_init_local_ns(record)
+                base_inits = self._extract_base_inits(record.init_method, record)
+                inits, hoisted_ids = self._extract_field_inits(record.init_method, record)
+                self.ctx.current_func_params = saved_func_params
+                self.ctx.in_method = saved_in_method
+                self.ctx.current_ns = saved_ns
+                non_init_stmts = self._get_non_init_stmts(record.init_method, record, hoisted_ids)
 
             self.ctx.emit_preceding_comments(out, record.init_method.loc, indent=INDENT)
             self.ctx.emit_source_comment(out, record.init_method.loc, indent=INDENT)
@@ -448,23 +455,28 @@ class RecordGenerator:
                 # No params: generate default constructor with body
                 out.write(f"{INDENT}{cpp_rec_name}()")
 
-            # Build member init list: base inits (if any) + field inits
-            all_inits = list(base_inits)
-            all_inits.extend(f"{escape_cpp_name(name)}({val})" for name, val in inits)
-            if all_inits:
-                out.write(" : ")
-                out.write(", ".join(all_inits))
-            if non_init_stmts:
-                out.write(" {\n")
-                local_ns = self._build_init_local_ns(record)
-                self.functions.gen_body(out, non_init_stmts, record.init_method.params,
-                                         record.init_method.return_type, record.init_method,
-                                         local_ns, indent_level=2, is_method=True,
-                                         record_type_param_bounds=record.type_param_bounds or None,
-                                         owning_record_name=record.name)
-                out.write(f"{INDENT}}}\n")
+            if thir_ctor is not None:
+                from ..thir.emit import CtxCommentSink, emit_thir_constructor_tail
+                emit_thir_constructor_tail(out, thir_ctor,
+                                           comments=CtxCommentSink(self.ctx))
             else:
-                out.write(" {}\n")
+                # Build member init list: base inits (if any) + field inits
+                all_inits = list(base_inits)
+                all_inits.extend(f"{escape_cpp_name(name)}({val})" for name, val in inits)
+                if all_inits:
+                    out.write(" : ")
+                    out.write(", ".join(all_inits))
+                if non_init_stmts:
+                    out.write(" {\n")
+                    local_ns = self._build_init_local_ns(record)
+                    self.functions.gen_body(out, non_init_stmts, record.init_method.params,
+                                             record.init_method.return_type, record.init_method,
+                                             local_ns, indent_level=2, is_method=True,
+                                             record_type_param_bounds=record.type_param_bounds or None,
+                                             owning_record_name=record.name)
+                    out.write(f"{INDENT}}}\n")
+                else:
+                    out.write(" {}\n")
         else:
             # No __init__: plain records stay C++ aggregates (no ctor declared).
             # Records with __del__/@nocopy/__copy__ get user-declared copy/move

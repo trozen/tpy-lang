@@ -9,14 +9,15 @@ byte-identical to the AST-driven codegen path.
 """
 
 from .dump import dump_thir
-from .emit import emit_thir_body, THIRCodeGenError
-from .lower import lower_function, lower_module
+from .emit import emit_thir_body, emit_thir_constructor_tail, THIRCodeGenError
+from .lower import lower_constructor, lower_function, lower_module
 from .nodes import (
     Form,
     THIRAssign,
     THIRBinOp,
     THIRCall,
     THIRCoerce,
+    THIRConstructor,
     THIRExpr,
     THIRFieldAccess,
     THIRForRange,
@@ -25,6 +26,7 @@ from .nodes import (
     THIRFunctionLayout,
     THIRIf,
     THIRLiteral,
+    THIRMilInit,
     THIRModule,
     THIRName,
     THIRNode,
@@ -39,7 +41,9 @@ from .nodes import (
 __all__ = [
     "dump_thir",
     "emit_thir_body",
+    "emit_thir_constructor_tail",
     "THIRCodeGenError",
+    "lower_constructor",
     "lower_function",
     "lower_module",
     "Form",
@@ -47,6 +51,7 @@ __all__ = [
     "THIRBinOp",
     "THIRCall",
     "THIRCoerce",
+    "THIRConstructor",
     "THIRExpr",
     "THIRFieldAccess",
     "THIRForRange",
@@ -55,6 +60,7 @@ __all__ = [
     "THIRFunctionLayout",
     "THIRIf",
     "THIRLiteral",
+    "THIRMilInit",
     "THIRModule",
     "THIRName",
     "THIRNode",

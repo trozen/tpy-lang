@@ -47,7 +47,7 @@ from .forms import (
 
 if TYPE_CHECKING:
     from ..sema import SemanticAnalyzer
-    from ..thir.nodes import THIRFunction
+    from ..thir.nodes import THIRConstructor, THIRFunction
 
 
 INDENT = "    "
@@ -831,6 +831,10 @@ class CodeGenContext:
     # instead of the AST path. Populated per-module in CodeGenerator.generate.
     thir_codegen: bool = False
     thir_functions: dict[int, "THIRFunction"] = field(default_factory=dict)
+    # THIR ctor frontier (M3): an eligible constructor's member-init-list + body
+    # tail emits from its THIRConstructor (the signature stays on the AST path).
+    # Keyed by id() of the source __init__ TpyFunction; consumed in gen_record_decl.
+    thir_constructors: dict[int, "THIRConstructor"] = field(default_factory=dict)
     # Peer modules in the same import-graph SCC. When a `<peer>.hpp`
     # would be included from this module's header (vs cpp file), the
     # codegen swaps it for `<peer>_fwd.hpp` to break the cyclic

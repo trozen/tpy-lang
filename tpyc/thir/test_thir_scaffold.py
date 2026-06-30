@@ -9,7 +9,7 @@ from .. import get_lib_dir
 from ..codegen_cpp.context import CodeGenOptions
 from ..compiler import Compiler
 from .dump import dump_thir
-from .emit import emit_thir_body
+from .emit import emit_thir_body, emit_thir_constructor_tail
 from .lower import lower_module
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
@@ -50,6 +50,28 @@ def _lower_ctx(source: str):
 
 def _fn(thir, name):
     return next((f for f in thir.functions if f.name == name), None)
+
+
+def _lower_ctor(source: str, record_name: str):
+    """Lower one record's constructor to its THIRConstructor (or None if outside
+    the M3 slice). Within the compiler context -- records resolve through the live
+    registry / native-name maps, like `_lower_ctx`."""
+    from ..compilation_context import activate_compiler
+    from .lower import iter_module_constructors, lower_constructor
+    compiler, modules = _compile(source)
+    entry = _entry(modules)
+    with activate_compiler(compiler):
+        for rec, init, self_type in iter_module_constructors(entry.ast, entry.analyzer):
+            if rec.name == record_name:
+                return lower_constructor(rec, init, entry.analyzer,
+                                         self_type=self_type)
+    return None
+
+
+def _ctor_tail(ctor) -> str:
+    buf = io.StringIO()
+    emit_thir_constructor_tail(buf, ctor)
+    return buf.getvalue()
 
 
 _PRELUDE = "from tpy import Int32, UInt8, UInt64\n"
@@ -2019,3 +2041,155 @@ class TestScalarAugAssignEmit:
             "def g(a: float, b: float) -> float:\n    a += b\n    a *= b\n    return a\n"
             "def main():\n    print(g(1.5, 2.0))\nmain()\n")
         assert self._emit(src, thir=True) == self._emit(src, thir=False)
+
+
+class TestConstructor:
+    """The M3a ctor frontier: pure-MIL scalar constructors of flat records --
+    every `__init__` statement is a hoistable own-scalar field init, so the
+    member-init-list is the whole body and the C++ body is `{}`."""
+
+    _POINT = (
+        _PRELUDE
+        + "class Point:\n    x: Int32\n    y: Int32\n"
+        + "    def __init__(self, x: Int32, y: Int32):\n"
+        + "        self.x = x\n        self.y = y\n")
+
+    def test_pure_scalar_ctor_routes(self):
+        ctor = _lower_ctor(self._POINT, "Point")
+        assert ctor is not None
+        assert [mi.field_cpp for mi in ctor.mil_inits] == ["x", "y"]
+        assert ctor.body == ()  # pure-MIL: empty body
+
+    def test_pure_scalar_ctor_tail_emit(self):
+        ctor = _lower_ctor(self._POINT, "Point")
+        assert _ctor_tail(ctor) == " : x(x), y(y) {}\n"
+
+    def test_no_param_literal_inits_route(self):
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class Counter:\n    n: Int32\n    step: Int32\n"
+            + "    def __init__(self):\n        self.n = 0\n        self.step = 1\n",
+            "Counter")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : n(0), step(1) {}\n"
+
+    def test_field_init_from_sibling_field_routes(self):
+        # An RHS reading a sibling scalar field renders `b(this->a)` (the corpus
+        # byte-diff validates this against the AST path).
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class C:\n    a: Int32\n    b: Int32\n"
+            + "    def __init__(self, a: Int32):\n"
+            + "        self.a = a\n        self.b = self.a\n",
+            "C")
+        assert ctor is not None
+        assert _ctor_tail(ctor) == " : a(a), b(this->a) {}\n"
+
+    def test_pass_body_ctor_is_ineligible(self):
+        # `pass` lands in the AST's non_init_stmts (a codeless but non-empty
+        # `{\n        // pass\n    }` body), so M3a's empty-body invariant breaks.
+        ctor = _lower_ctor(
+            "from typing import Final\n" + _PRELUDE
+            + "class K:\n    LIMIT: Final[Int32] = 10\n"
+            + "    def __init__(self) -> None:\n        pass\n",
+            "K")
+        assert ctor is None
+
+    def test_docstring_ctor_is_ineligible(self):
+        # A docstring lands in non_init_stmts too (a `{\n    }` body); deferred to
+        # the M3c body rung.
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class P:\n    x: Int32\n"
+            + "    def __init__(self, x: Int32):\n"
+            + '        """doc"""\n        self.x = x\n',
+            "P")
+        assert ctor is None
+
+    def test_non_init_body_statement_is_ineligible(self):
+        # A non-field-init statement (here a call) means the ctor needs the body
+        # rung (M3c); the whole ctor stays on the AST path.
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class C:\n    x: Int32\n"
+            + "    def __init__(self, x: Int32):\n"
+            + "        self.x = x\n        print(x)\n",
+            "C")
+        assert ctor is None
+
+    def test_base_class_is_ineligible(self):
+        # Flat records only -- a base class needs the base-init list (M3d). The
+        # flat base itself still routes.
+        src = (
+            _PRELUDE
+            + "class Base:\n    a: Int32\n"
+            + "    def __init__(self, a: Int32):\n        self.a = a\n"
+            + "class Derived(Base):\n    b: Int32\n"
+            + "    def __init__(self, a: Int32, b: Int32):\n"
+            + "        super().__init__(a)\n        self.b = b\n")
+        assert _lower_ctor(src, "Derived") is None
+        assert _lower_ctor(src, "Base") is not None
+
+    def test_non_scalar_field_is_ineligible(self):
+        # A str field is M3b+ form work, not M3a scalar.
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class S:\n    name: str\n"
+            + "    def __init__(self, name: str):\n        self.name = name\n",
+            "S")
+        assert ctor is None
+
+    def test_bigint_field_is_ineligible(self):
+        # Bare `int` -> BigInt is outside the eligible-scalar set (as everywhere in
+        # the THIR slice), so a BigInt-field ctor stays on the AST path.
+        ctor = _lower_ctor(
+            "class C:\n    n: int\n"
+            + "    def __init__(self, n: int):\n        self.n = n\n",
+            "C")
+        assert ctor is None
+
+    def test_ineligible_param_with_scalar_fields_is_ineligible(self):
+        # The PARAM gate must reject a ctor whose fields are all scalar but a param
+        # is non-scalar: it would otherwise emit `: n(n) {}` byte-identically, so the
+        # corpus byte-diff cannot guard a regression here -- only this unit test can.
+        ctor = _lower_ctor(
+            _PRELUDE
+            + "class C:\n    n: Int32\n"
+            + "    def __init__(self, n: Int32, xs: list[Int32]):\n"
+            + "        self.n = n\n",
+            "C")
+        assert ctor is None
+
+    def test_record_field_with_eligible_param_is_ineligible(self):
+        # An eligible (Own F1-record) param assigned to a record-typed FIELD passes
+        # the param gate and exercises the field-type gate in
+        # _ctor_scalar_field_init_ok (a non-scalar field -> M3b). The scalar-field
+        # base record still routes, confirming the gate rejects on the field, not
+        # the param.
+        src = (
+            "from tpy import Int32, Own\n"
+            + "class Inner:\n    v: Int32\n"
+            + "    def __init__(self, v: Int32):\n        self.v = v\n"
+            + "class C:\n    inner: Inner\n"
+            + "    def __init__(self, inner: Own[Inner]):\n        self.inner = inner\n")
+        assert _lower_ctor(src, "C") is None
+        assert _lower_ctor(src, "Inner") is not None
+
+    def _hpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        hpp, _ = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return hpp
+
+    def test_ctor_byte_identical(self):
+        # End-to-end: the ctor MIL tail emits identically through the THIR seam
+        # (generator -> records -> emit) and the AST path. The ctor lives in the
+        # .hpp (inline in the struct), so compare that half.
+        src = (
+            _PRELUDE
+            + "class Point:\n    x: Int32\n    y: Int32\n"
+            + "    def __init__(self, x: Int32, y: Int32):\n"
+            + "        self.x = x\n        self.y = y\n"
+            + "def main():\n    p = Point(1, 2)\n    print(p.x + p.y)\nmain()\n")
+        assert self._hpp(src, thir=True) == self._hpp(src, thir=False)

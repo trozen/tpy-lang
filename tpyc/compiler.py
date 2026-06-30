@@ -3764,9 +3764,12 @@ class Compiler:
             implicit_stdlib_modules=implicit_stdlib,
             cycle_peers=cycle_peers,
         )
-        # ctx.thir_functions holds the bodies lowered through THIR -- empty
-        # (not absent) when --thir-codegen is off, so this is 0 by default.
-        self._thir_routed_bodies += len(codegen.ctx.thir_functions)
+        # ctx.thir_functions / thir_constructors hold the bodies lowered through
+        # THIR -- empty (not absent) when --thir-codegen is off, so this is 0 by
+        # default. Constructors count toward the non-vacuity tally too (the M3
+        # ctor frontier), so the gate sees the ctor-MIL tail routing.
+        self._thir_routed_bodies += (len(codegen.ctx.thir_functions)
+                                     + len(codegen.ctx.thir_constructors))
 
         if not hpp_code:
             return None, None
