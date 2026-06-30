@@ -17,7 +17,7 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://tpy.dev"
+Homepage = "https://tpy-lang.org"
 
 [project.optional-dependencies]
 bundled = ["ziglang>=0.13"]
