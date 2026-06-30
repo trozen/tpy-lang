@@ -6,9 +6,10 @@
 namespace {
 using namespace ::tpy::cpy;
 
-PyObject *excs__check_positive_pywrap(PyObject *self, PyObject *args) {
+PyObject *excs__check_positive_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("n"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:check_positive", __kwlist, &a0)) return nullptr;
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::excs::check_positive(__p0));
@@ -22,9 +23,10 @@ PyObject *excs__check_positive_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *excs__lookup_pywrap(PyObject *self, PyObject *args) {
+PyObject *excs__lookup_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("key"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:lookup", __kwlist, &a0)) return nullptr;
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::excs::lookup(__p0));
@@ -51,9 +53,10 @@ PyObject *excs__open_missing_pywrap(PyObject *self, PyObject *unused) {
     }
 }
 
-PyObject *excs__divide_pywrap(PyObject *self, PyObject *args) {
+PyObject *excs__divide_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("a"), const_cast<char *>("b"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTuple(args, "OO", &a0, &a1)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:divide", __kwlist, &a0, &a1)) return nullptr;
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
@@ -82,10 +85,10 @@ PyObject *excs__fail_generic_pywrap(PyObject *self, PyObject *unused) {
 }
 
 PyMethodDef excs__methods[] = {
-    {"check_positive", excs__check_positive_pywrap, METH_VARARGS, nullptr},
-    {"lookup", excs__lookup_pywrap, METH_VARARGS, nullptr},
+    {"check_positive", as_pycfunction(excs__check_positive_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"lookup", as_pycfunction(excs__lookup_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {"open_missing", excs__open_missing_pywrap, METH_NOARGS, nullptr},
-    {"divide", excs__divide_pywrap, METH_VARARGS, nullptr},
+    {"divide", as_pycfunction(excs__divide_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {"fail_generic", excs__fail_generic_pywrap, METH_NOARGS, nullptr},
     {nullptr, nullptr, 0, nullptr},
 };

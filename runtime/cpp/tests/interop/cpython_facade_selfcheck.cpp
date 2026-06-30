@@ -22,6 +22,7 @@
 // them below.
 namespace real_abi {
 constexpr int meth_varargs = METH_VARARGS;
+constexpr int meth_keywords = METH_KEYWORDS;
 constexpr int meth_noargs = METH_NOARGS;
 constexpr int python_api_version = PYTHON_API_VERSION;
 constexpr int tp_dealloc = Py_tp_dealloc;
@@ -33,6 +34,7 @@ constexpr int tp_free = Py_tp_free;
 constexpr unsigned long tpflags_default = Py_TPFLAGS_DEFAULT;
 }  // namespace real_abi
 #undef METH_VARARGS
+#undef METH_KEYWORDS
 #undef METH_NOARGS
 #undef PYTHON_API_VERSION
 #undef Py_tp_dealloc
@@ -104,6 +106,8 @@ static_assert(offsetof(tpy::cpy::PyGetSetDef, closure) ==
 // Facade constants vs the real ABI values.
 static_assert(tpy::cpy::METH_VARARGS == real_abi::meth_varargs,
               "METH_VARARGS value mismatch");
+static_assert(tpy::cpy::METH_KEYWORDS == real_abi::meth_keywords,
+              "METH_KEYWORDS value mismatch");
 static_assert(tpy::cpy::METH_NOARGS == real_abi::meth_noargs,
               "METH_NOARGS value mismatch");
 static_assert(tpy::cpy::PYTHON_API_VERSION == real_abi::python_api_version,

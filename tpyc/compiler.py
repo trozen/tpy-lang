@@ -3913,12 +3913,17 @@ class Compiler:
             for func in compiled.ast.functions:
                 if not func.exposed_to_host:
                     continue
+                fline = func.loc.line if func.loc else None
+                form = self._unsupported_param_form(func)
+                if form is not None:
+                    raise CompileError(
+                        f"@export function '{func.name}': {form}",
+                        compiled.name, compiled.path, lineno=fline)
                 # `void` (no annotation or `-> None`) is a legal return -- the
                 # wrapper hands back None -- but never a valid parameter type.
                 checks = [(func.return_type, "return", "return")]
                 checks += [(ptype, f"parameter '{pname}'", "param")
                            for pname, ptype in func.params]
-                fline = func.loc.line if func.loc else None
                 for typ, what, role in checks:
                     form_err = self._exposed_class_form_error(
                         typ, role, compiled.analyzer.registry)
@@ -3985,6 +3990,15 @@ class Compiler:
         for fld in info.fields:
             check(fld.type, f"field '{fld.name}'", "field")
 
+        # AST nodes (not the FunctionInfo overloads) carry the arg-form facts
+        # the keyword-aware unpack can't cross (defaults/*args/**kwargs/posonly/
+        # kwonly); map by name so the per-method loop can read them. First node
+        # per name is enough -- the form facts are signature-level, and an
+        # overloaded name is rejected before its form is inspected.
+        ast_by_name: dict = {}
+        for rm in record.methods:
+            ast_by_name.setdefault(rm.name, rm)
+
         for mname, overloads in info.methods.items():
             if mname.startswith("__") and mname.endswith("__") \
                     and mname != "__init__":
@@ -3994,6 +4008,11 @@ class Compiler:
             if len(overloads) > 1:
                 reject(f"overloaded '{mname}' cannot be exposed yet (only a "
                        f"single signature crosses to CPython)")
+            ast_m = ast_by_name.get(mname)
+            if ast_m is not None:
+                form = self._unsupported_param_form(ast_m)
+                if form is not None:
+                    reject(f"method '{mname}': {form}")
             for m in overloads:
                 if m.is_staticmethod:
                     reject(f"static method '{mname}' cannot be exposed yet")
@@ -4011,6 +4030,29 @@ class Compiler:
                         continue
                     check(p.type, f"method '{mname}' parameter '{p.name}'",
                           "param")
+
+    def _unsupported_param_form(self, fn: 'TpyFunction') -> 'str | None':
+        """The argument forms the CPython glue's keyword-aware unpack does not
+        cross yet (only plain positional-or-keyword params marshal). Returns a
+        message tail for the first one present on this function/method node,
+        else None. Rejected loudly rather than silently mishandled: the glue
+        would otherwise require a defaulted param (PyArg unpack has no optional
+        slot) and drop *args/**kwargs entirely.
+        """
+        if fn.vararg_name is not None:
+            return "*args is not supported at the CPython boundary yet"
+        if fn.kwarg_name is not None:
+            return "**kwargs is not supported at the CPython boundary yet"
+        if any(d is not None for d in (fn.defaults or [])):
+            return ("default parameter values are not supported at the CPython "
+                    "boundary yet (every parameter must be required)")
+        if fn.num_posonly_params:
+            return ("positional-only parameters (/) are not supported at the "
+                    "CPython boundary yet")
+        if fn.keyword_only_start is not None:
+            return ("keyword-only parameters (*) are not supported at the "
+                    "CPython boundary yet")
+        return None
 
     def _exposed_class_form_error(self, typ, role: str, registry) -> 'str | None':
         """Diagnose an exposed-class boundary type the glue cannot emit, so a

@@ -19,9 +19,10 @@ PyObject *funcs__answer_pywrap(PyObject *self, PyObject *unused) {
     }
 }
 
-PyObject *funcs__add_pywrap(PyObject *self, PyObject *args) {
+PyObject *funcs__add_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("a"), const_cast<char *>("b"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTuple(args, "OO", &a0, &a1)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:add", __kwlist, &a0, &a1)) return nullptr;
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
@@ -36,9 +37,10 @@ PyObject *funcs__add_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *funcs__big_square_pywrap(PyObject *self, PyObject *args) {
+PyObject *funcs__big_square_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("x"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:big_square", __kwlist, &a0)) return nullptr;
     try {
         ::tpy::BigInt __p0 = ::tpy::interop::from_py<::tpy::BigInt>(a0);
         return ::tpy::interop::to_py(::tpyapp::funcs::big_square(__p0));
@@ -52,9 +54,10 @@ PyObject *funcs__big_square_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *funcs__negate_pywrap(PyObject *self, PyObject *args) {
+PyObject *funcs__negate_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("x"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:negate", __kwlist, &a0)) return nullptr;
     try {
         ::tpy::BigInt __p0 = ::tpy::interop::from_py<::tpy::BigInt>(a0);
         return ::tpy::interop::to_py(::tpyapp::funcs::negate(__p0));
@@ -70,9 +73,9 @@ PyObject *funcs__negate_pywrap(PyObject *self, PyObject *args) {
 
 PyMethodDef funcs__methods[] = {
     {"answer", funcs__answer_pywrap, METH_NOARGS, nullptr},
-    {"add", funcs__add_pywrap, METH_VARARGS, nullptr},
-    {"big_square", funcs__big_square_pywrap, METH_VARARGS, nullptr},
-    {"negate", funcs__negate_pywrap, METH_VARARGS, nullptr},
+    {"add", as_pycfunction(funcs__add_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"big_square", as_pycfunction(funcs__big_square_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"negate", as_pycfunction(funcs__negate_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {nullptr, nullptr, 0, nullptr},
 };
 

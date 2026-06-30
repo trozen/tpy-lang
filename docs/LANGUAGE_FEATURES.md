@@ -5853,17 +5853,20 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   `PyInit_<module>`) beside the normal module `.cpp`. The boundary uses a
   hand-mirrored limited-API facade (`tpy/interop/cpython_h.hpp`) so no
   `Python.h` enters a generated TU; the `.so` links with undefined Python
-  symbols (no libpython) resolved at import. **The boundary is positional-only**
-  (`METH_VARARGS` + `PyArg_ParseTuple`, no `METH_KEYWORDS`): a host caller must
-  pass arguments positionally to an `@export` function, method, or constructor.
-  Calling with keyword arguments (`f(x=1)`, `Counter(value=10)`) raises
-  `TypeError` from the compiled extension, where the untyped TPy source run under
-  CPython would accept them -- a declared divergence (keyword marshalling is a
-  deferred enhancement, tracked in `TODO.md`).
+  symbols (no libpython) resolved at import. **Arguments cross positionally or
+  by keyword** (`METH_VARARGS | METH_KEYWORDS` + `PyArg_ParseTupleAndKeywords`
+  against a `kwlist` of the param names): a host caller may call an `@export`
+  function, method, or constructor with positional args, keyword args, or a mix
+  (`add(2, 3)`, `add(a=2, b=3)`, `add(2, b=3)`, `Counter(value=10, label="c")`),
+  matching CPython's positional-or-keyword semantics; a zero-arg callable stays
+  `METH_NOARGS`. Param forms the unpack does not cross yet -- **default values,
+  `*args`/`**kwargs`, positional-only (`/`), keyword-only (`*`)** -- are
+  rejected with a located compile error (rather than silently mishandled);
+  keyword-only + defaults are the next rung, tracked in `TODO.md`.
 - **Working (the fixed-width int types + `int` + `float` + `bool`)**: functions
   taking and returning any fixed-width int (`Int8`..`Int64` / `UInt8`..`UInt64`;
-  rung 1 `METH_VARARGS` + `PyArg_ParseTuple` with `from_py` owning every
-  conversion -- signed and <= 32-bit-unsigned widths read a `long long` and
+  the unpack splits args/kwargs into `PyObject*` slots with `from_py` owning
+  every conversion -- signed and <= 32-bit-unsigned widths read a `long long` and
   range-check against the target, `UInt64` uses the unsigned accessors),
   `int`/BigInt (rung 2, a two-tier int64 fast path + hex string round-trip, so
   values beyond int64 cross losslessly), `float` (rung 3, C++ `double` via

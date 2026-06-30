@@ -6,9 +6,10 @@
 namespace {
 using namespace ::tpy::cpy;
 
-PyObject *bytes_vals__echo_pywrap(PyObject *self, PyObject *args) {
+PyObject *bytes_vals__echo_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("data"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:echo", __kwlist, &a0)) return nullptr;
     try {
         std::vector<uint8_t> __p0 = ::tpy::interop::from_py<std::vector<uint8_t>>(a0);
         return ::tpy::interop::to_py(::tpyapp::bytes_vals::echo(__p0));
@@ -35,9 +36,10 @@ PyObject *bytes_vals__make_own_pywrap(PyObject *self, PyObject *unused) {
     }
 }
 
-PyObject *bytes_vals__cat_pywrap(PyObject *self, PyObject *args) {
+PyObject *bytes_vals__cat_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("a"), const_cast<char *>("b"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTuple(args, "OO", &a0, &a1)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:cat", __kwlist, &a0, &a1)) return nullptr;
     try {
         std::vector<uint8_t> __p0 = ::tpy::interop::from_py<std::vector<uint8_t>>(a0);
         std::vector<uint8_t> __p1 = ::tpy::interop::from_py<std::vector<uint8_t>>(a1);
@@ -52,9 +54,10 @@ PyObject *bytes_vals__cat_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *bytes_vals__shout_pywrap(PyObject *self, PyObject *args) {
+PyObject *bytes_vals__shout_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("data"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:shout", __kwlist, &a0)) return nullptr;
     try {
         std::vector<uint8_t> __p0 = ::tpy::interop::from_py<std::vector<uint8_t>>(a0);
         return ::tpy::interop::to_py(::tpyapp::bytes_vals::shout(__p0));
@@ -69,10 +72,10 @@ PyObject *bytes_vals__shout_pywrap(PyObject *self, PyObject *args) {
 }
 
 PyMethodDef bytes_vals__methods[] = {
-    {"echo", bytes_vals__echo_pywrap, METH_VARARGS, nullptr},
+    {"echo", as_pycfunction(bytes_vals__echo_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {"make_own", bytes_vals__make_own_pywrap, METH_NOARGS, nullptr},
-    {"cat", bytes_vals__cat_pywrap, METH_VARARGS, nullptr},
-    {"shout", bytes_vals__shout_pywrap, METH_VARARGS, nullptr},
+    {"cat", as_pycfunction(bytes_vals__cat_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"shout", as_pycfunction(bytes_vals__shout_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {nullptr, nullptr, 0, nullptr},
 };
 

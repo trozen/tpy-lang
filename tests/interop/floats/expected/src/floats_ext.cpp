@@ -6,9 +6,10 @@
 namespace {
 using namespace ::tpy::cpy;
 
-PyObject *floats__scale_pywrap(PyObject *self, PyObject *args) {
+PyObject *floats__scale_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("x"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:scale", __kwlist, &a0)) return nullptr;
     try {
         double __p0 = ::tpy::interop::from_py<double>(a0);
         return ::tpy::interop::to_py(::tpyapp::floats::scale(__p0));
@@ -22,9 +23,10 @@ PyObject *floats__scale_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *floats__addf_pywrap(PyObject *self, PyObject *args) {
+PyObject *floats__addf_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("a"), const_cast<char *>("b"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTuple(args, "OO", &a0, &a1)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:addf", __kwlist, &a0, &a1)) return nullptr;
     try {
         double __p0 = ::tpy::interop::from_py<double>(a0);
         double __p1 = ::tpy::interop::from_py<double>(a1);
@@ -40,8 +42,8 @@ PyObject *floats__addf_pywrap(PyObject *self, PyObject *args) {
 }
 
 PyMethodDef floats__methods[] = {
-    {"scale", floats__scale_pywrap, METH_VARARGS, nullptr},
-    {"addf", floats__addf_pywrap, METH_VARARGS, nullptr},
+    {"scale", as_pycfunction(floats__scale_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"addf", as_pycfunction(floats__addf_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {nullptr, nullptr, 0, nullptr},
 };
 

@@ -6,9 +6,10 @@
 namespace {
 using namespace ::tpy::cpy;
 
-PyObject *strings__echo_pywrap(PyObject *self, PyObject *args) {
+PyObject *strings__echo_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("s"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:echo", __kwlist, &a0)) return nullptr;
     try {
         std::string __p0 = ::tpy::interop::from_py<std::string>(a0);
         return ::tpy::interop::to_py(::tpyapp::strings::echo(__p0));
@@ -22,9 +23,10 @@ PyObject *strings__echo_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *strings__shout_pywrap(PyObject *self, PyObject *args) {
+PyObject *strings__shout_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("s"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:shout", __kwlist, &a0)) return nullptr;
     try {
         std::string __p0 = ::tpy::interop::from_py<std::string>(a0);
         return ::tpy::interop::to_py(::tpyapp::strings::shout(__p0));
@@ -38,9 +40,10 @@ PyObject *strings__shout_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *strings__greet_pywrap(PyObject *self, PyObject *args) {
+PyObject *strings__greet_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("name"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:greet", __kwlist, &a0)) return nullptr;
     try {
         std::string __p0 = ::tpy::interop::from_py<std::string>(a0);
         return ::tpy::interop::to_py(::tpyapp::strings::greet(__p0));
@@ -55,9 +58,9 @@ PyObject *strings__greet_pywrap(PyObject *self, PyObject *args) {
 }
 
 PyMethodDef strings__methods[] = {
-    {"echo", strings__echo_pywrap, METH_VARARGS, nullptr},
-    {"shout", strings__shout_pywrap, METH_VARARGS, nullptr},
-    {"greet", strings__greet_pywrap, METH_VARARGS, nullptr},
+    {"echo", as_pycfunction(strings__echo_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"shout", as_pycfunction(strings__shout_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"greet", as_pycfunction(strings__greet_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {nullptr, nullptr, 0, nullptr},
 };
 

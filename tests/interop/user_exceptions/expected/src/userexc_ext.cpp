@@ -8,9 +8,10 @@ using namespace ::tpy::cpy;
 
 ::tpy::interop::ExcRegistry userexc__exc_registry;
 
-PyObject *userexc__lookup_pywrap(PyObject *self, PyObject *args) {
+PyObject *userexc__lookup_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("k"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:lookup", __kwlist, &a0)) return nullptr;
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::userexc::lookup(__p0));
@@ -24,9 +25,10 @@ PyObject *userexc__lookup_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *userexc__boot_pywrap(PyObject *self, PyObject *args) {
+PyObject *userexc__boot_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("ok"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:boot", __kwlist, &a0)) return nullptr;
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::userexc::boot(__p0));
@@ -66,9 +68,10 @@ PyObject *userexc__abort_now_pywrap(PyObject *self, PyObject *unused) {
     }
 }
 
-PyObject *userexc__must_be_even_pywrap(PyObject *self, PyObject *args) {
+PyObject *userexc__must_be_even_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("n"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:must_be_even", __kwlist, &a0)) return nullptr;
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::userexc::must_be_even(__p0));
@@ -83,11 +86,11 @@ PyObject *userexc__must_be_even_pywrap(PyObject *self, PyObject *args) {
 }
 
 PyMethodDef userexc__methods[] = {
-    {"lookup", userexc__lookup_pywrap, METH_VARARGS, nullptr},
-    {"boot", userexc__boot_pywrap, METH_VARARGS, nullptr},
+    {"lookup", as_pycfunction(userexc__lookup_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"boot", as_pycfunction(userexc__boot_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {"fail_app", userexc__fail_app_pywrap, METH_NOARGS, nullptr},
     {"abort_now", userexc__abort_now_pywrap, METH_NOARGS, nullptr},
-    {"must_be_even", userexc__must_be_even_pywrap, METH_VARARGS, nullptr},
+    {"must_be_even", as_pycfunction(userexc__must_be_even_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {nullptr, nullptr, 0, nullptr},
 };
 

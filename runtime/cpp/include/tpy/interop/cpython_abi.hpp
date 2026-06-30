@@ -35,6 +35,17 @@ struct PyObject {
 };
 
 using PyCFunction = PyObject *(*)(PyObject *, PyObject *);
+// METH_KEYWORDS wrapper shape (self, args, kwargs). Stored in PyMethodDef.ml_meth
+// after a cast through `as_pycfunction`; the runtime dispatches on the flag.
+using PyCFunctionWithKeywords = PyObject *(*)(PyObject *, PyObject *, PyObject *);
+
+// Cast a keyword wrapper to the PyCFunction slot type. Routed through
+// `void(*)(void)` because converting between incompatible function-pointer
+// types directly trips -Wcast-function-type (on under -Wextra -Werror), exactly
+// as CPython's own _PyCFunction_CAST avoids it.
+inline PyCFunction as_pycfunction(PyCFunctionWithKeywords f) {
+    return reinterpret_cast<PyCFunction>(reinterpret_cast<void (*)()>(f));
+}
 
 struct PyMethodDef {
     const char *ml_name;
@@ -80,6 +91,7 @@ inline constexpr PyModuleDef_Base MODULEDEF_HEAD_INIT = {
 // self-check can verify them against Python.h without pulling cpython_h.hpp's
 // extern "C" decls.)
 inline constexpr int METH_VARARGS = 0x0001;
+inline constexpr int METH_KEYWORDS = 0x0002;  // ml_meth is PyCFunctionWithKeywords
 inline constexpr int METH_NOARGS = 0x0004;
 
 // PyModule_Create is a macro for PyModule_Create2(def, PYTHON_API_VERSION).

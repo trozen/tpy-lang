@@ -51,8 +51,12 @@ PyObject *PyErr_Occurred(void);
 void PyErr_SetString(PyObject *type, const char *message);
 
 // Argument unpacking: glue uses only the "O" code (raw borrowed PyObject*);
-// from_py<T> owns every conversion, so format codes never appear.
+// from_py<T> owns every conversion, so format codes never appear. The keyword
+// form additionally splits kwargs against a NULL-terminated kwlist of param
+// names, giving an exposed callable Python's positional-or-keyword semantics.
 int PyArg_ParseTuple(PyObject *args, const char *format, ...);
+int PyArg_ParseTupleAndKeywords(PyObject *args, PyObject *kwargs,
+                                const char *format, char **kwlist, ...);
 
 // int marshalling (the fixed-width int types + BigInt). The signed path and
 // the unsigned widths <= 32 bits go through the long long accessors (range

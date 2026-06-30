@@ -8,9 +8,10 @@ using namespace ::tpy::cpy;
 
 ::tpy::interop::ExcRegistry userexcd__exc_registry;
 
-PyObject *userexcd__parse_pywrap(PyObject *self, PyObject *args) {
+PyObject *userexcd__parse_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("n"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:parse", __kwlist, &a0)) return nullptr;
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::userexcd::parse(__p0));
@@ -25,7 +26,7 @@ PyObject *userexcd__parse_pywrap(PyObject *self, PyObject *args) {
 }
 
 PyMethodDef userexcd__methods[] = {
-    {"parse", userexcd__parse_pywrap, METH_VARARGS, nullptr},
+    {"parse", as_pycfunction(userexcd__parse_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {nullptr, nullptr, 0, nullptr},
 };
 

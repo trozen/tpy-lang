@@ -51,7 +51,7 @@ progress -> ✅ done.
 | Phase | Deliverable | Scope | Status |
 |---|---|---|---|
 | 1 | Marshalling layer + cpython facade (abi3) -- the keystone | **v1.0** | 🚧 all scalars (int/BigInt, float, bool, fixed-width ints) + void return + str/bytes (copy-in) done; containers next |
-| 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes done; containers next |
+| 2 | Extension codegen; **free functions** end-to-end; local `.so` build | **v1.0** | 🚧 every scalar arg/return + void return + str/bytes done; positional + keyword args (PyArg_ParseTupleAndKeywords); containers next |
 | 2.5 | PEP 517 backend -> abi3 wheel (packaging) | **v1.0** | 🔬 |
 | 3 | Buffer input -- numeric (copy-in in v1.0; zero-copy -> 3.5) | **v1.0** | 🔬 |
 | 4 | **Classes + methods** (`PyType_FromSpec`; dunders per Q4) | **v1.1** | 🚧 baseline done: construct + plain methods + annotated fields as getset, instances as free-fn/method params (borrow) + returns (copy); dunders/inheritance/@property/class-typed fields deferred |
@@ -172,10 +172,23 @@ design -- the same long pole.)
   ext module.
 - **Glue mechanics:** single-phase init (`PyInit_` returns
   `PyModule_Create`, calling `__tpy_init` for module globals);
-  `METH_VARARGS` (defer `METH_FASTCALL`); `PyArg_ParseTuple` only splits the
-  tuple into `PyObject*` slots (`"OO..."`), and **`from_py<T>` owns every
-  conversion -- never format codes** (format codes don't generalize to
-  BigInt/records/str and would create a second, competing marshalling path).
+  `METH_VARARGS | METH_KEYWORDS` (defer `METH_FASTCALL`);
+  `PyArg_ParseTupleAndKeywords` splits args + kwargs into `PyObject*` slots
+  (`"OO...:name"`, the `:name` suffix so a parse error names the callable)
+  against a `kwlist` of the param names, so an exposed callable has Python's
+  positional-or-keyword semantics; a zero-arg callable stays `METH_NOARGS`.
+  (An arg-count / unknown-keyword error still raises the right *type*
+  -- `TypeError` -- but the C parser's message text differs from CPython's own
+  argument parser; a caller inspecting `str(e)` sees different wording, the
+  same kind of cosmetic divergence as the scalar marshallers' error messages.)
+  **`from_py<T>` owns every conversion -- never format codes**
+  (format codes don't generalize to BigInt/records/str and would create a
+  second, competing marshalling path). The keyword wrapper's 3-arg shape is
+  cast into the `PyCFunction` slot via the facade's `as_pycfunction` (CPython's
+  own `_PyCFunction_CAST` idiom, warning-clean under `-Wcast-function-type`).
+  Param forms the unpack can't cross -- defaults, `*args`/`**kwargs`,
+  positional-only (`/`), keyword-only (`*`) -- are rejected at compile time
+  (loud, not silently mishandled); keyword-only + defaults are the next rung.
 
 ### Rung 2 -- BigInt marshalling under the 3.12 limited API
 

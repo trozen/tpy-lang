@@ -118,6 +118,31 @@ class ExtensionGenerator:
         cpp = qualified_cpp_name(self.ctx.module_name, info.name)
         return cpp, f"{sym}__type_{escape_cpp_name(info.name)}"
 
+    def _emit_arg_unpack(self, out: TextIO, param_names: list[str],
+                         fail_ret: str, fn_label: str) -> None:
+        """Emit the keyword-aware unpack prologue for a wrapper with >=1 param:
+        the kwlist of Python param names, the borrowed-PyObject* arg locals, and
+        the PyArg_ParseTupleAndKeywords call -- giving the exposed callable
+        Python's positional-or-keyword semantics. `fail_ret` is returned on a
+        parse failure ("nullptr" for the wrapper sentinel, "-1" for tp_init).
+        Reads `args`/`kwargs` (the wrapper's param names). Caller guarantees a
+        non-empty param list (a zero-arg callable stays METH_NOARGS).
+
+        `fn_label` is appended to the format string as the C-API `:name`
+        suffix, so a parse error (wrong arity, unknown keyword) names the
+        callable -- closer to CPython's own `func() got ...` wording, though
+        the residual text still differs (the C parser's message phrasing).
+        """
+        n = len(param_names)
+        kw = ", ".join(f'const_cast<char *>("{nm}")' for nm in param_names)
+        decls = " ".join(f"PyObject *a{i} = nullptr;" for i in range(n))
+        addrs = ", ".join(f"&a{i}" for i in range(n))
+        out.write(f"    static char *__kwlist[] = {{{kw}, nullptr}};\n")
+        out.write(f"    {decls}\n")
+        out.write(f'    if (!PyArg_ParseTupleAndKeywords(args, kwargs, '
+                  f'"{"O" * n}:{fn_label}", __kwlist, {addrs})) '
+                  f"return {fail_ret};\n")
+
     def _emit_marshal_in(self, out: TextIO, idx: int, typ: TpyType,
                          sym: str) -> str:
         """Marshal arg a{idx} into a local; return the token to pass at the
@@ -187,14 +212,12 @@ class ExtensionGenerator:
                        if p.name != "self"] if "__init__" in info.methods else []
         n_init = len(init_params)
         init_fn = f"{sym}__{escape_cpp_name(cls['simple'])}_init"
+        kw_param = "kwargs" if n_init else ""
         out.write(f"int {init_fn}(PyObject *self, PyObject *args, "
-                  f"PyObject *) {{\n")
+                  f"PyObject *{kw_param}) {{\n")
         if n_init:
-            decls = " ".join(f"PyObject *a{i} = nullptr;" for i in range(n_init))
-            addrs = ", ".join(f"&a{i}" for i in range(n_init))
-            out.write(f"    {decls}\n")
-            out.write(f'    if (!PyArg_ParseTuple(args, "{"O" * n_init}", '
-                      f"{addrs})) return -1;\n")
+            self._emit_arg_unpack(out, [pn for pn, _t in init_params], "-1",
+                                  cls['simple'])
         out.write(f"    auto *__inst = {cppvar};\n")
         out.write("    try {\n")
         argtoks = [self._emit_marshal_in(out, i, t, sym)
@@ -219,7 +242,7 @@ class ExtensionGenerator:
 
         # Instance methods (plain, non-dunder; the sema validator guaranteed the
         # signatures marshal and rejected static/async/generator/generic).
-        method_entries: list[tuple[str, str, str]] = []
+        method_entries: list[tuple[str, str, str, bool]] = []
         for mname, overloads in info.methods.items():
             if mname == "__init__":
                 continue
@@ -230,16 +253,16 @@ class ExtensionGenerator:
             n = len(params)
             wname = f"{sym}__{escape_cpp_name(cls['simple'])}__" \
                     f"{escape_cpp_name(mname)}_pywrap"
-            meth_flag = "METH_NOARGS" if n == 0 else "METH_VARARGS"
-            method_entries.append((mname, wname, meth_flag))
-            arg2 = "" if n == 0 else "args"
-            out.write(f"PyObject *{wname}(PyObject *self, PyObject *{arg2}) {{\n")
-            if n:
-                decls = " ".join(f"PyObject *a{i} = nullptr;" for i in range(n))
-                addrs = ", ".join(f"&a{i}" for i in range(n))
-                out.write(f"    {decls}\n")
-                out.write(f'    if (!PyArg_ParseTuple(args, "{"O" * n}", '
-                          f"{addrs})) return nullptr;\n")
+            if n == 0:
+                meth_flag, kw = "METH_NOARGS", False
+                out.write(f"PyObject *{wname}(PyObject *self, PyObject *) {{\n")
+            else:
+                meth_flag, kw = "METH_VARARGS | METH_KEYWORDS", True
+                out.write(f"PyObject *{wname}(PyObject *self, PyObject *args, "
+                          f"PyObject *kwargs) {{\n")
+                self._emit_arg_unpack(out, [pn for pn, _t in params], "nullptr",
+                                      mname)
+            method_entries.append((mname, wname, meth_flag, kw))
             out.write("    try {\n")
             out.write(f"        auto &__self = {cppvar}->payload;\n")
             argtoks = [self._emit_marshal_in(out, i, t, sym)
@@ -283,8 +306,9 @@ class ExtensionGenerator:
 
         base = f"{sym}__{escape_cpp_name(cls['simple'])}"
         out.write(f"PyMethodDef {base}__methods[] = {{\n")
-        for pyname, wname, flag in method_entries:
-            out.write(f'    {{"{pyname}", {wname}, {flag}, nullptr}},\n')
+        for pyname, wname, flag, kw in method_entries:
+            slot = f"as_pycfunction({wname})" if kw else wname
+            out.write(f'    {{"{pyname}", {slot}, {flag}, nullptr}},\n')
         out.write("    {nullptr, nullptr, 0, nullptr},\n};\n")
         out.write(f"PyGetSetDef {base}__getset[] = {{\n")
         for pyname, getn, setn in getset_entries:
@@ -361,24 +385,24 @@ class ExtensionGenerator:
             assert is_boundary_marshallable(t, allow_void), \
                 boundary_unmarshallable_msg(fn.name, what, boundary_cpp_type(t))
 
-        wrappers: list[tuple[str, str, str]] = []  # (pyname, wrapper, meth_flag)
+        wrappers: list[tuple[str, str, str, bool]] = []  # (pyname, wrap, flag, kw)
         for fn in exposed:
             assert_marshal(fn.return_type, "return", fn)
             for pname, ptype in fn.params:
                 assert_marshal(ptype, f"parameter '{pname}'", fn)
             n = len(fn.params)
             wname = f"{sym}__{escape_cpp_name(fn.name)}_pywrap"
-            meth = "METH_NOARGS" if n == 0 else "METH_VARARGS"
-            wrappers.append((fn.name, wname, meth))
             call = qualified_cpp_name(call_ns, fn.name)
-            arg2 = "unused" if n == 0 else "args"
-            out.write(f"PyObject *{wname}(PyObject *self, PyObject *{arg2}) {{\n")
-            if n:
-                decls = " ".join(f"PyObject *a{i} = nullptr;" for i in range(n))
-                addrs = ", ".join(f"&a{i}" for i in range(n))
-                out.write(f"    {decls}\n")
-                out.write(f'    if (!PyArg_ParseTuple(args, "{"O" * n}", {addrs}))'
-                          f" return nullptr;\n")
+            if n == 0:
+                meth, kw = "METH_NOARGS", False
+                out.write(f"PyObject *{wname}(PyObject *self, PyObject *unused) {{\n")
+            else:
+                meth, kw = "METH_VARARGS | METH_KEYWORDS", True
+                out.write(f"PyObject *{wname}(PyObject *self, PyObject *args, "
+                          f"PyObject *kwargs) {{\n")
+                self._emit_arg_unpack(out, [pn for pn, _t in fn.params],
+                                      "nullptr", fn.name)
+            wrappers.append((fn.name, wname, meth, kw))
             out.write("    try {\n")
             # Marshal each arg into a local before the call so conversion order
             # is left-to-right (C++ argument evaluation order is unspecified).
@@ -393,8 +417,9 @@ class ExtensionGenerator:
             self._emit_exposed_class(out, cls, sym, reg_arg)
 
         out.write(f"PyMethodDef {sym}__methods[] = {{\n")
-        for pyname, wname, meth in wrappers:
-            out.write(f'    {{"{pyname}", {wname}, {meth}, nullptr}},\n')
+        for pyname, wname, meth, kw in wrappers:
+            slot = f"as_pycfunction({wname})" if kw else wname
+            out.write(f'    {{"{pyname}", {slot}, {meth}, nullptr}},\n')
         out.write("    {nullptr, nullptr, 0, nullptr},\n")
         out.write("};\n\n")
 

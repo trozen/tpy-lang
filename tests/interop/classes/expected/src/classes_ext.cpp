@@ -9,9 +9,10 @@ using namespace ::tpy::cpy;
 
 PyObject *classes__type_Counter = nullptr;
 
-PyObject *classes__bump_pywrap(PyObject *self, PyObject *args) {
+PyObject *classes__bump_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("c"), const_cast<char *>("by"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTuple(args, "OO", &a0, &a1)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:bump", __kwlist, &a0, &a1)) return nullptr;
     try {
         ::tpyapp::classes::Counter &__p0 = *::tpy::interop::instance_payload<::tpyapp::classes::Counter>(a0, (::tpy::cpy::PyTypeObject *)classes__type_Counter);
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
@@ -27,9 +28,10 @@ PyObject *classes__bump_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *classes__make_pywrap(PyObject *self, PyObject *args) {
+PyObject *classes__make_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("value"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:make", __kwlist, &a0)) return nullptr;
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         return ::tpy::interop::instance_to_py((::tpy::cpy::PyTypeObject *)classes__type_Counter, ::tpyapp::classes::make(__p0));
@@ -43,9 +45,10 @@ PyObject *classes__make_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-int classes__Counter_init(PyObject *self, PyObject *args, PyObject *) {
+int classes__Counter_init(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("value"), const_cast<char *>("label"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTuple(args, "OO", &a0, &a1)) return -1;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:Counter", __kwlist, &a0, &a1)) return -1;
     auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self);
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
@@ -64,9 +67,10 @@ int classes__Counter_init(PyObject *self, PyObject *args, PyObject *) {
     }
 }
 
-PyObject *classes__Counter__incr_pywrap(PyObject *self, PyObject *args) {
+PyObject *classes__Counter__incr_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("by"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:incr", __kwlist, &a0)) return nullptr;
     try {
         auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->payload;
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
@@ -96,9 +100,10 @@ PyObject *classes__Counter__get_pywrap(PyObject *self, PyObject *) {
     }
 }
 
-PyObject *classes__Counter__echo_pywrap(PyObject *self, PyObject *args) {
+PyObject *classes__Counter__echo_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("s"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:echo", __kwlist, &a0)) return nullptr;
     try {
         auto &__self = reinterpret_cast<::tpy::interop::Instance<::tpyapp::classes::Counter> *>(self)->payload;
         std::string __p0 = ::tpy::interop::from_py<std::string>(a0);
@@ -154,9 +159,9 @@ int classes__Counter__label_set(PyObject *self, PyObject *value, void *) {
 }
 
 PyMethodDef classes__Counter__methods[] = {
-    {"incr", classes__Counter__incr_pywrap, METH_VARARGS, nullptr},
+    {"incr", as_pycfunction(classes__Counter__incr_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {"get", classes__Counter__get_pywrap, METH_NOARGS, nullptr},
-    {"echo", classes__Counter__echo_pywrap, METH_VARARGS, nullptr},
+    {"echo", as_pycfunction(classes__Counter__echo_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {nullptr, nullptr, 0, nullptr},
 };
 PyGetSetDef classes__Counter__getset[] = {
@@ -178,8 +183,8 @@ PyType_Spec classes__Counter__spec = {
 };
 
 PyMethodDef classes__methods[] = {
-    {"bump", classes__bump_pywrap, METH_VARARGS, nullptr},
-    {"make", classes__make_pywrap, METH_VARARGS, nullptr},
+    {"bump", as_pycfunction(classes__bump_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"make", as_pycfunction(classes__make_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {nullptr, nullptr, 0, nullptr},
 };
 

@@ -90,3 +90,10 @@ self-check additionally requires `Python.h`.
   `driver.py` round-trips empty / raw-with-NUL-and-high-byte / concatenated
   values; `ext_checks.py` covers the ext-only `TypeError`s -- a `str`, a
   `bytearray` (mutable buffer, rejected by value), and a non-bytes arg.
+- **`kwargs/`** (`kwargs.py`) -- keyword-argument marshalling
+  (`PyArg_ParseTupleAndKeywords`): free functions and a class `__init__` +
+  methods accept their params positionally, all-keyword, mixed, and
+  reordered-by-keyword (`Vec(x=1, y=2)`, `v.move(dx=10, dy=20)`). A keyword
+  call mutates through and is observed on the same object -- the reference-
+  semantics proof, here driven by keyword args. All forms are source-parity, so
+  the whole driver is checked against both the `.so` and the Python source.

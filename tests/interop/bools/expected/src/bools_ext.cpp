@@ -6,9 +6,10 @@
 namespace {
 using namespace ::tpy::cpy;
 
-PyObject *bools__flip_pywrap(PyObject *self, PyObject *args) {
+PyObject *bools__flip_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("b"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:flip", __kwlist, &a0)) return nullptr;
     try {
         bool __p0 = ::tpy::interop::from_py<bool>(a0);
         return ::tpy::interop::to_py(::tpyapp::bools::flip(__p0));
@@ -22,9 +23,10 @@ PyObject *bools__flip_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *bools__both_pywrap(PyObject *self, PyObject *args) {
+PyObject *bools__both_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("a"), const_cast<char *>("b"), nullptr};
     PyObject *a0 = nullptr; PyObject *a1 = nullptr;
-    if (!PyArg_ParseTuple(args, "OO", &a0, &a1)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "OO:both", __kwlist, &a0, &a1)) return nullptr;
     try {
         bool __p0 = ::tpy::interop::from_py<bool>(a0);
         bool __p1 = ::tpy::interop::from_py<bool>(a1);
@@ -39,9 +41,10 @@ PyObject *bools__both_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *bools__identity_pywrap(PyObject *self, PyObject *args) {
+PyObject *bools__identity_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("b"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:identity", __kwlist, &a0)) return nullptr;
     try {
         bool __p0 = ::tpy::interop::from_py<bool>(a0);
         return ::tpy::interop::to_py(::tpyapp::bools::identity(__p0));
@@ -55,9 +58,10 @@ PyObject *bools__identity_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *bools__tally_pywrap(PyObject *self, PyObject *args) {
+PyObject *bools__tally_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("b"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:tally", __kwlist, &a0)) return nullptr;
     try {
         bool __p0 = ::tpy::interop::from_py<bool>(a0);
         ::tpyapp::bools::tally(__p0);
@@ -86,10 +90,10 @@ PyObject *bools__true_count_pywrap(PyObject *self, PyObject *unused) {
 }
 
 PyMethodDef bools__methods[] = {
-    {"flip", bools__flip_pywrap, METH_VARARGS, nullptr},
-    {"both", bools__both_pywrap, METH_VARARGS, nullptr},
-    {"identity", bools__identity_pywrap, METH_VARARGS, nullptr},
-    {"tally", bools__tally_pywrap, METH_VARARGS, nullptr},
+    {"flip", as_pycfunction(bools__flip_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"both", as_pycfunction(bools__both_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"identity", as_pycfunction(bools__identity_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"tally", as_pycfunction(bools__tally_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {"true_count", bools__true_count_pywrap, METH_NOARGS, nullptr},
     {nullptr, nullptr, 0, nullptr},
 };

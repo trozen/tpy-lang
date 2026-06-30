@@ -6,9 +6,10 @@
 namespace {
 using namespace ::tpy::cpy;
 
-PyObject *int_widths__i8_pywrap(PyObject *self, PyObject *args) {
+PyObject *int_widths__i8_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("x"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:i8", __kwlist, &a0)) return nullptr;
     try {
         int8_t __p0 = ::tpy::interop::from_py<int8_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::int_widths::i8(__p0));
@@ -22,9 +23,10 @@ PyObject *int_widths__i8_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *int_widths__u8_pywrap(PyObject *self, PyObject *args) {
+PyObject *int_widths__u8_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("x"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:u8", __kwlist, &a0)) return nullptr;
     try {
         uint8_t __p0 = ::tpy::interop::from_py<uint8_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::int_widths::u8(__p0));
@@ -38,9 +40,10 @@ PyObject *int_widths__u8_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *int_widths__i16_pywrap(PyObject *self, PyObject *args) {
+PyObject *int_widths__i16_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("x"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:i16", __kwlist, &a0)) return nullptr;
     try {
         int16_t __p0 = ::tpy::interop::from_py<int16_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::int_widths::i16(__p0));
@@ -54,9 +57,10 @@ PyObject *int_widths__i16_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *int_widths__u16_pywrap(PyObject *self, PyObject *args) {
+PyObject *int_widths__u16_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("x"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:u16", __kwlist, &a0)) return nullptr;
     try {
         uint16_t __p0 = ::tpy::interop::from_py<uint16_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::int_widths::u16(__p0));
@@ -70,9 +74,10 @@ PyObject *int_widths__u16_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *int_widths__i32_pywrap(PyObject *self, PyObject *args) {
+PyObject *int_widths__i32_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("x"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:i32", __kwlist, &a0)) return nullptr;
     try {
         int32_t __p0 = ::tpy::interop::from_py<int32_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::int_widths::i32(__p0));
@@ -86,9 +91,10 @@ PyObject *int_widths__i32_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *int_widths__u32_pywrap(PyObject *self, PyObject *args) {
+PyObject *int_widths__u32_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("x"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:u32", __kwlist, &a0)) return nullptr;
     try {
         uint32_t __p0 = ::tpy::interop::from_py<uint32_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::int_widths::u32(__p0));
@@ -102,9 +108,10 @@ PyObject *int_widths__u32_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *int_widths__i64_pywrap(PyObject *self, PyObject *args) {
+PyObject *int_widths__i64_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("x"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:i64", __kwlist, &a0)) return nullptr;
     try {
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::int_widths::i64(__p0));
@@ -118,9 +125,10 @@ PyObject *int_widths__i64_pywrap(PyObject *self, PyObject *args) {
     }
 }
 
-PyObject *int_widths__u64_pywrap(PyObject *self, PyObject *args) {
+PyObject *int_widths__u64_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("x"), nullptr};
     PyObject *a0 = nullptr;
-    if (!PyArg_ParseTuple(args, "O", &a0)) return nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O:u64", __kwlist, &a0)) return nullptr;
     try {
         uint64_t __p0 = ::tpy::interop::from_py<uint64_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::int_widths::u64(__p0));
@@ -135,14 +143,14 @@ PyObject *int_widths__u64_pywrap(PyObject *self, PyObject *args) {
 }
 
 PyMethodDef int_widths__methods[] = {
-    {"i8", int_widths__i8_pywrap, METH_VARARGS, nullptr},
-    {"u8", int_widths__u8_pywrap, METH_VARARGS, nullptr},
-    {"i16", int_widths__i16_pywrap, METH_VARARGS, nullptr},
-    {"u16", int_widths__u16_pywrap, METH_VARARGS, nullptr},
-    {"i32", int_widths__i32_pywrap, METH_VARARGS, nullptr},
-    {"u32", int_widths__u32_pywrap, METH_VARARGS, nullptr},
-    {"i64", int_widths__i64_pywrap, METH_VARARGS, nullptr},
-    {"u64", int_widths__u64_pywrap, METH_VARARGS, nullptr},
+    {"i8", as_pycfunction(int_widths__i8_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"u8", as_pycfunction(int_widths__u8_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"i16", as_pycfunction(int_widths__i16_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"u16", as_pycfunction(int_widths__u16_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"i32", as_pycfunction(int_widths__i32_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"u32", as_pycfunction(int_widths__u32_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"i64", as_pycfunction(int_widths__i64_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"u64", as_pycfunction(int_widths__u64_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {nullptr, nullptr, 0, nullptr},
 };
 
