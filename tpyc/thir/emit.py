@@ -18,7 +18,7 @@ from typing import TextIO
 
 from ..codegen_cpp.context import INDENT, escape_cpp_name, expand_cpp_template
 from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
-from ..typesys import OptionalType, unwrap_qualifiers
+from ..typesys import OptionalType, TupleType, unwrap_qualifiers
 from .nodes import (
     Form,
     THIRAssign,
@@ -193,6 +193,13 @@ def _emit_form_convert(e: THIRFormConvert) -> str:
         # F2a plain non-value lvalue -> reseatable `T*` pointer-local: address-of.
         if is_plain_nonvalue(t):
             return f"&({inner})"
+        # F3 storage tuple -> borrow tuple: the runtime helper absorbs the
+        # per-element pointer/optional mask from the spelled destination, so the
+        # only thing to render is that destination (the borrow form, const when
+        # the source is const). Mirrors context.convert's tuple BORROW arm.
+        if isinstance(t, TupleType):
+            borrow_cpp = t.to_cpp_return_const() if e.is_const else t.to_cpp_return()
+            return f"::tpy::tuple_to_pointer<{borrow_cpp}>({inner})"
     elif e.form is Form.STORAGE:
         # borrow `T*` -> storage `std::optional<T>` (write/return direction). An
         # owned source at last use moves (`ptr_to_optional_move`, F2e); a
@@ -201,6 +208,13 @@ def _emit_form_convert(e: THIRFormConvert) -> str:
         if isinstance(t, OptionalType):
             helper = "ptr_to_optional_move" if e.move else "ptr_to_optional"
             return f"::tpy::{helper}({inner})"
+        # F3 borrow tuple -> storage tuple: the helper absorbs the per-element
+        # pointer->optional/value mask from the spelled storage destination. An
+        # owned source at last use moves; a borrow copies. Mirrors context.convert's
+        # tuple STORAGE arm.
+        if isinstance(t, TupleType):
+            helper = "tuple_to_storage_move" if e.move else "tuple_to_storage"
+            return f"::tpy::{helper}<{t.to_cpp()}>({inner})"
     raise THIRCodeGenError(
         f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
 
@@ -320,6 +334,11 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             out.write(f"{indent}{cpp} __slot_{init_slot} = {_emit_expr(stmt.init)};\n")
             out.write(f"{indent}std::optional<{cpp}> __slot_{rebind_slot};\n")
             out.write(f"{indent}{const_pfx}{cpp}* {name} = &__slot_{init_slot};\n")
+        elif stmt.cpp_local_representation is LocalBinding.STORAGE_TUPLE_ALIAS:
+            # F3 storage-tuple alias: `auto&& name = <lvalue storage tuple>` binds a
+            # forwarding reference to the source's storage (no spelled type). Reads
+            # off it lift via tuple_to_pointer at borrow boundaries.
+            out.write(f"{indent}auto&& {name} = {_emit_expr(stmt.init)};\n")
         elif stmt.cpp_local_representation is not None:
             # Non-value borrow local. cpp_type is already the pointee record (the
             # optional's inner for OPTIONAL_TO_PTR, not the optional itself), so

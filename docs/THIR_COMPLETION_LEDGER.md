@@ -119,7 +119,17 @@ deferred (self-contained) / blocked-on-`<rung>`.
 ### Form ladder (F) -- `IR_DESIGN.md` rung ladder + `THIR_FORM_INVENTORY.md`
 - F1 (record locals + Optional read), F2 (reseatable pointer-locals + Optional
   write/return + move): **DONE**.
-- F3 tuples, F4 unions (`to_ptr_variant`/`to_value_variant`), F5 generic-slot,
+- F3 tuples: **PARTIAL** (increments 22-24) -- storage->borrow read
+  (`tuple_to_pointer`: borrow-form tuple return + storage-tuple `auto&&` alias locals)
+  + borrow->storage write (`tuple_to_storage`, tuple-field write off a borrow tuple
+  param) DONE for pointer-repr tuples of scalar / F1-record / `Optional[F1-record]`
+  elements. **Deferred (blocked-on later F3 cells / the statement-shape axis):**
+  Subscript / storage-Name alias sources, reassignable BORROW_TUPLE /
+  OPTIONAL_BORROW_TUPLE, the `tuple_to_storage_move` `Own[tuple]` move arm, subscript /
+  loop-var / unpack sources, tuple-literal MIL construction. **Note:** further F3 form
+  cells gain little routing until the statement-shape axis (subscript reads, for-loops,
+  tuple-unpack) lands -- most corpus tuples are accessed that way.
+- F4 unions (`to_ptr_variant`/`to_value_variant`), F5 generic-slot,
   F6 str/bytes view-split, F-final (RefType removal + retirement): **not started.**
 - F2 carry-over deferred cells (container locals, cross-module/native/generic
   records, subscript sources, narrowing-needed `->` deref, name-alias/REF_ALIAS
@@ -156,4 +166,4 @@ ledger surfaced that they are an untracked gap.
 - **Planned:** extend the `--thir-codegen` non-vacuity tally to report per-component
   AST-fallback coverage (how much of each component still falls back to AST), so the
   gap to each deletion is *measured*, not estimated. Today the tally reports only
-  total routed bodies/cases (5071 bodies / 1216 cases as of increment 21).
+  total routed bodies/cases (5081 bodies / 1218 cases as of increment 24).

@@ -51,6 +51,10 @@ class LocalBinding(Enum):
                              two-slot `__slot_N` machinery (a direct init slot +
                              an `std::optional<T>` rebind slot). The rvalue
                              counterpart of POINTER.
+      * `STORAGE_TUPLE_ALIAS` -- `auto&& name = <lvalue storage tuple>` aliasing a
+                             pointer-repr tuple's storage (F3); single-assignment.
+                             Used by THIR lowering only (`is_storage_tuple_alias_decl`);
+                             the AST path decides this arm inline in `_gen_var_decl_code`.
       * `OTHER`           -- any other binding; the caller's existing path owns it
                              (single-assignment rvalue value-locals, tuples,
                              unions, generic slots, value types).
@@ -59,6 +63,7 @@ class LocalBinding(Enum):
     OPTIONAL_TO_PTR = auto()
     POINTER = auto()
     REBIND_SLOT = auto()
+    STORAGE_TUPLE_ALIAS = auto()
     OTHER = auto()
 
 
@@ -107,6 +112,44 @@ def reads_storage_form_optional(analyzer, expr: TpyExpr) -> bool:
         return not (obj_type is not None
                     and isinstance(unwrap_qualifiers(obj_type), TupleType))
     return False
+
+
+def is_storage_tuple_alias_decl(
+    target_type: TpyType | None,
+    init: TpyExpr | None,
+    *,
+    name: str,
+    reassigned: set[str],
+    hoisted: set[str],
+    move_through: set[str],
+) -> bool:
+    """A pointer-repr tuple local bound `auto&& name = <lvalue storage tuple>`,
+    aliasing the source's storage (CPython shares the elements); single-assignment
+    only. Mirrors `_gen_var_decl_code`'s storage-form-tuple alias arm
+    (`statements.py`, the `auto&&` return) for the FieldAccess-source subset -- the
+    Subscript / storage-form-Name sources, the const tracking, and the reassigned
+    BORROW_TUPLE fall-over ride later F3 cells. A field read off a storage tuple
+    field is unconditionally a storage source (the AST's `is_storage_form_source`
+    returns True for any FieldAccess), so no ctx walk-state is needed here.
+
+    Pure: a function of the resolved type, the init shape, and the prescan facts;
+    callers add their own receiver / element checks (THIR lowering gates the field
+    receiver + the F1 tuple slice). The whole-corpus byte-diff is the anti-drift net
+    against the AST arm above.
+
+    The init must be a BARE `TpyFieldAccess`: THIR lowering reads `init.obj` directly
+    (no coerce peel), and the eligibility gate (`_field_receiver_ok`) likewise admits
+    only a bare field access, so admitting a coerce-wrapped source here would let the
+    two diverge. A coerce-wrapped tuple-field read stays on the AST path until a later
+    F3 cell handles it on both sides together."""
+    if init is None or target_type is None:
+        return False
+    if name in reassigned or name in hoisted or name in move_through:
+        return False
+    if not (isinstance(target_type, TupleType)
+            and target_type.has_pointer_repr_element()):
+        return False
+    return isinstance(init, TpyFieldAccess)
 
 
 def classify_local_binding(

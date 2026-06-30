@@ -50,7 +50,7 @@ from ..parse.nodes import (
 )
 from ..typesys import (
     LiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TpyType,
-    VoidType, is_float_type, resolve_int_literals, unwrap_optional_own,
+    TupleType, VoidType, is_float_type, resolve_int_literals, unwrap_optional_own,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from ..type_def_registry import (
@@ -59,7 +59,8 @@ from ..type_def_registry import (
 )
 from ..codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ..codegen_cpp.forms import (
-    LocalBinding, classify_local_binding, reads_storage_form_optional,
+    LocalBinding, classify_local_binding, is_storage_tuple_alias_decl,
+    reads_storage_form_optional,
 )
 from ..value_category import is_rvalue_source
 from ..codegen_cpp.context import escape_cpp_name
@@ -120,7 +121,8 @@ def _eligible_scalar(t: TpyType | None) -> bool:
 
 def _eligible_return(t: TpyType | None, analyzer) -> bool:
     return (t is None or isinstance(t, VoidType) or _eligible_scalar(t)
-            or _storage_optional_return_type(t, analyzer) is not None)
+            or _storage_optional_return_type(t, analyzer) is not None
+            or _borrow_tuple_return_type(t, analyzer) is not None)
 
 
 # --- F1 form slice: single-assignment non-value record locals + field reads ---
@@ -130,7 +132,7 @@ class _Prescan:
     codegen seeds into ctx (see setup_body_scope), recomputed here from the
     analyzer so lowering classifies identically without a CodeGenContext."""
     __slots__ = ("reassigned", "rvalue_reassigned", "hoisted", "move_through",
-                 "ret_storage_opt")
+                 "ret_storage_opt", "ret_borrow_tuple")
 
     def __init__(self, func: TpyFunction, analyzer) -> None:
         scan = analyzer.function_scan_results.get(id(func))
@@ -148,6 +150,10 @@ class _Prescan:
         # for every other return type (the value-scalar/pointer-repr paths).
         rt = func.return_type if isinstance(func.return_type, TpyType) else None
         self.ret_storage_opt = _storage_optional_return_type(rt, analyzer)
+        # F3: the function's borrow-form pointer-repr tuple return slot, if any
+        # (`tuple[..., Ref]` -> `std::tuple<..., T*>`), so a `return <storage tuple
+        # lvalue>` lifts via `tuple_to_pointer`. None for every other return type.
+        self.ret_borrow_tuple = _borrow_tuple_return_type(rt, analyzer)
 
 
 def _f1_record(t: TpyType | None, analyzer) -> bool:
@@ -181,6 +187,65 @@ def _storage_optional_return_type(t: TpyType | None, analyzer) -> 'OptionalType 
         return None
     inner = t.inner.wrapped if isinstance(t.inner, OwnType) else t.inner
     return t if _f1_record(inner, analyzer) else None
+
+
+def _f1_tuple_element_ok(e: TpyType, analyzer) -> bool:
+    """A tuple element that renders byte-identically off the F1 slice: an eligible
+    value scalar (`T`, same in both forms), an F1-record (BORROW_REF: `T*` borrow /
+    `T` storage), or a pointer-repr `Optional[F1-record]` (PTR_OPTIONAL: `T*` borrow
+    / `std::optional<T>` storage). Each keeps `to_cpp_return()` / `to_cpp()`
+    recursion off cross-module / native / generic / pending types, where bare
+    `to_cpp()` would mis-spell. Union / container / generic elements ride later
+    rungs."""
+    if _eligible_scalar(e) or _f1_record(e, analyzer):
+        return True
+    inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e)))
+    if isinstance(inner, OptionalType) and inner.uses_pointer_repr():
+        opt_inner = inner.inner.wrapped if isinstance(inner.inner, OwnType) else inner.inner
+        return _f1_record(opt_inner, analyzer)
+    return False
+
+
+def _f1_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
+    """A pointer-repr tuple whose every element is F1-renderable -- the F3 tuple:
+    borrow form `std::tuple<..., T*>` differs from storage form
+    `std::tuple<..., std::optional<T>>` / `std::tuple<..., T>`, so a storage source
+    lifts via `tuple_to_pointer` and a borrow source stores via `tuple_to_storage`.
+    `has_pointer_repr_element` ensures the two forms genuinely differ (an all-value
+    tuple needs no conversion). Other tuples stay on the AST path."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(t, TupleType) or not t.has_pointer_repr_element():
+        return None
+    if not all(_f1_tuple_element_ok(e, analyzer) for e in t.element_types):
+        return None
+    return t
+
+
+def _borrow_tuple_return_type(t: TpyType | None, analyzer) -> 'TupleType | None':
+    """The function's borrow-form pointer-repr tuple return slot (F3): a
+    `tuple[..., Ref]` returned as `std::tuple<..., T*>`, into which a `return
+    <storage tuple lvalue>` lifts via `tuple_to_pointer`."""
+    return _f1_tuple(t, analyzer)
+
+
+def _is_borrow_form_name(t: TpyType | None) -> bool:
+    """Whether a bare name read renders in borrow form: a non-value type (record /
+    Optional / etc. -- a pointer / reference) or a pointer-repr tuple (`std::tuple<
+    ..., T*>`, value-typed yet with distinct borrow and storage forms). Used to keep
+    a THIRName's form tag honest so a convert source is never mislabeled VALUE.
+
+    Precondition: callers must first exclude a STORAGE-form pointer-repr tuple (an F3
+    `auto&&` alias local), which has the same type but reads as STORAGE -- this query
+    keys on the type alone and would mistag it BORROW. The sole call site checks
+    `storage_tuple_locals` before falling through here."""
+    if t is None:
+        return False
+    if not t.is_value_type():
+        return True
+    inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return isinstance(inner, TupleType) and inner.has_pointer_repr_element()
 
 
 def _field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
@@ -313,6 +378,32 @@ def _scalar_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
     if not _eligible_scalar(analyzer.get_expr_type(target)):
         return False
     return _expr_eligible(stmt.value, declared, analyzer)
+
+
+def _is_borrow_tuple_source(e: TpyExpr, declared: dict[str, TpyType],
+                            storage_tuple_locals: set[str], analyzer) -> bool:
+    """A borrow-form tuple name (`std::tuple<..., T*>`) that lifts to storage form
+    at a field write via `tuple_to_storage`: a borrow tuple PARAM. A storage-tuple
+    alias local (`auto&&`, in `storage_tuple_locals`) is STORAGE form -- a direct
+    copy, no wrap -- and is excluded; a storage-form field/subscript/global source
+    is likewise a direct copy and is not this borrow source."""
+    return (isinstance(e, TpyName)
+            and e.name not in storage_tuple_locals
+            and _f1_tuple(declared.get(e.name), analyzer) is not None)
+
+
+def _f1_tuple_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
+                             storage_tuple_locals: set[str], analyzer) -> bool:
+    """A tuple-field write `recv.field = <borrow tuple>`: an F3 tuple field off an
+    F1-record receiver, written from a borrow tuple source -> the field-write lifts
+    borrow->storage via `tuple_to_storage` (copy; the `Own[tuple]` move arm and the
+    storage-source direct-copy ride later cells)."""
+    target = stmt.target
+    if not _field_receiver_ok(target, declared, analyzer):
+        return False
+    if _f1_tuple(analyzer.get_expr_type(target), analyzer) is None:
+        return False
+    return _is_borrow_tuple_source(stmt.value, declared, storage_tuple_locals, analyzer)
 
 
 def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
@@ -554,10 +645,12 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
 
 
 def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
-    """An F1-eligible param: a value scalar, or an F1-record passed by reference
-    (`T&` / `const T&`, accessed `.`). Optional/container/cross-module/native
-    record params stay on the AST path."""
-    return _eligible_scalar(ptype) or _f1_record(ptype, analyzer)
+    """An F1-eligible param: a value scalar, an F1-record passed by reference
+    (`T&` / `const T&`, accessed `.`), or an F3 borrow-form pointer-repr tuple
+    (`std::tuple<..., T*>`, a borrow source for a `tuple_to_storage` field write).
+    Optional/container/cross-module/native record params stay on the AST path."""
+    return (_eligible_scalar(ptype) or _f1_record(ptype, analyzer)
+            or _f1_tuple(ptype, analyzer) is not None)
 
 
 def _function_eligible(func: TpyFunction, analyzer,
@@ -667,7 +760,7 @@ def _range_bound_eligible(arg: TpyExpr, declared: dict[str, TpyType]) -> bool:
 
 def _for_range_eligible(stmt: TpyForEach, analyzer, declared: dict[str, TpyType],
                         prescan: _Prescan, pointers: set[str],
-                        rebind_slots: set[str]) -> bool:
+                        rebind_slots: set[str], storage_tuple_locals: set[str]) -> bool:
     # Only a plain `for v in range(stop | start, stop)` with step 1 over a
     # fixed-int counter, loop var not used after the loop. Every richer for-shape
     # (async, tuple-unpack, enum/container iteration, consuming, for/else,
@@ -705,12 +798,14 @@ def _for_range_eligible(stmt: TpyForEach, analyzer, declared: dict[str, TpyType]
     body_declared[stmt.var] = et  # loop var's resolved (fixed-int) type
     return _body_eligible(stmt.body, analyzer, body_declared, prescan,
                           in_branch=True, pointers=pointers,
-                          rebind_slots=rebind_slots)
+                          rebind_slots=rebind_slots,
+                          storage_tuple_locals=storage_tuple_locals)
 
 
 def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
                    prescan: _Prescan, *, in_branch: bool,
-                   pointers: set[str], rebind_slots: set[str]) -> bool:
+                   pointers: set[str], rebind_slots: set[str],
+                   storage_tuple_locals: set[str]) -> bool:
     if isinstance(stmt, TpyVarDecl):
         if stmt.linkage != VarLinkage.DEFAULT or stmt.init is None:
             return False
@@ -737,6 +832,19 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
                     pointers.add(stmt.name)
                     rebind_slots.add(stmt.name)
                 return True
+            # F3 storage-tuple alias (`t = <storage tuple field>` -> `auto&& t = ...`):
+            # a pointer-repr tuple local aliasing a storage tuple field off an
+            # F1-record receiver. Tracked so its reads lift via tuple_to_pointer at
+            # borrow boundaries (e.g. `return t`) and so the borrow-tuple write source
+            # excludes it (it is storage form, a direct copy).
+            if (is_storage_tuple_alias_decl(
+                    _var_decl_type(stmt, analyzer), stmt.init, name=stmt.name,
+                    reassigned=prescan.reassigned, hoisted=prescan.hoisted,
+                    move_through=prescan.move_through)
+                    and _field_receiver_ok(stmt.init, declared, analyzer)
+                    and _f1_tuple(analyzer.get_expr_type(stmt.init), analyzer) is not None):
+                storage_tuple_locals.add(stmt.name)
+                return True
         elif stmt.name in rebind_slots:
             # F2d rebind-slot reseat: an rvalue F1-record ctor / by-value source.
             return _is_record_rvalue_source(stmt.init, declared, analyzer)
@@ -755,12 +863,25 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
             return (stmt.target.name in declared
                     and _expr_eligible(stmt.value, declared, analyzer))
         # F2b/F2c/F2e: an optional-field write `recv.field = <borrow>` / `= None`;
-        # or a plain scalar-field write `recv.field = <scalar>`.
+        # a plain scalar-field write `recv.field = <scalar>`; or an F3 tuple-field
+        # write `recv.field = <borrow tuple>` (tuple_to_storage).
         return (_f2b_optional_field_write_ok(stmt, declared, pointers, analyzer)
-                or _scalar_field_write_ok(stmt, declared, analyzer))
+                or _scalar_field_write_ok(stmt, declared, analyzer)
+                or _f1_tuple_field_write_ok(stmt, declared, storage_tuple_locals,
+                                            analyzer))
     if isinstance(stmt, TpyReturn):
         if stmt.value is None:
             return True
+        if prescan.ret_borrow_tuple is not None:
+            # A borrow-form tuple return lifts a storage tuple lvalue via
+            # `tuple_to_pointer` (F3). The source is a storage tuple lvalue: a field
+            # read off an F1-record receiver, or a storage-tuple alias local (`auto&&`).
+            # Subscript / call sources ride later F3 cells and stay on the AST path.
+            if isinstance(stmt.value, TpyName):
+                return stmt.value.name in storage_tuple_locals
+            return (_field_receiver_ok(stmt.value, declared, analyzer)
+                    and _f1_tuple(analyzer.get_expr_type(stmt.value), analyzer)
+                    is not None)
         if prescan.ret_storage_opt is not None:
             # A storage-form Optional[F1-record] return admits `None`
             # (-> std::nullopt, F2c) or a borrow `T*` lift (-> ptr_to_optional[_move],
@@ -776,10 +897,12 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
         # them), so each is checked against the same declared-so-far set.
         return (_body_eligible(stmt.then_body, analyzer, declared, prescan,
                                in_branch=True, pointers=pointers,
-                               rebind_slots=rebind_slots)
+                               rebind_slots=rebind_slots,
+                               storage_tuple_locals=storage_tuple_locals)
                 and _body_eligible(stmt.else_body, analyzer, declared, prescan,
                                    in_branch=True, pointers=pointers,
-                                   rebind_slots=rebind_slots))
+                                   rebind_slots=rebind_slots,
+                                   storage_tuple_locals=storage_tuple_locals))
     if isinstance(stmt, TpyWhile):
         # No while/else, and a comparison condition. break/continue are not in
         # the stmt set, so a body containing them is rejected by _body_eligible.
@@ -787,31 +910,36 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
             return False
         return _body_eligible(stmt.body, analyzer, declared, prescan,
                               in_branch=True, pointers=pointers,
-                              rebind_slots=rebind_slots)
+                              rebind_slots=rebind_slots,
+                              storage_tuple_locals=storage_tuple_locals)
     if isinstance(stmt, TpyAugAssign):
         return _scalar_aug_assign_ok(stmt, declared, analyzer)
     if isinstance(stmt, TpyForEach):
         return _for_range_eligible(stmt, analyzer, declared, prescan, pointers,
-                                   rebind_slots)
+                                   rebind_slots, storage_tuple_locals)
     return False
 
 
 def _body_eligible(body, analyzer, declared: dict[str, TpyType],
                    prescan: _Prescan, *, in_branch: bool,
-                   pointers: set[str], rebind_slots: set[str]) -> bool:
+                   pointers: set[str], rebind_slots: set[str],
+                   storage_tuple_locals: set[str]) -> bool:
     """Walk a statement list in source order, mirroring lowering's declared-scope
     growth: a top-level new-name var-decl extends scope; branch bodies don't. The
     map carries each name's resolved type (for the mixed-sign comparison gate and
     F1 field-receiver lookup); `pointers` carries the F2 pointer-local names a
     reseat reads, `rebind_slots` the F2d rebind-slot subset whose reseats are
-    rvalue rebinds. All copied so sibling branches don't see each other."""
+    rvalue rebinds, `storage_tuple_locals` the F3 `auto&&` tuple aliases a borrow
+    read lifts. All copied so sibling branches don't see each other."""
     declared = dict(declared)  # local copy -- sibling branches must not see each other
     pointers = set(pointers)
     rebind_slots = set(rebind_slots)
+    storage_tuple_locals = set(storage_tuple_locals)
     for stmt in body:
         if not _stmt_eligible(stmt, analyzer, declared, prescan,
                               in_branch=in_branch, pointers=pointers,
-                              rebind_slots=rebind_slots):
+                              rebind_slots=rebind_slots,
+                              storage_tuple_locals=storage_tuple_locals):
             return False
         if (not in_branch and isinstance(stmt, TpyVarDecl)
                 and stmt.name not in declared):  # first decl -- keep retro-widened type
@@ -839,9 +967,15 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
             # gated out), so its form tag is informational.
             return THIRSelf(result_type=rtype, form=Form.BORROW, loc=loc)
         # A non-value name (a record param / REF_ALIAS / POINTER local used as a
-        # field receiver) is a borrow; scalars are value form. The receiver's form
-        # is not consumed by the field-access emit, but the tag is kept honest.
-        form = Form.VALUE if rtype is None or rtype.is_value_type() else Form.BORROW
+        # field receiver) is a borrow; scalars are value form. A pointer-repr tuple
+        # name is a borrow tuple param (`std::tuple<..., T*>`) UNLESS it is an F3
+        # storage-tuple alias local (`auto&& t = ...`, which aliases storage and reads
+        # as STORAGE). The tag is informational for the field-access / convert emit,
+        # but kept honest so a convert source is never mislabeled.
+        if e.name in lc.storage_tuple_locals:
+            form = Form.STORAGE
+        else:
+            form = Form.BORROW if _is_borrow_form_name(rtype) else Form.VALUE
         return THIRName(result_type=rtype, name=e.name, form=form, loc=loc)
     if isinstance(e, TpyFieldAccess):
         # Scalar field read off a borrow receiver (value-form result). A plain
@@ -884,13 +1018,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
 
 
 def _lower_field_source(e: TpyFieldAccess, lc: '_LowerCtx') -> THIRFieldAccess:
-    """The storage-form field read backing a borrow-local binding: `recv.field`
-    where the field is a record (REF_ALIAS / POINTER) or a storage-form
-    `optional<T>` (OPTIONAL_TO_PTR). form=STORAGE -- the bridge to the local's
-    borrow form is the `T&` reference bind (REF_ALIAS) or the wrapping
-    THIRFormConvert (`&(...)` for POINTER, `optional_to_ptr` for OPTIONAL_TO_PTR).
-    The receiver itself may be a pointer-local (a chained borrow), so `->` vs `.`
-    is decided the same way as a value read."""
+    """The storage-form field read backing a borrow-local binding or an F3 tuple
+    lift: `recv.field` where the field is a record (REF_ALIAS / POINTER), a
+    storage-form `optional<T>` (OPTIONAL_TO_PTR), or a storage-form tuple (the F3
+    `auto&&` alias decl + the borrow-tuple return source). form=STORAGE -- the bridge
+    to borrow form is the `T&` reference bind (REF_ALIAS), the `auto&&` alias, or the
+    wrapping THIRFormConvert (`&(...)` for POINTER, `optional_to_ptr` / `tuple_to_pointer`
+    for the lifts). The receiver itself may be a pointer-local (a chained borrow), so
+    `->` vs `.` is decided the same way as a value read."""
     return THIRFieldAccess(
         result_type=lc.analyzer.get_expr_type(e),
         receiver=_lower_expr(e.obj, lc),
@@ -912,7 +1047,7 @@ class _LowerCtx:
     never hit a non-value local."""
     __slots__ = ("analyzer", "func", "prescan", "render_type", "const_locals",
                  "pointers", "rebind_slot_locals", "movable_locals",
-                 "self_receiver", "record_name")
+                 "self_receiver", "record_name", "storage_tuple_locals")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -937,6 +1072,9 @@ class _LowerCtx:
         # F2d rebind-slot subset of `pointers`: their reseats lower as rvalue
         # rebinds (`p = &*(__slot_N = ...)`), not lvalue `&(...)` reseats.
         self.rebind_slot_locals: set[str] = set()
+        # F3 storage-tuple alias locals (`auto&& t = <storage tuple field>`): a read
+        # off one is STORAGE form, lifted via `tuple_to_pointer` at borrow boundaries.
+        self.storage_tuple_locals: set[str] = set()
         # F2e: sema's movable (owned) locals -- a borrow write/return source that
         # is one of these at last use moves (`ptr_to_optional_move`). The set only
         # grows during the body walk, so the final sema set matches the working
@@ -1025,6 +1163,29 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType]) -> T
                     lc.pointers.add(stmt.name)  # later assignments reseat this `T*`
                 declared[stmt.name] = vtype
                 return _lower_borrow_local(stmt, vtype, binding, is_const, lc, loc)
+            # F3 storage-tuple alias: `auto&& t = <storage tuple field>`. The local
+            # aliases the source's storage, so a read off it is STORAGE form (lifted
+            # via tuple_to_pointer at a borrow boundary); the init is the storage tuple
+            # field source (no conversion node -- `auto&&` binds it directly). The
+            # `storage_tuple_locals` membership is what makes a later read lift.
+            if is_storage_tuple_alias_decl(
+                    vtype, stmt.init, name=stmt.name,
+                    reassigned=lc.prescan.reassigned, hoisted=lc.prescan.hoisted,
+                    move_through=lc.prescan.move_through):
+                lc.storage_tuple_locals.add(stmt.name)
+                # The alias aliases its source's const-ness (`auto&&` deduces it): a
+                # const-receiver source makes reads lift to `const T*`. Tracked in
+                # `const_locals` so the borrow read at a return picks the const helper.
+                src_recv = stmt.init.obj  # TpyName (FieldAccess receiver)
+                if (src_recv.name in lc.const_locals
+                        or _param_is_const(src_recv.name, lc.func, analyzer,
+                                           lc.record_name)):
+                    lc.const_locals.add(stmt.name)
+                declared[stmt.name] = vtype
+                return THIRVarDecl(
+                    name=stmt.name, resolved_type=vtype,
+                    init=_lower_field_source(stmt.init, lc), form=Form.STORAGE,
+                    cpp_local_representation=LocalBinding.STORAGE_TUPLE_ALIAS, loc=loc)
         # F2d rebind-slot reseat: an rvalue ctor / by-value source. It lowers as a
         # plain value-form call; emit wraps it as `p = &*(__slot_N = <value>)`
         # using the rebind slot allocated at the decl. Checked before the lvalue
@@ -1105,6 +1266,27 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType]) -> T
         )
         return THIRAssign(target=target, value=binop, loc=loc)
     if isinstance(stmt, TpyReturn):
+        ret_tuple = lc.prescan.ret_borrow_tuple
+        if stmt.value is not None and ret_tuple is not None:
+            # Lift a storage tuple lvalue into the borrow-form tuple return via
+            # `tuple_to_pointer` (F3). The element pointers' const-ness tracks the
+            # source, mirroring the F1 OPTIONAL_TO_PTR const bump; sema forces a
+            # mutable source when the return borrows mutably, so the const arm only
+            # fires for a const source returning a const-element tuple. The source is
+            # a storage-tuple alias local (`return t`) or a field read (`return h.pair`).
+            if isinstance(stmt.value, TpyName):
+                is_const = stmt.value.name in lc.const_locals
+                inner: THIRExpr = _lower_expr(stmt.value, lc)  # STORAGE-form alias
+            else:
+                recv = stmt.value.obj  # TpyName (validated by _field_receiver_ok)
+                is_const = (recv.name in lc.const_locals
+                            or _param_is_const(recv.name, lc.func, analyzer,
+                                               lc.record_name))
+                inner = _lower_field_source(stmt.value, lc)
+            value: THIRExpr = THIRFormConvert(
+                result_type=ret_tuple, value=inner,
+                form=Form.BORROW, is_const=is_const, loc=loc)
+            return THIRReturn(value=value, loc=loc)
         ret_opt = lc.prescan.ret_storage_opt
         if stmt.value is not None and ret_opt is not None:
             # Lift into a storage-form Optional[record] return slot. `None` lowers
@@ -1200,7 +1382,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             # receiver being in const_locals -- see _f1_is_const).
             lc.const_locals.add("self")
     if not _body_eligible(func.body, analyzer, params_set, lc.prescan,
-                          in_branch=False, pointers=set(), rebind_slots=set()):
+                          in_branch=False, pointers=set(), rebind_slots=set(),
+                          storage_tuple_locals=set()):
         return None
     params = tuple(THIRParam(name=n, type=t) for n, t in func.params)
     rt = func.return_type if isinstance(func.return_type, TpyType) else VoidType()
@@ -1436,6 +1619,17 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 and not expr_reads_self_field(stmt.value, body_written_self_fields)):
             field_inits.append(stmt)
             continue
+        # A clean leading own-field init (live chain, not reading an earlier
+        # inherited-field write) the AST hoists into the MIL but THIR can't reproduce
+        # there -- an F3+ field type (tuple / str / list / union) or a source outside
+        # the MIL slice -- must keep the whole ctor on the AST path. Demoting it into
+        # the body would diverge from the AST's MIL hoist (the AST never demotes a
+        # clean leading own-field init). After a chain break, or when the init reads an
+        # earlier inherited-field write, the AST demotes too -- those fall through.
+        if (not chain_broken
+                and _is_self_own_field_assign(stmt, own_field_names)
+                and not expr_reads_self_field(stmt.value, body_written_self_fields)):
+            return None
         # Demote to the body. Demoting breaks the chain (mirrors `_extract_field_inits`'s
         # `demote()`): the MIL runs before the body, so a later otherwise-hoistable init
         # must also demote to preserve source evaluation order.
@@ -1448,7 +1642,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     body_non_trivia = [s for s in body_stmts
                        if not (is_docstring(s) or isinstance(s, TpyPassStmt))]
     if not _body_eligible(body_non_trivia, analyzer, declared, lc.prescan,
-                          in_branch=False, pointers=set(), rebind_slots=set()):
+                          in_branch=False, pointers=set(), rebind_slots=set(),
+                          storage_tuple_locals=set()):
         return None
     body_declared = dict(declared)
     return THIRConstructor(
@@ -1470,6 +1665,18 @@ def _is_self_nonown_field_assign(stmt: TpyStmt, own_field_names: set[str]) -> bo
             and isinstance(stmt.target.obj, TpyName)
             and stmt.target.obj.name == "self"
             and stmt.target.field not in own_field_names)
+
+
+def _is_self_own_field_assign(stmt: TpyStmt, own_field_names: set[str]) -> bool:
+    """A `self.<own field> = expr` -- a member initializer the AST hoists into the
+    MIL. THIR must hoist it too or keep the whole ctor on the AST path; demoting it
+    into the body (when THIR's MIL slice can't reproduce its field type / source)
+    would diverge from the AST's MIL hoist."""
+    return (isinstance(stmt, TpyAssign)
+            and isinstance(stmt.target, TpyFieldAccess)
+            and isinstance(stmt.target.obj, TpyName)
+            and stmt.target.obj.name == "self"
+            and stmt.target.field in own_field_names)
 
 
 def _lower_base_inits(init_method: TpyFunction, ri, declared: dict[str, TpyType],

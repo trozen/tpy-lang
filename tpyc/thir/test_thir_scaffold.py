@@ -1314,6 +1314,214 @@ class TestF2cEmit:
         assert "x->opt = std::nullopt;" in self._cpp(src, thir=True)
 
 
+# --- F3 form rung: storage->borrow tuple read (tuple_to_pointer) ---
+
+# A record with a pointer-repr tuple field: storage form `std::tuple<int32_t,
+# Leaf>`, borrow form `std::tuple<int32_t, Leaf*>`.
+_F3_RECORDS = (
+    "from tpy import Int32, readonly\n"
+    "class Leaf:\n"
+    "    n: Int32\n"
+    "    def __init__(self, n: Int32):\n        self.n = n\n"
+    "class Holder:\n"
+    "    pair: tuple[Int32, Leaf]\n"
+    "    def __init__(self, b: Leaf):\n        self.pair = (1, b)\n"
+)
+
+
+class TestF3TupleReturn:
+    def test_borrow_tuple_return_routes(self):
+        # `return h.pair` lifts the storage tuple field into the borrow-form tuple
+        # return via a STORAGE->BORROW convert (the tuple_to_pointer family).
+        thir = _lower_ctx(
+            _F3_RECORDS
+            + "def ret_field(h: Holder) -> tuple[Int32, Leaf]:\n    return h.pair\n")
+        fn = _fn(thir, "ret_field")
+        assert fn is not None
+        ret = fn.body[0]
+        assert isinstance(ret, THIRReturn)
+        assert isinstance(ret.value, THIRFormConvert) and ret.value.form is Form.BORROW
+        assert ret.value.is_const is False  # mutable receiver -> mutable Leaf* elements
+        assert ret.value.value.form is Form.STORAGE  # the h.pair storage read
+
+    def test_value_tuple_return_is_ineligible(self):
+        # An all-value-scalar tuple has no pointer-repr element (borrow == storage),
+        # so no tuple_to_pointer lift applies -- it stays on the AST path.
+        thir = _lower_ctx(
+            _F3_RECORDS
+            + "def ret_pair(h: Holder) -> tuple[Int32, Int32]:\n    return (1, 2)\n")
+        assert _fn(thir, "ret_pair") is None
+
+    def test_tuple_field_init_ctor_stays_on_ast_path(self):
+        # Regression guard for the M3 ctor-frontier fix: `Holder.__init__` does
+        # `self.pair = (1, b)` -- a leading own-field init of an F3+ tuple type the
+        # AST hoists into the member-init-list but THIR cannot reproduce there. It
+        # must REJECT the whole ctor (return None, AST path) rather than demote the
+        # init into the body, which would diverge from the AST's MIL hoist.
+        assert _lower_ctor(_F3_RECORDS, "Holder") is None
+
+    def test_storage_tuple_alias_local_routes(self):
+        # A storage-tuple alias local (`t = h.pair`) binds `auto&&` (a STORAGE-form
+        # alias) and a `return t` lifts it via tuple_to_pointer like a direct field
+        # source.
+        thir = _lower_ctx(
+            _F3_RECORDS
+            + "def ret_alias(h: Holder) -> tuple[Int32, Leaf]:\n"
+            + "    t = h.pair\n    return t\n")
+        fn = _fn(thir, "ret_alias")
+        assert fn is not None
+        decl = fn.body[0]
+        assert isinstance(decl, THIRVarDecl)
+        assert decl.cpp_local_representation is LocalBinding.STORAGE_TUPLE_ALIAS
+        assert decl.form is Form.STORAGE
+        ret = fn.body[1]
+        assert isinstance(ret, THIRReturn) and isinstance(ret.value, THIRFormConvert)
+        assert ret.value.form is Form.BORROW
+        assert ret.value.value.form is Form.STORAGE  # the `t` alias read
+
+
+class TestF3TupleReturnEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _F3_RECORDS
+        + "def ret_field(h: Holder) -> tuple[Int32, Leaf]:\n    return h.pair\n"
+        + "def main():\n    h = Holder(Leaf(5))\n    t = ret_field(h)\n    print(0)\n"
+        + "main()\n"
+    )
+
+    def test_f3_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_tuple_to_pointer(self):
+        assert ("return ::tpy::tuple_to_pointer<std::tuple<int32_t, Leaf*>>(h.pair);"
+                in self._cpp(self.SRC, thir=True))
+
+    ALIAS_SRC = (
+        _F3_RECORDS
+        + "def ret_alias(h: Holder) -> tuple[Int32, Leaf]:\n"
+        + "    t = h.pair\n    return t\n"
+        + "def main():\n    h = Holder(Leaf(5))\n    t = ret_alias(h)\n    print(0)\n"
+        + "main()\n"
+    )
+
+    def test_alias_byte_identical(self):
+        assert self._cpp(self.ALIAS_SRC, thir=True) == self._cpp(self.ALIAS_SRC, thir=False)
+
+    def test_alias_emits_auto_ref(self):
+        cpp = self._cpp(self.ALIAS_SRC, thir=True)
+        assert "auto&& t = h.pair;" in cpp
+        assert "return ::tpy::tuple_to_pointer<std::tuple<int32_t, Leaf*>>(t);" in cpp
+
+    # A const (readonly) receiver makes the borrow tuple's element pointers const,
+    # exercising the `to_cpp_return_const()` arm of the tuple_to_pointer lift -- for
+    # both a direct field return and a storage-tuple alias local.
+    CONST_SRC = (
+        _F3_RECORDS
+        + "def f(h: readonly[Holder]) -> tuple[Int32, readonly[Leaf]]:\n"
+        + "    return h.pair\n"
+        + "def g(h: readonly[Holder]) -> tuple[Int32, readonly[Leaf]]:\n"
+        + "    t = h.pair\n    return t\n"
+        + "def main():\n    h = Holder(Leaf(5))\n    a = f(h)\n    b = g(h)\n    print(0)\n"
+        + "main()\n"
+    )
+
+    def test_const_byte_identical(self):
+        assert self._cpp(self.CONST_SRC, thir=True) == self._cpp(self.CONST_SRC, thir=False)
+
+    def test_const_receiver_emits_const_tuple_to_pointer(self):
+        cpp = self._cpp(self.CONST_SRC, thir=True)
+        # direct field return + alias local both lift with const element pointers.
+        assert ("return ::tpy::tuple_to_pointer<std::tuple<int32_t, const Leaf*>>(h.pair);"
+                in cpp)
+        assert ("return ::tpy::tuple_to_pointer<std::tuple<int32_t, const Leaf*>>(t);"
+                in cpp)
+
+    def test_const_receiver_lowers_const_convert(self):
+        thir = _lower_ctx(
+            _F3_RECORDS
+            + "def f(h: readonly[Holder]) -> tuple[Int32, readonly[Leaf]]:\n"
+            + "    return h.pair\n")
+        ret = _fn(thir, "f").body[0]
+        assert isinstance(ret, THIRReturn) and isinstance(ret.value, THIRFormConvert)
+        assert ret.value.is_const is True
+
+
+# --- F3 form rung: borrow->storage tuple field write (tuple_to_storage) ---
+
+# Records with a pointer-repr Optional-element tuple field: storage form
+# `std::tuple<std::optional<T>, ...>`, borrow form `std::tuple<T*, ...>`.
+_F3_OPT_RECORDS = (
+    "from tpy import Int32\n"
+    "class T:\n"
+    "    x: Int32\n"
+    "    def __init__(self, x: Int32) -> None:\n        self.x = x\n"
+    "class Holder:\n"
+    "    pair: tuple[T | None, T | None]\n"
+    "    def __init__(self) -> None:\n        self.pair = (None, None)\n"
+)
+
+
+class TestF3TupleFieldWrite:
+    def test_borrow_tuple_field_write_routes(self):
+        # `self.pair = p` where p is a borrow tuple param lifts borrow->storage via
+        # a STORAGE-form convert (the tuple_to_storage family); the receiver becomes
+        # a written (non-const) self.
+        thir = _lower_ctx(
+            _F3_OPT_RECORDS
+            + "class Setter:\n"
+            + "    pair: tuple[T | None, T | None]\n"
+            + "    def __init__(self) -> None:\n        self.pair = (None, None)\n"
+            + "    def update(self, p: tuple[T | None, T | None]) -> None:\n"
+            + "        self.pair = p\n")
+        fn = _fn(thir, "update")
+        assert fn is not None
+        write = fn.body[0]
+        assert isinstance(write, THIRAssign)
+        assert isinstance(write.target, THIRFieldAccess) and write.target.field_cpp == "pair"
+        assert isinstance(write.value, THIRFormConvert)
+        assert write.value.form is Form.STORAGE and write.value.move is False
+        assert write.value.value.form is Form.BORROW  # the borrow tuple param p
+
+    def test_storage_source_field_write_is_ineligible(self):
+        # A storage-form source (`other.pair`, a field read) is a direct copy with
+        # no tuple_to_storage wrap -- a later F3 cell, so it stays on the AST path.
+        thir = _lower_ctx(
+            _F3_OPT_RECORDS
+            + "def copy_from(h: Holder, other: Holder) -> None:\n"
+            + "    h.pair = other.pair\n")
+        assert _fn(thir, "copy_from") is None
+
+
+class TestF3TupleFieldWriteEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _F3_OPT_RECORDS
+        + "def upd(h: Holder, p: tuple[T | None, T | None]) -> None:\n"
+        + "    h.pair = p\n"
+        + "def main():\n    h = Holder()\n    t = T(1)\n    upd(h, (t, None))\n    print(0)\n"
+        + "main()\n"
+    )
+
+    def test_f3_write_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_tuple_to_storage(self):
+        assert ("h.pair = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, "
+                "std::optional<T>>>(p);" in self._cpp(self.SRC, thir=True))
+
+
 # --- F2d form rung: rvalue rebind-slot pointer-locals (the __slot_N machinery) ---
 
 
