@@ -15,10 +15,9 @@ Architecture (see docs/SSL_DESIGN.md):
 
 Known v1 gaps (filed in docs/SSL_DESIGN.md / TODO): no bundled default CA
 store yet, so a verifying context needs an explicit `load_verify_locations`
-until the Mozilla bundle is vendored; `makefile()` (the http.client read
-path) lands with the BufferedReader raw-source refactor; server-side TLS is
-internal-only (the test peer). The `_SslSession` owner becomes an `Rc` when
-`makefile` needs to share it with the reader.
+until the Mozilla bundle is vendored; server-side TLS is internal-only (the
+test peer). `makefile()` returns a binary `BufferedReader` (the http.client
+read path); text mode and the http.client/requests https wiring follow.
 
 Deliberate divergences from CPython's `ssl` (so they are declared, not
 silent -- see docs/LANGUAGE_FEATURES.md):
@@ -32,8 +31,15 @@ silent -- see docs/LANGUAGE_FEATURES.md):
     `(SSLError, ValueError)` -- TPy enforces single inheritance, so the
     `ValueError` base cannot be added; code catching `ValueError` for a cert
     failure will not fire.
-  * `close()` sends `close_notify` best-effort (return ignored); CPython's
-    `close()` does not (that is `unwrap()`'s job).
+  * `close()` sends `close_notify` best-effort (return ignored) and defers
+    the fd close to the last shared holder of the session, rather than
+    eager-closing it: CPython's `SSLSocket.close()` does not send
+    `close_notify` at all (that is `unwrap()`'s job) and closes the fd once
+    `_io_refs` reaches zero. A still-open `makefile()` reader keeps the
+    connection alive either way; `close()` here is idempotent.
+  * `makefile()` takes no arguments and returns a binary `BufferedReader`,
+    where CPython's `socket.makefile()` defaults to text mode and accepts
+    `mode`/`buffering`/encoding arguments (text/write modes are deferred).
   * `version()` returns `"unknown"` before the handshake, where CPython
     returns `None`.
   * `wrap_socket` / `load_verify_locations` take a tighter v1 signature
@@ -52,6 +58,8 @@ from tpy.unsafe import (
 )
 from _bindings import mbedtls
 from socket import socket
+from tplib import Rc
+from io import BufferedReader
 
 # CPython ssl.CERT_* values.
 CERT_NONE: Final[Int32] = 0
@@ -76,11 +84,20 @@ def _errstr(rc: Int32) -> str:
 
 @nocopy
 class _SslSession:
-    """Owning handle over the C `tpy_tls_session`; frees it on drop."""
-    _s: Ptr[mbedtls.Session]
+    """Owning handle over the C `tpy_tls_session` AND the underlying socket.
 
-    def __init__(self, s: Ptr[mbedtls.Session]) -> None:
+    Shared via `Rc` so a `makefile()` reader and the `SSLSocket` keep the
+    connection's fd alive until the last holder drops -- the session reads
+    through that fd, so it must not be closed out from under a live reader.
+    `__del__` frees the session; the contained socket's own `__del__` then
+    closes the fd.
+    """
+    _s: Ptr[mbedtls.Session]
+    _sock: socket
+
+    def __init__(self, s: Ptr[mbedtls.Session], sock: Own[socket]) -> None:
         self._s = s
+        self._sock = sock
 
     def __del__(self) -> None:
         # tls_free tolerates a null pointer; this runs once (single owner).
@@ -88,6 +105,25 @@ class _SslSession:
 
     def raw(self) -> Ptr[mbedtls.Session]:
         return self._s
+
+    def fileno(self) -> Int32:
+        return self._sock.fileno()
+
+    def setblocking(self, flag: bool) -> None:
+        self._sock.setblocking(flag)
+
+    def read_into(self, size: Int32) -> bytes:
+        """Decrypt up to `size` bytes; b"" on a clean close_notify (EOF)."""
+        if size <= Int32(0):
+            return b""
+        buf = UninitHeapStorage[UInt8](UInt32.trunc(size))
+        rc = mbedtls.tls_read(self._s, buf.ptr(), UInt64(size))
+        c = mbedtls.tls_classify(rc)
+        if c == 3:  # peer close_notify -> EOF
+            return b""
+        if rc < Int32(0):
+            raise SSLError(_errstr(rc))
+        return unsafe_bytes_from_buf(buf.ptr(), UInt64(rc))
 
 
 class SSLContext:
@@ -133,7 +169,7 @@ class SSLContext:
                                         UInt64(len(host))) != 0:
                 mbedtls.tls_free(s)
                 raise SSLError("could not set TLS hostname")
-        wrapped = SSLSocket(_SslSession(s), sock)
+        wrapped = SSLSocket(Rc.new(_SslSession(s, sock)))
         if do_handshake_on_connect:
             wrapped.do_handshake_blocking()
         return wrapped
@@ -148,23 +184,24 @@ def create_default_context() -> Own[SSLContext]:
 class SSLSocket:
     """A socket whose I/O is encrypted through an mbedTLS session.
 
-    Built by `SSLContext.wrap_socket`; owns the underlying socket and the
-    session. Reads/writes go through `mbedtls_ssl_read`/`write`, never the
-    raw fd.
+    Built by `SSLContext.wrap_socket`. The session + socket are held behind
+    an `Rc` so `makefile()` can share them with a buffered reader. Reads and
+    writes go through `mbedtls_ssl_read`/`write`, never the raw fd.
     """
-    _session: _SslSession
-    _sock: socket
+    _session: Rc[_SslSession]
     _handshaked: bool
+    _closed: bool
 
-    def __init__(self, session: Own[_SslSession], sock: Own[socket]) -> None:
+    def __init__(self, session: Own[Rc[_SslSession]]) -> None:
         self._session = session
-        self._sock = sock
         self._handshaked = False
+        self._closed = False
 
     def do_handshake(self) -> bool:
         """Advance the handshake one step. True when complete; False when it
         needs more socket I/O (non-blocking socket). Raises on failure."""
-        c = mbedtls.tls_classify(mbedtls.tls_handshake(self._session.raw()))
+        c = mbedtls.tls_classify(
+            mbedtls.tls_handshake(self._session.get().raw()))
         if c == 0:
             self._handshaked = True
             return True
@@ -182,20 +219,11 @@ class SSLSocket:
     def recv(self, bufsize: Int32) -> bytes:
         """Receive up to `bufsize` decrypted bytes; b"" means the peer sent
         a clean close_notify."""
-        if bufsize <= Int32(0):
-            return b""
-        buf = UninitHeapStorage[UInt8](UInt32.trunc(bufsize))
-        rc = mbedtls.tls_read(self._session.raw(), buf.ptr(), UInt64(bufsize))
-        c = mbedtls.tls_classify(rc)
-        if c == 3:  # peer close_notify -> EOF
-            return b""
-        if rc < Int32(0):
-            raise SSLError(_errstr(rc))
-        return unsafe_bytes_from_buf(buf.ptr(), UInt64(rc))
+        return self._session.get().read_into(bufsize)
 
     def send(self, data: bytes) -> Int32:
         """Encrypt + send some of `data`; returns bytes sent."""
-        rc = mbedtls.tls_write(self._session.raw(), unsafe_ptr(data),
+        rc = mbedtls.tls_write(self._session.get().raw(), unsafe_ptr(data),
                                UInt64(len(data)))
         if rc < Int32(0):
             raise SSLError(_errstr(rc))
@@ -207,28 +235,58 @@ class SSLSocket:
         sent: UInt64 = 0
         data_ptr: Ptr[readonly[UInt8]] = unsafe_ptr(data)
         while sent < total:
-            rc = mbedtls.tls_write(self._session.raw(),
+            rc = mbedtls.tls_write(self._session.get().raw(),
                                    unsafe_ptr_add(data_ptr, Int64.trunc(sent)),
                                    total - sent)
             if rc < Int32(0):
                 raise SSLError(_errstr(rc))
             sent = sent + UInt64(rc)
 
+    def makefile(self) -> Own[BufferedReader]:
+        """A buffered binary reader over this TLS session (CPython's
+        `socket.makefile("rb")`). Shares the session via `Rc`, so the reader
+        keeps the connection alive independently of this `SSLSocket`."""
+        return BufferedReader(SSLRawIO(self._session.clone()))
+
     def version(self) -> str:
         """The negotiated protocol, e.g. "TLSv1.3"."""
         return unsafe_str_from_cstr(unsafe_cast(
-            mbedtls.tls_version(self._session.raw())))
+            mbedtls.tls_version(self._session.get().raw())))
 
     def fileno(self) -> Int32:
-        return self._sock.fileno()
+        return self._session.get().fileno()
 
     def setblocking(self, flag: bool) -> None:
-        self._sock.setblocking(flag)
+        self._session.get().setblocking(flag)
 
     def close(self) -> None:
-        """Send close_notify and close the underlying socket."""
-        mbedtls.tls_close_notify(self._session.raw())
-        self._sock.close()
+        """Send close_notify (best-effort). The underlying fd is closed when
+        the last shared holder of the session drops -- so a still-open
+        `makefile()` reader keeps the connection alive, matching CPython's
+        refcounted `socket.makefile`. Idempotent: close_notify is sent once."""
+        if self._closed:
+            return
+        self._closed = True
+        mbedtls.tls_close_notify(self._session.get().raw())
+
+
+@nocopy
+class SSLRawIO:
+    """A `RawBinaryIO` byte source over a shared TLS session -- the raw read
+    path under a `makefile()` BufferedReader. `read()` returns b"" on a clean
+    close_notify (the EOF convention the buffered reader expects)."""
+    _session: Rc[_SslSession]
+
+    def __init__(self, session: Own[Rc[_SslSession]]) -> None:
+        self._session = session
+
+    def read(self, size: Int32 = -1) -> bytes:
+        n = size if size > Int32(0) else 8192
+        return self._session.get().read_into(n)
+
+    def close(self) -> None:
+        # The session/fd close when the last Rc holder drops; nothing here.
+        pass
 
 
 def _wrap_server(sock: Own[socket], certfile: str, keyfile: str,
@@ -248,7 +306,7 @@ def _wrap_server(sock: Own[socket], certfile: str, keyfile: str,
         mbedtls.tls_free(s)
         raise SSLError("TLS setup failed")
     mbedtls.tls_set_fd(s, sock.fileno())
-    wrapped = SSLSocket(_SslSession(s), sock)
+    wrapped = SSLSocket(Rc.new(_SslSession(s, sock)))
     if do_handshake_on_connect:
         wrapped.do_handshake_blocking()
     return wrapped

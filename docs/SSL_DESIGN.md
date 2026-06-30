@@ -1,11 +1,13 @@
 # SSL / HTTPS-client design
 
 Status: **in progress.** Increments 0-1 (probes, mbedTLS vendoring + build
-wiring) merged to master; Increment 2 (the `ssl` module core: SSLContext /
-SSLSocket / verifying client + handshake test) is built. Remaining:
-`makefile()` + the BufferedReader `Box[RawBinaryIO]` refactor + `Rc`-session
-(step 3), `HTTPSConnection` (step 4), requests/urlopen https + a bundled CA
-store (step 5). This document is the contract for the whole track.
+wiring) and Increment 2 (the `ssl` module core: SSLContext / SSLSocket /
+verifying client + handshake test) merged to master. Increment 3a is built:
+`SSLSocket.makefile()` over the BufferedReader `Box[RawBinaryIO]` refactor +
+an `Rc[_SslSession]` (session handle + socket folded together) shared with
+an `SSLRawIO` reader (test `ssl/tls_makefile`). Remaining: `HTTPSConnection`
+(step 4), requests/urlopen https + a bundled CA store (step 5). This
+document is the contract for the whole track.
 
 ## Goal
 

@@ -22,13 +22,14 @@
 #   - getvalue() does not collapse chunks (avoids unsolicited mutation).
 #
 # tpy: cpp_namespace("tpystd::io")
-from typing import Final, Iterator
+from typing import Final, Iterator, Protocol
 from tpy import (
-    Int32, Int64, Own, nocopy,
+    Int32, Int64, Own, nocopy, dynamic,
     Writable, Readable, BinaryWritable, BinaryReadable,
     Seekable, Closable,
 )
 from tpy.extern import native_global
+from tplib.box import Box
 import os
 
 
@@ -514,9 +515,20 @@ class FileIO:
             raise ValueError("I/O operation on closed file")
 
 
+@dynamic
+class RawBinaryIO(Protocol):
+    """The raw byte source under a BufferedReader: a single `read(n)` chunk
+    plus `close`. A @dynamic protocol (not a concrete field) so the source can
+    be an fd-backed reader *or* a userspace decrypting one without a type
+    parameter leaking up through the consumers. CPython's
+    BufferedReader-over-RawIOBase shape."""
+    def read(self, size: Int32 = -1) -> bytes: ...
+    def close(self) -> None: ...
+
+
 @nocopy
 class BufferedReader(BinaryReadable, Closable):
-    """Buffered binary reader over a raw FileIO (CPython io.BufferedReader).
+    """Buffered binary reader over a raw byte source (CPython io.BufferedReader).
 
     Fills an owned bytes buffer from the raw source in `buffer_size` chunks;
     read()/readline() serve from it, refilling on demand. The buffer logic
@@ -524,17 +536,17 @@ class BufferedReader(BinaryReadable, Closable):
     `size` bytes are buffered or EOF; read(-1) drains to EOF.
     """
 
-    _raw: FileIO
+    _raw: Box[RawBinaryIO]
     _buf: bytes
     _eof: bool
     _buffer_size: Int32
     _closed: bool
 
-    def __init__(self, raw: Own[FileIO],
+    def __init__(self, raw: Own[RawBinaryIO],
                  buffer_size: Int32 = DEFAULT_BUFFER_SIZE) -> None:
         # `_raw` is non-default-constructible, so it must be assigned before
         # any other statement (the buffer_size guard) runs.
-        self._raw = raw
+        self._raw = Box(raw)
         self._buf = b""
         self._eof = False
         self._buffer_size = buffer_size

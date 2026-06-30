@@ -23,7 +23,7 @@ void main() {
     // # Header lines via readline, then body via read().
     // br = BufferedReader(FileIO(
     // feed(b"HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello")))
-    ::tpystd::io::BufferedReader br = ::tpystd::io::BufferedReader(::tpystd::io::FileIO(feed(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello", 43))));
+    ::tpystd::io::BufferedReader br = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello", 43)))));
     // print(br.readline())
     std::cout << ::tpy::BytesPrinter(br.readline()) << "\n";
     // print(br.readline())
@@ -42,7 +42,7 @@ void main() {
     std::cout << ::tpy::print_bool(br.closed()) << "\n";
     // # read(n): exact, read(0), then more-than-remaining.
     // r2 = BufferedReader(FileIO(feed(b"abcdefgh")))
-    ::tpystd::io::BufferedReader r2 = ::tpystd::io::BufferedReader(::tpystd::io::FileIO(feed(::tpy::bytes_literal("abcdefgh", 8))));
+    ::tpystd::io::BufferedReader r2 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(::tpy::bytes_literal("abcdefgh", 8)))));
     // print(r2.read(3))         # b'abc'
     std::cout << ::tpy::BytesPrinter(r2.read(3)) << "\n";
     // print(r2.read(0))         # b''
@@ -51,7 +51,7 @@ void main() {
     std::cout << ::tpy::BytesPrinter(r2.read(100)) << "\n";
     // # Partial last line (no trailing newline) returned without raising.
     // r3 = BufferedReader(FileIO(feed(b"one\ntwo")))
-    ::tpystd::io::BufferedReader r3 = ::tpystd::io::BufferedReader(::tpystd::io::FileIO(feed(::tpy::bytes_literal("one\ntwo", 7))));
+    ::tpystd::io::BufferedReader r3 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(::tpy::bytes_literal("one\ntwo", 7)))));
     // print(r3.readline())      # b'one\n'
     std::cout << ::tpy::BytesPrinter(r3.readline()) << "\n";
     // print(r3.readline())      # b'two'
@@ -60,19 +60,19 @@ void main() {
     std::cout << ::tpy::BytesPrinter(r3.readline()) << "\n";
     // # Multi-fill: a 3-byte buffer forces several refills to assemble one line.
     // r4 = BufferedReader(FileIO(feed(b"abcdefghij\n")), buffer_size=3)
-    ::tpystd::io::BufferedReader r4 = ::tpystd::io::BufferedReader(::tpystd::io::FileIO(feed(::tpy::bytes_literal("abcdefghij\n", 11))), 3);
+    ::tpystd::io::BufferedReader r4 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(::tpy::bytes_literal("abcdefghij\n", 11)))), 3);
     // print(r4.readline())      # b'abcdefghij\n'
     std::cout << ::tpy::BytesPrinter(r4.readline()) << "\n";
     // # readline(size) caps the returned length.
     // r5 = BufferedReader(FileIO(feed(b"abcdef\n")))
-    ::tpystd::io::BufferedReader r5 = ::tpystd::io::BufferedReader(::tpystd::io::FileIO(feed(::tpy::bytes_literal("abcdef\n", 7))));
+    ::tpystd::io::BufferedReader r5 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(::tpy::bytes_literal("abcdef\n", 7)))));
     // print(r5.readline(3))     # b'abc'
     std::cout << ::tpy::BytesPrinter(r5.readline(3)) << "\n";
     // print(r5.read())          # b'def\n'
     std::cout << ::tpy::BytesPrinter(r5.read()) << "\n";
     // # Iteration yields lines; readlines collects them.
     // r6 = BufferedReader(FileIO(feed(b"x\ny\nz\n")))
-    ::tpystd::io::BufferedReader r6 = ::tpystd::io::BufferedReader(::tpystd::io::FileIO(feed(::tpy::bytes_literal("x\ny\nz\n", 6))));
+    ::tpystd::io::BufferedReader r6 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(::tpy::bytes_literal("x\ny\nz\n", 6)))));
     // for line in r6:
     auto& __src_0 = r6;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -84,7 +84,7 @@ void main() {
         std::cout << ::tpy::BytesPrinter(line) << "\n";
     }
     // r7 = BufferedReader(FileIO(feed(b"p\nq\n")))
-    ::tpystd::io::BufferedReader r7 = ::tpystd::io::BufferedReader(::tpystd::io::FileIO(feed(::tpy::bytes_literal("p\nq\n", 4))));
+    ::tpystd::io::BufferedReader r7 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(::tpy::bytes_literal("p\nq\n", 4)))));
     // lines = r7.readlines()
     std::vector<std::vector<uint8_t>> lines = r7.readlines();
     // print(len(lines))
@@ -101,21 +101,21 @@ void main() {
     // # read(size) blocks until `size` or EOF: a 3-byte buffer needs several
     // # fills to satisfy read(7) (exercises the read-side refill loop).
     // r8 = BufferedReader(FileIO(feed(b"abcdefghij")), buffer_size=3)
-    ::tpystd::io::BufferedReader r8 = ::tpystd::io::BufferedReader(::tpystd::io::FileIO(feed(::tpy::bytes_literal("abcdefghij", 10))), 3);
+    ::tpystd::io::BufferedReader r8 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(::tpy::bytes_literal("abcdefghij", 10)))), 3);
     // print(r8.read(7))         # b'abcdefg'
     std::cout << ::tpy::BytesPrinter(r8.read(7)) << "\n";
     // print(r8.read())          # b'hij'
     std::cout << ::tpy::BytesPrinter(r8.read()) << "\n";
     // # Empty source: EOF on the first fill, no looping.
     // r9 = BufferedReader(FileIO(feed(b"")))
-    ::tpystd::io::BufferedReader r9 = ::tpystd::io::BufferedReader(::tpystd::io::FileIO(feed(std::span<const uint8_t>{})));
+    ::tpystd::io::BufferedReader r9 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(std::span<const uint8_t>{}))));
     // print(r9.read())          # b''
     std::cout << ::tpy::BytesPrinter(r9.read()) << "\n";
     // print(r9.readline())      # b''
     std::cout << ::tpy::BytesPrinter(r9.readline()) << "\n";
     // # with-statement closes on exit.
     // with BufferedReader(FileIO(feed(b"z\n"))) as bc:
-    auto __ctx_1 = ::tpystd::io::BufferedReader(::tpystd::io::FileIO(feed(::tpy::bytes_literal("z\n", 2))));
+    auto __ctx_1 = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(::tpy::bytes_literal("z\n", 2)))));
     auto& bc = __ctx_1.__enter__();
     try {
         // print(bc.readline())  # b'z\n'
@@ -135,7 +135,7 @@ void main() {
     {
         try {
             // BufferedReader(FileIO(feed(b"x")), buffer_size=0)
-            ::tpystd::io::BufferedReader(::tpystd::io::FileIO(feed(::tpy::bytes_literal("x", 1))), 0);
+            ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(::tpy::bytes_literal("x", 1)))), 0);
             // print("no-raise")
             std::cout << "no-raise" << "\n";
         } catch (const ::tpy::ValueError&) {
@@ -145,7 +145,7 @@ void main() {
     }
     // # read after close raises ValueError (CPython parity).
     // rc = BufferedReader(FileIO(feed(b"data")))
-    ::tpystd::io::BufferedReader rc = ::tpystd::io::BufferedReader(::tpystd::io::FileIO(feed(::tpy::bytes_literal("data", 4))));
+    ::tpystd::io::BufferedReader rc = ::tpystd::io::BufferedReader(::tpy::make_adapter<::tpystd::io::RawBinaryIO>(::tpystd::io::FileIO(feed(::tpy::bytes_literal("data", 4)))));
     // rc.close()
     rc.close();
     // try:

@@ -1,0 +1,4 @@
+l1: first line
+l2: second line
+rest: tail without newline
+eof: True
