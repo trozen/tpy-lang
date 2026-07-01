@@ -1,0 +1,1 @@
+main.py:18: error: @export function 'use_foreign': parameter 'f' is an exposed class from another module, which cannot cross the boundary yet (cross-module exposed types are deferred -- define and @export the class in this module)

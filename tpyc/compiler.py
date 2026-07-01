@@ -4157,16 +4157,30 @@ class Compiler:
           - an exposed enum as a getset *field*: the getset path marshals scalars
             via to_py/from_py, which have no enum overload (enums cross only as
             function params/returns, via enum_to_py/enum_from_py).
+          - an exposed class defined in *another* module: same story as the enum
+            case -- the class's qualified C++ name and CPython type handle are
+            keyed to the defining module's glue, not this one.
         """
         from .typesys import OwnType, RefType
         from .type_def_registry import (
-            is_exposed_class, is_exposed_enum, _boundary_inner)
+            is_exposed_class, is_exposed_enum, _boundary_inner, enum_info_of)
+        module_name = compiled.analyzer.ctx.module_name
         if is_exposed_enum(typ):
             # Only enums DEFINED + @export-ed in this module get a handle in this
             # glue TU; an imported exposed enum is admitted by the shared
             # boundary_marshal fact but would reference an undeclared handle.
-            local = {e.name for e in compiled.ast.enums if e.exposed_to_host}
-            if _boundary_inner(typ).name not in local:
+            # Resolve locality from the TYPE OBJECT's own EnumInfo.module_name
+            # (set at registration to the defining module, `None` for an
+            # entry-point-defined enum), not `registry.imported_enum_-
+            # qualification` -- that helper looks up `self.enums` by the name
+            # ARGUMENT it's given, i.e. the LOCAL BINDING name in this module,
+            # so passing the type's own canonical `.name` (which ignores a
+            # local import alias) can resolve to an unrelated same-named LOCAL
+            # enum instead of the actual foreign one -- exactly the collision
+            # this guard exists to catch.
+            einfo = enum_info_of(_boundary_inner(typ))
+            if (einfo is not None and einfo.module_name is not None
+                    and einfo.module_name != module_name):
                 return ("is an exposed enum from another module, which cannot "
                         "cross the boundary yet (cross-module exposed types are "
                         "deferred -- define and @export the enum in this module)")
@@ -4179,6 +4193,21 @@ class Compiler:
             return None
         info = registry.get_record_for_type(_boundary_inner(typ))
         cls = info.name if info is not None else "the class"
+        # Same reasoning as the enum case above: only a class DEFINED +
+        # @export-ed in this module gets a struct + type handle in this glue TU;
+        # an imported exposed class is admitted by the shared boundary_marshal
+        # fact but _class_cpp_var would qualify it under the wrong module's
+        # namespace and reference an undeclared handle. `imported_record_-
+        # qualification_for_type` (the same qname-aware helper codegen uses to
+        # qualify a cross-module record) is what answers "is this local?"
+        # correctly -- a short-name-only check would wrongly call a foreign
+        # class local whenever this module also happens to define its own
+        # same-named exposed class.
+        if registry.imported_record_qualification_for_type(
+                _boundary_inner(typ), module_name) is not None:
+            return ("is an exposed class from another module, which cannot "
+                    "cross the boundary yet (cross-module exposed types are "
+                    "deferred -- define and @export the class in this module)")
         if role == "field":
             return (f"of exposed-class type '{cls}' cannot be exposed as a getset "
                     f"yet (a nested class field needs per-instance marshalling)")

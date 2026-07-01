@@ -480,7 +480,9 @@ call (same borrow story as `str`).
 getset properties; then all four dunder groups (`__repr__`/`__str__`,
 `__eq__`/`__hash__`, ordering + arithmetic operators, container protocol --
 see Q4), landed roughly in that order. **Defer** inheritance of exposed
-class *hierarchies* (each exposed class is flat in v1).
+class *hierarchies* (each exposed class is flat in v1) and cross-module
+exposed classes (a foreign exposed class used as a param/field/return is a
+located error, mirroring the cross-module enum guard below).
 
 **3 + 4. Enums + constants** -- mostly bookkeeping at `PyInit`. **Implemented**
 (this rung): an `@export` enum is rebuilt at `PyInit_` as a **real** CPython enum

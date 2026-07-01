@@ -6031,7 +6031,10 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   reference, so ownership can't transfer -- use the borrow form), a `@nocopy`
   class returned by reference (the boundary can't copy it out -- return
   `Own[Cls]`), `@property`, static/async/generic/overloaded methods,
-  inheritance, generics, or `@export` on an exception class (those cross via the
+  inheritance, generics, an exposed class defined in *another* module
+  (cross-module exposed types are deferred, mirroring the cross-module enum
+  guard below -- define and `@export` the class in the module that uses it),
+  or `@export` on an exception class (those cross via the
   separate `PyErr_NewException` path). The exposed type is not subclassable from
   Python (no `Py_TPFLAGS_BASETYPE`) and carries no GC traversal (its fields are
   scalar/str/bytes; `tp_traverse` becomes necessary only when class-typed fields
