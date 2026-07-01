@@ -66,7 +66,13 @@ class THIRExpr(THIRNode):
 
 @dataclass(frozen=True)
 class THIRStmt(THIRNode):
-    """Base statement."""
+    """Base statement.
+
+    `no_source_comment` mirrors the AST flag: a multi-statement desugar (e.g. a
+    tuple-unpack expanding to several assigns that share one source line) marks
+    its non-first statements so the shared source comment is emitted once. Set at
+    lowering from the AST stmt; honored by `_emit_stmts`."""
+    no_source_comment: bool = field(default=False, kw_only=True)
 
 
 # --- Expressions ---
@@ -76,6 +82,14 @@ class THIRStmt(THIRNode):
 class THIRLiteral(THIRExpr):
     """Scalar literal. `result_type` disambiguates int width / float / bool."""
     value: object  # int | float | bool | None
+
+
+@dataclass(frozen=True)
+class THIRStrLiteral(THIRExpr):
+    """A string literal. Currently only arises as a `print()` argument (str is
+    not otherwise in the eligible-scalar slice); the emitter renders it via
+    `cpp_string_literal_expr`, so the quoting/escaping matches the AST path."""
+    value: str
 
 
 @dataclass(frozen=True)
@@ -313,23 +327,72 @@ class THIRForEach(THIRStmt):
         auto __end_N = __obj_N.end();
         for (; __beg_N != __end_N; ++__beg_N) {
             <elem> <var> = *__beg_N;   // value-scalar loop var (loop_var_binding)
+            auto&& <var> = *__beg_N;   // record loop var (a borrow alias)
             // body
         }
 
-    `elem_type` is the loop var's (value-scalar) type -- the element for list/set/Span/
-    Array, the key for dict (`for k in d`). `N` is the per-function loop index
-    (reproducing `ctx.iter_counter`). Slice: value-scalar loop var (no borrow/const
-    form -- record elements bind `auto&&`, a later cell), a name container (an lvalue,
-    so `auto&`), loop var not used after the loop. In practice only `list[scalar]` /
-    `dict[fixed-int-key]` containers reach here today -- the only container params
-    `_container_scalar_read` admits; `set` / `Span` / `Array` pass the `is_native_iterable`
-    gate but are currently inert (their params aren't admitted). Generators / user
-    iterators (the `__iter__`/`__next__` fallback), `dict.items()` / tuple-unpack, and
-    hoisted loop vars ride later cells."""
+    `elem_type` is the loop var's type -- a value scalar (a typed copy) or an F1-record
+    (a borrow alias: `auto&&`, or `const auto&` when `const_loop_var`). For list/set/Span/
+    Array it is the element; for dict the key (`for k in d`, always a scalar). `N` is the
+    per-function loop index (reproducing `ctx.iter_counter`). `const_loop_var` mirrors
+    sema's flag; it is inert for a cheap value scalar (the typed copy drops const either
+    way) but load-bearing for a record (`const auto&` vs `auto&&`). Slice: a name
+    container (an lvalue, so `auto&`), loop var not reassigned/moved (a record alias can't
+    reseat) and not used after the loop. Container params reaching here are `list[scalar]`
+    / `dict[fixed-int-key]` (`_container_scalar_read`) and `list[record]`
+    (`_container_record_iter`); `set` / `Span` / `Array` pass `is_native_iterable` but are
+    inert (their params aren't admitted). Generators / user iterators (the
+    `__iter__`/`__next__` fallback), `dict.items()` / tuple-unpack, and hoisted loop vars
+    ride later cells."""
     var: str
     elem_type: TpyType
     iterable: THIRExpr
     body: tuple[THIRStmt, ...] = ()
+    const_loop_var: bool = False
+
+
+class PrintForm(Enum):
+    """How a `print()` argument is wrapped in the `std::cout << ...` chain --
+    decided at lowering from the arg's resolved type, so the emitter renders the
+    chosen wrapper without re-inspecting types (mirrors `gen_print`'s per-arg
+    dispatch for the common-arg subset).
+
+      * `RAW`   -- direct `<<` (a wider fixed-int, or a `THIRStrLiteral`).
+      * `INT8`  -- `static_cast<int>(...)`, so an 8-bit int isn't printed as a char.
+      * `BOOL`  -- `::tpy::print_bool(...)` (Python-style `True`/`False`).
+      * `FLOAT` -- `::tpy::print_float(...)` (Python-style float formatting).
+    """
+    RAW = auto()
+    INT8 = auto()
+    BOOL = auto()
+    FLOAT = auto()
+
+
+@dataclass(frozen=True)
+class THIRPrintArg:
+    """One `print()` argument: the lowered expression + how the emitter wraps it.
+    `print_form` is named distinctly from `THIRExpr.form` (the unrelated
+    borrow/storage axis) to keep the two from being conflated."""
+    expr: THIRExpr
+    print_form: PrintForm
+
+
+@dataclass(frozen=True)
+class THIRPrint(THIRStmt):
+    """A `print(<args>)` statement with default `sep=" "`, `end="\\n"`, sink
+    `std::cout` -- the slice excludes `sep=`/`end=`/`file=`/`flush=` kwargs.
+    Emits `std::cout << a0 << " " << a1 << ... << "\\n";`. Args are the common
+    subset (str literal / fixed-int / bool / double); everything else stays AST."""
+    args: tuple[THIRPrintArg, ...] = ()
+
+
+@dataclass(frozen=True)
+class THIRExprStmt(THIRStmt):
+    """A bare expression statement evaluated for its side effects (`foo(x)`).
+    Currently only a same-module free-function call reaches here (via the
+    `_call_eligible` guards, statement position -- a discarded scalar or `None`
+    return); the emitter renders `<expr>;`."""
+    expr: THIRExpr
 
 
 # --- Function / module ---

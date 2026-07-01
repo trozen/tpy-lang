@@ -19,12 +19,15 @@ from .nodes import (
     THIRForRange,
     THIRFormConvert,
     THIRIf,
+    THIRExprStmt,
     THIRLiteral,
     THIRModule,
     THIRName,
+    THIRPrint,
     THIRReturn,
     THIRSelf,
     THIRStmt,
+    THIRStrLiteral,
     THIRSubscript,
     THIRVarDecl,
     THIRWhile,
@@ -45,6 +48,8 @@ def _expr(e: THIRExpr) -> str:
         # vs VALUE/BORROW -> nullptr), so surface it like the other form tags.
         tag = "" if e.form is Form.VALUE else f" [{e.form.name.lower()}]"
         return f"lit({e.value!r}){tag}"
+    if isinstance(e, THIRStrLiteral):
+        return f"str({e.value!r})"
     if isinstance(e, THIRBinOp):
         return f"binop({_expr(e.left)}, {e.op}, {_expr(e.right)})"
     if isinstance(e, THIRCall):
@@ -103,10 +108,18 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
             lines.extend(_stmt_lines(s, depth + 1))
         return lines
     if isinstance(stmt, THIRForEach):
-        lines = [f"{pad}for %{stmt.var} in {_expr(stmt.iterable)}:"]
+        # `[const]` marks a `const auto&` record loop var (vs `auto&&`); load-bearing
+        # for record elements, so surface it like the other emit-relevant tags.
+        const = " [const]" if stmt.const_loop_var else ""
+        lines = [f"{pad}for %{stmt.var}{const} in {_expr(stmt.iterable)}:"]
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
         return lines
+    if isinstance(stmt, THIRPrint):
+        args = ", ".join(f"{_expr(a.expr)} [{a.print_form.name.lower()}]" for a in stmt.args)
+        return [f"{pad}print({args})"]
+    if isinstance(stmt, THIRExprStmt):
+        return [f"{pad}{_expr(stmt.expr)}"]
     return [f"{pad}<{type(stmt).__name__}>"]
 
 

@@ -54,10 +54,12 @@ cell it touches is admitted:
 - **Form / type-family** (the form ladder): scalar / record / Optional / tuple /
   union / generic-slot / str-bytes-view.
 - **Statement & expression shape:** straight-line var-decl / assign / return /
-  if-elif-else / while / range-for / aug-assign / value-scalar for-over-container
-  (incr 30) **(covered)** vs match / with / try-except / for-over-container
-  (record-element / generators / tuple-unpack) / async-await / yield / comprehension /
-  break-continue / del-global-raise-assert / chained-compare / and-or-not **(not)**.
+  if-elif-else / while / range-for / aug-assign / for-over-container (value-scalar
+  incr 30, record-element incr 31) / expression statements (print + bare free-function
+  call, incr 32) **(covered)** vs match / with / try-except / for-over-container
+  (generators / tuple-unpack / dict-value) / async-await / yield / comprehension /
+  break-continue / del-global-raise-assert / chained-compare / and-or-not / container
+  method-calls (`.append`) **(not)**.
 
 A **deferred cell** is one `(kind x form x shape)` the eligibility gate rejects.
 Two kinds, treated oppositely:
@@ -106,7 +108,8 @@ deferred (self-contained) / blocked-on-`<rung>`.
   self-contained: demoted **record**-field writes (need the record body-write rung),
   `self.<record field>` read sources (MIL-ordering-sensitive), non-trivia body
   statements outside the statement-shape slice (match / with / try / for-container /
-  builtin calls / ...), and `str`/`list`/`dict`/`tuple`/`union` MIL fields (F3+) +
+  method calls / ...; print + bare free-function calls now route, incr 32), and
+  `str`/`list`/`dict`/`tuple`/`union` MIL fields (F3+) +
   cross-module / native / generic records (their frontiers).
 - Static / property / dunder-operator methods: **deferred (self-contained)** --
   separate emit paths.
@@ -116,6 +119,13 @@ deferred (self-contained) / blocked-on-`<rung>`.
 - Non-value **call arguments** (the `gen_call_arg` coercion cascade: auto-move,
   view->owned, union/tuple lifts) + call / `copy()`-write optional sources:
   **deferred (self-contained frontier)** -- not isolable, must land whole.
+- **Non-`DEFAULT`-linkage call symbols** (`@native` / `@native_c` / `@export(binding="C")`
+  callees): **deferred (self-contained)** -- `_call_eligible` gates `fi.linkage ==
+  DEFAULT` (incr 32), so any caller of a native/export-C free function stays on the AST
+  path permanently. THIR emits a bare `name(args)`; these need the `::`-qualified
+  (`qualify_native_name`) / raw extern-C symbol the AST call-emit produces. This gate is a
+  correctness fix today but a **completeness blocker**: the "delete AST call codegen"
+  target is unreachable until THIR learns to emit qualified/extern-C call symbols.
 
 ### Form ladder (F) -- `IR_DESIGN.md` rung ladder + `THIR_FORM_INVENTORY.md`
 - F1 (record locals + Optional read), F2 (reseatable pointer-locals + Optional
@@ -166,17 +176,26 @@ narrowed-`Optional` receivers, non-name receivers, container-literal-init locals
 whole container-write side (`c[i] = v` / `+=` / `del` / slices). And **container iteration**
 (`for x in <NativeIterable>:` over a value-scalar element -> the begin/end loop, a new
 `THIRForEach`; + the `len(c)` builtin via a `native_name` on `THIRCall`; increment 30) --
-`range(len(c))` now routes, lighting up the bounds-safe subscript branch. **KEY FINDING:** the
-loop *shape* completing gains little routing (5120 -> 5128 bodies; the 5111 -> 5120 step
-before it was the master merge, not for-each) because loop *bodies*
-overwhelmingly use `print` / `.append` (371 of 393 for-loop files); the routing bottleneck is
-now the common **body constructs** (`print`, method calls like `.append`, the `Int32(0)`
-constructor-init), not the statement shapes -- those are the next high-leverage unblocks.
-Deferred container-iteration cells: record/non-scalar-element loops (`auto&&` borrow loop var
--- the immediate next), `set`/`Span`/`Array` containers (params not yet admitted), str/bytes-key
-dicts, `dict.items()`/tuple-unpack, non-name iterables (a field/subscript/call/literal receiver;
-only a bare declared name routes today), generators / user iterators (the `__iter__`/`__next__`
-fallback), hoisted loop vars, `for/else`, consuming/enum iteration. (Audit-note: the gate keys
+`range(len(c))` now routes, lighting up the bounds-safe subscript branch. The
+**record-element loop** (`for x in <list[record]>:` -- the loop var a borrow alias `auto&&` /
+`const auto&`, field access `.field` exactly like a record param; increment 31) completes the
+for-each family; it needed only sema's `const_loop_var` threaded onto `THIRForEach` (the emit
+already produced the record binding) + a `_container_record_iter` param predicate. **KEY
+FINDING (value-scalar shape):** completing the loop *shape* gains little routing (5120 -> 5128
+bodies) because loop *bodies* overwhelmingly use `print` / `.append` (371 of 393 for-loop
+files); the routing bottleneck is the common **body constructs** (`print`, method calls like
+`.append`, the `Int32(0)` constructor-init), not the statement shapes -- those are the next
+high-leverage unblocks. (The record-element cell was the exception: +48 bodies, 5128 -> 5176,
+because admitting the `list[record]` param unblocks whole record-iterating functions.)
+**`print` landed (incr 32): +453 bodies (5176 -> 5629) -- the biggest single-cell gain**, since
+print gated a huge tail of small functions (main + helpers); this confirms the body-construct
+model. Container method-calls (`.append`) are the remaining half of the bottleneck (need
+method-call-site lowering -- no method call routes today).
+Deferred container-iteration cells: `dict[int, record]` key iteration (param not admitted --
+its value read is a record borrow), `set`/`Span`/`Array` containers (params not yet admitted),
+str/bytes-key dicts, `dict.items()`/tuple-unpack, non-name iterables (a field/subscript/call/
+literal receiver; only a bare declared name routes today), generators / user iterators (the
+`__iter__`/`__next__` fallback), hoisted loop vars, `for/else`, consuming/enum iteration. (Audit-note: the gate keys
 `is_native_iterable` off the use-site type -- re-check it when narrowed-`Optional` containers
 land, since a narrowed value-repr Optional could then reach it.) Beyond subscript/iteration (separate frontiers): value-tuple locals, standalone
 record/Optional-element binds / borrow returns, tuple-unpack. **Test-coverage follow-on:** the storage-tuple-alias receiver form (`a = h.pair;
@@ -184,8 +203,9 @@ a[N].field` read/write) is covered only by unit byte-diff, not a build+run corpu
 one (the aliasing fn must stay THIR-routable, i.e. no `print()` inside it) for exec/cpy
 coverage of the `.`-access + `optional_to_ptr` alias paths.
 Uncovered shapes include: `match`, `with`, `try`/`except`/`finally`,
-`for`-over-container (value-scalar landed incr 30; record-element / generators /
-tuple-unpack remain), `async`/`await`, `yield` / generators, comprehensions,
+`for`-over-container (value-scalar landed incr 30, record-element incr 31; generators /
+tuple-unpack / dict-value remain), expression statements (print + bare call landed incr 32;
+container method-calls `.append` remain), `async`/`await`, `yield` / generators, comprehensions,
 `break`/`continue`, `del`/`global`/`nonlocal`/`raise`/`assert`, chained
 comparisons, logical `and`/`or`/`not` (short-circuit). **Action:** continue enumerating +
 driving these as a tracked axis before claiming `gen_body`/`gen_expr` deletion is near.
@@ -209,4 +229,4 @@ driving these as a tracked axis before claiming `gen_body`/`gen_expr` deletion i
 - **Planned:** extend the `--thir-codegen` non-vacuity tally to report per-component
   AST-fallback coverage (how much of each component still falls back to AST), so the
   gap to each deletion is *measured*, not estimated. Today the tally reports only
-  total routed bodies/cases (5128 bodies / 1237 cases as of increment 30).
+  total routed bodies/cases (5629 bodies / 1334 cases as of increment 32).

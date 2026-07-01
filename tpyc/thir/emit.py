@@ -17,19 +17,21 @@ from dataclasses import dataclass, field
 from typing import TextIO
 
 from ..codegen_cpp.context import (
-    INDENT, escape_cpp_name, expand_cpp_template, loop_var_binding,
-    qualify_native_name,
+    INDENT, cpp_string_literal_expr, escape_cpp_name, expand_cpp_template,
+    loop_var_binding, qualify_native_name,
 )
 from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
 from ..typesys import OptionalType, TupleType, unwrap_qualifiers
 from .nodes import (
     Form,
+    PrintForm,
     THIRAssign,
     THIRBinOp,
     THIRCall,
     THIRCoerce,
     THIRConstructor,
     THIRExpr,
+    THIRExprStmt,
     THIRFieldAccess,
     THIRForEach,
     THIRForRange,
@@ -39,9 +41,12 @@ from .nodes import (
     THIRLiteral,
     THIRName,
     THIRNoOpStmt,
+    THIRPrint,
+    THIRPrintArg,
     THIRReturn,
     THIRSelf,
     THIRStmt,
+    THIRStrLiteral,
     THIRSubscript,
     THIRVarDecl,
     THIRWhile,
@@ -262,6 +267,8 @@ def _emit_expr(e: THIRExpr) -> str:
         return "this"
     if isinstance(e, THIRLiteral):
         return _emit_literal(e)
+    if isinstance(e, THIRStrLiteral):
+        return cpp_string_literal_expr(e.value)
     if isinstance(e, THIRFieldAccess):
         return _emit_field_access(e)
     if isinstance(e, THIRSubscript):
@@ -356,10 +363,11 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
 
 def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
                    state: _EmitState) -> None:
-    # Mirrors _gen_begin_end_loop for a value-scalar element off an lvalue name
-    # container: grab the loop index before the body (nested loops number after this
-    # one), capture the container by `auto&`, then the value-form loop-var binding via
-    # the shared loop_var_binding (a scalar is a typed copy, const-independent).
+    # Mirrors _gen_begin_end_loop for an element off an lvalue name container: grab the
+    # loop index before the body (nested loops number after this one), capture the
+    # container by `auto&`, then the loop-var binding via the shared loop_var_binding (a
+    # scalar is a typed copy; a record is a borrow alias -- auto&& / const auto&, so the
+    # const flag is threaded through, not hardcoded).
     indent = INDENT * indent_level
     n = state.next_loop_index()
     obj, beg, end = f"__obj_{n}", f"__beg_{n}", f"__end_{n}"
@@ -369,7 +377,7 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     out.write(f"{indent}for (; {beg} != {end}; ++{beg}) {{\n")
     inner = INDENT * (indent_level + 1)
     binding = loop_var_binding(stmt.elem_type, escape_cpp_name(stmt.var),
-                              f"*{beg}", False)
+                              f"*{beg}", stmt.const_loop_var)
     out.write(f"{inner}{binding}\n")
     _emit_stmts(out, stmt.body, indent_level + 1, state)
     state.comments.trailing(out, stmt.body, inner)
@@ -437,6 +445,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         _emit_for_range(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRForEach):
         _emit_for_each(out, stmt, indent_level, state)
+    elif isinstance(stmt, THIRPrint):
+        _emit_print(out, stmt, indent_level)
+    elif isinstance(stmt, THIRExprStmt):
+        out.write(f"{indent}{_emit_expr(stmt.expr)};\n")
     elif isinstance(stmt, THIRNoOpStmt):
         # No code -- the `// pass` source comment (if any) is emitted by the
         # caller (_emit_stmts) from the node's loc.
@@ -445,10 +457,38 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         raise THIRCodeGenError(f"unhandled THIR stmt: {type(stmt).__name__}")
 
 
+def _emit_print_arg(a: THIRPrintArg) -> str:
+    inner = _emit_expr(a.expr)
+    if a.print_form is PrintForm.BOOL:
+        return f"::tpy::print_bool({inner})"
+    if a.print_form is PrintForm.FLOAT:
+        return f"::tpy::print_float({inner})"
+    if a.print_form is PrintForm.INT8:
+        return f"static_cast<int>({inner})"
+    return inner
+
+
+def _emit_print(out: TextIO, stmt: THIRPrint, indent_level: int) -> None:
+    # Mirrors gen_print's no-kwargs common-arg path: `std::cout << a0 << " " << a1
+    # << ... << "\n";`. Default sep=" " between args, end="\n"; empty print() is
+    # just the newline.
+    indent = INDENT * indent_level
+    parts = []
+    for i, a in enumerate(stmt.args):
+        if i > 0:
+            parts.append('" "')
+        parts.append(_emit_print_arg(a))
+    parts.append('"\\n"')
+    out.write(f"{indent}std::cout << " + " << ".join(parts) + ";\n")
+
+
 def _emit_stmts(out: TextIO, stmts, indent_level: int, state: _EmitState) -> None:
     indent = INDENT * indent_level
     for stmt in stmts:
-        state.comments.stmt(out, stmt.loc, indent)
+        # A desugar-expanded statement (no_source_comment) shares the first
+        # statement's source comment -- skip the repeat, mirroring the AST path.
+        if not stmt.no_source_comment:
+            state.comments.stmt(out, stmt.loc, indent)
         _emit_stmt(out, stmt, indent_level, state)
 
 

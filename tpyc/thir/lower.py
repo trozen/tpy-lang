@@ -18,6 +18,7 @@ for-byte.
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 
 from ..parse.nodes import (
     FunctionLinkage,
@@ -28,6 +29,7 @@ from ..parse.nodes import (
     TpyCall,
     TpyCoerce,
     TpyExpr,
+    TpyExprStmt,
     TpyFieldAccess,
     TpyFloatLiteral,
     TpyForEach,
@@ -41,6 +43,7 @@ from ..parse.nodes import (
     TpyPassStmt,
     TpyReturn,
     TpyStmt,
+    TpyStrLiteral,
     TpySubscript,
     TpyUnaryOp,
     TpyVarDecl,
@@ -52,8 +55,9 @@ from ..parse.nodes import (
 )
 from ..typesys import (
     LiteralType, NominalType, OptionalType, OwnType, ReadonlyType, TpyType,
-    TupleType, ValueForm, VoidType, is_float_type, resolve_int_literals,
-    unwrap_optional_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
+    TupleType, ValueForm, VoidType, is_float_type, is_void_like_type,
+    resolve_int_literals, unwrap_optional_own, unwrap_readonly, unwrap_ref_type,
+    unwrap_send_sync,
 )
 from ..type_def_registry import (
     int_traits_of, is_big_int_type, is_bool_type, is_dict, is_fixed_int_type,
@@ -69,6 +73,7 @@ from ..value_category import is_rvalue_source
 from ..codegen_cpp.context import escape_cpp_name
 from .nodes import (
     Form,
+    PrintForm,
     THIRAssign,
     THIRBaseInit,
     THIRBinOp,
@@ -76,6 +81,7 @@ from .nodes import (
     THIRCoerce,
     THIRConstructor,
     THIRExpr,
+    THIRExprStmt,
     THIRFieldAccess,
     THIRForEach,
     THIRForRange,
@@ -89,9 +95,12 @@ from .nodes import (
     THIRName,
     THIRNoOpStmt,
     THIRParam,
+    THIRPrint,
+    THIRPrintArg,
     THIRReturn,
     THIRSelf,
     THIRStmt,
+    THIRStrLiteral,
     THIRSubscript,
     THIRVarDecl,
     THIRWhile,
@@ -423,6 +432,25 @@ def _container_scalar_read(t: TpyType | None) -> bool:
             return False
         key, val = args[0], args[1]
         return is_fixed_int_type(key) and _eligible_scalar(val)
+    return False
+
+
+def _container_record_iter(t: TpyType | None, analyzer) -> bool:
+    """A `list[F1-record]` container -- iterated (`for x in c`) with a record loop var
+    (`auto&&` / `const auto&`, a borrow alias). The iteration counterpart to
+    `_container_scalar_read` (scalar-element containers read by subscript). A dict's
+    record VALUES need `for k, v in d.items()` (tuple-unpack, a later cell); `for k in d`
+    yields keys, which is the scalar path. `set` / `Span` / `Array` record params ride a
+    later cell (their params aren't admitted). `Own[list]` is excluded (mirrors
+    `_container_scalar_read`)."""
+    if t is None:
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, OwnType):
+        return False
+    args = getattr(t, "type_args", None)
+    if is_list(t):
+        return bool(args) and _f1_record(args[0], analyzer)
     return False
 
 
@@ -806,7 +834,8 @@ def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType]) -> bool:
     return is_list(t) or is_dict(t) or is_set(t)
 
 
-def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer) -> bool:
+def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer,
+                   *, stmt_position: bool = False) -> bool:
     if _is_len_call(e, locals_):
         return True
     # Only a bare-name call to a same-module plain user free function emits as
@@ -828,6 +857,13 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer) -> bool:
     fi = e.resolved_function_info
     if fi is None or fi.cpp_template or fi.native_function or fi.native_name:
         return False
+    # Only a DEFAULT-linkage function emits as a bare `name(args)`. @native /
+    # @native_c / @export(binding="C") get special name qualification the bare
+    # THIRCall emit doesn't reproduce (is_native_import renders `::name`; the
+    # extern-C forms use the raw symbol). Gate on the enum so a future linkage is
+    # rejected by default rather than silently mis-emitted.
+    if fi.linkage != FunctionLinkage.DEFAULT:
+        return False
     # A literal-specialized overload emits a mangled name (`f__lit_N`) the
     # bare-name call does not reproduce. The error_return guard is defense in
     # depth: sema already forces an @error_return call into a try/except or a
@@ -843,7 +879,11 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer) -> bool:
     # synthesize the missing/packed args, which the slice does not).
     if len(e.args) != len(fi.params):
         return False
-    if not _eligible_scalar(analyzer.get_expr_type(e)):
+    # In value position the result must be an eligible scalar; as a bare statement
+    # the result is discarded, so a `void` (None) return is admitted too. The emit
+    # (`callee(args);`) is identical either way.
+    ret = analyzer.get_expr_type(e)
+    if not (_eligible_scalar(ret) or (stmt_position and is_void_like_type(ret))):
         return False
     # Every argument must be an eligible SCALAR. A non-value arg (a record /
     # Own[record] param passed positionally) crosses an ownership boundary --
@@ -852,6 +892,54 @@ def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer) -> bool:
     # are value types: copied, never moved, so the bare call is byte-identical.
     return all(_eligible_scalar(analyzer.get_expr_type(a))
                and _expr_eligible(a, locals_, analyzer) for a in e.args)
+
+
+def _is_builtin_print(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
+    """`e` is a call to the builtin `print` (not a user/local shadow): the builtin
+    is in `imported_names` and `print` is not redefined as a same-module function /
+    record or bound as a local. A shadowed `print` conservatively stays on the AST
+    path (never a divergence). This is stricter than the AST print path, which
+    intercepts `print(...)` unconditionally regardless of a user shadow."""
+    if not (isinstance(e, TpyCall) and isinstance(e.func, TpyName)
+            and e.func_name == "print"):
+        return False
+    reg = analyzer.registry
+    return ("print" in analyzer.imported_names
+            and reg.get_function("print") is None
+            and reg.get_record("print") is None
+            and "print" not in declared)
+
+
+def _print_arg_form(t: TpyType) -> PrintForm:
+    """The `std::cout <<` wrapper for a print arg's resolved type -- mirrors the
+    gen_print per-type dispatch for the eligible subset. bool is checked before
+    the 8-bit-int case (a `bool` has an 8-bit int trait but must format as
+    `True`/`False`, not `static_cast<int>`)."""
+    if is_bool_type(t):
+        return PrintForm.BOOL
+    if is_float_type(t):  # float64 -- float32 is excluded by arg eligibility
+        return PrintForm.FLOAT
+    tr = int_traits_of(t)
+    if tr is not None and tr.bits == 8:
+        return PrintForm.INT8
+    return PrintForm.RAW
+
+
+def _print_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer) -> bool:
+    """A `print(<args>)` in the no-kwargs common-arg subset: every arg is a str
+    literal or an eligible scalar (fixed-int / bool / double). Any `sep=`/`end=`/
+    `file=`/`flush=` kwarg, `**`-unpack, f-string, or non-scalar arg falls back to
+    the AST path (gen_print's richer cases)."""
+    if e.kwargs or e.double_star_unpack is not None:
+        return False
+    for a in e.args:
+        if isinstance(a, TpyStrLiteral):
+            continue
+        if (_eligible_scalar(analyzer.get_expr_type(a))
+                and _expr_eligible(a, locals_, analyzer)):
+            continue
+        return False
+    return True
 
 
 def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
@@ -906,14 +994,16 @@ def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     """An F1-eligible param: a value scalar, an F1-record passed by reference
     (`T&` / `const T&`, accessed `.`), an F3 borrow-form pointer-repr tuple
     (`std::tuple<..., T*>`, a borrow source for a `tuple_to_storage` field write), a
-    pure value-scalar tuple (`const std::tuple<...>&`, read by subscript), or a
-    scalar-element container (`list[scalar]` / `dict[int, scalar]`, read by subscript
-    -- the signature stays on the AST path per M1). Optional/view-keyed-container/
-    cross-module/native record params stay on the AST path."""
+    pure value-scalar tuple (`const std::tuple<...>&`, read by subscript), a
+    scalar-element container (`list[scalar]` / `dict[int, scalar]`, read by subscript),
+    or a record-element list (`list[record]`, iterated by `for x in c` -- the signature
+    stays on the AST path per M1). Optional/view-keyed-container/cross-module/native
+    record params stay on the AST path."""
     return (_eligible_scalar(ptype) or _f1_record(ptype, analyzer)
             or _f1_tuple(ptype, analyzer) is not None
             or _value_scalar_tuple(ptype)
-            or _container_scalar_read(ptype))
+            or _container_scalar_read(ptype)
+            or _container_record_iter(ptype, analyzer))
 
 
 def _function_eligible(func: TpyFunction, analyzer,
@@ -1080,12 +1170,11 @@ def _for_each_container_eligible(stmt: TpyForEach, analyzer,
                                  declared: dict[str, TpyType], prescan: _Prescan,
                                  pointers: set[str], rebind_slots: set[str],
                                  storage_tuple_locals: set[str]) -> bool:
-    # `for v in <container>` over a NativeIterable whose element/key is a value scalar ->
-    # the begin/end loop with a value-form loop var. Only `list[scalar]` /
-    # `dict[fixed-int-key, ...]` containers actually reach here today (the only container
-    # params `_container_scalar_read` admits); a record-element `auto&&` loop var, a
-    # str/bytes dict key (a view), a generator/user-iterator (the `__iter__`/`__next__`
-    # fallback), and the shared richer for-shapes stay on the AST path.
+    # `for v in <container>` over a NativeIterable with a value-scalar (`list[scalar]` /
+    # `dict[fixed-int-key]`, a typed copy) or F1-record (`list[record]`, a borrow alias)
+    # loop var. A str/bytes dict key (a view), a generator/user-iterator (the
+    # `__iter__`/`__next__` fallback), and the shared richer for-shapes stay on the AST
+    # path.
     if not _for_loop_shape_ok(stmt, analyzer, declared):
         return False
     it = stmt.iterable
@@ -1095,9 +1184,15 @@ def _for_each_container_eligible(stmt: TpyForEach, analyzer,
         return False
     if not is_native_iterable(analyzer.get_expr_type(it), analyzer.registry):
         return False
-    # The loop var (list/set/Span/Array element, or dict key) must be a value scalar.
+    # The loop var (list/set/Span/Array element, or dict key) is a value scalar (typed
+    # copy) or an F1-record (a borrow alias -- `auto&&`/`const auto&`, read/written
+    # `.field` exactly like a record param, so it flows through the body constructs
+    # identically). No rebinding guard is needed: sema forbids reassigning a non-value
+    # loop var (`_check_nonvalue_rebinding` -- `p = other` is a hard error), so an
+    # eligible record loop var is only ever read or field-mutated through the alias, both
+    # matching Python's reference semantics.
     et = unwrap_ref_type(stmt.elem_type) if stmt.elem_type is not None else None
-    if not _eligible_scalar(et):
+    if not _eligible_scalar(et) and not _f1_record(et, analyzer):
         return False
     body_declared = dict(declared)
     body_declared[stmt.var] = et
@@ -1225,6 +1320,14 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
                 or _for_each_container_eligible(stmt, analyzer, declared, prescan,
                                                 pointers, rebind_slots,
                                                 storage_tuple_locals))
+    if isinstance(stmt, TpyExprStmt):
+        # A bare expression statement: a builtin `print(...)` (common-arg subset)
+        # or a same-module free-function call discarded for its side effects.
+        if _is_builtin_print(stmt.expr, declared, analyzer):
+            return _print_eligible(stmt.expr, declared, analyzer)
+        if isinstance(stmt.expr, TpyCall):
+            return _call_eligible(stmt.expr, declared, analyzer, stmt_position=True)
+        return False
     return False
 
 
@@ -1535,6 +1638,17 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, binding: 'LocalBinding
 
 
 def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType]) -> THIRStmt:
+    # Single chokepoint: lower the statement, then carry the AST's
+    # `no_source_comment` desugar flag onto the THIR node so the emitter dedups
+    # the shared source comment (nested statements route through here too).
+    result = _lower_stmt_dispatch(stmt, lc, declared)
+    if getattr(stmt, "no_source_comment", False) and not result.no_source_comment:
+        return replace(result, no_source_comment=True)
+    return result
+
+
+def _lower_stmt_dispatch(stmt: TpyStmt, lc: _LowerCtx,
+                         declared: dict[str, TpyType]) -> THIRStmt:
     analyzer = lc.analyzer
     loc = getattr(stmt, "loc", None)
     if isinstance(stmt, TpyVarDecl):
@@ -1754,9 +1868,28 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType]) -> T
             elem_type=et,
             iterable=_lower_expr(it, lc),
             body=body,
+            const_loop_var=stmt.const_loop_var,
             loc=loc,
         )
+    if isinstance(stmt, TpyExprStmt):
+        if _is_builtin_print(stmt.expr, declared, lc.analyzer):
+            return THIRPrint(
+                args=tuple(_lower_print_arg(a, lc) for a in stmt.expr.args),
+                loc=loc)
+        return THIRExprStmt(expr=_lower_expr(stmt.expr, lc), loc=loc)
     raise AssertionError(f"ineligible stmt reached lowering: {type(stmt).__name__}")
+
+
+def _lower_print_arg(a: TpyExpr, lc: _LowerCtx) -> THIRPrintArg:
+    """Lower one print arg + tag its `std::cout <<` wrapper form. A str literal
+    lowers to a THIRStrLiteral (RAW: emitted via cpp_string_literal_expr); an
+    eligible scalar lowers normally with its type-derived form."""
+    if isinstance(a, TpyStrLiteral):
+        return THIRPrintArg(
+            THIRStrLiteral(value=a.value, result_type=lc.analyzer.get_expr_type(a)),
+            PrintForm.RAW)
+    arg_type = unwrap_readonly(lc.analyzer.get_expr_type(a))
+    return THIRPrintArg(_lower_expr(a, lc), _print_arg_form(arg_type))
 
 
 def lower_function(func: TpyFunction, analyzer, render_type=None,

@@ -15,10 +15,10 @@ from .lower import _is_len_native, lower_module
 from ..parse.nodes import TpyCall
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
-    Form, THIRAssign, THIRBinOp, THIRCall, THIRFieldAccess, THIRForEach,
-    THIRForRange,
-    THIRFormConvert, THIRIf, THIRLiteral, THIRName, THIRReturn, THIRSelf,
-    THIRSubscript, THIRVarDecl, THIRWhile,
+    Form, PrintForm, THIRAssign, THIRBinOp, THIRCall, THIRExprStmt,
+    THIRFieldAccess, THIRForEach, THIRForRange,
+    THIRFormConvert, THIRIf, THIRLiteral, THIRName, THIRPrint, THIRReturn,
+    THIRSelf, THIRStrLiteral, THIRSubscript, THIRVarDecl, THIRWhile,
 )
 
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
@@ -78,6 +78,25 @@ def _ctor_tail(ctor) -> str:
 
 
 _PRELUDE = "from tpy import Int32, UInt8, UInt64\n"
+
+# Shared F1-record fixture (records need `_lower_ctx` / a full compile -- see its
+# docstring). Defined here so class-body-level source builders can reference it.
+_F1_RECORDS = (
+    "from tpy import Int32, Own, readonly\n"
+    "class Leaf:\n"
+    "    n: Int32\n"
+    "    def __init__(self, n: Int32):\n        self.n = n\n"
+    "class Inner:\n"
+    "    value: Int32\n"
+    "    opt: Leaf | None\n"
+    "    def __init__(self, value: Int32):\n        self.value = value\n        self.opt = None\n"
+    "class Box:\n"
+    "    inner: Inner\n"
+    "    opt: Inner | None\n"
+    "    n: Int32\n"
+    "    def __init__(self, inner: Own[Inner]):\n"
+    "        self.inner = inner\n        self.opt = None\n        self.n = 0\n"
+)
 
 
 class TestEligibility:
@@ -377,12 +396,36 @@ class TestForEachContainer:
         loop = _fn(thir, "keysum").body[1]
         assert isinstance(loop, THIRForEach) and loop.var == "k"
 
-    def test_record_element_ineligible(self):
-        # A record element binds `auto&&` (a borrow loop var) -- a later cell.
+    def test_record_element_routes(self):
+        # A `list[record]` element binds `auto&&`/`const auto&` (a borrow alias);
+        # field reads are `.field`, like a record param.
         thir = _lower_ctx(
             _F1_RECORDS
             + "def f(items: list[Inner]) -> Int32:\n    s = 0\n"
             + "    for p in items:\n        s = s + p.value\n    return s\n")
+        loop = _fn(thir, "f").body[1]
+        assert isinstance(loop, THIRForEach) and loop.var == "p"
+        assert isinstance(loop.iterable, THIRName) and loop.iterable.name == "items"
+
+    def test_record_field_mutation_routes(self):
+        # Writing through the record loop var (`p.value = ...`) routes -- the alias
+        # semantics match Python (the list element is mutated). Sema forbids reassigning
+        # the loop var itself, so that divergent case never reaches THIR.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(items: list[Inner]) -> None:\n"
+            + "    for p in items:\n        p.value = p.value + 1\n")
+        loop = _fn(thir, "f").body[0]
+        assert isinstance(loop, THIRForEach) and loop.var == "p"
+
+    def test_dict_record_value_ineligible(self):
+        # `for k in d` over dict[int, record] yields scalar KEYS, but the param itself
+        # isn't admitted: `_container_scalar_read` requires a scalar VALUE, and record
+        # values ride a later cell (`dict[int, record]` key iteration), so it stays AST.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(d: dict[Int32, Inner]) -> Int32:\n    s = 0\n"
+            + "    for k in d:\n        s = s + k\n    return s\n")
         assert _fn(thir, "f") is None
 
     def test_str_keyed_dict_ineligible(self):
@@ -502,6 +545,209 @@ class TestForEachContainerEmit:
             + "def total(items: list[Int32]) -> Int32:\n    s = 0\n"
             + "    for x in items:\n        s = s + x\n    return s\n")
         assert "for %x in %items:" in dump_thir(thir)
+
+    # A `list[record]` for-each: the loop var is a borrow alias (`const auto&` when
+    # read-only, `auto&&` when the body mutates through it), field reads are `.field`.
+    REC_SRC = (
+        _F1_RECORDS
+        + "def total(items: list[Inner]) -> Int32:\n    s = 0\n"
+        + "    for p in items:\n        s = s + p.value\n    return s\n"
+        + "def bump(items: list[Inner]) -> None:\n"
+        + "    for p in items:\n        p.value = p.value + 1\n"
+        + "def main():\n    xs = [Inner(1), Inner(2)]\n    bump(xs)\n    print(total(xs))\nmain()\n"
+    )
+
+    def test_record_byte_identical(self):
+        assert self._cpp(self.REC_SRC, thir=True) == self._cpp(self.REC_SRC, thir=False)
+
+    def test_record_const_loop_var_binding(self):
+        # Read-only loop var -> `const auto&` (the const_loop_var thread; hardcoded False
+        # would wrongly emit `auto&&` here). Field read is `.value` (dot, like a param).
+        cpp = self._cpp(self.REC_SRC, thir=True)
+        assert "const auto& p = *__beg_0;" in cpp
+        assert "s = (::tpy::add_check<int32_t>(s, p.value));" in cpp
+
+    def test_record_mutating_loop_var_binding(self):
+        # Mutation through the loop var -> `auto&&` (a non-const alias); the write
+        # `p.value = ...` goes through the reference, aliasing the list element.
+        cpp = self._cpp(self.REC_SRC, thir=True)
+        assert "auto&& p = *__beg_0;" in cpp
+
+    def test_nested_record_for_each(self):
+        # A `list[record]` loop nested inside another routes (both loops), and the
+        # per-function loop-index counter stays in sync with the AST (__obj_0 outer,
+        # __obj_1 inner). Asserting routing keeps the byte-identity check non-vacuous.
+        src = (
+            _F1_RECORDS
+            + "def pair_sum(xs: list[Inner], ys: list[Inner]) -> Int32:\n    s = 0\n"
+            + "    for a in xs:\n        for b in ys:\n"
+            + "            s = s + a.value + b.value\n    return s\n"
+            + "def main():\n    print(pair_sum([Inner(1)], [Inner(2)]))\nmain()\n")
+        outer = _fn(_lower_ctx(src), "pair_sum").body[1]
+        assert isinstance(outer, THIRForEach) and isinstance(outer.body[0], THIRForEach)
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        cpp = self._cpp(src, thir=True)
+        assert "auto& __obj_0 = xs;" in cpp and "auto& __obj_1 = ys;" in cpp
+
+    def test_ctor_list_record_param_for_each(self):
+        # Admitting `list[record]` params also broadens CONSTRUCTOR eligibility: a ctor
+        # whose body iterates a `list[record]` param (the loop demotes into the ctor
+        # tail) routes too. Non-vacuous: the ctor lowers (not None) + byte-identical.
+        src = (
+            _F1_RECORDS
+            + "class Sum:\n    total: Int32\n"
+            + "    def __init__(self, items: list[Inner]):\n        self.total = 0\n"
+            + "        for it in items:\n            self.total = self.total + it.value\n"
+            + "def main():\n    s = Sum([Inner(1), Inner(2)])\n    print(s.total)\nmain()\n")
+        assert _lower_ctor(src, "Sum") is not None
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+
+
+# --- Statement-shape axis: expression statements (print + bare eligible call) ---
+
+class TestPrintStmt:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    def test_str_literal_and_scalar_route(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f(n: Int32) -> None:\n    print(\"n =\", n)\n")
+        stmt = _fn(thir, "f").body[0]
+        assert isinstance(stmt, THIRPrint) and len(stmt.args) == 2
+        assert isinstance(stmt.args[0].expr, THIRStrLiteral)
+        assert stmt.args[0].print_form is PrintForm.RAW
+        assert stmt.args[1].print_form is PrintForm.RAW
+
+    def test_arg_forms(self):
+        # bool -> BOOL, double -> FLOAT, 8-bit int -> INT8, wider int -> RAW.
+        thir = _lower(
+            _PRELUDE
+            + "def f(ok: bool, r: float, b: UInt8, n: Int32) -> None:\n"
+            + "    print(ok, r, b, n)\n")
+        forms = [a.print_form for a in _fn(thir, "f").body[0].args]
+        assert forms == [PrintForm.BOOL, PrintForm.FLOAT, PrintForm.INT8, PrintForm.RAW]
+
+    def test_empty_print_routes(self):
+        thir = _lower(_PRELUDE + "def f() -> None:\n    print()\n")
+        stmt = _fn(thir, "f").body[0]
+        assert isinstance(stmt, THIRPrint) and stmt.args == ()
+
+    def test_bare_call_stmt_routes(self):
+        # A same-module free-function call discarded for side effects (void return).
+        thir = _lower(
+            _PRELUDE
+            + "def g(n: Int32) -> None:\n    print(n)\n"
+            + "def f(n: Int32) -> None:\n    g(n)\n")
+        stmt = _fn(thir, "f").body[0]
+        assert isinstance(stmt, THIRExprStmt) and isinstance(stmt.expr, THIRCall)
+
+    def test_scalar_returning_call_stmt_routes(self):
+        # A discarded scalar return also routes as a bare statement.
+        thir = _lower(
+            _PRELUDE
+            + "def g(n: Int32) -> Int32:\n    return n\n"
+            + "def f(n: Int32) -> None:\n    g(n)\n")
+        assert isinstance(_fn(thir, "f").body[0], THIRExprStmt)
+
+    def test_str_var_arg_ineligible(self):
+        # A str *variable* is not in the eligible-scalar slice (only str literals
+        # are handled, as raw C++ strings) -> AST path.
+        thir = _lower(
+            "from tpy import Int32\n"
+            + "def f(s: str) -> None:\n    print(s)\n")
+        assert _fn(thir, "f") is None
+
+    def test_bigint_arg_ineligible(self):
+        # A plain `int` is BigInt, not an eligible fixed-int scalar -> AST path.
+        thir = _lower("def f(x: int) -> None:\n    print(x)\n")
+        assert _fn(thir, "f") is None
+
+    def test_kwargs_ineligible(self):
+        # sep=/end=/file=/flush= take gen_print's richer path -> AST.
+        thir = _lower(
+            _PRELUDE
+            + "def f(n: Int32) -> None:\n    print(n, end=\"\")\n")
+        assert _fn(thir, "f") is None
+
+    def test_container_arg_ineligible(self):
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32]) -> None:\n    print(xs)\n")
+        assert _fn(thir, "f") is None
+
+    def test_shadowed_print_ineligible(self):
+        # A user function named `print` is not the builtin; conservatively stays AST
+        # (never misrouted to the stream emit).
+        thir = _lower(
+            _PRELUDE
+            + "def print(n: Int32) -> None:\n    return\n"
+            + "def f(n: Int32) -> None:\n    print(n)\n")
+        assert _fn(thir, "f") is None
+
+    def test_byte_identical(self):
+        src = (
+            _PRELUDE
+            + "def report(n: Int32, ok: bool, r: float, b: UInt8) -> None:\n"
+            + "    print(\"n =\", n)\n    print(n, ok, r)\n    print(b)\n    print()\n"
+            + "    blank()\n"
+            + "def blank() -> None:\n    print(\"--\")\n"
+            + "def main():\n    report(3, True, 1.5, 7)\nmain()\n")
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        cpp = self._cpp(src, thir=True)
+        assert 'std::cout << "n =" << " " << n << "\\n";' in cpp
+        assert 'std::cout << n << " " << ::tpy::print_bool(ok) << " " << ::tpy::print_float(r) << "\\n";' in cpp
+        assert 'std::cout << static_cast<int>(b) << "\\n";' in cpp
+        assert 'std::cout << "\\n";' in cpp
+        assert "blank();" in cpp
+
+    def test_dump(self):
+        thir = _lower(_PRELUDE + "def f(n: Int32) -> None:\n    print(\"x\", n)\n")
+        assert "print(str('x') [raw], %n [raw])" in dump_thir(thir)
+
+    def test_native_call_arg_ineligible(self):
+        # A @native function is ::-qualified at the call site; the bare THIRCall
+        # emit can't reproduce that, so a print with a native-call arg stays AST.
+        thir = _lower(
+            "from tpy.extern import native\nfrom tpy import Int32\n"
+            + "@native\ndef ext() -> Int32: ...\n"
+            + "def f() -> None:\n    print(ext())\n")
+        assert _fn(thir, "f") is None
+
+    def test_native_bare_call_ineligible(self):
+        thir = _lower(
+            "from tpy.extern import native\n"
+            + "@native\ndef ext() -> None: ...\n"
+            + "def f() -> None:\n    ext()\n")
+        assert _fn(thir, "f") is None
+
+    def test_export_c_call_ineligible(self):
+        # An @export(binding="C") function has EXPORT_C linkage and emits its raw
+        # extern-C symbol at the call site (not a bare name); the fi.linkage gate
+        # keeps a caller of it on the AST path. Unlike a plain @native (caught by
+        # the native_function/native_name check), EXPORT_C has a body and only the
+        # linkage gate excludes it.
+        thir = _lower(
+            "from tpy.extern import export\nfrom tpy import Int32\n"
+            + "@export(binding=\"C\")\ndef ext(x: Int32) -> Int32:\n    return x\n"
+            + "def f(n: Int32) -> Int32:\n    return ext(n)\n")
+        assert _fn(thir, "f") is None
+
+    def test_desugar_shares_one_source_comment(self):
+        # A tuple-unpack desugars to several assigns on one source line; only the
+        # first carries the source comment (no_source_comment set on the rest), so
+        # the emitter doesn't repeat it -- byte-identical to the AST path.
+        thir = _lower(
+            _PRELUDE
+            + "def f(p: Int32, q: Int32) -> Int32:\n    a = p\n    b = q\n"
+            + "    a, b = b, a\n    return a + b\n")
+        fn = _fn(thir, "f")
+        assert fn is not None
+        assert sum(1 for s in fn.body if s.no_source_comment) == 3
 
 
 class TestFloat:
@@ -923,24 +1169,6 @@ class TestByteIdentical:
 
 
 # --- F1 form rung: single-assignment non-value record locals + field reads ---
-
-_F1_RECORDS = (
-    "from tpy import Int32, Own, readonly\n"
-    "class Leaf:\n"
-    "    n: Int32\n"
-    "    def __init__(self, n: Int32):\n        self.n = n\n"
-    "class Inner:\n"
-    "    value: Int32\n"
-    "    opt: Leaf | None\n"
-    "    def __init__(self, value: Int32):\n        self.value = value\n        self.opt = None\n"
-    "class Box:\n"
-    "    inner: Inner\n"
-    "    opt: Inner | None\n"
-    "    n: Int32\n"
-    "    def __init__(self, inner: Own[Inner]):\n"
-    "        self.inner = inner\n        self.opt = None\n        self.n = 0\n"
-)
-
 
 class TestF1Eligibility:
     def test_ref_alias_local_eligible(self):
@@ -3016,25 +3244,30 @@ class TestConstructor:
             "P")
         assert doc_ctor.body[0].loc is None
 
-    def test_non_init_call_body_is_ineligible(self):
-        # A real non-init statement (not trivia) needs the M3c-demotion rung; the
-        # ctor stays on the AST path.
+    def test_non_init_print_body_routes(self):
+        # A print() body statement is an eligible expression statement, so a ctor
+        # with a hoistable field init + a print demotes cleanly: the field init
+        # hoists to the MIL, the print rides the body (byte-identical ctor tail).
         ctor = _lower_ctor(
             _PRELUDE
             + "class P:\n    x: Int32\n"
             + "    def __init__(self, x: Int32):\n"
             + "        self.x = x\n        print(x)\n",
             "P")
-        assert ctor is None
+        assert ctor is not None
+        assert len(ctor.mil_inits) == 1  # self.x = x hoisted to the MIL
+        assert _ctor_tail(ctor) == ' : x(x) {\n        std::cout << x << "\\n";\n    }\n'
 
-    def test_non_init_body_statement_is_ineligible(self):
-        # A non-field-init statement (here a call) means the ctor needs the body
-        # rung (M3c); the whole ctor stays on the AST path.
+    def test_non_init_method_call_body_is_ineligible(self):
+        # A non-init body statement outside the eligible expr-statement set (a
+        # method call is a TpyMethodCall, not a routable TpyCall) keeps the ctor
+        # on the AST path.
         ctor = _lower_ctor(
             _PRELUDE
             + "class C:\n    x: Int32\n"
             + "    def __init__(self, x: Int32):\n"
-            + "        self.x = x\n        print(x)\n",
+            + "        self.x = x\n        self.reset()\n"
+            + "    def reset(self) -> None:\n        self.x = 0\n",
             "C")
         assert ctor is None
 
