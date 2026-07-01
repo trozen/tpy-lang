@@ -3,17 +3,20 @@ byte-identical emit contract (THIR codegen == AST codegen for the slice)."""
 
 from __future__ import annotations
 
+import dataclasses
 import io
 
 from .. import get_lib_dir
 from ..codegen_cpp.context import CodeGenOptions
 from ..compiler import Compiler
 from .dump import dump_thir
-from .emit import emit_thir_body, emit_thir_constructor_tail
-from .lower import lower_module
+from .emit import _emit_expr, emit_thir_body, emit_thir_constructor_tail
+from .lower import _is_len_native, lower_module
+from ..parse.nodes import TpyCall
 from ..codegen_cpp.forms import LocalBinding
 from .nodes import (
-    Form, THIRAssign, THIRBinOp, THIRCall, THIRFieldAccess, THIRForRange,
+    Form, THIRAssign, THIRBinOp, THIRCall, THIRFieldAccess, THIRForEach,
+    THIRForRange,
     THIRFormConvert, THIRIf, THIRLiteral, THIRName, THIRReturn, THIRSelf,
     THIRSubscript, THIRVarDecl, THIRWhile,
 )
@@ -347,6 +350,158 @@ class TestForRange:
                       + "def f(n: Int32) -> Int32:\n    acc = 0\n"
                       + "    for i in range(n + 1):\n        acc = acc + i\n    return acc\n")
         assert _fn(thir, "f") is None
+
+
+# --- Statement-shape axis: container iteration (for x in list/set/dict) + len() ---
+
+# `for x in <NativeIterable>:` over a value-scalar element (the begin/end loop, a value
+# loop var) routes; a record element (auto&& loop var), str/bytes-key dict, tuple-unpack,
+# and generators/user-iterators ride later cells. `len(c)` -> `::tpy::__len__(c)`.
+class TestForEachContainer:
+    def test_list_scalar_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def total(items: list[Int32]) -> Int32:\n    s = 0\n"
+            + "    for x in items:\n        s = s + x\n    return s\n")
+        fn = _fn(thir, "total")
+        assert fn is not None
+        loop = fn.body[1]
+        assert isinstance(loop, THIRForEach) and loop.var == "x"
+        assert isinstance(loop.iterable, THIRName) and loop.iterable.name == "items"
+
+    def test_dict_fixed_int_key_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def keysum(d: dict[Int32, Int32]) -> Int32:\n    s = 0\n"
+            + "    for k in d:\n        s = s + k\n    return s\n")
+        loop = _fn(thir, "keysum").body[1]
+        assert isinstance(loop, THIRForEach) and loop.var == "k"
+
+    def test_record_element_ineligible(self):
+        # A record element binds `auto&&` (a borrow loop var) -- a later cell.
+        thir = _lower_ctx(
+            _F1_RECORDS
+            + "def f(items: list[Inner]) -> Int32:\n    s = 0\n"
+            + "    for p in items:\n        s = s + p.value\n    return s\n")
+        assert _fn(thir, "f") is None
+
+    def test_str_keyed_dict_ineligible(self):
+        # A str (view) key is not a value scalar -> AST path (static-storage handling).
+        thir = _lower(
+            _PRELUDE
+            + "def f(d: dict[str, Int32]) -> Int32:\n    s = 0\n"
+            + "    for k in d:\n        s = s + 1\n    return s\n")
+        assert _fn(thir, "f") is None
+
+    def test_tuple_unpack_ineligible(self):
+        # `for k, v in d.items()` (tuple-unpack) rides a later cell.
+        thir = _lower(
+            _PRELUDE
+            + "def f(d: dict[Int32, Int32]) -> Int32:\n    s = 0\n"
+            + "    for k, v in d.items():\n        s = s + k\n    return s\n")
+        assert _fn(thir, "f") is None
+
+    def test_len_call_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def ln(xs: list[Int32]) -> Int32:\n    return len(xs)\n")
+        call = _fn(thir, "ln").body[0].value
+        assert isinstance(call, THIRCall) and call.native_name == "tpy::__len__"
+
+    def test_range_len_routes(self):
+        # `for i in range(len(xs))` -- len as a range bound; composes with the
+        # container subscript read (and lights up its bounds-safe branch).
+        thir = _lower(
+            _PRELUDE
+            + "def f(xs: list[Int32]) -> Int32:\n    n = 0\n"
+            + "    for i in range(len(xs)):\n        n = n + xs[i]\n    return n\n")
+        assert _fn(thir, "f") is not None
+
+    def test_user_len_is_not_native_dispatched(self):
+        # A user function named `len` has native_name None, so the emit keeps it a plain
+        # call -- the len dispatch keys on the resolved symbol, not the source name.
+        _, modules = _compile(
+            _PRELUDE
+            + "def len(x: Int32) -> Int32:\n    return x\n"
+            + "def f(y: Int32) -> Int32:\n    return len(y)\n")
+        entry = _entry(modules)
+        f = next(fn for fn in entry.ast.functions if fn.name == "f")
+        call = f.body[0].value
+        assert isinstance(call, TpyCall) and not _is_len_native(call)
+
+    def test_len_on_pointer_local_record_ineligible(self):
+        # Regression: len() is gated on container type. A record with __len__ bound to a
+        # reseated pointer-local emits bare `::tpy::__len__(p)`, but the AST derefs it
+        # (`(*p)`); admitting it would break the byte-identical contract (a g++ error).
+        src = (
+            "from tpy import Int32\n"
+            "class Bag:\n    data: list[Int32]\n"
+            "    def __init__(self, d: list[Int32]) -> None:\n        self.data = d\n"
+            "    def __len__(self) -> Int32:\n        return len(self.data)\n"
+            "class Two:\n    a: Bag\n    b: Bag\n"
+            "    def __init__(self, a: Bag, b: Bag) -> None:\n"
+            "        self.a = a\n        self.b = b\n"
+            "def pick(o: Two, flag: bool) -> Int32:\n"
+            "    p = o.a\n    if flag:\n        p = o.b\n    return len(p)\n")
+        assert _fn(_lower_ctx(src), "pick") is None
+
+
+class TestForEachContainerEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def total(items: list[Int32]) -> Int32:\n    s = 0\n"
+        + "    for x in items:\n        s = s + x\n    return s\n"
+        + "def count_pos(xs: list[Int32]) -> Int32:\n    n = 0\n"
+        + "    for i in range(len(xs)):\n        if xs[i] > 0:\n            n = n + 1\n"
+        + "    return n\n"
+        + "def main():\n    print(total([1, 2, 3]))\n    print(count_pos([1, -2, 3]))\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_begin_end_loop(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "auto& __obj_0 = items;" in cpp
+        assert "auto __beg_0 = __obj_0.begin();" in cpp
+        assert "for (; __beg_0 != __end_0; ++__beg_0) {" in cpp
+        assert "int32_t x = *__beg_0;" in cpp
+
+    def test_emits_len_and_reaches_bounds_safe(self):
+        # len -> ::tpy::__len__, hoisted into the range temp; the routed range(len)
+        # loop makes the container subscript's bounds-safe branch live.
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "::tpy::__len__(xs)" in cpp
+        assert "xs[static_cast<std::size_t>(i)]" in cpp
+
+    def test_mixed_foreach_range_counter_parity(self):
+        # A for-each then a range-for in one function shares the per-function loop-index
+        # counter; the numbering must stay in sync with the AST (for-each -> __obj_0,
+        # the following range-for -> __stop_1).
+        src = (
+            _PRELUDE
+            + "def f(items: list[Int32], n: Int32) -> Int32:\n    s = 0\n"
+            + "    for x in items:\n        s = s + x\n"
+            + "    for i in range(n):\n        s = s + i\n    return s\n"
+            + "def main():\n    print(f([1, 2], 3))\nmain()\n")
+        assert self._cpp(src, thir=True) == self._cpp(src, thir=False)
+        cpp = self._cpp(src, thir=True)
+        assert "auto& __obj_0 = items;" in cpp and "__stop_1 = n;" in cpp
+
+    def test_dump_for_each(self):
+        thir = _lower(
+            _PRELUDE
+            + "def total(items: list[Int32]) -> Int32:\n    s = 0\n"
+            + "    for x in items:\n        s = s + x\n    return s\n")
+        assert "for %x in %items:" in dump_thir(thir)
 
 
 class TestFloat:
@@ -1541,10 +1696,10 @@ class TestTupleSubscriptRead:
         ret = fn.body[0]
         assert isinstance(ret, THIRReturn) and isinstance(ret.value, THIRBinOp)
         left = ret.value.left
-        assert isinstance(left, THIRSubscript) and left.index == 0
+        assert isinstance(left, THIRSubscript) and left.index.value == 0
         assert left.form is Form.VALUE
         assert isinstance(left.receiver, THIRName) and left.receiver.name == "p"
-        assert ret.value.right.index == 1
+        assert ret.value.right.index.value == 1
 
     def test_negative_index_normalized(self):
         # `p[-3]` on a 3-tuple folds to index 0; `p[-1]` to index 2 -- the AST's
@@ -1553,8 +1708,8 @@ class TestTupleSubscriptRead:
             _PRELUDE
             + "def f(p: tuple[Int32, Int32, Int32]) -> Int32:\n    return p[-3] + p[-1]\n")
         ret = _fn(thir, "f").body[0]
-        assert ret.value.left.index == 0
-        assert ret.value.right.index == 2
+        assert ret.value.left.index.value == 0
+        assert ret.value.right.index.value == 2
 
     def test_value_scalar_slot_of_pointer_repr_tuple_routes(self):
         # The Int32 slot of a pointer-repr tuple `tuple[Int32, Leaf]` reads as a
@@ -1565,7 +1720,7 @@ class TestTupleSubscriptRead:
         fn = _fn(thir, "scalar_slot")
         assert fn is not None
         sub = fn.body[0].value
-        assert isinstance(sub, THIRSubscript) and sub.index == 0
+        assert isinstance(sub, THIRSubscript) and sub.index.value == 0
         assert sub.form is Form.VALUE
 
     def test_value_scalar_tuple_local_is_ineligible(self):
@@ -1616,7 +1771,7 @@ class TestTupleSubscriptRecordRead:
         assert isinstance(ret, THIRReturn) and isinstance(ret.value, THIRFieldAccess)
         assert ret.value.is_arrow  # borrow-tuple param -> std::get<1>(t) is a T*
         sub = ret.value.receiver
-        assert isinstance(sub, THIRSubscript) and sub.index == 1
+        assert isinstance(sub, THIRSubscript) and sub.index.value == 1
         assert sub.form is Form.BORROW
 
     def test_record_element_via_storage_alias_reads_dot(self):
@@ -1657,8 +1812,8 @@ class TestTupleSubscriptRecordRead:
         assert fn is not None
         add = fn.body[0].value
         assert isinstance(add.left, THIRFieldAccess) and add.left.is_arrow
-        assert isinstance(add.left.receiver, THIRSubscript) and add.left.receiver.index == 2
-        assert add.right.receiver.index == 2
+        assert isinstance(add.left.receiver, THIRSubscript) and add.left.receiver.index.value == 2
+        assert add.right.receiver.index.value == 2
 
     def test_readonly_tuple_record_read_routes(self):
         # A readonly[tuple[...]] receiver still reads a record element via `->` (the
@@ -1745,7 +1900,7 @@ class TestTupleSubscriptOptionalRead:
             + "def i1(t: tuple[T | None, T | None]) -> Int32:\n    return t[1].x\n"
             + "def ro(t: readonly[tuple[T | None, T | None]]) -> Int32:\n    return t[0].x\n")
         assert _fn(thir, "i1") is not None and _fn(thir, "ro") is not None
-        assert _fn(thir, "i1").body[0].value.receiver.index == 1
+        assert _fn(thir, "i1").body[0].value.receiver.index.value == 1
 
     def test_optional_element_write_is_ineligible(self):
         # A write through an Optional-element subscript (`t[0].x = 5`) keeps the
@@ -1873,6 +2028,165 @@ class TestTupleSubscriptWriteEmit:
         assert "std::get<1>(a).n = 9;" in cpp                       # storage alias -> dot
         assert ("std::get<1>(a).n = ::tpy::add_check<int32_t>(std::get<1>(a).n, 2);"
                 in cpp)
+
+
+# --- Statement-shape axis: container subscript reads (list[scalar] /
+# dict[fixed-int, scalar] -> ::tpy::__getitem__ / bounds-safe operator[]) ---
+
+# A scalar-element container param (`list[scalar]` / `dict[fixed-int, scalar]`, its
+# signature emitted by the AST path) read by a subscript routes its body. Distinct
+# from the tuple subscript: a runtime index EXPR (not a compile-time std::get offset)
+# plus the `bounds_safe` fact on the node. A BigInt / view-typed (str/bytes) key or
+# index, a container local, and `set` (no __getitem__) ride later cells.
+class TestContainerSubscriptRead:
+    def test_list_scalar_param_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def at(items: list[Int32], i: Int32) -> Int32:\n    return items[i]\n")
+        fn = _fn(thir, "at")
+        assert fn is not None
+        sub = fn.body[0].value
+        assert isinstance(sub, THIRSubscript) and sub.form is Form.VALUE
+        assert isinstance(sub.receiver, THIRName) and sub.receiver.name == "items"
+        assert isinstance(sub.index, THIRName) and sub.index.name == "i"
+        assert not sub.bounds_safe
+
+    def test_literal_index_routes(self):
+        # `items[0]` -- a literal index (still the checked dunder; a param's length is
+        # unknown, so a literal index is not bounds-safe).
+        thir = _lower(
+            _PRELUDE
+            + "def first(items: list[Int32]) -> Int32:\n    return items[0]\n")
+        sub = _fn(thir, "first").body[0].value
+        assert isinstance(sub, THIRSubscript) and isinstance(sub.index, THIRLiteral)
+        assert sub.index.value == 0 and not sub.bounds_safe
+
+    def test_dict_fixed_int_key_routes(self):
+        thir = _lower(
+            _PRELUDE
+            + "def get(d: dict[Int32, Int32], k: Int32) -> Int32:\n    return d[k]\n")
+        sub = _fn(thir, "get").body[0].value
+        assert isinstance(sub, THIRSubscript) and isinstance(sub.receiver, THIRName)
+
+    def test_bigint_key_dict_param_ineligible(self):
+        # A BigInt (`int`) key needs the `.to_fixed_check` narrow (a later cell), so a
+        # BigInt-keyed dict param stays on the AST path. Isolated by a trivial body so
+        # only the param gate decides.
+        thir = _lower(
+            _PRELUDE
+            + "def g(d: dict[int, Int32], i: Int32) -> Int32:\n    return i\n")
+        assert _fn(thir, "g") is None
+
+    def test_str_keyed_dict_param_ineligible(self):
+        # A view-typed (str) key rides a later cell (static-storage literal handling).
+        thir = _lower(
+            _PRELUDE
+            + "def g(d: dict[str, Int32], i: Int32) -> Int32:\n    return i\n")
+        assert _fn(thir, "g") is None
+
+    def test_set_param_ineligible(self):
+        # `set` has no `__getitem__`; the param gate rejects it (the same shape with a
+        # `list` param routes -- the control below isolates the container-kind gate).
+        thir = _lower(
+            _PRELUDE
+            + "def h(s: set[Int32], i: Int32) -> Int32:\n    return i\n")
+        assert _fn(thir, "h") is None
+        ctrl = _lower(
+            _PRELUDE
+            + "def h(s: list[Int32], i: Int32) -> Int32:\n    return i\n")
+        assert _fn(ctrl, "h") is not None
+
+    def test_container_local_ineligible(self):
+        # Only container PARAMS are admitted; a container local (built from a literal)
+        # needs container-construction lowering, a later cell.
+        thir = _lower(
+            _PRELUDE
+            + "def f() -> Int32:\n    xs = [Int32(1), Int32(2)]\n    return xs[0]\n")
+        assert _fn(thir, "f") is None
+
+    def test_readonly_container_routes(self):
+        # A `readonly[list/dict]` param routes (byte-identical): sema readonly-wraps
+        # only non-value elements, so a scalar element read is never `readonly[scalar]`,
+        # and `_container_scalar_read` unwraps readonly on the container.
+        rl = _lower(
+            _PRELUDE + "from tpy import readonly\n"
+            + "def r(items: readonly[list[Int32]], i: Int32) -> Int32:\n    return items[i]\n")
+        assert _fn(rl, "r") is not None
+        rd = _lower(
+            _PRELUDE + "from tpy import readonly\n"
+            + "def r(d: readonly[dict[Int32, Int32]], k: Int32) -> Int32:\n    return d[k]\n")
+        assert _fn(rd, "r") is not None
+
+    def test_own_container_param_ineligible(self):
+        # `Own[list]` (a move-in `T&&` param) is excluded explicitly -- its ABI differs
+        # from the borrow shape this slice assumes; it rides a later cell. Isolated by a
+        # trivial body so only the param gate decides.
+        thir = _lower(
+            _PRELUDE + "from tpy import Own\n"
+            + "def o(items: Own[list[Int32]], i: Int32) -> Int32:\n    return i\n")
+        assert _fn(thir, "o") is None
+
+    def test_negative_literal_index_ineligible(self):
+        # A negative literal index `items[-1]` is a `TpyUnaryOp`, which `_expr_eligible`
+        # does not admit, so the read stays on the AST path (which normalizes it at
+        # runtime). Locks the boundary against a future half-migration.
+        thir = _lower(
+            _PRELUDE
+            + "def n(items: list[Int32]) -> Int32:\n    return items[-1]\n")
+        assert _fn(thir, "n") is None
+
+
+class TestContainerSubscriptReadEmit:
+    def _cpp(self, src: str, thir: bool):
+        compiler, modules = _compile(src)
+        entry = _entry(modules)
+        _, cpp = compiler.generate_code_to_strings(
+            entry, options=CodeGenOptions(emit_source_comments=False, thir_codegen=thir))
+        return cpp
+
+    SRC = (
+        _PRELUDE
+        + "def first(items: list[Int32]) -> Int32:\n    return items[0]\n"
+        + "def at(items: list[Int32], i: Int32) -> Int32:\n    return items[i]\n"
+        + "def dget(d: dict[Int32, Int32], k: Int32) -> Int32:\n    return d[k]\n"
+        + "def main():\n"
+        + "    xs = [10, 20]\n"
+        + "    print(first(xs))\n    print(at(xs, 1))\n"
+        + "main()\n"
+    )
+
+    def test_byte_identical(self):
+        assert self._cpp(self.SRC, thir=True) == self._cpp(self.SRC, thir=False)
+
+    def test_emits_getitem(self):
+        cpp = self._cpp(self.SRC, thir=True)
+        assert "return ::tpy::__getitem__(items, 0);" in cpp        # literal index
+        assert "return ::tpy::__getitem__(items, i);" in cpp        # dynamic list index
+        assert "return ::tpy::__getitem__(d, k);" in cpp            # dict fixed-int key
+
+    def test_bounds_safe_emits_size_t_cast(self):
+        # No routable cell-1 body produces a bounds_safe container subscript yet (the
+        # producer is for-loops -- a later statement-shape cell), so exercise the emit
+        # branch directly off a real lowered node.
+        thir = _lower(
+            _PRELUDE
+            + "def at(xs: list[Int32], i: Int32) -> Int32:\n    return xs[i]\n")
+        sub = _fn(thir, "at").body[0].value
+        assert not sub.bounds_safe
+        bounded = dataclasses.replace(sub, bounds_safe=True)
+        assert _emit_expr(bounded) == "xs[static_cast<std::size_t>(i)]"
+
+    def test_bounds_safe_literal_index_no_cast(self):
+        # The literal-index sub-branch of the bounds_safe emit (`recv[idx]`, no cast) --
+        # dead on both paths today (bounds_safe requires a name index), but a faithful
+        # mirror of _gen_subscript:6148, so exercise it directly off a lowered node.
+        thir = _lower(
+            _PRELUDE
+            + "def first(xs: list[Int32]) -> Int32:\n    return xs[0]\n")
+        sub = _fn(thir, "first").body[0].value
+        assert isinstance(sub.index, THIRLiteral)
+        bounded = dataclasses.replace(sub, bounds_safe=True)
+        assert _emit_expr(bounded) == "xs[0]"
 
 
 # --- F2d form rung: rvalue rebind-slot pointer-locals (the __slot_N machinery) ---
@@ -2953,12 +3267,13 @@ class TestConstructor:
 
     def test_ineligible_param_with_scalar_fields_is_ineligible(self):
         # The PARAM gate must reject a ctor whose fields are all scalar but a param
-        # is non-scalar: it would otherwise emit `: n(n) {}` byte-identically, so the
+        # is non-eligible: it would otherwise emit `: n(n) {}` byte-identically, so the
         # corpus byte-diff cannot guard a regression here -- only this unit test can.
+        # (An `Optional` param stays on the AST path; `list[scalar]` is now admitted.)
         ctor = _lower_ctor(
             _PRELUDE
             + "class C:\n    n: Int32\n"
-            + "    def __init__(self, n: Int32, xs: list[Int32]):\n"
+            + "    def __init__(self, n: Int32, x: Int32 | None):\n"
             + "        self.n = n\n",
             "C")
         assert ctor is None

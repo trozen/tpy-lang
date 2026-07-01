@@ -15,6 +15,7 @@ from .nodes import (
     THIRCoerce,
     THIRExpr,
     THIRFieldAccess,
+    THIRForEach,
     THIRForRange,
     THIRFormConvert,
     THIRIf,
@@ -47,7 +48,8 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRBinOp):
         return f"binop({_expr(e.left)}, {e.op}, {_expr(e.right)})"
     if isinstance(e, THIRCall):
-        return f"call({e.callee}, [{', '.join(_expr(a) for a in e.args)}])"
+        name = f"{e.callee} [{e.native_name}]" if e.native_name else e.callee
+        return f"call({name}, [{', '.join(_expr(a) for a in e.args)}])"
     if isinstance(e, THIRCoerce):
         return f"coerce({_expr(e.expr)} -> {_ty(e.result_type)})"
     if isinstance(e, THIRFieldAccess):
@@ -58,7 +60,11 @@ def _expr(e: THIRExpr) -> str:
         return f"{_expr(e.receiver)}{op}{e.field_cpp}{tag}"
     if isinstance(e, THIRSubscript):
         tag = "" if e.form is Form.VALUE else f" [{e.form.name.lower()}]"
-        return f"{_expr(e.receiver)}[{e.index}]{tag}"
+        # A constant offset (every tuple `std::get<N>`, a literal container index)
+        # renders bare (`t[0]`); a dynamic container index renders the expr (`c[i]`).
+        idx = e.index.value if isinstance(e.index, THIRLiteral) else _expr(e.index)
+        flags = " bounds_safe" if e.bounds_safe else ""
+        return f"{_expr(e.receiver)}[{idx}]{tag}{flags}"
     if isinstance(e, THIRFormConvert):
         cst = "const " if e.is_const else ""
         return f"form_convert[{cst}{e.form.name.lower()}]({_expr(e.value)})"
@@ -93,6 +99,11 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
     if isinstance(stmt, THIRForRange):
         start = "0" if stmt.start is None else _expr(stmt.start)
         lines = [f"{pad}for %{stmt.var} in range({start}, {_expr(stmt.stop)}):"]
+        for s in stmt.body:
+            lines.extend(_stmt_lines(s, depth + 1))
+        return lines
+    if isinstance(stmt, THIRForEach):
+        lines = [f"{pad}for %{stmt.var} in {_expr(stmt.iterable)}:"]
         for s in stmt.body:
             lines.extend(_stmt_lines(s, depth + 1))
         return lines

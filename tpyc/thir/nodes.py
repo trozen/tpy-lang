@@ -120,9 +120,17 @@ class THIRCall(THIRExpr):
     """Call to a same-module plain free function. `callee` is the source name;
     the emitter renders `escape_cpp_name(callee)(args)`. Eligibility guarantees
     bare-name emission -- no cross-module qualification, no generic/overload
-    name mangling."""
+    name mangling.
+
+    `native_name` (when set) is a `@native` free-function builtin's C++ symbol
+    (e.g. `tpy::__len__` for `len(c)`): the emitter renders
+    `qualify_native_name(native_name)(args)` instead of the bare callee, so the
+    dispatch keys on the resolved symbol, not the source name (a user function
+    that happens to be named `len` has `native_name=None` and stays a plain
+    call)."""
     callee: str
     args: tuple[THIRExpr, ...]
+    native_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -163,19 +171,29 @@ class THIRFieldAccess(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRSubscript(THIRExpr):
-    """Tuple subscript read `receiver[index]` -> `std::get<index>(receiver)`.
+    """Subscript read `receiver[index]`, dispatched at emit on the receiver's
+    resolved type family (mirrors `_gen_subscript`'s tuple and container branches).
 
-    `index` is the element index, already normalized to a non-negative offset at
-    lowering (a negative literal `t[-1]` folds to `len - 1`), mirroring the AST
-    `_gen_subscript` tuple branch. The emit is `std::get<index>(receiver)` for every
-    admitted element; `form` records the result's shape -- `VALUE` for a value-scalar
-    element (used directly), `BORROW` for a plain-record element (a `T*`/`T&` consumed
-    by one member access, whose `->` vs `.` the field access decides) or an `Optional`
-    element off a borrow tuple param (a nullable `T*`), and `STORAGE` for an `Optional`
-    element off a storage-tuple alias (a `std::optional<T>` lifted to a borrow via
-    `THIRFormConvert`/`optional_to_ptr` at the consuming `deref_check`)."""
+    Tuple -- `std::get<N>(receiver)`. `index` is a `THIRLiteral` holding the element
+    offset, already normalized to a non-negative int at lowering (a negative literal
+    `t[-1]` folds by the tuple arity). `bounds_safe` is unused (a validated const offset
+    is trivially in-bounds). `form` records the element's shape -- `VALUE` for a
+    value-scalar element, `BORROW` for a
+    plain-record element (a `T*`/`T&` consumed by one member access, whose `->` vs `.`
+    the field access decides) or an `Optional` element off a borrow tuple param (a
+    nullable `T*`), and `STORAGE` for an `Optional` element off a storage-tuple alias
+    (a `std::optional<T>` lifted to a borrow via `THIRFormConvert`/`optional_to_ptr`
+    at the consuming `deref_check`).
+
+    Container (list / dict) -- a runtime index/key lookup, `form` VALUE (the
+    scalar-element slice). `index` is the lowered index expression; `bounds_safe`
+    (sema value-range analysis) picks the emit -- `receiver[static_cast<std::size_t>(
+    index)]` when proven in-bounds, else the checked dunder `::tpy::__getitem__(
+    receiver, index)`. The index is a value scalar of fixed-int width (a runtime-BigInt
+    index is not in the scalar slice), so no `.to_fixed_check` narrow arises here."""
     receiver: THIRExpr
-    index: int
+    index: THIRExpr
+    bounds_safe: bool = False
 
 
 @dataclass(frozen=True)
@@ -281,6 +299,36 @@ class THIRForRange(THIRStmt):
     start: THIRExpr | None = None
     start_is_literal: bool = True
     stop_is_literal: bool = True
+    body: tuple[THIRStmt, ...] = ()
+
+
+@dataclass(frozen=True)
+class THIRForEach(THIRStmt):
+    """`for <var> in <container>` over a NativeIterable (list / set / dict / Span /
+    Array), lowered to the canonical begin/end iterator loop -- mirrors
+    `_gen_begin_end_loop`:
+
+        auto& __obj_N = <container>;
+        auto __beg_N = __obj_N.begin();
+        auto __end_N = __obj_N.end();
+        for (; __beg_N != __end_N; ++__beg_N) {
+            <elem> <var> = *__beg_N;   // value-scalar loop var (loop_var_binding)
+            // body
+        }
+
+    `elem_type` is the loop var's (value-scalar) type -- the element for list/set/Span/
+    Array, the key for dict (`for k in d`). `N` is the per-function loop index
+    (reproducing `ctx.iter_counter`). Slice: value-scalar loop var (no borrow/const
+    form -- record elements bind `auto&&`, a later cell), a name container (an lvalue,
+    so `auto&`), loop var not used after the loop. In practice only `list[scalar]` /
+    `dict[fixed-int-key]` containers reach here today -- the only container params
+    `_container_scalar_read` admits; `set` / `Span` / `Array` pass the `is_native_iterable`
+    gate but are currently inert (their params aren't admitted). Generators / user
+    iterators (the `__iter__`/`__next__` fallback), `dict.items()` / tuple-unpack, and
+    hoisted loop vars ride later cells."""
+    var: str
+    elem_type: TpyType
+    iterable: THIRExpr
     body: tuple[THIRStmt, ...] = ()
 
 

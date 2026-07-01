@@ -56,10 +56,11 @@ from ..typesys import (
     unwrap_optional_own, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from ..type_def_registry import (
-    int_traits_of, is_big_int_type, is_bool_type, is_fixed_int_type,
-    is_float32_type,
+    int_traits_of, is_big_int_type, is_bool_type, is_dict, is_fixed_int_type,
+    is_float32_type, is_list, is_set,
 )
 from ..codegen_cpp.type_resolution import resolve_stmt_binding_type
+from ..modules.type_resolution import is_native_iterable
 from ..codegen_cpp.forms import (
     LocalBinding, classify_local_binding, is_storage_tuple_alias_decl,
     reads_storage_form_optional,
@@ -76,6 +77,7 @@ from .nodes import (
     THIRConstructor,
     THIRExpr,
     THIRFieldAccess,
+    THIRForEach,
     THIRForRange,
     THIRFormConvert,
     THIRFunction,
@@ -395,6 +397,54 @@ def _optional_field_over_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
     return (isinstance(e, TpyFieldAccess) and e.needs_optional_runtime_check
             and _field_markers_clean(e, allow_optional_check=True)
             and _subscript_optional_field_recv(e.obj, locals_, analyzer) is not None)
+
+
+def _container_scalar_read(t: TpyType | None) -> bool:
+    """A container whose element/value read renders as a value scalar via the
+    container subscript emit: `list[scalar]` or `dict[fixed-int-key, scalar-value]`.
+    `set` has no `__getitem__`. A view-typed (str/bytes) key rides a later cell (its
+    literal keys need static-storage handling); a BigInt key rides the same cell as
+    BigInt indices (both need the `.to_fixed_check<int32_t>()` narrow, out of the
+    fixed-int scalar slice), so cell 1 keeps to fixed-int keys -- read identically to a
+    list index (`::tpy::__getitem__(c, i)`). An `Own[container]` (move-in `T&&` param)
+    is excluded explicitly -- its ABI differs from the borrow shape this slice's emit
+    assumes, and it rides a later cell (mirrors the Own unwrap in `_f1_record`, which
+    admits Own where this deliberately does not)."""
+    if t is None:
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, OwnType):
+        return False
+    args = getattr(t, "type_args", None)
+    if is_list(t):
+        return bool(args) and _eligible_scalar(args[0])
+    if is_dict(t):
+        if not args or len(args) < 2:
+            return False
+        key, val = args[0], args[1]
+        return is_fixed_int_type(key) and _eligible_scalar(val)
+    return False
+
+
+def _container_subscript_value_read(e: TpyExpr, locals_: dict[str, TpyType],
+                                    analyzer) -> bool:
+    """A container subscript read `c[i]` off an in-scope container name whose
+    element/value is a value scalar (`::tpy::__getitem__(c, i)`, or the bounds-safe
+    `c[static_cast<std::size_t>(i)]`). The receiver is a plain name (a non-name or
+    narrowed-Optional receiver rides a later cell); the index is any eligible
+    value-scalar expr. A `readonly[container]` receiver routes too (byte-identical) --
+    sema readonly-wraps only non-value elements, so a scalar element read is never
+    `readonly[scalar]`; the result-scalar check is a defensive guard confirming the read
+    yields a value scalar (redundant with the element-scalar check today, robust if the
+    container predicate later widens)."""
+    if not isinstance(e, TpySubscript) or e.needs_optional_runtime_check:
+        return False
+    recv = e.obj
+    if not isinstance(recv, TpyName) or recv.name not in locals_:
+        return False
+    return (_container_scalar_read(analyzer.get_expr_type(recv))
+            and _eligible_scalar(analyzer.get_expr_type(e))
+            and _expr_eligible(e.index, locals_, analyzer))
 
 
 def _field_receiver_ok(e: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
@@ -726,7 +776,39 @@ def _binop_eligible(e: TpyBinOp, locals_: dict[str, TpyType], analyzer) -> bool:
             and _expr_eligible(e.right, locals_, analyzer))
 
 
+def _is_len_native(e: TpyExpr) -> bool:
+    """Whether `e` is the builtin `len(...)` call -- it resolves to the `tpy::__len__`
+    @native free function. A user function named `len` has a different (or no)
+    native_name and is excluded, so the emit dispatch keys on the symbol, not the name."""
+    if not (isinstance(e, TpyCall) and isinstance(e.func, TpyName)
+            and e.func_name == "len"):
+        return False
+    fi = e.resolved_function_info
+    return fi is not None and fi.native_name == "tpy::__len__"
+
+
+def _is_len_call(e: TpyExpr, locals_: dict[str, TpyType]) -> bool:
+    """The eligible `len(name)` form: the builtin len over a single in-scope name of a
+    builtin container type (`::tpy::__len__(name)`, Int32). The container restriction is
+    load-bearing, not cosmetic: a container is a by-ref/by-value param that emits as the
+    bare name, but a record (or `Optional`) with `__len__` bound to a pointer-local
+    would need `(*p)` (the AST's is_indirect_name deref) that the bare emit misses -- so
+    only list/dict/set (never pointer-locals) are admitted. A non-name arg (literal,
+    subscript, call) rides a later cell."""
+    if not _is_len_native(e):
+        return False
+    if e.kwargs or e.double_star_unpack is not None or len(e.args) != 1:
+        return False
+    arg = e.args[0]
+    if not (isinstance(arg, TpyName) and arg.name in locals_):
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[arg.name])))
+    return is_list(t) or is_dict(t) or is_set(t)
+
+
 def _call_eligible(e: TpyCall, locals_: dict[str, TpyType], analyzer) -> bool:
+    if _is_len_call(e, locals_):
+        return True
     # Only a bare-name call to a same-module plain user free function emits as
     # `name(args)`. Every special form (constructor, generic, cast, isinstance,
     # macro, **kwargs, expression callee) or imported/builtin callee takes a
@@ -801,10 +883,12 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
                      or _field_over_subscript_ok(e, locals_, analyzer)
                      or _optional_field_over_subscript_ok(e, locals_, analyzer)))
     if isinstance(e, TpySubscript):
-        # A value-result tuple subscript read `t[N]` off an eligible tuple receiver
-        # (`std::get<N>(t)`, value form). Borrow-result (record/Optional) element
-        # reads and container subscripts ride later cells.
-        return _tuple_subscript_value_read(e, locals_, analyzer) is not None
+        # A value-result tuple subscript read `t[N]` (`std::get<N>(t)`) off an
+        # eligible tuple receiver, or a container subscript read `c[i]`
+        # (`::tpy::__getitem__(c, i)` / bounds-safe operator[]) off a
+        # list[scalar] / dict[int, scalar] receiver. Both value-scalar results.
+        return (_tuple_subscript_value_read(e, locals_, analyzer) is not None
+                or _container_subscript_value_read(e, locals_, analyzer))
     if isinstance(e, TpyBinOp):
         return _binop_eligible(e, locals_, analyzer)
     if isinstance(e, TpyCall):
@@ -821,12 +905,15 @@ def _expr_eligible(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
 def _f1_param_eligible(ptype: TpyType | None, analyzer) -> bool:
     """An F1-eligible param: a value scalar, an F1-record passed by reference
     (`T&` / `const T&`, accessed `.`), an F3 borrow-form pointer-repr tuple
-    (`std::tuple<..., T*>`, a borrow source for a `tuple_to_storage` field write), or
-    a pure value-scalar tuple (`const std::tuple<...>&`, read by subscript).
-    Optional/container/cross-module/native record params stay on the AST path."""
+    (`std::tuple<..., T*>`, a borrow source for a `tuple_to_storage` field write), a
+    pure value-scalar tuple (`const std::tuple<...>&`, read by subscript), or a
+    scalar-element container (`list[scalar]` / `dict[int, scalar]`, read by subscript
+    -- the signature stays on the AST path per M1). Optional/view-keyed-container/
+    cross-module/native record params stay on the AST path."""
     return (_eligible_scalar(ptype) or _f1_record(ptype, analyzer)
             or _f1_tuple(ptype, analyzer) is not None
-            or _value_scalar_tuple(ptype))
+            or _value_scalar_tuple(ptype)
+            or _container_scalar_read(ptype))
 
 
 def _function_eligible(func: TpyFunction, analyzer,
@@ -931,38 +1018,49 @@ def _range_bound_eligible(arg: TpyExpr, declared: dict[str, TpyType]) -> bool:
         # `declared` holds bool/float locals too, so the bound's resolved type
         # must be checked fixed-int (it renders into a `cpp_elem` temp).
         return is_fixed_int_type(declared.get(arg.name))
+    # `range(len(c))` -- the Int32-valued len builtin, hoisted into a `__stop_N` temp
+    # like any non-literal bound; unblocks the bounds-safe container-subscript branch.
+    if _is_len_call(arg, declared):
+        return True
     return _range_bound_literal_value(arg) is not None
+
+
+def _is_range_call(it: TpyExpr) -> bool:
+    """The `range(...)` iterable form -- the for-loop cell's range-vs-container
+    discriminator. Shared by `_for_range_eligible` and `_lower_stmt` so eligibility and
+    lowering can't drift on which shape a for-loop takes."""
+    return isinstance(it, TpyCall) and it.func_name == "range"
+
+
+def _for_loop_shape_ok(stmt: TpyForEach, analyzer, declared: dict[str, TpyType]) -> bool:
+    """The for-loop shape guards shared by the range-for and container-for cells: no
+    async / tuple-unpack / for-else / enum / consuming / hoisted-loop-var; no branch-decl
+    pre-declaration (`if_branch_decls`, set by `_promote_pending_loop_var` when a
+    loop/body var is hoisted for post-loop use -- the emitter has no `_emit_branch_decls`
+    equivalent); and a loop-scoped var (not shadowing an outer local, whose `was_declared`
+    handling the emitter does not reproduce)."""
+    if (stmt.is_async or stmt.is_tuple_unpack or stmt.orelse
+            or stmt.enum_iterable is not None
+            or stmt.consuming_iter_fi is not None or stmt.hoist_loop_var):
+        return False
+    if analyzer.if_branch_decls.get(id(stmt)):
+        return False
+    return stmt.var not in declared
 
 
 def _for_range_eligible(stmt: TpyForEach, analyzer, declared: dict[str, TpyType],
                         prescan: _Prescan, pointers: set[str],
                         rebind_slots: set[str], storage_tuple_locals: set[str]) -> bool:
-    # Only a plain `for v in range(stop | start, stop)` with step 1 over a
-    # fixed-int counter, loop var not used after the loop. Every richer for-shape
-    # (async, tuple-unpack, enum/container iteration, consuming, for/else,
-    # 3-arg/stepped range) stays on the AST path.
-    if (stmt.is_async or stmt.is_tuple_unpack or stmt.orelse
-            or stmt.enum_iterable is not None
-            or stmt.consuming_iter_fi is not None or stmt.hoist_loop_var):
-        return False
+    # Only a plain `for v in range(stop | start, stop)` with step 1 over a fixed-int
+    # counter (loop var not used after the loop). 3-arg/stepped range stays on the AST
+    # path; the shared shape guards exclude the other richer for-shapes.
     it = stmt.iterable
-    if not (isinstance(it, TpyCall) and it.func_name == "range"):
+    if not _is_range_call(it) or not _for_loop_shape_ok(stmt, analyzer, declared):
         return False
     if it.kwargs or it.double_star_unpack is not None or len(it.args) not in (1, 2):
         return False
     et = unwrap_ref_type(stmt.elem_type) if stmt.elem_type is not None else None
     if not _eligible_scalar(et):
-        return False
-    # The AST path's _emit_branch_decls pre-declares any name sema put in
-    # if_branch_decls[id(stmt)] -- keyed on a loop stmt by _promote_pending_loop_var
-    # when a body-local/loop-var is hoisted for post-loop use. The THIR emitter has
-    # no equivalent, so reject: a direct guard on the exact byte-identity condition
-    # (the hoist_loop_var + in_branch gates also exclude the hoisting causes).
-    if analyzer.if_branch_decls.get(id(stmt)):
-        return False
-    # The loop var must be loop-scoped -- a name shadowing an outer local hits
-    # the AST path's was_declared handling, which the emitter does not reproduce.
-    if stmt.var in declared:
         return False
     nargs = len(it.args)
     if nargs == 2 and not _range_bound_eligible(it.args[0], declared):
@@ -972,6 +1070,37 @@ def _for_range_eligible(stmt: TpyForEach, analyzer, declared: dict[str, TpyType]
         return False
     body_declared = dict(declared)
     body_declared[stmt.var] = et  # loop var's resolved (fixed-int) type
+    return _body_eligible(stmt.body, analyzer, body_declared, prescan,
+                          in_branch=True, pointers=pointers,
+                          rebind_slots=rebind_slots,
+                          storage_tuple_locals=storage_tuple_locals)
+
+
+def _for_each_container_eligible(stmt: TpyForEach, analyzer,
+                                 declared: dict[str, TpyType], prescan: _Prescan,
+                                 pointers: set[str], rebind_slots: set[str],
+                                 storage_tuple_locals: set[str]) -> bool:
+    # `for v in <container>` over a NativeIterable whose element/key is a value scalar ->
+    # the begin/end loop with a value-form loop var. Only `list[scalar]` /
+    # `dict[fixed-int-key, ...]` containers actually reach here today (the only container
+    # params `_container_scalar_read` admits); a record-element `auto&&` loop var, a
+    # str/bytes dict key (a view), a generator/user-iterator (the `__iter__`/`__next__`
+    # fallback), and the shared richer for-shapes stay on the AST path.
+    if not _for_loop_shape_ok(stmt, analyzer, declared):
+        return False
+    it = stmt.iterable
+    # A plain in-scope container name (an lvalue -> `auto&`); a non-name iterable
+    # (range() call, subscript, attribute) rides a later cell.
+    if not isinstance(it, TpyName) or it.name not in declared:
+        return False
+    if not is_native_iterable(analyzer.get_expr_type(it), analyzer.registry):
+        return False
+    # The loop var (list/set/Span/Array element, or dict key) must be a value scalar.
+    et = unwrap_ref_type(stmt.elem_type) if stmt.elem_type is not None else None
+    if not _eligible_scalar(et):
+        return False
+    body_declared = dict(declared)
+    body_declared[stmt.var] = et
     return _body_eligible(stmt.body, analyzer, body_declared, prescan,
                           in_branch=True, pointers=pointers,
                           rebind_slots=rebind_slots,
@@ -1091,8 +1220,11 @@ def _stmt_eligible(stmt: TpyStmt, analyzer, declared: dict[str, TpyType],
     if isinstance(stmt, TpyAugAssign):
         return _scalar_aug_assign_ok(stmt, declared, analyzer)
     if isinstance(stmt, TpyForEach):
-        return _for_range_eligible(stmt, analyzer, declared, prescan, pointers,
-                                   rebind_slots, storage_tuple_locals)
+        return (_for_range_eligible(stmt, analyzer, declared, prescan, pointers,
+                                    rebind_slots, storage_tuple_locals)
+                or _for_each_container_eligible(stmt, analyzer, declared, prescan,
+                                                pointers, rebind_slots,
+                                                storage_tuple_locals))
     return False
 
 
@@ -1216,21 +1348,36 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
             loc=loc,
         )
     if isinstance(e, TpySubscript):
-        # Tuple subscript -> `std::get<N>(t)`. Eligibility guaranteed a const index and
-        # an eligible-tuple receiver; the shared helper re-derives the normalized index
-        # (negatives folded), mirroring _gen_subscript. The emit is `std::get<N>(t)`
-        # for every element; `form` records the result shape for the consumer: a value
-        # scalar is VALUE, a record element is a borrow (`T*`/`T&`), and an Optional
-        # element read off a storage-tuple alias is `std::optional<T>` (STORAGE, lifted
-        # to `T*` by the consuming deref_check via optional_to_ptr) -- off a borrow tuple
-        # it is already `T*` (BORROW).
-        _recv_t, idx = _subscript_index_and_tuple(e, analyzer)
-        form = _subscript_result_form(e, rtype, lc)
+        tup = _subscript_index_and_tuple(e, analyzer)
+        if tup is not None:
+            # Tuple subscript -> `std::get<N>(t)`. Eligibility guaranteed a const index
+            # and an eligible-tuple receiver; the shared helper re-derives the
+            # normalized index (negatives folded), mirroring _gen_subscript. The
+            # normalized offset rides a synthesized `THIRLiteral` (only its value is
+            # read, for the `std::get<N>` template arg). `form` records the result
+            # shape for the consumer: a value scalar is VALUE, a record element is a
+            # borrow (`T*`/`T&`), and an Optional element read off a storage-tuple alias
+            # is `std::optional<T>` (STORAGE, lifted to `T*` by the consuming deref_check
+            # via optional_to_ptr) -- off a borrow tuple it is already `T*` (BORROW).
+            _recv_t, idx = tup
+            form = _subscript_result_form(e, rtype, lc)
+            return THIRSubscript(
+                result_type=rtype,
+                receiver=_lower_expr(e.obj, lc),
+                index=THIRLiteral(result_type=analyzer.get_expr_type(e.index),
+                                  value=idx, loc=loc),
+                form=form,
+                loc=loc,
+            )
+        # Container subscript -> the checked dunder `::tpy::__getitem__(c, i)` or, when
+        # sema proved the index in-bounds, `c[static_cast<std::size_t>(i)]`. The index
+        # is a fixed-int value-scalar expr (a runtime-BigInt index is out of the scalar
+        # slice, so no `.to_fixed_check` narrow arises). `form` stays VALUE.
         return THIRSubscript(
             result_type=rtype,
             receiver=_lower_expr(e.obj, lc),
-            index=idx,
-            form=form,
+            index=_lower_expr(e.index, lc),
+            bounds_safe=e.bounds_safe,
             loc=loc,
         )
     if isinstance(e, (TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral)):
@@ -1246,10 +1393,14 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx') -> THIRExpr:
             loc=loc,
         )
     if isinstance(e, TpyCall):
+        # A @native free-function builtin (currently `len` -> `tpy::__len__`) carries
+        # its resolved symbol so the emit dispatches on it, not the source name.
+        native_name = e.resolved_function_info.native_name if _is_len_native(e) else None
         return THIRCall(
             result_type=rtype,
             callee=e.func_name,
             args=tuple(_lower_expr(a, lc) for a in e.args),
+            native_name=native_name,
             loc=loc,
         )
     if isinstance(e, TpyCoerce):
@@ -1570,29 +1721,39 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType]) -> T
         )
     if isinstance(stmt, TpyForEach):
         it = stmt.iterable
-        nargs = len(it.args)
-        if nargs == 1:
-            start = None
-            start_is_literal = True
-            stop_arg = it.args[0]
-        else:
-            start_arg = it.args[0]
-            start = _lower_expr(start_arg, lc)
-            start_is_literal = _range_bound_literal_value(start_arg) is not None
-            stop_arg = it.args[1]
         # Loop var is C++-for-scoped: visible in the body but not the outer scope
         # (a fresh declared copy, so a body decl can't leak past the loop).
         et = unwrap_ref_type(stmt.elem_type)
         body_declared = dict(declared)
         body_declared[stmt.var] = et
-        return THIRForRange(
+        body = tuple(_lower_stmt(s, lc, body_declared) for s in stmt.body)
+        if _is_range_call(it):
+            nargs = len(it.args)
+            if nargs == 1:
+                start = None
+                start_is_literal = True
+                stop_arg = it.args[0]
+            else:
+                start_arg = it.args[0]
+                start = _lower_expr(start_arg, lc)
+                start_is_literal = _range_bound_literal_value(start_arg) is not None
+                stop_arg = it.args[1]
+            return THIRForRange(
+                var=stmt.var,
+                elem_type=et,
+                stop=_lower_expr(stop_arg, lc),
+                start=start,
+                start_is_literal=start_is_literal,
+                stop_is_literal=_range_bound_literal_value(stop_arg) is not None,
+                body=body,
+                loc=loc,
+            )
+        # Container iteration -> the begin/end loop over an in-scope container name.
+        return THIRForEach(
             var=stmt.var,
             elem_type=et,
-            stop=_lower_expr(stop_arg, lc),
-            start=start,
-            start_is_literal=start_is_literal,
-            stop_is_literal=_range_bound_literal_value(stop_arg) is not None,
-            body=tuple(_lower_stmt(s, lc, body_declared) for s in stmt.body),
+            iterable=_lower_expr(it, lc),
+            body=body,
             loc=loc,
         )
     raise AssertionError(f"ineligible stmt reached lowering: {type(stmt).__name__}")

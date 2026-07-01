@@ -16,7 +16,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TextIO
 
-from ..codegen_cpp.context import INDENT, escape_cpp_name, expand_cpp_template
+from ..codegen_cpp.context import (
+    INDENT, escape_cpp_name, expand_cpp_template, loop_var_binding,
+    qualify_native_name,
+)
 from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
 from ..typesys import OptionalType, TupleType, unwrap_qualifiers
 from .nodes import (
@@ -28,6 +31,7 @@ from .nodes import (
     THIRConstructor,
     THIRExpr,
     THIRFieldAccess,
+    THIRForEach,
     THIRForRange,
     THIRFormConvert,
     THIRFunction,
@@ -173,6 +177,10 @@ def _emit_binop(e: THIRBinOp) -> str:
 
 def _emit_call(e: THIRCall) -> str:
     args = ", ".join(_emit_expr(a) for a in e.args)
+    if e.native_name is not None:
+        # A @native free-function builtin (e.g. `len(c)` -> `::tpy::__len__(c)`):
+        # dispatch on the resolved symbol, mirroring gen_call_from_fi's native arm.
+        return f"{qualify_native_name(e.native_name)}({args})"
     return f"{escape_cpp_name(e.callee)}({args})"
 
 
@@ -185,10 +193,26 @@ def _emit_field_access(e: THIRFieldAccess) -> str:
 
 
 def _emit_subscript(e: THIRSubscript) -> str:
-    # Tuple element read: the index is a normalized compile-time constant, so the
-    # C++ template argument is a bare non-negative int. Mirrors _gen_subscript's
-    # tuple branch base emission (the value-scalar element takes no lift).
-    return f"std::get<{e.index}>({_emit_expr(e.receiver)})"
+    recv = _emit_expr(e.receiver)
+    if isinstance(unwrap_qualifiers(e.receiver.result_type), TupleType):
+        # Tuple element read: the index is a normalized compile-time constant (a
+        # THIRLiteral), so the C++ template argument is a bare non-negative int.
+        # Mirrors _gen_subscript's tuple branch (value-scalar element, no lift).
+        if not isinstance(e.index, THIRLiteral):
+            raise THIRCodeGenError("tuple subscript index is not a THIRLiteral")
+        return f"std::get<{e.index.value}>({recv})"
+    # Container (list / dict) index/key lookup, mirroring _gen_subscript's
+    # container branch. The index is a fixed-int value scalar (a runtime-BigInt
+    # index is out of the scalar slice), so no `.to_fixed_check` narrow arises.
+    idx = _emit_expr(e.index)
+    if e.bounds_safe:
+        # Index proven in [0, len): skip normalize_index. A literal index needs no
+        # cast (a compile-time constant is -Wsign-conversion-exempt); a variable
+        # index casts to size_t for the builtin operator[]. Mirrors _gen_subscript.
+        if isinstance(e.index, THIRLiteral):
+            return f"{recv}[{idx}]"
+        return f"{recv}[static_cast<std::size_t>({idx})]"
+    return f"::tpy::__getitem__({recv}, {idx})"
 
 
 def _emit_form_convert(e: THIRFormConvert) -> str:
@@ -330,6 +354,28 @@ def _emit_for_range(out: TextIO, stmt: THIRForRange, indent_level: int,
     out.write(f"{indent}}}\n")
 
 
+def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
+                   state: _EmitState) -> None:
+    # Mirrors _gen_begin_end_loop for a value-scalar element off an lvalue name
+    # container: grab the loop index before the body (nested loops number after this
+    # one), capture the container by `auto&`, then the value-form loop-var binding via
+    # the shared loop_var_binding (a scalar is a typed copy, const-independent).
+    indent = INDENT * indent_level
+    n = state.next_loop_index()
+    obj, beg, end = f"__obj_{n}", f"__beg_{n}", f"__end_{n}"
+    out.write(f"{indent}auto& {obj} = {_emit_expr(stmt.iterable)};\n")
+    out.write(f"{indent}auto {beg} = {obj}.begin();\n")
+    out.write(f"{indent}auto {end} = {obj}.end();\n")
+    out.write(f"{indent}for (; {beg} != {end}; ++{beg}) {{\n")
+    inner = INDENT * (indent_level + 1)
+    binding = loop_var_binding(stmt.elem_type, escape_cpp_name(stmt.var),
+                              f"*{beg}", False)
+    out.write(f"{inner}{binding}\n")
+    _emit_stmts(out, stmt.body, indent_level + 1, state)
+    state.comments.trailing(out, stmt.body, inner)
+    out.write(f"{indent}}}\n")
+
+
 def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState) -> None:
     indent = INDENT * indent_level
     if isinstance(stmt, THIRVarDecl):
@@ -389,6 +435,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         _emit_while(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRForRange):
         _emit_for_range(out, stmt, indent_level, state)
+    elif isinstance(stmt, THIRForEach):
+        _emit_for_each(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRNoOpStmt):
         # No code -- the `// pass` source comment (if any) is emitted by the
         # caller (_emit_stmts) from the node's loc.

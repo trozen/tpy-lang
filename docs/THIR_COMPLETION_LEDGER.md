@@ -54,8 +54,9 @@ cell it touches is admitted:
 - **Form / type-family** (the form ladder): scalar / record / Optional / tuple /
   union / generic-slot / str-bytes-view.
 - **Statement & expression shape:** straight-line var-decl / assign / return /
-  if-elif-else / while / range-for / aug-assign **(covered)** vs match / with /
-  try-except / for-over-container / async-await / yield / comprehension /
+  if-elif-else / while / range-for / aug-assign / value-scalar for-over-container
+  (incr 30) **(covered)** vs match / with / try-except / for-over-container
+  (record-element / generators / tuple-unpack) / async-await / yield / comprehension /
   break-continue / del-global-raise-assert / chained-compare / and-or-not **(not)**.
 
 A **deferred cell** is one `(kind x form x shape)` the eligibility gate rejects.
@@ -153,16 +154,38 @@ element -> `std::get<N>(t)->field` / `.field` per the element-form arrow mirror,
 <scalar>` off a record element -> `std::get<N>(t)->field = ...`, the position-neutral
 `_field_over_subscript_ok` added to the scalar-field-write + aug-assign gates, increment 28).
 **The tuple-subscript FAMILY is COMPLETE** (record-element reads + writes; value + Optional
-reads). Subscript follow-ons still on AST: Optional-field / tuple-field writes THROUGH a
-subscript (`t[N].opt = None` -- the `_f2b`/`_f1_tuple` write gates still name-only). Beyond
-the tuple family (separate frontiers): container subscript (`items[i]`, dynamic index/bounds),
-value-tuple locals, standalone record/Optional-element binds / borrow returns, for-loops,
-tuple-unpack. **Test-coverage follow-on:** the storage-tuple-alias receiver form (`a = h.pair;
+reads). And **container subscript READS** (`c[i]` off a `list[scalar]` / `dict[fixed-int,
+scalar]` param -> `::tpy::__getitem__(c, i)` / bounds-safe `c[static_cast<std::size_t>(i)]`,
+increment 29) -- this is where `THIRSubscript` reaches its canonical shape (`index: THIRExpr`
++ `bounds_safe`, emit dispatched tuple-vs-container on receiver type). Subscript follow-ons
+still on AST: Optional-field / tuple-field writes THROUGH a tuple subscript (`t[N].opt =
+None` -- the `_f2b`/`_f1_tuple` write gates still name-only); and, for containers -- BigInt /
+view-typed keys+indices (the `.to_fixed_check` narrow / static-storage literals), `dict[K,
+Any]` (`any_cast_or_panic`), record/Optional/container *element* results (borrow form),
+narrowed-`Optional` receivers, non-name receivers, container-literal-init locals, and the
+whole container-write side (`c[i] = v` / `+=` / `del` / slices). And **container iteration**
+(`for x in <NativeIterable>:` over a value-scalar element -> the begin/end loop, a new
+`THIRForEach`; + the `len(c)` builtin via a `native_name` on `THIRCall`; increment 30) --
+`range(len(c))` now routes, lighting up the bounds-safe subscript branch. **KEY FINDING:** the
+loop *shape* completing gains little routing (5120 -> 5128 bodies; the 5111 -> 5120 step
+before it was the master merge, not for-each) because loop *bodies*
+overwhelmingly use `print` / `.append` (371 of 393 for-loop files); the routing bottleneck is
+now the common **body constructs** (`print`, method calls like `.append`, the `Int32(0)`
+constructor-init), not the statement shapes -- those are the next high-leverage unblocks.
+Deferred container-iteration cells: record/non-scalar-element loops (`auto&&` borrow loop var
+-- the immediate next), `set`/`Span`/`Array` containers (params not yet admitted), str/bytes-key
+dicts, `dict.items()`/tuple-unpack, non-name iterables (a field/subscript/call/literal receiver;
+only a bare declared name routes today), generators / user iterators (the `__iter__`/`__next__`
+fallback), hoisted loop vars, `for/else`, consuming/enum iteration. (Audit-note: the gate keys
+`is_native_iterable` off the use-site type -- re-check it when narrowed-`Optional` containers
+land, since a narrowed value-repr Optional could then reach it.) Beyond subscript/iteration (separate frontiers): value-tuple locals, standalone
+record/Optional-element binds / borrow returns, tuple-unpack. **Test-coverage follow-on:** the storage-tuple-alias receiver form (`a = h.pair;
 a[N].field` read/write) is covered only by unit byte-diff, not a build+run corpus case -- add
 one (the aliasing fn must stay THIR-routable, i.e. no `print()` inside it) for exec/cpy
 coverage of the `.`-access + `optional_to_ptr` alias paths.
 Uncovered shapes include: `match`, `with`, `try`/`except`/`finally`,
-`for`-over-container, `async`/`await`, `yield` / generators, comprehensions,
+`for`-over-container (value-scalar landed incr 30; record-element / generators /
+tuple-unpack remain), `async`/`await`, `yield` / generators, comprehensions,
 `break`/`continue`, `del`/`global`/`nonlocal`/`raise`/`assert`, chained
 comparisons, logical `and`/`or`/`not` (short-circuit). **Action:** continue enumerating +
 driving these as a tracked axis before claiming `gen_body`/`gen_expr` deletion is near.
@@ -186,4 +209,4 @@ driving these as a tracked axis before claiming `gen_body`/`gen_expr` deletion i
 - **Planned:** extend the `--thir-codegen` non-vacuity tally to report per-component
   AST-fallback coverage (how much of each component still falls back to AST), so the
   gap to each deletion is *measured*, not estimated. Today the tally reports only
-  total routed bodies/cases (5092 bodies / 1223 cases as of increment 28).
+  total routed bodies/cases (5128 bodies / 1237 cases as of increment 30).
