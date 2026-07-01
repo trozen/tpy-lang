@@ -41,6 +41,11 @@ int tpy_tls_config_client(tpy_tls_session *s, const unsigned char *ca_path,
 int tpy_tls_config_server(tpy_tls_session *s,
                           const unsigned char *cert_path, std::uint64_t cert_path_len,
                           const unsigned char *key_path, std::uint64_t key_path_len);
+// Add the vendored Mozilla root bundle to the session's trust chain (the
+// default trust store for create_default_context). Additive to any file roots.
+int tpy_tls_add_bundled_ca(tpy_tls_session *s);
+// Count the roots in the compiled-in bundle (test hook; -1 on parse error).
+int tpy_tls_bundled_ca_count(void);
 int tpy_tls_setup(tpy_tls_session *s);
 void tpy_tls_set_fd(tpy_tls_session *s, int fd);
 int tpy_tls_set_hostname(tpy_tls_session *s, const unsigned char *host,

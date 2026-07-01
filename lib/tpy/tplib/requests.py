@@ -51,8 +51,9 @@
 #   - https: an https URL (or redirect target) routes to HTTPSConnection on port
 #     443; verify (bool | str) selects the TLS trust (True = verified default,
 #     "<path>" = custom CA file, False = no verification). ssl.SSLError is
-#     wrapped as requests.SSLError (a ConnectionError). No bundled CA store yet,
-#     so a real server needs verify="<ca>".
+#     wrapped as requests.SSLError (a ConnectionError). verify=True trusts the
+#     vendored Mozilla root bundle, so a public https server verifies with no
+#     explicit CA path.
 # Not supported (yet): cookies, multipart files, streaming
 # (stream=/iter_content), proxies, auth schemes beyond Basic.
 # tpy: cpp_namespace("tpystd::tplib::requests")

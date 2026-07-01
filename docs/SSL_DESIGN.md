@@ -13,9 +13,12 @@ codegen fix -- @dynamic-override reference-param const-ness -- landed first on
 master), and `tplib.requests` (`verify: bool|str`) + `urllib.request.urlopen`
 (`context=`) route `https://` through `Box[_Connection]`, including http->https
 redirects (tests `tplib/requests_https`, `tplib/requests_redirect_https`,
-`stdlib/urlopen_https`). Remaining: a bundled CA store (verify needs an explicit
-`load_verify_locations` / `verify="<ca>"` until then). This document is the
-contract for the whole track.
+`stdlib/urlopen_https`). The bundled CA store is built: `create_default_context()`
+trusts a vendored Mozilla root bundle (certifi, embedded as a compiled-in blob
+via `scripts/vendor_cacert.py`), so `requests.get("https://...")` / `urlopen`
+verify out of the box (test `ssl/tls_bundled_ca`). The HTTPS-client track is now
+complete except for deferred surface (system trust store, `SSLWant*`/`SSLZeroReturn`
+subclasses, server-side TLS). This document is the contract for the whole track.
 
 ## Goal
 
@@ -103,6 +106,23 @@ cafile=...)` for custom CAs (e.g. an Atlas corporate root). System
 trust-store integration is deferred -- vendoring keeps the build hermetic
 and cross-platform-identical (consistent with the test-cache assumptions)
 and dodges the macOS keychain problem.
+
+**Built.** `scripts/vendor_cacert.py` pins a certifi release (the Mozilla NSS
+root set, same source as curl's `cacert.pem`, and what CPython's `requests`
+trusts by default), verifies its SHA256, and generates a C source embedding
+the PEM as a string literal (`runtime/cpp/third_party/cacert/cacert_data.c`)
+plus a `cacert.pem` reference copy and a `.vendor.json` sidecar. The blob is **embedded** (compiled in), not
+a runtime file path: `tpyc/build/mbedtls.py` compiles `cacert_data.c` alongside
+the shim (so it links exactly when mbedTLS does), and the shim parses the buffer
+via `mbedtls_x509_crt_parse` (not `_parse_file`) -- hermetic, no install-layout
+or cwd dependence. `SSLContext._use_bundled_ca` (set by `create_default_context()`,
+cleared on a bare `SSLContext()`) gates a `tpy_tls_add_bundled_ca` call in
+`wrap_socket`, which **appends** the roots to any file roots (additive, matching
+CPython's `load_verify_locations`). No CLI flag: the blob is opt-in at runtime
+(bare `SSLContext()` / `verify=False` / `CERT_NONE` opt out); the system trust
+store stays deferred, so a `--ca-bundle` mode switch is not built. A test hook
+(`ssl._bundled_ca_count()` -> `tpy_tls_bundled_ca_count`) asserts the bundle is
+embedded and non-empty offline (a real public-root handshake needs network).
 
 ## I/O model: fd-direct BIO
 

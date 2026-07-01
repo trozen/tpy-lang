@@ -63,6 +63,14 @@ def _source_files(lib: ThirdPartyLib) -> list[Path]:
     if not shim.is_file():
         raise FileNotFoundError(f"{lib.name}: shim not found at {shim}")
     paths.append(shim)
+    # The vendored Mozilla CA bundle, embedded as a C string literal (see
+    # scripts/vendor_cacert.py). Compiled here so the ssl module's default
+    # trust store is linked in exactly when mbedTLS is -- it is data the shim
+    # references, not a separate library.
+    cacert = lib.bundled_source_dir.parent / "cacert" / "cacert_data.c"
+    if not cacert.is_file():
+        raise FileNotFoundError(f"{lib.name}: CA bundle blob not found at {cacert}")
+    paths.append(cacert)
     return paths
 
 

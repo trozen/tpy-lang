@@ -45,6 +45,8 @@ def test_mbedtls_bundled_sources_and_flags():
     assert len(srcs) > 100
     names = {p.name for p in srcs}
     assert {"version.c", "ssl_tls.c", "x509_crt.c"} <= names
+    # The TPy shim and the compiled-in Mozilla CA bundle link with mbedTLS.
+    assert {"mbedtls_shim.c", "cacert_data.c"} <= names
     assert all(p.suffix == ".c" and p.is_file() for p in srcs)
 
     flags = lib.bundled_compile_flags(lib)

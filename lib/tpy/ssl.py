@@ -5,7 +5,8 @@ v1 is an HTTPS *client*: `create_default_context()` -> `SSLContext` ->
 `wrap_socket(sock, server_hostname=...)` -> `SSLSocket` (recv/send/sendall/
 do_handshake/close). Secure by default: certificate verification REQUIRED
 and the hostname checked against the peer cert's CN/SAN (which also drives
-SNI). Pass a trust store via `load_verify_locations(cafile=...)`.
+SNI). `create_default_context()` trusts a vendored Mozilla root bundle; add
+more CAs with `load_verify_locations(cafile=...)`.
 
 Architecture (see docs/SSL_DESIGN.md):
   * `_bindings.mbedtls` -- raw @native bindings to the cohesive
@@ -13,11 +14,10 @@ Architecture (see docs/SSL_DESIGN.md):
   * this module -- backend-agnostic facade; classes hold a single opaque
     session handle and map mbedTLS return codes to the exception tree.
 
-Known v1 gaps (filed in docs/SSL_DESIGN.md / TODO): no bundled default CA
-store yet, so a verifying context needs an explicit `load_verify_locations`
-until the Mozilla bundle is vendored; server-side TLS is internal-only (the
-test peer). `makefile()` returns a binary `BufferedReader` (the http.client
-read path); text mode and the http.client/requests https wiring follow.
+Known v1 gaps (filed in docs/SSL_DESIGN.md / TODO): the default trust store
+is a pinned Mozilla snapshot (the certifi bundle), not the host system store;
+server-side TLS is internal-only (the test peer). `makefile()` returns a
+binary `BufferedReader` (the http.client read path); text mode follows.
 
 Deliberate divergences from CPython's `ssl` (so they are declared, not
 silent -- see docs/LANGUAGE_FEATURES.md):
@@ -131,14 +131,19 @@ class SSLContext:
     verify_mode: Int32
     check_hostname: bool
     _cafile: str
+    _use_bundled_ca: bool
 
     def __init__(self) -> None:
         self.verify_mode = CERT_REQUIRED
         self.check_hostname = True
         self._cafile = ""
+        # A bare SSLContext() trusts nothing until told to (like CPython, where
+        # only create_default_context / load_default_certs load the roots).
+        self._use_bundled_ca = False
 
     def load_verify_locations(self, cafile: str) -> None:
-        """Trust the CA certificates in `cafile` (PEM or DER)."""
+        """Trust the CA certificates in `cafile` (PEM or DER). Additive to the
+        bundled roots when those are also enabled (matches CPython)."""
         self._cafile = cafile
 
     def wrap_socket(self, sock: Own[socket], server_hostname: str = "",
@@ -157,6 +162,10 @@ class SSLContext:
         if rc != 0:
             mbedtls.tls_free(s)
             raise SSLError(_errstr(rc))
+        if self._use_bundled_ca:
+            if mbedtls.tls_add_bundled_ca(s) != 0:
+                mbedtls.tls_free(s)
+                raise SSLError("could not load bundled CA store")
         if mbedtls.tls_setup(s) != 0:
             mbedtls.tls_free(s)
             raise SSLError("TLS setup failed")
@@ -176,8 +185,19 @@ class SSLContext:
 
 
 def create_default_context() -> Own[SSLContext]:
-    """A secure-by-default client context (verification + hostname check on)."""
-    return SSLContext()
+    """A secure-by-default client context: verification + hostname check on,
+    trusting the vendored Mozilla root bundle. `requests.get("https://...")`
+    and `urlopen` verify out of the box, no explicit CA path required."""
+    ctx = SSLContext()
+    ctx._use_bundled_ca = True
+    return ctx
+
+
+def _bundled_ca_count() -> Int32:
+    """Number of roots in the compiled-in Mozilla bundle (-1 on parse error).
+    Test hook: a real public-root handshake can't run offline, so this is how
+    a test proves the default trust store is embedded and non-empty."""
+    return mbedtls.tls_bundled_ca_count()
 
 
 @nocopy

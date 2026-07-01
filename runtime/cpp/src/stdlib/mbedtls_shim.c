@@ -143,6 +143,50 @@ int tpy_tls_config_client(tpy_tls_session *s, const unsigned char *ca_path,
     return 0;
 }
 
+// The vendored Mozilla CA bundle, compiled in as a C string literal (see
+// scripts/vendor_cacert.py + tpyc/build/mbedtls.py). PEM text; the length
+// counts the trailing NUL, which mbedtls_x509_crt_parse requires for PEM.
+extern const unsigned char tpy_cacert_pem[];
+extern const size_t tpy_cacert_pem_len;
+
+// Add the bundled Mozilla roots to the session's trust chain. Appends to any
+// roots already loaded (e.g. a load_verify_locations file), matching CPython's
+// additive load semantics. conf_ca_chain stores &s->cacert (a stable head), so
+// it is wired once regardless of load order.
+int tpy_tls_add_bundled_ca(tpy_tls_session *s)
+{
+    int rc = mbedtls_x509_crt_parse(&s->cacert, tpy_cacert_pem,
+                                    tpy_cacert_pem_len);
+    if (rc < 0) {
+        return rc;
+    }
+    if (!s->has_cacert) {
+        s->has_cacert = 1;
+        mbedtls_ssl_conf_ca_chain(&s->conf, &s->cacert, NULL);
+    }
+    return 0;
+}
+
+// Parse the bundled roots into a throwaway chain and count them. The ssl
+// module's test hook uses this to assert the bundle is embedded + non-empty
+// (a real public-root handshake can't run offline). Returns -1 on hard error.
+int tpy_tls_bundled_ca_count(void)
+{
+    mbedtls_x509_crt chain;
+    mbedtls_x509_crt_init(&chain);
+    int n = 0;
+    if (mbedtls_x509_crt_parse(&chain, tpy_cacert_pem, tpy_cacert_pem_len) < 0) {
+        n = -1;
+    } else {
+        for (mbedtls_x509_crt *c = &chain; c != NULL && c->version != 0;
+             c = c->next) {
+            n++;
+        }
+    }
+    mbedtls_x509_crt_free(&chain);
+    return n;
+}
+
 // Server config (test peer / future server-side TLS): present cert+key files.
 int tpy_tls_config_server(tpy_tls_session *s,
                           const unsigned char *cert_path, size_t cert_path_len,

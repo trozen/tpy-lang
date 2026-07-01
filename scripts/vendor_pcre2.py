@@ -166,6 +166,17 @@ def _materialize_headers(dest: Path) -> None:
     (src / "config.h").write_text(text)
 
 
+def _stamp(metadata: dict) -> str:
+    """Timestamp for `vendored_at`: reuse the prior one when every substantive
+    field is unchanged, so a re-run producing identical content (e.g. --force)
+    is a true no-op instead of churning the timestamp."""
+    prior = _read_sidecar()
+    if prior is not None and "vendored_at" in prior \
+            and all(prior.get(k) == v for k, v in metadata.items()):
+        return prior["vendored_at"]
+    return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+
+
 def _write_sidecar() -> None:
     """Record what we just vendored, next to (not inside) the source tree."""
     metadata = {
@@ -173,20 +184,25 @@ def _write_sidecar() -> None:
         "version": VERSION,
         "url": URL,
         "sha256": SHA256,
-        "vendored_at": datetime.datetime.now(datetime.timezone.utc)
-            .isoformat(timespec="seconds"),
     }
+    metadata["vendored_at"] = _stamp(metadata)
     SIDECAR.write_text(json.dumps(metadata, indent=2) + "\n")
+
+
+def _read_sidecar() -> dict | None:
+    """Parse the sidecar JSON, or None if missing/invalid."""
+    if not SIDECAR.is_file():
+        return None
+    try:
+        return json.loads(SIDECAR.read_text())
+    except (json.JSONDecodeError, OSError):
+        return None
 
 
 def _read_sidecar_version() -> str | None:
     """Return the version recorded in the sidecar, or None if missing/invalid."""
-    if not SIDECAR.is_file():
-        return None
-    try:
-        return json.loads(SIDECAR.read_text()).get("version")
-    except (json.JSONDecodeError, OSError):
-        return None
+    prior = _read_sidecar()
+    return prior.get("version") if prior is not None else None
 
 
 def main() -> int:

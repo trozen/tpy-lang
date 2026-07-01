@@ -1,0 +1,3 @@
+ssl._bundled_ca_count() and the vendored-bundle trust path are TPy-only; a
+real public-root TLS handshake can't run offline, so parity is not testable
+here (same reason as ssl/tls_handshake).

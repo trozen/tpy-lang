@@ -1,0 +1,3 @@
+bundle non-empty: True
+default context rejected self-signed cert
+bare context rejected untrusted cert
