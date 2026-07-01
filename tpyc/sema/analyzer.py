@@ -10,7 +10,7 @@ from typing import Optional
 
 from ..typesys import (
     TpyType, TypeRegistry, NominalType, AliasRef, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
-    NoneType, INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, OwnType, OptionalType, RecordInfo, FieldInfo,
+    NoneType, INT32, ReadonlyType, unwrap_readonly, unwrap_optional_own, unwrap_send_sync, OwnType, OptionalType, RecordInfo, FieldInfo,
     RecursiveUnionInfo, RecursiveAliasInstanceType,
     FunctionInfo, ParamInfo, MethodSignature, is_any_str_type, BIGINT, FLOAT,
     make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType, PtrType,
@@ -1663,7 +1663,9 @@ class SemanticAnalyzer:
         if func.name == "__move__":
             return
         for pname, ptype in func.params:
-            bare = unwrap_readonly(ptype)
+            # Peel the transparent Send/Sync marker so a Send[Own[T]] param is
+            # still recognized as an owned param subject to the consume check.
+            bare = unwrap_readonly(unwrap_send_sync(ptype))
             # An owned-element tuple param is an ownership-transfer param (the
             # `std::tuple<...>&&` ABI), so it warns when never consumed just
             # like a scalar Own[T] -- unless every owned element is @nocopy

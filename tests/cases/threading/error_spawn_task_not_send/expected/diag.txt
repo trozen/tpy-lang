@@ -1,0 +1,5 @@
+main.py:21: error: 'BadTask' is not Send -- cannot use it where 'Send[Own[BadTask]]' is expected in argument 'task'
+BadTask is not Send
++-- field 'shared: Rc[Int32]'
+    +-- field '_cell: Ptr[_RcCellBase]' is not Send (raw pointer, no ownership guarantee)
+    +-- field '_payload: Ptr[Int32]' is not Send (raw pointer, no ownership guarantee)

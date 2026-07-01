@@ -1,0 +1,3 @@
+Generic functions are not subscriptable at runtime under CPython
+(dispatch[Token](...) and read_and_keep[T](...)); the move semantics under
+test are TPy-only. Mirrors tpy.thread.spawn.

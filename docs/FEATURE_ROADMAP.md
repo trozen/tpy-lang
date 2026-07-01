@@ -139,6 +139,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | G1 | async/await + minimal asyncio | XL | 🚧 v1 + v1.5 (M1-M11) + v2 M1/M2 shipped (epoll reactor + streams); multi-threaded executor + async generators remain -- see [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md); design in [`docs/ASYNC_DESIGN.md`](ASYNC_DESIGN.md) | [IX](#asyncawait-or-alternative-model) |
 | G1.5 | asyncio runtime port C++ -> TPy | M | Done -- runtime port complete (Phases 0-4 + v1.2 steps 1-7); the executor, run loop, scheduling, sleep, and type-erasure are pure TPy, leaving only a small `async.hpp` (CancelledError + resume-case helper). See [`docs/ASYNC_PROGRESS.md`](ASYNC_PROGRESS.md#v1x-milestone-asyncio-runtime-tpy-port-must-precede-v15). | [IX](#asyncawait-or-alternative-model) |
 | G2 | Channels | L | 🟡 SPSC done (Send/Sync Phase 4) | [IX](#channels) |
+| G3 | OS threads (`tpy.thread.spawn` / `JoinHandle`) | L | 🟡 V1 done -- Runnable-struct `spawn` over `std::thread`, Send-checked task + result, abort-on-unconsumed-drop; closures/`Arc`/`Mutex`/scoped/mt-executor deferred. See [`docs/THREADING_DESIGN.md`](THREADING_DESIGN.md) | [IX](#channels) |
 
 Phases are not strictly sequential -- items from different phases can be interleaved
 based on what's most needed. E1 (Send/Sync markers) is recommended early regardless
@@ -1466,9 +1467,12 @@ wrappers, `T: Send` bounds, opt-in/opt-out decorators (Phase 2); the
 diagnostic surface -- `assert_send[T]()` / `assert_sync[T]()` compile-time
 assertions, why-not chains at enforcement sites, and `tpyc --explain-send`
 (Phase 3); and the first enforcement site, `Channel[T]` (`T: Send`) on the
-single-threaded executor (Phase 4, SPSC). The multi-threaded executor +
-`spawn`/`Task`-migration enforcement (Phase 5) and `Arc`/`Mutex`/`RwLock`
-(Phase 6) are v3+. See `docs/SEND_SYNC_DESIGN.md`.
+single-threaded executor (Phase 4, SPSC). Real OS threads shipped in
+`tpy.thread` V1 (`spawn` over `std::thread`, the second Send enforcement
+site -- Send-checked task via `Send[Own[T]]` and result via `R: Send`; see
+`docs/THREADING_DESIGN.md`). The multi-threaded *async* executor +
+`Task`-migration enforcement (Phase 5) and `Arc`/`Mutex`/`RwLock`
+(Phase 6 / threading V2-V3) are v3+. See `docs/SEND_SYNC_DESIGN.md`.
 
 **Dependencies**: None -- markers added now, enforce when concurrency arrives.
 

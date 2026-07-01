@@ -154,7 +154,10 @@ class StatementGenerator:
         with `->` in a ctor member-init initializer as it does in the body."""
         # Optional non-value params are T* / const T* in C++ -- need pointer-local treatment (->)
         for pname, ptype in params:
-            actual = unwrap_readonly(ptype)
+            # Peel the Send/Sync marker (representationally transparent -- it
+            # erases to its inner type in C++) so a Send[Own[T]] param is
+            # classified by its Own/pointer/optional shape, not treated as opaque.
+            actual = unwrap_readonly(unwrap_send_sync(ptype))
             if self.protocols.is_static_protocol_param(ptype):
                 # Static protocol params: check if nullable (uses pointer repr)
                 infos = self.protocols.get_all_protocol_params([(pname, ptype)])
@@ -517,7 +520,8 @@ class StatementGenerator:
                 # gen_body does for real params of the same shapes, so the
                 # body's access-path codegen (-> vs ., variant extraction,
                 # move semantics) treats the missing-param local correctly.
-                actual = unwrap_readonly(ptype)
+                # unwrap_send_sync: see through the transparent Send/Sync marker.
+                actual = unwrap_readonly(unwrap_send_sync(ptype))
                 if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
                     self.ctx.pointer_locals.add(pname)
                     if isinstance(ptype, ReadonlyType):

@@ -2679,6 +2679,9 @@ class CallAnalyzer:
         Call this for every parameter that might be ownership-taking.
         Non-nocopy implicit copies are warned by the coercion path.
         """
+        # Peel the transparent Send/Sync marker so a Send[Own[T]] destination
+        # param gets the same ownership checks as a bare Own[T] param.
+        ptype = unwrap_send_sync(ptype)
         # tuple[Own[T_ref], ...] with a literal source: per-element ownership
         # check. Two shapes reach this -- `Own[tuple[T,...]]` (unwrapped to
         # the inner tuple below) and the canonical per-element form

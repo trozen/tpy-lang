@@ -1,0 +1,1 @@
+spawn subscripting + move-into-thread have no CPython analog.

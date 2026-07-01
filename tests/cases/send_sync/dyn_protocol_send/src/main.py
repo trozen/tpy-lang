@@ -24,7 +24,9 @@ def greet(p: Send[Pet]) -> None:
 def greet_bare(p: Pet) -> None:
     print("bare:", p.speak())
 
-def consume(p: Send[Own[Pet]]) -> None:
+def consume(p: Send[Own[Pet]]) -> None:  # tpyc: warning(/never consumed/)
+    # Send[Own[Pet]] is owned storage like a bare Own[Pet], so an owned param
+    # that is only read (never stored/forwarded/returned) warns identically.
     print("own:", p.speak())
 
 def main() -> None:

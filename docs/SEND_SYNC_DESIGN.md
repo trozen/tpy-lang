@@ -8,7 +8,8 @@
 | **Phase 2** | Marker-layer gap closing (closures, coroutine/generator frames, union forms), tightened rules, `Send[T]` / `Sync[T]` marker wrappers covering `Callable[...]` and `@dynamic` protocols, explicit opt-in / opt-out syntax, `# tpyc:` annotations + test group locking auto-derivation | Done (per-record C++ trait mirror deferred -- see Implementation Notes) |
 | **Phase 3** | Diagnostic surface (`tpy.assert_send[T]`, `--explain-send`, inline chain at enforcement sites) | Done |
 | **Phase 4** | First enforcement site: `Channel[T]` (intra-process, `T: Send`) on top of the single-threaded executor | Done (SPSC; MPSC deferred -- see `docs/CHANNEL_DESIGN.md`) |
-| **Phase 5** | Multi-threaded executor; `Task[T]` requires `Send` frame for migration; `thread.spawn(fn)` requiring `Send` closure | Planned (v3+) |
+| **Phase 4.5** | Second enforcement site: real OS threads -- `tpy.thread.spawn` (Runnable-struct form) Send-checks the task (`Send[Own[T]]`) and result (`R: Send`) at the call site | Done (V1; closure-based `spawn` deferred -- see `docs/THREADING_DESIGN.md`) |
+| **Phase 5** | Multi-threaded *async* executor; `Task[T]` requires `Send` frame for migration; closure-based `thread.spawn(fn)` requiring `Send` closure | Planned (v3+) |
 | **Phase 6** | `Arc[T]` (atomic shared ownership), synchronization primitives (`Mutex[T]`, `RwLock[T]`), `Sync`-required borrow sites | Planned (v3+) |
 
 Phases 2 and 3 are independent of any concurrency runtime and should land first. Phase 4 forces the open questions in Phase 2/3 to be answered against a concrete enforcement site; the rest is gated on the multi-threaded executor decision in `docs/ASYNC_DESIGN.md`.

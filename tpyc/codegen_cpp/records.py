@@ -13,7 +13,7 @@ from ..typesys import (
     TpyType, NominalType, OptionalType, OwnType, ReadonlyType,
     AutoReadonlyType, AutoOwnType, FinalType, ClassVarType,
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, UnionType,
-    unwrap_readonly, unwrap_optional_own,
+    unwrap_readonly, unwrap_optional_own, unwrap_send_sync,
     get_covariant_params, PtrType,
     bare_name,
     del_suppresses_default_ctor, type_value_init_indeterminate,
@@ -1189,7 +1189,7 @@ class RecordGenerator:
         # Own[T] (and Own[T] | None) params are move-eligible at last use in
         # the member init list; see the move site below.
         own_param_names = {pname for pname, ptype in init_method.params
-                           if unwrap_optional_own(unwrap_readonly(ptype)) is not None}
+                           if unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype))) is not None}
         # Collect nested def names -- these are lambdas defined in the body,
         # so field inits referencing them must go in the body, not the init list.
         nested_def_names = {
@@ -1330,7 +1330,7 @@ class RecordGenerator:
                     source_is_own_optional = False
                     if isinstance(source, TpyName):
                         for pname, ptype in init_method.params:
-                            if pname == source.name and unwrap_optional_own(ptype) is not None:
+                            if pname == source.name and unwrap_optional_own(unwrap_send_sync(ptype)) is not None:
                                 source_is_own_optional = True
                                 break
                     if not source_is_own_optional and not isinstance(source, TpyFieldAccess):

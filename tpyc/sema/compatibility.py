@@ -2286,7 +2286,9 @@ class TypeCompatibility:
             # transfer `std::tuple<...>&&` ABI -- movable like a scalar Own[T]).
             for pname, ptype in func.params:
                 if pname == name:
-                    bare = unwrap_readonly(ptype)
+                    # Peel the transparent Send/Sync marker: a Send[Own[T]]
+                    # param is owned storage, eligible for auto-move.
+                    bare = unwrap_readonly(unwrap_send_sync(ptype))
                     if unwrap_optional_own(bare) is not None:
                         return True
                     return (isinstance(bare, TupleType) and bare.is_owned_movable()
@@ -2358,7 +2360,7 @@ class TypeCompatibility:
         if isinstance(func, TpyFunction):
             for pname, ptype in func.params:
                 if pname == name:
-                    own_inner = unwrap_optional_own(unwrap_readonly(ptype))
+                    own_inner = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
                     return (own_inner is None
                             or contains_type_param(own_inner))
         if name in self.ctx.global_scope.bindings:

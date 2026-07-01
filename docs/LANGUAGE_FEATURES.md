@@ -6282,8 +6282,20 @@ The full marker-layer design lives in `docs/SEND_SYNC_DESIGN.md`; Phase 2
   executor; blocking `await tx.send(v)` / `await rx.recv()` and explicit
   `tx.close()` (`recv` raises `ChannelClosed` once closed + drained). See
   `docs/CHANNEL_DESIGN.md`.
-- **Planned**: enforcement at spawn / task-migration boundaries (Phase 5+,
-  multi-threaded executor); MPSC channels; `Arc[T]` / `Mutex[T]` (Phase 6)
+- **Working (V1)**: real OS threads -- `tpy.thread.spawn[R: Send, T:
+  ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]` (in `tpy.thread`).
+  Moves a `Send` task struct (structural `run() -> R`) onto a `std::thread`;
+  `JoinHandle.join()` blocks and returns the result or re-raises the task's
+  exception (via `std::packaged_task`/`std::future`); `detach()` abandons it.
+  Both the task (`Send[Own[T]]` wrapper) and the result (`R: Send` bound) are
+  Send-checked at the call site with the why-not chain. `JoinHandle` is
+  `@nocopy` and aborts loudly if dropped without `join`/`detach`. Explicit
+  type args required (`spawn[R, T](...)`), so V1 is TPy-only (`no_cpython`).
+  `-lpthread` is import-gated. This is Rust's Send+move model, not CPython
+  threading -- see `docs/THREADING_DESIGN.md`.
+- **Planned**: `Arc[T]` (V2), `Mutex[T]`/`RwLock[T]` (V3); closure `spawn`,
+  scoped threads / `TaskGroup`, multi-threaded executor, MPSC channels
+  (deferred -- see `docs/THREADING_DESIGN.md`)
 
 Send/Sync rules for built-in types:
 

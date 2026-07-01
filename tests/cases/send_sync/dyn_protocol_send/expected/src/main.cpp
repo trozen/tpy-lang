@@ -16,8 +16,10 @@ void greet_bare(Pet& p) {
     std::cout << "bare:" << " " << p.speak() << "\n";
 }
 
-// def consume(p: Send[Own[Pet]]) -> None:
+// def consume(p: Send[Own[Pet]]) -> None:  # tpyc: warning(/never consumed/)
 void consume(std::unique_ptr<Pet> p) {
+    // # Send[Own[Pet]] is owned storage like a bare Own[Pet], so an owned param
+    // # that is only read (never stored/forwarded/returned) warns identically.
     // print("own:", p.speak())
     std::cout << "own:" << " " << p->speak() << "\n";
 }
