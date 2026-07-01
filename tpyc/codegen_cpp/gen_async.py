@@ -2430,6 +2430,17 @@ class AsyncCoroCodegen:
                     and await_node.awaited_method_owner_type is None):
                 module_qual = (await_node.value.user_module_call
                                or await_node.value.builtin_module_call)
+            elif (isinstance(await_node.value, TpyCall)
+                    and await_node.awaited_method_owner_type is None):
+                # Bare `from mod import f; await f()`: qualify the coro struct
+                # with the resolved function's defining module. originating_module
+                # is chain-flattened + shadow-correct (unlike imported_names, which
+                # maps the direct import); same module -> None -> bare name.
+                fi = getattr(await_node.value, "resolved_function_info", None)
+                cur = self.ctx.analyzer.ctx.module_name
+                if (fi is not None and fi.originating_module is not None
+                        and fi.originating_module != cur):
+                    module_qual = fi.originating_module
             extra_template_args = self._extra_template_args_for_await(
                 await_node.value)
             sub_cpp = self._sub_struct_qualname(
